@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T09:10:00+08:00",
+  "reviewed_at": "2026-11-03T10:05:29+08:00",
   "base_ref": "origin/main",
-  "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "c909dd1956423fc590240a63ae843ae3c4abd58dfee0215c16fc9c82a8f4ba2c",
-  "head_sha": "f6c0b418821e94f3b27a552de6f7fcd74b704e13",
+  "merge_base": "9a95f9fd67c0f2fa1d4c48e0d70bc39fe5821677",
+  "diff_sha256": "918104d055f49b63e0c7240c87023530195f0c8df770e5ca157da10ffd71f5fb",
+  "head_sha": "8630e55f7313c8cabfa86b54e2223b4f77076489",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Integration #561 after AUTO-STATS refresh. Merge authorized by user; await green CI then squash/merge to main."
+  "note": "AUTO-STATS/whitepaper refresh after P1 caps; contract \u00a777 already on branch. Local lock only."
 }

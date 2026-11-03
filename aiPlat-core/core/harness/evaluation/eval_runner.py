@@ -252,7 +252,7 @@ def _eval_results_dir() -> Path:
 
 def serialize_eval_result(result: AgentEvalResult) -> Dict[str, Any]:
 
-    """Serialize a 6-dimension AgentEvalResult into the canonical persisted dict.
+    """Serialize AgentEvalResult into the persisted dict (legacy_7dim + honesty).
 
 
 
@@ -367,6 +367,11 @@ def serialize_eval_result(result: AgentEvalResult) -> Dict[str, Any]:
             for tr in result.task_results
 
         ],
+
+        # P1 dual-path honesty: legacy_7dim composite; text/safety/refusal report-only.
+        "scoring": result.scoring_honesty(),
+
+        "accuracy_claim": False,
 
     }
 

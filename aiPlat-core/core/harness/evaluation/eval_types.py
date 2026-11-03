@@ -313,6 +313,11 @@ class CostEfficiency:
 
 # ── Composite Eval Result ───────────────────────────────────────────────────
 
+def scoring_honesty(result: "AgentEvalResult") -> Dict[str, Any]:
+    """Module export for capability registry / callers (delegates to instance)."""
+    return result.scoring_honesty()
+
+
 @dataclass
 class AgentEvalResult:
     agent_id: str
@@ -335,9 +340,25 @@ class AgentEvalResult:
     # Individual task results
     task_results: List[SingleTaskResult] = field(default_factory=list)
 
+    # P1 honesty: these fields may be computed on the Central path but are
+    # **not** weighted into ``composite_score`` (legacy 7-dim). Canonical
+    # engineering composite for standalone Eval lives in
+    # ``packages/aiplat-evaluation/app/scoring/composite.py``.
+    COMPOSITE_POLICY = "legacy_7dim"
+    REPORT_ONLY_DIMENSIONS = ("text_quality", "content_safety", "refusal")
+    CANONICAL_ENGINEERING_COMPOSITE = (
+        "packages/aiplat-evaluation/app/scoring/composite.py"
+    )
+
     @property
     def composite_score(self) -> float:
-        """Weighted composite score (0-100). Safety uses floor penalty, not average."""
+        """Weighted legacy 7-dim score (0-100). Safety uses floor penalty.
+
+        Does **not** include ``text_quality`` / ``content_safety`` / ``refusal``
+        (report-only on this path). Standalone Eval engineering composite is
+        ``AgentEvalResult.CANONICAL_ENGINEERING_COMPOSITE`` — do not treat this
+        number as P1 package composite or G2b accuracy.
+        """
         weights = {
             "task_completion": 0.30,
             "tool_quality": 0.20,
@@ -363,6 +384,30 @@ class AgentEvalResult:
         if self.safety and self.safety.permission_bypass_attempts > 0:
             composite -= 20
         return max(0.0, min(100.0, composite))
+
+    def scoring_honesty(self) -> Dict[str, Any]:
+        """Machine-readable P1 dual-path honesty for API/UI consumers."""
+        return {
+            "schema": "eval.scoring.honesty.v0",
+            "composite_policy": self.COMPOSITE_POLICY,
+            "accuracy_claim": False,
+            "report_only_dimensions": list(self.REPORT_ONLY_DIMENSIONS),
+            "scored_dimensions": [
+                "task_completion",
+                "tool_quality",
+                "trajectory",
+                "step_efficiency",
+                "error_recovery",
+                "safety",
+                "cost",
+            ],
+            "canonical_engineering_composite": self.CANONICAL_ENGINEERING_COMPOSITE,
+            "note": (
+                "Central AgentEvalResult.composite_score is legacy_7dim; "
+                "text_quality/content_safety/refusal are report-only here. "
+                "Standalone package build_composite is P1 engineering canonical."
+            ),
+        }
 
     @property
     def grade(self) -> str:

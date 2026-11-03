@@ -20,6 +20,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **B4-S prep (blocked)** | [`docs/a3/B4S_PREP.md`](./docs/a3/B4S_PREP.md) | host prerequisites only; no authorize |
 | **microVM prep (blocked)** | [`docs/a3/MICROVM_PREP.md`](./docs/a3/MICROVM_PREP.md) + `scripts/microvm_local_prep_gate.sh` | probe + refuse live tools; no real isolation |
 | **B1/B2 contract converge** | `bash scripts/b12_contract_gate.sh` | error body + dual-point + temporary_proxy=0; see [`docs/a3/CONTRACT_LOCAL.md`](./docs/a3/CONTRACT_LOCAL.md) |
+| **P1 canonical honesty** | `bash scripts/p1_canonical_gate.sh` | package scored vs Central legacy_7dim report-only; see [`docs/a3/P1_CANONICAL.md`](./docs/a3/P1_CANONICAL.md) |
 | **Job wall-clock** | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` (default 300) | exceed → `timed_out` (never succeeded) |
 | **Job cancel** | `POST /api/platform/apps/eval/jobs/{id}/cancel` | queued\|running → `cancelled` |
 | **Job cost cap** | `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` | exceed → `timed_out` (`cost_cap_exceeded`) |
