@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T08:45:00+08:00",
+  "reviewed_at": "2026-11-03T08:55:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "b2fb9de31dccb7b8129c78d140b9c8aa176af6cb69d254f3bcdcabfcae37bc9c",
-  "head_sha": "f1997c88b7748b6b235a89d38dd8d36ff899b8ee",
+  "diff_sha256": "30be202f3008926d225195809be0df10ef978a58827f0b5203cbd1fff8dc690b",
+  "head_sha": "2d861178f0788b90c7da7652ed089b37fa73ead1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "B1/B2 contract converge on standalone :8010 only; temporary_proxy=0; Central cohost residual explicit. Residual: Central→Worker exec plane; microVM runtime; B4-S host."
+  "note": "Integration tip→main for EVAL local track #535–#560. Docs-only STATUS/FREEZE sync. Residual: not production; accuracy_claim=false; core legacy composite vs package P1 still dual-path."
 }
