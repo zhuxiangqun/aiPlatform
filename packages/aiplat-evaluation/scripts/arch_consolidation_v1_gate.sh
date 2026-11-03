@@ -64,6 +64,14 @@ assert "kb_eval_list_samples" in kb_eval_plat
 prompt_plat = (api_dir / "prompt_eval.py").read_text(encoding="utf-8")
 assert "prompt_eval_list_test_cases" in prompt_plat
 assert "get_db_connection" not in prompt_plat
+runs_plat = (api_dir / "runs_eval.py").read_text(encoding="utf-8")
+assert "runs_eval_submit" in runs_plat
+assert "LearningManager" not in runs_plat
+assert "persist_evaluation" not in runs_plat
+skill_plat = (api_dir / "skill_evals.py").read_text(encoding="utf-8")
+assert "skill_eval_upsert_suite" in skill_plat
+assert "record_changeset" not in skill_plat
+assert "_split_front_matter" not in skill_plat
 
 evid = Path("$EVID_DIR")
 stamp = "$STAMP"
@@ -83,12 +91,11 @@ payload = {
     "platform_sqlite_files": sqlite_files,
     "remaining_gaps": [
         "legacy_flat_mount_still_present",
-        "platform_runs_skill_still_thick",
         "central_legacy_7dim_dual_path",
         "product_root_incomplete",
     ],
     "honesty": (
-        "v1 freeze + v1.1 kb_eval/prompt_eval thinned; dual mount==2; "
+        "v1 freeze + v1.1c kb/prompt/runs/skill thinned; dual mount==2; "
         "platform eval sqlite3 cleared; "
         "package build_composite remains engineering canonical; not authorize"
     ),

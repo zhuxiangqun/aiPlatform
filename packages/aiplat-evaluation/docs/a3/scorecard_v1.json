@@ -20,17 +20,16 @@
       ]
     },
     "engineering_architecture": {
-      "score": 4.1,
+      "score": 4.4,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": false,
-      "note": "freeze + kb_eval/prompt_eval thinned; platform eval sqlite cleared; runs/skill still thick; legacy flat mount remains",
+      "note": "freeze + kb/prompt/runs/skill thinned; platform eval sqlite cleared; legacy flat mount + legacy_7dim remain",
       "gaps": [
         "dual_path_package_vs_central_legacy",
         "legacy_flat_mount_still_present",
         "contracts_ssot_package_only",
-        "product_root_complete",
-        "platform_runs_skill_still_thick"
+        "product_root_complete"
       ]
     },
     "local_independence_no_microvm": {

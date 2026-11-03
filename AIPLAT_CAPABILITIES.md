@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2605
+total_capabilities: 2630
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2504,6 +2504,29 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| create_skill_eval_job | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| compare_skill_eval_runs | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| apply_skill_md_suggestion | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| apply_skill_eval_suggestion | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| suggest_trigger_improvements | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_eval_results | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_skill_eval_run | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| run_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| delete_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_skill_eval_suites | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| upsert_skill_eval_suite | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| RunsEvalGateFailed | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_run_evidence | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| upsert_run_state | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| compute_run_evidence_diff | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_evidence_pack | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_run_state | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| auto_investigate_run | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_investigate_report | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| get_latest_run_evaluation | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| auto_evaluate_run | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| submit_run_evaluation | `core/apps/eval/service/runs_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | prompt_eval_get_run_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | prompt_eval_list_runs_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | prompt_eval_delete_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
@@ -2552,6 +2575,8 @@ scan_hash: 8f9548ec24f4
 | eval_store_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | kb_eval_ops (list/create/delete/run/reports/import/series/compare) | `core/apps/eval/service/kb_eval_ops.py` + CoreFacade | ✅ | platform kb_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
 | prompt_eval_ops (cases/runs) | `core/apps/eval/service/prompt_eval_ops.py` + CoreFacade | ✅ | platform prompt_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| runs_eval_ops (evaluate/investigate/state/evidence) | `core/apps/eval/service/runs_eval_ops.py` + CoreFacade | ✅ | platform runs_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| skill_evals_ops (suites/runs/suggest/apply/compare/jobs) | `core/apps/eval/service/skill_evals_ops.py` + CoreFacade | ✅ | platform skill_evals 薄路由；生成物适用：已接线（apps/eval） | 本批 |
 | import_code_review_gold | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | EvalStore | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | from_run_evaluation | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
@@ -3517,7 +3542,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 182 | 0 | 182 |
+| 评估系统 | 207 | 0 | 207 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3549,7 +3574,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2595** | **10** | **2605** |
+| **总计** | **2620** | **10** | **2630** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

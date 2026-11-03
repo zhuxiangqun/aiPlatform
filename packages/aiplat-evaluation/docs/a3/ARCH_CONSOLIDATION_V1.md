@@ -11,7 +11,7 @@
 | 2 | Legacy 仅 shim / Deprecation | ✅ Middleware；❌ 尚未卸 `/api/platform/apps` 双挂 |
 | 3 | Contracts SSOT = package | ⚠️ 部分；Central legacy_7dim 仍并存（[`P1_CANONICAL.md`](./P1_CANONICAL.md)） |
 | 4 | 产品根 package | ⚠️ API 业务仍在 `platform/apps/eval/api/*` |
-| 5 | platform 薄适配 | ❌ `prompt_eval` 等仍含业务 SQL/LLM |
+| 5 | platform 薄适配 | ✅ kb/prompt/runs/skill 已薄；其余见 v1.1 表 |
 | 6 | core 无 eval 专属业务层 | ⚠️ `core/apps/eval/service/*` + `core/api/routers/kb_eval.py` 残留 |
 | 7 | 独立 build/test/release | ⚠️ package 可测；完整 release 未钉 |
 
@@ -48,14 +48,15 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 | `platform/.../kb_eval.py` | ✅ 已变薄 → `kb_eval_ops` + CoreFacade |
 | `platform/.../prompt_eval.py` | ✅ 已变薄 → `prompt_eval_ops` + CoreFacade |
 | `code_review_gold.py` / `arena_wiring.py` | ✅ 已是 CoreFacade 薄路由 |
-| `skill_evals.py` / `runs_eval.py` | ❌ 仍厚 |
+| `platform/.../runs_eval.py` | ✅ 已变薄 → `runs_eval_ops` + CoreFacade |
+| `platform/.../skill_evals.py` | ✅ 已变薄 → `skill_evals_ops` + CoreFacade |
 | platform `sqlite3` | ✅ **清零**（gate 强制） |
 
 ## 后续切片
 
 | 切片 | 内容 |
 |------|------|
-| v1.1c | 下沉 `runs_eval` / `skill_evals` |
+| v1.1c | 下沉 `runs_eval` / `skill_evals` — ✅ |
 | v1.2 | 卸 flat mount（或只留显式 redirect 表）；core `kb_eval` stub 可删 |
 | v1.3 | contracts 单包 SSOT + CODEOWNERS + package release |
 

@@ -41,6 +41,12 @@ def test_platform_eval_sqlite_cleared():
     prompt = (api / "prompt_eval.py").read_text(encoding="utf-8")
     assert "prompt_eval_list_test_cases" in prompt
     assert "get_db_connection" not in prompt
+    runs = (api / "runs_eval.py").read_text(encoding="utf-8")
+    assert "runs_eval_submit" in runs
+    assert "LearningManager" not in runs
+    skill = (api / "skill_evals.py").read_text(encoding="utf-8")
+    assert "skill_eval_upsert_suite" in skill
+    assert "record_changeset" not in skill
 
 
 def test_arch_consolidation_gate_script():

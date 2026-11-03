@@ -8,7 +8,7 @@
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
 | 功能覆盖 | **4.0 / 5** | 否 | 真人 preference κ、G2b 双人；合规/PII 未建；覆盖度矩阵未闭环 |
-| 工程架构 | **4.1 / 5** | 否 | freeze + kb/prompt 已薄；platform sqlite 清零；仍双挂；runs/skill 厚；legacy_7dim |
+| 工程架构 | **4.4 / 5** | 否 | freeze + kb/prompt/runs/skill 已薄；platform sqlite 清零；仍双挂；legacy_7dim |
 | 本地独立（不含 microVM） | **4.2 / 5** | 否 | OIDC 最小企业路径弱；B4-S 本机预演可再固化证据；隔离未认证（范围内可接受但未钉满） |
 | 本地独立（含 microVM） | **N/A（Mac）** | 不可 | 需 Linux/KVM — 见 scope §三 |
 | 生产独立 | **不计首版** | — | staging + B4-S/B5/B6 |
@@ -26,10 +26,10 @@
 3. 合规/PII v0 schema+测试+报告  
 4. 维度矩阵行全部 `evidence_ok=true`（见 JSON `dimensions`）  
 
-### 架构 4.1 → 5 清单
+### 架构 4.4 → 5 清单
 
 见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + scope §二。  
-已完成：canonical、Deprecation、mount=2 freeze、**kb_eval + prompt_eval → CoreFacade**、platform eval **sqlite 清零**。
+已完成：canonical、Deprecation、mount=2 freeze、**kb/prompt/runs/skill → CoreFacade**、platform eval **sqlite 清零**。待：卸 flat mount、legacy_7dim 收口、contracts SSOT。
 
 ### 本地 4.2 → 5（不含 microVM）清单
 

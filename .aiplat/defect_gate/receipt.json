@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T17:55:54+08:00",
+  "reviewed_at": "2026-11-03T18:03:24+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
   "diff_sha256": "337aa00cb9dfac156c72327f7956330554389a0973cc108ce14b7009f28641ed",
-  "head_sha": "901d24b264c897689bc7c891a646d3619e81ac8d",
+  "head_sha": "63f3d8d2f6446cc3a95c96b5c6456521017b8980",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Score/arch/kb+prompt thin + SyntaxWarning docstring fix. Local lock only."
+  "note": "Score/arch v1.1c: kb/prompt/runs/skill thinned + SyntaxWarning fix. Local lock only."
 }

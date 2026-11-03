@@ -6600,6 +6600,173 @@ async def prompt_eval_get_run(*, run_id: str):
     return await _fn(run_id=run_id)
 
 
+# ── runs_eval ops (ARCH v1.1c thin platform) ──────────────────────────
+async def runs_eval_submit(*, run_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
+    from core.apps.eval.service.runs_eval_ops import submit_run_evaluation as _fn
+
+    return await _fn(run_id=run_id, body=body, actor=actor)
+
+
+async def runs_eval_auto(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import auto_evaluate_run as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_latest(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import get_latest_run_evaluation as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_investigate_latest(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import get_latest_investigate_report as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_investigate_auto(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import auto_investigate_run as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_state_latest(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import get_latest_run_state as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_evidence_pack_latest(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import get_latest_evidence_pack as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def runs_eval_evidence_diff(
+    *,
+    run_id: str,
+    base_evidence_pack_id: str,
+    new_evidence_pack_id: str,
+):
+    from core.apps.eval.service.runs_eval_ops import compute_run_evidence_diff as _fn
+
+    return await _fn(
+        run_id=run_id,
+        base_evidence_pack_id=base_evidence_pack_id,
+        new_evidence_pack_id=new_evidence_pack_id,
+    )
+
+
+async def runs_eval_upsert_state(
+    *,
+    run_id: str,
+    state: Any,
+    lock: Any,
+    actor: Dict[str, Any],
+):
+    from core.apps.eval.service.runs_eval_ops import upsert_run_state as _fn
+
+    return await _fn(run_id=run_id, state=state, lock=lock, actor=actor)
+
+
+async def runs_eval_evidence(*, run_id: str):
+    from core.apps.eval.service.runs_eval_ops import get_run_evidence as _fn
+
+    return await _fn(run_id=run_id)
+
+
+from core.apps.eval.service.runs_eval_ops import (  # noqa: E402
+    RunsEvalGateFailed as RunsEvalGateFailed,
+)
+
+
+async def skill_eval_upsert_suite(*, body: Dict[str, Any], actor: Dict[str, Any]):
+    from core.apps.eval.service.skill_evals_ops import upsert_skill_eval_suite as _fn
+
+    return await _fn(body=body, actor=actor)
+
+
+async def skill_eval_list_suites(
+    *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None
+):
+    from core.apps.eval.service.skill_evals_ops import list_skill_eval_suites as _fn
+
+    return await _fn(limit=limit, offset=offset, tenant_id=tenant_id)
+
+
+async def skill_eval_get_suite(*, suite_id: str):
+    from core.apps.eval.service.skill_evals_ops import get_skill_eval_suite as _fn
+
+    return await _fn(suite_id=suite_id)
+
+
+async def skill_eval_delete_suite(*, suite_id: str):
+    from core.apps.eval.service.skill_evals_ops import delete_skill_eval_suite as _fn
+
+    return await _fn(suite_id=suite_id)
+
+
+async def skill_eval_run_suite(
+    *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
+):
+    from core.apps.eval.service.skill_evals_ops import run_skill_eval_suite as _fn
+
+    return await _fn(suite_id=suite_id, body=body, actor=actor)
+
+
+async def skill_eval_get_run(*, run_id: str):
+    from core.apps.eval.service.skill_evals_ops import get_skill_eval_run as _fn
+
+    return await _fn(run_id=run_id)
+
+
+async def skill_eval_list_results(
+    *, run_id: str, limit: int = 200, offset: int = 0
+):
+    from core.apps.eval.service.skill_evals_ops import list_skill_eval_results as _fn
+
+    return await _fn(run_id=run_id, limit=limit, offset=offset)
+
+
+async def skill_eval_suggest(*, run_id: str, body: Dict[str, Any]):
+    from core.apps.eval.service.skill_evals_ops import (
+        suggest_trigger_improvements as _fn,
+    )
+
+    return await _fn(run_id=run_id, body=body)
+
+
+async def skill_eval_apply_suggestion(*, suite_id: str, body: Dict[str, Any]):
+    from core.apps.eval.service.skill_evals_ops import (
+        apply_skill_eval_suggestion as _fn,
+    )
+
+    return await _fn(suite_id=suite_id, body=body)
+
+
+async def skill_eval_apply_skill_md(
+    *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
+):
+    from core.apps.eval.service.skill_evals_ops import apply_skill_md_suggestion as _fn
+
+    return await _fn(suite_id=suite_id, body=body, actor=actor)
+
+
+async def skill_eval_compare(*, body: Dict[str, Any]):
+    from core.apps.eval.service.skill_evals_ops import compare_skill_eval_runs as _fn
+
+    return await _fn(body=body)
+
+
+async def skill_eval_create_job(
+    *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
+):
+    from core.apps.eval.service.skill_evals_ops import create_skill_eval_job as _fn
+
+    return await _fn(suite_id=suite_id, body=body, actor=actor)
+
+
 async def reevaluate_code_review_gold(
     *,
     profile: str = "balanced",
