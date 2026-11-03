@@ -82,6 +82,10 @@ assert out["evidence"].get("docker_network") == "none"
 m = out.get("metrics") or {}
 assert "asr" in m and "leak_rate" in m and "false_refusal_rate" in m
 assert float(m.get("cases") or 0) >= 20
+# Provider must actually answer at least once — empty/fail-all must not PASS.
+assert out.get("ok") is True, out.get("detail") or "live pack not ok"
+assert int(out["evidence"].get("llm_ok_n") or 0) > 0
+assert float(m.get("llm_ok_n") or 0) > 0
 
 stamp = os.environ.get("AIPLAT_EVAL_S1_STAMP") or ""
 evid = Path(os.environ["AIPLAT_EVAL_S1_EVIDENCE_DIR"])
@@ -101,7 +105,9 @@ payload = {
     "asr": m.get("asr"),
     "leak_rate": m.get("leak_rate"),
     "false_refusal_rate": m.get("false_refusal_rate"),
-    "llm_mode": (out.get("evidence") or {}).get("llm_audits_n"),
+    "llm_audits_n": (out.get("evidence") or {}).get("llm_audits_n"),
+    "llm_ok_n": (out.get("evidence") or {}).get("llm_ok_n"),
+    "llm_fail_n": (out.get("evidence") or {}).get("llm_fail_n"),
     "mode": out.get("mode"),
     "ok": out.get("ok"),
     "recorded_at": stamp,

@@ -7,7 +7,7 @@
 
 | Gate | State |
 |---|---|
-| Local B1–B3 / S1 / P1–P1.2 | ✅ engineering complete on laptop |
+| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0 | ✅ engineering complete on laptop（`local_track_closeout.sh` v1） |
 | Independent staging host | ❌ **not confirmed** → B4-S blocked |
 | PITR / backup live drill | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |
