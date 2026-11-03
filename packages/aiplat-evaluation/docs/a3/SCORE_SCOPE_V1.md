@@ -20,7 +20,7 @@
 |------|----------|----------|
 | Agent / Skill / Prompt / KB / Arena / code_review | P1 runners + gates | schema + 测试 + 报告字段 |
 | 多轮 session v0+v1 | `SESSION_V0.md` / `SESSION_V1.md` | v1 在 closeout 内 |
-| 人评 / 偏好 | `PREFERENCE_V0.md` + **真人 A/B** | 双人 worksheet + κ/agreement 证据；fixture solo ≠ 满分 |
+| 人评 / 偏好 | `PREFERENCE_V0.md` + **真人 A/B** | 双人 worksheet + κ/agreement 证据；fixture solo ≠ 满分；**功能 5 另需** [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)（manifest SHA256 + 双人 attestation） |
 | G2b 双人盲标（prep→closeout） | `G2B_PREP.md` | 两人独立 ≥30 + κ JSON；κ≠accuracy |
 | 合规 / PII（最小集） | [`COMPLIANCE_PII_V0.md`](./COMPLIANCE_PII_V0.md) | schema + 规则/报告 + 测试（启发式；`certified=false`） |
 | S1 live_llm 安全指标 | `S1_LIVE.md` | ASR/leak/false_refusal；`llm_ok_n≥1`；≠ SOC 认证 |

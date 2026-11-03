@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T22:52:04+08:00",
+  "reviewed_at": "2026-11-04T00:25:39+08:00",
   "base_ref": "origin/main",
-  "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "9bd3abf827c84d03515052af3820e0fd1bb6be763a71f5182fe0ac5804739023",
-  "head_sha": "b94cae27b0f440f72892fdd1e46a892b08c84dc9",
+  "merge_base": "1cc40402d5dd9d945dcc6a40cdab257498fc82b1",
+  "diff_sha256": "c14e8cf4fed980f97bd662f87556e1772cfe9f4c4266e6d529fb9f0a1da81109",
+  "head_sha": "55db652aec02f1a398ca03b625c9113a47c9994c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "scorecard misread table sync; v1 three axes at 5; accuracy/authorize false; local lock only"
+  "note": "skills_disclosure clause-sync for CI; evidence audit feature 5 unchanged."
 }
