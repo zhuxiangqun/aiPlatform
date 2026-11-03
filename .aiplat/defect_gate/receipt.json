@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T06:50:00+08:00",
+  "reviewed_at": "2026-11-03T08:45:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "553937b1671f9ba70e82a1fe06c441b4cad0951a5c437e881f50cedc6e03faa8",
-  "head_sha": "ad44440057561acb1ec1712933e554beb70e7f25",
+  "diff_sha256": "b2fb9de31dccb7b8129c78d140b9c8aa176af6cb69d254f3bcdcabfcae37bc9c",
+  "head_sha": "f1997c88b7748b6b235a89d38dd8d36ff899b8ee",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "microVM prep only: backend admits nothing; live tools denied; isolation=false. Residual: runtime unlock needs KVM host; B4-S/S1-live/API converge still deferred."
+  "note": "B1/B2 contract converge on standalone :8010 only; temporary_proxy=0; Central cohost residual explicit. Residual: Central→Worker exec plane; microVM runtime; B4-S host."
 }
