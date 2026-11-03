@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T08:55:00+08:00",
+  "reviewed_at": "2026-11-03T09:00:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "30be202f3008926d225195809be0df10ef978a58827f0b5203cbd1fff8dc690b",
-  "head_sha": "2d861178f0788b90c7da7652ed089b37fa73ead1",
+  "diff_sha256": "85ec86d55a70bb4252a6742402a656a741833a5131c99ede9b34940d5f76cb46",
+  "head_sha": "f753934fe36e11cb0e757234253b06f5c8ff29b8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Integration tip→main for EVAL local track #535–#560. Docs-only STATUS/FREEZE sync. Residual: not production; accuracy_claim=false; core legacy composite vs package P1 still dual-path."
+  "note": "Integration #561 tip→main after whitepaper sync. Residual: await full CI + non-author Approve; not production/accuracy."
 }
