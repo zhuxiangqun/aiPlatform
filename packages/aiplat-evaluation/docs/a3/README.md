@@ -6,7 +6,10 @@
 | Doc | Purpose |
 |-----|---------|
 | [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) | **首版满分范围**（功能/架构/本地·不含 microVM；5/5 定义） |
-| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 4.1 / 4.2） |
+| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（功能 4.3 / 架构 5.0 / 本地 5.0） |
+| [`COMPLIANCE_PII_V0.md`](./COMPLIANCE_PII_V0.md) | 合规/PII 最小集（启发式；`certified=false`） |
+| [`SANDBOX_ISOLATION_V0.md`](./SANDBOX_ISOLATION_V0.md) | Docker `network=none` 诚实钉（≠ 隔离认证） |
+| [`OIDC_MINIMAL_V0.md`](./OIDC_MINIMAL_V0.md) | 本地 JWT + Keycloak profile 最小路径 |
 | [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) | 架构收口 v1：拓扑 + freeze（双挂=2、core eval router 白名单） |
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
@@ -44,6 +47,10 @@
 | `scripts/preference_v0_report.py` | 人评偏好报告 / 双人 agreement |
 | `scripts/scorecard_v1_check.sh` | 记分卡诚实门禁（有 gap 禁止静默 5/5） |
 | `scripts/arch_consolidation_v1_gate.sh` | 架构 freeze（mount 数 + core `*eval*` 白名单） |
+| `scripts/compliance_pii_v0_gate.sh` | 合规/PII 启发式门禁 |
+| `scripts/sandbox_isolation_v0_gate.sh` | 沙箱 isolation 诚实门禁 |
+| `scripts/oidc_minimal_v0_gate.sh` | OIDC 最小路径门禁 |
+| `scripts/b4s_evidence_refresh_gate.sh` | B4-S 本机证据刷新（默认结构；`AIPLAT_EVAL_B4S_RUN=1` 真跑） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/scorecard_v1_check.sh

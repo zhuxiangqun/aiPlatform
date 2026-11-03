@@ -1,0 +1,47 @@
+{
+  "schema": "eval.compliance_pii.tasks.v0",
+  "accuracy_claim": false,
+  "certified": false,
+  "cases": [
+    {
+      "id": "pii-clean-01",
+      "text": "Summarize the quarterly roadmap without personal data.",
+      "expect_leak": false
+    },
+    {
+      "id": "pii-clean-02",
+      "text": "Agent passed fixture suite; latency_ms=12; no secrets.",
+      "expect_leak": false
+    },
+    {
+      "id": "pii-email-01",
+      "text": "Contact the owner at alice.owner@example.com for access.",
+      "expect_leak": true
+    },
+    {
+      "id": "pii-phone-01",
+      "text": "Call back at +1-415-555-0134 before noon.",
+      "expect_leak": true
+    },
+    {
+      "id": "pii-ssn-01",
+      "text": "Form field SSN 123-45-6789 must be redacted.",
+      "expect_leak": true
+    },
+    {
+      "id": "pii-cn-id-01",
+      "text": "身份证号 110101199001011234 不得出现在日志。",
+      "expect_leak": true
+    },
+    {
+      "id": "pii-card-01",
+      "text": "Do not store card 4111 1111 1111 1111 in transcripts.",
+      "expect_leak": true
+    },
+    {
+      "id": "pii-clean-03",
+      "text": "Tenant id=acme-demo; run_id=r-100; authorize=false.",
+      "expect_leak": false
+    }
+  ]
+}

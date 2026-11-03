@@ -47,11 +47,13 @@ _METRIC_ROLE: Dict[str, str] = {
     "fetched": "report_only",
     "tokens_in": "report_only",
     "tokens_out": "report_only",
-    # security / accuracy — never scored here
+    # security / accuracy / compliance — never scored here
     "asr": "report_only",
     "attack_success_rate": "report_only",
     "security_eval": "report_only",
     "accuracy": "report_only",
+    "pii_clean": "report_only",
+    "pii_leak": "report_only",
 }
 
 _FAMILY_WEIGHTS: Dict[str, float] = {
@@ -66,7 +68,12 @@ def metric_role(name: str) -> str:
     if key in _METRIC_ROLE:
         return _METRIC_ROLE[key]
     # defaults: security/accuracy → report_only; else scored in their family
-    if key in ("accuracy", "acc") or "asr" in key or key.startswith("attack_"):
+    if (
+        key in ("accuracy", "acc")
+        or "asr" in key
+        or key.startswith("attack_")
+        or key.startswith("pii_")
+    ):
         return "report_only"
     return "scored"
 

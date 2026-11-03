@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aiplat.local/schemas/evaluation/eval_compliance_pii.schema.json",
+  "title": "EvalCompliancePiiReportV0",
+  "description": "COMPLIANCE_PII_V0 report (heuristic leak gate; not privacy certification).",
+  "type": "object",
+  "required": [
+    "schema",
+    "case_n",
+    "pass_n",
+    "pass_rate",
+    "accuracy_claim",
+    "certified",
+    "not_privacy_certification"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "eval.compliance_pii.report.v0" },
+    "case_n": { "type": "integer", "minimum": 1 },
+    "pass_n": { "type": "integer", "minimum": 0 },
+    "pass_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "cases": { "type": "array" },
+    "accuracy_claim": { "type": "boolean", "const": false },
+    "certified": { "type": "boolean", "const": false },
+    "not_privacy_certification": { "type": "boolean", "const": true },
+    "note": { "type": "string" }
+  },
+  "additionalProperties": true
+}

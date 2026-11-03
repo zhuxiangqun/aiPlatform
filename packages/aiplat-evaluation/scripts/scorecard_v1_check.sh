@@ -37,10 +37,11 @@ for key in (
     if gaps:
         assert score < 5.0, f"{key}: gaps present → score must be <5 (got {score})"
         assert eligible is False, f"{key}: gaps → full_score_eligible must be false"
-    if key == "engineering_architecture" and score >= 5.0:
-        # Honesty: architecture 5 does not authorize process split or accuracy.
+    if key in ("engineering_architecture", "local_independence_no_microvm") and score >= 5.0:
+        # Honesty: architecture/local 5 does not authorize process split or accuracy.
         assert card.get("process_split_authorized") is False
         assert card.get("accuracy_claim") is False
+        assert card.get("not_production_authorization") is True
 
 micro = axes["local_independence_with_microvm"]
 assert micro.get("eligible_on_darwin") is False
@@ -52,9 +53,10 @@ assert prod.get("scored_in_v1") is False
 dims = card.get("dimensions") or []
 assert len(dims) >= 6
 bad = [d["id"] for d in dims if d.get("evidence_ok") is not True]
-# preference/g2b/compliance expected incomplete
-assert "compliance_pii_v0" in bad
+# human preference/g2b still incomplete; compliance_pii_v0 closed in v1.5
+assert "compliance_pii_v0" not in bad
 assert any(d["id"] == "preference_v0" and not d.get("evidence_ok") for d in dims)
+assert any(d["id"] == "g2b_prep" and not d.get("evidence_ok") for d in dims)
 
 print(json.dumps({
     "gate": "ok",

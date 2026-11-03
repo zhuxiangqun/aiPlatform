@@ -8,14 +8,13 @@
   "not_production_authorization": true,
   "axes": {
     "feature_coverage": {
-      "score": 4.0,
+      "score": 4.3,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 feature in-scope",
       "full_score_eligible": false,
       "gaps": [
         "human_g2b_dual_annotator_kappa",
         "human_preference_ab_kappa",
-        "compliance_pii_v0",
         "dimension_matrix_all_evidence_ok"
       ]
     },
@@ -28,15 +27,12 @@
       "gaps": []
     },
     "local_independence_no_microvm": {
-      "score": 4.2,
+      "score": 5.0,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 local in-scope excluding microVM",
-      "full_score_eligible": false,
-      "gaps": [
-        "oidc_minimal_tenant_hardening",
-        "b4s_local_rehearsal_evidence_refresh",
-        "sandbox_isolation_not_certified_documented"
-      ]
+      "full_score_eligible": true,
+      "note": "v1.5: SANDBOX_ISOLATION_V0 + OIDC_MINIMAL_V0 + B4S evidence refresh gates; sandbox_real_isolation=false; not authorize",
+      "gaps": []
     },
     "local_independence_with_microvm": {
       "score": null,
@@ -85,11 +81,11 @@
     },
     {
       "id": "compliance_pii_v0",
-      "schema_ref": null,
-      "tests": false,
-      "report_fields": false,
-      "evidence_ok": false,
-      "note": "not built"
+      "schema_ref": "docs/a3/COMPLIANCE_PII_V0.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true,
+      "note": "heuristic only; certified=false"
     },
     {
       "id": "s1_live_llm",
