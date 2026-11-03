@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T20:17:31+08:00",
+  "reviewed_at": "2026-11-03T20:25:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "86ba63142d5cb95061c4a408869c75c409456645ea9f1f42c6248f88412ac836",
-  "head_sha": "d1cdeabf7a75501ad153fc48fabaeff9f46e5847",
+  "diff_sha256": "7085768f8a3b9436e8610054c30bb69cdf339f3cbcd270eec36cd0961981360f",
+  "head_sha": "cc20a5c998e5f97f2177719e373b20f239905809",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Arch v1.3 contracts SSOT+CODEOWNERS; v1.2 single mount. Local lock only."
+  "note": "ARCH v1.4: PRODUCT_ROOT_V1 + deprecated_for_engineering + contract §75/§77 clause-sync; architecture 5.0; accuracy_claim/process_split still false. Local lock only."
 }
