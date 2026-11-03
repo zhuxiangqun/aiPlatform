@@ -37,6 +37,7 @@ Evidence: `docs/a3/drills/local-eval-prod-live-*.json` (gitignored drills).
 - per-task latency + tokens + cost_estimate + fail/timeout visible
 - `accuracy_claim=false`
 - refuses `AIPLAT_EVAL_PROD_MODEL` empty or equal to smoke-only `qwen2.5:3b` unless `AIPLAT_EVAL_PROD_ALLOW_SMOKE_MODEL=1`
+- **forces** `AIPLAT_EVAL_LLM_MODEL=$AIPLAT_EVAL_PROD_MODEL`（忽略 shell 里残留的 3B `AIPLAT_EVAL_LLM_MODEL`）
 
 ## Not claimed
 

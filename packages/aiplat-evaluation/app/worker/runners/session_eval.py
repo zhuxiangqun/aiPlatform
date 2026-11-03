@@ -1,4 +1,4 @@
-"""session_eval — multi-turn / session chain v0 (2–3 turns).
+"""session_eval — multi-turn / session chain v0 (2–3) and v1 (5–8).
 
 Honesty:
 - Pure-text; optional independent LLM per turn (no Central / no tools).
@@ -11,9 +11,9 @@ from typing import Any, Dict, List
 
 from app.llm.client import complete_text, llm_enabled, llm_mode
 from app.scoring.session import (
-    MAX_TURNS_V0,
-    MIN_TURNS_V0,
     normalize_turns,
+    profile_bounds,
+    resolve_profile,
     session_dimension,
 )
 from app.scoring.semantics import (
@@ -41,17 +41,23 @@ def run_session_eval(job: Dict[str, Any]) -> Dict[str, Any]:
     job_id = str(job.get("job_id") or "")
     tenant_id = str(job.get("tenant_id") or "")
     session_id = str(payload.get("session_id") or payload.get("conversation_id") or job_id)
-    turns = normalize_turns(payload.get("turns") or payload.get("messages") or [])
+    raw_turns = payload.get("turns") or payload.get("messages") or []
+    profile = resolve_profile(
+        payload.get("profile") or payload.get("session_version"),
+        turns_n=len(raw_turns) if isinstance(raw_turns, list) else None,
+    )
+    min_t, max_t = profile_bounds(profile)
+    turns = normalize_turns(raw_turns, profile=profile)
 
-    if len(turns) < MIN_TURNS_V0:
+    if len(turns) < min_t:
         return runner_result(
             runner_id="session_eval",
             job_id=job_id,
             ok=False,
             metrics={"turns_n": float(len(turns)), "turn_success_rate": 0.0, "session_pass": 0.0},
-            evidence={"session_id": session_id, "max_turns_v0": MAX_TURNS_V0},
-            detail=f"session_eval v0 requires {MIN_TURNS_V0}–{MAX_TURNS_V0} turns",
-            mode="session_v0",
+            evidence={"session_id": session_id, "profile": profile, "min_turns": min_t, "max_turns": max_t},
+            detail=f"session_eval {profile} requires {min_t}–{max_t} turns",
+            mode=f"session_{profile}",
         )
 
     history: List[Dict[str, str]] = []
@@ -117,15 +123,17 @@ def run_session_eval(job: Dict[str, Any]) -> Dict[str, Any]:
         )
         history.append({"user": prompt, "assistant": actual})
 
-    sdim = session_dimension(turns=turns, turn_oks=turn_oks, session_id=session_id)
+    sdim = session_dimension(
+        turns=turns, turn_oks=turn_oks, session_id=session_id, profile=profile
+    )
     edim = efficiency_dimension(audits, success_flags=turn_oks)
     n_ok = int(sdim["turns_ok"])
     rate = float(sdim["turn_success_rate"])
     session_pass = bool(sdim["session_pass"])
 
-    mode = "session_v0"
+    mode = f"session_{profile}"
     if used_llm:
-        mode = f"session_v0_llm_{llm_mode()}"
+        mode = f"session_{profile}_llm_{llm_mode()}"
 
     return runner_result(
         runner_id="session_eval",
@@ -143,8 +151,10 @@ def run_session_eval(job: Dict[str, Any]) -> Dict[str, Any]:
         session_dimension=sdim,
         evidence={
             "session_id": session_id,
+            "profile": profile,
             "turns": turn_details,
-            "max_turns_v0": MAX_TURNS_V0,
+            "min_turns": min_t,
+            "max_turns": max_t,
             "llm_audits_n": len(audits),
         },
         detail="" if session_pass else f"turn_success_rate={rate}",

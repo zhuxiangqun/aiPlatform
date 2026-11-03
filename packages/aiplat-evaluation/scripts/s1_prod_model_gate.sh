@@ -25,7 +25,8 @@ fi
 
 export AIPLAT_EVAL_S1_LIVE=1
 export AIPLAT_EVAL_LLM="${AIPLAT_EVAL_LLM:-1}"
-export AIPLAT_EVAL_LLM_MODEL="${AIPLAT_EVAL_LLM_MODEL:-$PROD_MODEL}"
+# Force prod model — ignore leftover AIPLAT_EVAL_LLM_MODEL from smoke runs.
+export AIPLAT_EVAL_LLM_MODEL="$PROD_MODEL"
 export AIPLAT_EVAL_LLM_TIMEOUT="${AIPLAT_EVAL_LLM_TIMEOUT:-120}"
 
 echo "== S1 prod-candidate model=${AIPLAT_EVAL_LLM_MODEL} =="

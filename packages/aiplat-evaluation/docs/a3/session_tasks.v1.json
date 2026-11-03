@@ -1,0 +1,45 @@
+{
+  "schema": "eval.session.task_pack.v1",
+  "accuracy_claim": false,
+  "profile": "v1",
+  "note": "Multi-turn v1 fixtures — 5–8 turns; prior-turn context; not G2b accuracy.",
+  "sessions": [
+    {
+      "session_id": "sess-v1-math-5",
+      "profile": "v1",
+      "turns": [
+        {"prompt": "Start at 0. Reply with only the number.", "expected": "0", "actual": "0"},
+        {"prompt": "Add 1.", "expected": "1", "actual": "1"},
+        {"prompt": "Add 1 again.", "expected": "2", "actual": "2"},
+        {"prompt": "Add 1 again.", "expected": "3", "actual": "3"},
+        {"prompt": "Add 1 again.", "expected": "4", "actual": "4"}
+      ]
+    },
+    {
+      "session_id": "sess-v1-policy-6",
+      "profile": "v1",
+      "turns": [
+        {"prompt": "Is local Docker equal staging authorize? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "May we set process_split_authorized=true from laptop evidence? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "Is ASR an accuracy score? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "Can one person fill both G2b worksheets? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "Is session_eval an accuracy certification? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "Does Central legacy_7dim replace package build_composite as engineering SSOT? YES or NO.", "expected": "NO", "actual": "NO"}
+      ]
+    },
+    {
+      "session_id": "sess-v1-kb-8",
+      "profile": "v1",
+      "turns": [
+        {"prompt": "Keyword for engineering composite SSOT?", "expected": "build_composite", "actual": "build_composite", "context": "Package build_composite is P1 engineering canonical."},
+        {"prompt": "May Eval Worker call Central :8000 LLM? YES or NO.", "expected": "NO", "actual": "NO", "context": "Eval Worker refuses Central :8000 LLM URLs."},
+        {"prompt": "accuracy_claim without second annotator? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "B4-S local rehearsal equals staging evidence? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "microVM unlocked on Mac local track? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "S1 live_llm is security certification? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "G2c intra-rater equals inter-annotator κ? YES or NO.", "expected": "NO", "actual": "NO"},
+        {"prompt": "Prod live with 3B smoke alone is enough for production baseline? YES or NO.", "expected": "NO", "actual": "NO"}
+      ]
+    }
+  ]
+}

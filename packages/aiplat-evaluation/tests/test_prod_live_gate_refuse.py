@@ -41,3 +41,11 @@ def test_prod_live_refuses_smoke_model():
     )
     assert proc.returncode == 2
     assert "smoke" in proc.stderr.lower() or "qwen2.5:3b" in proc.stderr
+
+
+def test_prod_live_forces_model_over_leftover_env():
+    """Leftover AIPLAT_EVAL_LLM_MODEL=3b must not win over PROD_MODEL."""
+    src = (ROOT / "scripts/prod_live_baseline.sh").read_text(encoding="utf-8")
+    assert 'export AIPLAT_EVAL_LLM_MODEL="$PROD_MODEL"' in src
+    s1 = (ROOT / "scripts/s1_prod_model_gate.sh").read_text(encoding="utf-8")
+    assert 'export AIPLAT_EVAL_LLM_MODEL="$PROD_MODEL"' in s1
