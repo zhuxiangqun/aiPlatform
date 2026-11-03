@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T17:50:15+08:00",
+  "reviewed_at": "2026-11-03T17:55:54+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "cbbe5b0d644c14be48511511220c4bf57a9c27f0a5c4e2376c909382a4d1858a",
-  "head_sha": "3fc54e8bd1ba7bf9846ba9e411dec0d9f95c148d",
+  "diff_sha256": "337aa00cb9dfac156c72327f7956330554389a0973cc108ce14b7009f28641ed",
+  "head_sha": "901d24b264c897689bc7c891a646d3619e81ac8d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Score scope + arch freeze + kb_eval/prompt_eval thinned; platform eval sqlite cleared. runs/skill still thick; no authorize. Local lock only."
+  "note": "Score/arch/kb+prompt thin + SyntaxWarning docstring fix. Local lock only."
 }
