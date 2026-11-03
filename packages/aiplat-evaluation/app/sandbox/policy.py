@@ -146,12 +146,15 @@ def sandbox_health() -> Dict[str, Any]:
         "kvm_available": mvm["kvm_available"],
         "microvm_block_reason": mvm["microvm_block_reason"],
         "microvm_runtime_probe_ok": runtime_probe_ok,
-        "guest_boot": False,
+        "guest_boot": bool(mvm.get("guest_boot")),
+        "guest_boot_authorized": bool(mvm.get("guest_boot_authorized")),
+        "guest_boot_flag": bool(mvm.get("guest_boot_flag")),
         "note": (
             "B3-L/S1 sandbox — docker network=none; skill fixture-only / no live tools; "
             "security fixture default; live_llm opt-in via AIPLAT_EVAL_S1_LIVE=1 on docker; "
             "microVM Linux/KVM track admits non-live runners when host_ok+ADMIT_RUNNERS; "
-            "guest_boot deferred; process_split_authorized=false; not a security certification."
+            "guest_boot authorize via GUEST_BOOT=1+assets+InstanceStart; "
+            "process_split_authorized=false; not a security certification."
         ),
     }
 

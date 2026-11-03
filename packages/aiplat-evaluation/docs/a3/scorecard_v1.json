@@ -39,8 +39,8 @@
       "max": 5.0,
       "eligible_on_darwin": false,
       "full_score_eligible": false,
-      "gaps": ["requires_linux_kvm_host", "guest_boot_deferred"],
-      "note": "v1.7: Linux/KVM track policy+admit+host allowlist CLI shipped (MICROVM_LINUX_TRACK); guest_boot=false; Darwin ineligible; score null until Linux host evidence; ≠ isolation cert"
+      "gaps": ["requires_linux_kvm_host_evidence"],
+      "note": "v1.8: guest_boot authorize+InstanceStart probe shipped (MICROVM_GUEST_BOOT); Darwin ineligible; score null until Linux/KVM host drill evidence; process_split_authorized=false; ≠ isolation cert"
     },
     "production_independence": {
       "score": null,

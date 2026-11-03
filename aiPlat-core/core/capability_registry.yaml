@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1735
+total_capabilities: 1738
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 450
+    caps_count: 453
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1604,6 +1604,18 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh"
         module: "packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh"
+      - symbol: "microvm_guest_boot_authorized"
+        type: "function"
+        signature: "microvm_guest_boot_authorized()→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "probe_guest_boot"
+        type: "function"
+        signature: "probe_guest_boot(*,transport_factory=None,popen_factory=None)→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/guest_boot.py"
+      - symbol: "aiplat_eval_microvm_guest_boot_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/microvm_guest_boot_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/microvm_guest_boot_gate.sh"
       - symbol: "assert_error_envelope"
         type: "function"
         signature: "assert_error_envelope(payload)→dict"
