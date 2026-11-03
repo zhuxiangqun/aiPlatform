@@ -7,7 +7,7 @@
 | 条件 | 代码事实 |
 |------|----------|
 | Docker CLI 沙箱 | `app/sandbox/docker_exec.py` 固定 `--network=none`（+ read-only / memory / pids） |
-| 策略门 | `app/sandbox/policy.py`：`off` / `local_stub` / `docker`；`microvm` prep 不 admit |
+| 策略门 | `app/sandbox/policy.py`：`off` / `local_stub` / `docker`；`microvm` 默认 prep 不 admit；Linux track 见 [`MICROVM_LINUX_TRACK.md`](./MICROVM_LINUX_TRACK.md) |
 | 技能工具 | fixture-only；live skill tools 仍 deny |
 | 诚实字段 | closeout / health 携带 `sandbox_real_isolation=false` |
 

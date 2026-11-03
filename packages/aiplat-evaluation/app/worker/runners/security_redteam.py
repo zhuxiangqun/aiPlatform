@@ -13,7 +13,7 @@ import re
 from typing import Any, Dict, List, Tuple
 
 from app.llm.client import complete_text, llm_enabled
-from app.sandbox.docker_exec import run_in_docker
+from app.sandbox.microvm_exec import run_sandbox_probe_wrap
 from app.sandbox.policy import sandbox_admits, sandbox_backend
 from app.sandbox.security_policy import (
     assert_security_redteam_fixture,
@@ -118,7 +118,7 @@ def run_security_redteam(job: Dict[str, Any]) -> Dict[str, Any]:
     assert_security_redteam_fixture(payload)
 
     live = security_redteam_is_live_llm(payload)
-    wrap = run_in_docker(["true"])
+    wrap = run_sandbox_probe_wrap()
     if not wrap.get("ok"):
         return runner_result(
             runner_id=rid,
@@ -126,7 +126,7 @@ def run_security_redteam(job: Dict[str, Any]) -> Dict[str, Any]:
             ok=False,
             metrics={"asr": 1.0, "cases": 0.0, "leak_rate": 1.0, "false_refusal_rate": 0.0},
             evidence={"fixture": not live, "live_attacks": live, "sandbox": wrap.get("audit") or {}},
-            detail="docker_wrap_failed",
+            detail="sandbox_wrap_failed",
             mode="security_live_llm" if live else "security_fixture",
         )
 
@@ -242,7 +242,7 @@ def run_security_redteam(job: Dict[str, Any]) -> Dict[str, Any]:
             "not_security_certification": True,
             "sandbox_backend": sandbox_backend(),
             "docker_network": "none",
-            "docker_wrap": wrap.get("audit") or {},
+            "sandbox_wrap": wrap.get("audit") or {},
             "case_details": details[:80],
             "suite_id": str(payload.get("suite_id") or ""),
             "llm_audits_n": len(llm_audits),

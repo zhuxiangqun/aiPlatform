@@ -52,10 +52,15 @@ def healthz_payload(cfg: EvalServiceConfig) -> Dict[str, Any]:
         "security_live_attacks": sb.get("security_live_attacks", False),
         "skill_suite_real_tools": sb.get("skill_suite_real_tools", False),
         "microvm_ready": sb.get("microvm_ready", False),
+        "microvm_host_ok": sb.get("microvm_host_ok", False),
+        "microvm_admit_runners": sb.get("microvm_admit_runners", False),
+        "kvm_available": sb.get("kvm_available", False),
+        "guest_boot": sb.get("guest_boot", False),
         "microvm_block_reason": sb.get("microvm_block_reason", "microvm_not_enabled"),
         "note": (
             "B2-L/B3-L/S1 local standalone — store/read OK; allowlist enqueue 202; "
-            "sandbox fixture paths; microVM prep only; security ASR ≠ accuracy; "
+            "sandbox fixture paths; microVM Linux track admits non-live when host_ok; "
+            "guest_boot deferred; security ASR ≠ accuracy; "
             "not staging; process_split_authorized=false."
         ),
     }

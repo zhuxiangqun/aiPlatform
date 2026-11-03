@@ -4,7 +4,8 @@ Backends:
 - ``off`` (default): sandbox runners stay ``sandbox_required``
 - ``local_stub``: admit ``http_probe`` in-process (no network)
 - ``docker``: http_probe + cli_probe + skill_suite fixture + security_redteam fixture
-- ``microvm``: **prep only** — admits **nothing** (live tools stay locked)
+- ``microvm``: Linux/KVM track — admit non-live runners only when
+  ``microvm_can_admit_runners()`` (host_ok + ADMIT_RUNNERS); else prep deny-all
 
 Env: ``AIPLAT_EVAL_SANDBOX_BACKEND=off|local_stub|docker|microvm``
 """
@@ -14,8 +15,13 @@ import os
 from typing import Any, Dict, Literal, Mapping, Optional
 
 from app.sandbox.docker_exec import docker_available
-from app.sandbox.microvm import microvm_status
-from app.sandbox.security_policy import s1_live_enabled, security_redteam_admits
+from app.sandbox.microvm import microvm_can_admit_runners, microvm_status
+from app.sandbox.microvm_exec import probe_runtime
+from app.sandbox.security_policy import (
+    s1_live_enabled,
+    security_redteam_admits,
+    security_redteam_is_fixture,
+)
 from app.sandbox.skill_policy import skill_suite_is_fixture
 
 SandboxBackend = Literal["off", "local_stub", "docker", "microvm"]
@@ -24,6 +30,8 @@ B3_LOCAL_STUB_RUNNERS: frozenset[str] = frozenset({"http_probe"})
 B3_DOCKER_RUNNERS: frozenset[str] = frozenset(
     {"http_probe", "cli_probe", "skill_suite", "security_redteam"}
 )
+# Same non-live surface as docker when Linux microVM track admits.
+B3_MICROVM_RUNNERS: frozenset[str] = B3_DOCKER_RUNNERS
 _DOCKER_NEEDS_BIN = frozenset({"cli_probe", "skill_suite", "security_redteam"})
 
 
@@ -61,8 +69,17 @@ def sandbox_admits(
             return security_redteam_admits(payload)
         return True
     if backend == "microvm":
-        # Prep slice: never admit runners (incl. live skill tools).
-        return False
+        # Live skill tools stay denied via skill_suite_is_fixture / security policy.
+        if not microvm_can_admit_runners():
+            return False
+        if rid not in B3_MICROVM_RUNNERS:
+            return False
+        if rid == "skill_suite":
+            return skill_suite_is_fixture(payload)
+        if rid == "security_redteam":
+            # microVM track v1: fixture only (no live_llm / live tools).
+            return security_redteam_is_fixture(payload)
+        return True
     return False
 
 
@@ -85,7 +102,16 @@ def sandbox_health() -> Dict[str, Any]:
             else:
                 admitted.append(r)
     elif backend == "microvm":
-        admitted = []
+        if microvm_can_admit_runners():
+            for r in sorted(B3_MICROVM_RUNNERS):
+                if r == "skill_suite":
+                    admitted.append("skill_suite(fixture)")
+                elif r == "security_redteam":
+                    admitted.append("security_redteam(fixture)")
+                else:
+                    admitted.append(r)
+        else:
+            admitted = []
     mvm = microvm_status()
     isolation = "none"
     if backend == "docker":
@@ -93,7 +119,14 @@ def sandbox_health() -> Dict[str, Any]:
     elif backend == "local_stub":
         isolation = "process_stub"
     elif backend == "microvm":
-        isolation = "microvm_prep"
+        isolation = (
+            "microvm_linux_track"
+            if microvm_can_admit_runners()
+            else "microvm_prep"
+        )
+    runtime_probe_ok: bool | None = None
+    if backend == "microvm" and mvm.get("microvm_available"):
+        runtime_probe_ok = bool(probe_runtime().get("ok"))
     return {
         "b3l_sandbox": True,
         "s1_security_eval": True,
@@ -108,11 +141,17 @@ def sandbox_health() -> Dict[str, Any]:
         "microvm_available": mvm["microvm_available"],
         "microvm_enabled": mvm["microvm_enabled"],
         "microvm_ready": mvm["microvm_ready"],
+        "microvm_host_ok": mvm["microvm_host_ok"],
+        "microvm_admit_runners": mvm["microvm_admit_runners"],
+        "kvm_available": mvm["kvm_available"],
         "microvm_block_reason": mvm["microvm_block_reason"],
+        "microvm_runtime_probe_ok": runtime_probe_ok,
+        "guest_boot": False,
         "note": (
             "B3-L/S1 sandbox — docker network=none; skill fixture-only / no live tools; "
-            "security fixture default; live_llm opt-in via AIPLAT_EVAL_S1_LIVE=1; "
-            "microVM prep only; process_split_authorized=false; not a security certification."
+            "security fixture default; live_llm opt-in via AIPLAT_EVAL_S1_LIVE=1 on docker; "
+            "microVM Linux/KVM track admits non-live runners when host_ok+ADMIT_RUNNERS; "
+            "guest_boot deferred; process_split_authorized=false; not a security certification."
         ),
     }
 
