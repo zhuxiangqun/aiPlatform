@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T15:45:29+08:00",
+  "reviewed_at": "2026-11-03T16:57:33+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d2f152b43baeb09418ed0c6f680667b484c9d540",
-  "diff_sha256": "341950f3cab7de08371516dff2f31e54e66dd67daa0999e405f2590d95677e97",
-  "head_sha": "cffb51d0fd1e58b8f3619a09b5fe3ac3a0785108",
+  "merge_base": "9c1cdb2af279bb24f2c6e2ab63df536b6309a2e7",
+  "diff_sha256": "bed7eeb299fb35a14c788a060c5c1e9be7026a3ca110c6874152747b3e0ff9f5",
+  "head_sha": "4341aed4c8ca7a8b8053d3792c3d068f9d65c40d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock. session v1 + preference v0 + force PROD_MODEL; accuracy/authorize still false."
+  "note": "live_llm_smoke: llm_ok_n>=1 when live requested; URLError-all path covered by test_live_llm_smoke_all_provider_errors_fail_gate; prod_live inherits via live_llm_smoke.sh; S1 already had llm_ok_n. Local lock only; CI unlock is non-author Approve."
 }
