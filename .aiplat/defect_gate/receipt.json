@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T10:23:36+08:00",
+  "reviewed_at": "2026-11-03T12:06:26+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2d4ab4a4e58369b73706e2f2b4f4fca3935bed85",
-  "diff_sha256": "8e559898424d64ba1daf78ba5f9bf3c188efd026e6ef3b21ced6342191e5ea6b",
-  "head_sha": "2879b6a3466d0d5165676b50d126ce4232f2b580",
+  "merge_base": "9e1f96666da7e1e79f0f16ce5ec5fe3ca9020ef5",
+  "diff_sha256": "0b3f46aa0567a2548582183f00bc35231398e45f6355f7865aa817b3d34859d2",
+  "head_sha": "e18145463d9a501a5e1ae17cd4713e2999f766f1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "STATUS/FREEZE only: #562 merged marker. Local lock only."
+  "note": "Live LLM 10-task smoke: stub CI-safe + optional Ollama live\u00d73; temperature/seed/cost recorded; accuracy_claim=false. Local lock only."
 }
