@@ -37,8 +37,12 @@ for key in (
     if gaps:
         assert score < 5.0, f"{key}: gaps present → score must be <5 (got {score})"
         assert eligible is False, f"{key}: gaps → full_score_eligible must be false"
-    if key in ("engineering_architecture", "local_independence_no_microvm") and score >= 5.0:
-        # Honesty: architecture/local 5 does not authorize process split or accuracy.
+    if key in (
+        "engineering_architecture",
+        "local_independence_no_microvm",
+        "feature_coverage",
+    ) and score >= 5.0:
+        # Honesty: feature/arch/local 5 ≠ accuracy cert / process split authorize.
         assert card.get("process_split_authorized") is False
         assert card.get("accuracy_claim") is False
         assert card.get("not_production_authorization") is True
@@ -53,10 +57,11 @@ assert prod.get("scored_in_v1") is False
 dims = card.get("dimensions") or []
 assert len(dims) >= 6
 bad = [d["id"] for d in dims if d.get("evidence_ok") is not True]
-# preference still incomplete; g2b_prep + compliance closed
-assert "compliance_pii_v0" not in bad
-assert "g2b_prep" not in bad
-assert any(d["id"] == "preference_v0" and not d.get("evidence_ok") for d in dims)
+# feature in-scope dimensions closed (v1.6); accuracy still false
+assert not bad, f"incomplete dimensions: {bad}"
+assert axes["feature_coverage"]["score"] >= 5.0
+assert axes["feature_coverage"]["full_score_eligible"] is True
+assert axes["feature_coverage"]["gaps"] == []
 
 print(json.dumps({
     "gate": "ok",
