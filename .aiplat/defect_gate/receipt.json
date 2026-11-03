@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T09:45:55+08:00",
+  "reviewed_at": "2026-11-03T09:54:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a95f9fd67c0f2fa1d4c48e0d70bc39fe5821677",
-  "diff_sha256": "84b3523d3b55a9382d5a3e676225dedfc1489c649c86a1e4c41f926c2c72fb9c",
-  "head_sha": "b916d278391d9319145d41a6ab188fc21eb54a33",
+  "diff_sha256": "9ab3dde420766a57a91cf586497e72dbce573f4ebf381288c962f27c05aab7fc",
+  "head_sha": "dff008aac77e06f3a3f82a6b099541c45dbd4780",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 dual-path honesty only: legacy_7dim composite formula unchanged; text/safety/refusal report-only; accuracy_claim=false; package build_composite remains engineering SSOT. Local lock only."
+  "note": "CI unblock: system-architecture-contract \u00a777 + whitepaper sync. P1 honesty labels only; no reweight. Local lock only."
 }
