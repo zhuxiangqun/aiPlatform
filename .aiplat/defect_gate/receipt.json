@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T12:50:05+08:00",
+  "reviewed_at": "2026-11-03T13:07:03+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ac992464bec812e530b8351147207c6547828f12",
-  "diff_sha256": "0145e9a8bca84fdf49cda07f8da693966301ae56e06db0cd6bc5b9168589c968",
-  "head_sha": "0d77f2f7d960c8a2f737c68c0a8f9f8b6785a934",
+  "merge_base": "88383803c86cb1a83c41fc305c6dba61e63a4fd5",
+  "diff_sha256": "2580091e2a741b71613d0fdc385949411f5f3f7e5a83e67cc1424aa89b99d8a8",
+  "head_sha": "7ac6296af6950a30e11a26206854fb21699b50a4",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "S1 live_llm: env-gated; docker network=none; no skill tools; ASR/leak/false_refusal reported; accuracy_claim=false; not cert. Local lock only."
+  "note": "session_eval v0 rebased on #566; accuracy_claim=false. Local lock only."
 }
