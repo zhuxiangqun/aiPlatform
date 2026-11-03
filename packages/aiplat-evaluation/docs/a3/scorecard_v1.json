@@ -8,16 +8,17 @@
   "not_production_authorization": true,
   "axes": {
     "feature_coverage": {
-      "score": 4.3,
+      "score": 4.6,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 feature in-scope",
       "full_score_eligible": false,
       "gaps": [
-        "human_g2b_dual_annotator_kappa",
         "human_preference_ab_kappa",
         "dimension_matrix_all_evidence_ok"
-      ]
+      ],
+      "note": "G2b dual human κ evidence recorded (agreement≈0.83, κ≈0.63); accuracy_claim still false"
     },
+
     "engineering_architecture": {
       "score": 5.0,
       "max": 5.0,
@@ -76,8 +77,8 @@
       "schema_ref": "docs/a3/G2B_PREP.md",
       "tests": true,
       "report_fields": true,
-      "evidence_ok": false,
-      "note": "pack+κ script ready; dual human pending"
+      "evidence_ok": true,
+      "note": "dual human κ n=30 agreement=0.8333 kappa=0.6269; accuracy_claim=false; ≠ accuracy cert"
     },
     {
       "id": "compliance_pii_v0",

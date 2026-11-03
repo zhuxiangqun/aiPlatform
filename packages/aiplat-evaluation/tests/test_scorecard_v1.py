@@ -16,7 +16,7 @@ def test_scorecard_json_schema():
     assert data["accuracy_claim"] is False
     assert data["process_split_authorized"] is False
     assert data["axes"]["feature_coverage"]["score"] < 5.0
-    assert data["axes"]["feature_coverage"]["score"] >= 4.3
+    assert data["axes"]["feature_coverage"]["score"] >= 4.6
     arch = data["axes"]["engineering_architecture"]
     assert arch["score"] == 5.0
     assert arch["full_score_eligible"] is True
@@ -28,6 +28,7 @@ def test_scorecard_json_schema():
     assert data["axes"]["local_independence_with_microvm"]["eligible_on_darwin"] is False
     dims = {d["id"]: d for d in data["dimensions"]}
     assert dims["compliance_pii_v0"]["evidence_ok"] is True
+    assert dims["g2b_prep"]["evidence_ok"] is True
     assert dims["preference_v0"]["evidence_ok"] is False
 
 

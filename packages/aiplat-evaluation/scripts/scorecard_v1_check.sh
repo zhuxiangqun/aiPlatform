@@ -53,10 +53,10 @@ assert prod.get("scored_in_v1") is False
 dims = card.get("dimensions") or []
 assert len(dims) >= 6
 bad = [d["id"] for d in dims if d.get("evidence_ok") is not True]
-# human preference/g2b still incomplete; compliance_pii_v0 closed in v1.5
+# preference still incomplete; g2b_prep + compliance closed
 assert "compliance_pii_v0" not in bad
+assert "g2b_prep" not in bad
 assert any(d["id"] == "preference_v0" and not d.get("evidence_ok") for d in dims)
-assert any(d["id"] == "g2b_prep" and not d.get("evidence_ok") for d in dims)
 
 print(json.dumps({
     "gate": "ok",
