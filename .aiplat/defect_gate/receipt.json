@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T17:25:00+08:00",
+  "reviewed_at": "2026-11-03T17:31:29+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "87eb2de919ef3dfc46090cc075868035ab654002d69fb5b1e89e9a6e985c239a",
-  "head_sha": "6109e8ee76010e2090eb58f081d6bf0efa4b7da0",
+  "diff_sha256": "17fafc432673a2a96fe12acfb473507141e61fcc7bc214c9c9a3d685fcb20c25",
+  "head_sha": "efd8fde0390a6e0f03fc7a8addb8f47a0592144a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs+gate only: SCORE_SCOPE_V1 + scorecard; check forbids score=5 with gaps. No product runtime behavior change. Local lock; CI unlock non-author Approve."
+  "note": "Score Scope v1 + ARCH_CONSOLIDATION_V1 freeze (mount=2, core eval allowlist). No authorize; scorecard arch 3.7 with gaps. Local lock only."
 }
