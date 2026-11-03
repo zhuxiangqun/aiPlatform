@@ -8,7 +8,7 @@
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
 | 功能覆盖 | **4.0 / 5** | 否 | 真人 preference κ、G2b 双人；合规/PII 未建；覆盖度矩阵未闭环 |
-| 工程架构 | **3.5 / 5** | 否 | package vs Central legacy 双路径；产品根/单 API 未收完 |
+| 工程架构 | **3.7 / 5** | 否 | canonical 已挂 + v1 freeze 门禁；仍双挂 legacy flat；platform 厚；Central legacy_7dim |
 | 本地独立（不含 microVM） | **4.2 / 5** | 否 | OIDC 最小企业路径弱；B4-S 本机预演可再固化证据；隔离未认证（范围内可接受但未钉满） |
 | 本地独立（含 microVM） | **N/A（Mac）** | 不可 | 需 Linux/KVM — 见 scope §三 |
 | 生产独立 | **不计首版** | — | staging + B4-S/B5/B6 |
@@ -26,9 +26,10 @@
 3. 合规/PII v0 schema+测试+报告  
 4. 维度矩阵行全部 `evidence_ok=true`（见 JSON `dimensions`）  
 
-### 架构 3.5 → 5 清单
+### 架构 3.7 → 5 清单
 
-见 scope §二；跟踪项在 `scorecard_v1.json` → `architecture.gaps`。
+见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + scope §二；`scorecard_v1.json` → `engineering_architecture.gaps`。  
+已完成：canonical 前缀、Deprecation shim、**mount=2 / core eval router allowlist freeze**。
 
 ### 本地 4.2 → 5（不含 microVM）清单
 

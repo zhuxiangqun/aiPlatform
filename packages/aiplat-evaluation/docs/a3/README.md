@@ -6,7 +6,8 @@
 | Doc | Purpose |
 |-----|---------|
 | [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) | **首版满分范围**（功能/架构/本地·不含 microVM；5/5 定义） |
-| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 3.5 / 4.2） |
+| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 3.7 / 4.2） |
+| [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) | 架构收口 v1：拓扑 + freeze（双挂=2、core eval router 白名单） |
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
@@ -42,6 +43,7 @@
 | `scripts/session_v1_gate.sh` | 多轮 session v1（5–8 轮） |
 | `scripts/preference_v0_report.py` | 人评偏好报告 / 双人 agreement |
 | `scripts/scorecard_v1_check.sh` | 记分卡诚实门禁（有 gap 禁止静默 5/5） |
+| `scripts/arch_consolidation_v1_gate.sh` | 架构 freeze（mount 数 + core `*eval*` 白名单） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/scorecard_v1_check.sh

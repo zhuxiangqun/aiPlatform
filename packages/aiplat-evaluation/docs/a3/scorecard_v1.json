@@ -20,16 +20,18 @@
       ]
     },
     "engineering_architecture": {
-      "score": 3.5,
+      "score": 3.7,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": false,
+      "note": "ARCH_CONSOLIDATION_V1 freeze landed (mount=2 ratchet + core eval router allowlist); still dual-path / thick platform",
       "gaps": [
         "dual_path_package_vs_central_legacy",
-        "single_canonical_api",
+        "legacy_flat_mount_still_present",
         "contracts_ssot_package_only",
         "product_root_complete",
-        "platform_thin_adapter_only"
+        "platform_thin_adapter_only",
+        "core_apps_eval_service_residue"
       ]
     },
     "local_independence_no_microvm": {

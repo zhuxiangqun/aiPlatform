@@ -63,7 +63,7 @@
 
 ### 当前为何不是 5
 
-仍存在 package canonical vs Central `legacy_7dim` 双路径；platform/core/package 职责未完全收束。见 [`P1_CANONICAL.md`](./P1_CANONICAL.md)。
+仍存在 package canonical vs Central `legacy_7dim` 双路径；platform/core/package 职责未完全收束。见 [`P1_CANONICAL.md`](./P1_CANONICAL.md) · 收口计划 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md)（v1 = freeze，未宣称 5/5）。
 
 ---
 
