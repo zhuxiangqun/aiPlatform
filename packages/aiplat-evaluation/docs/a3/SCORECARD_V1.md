@@ -40,7 +40,8 @@ Central `legacy_7dim` = 永久诚实终态（`deprecated_for_engineering`），*
 
 | 误读 | 正解 |
 |------|------|
-| 功能 5 = 评得准 | 否 → 准确另表 |
+| 功能 5 = 评得准 | 否 → 准确另表；κ/agreement ≠ accuracy |
 | 本地 5 = 可 authorize | 否 → `process_split_authorized` 仍 false |
-| fixture preference = 人评完成 | 否 |
+| 人评 κ = 可开 accuracy_claim | 否 → 仍须 G2b closeout / 准确率轨 |
 | 3B smoke = 生产基线 | 否 → 须 prod candidate + `llm_ok_n≥1` |
+| 首版三项 5 = 生产独立 | 否 → 需 staging + B4-S/B5/B6 |
