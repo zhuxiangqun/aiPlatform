@@ -55,7 +55,14 @@ def _load_labels(path: Path) -> Dict[str, bool]:
             continue
         if "pass" not in row:
             raise SystemExit(f"label missing pass for {tid} in {path}")
-        out[tid] = bool(row.get("pass"))
+        raw = row.get("pass")
+        if raw is None:
+            raise SystemExit(
+                f"label pass is null (unlabeled) for {tid} in {path} — set true|false"
+            )
+        if not isinstance(raw, bool):
+            raise SystemExit(f"label pass must be bool for {tid} in {path}, got {type(raw).__name__}")
+        out[tid] = raw
     return out
 
 

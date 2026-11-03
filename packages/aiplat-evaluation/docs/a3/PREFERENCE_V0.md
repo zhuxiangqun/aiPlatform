@@ -23,13 +23,20 @@ bash packages/aiplat-evaluation/scripts/preference_v0_gate.sh
 
 ### Human κ（真实标注）
 
-1. Copy worksheet → `pref_a.json` / `pref_b.json`（可与 G2b 第二标注者并行）。
-2. 每人选 `preferred: a|b|tie`。
+0. 与 G2b 同一包生成（推荐）：
+
+```bash
+bash packages/aiplat-evaluation/scripts/human_worksheet_pack.sh
+# 使用 pack 内 pref_annotator_a.json / pref_annotator_b.json
+```
+
+1. 把 `pref_annotator_*.json` 发给两名标注者（可与 G2b 同一对人，仍须盲标）。  
+2. 每人把 `preferred: null` 改成 `a` | `b` | `tie`。  
 3. 出报告：
 
 ```bash
-AIPLAT_EVAL_PREF_A=path/to/pref_a.json \
-AIPLAT_EVAL_PREF_B=path/to/pref_b.json \
+AIPLAT_EVAL_PREF_A=path/to/pref_annotator_a.json \
+AIPLAT_EVAL_PREF_B=path/to/pref_annotator_b.json \
 bash packages/aiplat-evaluation/scripts/preference_v0_gate.sh
 ```
 

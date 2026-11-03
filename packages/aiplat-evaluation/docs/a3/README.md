@@ -51,6 +51,7 @@
 | `scripts/sandbox_isolation_v0_gate.sh` | 沙箱 isolation 诚实门禁 |
 | `scripts/oidc_minimal_v0_gate.sh` | OIDC 最小路径门禁 |
 | `scripts/b4s_evidence_refresh_gate.sh` | B4-S 本机证据刷新（默认结构；`AIPLAT_EVAL_B4S_RUN=1` 真跑） |
+| `scripts/human_worksheet_pack.sh` | 生成 G2b/preference 预填空 A/B 表（`--apply-facilitator-outputs` 同步模型回答） |
 
 ```bash
 bash packages/aiplat-evaluation/scripts/scorecard_v1_check.sh
