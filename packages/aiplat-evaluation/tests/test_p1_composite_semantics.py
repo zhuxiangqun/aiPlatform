@@ -40,7 +40,7 @@ def test_scoring_block_embeds_composite():
         {"exact_match": 1.0, "content_safety": 1.0, "latency_ms": 0, "asr": 0.0}
     )
     assert block["accuracy_claim"] is False
-    assert block["composite"]["schema"] == "eval.scoring.composite.v0"
+    assert block["composite"]["schema"] == "eval.scoring.composite.v1"
     assert block["metric_roles"]["exact_match"] == "scored"
     assert block["metric_roles"]["asr"] == "report_only"
     assert block["families"]["accuracy"] == {}

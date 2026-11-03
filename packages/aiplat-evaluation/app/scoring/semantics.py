@@ -109,7 +109,11 @@ def score_refusal(*, text: str, expect_refusal: bool = False) -> float:
 
 
 def score_groundedness(*, actual: str, context: str = "", sources: Optional[Iterable[str]] = None) -> float:
-    """Token overlap groundedness heuristic vs context/sources (0..1)."""
+    """Token overlap groundedness heuristic vs context/sources (0..1).
+
+    Callers that need gold-gating should use ``groundedness_dimension`` — without
+    gold this raw helper still returns 0.0 when the reference bag is empty.
+    """
     a = _tokens(actual)
     if not a:
         return 0.0
@@ -125,6 +129,111 @@ def score_groundedness(*, actual: str, context: str = "", sources: Optional[Iter
     return round(hit / float(len(a)), 4)
 
 
+def groundedness_gold_kinds(
+    *,
+    expected: str = "",
+    context: str = "",
+    sources: Optional[Iterable[str]] = None,
+) -> List[str]:
+    """Gold surfaces that unlock groundedness/correctness scoring."""
+    kinds: List[str] = []
+    if (expected or "").strip():
+        kinds.append("expected")
+    if (context or "").strip():
+        kinds.append("context")
+    if any(str(s).strip() for s in (sources or ())):
+        kinds.append("sources")
+    return kinds
+
+
+def groundedness_dimension(
+    *,
+    actual: str,
+    expected: str = "",
+    context: str = "",
+    sources: Optional[Iterable[str]] = None,
+) -> Dict[str, Any]:
+    """Groundedness/correctness dimension — scored only when gold is present.
+
+    Schema ``eval.scoring.groundedness.v0``. Not G2b accuracy.
+    """
+    kinds = groundedness_gold_kinds(expected=expected, context=context, sources=sources)
+    gold = bool(kinds)
+    # Prefer context/sources as faithfulness bag; fall back to expected as gold text.
+    bag_context = context
+    bag_sources = list(sources or ())
+    if not bag_context and not bag_sources and expected:
+        bag_context = expected
+    score: Optional[float] = None
+    correctness: Optional[float] = None
+    if gold:
+        score = score_groundedness(actual=actual, context=bag_context, sources=bag_sources)
+        if (expected or "").strip():
+            correctness = 1.0 if (actual or "").strip() == expected.strip() else 0.0
+    return {
+        "schema": "eval.scoring.groundedness.v0",
+        "accuracy_claim": False,
+        "gold_present": gold,
+        "gold_kinds": kinds,
+        "scored": gold,
+        "score": score,
+        "correctness": correctness,
+        "note": (
+            "scored only with expected/context/sources gold; "
+            "heuristic overlap — not G2b accuracy"
+        ),
+    }
+
+
+def _percentile(sorted_vals: List[float], p: float) -> Optional[float]:
+    if not sorted_vals:
+        return None
+    if len(sorted_vals) == 1:
+        return round(sorted_vals[0], 4)
+    # Nearest-rank
+    k = max(1, min(len(sorted_vals), int(round(p / 100.0 * len(sorted_vals)))))
+    return round(sorted_vals[k - 1], 4)
+
+
+def efficiency_dimension(
+    audits: Optional[Iterable[Mapping[str, Any]]] = None,
+    *,
+    success_flags: Optional[Iterable[bool]] = None,
+) -> Dict[str, Any]:
+    """Latency p50/p95 + cost_per_success from LLM audit rows.
+
+    Schema ``eval.scoring.efficiency.v0``. Engineering only.
+    """
+    rows = [dict(a) for a in (audits or ()) if isinstance(a, Mapping)]
+    flags = list(success_flags) if success_flags is not None else [True] * len(rows)
+    while len(flags) < len(rows):
+        flags.append(False)
+    lats = sorted(
+        float(r.get("latency_ms") or 0.0)
+        for r in rows
+        if r.get("latency_ms") is not None
+    )
+    costs = [float(r.get("cost_estimate") or 0.0) for r in rows]
+    n_total = len(rows)
+    n_success = sum(1 for ok in flags[:n_total] if ok)
+    total_cost = sum(costs)
+    cps = round(total_cost / n_success, 6) if n_success > 0 else None
+    return {
+        "schema": "eval.scoring.efficiency.v0",
+        "accuracy_claim": False,
+        "n_total": n_total,
+        "n_success": n_success,
+        "latency_p50_ms": _percentile(lats, 50) if lats else None,
+        "latency_p95_ms": _percentile(lats, 95) if lats else None,
+        "cost_total_estimate": round(total_cost, 6),
+        "cost_per_success": cps,
+        "note": (
+            "p50/p95 from LLM audit latency_ms; cost_per_success = sum(cost)/n_success; "
+            "not G2b accuracy"
+        ),
+    }
+
+
 def _tokens(text: str) -> List[str]:
     return re.findall(r"[a-z0-9\u4e00-\u9fff]+", (text or "").lower())
 
@@ -133,6 +242,8 @@ def build_scoring_block(
     metrics: Optional[Mapping[str, Any]] = None,
     *,
     g2b_unlocked: bool = False,
+    groundedness: Optional[Mapping[str, Any]] = None,
+    efficiency: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Group metrics by family; attach engineering composite; no accuracy claim."""
     from app.scoring.composite import build_composite, metric_role
@@ -152,16 +263,23 @@ def build_scoring_block(
         by_family.setdefault(fam, {})[name] = v
         roles[name] = metric_role(name)
     composite = build_composite(m, family_of=classify_metric)
+    dimensions: Dict[str, Any] = {}
+    if groundedness:
+        dimensions["groundedness"] = dict(groundedness)
+    if efficiency:
+        dimensions["efficiency"] = dict(efficiency)
     return {
-        "schema": "eval.scoring.semantics.v0",
+        "schema": "eval.scoring.semantics.v1",
         "g2b_unlocked": bool(g2b_unlocked),
         "accuracy_claim": False,  # forced until G2b
         "families": by_family,
         "metric_roles": roles,
         "composite": composite,
+        "dimensions": dimensions,
         "note": (
-            "P1 scoring semantics — quality/safety/efficiency scored into engineering "
-            "composite; security/accuracy report-only; accuracy_claim stays false until G2b."
+            "P1 scoring semantics v1 — groundedness scored only with gold; "
+            "efficiency dimension carries latency p50/p95 + cost_per_success; "
+            "security/accuracy report-only; accuracy_claim stays false until G2b."
         ),
     }
 
@@ -169,8 +287,15 @@ def build_scoring_block(
 def enrich_runner_result(result: MutableMapping[str, Any]) -> Dict[str, Any]:
     """Attach scoring block; force accuracy_claim=false."""
     metrics = result.get("metrics") if isinstance(result.get("metrics"), dict) else {}
+    gdim = result.get("groundedness_dimension")
+    edim = result.get("efficiency_dimension")
     result["accuracy_claim"] = False
-    result["scoring"] = build_scoring_block(metrics, g2b_unlocked=False)
+    result["scoring"] = build_scoring_block(
+        metrics,
+        g2b_unlocked=False,
+        groundedness=gdim if isinstance(gdim, Mapping) else None,
+        efficiency=edim if isinstance(edim, Mapping) else None,
+    )
     return dict(result)
 
 
@@ -185,15 +310,22 @@ def prompt_eval_p1_metrics(
     exact_match: float = 0.0,
     ok: bool = False,
 ) -> Dict[str, float]:
-    """Compose P1 metrics for prompt_eval (no accuracy key)."""
+    """Compose P1 metrics for prompt_eval (no accuracy key).
+
+    ``groundedness`` is included only when gold (expected/context/sources) exists.
+    """
     out: Dict[str, float] = {
         "pass": 1.0 if ok else 0.0,
         "exact_match": float(exact_match),
         "text_quality": score_text_quality(actual=actual, expected=expected),
         "content_safety": score_content_safety(text=actual),
         "refusal": score_refusal(text=actual, expect_refusal=expect_refusal),
-        "groundedness": score_groundedness(actual=actual, context=context, sources=sources),
     }
+    gdim = groundedness_dimension(
+        actual=actual, expected=expected, context=context, sources=sources
+    )
+    if gdim.get("scored") and gdim.get("score") is not None:
+        out["groundedness"] = float(gdim["score"])
     audit = dict(llm_audit or {})
     if "latency_ms" in audit:
         out["latency_ms"] = float(audit.get("latency_ms") or 0)
@@ -205,6 +337,40 @@ def prompt_eval_p1_metrics(
     out["cost_estimate"] = cost
     out["cost_per_success"] = (cost if ok and cost > 0 else (0.0 if ok else cost))
     return out
+
+
+def prompt_eval_p1_bundle(
+    *,
+    actual: str,
+    expected: str = "",
+    context: str = "",
+    sources: Optional[Iterable[str]] = None,
+    expect_refusal: bool = False,
+    llm_audit: Optional[Mapping[str, Any]] = None,
+    exact_match: float = 0.0,
+    ok: bool = False,
+) -> Dict[str, Any]:
+    """Metrics + groundedness/efficiency dimension payloads for prompt_eval."""
+    metrics = prompt_eval_p1_metrics(
+        actual=actual,
+        expected=expected,
+        context=context,
+        sources=sources,
+        expect_refusal=expect_refusal,
+        llm_audit=llm_audit,
+        exact_match=exact_match,
+        ok=ok,
+    )
+    gdim = groundedness_dimension(
+        actual=actual, expected=expected, context=context, sources=sources
+    )
+    audit = dict(llm_audit or {})
+    edim = efficiency_dimension([audit] if audit else [], success_flags=[ok])
+    return {
+        "metrics": metrics,
+        "groundedness_dimension": gdim,
+        "efficiency_dimension": edim,
+    }
 
 
 def kb_rag_p1_metrics(

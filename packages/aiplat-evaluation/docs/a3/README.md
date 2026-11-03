@@ -12,6 +12,7 @@
 | [`B3L_LOCAL.md`](./B3L_LOCAL.md) | B3-L local_stub 沙箱雏形（无真实隔离） |
 | [`LLM_LOCAL.md`](./LLM_LOCAL.md) | 可选 prompt_eval LLM + `b2l_llm_dynamic_gate.sh`（stub 必过 / live 可选） |
 | [`LIVE_LLM_SMOKE.md`](./LIVE_LLM_SMOKE.md) | 10 条 stub vs live×3 smoke（`accuracy_claim=false`；证据 `local-eval-live-llm-*.json`） |
+| [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md) | groundedness（有 gold 才计分）+ latency p50/p95 / cost_per_success；composite v1 |
 | [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |

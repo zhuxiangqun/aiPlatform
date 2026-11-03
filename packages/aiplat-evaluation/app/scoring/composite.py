@@ -142,7 +142,7 @@ def build_composite(
         )
 
     return {
-        "schema": "eval.scoring.composite.v0",
+        "schema": "eval.scoring.composite.v1",
         "accuracy_claim": False,
         "score": composite,
         "scale": "0_100",
@@ -154,9 +154,12 @@ def build_composite(
             "scored": sorted(k for k, r in _METRIC_ROLE.items() if r == "scored"),
             "report_only": sorted(k for k, r in _METRIC_ROLE.items() if r == "report_only"),
             "note": (
-                "text_quality/content_safety/refusal/groundedness are SCORED in this "
-                "engineering composite; asr/accuracy remain report-only; not G2b accuracy."
+                "text_quality/content_safety/refusal/groundedness are SCORED when present; "
+                "groundedness requires gold (expected/context/sources) to appear in metrics; "
+                "asr/accuracy remain report-only; not G2b accuracy."
             ),
+            "composite_version": "v1",
+            "groundedness_gold_gated": True,
         },
     }
 

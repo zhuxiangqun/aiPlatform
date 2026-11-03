@@ -20,6 +20,8 @@ def runner_result(
     evidence: Optional[Dict[str, Any]] = None,
     detail: str = "",
     mode: str = "local_deterministic",
+    groundedness_dimension: Optional[Dict[str, Any]] = None,
+    efficiency_dimension: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     raw = {
         "ok": bool(ok),
@@ -33,4 +35,8 @@ def runner_result(
         "process_split_authorized": False,
         "accuracy_claim": False,
     }
+    if groundedness_dimension is not None:
+        raw["groundedness_dimension"] = groundedness_dimension
+    if efficiency_dimension is not None:
+        raw["efficiency_dimension"] = efficiency_dimension
     return enrich_runner_result(raw)

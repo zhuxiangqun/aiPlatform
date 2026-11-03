@@ -13,7 +13,11 @@
 | efficiency | `latency_ms`, `cost_estimate`, `cost_per_success` | from LLM audit when present |
 | security | `asr` | owned by S1; classified for honesty |
 
-Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v0`) including `composite`.
+Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v1`) including `composite` (`eval.scoring.composite.v1`).
+
+**v1 dimensions** (see [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md)):
+- `groundedness` — scored **only with gold** (expected/context/sources); else report-only / omitted from composite
+- `efficiency` — `latency_p50_ms` / `latency_p95_ms` / `cost_per_success` from LLM audit (`eval.scoring.efficiency.v0`)
 
 ## Composite policy (explicit)
 

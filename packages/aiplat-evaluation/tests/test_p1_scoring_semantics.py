@@ -48,7 +48,7 @@ def test_runner_result_enriched():
         metrics={"exact_match": 1.0},
     )
     assert out["accuracy_claim"] is False
-    assert out["scoring"]["schema"] == "eval.scoring.semantics.v0"
+    assert out["scoring"]["schema"] == "eval.scoring.semantics.v1"
     assert out["scoring"]["families"]["quality"]["exact_match"] == 1.0
 
 
