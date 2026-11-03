@@ -31,7 +31,11 @@ _METRIC_ROLE: Dict[str, str] = {
     "cost_estimate": "scored",
     "cost_per_success": "scored",
     "steps": "scored",
+    "turn_success_rate": "scored",
+    "session_pass": "scored",
     # report-only counters / labels
+    "turns_n": "report_only",
+    "turns_ok": "report_only",
     "winner": "report_only",
     "gold_n": "report_only",
     "findings_n": "report_only",

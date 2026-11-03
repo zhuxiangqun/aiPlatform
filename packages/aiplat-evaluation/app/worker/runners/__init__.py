@@ -11,6 +11,7 @@ from app.worker.runners.kb_rag import run_kb_rag
 from app.worker.runners.prompt_eval import run_prompt_eval
 from app.worker.runners.replay_trace import run_replay_trace
 from app.worker.runners.security_redteam import run_security_redteam
+from app.worker.runners.session_eval import run_session_eval
 from app.worker.runners.skill_suite import run_skill_suite
 
 _RUNNERS = {
@@ -23,6 +24,7 @@ _RUNNERS = {
     "cli_probe": run_cli_probe,
     "skill_suite": run_skill_suite,
     "security_redteam": run_security_redteam,
+    "session_eval": run_session_eval,
 }
 
 
