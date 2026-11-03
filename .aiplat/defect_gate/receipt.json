@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T14:40:30+08:00",
+  "reviewed_at": "2026-11-03T15:45:29+08:00",
   "base_ref": "origin/main",
-  "merge_base": "61f45fc391ba9825c467fa68425bb9956b611776",
-  "diff_sha256": "be7dea57c994e40e282ace5b34655a73899d5a4ee6489184a1be43c707bf3b80",
-  "head_sha": "b5158ec2452926dd538db6cc33d20a939ac30cc0",
+  "merge_base": "d2f152b43baeb09418ed0c6f680667b484c9d540",
+  "diff_sha256": "341950f3cab7de08371516dff2f31e54e66dd67daa0999e405f2590d95677e97",
+  "head_sha": "cffb51d0fd1e58b8f3619a09b5fe3ac3a0785108",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Reviewed G2b prep (accuracy stays false), prod_live refuse-3b, B4-S local rehearsal not_staging_evidence; no authorize flip; no accuracy claim."
+  "note": "Local lock. session v1 + preference v0 + force PROD_MODEL; accuracy/authorize still false."
 }
