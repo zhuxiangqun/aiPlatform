@@ -1,0 +1,124 @@
+{
+  "schema": "eval.scorecard.v1",
+  "scope_doc": "docs/a3/SCORE_SCOPE_V1.md",
+  "product_id": "evaluation",
+  "recorded_at": "2026-11-03",
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "not_production_authorization": true,
+  "axes": {
+    "feature_coverage": {
+      "score": 4.0,
+      "max": 5.0,
+      "scope": "SCORE_SCOPE_V1 feature in-scope",
+      "full_score_eligible": false,
+      "gaps": [
+        "human_g2b_dual_annotator_kappa",
+        "human_preference_ab_kappa",
+        "compliance_pii_v0",
+        "dimension_matrix_all_evidence_ok"
+      ]
+    },
+    "engineering_architecture": {
+      "score": 3.5,
+      "max": 5.0,
+      "scope": "SCORE_SCOPE_V1 architecture in-scope",
+      "full_score_eligible": false,
+      "gaps": [
+        "dual_path_package_vs_central_legacy",
+        "single_canonical_api",
+        "contracts_ssot_package_only",
+        "product_root_complete",
+        "platform_thin_adapter_only"
+      ]
+    },
+    "local_independence_no_microvm": {
+      "score": 4.2,
+      "max": 5.0,
+      "scope": "SCORE_SCOPE_V1 local in-scope excluding microVM",
+      "full_score_eligible": false,
+      "gaps": [
+        "oidc_minimal_tenant_hardening",
+        "b4s_local_rehearsal_evidence_refresh",
+        "sandbox_isolation_not_certified_documented"
+      ]
+    },
+    "local_independence_with_microvm": {
+      "score": null,
+      "max": 5.0,
+      "eligible_on_darwin": false,
+      "full_score_eligible": false,
+      "gaps": ["requires_linux_kvm_host"]
+    },
+    "production_independence": {
+      "score": null,
+      "max": 5.0,
+      "scored_in_v1": false,
+      "gaps": ["staging", "B4-S", "B5", "B6", "SPLIT_CHECKLIST"]
+    }
+  },
+  "dimensions": [
+    {
+      "id": "agent_skill_prompt_kb_arena_code_review",
+      "schema_ref": "docs/a3/P1_LOCAL.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true
+    },
+    {
+      "id": "session_v0_v1",
+      "schema_ref": "docs/a3/SESSION_V1.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true
+    },
+    {
+      "id": "preference_v0",
+      "schema_ref": "docs/a3/PREFERENCE_V0.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": false,
+      "note": "fixture solo only; human A/B pending"
+    },
+    {
+      "id": "g2b_prep",
+      "schema_ref": "docs/a3/G2B_PREP.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": false,
+      "note": "pack+κ script ready; dual human pending"
+    },
+    {
+      "id": "compliance_pii_v0",
+      "schema_ref": null,
+      "tests": false,
+      "report_fields": false,
+      "evidence_ok": false,
+      "note": "not built"
+    },
+    {
+      "id": "s1_live_llm",
+      "schema_ref": "docs/a3/S1_LIVE.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true,
+      "note": "≠ security certification"
+    },
+    {
+      "id": "efficiency_latency_cost",
+      "schema_ref": "docs/a3/P1_DIMENSIONS.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true
+    },
+    {
+      "id": "prod_live_baseline",
+      "schema_ref": "docs/a3/PROD_LIVE.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true,
+      "note": "local drills; accuracy_claim=false"
+    }
+  ],
+  "honesty": "Scores are relative to SCORE_SCOPE_V1 only. Feature coverage ≠ accuracy. Local ≠ process_split_authorized. Fixture preference ≠ human κ."
+}

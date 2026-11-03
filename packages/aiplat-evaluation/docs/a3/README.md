@@ -5,6 +5,8 @@
 
 | Doc | Purpose |
 |-----|---------|
+| [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) | **首版满分范围**（功能/架构/本地·不含 microVM；5/5 定义） |
+| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 3.5 / 4.2） |
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
@@ -39,8 +41,10 @@
 | `scripts/b4s_local_rehearsal.sh` | B4-S 本机预演（PG backup/restore；≠ staging） |
 | `scripts/session_v1_gate.sh` | 多轮 session v1（5–8 轮） |
 | `scripts/preference_v0_report.py` | 人评偏好报告 / 双人 agreement |
+| `scripts/scorecard_v1_check.sh` | 记分卡诚实门禁（有 gap 禁止静默 5/5） |
 
 ```bash
+bash packages/aiplat-evaluation/scripts/scorecard_v1_check.sh
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh  # #4 → 🟨
 bash packages/aiplat-evaluation/scripts/a3_prep_check.sh
 # process_split_authorized 恒 false 直至 checklist 全 ✅
