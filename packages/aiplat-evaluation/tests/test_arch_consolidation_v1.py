@@ -34,10 +34,13 @@ def test_core_eval_router_allowlist():
     assert names == ["eval_legacy_shim.py", "kb_eval.py"]
 
 
-def test_platform_eval_sqlite_allowlist():
+def test_platform_eval_sqlite_cleared():
     api = REPO / "aiPlat-platform/apps/eval/api"
     hit = sorted(p.name for p in api.glob("*.py") if "sqlite3" in p.read_text(encoding="utf-8"))
-    assert hit == ["prompt_eval.py"]
+    assert hit == []
+    prompt = (api / "prompt_eval.py").read_text(encoding="utf-8")
+    assert "prompt_eval_list_test_cases" in prompt
+    assert "get_db_connection" not in prompt
 
 
 def test_arch_consolidation_gate_script():

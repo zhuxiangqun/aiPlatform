@@ -42,6 +42,15 @@ from core.apps.eval.service.kb_eval_ops import (
     kb_eval_reports_series,
     kb_eval_compare_reports,
 )
+from core.apps.eval.service.prompt_eval_ops import (
+    prompt_eval_start_run,
+    prompt_eval_list_test_cases_async,
+    prompt_eval_create_test_case_async,
+    prompt_eval_update_test_case_async,
+    prompt_eval_delete_test_case_async,
+    prompt_eval_list_runs_async,
+    prompt_eval_get_run_async,
+)
 
 __all__ = [
     "EvalStore",
@@ -73,4 +82,11 @@ __all__ = [
     "kb_eval_import_csv_text",
     "kb_eval_reports_series",
     "kb_eval_compare_reports",
+    "prompt_eval_start_run",
+    "prompt_eval_list_test_cases_async",
+    "prompt_eval_create_test_case_async",
+    "prompt_eval_update_test_case_async",
+    "prompt_eval_delete_test_case_async",
+    "prompt_eval_list_runs_async",
+    "prompt_eval_get_run_async",
 ]

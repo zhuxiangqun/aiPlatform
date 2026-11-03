@@ -45,16 +45,17 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 
 | 模块 | 状态 |
 |------|------|
-| `platform/.../kb_eval.py` | ✅ 已变薄 → `core.apps.eval.service.kb_eval_ops` + CoreFacade |
+| `platform/.../kb_eval.py` | ✅ 已变薄 → `kb_eval_ops` + CoreFacade |
+| `platform/.../prompt_eval.py` | ✅ 已变薄 → `prompt_eval_ops` + CoreFacade |
 | `code_review_gold.py` / `arena_wiring.py` | ✅ 已是 CoreFacade 薄路由 |
-| `prompt_eval.py` / `skill_evals.py` / `runs_eval.py` | ❌ 仍厚（sqlite / 大业务） |
-| platform `sqlite3` allowlist | 仅 `prompt_eval.py`（gate 强制） |
+| `skill_evals.py` / `runs_eval.py` | ❌ 仍厚 |
+| platform `sqlite3` | ✅ **清零**（gate 强制） |
 
 ## 后续切片
 
 | 切片 | 内容 |
 |------|------|
-| v1.1b | 下沉 `prompt_eval` / `runs_eval` / `skill_evals` |
+| v1.1c | 下沉 `runs_eval` / `skill_evals` |
 | v1.2 | 卸 flat mount（或只留显式 redirect 表）；core `kb_eval` stub 可删 |
 | v1.3 | contracts 单包 SSOT + CODEOWNERS + package release |
 

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1691
+total_capabilities: 1704
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3079,7 +3079,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 163
+    caps_count: 169
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -3723,6 +3723,30 @@ domains:
         type: function
         signature: 'Whether acceptance signoff must bind a diagnosis report_id.'
         module: aiPlat-core/core/apps/fde/service/slice_evidence.py
+      - symbol: prompt_eval_list_test_cases
+        type: function
+        signature: 'prompt_eval_list_test_cases()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: prompt_eval_create_test_case
+        type: function
+        signature: 'prompt_eval_create_test_case()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: prompt_eval_update_test_case
+        type: function
+        signature: 'prompt_eval_update_test_case()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: prompt_eval_delete_test_case
+        type: function
+        signature: 'prompt_eval_delete_test_case()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: prompt_eval_list_runs
+        type: function
+        signature: 'prompt_eval_list_runs()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: prompt_eval_get_run
+        type: function
+        signature: 'prompt_eval_get_run()'
+        module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -5528,7 +5552,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 70
+    caps_count: 77
     provides:
       - symbol: "run_g2a_gate"
         type: "function"
@@ -5630,6 +5654,34 @@ domains:
         type: "function"
         signature: "kb_eval_compare_reports(session_a?, session_b?)→Dict compare"
         module: "core/apps/eval/service/kb_eval_ops.py"
+      - symbol: "prompt_eval_start_run"
+        type: "function"
+        signature: "async prompt_eval_start_run(template_id, ...)→Dict protocol run"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_list_test_cases_async"
+        type: "function"
+        signature: "async prompt_eval_list_test_cases_async(template_id?, ...)→Dict"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_create_test_case_async"
+        type: "function"
+        signature: "async prompt_eval_create_test_case_async(...)→Dict"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_update_test_case_async"
+        type: "function"
+        signature: "async prompt_eval_update_test_case_async(case_id, ...)→Dict"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_delete_test_case_async"
+        type: "function"
+        signature: "async prompt_eval_delete_test_case_async(case_id)→Dict"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_list_runs_async"
+        type: "function"
+        signature: "async prompt_eval_list_runs_async(template_id?, ...)→List"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
+      - symbol: "prompt_eval_get_run_async"
+        type: "function"
+        signature: "async prompt_eval_get_run_async(run_id)→Dict protocol"
+        module: "core/apps/eval/service/prompt_eval_ops.py"
       - symbol: "run_e5_gate"
         type: "function"
         signature: "run_e5_gate(mode=pr|nightly|release, ...)→Dict local gate + taxonomy"

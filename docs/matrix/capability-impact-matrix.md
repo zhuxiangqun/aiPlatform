@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 1691 capabilities (caps_count) | 1691 symbols (provides)
+> Version: 1.1.0 | 34 domains | 1704 capabilities (caps_count) | 1704 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -93,7 +93,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 70 | FDE 质量摘要 |
+| evaluation-system | §十三 评估系统 | 77 | FDE 质量摘要 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -118,7 +118,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 163 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 169 | Agent REST 端点 |
 
 ### core/api/routers/builder_project_service.py
 
@@ -182,7 +182,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 163 | Builder 创建 Agent |
+| agent-system | §五 Agent 系统 | 169 | Builder 创建 Agent |
 
 ### core/apps/mcp/adapter.py
 
@@ -235,11 +235,11 @@
 | management-and-quality | §二十五 管理 & 质量 | 102 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
-| agent-system | §五 Agent 系统 | 163 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 169 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | skill-system | §六 Skill 系统 | 187 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
-| evaluation-system | §十三 评估系统 | 70 | Pipeline 质量评分 |
+| evaluation-system | §十三 评估系统 | 77 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
 | knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
@@ -430,7 +430,7 @@
 - **core/apps/agents/multi_agent.py** — MultiAgent 通信
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker agent discovery
 
-### §五 Agent 系统 (163 caps)
+### §五 Agent 系统 (169 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/apps/builder/builder_project_service.py** — Builder 创建 Agent
@@ -472,7 +472,7 @@
 - **core/harness/ontology_engine/engine.py** — OntologyEngine 文档输入
 - **core/api/routers/wiki.py** — Upload/ingest 端点
 
-### §十三 评估系统 (70 caps)
+### §十三 评估系统 (77 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要

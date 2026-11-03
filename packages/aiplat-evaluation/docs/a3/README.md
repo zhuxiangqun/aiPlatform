@@ -6,7 +6,7 @@
 | Doc | Purpose |
 |-----|---------|
 | [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) | **首版满分范围**（功能/架构/本地·不含 microVM；5/5 定义） |
-| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 3.9 / 4.2） |
+| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（当前 4.0 / 4.1 / 4.2） |
 | [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) | 架构收口 v1：拓扑 + freeze（双挂=2、core eval router 白名单） |
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |

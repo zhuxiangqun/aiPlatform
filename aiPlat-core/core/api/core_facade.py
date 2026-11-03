@@ -6519,6 +6519,87 @@ def kb_eval_compare_reports(*, session_a: str = "", session_b: str = ""):
     return _fn(session_a=session_a, session_b=session_b)
 
 
+async def prompt_eval_list_test_cases(
+    *, template_id: str = "", limit: int = 100, offset: int = 0
+):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_list_test_cases_async as _fn
+
+    return await _fn(template_id=template_id, limit=limit, offset=offset)
+
+
+async def prompt_eval_create_test_case(
+    *,
+    template_id: str,
+    name: str,
+    variables: Any,
+    expected_keys: str,
+):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_create_test_case_async as _fn
+
+    return await _fn(
+        template_id=template_id,
+        name=name,
+        variables=variables,
+        expected_keys=expected_keys,
+    )
+
+
+async def prompt_eval_update_test_case(
+    *,
+    case_id: str,
+    name: Optional[str] = None,
+    variables: Any = None,
+    expected_keys: Optional[str] = None,
+):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_update_test_case_async as _fn
+
+    return await _fn(
+        case_id=case_id,
+        name=name,
+        variables=variables,
+        expected_keys=expected_keys,
+    )
+
+
+async def prompt_eval_delete_test_case(*, case_id: str):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_delete_test_case_async as _fn
+
+    return await _fn(case_id=case_id)
+
+
+async def prompt_eval_start_run(
+    *,
+    template_id: str,
+    version_a: str,
+    version_b: str,
+    model: str,
+    case_ids: Optional[list] = None,
+):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_start_run as _fn
+
+    return await _fn(
+        template_id=template_id,
+        version_a=version_a,
+        version_b=version_b,
+        model=model,
+        case_ids=case_ids,
+    )
+
+
+async def prompt_eval_list_runs(
+    *, template_id: str = "", limit: int = 20, offset: int = 0
+):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_list_runs_async as _fn
+
+    return await _fn(template_id=template_id, limit=limit, offset=offset)
+
+
+async def prompt_eval_get_run(*, run_id: str):
+    from core.apps.eval.service.prompt_eval_ops import prompt_eval_get_run_async as _fn
+
+    return await _fn(run_id=run_id)
+
+
 async def reevaluate_code_review_gold(
     *,
     profile: str = "balanced",

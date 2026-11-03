@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2589
+total_capabilities: 2605
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2504,6 +2504,13 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| prompt_eval_get_run_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_list_runs_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_delete_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_update_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_create_test_case_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_list_test_cases_async | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
+| prompt_eval_start_run | `core/apps/eval/service/prompt_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | kb_eval_compare_reports | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | kb_eval_reports_series | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
 | kb_eval_import_csv_text | `core/apps/eval/service/kb_eval_ops.py` | ✅ | 自动同步 | 已合入 |
@@ -2544,6 +2551,7 @@ scan_hash: 8f9548ec24f4
 | eval_store_import_code_review_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_store_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | kb_eval_ops (list/create/delete/run/reports/import/series/compare) | `core/apps/eval/service/kb_eval_ops.py` + CoreFacade | ✅ | platform kb_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
+| prompt_eval_ops (cases/runs) | `core/apps/eval/service/prompt_eval_ops.py` + CoreFacade | ✅ | platform prompt_eval 薄路由；生成物适用：已接线（apps/eval） | 本批 |
 | import_code_review_gold | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | EvalStore | `core/apps/eval/service/store.py` | ✅ | 自动同步 | 已合入 |
 | from_run_evaluation | `core/harness/evaluation/eval_protocol.py` | ✅ | 自动同步 | 已合入 |
@@ -3509,7 +3517,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 166 | 0 | 166 |
+| 评估系统 | 182 | 0 | 182 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3541,7 +3549,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2579** | **10** | **2589** |
+| **总计** | **2595** | **10** | **2605** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
