@@ -74,6 +74,18 @@ assert "skill_eval_upsert_suite" in skill_plat
 assert "record_changeset" not in skill_plat
 assert "_split_front_matter" not in skill_plat
 
+# v1.3 contracts SSOT + CODEOWNERS + release check
+pkg_schemas = repo / "packages/aiplat-evaluation/contracts/schemas"
+assert (pkg_schemas / "eval_protocol.schema.json").is_file()
+assert (repo / "packages/aiplat-evaluation/contracts/validate_sample.py").is_file()
+reports_schemas = (
+    repo / "reports/five-products/modules/evaluation/contracts/schemas"
+)
+assert sorted(p.name for p in reports_schemas.glob("*.json")) == []
+codeowners = (repo / ".github/CODEOWNERS").read_text(encoding="utf-8")
+assert "/packages/aiplat-evaluation/" in codeowners
+assert (repo / "packages/aiplat-evaluation/scripts/package_release_check.sh").is_file()
+
 evid = Path("$EVID_DIR")
 stamp = "$STAMP"
 payload = {
@@ -90,14 +102,14 @@ payload = {
         "allowed_core_eval_routers": sorted(allowed),
     },
     "platform_sqlite_files": sqlite_files,
+    "contracts_ssot": "packages/aiplat-evaluation/contracts",
     "remaining_gaps": [
         "central_legacy_7dim_dual_path",
         "product_root_incomplete",
-        "contracts_ssot_package_only",
     ],
     "honesty": (
-        "v1.2 single canonical mount + 308 legacy redirect; "
-        "kb/prompt/runs/skill thinned; core kb_eval stub removed; "
+        "v1.3 contracts SSOT in package + CODEOWNERS + release check; "
+        "v1.2 single mount + 308; kb/prompt/runs/skill thinned; "
         "package build_composite remains engineering canonical; not authorize"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),

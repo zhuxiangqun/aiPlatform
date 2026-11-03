@@ -50,6 +50,18 @@ def test_platform_eval_sqlite_cleared():
     assert "record_changeset" not in skill
 
 
+def test_contracts_ssot_package_only():
+    pkg = ROOT / "contracts/schemas/eval_protocol.schema.json"
+    assert pkg.is_file()
+    reports = (
+        REPO
+        / "reports/five-products/modules/evaluation/contracts/schemas"
+    )
+    assert list(reports.glob("*.json")) == []
+    owners = (REPO / ".github/CODEOWNERS").read_text(encoding="utf-8")
+    assert "/packages/aiplat-evaluation/" in owners
+
+
 def test_arch_consolidation_gate_script():
     proc = subprocess.run(
         ["bash", str(SCRIPT)],

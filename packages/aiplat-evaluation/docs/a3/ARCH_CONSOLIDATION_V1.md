@@ -9,11 +9,11 @@
 |---|------|-----------|
 | 1 | 单一 canonical API `/api/platform/apps/eval` | ✅ 单挂 |
 | 2 | Legacy 仅 shim / Deprecation | ✅ Middleware **308 redirect**（无业务双挂） |
-| 3 | Contracts SSOT = package | ⚠️ 部分；Central legacy_7dim 仍并存（[`P1_CANONICAL.md`](./P1_CANONICAL.md)） |
-| 4 | 产品根 package | ⚠️ API 业务仍在 `platform/apps/eval/api/*`（薄转发）+ `core/apps/eval/service/*` |
+| 3 | Contracts SSOT = package | ✅ `packages/aiplat-evaluation/contracts/`；reports 仅 shim（[`P1_CANONICAL.md`](./P1_CANONICAL.md) 计分双路径仍在） |
+| 4 | 产品根 package | ⚠️ API 仍薄挂 platform；ops 在 `core/apps/eval/service/*` |
 | 5 | platform 薄适配 | ✅ kb/prompt/runs/skill 已薄 |
 | 6 | core 无 eval 专属业务层 | ⚠️ `core/apps/eval/service/*` 仍有；**core `kb_eval` stub 已删** |
-| 7 | 独立 build/test/release | ⚠️ package 可测；完整 release 未钉 |
+| 7 | 独立 build/test/release | ✅ `package.json` + `release:check` + CODEOWNERS（完整外部 release 未钉） |
 
 ## 当前拓扑（代码事实）
 
@@ -53,6 +53,8 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 | platform `sqlite3` | ✅ **清零** |
 | flat mount | ✅ **卸除**（308 redirect 表） |
 | core `kb_eval.py` stub | ✅ **已删** |
+| contracts SSOT | ✅ package；reports JSON 清零 |
+| CODEOWNERS / release:check | ✅ |
 
 ## 后续切片
 
@@ -60,7 +62,8 @@ core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy
 |------|------|
 | v1.1c | 下沉 `runs_eval` / `skill_evals` — ✅ |
 | v1.2 | 卸 flat mount + 删 core kb_eval stub — ✅ |
-| v1.3 | contracts 单包 SSOT + CODEOWNERS + package release |
+| v1.3 | contracts 单包 SSOT + CODEOWNERS + package release — ✅ |
+| 余量 | Central `legacy_7dim` 收口；产品根进一步上收（非拆仓） |
 
 ## 非目标
 

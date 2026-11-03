@@ -20,14 +20,13 @@
       ]
     },
     "engineering_architecture": {
-      "score": 4.6,
+      "score": 4.8,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": false,
-      "note": "single canonical mount + 308 legacy redirect; kb/prompt/runs/skill thinned; core kb_eval stub gone; legacy_7dim + contracts remain",
+      "note": "single mount + 308; thin routes; contracts SSOT+CODEOWNERS+release check; legacy_7dim + product_root remain",
       "gaps": [
         "dual_path_package_vs_central_legacy",
-        "contracts_ssot_package_only",
         "product_root_complete"
       ]
     },

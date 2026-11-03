@@ -2604,7 +2604,7 @@ scan_hash: 8f9548ec24f4
 | RAG Evaluator | harness/evaluation/rag_evaluator.py | ✅ | Ragas: faithfulness/relevancy/precision/recall | 已合入 |
 | DriftDetector | harness/evaluation/drift_detector.py | ✅ | 零成本推理质量下降检测 (confidence/error/stagnation) | 已合入 |
 | EvaluationWorkbench | harness/evaluation/workbench.py | ✅ | 标准化评估报告 + 阈值门 + 制品持久化 | 已合入 |
-| Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 `reports/five-products/modules/evaluation/contracts/` | ✅ | 统一 `eval.protocol.v0` 交换形；响应附加 `eval_protocol`；生成物适用：已接线（apps/eval） | 已合入 |
+| Eval Protocol v0 | `harness/evaluation/eval_protocol.py` + runs evaluate/auto/latest + skill-evals run/GET + gold + kb + prompt + arena；契约 SSOT `packages/aiplat-evaluation/contracts/`（reports 仅 shim） | ✅ | 统一 `eval.protocol.v0` 交换形；响应附加 `eval_protocol`；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Store v0（EVAL_V1 E2） | `core/apps/eval/service/store.py` + CoreFacade `eval_store_*` + `GET/POST /api/platform/apps/eval/store/*` + schema `eval_store.schema.json` | ✅ | charter §5.3 八表 SQLite；code-review-gold YAML→tasks 迁移；生成物适用：已接线（apps/eval store API） | 已合入 |
 | Eval Gold Bootstrap E3（EVAL_V1） | `core/apps/eval/service/gold_bootstrap.py` + `POST …/store/bootstrap-e3` + sources [`EVAL_V1_E3_GOLD_SOURCES.md`](reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md) | ✅ | ≥15 可跑金标 + solo_reviewer 复核队列；不报 κ / 不锁 v0；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval Judge v1 + Calibration E4（EVAL_V1） | `core/apps/eval/service/judge_v1.py` + `POST …/store/calibrate-e4` + schema `eval_calibration.schema.json` | ✅ | deterministic match_only judge；k=3 / ECE / bias 报告；`accuracy_claim=false`；生成物适用：已接线（apps/eval） | 已合入 |

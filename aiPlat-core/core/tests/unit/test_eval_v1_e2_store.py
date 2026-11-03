@@ -64,10 +64,10 @@ def test_import_code_review_gold_from_workspace_seeds(tmp_path):
 def test_eval_store_schema_file_exists():
     root = Path(__file__).resolve().parents[4]
     pkg = root / "packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json"
-    reports = (
-        root
-        / "reports/five-products/modules/evaluation/contracts/schemas/eval_store.schema.json"
+    # ARCH v1.3: reports/schemas is shim-only (no JSON copies).
+    reports_schemas = (
+        root / "reports/five-products/modules/evaluation/contracts/schemas"
     )
     assert pkg.is_file()
-    assert reports.is_file()
     assert "eval.store.v0" in pkg.read_text(encoding="utf-8")
+    assert list(reports_schemas.glob("*.json")) == []
