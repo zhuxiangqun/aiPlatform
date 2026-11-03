@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from app.sandbox.docker_exec import run_in_docker
+from app.sandbox.microvm_exec import run_sandbox_probe_wrap
 from app.sandbox.policy import sandbox_admits, sandbox_backend
 from app.sandbox.skill_policy import assert_skill_suite_fixture
 from app.worker.runners._common import runner_result
@@ -20,8 +20,8 @@ def run_skill_suite(job: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError(f"sandbox_required:{rid}")
     assert_skill_suite_fixture(payload)
 
-    # Optional wrap: prove docker path with allowlisted true (not skill tools).
-    wrap = run_in_docker(["true"])
+    # Backend wrap: docker network=none or microVM track host allowlist (not skill tools).
+    wrap = run_sandbox_probe_wrap()
     if not wrap.get("ok"):
         return runner_result(
             runner_id=rid,
@@ -29,7 +29,7 @@ def run_skill_suite(job: Dict[str, Any]) -> Dict[str, Any]:
             ok=False,
             metrics={"pass": 0.0, "cases": 0.0},
             evidence={"sandbox": wrap.get("audit") or {}, "fixture": True},
-            detail=str((wrap.get("audit") or {}).get("detail") or "docker_wrap_failed"),
+            detail=str((wrap.get("audit") or {}).get("detail") or "sandbox_wrap_failed"),
             mode="skill_fixture",
         )
 
@@ -69,7 +69,7 @@ def run_skill_suite(job: Dict[str, Any]) -> Dict[str, Any]:
             "fixture": True,
             "tools_executed": False,
             "sandbox_backend": sandbox_backend(),
-            "docker_wrap": wrap.get("audit") or {},
+            "sandbox_wrap": wrap.get("audit") or {},
             "suite_id": str(payload.get("suite_id") or ""),
         },
         detail="" if ok else f"fixture cases failed passed={passed}/{total}",

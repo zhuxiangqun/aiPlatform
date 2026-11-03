@@ -11,7 +11,7 @@
 | 功能覆盖 | **5.0 / 5** | 是（首版范围 + 证据审计） | manifest SHA256 + 聚合入仓；**双人 attestation=confirmed**；`accuracy_claim=false` |
 | 工程架构 | **5.0 / 5** | 是（首版范围） | 单挂+308；薄路由；contracts SSOT；产品根声明；legacy_7dim 永久 report-only |
 | 本地独立（不含 microVM） | **5.0 / 5** | 是（首版范围） | SANDBOX_ISOLATION_V0 + OIDC_MINIMAL_V0 + B4S refresh；`sandbox_real_isolation=false`；≠ authorize |
-| 本地独立（含 microVM） | **N/A（Mac）** | 不可 | 需 Linux/KVM — 见 scope §三 |
+| 本地独立（含 microVM） | **N/A（Mac）** | 不可 | Linux track 策略已落地（见 [`MICROVM_LINUX_TRACK.md`](./MICROVM_LINUX_TRACK.md)）；仍需 Linux/KVM 主机证据；`guest_boot` 延后 |
 | 生产独立 | **不计首版** | — | staging + B4-S/B5/B6 |
 
 ### 功能 5.0（可审计）

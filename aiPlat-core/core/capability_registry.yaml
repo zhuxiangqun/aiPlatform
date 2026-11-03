@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1728
+total_capabilities: 1735
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 443
+    caps_count: 450
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1572,10 +1572,38 @@ domains:
         type: "function"
         signature: "microvm_ready()→bool"
         module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "kvm_available"
+        type: "function"
+        signature: "kvm_available()→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "microvm_host_ok"
+        type: "function"
+        signature: "microvm_host_ok()→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "microvm_can_admit_runners"
+        type: "function"
+        signature: "microvm_can_admit_runners()→bool"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm.py"
+      - symbol: "probe_runtime"
+        type: "function"
+        signature: "probe_runtime(timeout_s=5.0)→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm_exec.py"
+      - symbol: "run_allowlisted_cli"
+        type: "function"
+        signature: "run_allowlisted_cli(argv,*,timeout_s=None)→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm_exec.py"
+      - symbol: "run_sandbox_probe_wrap"
+        type: "function"
+        signature: "run_sandbox_probe_wrap()→dict"
+        module: "packages/aiplat-evaluation/app/sandbox/microvm_exec.py"
       - symbol: "aiplat_eval_microvm_local_prep_gate"
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh"
         module: "packages/aiplat-evaluation/scripts/microvm_local_prep_gate.sh"
+      - symbol: "aiplat_eval_microvm_linux_track_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/microvm_linux_track_gate.sh"
       - symbol: "assert_error_envelope"
         type: "function"
         signature: "assert_error_envelope(payload)→dict"

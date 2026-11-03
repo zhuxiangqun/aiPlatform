@@ -1,9 +1,10 @@
-"""cli_probe — B3-L.3 docker backend only (allowlisted argv, network=none)."""
+"""cli_probe — docker (network=none) or microVM Linux track (host allowlist v1)."""
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
 from app.sandbox.docker_exec import run_in_docker
+from app.sandbox.microvm_exec import run_allowlisted_cli
 from app.sandbox.policy import sandbox_admits, sandbox_backend
 from app.worker.runners._common import runner_result
 
@@ -24,7 +25,14 @@ def run_cli_probe(job: Dict[str, Any]) -> Dict[str, Any]:
     else:
         argv = ["true"]
 
-    result = run_in_docker(argv)
+    backend = sandbox_backend()
+    if backend == "microvm":
+        result = run_allowlisted_cli(argv)
+        mode = "microvm_track_host_allowlist"
+    else:
+        result = run_in_docker(argv)
+        mode = "docker_cli"
+
     ok = bool(result.get("ok"))
     return runner_result(
         runner_id=rid,
@@ -38,8 +46,10 @@ def run_cli_probe(job: Dict[str, Any]) -> Dict[str, Any]:
             "stdout": result.get("stdout") or "",
             "stderr": result.get("stderr") or "",
             "sandbox": result.get("audit") or {},
-            "sandbox_backend": sandbox_backend(),
+            "sandbox_backend": backend,
         },
-        detail="" if ok else str((result.get("audit") or {}).get("detail") or result.get("stderr") or "cli_failed"),
-        mode="docker_cli",
+        detail="" if ok else str(
+            (result.get("audit") or {}).get("detail") or result.get("stderr") or "cli_failed"
+        ),
+        mode=mode,
     )
