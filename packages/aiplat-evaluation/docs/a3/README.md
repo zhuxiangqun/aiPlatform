@@ -36,7 +36,7 @@
 | `scripts/prod_live_baseline.sh` | 生产候选模型 live 基线 |
 | `scripts/s1_prod_model_gate.sh` | 生产候选模型 S1 红队重跑 |
 | `scripts/b4s_local_rehearsal.sh` | B4-S 本机预演（PG backup/restore；≠ staging） |
-| `scripts/session_v1_gate.sh` | session_eval v1（5–8 轮） |
+| `scripts/session_v1_gate.sh` | 多轮 session v1（5–8 轮） |
 | `scripts/preference_v0_report.py` | 人评偏好报告 / 双人 agreement |
 
 ```bash
