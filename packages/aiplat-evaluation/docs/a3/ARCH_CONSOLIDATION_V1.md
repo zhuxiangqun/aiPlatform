@@ -7,57 +7,59 @@
 
 | # | 条件 | v1 本切片 |
 |---|------|-----------|
-| 1 | 单一 canonical API `/api/platform/apps/eval` | ✅ 已挂；legacy 双挂仍在（见下） |
-| 2 | Legacy 仅 shim / Deprecation | ✅ Middleware；❌ 尚未卸 `/api/platform/apps` 双挂 |
+| 1 | 单一 canonical API `/api/platform/apps/eval` | ✅ 单挂 |
+| 2 | Legacy 仅 shim / Deprecation | ✅ Middleware **308 redirect**（无业务双挂） |
 | 3 | Contracts SSOT = package | ⚠️ 部分；Central legacy_7dim 仍并存（[`P1_CANONICAL.md`](./P1_CANONICAL.md)） |
-| 4 | 产品根 package | ⚠️ API 业务仍在 `platform/apps/eval/api/*` |
-| 5 | platform 薄适配 | ✅ kb/prompt/runs/skill 已薄；其余见 v1.1 表 |
-| 6 | core 无 eval 专属业务层 | ⚠️ `core/apps/eval/service/*` + `core/api/routers/kb_eval.py` 残留 |
+| 4 | 产品根 package | ⚠️ API 业务仍在 `platform/apps/eval/api/*`（薄转发）+ `core/apps/eval/service/*` |
+| 5 | platform 薄适配 | ✅ kb/prompt/runs/skill 已薄 |
+| 6 | core 无 eval 专属业务层 | ⚠️ `core/apps/eval/service/*` 仍有；**core `kb_eval` stub 已删** |
 | 7 | 独立 build/test/release | ⚠️ package 可测；完整 release 未钉 |
 
 ## 当前拓扑（代码事实）
 
 ```
 Clients
-  ├─ /api/platform/apps/eval/*     ← CANONICAL（EvalLegacyDeprecation 不打 Deprecation）
-  ├─ /api/platform/apps/{kb-eval,code-review-gold,...}  ← 同 router 双挂 + Deprecation headers
-  └─ /api/core/{kb-eval,evaluation} ← core 残留 + EvalCoreLegacyDeprecationMiddleware
+  ├─ /api/platform/apps/eval/*     ← CANONICAL（唯一业务 mount）
+  ├─ /api/platform/apps/{kb-eval,…} ← 308 → canonical（EvalLegacyDeprecationMiddleware）
+  └─ /api/core/kb-eval/*            ← 308 → canonical（EvalCoreLegacyDeprecationMiddleware）
 
-platform/apps/eval/api/*  ← 仍有业务实现（非纯转发）
-packages/aiplat-evaluation/app/*  ← Worker/store/scoring canonical（独立进程路径）
+platform/apps/eval/api/*  ← 薄 HTTP + RBAC → CoreFacade
+packages/aiplat-evaluation/app/*  ← Worker/store/scoring canonical
 core/apps/eval/service/* + harness evaluation ← Central AgentEvalResult legacy_7dim
 ```
 
 证据：
 
-- 双挂：`aiPlat-platform/api/rest/routes.py` `include_router(.../eval)` + `include_router(.../apps)`
-- Shim：`aiPlat-platform/apps/eval/api/legacy_shim.py` · `aiPlat-core/core/api/routers/eval_legacy_shim.py`
+- 单挂：`aiPlat-platform/api/rest/routes.py` `include_router(.../eval)` **恰好 1**
+- Redirect：`apps/eval/api/legacy_shim.py` · `core/api/routers/eval_legacy_shim.py`
 - 计分双路径：`packages/.../app/scoring/composite.py` vs `core/harness/evaluation/eval_types.py` `legacy_7dim`
 
 ## Freeze（本切片强制）
 
-1. **禁止新增** `aiPlat-core/core/api/routers/*eval*` 文件（基线仅允许已有：`kb_eval.py`、`eval_legacy_shim.py`）。
-2. **禁止**再增加第三处 `eval_platform_router` `include_router`（基线恰好 2：canonical + legacy flat）。
+1. **禁止新增** `aiPlat-core/core/api/routers/*eval*` 文件（基线仅允许：`eval_legacy_shim.py`）。
+2. **禁止**再增加第二处 `eval_platform_router` `include_router`（基线恰好 **1**：canonical only）。
 3. **禁止**新代码把 Central `legacy_7dim` 标成 engineering canonical（P1 仍以 package `build_composite` 为准）。
-4. 新 eval HTTP 能力必须挂在 **`/api/platform/apps/eval`**；若不得不加 legacy 别名，必须走 Deprecation middleware 可检测路径。
+4. 新 eval HTTP 能力必须挂在 **`/api/platform/apps/eval`**；legacy 别名只允许经 redirect middleware（显式表）。
 
-## v1.1 进度（本仓步进）
+## v1.1 / v1.2 进度
 
 | 模块 | 状态 |
 |------|------|
-| `platform/.../kb_eval.py` | ✅ 已变薄 → `kb_eval_ops` + CoreFacade |
-| `platform/.../prompt_eval.py` | ✅ 已变薄 → `prompt_eval_ops` + CoreFacade |
-| `code_review_gold.py` / `arena_wiring.py` | ✅ 已是 CoreFacade 薄路由 |
-| `platform/.../runs_eval.py` | ✅ 已变薄 → `runs_eval_ops` + CoreFacade |
-| `platform/.../skill_evals.py` | ✅ 已变薄 → `skill_evals_ops` + CoreFacade |
-| platform `sqlite3` | ✅ **清零**（gate 强制） |
+| `platform/.../kb_eval.py` | ✅ 薄 → `kb_eval_ops` + CoreFacade |
+| `platform/.../prompt_eval.py` | ✅ 薄 → `prompt_eval_ops` + CoreFacade |
+| `code_review_gold.py` / `arena_wiring.py` | ✅ CoreFacade 薄路由 |
+| `platform/.../runs_eval.py` | ✅ 薄 → `runs_eval_ops` + CoreFacade |
+| `platform/.../skill_evals.py` | ✅ 薄 → `skill_evals_ops` + CoreFacade |
+| platform `sqlite3` | ✅ **清零** |
+| flat mount | ✅ **卸除**（308 redirect 表） |
+| core `kb_eval.py` stub | ✅ **已删** |
 
 ## 后续切片
 
 | 切片 | 内容 |
 |------|------|
 | v1.1c | 下沉 `runs_eval` / `skill_evals` — ✅ |
-| v1.2 | 卸 flat mount（或只留显式 redirect 表）；core `kb_eval` stub 可删 |
+| v1.2 | 卸 flat mount + 删 core kb_eval stub — ✅ |
 | v1.3 | contracts 单包 SSOT + CODEOWNERS + package release |
 
 ## 非目标

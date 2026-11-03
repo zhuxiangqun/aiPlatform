@@ -316,7 +316,7 @@ export default function GovernanceDashboard() {
           gold_dir?: string;
           report_path?: string;
         };
-      }>('/platform/apps/code-review-gold/evaluate', {
+      }>('/platform/apps/eval/code-review-gold/evaluate', {
         match_only: true,
         persist: true,
         limit: 5,
@@ -500,7 +500,7 @@ export default function GovernanceDashboard() {
               type="button"
               onClick={runGoldMatchOnly}
               disabled={goldBusy || repoHealthBusy}
-              title="POST /api/platform/apps/code-review-gold/evaluate match_only+persist · 同 ops_harness_ready_check 发布习惯"
+              title="POST /api/platform/apps/eval/code-review-gold/evaluate match_only+persist · 同 ops_harness_ready_check 发布习惯"
               style={{
                 ...iconBtnStyle,
                 opacity: goldBusy ? 0.6 : 1,

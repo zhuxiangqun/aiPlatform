@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Architecture consolidation v1 freeze gate — ratchet dual-mount + core eval routers.
+# Architecture consolidation v1 freeze gate — ratchet single-mount + core eval routers.
 # NEVER sets process_split_authorized=true.
 set -euo pipefail
 
@@ -29,18 +29,19 @@ from pathlib import Path
 
 repo = Path("$REPO")
 routes = (repo / "aiPlat-platform/api/rest/routes.py").read_text(encoding="utf-8")
-# Exactly two mounts of eval_platform_router (canonical + legacy flat).
+# ARCH v1.2: exactly one canonical mount (flat → 308 redirect middleware).
 mounts = len(re.findall(r"include_router\(\s*eval_platform_router", routes))
-assert mounts == 2, f"eval_platform_router mounts expected 2, got {mounts}"
+assert mounts == 1, f"eval_platform_router mounts expected 1, got {mounts}"
 assert 'prefix="/api/platform/apps/eval"' in routes
 assert "EvalLegacyDeprecationMiddleware" in routes
+assert 'include_router(eval_platform_router, prefix="/api/platform/apps")' not in routes
 
 core_routers = sorted(
     p.name
     for p in (repo / "aiPlat-core/core/api/routers").glob("*eval*")
     if p.suffix == ".py"
 )
-allowed = {"kb_eval.py", "eval_legacy_shim.py"}
+allowed = {"eval_legacy_shim.py"}
 assert set(core_routers) == allowed, f"core eval routers drift: {core_routers}"
 
 # Canonical scoring lives in package
@@ -85,18 +86,18 @@ payload = {
     "eval_platform_router_mounts": mounts,
     "core_eval_router_files": core_routers,
     "freeze": {
-        "max_eval_platform_router_mounts": 2,
+        "max_eval_platform_router_mounts": 1,
         "allowed_core_eval_routers": sorted(allowed),
     },
     "platform_sqlite_files": sqlite_files,
     "remaining_gaps": [
-        "legacy_flat_mount_still_present",
         "central_legacy_7dim_dual_path",
         "product_root_incomplete",
+        "contracts_ssot_package_only",
     ],
     "honesty": (
-        "v1 freeze + v1.1c kb/prompt/runs/skill thinned; dual mount==2; "
-        "platform eval sqlite3 cleared; "
+        "v1.2 single canonical mount + 308 legacy redirect; "
+        "kb/prompt/runs/skill thinned; core kb_eval stub removed; "
         "package build_composite remains engineering canonical; not authorize"
     ),
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),

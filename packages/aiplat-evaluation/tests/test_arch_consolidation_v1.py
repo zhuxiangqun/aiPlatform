@@ -21,8 +21,9 @@ def test_arch_doc_exists():
 def test_routes_mount_ratchet():
     routes = (REPO / "aiPlat-platform/api/rest/routes.py").read_text(encoding="utf-8")
     mounts = len(re.findall(r"include_router\(\s*eval_platform_router", routes))
-    assert mounts == 2
+    assert mounts == 1
     assert 'prefix="/api/platform/apps/eval"' in routes
+    assert 'include_router(eval_platform_router, prefix="/api/platform/apps")' not in routes
 
 
 def test_core_eval_router_allowlist():
@@ -31,7 +32,7 @@ def test_core_eval_router_allowlist():
         for p in (REPO / "aiPlat-core/core/api/routers").glob("*eval*")
         if p.suffix == ".py"
     )
-    assert names == ["eval_legacy_shim.py", "kb_eval.py"]
+    assert names == ["eval_legacy_shim.py"]
 
 
 def test_platform_eval_sqlite_cleared():

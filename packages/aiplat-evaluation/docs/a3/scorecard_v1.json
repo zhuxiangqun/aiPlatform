@@ -20,14 +20,13 @@
       ]
     },
     "engineering_architecture": {
-      "score": 4.4,
+      "score": 4.6,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 architecture in-scope",
       "full_score_eligible": false,
-      "note": "freeze + kb/prompt/runs/skill thinned; platform eval sqlite cleared; legacy flat mount + legacy_7dim remain",
+      "note": "single canonical mount + 308 legacy redirect; kb/prompt/runs/skill thinned; core kb_eval stub gone; legacy_7dim + contracts remain",
       "gaps": [
         "dual_path_package_vs_central_legacy",
-        "legacy_flat_mount_still_present",
         "contracts_ssot_package_only",
         "product_root_complete"
       ]

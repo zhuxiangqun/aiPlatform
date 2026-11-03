@@ -7366,9 +7366,8 @@ app.include_router(learning_platform_router, prefix="/api/platform/apps")
 
 app.include_router(prompt_platform_router, prefix="/api/platform/apps")
 
-# EVAL_V1 E1: canonical under /eval; legacy flat mount kept as shim (Deprecation headers).
+# EVAL_V1 ARCH v1.2: single canonical mount; flat paths → 308 via EvalLegacyDeprecationMiddleware.
 app.include_router(eval_platform_router, prefix="/api/platform/apps/eval")
-app.include_router(eval_platform_router, prefix="/api/platform/apps")
 app.add_middleware(EvalLegacyDeprecationMiddleware)
 
 # DIAGNOSIS_V1 C1: cases router carries prefix=/diagnosis → /api/platform/apps/diagnosis/*

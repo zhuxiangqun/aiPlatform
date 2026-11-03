@@ -1,4 +1,4 @@
-"""EVAL_V1 E1 — mark legacy eval mounts as deprecated in favor of /api/platform/apps/eval."""
+"""EVAL_V1 — legacy eval path redirect table → /api/platform/apps/eval (ARCH v1.2)."""
 from __future__ import annotations
 
 import re
@@ -6,12 +6,12 @@ from typing import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 CANONICAL_PREFIX = "/api/platform/apps/eval"
 LEGACY_APPS_PREFIX = "/api/platform/apps"
 
-# Path prefixes that belong to the eval app when mounted under /api/platform/apps (no /eval).
+# Explicit redirect table: flat /apps/{…} → /apps/eval/{…} (no dual business mount).
 _LEGACY_EVAL_PREFIXES = (
     f"{LEGACY_APPS_PREFIX}/kb-eval",
     f"{LEGACY_APPS_PREFIX}/code-review-gold",
@@ -44,7 +44,7 @@ def canonical_successor(path: str) -> str:
         rest = path[len("/api/core/kb-eval") :] or "/"
         return f"{CANONICAL_PREFIX}/kb-eval{rest}"
     if path.startswith("/api/core/evaluation"):
-        return f"{CANONICAL_PREFIX}/"  # overview migration later
+        return f"{CANONICAL_PREFIX}/"
     return CANONICAL_PREFIX
 
 
@@ -59,14 +59,26 @@ def apply_eval_deprecation_headers(response: Response, path: str) -> None:
     )
 
 
+def _redirect_location(request: Request, successor: str) -> str:
+    q = request.url.query
+    return f"{successor}?{q}" if q else successor
+
+
 class EvalLegacyDeprecationMiddleware(BaseHTTPMiddleware):
-    """Attach deprecation headers for legacy eval paths (platform + core kb-eval)."""
+    """308 redirect legacy flat eval paths; attach Deprecation headers on redirect."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         path = request.url.path
+        if is_legacy_eval_path(path):
+            successor = canonical_successor(path)
+            resp = RedirectResponse(
+                url=_redirect_location(request, successor), status_code=308
+            )
+            apply_eval_deprecation_headers(resp, path)
+            return resp
         response = await call_next(request)
-        if is_legacy_eval_path(path) or path.startswith("/api/core/kb-eval"):
-            apply_eval_deprecation_headers(response, path)
-        elif path.startswith("/api/core/evaluation"):
+        if path.startswith("/api/core/kb-eval") or path.startswith(
+            "/api/core/evaluation"
+        ):
             apply_eval_deprecation_headers(response, path)
         return response
