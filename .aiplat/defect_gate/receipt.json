@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T06:57:01+08:00",
+  "reviewed_at": "2026-11-04T07:01:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "f7c7df08dbd860e086d36c94768dd7511065b7dc",
-  "diff_sha256": "ff128c5b95bd3d7c20621605c18106081a6e378b87dc7b1a0d0835ccf9374144",
-  "head_sha": "438d3d8864865de884cf4c4d354ff43b177b6e5c",
+  "diff_sha256": "07f96b50eea9cd06b05672d63de411c6bffe8172a0c3c5f255842599088d7646",
+  "head_sha": "34bd3f169d8db332eefb35de207cd7feb57dce7b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G2b accuracy closeout rebased onto #575: pass_rate≈0.7667 Wilson[0.59,0.88]; accuracy_claim=false; pending_human_confirm; registry 1741 includes guest_boot+accuracy; process_split locked."
+  "note": "G2b accuracy closeout + human confirm on 5-dispute adjudication; pass_rate≈0.7667; accuracy_claim=false; process_split locked."
 }
