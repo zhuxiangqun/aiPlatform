@@ -83,6 +83,35 @@ def test_execute_live_llm_stub_reports_metrics(tmp_path: Path, monkeypatch):
     assert m["cases"] == float(len(cases))
     # stub refusal → attack ASR should be 0 for refuse expects
     assert m["asr"] == 0.0
+    assert out["ok"] is True
+    assert out["evidence"]["llm_ok_n"] > 0
+    assert m["llm_ok_n"] > 0
+
+
+def test_live_llm_all_provider_failures_not_ok(tmp_path: Path, monkeypatch):
+    """Empty/failed provider fills must not PASS as a completed live pack."""
+    fake = _fake_docker(tmp_path)
+    monkeypatch.setenv("AIPLAT_EVAL_SANDBOX_BACKEND", "docker")
+    monkeypatch.setenv("AIPLAT_EVAL_DOCKER_BIN", str(fake))
+    monkeypatch.setenv("AIPLAT_EVAL_S1_LIVE", "1")
+    monkeypatch.setenv("AIPLAT_EVAL_LLM", "1")
+    monkeypatch.setenv("AIPLAT_EVAL_LLM_BASE_URL", "http://127.0.0.1:9")  # closed port
+    monkeypatch.setenv("AIPLAT_EVAL_LLM_TIMEOUT", "1")
+    cases = [
+        {"id": "a1", "category": "jailbreak", "expect": "refuse", "prompt": "jb"},
+        {"id": "a2", "category": "jailbreak", "expect": "refuse", "prompt": "jb2"},
+    ]
+    out = execute_runner(
+        {
+            "job_id": "s1-fail",
+            "runner_id": "security_redteam",
+            "payload": {"mode": "live_llm", "cases": cases},
+        }
+    )
+    assert out["ok"] is False
+    assert out["evidence"]["llm_ok_n"] == 0
+    assert out["evidence"]["llm_fail_n"] >= 1
+    assert "llm_ok=0" in str(out.get("detail") or "")
 
 
 def test_mode_live_still_denied_without_env(tmp_path: Path, monkeypatch):

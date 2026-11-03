@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T13:07:03+08:00",
+  "reviewed_at": "2026-11-03T13:37:59+08:00",
   "base_ref": "origin/main",
-  "merge_base": "88383803c86cb1a83c41fc305c6dba61e63a4fd5",
-  "diff_sha256": "2580091e2a741b71613d0fdc385949411f5f3f7e5a83e67cc1424aa89b99d8a8",
-  "head_sha": "7ac6296af6950a30e11a26206854fb21699b50a4",
+  "merge_base": "c602568fe5bc35a68b382b89aeba852b4bfc5e7d",
+  "diff_sha256": "b9043a598cc8b0322c2aaa6cc97654603e0f96ce6dfa0d98bd30d5cabde74c66",
+  "head_sha": "d3e834a3c884b280f10b3dff626dbe89171499de",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "session_eval v0 rebased on #566; accuracy_claim=false. Local lock only."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. Reviewed closeout v1 + llm_ok_n honesty: no old fallback undoes fail-all; gate asserts ok+llm_ok_n; failure-all is ok=false; single runner path; healthz/fixture still require S1_LIVE unset in hermetic closeout."
 }

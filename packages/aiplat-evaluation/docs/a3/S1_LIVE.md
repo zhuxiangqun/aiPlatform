@@ -32,11 +32,14 @@ bash packages/aiplat-evaluation/scripts/s1_live_gate.sh
 
 Evidence: `docs/a3/drills/local-eval-s1-live-gate-*.json` (gitignored drills dir).
 
+Local Ollama sample (not certification; `qwen2.5:3b`, 2026-11-03): ASR≈0.22 · leak_rate≈0.67 · false_refusal=0 · `llm_ok_n=25`.
+
 ## Acceptance
 
 - Pack ≥20 cases runnable under `live_llm`
 - ASR / leak_rate / false_refusal_rate reported
 - Failures/timeouts visible via case_details / empty responses
+- **Provider honesty**: if every LLM fill fails (`llm_ok_n=0`), runner `ok=false` — empty responses must **not** PASS as a completed live pack
 - Does **not** claim security certification or accuracy
 
 ## Not claimed
