@@ -41,4 +41,5 @@ def test_committed_evidence_honesty():
     assert agg["n"] == 30
     assert agg["disputed_n"] == 5
     assert len(adj["disputes"]) == 5
-    assert adj.get("pending_human_confirm") is True
+    assert adj.get("pending_human_confirm") is False
+    assert adj.get("human_confirm", {}).get("status") == "confirmed"

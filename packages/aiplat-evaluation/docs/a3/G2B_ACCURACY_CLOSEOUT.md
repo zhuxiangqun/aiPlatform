@@ -27,7 +27,7 @@
 | g2b-29 | F | T | T | Central legacy ≠ engineering composite SSOT |
 | g2b-30 | F | T | T | Mac cannot unlock live skill tools / microVM |
 
-`pending_human_confirm=true` on adjudication until a product owner signs.
+`pending_human_confirm=false` — operator confirmed rubric adjudication (chat「同意」); still **`accuracy_claim=false`** until separate attestation.
 
 ## Result (committed aggregate)
 
@@ -35,7 +35,7 @@ See [`evidence/g2b_accuracy_aggregate.v1.json`](./evidence/g2b_accuracy_aggregat
 
 - `n=30`
 - `pass_rate≈0.7667` (Wilson 95% CI ≈ `[0.59, 0.88]`)
-- `accuracy_claim=false` (default; attestation required to flip)
+- `accuracy_claim=false` (adjudication confirmed; claim attestation still required to flip)
 
 ## Commands
 

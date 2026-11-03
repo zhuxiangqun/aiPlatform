@@ -6,7 +6,7 @@
   "not_accuracy_certification": true,
   "method": "rubric_adjudication_of_A_B_disputes",
   "adjudicator": "rubric_facilitator",
-  "pending_human_confirm": true,
+  "pending_human_confirm": false,
   "disputes": [
     {
       "task_id": "g2b-22",
@@ -64,6 +64,13 @@
       "rationale": "Model output 'NO' matches rubric (States microVM/live skill tools still deferred on Mac.); score pass=true. Annotator A false is overruled."
     }
   ],
-  "honesty": "adjudication of inter-annotator disputes only; pending_human_confirm=true until product owner signs; does not set accuracy_claim=true",
-  "recorded_at": "20261103T224146Z"
+  "honesty": "adjudication of inter-annotator disputes; human_confirm=confirmed; does not set accuracy_claim=true; not process_split authorize",
+  "recorded_at": "20261103T224146Z",
+  "human_confirm": {
+    "status": "confirmed",
+    "confirmed_at": "2026-11-04T07:00:17+08:00",
+    "confirmed_by": "operator",
+    "channel": "chat_confirm_同意",
+    "note": "Operator agreed with rubric adjudication of 5 A/B disputes (g2b-22/26/27/29/30 → gold_pass=true). Does NOT set accuracy_claim=true."
+  }
 }

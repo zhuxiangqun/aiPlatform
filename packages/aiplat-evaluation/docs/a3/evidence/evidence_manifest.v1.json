@@ -77,7 +77,7 @@
     {
       "id": "g2b_adjudication",
       "path": "docs/a3/evidence/g2b_adjudication.v1.json",
-      "sha256": "f64b9f4dfa1e51ae647658ffd993ac531122be5b9c627f2eca5bc222701e887b",
+      "sha256": "69c45f7aa0ed8136f5838f5d86115464ce424236c94bf3a20da034e032f78f2d",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout; claim stays false"
     }
