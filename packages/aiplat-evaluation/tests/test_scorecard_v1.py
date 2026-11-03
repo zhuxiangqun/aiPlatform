@@ -19,11 +19,10 @@ def test_scorecard_json_schema():
     assert data["process_split_authorized"] is False
     assert data.get("evidence_manifest")
     feat = data["axes"]["feature_coverage"]
-    # Until dual-human attestation is confirmed, feature must stay <5.
-    assert feat["score"] < 5.0
-    assert feat["full_score_eligible"] is False
-    assert "dual_human_attestation_unconfirmed" in (feat.get("gaps") or [])
-    assert feat.get("evidence_audit_ok") is False
+    assert feat["score"] == 5.0
+    assert feat["full_score_eligible"] is True
+    assert feat["gaps"] == []
+    assert feat.get("evidence_audit_ok") is True
     arch = data["axes"]["engineering_architecture"]
     assert arch["score"] == 5.0
     assert arch["full_score_eligible"] is True
@@ -42,7 +41,9 @@ def test_scorecard_json_schema():
 def test_evidence_manifest_hashes():
     man = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert man["schema"] == "eval.scorecard.evidence_manifest.v1"
-    assert man["dual_human_attestation"]["status"] == "unconfirmed"
+    assert man["dual_human_attestation"]["status"] == "confirmed"
+    claimed = man["dual_human_attestation"]["claimed"]
+    assert all(claimed[k] is True for k in claimed)
     for ent in man["tracked_aggregates"]:
         path = ROOT / ent["path"]
         digest = hashlib.sha256(path.read_bytes()).hexdigest()

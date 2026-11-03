@@ -9,13 +9,13 @@
   "evidence_manifest": "docs/a3/evidence/evidence_manifest.v1.json",
   "axes": {
     "feature_coverage": {
-      "score": 4.0,
+      "score": 5.0,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 feature in-scope",
-      "full_score_eligible": false,
-      "evidence_audit_ok": false,
-      "gaps": ["dual_human_attestation_unconfirmed"],
-      "note": "v1.8: aggregates+SHA256 manifest in-repo; dual_human_attestation still unconfirmed → refuse feature 5 until two distinct humans attested; κ/pref metrics retained as local drill; accuracy_claim=false"
+      "full_score_eligible": true,
+      "evidence_audit_ok": true,
+      "gaps": [],
+      "note": "v1.9: evidence manifest + aggregates in-repo; dual_human_attestation=confirmed (two distinct humans); G2b κ≈0.63 + preference agreement=0.75/κ≈0.47; accuracy_claim=false (≠ accuracy cert)"
     },
 
     "engineering_architecture": {
@@ -69,7 +69,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "aggregate in evidence/preference_aggregate.v1.json (agreement=0.75 κ≈0.47); dual-human attestation unconfirmed; accuracy_claim=false; ≠ accuracy cert"
+      "note": "aggregate in evidence/preference_aggregate.v1.json (agreement=0.75 κ≈0.47); dual_human_attestation=confirmed; accuracy_claim=false; ≠ accuracy cert"
     },
     {
       "id": "g2b_prep",
@@ -77,7 +77,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "aggregate in evidence/g2b_kappa_aggregate.v1.json (n=30 agreement=0.8333 κ≈0.6269); dual-human attestation unconfirmed; accuracy_claim=false; ≠ accuracy cert"
+      "note": "aggregate in evidence/g2b_kappa_aggregate.v1.json (n=30 agreement=0.8333 κ≈0.6269); dual_human_attestation=confirmed; accuracy_claim=false; ≠ accuracy cert"
     },
     {
       "id": "compliance_pii_v0",

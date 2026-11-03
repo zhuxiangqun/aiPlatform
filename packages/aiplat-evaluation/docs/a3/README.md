@@ -6,7 +6,7 @@
 | Doc | Purpose |
 |-----|---------|
 | [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) | **首版满分范围**（功能/架构/本地·不含 microVM；5/5 定义） |
-| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（架构/本地 5.0；功能待双人 attestation；`accuracy_claim=false`） |
+| [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json) | 相对 scope 的诚实记分卡（功能/架构/本地 5.0；证据 manifest + 双人 attestation；`accuracy_claim=false`） |
 | [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) / [`evidence/`](./evidence/) | 可审计证据清单（SHA256 + 聚合 κ/preference；拒静默功能 5） |
 | [`COMPLIANCE_PII_V0.md`](./COMPLIANCE_PII_V0.md) | 合规/PII 最小集（启发式；`certified=false`） |
 | [`SANDBOX_ISOLATION_V0.md`](./SANDBOX_ISOLATION_V0.md) | Docker `network=none` 诚实钉（≠ 隔离认证） |

@@ -9,7 +9,7 @@
   "instruction_versions": {
     "SCORE_SCOPE_V1.md": {
       "path": "docs/a3/SCORE_SCOPE_V1.md",
-      "sha256": "9502452cb72d648525739086c40b416d0ffc230c46e31174a74dd06c6613a6a0"
+      "sha256": "1ca81947ed9a6ce5c17f42bd3cb02f077600cc06f5acfda5b9b9a19b5b7ffd81"
     },
     "G2B_PREP.md": {
       "path": "docs/a3/G2B_PREP.md",
@@ -89,17 +89,18 @@
     }
   ],
   "dual_human_attestation": {
-    "status": "unconfirmed",
+    "status": "confirmed",
     "required_for_feature_5": true,
     "claimed": {
-      "two_distinct_humans": null,
-      "independent_blind": null,
-      "not_script_or_ai_generated": null,
-      "not_same_person_both_sides": null
+      "two_distinct_humans": true,
+      "independent_blind": true,
+      "not_script_or_ai_generated": true,
+      "not_same_person_both_sides": true
     },
-    "attested_at": null,
-    "attested_by": null,
-    "note": "Feature coverage 5.0 requires status=confirmed with all claimed booleans true. Until then scorecard must keep feature_coverage < 5 with gap dual_human_attestation_unconfirmed."
+    "attested_at": "2026-11-04T00:14:43+08:00",
+    "attested_by": "operator",
+    "attestation_channel": "chat_confirm_yes",
+    "note": "Operator confirmed A/B were two distinct humans, independent blind, not script/AI/same-person. κ/agreement still ≠ accuracy_claim."
   },
-  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. Gate refuses feature 5 without confirmed dual-human attestation and matching aggregate SHA256."
+  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256."
 }

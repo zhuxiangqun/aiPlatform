@@ -8,17 +8,17 @@
 
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
-| 功能覆盖 | **4.0 / 5** | 否（证据审计） | 聚合 κ/preference 已入仓哈希；**双人真实性 attestation 未确认** → 拒 5 |
+| 功能覆盖 | **5.0 / 5** | 是（首版范围 + 证据审计） | manifest SHA256 + 聚合入仓；**双人 attestation=confirmed**；`accuracy_claim=false` |
 | 工程架构 | **5.0 / 5** | 是（首版范围） | 单挂+308；薄路由；contracts SSOT；产品根声明；legacy_7dim 永久 report-only |
 | 本地独立（不含 microVM） | **5.0 / 5** | 是（首版范围） | SANDBOX_ISOLATION_V0 + OIDC_MINIMAL_V0 + B4S refresh；`sandbox_real_isolation=false`；≠ authorize |
 | 本地独立（含 microVM） | **N/A（Mac）** | 不可 | 需 Linux/KVM — 见 scope §三 |
 | 生产独立 | **不计首版** | — | staging + B4-S/B5/B6 |
 
-### 功能 4.0（审计回退）
+### 功能 5.0（可审计）
 
-本地曾跑 G2b κ≈0.63、preference agreement=0.75/κ≈0.47，聚合结果见 `docs/a3/evidence/*_aggregate.v1.json`。  
-**在 `dual_human_attestation.status=confirmed` 之前，不得对外宣称功能 5/5。**  
-确认方式见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
+G2b κ≈0.63、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidence/*_aggregate.v1.json`；  
+`dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。  
+审计门禁见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
 
 **仍禁止误读**：功能分 ≠ 准确率；`accuracy_claim=false`；κ/agreement ≠ G2b accuracy 认证。
 
