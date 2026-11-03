@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T15:45:29+08:00",
+  "reviewed_at": "2026-11-03T17:04:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d2f152b43baeb09418ed0c6f680667b484c9d540",
-  "diff_sha256": "341950f3cab7de08371516dff2f31e54e66dd67daa0999e405f2590d95677e97",
-  "head_sha": "cffb51d0fd1e58b8f3619a09b5fe3ac3a0785108",
+  "merge_base": "9c1cdb2af279bb24f2c6e2ab63df536b6309a2e7",
+  "diff_sha256": "c4d33f520a7cad790799e69788d77eb7d82545e634e43adf57ec85ea44e7a0af",
+  "head_sha": "e4ee5c57329b481b3af295eac6cf0ae964c36d80",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock. session v1 + preference v0 + force PROD_MODEL; accuracy/authorize still false."
+  "note": "Branch: llm_ok_n>=1; live progress stderr; preference_v0_gate fixture; local_track_closeout v2 (+session_v1). Five checks clean on merge diff. Local lock only; CI unlock is non-author Approve."
 }

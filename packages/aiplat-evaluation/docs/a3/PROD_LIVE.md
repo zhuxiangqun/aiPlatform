@@ -38,6 +38,12 @@ Evidence: `docs/a3/drills/local-eval-prod-live-*.json` (gitignored drills).
 - `accuracy_claim=false`
 - refuses `AIPLAT_EVAL_PROD_MODEL` empty or equal to smoke-only `qwen2.5:3b` unless `AIPLAT_EVAL_PROD_ALLOW_SMOKE_MODEL=1`
 - **forces** `AIPLAT_EVAL_LLM_MODEL=$AIPLAT_EVAL_PROD_MODEL`（忽略 shell 里残留的 3B `AIPLAT_EVAL_LLM_MODEL`）
+- live path must have **`llm_ok_n ≥ 1`**（全 `URLError`/空回复 ≠ PASS；短跑可用 `AIPLAT_EVAL_LIVE_LLM_REPEATS=1`）
+
+## Local evidence note（≠ 认证）
+
+- `gemma4:12b` 全量 25×3：旧进程占 VRAM 导致后续请求挂起 — **未**作为本机通过证据
+- 本机通过样本（2026-11-03）：`qwen2.5-coder:7b` · `REPEATS=1` · `llm_ok_n=25/25` · evidence `drills/local-eval-prod-live-20261103T082452Z.json`（`accuracy_claim=false`；≠ G2b / staging / security cert）
 
 ## Not claimed
 

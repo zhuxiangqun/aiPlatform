@@ -15,6 +15,8 @@
 
 Records per run: model, temperature, seed, timeout, tokens, cost_estimate, latency, status/detail (failures/timeouts visible).
 
+Progress: stderr per live task (`live_rN i/N id=… ok=… lat_ms=…`) so hung Ollama runs are not silent.
+
 ## Run
 
 ```bash
@@ -37,6 +39,7 @@ bash packages/aiplat-evaluation/scripts/live_llm_smoke.sh
 
 - 10/10 tasks have stub results
 - If live requested: 10/10 have live results (fail/timeout still count as visible outcomes)
+- If live requested: **`llm_ok_n ≥ 1`** — all-`provider_error` / empty fills must **not** PASS (same honesty as S1)
 - `total_cost_estimate ≤ AIPLAT_EVAL_LIVE_LLM_COST_CAP` (default 1.0)
 - `accuracy_claim=false`; provider must not look like Central `:8000`
 

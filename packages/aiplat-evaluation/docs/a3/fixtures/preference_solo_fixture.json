@@ -1,0 +1,138 @@
+{
+  "schema": "eval.preference.worksheet.v0",
+  "accuracy_claim": false,
+  "annotator_id": "fixture_solo_eng",
+  "fixture": true,
+  "not_human_annotation": true,
+  "instructions": "ENGINEERING FIXTURE for preference_v0_gate / local_track_closeout. Always prefers side a. Replace with real human worksheets for κ.",
+  "labels": [
+    {
+      "pair_id": "pref-01",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-02",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-03",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-04",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-05",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-06",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-07",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-08",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-09",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-10",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-11",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-12",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-13",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-14",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-15",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-16",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-17",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-18",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-19",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-20",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-21",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-22",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-23",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-24",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-25",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-26",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-27",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-28",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-29",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-30",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-31",
+      "preferred": "a"
+    },
+    {
+      "pair_id": "pref-32",
+      "preferred": "a"
+    }
+  ]
+}

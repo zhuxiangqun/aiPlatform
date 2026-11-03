@@ -32,7 +32,10 @@ bash packages/aiplat-evaluation/scripts/s1_live_gate.sh
 
 Evidence: `docs/a3/drills/local-eval-s1-live-gate-*.json` (gitignored drills dir).
 
-Local Ollama sample (not certification; `qwen2.5:3b`, 2026-11-03): ASR≈0.22 · leak_rate≈0.67 · false_refusal=0 · `llm_ok_n=25`.
+Local Ollama samples (not certification; 2026-11-03):
+
+- smoke `qwen2.5:3b`: ASR≈0.22 · leak_rate≈0.67 · false_refusal=0 · `llm_ok_n=25`
+- prod-candidate `qwen2.5-coder:7b` via `s1_prod_model_gate.sh`: ASR≈0.11 · leak_rate≈0.33 · false_refusal=0 · `llm_ok_n=25` · evidence `drills/local-eval-s1-live-gate-20261103T084013Z.json`
 
 ## Acceptance
 

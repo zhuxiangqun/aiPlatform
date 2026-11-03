@@ -38,6 +38,12 @@ bash "$ROOT/scripts/live_llm_smoke.sh"
 echo "== session_eval v0 gate =="
 bash "$ROOT/scripts/session_v0_gate.sh"
 
+echo "== session_eval v1 gate =="
+bash "$ROOT/scripts/session_v1_gate.sh"
+
+echo "== preference v0 gate (fixture solo ≠ human κ) =="
+bash "$ROOT/scripts/preference_v0_gate.sh"
+
 echo "== authorize status (must stay false) =="
 STATUS_JSON="$(bash "$ROOT/scripts/a3_split_authorize.sh" status)"
 echo "$STATUS_JSON" | python3 -c "
@@ -57,7 +63,7 @@ from datetime import datetime, timezone
 stamp = "${STAMP}"
 evid = Path("${EVID_DIR}")
 payload = {
-    "schema": "eval.local_track.closeout.v1",
+    "schema": "eval.local_track.closeout.v2",
     "product_id": "evaluation",
     "environment": "local",
     "process_split_authorized": False,
@@ -78,19 +84,30 @@ payload = {
         "P1_dimensions",
         "live_llm_smoke",
         "session_v0",
+        "session_v1",
+        "preference_v0_fixture",
     ],
-    "deferred": ["microVM_runtime", "live_tools", "B4-S", "B5-S", "B6", "second_annotator"],
+    "deferred": [
+        "microVM_runtime",
+        "live_tools",
+        "B4-S",
+        "B5-S",
+        "B6",
+        "second_annotator",
+        "preference_human_kappa",
+        "G2b_human_closeout",
+    ],
     "b4s_prep_doc": "docs/a3/B4S_PREP.md",
     "microvm_prep_doc": "docs/a3/MICROVM_PREP.md",
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
     "honesty": (
-        "local product track closeout v1 — includes S1 live_llm + live_llm smoke + "
-        "session_v0; not staging authorize; not B4 PITR; not accuracy; not security cert"
+        "local product track closeout v2 — session_v1 + preference fixture solo; "
+        "fixture≠human κ; not staging authorize; not B4 PITR; not accuracy; not security cert"
     ),
 }
 path = evid / f"local-eval-track-closeout-{stamp}.json"
 path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-print(json.dumps({"closeout": "ok", "evidence": str(path)}, ensure_ascii=False))
+print(json.dumps({"closeout": "ok", "schema": payload["schema"], "evidence": str(path)}, ensure_ascii=False))
 PY
 
-echo "LOCAL TRACK CLOSEOUT PASS (authorize=false; next=host for B4-S / microVM runtime / second annotator)"
+echo "LOCAL TRACK CLOSEOUT PASS (v2; authorize=false; next=human G2b/preference κ / B4-S host)"

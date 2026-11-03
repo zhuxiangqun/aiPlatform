@@ -31,7 +31,8 @@
 | B2 wall-clock | `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（见 `app/worker/timeout.py`） |
 | B2 cancel | `POST .../jobs/{id}/cancel` → `cancelled`（`cancel_job`） |
 | B2 cost cap | `AIPLAT_EVAL_JOB_COST_CAP` / `cost_cap` → `timed_out` |
-| `scripts/local_track_closeout.sh` | 本地轨收口 v1（P1+dims+S1+S1_live+live_llm smoke+session_v0；authorize locked；≠ B4） |
+| `scripts/local_track_closeout.sh` | 本地轨收口 v2（+session_v1 + preference fixture；authorize locked；≠ B4 / ≠ human κ） |
+| `scripts/preference_v0_gate.sh` | preference 门禁（默认 eng fixture solo；可换真人 A/B） |
 | `scripts/g2b_kappa.py` | G2b inter-annotator κ（prep；≠ accuracy） |
 | `scripts/prod_live_baseline.sh` | 生产候选模型 live 基线 |
 | `scripts/s1_prod_model_gate.sh` | 生产候选模型 S1 红队重跑 |
