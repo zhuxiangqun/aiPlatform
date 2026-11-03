@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T20:10:59+08:00",
+  "reviewed_at": "2026-11-03T20:17:31+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "bea67040169c319e451e65611e381e2161353f3761db9b8b361ad91262732d5e",
-  "head_sha": "75ce56d8038e135195887c080ea014199bfe9356",
+  "diff_sha256": "86ba63142d5cb95061c4a408869c75c409456645ea9f1f42c6248f88412ac836",
+  "head_sha": "d1cdeabf7a75501ad153fc48fabaeff9f46e5847",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Arch v1.2 single mount + 308 redirect; kb/prompt/runs/skill thin. Local lock only."
+  "note": "Arch v1.3 contracts SSOT+CODEOWNERS; v1.2 single mount. Local lock only."
 }
