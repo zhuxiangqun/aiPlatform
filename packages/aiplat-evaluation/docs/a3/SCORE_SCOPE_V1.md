@@ -25,7 +25,7 @@
 | 合规 / PII（最小集） | [`COMPLIANCE_PII_V0.md`](./COMPLIANCE_PII_V0.md) | schema + 规则/报告 + 测试（启发式；`certified=false`） |
 | S1 live_llm 安全指标 | `S1_LIVE.md` | ASR/leak/false_refusal；`llm_ok_n≥1`；≠ SOC 认证 |
 | 效率（延迟/成本） | `P1_DIMENSIONS.md` + prod_live | p50/p95 + cost；`accuracy_claim=false` |
-| 维度矩阵 + 覆盖度报告 | *待建* 由 `scorecard_v1.json` 起步 | 每维：schema / 规则或 gold / 测试 / 报告字段 |
+| 维度矩阵 + 覆盖度报告 | [`scorecard_v1.json`](./scorecard_v1.json) `dimensions[]` | 每维：schema / 规则或 gold / 测试 / 报告字段；首版均 `evidence_ok=true` |
 
 ### Out-of-scope（首版显式排除 → 不因缺失扣「首版 5」）
 
