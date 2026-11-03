@@ -15,6 +15,8 @@
 
 Records per run: model, temperature, seed, timeout, tokens, cost_estimate, latency, status/detail (failures/timeouts visible).
 
+Progress: stderr per live task (`live_rN i/N id=… ok=… lat_ms=…`) so hung Ollama runs are not silent.
+
 ## Run
 
 ```bash

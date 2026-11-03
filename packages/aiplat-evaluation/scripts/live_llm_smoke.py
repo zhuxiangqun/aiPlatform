@@ -34,6 +34,11 @@ DEFAULT_TASKS = ROOT / "docs/a3/live_llm_tasks.v0.json"
 DEFAULT_EVID = ROOT / "docs/a3/drills"
 
 
+def _progress(msg: str) -> None:
+    """Flush per-task progress so hung Ollama runs are visible (no silent stall)."""
+    print(msg, file=sys.stderr, flush=True)
+
+
 def _load_tasks(path: Path) -> List[Dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     tasks = data.get("tasks") if isinstance(data, dict) else None
@@ -149,10 +154,13 @@ def main() -> int:
         os.environ["AIPLAT_EVAL_LLM"] = "stub"
         os.environ.setdefault("AIPLAT_EVAL_LLM_STUB_OUTPUT", "stub-ok")
         os.environ.setdefault("AIPLAT_EVAL_LLM_COST_PER_1K", "0.001")
-        for task in tasks:
+        _progress(f"live_llm_smoke: stub pass n={len(tasks)}")
+        for i, task in enumerate(tasks, start=1):
             rows.append(
                 _run_one(db, task=task, mode_label="stub", worker_id="w-stub")
             )
+            if i == 1 or i == len(tasks) or i % 5 == 0:
+                _progress(f"  stub {i}/{len(tasks)} id={task.get('id')}")
 
         live_ok_count = 0
         live_error = ""
@@ -165,8 +173,13 @@ def main() -> int:
                 live_error = live_error or "missing_AIPLAT_EVAL_LLM_BASE_URL"
             if not live_error:
                 os.environ["AIPLAT_EVAL_LLM"] = "http"
+                model = provider.get("model") or "?"
+                _progress(
+                    f"live_llm_smoke: live start model={model} "
+                    f"repeats={repeats} tasks={len(tasks)}"
+                )
                 for rep in range(1, repeats + 1):
-                    for task in tasks:
+                    for i, task in enumerate(tasks, start=1):
                         row = _run_one(
                             db,
                             task=task,
@@ -174,9 +187,16 @@ def main() -> int:
                             worker_id=f"w-live-{rep}",
                         )
                         rows.append(row)
+                        audit = row.get("audit") or {}
+                        _progress(
+                            f"  live_r{rep} {i}/{len(tasks)} id={task.get('id')} "
+                            f"ok={row.get('ok')} status={row.get('status')} "
+                            f"lat_ms={audit.get('latency_ms')} "
+                            f"detail={str(audit.get('detail') or '')[:40]}"
+                        )
                         if row.get("ok") or row.get("status") in ("succeeded", "failed"):
                             # "has result" — failed/timeout still counts as visible outcome
-                            if row.get("audit", {}).get("mode") == "http":
+                            if audit.get("mode") == "http":
                                 live_ok_count += 1 if row.get("status") != "unknown" else 0
 
     # per-task live variance (latency / tokens_out)
