@@ -1,12 +1,14 @@
-"""Scorecard v1 honesty — no silent 5/5 while gaps remain."""
+"""Scorecard v1 honesty — evidence manifest + no silent feature 5."""
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CARD = ROOT / "docs/a3/scorecard_v1.json"
+MANIFEST = ROOT / "docs/a3/evidence/evidence_manifest.v1.json"
 SCRIPT = ROOT / "scripts/scorecard_v1_check.sh"
 
 
@@ -15,10 +17,13 @@ def test_scorecard_json_schema():
     assert data["schema"] == "eval.scorecard.v1"
     assert data["accuracy_claim"] is False
     assert data["process_split_authorized"] is False
+    assert data.get("evidence_manifest")
     feat = data["axes"]["feature_coverage"]
-    assert feat["score"] == 5.0
-    assert feat["full_score_eligible"] is True
-    assert feat["gaps"] == []
+    # Until dual-human attestation is confirmed, feature must stay <5.
+    assert feat["score"] < 5.0
+    assert feat["full_score_eligible"] is False
+    assert "dual_human_attestation_unconfirmed" in (feat.get("gaps") or [])
+    assert feat.get("evidence_audit_ok") is False
     arch = data["axes"]["engineering_architecture"]
     assert arch["score"] == 5.0
     assert arch["full_score_eligible"] is True
@@ -34,6 +39,16 @@ def test_scorecard_json_schema():
     assert dims["g2b_prep"]["evidence_ok"] is True
 
 
+def test_evidence_manifest_hashes():
+    man = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    assert man["schema"] == "eval.scorecard.evidence_manifest.v1"
+    assert man["dual_human_attestation"]["status"] == "unconfirmed"
+    for ent in man["tracked_aggregates"]:
+        path = ROOT / ent["path"]
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert digest == ent["sha256"], ent["path"]
+
+
 def test_scorecard_v1_check_script():
     proc = subprocess.run(
         ["bash", str(SCRIPT)],
@@ -44,3 +59,4 @@ def test_scorecard_v1_check_script():
     )
     assert proc.returncode == 0, proc.stderr + proc.stdout
     assert "PASS" in proc.stdout
+    assert "feature_5_allowed" in proc.stdout

@@ -2,18 +2,20 @@
   "schema": "eval.scorecard.v1",
   "scope_doc": "docs/a3/SCORE_SCOPE_V1.md",
   "product_id": "evaluation",
-  "recorded_at": "2026-11-03",
+  "recorded_at": "2026-11-04",
   "accuracy_claim": false,
   "process_split_authorized": false,
   "not_production_authorization": true,
+  "evidence_manifest": "docs/a3/evidence/evidence_manifest.v1.json",
   "axes": {
     "feature_coverage": {
-      "score": 5.0,
+      "score": 4.0,
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 feature in-scope",
-      "full_score_eligible": true,
-      "gaps": [],
-      "note": "v1.6: G2b κ≈0.63 + preference agreement=0.75/κ≈0.47 dual human; accuracy_claim still false (≠ accuracy cert)"
+      "full_score_eligible": false,
+      "evidence_audit_ok": false,
+      "gaps": ["dual_human_attestation_unconfirmed"],
+      "note": "v1.8: aggregates+SHA256 manifest in-repo; dual_human_attestation still unconfirmed → refuse feature 5 until two distinct humans attested; κ/pref metrics retained as local drill; accuracy_claim=false"
     },
 
     "engineering_architecture": {
@@ -67,7 +69,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "dual human n=32 agreement=0.75 preference_kappa=0.47; accuracy_claim=false; ≠ accuracy cert"
+      "note": "aggregate in evidence/preference_aggregate.v1.json (agreement=0.75 κ≈0.47); dual-human attestation unconfirmed; accuracy_claim=false; ≠ accuracy cert"
     },
     {
       "id": "g2b_prep",
@@ -75,7 +77,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "dual human κ n=30 agreement=0.8333 kappa=0.6269; accuracy_claim=false; ≠ accuracy cert"
+      "note": "aggregate in evidence/g2b_kappa_aggregate.v1.json (n=30 agreement=0.8333 κ≈0.6269); dual-human attestation unconfirmed; accuracy_claim=false; ≠ accuracy cert"
     },
     {
       "id": "compliance_pii_v0",
@@ -109,5 +111,5 @@
       "note": "local drills; accuracy_claim=false"
     }
   ],
-  "honesty": "Scores are relative to SCORE_SCOPE_V1 only. Feature coverage ≠ accuracy. Local ≠ process_split_authorized. Fixture preference ≠ human κ."
+  "honesty": "Scores relative to SCORE_SCOPE_V1 only. Feature 5 requires evidence_manifest + confirmed dual-human attestation (EVIDENCE_AUDIT_V1). Feature coverage ≠ accuracy. Local ≠ process_split_authorized. Fixture preference ≠ human κ."
 }

@@ -1,0 +1,105 @@
+{
+  "schema": "eval.scorecard.evidence_manifest.v1",
+  "product_id": "evaluation",
+  "recorded_at": "2026-11-03",
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "not_production_authorization": true,
+  "pack_stamp": "20261103T130302Z",
+  "instruction_versions": {
+    "SCORE_SCOPE_V1.md": {
+      "path": "docs/a3/SCORE_SCOPE_V1.md",
+      "sha256": "9502452cb72d648525739086c40b416d0ffc230c46e31174a74dd06c6613a6a0"
+    },
+    "G2B_PREP.md": {
+      "path": "docs/a3/G2B_PREP.md",
+      "sha256": "ed1509a6143439fbfae2ab6e330933e2f43007c1c96fe5d07975467eda839d2c"
+    },
+    "PREFERENCE_V0.md": {
+      "path": "docs/a3/PREFERENCE_V0.md",
+      "sha256": "6b13594d569985a78732e6c0c544f9bbdc42a671e47a3c34669234fcfecc574d"
+    }
+  },
+  "method": {
+    "g2b": {
+      "n": 30,
+      "agreement": 0.8333,
+      "inter_annotator_kappa": 0.6269,
+      "script": "scripts/g2b_kappa.py",
+      "gate_note": "≠ accuracy certification"
+    },
+    "preference": {
+      "n": 32,
+      "agreement": 0.75,
+      "preference_kappa": 0.47,
+      "script": "scripts/preference_v0_report.py",
+      "gate_note": "≠ accuracy certification"
+    }
+  },
+  "tracked_aggregates": [
+    {
+      "id": "g2b_kappa_aggregate",
+      "path": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
+      "sha256": "0bec9d90f7d1ec482f4982f26bc6a1cdf49268bbe7372559a1164ad58ca6a08e",
+      "required_for_feature_5": true
+    },
+    {
+      "id": "preference_aggregate",
+      "path": "docs/a3/evidence/preference_aggregate.v1.json",
+      "sha256": "bc7d8175989ec696c795e6756a8485ff9bba8156aa3f5fbc09924b6798d675e6",
+      "required_for_feature_5": true
+    }
+  ],
+  "local_worksheets": [
+    {
+      "id": "g2b_annotator_a",
+      "path": "docs/a3/human_pack/20261103T130302Z/g2b_annotator_a.json",
+      "sha256": "40457550d8a46e66447e130adc744ab11db6223b6e127fc15a0ccdacadc7fcab",
+      "gitignored": true,
+      "verify_when_present": true
+    },
+    {
+      "id": "g2b_annotator_b",
+      "path": "docs/a3/human_pack/20261103T130302Z/g2b_annotator_b.json",
+      "sha256": "be48588ad2996d1ad8e0f0e47cb094677b3904ec6f782bbc043a468b06de60ee",
+      "gitignored": true,
+      "verify_when_present": true
+    },
+    {
+      "id": "pref_annotator_a",
+      "path": "docs/a3/human_pack/20261103T130302Z/pref_annotator_a.json",
+      "sha256": "fea7fdd0ebc08d3d3da608846e796709d3acc1e7b23a86d5b847ebf9ca0f71c6",
+      "gitignored": true,
+      "verify_when_present": true
+    },
+    {
+      "id": "pref_annotator_b",
+      "path": "docs/a3/human_pack/20261103T130302Z/pref_annotator_b.json",
+      "sha256": "763a4f6c2f70aca56e34f8cce320a031f76d539a011eea64a04dad4e5609ec00",
+      "gitignored": true,
+      "verify_when_present": true
+    },
+    {
+      "id": "model_outputs",
+      "path": "docs/a3/human_pack/20261103T130302Z/model_outputs.json",
+      "sha256": "96f4149790f9e77fd3a64345b6cb4b924e0ebb636ea42ff6e75c75d9e006288b",
+      "gitignored": true,
+      "verify_when_present": true,
+      "note": "facilitator model answers; not raw PII by design"
+    }
+  ],
+  "dual_human_attestation": {
+    "status": "unconfirmed",
+    "required_for_feature_5": true,
+    "claimed": {
+      "two_distinct_humans": null,
+      "independent_blind": null,
+      "not_script_or_ai_generated": null,
+      "not_same_person_both_sides": null
+    },
+    "attested_at": null,
+    "attested_by": null,
+    "note": "Feature coverage 5.0 requires status=confirmed with all claimed booleans true. Until then scorecard must keep feature_coverage < 5 with gap dual_human_attestation_unconfirmed."
+  },
+  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. Gate refuses feature 5 without confirmed dual-human attestation and matching aggregate SHA256."
+}

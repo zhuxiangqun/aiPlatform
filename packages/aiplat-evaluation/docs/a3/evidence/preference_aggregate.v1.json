@@ -1,0 +1,39 @@
+{
+  "schema": "eval.preference.v0.report",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "pairs_n": 32,
+  "annotator_a": {
+    "schema": "eval.scoring.preference.v0",
+    "accuracy_claim": false,
+    "annotator_id": "A",
+    "pairs_n": 32,
+    "labeled_n": 32,
+    "coverage": 1.0,
+    "agreement_vs_gold": null,
+    "note": "human preference v0 — pairwise A/B; agreement≠accuracy; not G2b certification"
+  },
+  "annotator_b": {
+    "schema": "eval.scoring.preference.v0",
+    "accuracy_claim": false,
+    "annotator_id": "B",
+    "pairs_n": 32,
+    "labeled_n": 32,
+    "coverage": 1.0,
+    "agreement_vs_gold": null,
+    "note": "human preference v0 — pairwise A/B; agreement≠accuracy; not G2b certification"
+  },
+  "inter_annotator": {
+    "n": 32,
+    "agreement": 0.75,
+    "preference_kappa": 0.47,
+    "pe": 0.5283,
+    "accuracy_claim": false,
+    "kappa_kind": "preference_pairwise",
+    "not_accuracy_certification": true
+  },
+  "honesty": "human preference v0 — pairwise A/B; agreement/κ ≠ accuracy; not G2b closeout; not authorize",
+  "recorded_at": "20261103T144210Z"
+}
