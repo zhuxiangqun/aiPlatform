@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T21:26:46+08:00",
+  "reviewed_at": "2026-11-03T22:18:17+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "44ee6ed1a1b1e676a6980c9e99d8fc80c4938077fe8523c94769f5c63f5b3ccc",
-  "head_sha": "35d68a8895f9641080d628fab87129ab61c0ea07",
+  "diff_sha256": "506a3abc8f8efcb4ac2016c14b23e3d2a2f03bf484d80ec7e7184305e7dd86f3",
+  "head_sha": "e3f616715aba38feb32a0afdddf9e121e7cf2c95",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "model_outputs.json --from-outputs; local lock only"
+  "note": "G2b dual κ accepted (5 diffs); preference still open; accuracy_claim false; local lock only"
 }
