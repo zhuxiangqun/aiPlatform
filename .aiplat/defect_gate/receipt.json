@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T00:16:48+08:00",
+  "reviewed_at": "2026-11-04T00:25:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "1cc40402d5dd9d945dcc6a40cdab257498fc82b1",
-  "diff_sha256": "ca27086b09bded364fa638e1eb06614f8c2f5d42670f86bc2fbefaaf688e3c5c",
-  "head_sha": "eaa2a60d59f3a54f2e0ddc4e310d39f353cf9cec",
+  "diff_sha256": "c14e8cf4fed980f97bd662f87556e1772cfe9f4c4266e6d529fb9f0a1da81109",
+  "head_sha": "55db652aec02f1a398ca03b625c9113a47c9994c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Dual-human attestation confirmed; feature 5 restored behind evidence manifest gate; accuracy_claim still false."
+  "note": "skills_disclosure clause-sync for CI; evidence audit feature 5 unchanged."
 }
