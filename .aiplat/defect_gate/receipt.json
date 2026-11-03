@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T09:00:00+08:00",
+  "reviewed_at": "2026-11-03T09:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "8501f86e4b257599772fcf00f930424a7b177d43",
-  "diff_sha256": "85ec86d55a70bb4252a6742402a656a741833a5131c99ede9b34940d5f76cb46",
-  "head_sha": "f753934fe36e11cb0e757234253b06f5c8ff29b8",
+  "diff_sha256": "c909dd1956423fc590240a63ae843ae3c4abd58dfee0215c16fc9c82a8f4ba2c",
+  "head_sha": "f6c0b418821e94f3b27a552de6f7fcd74b704e13",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Integration #561 tip→main after whitepaper sync. Residual: await full CI + non-author Approve; not production/accuracy."
+  "note": "Integration #561 after AUTO-STATS refresh. Merge authorized by user; await green CI then squash/merge to main."
 }
