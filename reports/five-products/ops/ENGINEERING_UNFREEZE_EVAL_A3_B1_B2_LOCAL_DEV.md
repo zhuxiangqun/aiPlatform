@@ -72,6 +72,6 @@
 - **microVM prep** — 探测 + 拒 live tools（[`MICROVM_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/MICROVM_PREP.md)）；**无**真实隔离；**无** runtime unlock。
 - **B1/B2 contract converge** — standalone 错误体 / 双点拒绝 / temporary_proxy=0（[`CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)）；Central cohost 残留明示。
 - **Integration**：`feat/eval-b12-contract-converge` → `main` 一次收口（不再叠第 9 层）；中间 PR #535–#560 由 integration 取代。
-- Next（合 main 后）：P1 canonical（core legacy 7 维 vs package composite）；B2 live provider 证据；microVM **runtime** / S1 live（需主机）；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）。
-- Central `AgentEvalResult` 7 维权重仍为另一路径（本解冻不宣称已统一）。
+- **P1 canonical** — package `build_composite` = 工程计分真相源；Central `AgentEvalResult` = `legacy_7dim`，text/safety/refusal **report-only**（[`P1_CANONICAL.md`](../../../packages/aiplat-evaluation/docs/a3/P1_CANONICAL.md)）；**不**静默改历史权重。
+- Next：B2 live provider 证据；microVM **runtime** / S1 live（需主机）；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）；legacy→P1 权重迁移另开解锁。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.

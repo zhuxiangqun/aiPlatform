@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2586
+total_capabilities: 2587
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| aiplat_eval_p1_canonical_gate | `packages/aiplat-evaluation/scripts/p1_canonical_gate.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_b12_contract_gate | `packages/aiplat-evaluation/scripts/b12_contract_gate.sh` | ✅ | 自动同步 | 已合入 |
 | count_temporary_proxy_markers | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
 | assert_error_envelope | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
@@ -2645,6 +2646,7 @@ scan_hash: 8f9548ec24f4
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
 | Evaluation B1/B2 contract converge | `packages/aiplat-evaluation/app/contract/b12.py` + `scripts/b12_contract_gate.sh` | ✅ | 错误体字段门禁；temporary_proxy=0；双点拒绝；≠ staging authorize；生成物适用：不适用 | 本批 |
+| Evaluation P1 canonical honesty | `AgentEvalResult.scoring_honesty` + `scripts/p1_canonical_gate.sh` | ✅ | package build_composite=计分真相源；Central legacy_7dim 标 report-only；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | estimate_cost | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | token→cost_estimate | 本批 |
 | assert_provider_independence | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | 拒绝 Central-looking BASE_URL | 本批 |
 | looks_like_central_llm_url | `packages/aiplat-evaluation/app/llm/client.py` | ✅ | Central URL 启发式 | 本批 |
@@ -3498,7 +3500,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 164 | 0 | 164 |
+| 评估系统 | 165 | 0 | 165 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3530,7 +3532,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2576** | **10** | **2586** |
+| **总计** | **2577** | **10** | **2587** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

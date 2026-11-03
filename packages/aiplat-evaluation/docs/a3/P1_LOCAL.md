@@ -24,7 +24,7 @@ Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v0`) including
 
 Weights (renormalized over present families): quality 0.55 · safety 0.25 · efficiency 0.20.
 
-This composite is **not** G2b accuracy and **not** Central `AgentEvalResult` 7-dim (that path still separate).
+This composite is **not** G2b accuracy. Dual-path honesty: see [`P1_CANONICAL.md`](./P1_CANONICAL.md) — package `build_composite` is engineering **canonical**; Central `AgentEvalResult.composite_score` stays **legacy_7dim** with text/safety/refusal **report-only**.
 
 ## P1.1 / P1.2 runners
 
