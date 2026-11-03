@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from app.llm.client import complete_text, llm_enabled, llm_mode
-from app.scoring.semantics import prompt_eval_p1_metrics
+from app.scoring.semantics import prompt_eval_p1_bundle
 from app.worker.runners._common import runner_result
 
 
@@ -36,7 +36,7 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
         )
         audit = dict(llm.get("audit") or {})
         if not llm.get("ok"):
-            metrics = prompt_eval_p1_metrics(
+            bundle = prompt_eval_p1_bundle(
                 actual="",
                 expected=expected,
                 context=context,
@@ -50,7 +50,9 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
                 runner_id="prompt_eval",
                 job_id=job_id,
                 ok=False,
-                metrics=metrics,
+                metrics=bundle["metrics"],
+                groundedness_dimension=bundle["groundedness_dimension"],
+                efficiency_dimension=bundle["efficiency_dimension"],
                 evidence={
                     "prompt_len": len(prompt),
                     "has_actual": False,
@@ -62,7 +64,7 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
         actual = str(llm.get("text") or "")
 
     if not actual and expected:
-        metrics = prompt_eval_p1_metrics(
+        bundle = prompt_eval_p1_bundle(
             actual="",
             expected=expected,
             context=context,
@@ -75,7 +77,9 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
             runner_id="prompt_eval",
             job_id=job_id,
             ok=False,
-            metrics=metrics,
+            metrics=bundle["metrics"],
+            groundedness_dimension=bundle["groundedness_dimension"],
+            efficiency_dimension=bundle["efficiency_dimension"],
             evidence={"prompt_len": len(prompt), "has_actual": False},
             detail="prompt_eval requires payload.actual (or AIPLAT_EVAL_LLM)",
             mode="local_deterministic",
@@ -92,7 +96,7 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
     if audit:
         mode = f"llm_{audit.get('mode') or llm_mode()}"
 
-    metrics = prompt_eval_p1_metrics(
+    bundle = prompt_eval_p1_bundle(
         actual=actual,
         expected=expected,
         context=context,
@@ -106,7 +110,9 @@ def run_prompt_eval(job: Dict[str, Any]) -> Dict[str, Any]:
         runner_id="prompt_eval",
         job_id=job_id,
         ok=ok,
-        metrics=metrics,
+        metrics=bundle["metrics"],
+        groundedness_dimension=bundle["groundedness_dimension"],
+        efficiency_dimension=bundle["efficiency_dimension"],
         evidence={
             "prompt_len": len(prompt),
             "actual_len": len(actual),

@@ -25,6 +25,7 @@ from app.llm.client import (  # noqa: E402
     looks_like_central_llm_url,
     provider_base_url,
 )
+from app.scoring.semantics import efficiency_dimension  # noqa: E402
 from app.store.jobs import enqueue_job, get_job  # noqa: E402
 from app.store.migrate import apply_migrations  # noqa: E402
 from app.worker.claim import process_once  # noqa: E402
@@ -198,6 +199,18 @@ def main() -> int:
     total_cost = sum(float((r.get("audit") or {}).get("cost_estimate") or 0) for r in rows)
     cost_ok = total_cost <= cost_cap
 
+    live_audits = [
+        dict(r.get("audit") or {})
+        for r in rows
+        if str(r.get("mode_label", "")).startswith("live_")
+    ]
+    live_flags = [
+        bool(r.get("ok"))
+        for r in rows
+        if str(r.get("mode_label", "")).startswith("live_")
+    ]
+    efficiency = efficiency_dimension(live_audits, success_flags=live_flags)
+
     # acceptance: each of 10 tasks has ≥1 stub result; if live, each has ≥1 live result
     task_ids = [str(t.get("id")) for t in tasks]
     stub_ids = {r["task_id"] for r in rows if r["mode_label"] == "stub" and r["status"] != "unknown"}
@@ -230,9 +243,11 @@ def main() -> int:
         "live_complete": live_complete,
         "gate_ok": gate_ok,
         "variance": variance,
+        "efficiency_dimension": efficiency,
         "runs": rows,
         "honesty": (
             "stub vs live smoke only; failures/timeouts recorded; "
+            "efficiency_dimension carries latency p50/p95 + cost_per_success; "
             "not G2b accuracy; not staging authorize; not security certification"
         ),
         "recorded_at": stamp,

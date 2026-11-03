@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T12:06:26+08:00",
+  "reviewed_at": "2026-11-03T12:24:20+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9e1f96666da7e1e79f0f16ce5ec5fe3ca9020ef5",
-  "diff_sha256": "0b3f46aa0567a2548582183f00bc35231398e45f6355f7865aa817b3d34859d2",
-  "head_sha": "e18145463d9a501a5e1ae17cd4713e2999f766f1",
+  "merge_base": "bbde55d6623c95a6c74dafd394b22e3b8c735281",
+  "diff_sha256": "70503ece813cc596ec877157abd0e344a6ee2edb907ee0520c11ba9b65d61c72",
+  "head_sha": "92f189e2a78e9b4e5b81a3296a33c64133310600",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Live LLM 10-task smoke: stub CI-safe + optional Ollama live\u00d73; temperature/seed/cost recorded; accuracy_claim=false. Local lock only."
+  "note": "P1 dims: groundedness gold-gated; efficiency p50/p95+cost_per_success; composite/semantics v1; accuracy_claim=false. Local lock only."
 }
