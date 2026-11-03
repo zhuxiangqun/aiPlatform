@@ -1,0 +1,7 @@
+{
+  "schema": "eval.preference.worksheet.v0",
+  "accuracy_claim": false,
+  "annotator_id": "REPLACE_WITH_A_OR_B",
+  "instructions": "For each pair_id, set preferred to a, b, or tie. Do not share with the other annotator.",
+  "labels": []
+}
