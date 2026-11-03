@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-03T20:49:39+08:00",
+  "reviewed_at": "2026-11-03T21:00:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "abcb9021cd5ee26769108eaace5d7439f726d2b4",
-  "diff_sha256": "8c03ad83cbc4f3b9eb82deefbc8960c7a0a89c11f290c62b7ac43950806f6a24",
-  "head_sha": "6ace95e5b3682defedfdb847345d8fbac287e5f6",
+  "diff_sha256": "7f72b1ee8ace083e38eb8a2905d8326119f44f2ea86d47c7d4f44f54ab57ef17",
+  "head_sha": "ad9a9d5b99897a7cb141cfd37c6ef7cd2f69d433",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "v1.5: COMPLIANCE_PII_V0 + local 5.0 gates; feature 4.3; human G2b/preference still open; accuracy_claim/process_split false. Local lock only."
+  "note": "human worksheet pack generator; g2b_kappa rejects null pass; local lock only"
 }
