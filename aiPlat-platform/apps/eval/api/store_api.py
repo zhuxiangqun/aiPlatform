@@ -388,6 +388,53 @@ async def get_evidence_audit_status(
     return {"data": eval_evidence_audit_status(tenant_id=tenant_id)}
 
 
+@router.get("/worksheet-pack-status", response_model=ItemResponse)
+async def get_worksheet_pack_status(
+    tenant_id: str = "eval-v1",
+    limit: int = Query(20, ge=1, le=100),
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """List human worksheet packs — accuracy_claim stays false."""
+    from core.api.core_facade import eval_worksheet_pack_status
+
+    return {"data": eval_worksheet_pack_status(tenant_id=tenant_id, limit=limit)}
+
+
+@router.post("/worksheet-pack-generate", response_model=ItemResponse)
+async def post_worksheet_pack_generate(
+    body: Optional[Dict[str, Any]] = None,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Generate blank G2b/preference worksheets — never accuracy."""
+    from core.api.core_facade import eval_worksheet_pack_generate
+
+    body = body or {}
+    try:
+        out = eval_worksheet_pack_generate(
+            tenant_id=str(body.get("tenant_id") or "eval-v1"),
+            skip_g2b=bool(body.get("skip_g2b")),
+            skip_preference=bool(body.get("skip_preference")),
+        )
+    except (ValueError, FileNotFoundError, RuntimeError, ImportError) as e:
+        return {"data": {"ok": False, "error": str(e), "accuracy_claim": False}}
+    return {"data": out}
+
+
+@router.get("/worksheet-pack-file", response_model=ItemResponse)
+async def get_worksheet_pack_file(
+    stamp: str = Query(...),
+    filename: str = Query(...),
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Download one pack file as JSON/text payload."""
+    from core.api.core_facade import eval_worksheet_pack_file
+
+    return {
+        "data": eval_worksheet_pack_file(stamp, filename, tenant_id=tenant_id)
+    }
+
+
 @router.get("/g2c-status", response_model=ItemResponse)
 async def get_g2c_status(
     tenant_id: str = "eval-v1",

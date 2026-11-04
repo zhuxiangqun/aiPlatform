@@ -19,6 +19,7 @@ import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
 import EvalSetsPanel from './EvalSetsPanel';
 import EvalSettingsPanel from './EvalSettingsPanel';
+import EvalWorksheetPanel from './EvalWorksheetPanel';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
   shouldShowExecutionPlaneBanner,
@@ -80,6 +81,7 @@ const TABS = [
   { id: 'preference', label: 'Preference' },
   { id: 'scorecard', label: 'Scorecard' },
   { id: 'evidence', label: 'Evidence' },
+  { id: 'worksheets', label: 'Worksheets' },
   { id: 'agents', label: 'Agents' },
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'prompts', label: 'Prompts' },
@@ -280,6 +282,7 @@ const EvalCenter: React.FC = () => {
       {tab === 'scorecard' && <EvalScorecardPanel tenantId={TENANT} />}
 
       {tab === 'evidence' && <EvalEvidencePanel tenantId={TENANT} />}
+      {tab === 'worksheets' && <EvalWorksheetPanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
         <EvalAgentsPanel tenantId={TENANT} showExecBanner={showExecBanner} />

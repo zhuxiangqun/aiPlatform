@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2696
+total_capabilities: 2704
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2665,6 +2665,14 @@ scan_hash: 8f9548ec24f4
 | Eval Evidence audit panel | `pages/Eval/EvalEvidencePanel.tsx` + `core/apps/eval/service/evidence_audit.py` + `GET …/store/evidence-audit-status` + CoreFacade `eval_evidence_audit_status` | ✅ | tracked aggregate SHA256 + dual-human attestation；`feature5_audit_ready≠accuracy`；生成物适用：不适用（管理端 UI） | 本批 |
 | evidence_audit_status | `core/apps/eval/service/evidence_audit.py` | ✅ | 校验 evidence_manifest 哈希 / attestation | 本批 |
 | eval_evidence_audit_status | `core/api/core_facade.py` | ✅ | Evidence audit facade | 本批 |
+| Eval Worksheet pack UI | `pages/Eval/EvalWorksheetPanel.tsx` + `core/apps/eval/service/worksheet_pack.py` + `GET/POST …/store/worksheet-pack-*` + CoreFacade `eval_worksheet_pack_*` | ✅ | 生成/列表/下载空白双人表；annotator≠facilitator；`accuracy_claim=false`；生成物适用：不适用（管理端 UI） | 本批 |
+| worksheet_pack_status | `core/apps/eval/service/worksheet_pack.py` | ✅ | 列出 human_pack stamps | 本批 |
+| worksheet_pack_generate | `core/apps/eval/service/worksheet_pack.py` | ✅ | 生成空白 G2b+preference 包 | 本批 |
+| worksheet_pack_file | `core/apps/eval/service/worksheet_pack.py` | ✅ | 读取单文件（路径安全） | 本批 |
+| eval_worksheet_pack_status | `core/api/core_facade.py` | ✅ | Worksheet pack list facade | 本批 |
+| eval_worksheet_pack_generate | `core/api/core_facade.py` | ✅ | Worksheet pack generate facade | 本批 |
+| eval_worksheet_pack_file | `core/api/core_facade.py` | ✅ | Worksheet pack file facade | 本批 |
+| generate_human_worksheet_pack | `packages/aiplat-evaluation/scripts/human_worksheet_pack.py` | ✅ | 可调用空白包生成（CLI+API） | 本批 |
 | g2b_pack_status | `core/apps/eval/service/g2b.py` | ✅ | 读 task pack + evidence aggregates；facilitation-only | 本批 |
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
@@ -3608,7 +3616,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 250 | 0 | 250 |
+| 评估系统 | 258 | 0 | 258 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3640,7 +3648,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2686** | **10** | **2696** |
+| **总计** | **2694** | **10** | **2704** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

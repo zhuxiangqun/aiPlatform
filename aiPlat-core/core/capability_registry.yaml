@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1773
+total_capabilities: 1781
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 488
+    caps_count: 496
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1424,6 +1424,38 @@ domains:
         type: "function"
         signature: "eval_evidence_audit_status(tenant_id='eval-v1')→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "EvalWorksheetPanel"
+        type: "component"
+        signature: "EvalWorksheetPanel({tenantId})"
+        module: "aiPlat-management/frontend/src/pages/Eval/EvalWorksheetPanel.tsx"
+      - symbol: "worksheet_pack_status"
+        type: "function"
+        signature: "worksheet_pack_status(tenant_id, limit?)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/worksheet_pack.py"
+      - symbol: "worksheet_pack_generate"
+        type: "function"
+        signature: "worksheet_pack_generate(tenant_id, skip_g2b?, skip_preference?)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/worksheet_pack.py"
+      - symbol: "worksheet_pack_file"
+        type: "function"
+        signature: "worksheet_pack_file(stamp, filename, tenant_id?)→(meta, text)"
+        module: "aiPlat-core/core/apps/eval/service/worksheet_pack.py"
+      - symbol: "eval_worksheet_pack_status"
+        type: "function"
+        signature: "eval_worksheet_pack_status(tenant_id, limit?)→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_worksheet_pack_generate"
+        type: "function"
+        signature: "eval_worksheet_pack_generate(tenant_id, ...)→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_worksheet_pack_file"
+        type: "function"
+        signature: "eval_worksheet_pack_file(stamp, filename, tenant_id?)→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "generate_human_worksheet_pack"
+        type: "function"
+        signature: "generate_human_worksheet_pack(out_dir?, ...)→Dict"
+        module: "packages/aiplat-evaluation/scripts/human_worksheet_pack.py"
       - symbol: "eval_list_reports"
         type: "function"
         signature: "eval_list_reports(tenant_id, limit)→list"
