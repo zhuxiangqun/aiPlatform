@@ -3,7 +3,7 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-04T06:00:52Z"
+generated_at: "2026-11-04T06:01:02Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-04T06:00:52Z` |
+| 生成时间 (UTC) | `2026-11-04T06:01:02Z` |
 | CAPABILITIES sha256 | `857f6db5bae8…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
