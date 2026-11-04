@@ -28,6 +28,8 @@ const JUMPS = [
   { id: 'review', label: '复核' },
   { id: 'gates', label: '门禁' },
   { id: 'reports', label: '报告' },
+  { id: 'g2b', label: 'G2b' },
+  { id: 'preference', label: 'Preference' },
   { id: 'code-review', label: 'Code-review' },
   { id: 'settings', label: 'G2c 设置' },
 ] as const;

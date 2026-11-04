@@ -11,6 +11,7 @@ import EvalAgentsPanel from './EvalAgentsPanel';
 import EvalGatesPanel from './EvalGatesPanel';
 import EvalG2bPanel from './EvalG2bPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
+import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
 import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
@@ -74,6 +75,7 @@ const TABS = [
   { id: 'gates', label: '门禁' },
   { id: 'reports', label: '报告' },
   { id: 'g2b', label: 'G2b' },
+  { id: 'preference', label: 'Preference' },
   { id: 'agents', label: 'Agents' },
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'prompts', label: 'Prompts' },
@@ -268,6 +270,8 @@ const EvalCenter: React.FC = () => {
       {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
 
       {tab === 'g2b' && <EvalG2bPanel tenantId={TENANT} />}
+
+      {tab === 'preference' && <EvalPreferencePanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
         <EvalAgentsPanel tenantId={TENANT} showExecBanner={showExecBanner} />
