@@ -287,6 +287,9 @@ def main() -> int:
     if not args.skip_g2b:
         pack = _load(args.tasks)
         tasks = [t for t in (pack.get("tasks") or []) if isinstance(t, dict)]
+        target_n = int(pack.get("target_n") or 30)
+        if len(tasks) < target_n:
+            raise SystemExit(f"g2b tasks need ≥{target_n} (target_n), got {len(tasks)}")
         if len(tasks) < 30:
             raise SystemExit(f"g2b tasks need ≥30, got {len(tasks)}")
         fac = out_dir / "g2b_facilitator.json"
