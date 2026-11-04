@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T13:30:00+08:00",
+  "reviewed_at": "2026-11-04T13:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "1f4f590332e55544bfc07de52097a8d510125f39",
-  "diff_sha256": "17eca7d37ec75552ed1c6a4e00a6e72929f33c1311bd70c9b4abd69c2bb7679e",
-  "head_sha": "e3e2ba8640c1f1ea3d35b8e0092e102f09700e19",
+  "diff_sha256": "03bf9d9d8fd6b204df1d1e5aa9be2cf8ab98611fcfece6134a594410bdc4ff95",
+  "head_sha": "85ce30777af764afc3c81832515fb72fb420c1cc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebase onto main after #577; local_chaos evidence + caps; accuracy_claim/process_split unchanged false."
+  "note": "caps_count sync after local_chaos provides merge; accuracy_claim false."
 }
