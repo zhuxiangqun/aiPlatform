@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2670
+total_capabilities: 2673
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2681,6 +2681,8 @@ scan_hash: 8f9548ec24f4
 | security_redteam_is_fixture | `packages/aiplat-evaluation/app/sandbox/security_policy.py` | ✅ | S1 fixture 判定 | 本批 |
 | run_security_redteam | `packages/aiplat-evaluation/app/worker/runners/security_redteam.py` | ✅ | S1 fixture runner | 本批 |
 | aiplat_eval_s1_local_gate | `packages/aiplat-evaluation/scripts/s1_local_gate.sh` | ✅ | S1 本地 ASR 门禁脚本 | 本批 |
+| aiplat_eval_s1_prod_model_gate | `packages/aiplat-evaluation/scripts/s1_prod_model_gate.sh` | ✅ | 生产候选 S1 红队 | 本批 |
+| summarize_s1_prod | `packages/aiplat-evaluation/scripts/s1_prod_summarize.py` | ✅ | S1 prod drill→aggregate | 本批 |
 | Evaluation P1 scoring semantics | `packages/aiplat-evaluation/app/scoring/semantics.py` + `runners/_common.py` | ✅ | metric families quality/safety/efficiency/security；accuracy_claim=false until G2b；生成物适用：不适用 | 本批 |
 | classify_metric | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | 指标名→family | 本批 |
 | build_scoring_block | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | runner_result.scoring 分组块 | 本批 |
@@ -2714,6 +2716,7 @@ scan_hash: 8f9548ec24f4
 | aiplat_eval_prod_live_baseline | `packages/aiplat-evaluation/scripts/prod_live_baseline.sh` | ✅ | 25×3 live 基线脚本 | 本批 |
 | summarize_prod_live | `packages/aiplat-evaluation/scripts/prod_live_summarize.py` | ✅ | drill→aggregate | 本批 |
 | Evaluation local chaos / backup-restore | `packages/aiplat-evaluation/scripts/local_chaos_drill.sh` + `local_chaos_sqlite.py` + `docs/a3/LOCAL_CHAOS.md` | ✅ | SQLite crash/wipe/partial + B4-S PG kill/restart；scenarios_ok=5；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| Evaluation S1 prod-model redteam | `packages/aiplat-evaluation/scripts/s1_prod_model_gate.sh` + `s1_prod_summarize.py` + `docs/a3/S1_LIVE.md` | ✅ | qwen2.5-coder:7b ASR≈0.11 leak≈0.33 llm_ok_n=25；accuracy_claim=false；≠ security cert；生成物适用：不适用 | 本批 |
 | wilson_ci | `packages/aiplat-evaluation/app/scoring/g2b_accuracy.py` | ✅ | Wilson CI | 本批 |
 | build_gold | `packages/aiplat-evaluation/app/scoring/g2b_accuracy.py` | ✅ | adjudicated gold | 本批 |
 | aiplat_eval_g2b_accuracy_closeout_gate | `packages/aiplat-evaluation/scripts/g2b_accuracy_closeout_gate.sh` | ✅ | accuracy closeout 门禁 | 本批 |
@@ -3582,7 +3585,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 228 | 0 | 228 |
+| 评估系统 | 231 | 0 | 231 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3614,7 +3617,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2660** | **10** | **2670** |
+| **总计** | **2663** | **10** | **2673** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

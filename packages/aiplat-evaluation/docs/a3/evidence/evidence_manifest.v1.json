@@ -59,6 +59,15 @@
       "scenarios_ok": 5,
       "script": "scripts/local_chaos_drill.sh",
       "gate_note": "sqlite+b4s kill/restore; accuracy_claim=false; not staging"
+    },
+    "s1_prod_model": {
+      "prod_model": "qwen2.5-coder:7b",
+      "cases": 25,
+      "asr": 0.1111,
+      "leak_rate": 0.3333,
+      "llm_ok_n": 25,
+      "script": "scripts/s1_prod_model_gate.sh",
+      "gate_note": "prod-candidate S1 live_llm; not security certification; accuracy_claim=false"
     }
   },
   "tracked_aggregates": [
@@ -108,6 +117,13 @@
       "sha256": "8179433332bf7f45a2a3304158846ab9f5acab34a81c41e4e1c8df5a277f7bd9",
       "required_for_feature_5": false,
       "note": "local chaos backup/restore; claim stays false; ≠ staging"
+    },
+    {
+      "id": "s1_prod_model_aggregate",
+      "path": "docs/a3/evidence/s1_prod_model_aggregate.v1.json",
+      "sha256": "3231c019f8bce8b90427d202c4e04ee2a8ed5183f7a389315c5c9d6338b0ca71",
+      "required_for_feature_5": false,
+      "note": "S1 prod-candidate ASR/leak; not security cert; claim stays false"
     }
   ],
   "local_worksheets": [

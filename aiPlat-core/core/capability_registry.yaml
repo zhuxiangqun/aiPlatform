@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1745
+total_capabilities: 1747
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 460
+    caps_count: 462
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1476,6 +1476,14 @@ domains:
         type: "script"
         signature: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
         module: "packages/aiplat-evaluation/scripts/s1_local_gate.sh"
+      - symbol: "aiplat_eval_s1_prod_model_gate"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/s1_prod_model_gate.sh"
+        module: "packages/aiplat-evaluation/scripts/s1_prod_model_gate.sh"
+      - symbol: "summarize_s1_prod"
+        type: "function"
+        signature: "summarize_s1_prod(drill,*,prod_model?)→dict"
+        module: "packages/aiplat-evaluation/scripts/s1_prod_summarize.py"
       - symbol: "classify_metric"
         type: "function"
         signature: "classify_metric(name)→MetricFamily"
