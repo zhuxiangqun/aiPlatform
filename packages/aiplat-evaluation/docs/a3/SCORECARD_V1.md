@@ -20,7 +20,7 @@ G2b κ≈0.63、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidenc
 `dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。  
 审计门禁见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
 
-**仍禁止误读**：功能分 ≠ 准确率；`accuracy_claim=false`；κ/agreement ≠ G2b accuracy 认证。
+**仍禁止误读**：功能分 ≠ 准确率；`accuracy_claim=false`；κ/agreement ≠ accuracy。G2b **pass-rate vs adjudicated gold** 见 [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md)（claim 仍 false，待产品 owner 签 attestation）。
 
 ### 架构 5.0（首版范围）
 

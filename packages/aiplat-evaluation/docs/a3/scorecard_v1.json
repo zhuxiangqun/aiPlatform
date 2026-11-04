@@ -17,7 +17,6 @@
       "gaps": [],
       "note": "v1.9: evidence manifest + aggregates in-repo; dual_human_attestation=confirmed (two distinct humans); G2b κ≈0.63 + preference agreement=0.75/κ≈0.47; accuracy_claim=false (≠ accuracy cert)"
     },
-
     "engineering_architecture": {
       "score": 5.0,
       "max": 5.0,
@@ -39,14 +38,22 @@
       "max": 5.0,
       "eligible_on_darwin": false,
       "full_score_eligible": false,
-      "gaps": ["requires_linux_kvm_host_evidence"],
+      "gaps": [
+        "requires_linux_kvm_host_evidence"
+      ],
       "note": "v1.8: guest_boot authorize+InstanceStart probe shipped (MICROVM_GUEST_BOOT); Darwin ineligible; score null until Linux/KVM host drill evidence; process_split_authorized=false; ≠ isolation cert"
     },
     "production_independence": {
       "score": null,
       "max": 5.0,
       "scored_in_v1": false,
-      "gaps": ["staging", "B4-S", "B5", "B6", "SPLIT_CHECKLIST"]
+      "gaps": [
+        "staging",
+        "B4-S",
+        "B5",
+        "B6",
+        "SPLIT_CHECKLIST"
+      ]
     }
   },
   "dimensions": [
@@ -78,7 +85,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "aggregate in evidence/g2b_kappa_aggregate.v1.json (n=30 agreement=0.8333 κ≈0.6269); dual_human_attestation=confirmed; accuracy_claim=false; ≠ accuracy cert"
+      "note": "κ aggregate + accuracy closeout: pass_rate≈0.7667 Wilson[0.59,0.88] vs adjudicated gold (5 disputes; human_confirm=confirmed); accuracy_claim=false; κ≠accuracy"
     },
     {
       "id": "compliance_pii_v0",

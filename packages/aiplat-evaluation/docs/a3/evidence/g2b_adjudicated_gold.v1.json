@@ -1,0 +1,134 @@
+{
+  "schema": "eval.g2b.adjudicated_gold.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "n": 30,
+  "agreed_n": 25,
+  "disputed_n": 5,
+  "labels": [
+    {
+      "task_id": "g2b-01",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-02",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-03",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-04",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-05",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-06",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-07",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-08",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-09",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-10",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-11",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-12",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-13",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-14",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-15",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-16",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-17",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-18",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-19",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-20",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-21",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-22",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-23",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-24",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-25",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-26",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-27",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-28",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-29",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-30",
+      "gold_pass": true
+    }
+  ],
+  "honesty": "adjudicated gold for local model pass-rate only; κ ≠ accuracy; accuracy_claim stays false until attestation",
+  "recorded_at": "20261103T224349Z"
+}

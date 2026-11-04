@@ -1,0 +1,33 @@
+{
+  "schema": "eval.g2b.accuracy.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "metric": "model_pass_rate_vs_adjudicated_gold",
+  "n": 30,
+  "pass_n": 23,
+  "fail_n": 7,
+  "pass_rate": 0.7667,
+  "wilson_ci95": [
+    0.5907,
+    0.8821
+  ],
+  "agreed_n": 25,
+  "disputed_n": 5,
+  "disputed_task_ids": [
+    "g2b-22",
+    "g2b-26",
+    "g2b-27",
+    "g2b-29",
+    "g2b-30"
+  ],
+  "annotator_a_vs_gold": 0.8333,
+  "annotator_b_vs_gold": 1.0,
+  "annotator_a": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/evidence/g2b_annotator_a.labels.v1.json",
+  "annotator_b": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/evidence/g2b_annotator_b.labels.v1.json",
+  "adjudication": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/evidence/g2b_adjudication.v1.json",
+  "claim_refuse_reason": "default_accuracy_claim_false",
+  "honesty": "model pass-rate vs adjudicated gold — not inter-annotator κ; not security cert; not process_split authorize; accuracy_claim=true only with product-owner attestation",
+  "recorded_at": "20261103T224349Z"
+}
