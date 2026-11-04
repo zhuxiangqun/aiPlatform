@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2682
+total_capabilities: 2683
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2653,6 +2653,7 @@ scan_hash: 8f9548ec24f4
 | Eval UI-2 Reports 浏览器 | `pages/Eval/EvalReportsPanel.tsx` + `GET …/store/reports` + `EvalStore.list_reports` / `eval_list_reports` | ✅ | store 报告列表+按 id 拉取+gold JSONL 摘要；accuracy 不宣称；proxy/cohost 双模；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-3 Sets/Review 交互 | `pages/Eval/EvalSetsPanel.tsx` + `EvalReviewPanel.tsx` | ✅ | Sets 点选加载 tasks；Review pending + Pass/Fail adjudicate + preannotate/lock-v0；accuracy_claim 恒诚实；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-4 Gates 交互 | `pages/Eval/EvalGatesPanel.tsx` | ✅ | gates 列表/详情 + Run E5/G2a + Calibrate E4；local gate_claim ≠ accuracy；生成物适用：不适用（管理端 UI） | 本批 |
+| Eval UI-5 Settings/G2c | `pages/Eval/EvalSettingsPanel.tsx` | ✅ | G2c status + retest queue Pass/Fail + compute report；intra_rater ≠ accuracy/G2b；生成物适用：不适用（管理端 UI） | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
@@ -3594,7 +3595,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 236 | 0 | 236 |
+| 评估系统 | 237 | 0 | 237 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3626,7 +3627,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2672** | **10** | **2682** |
+| **总计** | **2673** | **10** | **2683** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
