@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T00:05:00+08:00",
+  "reviewed_at": "2026-11-05T00:15:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "902ba8c8b44a66d01d16fcd97483ddd7116bf310",
-  "diff_sha256": "55bff5fffedbc7e02333bf343b4b29cda42c6ae445d4d9dc5e20dbbf3b3abfc5",
-  "head_sha": "35176aed114931055f09065276f5306e7907f021",
+  "diff_sha256": "dfc1432fed58888d6f849bf1504d9112962c38ae6303758e30d2f543f75f4487",
+  "head_sha": "6d996e62ac14a1183ce06c516df39dc94504d9a5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0 A2 cards+protocol draft; G2b copy unify; docs only + honesty banner text."
+  "note": "Arena smoke labels + ARENA_BLIND_DESIGN; A2 cards/protocol; G2b copy."
 }
