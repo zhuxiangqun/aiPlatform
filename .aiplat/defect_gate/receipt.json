@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T09:30:00+08:00",
+  "reviewed_at": "2026-11-04T13:00:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "36066b60b0db9d89a763d5cd327fccaf2d3404e1",
-  "diff_sha256": "ea2cb6ad88026e48fa5ed7b1bead5da2fdf88729ba2e74392c70075547f08cef",
-  "head_sha": "cea7bcc332063e0fbe9a8f781f2f07c3438195e7",
+  "diff_sha256": "64a01b3c8b71c9f1831316d9a7eecc3265424922449e8dadead0c66fbbb272f9",
+  "head_sha": "1a2619e176d33bb74326e9ce85aa463b3df6c66e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "prod-live 25×3: summarize hardcodes accuracy_claim=false; baseline exits before summarize on gate fail; aggregate required_for_feature_5=false. Residual: local Ollama ≠ remote prod API cert."
+  "note": "CI unblock: package-docs neutral + short inflation exemption; accuracy_claim/process_split unchanged false."
 }
