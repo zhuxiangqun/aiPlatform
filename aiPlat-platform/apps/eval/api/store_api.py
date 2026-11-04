@@ -450,6 +450,23 @@ async def get_gate(
     return {"data": row or {"error": "not_found", "id": gate_id}}
 
 
+@router.get("/reports", response_model=ListResponse)
+async def list_store_reports(
+    request: Request,
+    tenant_id: str = "eval-v1",
+    limit: int = Query(50, ge=1, le=200),
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    """UI-2 — list eval store reports (proxy when AIPLAT_EVAL_SERVICE_URL set)."""
+    proxied = await proxy_eval_store(request, path="/store/reports")
+    if proxied is not None:
+        return proxied
+    from core.api.core_facade import eval_list_reports
+
+    items = eval_list_reports(tenant_id=tenant_id, limit=limit)
+    return {"data": {"items": items, "total": len(items)}}
+
+
 @router.get("/reports/{report_id}", response_model=ItemResponse)
 async def get_store_report(
     request: Request,
