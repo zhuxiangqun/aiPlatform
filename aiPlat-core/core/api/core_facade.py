@@ -6231,6 +6231,13 @@ def eval_run_g2a_gate(
     )
 
 
+def eval_g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """G2b facilitation pack status (accuracy_claim stays false)."""
+    from core.apps.eval.service.g2b import g2b_pack_status
+
+    return g2b_pack_status(tenant_id=tenant_id)
+
+
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2c import g2c_status
 
