@@ -30,6 +30,7 @@
 | [`G2B_PREP.md`](./G2B_PREP.md) | G2b 第二标注者预备（任务库 **100**；`accuracy_claim=false`） |
 | [`G2B_N100.md`](./G2B_N100.md) | G2b n=100 扩样 runbook（31–100 双人标注 pending） |
 | [`G2B_100_PROTOCOL.md`](./G2B_100_PROTOCOL.md) | G2b-100 预注册 protocol（DRAFT · 待三方签认；签署前不开始确认性 31–100） |
+| [`ARENA_BLIND_DESIGN.md`](./ARENA_BLIND_DESIGN.md) | Arena 盲评设计（P1a）；现行 length winner = smoke only |
 | [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | G2b 仲裁金标 + 模型 pass-rate（当前 committed n=30；κ≠accuracy；claim 默认 false） |
 | [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |
 | [`LOCAL_CHAOS.md`](./LOCAL_CHAOS.md) | 本机 chaos 备份恢复（SQLite+可选 B4-S kill/restart；≠ staging） |

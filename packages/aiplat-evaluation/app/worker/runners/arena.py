@@ -1,6 +1,8 @@
 """arena — pure-text pairwise compare only (tools → sandbox_required).
 
-Honesty: P1 text_quality/content_safety are engineering scores; accuracy_claim=false.
+Honesty: length-heuristic winner is **smoke only** (not a quality judge).
+P1 text_quality/content_safety are engineering scores; accuracy_claim=false.
+Blind human A/B/Tie design: docs/a3/ARENA_BLIND_DESIGN.md (P1a).
 """
 from __future__ import annotations
 
@@ -8,6 +10,14 @@ from typing import Any, Dict
 
 from app.scoring.semantics import arena_p1_metrics
 from app.worker.runners._common import runner_result
+
+# Explicit labels so UI/reports must not treat length winner as quality gate.
+_ARENA_SMOKE_EVIDENCE = {
+    "pure_text": True,
+    "evidence_level": "smoke",
+    "judge_kind": "length_heuristic",
+    "quality_gate_eligible": False,
+}
 
 
 def run_arena(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -25,10 +35,11 @@ def run_arena(job: Dict[str, Any]) -> Dict[str, Any]:
             job_id=job_id,
             ok=False,
             metrics=arena_p1_metrics(response_a=a, response_b=b, winner="", ok=False),
-            evidence={},
+            evidence=dict(_ARENA_SMOKE_EVIDENCE),
             detail="arena requires response_a and response_b",
+            mode="arena_smoke_length",
         )
-    # Deterministic length heuristic (engineering only; accuracy_claim=false).
+    # Deterministic length heuristic — smoke only; accuracy_claim=false.
     winner = "a" if len(a) >= len(b) else "b"
     ok = True
     if prefer in {"a", "b"}:
@@ -38,6 +49,7 @@ def run_arena(job: Dict[str, Any]) -> Dict[str, Any]:
         job_id=job_id,
         ok=ok,
         metrics=arena_p1_metrics(response_a=a, response_b=b, winner=winner, ok=ok),
-        evidence={"pure_text": True},
+        evidence=dict(_ARENA_SMOKE_EVIDENCE),
         detail="" if ok else f"winner={winner} prefer={prefer}",
+        mode="arena_smoke_length",
     )

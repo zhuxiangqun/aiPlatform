@@ -4,7 +4,7 @@
 |---|---|
 | 对象/场景 | 成对回答 A/B 比较（纯文本；禁 tools） |
 | Owner / 日期 | Evaluation owner（待核实） / 2026-11-04 |
-| 当前 runner/judge 及版本 | package `arena`（`app/worker/runners/arena.py` + `arena_p1_metrics`）。winner = **较长回答**（确定性长度启发）。 |
+| 当前 runner/judge 及版本 | package `arena`（`app/worker/runners/arena.py` + `arena_p1_metrics`）。winner = **较长回答**（`judge_kind=length_heuristic`，`evidence_level=smoke`，`quality_gate_eligible=false`，`mode=arena_smoke_length`）。盲评设计见 `ARENA_BLIND_DESIGN.md`（未上线）。 |
 | 任务集、来源及现有样本量 | `response_a`/`response_b` + 可选 `prefer`/`expected_winner`；样本量由调用方。P1b 计划盲评 pilot 30–50 对（未开始）。 |
 | 当前实际测量维度 | winner、text_quality（两侧）、safety；ok 在提供 prefer 时比对长度 winner。 |
 | 判定方法（exact/rule/gold/human/LLM judge 等） | **heuristic**：`len(a)>=len(b) → a else b`；tools 标志 → `sandbox_required`。 |

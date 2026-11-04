@@ -49,3 +49,8 @@ def test_arena_p1_metrics():
     assert "content_safety" in m
     assert "accuracy" not in m
     assert out["scoring"]["families"]["accuracy"] == {}
+    ev = out["evidence"]
+    assert ev.get("evidence_level") == "smoke"
+    assert ev.get("judge_kind") == "length_heuristic"
+    assert ev.get("quality_gate_eligible") is False
+    assert out.get("mode") == "arena_smoke_length"
