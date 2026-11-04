@@ -9,6 +9,7 @@ import { apiClient } from '../../services';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
 import EvalAgentsPanel from './EvalAgentsPanel';
 import EvalGatesPanel from './EvalGatesPanel';
+import EvalG2bPanel from './EvalG2bPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalReportsPanel from './EvalReportsPanel';
 import EvalReviewPanel from './EvalReviewPanel';
@@ -72,6 +73,7 @@ const TABS = [
   { id: 'review', label: '复核' },
   { id: 'gates', label: '门禁' },
   { id: 'reports', label: '报告' },
+  { id: 'g2b', label: 'G2b' },
   { id: 'agents', label: 'Agents' },
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'prompts', label: 'Prompts' },
@@ -264,6 +266,8 @@ const EvalCenter: React.FC = () => {
       {tab === 'gates' && <EvalGatesPanel tenantId={TENANT} />}
 
       {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
+
+      {tab === 'g2b' && <EvalG2bPanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
         <EvalAgentsPanel tenantId={TENANT} showExecBanner={showExecBanner} />

@@ -344,6 +344,17 @@ async def gate_g2a(
     return {"data": out}
 
 
+@router.get("/g2b-status", response_model=ItemResponse)
+async def get_g2b_status(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """G2b pack facilitation status — accuracy_claim stays false."""
+    from core.api.core_facade import eval_g2b_pack_status
+
+    return {"data": eval_g2b_pack_status(tenant_id=tenant_id)}
+
+
 @router.get("/g2c-status", response_model=ItemResponse)
 async def get_g2c_status(
     tenant_id: str = "eval-v1",
