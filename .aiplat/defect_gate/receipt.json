@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T16:54:34+08:00",
+  "reviewed_at": "2026-11-04T17:57:22+08:00",
   "base_ref": "origin/main",
-  "merge_base": "66817d13c3f3b613e5b07090344df14f8595267d",
-  "diff_sha256": "29df40889e99968b6d83c7c2d8a1325c24d84d27906eb6cb63e2cab027989ffd",
-  "head_sha": "84c7611b00f37fb4438227462edb47067dfe5c43",
+  "merge_base": "82c6d771cbf9a9eea5d04656c33f202feaf9136d",
+  "diff_sha256": "7baa463141a7269ca6b623d4bebbbf4cd808075e0c2ba102e03519e6fec7494a",
+  "head_sha": "c9d05e257f0e397f62d517916b713a1c4ac250f6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "UI-2: GET /store/reports lists only; detail via existing get; accuracy not claimed; gold strip read-only."
+  "note": "UI-3: Sets/tasks read-only; Review adjudicate uses existing store API; lock-v0 gated by v0_lock_ready; accuracy_claim not flipped."
 }
