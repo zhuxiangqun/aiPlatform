@@ -1,15 +1,11 @@
 /**
- * Compat redirect: /diagnostics/eval → /eval?tab=agents
- * Forwards ?agent=…; escape hatch ?legacy=1 keeps the old dashboard.
+ * Compat redirect only: /diagnostics/eval → /eval?tab=agents
+ * Forwards ?agent=… . No standalone legacy page — Agents UI lives in EvalCenter.
  */
 import { Navigate, useSearchParams } from 'react-router-dom';
-import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 
 const DiagnosticsEvalEntry: React.FC = () => {
   const [params] = useSearchParams();
-  if (params.get('legacy') === '1') {
-    return <DiagnosticsEvalDashboard />;
-  }
   const next = new URLSearchParams();
   next.set('tab', 'agents');
   const agent = (params.get('agent') || '').trim();
