@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1755
+total_capabilities: 1757
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 470
+    caps_count: 472
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1352,6 +1352,14 @@ domains:
         type: "component"
         signature: "EvalReportsPanel({tenantId})"
         module: "aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx"
+      - symbol: "EvalSetsPanel"
+        type: "component"
+        signature: "EvalSetsPanel({tenantId})"
+        module: "aiPlat-management/frontend/src/pages/Eval/EvalSetsPanel.tsx"
+      - symbol: "EvalReviewPanel"
+        type: "component"
+        signature: "EvalReviewPanel({tenantId})"
+        module: "aiPlat-management/frontend/src/pages/Eval/EvalReviewPanel.tsx"
       - symbol: "eval_list_reports"
         type: "function"
         signature: "eval_list_reports(tenant_id, limit)→list"

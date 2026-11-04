@@ -9,7 +9,9 @@ import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
 import EvalReportsPanel from './EvalReportsPanel';
+import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
+import EvalSetsPanel from './EvalSetsPanel';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
   shouldShowExecutionPlaneBanner,
@@ -290,42 +292,9 @@ const EvalCenter: React.FC = () => {
         </section>
       )}
 
-      {tab === 'sets' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
-          <h2 className="text-sm font-medium">评测集</h2>
-          {sets.length === 0 ? (
-            <p className="text-sm text-gray-500">暂无 set（或服务未返回 items）。</p>
-          ) : (
-            <ul className="divide-y divide-gray-800 text-sm">
-              {sets.map((s, i) => (
-                <li key={s.set_id || i} className="py-2 flex justify-between gap-3">
-                  <span className="truncate">
-                    {s.name || s.set_id || `set-${i}`}
-                    {s.version ? (
-                      <span className="text-gray-500 ml-2">v{s.version}</span>
-                    ) : null}
-                  </span>
-                  <span className="text-gray-500 shrink-0">{s.status || '—'}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      {tab === 'sets' && <EvalSetsPanel tenantId={TENANT} />}
 
-      {tab === 'review' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3 text-sm">
-          <h2 className="font-medium">人工复核队列</h2>
-          <p className="text-gray-400">
-            pending ≈ {pendingCount ?? '—'} · adjudicated ≈{' '}
-            {status?.labels_adjudicated ??
-              (Array.isArray(queue?.adjudicated) ? queue.adjudicated.length : '—')}
-          </p>
-          <p className="text-gray-500">
-            写操作（adjudicate / lock-v0）仍走 canonical API / 运维 runbook；本 tab 只读。
-          </p>
-        </section>
-      )}
+      {tab === 'review' && <EvalReviewPanel tenantId={TENANT} />}
 
       {tab === 'gates' && (
         <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
