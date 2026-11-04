@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T16:36:54+08:00",
+  "reviewed_at": "2026-11-04T16:54:34+08:00",
   "base_ref": "origin/main",
-  "merge_base": "892da9b2a8fb01ede7b6489db9bc26b92a56651e",
-  "diff_sha256": "e58a3d973b2c884364ba63d7c69d8d86e807e1b2b8dda0ee3059b39f71eb3765",
-  "head_sha": "06a0c4aaf34659f81fb496593361732312026aaf",
+  "merge_base": "66817d13c3f3b613e5b07090344df14f8595267d",
+  "diff_sha256": "29df40889e99968b6d83c7c2d8a1325c24d84d27906eb6cb63e2cab027989ffd",
+  "head_sha": "84c7611b00f37fb4438227462edb47067dfe5c43",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "UI-1: cohost sync evaluate unchanged; /package/* jobs only proxy or 503 execution_not_migrated; FE maps error.code; dual plane intentional (sync \u2260 B2 fixture enqueue)."
+  "note": "UI-2: GET /store/reports lists only; detail via existing get; accuracy not claimed; gold strip read-only."
 }
