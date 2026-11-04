@@ -8,6 +8,7 @@ import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
+import EvalGatesPanel from './EvalGatesPanel';
 import EvalReportsPanel from './EvalReportsPanel';
 import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
@@ -296,29 +297,7 @@ const EvalCenter: React.FC = () => {
 
       {tab === 'review' && <EvalReviewPanel tenantId={TENANT} />}
 
-      {tab === 'gates' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
-          <h2 className="text-sm font-medium">门禁结果（local）</h2>
-          {gates.length === 0 ? (
-            <p className="text-sm text-gray-500">暂无 gate 记录。</p>
-          ) : (
-            <ul className="divide-y divide-gray-800 text-sm">
-              {gates.map((g, i) => (
-                <li key={g.gate_id || i} className="py-2 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <span className="truncate">{g.gate_id || `gate-${i}`}</span>
-                  <span className="text-gray-400">{g.kind || '—'}</span>
-                  <span>
-                    gate_claim={String(Boolean(g.gate_claim))}
-                  </span>
-                  <span className="text-amber-200/90">
-                    accuracy={String(Boolean(g.accuracy_claim))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      {tab === 'gates' && <EvalGatesPanel tenantId={TENANT} />}
 
       {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
 
