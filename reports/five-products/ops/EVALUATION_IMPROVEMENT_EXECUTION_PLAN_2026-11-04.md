@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0 进行中 — **A1**：源码/#592 + 本地 dist 核验完成，**部署签认仍 open**。**A2**：七张对象现状卡已起草（`ops/eval-object-cards/`，待 owner 核实签字）；`G2B_100_PROTOCOL.md` 草案已入仓待三方审阅（不阻塞 A1）。
+> **当前状态**：P0 A2 文档已合入（#593）；A1 部署签认仍 open。**P1a 进行中**：`ADR_CANONICAL_RUNNERS_V1` + composite v1.1（`text_quality` → report-only）；Arena smoke/盲评设计已合入。
 
 ## 1. 执行结论
 

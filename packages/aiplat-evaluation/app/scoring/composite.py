@@ -1,10 +1,12 @@
 """P1 engineering composite (eval-production-independent-service §7.1).
 
 Decision (explicit):
-- **Scored into composite**: text_quality / groundedness / exact_match / pass /
+- **Scored into composite**: groundedness (gold-gated) / exact_match / pass /
   coverage / content_safety / refusal / latency / cost (normalized).
-- **Report-only (not scored)**: asr/security family, winner/ids/counts, accuracy.
+- **Report-only (not scored)**: text_quality (length/printable smoke), asr/security,
+  winner/ids/counts, accuracy.
 - ``accuracy_claim`` stays false — composite is engineering, not G2b accuracy.
+- composite_version ``v1.1``: text_quality demoted to report-only (P1a).
 
 Central ``AgentEvalResult`` 7-dim weights remain a separate path; this module
 owns the independent eval package runner_result.scoring.composite.
@@ -19,7 +21,7 @@ _METRIC_ROLE: Dict[str, str] = {
     # quality — scored
     "pass": "scored",
     "exact_match": "scored",
-    "text_quality": "scored",
+    "text_quality": "report_only",  # length/printable heuristic — smoke only (P1a)
     "groundedness": "scored",
     "coverage": "scored",
     "parsed": "scored",
@@ -165,12 +167,14 @@ def build_composite(
             "scored": sorted(k for k, r in _METRIC_ROLE.items() if r == "scored"),
             "report_only": sorted(k for k, r in _METRIC_ROLE.items() if r == "report_only"),
             "note": (
-                "text_quality/content_safety/refusal/groundedness are SCORED when present; "
+                "content_safety/refusal/groundedness/exact_match/pass are SCORED when present; "
                 "groundedness requires gold (expected/context/sources) to appear in metrics; "
+                "text_quality is report-only smoke (length/printable); "
                 "asr/accuracy remain report-only; not G2b accuracy."
             ),
-            "composite_version": "v1",
+            "composite_version": "v1.1",
             "groundedness_gold_gated": True,
+            "text_quality_smoke": True,
         },
     }
 

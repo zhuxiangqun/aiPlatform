@@ -7,7 +7,7 @@ from app.worker.runners import execute_runner
 
 
 def test_metric_roles_explicit():
-    assert metric_role("text_quality") == "scored"
+    assert metric_role("text_quality") == "report_only"  # P1a smoke
     assert metric_role("content_safety") == "scored"
     assert metric_role("refusal") == "scored"
     assert metric_role("groundedness") == "scored"
@@ -29,8 +29,9 @@ def test_composite_scores_p1_dims_not_asr():
     assert block["accuracy_claim"] is False
     assert block["score"] is not None
     assert block["score"] >= 99.0
+    assert block["policy"]["composite_version"] == "v1.1"
     assert "asr" in block["report_only_metrics"]
-    assert "text_quality" in block["scored_metrics"]
+    assert "text_quality" in block["report_only_metrics"]
     assert "content_safety" in block["scored_metrics"]
     assert "groundedness" in block["scored_metrics"]
 
@@ -63,5 +64,5 @@ def test_prompt_eval_runner_has_composite():
     comp = out["scoring"]["composite"]
     assert comp["accuracy_claim"] is False
     assert comp["score"] is not None
-    assert "text_quality" in comp["scored_metrics"]
+    assert "text_quality" in comp["report_only_metrics"]
     assert "content_safety" in comp["scored_metrics"]
