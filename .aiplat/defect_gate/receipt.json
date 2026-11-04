@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T07:01:28+08:00",
+  "reviewed_at": "2026-11-04T09:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f7c7df08dbd860e086d36c94768dd7511065b7dc",
-  "diff_sha256": "07f96b50eea9cd06b05672d63de411c6bffe8172a0c3c5f255842599088d7646",
-  "head_sha": "34bd3f169d8db332eefb35de207cd7feb57dce7b",
+  "merge_base": "36066b60b0db9d89a763d5cd327fccaf2d3404e1",
+  "diff_sha256": "ea2cb6ad88026e48fa5ed7b1bead5da2fdf88729ba2e74392c70075547f08cef",
+  "head_sha": "cea7bcc332063e0fbe9a8f781f2f07c3438195e7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G2b accuracy closeout + human confirm on 5-dispute adjudication; pass_rate≈0.7667; accuracy_claim=false; process_split locked."
+  "note": "prod-live 25×3: summarize hardcodes accuracy_claim=false; baseline exits before summarize on gate fail; aggregate required_for_feature_5=false. Residual: local Ollama ≠ remote prod API cert."
 }
