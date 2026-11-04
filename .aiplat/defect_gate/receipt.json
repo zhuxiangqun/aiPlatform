@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T23:10:00+08:00",
+  "reviewed_at": "2026-11-04T23:17:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f2292efd5637af8bb55980c5d5ec2bce61f3d646",
-  "diff_sha256": "b88b861b74da686035ada1fbe787c984c03766f252b15d64cee86db2f5ae9c80",
-  "head_sha": "aca6960e5381bd97fbe9c2738f2465c361d8172d",
+  "diff_sha256": "b2a464c29a29e14a878f37578b0e51cdd3e88771dd1890c13278d61ba3fc49e0",
+  "head_sha": "e206b57129f82280a0931266dcc8dcc1abac6132",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Hard-cut: /diagnostics/eval and /platform/kb/eval routes removed; only /eval remains."
+  "note": "Hard-cut /eval only; whitepapers synced; digital-human menu/brief → /eval."
 }
