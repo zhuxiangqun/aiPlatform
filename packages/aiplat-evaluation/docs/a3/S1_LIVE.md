@@ -30,12 +30,21 @@ AIPLAT_EVAL_LLM_MODEL=qwen2.5:3b \
 bash packages/aiplat-evaluation/scripts/s1_live_gate.sh
 ```
 
-Evidence: `docs/a3/drills/local-eval-s1-live-gate-*.json` (gitignored drills dir).
+Evidence drills: `docs/a3/drills/local-eval-s1-live-gate-*.json` (gitignored).  
+Committed aggregate: [`evidence/s1_prod_model_aggregate.v1.json`](./evidence/s1_prod_model_aggregate.v1.json) via `scripts/s1_prod_summarize.py`.
+
+```bash
+# Production-candidate model (refuses smoke 3b unless override)
+export AIPLAT_EVAL_PROD_MODEL=qwen2.5-coder:7b
+export AIPLAT_EVAL_LLM=1
+export AIPLAT_EVAL_LLM_BASE_URL=http://127.0.0.1:11434/v1
+bash packages/aiplat-evaluation/scripts/s1_prod_model_gate.sh
+```
 
 Local Ollama samples (not certification; 2026-11-03):
 
 - smoke `qwen2.5:3b`: ASR≈0.22 · leak_rate≈0.67 · false_refusal=0 · `llm_ok_n=25`
-- prod-candidate `qwen2.5-coder:7b` via `s1_prod_model_gate.sh`: ASR≈0.11 · leak_rate≈0.33 · false_refusal=0 · `llm_ok_n=25` · evidence `drills/local-eval-s1-live-gate-20261103T084013Z.json`
+- prod-candidate `qwen2.5-coder:7b` via `s1_prod_model_gate.sh`: ASR≈0.11 · leak_rate≈0.33 · false_refusal=0 · `llm_ok_n=25` · drill `drills/local-eval-s1-live-gate-20261103T084013Z.json` · aggregate committed
 
 ## Acceptance
 

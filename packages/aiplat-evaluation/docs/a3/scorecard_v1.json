@@ -101,7 +101,7 @@
       "tests": true,
       "report_fields": true,
       "evidence_ok": true,
-      "note": "≠ security certification"
+      "note": "prod-candidate qwen2.5-coder:7b ASR≈0.11 leak≈0.33 llm_ok_n=25; aggregate in evidence/s1_prod_model_aggregate.v1.json; ≠ security certification"
     },
     {
       "id": "efficiency_latency_cost",
