@@ -4,11 +4,12 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { apiClient } from '../../services';
-import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
+import EvalAgentsPanel from './EvalAgentsPanel';
 import EvalGatesPanel from './EvalGatesPanel';
+import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalReportsPanel from './EvalReportsPanel';
 import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
@@ -159,7 +160,6 @@ const EvalCenter: React.FC = () => {
     void load();
   }, [load]);
 
-  const locked = Boolean(status?.v0_locked);
   const accuracy = Boolean(status?.accuracy_claim);
   const pendingCount = useMemo(() => {
     if (typeof status?.labels_pending === 'number') return status.labels_pending;
@@ -246,52 +246,15 @@ const EvalCenter: React.FC = () => {
       ) : null}
 
       {tab === 'overview' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <ShieldCheck className={`w-4 h-4 ${locked ? 'text-green-400' : 'text-gray-500'}`} />
-            G2a 总览
-          </div>
-          {loading && !status ? (
-            <div className="text-sm text-gray-500">加载中…</div>
-          ) : status ? (
-            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-              <div>
-                <dt className="text-gray-500">v0_locked</dt>
-                <dd className={locked ? 'text-green-300' : 'text-yellow-300'}>
-                  {String(status.v0_locked)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">g2a_ready</dt>
-                <dd>{String(status.g2a_ready)}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">tasks</dt>
-                <dd>{status.task_count ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">adjudicated</dt>
-                <dd>
-                  {status.labels_adjudicated ?? '—'}/{status.v0_lock_target ?? 30}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">pending</dt>
-                <dd>{pendingCount ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">sets / gates</dt>
-                <dd>
-                  {sets.length} / {gates.length}
-                </dd>
-              </div>
-              <div className="col-span-2 sm:col-span-3">
-                <dt className="text-gray-500">note</dt>
-                <dd className="text-gray-300">{status.note || '—'}</dd>
-              </div>
-            </dl>
-          ) : null}
-        </section>
+        <EvalOverviewPanel
+          status={status}
+          loading={loading}
+          pendingCount={pendingCount}
+          setsCount={sets.length}
+          gatesCount={gates.length}
+          upstreamMode={upstreamMode}
+          onNavigate={(t) => setTab(t as TabId)}
+        />
       )}
 
       {tab === 'sets' && <EvalSetsPanel tenantId={TENANT} />}
@@ -303,21 +266,7 @@ const EvalCenter: React.FC = () => {
       {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
-        <section className="space-y-3">
-          {showExecBanner ? (
-            <p className="text-sm text-sky-200/90" data-testid="eval-agents-exec-note">
-              {EXECUTION_NOT_MIGRATED_COPY} — Agents 动态 run 请等 B2 Worker；下方为只读/共宿诊断视图。
-            </p>
-          ) : null}
-          <p className="text-sm text-gray-400">
-            承接旧页 <code>/diagnostics/eval</code>。需要原布局可{' '}
-            <Link className="text-blue-400 hover:underline" to="/diagnostics/eval?legacy=1">
-              打开 legacy
-            </Link>
-            。
-          </p>
-          <DiagnosticsEvalDashboard />
-        </section>
+        <EvalAgentsPanel tenantId={TENANT} showExecBanner={showExecBanner} />
       )}
 
       {tab === 'knowledge' && (

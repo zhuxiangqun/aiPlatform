@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T19:03:09+08:00",
+  "reviewed_at": "2026-11-04T19:24:43+08:00",
   "base_ref": "origin/main",
-  "merge_base": "207ee5cef068790dcf4775ec8bde42f3b88b9b9d",
-  "diff_sha256": "4d10307232f2df624c7ad0af909cc1764a3c3643bd4abab43ae07bd8e3556435",
-  "head_sha": "c10483bec5364407674a94e106aa20d05ce9d82c",
+  "merge_base": "b8b63547f29d4ba8bb738ffaba70e68dbc6d7afd",
+  "diff_sha256": "5e00e8efe10e3e51c089f82019718f8fd08e20f374f35f15c6ecc6d0c9c9dbc1",
+  "head_sha": "e065fa2d6c29a251df5c184211b3b12c76765c00",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "UI-5: G2c status/retest/report via existing store APIs; accuracy_claim forced false in payloads; \u2260 G2b/second annotator."
+  "note": "UI-6: Overview jumps + Agents suites read-only; no accuracy claim; suite run still package plane."
 }
