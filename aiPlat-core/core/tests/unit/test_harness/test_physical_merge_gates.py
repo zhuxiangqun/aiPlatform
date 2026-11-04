@@ -69,19 +69,36 @@ def test_select_profile_framework_when_all_match():
 
 def test_inflation_excludes_neutral_on_mixed_pr():
     cfg = _cfg(
-        profile_neutral_globs=["AIPLAT_CAPABILITIES.md", "docs/**"],
+        profile_neutral_globs=["AIPLAT_CAPABILITIES.md", "docs/**", "**/docs/**"],
     )
     stats = DiffStats(
         files_changed=10,
+        net_lines=500,
         paths=[
             "aiPlat-core/core/harness/meta/x.py",
             "AIPLAT_CAPABILITIES.md",
             "docs/whitepaper/volumes/01-tech-architecture.md",
-            "docs/whitepaper/volumes/02-product-capability.md",
+            "packages/aiplat-evaluation/docs/a3/evidence/x.json",
+        ],
+        path_net_lines={
+            "aiPlat-core/core/harness/meta/x.py": 40,
+            "AIPLAT_CAPABILITIES.md": 200,
+            "docs/whitepaper/volumes/01-tech-architecture.md": 100,
+            "packages/aiplat-evaluation/docs/a3/evidence/x.json": 160,
+        },
+        added_paths=[
+            "packages/aiplat-evaluation/docs/a3/evidence/x.json",
+            "aiPlat-core/core/harness/meta/x.py",
+        ],
+        new_dirs=[
+            "packages/aiplat-evaluation/docs/a3/evidence",
+            "aiPlat-core/core/harness/meta",
         ],
     )
     capped = inflation_stats_for_caps(stats, cfg)
     assert capped.files_changed == 1
+    assert capped.net_lines == 40
+    assert capped.new_dirs == ["aiPlat-core/core/harness/meta"]
     # Pure docs: keep full count
     docs_only = DiffStats(
         files_changed=3,

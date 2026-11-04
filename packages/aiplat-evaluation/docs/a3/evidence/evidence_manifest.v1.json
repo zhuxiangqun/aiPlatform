@@ -45,6 +45,14 @@
       "disputed_n": 5,
       "script": "scripts/g2b_accuracy_closeout.py",
       "gate_note": "model pass-rate vs adjudicated gold; accuracy_claim=false until attestation"
+    },
+    "prod_live": {
+      "n_tasks": 25,
+      "repeats": 3,
+      "llm_ok_n": 75,
+      "prod_model": "qwen2.5-coder:7b",
+      "script": "scripts/prod_live_baseline.sh",
+      "gate_note": "latency/cost baseline; accuracy_claim=false"
     }
   },
   "tracked_aggregates": [
@@ -80,6 +88,13 @@
       "sha256": "69c45f7aa0ed8136f5838f5d86115464ce424236c94bf3a20da034e032f78f2d",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout; claim stays false"
+    },
+    {
+      "id": "prod_live_aggregate",
+      "path": "docs/a3/evidence/prod_live_aggregate.v1.json",
+      "sha256": "7b14ad190f73149aa5b3a64f9b3d7636102b64e5cf600c3adef00112821117e6",
+      "required_for_feature_5": false,
+      "note": "prod candidate 25×3 latency/cost; accuracy_claim=false"
     }
   ],
   "local_worksheets": [

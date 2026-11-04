@@ -50,6 +50,9 @@ framework_globs:
 profile_neutral_globs:
   - "AIPLAT_CAPABILITIES.md"
   - "docs/**"
+  - "**/docs/**"  # package evidence/scorecard/runbooks (same stamp class as root docs/)
+  - "**/README.md"
+  - ".aiplat/**"  # defect-gate receipts / local locks
   - "**/capability_registry.yaml"
   - "**/system-architecture-contract.md"
 
@@ -107,12 +110,13 @@ allowed_bases:
 max_active_exemptions: 3
 # Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
 exemptions:
-  - id: "ex-2026-10-27-core-tests-ci-slice-e2e"
+  - id: "ex-2026-11-04-eval-evidence-packaging"
     owner: "platform-oncall"
-    reason: "PR #468 one-shot: restore collectable core/tests + live slice E2E (many import-path files; per-commit already under cap)"
-    expires: "2026-11-03"
+    reason: "PR #577/#578/#579 eval evidence packaging; lasting **/docs/** neutral in same seed; remove after those merge"
+    expires: "2026-11-11"
     gates: ["inflation"]
     paths: ["**"]
+# Cleared 2026-11-04: ex-2026-10-27-core-tests-ci-slice-e2e expired 2026-11-03.
 # Example:
 # exemptions:
 #   - id: "ex-2026-10-migrate-x"

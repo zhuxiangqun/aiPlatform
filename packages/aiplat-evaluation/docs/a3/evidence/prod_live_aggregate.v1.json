@@ -1,0 +1,49 @@
+{
+  "schema": "eval.prod_live.aggregate.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "process_split_authorized": false,
+  "baseline_kind": "production_candidate",
+  "prod_model": "qwen2.5-coder:7b",
+  "provider": {
+    "base_url": "http://127.0.0.1:11434/v1",
+    "model": "qwen2.5-coder:7b",
+    "temperature": 0.2,
+    "seed": 7,
+    "timeout_s": 120.0,
+    "cost_per_1k": "0.0001",
+    "looks_like_central": false
+  },
+  "task_count": 25,
+  "repeats": 3,
+  "live_attempt_n": 75,
+  "llm_ok_n": 75,
+  "gate_ok": true,
+  "succeeded_n": 75,
+  "fail_n": 0,
+  "timeout_n": 0,
+  "latency_ms": {
+    "n": 75,
+    "p50": 1056.0,
+    "p95": 4521.0,
+    "mean": 1378.83
+  },
+  "tokens_out": {
+    "n": 75,
+    "mean": 12.52,
+    "sum": 939.0
+  },
+  "tokens_in": {
+    "n": 75,
+    "mean": 46.76,
+    "sum": 3507.0
+  },
+  "total_cost_estimate": 0.000501,
+  "cost_ok": true,
+  "source_drill": "docs/a3/drills/local-eval-prod-live-20261104T011529Z.json",
+  "compare_note": "vs prior local 7b×1 (20261103T082452Z, llm_ok_n=25/25): now 25×3 llm_ok_n=75/75; p50≈1056ms p95≈4521ms; local Ollama ≠ remote prod API cert",
+  "honesty": "production-candidate live aggregate — latency/cost/fail; accuracy_claim=false; ≠ G2b accuracy; ≠ staging; ≠ security cert",
+  "recorded_at": "20261104T011935Z"
+}
