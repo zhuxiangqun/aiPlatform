@@ -201,8 +201,8 @@
       "group": "平台设置"
     },
     {
-      "route": "/diagnostics/eval",
-      "label": "Agent 评估",
+      "route": "/eval",
+      "label": "评测中心",
       "group": "平台设置"
     },
     {
