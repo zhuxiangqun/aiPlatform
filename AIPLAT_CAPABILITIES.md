@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2675
+total_capabilities: 2679
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,9 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_eval_job | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | 自动同步 | 已合入 |
+| package_code_review_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | 自动同步 | 已合入 |
+| isEvalJobTerminal | `aiPlat-management/frontend/src/pages/Eval/evalRunPanelHelpers.ts` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_g2b_n100_pack | `packages/aiplat-evaluation/scripts/g2b_n100_pack.sh` | ✅ | 自动同步 | 已合入 |
 | run_chaos | `packages/aiplat-evaluation/scripts/local_chaos_sqlite.py` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_local_chaos_drill | `packages/aiplat-evaluation/scripts/local_chaos_drill.sh` | ✅ | 自动同步 | 已合入 |
@@ -2646,6 +2649,7 @@ scan_hash: 8f9548ec24f4
 | Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B1-L PG EvalStore | `packages/aiplat-evaluation/app/store/pg_store.py` + `pg_runtime.py` + `migrate.py` | ✅ | `postgresql://` via asyncpg；同 schema migrations；密码脱敏；SQLite 仍默认；生成物适用：不适用 | 本批 |
 | Evaluation B1-L /eval UI 降级 | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` + `EvalExecutionPlaneBanner.tsx` | ✅ | `execution_not_migrated`/`sandbox_required` 固定文案；proxy/stubs 显示 Banner；store 只读可用；生成物适用：不适用 | 本批 |
+| Eval UI-1 Run Panel（sync+job） | `pages/Eval/EvalRunPanel.tsx` + `evalRunPanelHelpers.ts` + `apps/eval/api/jobs_api.py` | ✅ | Code-review/Prompt/KB 统一 Run：cohost sync（match_only/evaluate）+ proxy 时 package enqueue/poll/cancel；`process_split_authorized=false`；生成物适用：不适用（管理端 UI） | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
@@ -3574,7 +3578,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 385 | 1 | 386 |
+| Harness 执行引擎 | 388 | 1 | 389 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3587,7 +3591,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 232 | 0 | 232 |
+| 评估系统 | 233 | 0 | 233 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3619,7 +3623,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2665** | **10** | **2675** |
+| **总计** | **2669** | **10** | **2679** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
