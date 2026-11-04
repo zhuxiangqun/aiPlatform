@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T21:26:00+08:00",
+  "reviewed_at": "2026-11-04T21:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "313baff2531783f140ccebd4d162ccbb1a11f897",
-  "diff_sha256": "05a5ad8f3bad455c634d50944791d6d0ceb05367f5ccd645dfc144c72e26780d",
-  "head_sha": "ea984dc1a4d2fd5339a19f4ec63da8d841da766a",
+  "merge_base": "a76ce316562ed18d4aeefd4fd4958949c000bd03",
+  "diff_sha256": "59461f8f325f042740104b8237f178caa94609e12d072be4404a6c1264f85e16",
+  "head_sha": "b4461c3b1cfa300a610c016f97e473bf76ad058b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Evidence audit verifies SHA256+attestation only; feature5_audit_ready ≠ accuracy_claim."
+  "note": "Worksheet pack facilitation; annotator≠facilitator; accuracy_claim hard-false; path-safe file reads."
 }
