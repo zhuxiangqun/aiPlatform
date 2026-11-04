@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T22:30:00+08:00",
+  "reviewed_at": "2026-11-04T23:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f2292efd5637af8bb55980c5d5ec2bce61f3d646",
-  "diff_sha256": "e5400b10b529b0ca2ae650d1e4693585e8141c30ab0d858e665f14c18a1fbb72",
-  "head_sha": "c02d6a6abb9f8f7b5763e1348f71a3615cf038c0",
+  "diff_sha256": "b88b861b74da686035ada1fbe787c984c03766f252b15d64cee86db2f5ae9c80",
+  "head_sha": "aca6960e5381bd97fbe9c2738f2465c361d8172d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "No legacy=1; /diagnostics/eval always redirects into /eval Agents tab."
+  "note": "Hard-cut: /diagnostics/eval and /platform/kb/eval routes removed; only /eval remains."
 }
