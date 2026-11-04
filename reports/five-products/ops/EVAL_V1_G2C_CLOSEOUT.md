@@ -23,7 +23,7 @@
 | `accuracy_claim` | **false**（永不 true） |
 | `claim_kind` | `self_consistency` |
 | `kappa_kind` | `intra_rater` |
-| G2b | **仍 defer** |
+| G2b | n=30 closeout 已完成；31–100 待双标；`accuracy_claim=false`（≠ 本 closeout 范围） |
 
 禁止把 `intra_rater_kappa` 写成「第二标注者 κ」或 inter-annotator。
 

@@ -56,7 +56,7 @@
 | 无队列/Worker | 同步 HTTP；超时重试不可控 |
 | 无沙箱 | 工具/代码执行即风险 |
 | 评分/安全缺口 | 计分不诚实；无红队产品 |
-| 准确率未认证 | G2c≠accuracy；G2b defer |
+| 准确率未认证 | G2c≠accuracy；G2b n=30 closeout 已完成、31–100 待双标；`accuracy_claim=false` |
 
 ---
 

@@ -132,7 +132,10 @@ export default function EvalSettingsPanel({ tenantId = 'eval-v1' }: Props) {
             G2c = 同人二次盲测（<code>intra_rater</code>）· ≠ accuracy · ≠ 第二标注者 / G2b
           </li>
           <li>tenant 默认 <code>{tenantId}</code> · UI 不暴露 accuracy 开关</li>
-          <li>G2b / 外部 gate：仍 defer</li>
+          <li>
+            G2b：n=30 closeout 已完成 · 31–100 待双标 · <code>accuracy_claim=false</code> ·
+            外部 gate 未开放
+          </li>
         </ul>
       </div>
 

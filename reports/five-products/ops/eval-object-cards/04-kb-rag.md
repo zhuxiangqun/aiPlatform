@@ -1,0 +1,15 @@
+# 对象现状卡：KB/RAG
+
+| 字段 | 填写内容 |
+|---|---|
+| 对象/场景 | 受控检索 fixture：hit 覆盖、expected IDs、groundedness/文本质量线索 |
+| Owner / 日期 | Evaluation owner（待核实） / 2026-11-04 |
+| 当前 runner/judge 及版本 | package `kb_rag`（`app/worker/runners/kb_rag.py`）。**并行**：core RAG（faithfulness / answer relevancy / context precision·recall）— 不可与 package fixture 混称「一种 RAG 准确率」。UI Knowledge tab → `/eval?tab=knowledge`。 |
+| 任务集、来源及现有样本量 | `payload.query` + `hits`/`docs` + 可选 `expected_ids`；无 hits → fail-closed。G2b 配额建议 KB/RAG=20。 |
+| 当前实际测量维度 | hit_count、expected_ids 覆盖、groundedness（token-overlap）、text_quality/safety（P1 metrics）。core 路径另有 faithfulness 等。 |
+| 判定方法（exact/rule/gold/human/LLM judge 等） | rule：有 `expected_ids` 则全部命中；否则 hits 非空即 ok。只读，不写 KB。 |
+| 是否进入 composite（是/否/部分；说明） | 部分：package 指标可进 P1；core RAG 分数不可静默合并。 |
+| 失败处理（空回复/超时/缺 gold 等） | 无 hits → ok=false；expected_ids 未覆盖 → fail。 |
+| 证据类型与等级 | fixture / smoke；有 expected_ids 时接近 gold 对照。 |
+| Gate 资格（可进入/不可进入/有限条件；说明） | fixture 回归可入本地工程门；**不可**宣称 RAG 准确率或检索生产 SLO。 |
+| 不能推出什么 / 已知限制 | 不是 live 检索质量认证；groundedness 为词项重合；与 core RAG 指标不可直接比。 |

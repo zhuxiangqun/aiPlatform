@@ -10,7 +10,7 @@
 
 本地工程增量已闭合（安装面、D2 pack、D3 本地验收、跨能力 E2E、compat/security、perf、packaging）。  
 **本地五产品工程轨无必须任务；EVAL_V1 仍为显式解冻；DIAGNOSIS C1–C3 已出口 PASS。**  
-再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（可选 G2c self-consistency / Diagnosis fixture 硬化 / C4 需 staging）；禁止用本地证据推动 authorize。**G2b defer**（见 G2c 决策）。  
+再改须有明确缺陷、**已列 Still open**、复审驱动、或**显式解冻新范围**（可选 G2c self-consistency / Diagnosis fixture 硬化 / C4 需 staging）；禁止用本地证据推动 authorize。**G2b**：n=30 closeout 已完成、31–100 待双标；`accuracy_claim=false`（见 G2c/G2b closeout）。  
 
 ### 解冻史
 
