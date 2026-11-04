@@ -6238,6 +6238,13 @@ def eval_g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return g2b_pack_status(tenant_id=tenant_id)
 
 
+def eval_preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """Preference facilitation pack status (accuracy_claim stays false)."""
+    from core.apps.eval.service.preference import preference_pack_status
+
+    return preference_pack_status(tenant_id=tenant_id)
+
+
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2c import g2c_status
 
