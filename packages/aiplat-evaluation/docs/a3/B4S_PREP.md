@@ -7,7 +7,7 @@
 
 | Gate | State |
 |---|---|
-| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；human κ / G2b 仍 deferred） |
+| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=30 closeout 已完成、31–100 待双标；`accuracy_claim=false`） |
 | Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
 | Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
 | PITR / backup live drill on staging | ❌ needs host |

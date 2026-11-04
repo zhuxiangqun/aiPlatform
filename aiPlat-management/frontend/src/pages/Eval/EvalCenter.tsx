@@ -226,7 +226,9 @@ const EvalCenter: React.FC = () => {
             <li>
               <code>accuracy_claim</code> 必须为 false（当前：{String(accuracy)}）
             </li>
-            <li>κ = null（D5 单人复核；G2b 前不计算）</li>
+            <li>
+              D5 本地 κ=null（单人复核）；G2b inter-annotator κ 仅见 n=30 closeout（≠ accuracy）
+            </li>
             <li>local <code>gate_claim</code> ≠ 外部 / staging / authorize</li>
           </ul>
         </div>
