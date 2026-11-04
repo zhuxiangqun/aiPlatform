@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T23:21:00+08:00",
+  "reviewed_at": "2026-11-05T00:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f2292efd5637af8bb55980c5d5ec2bce61f3d646",
-  "diff_sha256": "185a0cd5795fa41cc1eddd817d4f31dd4132be27df0945193944d492bb870c0a",
-  "head_sha": "87d31f64d30b7548d0be83bfdda8e5f6ca4a9467",
+  "merge_base": "902ba8c8b44a66d01d16fcd97483ddd7116bf310",
+  "diff_sha256": "55bff5fffedbc7e02333bf343b4b29cda42c6ae445d4d9dc5e20dbbf3b3abfc5",
+  "head_sha": "35176aed114931055f09065276f5306e7907f021",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "EVAL UI hard-cut /eval; contract §75 clause-sync; whitepapers fresh."
+  "note": "P0 A2 cards+protocol draft; G2b copy unify; docs only + honesty banner text."
 }
