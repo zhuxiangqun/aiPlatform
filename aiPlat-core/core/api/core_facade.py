@@ -6252,6 +6252,13 @@ def eval_scorecard_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return scorecard_status(tenant_id=tenant_id)
 
 
+def eval_evidence_audit_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """Evidence audit snapshot (hash + attestation; accuracy_claim stays false)."""
+    from core.apps.eval.service.evidence_audit import evidence_audit_status
+
+    return evidence_audit_status(tenant_id=tenant_id)
+
+
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2c import g2c_status
 

@@ -31,6 +31,7 @@ const JUMPS = [
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
   { id: 'scorecard', label: 'Scorecard' },
+  { id: 'evidence', label: 'Evidence' },
   { id: 'code-review', label: 'Code-review' },
   { id: 'settings', label: 'G2c 设置' },
 ] as const;
