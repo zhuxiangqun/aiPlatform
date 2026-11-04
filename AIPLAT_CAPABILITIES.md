@@ -570,6 +570,8 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| run_chaos | `packages/aiplat-evaluation/scripts/local_chaos_sqlite.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_eval_local_chaos_drill | `packages/aiplat-evaluation/scripts/local_chaos_drill.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_p1_canonical_gate | `packages/aiplat-evaluation/scripts/p1_canonical_gate.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_b12_contract_gate | `packages/aiplat-evaluation/scripts/b12_contract_gate.sh` | ✅ | 自动同步 | 已合入 |
 | count_temporary_proxy_markers | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
