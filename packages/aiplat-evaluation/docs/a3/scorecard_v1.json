@@ -30,7 +30,7 @@
       "max": 5.0,
       "scope": "SCORE_SCOPE_V1 local in-scope excluding microVM",
       "full_score_eligible": true,
-      "note": "v1.5: SANDBOX_ISOLATION_V0 + OIDC_MINIMAL_V0 + B4S evidence refresh gates; sandbox_real_isolation=false; not authorize",
+      "note": "v1.5: SANDBOX_ISOLATION_V0 + OIDC_MINIMAL_V0 + B4S + local_chaos (sqlite+PG kill/restore scenarios_ok=5); sandbox_real_isolation=false; not authorize",
       "gaps": []
     },
     "local_independence_with_microvm": {
@@ -117,6 +117,14 @@
       "report_fields": true,
       "evidence_ok": true,
       "note": "25×3 qwen2.5-coder:7b local Ollama llm_ok_n=75/75; p50≈1056ms p95≈4521ms; aggregate in evidence/prod_live_aggregate.v1.json; accuracy_claim=false; ≠ remote prod API cert"
+    },
+    {
+      "id": "local_chaos",
+      "schema_ref": "docs/a3/LOCAL_CHAOS.md",
+      "tests": true,
+      "report_fields": true,
+      "evidence_ok": true,
+      "note": "sqlite crash/wipe/partial + b4s PG kill/restart wipe/restore; scenarios_ok=5; accuracy_claim=false; ≠ staging"
     }
   ],
   "honesty": "Scores relative to SCORE_SCOPE_V1 only. Feature 5 requires evidence_manifest + confirmed dual-human attestation (EVIDENCE_AUDIT_V1). Feature coverage ≠ accuracy. Local ≠ process_split_authorized. Fixture preference ≠ human κ."

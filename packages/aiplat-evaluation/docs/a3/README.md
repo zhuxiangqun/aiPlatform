@@ -30,6 +30,7 @@
 | [`G2B_PREP.md`](./G2B_PREP.md) | G2b 第二标注者预备（30 条 + κ；`accuracy_claim=false`） |
 | [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | G2b 仲裁金标 + 模型 pass-rate（κ≠accuracy；claim 默认 false） |
 | [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |
+| [`LOCAL_CHAOS.md`](./LOCAL_CHAOS.md) | 本机 chaos 备份恢复（SQLite+可选 B4-S kill/restart；≠ staging） |
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞 staging；≠ authorize） |
 | [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) | B4-S 本机 Docker 预演（`environment=local`；≠ staging） |
 | [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) | B4-S 操作手册（local → 将来 staging 复用） |
@@ -47,6 +48,7 @@
 | `scripts/prod_live_baseline.sh` | 生产候选模型 live 基线 |
 | `scripts/s1_prod_model_gate.sh` | 生产候选模型 S1 红队重跑 |
 | `scripts/b4s_local_rehearsal.sh` | B4-S 本机预演（PG backup/restore；≠ staging） |
+| `scripts/local_chaos_drill.sh` | 本机 chaos（crash/wipe/partial + 可选 PG kill；≠ authorize） |
 | `scripts/session_v1_gate.sh` | 多轮 session v1（5–8 轮） |
 | `scripts/preference_v0_report.py` | 人评偏好报告 / 双人 agreement |
 | `scripts/scorecard_v1_check.sh` | 记分卡诚实门禁（有 gap 禁止静默 5/5） |
