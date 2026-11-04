@@ -59,8 +59,8 @@ const PIPELINE: PipelineStage[] = [
     label: 'RAG 检索',
     sublabel: 'DomainRouter + CRAG + HallucinationTracker',
     metrics: [],
-    link: '/knowledge/library?tab=eval',
-    linkLabel: '查看质量',
+    link: '/eval?tab=knowledge',
+    linkLabel: '打开评测中心',
   },
   {
     key: 'feedback',

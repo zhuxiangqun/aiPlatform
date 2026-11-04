@@ -105,9 +105,9 @@ export default function EvalAgentsPanel({
       </section>
 
       <p className="text-sm text-gray-400">
-        承接旧页 <code>/diagnostics/eval</code>。需要原布局可{' '}
+        主入口为 <code>/eval</code>。<code>/diagnostics/eval</code> 已 redirect 到本页；仅排障可{' '}
         <Link className="text-blue-400 hover:underline" to="/diagnostics/eval?legacy=1">
-          打开 legacy
+          打开 legacy 布局
         </Link>
         。
       </p>

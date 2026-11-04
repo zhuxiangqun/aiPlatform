@@ -1,6 +1,6 @@
 /**
- * E6 soft redirect: /diagnostics/eval → /eval?tab=agents
- * Escape hatch: ?legacy=1 keeps the old dashboard.
+ * Compat redirect: /diagnostics/eval → /eval?tab=agents
+ * Forwards ?agent=…; escape hatch ?legacy=1 keeps the old dashboard.
  */
 import { Navigate, useSearchParams } from 'react-router-dom';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
@@ -10,7 +10,11 @@ const DiagnosticsEvalEntry: React.FC = () => {
   if (params.get('legacy') === '1') {
     return <DiagnosticsEvalDashboard />;
   }
-  return <Navigate to="/eval?tab=agents" replace />;
+  const next = new URLSearchParams();
+  next.set('tab', 'agents');
+  const agent = (params.get('agent') || '').trim();
+  if (agent) next.set('agent', agent);
+  return <Navigate to={`/eval?${next.toString()}`} replace />;
 };
 
 export default DiagnosticsEvalEntry;

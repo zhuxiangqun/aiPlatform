@@ -222,7 +222,7 @@ const router = createBrowserRouter([
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'platform/kb', element: <Navigate to="/knowledge/library?tab=documents" replace /> },
       { path: 'platform/kb/wiki', element: <Navigate to="/knowledge/library?tab=wiki" replace /> },
-      { path: 'platform/kb/eval', element: <Navigate to="/knowledge/library?tab=eval" replace /> },
+      { path: 'platform/kb/eval', element: <Navigate to="/eval?tab=knowledge" replace /> },
       { path: 'platform/kb/vault', element: <Navigate to="/knowledge/library?tab=vault" replace /> },
       { path: 'platform/kb/health', element: <Navigate to="/knowledge/library?tab=health" replace /> },
       { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },

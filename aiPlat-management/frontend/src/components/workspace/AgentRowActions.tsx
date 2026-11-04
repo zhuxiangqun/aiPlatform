@@ -169,14 +169,14 @@ export const AgentRowActions: React.FC<Props> = ({
             <span className="text-gray-500 pl-5">执行记录</span>
           </button>
           <a
-            href={`/diagnostics/eval?agent=${encodeURIComponent(agent.id)}`}
+            href={`/eval?tab=agents&agent=${encodeURIComponent(agent.id)}`}
             className={itemCls}
             onClick={() => close()}
           >
             <span className="text-gray-200 flex items-center gap-1.5">
-              <BarChart3 className="w-3.5 h-3.5" /> 评估脚手架
+              <BarChart3 className="w-3.5 h-3.5" /> 评测中心
             </span>
-            <span className="text-gray-500 pl-5">生成/查看 scoring_dimensions</span>
+            <span className="text-gray-500 pl-5">Agents · scoring_dimensions</span>
           </a>
           {(st === 'draft' || st === 'enabled') && (
             <button

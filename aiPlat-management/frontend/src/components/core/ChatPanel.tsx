@@ -148,7 +148,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ agent, onClose }) => {
                         <span className={`text-[10px] font-semibold ${msg.eval.score >= 90 ? 'text-green-400' : msg.eval.score >= 75 ? 'text-blue-400' : msg.eval.score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
                           📊 {msg.eval.score} {msg.eval.grade}
                         </span>
-                        <a href={`/diagnostics/eval?agent=${agent?.id || ''}`} className="text-[10px] text-blue-400 hover:underline">详情</a>
+                        <a href={`/eval?tab=agents&agent=${encodeURIComponent(agent?.id || '')}`} className="text-[10px] text-blue-400 hover:underline">详情</a>
                       </>
                     )}
                   </div>
