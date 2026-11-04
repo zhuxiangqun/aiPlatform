@@ -13,6 +13,7 @@ import EvalReportsPanel from './EvalReportsPanel';
 import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
 import EvalSetsPanel from './EvalSetsPanel';
+import EvalSettingsPanel from './EvalSettingsPanel';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
   shouldShowExecutionPlaneBanner,
@@ -355,26 +356,7 @@ const EvalCenter: React.FC = () => {
         </section>
       )}
 
-      {tab === 'settings' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
-          <h2 className="font-medium">设置</h2>
-          <ul className="list-disc pl-5 text-gray-400 space-y-1">
-            <li>tenant 默认 <code>{TENANT}</code>（G2a lock 轨）</li>
-            <li>judge / 阈值写操作仍走 API；UI 不暴露 accuracy 开关</li>
-            <li>
-              G2c（可选）：同人二次盲测 → <code>intra_rater_kappa</code> / self-consistency；
-              <strong className="text-amber-200/90"> ≠ accuracy</strong>，≠ 第二标注者 / G2b
-            </li>
-            <li>
-              G2c API：
-              <code className="text-blue-300 ml-1">GET …/store/g2c-status</code>、
-              <code className="text-blue-300">POST …/store/g2c-retest</code>、
-              <code className="text-blue-300">POST …/store/g2c-report</code>
-            </li>
-            <li>G2b / 外部 gate：已 defer，未解冻</li>
-          </ul>
-        </section>
-      )}
+      {tab === 'settings' && <EvalSettingsPanel tenantId={TENANT} />}
     </div>
   );
 };
