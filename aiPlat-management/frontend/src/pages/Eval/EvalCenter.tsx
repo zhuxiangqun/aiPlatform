@@ -8,6 +8,7 @@ import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
+import EvalRunPanel from './EvalRunPanel';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
   shouldShowExecutionPlaneBanner,
@@ -383,38 +384,38 @@ const EvalCenter: React.FC = () => {
       )}
 
       {tab === 'knowledge' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
-          <h2 className="font-medium">Knowledge 评测</h2>
-          {showExecBanner ? (
-            <p className="text-sky-200/90">{EXECUTION_NOT_MIGRATED_COPY}</p>
-          ) : null}
-          <p className="text-gray-400">迁移入口：知识库 eval tab（只读可用；执行类等 B2）。</p>
-          <Link className="text-blue-400 hover:underline" to="/knowledge/library?tab=eval">
-            打开 Knowledge · eval
-          </Link>
+        <section className="space-y-3 text-sm">
+          <EvalRunPanel kind="kb_rag" upstreamMode={upstreamMode} tenantId={TENANT} />
+          <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2">
+            <p className="text-gray-400">完整知识库 eval UI 仍可用：</p>
+            <Link className="text-blue-400 hover:underline" to="/knowledge/library?tab=eval">
+              打开 Knowledge · eval
+            </Link>
+          </div>
         </section>
       )}
 
       {tab === 'prompts' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
-          <h2 className="font-medium">Prompt 评测</h2>
-          {showExecBanner ? (
-            <p className="text-sky-200/90">{EXECUTION_NOT_MIGRATED_COPY}</p>
-          ) : null}
-          <p className="text-gray-400">承接 Prompt eval 能力入口（动态 run → B2）。</p>
-          <Link className="text-blue-400 hover:underline" to="/core/prompts">
-            打开 Prompts
-          </Link>
+        <section className="space-y-3 text-sm">
+          <EvalRunPanel kind="prompt_eval" upstreamMode={upstreamMode} tenantId={TENANT} />
+          <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2">
+            <p className="text-gray-400">模板管理入口：</p>
+            <Link className="text-blue-400 hover:underline" to="/core/prompts">
+              打开 Prompts
+            </Link>
+          </div>
         </section>
       )}
 
       {tab === 'code-review' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm space-y-2">
-          <h2 className="font-medium">code-review-gold</h2>
-          <p className="text-gray-400">Governance 金标评估入口。</p>
-          <Link className="text-blue-400 hover:underline" to="/governance">
-            打开 Governance
-          </Link>
+        <section className="space-y-3 text-sm">
+          <EvalRunPanel kind="code_review" upstreamMode={upstreamMode} tenantId={TENANT} />
+          <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2">
+            <p className="text-gray-400">值班板一键 Gold 仍在 Governance：</p>
+            <Link className="text-blue-400 hover:underline" to="/governance">
+              打开 Governance
+            </Link>
+          </div>
         </section>
       )}
 

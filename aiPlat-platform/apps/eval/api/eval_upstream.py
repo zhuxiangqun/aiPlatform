@@ -100,4 +100,9 @@ def _probe_paths() -> Tuple[str, ...]:
         "/store/healthz",
         "/store/sets",
         "/store/reports",
+        "/jobs/{job_id}",
+        "/jobs/{job_id}/cancel",
+        "/code-review-gold/run",
+        "/prompts/eval/runs",
+        "/kb-eval/run",
     )
