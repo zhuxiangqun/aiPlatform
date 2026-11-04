@@ -1,7 +1,7 @@
 /**
  * UI-6 — Agents tab: skill-eval suites strip + diagnostics dashboard embed.
  * Dynamic suite run still package-plane / B2; cohost list is read-only.
- * Canonical entry: /eval?tab=agents (old /diagnostics/eval only redirects here).
+ * Canonical entry: /eval?tab=agents only (no /diagnostics/eval route).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';

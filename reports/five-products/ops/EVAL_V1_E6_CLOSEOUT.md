@@ -11,7 +11,7 @@
 | 项 | 结果 |
 |---|---|
 | `/eval` | `EvalCenter` 多 tab（总览/集/复核/门禁/报告/agents/…） |
-| Soft redirect | `/diagnostics/eval` → `/eval?tab=agents`（Agents UI 仅 EvalCenter 内嵌；无独立旧页） |
+| Entry | 仅 `/eval`；`/diagnostics/eval` 路由已删除（Agents UI 仅 EvalCenter 内嵌） |
 | 诚实横幅 | `accuracy_claim=false` · κ=null · local gate ≠ 外部 |
 | 菜单 | 「评测中心」（去 Preview 后缀） |
 | G2b / A3 | 未开 |

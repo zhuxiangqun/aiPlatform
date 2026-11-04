@@ -169,7 +169,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 | Shield | 变更控制 | `/diagnostics/change-control` | 变更请求生命周期 |
 | Shield | 安全监控 | `/diagnostics/safety` | 对话危机检测 |
 | Search | LLM 代码审查 | `/diagnostics/llm-review` | DeepSeek 深度代码审查 |
-| BarChart3 | 评测中心 | `/eval` | 统一评测入口（旧 `/diagnostics/eval` redirect） |
+| BarChart3 | 评测中心 | `/eval` | 唯一评测入口 |
 
 **📋 审批管理**：
 | 图标 | 名称 | 路由 | 说明 |
@@ -972,9 +972,9 @@ Spec 是 FDE 操作系统的核心产物——从碎石路（临时决策）升�
 
 ---
 
-### 12.4 评测中心（`/eval`；旧 `/diagnostics/eval` → `/eval?tab=agents`）
+### 12.4 评测中心（`/eval`）
 
-**功能**：统一评测入口 + Agents tab 六维质量评分。
+**功能**：统一评测入口（唯一路由）+ Agents tab 六维质量评分。
 
 **评分维度**：任务完成率、工具调用质量、步骤效率、错误恢复、安全边界、成本效率
 

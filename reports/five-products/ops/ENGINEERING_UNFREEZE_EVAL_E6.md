@@ -45,7 +45,7 @@
 | 项 | 门槛 |
 |---|---|
 | `/eval` | 多 tab 可导航；诚实横幅可见 |
-| Redirect | `/diagnostics/eval` → `/eval?tab=agents`（Agents UI 仅在评测中心；无独立旧页） |
+| Entry | 仅 `/eval`；旧 `/diagnostics/eval` 路由已删除（Agents UI 仅在评测中心） |
 | API | 总览/集/复核/门禁读 canonical store |
 | Accuracy | UI 仍禁止宣称 |
 | Closeout | `EVAL_V1_E6_CLOSEOUT.md` + Outcome |
