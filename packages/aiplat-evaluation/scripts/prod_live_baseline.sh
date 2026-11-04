@@ -40,6 +40,9 @@ echo "== prod live baseline model=${AIPLAT_EVAL_LLM_MODEL} repeats=${AIPLAT_EVAL
 bash "$ROOT/scripts/live_llm_smoke.sh"
 
 # Rename/annotate latest smoke evidence as prod-live for clarity
+AGG_OUT="${AIPLAT_EVAL_PROD_LIVE_AGGREGATE:-$ROOT/docs/a3/evidence/prod_live_aggregate.v1.json}"
+export AIPLAT_EVAL_PROD_LIVE_AGGREGATE="$AGG_OUT"
+DRILL_PATH="$(
 python3 - <<'PY'
 import json, os
 from pathlib import Path
@@ -60,16 +63,29 @@ data["honesty"] = (
 )
 dst = evid / f"local-eval-prod-live-{stamp}.json"
 dst.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+agg = Path(os.environ["AIPLAT_EVAL_PROD_LIVE_AGGREGATE"])
 print(json.dumps({
     "gate": "ok" if data.get("gate_ok") else "fail",
     "evidence": str(dst),
     "source_smoke": str(src),
     "prod_model": data.get("prod_model"),
     "task_count": data.get("task_count"),
+    "repeats": data.get("repeats"),
+    "llm_ok_n": data.get("llm_ok_n"),
+    "aggregate": str(agg),
     "accuracy_claim": False,
-}, ensure_ascii=False))
-raise SystemExit(0 if data.get("gate_ok") else 1)
+}, ensure_ascii=False), flush=True)
+if not data.get("gate_ok"):
+    raise SystemExit(1)
+print(str(dst), flush=True)
 PY
+)"
+# Last line of python output is the drill path; JSON summary is previous line(s).
+DRILL_PATH="$(printf '%s\n' "$DRILL_PATH" | tail -n 1)"
+
+python3 "$ROOT/scripts/prod_live_summarize.py" \
+  --drill "$DRILL_PATH" \
+  --out "$AGG_OUT"
 
 bash "$ROOT/scripts/a3_split_authorize.sh" status >/dev/null
 echo "prod live baseline done (authorize=false; accuracy_claim=false)"

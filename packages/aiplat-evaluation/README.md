@@ -24,6 +24,7 @@ Evaluation Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（
 | **microVM Linux track** | [`docs/a3/MICROVM_LINUX_TRACK.md`](./docs/a3/MICROVM_LINUX_TRACK.md) + `scripts/microvm_linux_track_gate.sh` | KVM host admit + host allowlist CLI; Darwin ineligible |
 | **microVM guest_boot authorize** | [`docs/a3/MICROVM_GUEST_BOOT.md`](./docs/a3/MICROVM_GUEST_BOOT.md) + `scripts/microvm_guest_boot_gate.sh` | GUEST_BOOT+KERNEL/ROOTFS+InstanceStart; ≠ process_split; Darwin ineligible |
 | **microVM Linux track v1** | [`docs/a3/MICROVM_LINUX_TRACK.md`](./docs/a3/MICROVM_LINUX_TRACK.md) + `scripts/microvm_linux_track_gate.sh` | KVM host admit + host allowlist CLI; guest_boot deferred; Darwin ineligible |
+| **Prod live 25×3** | [`docs/a3/PROD_LIVE.md`](./docs/a3/PROD_LIVE.md) + `scripts/prod_live_baseline.sh` | candidate model latency/cost; accuracy_claim=false |
 | **G2b accuracy closeout** | [`docs/a3/G2B_ACCURACY_CLOSEOUT.md`](./docs/a3/G2B_ACCURACY_CLOSEOUT.md) + `scripts/g2b_accuracy_closeout_gate.sh` | adjudicated gold + pass-rate/CI; accuracy_claim=false until attestation |
 
 | **B1/B2 contract converge** | `bash scripts/b12_contract_gate.sh` | error body + dual-point + temporary_proxy=0; see [`docs/a3/CONTRACT_LOCAL.md`](./docs/a3/CONTRACT_LOCAL.md) |

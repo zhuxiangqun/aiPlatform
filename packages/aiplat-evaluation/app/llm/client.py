@@ -243,7 +243,7 @@ def _http_complete(
                 temperature=temperature,
                 seed=seed,
                 timeout_s=timeout,
-                detail=f"provider_error:{type(exc).__name__}",
+                detail=f"provider_error:{type(exc).__name__}:{exc}"[:200],
             ),
         }
 
