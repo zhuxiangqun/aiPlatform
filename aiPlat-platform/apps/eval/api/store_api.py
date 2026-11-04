@@ -366,6 +366,17 @@ async def get_preference_status(
     return {"data": eval_preference_pack_status(tenant_id=tenant_id)}
 
 
+@router.get("/scorecard-status", response_model=ItemResponse)
+async def get_scorecard_status(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Scorecard honesty status — accuracy_claim / authorize stay false."""
+    from core.api.core_facade import eval_scorecard_status
+
+    return {"data": eval_scorecard_status(tenant_id=tenant_id)}
+
+
 @router.get("/g2c-status", response_model=ItemResponse)
 async def get_g2c_status(
     tenant_id: str = "eval-v1",
