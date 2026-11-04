@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T13:22:00+08:00",
+  "reviewed_at": "2026-11-04T13:40:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "36066b60b0db9d89a763d5cd327fccaf2d3404e1",
-  "diff_sha256": "9421c0ffa3bc3bc85986c450c7d3bed7cccc6be6ad99dddabf0c58a7bdf9f714",
-  "head_sha": "5a7d858aa02b4c0b71fd6a0e879cb48eb8aa4a1a",
+  "merge_base": "1f4f590332e55544bfc07de52097a8d510125f39",
+  "diff_sha256": "03bf9d9d8fd6b204df1d1e5aa9be2cf8ab98611fcfece6134a594410bdc4ff95",
+  "head_sha": "85ce30777af764afc3c81832515fb72fb420c1cc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unblock: system contract bump for harness gate + whitepaper re-sync (prod-live)."
+  "note": "caps_count sync after local_chaos provides merge; accuracy_claim false."
 }

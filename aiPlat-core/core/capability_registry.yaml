@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1743
+total_capabilities: 1745
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 458
+    caps_count: 460
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1636,6 +1636,14 @@ domains:
         type: "function"
         signature: "summarize_prod_live(drill)→dict"
         module: "packages/aiplat-evaluation/scripts/prod_live_summarize.py"
+      - symbol: "aiplat_eval_local_chaos_drill"
+        type: "script"
+        signature: "packages/aiplat-evaluation/scripts/local_chaos_drill.sh"
+        module: "packages/aiplat-evaluation/scripts/local_chaos_drill.sh"
+      - symbol: "run_chaos"
+        type: "function"
+        signature: "run_chaos(work)→dict"
+        module: "packages/aiplat-evaluation/scripts/local_chaos_sqlite.py"
       - symbol: "assert_error_envelope"
         type: "function"
         signature: "assert_error_envelope(payload)→dict"

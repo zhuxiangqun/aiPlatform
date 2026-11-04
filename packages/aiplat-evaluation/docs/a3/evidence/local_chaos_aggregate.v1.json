@@ -1,0 +1,16 @@
+{
+  "schema": "eval.local_chaos.aggregate.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "not_staging_evidence": true,
+  "process_split_authorized": false,
+  "gate_ok": true,
+  "mode": "both",
+  "scenarios_ok": 5,
+  "scenarios_n": 5,
+  "source_drill": "docs/a3/drills/local-eval-chaos-20261104T013050Z.json",
+  "honesty": "local chaos backup/restore — kill/restart + wipe/restore; ≠ staging; ≠ PITR; ≠ process_split; accuracy_claim=false",
+  "recorded_at": "20261104T013050Z"
+}

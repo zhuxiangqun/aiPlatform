@@ -53,6 +53,12 @@
       "prod_model": "qwen2.5-coder:7b",
       "script": "scripts/prod_live_baseline.sh",
       "gate_note": "latency/cost baseline; accuracy_claim=false"
+    },
+    "local_chaos": {
+      "mode": "both",
+      "scenarios_ok": 5,
+      "script": "scripts/local_chaos_drill.sh",
+      "gate_note": "sqlite+b4s kill/restore; accuracy_claim=false; not staging"
     }
   },
   "tracked_aggregates": [
@@ -95,6 +101,13 @@
       "sha256": "7b14ad190f73149aa5b3a64f9b3d7636102b64e5cf600c3adef00112821117e6",
       "required_for_feature_5": false,
       "note": "prod candidate 25×3 latency/cost; accuracy_claim=false"
+    },
+    {
+      "id": "local_chaos_aggregate",
+      "path": "docs/a3/evidence/local_chaos_aggregate.v1.json",
+      "sha256": "8179433332bf7f45a2a3304158846ab9f5acab34a81c41e4e1c8df5a277f7bd9",
+      "required_for_feature_5": false,
+      "note": "local chaos backup/restore; claim stays false; ≠ staging"
     }
   ],
   "local_worksheets": [

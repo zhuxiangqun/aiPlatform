@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2667
+total_capabilities: 2670
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,8 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| run_chaos | `packages/aiplat-evaluation/scripts/local_chaos_sqlite.py` | ✅ | 自动同步 | 已合入 |
+| aiplat_eval_local_chaos_drill | `packages/aiplat-evaluation/scripts/local_chaos_drill.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_p1_canonical_gate | `packages/aiplat-evaluation/scripts/p1_canonical_gate.sh` | ✅ | 自动同步 | 已合入 |
 | aiplat_eval_b12_contract_gate | `packages/aiplat-evaluation/scripts/b12_contract_gate.sh` | ✅ | 自动同步 | 已合入 |
 | count_temporary_proxy_markers | `packages/aiplat-evaluation/app/contract/b12.py` | ✅ | 自动同步 | 已合入 |
@@ -2711,6 +2713,7 @@ scan_hash: 8f9548ec24f4
 | Evaluation prod live 25×3 baseline | `packages/aiplat-evaluation/scripts/prod_live_baseline.sh` + `prod_live_summarize.py` + `docs/a3/PROD_LIVE.md` | ✅ | qwen2.5-coder:7b 25×3 llm_ok_n=75；latency/cost aggregate；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | aiplat_eval_prod_live_baseline | `packages/aiplat-evaluation/scripts/prod_live_baseline.sh` | ✅ | 25×3 live 基线脚本 | 本批 |
 | summarize_prod_live | `packages/aiplat-evaluation/scripts/prod_live_summarize.py` | ✅ | drill→aggregate | 本批 |
+| Evaluation local chaos / backup-restore | `packages/aiplat-evaluation/scripts/local_chaos_drill.sh` + `local_chaos_sqlite.py` + `docs/a3/LOCAL_CHAOS.md` | ✅ | SQLite crash/wipe/partial + B4-S PG kill/restart；scenarios_ok=5；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | wilson_ci | `packages/aiplat-evaluation/app/scoring/g2b_accuracy.py` | ✅ | Wilson CI | 本批 |
 | build_gold | `packages/aiplat-evaluation/app/scoring/g2b_accuracy.py` | ✅ | adjudicated gold | 本批 |
 | aiplat_eval_g2b_accuracy_closeout_gate | `packages/aiplat-evaluation/scripts/g2b_accuracy_closeout_gate.sh` | ✅ | accuracy closeout 门禁 | 本批 |
@@ -3566,7 +3569,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 382 | 1 | 383 |
+| Harness 执行引擎 | 384 | 1 | 385 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
@@ -3579,7 +3582,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 227 | 0 | 227 |
+| 评估系统 | 228 | 0 | 228 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3611,7 +3614,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2657** | **10** | **2667** |
+| **总计** | **2660** | **10** | **2670** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
