@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T19:56:00+08:00",
+  "reviewed_at": "2026-11-04T20:22:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "66f30347e4ac8e2ea3e9613f7d5e5afdcc7405ed",
-  "diff_sha256": "85999c7afe4c66a5412c30ddc054dc6426ce2607de8022fd9fe4fa1658a8c8d4",
-  "head_sha": "cf92ebde2b7bd5818723185cc1738854f6573f20",
+  "merge_base": "cbc477d79c84f5a21328c283adbf9c1c511cc3ff",
+  "diff_sha256": "9211b0efe1a3857a39778a142525b278bed8a2426bf187f7f01ac02d42f018ce",
+  "head_sha": "b9cd3d780df5d81c98ff84e14c5b5e4b821b3eff",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebased onto #586; G2b facilitation-only; accuracy_claim hard-false; pending_dual_human until humans label 31-100."
+  "note": "Preference facilitation-only; accuracy_claim hard-false; agreement/κ ≠ accuracy; fixture solo ≠ human."
 }
