@@ -212,6 +212,142 @@ def apply_from_outputs_file(pack_dir: Path) -> Dict[str, Any]:
     return result
 
 
+def generate_human_worksheet_pack(
+    *,
+    out_dir: Path | None = None,
+    tasks_path: Path | None = None,
+    pairs_path: Path | None = None,
+    skip_g2b: bool = False,
+    skip_preference: bool = False,
+) -> Dict[str, Any]:
+    """Write blank G2b/preference worksheets; accuracy_claim stays false."""
+    root = Path(__file__).resolve().parents[1]
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out = out_dir or (root / "docs/a3/human_pack" / stamp)
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True, exist_ok=True)
+
+    tasks_path = tasks_path or (root / "docs/a3/g2b_tasks.v0.json")
+    pairs_path = pairs_path or (root / "docs/a3/preference_pairs.v0.json")
+
+    manifest: Dict[str, Any] = {
+        "schema": "eval.human_worksheet_pack.v0",
+        "accuracy_claim": False,
+        "process_split_authorized": False,
+        "recorded_at": stamp,
+        "out_dir": str(out),
+        "files": [],
+        "next_steps": [
+            "1) Facilitator: fill g2b_facilitator.json model_output (same model for all tasks).",
+            "2) Copy those model_output values into g2b_annotator_a.json and g2b_annotator_b.json.",
+            "3) Send only *_annotator_*.json to two different humans (blind).",
+            "4) After return: run g2b_kappa.py + preference_v0_gate.sh with AIPLAT_EVAL_PREF_A/B.",
+        ],
+        "honesty": (
+            "Blank pack only — not human κ until two annotators fill and gates run; "
+            "never claim accuracy_claim=true from κ alone"
+        ),
+    }
+
+    if not skip_g2b:
+        pack = _load(tasks_path)
+        tasks = [t for t in (pack.get("tasks") or []) if isinstance(t, dict)]
+        target_n = int(pack.get("target_n") or 30)
+        if len(tasks) < target_n:
+            raise ValueError(f"g2b tasks need ≥{target_n} (target_n), got {len(tasks)}")
+        if len(tasks) < 30:
+            raise ValueError(f"g2b tasks need ≥30, got {len(tasks)}")
+        fac = out / "g2b_facilitator.json"
+        a = out / "g2b_annotator_a.json"
+        b = out / "g2b_annotator_b.json"
+        write_json(fac, build_g2b_facilitator(tasks))
+        write_json(a, build_g2b_annotator(tasks, annotator_id="A"))
+        write_json(b, build_g2b_annotator(tasks, annotator_id="B"))
+        outputs_stub = {str(t.get("id")): "" for t in tasks if t.get("id")}
+        outputs_path = out / "model_outputs.json"
+        write_json(outputs_path, outputs_stub)
+        readme_g2b = out / "G2B_SEND.md"
+        readme_g2b.write_text(
+            "\n".join(
+                [
+                    "# G2b send checklist",
+                    "",
+                    "1. Edit **`model_outputs.json`** only (flat `{task_id: answer}`).",
+                    "   Do **not** hand-paste multi-line answers into `g2b_facilitator.json`.",
+                    "2. Sync:",
+                    "",
+                    "```bash",
+                    "python3 packages/aiplat-evaluation/scripts/human_worksheet_pack.py \\",
+                    f"  --from-outputs {out}",
+                    "```",
+                    "",
+                    "- **Send to annotators**: `g2b_annotator_a.json`, `g2b_annotator_b.json` only",
+                    "- **Keep private**: `g2b_facilitator.json` / `model_outputs.json` (gold hints)",
+                    "- After fill: `scripts/g2b_kappa.py --a … --b … --tasks docs/a3/g2b_tasks.v0.json`",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        manifest["files"].extend(
+            [
+                str(fac.name),
+                str(a.name),
+                str(b.name),
+                str(outputs_path.name),
+                str(readme_g2b.name),
+            ]
+        )
+        manifest["g2b_task_n"] = len(tasks)
+
+    if not skip_preference:
+        pack = _load(pairs_path)
+        pairs = [p for p in (pack.get("pairs") or []) if isinstance(p, dict)]
+        if len(pairs) < 30:
+            raise ValueError(f"preference pairs need ≥30, got {len(pairs)}")
+        a = out / "pref_annotator_a.json"
+        b = out / "pref_annotator_b.json"
+        write_json(a, build_preference_annotator(pairs, annotator_id="A"))
+        write_json(b, build_preference_annotator(pairs, annotator_id="B"))
+        readme_p = out / "PREFERENCE_SEND.md"
+        readme_p.write_text(
+            "\n".join(
+                [
+                    "# Preference send checklist",
+                    "",
+                    "- Send `pref_annotator_a.json` / `pref_annotator_b.json` to two humans",
+                    "- Each sets `preferred` to `a` | `b` | `tie` (replace null)",
+                    "- Gate:",
+                    "",
+                    "```bash",
+                    "AIPLAT_EVAL_PREF_A=…/pref_annotator_a.json \\",
+                    "AIPLAT_EVAL_PREF_B=…/pref_annotator_b.json \\",
+                    "  bash packages/aiplat-evaluation/scripts/preference_v0_gate.sh",
+                    "```",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        manifest["files"].extend([str(a.name), str(b.name), str(readme_p.name)])
+        manifest["preference_pair_n"] = len(pairs)
+
+    man_path = out / "MANIFEST.json"
+    write_json(man_path, manifest)
+    return {
+        "gate": "ok",
+        "stamp": stamp,
+        "out_dir": str(out),
+        "files": list(manifest["files"]),
+        "g2b_task_n": manifest.get("g2b_task_n"),
+        "preference_pair_n": manifest.get("preference_pair_n"),
+        "accuracy_claim": False,
+        "process_split_authorized": False,
+        "manifest": manifest,
+    }
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     ap = argparse.ArgumentParser(description="Generate G2b/preference blank worksheets for humans")
@@ -259,118 +395,22 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False))
         return 0
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out_dir = args.out or (root / "docs/a3/human_pack" / stamp)
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    manifest: Dict[str, Any] = {
-        "schema": "eval.human_worksheet_pack.v0",
-        "accuracy_claim": False,
-        "process_split_authorized": False,
-        "recorded_at": stamp,
-        "out_dir": str(out_dir),
-        "files": [],
-        "next_steps": [
-            "1) Facilitator: fill g2b_facilitator.json model_output (same model for all tasks).",
-            "2) Copy those model_output values into g2b_annotator_a.json and g2b_annotator_b.json.",
-            "3) Send only *_annotator_*.json to two different humans (blind).",
-            "4) After return: run g2b_kappa.py + preference_v0_gate.sh with AIPLAT_EVAL_PREF_A/B.",
-        ],
-        "honesty": (
-            "Blank pack only — not human κ until two annotators fill and gates run; "
-            "never claim accuracy_claim=true from κ alone"
-        ),
-    }
-
-    if not args.skip_g2b:
-        pack = _load(args.tasks)
-        tasks = [t for t in (pack.get("tasks") or []) if isinstance(t, dict)]
-        target_n = int(pack.get("target_n") or 30)
-        if len(tasks) < target_n:
-            raise SystemExit(f"g2b tasks need ≥{target_n} (target_n), got {len(tasks)}")
-        if len(tasks) < 30:
-            raise SystemExit(f"g2b tasks need ≥30, got {len(tasks)}")
-        fac = out_dir / "g2b_facilitator.json"
-        a = out_dir / "g2b_annotator_a.json"
-        b = out_dir / "g2b_annotator_b.json"
-        write_json(fac, build_g2b_facilitator(tasks))
-        write_json(a, build_g2b_annotator(tasks, annotator_id="A"))
-        write_json(b, build_g2b_annotator(tasks, annotator_id="B"))
-        # Flat map — safe place to paste multi-line / JSON-looking model answers.
-        outputs_stub = {str(t.get("id")): "" for t in tasks if t.get("id")}
-        outputs_path = out_dir / "model_outputs.json"
-        write_json(outputs_path, outputs_stub)
-        readme_g2b = out_dir / "G2B_SEND.md"
-        readme_g2b.write_text(
-            "\n".join(
-                [
-                    "# G2b send checklist",
-                    "",
-                    "1. Edit **`model_outputs.json`** only (flat `{task_id: answer}`).",
-                    "   Do **not** hand-paste multi-line answers into `g2b_facilitator.json`.",
-                    "2. Sync:",
-                    "",
-                    "```bash",
-                    "python3 packages/aiplat-evaluation/scripts/human_worksheet_pack.py \\",
-                    f"  --from-outputs {out_dir}",
-                    "```",
-                    "",
-                    "- **Send to annotators**: `g2b_annotator_a.json`, `g2b_annotator_b.json` only",
-                    "- **Keep private**: `g2b_facilitator.json` / `model_outputs.json` (gold hints)",
-                    "- After fill: `scripts/g2b_kappa.py --a … --b … --tasks docs/a3/g2b_tasks.v0.json`",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
+    try:
+        result = generate_human_worksheet_pack(
+            out_dir=args.out,
+            tasks_path=args.tasks,
+            pairs_path=args.pairs,
+            skip_g2b=bool(args.skip_g2b),
+            skip_preference=bool(args.skip_preference),
         )
-        manifest["files"].extend(
-            [
-                str(fac.name),
-                str(a.name),
-                str(b.name),
-                str(outputs_path.name),
-                str(readme_g2b.name),
-            ]
+    except ValueError as e:
+        raise SystemExit(str(e)) from e
+    print(
+        json.dumps(
+            {"gate": "ok", "out_dir": result["out_dir"], "files": result["files"]},
+            ensure_ascii=False,
         )
-        manifest["g2b_task_n"] = len(tasks)
-
-    if not args.skip_preference:
-        pack = _load(args.pairs)
-        pairs = [p for p in (pack.get("pairs") or []) if isinstance(p, dict)]
-        if len(pairs) < 30:
-            raise SystemExit(f"preference pairs need ≥30, got {len(pairs)}")
-        a = out_dir / "pref_annotator_a.json"
-        b = out_dir / "pref_annotator_b.json"
-        write_json(a, build_preference_annotator(pairs, annotator_id="A"))
-        write_json(b, build_preference_annotator(pairs, annotator_id="B"))
-        readme_p = out_dir / "PREFERENCE_SEND.md"
-        readme_p.write_text(
-            "\n".join(
-                [
-                    "# Preference send checklist",
-                    "",
-                    "- Send `pref_annotator_a.json` / `pref_annotator_b.json` to two humans",
-                    "- Each sets `preferred` to `a` | `b` | `tie` (replace null)",
-                    "- Gate:",
-                    "",
-                    "```bash",
-                    "AIPLAT_EVAL_PREF_A=…/pref_annotator_a.json \\",
-                    "AIPLAT_EVAL_PREF_B=…/pref_annotator_b.json \\",
-                    "  bash packages/aiplat-evaluation/scripts/preference_v0_gate.sh",
-                    "```",
-                    "",
-                ]
-            ),
-            encoding="utf-8",
-        )
-        manifest["files"].extend([str(a.name), str(b.name), str(readme_p.name)])
-        manifest["preference_pair_n"] = len(pairs)
-
-    man_path = out_dir / "MANIFEST.json"
-    write_json(man_path, manifest)
-    print(json.dumps({"gate": "ok", "out_dir": str(out_dir), "files": manifest["files"]}, ensure_ascii=False))
+    )
     return 0
 
 

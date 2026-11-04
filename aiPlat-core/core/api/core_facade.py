@@ -6259,6 +6259,47 @@ def eval_evidence_audit_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return evidence_audit_status(tenant_id=tenant_id)
 
 
+def eval_worksheet_pack_status(
+    *, tenant_id: str = "eval-v1", limit: int = 20
+) -> Dict[str, Any]:
+    """List human worksheet packs (facilitation; accuracy_claim stays false)."""
+    from core.apps.eval.service.worksheet_pack import worksheet_pack_status
+
+    return worksheet_pack_status(tenant_id=tenant_id, limit=limit)
+
+
+def eval_worksheet_pack_generate(
+    *,
+    tenant_id: str = "eval-v1",
+    skip_g2b: bool = False,
+    skip_preference: bool = False,
+) -> Dict[str, Any]:
+    """Generate blank human worksheets (accuracy_claim stays false)."""
+    from core.apps.eval.service.worksheet_pack import worksheet_pack_generate
+
+    return worksheet_pack_generate(
+        tenant_id=tenant_id,
+        skip_g2b=skip_g2b,
+        skip_preference=skip_preference,
+    )
+
+
+def eval_worksheet_pack_file(
+    stamp: str,
+    filename: str,
+    *,
+    tenant_id: str = "eval-v1",
+) -> Dict[str, Any]:
+    """Read one worksheet pack file (text); accuracy_claim stays false."""
+    from core.apps.eval.service.worksheet_pack import worksheet_pack_file
+
+    meta, text = worksheet_pack_file(stamp, filename, tenant_id=tenant_id)
+    if not meta.get("ok"):
+        return meta
+    meta["content"] = text
+    return meta
+
+
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2c import g2c_status
 
