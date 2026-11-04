@@ -61,6 +61,16 @@ def test_import_code_review_gold_from_workspace_seeds(tmp_path):
     assert any(t["id"].startswith("crg:") for t in tasks)
 
 
+def test_eval_store_list_reports_newest_first(tmp_path):
+    db = tmp_path / "eval.sqlite3"
+    store = EvalStore(db_path=db)
+    a = store.create_report(run_ids=["r1"], metrics={"n": 1})
+    b = store.create_report(run_ids=["r2"], metrics={"n": 2})
+    rows = store.list_reports(limit=10)
+    assert [r["id"] for r in rows[:2]] == [b["id"], a["id"]]
+    assert store.get_report(a["id"])["metrics"]["n"] == 1
+
+
 def test_eval_store_schema_file_exists():
     root = Path(__file__).resolve().parents[4]
     pkg = root / "packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json"

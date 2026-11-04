@@ -701,6 +701,27 @@ class EvalStore:
             "created_at": row["created_at"],
         }
 
+    def list_reports(self, *, limit: int = 50) -> List[Dict[str, Any]]:
+        """Newest-first eval_reports rows (UI-2 / store list)."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM eval_reports ORDER BY created_at DESC LIMIT ?",
+                (max(1, min(int(limit), 200)),),
+            ).fetchall()
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "id": row["id"],
+                    "run_ids": _loads(row["run_ids_json"], []),
+                    "metrics": _loads(row["metrics_json"]),
+                    "slices": _loads(row["slices_json"]),
+                    "failures": _loads(row["failures_json"], []),
+                    "created_at": row["created_at"],
+                }
+            )
+        return out
+
     # ── gates (E5) ────────────────────────────────────────
 
     def create_gate(

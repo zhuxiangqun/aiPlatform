@@ -6296,6 +6296,13 @@ def eval_get_report(report_id: str, *, tenant_id: str = "eval-v1") -> Optional[D
     return get_eval_store(tenant_id=tenant_id).get_report(report_id)
 
 
+def eval_list_reports(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    """List eval_reports newest-first (UI-2 Reports tab)."""
+    from core.apps.eval.service.store import get_eval_store
+
+    return get_eval_store(tenant_id=tenant_id).list_reports(limit=limit)
+
+
 # ── DIAGNOSIS_V1 C1 ───────────────────────────────────────
 
 

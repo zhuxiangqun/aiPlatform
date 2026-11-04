@@ -8,6 +8,7 @@ import { AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
+import EvalReportsPanel from './EvalReportsPanel';
 import EvalRunPanel from './EvalRunPanel';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
@@ -350,20 +351,7 @@ const EvalCenter: React.FC = () => {
         </section>
       )}
 
-      {tab === 'reports' && (
-        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2 text-sm">
-          <h2 className="font-medium">报告</h2>
-          <p className="text-gray-400">
-            按 report_id 拉取：
-            <code className="text-blue-300 ml-1">
-              GET /api/platform/apps/eval/store/reports/&#123;id&#125;
-            </code>
-          </p>
-          <p className="text-gray-500">
-            G2a 本地报告示例见运维记录（如 <code>rpt_c12dfe23ba70</code>）；本页不自动宣称 accuracy。
-          </p>
-        </section>
-      )}
+      {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
         <section className="space-y-3">
