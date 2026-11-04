@@ -292,9 +292,9 @@ const EvalCenter: React.FC = () => {
         <section className="space-y-3 text-sm">
           <EvalRunPanel kind="kb_rag" upstreamMode={upstreamMode} tenantId={TENANT} />
           <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2">
-            <p className="text-gray-400">完整知识库 eval UI 仍可用：</p>
+            <p className="text-gray-400">知识库管理（非评测主入口）：</p>
             <Link className="text-blue-400 hover:underline" to="/knowledge/library?tab=eval">
-              打开 Knowledge · eval
+              打开 Knowledge · library
             </Link>
           </div>
         </section>

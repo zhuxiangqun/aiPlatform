@@ -138,9 +138,11 @@ const AgentInsightPage: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => nav(`/diagnostics/eval?agent=${encodeURIComponent(agentId)}`)}
+              onClick={() =>
+                nav(`/eval?tab=agents&agent=${encodeURIComponent(agentId)}`)
+              }
             >
-              打开诊断评估页
+              打开评测中心
             </Button>
           </div>
           {evalSnap ? (

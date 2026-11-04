@@ -1,9 +1,9 @@
 /**
- * UI-6 — Agents tab: skill-eval suites strip + legacy diagnostics embed.
+ * UI-6 — Agents tab: skill-eval suites strip + diagnostics dashboard embed.
  * Dynamic suite run still package-plane / B2; cohost list is read-only.
+ * Canonical entry: /eval?tab=agents only (no /diagnostics/eval route).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '../../services';
 import DiagnosticsEvalDashboard from '../Diagnostics/EvalDashboard';
@@ -104,13 +104,6 @@ export default function EvalAgentsPanel({
         </p>
       </section>
 
-      <p className="text-sm text-gray-400">
-        承接旧页 <code>/diagnostics/eval</code>。需要原布局可{' '}
-        <Link className="text-blue-400 hover:underline" to="/diagnostics/eval?legacy=1">
-          打开 legacy
-        </Link>
-        。
-      </p>
       <DiagnosticsEvalDashboard />
     </div>
   );

@@ -352,7 +352,10 @@ const EvalDashboard: React.FC = () => {
                 ) : null}
               </div>
             ) : (
-              <div className="text-sm text-gray-500">输入或选择 agent_id 后显示脚手架状态（可直接打开 /diagnostics/eval?agent=qa_agent）。</div>
+              <div className="text-sm text-gray-500">
+                输入或选择 agent_id 后显示脚手架状态（主入口{' '}
+                <code className="text-gray-400">/eval?tab=agents&amp;agent=…</code>）。
+              </div>
             )}
           </CardContent>
         </Card>

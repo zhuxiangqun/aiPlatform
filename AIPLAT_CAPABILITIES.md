@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2704
+total_capabilities: 2705
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2634,7 +2634,8 @@ scan_hash: 8f9548ec24f4
 | Eval Gate v1 E5（EVAL_V1） | `core/apps/eval/service/gate_v1.py` + `POST …/store/gate-e5` + `GET …/store/gates` + schema `eval_gate.schema.json` | ✅ | failure taxonomy + pr/nightly/release local gate；seeded regression 检出；`gate_claim=false`/`accuracy_claim=false`（未达 G2a）；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval G2a lock + local gate claim（EVAL_V1） | `core/apps/eval/service/g2a.py` + `POST …/store/{lock-v0,gate-g2a,labels/*/adjudicate,review-queue/preannotate}` | ✅ | ≥30 单人 adjudicated → lock v0 → local `gate_claim`；`accuracy_claim=false` / κ=null（D5）；生成物适用：已接线（apps/eval） | 已合入 |
 | Eval G2c self-consistency（EVAL_V1） | `core/apps/eval/service/g2c.py` + CoreFacade `eval_g2c_*` + `GET/POST …/store/{g2c-status,g2c-retest-queue,g2c-retest,g2c-report}` | ✅ | 同人二次盲测 → `intra_rater_kappa` / agreement；`claim_kind=self_consistency`；`accuracy_claim=false`；≠ G2b / inter-annotator；生成物适用：已接线（apps/eval） | 本批 |
-| Eval Center `/eval` E6（EVAL_V1） | `pages/Eval/EvalCenter.tsx` + `DiagnosticsEvalEntry` soft redirect + route `/eval` + [`ENGINEERING_UNFREEZE_EVAL_E6.md`](reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E6.md) | ✅ | 多 tab 评测中心；旧 `/diagnostics/eval`→`/eval?tab=agents`；诚实横幅禁 accuracy；G2b 仍冻；生成物适用：不适用（管理端 UI） | 已合入 |
+| Eval Center `/eval` E6（EVAL_V1） | `pages/Eval/EvalCenter.tsx` + route `/eval` + [`ENGINEERING_UNFREEZE_EVAL_E6.md`](reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_E6.md) | ✅ | 多 tab 评测中心；菜单唯一「评测中心」；诚实横幅禁 accuracy；生成物适用：不适用（管理端 UI） | 已合入 |
+| Eval entry consolidate | `pageManifest.ts` + `App.tsx` + 交叉链接 | ✅ | 菜单仅「评测中心」`/eval`；删除 `/diagnostics/eval` / `/platform/kb/eval` 路由（硬切，无 redirect）；Agents UI 只在 EvalCenter；生成物适用：不适用（管理端导航） | 本批 |
 | Eval D2/D3 local closeout E7（EVAL_V1） | `packages/aiplat-evaluation` d2/d3 scripts + [`EVAL_V1_E7_CLOSEOUT.md`](reports/five-products/ops/EVAL_V1_E7_CLOSEOUT.md) | ✅ | D2 closeout + D3 UAT dry-run；`process_split=false`；accuracy 仍禁；生成物适用：不适用（平台共宿打包） | 已合入 |
 | Diagnosis Service C1–C3 D1c+D2 pack（DIAGNOSIS_V1） | `core/apps/diagnosis/service/*` + CoreFacade `diagnosis_*` + `/api/platform/apps/diagnosis` + `/diagnosis` UI + `packages/aiplat-diagnosis/`（fixtures + D1/D2 scripts） | ✅ | C3：D2 cohost ops/security/perf 本地收口；`process_split=false`；无 remediate；`accuracy_claim=false`；blind fixture metrics；生成物适用：已接线（diagnosis app） | 已合入 |
 | Diagnosis C3.5 adversarial fixtures（DIAGNOSIS_V1） | `packages/aiplat-diagnosis/fixtures/dx.adv.*` + `fixture_metrics(subset=core|adversarial|all)` + `GET …/metrics/fixtures?subset=` | ✅ | ≥6 holdout；core/adversarial 分报；`accuracy_claim=false`；禁止用 core 1.00 宣称准确率；生成物适用：已接线（diagnosis app） | 本批 |
@@ -3616,7 +3617,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 258 | 0 | 258 |
+| 评估系统 | 259 | 0 | 259 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3648,7 +3649,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2694** | **10** | **2704** |
+| **总计** | **2695** | **10** | **2705** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

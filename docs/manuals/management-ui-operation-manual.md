@@ -110,8 +110,8 @@
 
 ### 质量验证
 #### 检索评估
-- **路由**: `/platform/kb/eval`
-- **功能**: 评估 RAG 检索质量，包括 Recall@10、Precision、MRR 等指标。支持运行评估测试集（Golden Queries），查看检索策略效果对比。
+- **路由**: `/eval?tab=knowledge`
+- **功能**: 在评测中心 Knowledge tab 评估 RAG 检索质量（Recall@10、Precision、MRR 等）。旧 `/platform/kb/eval` 已下线。
 
 #### 质量反馈
 - **路由**: `/platform/kb/health`
@@ -321,9 +321,9 @@
 - **路由**: `/diagnostics/business-value`
 - **功能**: 评估 AI 项目的业务价值达成情况，对比预期与实际的 ROI、使用率、用户满意度等指标。
 
-#### Agent 评估
-- **路由**: `/diagnostics/eval`
-- **功能**: 对 Agent 进行自动化评估，包括任务完成率、响应准确率、工具调用成功率等。支持运行预设评估用例和查看历史评估趋势。
+#### 评测中心
+- **路由**: `/eval`（唯一；旧 `/diagnostics/eval` / `/platform/kb/eval` 已删除）
+- **功能**: 统一评测入口（Sets/Review/Gates/G2b/Preference/Agents/Knowledge 等）。Agents tab 含自动化评估与历史趋势；菜单只保留「评测中心」。
 
 #### 修复中心
 - **路由**: `/diagnostics/repairs`

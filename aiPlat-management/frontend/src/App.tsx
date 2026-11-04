@@ -92,7 +92,6 @@ const DiagnosticsSyscalls = lazy(() => import('./pages/Diagnostics/Syscalls'));
 const DiagnosticsSmoke = lazy(() => import('./pages/Diagnostics/Smoke/Smoke'));
 const DiagnosticsBrowserTest = lazy(() => import('./pages/Diagnostics/BrowserTest/BrowserTestPanel'));
 const EvalCenter = lazy(() => import('./pages/Eval/EvalCenter'));
-const DiagnosticsEvalEntry = lazy(() => import('./pages/Eval/DiagnosticsEvalEntry'));
 const DiagnosisApp = lazy(() => import('./pages/Diagnosis/DiagnosisApp'));
 const BusinessValueReport = lazy(() => import('./pages/Diagnostics/BusinessValueReport'));
 const ReleasesPage = lazy(() => import('./pages/Releases/ReleasesPage'));
@@ -222,7 +221,6 @@ const router = createBrowserRouter([
       { path: 'app/sessions', element: withSuspense(AppSessions) },
       { path: 'platform/kb', element: <Navigate to="/knowledge/library?tab=documents" replace /> },
       { path: 'platform/kb/wiki', element: <Navigate to="/knowledge/library?tab=wiki" replace /> },
-      { path: 'platform/kb/eval', element: <Navigate to="/knowledge/library?tab=eval" replace /> },
       { path: 'platform/kb/vault', element: <Navigate to="/knowledge/library?tab=vault" replace /> },
       { path: 'platform/kb/health', element: <Navigate to="/knowledge/library?tab=health" replace /> },
       { path: 'platform/kb/chat/:sessionId', element: withSuspense(AppMaterialsChat) },
@@ -279,7 +277,6 @@ const router = createBrowserRouter([
       { path: 'eval', element: withSuspense(EvalCenter) },
       { path: 'diagnosis', element: withSuspense(DiagnosisApp) },
       { path: 'diagnosis/:caseId', element: withSuspense(DiagnosisApp) },
-      { path: 'diagnostics/eval', element: withSuspense(DiagnosticsEvalEntry) },
       { path: 'diagnostics/business-value', element: withSuspense(BusinessValueReport) },
       { path: 'diagnostics/knowledge-health', element: withSuspense(DiagnosticsHome) },
       { path: 'diagnostics/drift-status', element: withSuspense(DiagnosticsHome) },

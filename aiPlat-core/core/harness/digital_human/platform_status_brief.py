@@ -1883,7 +1883,7 @@ def build_platform_status_brief(
             + _summarize_names(auto_pipes, limit=name_limit),
             f"评测集 ({len(eval_sets)}): "
             + _summarize_names(eval_sets, limit=name_limit)
-            + f"；eval_results {eval_n} 份 → /diagnostics/eval",
+            + f"；eval_results {eval_n} 份 → /eval",
             f"Action 契约文件 ({len(actions)}): "
             + _summarize_names(actions, limit=name_limit)
             + (

@@ -327,7 +327,7 @@ const Diagnostics: React.FC = () => {
     { title: 'Model Playground', desc: '同一 Prompt 并发多模型输出对比', href: '/diagnostics/model-playground', icon: Zap },
     { title: 'Model Audit', desc: 'LLM 指纹溯源与身份验证', href: '/diagnostics/model-audit', icon: Fingerprint },
     { title: 'Safety', desc: '对话危机检测与情感安全监控', href: '/diagnostics/safety', icon: Heart },
-    { title: 'Eval Dashboard', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/diagnostics/eval', icon: BarChart3 },
+    { title: '评测中心', desc: '统一评估：Arena排名、AB评分、进化适应度、Token效率', href: '/eval', icon: BarChart3 },
     { title: 'RAG 质量', desc: 'RAG检索+生成质量仪表盘（忠实度/检索通过率/用户信号）', href: '/diagnostics/rag-quality', icon: BarChart3 },
     { title: '控制画像', desc: '6维控制画像状态与切换（上下文/工具/模型/编排/记忆/输出）', href: '/diagnostics/control-profile', icon: Cpu },
   ], []);
@@ -501,12 +501,12 @@ const Diagnostics: React.FC = () => {
           </div>
           <p className="text-xs text-gray-500">本体审计 · 知识漂移 · LLM 审查</p>
         </Link>
-        <Link to="/diagnostics/eval" className="p-4 rounded-lg border border-green-700/30 bg-green-950/10 hover:bg-green-950/20 transition-colors">
+        <Link to="/eval" className="p-4 rounded-lg border border-green-700/30 bg-green-950/10 hover:bg-green-950/20 transition-colors">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-5 h-5 text-green-400" />
-            <span className="text-sm font-semibold text-gray-200">📈 项目健康</span>
+            <span className="text-sm font-semibold text-gray-200">📈 评测中心</span>
           </div>
-          <p className="text-xs text-gray-500">业务价值 · Agent 评估 · 修复中心</p>
+          <p className="text-xs text-gray-500">G2a/G2b · Agents · Knowledge · Worksheets</p>
         </Link>
         <Link to="/diagnostics/safety" className="p-4 rounded-lg border border-red-700/30 bg-red-950/10 hover:bg-red-950/20 transition-colors">
           <div className="flex items-center gap-2 mb-2">
@@ -1037,7 +1037,7 @@ const Diagnostics: React.FC = () => {
             ))}
           </div>
           <div className="mt-2 text-right">
-            <Link to="/knowledge/library?tab=eval" className="text-blue-400 hover:text-blue-300 text-xs">
+            <Link to="/eval?tab=knowledge" className="text-blue-400 hover:text-blue-300 text-xs">
               查看趋势 →
             </Link>
           </div>
