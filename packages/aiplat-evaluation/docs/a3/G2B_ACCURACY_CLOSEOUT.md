@@ -33,8 +33,8 @@
 
 See [`evidence/g2b_accuracy_aggregate.v1.json`](./evidence/g2b_accuracy_aggregate.v1.json):
 
-- `n=30`
-- `pass_rate≈0.7667` (Wilson 95% CI ≈ `[0.59, 0.88]`)
+- `n=30` (committed closeout; charter target **n=100** — see [`G2B_N100.md`](./G2B_N100.md))
+- `pass_rate≈0.7667` (Wilson 95% CI ≈ `[0.59, 0.88]` — wideness is why we expand)
 - `accuracy_claim=false` (adjudication confirmed; claim attestation still required to flip)
 
 ## Commands

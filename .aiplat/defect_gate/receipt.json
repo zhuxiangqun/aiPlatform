@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T14:05:00+08:00",
+  "reviewed_at": "2026-11-04T14:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "67e889bb974eb5e16d0816ddb66b0a441fcb1517",
-  "diff_sha256": "1336bf6622e7b5010d2dd2407f652c86ecef0b6e560d21f01756d6ce6cd5862b",
-  "head_sha": "47c646c11f7569937559c60c0db154afc492cbe3",
+  "merge_base": "1c5ac7cf84b5eb94f96217e7cb9ddb7f3fe8f5e1",
+  "diff_sha256": "18c05c750b76383f6cf70814c974224f126a881677cade5a665796bf15737393",
+  "head_sha": "386f0f87b3c6072b78635116c72325d9ee60f2a6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Rebase onto main after #577+#578; S1 prod-model evidence; accuracy_claim/process_split false."
+  "note": "G2b n=100 task pack + runner; closeout still n=30; dual-human 31-100 pending; accuracy_claim false."
 }

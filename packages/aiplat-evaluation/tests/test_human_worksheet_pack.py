@@ -27,7 +27,7 @@ def test_pack_generates_g2b_and_preference(tmp_path: Path):
     b = json.loads((out / "g2b_annotator_b.json").read_text(encoding="utf-8"))
     assert a["annotator_id"] == "A"
     assert b["annotator_id"] == "B"
-    assert len(a["labels"]) >= 30
+    assert len(a["labels"]) == 100
     assert a["labels"][0]["pass"] is None
     assert "gold_pass_hint" not in a["labels"][0]
     pref_a = json.loads((out / "pref_annotator_a.json").read_text(encoding="utf-8"))

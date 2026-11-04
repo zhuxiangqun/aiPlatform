@@ -37,6 +37,7 @@
     },
     "g2b_accuracy": {
       "n": 30,
+      "target_n": 100,
       "pass_rate": 0.7667,
       "wilson_ci95": [
         0.5907,
@@ -44,7 +45,7 @@
       ],
       "disputed_n": 5,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "model pass-rate vs adjudicated gold; accuracy_claim=false until attestation"
+      "gate_note": "committed closeout n=30; charter target_n=100 pending dual-human 31–100; accuracy_claim=false until attestation"
     },
     "prod_live": {
       "n_tasks": 25,

@@ -7,9 +7,12 @@
 
 | Item | Path |
 |---|---|
-| Task pack (30) | [`g2b_tasks.v0.json`](./g2b_tasks.v0.json) |
+| Task pack (**100**, charter G2b) | [`g2b_tasks.v0.json`](./g2b_tasks.v0.json) |
+| n=100 expand runbook | [`G2B_N100.md`](./G2B_N100.md) |
 | Worksheet template | [`g2b_worksheet_template.json`](./g2b_worksheet_template.json) |
 | κ script | `scripts/g2b_kappa.py` |
+| Facilitator model runner | `scripts/g2b_run_model_outputs.py` |
+| n=100 pack helper | `scripts/g2b_n100_pack.sh` |
 
 ## Human procedure
 
@@ -48,7 +51,7 @@ PYTHONPATH=packages/aiplat-evaluation python3 \
 
 | Ready | Not ready |
 |---|---|
-| 两人各 ≥30 配对；κ 写出证据 JSON | 宣称 accuracy / 外部 gate / 同人填两份表 |
+| 两人各 **100** 配对（01–30 可沿用已审证据；31–100 新标）；κ 写出证据 JSON | 宣称 accuracy / 外部 gate / 同人填两份表 / 仅扩任务库未标 |
 
 ## Accuracy closeout (separate)
 
