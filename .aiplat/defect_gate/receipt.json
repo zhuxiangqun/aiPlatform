@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T22:20:00+08:00",
+  "reviewed_at": "2026-11-04T22:30:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "f2292efd5637af8bb55980c5d5ec2bce61f3d646",
-  "diff_sha256": "ff1f05b613f280c3a52e16193130da3168ef3e2960ba95eaab919a265af37c09",
-  "head_sha": "9d5fa283e73dd8f5d586be1daffa928177f5463a",
+  "diff_sha256": "e5400b10b529b0ca2ae650d1e4693585e8141c30ab0d858e665f14c18a1fbb72",
+  "head_sha": "c02d6a6abb9f8f7b5763e1348f71a3615cf038c0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Menu single 评测中心; legacy paths redirect; ?legacy=1 escape hatch retained for diagnostics layout."
+  "note": "No legacy=1; /diagnostics/eval always redirects into /eval Agents tab."
 }
