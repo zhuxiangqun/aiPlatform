@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-04T21:55:00+08:00",
+  "reviewed_at": "2026-11-04T22:20:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a76ce316562ed18d4aeefd4fd4958949c000bd03",
-  "diff_sha256": "59461f8f325f042740104b8237f178caa94609e12d072be4404a6c1264f85e16",
-  "head_sha": "b4461c3b1cfa300a610c016f97e473bf76ad058b",
+  "merge_base": "f2292efd5637af8bb55980c5d5ec2bce61f3d646",
+  "diff_sha256": "ff1f05b613f280c3a52e16193130da3168ef3e2960ba95eaab919a265af37c09",
+  "head_sha": "9d5fa283e73dd8f5d586be1daffa928177f5463a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Worksheet pack facilitation; annotator≠facilitator; accuracy_claim hard-false; path-safe file reads."
+  "note": "Menu single 评测中心; legacy paths redirect; ?legacy=1 escape hatch retained for diagnostics layout."
 }
