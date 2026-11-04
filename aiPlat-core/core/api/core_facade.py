@@ -6245,6 +6245,13 @@ def eval_preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]
     return preference_pack_status(tenant_id=tenant_id)
 
 
+def eval_scorecard_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """Scorecard honesty snapshot (accuracy_claim / authorize stay false)."""
+    from core.apps.eval.service.scorecard import scorecard_status
+
+    return scorecard_status(tenant_id=tenant_id)
+
+
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2c import g2c_status
 
