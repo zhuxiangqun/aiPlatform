@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1770
+total_capabilities: 1773
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 485
+    caps_count: 488
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1411,6 +1411,18 @@ domains:
       - symbol: "eval_scorecard_status"
         type: "function"
         signature: "eval_scorecard_status(tenant_id='eval-v1')→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "EvalEvidencePanel"
+        type: "component"
+        signature: "EvalEvidencePanel({tenantId})"
+        module: "aiPlat-management/frontend/src/pages/Eval/EvalEvidencePanel.tsx"
+      - symbol: "evidence_audit_status"
+        type: "function"
+        signature: "evidence_audit_status(tenant_id='eval-v1')→Dict hash+attestation (accuracy_claim=false)"
+        module: "aiPlat-core/core/apps/eval/service/evidence_audit.py"
+      - symbol: "eval_evidence_audit_status"
+        type: "function"
+        signature: "eval_evidence_audit_status(tenant_id='eval-v1')→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "eval_list_reports"
         type: "function"

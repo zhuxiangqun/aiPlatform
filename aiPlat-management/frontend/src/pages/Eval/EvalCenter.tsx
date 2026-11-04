@@ -8,6 +8,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { apiClient } from '../../services';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
 import EvalAgentsPanel from './EvalAgentsPanel';
+import EvalEvidencePanel from './EvalEvidencePanel';
 import EvalGatesPanel from './EvalGatesPanel';
 import EvalG2bPanel from './EvalG2bPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
@@ -78,6 +79,7 @@ const TABS = [
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
   { id: 'scorecard', label: 'Scorecard' },
+  { id: 'evidence', label: 'Evidence' },
   { id: 'agents', label: 'Agents' },
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'prompts', label: 'Prompts' },
@@ -276,6 +278,8 @@ const EvalCenter: React.FC = () => {
       {tab === 'preference' && <EvalPreferencePanel tenantId={TENANT} />}
 
       {tab === 'scorecard' && <EvalScorecardPanel tenantId={TENANT} />}
+
+      {tab === 'evidence' && <EvalEvidencePanel tenantId={TENANT} />}
 
       {tab === 'agents' && (
         <EvalAgentsPanel tenantId={TENANT} showExecBanner={showExecBanner} />
