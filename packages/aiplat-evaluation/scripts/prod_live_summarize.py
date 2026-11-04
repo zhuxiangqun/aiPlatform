@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize a prod-live drill JSON into a commit-safe aggregate (accuracy_claim=false).
-
-Does not flip process_split_authorized. Drills stay gitignored; aggregate may be committed.
-"""
+"""Summarize prod-live drill → commit-safe aggregate (accuracy_claim=false)."""
 from __future__ import annotations
 
 import argparse
@@ -15,11 +12,17 @@ from typing import Any, Dict, List, Optional
 
 def _f(v: Any) -> Optional[float]:
     try:
-        if v is None:
-            return None
-        return float(v)
+        return None if v is None else float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _pct(vals: List[float], q: float) -> Optional[float]:
+    if not vals:
+        return None
+    s = sorted(vals)
+    idx = min(len(s) - 1, max(0, int(round((len(s) - 1) * q))))
+    return round(s[idx], 2)
 
 
 def summarize_prod_live(drill: Dict[str, Any]) -> Dict[str, Any]:
@@ -28,24 +31,17 @@ def summarize_prod_live(drill: Dict[str, Any]) -> Dict[str, Any]:
     lats: List[float] = []
     toks_in: List[float] = []
     toks_out: List[float] = []
-    costs: List[float] = []
-    ok_n = 0
-    fail_n = 0
-    timeout_n = 0
+    ok_n = fail_n = timeout_n = 0
     for r in live:
         audit = r.get("audit") if isinstance(r.get("audit"), dict) else {}
         lat = _f(audit.get("latency_ms"))
         if lat is not None:
             lats.append(lat)
-        ti = _f(audit.get("tokens_in"))
-        to = _f(audit.get("tokens_out"))
+        ti, to = _f(audit.get("tokens_in")), _f(audit.get("tokens_out"))
         if ti is not None:
             toks_in.append(ti)
         if to is not None:
             toks_out.append(to)
-        c = _f(audit.get("cost_estimate"))
-        if c is not None:
-            costs.append(c)
         status = str(r.get("status") or "")
         detail = str(audit.get("detail") or r.get("detail") or "").lower()
         if status == "succeeded" and r.get("ok"):
@@ -55,13 +51,6 @@ def summarize_prod_live(drill: Dict[str, Any]) -> Dict[str, Any]:
             fail_n += 1
         else:
             fail_n += 1
-
-    def pct(vals: List[float], q: float) -> Optional[float]:
-        if not vals:
-            return None
-        s = sorted(vals)
-        idx = min(len(s) - 1, max(0, int(round((len(s) - 1) * q))))
-        return round(s[idx], 2)
 
     model = drill.get("prod_model") or drill.get("provider", {}).get("model")
     return {
@@ -84,8 +73,8 @@ def summarize_prod_live(drill: Dict[str, Any]) -> Dict[str, Any]:
         "timeout_n": timeout_n,
         "latency_ms": {
             "n": len(lats),
-            "p50": pct(lats, 0.50),
-            "p95": pct(lats, 0.95),
+            "p50": _pct(lats, 0.50),
+            "p95": _pct(lats, 0.95),
             "mean": round(statistics.fmean(lats), 2) if lats else None,
         },
         "tokens_out": {
@@ -101,10 +90,7 @@ def summarize_prod_live(drill: Dict[str, Any]) -> Dict[str, Any]:
         "total_cost_estimate": drill.get("total_cost_estimate"),
         "cost_ok": drill.get("cost_ok"),
         "source_drill": None,
-        "compare_note": (
-            "Compare against prior 3B smoke / 7b×1 drills locally; "
-            "this aggregate is engineering baseline only"
-        ),
+        "compare_note": "vs prior 3B/7b×1 local drills; engineering baseline only",
         "honesty": (
             "production-candidate live aggregate — latency/cost/fail; "
             "accuracy_claim=false; ≠ G2b accuracy; ≠ staging; ≠ security cert"

@@ -50,6 +50,9 @@ framework_globs:
 profile_neutral_globs:
   - "AIPLAT_CAPABILITIES.md"
   - "docs/**"
+  - "**/docs/**"  # package evidence/scorecard/runbooks (same stamp class as root docs/)
+  - "**/README.md"
+  - ".aiplat/**"  # defect-gate receipts / local locks
   - "**/capability_registry.yaml"
   - "**/system-architecture-contract.md"
 

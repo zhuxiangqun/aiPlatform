@@ -60,6 +60,8 @@ class DiffStats:
     added_paths: List[str] = field(default_factory=list)
     # path → full text of newly added file (status A) or concatenated +lines for M
     added_snippets: Dict[str, str] = field(default_factory=dict)
+    # path → (insertions - deletions) from numstat; used to discount neutral stamps
+    path_net_lines: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -175,6 +177,9 @@ def _builtin_fallback() -> Dict[str, Any]:
         "profile_neutral_globs": [
             "AIPLAT_CAPABILITIES.md",
             "docs/**",
+            "**/docs/**",
+            "**/README.md",
+            ".aiplat/**",
             "**/capability_registry.yaml",
         ],
         "banned_path_segments": ["/generic/", "/framework/"],
@@ -379,29 +384,45 @@ def select_profile(paths: Sequence[str], config: Mapping[str, Any], forced: str 
 
 
 def inflation_stats_for_caps(stats: DiffStats, config: Mapping[str, Any]) -> DiffStats:
-    """For max_files: count only non-neutral paths when the PR also has code.
+    """For max_files/net_lines/new_dirs: count only non-neutral paths when mixed.
 
-    Pure docs/sync PRs (all paths neutral) still use full ``files_changed`` so
-    docs-only bloat remains visible. Mixed PRs exclude CAPABILITIES/docs/registry
-    stamps from the file cap so mandatory sync cannot trip inflation alone.
+    Pure docs/sync PRs (all paths neutral) still use full stats so docs-only
+    bloat remains visible. Mixed PRs exclude CAPABILITIES/docs/registry/receipt
+    stamps so mandatory sync cannot trip inflation alone.
     """
     scored = _non_neutral_paths(stats.paths, config)
     if not scored:
         return stats
-    if len(scored) == stats.files_changed:
+    if len(scored) == stats.files_changed and not stats.path_net_lines:
         return stats
+    scored_set = set(scored)
+    if stats.path_net_lines:
+        net = sum(stats.path_net_lines.get(p, 0) for p in scored)
+    else:
+        net = stats.net_lines
+    # new_dirs only from added non-neutral paths
+    scored_dirs: List[str] = []
+    seen: set = set()
+    for p in stats.added_paths:
+        if p not in scored_set:
+            continue
+        parent = str(Path(p).parent).replace("\\", "/")
+        if parent and parent not in (".", "") and parent not in seen:
+            seen.add(parent)
+            scored_dirs.append(parent)
     return DiffStats(
         files_changed=len(scored),
-        files_added=stats.files_added,
-        net_lines=stats.net_lines,
+        files_added=sum(1 for p in stats.added_paths if p in scored_set),
+        net_lines=net,
         insertions=stats.insertions,
         deletions=stats.deletions,
         new_deps_files=stats.new_deps_files,
         new_classes=stats.new_classes,
-        new_dirs=list(stats.new_dirs),
+        new_dirs=scored_dirs if scored_dirs or stats.added_paths else list(stats.new_dirs),
         paths=list(stats.paths),
         added_paths=list(stats.added_paths),
         added_snippets=dict(stats.added_snippets),
+        path_net_lines=dict(stats.path_net_lines),
     )
 
 
@@ -457,25 +478,29 @@ def _parse_name_status(name_status: str) -> Tuple[List[str], List[str], List[str
     return all_paths, added, new_dirs
 
 
-def _parse_numstat(numstat: str) -> Tuple[int, int, int]:
+def _parse_numstat(numstat: str) -> Tuple[int, int, int, Dict[str, int]]:
     ins = dels = 0
     files = 0
+    path_net: Dict[str, int] = {}
     for line in (numstat or "").splitlines():
         parts = line.split("\t")
         if len(parts) < 3:
             continue
-        a, b = parts[0], parts[1]
+        a, b, path = parts[0], parts[1], parts[2]
         if a == "-" or b == "-":
             # binary
             files += 1
+            path_net[path] = path_net.get(path, 0)
             continue
         try:
-            ins += int(a)
-            dels += int(b)
+            ai, bd = int(a), int(b)
+            ins += ai
+            dels += bd
             files += 1
+            path_net[path] = path_net.get(path, 0) + (ai - bd)
         except ValueError:
             continue
-    return files, ins, dels
+    return files, ins, dels, path_net
 
 
 def _extract_plus_snippets(unified_diff: str) -> Dict[str, str]:
@@ -520,7 +545,7 @@ def collect_diff_stats(
     unified_diff: str = "",
 ) -> DiffStats:
     paths, added, new_dirs = _parse_name_status(name_status)
-    n_files, ins, dels = _parse_numstat(numstat)
+    n_files, ins, dels, path_net = _parse_numstat(numstat)
     snippets = _extract_plus_snippets(unified_diff)
     dep_hits = 0
     for p in paths:
@@ -542,6 +567,7 @@ def collect_diff_stats(
         paths=paths,
         added_paths=added,
         added_snippets=snippets,
+        path_net_lines=path_net,
     )
 
 
