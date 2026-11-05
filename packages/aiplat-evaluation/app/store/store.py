@@ -251,14 +251,16 @@ def list_sets(store: Any, *, limit: int = 100, tenant_id: str = "") -> List[Dict
 
 
 def create_report(store: Any, **kwargs: Any) -> Dict[str, Any]:
-    """Persist report; stamp scoring.composite when known metrics present (P1b)."""
+    """Persist report; stamp composite + version meta when applicable (P1b)."""
     from app.scoring.report_stamp import ensure_report_scoring
 
     metrics = kwargs.get("metrics")
     scoring = kwargs.pop("scoring", None)
+    meta = kwargs.pop("meta", None)
     kwargs["metrics"] = ensure_report_scoring(
         metrics if isinstance(metrics, dict) else {},
         scoring=scoring if isinstance(scoring, dict) else None,
+        meta=meta if isinstance(meta, dict) else None,
     )
     return store._create_report(**kwargs)
 

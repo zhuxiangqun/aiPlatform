@@ -659,12 +659,13 @@ class EvalStore:
         failures: Optional[list] = None,
         report_id: Optional[str] = None,
         scoring: Optional[Dict[str, Any]] = None,
+        meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         rid = report_id or _new_id("rpt")
         now = _now()
         from core.apps.eval.service.report_compare import stamp_eval_report_metrics
 
-        stamped = stamp_eval_report_metrics(metrics, scoring=scoring)
+        stamped = stamp_eval_report_metrics(metrics, scoring=scoring, meta=meta)
         with self._connect() as conn:
             conn.execute(
                 "INSERT INTO eval_reports(id, run_ids_json, metrics_json, slices_json, "

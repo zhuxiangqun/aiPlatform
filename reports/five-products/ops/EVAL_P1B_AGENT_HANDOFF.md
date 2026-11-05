@@ -10,6 +10,7 @@
 | 报告对比（同 `composite_version`） | #596 | `compare_reports` + `/store/reports/compare` + Reports UI |
 | Arena 盲评 rubric + pack 脚手架 | #597 | 冻结 rubric；打乱左右/去模型名；fixture≠pilot 完成 |
 | 报告写入 stamp `composite_version` | #598 | 已知工程指标自动挂 `build_composite` v1.1 |
+| 报告 meta（runner/judge/dataset）+ 列表展示 | （进行中） | `ensure_report_meta`；列表显示 meta 摘要 |
 
 ## 人侧仍 open（工程无法代签）
 

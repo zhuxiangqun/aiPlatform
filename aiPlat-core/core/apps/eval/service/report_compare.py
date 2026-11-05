@@ -52,10 +52,11 @@ def stamp_eval_report_metrics(
     metrics: Optional[Mapping[str, Any]] = None,
     *,
     scoring: Optional[Mapping[str, Any]] = None,
+    meta: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Delegate to package ensure_report_scoring (P1b stamp)."""
+    """Delegate to package ensure_report_scoring (P1b stamp + meta)."""
     mod = _load_scoring_module("report_stamp.py", "aiplat_eval_report_stamp")
-    return mod.ensure_report_scoring(metrics, scoring=scoring)
+    return mod.ensure_report_scoring(metrics, scoring=scoring, meta=meta)
 
 
 def compare_eval_reports(

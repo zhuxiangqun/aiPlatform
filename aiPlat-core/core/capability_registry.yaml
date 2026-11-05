@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1791
+total_capabilities: 1792
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 506
+    caps_count: 507
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1718,11 +1718,15 @@ domains:
         module: "packages/aiplat-evaluation/scripts/arena_blind_pack.py"
       - symbol: "ensure_report_scoring"
         type: "function"
-        signature: "ensure_report_scoring(metrics, scoring=None)→dict"
+        signature: "ensure_report_scoring(metrics, scoring=None, meta=None)→dict"
+        module: "packages/aiplat-evaluation/app/scoring/report_stamp.py"
+      - symbol: "ensure_report_meta"
+        type: "function"
+        signature: "ensure_report_meta(metrics, meta=None)→dict"
         module: "packages/aiplat-evaluation/app/scoring/report_stamp.py"
       - symbol: "stamp_eval_report_metrics"
         type: "function"
-        signature: "stamp_eval_report_metrics(metrics, scoring=None)→dict"
+        signature: "stamp_eval_report_metrics(metrics, scoring=None, meta=None)→dict"
         module: "aiPlat-core/core/apps/eval/service/report_compare.py"
       - symbol: "estimate_cost"
         type: "function"

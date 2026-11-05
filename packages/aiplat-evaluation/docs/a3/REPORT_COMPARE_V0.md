@@ -25,6 +25,8 @@ Proxy：`AIPLAT_EVAL_SERVICE_URL` 转发 standalone。
 
 `create_report` 经 `ensure_report_scoring`：若 metrics 含已知工程指标且尚无 `composite_version`，自动挂上 `build_composite`（当前 `v1.1`）。已有版本不改写；纯运维字段（如 `phase`）不戳章 → 对比仍 incomparable。
 
+同时 `ensure_report_meta` 将 `runner_id` / `judge_*` / `dataset_*` / `schema_version` 归入 `metrics.meta`（可显式传 `meta`），并把已有 `composite_version` 抄进 meta，供列表与对比追溯。
+
 ## 非目标
 
 ≠ 静默重算历史 · ≠ 打开 accuracy_claim · ≠ 跨版本门禁替换
