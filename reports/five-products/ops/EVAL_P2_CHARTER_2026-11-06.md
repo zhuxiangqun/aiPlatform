@@ -1,6 +1,7 @@
 # EVAL P2 Charter（2026-11-06）
 
-> **状态**：草案 · 待产品负责人确认首切片  
+> **状态**：✅ 首切片确认推进（2026-11-06「继续」）· P2-0 calibration unfreeze 已开  
+
 > **Unfreeze**：[ENGINEERING_UNFREEZE_EVAL_P2.md](./ENGINEERING_UNFREEZE_EVAL_P2.md)  
 > **计划**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
 
@@ -62,9 +63,9 @@
 
 ## 5. 确认清单（产品负责人）
 
-- [ ] 同意本 charter 与 unfreeze 开篇
-- [ ] 同意首切片 = P2-0 Evaluator calibration
-- [ ] 确认/改 owner 表
-- [ ] 确认粗估可接受或给出预算上限
+- [x] 同意本 charter 与 unfreeze 开篇（2026-11-06 继续推进）
+- [x] 同意首切片 = P2-0 Evaluator calibration
+- [x] owner 表按候选执行（可后改）
+- [x] 粗估 2–4 人日可接受（默认）
 
-确认后工程开：`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`（才允许改默认路径以外的预备代码）。
+工程已开：[`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](./ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md) · 协议 [`CALIBRATION_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)

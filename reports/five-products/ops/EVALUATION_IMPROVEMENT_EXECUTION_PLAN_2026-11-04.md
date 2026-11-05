@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0/P1b 人侧已收口（见 [日收口](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)）。**P2 已立项开篇**：[ENGINEERING_UNFREEZE_EVAL_P2](./ENGINEERING_UNFREEZE_EVAL_P2.md) · [EVAL_P2_CHARTER_2026-11-06](./EVAL_P2_CHARTER_2026-11-06.md)；建议首切片 **P2-0 Evaluator calibration**（本地、不依赖公网）。A1 生产仍 `blocked_not_released`（无公网）。
+> **当前状态**：P0/P1b 已收口。**P2-0 calibration 已开工**：[ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION](./ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md) · [CALIBRATION_V0](../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)；人侧抽查包已出（G2b/Arena/preference 各 20）。A1 生产仍 `blocked_not_released`（无公网）。
 
 ## 1. 执行结论
 
