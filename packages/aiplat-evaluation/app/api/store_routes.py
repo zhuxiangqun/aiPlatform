@@ -88,6 +88,7 @@ async def _create_report(request: Request) -> Dict[str, Any]:
         _store(request),
         run_ids=body.get("run_ids") if isinstance(body.get("run_ids"), list) else None,
         metrics=body.get("metrics") if isinstance(body.get("metrics"), dict) else None,
+        scoring=body.get("scoring") if isinstance(body.get("scoring"), dict) else None,
         slices=body.get("slices") if isinstance(body.get("slices"), dict) else None,
         failures=body.get("failures") if isinstance(body.get("failures"), list) else None,
         report_id=str(body.get("id") or "") or None,

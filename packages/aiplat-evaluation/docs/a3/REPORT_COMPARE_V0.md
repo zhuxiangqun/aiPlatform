@@ -21,6 +21,10 @@
 Cohost：`CoreFacade.eval_compare_reports` → package loader。  
 Proxy：`AIPLAT_EVAL_SERVICE_URL` 转发 standalone。
 
+## 写入侧（P1b stamp）
+
+`create_report` 经 `ensure_report_scoring`：若 metrics 含已知工程指标且尚无 `composite_version`，自动挂上 `build_composite`（当前 `v1.1`）。已有版本不改写；纯运维字段（如 `phase`）不戳章 → 对比仍 incomparable。
+
 ## 非目标
 
 ≠ 静默重算历史 · ≠ 打开 accuracy_claim · ≠ 跨版本门禁替换

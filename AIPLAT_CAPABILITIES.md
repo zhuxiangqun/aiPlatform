@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2720
+total_capabilities: 2722
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2752,6 +2752,8 @@ scan_hash: 8f9548ec24f4
 | write_pack | `packages/aiplat-evaluation/scripts/arena_blind_pack.py` | ✅ | Arena 盲评 pack 写出 | 本批 |
 | build_annotator_sheet | `packages/aiplat-evaluation/scripts/arena_blind_pack.py` | ✅ | 盲评 annotator 表（无模型名） | 本批 |
 | build_facilitator_rows | `packages/aiplat-evaluation/scripts/arena_blind_pack.py` | ✅ | facilitator 左右映射 | 本批 |
+| ensure_report_scoring | `packages/aiplat-evaluation/app/scoring/report_stamp.py` | ✅ | create_report 写入时 stamp composite_version；已有版本不改写；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| stamp_eval_report_metrics | `core/apps/eval/service/report_compare.py` | ✅ | Cohost 桥接 ensure_report_scoring | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；默认 backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM Linux/KVM track v1 | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `microvm_exec.py` + `policy.py` + `docs/a3/MICROVM_LINUX_TRACK.md` | ✅ | host_ok+ADMIT_RUNNERS 放行非 live runners；cli_probe host allowlist；Darwin 不可打 with_microvm 分；≠ isolation cert；生成物适用：不适用 | 本批 |
@@ -3632,7 +3634,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 272 | 0 | 272 |
+| 评估系统 | 274 | 0 | 274 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3664,7 +3666,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2710** | **10** | **2720** |
+| **总计** | **2712** | **10** | **2722** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
