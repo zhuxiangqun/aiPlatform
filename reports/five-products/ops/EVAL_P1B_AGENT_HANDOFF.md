@@ -14,7 +14,8 @@
 | runner/gate/judge 写入 meta | #601 | `enrich_runner_result` + gate/judge `create_report(meta=…)` |
 | 对比结果摘要 UI | #602 | deltas/failures 摘要；JSON 折叠 |
 | 报告详情失败样本 UI | #603 | task_id/category/score 表 + taxonomy；JSON 折叠 |
-| 列表 composite_version 过滤 | （本批） | 筛同版本后对比快捷填入 |
+| 列表 composite_version 过滤 | #604 | 筛同版本后对比快捷填入 |
+| report_only 指标徽章 | （本批） | 详情区分 family_scores vs report_only；弱代理不进门禁 |
 
 ## 人侧仍 open（工程无法代签）
 
