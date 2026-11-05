@@ -4,7 +4,7 @@
 > **原因**：无正式环境 BASE URL / CDN；本地联调已另签，**不得**复用为生产 pass  
 > **本地已签**：[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)  
 > **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)  
-> **2026-11-06**：已独立重开生产签核轨 → [unfreeze](./ENGINEERING_UNFREEZE_EVAL_A1_PROD.md) · [工作稿](./EVAL_A1_DEPLOY_SIGNOFF_prod_OPEN_2026-11-06.md)；**缺 BASE 则维持本阻塞**
+> **2026-11-06**：曾重开生产轨；同日产品决定**本地签认足够** → [决策](./EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)；生产轨 **Parked**。本单仍表示「生产未签」，不阻塞以本地为准的迭代。
 
 ## 解除条件
 

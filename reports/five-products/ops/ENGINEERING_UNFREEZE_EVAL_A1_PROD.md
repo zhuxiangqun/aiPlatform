@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL **A1 生产部署签核**（独立轨）
 
 - **decided_at**: `2026-11-06`
-- **status**: **Open — awaiting formal BASE**
+- **status**: **Parked** — 产品决定本地签认足够（[`EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md`](./EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)）
 - **parent plan**: [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §3
 - **母版**: [`EVAL_A1_DEPLOY_SIGNOFF.md`](./EVAL_A1_DEPLOY_SIGNOFF.md)
 - **本地已签（不可复用）**: [`EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md`](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)

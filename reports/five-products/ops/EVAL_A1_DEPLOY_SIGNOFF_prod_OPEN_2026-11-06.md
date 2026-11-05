@@ -1,6 +1,7 @@
 # A1 部署签认 — 生产（OPEN · 2026-11-06）
 
-> **状态**：🔓 **Open** — 待正式 BASE；未签 pass  
+> **状态**：⏸ **Parked** — 产品决定本地签认足够（[决策](./EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)）；未签生产 pass  
+
 > **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)  
 > **unfreeze**：[ENGINEERING_UNFREEZE_EVAL_A1_PROD.md](./ENGINEERING_UNFREEZE_EVAL_A1_PROD.md)  
 > **硬切**：旧 URL 须 **404**（无 302）；`npm run build` ≠ 本签认；**禁止** localhost/隧道顶生产  
