@@ -22,6 +22,8 @@
 | [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md) | groundedness（有 gold 才计分）+ latency p50/p95 / cost_per_success；composite v1 |
 | [`SESSION_V0.md`](./SESSION_V0.md) | 多轮 `session_eval` v0（2–3 轮；`accuracy_claim=false`） |
 | [`SESSION_V1.md`](./SESSION_V1.md) | 多轮 `session_eval` v1（5–8 轮；`accuracy_claim=false`） |
+| [`CONTEXT_V0.md`](./CONTEXT_V0.md) | P2-1 上下文管理基准 v0（召回/摘要/冲突/截断；≠ Session；`accuracy_claim=false`） |
+| [`CALIBRATION_V0.md`](./CALIBRATION_V0.md) | P2-0 人工评估器校准协议（已收口；≠ accuracy） |
 | [`PREFERENCE_V0.md`](./PREFERENCE_V0.md) | 人评/偏好 A/B v0（≠ accuracy） |
 | [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |

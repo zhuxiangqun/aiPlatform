@@ -1,6 +1,8 @@
 # EVAL P2 Charter（2026-11-06）
 
-> **状态**：✅ P2-0 human calibration **已收口**（n=60 · disagree_rate=0.2667 · claim=false）· [closeout](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md)  
+> **状态**：✅ P2-0 已收口 · ✅ P2-1 context_mgmt v0 **已收口**（[closeout](./EVAL_P2_CONTEXT_CLOSEOUT_2026-11-06.md)）  
+
+
 
 > **Unfreeze**：[ENGINEERING_UNFREEZE_EVAL_P2.md](./ENGINEERING_UNFREEZE_EVAL_P2.md)  
 > **计划**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
@@ -56,7 +58,7 @@
 
 | ID | 主题 | 前置 |
 |---|---|---|
-| P2-1 | 上下文管理基准 | P2-0 协议可复用抽样方法 |
+| P2-1 | 上下文管理基准 | **已收口** — [closeout](./EVAL_P2_CONTEXT_CLOSEOUT_2026-11-06.md) |
 | P2-2 | 持久记忆 Recall@k | 租户夹具；P2-0 |
 | P2-3 | 自学习抗性 | **P2-0 完成** |
 | P2-4 | 生产治理 | **正式环境 / 门 C**（当前无公网 → 搁置） |

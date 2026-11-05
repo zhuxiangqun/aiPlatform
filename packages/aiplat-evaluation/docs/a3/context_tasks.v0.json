@@ -1,0 +1,80 @@
+{
+  "schema": "eval.context_mgmt.task_pack.v0",
+  "accuracy_claim": false,
+  "profile": "v0",
+  "note": "P2-1 context management fixtures — engineering only; not long-horizon cert; not memory.",
+  "cases": [
+    {
+      "case_id": "ctx-recall-01",
+      "kind": "long_context_recall",
+      "query": "What is the NEEDLE_CODE in the prior context? Reply with the code only.",
+      "context": "Filler block A: meeting notes about parking, coffee, and weather. Alpha alpha alpha. Beta beta beta. Gamma schedules are unrelated. NEEDLE_CODE=ZX-4419 appears once mid-stream. More filler about printers, desks, and shuttle buses. Delta delta delta. Epsilon noise. Zeta noise. Eta noise. Theta noise. Iota noise. Kappa noise.",
+      "actual": "ZX-4419",
+      "must_contain": ["ZX-4419"],
+      "must_not_contain": ["NEEDLE_CODE="]
+    },
+    {
+      "case_id": "ctx-recall-02",
+      "kind": "long_context_recall",
+      "query": "Which building hosts the eval lab? One word.",
+      "context": "Campus map chatter. North lot closed. Cafe opens at 08:00. The eval lab is in Building Orion. South gate badge required. Unrelated project codes: Q1, Q2, Q9. Remember: Building Orion is authoritative for eval lab location. More chatter about bikes and lockers.",
+      "actual": "Orion",
+      "must_contain": ["Orion"],
+      "must_not_contain": ["South"]
+    },
+    {
+      "case_id": "ctx-summary-01",
+      "kind": "summary_fidelity",
+      "query": "Summarize the release decision in one short sentence.",
+      "context": "Release board: package build_composite remains engineering SSOT. accuracy_claim stays false until dual-human gates pass. Local Docker is not staging authorize. No process_split from laptop evidence.",
+      "actual": "Keep build_composite as SSOT; accuracy_claim false; Docker is not staging authorize.",
+      "must_contain": ["build_composite", "accuracy_claim", "false"],
+      "must_not_contain": ["process_split_authorized=true", "accuracy certified"]
+    },
+    {
+      "case_id": "ctx-summary-02",
+      "kind": "summary_fidelity",
+      "query": "List the three blocked items mentioned.",
+      "context": "Blocked: (1) public BASE URL missing, (2) microVM on Darwin, (3) B4-S staging host unconfirmed. Nice-to-have: darker UI theme — not a blocker.",
+      "actual": "Blocked: public BASE URL, microVM on Darwin, B4-S staging host.",
+      "must_contain": ["BASE", "microVM", "B4-S"],
+      "must_not_contain": ["darker UI"]
+    },
+    {
+      "case_id": "ctx-conflict-01",
+      "kind": "conflict",
+      "query": "What is the current max_turns for session v1? Number only.",
+      "context": "Draft note (outdated): session v1 max_turns=4. Later amendment (authoritative): session v1 max_turns=8. Ignore the draft note.",
+      "actual": "8",
+      "must_contain": ["8"],
+      "must_not_contain": ["4"]
+    },
+    {
+      "case_id": "ctx-conflict-02",
+      "kind": "conflict",
+      "query": "Is local preference fixture equal to human κ? YES or NO.",
+      "context": "Early memo said YES for speed. Policy update (authoritative): preference fixture solo ≠ human κ; answer must be NO.",
+      "actual": "NO",
+      "must_contain": ["NO"],
+      "must_not_contain": ["YES"]
+    },
+    {
+      "case_id": "ctx-trunc-01",
+      "kind": "truncation_degradation",
+      "query": "What is the secret rollback tag?",
+      "context": "[TRUNCATED] ... beginning of runbook only. The secret rollback tag is …",
+      "actual": "Insufficient context — cannot determine the rollback tag.",
+      "must_contain": ["Insufficient", "cannot"],
+      "must_not_contain": ["TAG-", "rollback-prod"]
+    },
+    {
+      "case_id": "ctx-trunc-02",
+      "kind": "truncation_degradation",
+      "query": "Name the cohost failover region.",
+      "context": "[TRUNCATED mid-sentence] Cohost failover region candi",
+      "actual": "Context truncated; refuse to invent failover region.",
+      "must_contain": ["truncated", "refuse"],
+      "must_not_contain": ["us-east", "ap-southeast"]
+    }
+  ]
+}
