@@ -26,6 +26,8 @@
 
 `evidence_level` 字段建议取值：`smoke` / `fixture` / `gold` / `human`（与 EET-1..4 一一对应）。
 
+**写入（工程，Proposed 批准前可用）**：`ensure_report_meta` / `create_report` 经 `infer_evidence_level` 写入 `metrics.meta.evidence_level`（显式 meta 优先；`EET-1..4` 可映射；无依据不发明；`human` 仅显式信号）。≠ 发布 gate 新等级。
+
 ## 3. 与落地 E0–E5 的对照（非升降级）
 
 | EET | 通常能支撑到的落地证据上限（粗） | 说明 |
@@ -53,3 +55,5 @@
 | 项目治理 owner |  |  |
 
 未批准前：实现与报告可使用 smoke/fixture/gold/human 文案；**不**把 EET 写入正式发布 gate 矩阵为新等级。
+
+**工程接线（Proposed 期间可用）**：`ensure_report_meta` → `infer_evidence_level` 写入 `metrics.meta.evidence_level`；管理端详情展示该字段。仍须治理 Accept 后才可进发布门禁矩阵。

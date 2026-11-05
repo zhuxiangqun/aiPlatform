@@ -54,7 +54,13 @@ function reportMetaHint(r: StoreReport): string {
       : undefined;
   if (!meta || typeof meta !== 'object') return '';
   const bits: string[] = [];
-  for (const key of ['runner_id', 'judge_id', 'dataset_version', 'runner_version'] as const) {
+  for (const key of [
+    'evidence_level',
+    'runner_id',
+    'judge_id',
+    'dataset_version',
+    'runner_version',
+  ] as const) {
     const v = meta[key];
     if (typeof v === 'string' && v.trim()) bits.push(`${key}=${v.trim()}`);
   }
@@ -253,6 +259,11 @@ function ReportDetailSummary({ report }: { report: StoreReport }) {
     metrics && typeof metrics.mean_score === 'number' ? String(metrics.mean_score) : null;
   const reportOnly = reportOnlyMetrics(report);
   const familyRows = scoredFamilyEntries(report);
+  const meta = asRecord(asRecord(report.metrics)?.meta);
+  const evidenceLevel =
+    typeof meta?.evidence_level === 'string' && meta.evidence_level.trim()
+      ? meta.evidence_level.trim()
+      : null;
 
   return (
     <div className="space-y-3 text-xs" data-testid="eval-report-detail-summary">
@@ -262,6 +273,23 @@ function ReportDetailSummary({ report }: { report: StoreReport }) {
         <span className={cv ? 'text-emerald-400/90' : 'text-amber-400/80'}>
           {cv ? `composite ${cv}` : 'no composite_version'}
         </span>
+        {evidenceLevel ? (
+          <>
+            {' · '}
+            <span
+              className={
+                evidenceLevel === 'smoke'
+                  ? 'text-amber-300'
+                  : evidenceLevel === 'human'
+                    ? 'text-sky-300'
+                    : 'text-emerald-300/90'
+              }
+              data-testid="eval-report-evidence-level"
+            >
+              evidence_level={evidenceLevel}
+            </span>
+          </>
+        ) : null}
         {metaHint ? (
           <>
             {' · '}
@@ -269,7 +297,7 @@ function ReportDetailSummary({ report }: { report: StoreReport }) {
           </>
         ) : null}
         {' · '}
-        <span className="text-gray-500">accuracy_claim=false</span>
+        <span className="text-gray-500">accuracy_claim=false · EET≠发布门禁等级</span>
       </p>
       {(passRate || meanScore) && (
         <p className="text-gray-400">

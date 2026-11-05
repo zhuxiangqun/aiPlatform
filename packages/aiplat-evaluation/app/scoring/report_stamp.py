@@ -2,12 +2,13 @@
 
 Honesty: never sets accuracy_claim true; does not rewrite existing composite_version;
 only attaches build_composite when known engineering metrics are present.
+evidence_level is EET tag (smoke/fixture/gold/human) — not a release gate grade.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional
 
-from app.scoring.composite import _METRIC_ROLE, build_composite
+from app.scoring.composite import _METRIC_ROLE, build_composite, metric_role
 from app.scoring.report_compare import extract_composite_version
 
 
@@ -21,7 +22,13 @@ _META_KEYS = (
     "dataset_version",
     "schema_version",
     "composite_version",
+    "evidence_level",
 )
+_EVIDENCE_LEVELS = frozenset({"smoke", "fixture", "gold", "human"})
+_SMOKE_RUNNER_HINTS = ("arena", "length", "smoke", "heuristic")
+_GOLD_RUNNER_HINTS = ("gold", "code_review_gold", "exact")
+_HUMAN_RUNNER_HINTS = ("g2b", "human", "blind", "preference")
+_GOLD_METRIC_HINTS = frozenset({"exact_match", "groundedness", "gold_n"})
 
 
 def _as_dict(value: Any) -> Dict[str, Any]:
@@ -38,15 +45,73 @@ def _has_known_metrics(metrics: Mapping[str, Any]) -> bool:
     return False
 
 
+def _normalize_evidence_level(raw: Any) -> Optional[str]:
+    if not isinstance(raw, str):
+        return None
+    level = raw.strip().lower()
+    if level.startswith("eet-"):
+        # EET-1..4 → smoke/fixture/gold/human
+        digit = level.replace("eet-", "").strip()
+        mapping = {"1": "smoke", "2": "fixture", "3": "gold", "4": "human"}
+        level = mapping.get(digit, level)
+    return level if level in _EVIDENCE_LEVELS else None
+
+
+def infer_evidence_level(
+    metrics: Optional[Mapping[str, Any]] = None,
+    *,
+    meta: Optional[Mapping[str, Any]] = None,
+) -> Optional[str]:
+    """Infer EET evidence_level; never invents ``human`` without an explicit signal.
+
+    Priority: explicit meta/metrics → runner hints → metric roles.
+    Returns None when there is no justified tag (caller must not invent).
+    """
+    out = _as_dict(metrics)
+    bucket = _as_dict(out.get("meta"))
+    if meta and isinstance(meta, Mapping):
+        for key, raw in meta.items():
+            if raw is None or raw == "":
+                continue
+            bucket[str(key)] = raw
+
+    for source in (bucket.get("evidence_level"), out.get("evidence_level")):
+        level = _normalize_evidence_level(source)
+        if level:
+            return level
+
+    runner = str(bucket.get("runner_id") or out.get("runner_id") or "").lower()
+    judge = str(bucket.get("judge_id") or out.get("judge_id") or "").lower()
+    blob = f"{runner} {judge}"
+    if any(h in blob for h in _HUMAN_RUNNER_HINTS):
+        return "human"
+    if any(h in blob for h in _SMOKE_RUNNER_HINTS):
+        return "smoke"
+    if any(h in blob for h in _GOLD_RUNNER_HINTS):
+        return "gold"
+
+    known = [str(k) for k in out if str(k) not in _SKIP_KEYS and str(k) in _METRIC_ROLE]
+    if not known:
+        return None
+    roles = {name: metric_role(name) for name in known}
+    scored = [n for n, r in roles.items() if r == "scored"]
+    if not scored:
+        return "smoke"
+    if any(n in _GOLD_METRIC_HINTS for n in scored):
+        return "gold"
+    return "fixture"
+
+
 def ensure_report_meta(
     metrics: Optional[Mapping[str, Any]] = None,
     *,
     meta: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Normalize runner/judge/dataset/schema stamps under ``metrics.meta``.
+    """Normalize runner/judge/dataset/schema/evidence stamps under ``metrics.meta``.
 
     Merges explicit ``meta``, promotes known keys from metrics root, and copies
     ``composite_version`` when scoring already carries it. Does not invent versions.
+    Stamps ``evidence_level`` when inferable; never upgrades to human without signal.
     """
     out: Dict[str, Any] = _as_dict(metrics)
     bucket = _as_dict(out.get("meta"))
@@ -61,6 +126,12 @@ def ensure_report_meta(
     ver = extract_composite_version(out)
     if ver:
         bucket.setdefault("composite_version", ver)
+    if "evidence_level" not in bucket or not _normalize_evidence_level(bucket.get("evidence_level")):
+        inferred = infer_evidence_level(out, meta=bucket)
+        if inferred:
+            bucket["evidence_level"] = inferred
+    else:
+        bucket["evidence_level"] = _normalize_evidence_level(bucket.get("evidence_level"))
     if bucket:
         out["meta"] = bucket
     return out
