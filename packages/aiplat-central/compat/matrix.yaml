@@ -51,7 +51,8 @@ contracts:
   - id: ontology.api.v0
     path: reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
   - id: eval.protocol.v0
-    path: reports/five-products/modules/evaluation/contracts/schemas/eval_protocol.schema.json
+    # SSOT after ARCH v1.3 / #572 — reports/.../schemas is shim-only (README)
+    path: packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json
   - id: aiplat.control.v0
     path: reports/five-products/modules/aiplat/contracts/schemas/control_plane.schema.json
 forbidden_without_adr:
