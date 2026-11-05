@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T06:50:00+08:00",
+  "reviewed_at": "2026-11-05T08:30:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fa0e29ffad8c7ca541aa499ec6c9c856a5cffabc",
-  "diff_sha256": "1a16de675f938d419319db0a8eeefc4c97b33fd119e4be742c445a03d1840c82",
-  "head_sha": "0ac7951ee0846ded38b446303f53e54f15f8e7ce",
+  "merge_base": "88319bce75db40a45fd9c9a71a63c16a2c6ab3af",
+  "diff_sha256": "47ed1d50dd932b0a914064d50ac1882529aa4fca922c8d313ca72581bc1ca8d2",
+  "head_sha": "357ee7bc84442d9dcc7f3a55fb7845282a47de58",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1a ADR_CANONICAL_RUNNERS_V1; composite v1.1 text_quality report-only."
+  "note": "ADR_SCORE_SCHEMA_VERSIONING_V1 + P1 doc align; docs only."
 }
