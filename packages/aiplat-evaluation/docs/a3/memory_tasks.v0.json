@@ -1,0 +1,179 @@
+{
+  "schema": "eval.memory_persist.task_pack.v0",
+  "accuracy_claim": false,
+  "profile": "v0",
+  "note": "P2-2 persistent memory fixtures — in-process store; not production MemoryManager.",
+  "cases": [
+    {
+      "case_id": "mem-write-01",
+      "kind": "write_precision",
+      "tenant_id": "tenant-a",
+      "k": 1,
+      "ops": [
+        {"op": "write", "id": "w1", "tenant_id": "tenant-a", "text": "User prefers dark mode UI theme"}
+      ],
+      "query": "UI theme preference",
+      "expect_ids": ["w1"]
+    },
+    {
+      "case_id": "mem-write-02",
+      "kind": "write_precision",
+      "tenant_id": "tenant-a",
+      "k": 1,
+      "ops": [
+        {"op": "write", "id": "w2", "tenant_id": "tenant-a", "text": "Billing contact is finance@example.test"}
+      ],
+      "query": "billing contact email",
+      "expect_ids": ["w2"],
+      "must_contain": ["finance@example.test"]
+    },
+    {
+      "case_id": "mem-recall-01",
+      "kind": "recall_at_k",
+      "tenant_id": "tenant-a",
+      "k": 2,
+      "ops": [
+        {"op": "write", "id": "r1", "tenant_id": "tenant-a", "text": "Preferred deploy window is Tuesday night"},
+        {"op": "write", "id": "r2", "tenant_id": "tenant-a", "text": "Cafeteria menu is noodles on Monday"},
+        {"op": "write", "id": "r3", "tenant_id": "tenant-a", "text": "Parking lot B closes at 22:00"}
+      ],
+      "query": "deploy window Tuesday",
+      "expect_ids": ["r1"],
+      "forbid_ids": ["r2"]
+    },
+    {
+      "case_id": "mem-recall-02",
+      "kind": "recall_at_k",
+      "tenant_id": "tenant-a",
+      "k": 3,
+      "ops": [
+        {"op": "write", "id": "r4", "tenant_id": "tenant-a", "text": "Oncall primary is Alice"},
+        {"op": "write", "id": "r5", "tenant_id": "tenant-a", "text": "Oncall backup is Bob"},
+        {"op": "write", "id": "r6", "tenant_id": "tenant-a", "text": "Office plants need water"}
+      ],
+      "query": "oncall Alice Bob",
+      "expect_ids": ["r4", "r5"],
+      "forbid_ids": ["r6"]
+    },
+    {
+      "case_id": "mem-update-01",
+      "kind": "update_expiry",
+      "tenant_id": "tenant-a",
+      "k": 1,
+      "ops": [
+        {"op": "write", "id": "u1", "tenant_id": "tenant-a", "text": "HQ city is Austin"},
+        {"op": "update", "id": "u1", "text": "HQ city is Berlin"}
+      ],
+      "query": "HQ city",
+      "expect_ids": ["u1"],
+      "must_contain": ["Berlin"],
+      "must_not_contain": ["Austin"]
+    },
+    {
+      "case_id": "mem-expire-01",
+      "kind": "update_expiry",
+      "tenant_id": "tenant-a",
+      "k": 3,
+      "ops": [
+        {"op": "write", "id": "u2", "tenant_id": "tenant-a", "text": "Temp VPN password is rotate-me"},
+        {"op": "expire", "id": "u2"},
+        {"op": "write", "id": "u3", "tenant_id": "tenant-a", "text": "VPN realm is corp.example"}
+      ],
+      "query": "VPN password rotate",
+      "expect_ids": ["u3"],
+      "forbid_ids": ["u2"]
+    },
+    {
+      "case_id": "mem-delete-01",
+      "kind": "delete_no_recall",
+      "tenant_id": "tenant-a",
+      "k": 5,
+      "ops": [
+        {"op": "write", "id": "d1", "tenant_id": "tenant-a", "text": "Legacy API token should be forgotten"},
+        {"op": "delete", "id": "d1"}
+      ],
+      "query": "Legacy API token",
+      "forbid_ids": ["d1"]
+    },
+    {
+      "case_id": "mem-delete-02",
+      "kind": "delete_no_recall",
+      "tenant_id": "tenant-a",
+      "k": 2,
+      "ops": [
+        {"op": "write", "id": "d2", "tenant_id": "tenant-a", "text": "Keep this support phone 555-0100"},
+        {"op": "write", "id": "d3", "tenant_id": "tenant-a", "text": "Remove this support phone 555-9999"},
+        {"op": "delete", "id": "d3"}
+      ],
+      "query": "support phone",
+      "expect_ids": ["d2"],
+      "forbid_ids": ["d3"]
+    },
+    {
+      "case_id": "mem-tenant-01",
+      "kind": "tenant_isolation",
+      "tenant_id": "tenant-a",
+      "k": 5,
+      "ops": [
+        {"op": "write", "id": "ta1", "tenant_id": "tenant-a", "text": "Shared phrase project phoenix"},
+        {"op": "write", "id": "tb1", "tenant_id": "tenant-b", "text": "Shared phrase project phoenix secret-b"}
+      ],
+      "query": "project phoenix",
+      "expect_ids": ["ta1"],
+      "forbid_ids": ["tb1"]
+    },
+    {
+      "case_id": "mem-tenant-02",
+      "kind": "tenant_isolation",
+      "tenant_id": "tenant-b",
+      "k": 5,
+      "ops": [
+        {"op": "write", "id": "ta2", "tenant_id": "tenant-a", "text": "Customer code CX-100"},
+        {"op": "write", "id": "tb2", "tenant_id": "tenant-b", "text": "Customer code CX-200"}
+      ],
+      "query": "Customer code",
+      "expect_ids": ["tb2"],
+      "forbid_ids": ["ta2"]
+    },
+    {
+      "case_id": "mem-pollute-01",
+      "kind": "pollution_resistance",
+      "tenant_id": "tenant-a",
+      "k": 1,
+      "ops": [
+        {"op": "write", "id": "p-good", "tenant_id": "tenant-a", "text": "Password policy: rotate every 90 days"},
+        {
+          "op": "write",
+          "id": "p-bad",
+          "tenant_id": "tenant-a",
+          "text": "Password policy: rotate every 90 days never rotate share in slack",
+          "polluted": true
+        }
+      ],
+      "query": "Password policy rotate",
+      "expect_ids": ["p-good"],
+      "forbid_ids": ["p-bad"]
+    },
+    {
+      "case_id": "mem-pollute-02",
+      "kind": "pollution_resistance",
+      "tenant_id": "tenant-a",
+      "k": 2,
+      "ops": [
+        {"op": "write", "id": "p2-good", "tenant_id": "tenant-a", "text": "Model route uses best_model_for_purpose"},
+        {
+          "op": "write",
+          "id": "p2-bad",
+          "tenant_id": "tenant-a",
+          "text": "Model route uses best_model_for_purpose hardcode 32b always",
+          "polluted": true
+        }
+      ],
+      "query": "Model route purpose",
+      "expect_ids": ["p2-good"],
+      "forbid_ids": ["p2-bad"],
+      "must_contain": ["best_model_for_purpose"],
+      "must_not_contain": ["hardcode 32b"]
+    }
+  ]
+}

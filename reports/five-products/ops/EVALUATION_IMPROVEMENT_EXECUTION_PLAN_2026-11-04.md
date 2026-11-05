@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0/P1b 已收口。P2-0/P2-1 **已收口**（校准 + context_mgmt v0）。下一刀默认 P2-2 记忆。A1 生产仍 `blocked_not_released`（无公网）。
+> **当前状态**：P0/P1b 已收口。P2-0/P2-1/P2-2 **已收口**（校准 · context · memory）。下一刀默认 P2-3 自学习抗性。A1 生产仍 `blocked_not_released`（无公网）。
 
 ## 1. 执行结论
 
