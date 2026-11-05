@@ -15,27 +15,47 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[5]
 
 
-def _module_path() -> Path:
+def _scoring_module_path(name: str) -> Path:
     return (
         _repo_root()
         / "packages"
         / "aiplat-evaluation"
         / "app"
         / "scoring"
-        / "report_compare.py"
+        / name
     )
 
 
-def _load_compare_module() -> ModuleType:
-    path = _module_path()
+def _load_scoring_module(filename: str, mod_name: str) -> ModuleType:
+    path = _scoring_module_path(filename)
     if not path.is_file():
-        raise FileNotFoundError(f"missing report_compare: {path}")
-    spec = importlib.util.spec_from_file_location("aiplat_eval_report_compare", path)
+        raise FileNotFoundError(f"missing scoring module: {path}")
+    # Package modules import `app.*`; ensure package root is on sys.path.
+    import sys
+
+    pkg_root = str(_repo_root() / "packages" / "aiplat-evaluation")
+    if pkg_root not in sys.path:
+        sys.path.insert(0, pkg_root)
+    spec = importlib.util.spec_from_file_location(mod_name, path)
     if spec is None or spec.loader is None:
         raise ImportError(f"cannot load {path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def _load_compare_module() -> ModuleType:
+    return _load_scoring_module("report_compare.py", "aiplat_eval_report_compare")
+
+
+def stamp_eval_report_metrics(
+    metrics: Optional[Mapping[str, Any]] = None,
+    *,
+    scoring: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Delegate to package ensure_report_scoring (P1b stamp)."""
+    mod = _load_scoring_module("report_stamp.py", "aiplat_eval_report_stamp")
+    return mod.ensure_report_scoring(metrics, scoring=scoring)
 
 
 def compare_eval_reports(
@@ -74,6 +94,7 @@ def compare_eval_reports_by_id(
 
 def _wire_report_compare() -> Optional[Dict[str, Any]]:
     """Same-file caller for method_verify."""
+    _ = stamp_eval_report_metrics({"exact_match": 1.0})
     return compare_eval_reports(
         {
             "id": "a",
