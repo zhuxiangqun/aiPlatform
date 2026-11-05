@@ -147,6 +147,8 @@ Protocol 还须指定 **model/prompt freeze owner** 和明确的 freeze 时间�
 
 **A1 通过即可发布 UI，不等待对象卡或 G2B protocol 完成。** 若目标部署环境不可用，A1 状态必须记为 `blocked_not_released`；本地或静态构建不能替代实际部署验收，也不得据此宣布发布完成。A1 不需要 staging。
 
+**签认模板**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)（勾选后复制为 `EVAL_A1_DEPLOY_SIGNOFF_<env>_<date>.md`）。
+
 ### P0 门 A2：口径基线（不阻塞 UI 发布）
 
 - 七张对象现状卡全部完成，页首有 owner/date/runner version，并标明当前维度及 gate 资格。

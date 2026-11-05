@@ -15,7 +15,7 @@
 
 | 项 | 阻塞 |
 |---|---|
-| **A1 部署签认** | 目标环境构建 ID、旧 `/diagnostics/eval` `/platform/kb/eval` 须 404、CDN 缓存 |
+| **A1 部署签认** | 目标环境构建 ID、旧 `/diagnostics/eval` `/platform/kb/eval` 须 404、CDN 缓存 · **检查表**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md) |
 | **EET 治理批准** | `EVAL_EVIDENCE_LEVEL_MAP_V1` Proposed → Accept |
 | **G2B-100 protocol 三方签认** | 签后才可开 31–100 确认性双标 |
 | **G2b 31–100 双标/仲裁** | ≥2 标注者；预算 25–30 人时 |
