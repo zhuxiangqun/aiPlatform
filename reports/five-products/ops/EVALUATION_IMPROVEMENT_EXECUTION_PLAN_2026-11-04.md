@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0 A2（#593）+ P1a（#594/#595）+ P1b 报告对比（#596）+ Arena 盲评脚手架（#597）已合入。A1 部署签认仍 open。**P1a 余（人）**：EET 治理批准；G2B-100 protocol 三方签认。**P1b 进行中**：报告写入 stamp `composite_version`；Arena/G2b pilot 完成仍依赖真人。
+> **当前状态**：P0 A2（#593）+ P1a（#594/#595）+ P1b 报告对比/stamp（#596/#598）+ Arena 盲评脚手架（#597）已合入。工程侧交接见 [EVAL_P1B_AGENT_HANDOFF](./EVAL_P1B_AGENT_HANDOFF.md)。A1 部署签认仍 open。**人侧余**：EET 批准；G2B-100 三方签认；G2b 31–100 双标；Arena pilot≥30×2；对象卡 owner 核实。
 
 ## 1. 执行结论
 
@@ -146,6 +146,8 @@ Protocol 还须指定 **model/prompt freeze owner** 和明确的 freeze 时间�
 - G2b 状态文案统一。
 
 **A1 通过即可发布 UI，不等待对象卡或 G2B protocol 完成。** 若目标部署环境不可用，A1 状态必须记为 `blocked_not_released`；本地或静态构建不能替代实际部署验收，也不得据此宣布发布完成。A1 不需要 staging。
+
+**签认模板**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)（勾选后复制为 `EVAL_A1_DEPLOY_SIGNOFF_<env>_<date>.md`）。
 
 ### P0 门 A2：口径基线（不阻塞 UI 发布）
 
