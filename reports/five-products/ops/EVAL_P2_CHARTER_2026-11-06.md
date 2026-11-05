@@ -1,6 +1,6 @@
 # EVAL P2 Charter（2026-11-06）
 
-> **状态**：✅ P2-0..P2-3 **已收口** · P2-4 生产治理仍搁置（无公网）  
+> **状态**：✅ 本地轨总收口（[EVAL_P2_LOCAL_TRACK_CLOSEOUT](./EVAL_P2_LOCAL_TRACK_CLOSEOUT_2026-11-06.md)）· P2-4 **Parked**  
 
 
 

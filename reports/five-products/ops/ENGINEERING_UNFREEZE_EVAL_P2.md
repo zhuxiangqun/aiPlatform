@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL **P2** 立项开篇
 
 - **decided_at**: `2026-11-06`
-- **status**: **Open (P2-4 only)** · P2-0..P2-3 **已收口** · P2-4 生产治理仍搁置（无公网）
+- **status**: **Local track closed** · P2-0..P2-3 ✅ · P2-4 **Parked**（[`ENGINEERING_UNFREEZE_EVAL_P2_PROD.md`](./ENGINEERING_UNFREEZE_EVAL_P2_PROD.md)）· [总收口](./EVAL_P2_LOCAL_TRACK_CLOSEOUT_2026-11-06.md)
 - **parent plan**: [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
 - **P1b human closeout**: [`EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md`](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
@@ -46,4 +46,4 @@ P0/P1b 人侧与报告轨已收口。A1 **生产**仍 `blocked_not_released`（�
 
 ## 诚实锁
 
-P2 kickoff ≠ 能力已交付 · ≠ 生产授权 · ≠ accuracy claim · 无公网 ≠ 可做本地校准预备
+P2 本地轨收口 ≠ 生产治理通过 · ≠ 生产授权 · ≠ accuracy claim · 无公网则 P2-4 保持 Parked
