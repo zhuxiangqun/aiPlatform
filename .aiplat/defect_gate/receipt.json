@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T11:54:12+08:00",
+  "reviewed_at": "2026-11-05T12:05:24+08:00",
   "base_ref": "origin/main",
   "merge_base": "e958774dc514bc2d5d80d64f8a74958e48623dce",
-  "diff_sha256": "d8181459266bbc68616606f0fbc552402b15c00a6f34cb8806548891a91c10d2",
-  "head_sha": "9df2509cafc3eeb175cca0263c5dbd4786677421",
+  "diff_sha256": "22deec7f6860ce09765629d2b808af80b6f64b36a5e72bca46d094af555326db",
+  "head_sha": "f1116b4589ccfa31245fa236f87a91bbd44d0dc7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. P1b handoff + composite_version list badge."
+  "note": "Local lock only. A1 deploy sign-off checklist + prior P1b handoff UI."
 }
