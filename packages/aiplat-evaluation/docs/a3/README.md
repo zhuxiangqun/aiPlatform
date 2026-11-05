@@ -31,6 +31,8 @@
 | [`G2B_N100.md`](./G2B_N100.md) | G2b n=100 扩样 runbook（31–100 双人标注 pending） |
 | [`G2B_100_PROTOCOL.md`](./G2B_100_PROTOCOL.md) | G2b-100 预注册 protocol（DRAFT · 待三方签认；签署前不开始确认性 31–100） |
 | [`ARENA_BLIND_DESIGN.md`](./ARENA_BLIND_DESIGN.md) | Arena 盲评设计（P1a）；现行 length winner = smoke only |
+| [`ARENA_BLIND_RUBRIC_V1.md`](./ARENA_BLIND_RUBRIC_V1.md) | Arena 盲评 rubric 冻结稿（A/B/Tie） |
+| [`ARENA_BLIND_PILOT.md`](./ARENA_BLIND_PILOT.md) | P1b pilot 手册 + pack 脚手架；完成仍依赖真人 |
 | [`ADR_CANONICAL_RUNNERS_V1.md`](./ADR_CANONICAL_RUNNERS_V1.md) | Prompt/KB package runner canonical；legacy core 只读 |
 | [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（v1.1 text_quality smoke） |
 | [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |

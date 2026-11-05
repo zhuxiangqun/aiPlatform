@@ -2,8 +2,9 @@
 
 > **状态**：设计完成 ≠ 新评分上线  
 > **日期**：2026-11-05  
-> **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) P1a  
-> **现状 runner**：`arena` = `length_heuristic` · `evidence_level=smoke` · **不可进质量 gate**
+> **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) P1a/P1b  
+> **现状 runner**：`arena` = `length_heuristic` · `evidence_level=smoke` · **不可进质量 gate**  
+> **Rubric 冻结**：[ARENA_BLIND_RUBRIC_V1](./ARENA_BLIND_RUBRIC_V1.md) · **Pilot 脚手架**：[ARENA_BLIND_PILOT](./ARENA_BLIND_PILOT.md)
 
 ## 1. 问题
 
