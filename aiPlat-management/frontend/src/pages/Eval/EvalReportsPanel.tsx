@@ -61,6 +61,99 @@ function reportMetaHint(r: StoreReport): string {
   return bits.slice(0, 3).join(' ');
 }
 
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+function deltaEntries(deltas: unknown): Array<[string, string]> {
+  const rec = asRecord(deltas);
+  if (!rec) return [];
+  return Object.keys(rec)
+    .sort()
+    .map((k) => {
+      const raw = rec[k];
+      const text = raw === null || raw === undefined ? '—' : String(raw);
+      return [k, text] as [string, string];
+    });
+}
+
+function CompareSummary({ result }: { result: Record<string, unknown> }) {
+  const comparable = Boolean(result.comparable);
+  const baseline = asRecord(result.baseline);
+  const candidate = asRecord(result.candidate);
+  const failures = asRecord(result.failures);
+  const familyRows = deltaEntries(result.family_deltas);
+  const metricRows = deltaEntries(result.metric_deltas).slice(0, 8);
+  const added = Array.isArray(failures?.added) ? (failures!.added as unknown[]) : [];
+  const removed = Array.isArray(failures?.removed) ? (failures!.removed as unknown[]) : [];
+
+  return (
+    <div className="space-y-3 text-xs" data-testid="eval-compare-summary">
+      <p className={comparable ? 'text-emerald-300' : 'text-amber-300'}>
+        {comparable
+          ? `comparable · score_delta=${String(result.score_delta ?? '—')}`
+          : `不可直接比较 · ${String(result.incomparable_reason || '—')}`}
+        {' · '}
+        <span className="text-gray-500">accuracy_claim=false</span>
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-300">
+        <div className="rounded border border-gray-800 bg-gray-950/60 p-2">
+          <div className="text-gray-500 mb-1">baseline</div>
+          <div>id={String(baseline?.id ?? '—')}</div>
+          <div>composite={String(baseline?.composite_version ?? '—')}</div>
+          <div>score={String(baseline?.score ?? '—')}</div>
+        </div>
+        <div className="rounded border border-gray-800 bg-gray-950/60 p-2">
+          <div className="text-gray-500 mb-1">candidate</div>
+          <div>id={String(candidate?.id ?? '—')}</div>
+          <div>composite={String(candidate?.composite_version ?? '—')}</div>
+          <div>score={String(candidate?.score ?? '—')}</div>
+        </div>
+      </div>
+      {comparable && familyRows.length > 0 ? (
+        <div>
+          <div className="text-gray-500 mb-1">family_deltas</div>
+          <ul className="grid grid-cols-2 gap-1 text-gray-300">
+            {familyRows.map(([k, v]) => (
+              <li key={k}>
+                {k}: {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {comparable && metricRows.length > 0 ? (
+        <div>
+          <div className="text-gray-500 mb-1">metric_deltas（最多 8）</div>
+          <ul className="grid grid-cols-2 gap-1 text-gray-300">
+            {metricRows.map(([k, v]) => (
+              <li key={k}>
+                {k}: {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {failures ? (
+        <div className="text-gray-300">
+          <div className="text-gray-500 mb-1">failures</div>
+          <div>
+            baseline={String(failures.baseline_count ?? '—')} · candidate=
+            {String(failures.candidate_count ?? '—')} · shared=
+            {String(failures.shared_count ?? '—')}
+          </div>
+          {added.length ? (
+            <div className="truncate">added: {added.slice(0, 5).map(String).join(', ')}</div>
+          ) : null}
+          {removed.length ? (
+            <div className="truncate">removed: {removed.slice(0, 5).map(String).join(', ')}</div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 type GoldReport = {
   profile?: string;
   case_count?: number;
@@ -276,21 +369,16 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
         {compareError ? <p className="text-red-300 text-xs">{compareError}</p> : null}
         {compareResult ? (
           <div className="space-y-2">
-            <p
-              className={`text-xs ${
-                compareResult.comparable ? 'text-emerald-300' : 'text-amber-300'
-              }`}
-            >
-              {compareResult.comparable
-                ? `comparable · score_delta=${String(compareResult.score_delta ?? '—')}`
-                : `不可直接比较 · ${String(compareResult.incomparable_reason || '—')}`}
-            </p>
-            <pre
-              className="text-xs bg-gray-950/80 border border-gray-800 rounded p-3 overflow-auto max-h-64 text-gray-300"
-              data-testid="eval-compare-result"
-            >
-              {JSON.stringify(compareResult, null, 2)}
-            </pre>
+            <CompareSummary result={compareResult} />
+            <details className="text-xs text-gray-500">
+              <summary className="cursor-pointer hover:text-gray-300">原始 JSON</summary>
+              <pre
+                className="mt-2 text-xs bg-gray-950/80 border border-gray-800 rounded p-3 overflow-auto max-h-64 text-gray-300"
+                data-testid="eval-compare-result"
+              >
+                {JSON.stringify(compareResult, null, 2)}
+              </pre>
+            </details>
           </div>
         ) : null}
       </div>
