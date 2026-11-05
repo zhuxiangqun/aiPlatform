@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T09:44:14+08:00",
+  "reviewed_at": "2026-11-05T10:12:50+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f789110453e9925db90ee376bd610c619bfee731",
-  "diff_sha256": "75ac941d0d319e7ce522e83deab3f56695167cd946f724119c095c62a7a78998",
-  "head_sha": "9e84576748dce5ee17f510ae84545b78961a2f9a",
+  "merge_base": "b00fb7d2f9faae288dcb49e08f9e7be8759cd3c7",
+  "diff_sha256": "b211aaeb007b3b5e0b934de509244fee3cde4d3a13b7a84c22adc7c406e8d060",
+  "head_sha": "dadaa33763ea188c8d482e9186632f345a51f35c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. P1b report compare; CAPABILITIES 2715 + whitepaper sync."
+  "note": "Local lock only. P1b Arena blind rubric + pack scaffold; accuracy_claim=false; pilot still human."
 }
