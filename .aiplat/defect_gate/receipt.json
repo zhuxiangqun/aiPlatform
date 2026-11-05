@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T14:28:26+08:00",
+  "reviewed_at": "2026-11-05T15:06:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "195ef143c5f9b4abd6eee376ef42b1bea5d17f67",
-  "diff_sha256": "ef453dded638c9c501eca03891d5dd41ca8fceab94d4927310e14345c064969e",
-  "head_sha": "03c1ed131f03baa8974c98e99fe699a11fa8d8ae",
+  "merge_base": "9e8f553243028ca8cd96ee9b20c808e782e83148",
+  "diff_sha256": "4c37622b6ac2596be011c6c070e893f94c320d1c4aa2f27b955fc1de8d6f1e0f",
+  "head_sha": "e56b7ac4042eaefaa4ee094b3437e3c2a12eefc8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Compare summary UI rebased onto main after #601."
+  "note": "After AUTO-STATS refresh for failure-samples capability row. UI-only; accuracy_claim=false. Local lock only."
 }
