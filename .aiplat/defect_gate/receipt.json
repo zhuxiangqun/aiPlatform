@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T08:55:00+08:00",
+  "reviewed_at": "2026-11-05T09:26:09+08:00",
   "base_ref": "origin/main",
-  "merge_base": "88319bce75db40a45fd9c9a71a63c16a2c6ab3af",
-  "diff_sha256": "b5ca553a63ec909989571abe7c99824f4cd2c2ea054c22eb99ea3e8fbfbd861d",
-  "head_sha": "8c7767ba72a2ec66886bb658995dd8ae50d079a8",
+  "merge_base": "f789110453e9925db90ee376bd610c619bfee731",
+  "diff_sha256": "603d80cead75512c7f517fde1c2a7487f7c1e7d49289f62ced4c7846c4944d5c",
+  "head_sha": "c94c060490a75b87f932cc140d9dee76cdfd2bb6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "compat matrix → package eval_protocol; diagnosis C3 工程指标; prior EET/schema ADR."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. P1b report compare: same composite_version only; cross-version incomparable; accuracy_claim=false."
 }
