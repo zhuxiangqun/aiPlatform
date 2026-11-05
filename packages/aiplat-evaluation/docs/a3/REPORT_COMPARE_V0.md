@@ -22,7 +22,8 @@ Cohost：`CoreFacade.eval_compare_reports` → package loader。
 Proxy：`AIPLAT_EVAL_SERVICE_URL` 转发 standalone。
 
 管理端 Reports 对比区：先展示可读摘要（score/family/metric deltas + failures），原始 JSON 折叠。  
-报告详情拉取：失败样本表（task_id / failure_category / score，最多 30）+ taxonomy 摘要，原始 JSON 折叠。
+报告详情拉取：失败样本表（task_id / failure_category / score，最多 30）+ taxonomy 摘要，原始 JSON 折叠。  
+Reports 列表可按 `composite_version` 客户端过滤；对比「快捷填入」使用当前过滤结果，便于选同版本基线/候选。
 
 ## 写入侧（P1b stamp）
 

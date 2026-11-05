@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T15:06:00+08:00",
+  "reviewed_at": "2026-11-05T15:25:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9e8f553243028ca8cd96ee9b20c808e782e83148",
-  "diff_sha256": "4c37622b6ac2596be011c6c070e893f94c320d1c4aa2f27b955fc1de8d6f1e0f",
-  "head_sha": "e56b7ac4042eaefaa4ee094b3437e3c2a12eefc8",
+  "merge_base": "31d3fd1849b20a21044d99749161c0e0290537ad",
+  "diff_sha256": "46314a23868872d9bbbd6aecd28b379311c6917a8ca1f19812a3aafdfefb07f6",
+  "head_sha": "ecfe319c334c4c474390c8c870f88b939536e0f9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "After AUTO-STATS refresh for failure-samples capability row. UI-only; accuracy_claim=false. Local lock only."
+  "note": "UI filter only; does not invent composite_version; accuracy_claim=false. Local lock only."
 }
