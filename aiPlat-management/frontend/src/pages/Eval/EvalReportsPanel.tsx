@@ -305,6 +305,8 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
   const [compareBusy, setCompareBusy] = useState(false);
   const [compareResult, setCompareResult] = useState<Record<string, unknown> | null>(null);
   const [compareError, setCompareError] = useState('');
+  /** Client filter: '' = all · '__none__' = missing composite · else exact version. */
+  const [compositeFilter, setCompositeFilter] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -364,6 +366,20 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
     return keys.length ? keys.join(', ') : '{}';
   };
 
+  const compositeVersions = Array.from(
+    new Set(
+      items
+        .map((r) => compositeVersionOf(r))
+        .filter((v): v is string => typeof v === 'string' && v.length > 0),
+    ),
+  ).sort();
+  const filteredItems = items.filter((r) => {
+    if (!compositeFilter) return true;
+    const cv = compositeVersionOf(r);
+    if (compositeFilter === '__none__') return !cv;
+    return cv === compositeFilter;
+  });
+
   const runCompare = async () => {
     const bid = baselineId.trim();
     const cid = candidateId.trim();
@@ -389,14 +405,33 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
       <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <h2 className="font-medium">Store 报告</h2>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-gray-600 text-xs text-gray-300 hover:bg-gray-800"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            刷新
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-xs text-gray-500 flex items-center gap-1.5">
+              composite
+              <select
+                className="px-2 py-1 rounded bg-gray-950 border border-gray-700 text-gray-200"
+                value={compositeFilter}
+                onChange={(e) => setCompositeFilter(e.target.value)}
+                data-testid="eval-report-composite-filter"
+              >
+                <option value="">全部</option>
+                {compositeVersions.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+                <option value="__none__">无 composite_version</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-gray-600 text-xs text-gray-300 hover:bg-gray-800"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              刷新
+            </button>
+          </div>
         </div>
         <p className="text-xs text-gray-500">
           accuracy_claim 恒不展示为真 · 趋势对比仅同 composite_version · local store / proxy 只读
@@ -408,9 +443,11 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
           <p className="text-gray-500">加载中…</p>
         ) : items.length === 0 ? (
           <p className="text-gray-500">暂无 store 报告（可按 id 拉取）。</p>
+        ) : filteredItems.length === 0 ? (
+          <p className="text-gray-500">当前 composite 过滤无匹配报告。</p>
         ) : (
           <ul className="divide-y divide-gray-800">
-            {items.map((r, i) => {
+            {filteredItems.map((r, i) => {
               const cv = compositeVersionOf(r);
               const metaHint = reportMetaHint(r);
               return (
@@ -477,18 +514,18 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
             对比
           </button>
         </div>
-        {items.length >= 2 ? (
+        {filteredItems.length >= 2 ? (
           <p className="text-xs text-gray-500">
-            快捷填入最近两条：
+            快捷填入当前过滤列表最近两条（宜先筛同一 composite）：
             <button
               type="button"
               className="ml-2 text-blue-300 hover:underline"
               onClick={() => {
-                setBaselineId(String(items[1]?.id || ''));
-                setCandidateId(String(items[0]?.id || ''));
+                setBaselineId(String(filteredItems[1]?.id || ''));
+                setCandidateId(String(filteredItems[0]?.id || ''));
               }}
             >
-              用列表第 2 / 第 1 条
+              用过滤列表第 2 / 第 1 条
             </button>
           </p>
         ) : null}
