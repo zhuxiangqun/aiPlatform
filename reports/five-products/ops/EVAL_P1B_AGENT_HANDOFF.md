@@ -30,6 +30,7 @@
 | 列表 composite_version 过滤 | #604 | 筛同版本后对比快捷填入 |
 | report_only 指标徽章 | #605 | 详情区分 family_scores vs report_only；弱代理不进门禁 |
 | evidence_level 写入 meta | #606 | `infer_evidence_level`；详情展示；EET≠发布门禁 |
+| 对象卡工程字段刷新 | （本批） | 七张对照 #596–#606；**owner 仍待核实签字** |
 
 ## 人侧仍 open（工程无法代签）
 
@@ -40,7 +41,7 @@
 | **G2B-100 protocol 三方签认** | 签后才可开 31–100 确认性双标 |
 | **G2b 31–100 双标/仲裁** | ≥2 标注者；预算 25–30 人时 |
 | **Arena pilot ≥30 对×2 盲评** | 排期评审；现仅 fixture×3 供 pack smoke |
-| **对象卡 owner 核实** | `eval-object-cards/` 七张 |
+| **对象卡 owner 核实** | `eval-object-cards/` 工程字段已刷新；各对象 owner 去掉「待核实」并签日期 |
 
 ## 诚实锁
 
