@@ -9,7 +9,7 @@
 
 ## 诚实锁（强制）
 
-> C1 blind fixture 上 Top-1/Top-3/证据完整/unknown·stale 出现 **1.00**，仅表示**规则与脱敏 fixture 对齐的工程回归**，**不是**诊断准确率认证，**禁止**对外宣称 accuracy。  
+> C1 blind fixture 上 Top-1/Top-3/证据完整/unknown·stale 出现 **1.00**，仅表示**规则与脱敏 fixture 对齐的工程指标 / 工程回归**，**不是**诊断准确率认证，**禁止**对外宣称 accuracy。  
 > 可信度提升需另开 adversarial/holdout fixture 硬化（非 C4）。`accuracy_claim` 保持 **false**。
 
 ## Outcome
@@ -24,7 +24,7 @@
 | D3 local UAT | `d3_local_acceptance.sh` PASS（environment=local） |
 | healthz schema | `contracts/schemas/healthz.schema.json` · facade 对齐 status/capability_id/deploy_unit |
 | remediate / accuracy | 无 · `accuracy_claim=false` |
-| EVAL G2b | **defer**（claim → G2c self-consistency；见决策文档） |
+| EVAL G2b | n=30 closeout 已完成、31–100 待双标；`accuracy_claim=false`（≠ Diagnosis C3 范围） |
 
 ## 验证命令
 

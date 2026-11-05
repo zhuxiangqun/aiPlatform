@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0 A2 文档已合入（#593）；A1 部署签认仍 open。**P1a 进行中**：`ADR_CANONICAL_RUNNERS_V1` + composite v1.1（`text_quality` → report-only）；Arena smoke/盲评设计已合入。
+> **当前状态**：P0 A2（#593）+ P1a canonical/smoke（#594）已合入；score schema ADR + EET 映射草案本批（#595）；A1 部署签认仍 open。**P1a 余**：EET 治理批准；G2B-100 protocol 三方签认 pending。
 
 ## 1. 执行结论
 

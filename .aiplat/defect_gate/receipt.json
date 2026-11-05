@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T06:50:00+08:00",
+  "reviewed_at": "2026-11-05T08:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fa0e29ffad8c7ca541aa499ec6c9c856a5cffabc",
-  "diff_sha256": "1a16de675f938d419319db0a8eeefc4c97b33fd119e4be742c445a03d1840c82",
-  "head_sha": "0ac7951ee0846ded38b446303f53e54f15f8e7ce",
+  "merge_base": "88319bce75db40a45fd9c9a71a63c16a2c6ab3af",
+  "diff_sha256": "b5ca553a63ec909989571abe7c99824f4cd2c2ea054c22eb99ea3e8fbfbd861d",
+  "head_sha": "8c7767ba72a2ec66886bb658995dd8ae50d079a8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1a ADR_CANONICAL_RUNNERS_V1; composite v1.1 text_quality report-only."
+  "note": "compat matrix → package eval_protocol; diagnosis C3 工程指标; prior EET/schema ADR."
 }
