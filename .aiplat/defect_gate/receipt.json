@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T17:45:00+08:00",
+  "reviewed_at": "2026-11-05T18:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "26103dd6a0830e3001f1f97cb2d255d00407946a",
-  "diff_sha256": "83f055bc325b668c49d15403a669b5ffe8a4c2d94174043265a9a110ff05aa69",
-  "head_sha": "c258b9831b24fd0d61df93dd2fffdedad50965e0",
+  "merge_base": "4d2506f297341a1a32cb9d2872582a69ea24855c",
+  "diff_sha256": "9d1f3954a080a8c795eaf5b13cbed87e21b3fe9e50691dbd22abb3e249a92aba",
+  "head_sha": "b0920a692aeb341620d73a860f232580ce53a8e0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "infer_evidence_level stamps meta only; EET≠release gate; accuracy_claim=false. Local lock only."
+  "note": "Docs-only closeout; no product code. Local lock only."
 }
