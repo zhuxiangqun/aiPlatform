@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T13:25:54+08:00",
+  "reviewed_at": "2026-11-05T14:28:26+08:00",
   "base_ref": "origin/main",
-  "merge_base": "41c1f4a3951d50dcca5f91ed0035ade4bf10d613",
-  "diff_sha256": "58098bf4fa863110de21aa5d160d3df72474ca8d589f684697dc7844d479a778",
-  "head_sha": "21d1d074dc6949ce4bfeb6933b2e01bab12e4c5c",
+  "merge_base": "195ef143c5f9b4abd6eee376ef42b1bea5d17f67",
+  "diff_sha256": "ef453dded638c9c501eca03891d5dd41ca8fceab94d4927310e14345c064969e",
+  "head_sha": "03c1ed131f03baa8974c98e99fe699a11fa8d8ae",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Wire runner/gate/judge meta; no human sign."
+  "note": "Local lock only. Compare summary UI rebased onto main after #601."
 }
