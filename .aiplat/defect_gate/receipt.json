@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T09:32:32+08:00",
+  "reviewed_at": "2026-11-05T09:44:14+08:00",
   "base_ref": "origin/main",
   "merge_base": "f789110453e9925db90ee376bd610c619bfee731",
-  "diff_sha256": "10adf6b9789ad2a730b799657ac2017fa9fca5f695cd88438138427f929f1512",
-  "head_sha": "50c3c2413ee5bde0b373163a906553e13812bc80",
+  "diff_sha256": "75ac941d0d319e7ce522e83deab3f56695167cd946f724119c095c62a7a78998",
+  "head_sha": "9e84576748dce5ee17f510ae84545b78961a2f9a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. P1b report compare + whitepaper resync."
+  "note": "Local lock only. P1b report compare; CAPABILITIES 2715 + whitepaper sync."
 }
