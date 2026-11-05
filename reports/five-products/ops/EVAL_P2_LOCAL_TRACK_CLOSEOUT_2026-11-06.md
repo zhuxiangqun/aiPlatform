@@ -16,10 +16,9 @@
 
 ## 全局诚实锁
 
-`accuracy_claim=false` · `process_split_authorized=false` · A1 生产仍 `blocked_not_released`  
+`accuracy_claim=false` · `process_split_authorized=false` · A1 以本地为准（生产 Parked）  
 本地 fixture ≠ 生产 SLA · 校准不一致率 ≠ 授权写回
 
-## 下一步（需资源，非本机可伪完成）
+## 下一步
 
-1. 公网 / staging 到位 → 解冻 P2-4  
-2. 或 A1 生产签核（独立于 P2 研究轨）
+见 [EVAL_BOARD_LOCAL_SCOPE_CLOSEOUT_2026-11-06.md](./EVAL_BOARD_LOCAL_SCOPE_CLOSEOUT_2026-11-06.md)：本地范围已关；公网/staging 或新 backlog 才再开。
