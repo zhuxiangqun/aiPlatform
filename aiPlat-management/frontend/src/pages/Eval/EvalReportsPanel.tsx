@@ -46,6 +46,21 @@ function compositeVersionOf(r: StoreReport): string | null {
   return fromBlock(r as { composite?: unknown });
 }
 
+function reportMetaHint(r: StoreReport): string {
+  const metrics = r.metrics;
+  const meta =
+    metrics && typeof metrics === 'object'
+      ? (metrics as { meta?: Record<string, unknown> }).meta
+      : undefined;
+  if (!meta || typeof meta !== 'object') return '';
+  const bits: string[] = [];
+  for (const key of ['runner_id', 'judge_id', 'dataset_version', 'runner_version'] as const) {
+    const v = meta[key];
+    if (typeof v === 'string' && v.trim()) bits.push(`${key}=${v.trim()}`);
+  }
+  return bits.slice(0, 3).join(' ');
+}
+
 type GoldReport = {
   profile?: string;
   case_count?: number;
@@ -178,6 +193,7 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
           <ul className="divide-y divide-gray-800">
             {items.map((r, i) => {
               const cv = compositeVersionOf(r);
+              const metaHint = reportMetaHint(r);
               return (
               <li key={r.id || i} className="py-2 flex justify-between gap-3 items-start">
                 <button
@@ -187,13 +203,19 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
                 >
                   {r.id || `report-${i}`}
                 </button>
-                <span className="text-gray-500 shrink-0 text-xs text-right">
+                <span className="text-gray-500 shrink-0 text-xs text-right max-w-[60%]">
                   <span
                     className={cv ? 'text-emerald-400/90' : 'text-amber-400/80'}
                     data-testid="eval-report-composite-version"
                   >
                     {cv ? `composite ${cv}` : 'no composite_version'}
                   </span>
+                  {metaHint ? (
+                    <>
+                      {' · '}
+                      <span data-testid="eval-report-meta">{metaHint}</span>
+                    </>
+                  ) : null}
                   {' · '}
                   {r.created_at || '—'} · metrics[{metricsHint(r.metrics)}]
                 </span>

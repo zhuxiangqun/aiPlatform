@@ -36,14 +36,24 @@ def test_preserves_existing_version():
 def test_stamped_reports_are_comparable():
     a = {"id": "a", "metrics": ensure_report_scoring({"exact_match": 1.0, "refusal": 1.0})}
     b = {"id": "b", "metrics": ensure_report_scoring({"exact_match": 0.5, "refusal": 1.0})}
-    # compare looks at report root scoring OR metrics.scoring
-    a_full = {"id": "a", **a["metrics"]}
-    b_full = {"id": "b", **b["metrics"]}
-    # Prefer store shape: metrics nested
     cmp = compare_reports(
         {"id": "a", "metrics": a["metrics"]},
         {"id": "b", "metrics": b["metrics"]},
     )
     assert cmp["comparable"] is True
     assert cmp["accuracy_claim"] is False
-    _ = a_full, b_full
+
+
+def test_meta_promotes_runner_and_composite_version():
+    from app.scoring.report_stamp import ensure_report_meta
+
+    out = ensure_report_scoring(
+        {"exact_match": 1.0, "runner_id": "prompt_eval"},
+        meta={"judge_id": "j1", "dataset_version": "d1"},
+    )
+    assert out["meta"]["runner_id"] == "prompt_eval"
+    assert out["meta"]["judge_id"] == "j1"
+    assert out["meta"]["dataset_version"] == "d1"
+    assert out["meta"]["composite_version"] == "v1.1"
+    only = ensure_report_meta({"runner_version": "rv1"})
+    assert only["meta"]["runner_version"] == "rv1"
