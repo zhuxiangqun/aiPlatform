@@ -2758,6 +2758,7 @@ scan_hash: 8f9548ec24f4
 | stamp_eval_report_metrics | `core/apps/eval/service/report_compare.py` | ✅ | Cohost 桥接 ensure_report_scoring | 本批 |
 | Eval reports composite_version UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 列表展示 composite_version / 缺失提示；生成物适用：不适用 | 本批 |
 | Eval report compare summary UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 对比结果摘要（deltas/failures）；JSON 折叠；生成物适用：不适用 | 本批 |
+| Eval report failure samples UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 报告详情失败样本表 + taxonomy；JSON 折叠；生成物适用：不适用 | 本批 |
 | Eval P1b agent handoff | `reports/five-products/ops/EVAL_P1B_AGENT_HANDOFF.md` | ✅ | 工程已交付 vs 人侧待办清单；生成物适用：不适用 | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；默认 backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |

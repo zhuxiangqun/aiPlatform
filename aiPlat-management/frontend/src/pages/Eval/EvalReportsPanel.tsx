@@ -154,6 +154,132 @@ function CompareSummary({ result }: { result: Record<string, unknown> }) {
   );
 }
 
+type FailureRow = {
+  id: string;
+  category: string;
+  score: string;
+  note: string;
+};
+
+function normalizeFailure(item: unknown, index: number): FailureRow {
+  if (item == null || typeof item !== 'object' || Array.isArray(item)) {
+    return { id: String(item ?? index), category: '—', score: '—', note: '' };
+  }
+  const row = item as Record<string, unknown>;
+  const id = row.id ?? row.task_id ?? row.sample_id ?? `fail-${index}`;
+  const category = row.failure_category ?? row.category ?? row.reason ?? '—';
+  const score = row.score ?? row.mean_score ?? '—';
+  const noteBits: string[] = [];
+  if (typeof row.pass === 'boolean') noteBits.push(row.pass ? 'pass' : 'fail');
+  if (typeof row.message === 'string' && row.message.trim()) noteBits.push(row.message.trim());
+  return {
+    id: String(id),
+    category: String(category),
+    score: String(score),
+    note: noteBits.join(' · '),
+  };
+}
+
+function taxonomyEntries(metrics?: Record<string, unknown>): Array<[string, string]> {
+  if (!metrics) return [];
+  const tax = asRecord(metrics.failure_taxonomy);
+  if (!tax) return [];
+  const counts = asRecord(tax.counts) ?? tax;
+  return Object.keys(counts)
+    .filter((k) => k !== 'total' && k !== 'samples')
+    .sort()
+    .map((k) => [k, String(counts[k])] as [string, string])
+    .slice(0, 12);
+}
+
+function ReportDetailSummary({ report }: { report: StoreReport }) {
+  if (report.error) {
+    return (
+      <p className="text-red-300 text-xs" data-testid="eval-report-detail-summary">
+        拉取失败: {report.error}
+      </p>
+    );
+  }
+  const cv = compositeVersionOf(report);
+  const metaHint = reportMetaHint(report);
+  const failures = Array.isArray(report.failures) ? report.failures : [];
+  const rows = failures.slice(0, 30).map(normalizeFailure);
+  const taxRows = taxonomyEntries(report.metrics);
+  const metrics = report.metrics;
+  const passRate =
+    metrics && typeof metrics.pass_rate === 'number' ? String(metrics.pass_rate) : null;
+  const meanScore =
+    metrics && typeof metrics.mean_score === 'number' ? String(metrics.mean_score) : null;
+
+  return (
+    <div className="space-y-3 text-xs" data-testid="eval-report-detail-summary">
+      <p className="text-gray-300">
+        <span className="text-blue-300">{report.id || '—'}</span>
+        {' · '}
+        <span className={cv ? 'text-emerald-400/90' : 'text-amber-400/80'}>
+          {cv ? `composite ${cv}` : 'no composite_version'}
+        </span>
+        {metaHint ? (
+          <>
+            {' · '}
+            <span className="text-gray-400">{metaHint}</span>
+          </>
+        ) : null}
+        {' · '}
+        <span className="text-gray-500">accuracy_claim=false</span>
+      </p>
+      {(passRate || meanScore) && (
+        <p className="text-gray-400">
+          {passRate != null ? `pass_rate=${passRate}` : null}
+          {passRate != null && meanScore != null ? ' · ' : null}
+          {meanScore != null ? `mean_score=${meanScore}` : null}
+        </p>
+      )}
+      {taxRows.length > 0 ? (
+        <div>
+          <div className="text-gray-500 mb-1">failure_taxonomy</div>
+          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-gray-300">
+            {taxRows.map(([k, v]) => (
+              <li key={k}>
+                {k}: {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <div>
+        <div className="text-gray-500 mb-1">
+          失败样本（{failures.length}
+          {failures.length > rows.length ? `，显示前 ${rows.length}` : ''}）
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-gray-500">无 failures 字段或为空。</p>
+        ) : (
+          <ul
+            className="divide-y divide-gray-800 border border-gray-800 rounded bg-gray-950/60 max-h-56 overflow-auto"
+            data-testid="eval-report-failures"
+          >
+            {rows.map((r) => (
+              <li key={r.id} className="px-2 py-1.5 grid grid-cols-12 gap-1 text-gray-300">
+                <span className="col-span-4 truncate font-mono" title={r.id}>
+                  {r.id}
+                </span>
+                <span className="col-span-3 truncate" title={r.category}>
+                  {r.category}
+                </span>
+                <span className="col-span-2 truncate">score={r.score}</span>
+                <span className="col-span-3 truncate text-gray-500" title={r.note}>
+                  {r.note || '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type GoldReport = {
   profile?: string;
   case_count?: number;
@@ -405,12 +531,18 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
           </button>
         </div>
         {detail ? (
-          <pre
-            className="text-xs bg-gray-950/80 border border-gray-800 rounded p-3 overflow-auto max-h-64 text-gray-300"
-            data-testid="eval-report-detail"
-          >
-            {JSON.stringify(detail, null, 2)}
-          </pre>
+          <div className="space-y-2">
+            <ReportDetailSummary report={detail} />
+            <details className="text-xs text-gray-500">
+              <summary className="cursor-pointer hover:text-gray-300">原始 JSON</summary>
+              <pre
+                className="mt-2 text-xs bg-gray-950/80 border border-gray-800 rounded p-3 overflow-auto max-h-64 text-gray-300"
+                data-testid="eval-report-detail"
+              >
+                {JSON.stringify(detail, null, 2)}
+              </pre>
+            </details>
+          </div>
         ) : null}
       </div>
 
