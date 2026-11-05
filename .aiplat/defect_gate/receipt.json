@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T08:45:00+08:00",
+  "reviewed_at": "2026-11-05T08:55:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "88319bce75db40a45fd9c9a71a63c16a2c6ab3af",
-  "diff_sha256": "1f04ed32f7a0305aa8e8c3e56ec32d27bc5b3c644ffd8739b97be7eb0836e29a",
-  "head_sha": "abf1f078b6d0a82eacc88f10e68175dcbe74a199",
+  "diff_sha256": "b5ca553a63ec909989571abe7c99824f4cd2c2ea054c22eb99ea3e8fbfbd861d",
+  "head_sha": "8c7767ba72a2ec66886bb658995dd8ae50d079a8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Score schema ADR + EET map; CAPABILITIES 2708 + whitepapers."
+  "note": "compat matrix → package eval_protocol; diagnosis C3 工程指标; prior EET/schema ADR."
 }
