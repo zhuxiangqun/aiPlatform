@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2725
+total_capabilities: 2726
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2754,6 +2754,7 @@ scan_hash: 8f9548ec24f4
 | build_facilitator_rows | `packages/aiplat-evaluation/scripts/arena_blind_pack.py` | ✅ | facilitator 左右映射 | 本批 |
 | ensure_report_scoring | `packages/aiplat-evaluation/app/scoring/report_stamp.py` | ✅ | create_report 写入时 stamp composite_version；已有版本不改写；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | ensure_report_meta | `packages/aiplat-evaluation/app/scoring/report_stamp.py` | ✅ | runner/judge/dataset/schema → metrics.meta；生成物适用：不适用 | 本批 |
+| enrich_runner_result meta stamp | `packages/aiplat-evaluation/app/scoring/semantics.py` | ✅ | runner_id/mode + composite_version 写入 metrics.meta；生成物适用：不适用 | 本批 |
 | stamp_eval_report_metrics | `core/apps/eval/service/report_compare.py` | ✅ | Cohost 桥接 ensure_report_scoring | 本批 |
 | Eval reports composite_version UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 列表展示 composite_version / 缺失提示；生成物适用：不适用 | 本批 |
 | Eval P1b agent handoff | `reports/five-products/ops/EVAL_P1B_AGENT_HANDOFF.md` | ✅ | 工程已交付 vs 人侧待办清单；生成物适用：不适用 | 本批 |
@@ -3637,7 +3638,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 277 | 0 | 277 |
+| 评估系统 | 278 | 0 | 278 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3669,7 +3670,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2715** | **10** | **2725** |
+| **总计** | **2716** | **10** | **2726** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

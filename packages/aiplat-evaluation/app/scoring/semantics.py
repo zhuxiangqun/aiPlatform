@@ -301,7 +301,9 @@ def build_scoring_block(
 
 
 def enrich_runner_result(result: MutableMapping[str, Any]) -> Dict[str, Any]:
-    """Attach scoring block; force accuracy_claim=false."""
+    """Attach scoring block + version meta; force accuracy_claim=false."""
+    from app.scoring.report_stamp import ensure_report_meta
+
     metrics = result.get("metrics") if isinstance(result.get("metrics"), dict) else {}
     gdim = result.get("groundedness_dimension")
     edim = result.get("efficiency_dimension")
@@ -314,6 +316,21 @@ def enrich_runner_result(result: MutableMapping[str, Any]) -> Dict[str, Any]:
         efficiency=edim if isinstance(edim, Mapping) else None,
         session=sdim if isinstance(sdim, Mapping) else None,
     )
+    # Promote runner identity into metrics.meta for report create / compare.
+    stamp_meta: Dict[str, Any] = {}
+    rid = result.get("runner_id")
+    if rid not in (None, ""):
+        stamp_meta["runner_id"] = rid
+    mode = result.get("mode")
+    if mode not in (None, ""):
+        stamp_meta["runner_mode"] = mode
+    metrics2 = ensure_report_meta(metrics, meta=stamp_meta or None)
+    # Also copy composite_version into meta after scoring exists.
+    metrics2 = ensure_report_meta(
+        {**metrics2, "scoring": result["scoring"]},
+        meta=None,
+    )
+    result["metrics"] = metrics2
     return dict(result)
 
 
