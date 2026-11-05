@@ -7,7 +7,7 @@
 
 | Surface | Composite | text/safety/refusal |
 |---|---|---|
-| **Standalone Eval** (`packages/aiplat-evaluation`) | `build_composite` — **P1 engineering canonical** | **scored** (ASR report-only) |
+| **Standalone Eval** (`packages/aiplat-evaluation`) | `build_composite` — **P1 engineering canonical**（`policy.composite_version=v1.1`） | safety/refusal **scored**；`text_quality` **report-only smoke**；ASR report-only |
 | **Central** `AgentEvalResult.composite_score` | **legacy_7dim** (task/tool/traj/eff/recovery/safety/cost) | **report-only** (computed, not weighted); **`deprecated_for_engineering=true`** |
 
 Machine marker on Central serialize:

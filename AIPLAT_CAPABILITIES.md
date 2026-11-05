@@ -2736,6 +2736,7 @@ scan_hash: 8f9548ec24f4
 | extract_cost_estimate | `packages/aiplat-evaluation/app/worker/cost_cap.py` | ✅ | 从 result 提取 cost_estimate | 本批 |
 | Evaluation P1 engineering composite | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | composite v1.1：groundedness(gold)/exact/pass/safety/efficiency 计分；`text_quality` report-only smoke；asr report-only；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Eval canonical runners ADR | `packages/aiplat-evaluation/docs/a3/ADR_CANONICAL_RUNNERS_V1.md` | ✅ | Prompt/KB package runner=engineering SSOT；core legacy 只读；生成物适用：不适用 | 本批 |
+| Eval score schema versioning ADR | `packages/aiplat-evaluation/docs/a3/ADR_SCORE_SCHEMA_VERSIONING_V1.md` | ✅ | composite schema v1 + policy.composite_version；v1.1 text_quality smoke；历史不静默重算；生成物适用：不适用 | 本批 |
 | build_composite | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | 工程综合分 0–100 | 本批 |
 | metric_role | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | scored vs report_only | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |

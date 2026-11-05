@@ -1,7 +1,8 @@
 # P1 dimensions — groundedness + latency/cost
 
 > Parent: [`P1_LOCAL.md`](./P1_LOCAL.md) · [`P1_CANONICAL.md`](./P1_CANONICAL.md)  
-> Honesty: **`accuracy_claim=false`** · composite **v1** · ≠ G2b
+> Honesty: **`accuracy_claim=false`** · composite schema `v1` + **`policy.composite_version=v1.1`** · ≠ G2b  
+> Versioning ADR: [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md)
 
 ## groundedness / correctness
 
@@ -32,8 +33,9 @@ Per-run `latency_ms` / `cost_per_success` remain in metrics when audit present; 
 |---|---|
 | `eval.scoring.composite.v0` | initial engineering composite |
 | `eval.scoring.composite.v1` | groundedness gold-gated; policy flags `groundedness_gold_gated` |
+| `policy.composite_version=v1.1` | `text_quality` → report-only smoke（外层 schema 名仍为 `eval.scoring.composite.v1`） |
 
-`accuracy_claim` stays false on all schemas.
+`accuracy_claim` stays false on all schemas. Cross-version trends must not mix silently.
 
 ## Tests
 

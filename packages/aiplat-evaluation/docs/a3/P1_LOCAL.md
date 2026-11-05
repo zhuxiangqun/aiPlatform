@@ -13,7 +13,7 @@
 | efficiency | `latency_ms`, `cost_estimate`, `cost_per_success` | from LLM audit when present |
 | security | `asr` | owned by S1; classified for honesty |
 
-Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v1`) including `composite` (`eval.scoring.composite.v1`).
+Every `runner_result` attaches `scoring` (`eval.scoring.semantics.v1`) including `composite` (`eval.scoring.composite.v1`, `policy.composite_version=v1.1`: `text_quality` report-only). See [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md).
 
 **v1 dimensions** (see [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md)):
 - `groundedness` — scored **only with gold** (expected/context/sources); else report-only / omitted from composite
