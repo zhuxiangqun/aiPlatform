@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2708
+total_capabilities: 2713
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,8 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compare_eval_reports_by_id | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
+| compare_eval_reports | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
 | get_eval_job | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | 自动同步 | 已合入 |
 | package_code_review_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | 自动同步 | 已合入 |
 | isEvalJobTerminal | `aiPlat-management/frontend/src/pages/Eval/evalRunPanelHelpers.ts` | ✅ | 自动同步 | 已合入 |
@@ -2740,6 +2742,11 @@ scan_hash: 8f9548ec24f4
 | Eval evidence level map (EET) | `packages/aiplat-evaluation/docs/a3/EVAL_EVIDENCE_LEVEL_MAP_V1.md` | ✅ | EET-1..4↔落地 E0–E5 对照；消歧 EVAL 里程碑 E*；Proposed 待治理批准；生成物适用：不适用 | 本批 |
 | build_composite | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | 工程综合分 0–100 | 本批 |
 | metric_role | `packages/aiplat-evaluation/app/scoring/composite.py` | ✅ | scored vs report_only | 本批 |
+| compare_reports | `packages/aiplat-evaluation/app/scoring/report_compare.py` | ✅ | P1b 报告对比；同 composite_version 才 comparable；accuracy_claim=false；生成物适用：不适用 | 本批 |
+| extract_composite_version | `packages/aiplat-evaluation/app/scoring/report_compare.py` | ✅ | 从 report/scoring 提取 policy.composite_version | 本批 |
+| eval_compare_reports | `core/api/core_facade.py` + `core/apps/eval/service/report_compare.py` | ✅ | Cohost 桥接 package compare；POST /store/reports/compare；生成物适用：不适用 | 本批 |
+| Eval report compare v0 | `packages/aiplat-evaluation/docs/a3/REPORT_COMPARE_V0.md` + EvalReportsPanel | ✅ | UI 基线/候选对比；跨版本不可直接比较；生成物适用：不适用 | 本批 |
+| Evaluation report compare API | `packages/.../store_routes.py` + `platform/.../store_api.py` | ✅ | POST /store/reports/compare；proxy/cohost；生成物适用：不适用 | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；默认 backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM Linux/KVM track v1 | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `microvm_exec.py` + `policy.py` + `docs/a3/MICROVM_LINUX_TRACK.md` | ✅ | host_ok+ADMIT_RUNNERS 放行非 live runners；cli_probe host allowlist；Darwin 不可打 with_microvm 分；≠ isolation cert；生成物适用：不适用 | 本批 |
@@ -3620,7 +3627,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 262 | 0 | 262 |
+| 评估系统 | 267 | 0 | 267 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3652,7 +3659,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2698** | **10** | **2708** |
+| **总计** | **2703** | **10** | **2713** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

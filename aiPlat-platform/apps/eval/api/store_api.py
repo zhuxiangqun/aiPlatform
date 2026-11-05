@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Union
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from auth.deps import require_auth
 from apps.common_schemas import ItemResponse, ListResponse
 from apps.eval.api.eval_upstream import proxy_eval_store, proxy_status
@@ -556,6 +556,30 @@ async def list_store_reports(
 
     items = eval_list_reports(tenant_id=tenant_id, limit=limit)
     return {"data": {"items": items, "total": len(items)}}
+
+
+@router.post("/reports/compare", response_model=ItemResponse)
+async def compare_store_reports(
+    request: Request,
+    body: Dict[str, Any],
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    """P1b — baseline vs candidate; comparable only if same composite_version."""
+    proxied = await proxy_eval_store(
+        request, path="/store/reports/compare", method="POST"
+    )
+    if proxied is not None:
+        return proxied
+    from core.api.core_facade import eval_compare_reports
+
+    bid = str((body or {}).get("baseline_id") or "").strip()
+    cid = str((body or {}).get("candidate_id") or "").strip()
+    if not bid or not cid:
+        raise HTTPException(status_code=422, detail="baseline_id and candidate_id required")
+    return {
+        "data": eval_compare_reports(bid, cid, tenant_id=tenant_id),
+    }
 
 
 @router.get("/reports/{report_id}", response_model=ItemResponse)

@@ -6372,6 +6372,20 @@ def eval_list_reports(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
     return get_eval_store(tenant_id=tenant_id).list_reports(limit=limit)
 
 
+def eval_compare_reports(
+    baseline_id: str,
+    candidate_id: str,
+    *,
+    tenant_id: str = "eval-v1",
+) -> Dict[str, Any]:
+    """P1b — compare two eval store reports (same composite_version only)."""
+    from core.apps.eval.service.report_compare import compare_eval_reports_by_id
+
+    return compare_eval_reports_by_id(
+        baseline_id, candidate_id, tenant_id=tenant_id
+    )
+
+
 # ── DIAGNOSIS_V1 C1 ───────────────────────────────────────
 
 

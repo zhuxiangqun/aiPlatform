@@ -33,6 +33,7 @@
 | [`ARENA_BLIND_DESIGN.md`](./ARENA_BLIND_DESIGN.md) | Arena 盲评设计（P1a）；现行 length winner = smoke only |
 | [`ADR_CANONICAL_RUNNERS_V1.md`](./ADR_CANONICAL_RUNNERS_V1.md) | Prompt/KB package runner canonical；legacy core 只读 |
 | [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（v1.1 text_quality smoke） |
+| [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |
 | [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | 落地 E0–E5 ↔ EET-1..4 映射（Proposed；不另建 gate 等级） |
 | [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | G2b 仲裁金标 + 模型 pass-rate（当前 committed n=30；κ≠accuracy；claim 默认 false） |
 | [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |

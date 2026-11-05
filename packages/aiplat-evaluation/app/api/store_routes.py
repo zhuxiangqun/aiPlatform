@@ -11,6 +11,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException, Query, Request
 
 from app.auth import require_bearer, tenant_or_404
+from app.scoring.report_compare import compare_reports
 from app.store import (
     create_report,
     create_set,
@@ -104,6 +105,29 @@ async def _get_report(request: Request, report_id: str) -> Dict[str, Any]:
     return {"data": tenant_or_404(row, tid)}
 
 
+async def _compare_reports(request: Request) -> Dict[str, Any]:
+    """P1b — compare two reports; comparable only if same composite_version."""
+    claims = require_bearer(request)
+    tid = str(claims.get("tenant_id") or "")
+    body: Dict[str, Any] = await request.json()
+    bid = str(body.get("baseline_id") or "").strip()
+    cid = str(body.get("candidate_id") or "").strip()
+    if not bid or not cid:
+        raise HTTPException(status_code=422, detail="baseline_id and candidate_id required")
+    store = _store(request)
+    base = get_report(store, bid)
+    cand = get_report(store, cid)
+    if not claims.get("auth_disabled"):
+        base = tenant_or_404(base, tid)
+        cand = tenant_or_404(cand, tid)
+    elif base is None or cand is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"error": "not_found", "baseline_id": bid, "candidate_id": cid},
+        )
+    return {"data": compare_reports(base, cand)}
+
+
 def register_store_routes(application: FastAPI) -> None:
     prefix = "/api/platform/apps/eval/store"
     application.add_api_route(f"{prefix}/healthz", _store_healthz, methods=["GET"])
@@ -112,6 +136,10 @@ def register_store_routes(application: FastAPI) -> None:
     application.add_api_route(f"{prefix}/sets/{{set_id}}", _get_set, methods=["GET"])
     application.add_api_route(f"{prefix}/reports", _list_reports, methods=["GET"])
     application.add_api_route(f"{prefix}/reports", _create_report, methods=["POST"])
+    # Static path before {report_id} so "compare" is not captured as an id.
+    application.add_api_route(
+        f"{prefix}/reports/compare", _compare_reports, methods=["POST"]
+    )
     application.add_api_route(
         f"{prefix}/reports/{{report_id}}", _get_report, methods=["GET"]
     )
