@@ -16,10 +16,35 @@ type StoreReport = {
   id?: string;
   created_at?: string;
   metrics?: Record<string, unknown>;
+  scoring?: Record<string, unknown>;
   failures?: unknown[];
   run_ids?: string[];
   error?: string;
 };
+
+/** Mirror package extract_composite_version — list badge only. */
+function compositeVersionOf(r: StoreReport): string | null {
+  const fromBlock = (block: unknown): string | null => {
+    if (!block || typeof block !== 'object') return null;
+    const policy = (block as { policy?: { composite_version?: unknown } }).policy;
+    const ver = policy?.composite_version;
+    return typeof ver === 'string' && ver.trim() ? ver.trim() : null;
+  };
+  const scoring = r.scoring;
+  if (scoring && typeof scoring === 'object') {
+    const v = fromBlock((scoring as { composite?: unknown }).composite);
+    if (v) return v;
+  }
+  const metrics = r.metrics;
+  if (metrics && typeof metrics === 'object') {
+    const mScoring = (metrics as { scoring?: { composite?: unknown } }).scoring;
+    const v1 = fromBlock(mScoring?.composite);
+    if (v1) return v1;
+    const v2 = fromBlock((metrics as { composite?: unknown }).composite);
+    if (v2) return v2;
+  }
+  return fromBlock(r as { composite?: unknown });
+}
 
 type GoldReport = {
   profile?: string;
@@ -140,7 +165,7 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
           </button>
         </div>
         <p className="text-xs text-gray-500">
-          accuracy_claim 恒不展示为真 · local store / proxy 只读
+          accuracy_claim 恒不展示为真 · 趋势对比仅同 composite_version · local store / proxy 只读
         </p>
         {error ? (
           <p className="text-red-300 text-xs">加载失败: {error}</p>
@@ -151,7 +176,9 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
           <p className="text-gray-500">暂无 store 报告（可按 id 拉取）。</p>
         ) : (
           <ul className="divide-y divide-gray-800">
-            {items.map((r, i) => (
+            {items.map((r, i) => {
+              const cv = compositeVersionOf(r);
+              return (
               <li key={r.id || i} className="py-2 flex justify-between gap-3 items-start">
                 <button
                   type="button"
@@ -160,11 +187,19 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
                 >
                   {r.id || `report-${i}`}
                 </button>
-                <span className="text-gray-500 shrink-0 text-xs">
+                <span className="text-gray-500 shrink-0 text-xs text-right">
+                  <span
+                    className={cv ? 'text-emerald-400/90' : 'text-amber-400/80'}
+                    data-testid="eval-report-composite-version"
+                  >
+                    {cv ? `composite ${cv}` : 'no composite_version'}
+                  </span>
+                  {' · '}
                   {r.created_at || '—'} · metrics[{metricsHint(r.metrics)}]
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>
