@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL **P2-0 Evaluator calibration**
 
 - **decided_at**: `2026-11-06`
-- **status**: **Open (prep + human pack)**
+- **status**: **Closed** · aggregate + [`EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md)
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_P2.md`](./ENGINEERING_UNFREEZE_EVAL_P2.md)
 - **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](./EVAL_P2_CHARTER_2026-11-06.md)
 - **protocol**: [`packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)

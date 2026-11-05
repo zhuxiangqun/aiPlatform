@@ -1,0 +1,52 @@
+{
+  "schema": "eval.human_calibration.v0",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "product_id": "evaluation",
+  "environment": "local",
+  "pack": "packages/aiplat-evaluation/docs/a3/human_pack/calibration/20261105T161330Z",
+  "tracks": {
+    "g2b": {
+      "n": 20,
+      "agree_n": 19,
+      "disagree_n": 0,
+      "unsure_n": 1,
+      "disagree_rate": 0.0,
+      "counts": {
+        "AGREE": 19,
+        "UNSURE": 1
+      }
+    },
+    "arena": {
+      "n": 20,
+      "agree_n": 11,
+      "disagree_n": 9,
+      "unsure_n": 0,
+      "disagree_rate": 0.45,
+      "counts": {
+        "DISAGREE": 9,
+        "AGREE": 11
+      }
+    },
+    "preference": {
+      "n": 20,
+      "agree_n": 13,
+      "disagree_n": 7,
+      "unsure_n": 0,
+      "disagree_rate": 0.35,
+      "counts": {
+        "DISAGREE": 7,
+        "AGREE": 13
+      }
+    }
+  },
+  "overall": {
+    "n": 60,
+    "disagree_n": 16,
+    "disagree_rate": 0.2667
+  },
+  "retunes_composite": false,
+  "replaces_length_smoke": false,
+  "honesty": "human recheck disagreement rates only; ≠ accuracy claim; ≠ composite reweight; ≠ process_split",
+  "recorded_at": "20261105T163453Z"
+}

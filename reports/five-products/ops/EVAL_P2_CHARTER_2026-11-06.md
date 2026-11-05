@@ -1,6 +1,6 @@
 # EVAL P2 Charter（2026-11-06）
 
-> **状态**：✅ 首切片确认推进（2026-11-06「继续」）· P2-0 calibration unfreeze 已开  
+> **状态**：✅ P2-0 human calibration **已收口**（n=60 · disagree_rate=0.2667 · claim=false）· [closeout](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md)  
 
 > **Unfreeze**：[ENGINEERING_UNFREEZE_EVAL_P2.md](./ENGINEERING_UNFREEZE_EVAL_P2.md)  
 > **计划**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5

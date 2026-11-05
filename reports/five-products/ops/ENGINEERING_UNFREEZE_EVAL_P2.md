@@ -1,7 +1,7 @@
 # Engineering unfreeze — EVAL **P2** 立项开篇
 
 - **decided_at**: `2026-11-06`
-- **status**: **Open** · 首切片 P2-0 calibration **已开工**（见 [`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](./ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md)）
+- **status**: **Open** · 首切片 P2-0 calibration **已收口**（[`EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md)）；后续切片未开工
 - **parent plan**: [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
 - **P1b human closeout**: [`EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md`](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)
 - **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
