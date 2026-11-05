@@ -1,9 +1,10 @@
 # A1 生产部署 — blocked_not_released（2026-11-05）
 
-> **结论**：☐ pass · ☑ **blocked_not_released** · ☐ fail  
+> **结论**：☐ pass · ☑ **blocked_not_released**（仍有效，直至正式 BASE 验收） · ☐ fail  
 > **原因**：无正式环境 BASE URL / CDN；本地联调已另签，**不得**复用为生产 pass  
 > **本地已签**：[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)  
-> **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)
+> **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)  
+> **2026-11-06**：已独立重开生产签核轨 → [unfreeze](./ENGINEERING_UNFREEZE_EVAL_A1_PROD.md) · [工作稿](./EVAL_A1_DEPLOY_SIGNOFF_prod_OPEN_2026-11-06.md)；**缺 BASE 则维持本阻塞**
 
 ## 解除条件
 
