@@ -86,7 +86,11 @@ def classify_metric(name: str) -> MetricFamily:
 
 
 def score_text_quality(*, actual: str, expected: str = "") -> float:
-    """Cheap engineering heuristic 0..1 (not accuracy)."""
+    """Cheap length/printable smoke heuristic 0..1 (not accuracy; not quality gate).
+
+    Composite treats ``text_quality`` as report-only (v1.1). Prefer exact_match /
+    gold-gated groundedness for scored quality.
+    """
     a = (actual or "").strip()
     if not a:
         return 0.0
