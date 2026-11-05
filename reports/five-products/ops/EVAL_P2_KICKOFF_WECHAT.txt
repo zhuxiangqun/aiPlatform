@@ -1,0 +1,9 @@
+P2 已开篇（不堵已关闭的 P1b）。
+
+请确认三件事：
+1) 同意 ENGINEERING_UNFREEZE_EVAL_P2 + EVAL_P2_CHARTER_2026-11-06
+2) 首切片用 P2-0 Evaluator calibration（本地抽查误报/漏报/漂移；不翻 accuracy_claim）
+3) owner：产品朱向群 · 方法朱莹 · QA朱鸿林（可改）
+
+确认后我再开 calibration 专用 unfreeze 并开工。
+生产治理（P2-4）因无公网继续搁置。
