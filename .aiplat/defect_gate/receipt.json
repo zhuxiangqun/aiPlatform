@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T14:28:26+08:00",
+  "reviewed_at": "2026-11-05T14:54:44+08:00",
   "base_ref": "origin/main",
-  "merge_base": "195ef143c5f9b4abd6eee376ef42b1bea5d17f67",
-  "diff_sha256": "ef453dded638c9c501eca03891d5dd41ca8fceab94d4927310e14345c064969e",
-  "head_sha": "03c1ed131f03baa8974c98e99fe699a11fa8d8ae",
+  "merge_base": "9e8f553243028ca8cd96ee9b20c808e782e83148",
+  "diff_sha256": "3813921c86c2d06f5038b8904d2c408ccc405a1a55d9032db102706a8a8c3dc8",
+  "head_sha": "88185950eff02c118c619324466274e4debed847",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Compare summary UI rebased onto main after #601."
+  "note": "UI-only: report detail failures table + taxonomy; accuracy_claim still false; raw JSON folded. Local lock only."
 }
