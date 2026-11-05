@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T12:31:07+08:00",
+  "reviewed_at": "2026-11-05T13:25:54+08:00",
   "base_ref": "origin/main",
-  "merge_base": "85170d53877b919d447343cf0b641a2c33a8d42b",
-  "diff_sha256": "bc48e1b44cc35a9ec33fae124244ee1d315ce3a7f224e9234f555df3be25602e",
-  "head_sha": "0f84d6fb671a92f6a14380e99c19583910213979",
+  "merge_base": "41c1f4a3951d50dcca5f91ed0035ade4bf10d613",
+  "diff_sha256": "58098bf4fa863110de21aa5d160d3df72474ca8d589f684697dc7844d479a778",
+  "head_sha": "21d1d074dc6949ce4bfeb6933b2e01bab12e4c5c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. P1b report meta stamp; no human sign required."
+  "note": "Local lock only. Wire runner/gate/judge meta; no human sign."
 }
