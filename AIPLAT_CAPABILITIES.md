@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2729
+total_capabilities: 2730
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2760,6 +2760,7 @@ scan_hash: 8f9548ec24f4
 | Eval report compare summary UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 对比结果摘要（deltas/failures）；JSON 折叠；生成物适用：不适用 | 本批 |
 | Eval report failure samples UI | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 报告详情失败样本表 + taxonomy；JSON 折叠；生成物适用：不适用 | 本批 |
 | Eval report composite_version filter | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 列表按 composite 筛选；对比快捷填入跟过滤；生成物适用：不适用 | 本批 |
+| Eval report_only metric badges | `aiPlat-management/frontend/src/pages/Eval/EvalReportsPanel.tsx` | ✅ | 详情标 report_only vs family_scores；弱代理不可进门禁；生成物适用：不适用 | 本批 |
 | Eval P1b agent handoff | `reports/five-products/ops/EVAL_P1B_AGENT_HANDOFF.md` | ✅ | 工程已交付 vs 人侧待办清单；生成物适用：不适用 | 本批 |
 | Evaluation B2 LLM dynamic gate | `packages/aiplat-evaluation/scripts/b2l_llm_dynamic_gate.sh` + `app/llm/client.py` | ✅ | stub Worker e2e；拒 Central URL；可选 live；accuracy_claim=false；生成物适用：不适用 | 本批 |
 | Evaluation microVM prep probe | `packages/aiplat-evaluation/app/sandbox/microvm.py` + `scripts/microvm_local_prep_gate.sh` | ✅ | 探测 ready/block_reason；默认 backend=microvm 不放行 runner；live tools 仍拒；isolation=false；生成物适用：不适用 | 本批 |
@@ -3641,7 +3642,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 281 | 0 | 281 |
+| 评估系统 | 282 | 0 | 282 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3673,7 +3674,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2719** | **10** | **2729** |
+| **总计** | **2720** | **10** | **2730** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

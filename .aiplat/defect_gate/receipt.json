@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T15:25:00+08:00",
+  "reviewed_at": "2026-11-05T16:20:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "31d3fd1849b20a21044d99749161c0e0290537ad",
-  "diff_sha256": "46314a23868872d9bbbd6aecd28b379311c6917a8ca1f19812a3aafdfefb07f6",
-  "head_sha": "ecfe319c334c4c474390c8c870f88b939536e0f9",
+  "merge_base": "7f4597615bb3d434ee1d7baf7d0627813121e3de",
+  "diff_sha256": "9e22c6305abf1c5f2defbc917bc0b499077cde3fcc48a5ba3a90696339837054",
+  "head_sha": "a209055e5af4913869637a84c0c363b359815b1a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "UI filter only; does not invent composite_version; accuracy_claim=false. Local lock only."
+  "note": "UI badges from composite.report_only_metrics / metric_roles; accuracy_claim=false. Local lock only."
 }

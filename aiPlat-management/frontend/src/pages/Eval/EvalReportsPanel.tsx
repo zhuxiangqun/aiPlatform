@@ -192,6 +192,47 @@ function taxonomyEntries(metrics?: Record<string, unknown>): Array<[string, stri
     .slice(0, 12);
 }
 
+/** Pull composite envelope from scoring / metrics (mirrors package extract). */
+function compositeBlockOf(r: StoreReport): Record<string, unknown> | null {
+  const fromScoring = asRecord(r.scoring);
+  const c1 = asRecord(fromScoring?.composite);
+  if (c1) return c1;
+  const metrics = asRecord(r.metrics);
+  const mScoring = asRecord(metrics?.scoring);
+  const c2 = asRecord(mScoring?.composite);
+  if (c2) return c2;
+  return asRecord(metrics?.composite);
+}
+
+function stringList(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+}
+
+function reportOnlyMetrics(r: StoreReport): string[] {
+  const block = compositeBlockOf(r);
+  const fromComposite = stringList(block?.report_only_metrics);
+  if (fromComposite.length) return fromComposite.slice(0, 12);
+  const metrics = asRecord(r.metrics);
+  const scoring = asRecord(metrics?.scoring) ?? asRecord(r.scoring);
+  const roles = asRecord(scoring?.metric_roles);
+  if (!roles) return [];
+  return Object.keys(roles)
+    .filter((k) => roles[k] === 'report_only')
+    .sort()
+    .slice(0, 12);
+}
+
+function scoredFamilyEntries(r: StoreReport): Array<[string, string]> {
+  const block = compositeBlockOf(r);
+  const families = asRecord(block?.family_scores);
+  if (!families) return [];
+  return Object.keys(families)
+    .sort()
+    .map((k) => [k, String(families[k])] as [string, string])
+    .slice(0, 8);
+}
+
 function ReportDetailSummary({ report }: { report: StoreReport }) {
   if (report.error) {
     return (
@@ -210,6 +251,8 @@ function ReportDetailSummary({ report }: { report: StoreReport }) {
     metrics && typeof metrics.pass_rate === 'number' ? String(metrics.pass_rate) : null;
   const meanScore =
     metrics && typeof metrics.mean_score === 'number' ? String(metrics.mean_score) : null;
+  const reportOnly = reportOnlyMetrics(report);
+  const familyRows = scoredFamilyEntries(report);
 
   return (
     <div className="space-y-3 text-xs" data-testid="eval-report-detail-summary">
@@ -235,6 +278,33 @@ function ReportDetailSummary({ report }: { report: StoreReport }) {
           {meanScore != null ? `mean_score=${meanScore}` : null}
         </p>
       )}
+      {familyRows.length > 0 ? (
+        <div>
+          <div className="text-gray-500 mb-1">family_scores（计入 composite）</div>
+          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-gray-300">
+            {familyRows.map(([k, v]) => (
+              <li key={k}>
+                {k}: {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {reportOnly.length > 0 ? (
+        <div data-testid="eval-report-only-metrics">
+          <div className="text-amber-400/90 mb-1">report_only（不进门禁 / ≠ accuracy）</div>
+          <div className="flex flex-wrap gap-1.5">
+            {reportOnly.map((name) => (
+              <span
+                key={name}
+                className="px-1.5 py-0.5 rounded border border-amber-800/60 bg-amber-950/40 text-amber-200/90"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {taxRows.length > 0 ? (
         <div>
           <div className="text-gray-500 mb-1">failure_taxonomy</div>
