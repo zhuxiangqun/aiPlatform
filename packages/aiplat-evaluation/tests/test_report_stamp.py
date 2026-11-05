@@ -55,5 +55,26 @@ def test_meta_promotes_runner_and_composite_version():
     assert out["meta"]["judge_id"] == "j1"
     assert out["meta"]["dataset_version"] == "d1"
     assert out["meta"]["composite_version"] == "v1.1"
+    assert out["meta"]["evidence_level"] == "gold"
     only = ensure_report_meta({"runner_version": "rv1"})
     assert only["meta"]["runner_version"] == "rv1"
+    assert "evidence_level" not in only["meta"]
+
+
+def test_evidence_level_smoke_arena_and_preserves_explicit():
+    from app.scoring.report_stamp import infer_evidence_level
+
+    arena = ensure_report_scoring(
+        {"winner": "a", "len_a": 10, "len_b": 3},
+        meta={"runner_id": "arena"},
+    )
+    assert arena["meta"]["evidence_level"] == "smoke"
+    assert infer_evidence_level({"text_quality": 0.9}) == "smoke"
+    assert infer_evidence_level({"content_safety": 1.0, "refusal": 1.0}) == "fixture"
+    kept = ensure_report_scoring(
+        {"exact_match": 1.0},
+        meta={"evidence_level": "human", "runner_id": "prompt_eval"},
+    )
+    assert kept["meta"]["evidence_level"] == "human"
+    eet = ensure_report_scoring({"exact_match": 1.0}, meta={"evidence_level": "EET-2"})
+    assert eet["meta"]["evidence_level"] == "fixture"

@@ -4,7 +4,11 @@ from __future__ import annotations
 from app.scoring.composite import build_composite, metric_role
 from app.scoring.g2b_accuracy import build_gold, wilson_ci
 from app.scoring.report_compare import compare_reports, extract_composite_version
-from app.scoring.report_stamp import ensure_report_meta, ensure_report_scoring
+from app.scoring.report_stamp import (
+    ensure_report_meta,
+    ensure_report_scoring,
+    infer_evidence_level,
+)
 from app.scoring.semantics import (
     build_scoring_block,
     classify_metric,
@@ -25,6 +29,7 @@ __all__ = [
     "ensure_report_meta",
     "ensure_report_scoring",
     "extract_composite_version",
+    "infer_evidence_level",
     "metric_role",
     "score_content_safety",
     "score_groundedness",
