@@ -3,6 +3,19 @@
 > **日期**：2026-11-05  
 > **对照**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md)
 
+## 工程 closeout（报告轨）
+
+**状态**：报告侧工程交付完成（#596–#606）。后续增量仅在人侧签认后解锁（G2b / Arena pilot / EET Accept / A1）。
+
+计划项「基线对比、维度回归、失败样本与元数据」对应交付：
+
+| 计划要点 | 工程落点 |
+|---|---|
+| 基线对比 | `compare_reports` + UI 摘要（同 `composite_version`） |
+| 维度回归 | `family_deltas` / `family_scores`；列表按 composite 过滤后对比 |
+| 失败样本 | 详情失败表 + taxonomy；compare failures added/removed |
+| 元数据 | runner/judge/dataset + `composite_version` + `evidence_level` |
+
 ## 已合入（工程）
 
 | 项 | PR | 说明 |
@@ -16,14 +29,14 @@
 | 报告详情失败样本 UI | #603 | task_id/category/score 表 + taxonomy；JSON 折叠 |
 | 列表 composite_version 过滤 | #604 | 筛同版本后对比快捷填入 |
 | report_only 指标徽章 | #605 | 详情区分 family_scores vs report_only；弱代理不进门禁 |
-| evidence_level 写入 meta | （本批） | `infer_evidence_level`；详情展示；EET≠发布门禁 |
+| evidence_level 写入 meta | #606 | `infer_evidence_level`；详情展示；EET≠发布门禁 |
 
 ## 人侧仍 open（工程无法代签）
 
 | 项 | 阻塞 |
 |---|---|
 | **A1 部署签认** | 目标环境构建 ID、旧 `/diagnostics/eval` `/platform/kb/eval` 须 404、CDN 缓存 · **检查表**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md) |
-| **EET 治理批准** | `EVAL_EVIDENCE_LEVEL_MAP_V1` Proposed → Accept |
+| **EET 治理批准** | `EVAL_EVIDENCE_LEVEL_MAP_V1` Proposed → Accept（接线已就绪） |
 | **G2B-100 protocol 三方签认** | 签后才可开 31–100 确认性双标 |
 | **G2b 31–100 双标/仲裁** | ≥2 标注者；预算 25–30 人时 |
 | **Arena pilot ≥30 对×2 盲评** | 排期评审；现仅 fixture×3 供 pack smoke |
@@ -31,4 +44,4 @@
 
 ## 诚实锁
 
-`accuracy_claim=false` · length Arena = smoke · 跨 `composite_version` = 不可直接比较 · `process_split_authorized=false`
+`accuracy_claim=false` · length Arena = smoke · 跨 `composite_version` = 不可直接比较 · `process_split_authorized=false` · EET≠发布门禁等级
