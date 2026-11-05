@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T12:05:24+08:00",
+  "reviewed_at": "2026-11-05T12:31:07+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e958774dc514bc2d5d80d64f8a74958e48623dce",
-  "diff_sha256": "22deec7f6860ce09765629d2b808af80b6f64b36a5e72bca46d094af555326db",
-  "head_sha": "f1116b4589ccfa31245fa236f87a91bbd44d0dc7",
+  "merge_base": "85170d53877b919d447343cf0b641a2c33a8d42b",
+  "diff_sha256": "bc48e1b44cc35a9ec33fae124244ee1d315ce3a7f224e9234f555df3be25602e",
+  "head_sha": "0f84d6fb671a92f6a14380e99c19583910213979",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. A1 deploy sign-off checklist + prior P1b handoff UI."
+  "note": "Local lock only. P1b report meta stamp; no human sign required."
 }
