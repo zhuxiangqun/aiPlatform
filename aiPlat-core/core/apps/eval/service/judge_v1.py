@@ -222,6 +222,13 @@ def run_e4_calibration(
     report = store.create_report(
         run_ids=run_ids,
         metrics=metrics,
+        meta={
+            "judge_id": JUDGE_V1_ID,
+            "judge_version": JUDGE_V1_PROMPT_VERSION,
+            "runner_id": "judge.calibration",
+            "runner_version": JUDGE_V1_MODEL,
+            "schema_version": "eval.calibration.v0",
+        },
         slices={"by_profile": bias, "per_task": per_task[:100]},
         failures=[t for t in per_task if not t.get("pass")],
     )

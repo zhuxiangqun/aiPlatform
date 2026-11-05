@@ -285,6 +285,12 @@ def run_e5_gate(
     report = store.create_report(
         run_ids=[],
         metrics=metrics,
+        meta={
+            "judge_id": JUDGE_V1_ID,
+            "schema_version": SCHEMA_VERSION,
+            "gate_mode": mode,
+            "runner_id": f"gate:{mode}",
+        },
         slices={
             "mode": mode,
             "per_task": baseline_rows[:100],

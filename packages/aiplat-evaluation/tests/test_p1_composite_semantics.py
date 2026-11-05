@@ -66,3 +66,6 @@ def test_prompt_eval_runner_has_composite():
     assert comp["score"] is not None
     assert "text_quality" in comp["report_only_metrics"]
     assert "content_safety" in comp["scored_metrics"]
+    meta = out["metrics"].get("meta") or {}
+    assert meta.get("runner_id") == "prompt_eval"
+    assert meta.get("composite_version") == "v1.1"
