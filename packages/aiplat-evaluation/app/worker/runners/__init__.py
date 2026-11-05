@@ -13,6 +13,7 @@ from app.worker.runners.replay_trace import run_replay_trace
 from app.worker.runners.security_redteam import run_security_redteam
 from app.worker.runners.context_mgmt import run_context_mgmt
 from app.worker.runners.memory_persist import run_memory_persist
+from app.worker.runners.self_learn import run_self_learn
 from app.worker.runners.session_eval import run_session_eval
 from app.worker.runners.skill_suite import run_skill_suite
 
@@ -29,6 +30,7 @@ _RUNNERS = {
     "session_eval": run_session_eval,
     "context_mgmt": run_context_mgmt,
     "memory_persist": run_memory_persist,
+    "self_learn": run_self_learn,
 }
 
 
