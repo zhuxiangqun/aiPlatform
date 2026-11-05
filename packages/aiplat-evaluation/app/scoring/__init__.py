@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from app.scoring.composite import build_composite, metric_role
 from app.scoring.g2b_accuracy import build_gold, wilson_ci
+from app.scoring.report_compare import compare_reports, extract_composite_version
 from app.scoring.semantics import (
     build_scoring_block,
     classify_metric,
@@ -18,7 +19,9 @@ __all__ = [
     "build_gold",
     "build_scoring_block",
     "classify_metric",
+    "compare_reports",
     "enrich_runner_result",
+    "extract_composite_version",
     "metric_role",
     "score_content_safety",
     "score_groundedness",

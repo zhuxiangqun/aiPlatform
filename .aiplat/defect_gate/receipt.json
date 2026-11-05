@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T08:55:00+08:00",
+  "reviewed_at": "2026-11-05T09:44:14+08:00",
   "base_ref": "origin/main",
-  "merge_base": "88319bce75db40a45fd9c9a71a63c16a2c6ab3af",
-  "diff_sha256": "b5ca553a63ec909989571abe7c99824f4cd2c2ea054c22eb99ea3e8fbfbd861d",
-  "head_sha": "8c7767ba72a2ec66886bb658995dd8ae50d079a8",
+  "merge_base": "f789110453e9925db90ee376bd610c619bfee731",
+  "diff_sha256": "75ac941d0d319e7ce522e83deab3f56695167cd946f724119c095c62a7a78998",
+  "head_sha": "9e84576748dce5ee17f510ae84545b78961a2f9a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "compat matrix → package eval_protocol; diagnosis C3 工程指标; prior EET/schema ADR."
+  "note": "Local lock only. P1b report compare; CAPABILITIES 2715 + whitepaper sync."
 }

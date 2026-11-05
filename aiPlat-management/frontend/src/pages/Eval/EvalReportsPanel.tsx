@@ -41,6 +41,11 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
   const [lookupId, setLookupId] = useState('');
   const [detail, setDetail] = useState<StoreReport | null>(null);
   const [detailBusy, setDetailBusy] = useState(false);
+  const [baselineId, setBaselineId] = useState('');
+  const [candidateId, setCandidateId] = useState('');
+  const [compareBusy, setCompareBusy] = useState(false);
+  const [compareResult, setCompareResult] = useState<Record<string, unknown> | null>(null);
+  const [compareError, setCompareError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +105,26 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
     return keys.length ? keys.join(', ') : '{}';
   };
 
+  const runCompare = async () => {
+    const bid = baselineId.trim();
+    const cid = candidateId.trim();
+    if (!bid || !cid) return;
+    setCompareBusy(true);
+    setCompareError('');
+    setCompareResult(null);
+    try {
+      const res = await apiClient.post<Envelope<Record<string, unknown>>>(
+        `/platform/apps/eval/store/reports/compare?tenant_id=${encodeURIComponent(tenantId)}`,
+        { baseline_id: bid, candidate_id: cid },
+      );
+      setCompareResult(unwrap(res) as Record<string, unknown>);
+    } catch (e: unknown) {
+      setCompareError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCompareBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4 text-sm" data-testid="eval-reports-panel">
       <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-3">
@@ -142,6 +167,75 @@ export default function EvalReportsPanel({ tenantId = 'eval-v1' }: Props) {
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-3" data-testid="eval-report-compare">
+        <h3 className="font-medium">报告对比（P1b）</h3>
+        <p className="text-xs text-gray-500">
+          仅当两侧 <code className="text-gray-400">policy.composite_version</code> 相同才
+          comparable；跨版本标「不可直接比较」。accuracy_claim 恒 false。
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            className="flex-1 min-w-[10rem] px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-gray-200"
+            value={baselineId}
+            onChange={(e) => setBaselineId(e.target.value)}
+            placeholder="baseline rpt_…"
+            data-testid="eval-compare-baseline"
+          />
+          <input
+            className="flex-1 min-w-[10rem] px-2 py-1.5 rounded bg-gray-950 border border-gray-700 text-gray-200"
+            value={candidateId}
+            onChange={(e) => setCandidateId(e.target.value)}
+            placeholder="candidate rpt_…"
+            data-testid="eval-compare-candidate"
+          />
+          <button
+            type="button"
+            data-testid="eval-compare-run"
+            disabled={compareBusy || !baselineId.trim() || !candidateId.trim()}
+            onClick={() => void runCompare()}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-800/80 hover:bg-emerald-700 disabled:opacity-50 text-white"
+          >
+            {compareBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            对比
+          </button>
+        </div>
+        {items.length >= 2 ? (
+          <p className="text-xs text-gray-500">
+            快捷填入最近两条：
+            <button
+              type="button"
+              className="ml-2 text-blue-300 hover:underline"
+              onClick={() => {
+                setBaselineId(String(items[1]?.id || ''));
+                setCandidateId(String(items[0]?.id || ''));
+              }}
+            >
+              用列表第 2 / 第 1 条
+            </button>
+          </p>
+        ) : null}
+        {compareError ? <p className="text-red-300 text-xs">{compareError}</p> : null}
+        {compareResult ? (
+          <div className="space-y-2">
+            <p
+              className={`text-xs ${
+                compareResult.comparable ? 'text-emerald-300' : 'text-amber-300'
+              }`}
+            >
+              {compareResult.comparable
+                ? `comparable · score_delta=${String(compareResult.score_delta ?? '—')}`
+                : `不可直接比较 · ${String(compareResult.incomparable_reason || '—')}`}
+            </p>
+            <pre
+              className="text-xs bg-gray-950/80 border border-gray-800 rounded p-3 overflow-auto max-h-64 text-gray-300"
+              data-testid="eval-compare-result"
+            >
+              {JSON.stringify(compareResult, null, 2)}
+            </pre>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-3">
