@@ -1,6 +1,7 @@
 # Eval 证据标签映射（E0–E5 ↔ EET · P1a）
 
-> **状态**：Proposed → 待项目治理 owner 批准  
+> **状态**：✅ **Accepted**（2026-11-05 · 方法 朱向群 · 治理 朱莹）  
+> **签认留存**：[EVAL_EET_ACCEPT_2026-11-05.md](../../../../reports/five-products/ops/EVAL_EET_ACCEPT_2026-11-05.md)  
 > **日期**：2026-11-05  
 > **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6 · 落地方案 §3.6  
 > **原则**：不另建与 E0–E5 并行的正式 gate 等级；Eval 侧只用 **EET** 证据类型标签。
@@ -51,9 +52,9 @@
 
 | 角色 | 日期 | 决定 |
 |---|---|---|
-| 评测方法负责人 |  | Proposed |
-| 项目治理 owner |  |  |
+| 评测方法负责人 | 2026-11-05 · 朱向群 | **Accept** |
+| 项目治理 owner | 2026-11-05 · 朱莹 | **Accept** |
 
-未批准前：实现与报告可使用 smoke/fixture/gold/human 文案；**不**把 EET 写入正式发布 gate 矩阵为新等级。
+**Accepted 后**：可在本地/文档门禁矩阵引用 EET-1..4 作**证据类型约束**（如「禁止仅 EET-1」）。仍禁止把 EET 当作第二套正式部署成熟度等级；仍禁止仅凭 EET 打开 `accuracy_claim` / `process_split_authorized`。
 
-**工程接线（Proposed 期间可用）**：`ensure_report_meta` → `infer_evidence_level` 写入 `metrics.meta.evidence_level`；管理端详情展示该字段。仍须治理 Accept 后才可进发布门禁矩阵。
+**工程接线**：`ensure_report_meta` → `infer_evidence_level` 写入 `metrics.meta.evidence_level`；管理端详情展示该字段。

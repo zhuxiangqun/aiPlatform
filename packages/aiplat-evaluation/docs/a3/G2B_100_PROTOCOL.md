@@ -1,19 +1,20 @@
-# G2B-100 Protocol（草案 · 待三方签认）
+# G2B-100 Protocol（已签署）
 
-> **状态**：DRAFT — 未签署；签署前不得开始 31–100 确认性双标计入本 protocol 版本  
-> **日期**：2026-11-04  
+> **状态**：✅ **SIGNED**（2026-11-05）· Holdout **方案 A**  
+> **签认留存**：[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](../../../../reports/five-products/ops/EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)  
+> **日期**：2026-11-04（起草）/ 2026-11-05（签署）  
 > **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.3 · [G2B_N100](./G2B_N100.md) · [G2B_ACCURACY_CLOSEOUT](./G2B_ACCURACY_CLOSEOUT.md)  
 > **诚实锁**：签署与达标后仍只允许 **scoped benchmark pass rate**；默认 `accuracy_claim=false`，通用准确率/安全认证/process_split **禁止**由本 protocol 单独打开。
 
 ---
 
-## 1. 签认栏（签署前留空）
+## 1. 签认栏
 
 | 角色 | 姓名 | 日期 | 签字/确认 |
 |---|---|---|---|
-| Evaluation 产品负责人 |  |  |  |
-| 评测方法负责人 |  |  |  |
-| 独立 QA / 标注协调人 |  |  |  |
+| Evaluation 产品负责人 | 朱向群 | 2026/11/05 | ☑ SIGNED |
+| 评测方法负责人 | 朱莹 | 2026/11/05 | ☑ SIGNED |
+| 独立 QA / 标注协调人 | 朱鸿林 | 2026/11/05 | ☑ SIGNED |
 
 签署即冻结：任务配额、抽样/加权、门槛、区间方法、切片最低 n、claim 范围。变更须新 protocol 版本。
 
@@ -25,15 +26,16 @@
 |---|---|
 | Benchmark 名称/版本 | `eval.g2b.benchmark.v1`（n=100 expand；含已完成的 01–30） |
 | 目标 n | **100** 条二分类任务（双人独立盲标） |
-| 已完成 | n=30 closeout（23/30，pass≈0.7667，Wilson 95% CI≈[0.59,0.88]，κ≈0.627） |
-| 待完成 | **31–100** 双标 + 仲裁 + 聚合 |
-| Model/prompt freeze owner | （签署时填写） |
-| Freeze 时间戳 | （确认性运行前填写；运行后变更 → 新版本） |
+| 已完成 | **n=100** 双标+仲裁+κ+accuracy closeout（2026-11-05）：pass_rate=**0.72**（72/100），Wilson 95% CI=[0.6251,0.7986]，κ=0.7624；另保留 n=30 中间态记录 |
+| 门槛对照 §4 | pass_rate **未达**（0.72&lt;0.80）· CI 下界 **未达**（0.6251&lt;0.70）· κ **达标** → **仅 scoped 披露，不得 accuracy_claim** |
+| Model/prompt freeze owner | **朱向群**（已确认） |
+| Freeze 时间戳 | **CONFIRMED** 20261105T151547Z — [`evidence/g2b_freeze_record.v1.json`](./evidence/g2b_freeze_record.v1.json)；变更 → 新版本 |
+| 出卷包（工程） | `docs/a3/human_pack/20261105T132500Z-n100/`（双标已回填；model_outputs 复用 `20261104T064000Z-n100`） |
 | 确认性数据用途 | 不得反馈调参；泄漏即标记为开发运行 |
 
-### Holdout 方案（签署前必须勾选其一）
+### Holdout 方案（已勾选）
 
-- [ ] **方案 A（推荐）**：n=100 全部为确认性 benchmark；可选 20 条封存哨兵，但团队可见结果则不得称未见测试。门槛按 n=100。
+- [x] **方案 A（推荐）**：n=100 全部为确认性 benchmark；可选 20 条封存哨兵，但团队可见结果则不得称未见测试。门槛按 n=100。
 - [ ] **方案 B**：80 开发 + 20 holdout；门槛/CI 按 **n=20** 预注册；禁止合并后称未见测试。
 
 ---

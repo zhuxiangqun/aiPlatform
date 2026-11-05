@@ -1,0 +1,37 @@
+{
+  "schema": "eval.arena.blind.adjudication.v1",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "adjudicator": "朱向群",
+  "adjudicated_at": "2026-11-05T15:44:19Z",
+  "channel": "csv_desktop",
+  "pack": "20261105T153116Z",
+  "disputed_n": 3,
+  "items": [
+    {
+      "pair_id": "arena-16",
+      "label_a": "A",
+      "label_b": "B",
+      "gold_label": "B",
+      "rationale": "左为两句详细解释，超出概括范畴；右为一句式简洁准确概括，更符合 Summarize 任务对凝练的要求。",
+      "aligned_with": "朱鸿林"
+    },
+    {
+      "pair_id": "arena-18",
+      "label_a": "Tie",
+      "label_b": "B",
+      "gold_label": "B",
+      "rationale": "右回应了 prompt 中的 \"period\" 关键词，左为通用问候未回应任务内容；两者均未直接判定句号，右相对更贴近任务。",
+      "aligned_with": "朱鸿林"
+    },
+    {
+      "pair_id": "arena-24",
+      "label_a": "Tie",
+      "label_b": "B",
+      "gold_label": "B",
+      "rationale": "双方均正确回答 NO，但左补充了臆造解释（\"3D 打印用烟\"），右简洁准确无编造，质量更优。",
+      "aligned_with": "朱鸿林"
+    }
+  ],
+  "honesty": "adjudication resolves Left/Right labels only; does not replace length smoke; ≠ accuracy_claim"
+}

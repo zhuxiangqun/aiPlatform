@@ -1,0 +1,114 @@
+{
+  "schema": "eval.arena.blind.qa_process.v1",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "pack": "20261105T153116Z",
+  "status": "completed_with_findings",
+  "qa_role": "independent_process_QA",
+  "signer": {
+    "name": "朱向群",
+    "date": "2026-11-05",
+    "channel": "wechat",
+    "overall_pass": false
+  },
+  "signed_at": "2026-11-05T15:59:10Z",
+  "checks": [
+    {
+      "id": "blind_sheets_no_model",
+      "question": "发给评审的 CSV/JSON 不含 model 名与 length winner？",
+      "pass": false
+    },
+    {
+      "id": "labels_only_abt",
+      "question": "双人标签仅 A/B/Tie，无自由文本替代？",
+      "pass": true
+    },
+    {
+      "id": "facilitator_not_sent",
+      "question": "facilitator.json 未发给评审？",
+      "pass": true
+    },
+    {
+      "id": "smoke_not_replaced",
+      "question": "arena_blind_result.replaces_length_smoke == false？",
+      "pass": true
+    },
+    {
+      "id": "gate_not_enabled",
+      "question": "gate_eligible == false 且未宣称 accuracy_claim？",
+      "pass": true
+    },
+    {
+      "id": "spotcheck_5",
+      "question": "qa_spotcheck_5.csv 五条 qa_agree_with_gold 已填？",
+      "pass": true
+    }
+  ],
+  "spotcheck": {
+    "n": 5,
+    "yes_n": 5,
+    "no_n": 0,
+    "items": [
+      {
+        "pair_id": "arena-16",
+        "gold_label": "B",
+        "qa_agree_with_gold": "YES",
+        "qa_notes": "",
+        "source": "adjudication"
+      },
+      {
+        "pair_id": "arena-04",
+        "gold_label": "A",
+        "qa_agree_with_gold": "YES",
+        "qa_notes": "",
+        "source": "agreement"
+      },
+      {
+        "pair_id": "arena-26",
+        "gold_label": "B",
+        "qa_agree_with_gold": "YES",
+        "qa_notes": "",
+        "source": "agreement"
+      },
+      {
+        "pair_id": "arena-10",
+        "gold_label": "Tie",
+        "qa_agree_with_gold": "YES",
+        "qa_notes": "",
+        "source": "agreement"
+      },
+      {
+        "pair_id": "arena-25",
+        "gold_label": "Tie",
+        "qa_agree_with_gold": "YES",
+        "qa_notes": "",
+        "source": "agreement"
+      }
+    ]
+  },
+  "overall_pass": false,
+  "findings": [
+    {
+      "id": "annotator_pack_leaked_model_names_in_send_md",
+      "severity": "process",
+      "related_check": "blind_sheets_no_model",
+      "summary": "发给评审的 ARENA_BLIND_SEND_CN.md 写明了模型名 qwen2.5-coder:7b vs qwen2.5:3b，削弱盲评。",
+      "evidence": [
+        "Desktop/Arena盲评发卷_20261105/给朱莹/ARENA_BLIND_SEND_CN.md",
+        "Desktop/Arena盲评发卷_20261105/给朱鸿林/ARENA_BLIND_SEND_CN.md"
+      ],
+      "annotator_csv_json_clean": true,
+      "note": "CSV/JSON 标签表本身无 model 字段；泄漏来自同目录 SEND 说明文件。",
+      "remediation": "后续发卷：annotator 目录禁止放入含模型名的 SEND；另备协调人版 SEND。本 pilot 结果保留但标注 blind_partial_compromise。"
+    }
+  ],
+  "impact": {
+    "labels_retained": true,
+    "blind_integrity": "partial_compromise",
+    "replaces_length_smoke": false,
+    "gate_eligible": false,
+    "accuracy_claim": false
+  },
+  "honesty": "QA completed with overall_pass=false due to model-name leak in annotator-facing SEND.md; spotcheck 5/5 agree with gold; does not unlock accuracy_claim or replace length smoke",
+  "recorded_at": "20261105T155910Z"
+}

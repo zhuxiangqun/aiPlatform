@@ -3,7 +3,7 @@
 | 字段 | 填写内容 |
 |---|---|
 | 对象/场景 | 有限多轮对话：v0=2–3 轮、v1=5–8 轮；先验轮次纯文本拼进下一轮 prompt |
-| Owner / 日期 | Evaluation owner（待核实） / 2026-11-05（工程刷新；owner 未签） |
+| Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
 | 当前 runner/judge 及版本 | package `session_eval`（`app/worker/runners/session_eval.py` + `app/scoring/session.py`）；可选独立 LLM per turn。文档：`SESSION_V0.md` / `SESSION_V1.md`。 |
 | 任务集、来源及现有样本量 | `payload.turns`/`messages` + profile；轮次不足 profile 下界 → fail。G2b 配额建议 Session=15。 |
 | 当前实际测量维度 | turn_success_rate、session_pass、turns_n；每轮可附 prompt_eval 维度 / groundedness / efficiency。 |

@@ -1,0 +1,40 @@
+{
+  "schema": "eval.arena.blind.v1",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "status": "pilot_adjudicated",
+  "replaces_length_smoke": false,
+  "gate_eligible": false,
+  "pack": "20261105T153116Z",
+  "pairs_source": "docs/a3/arena_blind_pairs.pilot_20261105.json",
+  "n": 30,
+  "inter_annotator": {
+    "agreement": 0.9,
+    "preference_kappa": 0.8459,
+    "pe": 0.3511,
+    "n": 30
+  },
+  "annotator_vs_gold": {
+    "朱莹": 0.9,
+    "朱鸿林": 1.0
+  },
+  "disputed_n": 3,
+  "winner_model_counts": {
+    "qwen2.5-coder:7b": 14,
+    "qwen2.5:3b": 8
+  },
+  "tie_n": 8,
+  "model_a": "qwen2.5-coder:7b",
+  "model_b": "qwen2.5:3b",
+  "paths": {
+    "aggregate": "docs/a3/evidence/arena_blind_aggregate.v1.json",
+    "adjudication": "docs/a3/evidence/arena_blind_adjudication.v1.json",
+    "gold": "docs/a3/evidence/arena_blind_adjudicated_gold.v1.json"
+  },
+  "qa_spotcheck": "completed_with_findings",
+  "honesty": "arena.blind.v1 pilot — dual-human+adjudication+QA; QA overall_pass=false (SEND.md leaked model names to annotators); spotcheck 5/5 YES; does NOT replace length smoke; gate_eligible=false; accuracy_claim=false",
+  "recorded_at": "20261105T154419Z",
+  "qa_path": "docs/a3/evidence/arena_blind_qa_process.v1.json",
+  "qa_overall_pass": false,
+  "blind_integrity": "partial_compromise"
+}

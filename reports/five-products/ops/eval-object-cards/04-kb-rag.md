@@ -3,7 +3,7 @@
 | 字段 | 填写内容 |
 |---|---|
 | 对象/场景 | 受控检索 fixture：hit 覆盖、expected IDs、groundedness/文本质量线索 |
-| Owner / 日期 | Evaluation owner（待核实） / 2026-11-05（工程刷新；owner 未签） |
+| Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
 | 当前 runner/judge 及版本 | **Canonical**：package `kb_rag`（`ADR_CANONICAL_RUNNERS_V1.md`）。**Legacy 只读**：core `kb_eval_ops` / `rag_evaluator`（另一套维度，不可混称同一准确率）。UI Knowledge → `/eval?tab=knowledge`。 |
 | 任务集、来源及现有样本量 | `payload.query` + `hits`/`docs` + 可选 `expected_ids`；无 hits → fail-closed。G2b 配额建议 KB/RAG=20。 |
 | 当前实际测量维度 | hit_count、expected_ids 覆盖、groundedness（token-overlap）、text_quality/safety（P1 metrics）。core 路径另有 faithfulness 等。 |

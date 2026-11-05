@@ -4,9 +4,9 @@
   "environment": "local",
   "accuracy_claim": false,
   "not_accuracy_certification": true,
-  "n": 30,
-  "agreed_n": 25,
-  "disputed_n": 5,
+  "n": 100,
+  "agreed_n": 90,
+  "disputed_n": 10,
   "labels": [
     {
       "task_id": "g2b-01",
@@ -46,6 +46,10 @@
     },
     {
       "task_id": "g2b-10",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-100",
       "gold_pass": true
     },
     {
@@ -127,8 +131,284 @@
     {
       "task_id": "g2b-30",
       "gold_pass": true
+    },
+    {
+      "task_id": "g2b-31",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-32",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-33",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-34",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-35",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-36",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-37",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-38",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-39",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-40",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-41",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-42",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-43",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-44",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-45",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-46",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-47",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-48",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-49",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-50",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-51",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-52",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-53",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-54",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-55",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-56",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-57",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-58",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-59",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-60",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-61",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-62",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-63",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-64",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-65",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-66",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-67",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-68",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-69",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-70",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-71",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-72",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-73",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-74",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-75",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-76",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-77",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-78",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-79",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-80",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-81",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-82",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-83",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-84",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-85",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-86",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-87",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-88",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-89",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-90",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-91",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-92",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-93",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-94",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-95",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-96",
+      "gold_pass": false
+    },
+    {
+      "task_id": "g2b-97",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-98",
+      "gold_pass": true
+    },
+    {
+      "task_id": "g2b-99",
+      "gold_pass": true
     }
   ],
   "honesty": "adjudicated gold for local model pass-rate only; κ ≠ accuracy; accuracy_claim stays false until attestation",
-  "recorded_at": "20261103T224349Z"
+  "recorded_at": "20261105T150019Z"
 }

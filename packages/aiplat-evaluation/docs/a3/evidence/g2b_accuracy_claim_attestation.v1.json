@@ -1,0 +1,55 @@
+{
+  "schema": "eval.g2b.accuracy_claim_attestation.v1",
+  "status": "confirmed_scoped_no_claim",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accept_accuracy_claim": false,
+  "product_owner": "朱向群",
+  "attested_at": "2026-11-05T15:15:47Z",
+  "attestation_channel": "chat_confirm_scoped",
+  "decision": "scoped_disclosure_only",
+  "closeout_ref": {
+    "pack": "20261105T132500Z-n100",
+    "annotator_a": "朱莹",
+    "annotator_b": "朱鸿林",
+    "adjudicator": "朱向群",
+    "kappa": {
+      "n": 100,
+      "agreement": 0.9,
+      "inter_annotator_kappa": 0.7624,
+      "path": "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+    },
+    "accuracy": {
+      "n": 100,
+      "pass_n": 72,
+      "fail_n": 28,
+      "pass_rate": 0.72,
+      "wilson_ci95": [
+        0.6251,
+        0.7986
+      ],
+      "disputed_n": 10,
+      "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json"
+    },
+    "adjudication_path": "docs/a3/evidence/g2b_adjudication.v1.json",
+    "gold_path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
+    "freeze_path": "docs/a3/evidence/g2b_freeze_record.v1.json"
+  },
+  "threshold_gate_vs_protocol_section_4": {
+    "pass_rate_met": false,
+    "wilson_lower_met": false,
+    "kappa_met": true,
+    "protocol_rule": "未同时满足门槛：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
+    "owner_decision": "confirm_scoped_keep_accuracy_claim_false"
+  },
+  "acknowledgements": {
+    "kappa_is_not_accuracy": true,
+    "not_security_cert": true,
+    "not_process_split_authorize": true,
+    "not_production_accuracy_certification": true,
+    "freeze_hash_still_pending": false,
+    "protocol_thresholds_not_met_for_claim": true,
+    "scoped_disclosure_authorized": true
+  },
+  "honesty": "product_owner confirmed scoped disclosure only; accept_accuracy_claim=false; freeze confirmed; protocol §4 thresholds not met (0.72<0.80, CI_lo 0.6251<0.70)."
+}

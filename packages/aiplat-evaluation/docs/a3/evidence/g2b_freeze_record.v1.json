@@ -1,0 +1,61 @@
+{
+  "schema": "eval.g2b.freeze_record.v1",
+  "status": "confirmed",
+  "product_id": "evaluation",
+  "benchmark": "eval.g2b.benchmark.v1",
+  "freeze_owner": "朱向群",
+  "recorded_at_draft": "20261105T151159Z",
+  "confirmed_at": "2026-11-05T15:15:47Z",
+  "confirmation_channel": "chat_confirm_scoped",
+  "pack": "20261105T132500Z-n100",
+  "source_model_outputs_pack": "20261104T064000Z-n100",
+  "hashes": {
+    "g2b_tasks.v0.json": {
+      "path": "docs/a3/g2b_tasks.v0.json",
+      "sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+      "bytes": 24625
+    },
+    "model_outputs.json": {
+      "path": "docs/a3/human_pack/20261105T132500Z-n100/model_outputs.json",
+      "sha256": "ec0c8a5bf7fd281952b0f87e730b2b59cf0596876fb6a37092527277fd11d529",
+      "bytes": 9991,
+      "identical_to": "docs/a3/human_pack/20261104T064000Z-n100/model_outputs.json"
+    },
+    "g2b_run_model_outputs.py": {
+      "path": "scripts/g2b_run_model_outputs.py",
+      "sha256": "6d7be1f8f376ec87c20749313a7105271102f07e18fd3635aed602ed253b823e",
+      "bytes": 4290
+    },
+    "G2B_100_PROTOCOL.md": {
+      "path": "docs/a3/G2B_100_PROTOCOL.md",
+      "sha256": "6154e1675fe9c1de9f8f064c6ed1937df57f896900568e8d63423ce9f674c673",
+      "bytes": 5695,
+      "note": "hash after CONFIRMED freeze status sync"
+    }
+  },
+  "model_config": {
+    "model_id": "qwen2.5-coder:7b",
+    "model_id_confidence": "owner_confirmed",
+    "model_id_evidence": "owner confirm 2026-11-05 chat_confirm_scoped; runbook docs/a3/G2B_N100.md; model_outputs.json has no embedded sidecar",
+    "temperature": 0.0,
+    "temperature_confidence": "client_default_if_env_unset",
+    "seed": null,
+    "purpose": "g2b_facilitator",
+    "provider_hint": "AIPLAT_EVAL_LLM_BASE_URL OpenAI-compatible (e.g. ollama :11434/v1)"
+  },
+  "threshold_gate_vs_protocol_section_4": {
+    "pass_rate": 0.72,
+    "pass_rate_threshold": 0.8,
+    "pass_rate_met": false,
+    "wilson_ci95_lower": 0.6251,
+    "wilson_lower_threshold": 0.7,
+    "wilson_lower_met": false,
+    "kappa": 0.7624,
+    "kappa_engineering_threshold": 0.6,
+    "kappa_reliability_threshold": 0.7,
+    "kappa_met": true,
+    "protocol_rule": "未同时满足：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
+    "owner_decision": "scoped_disclosure_only"
+  },
+  "honesty": "freeze confirmed by product_owner; accuracy_claim remains false (protocol §4 thresholds not met); κ ≠ accuracy; ≠ process_split; ≠ security cert"
+}

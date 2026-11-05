@@ -19,6 +19,9 @@ env/
 ENV/
 .venv
 
+# Local agent tooling (tunnel CLIs etc.; not part of product)
+.tools/
+
 # Testing
 .pytest_cache/
 .coverage

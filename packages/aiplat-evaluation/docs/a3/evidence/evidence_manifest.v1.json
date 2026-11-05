@@ -13,7 +13,7 @@
     },
     "G2B_PREP.md": {
       "path": "docs/a3/G2B_PREP.md",
-      "sha256": "59d62ae42324e834373ddc6303d5fdc3b12b77b1712c31e878dfdc21e6303f43"
+      "sha256": "58fbff69d6b7701122a22eb5fd2cb16757ff3c5e106f51afd0f71eee03511b03"
     },
     "PREFERENCE_V0.md": {
       "path": "docs/a3/PREFERENCE_V0.md",
@@ -22,11 +22,11 @@
   },
   "method": {
     "g2b": {
-      "n": 30,
-      "agreement": 0.8333,
-      "inter_annotator_kappa": 0.6269,
+      "n": 100,
+      "agreement": 0.9,
+      "inter_annotator_kappa": 0.7624,
       "script": "scripts/g2b_kappa.py",
-      "gate_note": "≠ accuracy certification"
+      "gate_note": "≠ accuracy certification; n=100 dual-human 2026-11-05"
     },
     "preference": {
       "n": 32,
@@ -36,16 +36,16 @@
       "gate_note": "≠ accuracy certification"
     },
     "g2b_accuracy": {
-      "n": 30,
+      "n": 100,
       "target_n": 100,
-      "pass_rate": 0.7667,
+      "pass_rate": 0.72,
       "wilson_ci95": [
-        0.5907,
-        0.8821
+        0.6251,
+        0.7986
       ],
-      "disputed_n": 5,
+      "disputed_n": 10,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "committed closeout n=30; charter target_n=100 pending dual-human 31–100; accuracy_claim=false until attestation"
+      "gate_note": "n=100 closeout; pass_rate=0.72 below protocol 0.80; owner confirmed scoped disclosure; accuracy_claim=false; freeze confirmed"
     },
     "prod_live": {
       "n_tasks": 25,
@@ -69,13 +69,27 @@
       "llm_ok_n": 25,
       "script": "scripts/s1_prod_model_gate.sh",
       "gate_note": "prod-candidate S1 live_llm; not security certification; accuracy_claim=false"
+    },
+    "arena_blind": {
+      "n": 30,
+      "agreement": 0.9,
+      "preference_kappa": 0.8459,
+      "disputed_n": 3,
+      "judge_version": "arena.blind.v1",
+      "result": "docs/a3/evidence/arena_blind_result.v1.json",
+      "replaces_length_smoke": false,
+      "gate_eligible": false,
+      "gate_note": "pilot+QA findings (SEND model leak); smoke retained; ≠ accuracy",
+      "qa_overall_pass": false,
+      "blind_integrity": "partial_compromise",
+      "qa_path": "docs/a3/evidence/arena_blind_qa_process.v1.json"
     }
   },
   "tracked_aggregates": [
     {
       "id": "g2b_kappa_aggregate",
       "path": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
-      "sha256": "0bec9d90f7d1ec482f4982f26bc6a1cdf49268bbe7372559a1164ad58ca6a08e",
+      "sha256": "8180bebf43311bb0f98dd9ac43173081914dc20375fb1bbdc351df27cef908db",
       "required_for_feature_5": true
     },
     {
@@ -87,23 +101,23 @@
     {
       "id": "g2b_accuracy_aggregate",
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
-      "sha256": "b760e3c4852959d25a202be40e366d5d604905ff296181319d96bebba600790f",
+      "sha256": "ef40b6499daab59363d5cbd57defe3cfed38939d555de3bce409beb7f1a24032",
       "required_for_feature_5": false,
-      "note": "G2b accuracy closeout; claim stays false"
+      "note": "G2b accuracy closeout n=100; claim stays false"
     },
     {
       "id": "g2b_adjudicated_gold",
       "path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
-      "sha256": "8d1845d9c2e6e8e1ac910026bd56ec04716d522d14b0a73fd9be7683dca284e0",
+      "sha256": "a1151d847f3835ffcf6b29c83489d5b719ba17e33470a57c69d19e7170d7e698",
       "required_for_feature_5": false,
-      "note": "G2b accuracy closeout; claim stays false"
+      "note": "G2b accuracy closeout n=100; claim stays false"
     },
     {
       "id": "g2b_adjudication",
       "path": "docs/a3/evidence/g2b_adjudication.v1.json",
-      "sha256": "69c45f7aa0ed8136f5838f5d86115464ce424236c94bf3a20da034e032f78f2d",
+      "sha256": "0cfc17dd5e6cecd727f7f7a9418b35b52fbef6d15a52f7f6f4114a650babba65",
       "required_for_feature_5": false,
-      "note": "G2b accuracy closeout; claim stays false"
+      "note": "G2b accuracy closeout; 10 disputes; claim stays false"
     },
     {
       "id": "prod_live_aggregate",
@@ -179,5 +193,50 @@
     "attestation_channel": "chat_confirm_yes",
     "note": "Operator confirmed A/B were two distinct humans, independent blind, not script/AI/same-person. κ/agreement still ≠ accuracy_claim."
   },
-  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. G2b accuracy closeout reports pass-rate vs gold with accuracy_claim=false until product-owner attestation. Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256."
+  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. G2b n=100 scoped disclosure confirmed; accuracy_claim=false (protocol §4 thresholds not met). Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256.",
+  "confirmed_records": {
+    "g2b_freeze_record": {
+      "path": "docs/a3/evidence/g2b_freeze_record.v1.json",
+      "sha256": "d80a10ad6a4bf739fef0d8883d6d8b1cb37604d83d9721d394328fc9f838d581",
+      "status": "confirmed",
+      "confirmed_at": "2026-11-05T15:15:47Z"
+    },
+    "g2b_accuracy_claim_attestation": {
+      "path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
+      "sha256": "51ed9b77ca92659b5e2c537b85f0801ca1fe5300ef64c7ea1a586bb3428b5602",
+      "status": "confirmed_scoped_no_claim",
+      "accept_accuracy_claim": false,
+      "attested_at": "2026-11-05T15:15:47Z"
+    },
+    "arena_blind_result": {
+      "path": "docs/a3/evidence/arena_blind_result.v1.json",
+      "sha256": "0a9bd0f74fd8620913115dc8c0c0c7ef2410d5775351fb5e8e5418ea6854c2bb",
+      "status": "pilot_adjudicated",
+      "recorded_at": "20261105T155910Z"
+    },
+    "arena_blind_adjudication": {
+      "path": "docs/a3/evidence/arena_blind_adjudication.v1.json",
+      "sha256": "a3786824069d1fd3a28d0c3e97b055e9d19f0b3fca10cab3d7a42d6c3ade248e",
+      "status": "pilot_adjudicated",
+      "recorded_at": "20261105T154419Z"
+    },
+    "arena_blind_adjudicated_gold": {
+      "path": "docs/a3/evidence/arena_blind_adjudicated_gold.v1.json",
+      "sha256": "7efe50916d67ea42adfa9e089be24e22f5fad96bbd816f9313d9e084533ad0e7",
+      "status": "pilot_adjudicated",
+      "recorded_at": "20261105T154419Z"
+    },
+    "arena_blind_aggregate": {
+      "path": "docs/a3/evidence/arena_blind_aggregate.v1.json",
+      "sha256": "54faec39f5e4f2f8d5dd60f2612e991e87e9598400dcb32645646d563991f5c3",
+      "status": "pilot_adjudicated",
+      "recorded_at": "20261105T155910Z"
+    },
+    "arena_blind_qa_process": {
+      "path": "docs/a3/evidence/arena_blind_qa_process.v1.json",
+      "sha256": "77d2b00fb43017c4e0dae534e1467b7c1d6dfb874811aad417ced8fd8ec59770",
+      "status": "qa_completed_with_findings",
+      "recorded_at": "20261105T155910Z"
+    }
+  }
 }

@@ -3,7 +3,7 @@
 | 字段 | 填写内容 |
 |---|---|
 | 对象/场景 | 单轮 prompt→回答：exact match、文本质量、groundedness、拒答、安全/PII、延迟成本 |
-| Owner / 日期 | Evaluation owner（待核实） / 2026-11-05（工程刷新；owner 未签） |
+| Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
 | 当前 runner/judge 及版本 | **Canonical**：package `prompt_eval`（见 `ADR_CANONICAL_RUNNERS_V1.md`）。可选 `AIPLAT_EVAL_LLM` 独立 HTTP（拒 Central）。**Legacy 只读**：core `prompt_eval_ops`（不可静默并入 package composite）。 |
 | 任务集、来源及现有样本量 | job payload：`prompt`/`expected`/`actual`/`context`/`sources`/`expect_refusal`；样本量由评测集决定。G2b 配额建议 Prompt=15。 |
 | 当前实际测量维度 | exact_match、text_quality、groundedness（token-overlap 等）、safety/refusal、efficiency（latency/cost 若有 llm audit）。 |

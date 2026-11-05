@@ -3,7 +3,7 @@
 | 字段 | 填写内容 |
 |---|---|
 | 对象/场景 | Skill suite fixture：受控用例通过/失败比对（非 live 工具执行） |
-| Owner / 日期 | Evaluation owner（待核实） / 2026-11-05（工程刷新；owner 未签） |
+| Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
 | 当前 runner/judge 及版本 | package `skill_suite`（`app/worker/runners/skill_suite.py`）；需 sandbox admit（docker `network=none` 或 microVM track）；`assert_skill_suite_fixture`。 |
 | 任务集、来源及现有样本量 | `payload.cases` + 可选 `payload.results`/`actual_ok`；样本量=cases 长度，由调用方供给。无统一定义的全库 precision/recall 基线。 |
 | 当前实际测量维度 | `pass`（passed/cases）、`cases`、`passed`；evidence：`tools_executed=false`、sandbox backend。 |

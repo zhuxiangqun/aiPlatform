@@ -5,7 +5,7 @@
 
 ## 工程 closeout（报告轨）
 
-**状态**：报告侧工程交付完成（#596–#606）。后续增量仅在人侧签认后解锁（G2b / Arena pilot / EET Accept / A1）。
+**状态**：报告侧工程交付完成（#596–#606）。签认已收口项见下表。人侧劳动项工程已出卷/阻塞留档，总清单：[EVAL_HUMAN_REMAINING_OPS_2026-11-05.md](./EVAL_HUMAN_REMAINING_OPS_2026-11-05.md)。
 
 计划项「基线对比、维度回归、失败样本与元数据」对应交付：
 
@@ -32,16 +32,17 @@
 | evidence_level 写入 meta | #606 | `infer_evidence_level`；详情展示；EET≠发布门禁 |
 | 对象卡工程字段刷新 | （本批） | 七张对照 #596–#606；**owner 仍待核实签字** |
 
-## 人侧仍 open（工程无法代签）
+## 人侧状态
 
-| 项 | 阻塞 |
-|---|---|
-| **A1 部署签认** | 目标环境构建 ID、旧 `/diagnostics/eval` `/platform/kb/eval` 须 404、CDN 缓存 · **检查表**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md) |
-| **EET 治理批准** | `EVAL_EVIDENCE_LEVEL_MAP_V1` Proposed → Accept（接线已就绪） |
-| **G2B-100 protocol 三方签认** | 签后才可开 31–100 确认性双标 |
-| **G2b 31–100 双标/仲裁** | ≥2 标注者；预算 25–30 人时 |
-| **Arena pilot ≥30 对×2 盲评** | 排期评审；现仅 fixture×3 供 pack smoke |
-| **对象卡 owner 核实** | `eval-object-cards/` 工程字段已刷新；各对象 owner 去掉「待核实」并签日期 |
+| 项 | 状态 | 材料 |
+|---|---|---|
+| **A1 本地联调** | ✅ **pass**（2026-11-05） | [EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md) |
+| **A1 生产/正式环境** | ☑ **blocked_not_released**（无正式 BASE） | [阻塞单](./EVAL_A1_PROD_BLOCKED_NOT_RELEASED_2026-11-05.md) · [母版](./EVAL_A1_DEPLOY_SIGNOFF.md) |
+| **EET 治理批准** | ✅ **Accept**（2026-11-05） | [EVAL_EET_ACCEPT_2026-11-05.md](./EVAL_EET_ACCEPT_2026-11-05.md) · 映射 Accepted |
+| **G2B-100 protocol 三方签认** | ✅ **SIGNED** · Holdout A | [SIGNED 留存](./EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md) · [母版](../../../packages/aiplat-evaluation/docs/a3/G2B_100_PROTOCOL.md) |
+| **G2b 31–100 双标/仲裁** | ✅ closeout + freeze 确认 + scoped attestation（n=100 · 0.72；**claim=false**） | [closeout](./EVAL_G2B_N100_CLOSEOUT_2026-11-05.md) · `evidence/g2b_freeze_record.v1.json` · `g2b_accuracy_claim_attestation.v1.json` |
+| **Arena pilot ≥30 对×2 盲评** | ✅ 双标+仲裁+result+QA（κ=0.8459；QA fail 已留档；smoke 未替换） | [closeout](./EVAL_ARENA_PILOT_CLOSEOUT_2026-11-05.md) · `evidence/arena_blind_qa_process.v1.json` |
+| **对象卡 owner 核实** | ✅ **朱向群 ×7**（2026-11-05） | [EVAL_OBJECT_CARDS_OWNER_VERIFY.md](./EVAL_OBJECT_CARDS_OWNER_VERIFY.md) |
 
 ## 诚实锁
 

@@ -3,7 +3,7 @@
 | 字段 | 填写内容 |
 |---|---|
 | 对象/场景 | Agent 任务完成 / 轨迹回放 / 管理端 Agents 面板观测 |
-| Owner / 日期 | Evaluation owner（待核实） / 2026-11-05（工程刷新；owner 未签） |
+| Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
 | 当前 runner/judge 及版本 | **双路径**：(1) package `replay_trace`（`packages/aiplat-evaluation/app/worker/runners/replay_trace.py`）只读回放 `payload.trace`；(2) 管理端 `/eval?tab=agents` 内嵌 Diagnostics EvalDashboard → platform/core 历史 Agent 评估 API（Central `AgentEvalResult` / legacy_7dim）。无独立 package `agent` runner。 |
 | 任务集、来源及现有样本量 | package：fixture/job payload 驱动，无固定公开 n；Central/UI：租户任务与历史 run，样本量运行时可变。G2b pack 中含 Agent/Skill 分层配额（见 G2B_100_PROTOCOL）。 |
 | 当前实际测量维度 | `replay_trace`：pass、steps、latency（engineering）。Central：task/tool/traj/eff/recovery/safety/cost（**legacy_7dim，report-only**）。自定义 Agent scoring dimensions 可能存在且权重不一。 |

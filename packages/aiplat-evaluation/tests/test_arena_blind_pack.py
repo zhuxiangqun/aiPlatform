@@ -5,11 +5,14 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from arena_blind_pack import (  # noqa: E402
     JUDGE_VERSION,
+    assert_annotator_bundle_blind,
     build_annotator_sheet,
     build_facilitator_rows,
     write_pack,
@@ -32,6 +35,20 @@ def test_annotator_has_no_model_fields(tmp_path: Path):
     for row in sheet["labels"]:
         assert row["label"] is None
         assert "left" in row and "right" in row
+    ann_dir = dest / "for_annotators"
+    assert ann_dir.is_dir()
+    assert (dest / "facilitator_only" / "facilitator.json").is_file()
+    assert (ann_dir / "ARENA_BLIND_SEND_ANNOTATOR.md").is_file()
+    # annotator bundle must not contain fixture model ids
+    assert_annotator_bundle_blind(ann_dir, ["fixture-a", "fixture-b"])
+
+
+def test_annotator_bundle_rejects_model_leak(tmp_path: Path):
+    bad = tmp_path / "for_annotators"
+    bad.mkdir()
+    (bad / "note.md").write_text("models: fixture-a vs fixture-b\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="blind leak"):
+        assert_annotator_bundle_blind(bad, ["fixture-a"])
 
 
 def test_facilitator_maps_sides():

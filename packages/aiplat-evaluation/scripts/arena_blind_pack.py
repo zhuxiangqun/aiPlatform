@@ -119,6 +119,42 @@ def build_facilitator_pack(
     }
 
 
+def collect_model_names(pairs: Sequence[Mapping[str, Any]]) -> List[str]:
+    """Model ids that must never appear in annotator-facing files."""
+    names: List[str] = []
+    seen = set()
+    for raw in pairs:
+        if not isinstance(raw, Mapping):
+            continue
+        for key in ("model_a", "model_b"):
+            val = str(raw.get(key) or "").strip()
+            if val and val not in seen:
+                seen.add(val)
+                names.append(val)
+    return names
+
+
+def assert_annotator_bundle_blind(annotator_dir: Path, forbidden: Sequence[str]) -> None:
+    """Fail closed if annotator bundle contains model ids (2026-11-05 SEND leak)."""
+    if not annotator_dir.is_dir():
+        raise SystemExit(f"missing annotator dir: {annotator_dir}")
+    needles = [n for n in forbidden if n]
+    if not needles:
+        return
+    for path in sorted(annotator_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in {".json", ".md", ".csv", ".txt"}:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for needle in needles:
+            if needle in text:
+                raise SystemExit(
+                    f"blind leak: {path.name} contains model id {needle!r} "
+                    f"(keep model names only under facilitator_only/)"
+                )
+
+
 def write_pack(
     pairs_path: Path,
     out_root: Path,
@@ -131,17 +167,45 @@ def write_pack(
     rows = build_facilitator_rows(pairs, salt=salt)
     stamp = _stamp()
     dest = out_root / stamp
-    dest.mkdir(parents=True, exist_ok=True)
+    ann_dir = dest / "for_annotators"
+    fac_dir = dest / "facilitator_only"
+    ann_dir.mkdir(parents=True, exist_ok=True)
+    fac_dir.mkdir(parents=True, exist_ok=True)
+
     fac = build_facilitator_pack(rows, salt=salt)
+    (fac_dir / "facilitator.json").write_text(
+        json.dumps(fac, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    # legacy alias at pack root for older tooling (still facilitator-only semantics)
     (dest / "facilitator.json").write_text(
         json.dumps(fac, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+
     for aid in annotators:
         sheet = build_annotator_sheet(rows, annotator_id=aid)
         name = f"annotator_{aid}.json"
+        (ann_dir / name).write_text(
+            json.dumps(sheet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        # root alias for smoke tests / existing callers
         (dest / name).write_text(
             json.dumps(sheet, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
+
+    docs_a3 = Path(__file__).resolve().parents[1] / "docs" / "a3"
+    send_ann = docs_a3 / "ARENA_BLIND_SEND_ANNOTATOR.md"
+    send_fac = docs_a3 / "ARENA_BLIND_SEND_FACILITATOR.md"
+    rubric = docs_a3 / "ARENA_BLIND_RUBRIC_V1.md"
+    if send_ann.is_file():
+        (ann_dir / send_ann.name).write_text(send_ann.read_text(encoding="utf-8"), encoding="utf-8")
+    if rubric.is_file():
+        (ann_dir / rubric.name).write_text(rubric.read_text(encoding="utf-8"), encoding="utf-8")
+    if send_fac.is_file():
+        (fac_dir / send_fac.name).write_text(send_fac.read_text(encoding="utf-8"), encoding="utf-8")
+
+    forbidden = collect_model_names(pairs)
+    assert_annotator_bundle_blind(ann_dir, forbidden)
+
     meta = {
         "schema": "eval.arena.blind.pack.meta.v0",
         "accuracy_claim": False,
@@ -152,7 +216,14 @@ def write_pack(
         "annotators": list(annotators),
         "rubric": "docs/a3/ARENA_BLIND_RUBRIC_V1.md",
         "pilot": "docs/a3/ARENA_BLIND_PILOT.md",
-        "note": "Scaffold only; pilot complete only with ≥30 real pairs × ≥2 annotators.",
+        "for_annotators": "for_annotators/",
+        "facilitator_only": "facilitator_only/",
+        "send_annotator": "docs/a3/ARENA_BLIND_SEND_ANNOTATOR.md",
+        "send_facilitator": "docs/a3/ARENA_BLIND_SEND_FACILITATOR.md",
+        "note": (
+            "Send only for_annotators/ to reviewers. Never send facilitator_only/ "
+            "or files that name model_a/model_b. accuracy_claim=false; length smoke not replaced."
+        ),
     }
     (dest / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

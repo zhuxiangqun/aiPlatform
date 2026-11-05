@@ -1,0 +1,70 @@
+{
+  "schema": "eval.arena.blind.aggregate.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "status": "adjudicated",
+  "pack": "20261105T153116Z",
+  "pairs_source": "docs/a3/arena_blind_pairs.pilot_20261105.json",
+  "annotator_a": "朱莹",
+  "annotator_b": "朱鸿林",
+  "n": 30,
+  "agreement": 0.9,
+  "preference_kappa": 0.8459,
+  "pe": 0.3511,
+  "label_dist_a": {
+    "tie": 10,
+    "a": 8,
+    "b": 12
+  },
+  "label_dist_b": {
+    "tie": 8,
+    "a": 7,
+    "b": 15
+  },
+  "agreed_n": 27,
+  "disputed_n": 3,
+  "disputed_pair_ids": [
+    "arena-16",
+    "arena-18",
+    "arena-24"
+  ],
+  "disputes": [
+    {
+      "pair_id": "arena-16",
+      "label_a": "A",
+      "label_b": "B"
+    },
+    {
+      "pair_id": "arena-18",
+      "label_a": "Tie",
+      "label_b": "B"
+    },
+    {
+      "pair_id": "arena-24",
+      "label_a": "Tie",
+      "label_b": "B"
+    }
+  ],
+  "replaces_length_smoke": false,
+  "honesty": "arena blind dual-human+adjudication+QA; QA found annotator-facing SEND.md model-name leak (partial blind compromise); length smoke NOT replaced; accuracy_claim=false",
+  "recorded_at": "20261105T154419Z",
+  "adjudicator": "朱向群",
+  "adjudicated_at": "2026-11-05T15:44:19Z",
+  "annotator_vs_gold": {
+    "朱莹": 0.9,
+    "朱鸿林": 1.0
+  },
+  "winner_model_counts": {
+    "qwen2.5-coder:7b": 14,
+    "qwen2.5:3b": 8
+  },
+  "tie_n": 8,
+  "result_path": "docs/a3/evidence/arena_blind_result.v1.json",
+  "adjudication_path": "docs/a3/evidence/arena_blind_adjudication.v1.json",
+  "gold_path": "docs/a3/evidence/arena_blind_adjudicated_gold.v1.json",
+  "qa_path": "docs/a3/evidence/arena_blind_qa_process.v1.json",
+  "qa_overall_pass": false,
+  "blind_integrity": "partial_compromise"
+}

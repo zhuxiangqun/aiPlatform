@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：P0 A2（#593）+ P1a（#594/#595）+ **P1b 报告轨工程 closeout（#596–#606）** + Arena 盲评脚手架（#597）已合入。交接：[EVAL_P1B_AGENT_HANDOFF](./EVAL_P1B_AGENT_HANDOFF.md)。A1 仍 open。**人侧余**：EET Accept；G2B-100 三方签认；G2b 31–100 双标；Arena pilot≥30×2；对象卡 owner 核实。
+> **当前状态**：P0 A2（#593）+ P1a（#594/#595）+ **P1b 报告轨工程 closeout（#596–#606）** + Arena 盲评脚手架（#597）已合入。日收口：[EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)。**已签/收口**：A1 本地 · EET · G2B protocol · 七卡 · G2b n=100 scoped · Arena blind+QA（fail 发现已留档；pack 已加固）。**人侧仍 open**：A1 正式 BASE。
 
 ## 1. 执行结论
 
@@ -159,8 +159,10 @@ Protocol 还须指定 **model/prompt freeze owner** 和明确的 freeze 时间�
 
 | 交付物 | 路径 | 状态 |
 |---|---|---|
-| 七张对象现状卡 | [`eval-object-cards/`](./eval-object-cards/) | 初稿完成 · owner 核实签字 pending |
-| G2B-100 protocol 草案 | [`packages/aiplat-evaluation/docs/a3/G2B_100_PROTOCOL.md`](../../../packages/aiplat-evaluation/docs/a3/G2B_100_PROTOCOL.md) | DRAFT · 三方签认 pending |
+| 七张对象现状卡 | [`eval-object-cards/`](./eval-object-cards/) · [核实一页纸](./EVAL_OBJECT_CARDS_OWNER_VERIFY.md) | ✅ Owner 朱向群 ×7 已核实 · 2026-11-05 |
+| G2B-100 protocol | [`G2B_100_PROTOCOL.md`](../../../packages/aiplat-evaluation/docs/a3/G2B_100_PROTOCOL.md) · [SIGNED 留存](./EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md) | ✅ SIGNED · Holdout A · 2026-11-05 |
+| EET 映射 Accept | [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](../../../packages/aiplat-evaluation/docs/a3/EVAL_EVIDENCE_LEVEL_MAP_V1.md) · [签认](./EVAL_EET_ACCEPT_2026-11-05.md) | ✅ Accepted · 2026-11-05 |
+| A1 部署签认 | [母版](./EVAL_A1_DEPLOY_SIGNOFF.md) · [本地已签](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md) | 本地 pass · 生产 open |
 | G2b UI/ops 文案 | EvalCenter / Settings / G2C closeout / B4S | 已去掉「仍 defer」误导 |
 
 ## 4. P1：拆为 P1a / P1b
