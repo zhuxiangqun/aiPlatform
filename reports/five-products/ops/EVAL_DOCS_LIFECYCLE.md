@@ -34,11 +34,15 @@
 | `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` | 记分卡 |
 | `AIPLAT_CAPABILITIES.md` | 能力事实 |
 
-## frozen-gate（保留原位，勿扩写）
+## frozen-gate（本批已迁 archive；勿扩写）
 
-`ENGINEERING_UNFREEZE_EVAL_*.md`、`EVAL_V1_E1_INVENTORY.md`、`EVAL_V1_E3_GOLD_SOURCES.md`、`EVAL_P1B_AGENT_HANDOFF.md` 等：解冻与盘点记录。新工作写新 living 决策，不回填这些文件当说明书。
+目录：[`_archive/eval-gates/`](./_archive/eval-gates/)  
 
-## evidence（本批已迁 archive）
+含 `ENGINEERING_UNFREEZE_EVAL_*.md`（16 份）。原路径留 **stub**；`ops_engineering_freeze_check.sh` 仍按原路径做存在性检查。
+
+仍留 `ops/` 原位（盘点 / handoff，本批未迁）：`EVAL_V1_E1_INVENTORY.md`、`EVAL_V1_E3_GOLD_SOURCES.md`、`EVAL_P1B_AGENT_HANDOFF.md`。新工作写新 living 决策，不回填这些文件当说明书。
+
+## evidence（已迁 archive）
 
 目录：[`_archive/eval-receipts/`](./_archive/eval-receipts/)  
 
@@ -55,5 +59,5 @@
 
 ## 后续批次（未做）
 
-- 将更多无入链的 `ENGINEERING_UNFREEZE_EVAL_*` 迁入 `_archive/eval-gates/`（须 R3 入链普查）
 - a3 内已收官单点协议降权为索引-only（保留脚本引用路径）
+- 可选：迁 `EVAL_V1_E1_INVENTORY` / `E3_GOLD_SOURCES` / `P1B_AGENT_HANDOFF`（先做入链普查）

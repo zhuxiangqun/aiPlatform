@@ -32,7 +32,7 @@
 | 类别 | 位置 | 说明 |
 |------|------|------|
 | 收口凭证（已迁） | [`ops/_archive/eval-receipts/`](../../ops/_archive/eval-receipts/) | CLOSEOUT / SIGNOFF / PARTIAL / BLOCKED 等 |
-| 解冻门与过程稿 | `ops/ENGINEERING_UNFREEZE_EVAL_*.md` 等 | 冻结门禁记录；见生命周期表 |
+| 解冻门（已迁） | [`ops/_archive/eval-gates/`](../../ops/_archive/eval-gates/) | `ENGINEERING_UNFREEZE_EVAL_*`；原路径留 stub |
 | A3 预备与基准稿 | `packages/aiplat-evaluation/docs/a3/` | 门禁/证据包；入口见该目录 README 横幅 |
 
 完整分类：[`ops/EVAL_DOCS_LIFECYCLE.md`](../../ops/EVAL_DOCS_LIFECYCLE.md)。
