@@ -2,6 +2,10 @@
 
 > ADR: [`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) — **Accepted（有条件）**  
 > 默认仍为 Central **共宿 D1**。
+>
+> **文档定位（2026-11-06 收口）**：本目录是 **prep / 门禁 / 证据包**，**不是**评测产品白皮书。  
+> 产品现行入口 → [`reports/five-products/modules/evaluation/README.md`](../../../../reports/five-products/modules/evaluation/README.md)  
+> 收口凭证归档 → [`reports/five-products/ops/_archive/eval-receipts/`](../../../../reports/five-products/ops/_archive/eval-receipts/)
 
 | Doc | Purpose |
 |-----|---------|

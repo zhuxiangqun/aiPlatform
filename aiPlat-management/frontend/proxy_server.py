@@ -10,18 +10,24 @@ is split between mgmt:8000 and platform:8003), 404 responses trigger automatic
 fallback to the next target.
 """
 
+import base64
+import hashlib
 import http.server
 import json
 import os
 import re
+import select
+import socket
 import sys
+import urllib.parse
 import urllib.request
 import urllib.error
 
 _opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 urllib.request.install_opener(_opener)
 
-CORE_DIRECT_URL = "http://localhost:8002"
+# Prefer IPv4: core/gunicorn typically binds 127.0.0.1 only; localhost may hit ::1.
+CORE_DIRECT_URL = os.getenv("AIPLAT_CORE_URL", "http://127.0.0.1:8002")
 INFRA_URL = "http://localhost:8001"
 MGMT_URL = "http://localhost:8000"
 PLATFORM_URL = "http://localhost:8003"
@@ -171,6 +177,9 @@ STATIC_EXTENSIONS = {'.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '
 
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
+    # browsers / websockets clients expect HTTP/1.1 for Upgrade: websocket
+    protocol_version = "HTTP/1.1"
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
@@ -424,7 +433,110 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         except FileNotFoundError:
             self.send_error(404)
 
+    def _is_websocket_upgrade(self) -> bool:
+        return (
+            str(self.headers.get("Upgrade", "")).lower() == "websocket"
+            and "upgrade" in str(self.headers.get("Connection", "")).lower()
+        )
+
+    def _proxy_websocket(self, target_base: str) -> None:
+        """Tunnel browser WebSocket → core (小朱 /ws/voice-chat)."""
+        parsed = urllib.parse.urlparse(target_base)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        path = self.path or "/"
+        key = self.headers.get("Sec-WebSocket-Key", "")
+        if not key:
+            self.send_error(400, "Missing Sec-WebSocket-Key")
+            return
+        upstream = None
+        try:
+            upstream = socket.create_connection((host, port), timeout=10)
+            req = (
+                f"GET {path} HTTP/1.1\r\n"
+                f"Host: {host}:{port}\r\n"
+                "Upgrade: websocket\r\n"
+                "Connection: Upgrade\r\n"
+                f"Sec-WebSocket-Key: {key}\r\n"
+                f"Sec-WebSocket-Version: {self.headers.get('Sec-WebSocket-Version', '13')}\r\n"
+            )
+            proto = self.headers.get("Sec-WebSocket-Protocol")
+            if proto:
+                req += f"Sec-WebSocket-Protocol: {proto}\r\n"
+            origin = self.headers.get("Origin")
+            if origin:
+                req += f"Origin: {origin}\r\n"
+            req += "\r\n"
+            upstream.sendall(req.encode("latin-1"))
+
+            # Read upstream handshake response
+            buf = b""
+            while b"\r\n\r\n" not in buf:
+                chunk = upstream.recv(4096)
+                if not chunk:
+                    raise OSError("upstream closed during WS handshake")
+                buf += chunk
+                if len(buf) > 65536:
+                    raise OSError("upstream WS handshake too large")
+            header_blob, _, rest = buf.partition(b"\r\n\r\n")
+            status_line = header_blob.split(b"\r\n", 1)[0].decode("latin-1", "replace")
+            if " 101 " not in status_line:
+                self.send_error(502, f"Upstream WS failed: {status_line}")
+                return
+
+            accept = base64.b64encode(
+                hashlib.sha1(
+                    (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode("ascii")
+                ).digest()
+            ).decode("ascii")
+            self.send_response(101, "Switching Protocols")
+            self.send_header("Upgrade", "websocket")
+            self.send_header("Connection", "Upgrade")
+            self.send_header("Sec-WebSocket-Accept", accept)
+            if proto:
+                self.send_header("Sec-WebSocket-Protocol", proto)
+            self.end_headers()
+            if rest:
+                self.wfile.write(rest)
+                self.wfile.flush()
+
+            client = self.connection
+            client.setblocking(False)
+            upstream.setblocking(False)
+            while True:
+                r, _, x = select.select([client, upstream], [], [client, upstream], 60.0)
+                if x:
+                    break
+                if not r:
+                    continue
+                if client in r:
+                    data = client.recv(65536)
+                    if not data:
+                        break
+                    upstream.sendall(data)
+                if upstream in r:
+                    data = upstream.recv(65536)
+                    if not data:
+                        break
+                    client.sendall(data)
+        except Exception as e:
+            try:
+                if not self.wfile.closed:
+                    self.send_error(502, f"WS proxy error: {e}")
+            except Exception:  # noqa: cleanup-best-effort
+                pass
+        finally:
+            if upstream is not None:
+                try:
+                    upstream.close()
+                except Exception:  # noqa: cleanup-best-effort
+                    pass
+
     def do_GET(self):
+        path_only = (self.path or "").split("?", 1)[0]
+        if self._is_websocket_upgrade() and path_only.startswith("/ws"):
+            self._proxy_websocket(CORE_DIRECT_URL)
+            return
         target, _ = self._get_target(self.path)
         if target:
             self._proxy("GET")

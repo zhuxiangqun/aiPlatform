@@ -1,4 +1,5 @@
-# G2B-100 Protocol — 三方签认拟填稿（2026-11-05）【已归档】
+# Archived — EVAL_G2B100_PROTOCOL_SIGNOFF_PARTIAL_2026-11-05.md
 
-> **状态**：✅ SIGNED → **[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](./EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)**  
-> 母版文首已改为 SIGNED；本文件保留起草痕迹。
+> **历史收口凭证，非现行产品定义。**  
+> 正文已迁至 [`_archive/eval-receipts/EVAL_G2B100_PROTOCOL_SIGNOFF_PARTIAL_2026-11-05.md`](./_archive/eval-receipts/EVAL_G2B100_PROTOCOL_SIGNOFF_PARTIAL_2026-11-05.md)。  
+> 现行入口：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期：[`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)

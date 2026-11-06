@@ -1,6 +1,7 @@
 # MODULE.md — Evaluation Service
 
-> Status: **A2 + D1 Thin (D1c/cohost) + D2 ops pack** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**
+> Status: **A2 + D1 Thin (D1c/cohost) + D2 ops pack** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**  
+> **文档入口**：先读 [`README.md`](./README.md)（现行权威 vs 历史收口）。生命周期：[`../../ops/EVAL_DOCS_LIFECYCLE.md`](../../ops/EVAL_DOCS_LIFECYCLE.md)。
 
 ## Scope
 

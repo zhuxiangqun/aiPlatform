@@ -1,9 +1,5 @@
-# Evaluation D2 Local Closeout (cohost / D1c)
+# Archived — EVALUATION_D2_LOCAL_CLOSEOUT.md
 
-- recorded_at: `20261101T154507Z`
-- result: **PASS**
-- `process_split_authorized`: **false**
-- evidence: `ops/evidence/local-evaluation-d2-local-20261101T154507Z.json`
-- contract sample: `0s` (<5)
-
-Re-run: `bash packages/aiplat-evaluation/scripts/d2_local_closeout.sh`
+> **历史收口凭证，非现行产品定义。**  
+> 正文已迁至 [`_archive/eval-receipts/EVALUATION_D2_LOCAL_CLOSEOUT.md`](./_archive/eval-receipts/EVALUATION_D2_LOCAL_CLOSEOUT.md)。  
+> 现行入口：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期：[`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)

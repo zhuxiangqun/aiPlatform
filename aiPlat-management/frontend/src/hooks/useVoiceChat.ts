@@ -69,8 +69,16 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
       wsUrl = configured.endsWith('/ws/voice-chat')
         ? configured
         : `${configured.replace(/\/$/, '')}/ws/voice-chat`;
-    } else if (window.location.host.includes(':5173')) {
-      wsUrl = `${protocol}//${window.location.host.replace(':5173', ':8002')}/ws/voice-chat`;
+    } else if (window.location.port === '5173' || window.location.host.includes(':5173')) {
+      // Prefer same-origin /ws (proxy_server or Vite → core). Fallback: core on
+      // 127.0.0.1 — browsers often resolve localhost→::1 while core binds IPv4 only.
+      const useDirect =
+        String(import.meta.env.VITE_VOICE_WS_DIRECT || '').trim() === '1';
+      if (useDirect) {
+        wsUrl = `${protocol}//127.0.0.1:8002/ws/voice-chat`;
+      } else {
+        wsUrl = `${protocol}//${window.location.host}/ws/voice-chat`;
+      }
     } else {
       wsUrl = `${protocol}//${window.location.host}/ws/voice-chat`;
     }

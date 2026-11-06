@@ -1,24 +1,5 @@
-# P1b 人侧轨日收口（2026-11-05）
+# Archived — EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md
 
-> 对照：[EVAL_P1B_AGENT_HANDOFF.md](./EVAL_P1B_AGENT_HANDOFF.md) · [EVAL_HUMAN_REMAINING_OPS_2026-11-05.md](./EVAL_HUMAN_REMAINING_OPS_2026-11-05.md)
-
-## 今日关闭
-
-| 轨 | 结果 | 关键数字 / 证据 |
-|---|---|---|
-| G2b n=100 | ✅ 双标+仲裁+κ+accuracy aggregate + **freeze 确认** + **scoped attestation** | agreement=0.90 · κ=0.7624 · pass_rate=**0.72** · §4 未达 → **claim=false** |
-| Arena blind pilot | ✅ pair×30 + 双标+仲裁 + result + QA | κ=0.8459 · QA **`overall_pass=false`**（SEND 泄漏模型名）· smoke 未替换 · pack 脚本已加固分目录/守卫 |
-| A1 本地 | ✅（此前已签） | 本地 ≠ 生产 |
-| EET / protocol / 七卡 | ✅（此前已签） | — |
-
-## 仍 open
-
-| 项 | 状态 | 备注 |
-|---|---|---|
-| A1 生产 | `blocked_not_released` | 无公网 BASE；**勿用隧道顶生产** |
-| Arena QA | ✅ 已签（fail 发现已留档） | 重跑 blind 须用新 pack（`for_annotators/`） |
-| Rubric 正式签字栏 | 可选 | 非阻断 |
-
-## 诚实锁（不变）
-
-`accuracy_claim=false` · G2b scoped ≠ 通用准确率 · Arena blind ≠ length smoke 替换 · `process_split_authorized=false`
+> **历史收口凭证，非现行产品定义。**  
+> 正文已迁至 [`_archive/eval-receipts/EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md`](./_archive/eval-receipts/EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)。  
+> 现行入口：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期：[`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)

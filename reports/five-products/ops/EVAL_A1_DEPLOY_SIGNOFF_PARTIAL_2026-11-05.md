@@ -1,8 +1,5 @@
-# A1 部署签认 — 本地联调核实稿（2026-11-05）【已归档】
+# Archived — EVAL_A1_DEPLOY_SIGNOFF_PARTIAL_2026-11-05.md
 
-> **状态**：✅ 已签完并归档 → **[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)**  
-> **性质**：起草/核实稿；正式本地签认以 `*_local_20261105.md` 为准  
-> **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)  
-> **范围**：**仅本地联调**（非生产 / 无 CDN）
-
-正文与证据见归档件；本文件保留作起草痕迹，不再作为签认源。
+> **历史收口凭证，非现行产品定义。**  
+> 正文已迁至 [`_archive/eval-receipts/EVAL_A1_DEPLOY_SIGNOFF_PARTIAL_2026-11-05.md`](./_archive/eval-receipts/EVAL_A1_DEPLOY_SIGNOFF_PARTIAL_2026-11-05.md)。  
+> 现行入口：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期：[`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)

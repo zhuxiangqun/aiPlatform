@@ -15,9 +15,11 @@ echo "  aiPlat-platform - 停止服务"
 echo "============================================================"
 
 # ── 按端口逐个停止 ──
+# $3=empty_ok_msg：端口已空时打印该成功文案（用于 8010 已被 local_proxy_down 释放的场景）
 stop_port() {
     local port="$1"
     local name="$2"
+    local empty_ok_msg="${3:-}"
     local pids
     # Kill ALL processes tied to this port (LISTEN + ESTABLISHED workers)
     pids=$(lsof -ti :$port 2>/dev/null | grep -v "^$(pgrep -x 'clash-meta' 2>/dev/null || echo '99999')$" || true)
@@ -30,13 +32,18 @@ stop_port() {
             kill -9 $pid 2>/dev/null 2>/dev/null
         done
         echo "✓ 已停止 $name (端口 $port)"
+    elif [ -n "$empty_ok_msg" ]; then
+        echo "✓ $empty_ok_msg"
     else
         echo "  $name (端口 $port) 未运行"
     fi
 }
 
-# Eval local proxy (API + worker) before freeing :8010 for mineru
+# Eval local proxy (API + worker) before freeing :8010 for mineru.
+# Pidfile stop is the primary path; stop_port 8010/8011 below is orphan/mineru sweep only.
+EVAL_PORT="${AIPLAT_EVAL_PORT:-8010}"
 if [ -f "$PROJECT_ROOT/packages/aiplat-evaluation/scripts/local_proxy_down.sh" ]; then
+  echo "── eval local proxy (:${EVAL_PORT} + worker) ──"
   bash "$PROJECT_ROOT/packages/aiplat-evaluation/scripts/local_proxy_down.sh" 2>/dev/null || true
 fi
 
@@ -45,8 +52,9 @@ stop_port 8001 "aiPlat-infra"
 stop_port 8002 "aiPlat-core"
 stop_port 8003 "aiPlat-platform"
 stop_port 8004 "aiPlat-app"
-stop_port 8010 "mineru-api / eval-api"
-stop_port 8011 "eval-api (alt)"
+# Sweep after local_proxy_down: empty port is success (already freed), not "未运行"
+stop_port 8010 "mineru-api / eval-api" "端口 8010 已空（eval proxy 已停 / 无 mineru 残留）"
+stop_port 8011 "eval-api (alt)" "端口 8011 已空（无残留）"
 stop_port 5173 "前端 (Vite/proxy)"
 
 # ── 兜底：pkill 清理残留 ──

@@ -4,7 +4,8 @@
 > **仓库基线**：`df303eff`（工作区源码与构建产物存在差异，见 §7）  
 > **用途**：供后续版本复评、发布门禁和产品范围讨论时逐项对照  
 > **总体判断**：工程基础和证据治理较强；评测效度、跨对象可比性、高级能力评测及发布一致性仍需收口。  
-> **强制边界**：`accuracy_claim=false`；`process_split_authorized=false`；评测报告不替代安全认证、FDE 客户签收或生产拆分授权。
+> **强制边界**：`accuracy_claim=false`；`process_split_authorized=false`；评测报告不替代安全认证、FDE 客户签收或生产拆分授权。  
+> **文档入口**：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期 [`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)（CLOSEOUT 等已迁 `_archive/eval-receipts/`）。
 
 ---
 

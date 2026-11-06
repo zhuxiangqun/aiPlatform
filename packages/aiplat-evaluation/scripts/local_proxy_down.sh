@@ -22,7 +22,7 @@ stop_pidfile() {
 }
 
 stop_pidfile "${PID_DIR}/eval-worker.pid" "eval-worker"
-stop_pidfile "${PID_DIR}/eval-api.pid" "eval-api"
+stop_pidfile "${PID_DIR}/eval-api.pid" "eval-api(:${EVAL_PORT})"
 
 # Best-effort: only kill listeners that look like eval uvicorn on EVAL_PORT
 if command -v lsof >/dev/null 2>&1; then
