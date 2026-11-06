@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Shield, CheckCircle, AlertTriangle, Activity, RefreshCw, FileText } from 'lucide-react';
 import { apiClient } from '../../services/apiClient';
 import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { governanceGlossaryText } from '../../lib/consultantLayerA';
 
 interface MechanismStatus {
   status: string;
@@ -443,6 +444,7 @@ export default function GovernanceDashboard() {
       deniedCalls: data.audit_summary?.denied_calls || 0,
       mechanismsNeedingAttention: attentionCount,
       mechanismStatus: mechanism,
+      guideGlossary: governanceGlossaryText(),
     });
     return () => clearPageData('/governance');
   }, [data]);

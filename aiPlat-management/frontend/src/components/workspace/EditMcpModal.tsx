@@ -5,6 +5,10 @@ import type { McpServer } from '../../services';
 import { Alert, Button, Input, Modal, Select, Switch, Textarea, toast } from '../ui';
 import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
 import type { AssetAuditResult } from './AssetAuditPanel';
+import {
+  clearAssetAuditPageFields,
+  reportAssetAuditToPage,
+} from '../../lib/pageDataBridge';
 
 interface EditMcpModalProps {
   open: boolean;
@@ -107,6 +111,23 @@ const EditMcpModal: React.FC<EditMcpModalProps> = ({ open, server, onClose, onSu
       // fallback already applied above
     }).finally(() => setFetching(false));
   }, [open, server?.name]);
+
+  // Layer A：编辑/审核实况 → 小朱（issue0… + mcpId）
+  useEffect(() => {
+    const id = String(server?.name || '');
+    if (!open || !id) {
+      clearAssetAuditPageFields('/workspace/mcp');
+      return;
+    }
+    reportAssetAuditToPage({
+      route: '/workspace/mcp',
+      kind: 'mcp',
+      id,
+      name: String((server as any)?.display_name || server?.name || id),
+      result: auditResult,
+    });
+    return () => clearAssetAuditPageFields('/workspace/mcp');
+  }, [open, server, auditResult]);
 
   // Auto-discover tools when opened via "新增" flow
   const autoDiscovered = React.useRef(false);

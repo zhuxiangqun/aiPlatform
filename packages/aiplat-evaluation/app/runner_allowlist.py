@@ -17,7 +17,11 @@ B2_ALLOWED: frozenset[str] = frozenset(
         "kb_rag",
         "code_review_gold",
         "arena",  # pure-text only; tool use → sandbox_required at Worker
-        "session_eval",  # multi-turn v0 (2–3 turns); no tools
+        "session_eval",  # multi-turn v0/v1; no tools
+        # P2 engineering fixture packs (≠ production MemoryManager / writeback)
+        "context_mgmt",
+        "memory_persist",
+        "self_learn",
     }
 )
 

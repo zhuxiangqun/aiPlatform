@@ -20,6 +20,8 @@ import AssetStatusLegend from '../../../components/workspace/AssetStatusLegend';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
 import { buildFormParamsFromSchema, buildParamSmokeExamples } from '../../../utils/executionSamples';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { mcpConsultantPageData } from './mcpGlossary';
 
 const MCP_TEMPLATES = [
   { id: 'http_bridge', name: 'HTTP API 桥接', icon: '🌐', desc: '调用任何 REST/HTTP API', tools: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] },
@@ -73,6 +75,15 @@ const WorkspaceMCP: React.FC = () => {
   useEffect(() => {
     fetchServers();
   }, [fetchServers]);
+
+  useEffect(() => {
+    const enabled = servers.filter((s) => (s as any).enabled !== false).length;
+    reportPageData(
+      '/workspace/mcp',
+      mcpConsultantPageData({ totalServers: servers.length, enabled }),
+    );
+    return () => clearPageData('/workspace/mcp');
+  }, [servers]);
 
   const filteredServers = servers.filter((s) => {
     if (!search.trim()) return true;

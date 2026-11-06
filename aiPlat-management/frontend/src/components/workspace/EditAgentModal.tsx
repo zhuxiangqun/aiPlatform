@@ -6,6 +6,10 @@ import type { Agent } from '../../services';
 import { Button, Input, Modal, Textarea, toast, MultiSelect, Tabs } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
 import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
+import {
+  clearAssetAuditPageFields,
+  reportAssetAuditToPage,
+} from '../../lib/pageDataBridge';
 
 function parseJsonObject(text: string): Record<string, unknown> {
   try {
@@ -205,6 +209,23 @@ const EditAgentModal: React.FC<EditAgentModalProps> = ({
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [optimizePrompt, setOptimizePrompt] = useState('');
   const [activeTab, setActiveTab] = useState(initialTab || 'basic');
+
+  // Layer A：编辑/审核实况 → 小朱（issue0… + agentId）
+  useEffect(() => {
+    const id = String((agent as any)?.id || (agent as any)?.agent_id || agent?.name || '');
+    if (!open || !id) {
+      clearAssetAuditPageFields('/workspace/agents');
+      return;
+    }
+    reportAssetAuditToPage({
+      route: '/workspace/agents',
+      kind: 'agent',
+      id,
+      name: String(name || agent?.name || id),
+      result: auditResult,
+    });
+    return () => clearAssetAuditPageFields('/workspace/agents');
+  }, [open, agent, name, auditResult]);
 
   useEffect(() => {
     if (open && agent) {

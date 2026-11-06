@@ -31,7 +31,9 @@ export default function EvalExecutionPlaneBanner({ code, detail }: Props) {
       <div className="text-sm space-y-1">
         <div className="font-medium text-sky-100">{title}</div>
         <p className="text-sky-100/80">
-          动态执行尚未迁到独立 Worker；评测集 / 报告 / 只读 store 仍可用。
+          人话：评测「读写报告」和「正式拆成独立执行服务」在产品上还没签完；本机
+          proxy/worker 能跑 Job，只代表本地联调，不代表生产已迁移。
+          评测集 / 报告 / 只读 store 仍可用。
           {detail ? <span className="block mt-1 text-sky-200/70">{detail}</span> : null}
         </p>
       </div>

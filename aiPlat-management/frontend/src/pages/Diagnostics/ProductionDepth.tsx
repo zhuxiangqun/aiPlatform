@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw, ShieldCheck, AlertTriangle, XCircle, CheckCircle2
 import { Badge, Button, Card, CardContent, CardHeader, toast } from '../../components/ui';
 import { diagnosticsApi, onboardingApi } from '../../services';
 import { clearPageData, reportPageData } from '../../lib/pageDataBridge';
+import { productionDepthGlossaryText } from '../../lib/consultantLayerA';
 import { toastGateError } from '../../components/ui';
 
 const ENV_SNIPPET = `export AIPLAT_PROFILE=production
@@ -140,6 +141,7 @@ const ProductionDepth: React.FC = () => {
       purpose: '生产深度+架构健康自检：反思/Docker/事件/向量/契约 + Policy/旁路/plan_execute/Router/CRAG/Autonomous',
       itemNames: checks.map((c) => `${c.id}:${c.status}`).join(', '),
       actions: '刷新',
+      guideGlossary: productionDepthGlossaryText(),
     });
     return () => clearPageData('/diagnostics/production-depth');
   }, [data]);

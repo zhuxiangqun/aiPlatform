@@ -5,6 +5,8 @@ import { Table, Button, Modal, Select, toast } from '../../../components/ui';
 import PageHeader from '../../../components/common/PageHeader';
 import { appSessionApi } from '../../../services';
 import type { AppSession } from '../../../services';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { sessionsGlossaryText } from '../../../lib/consultantLayerA';
 
 const sessionStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
   active: { bg: 'bg-success-light', text: 'text-green-300', label: '活跃' },
@@ -48,6 +50,23 @@ const Sessions: React.FC = () => {
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  useEffect(() => {
+    const active = sessions.filter((s) => s.status === 'active').length;
+    const timeout = sessions.filter((s) => s.status === 'timeout').length;
+    const totalMessages = sessions.reduce((n, s) => n + (s.message_count || 0), 0);
+    reportPageData('/app/sessions', {
+      screen: '会话管理：跨渠道用户会话，不是工作区 Agent 页',
+      totalSessions: sessions.length,
+      active,
+      timeout,
+      totalMessages,
+      statusFilter: statusFilter || 'all',
+      channelFilter: channelFilter || 'all',
+      guideGlossary: sessionsGlossaryText(),
+    });
+    return () => clearPageData('/app/sessions');
+  }, [sessions, statusFilter, channelFilter]);
 
   const handleEnd = async () => {
     if (!endModal.session) return;

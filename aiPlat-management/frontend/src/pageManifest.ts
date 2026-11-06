@@ -30,6 +30,8 @@ export interface PageMeta {
   label: string;
   group: string;
   groupLabel: string;
+  /** One-line purpose for 小朱 consultant context. */
+  purpose?: string;
 }
 
 // ─── Sidebar menu structure v2.1 — task-flow driven ─────────────────
@@ -54,6 +56,13 @@ export const menuItems: MenuEntry[] = [
   { group: 'knowledge', label: '🧠 知识', items: [
     { key: '/knowledge/business', icon: Box, label: '业务说明书' },
     { key: '/knowledge/library', icon: Database, label: '知识库' },
+  ]},
+  { divider: true },
+  // ════════════════════════════════════════════════════════════════
+  // 评测（与「知识 / AI 应用工厂」平级；统一入口 /eval；旧 diagnostics/eval 已硬切）
+  // ════════════════════════════════════════════════════════════════
+  { group: 'eval', label: '📈 评测', items: [
+    { key: '/eval', icon: BarChart3, label: '评测中心' },
   ]},
   { divider: true },
   // ════════════════════════════════════════════════════════════════
@@ -118,7 +127,6 @@ export const menuItems: MenuEntry[] = [
     { key: '/diagnostics/routing-dashboard', icon: Share2, label: '路由仪表盘' },
     { key: '/diagnostics/routing-replay', icon: Play, label: '路由回放' },
     { key: '/diagnostics/policy-debug', icon: Search, label: '策略调试', roles: ['admin','developer'] },
-    { key: '/eval', icon: BarChart3, label: '评测中心' },
     { key: '/diagnosis', icon: Search, label: '诊断产品' },
     { key: '/infra/nodes', icon: Server, label: '节点管理', roles: ['admin','operator'] },
     { key: '/infra/services', icon: Layers, label: '服务管理', roles: ['admin','operator'] },
@@ -204,6 +212,7 @@ export function getPageInfo(path: string): PageMeta | null {
           label: item.label,
           group: group0.group,
           groupLabel: group0.label.replace(/^[^\s]+\s/, ''), // strip emoji prefix
+          purpose: PAGE_PURPOSE[itemKey],
         };
         _pageCache.set(path, meta);
         return meta;
@@ -232,6 +241,7 @@ export function getPageInfo(path: string): PageMeta | null {
             label: item.label,
             group: group0.group,
             groupLabel: group0.label.replace(/^[^\s]+\s/, ''),
+            purpose: PAGE_PURPOSE[itemKey],
           };
           _pageCache.set(path, meta);
           _pageCache.set(parent, meta);
@@ -275,6 +285,14 @@ export function getAllPages(): PageEntry[] {
 /** One-line screen purpose for digital-human brief (小朱). Keep values single-quoted in spirit for TS parser. */
 export const PAGE_PURPOSE: Record<string, string> = {
   '/system-overview': '平台总览与健康入口',
+  '/org/pilot': '组织试点：试点组织与落地进度',
+  '/alerts': '告警中心：平台告警查看与处理',
+  '/system-graph': '系统图谱：能力与依赖关系总览',
+  '/governance': '治理仪表盘：策略、审批与合规概况',
+  '/value-center': '价值看板：业务价值与收益度量',
+  '/knowledge/business': '业务说明书：域本体与业务知识',
+  '/knowledge/library': '知识库：Wiki/文档集合管理与检索',
+  '/eval': '评测中心：本机校准与 Session/Arena/Skill 等 Job 联调；分数/κ/门禁≠准确率或对外发布',
   '/app/factory': '应用工厂：从需求到可部署应用的整条流水线',
   '/app/apps': '已部署应用列表与运行入口',
   '/diagnostics/fde': 'FDE 交付工作台：诊断、证据与签收',
@@ -282,7 +300,79 @@ export const PAGE_PURPOSE: Record<string, string> = {
   '/workspace/skills': 'Skill 库：可复用动作与 SOP',
   '/workspace/tools': 'Tool 库：原子操作与脚本',
   '/workspace/mcp': 'MCP 接入：外部工具服务',
-  '/infra/models': '模型目录与选模（purpose → unified_pipeline）',
-  '/diagnostics/doctor': '一键诊断与运行时健康',
+  '/core/workflows': 'Workflow：多阶段编排定义与管理',
+  '/workspace/teams': 'Teams：默认团队与阶段编排配置',
+  '/workspace/marketplace': '能力市场：可安装能力浏览（非远端应用商店替代审批）',
+  '/core/prompts': '提示词配置：模板与版本',
+  '/core/variables': '变量管理：运行时/环境变量',
+  '/core/credentials': '凭证管理：密钥与凭据（勿在对话中回显密文）',
+  '/diagnostics/code-intel': '代码智能：仓库与符号分析',
+  '/diagnostics/browser-test': '浏览器测试：UI 自动化冒烟',
+  '/diagnostics': '诊断概览：健康检查与诊断入口',
+  '/diagnostics/control-profile': '控制画像：ControlProfile 与工具白名单',
+  '/diagnostics/observability': '可观测性：指标/日志/链路聚合',
   '/diagnostics/production-depth': '生产深度+架构健康（反思/Docker/事件/向量/契约 + Policy/旁路/plan_execute/Router/CRAG/Autonomous）',
+  '/diagnostics/traces': '链路追踪：请求与执行轨迹',
+  '/diagnostics/runs': '运行记录：Agent/Skill 运行历史与失败摘要',
+  '/diagnostics/run-comparison': '运行对比：两次运行差异',
+  '/diagnostics/llm-review': 'LLM 审查：模型输出审查记录',
+  '/diagnostics/repairs': '修复中心：缺陷修复与跟踪',
+  '/diagnostics/business-value': '业务价值：诊断侧价值度量',
+  '/infra/monitoring': '监控面板：基础设施监控',
+  '/infra/llm-stats': 'LLM 路由监控：调用与路由统计',
+  '/diagnostics/routing-dashboard': '路由仪表盘：选模/路由决策可视化',
+  '/diagnostics/routing-replay': '路由回放：历史路由决策回放',
+  '/diagnostics/policy-debug': '策略调试：PolicyGate 调试',
+  '/diagnosis': '诊断产品：独立诊断应用入口',
+  '/infra/nodes': '节点管理：计算节点',
+  '/infra/services': '服务管理：进程与服务状态',
+  '/infra/network': '网络管理：端口与网络映射',
+  '/core/jobs': '任务管理：后台任务与队列',
+  '/infra/models': '模型目录与选模（purpose → unified_pipeline）',
+  '/diagnostics/model-playground': '模型演练场：试调用与对比',
+  '/diagnostics/model-audit': '模型审计：模型使用审计',
+  '/infra/finetune': '模型微调：SFT/适配器训练入口',
+  '/infra/storage': '存储管理：对象/本地存储',
+  '/infra/scheduler': '算力调度：GPU/算力分配',
+  '/core/agents': '引擎 Agent：core 引擎侧 Agent（非工作区应用库）',
+  '/core/skills': '引擎 Skill：core 引擎侧 Skill（非工作区应用库）',
+  '/core/tools': '引擎 Tool：core 引擎侧 Tool（非工作区应用库）',
+  '/core/mcp': '引擎 MCP：core 引擎侧 MCP（非工作区应用库）',
+  '/core/memory': 'Memory：记忆子系统查看',
+  '/core/checkpoints': '文件 Checkpoint：工作区检查点',
+  '/platform/gateway': 'API 网关：路由与限流入口',
+  '/platform/auth': '认证鉴权：登录/MFA/令牌',
+  '/platform/tenant': '多租户管理：租户与隔离',
+  '/app/channels': '渠道管理：对外消息渠道',
+  '/app/sessions': '会话管理：用户会话列表',
+  '/onboarding': '初始化向导：平台首次配置',
+  '/pentest': '渗透测试：安全测试工具箱',
+  '/releases': '版本管理：发布版本',
+  '/core/learning/releases': '发布管理：学习/发布流水',
+  '/core/skills-rollouts': '技能发布：Skill 滚动发布',
+  '/core/skill-packs': '技能包：Skill Pack 打包与分发',
+  '/core/learning/artifacts': '学习产出：学习产物浏览',
+  '/governance/capabilities': '核心能力管理：能力登记与边界',
+  '/diagnostics/safety': '安全监控：安全事件与告警',
+  '/diagnostics/audit': '审计日志：操作审计',
+  '/diagnostics/change-control': '变更控制：变更单与门禁',
+  '/diagnostics/capability-boundary': '能力边界：边界违规与守卫',
+  '/diagnostics/capability-policy': '能力策略：能力启用策略',
+  '/approval': '资产审批：Agent/Skill 等资产通过与上架',
+  '/approval/history': '审批记录：历史审批单',
+  '/core/approvals': '运行时审批：执行中 HITL 审批',
+  '/diagnostics/syscalls': '系统调用：syscall 观测',
+  '/diagnostics/policies': '策略管理：策略条目',
+  '/diagnostics/exec-backends': '执行后端：执行后端配置',
+  '/diagnostics/context': '上下文分析：注入层与预算',
+  '/diagnostics/links': '依赖关系：模块依赖',
+  '/diagnostics/graphs': '知识图谱：图谱浏览',
+  '/diagnostics/repo': '仓库分析：代码仓分析',
+  '/diagnostics/smoke': '冒烟测试：一键冒烟',
+  '/diagnostics/workflows': '工作流诊断：编排诊断',
+  '/diagnostics/ops': '运维诊断：运维检查',
+  '/diagnostics/capability-graph': '能力图谱：能力关系图',
+  '/docs': '文档系统：平台文档浏览',
+  '/diagnostics/doctor': '一键诊断与运行时健康',
+  '/ontology-editor': '本体编辑器：高级 YAML 域本体编辑（日常可走从文档生成）',
 };

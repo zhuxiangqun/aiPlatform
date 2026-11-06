@@ -52,10 +52,39 @@ function _notify(): void {
   });
 }
 
-/** 上报当前页面数据（覆盖同 route 的旧值）。 */
+const _LIVE_AUDIT_ID_KEYS = new Set([
+  'skillId',
+  'skillName',
+  'agentId',
+  'agentName',
+  'toolId',
+  'toolName',
+  'mcpId',
+  'mcpName',
+  'auditSummary',
+]);
+
+function _isLiveAuditKey(key: string): boolean {
+  return key.startsWith('issue') || _LIVE_AUDIT_ID_KEYS.has(key);
+}
+
+/** 上报页面数据；保留同 route 上未在本次 payload 出现的审核实况键（issueN / skillId 等）。 */
 export function reportPageData(route: string, data: PageData): void {
   if (!route) return;
-  getStore()[route] = { ...data };
+  const prev = getStore()[route] || {};
+  const preserved: PageData = {};
+  for (const [k, v] of Object.entries(prev)) {
+    if (_isLiveAuditKey(k) && !(k in data)) preserved[k] = v;
+  }
+  getStore()[route] = { ...preserved, ...data };
+  _notify();
+}
+
+/** 合并补丁到当前 route（审核弹窗用，不冲掉列表 glossary）。 */
+export function patchPageData(route: string, patch: PageData): void {
+  if (!route) return;
+  const prev = getStore()[route] || {};
+  getStore()[route] = { ...prev, ...patch };
   _notify();
 }
 
@@ -65,6 +94,71 @@ export function clearPageData(route: string): void {
   const store = getStore();
   delete store[route];
   _notify();
+}
+
+/** 去掉审核实况字段，保留 guideGlossary 等列表页上报。 */
+export function clearAssetAuditPageFields(route: string): void {
+  if (!route) return;
+  const prev = getStore()[route];
+  if (!prev) return;
+  const next: PageData = {};
+  for (const [k, v] of Object.entries(prev)) {
+    if (!_isLiveAuditKey(k)) next[k] = v;
+  }
+  getStore()[route] = next;
+  _notify();
+}
+
+export type AssetAuditPageKind = 'skill' | 'agent' | 'tool' | 'mcp';
+
+/** 把 AI 审核结果写成 issue0… + *Id，供 use_page_only_brief / 小朱解读。 */
+export function reportAssetAuditToPage(input: {
+  route: string;
+  kind: AssetAuditPageKind;
+  id: string;
+  name?: string;
+  result: {
+    issues?: AuditIssueLike[];
+    summary?: {
+      errors?: number;
+      warnings?: number;
+      info?: number;
+      total?: number;
+      health?: string;
+    };
+  } | null;
+}): void {
+  const { route, kind, id, name, result } = input;
+  if (!route || !id) return;
+
+  clearAssetAuditPageFields(route);
+
+  const cleaned: PageData = {};
+  if (kind === 'skill') {
+    cleaned.skillId = id;
+    if (name) cleaned.skillName = name;
+  } else if (kind === 'agent') {
+    cleaned.agentId = id;
+    if (name) cleaned.agentName = name;
+  } else if (kind === 'tool') {
+    cleaned.toolId = id;
+    if (name) cleaned.toolName = name;
+  } else {
+    cleaned.mcpId = id;
+    if (name) cleaned.mcpName = name;
+  }
+
+  if (result) {
+    const s = result.summary;
+    if (s) {
+      cleaned.auditSummary = `errors=${s.errors ?? 0},warnings=${s.warnings ?? 0},info=${s.info ?? 0},total=${s.total ?? 0},health=${s.health ?? ''}`;
+    }
+    (result.issues || []).slice(0, 8).forEach((iss, i) => {
+      cleaned[`issue${i}`] = formatAuditIssueForPage(iss);
+    });
+  }
+
+  patchPageData(route, cleaned);
 }
 
 /** Subscribe to page-data changes (digital human re-sends context). */
@@ -114,7 +208,8 @@ export function pageDataToText(data: PageData | undefined, maxLen = 1400): strin
   for (const [k, v] of Object.entries(data)) {
     if (v === undefined || v === null || v === '') continue;
     const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
-    const cap = k.startsWith('issue') ? 400 : 120;
+    // issue*/guide* allow longer facts (e.g. Eval tab catalog for 小朱).
+    const cap = k.startsWith('issue') || k.startsWith('guide') ? 900 : 120;
     if (val.length > cap) {
       lines.push(`${k}: ${val.slice(0, cap)}…`);
     } else {
@@ -145,9 +240,13 @@ export function consultantPagePayload(route: string, maxLen = 2000): string {
   const hasEditorFacts = Boolean(
     data && (data.issue0 || data.skillId || data.toolId || data.mcpId || data.agentId),
   );
+  const hasGuidePack = Boolean(
+    data && (data.guideCatalog || data.guideGlossary || data.issueGuide),
+  );
+  const reportedBudget = hasEditorFacts || hasGuidePack ? 1800 : 800;
   return mergeConsultantPageText(
-    pageDataToText(data, hasEditorFacts ? 1400 : 800),
-    hasEditorFacts ? '' : captureVisiblePage(1100),
-    maxLen,
+    pageDataToText(data, reportedBudget),
+    hasEditorFacts ? '' : captureVisiblePage(hasGuidePack ? 500 : 1100),
+    Math.max(maxLen, hasGuidePack ? 2400 : maxLen),
   );
 }

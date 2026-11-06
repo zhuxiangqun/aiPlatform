@@ -433,6 +433,47 @@ if [ $ready -lt 1 ]; then
     echo "⚠ aiPlat-core 健康检查超时 (可能仍需数秒完成初始化)"
 fi
 
+# ===== Step 2b: Evaluation local proxy (:8010 + worker) — local-first =====
+# Default ON so Eval Center job plane works on this machine without a second host.
+# Opt-out: AIPLAT_EVAL_LOCAL_PROXY=0. Conflicts with mineru on :8010 → set AIPLAT_EVAL_PORT=8011.
+echo ""
+echo "============================================================"
+echo "  Step 2b/6: Evaluation local proxy (optional package plane)"
+echo "============================================================"
+export AIPLAT_EVAL_LOCAL_PROXY="${AIPLAT_EVAL_LOCAL_PROXY:-1}"
+if [ "$AIPLAT_EVAL_LOCAL_PROXY" = "1" ]; then
+  if [ "${AIPLAT_ENABLE_MINERU_API:-0}" = "1" ] && [ "${AIPLAT_EVAL_PORT:-8010}" = "8010" ]; then
+    export AIPLAT_EVAL_PORT=8011
+    echo "⊙ mineru on 8010 → eval uses AIPLAT_EVAL_PORT=8011"
+  fi
+  export AIPLAT_EVAL_PID_DIR="${AIPLAT_HOME}/logs"
+  # Prefer workspace venv (PyJWT/uvicorn); local_proxy_up also resolves this itself.
+  export AIPLAT_EVAL_PYTHON="${AIPLAT_EVAL_PYTHON:-$PY}"
+  # Skill/cli_probe need docker; if Docker Desktop is up, prefer it over local_stub.
+  # Opt-out: AIPLAT_EVAL_SANDBOX_BACKEND=local_stub (or off). Force: =docker.
+  if [ -z "${AIPLAT_EVAL_SANDBOX_BACKEND:-}" ]; then
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+      export AIPLAT_EVAL_SANDBOX_BACKEND=docker
+      echo "⊙ Docker ready → AIPLAT_EVAL_SANDBOX_BACKEND=docker (Skill fixture admit)"
+    else
+      export AIPLAT_EVAL_SANDBOX_BACKEND=local_stub
+      echo "⊙ No Docker → AIPLAT_EVAL_SANDBOX_BACKEND=local_stub (Skill stays sandbox_required)"
+    fi
+  fi
+  if bash "$PROJECT_ROOT/packages/aiplat-evaluation/scripts/local_proxy_up.sh"; then
+    export AIPLAT_EVAL_SERVICE_URL="${AIPLAT_EVAL_SERVICE_URL:-http://127.0.0.1:${AIPLAT_EVAL_PORT:-8010}}"
+    echo "✓ Eval local proxy → AIPLAT_EVAL_SERVICE_URL=$AIPLAT_EVAL_SERVICE_URL (sandbox=$AIPLAT_EVAL_SANDBOX_BACKEND)"
+  else
+    echo "⚠ Eval local proxy failed — platform stays cohost (no job plane)"
+    echo "  hint: $PY -c 'import jwt,uvicorn'  # need PyJWT+uvicorn in .venv"
+    echo "  log:  $AIPLAT_EVAL_PID_DIR/eval-api.log"
+    tail -20 "$AIPLAT_EVAL_PID_DIR/eval-api.log" 2>/dev/null || true
+    unset AIPLAT_EVAL_SERVICE_URL || true
+  fi
+else
+  echo "⊙ Eval local proxy skipped (AIPLAT_EVAL_LOCAL_PROXY=$AIPLAT_EVAL_LOCAL_PROXY)"
+fi
+
 # ===== Step 3: aiPlat-platform =====
 echo ""
 echo "============================================================"
@@ -453,6 +494,10 @@ echo "Platform DB: $AIPLAT_PLATFORM_DB_PATH"
 export AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY="${AIPLAT_PLATFORM_DEV_ALLOW_ANY_API_KEY:-1}"
 # DEV: grant anonymous users kb:read/kb:write scopes for local development.
 export AIPLAT_PLATFORM_DEV_MODE="${AIPLAT_PLATFORM_DEV_MODE:-true}"
+# Eval Center job plane (set in Step 2b when local proxy up)
+if [ -n "${AIPLAT_EVAL_SERVICE_URL:-}" ]; then
+  echo "Eval proxy: $AIPLAT_EVAL_SERVICE_URL"
+fi
 # OIDC / SSO: enterprise identity provider integration (Keycloak/Azure AD/Okta)
 export AIPLAT_OIDC_ENABLED="${AIPLAT_OIDC_ENABLED:-false}"
 # export AIPLAT_OIDC_DISCOVERY_URL=https://keycloak.example.com/realms/myorg
@@ -620,5 +665,8 @@ echo "  - platform:    http://localhost:8003"
 echo "  - app:         http://localhost:8004"
 echo "  - management:  http://localhost:8000"
 echo "  - 前端:        http://localhost:5173"
+if [ -n "${AIPLAT_EVAL_SERVICE_URL:-}" ]; then
+  echo "  - eval proxy:  $AIPLAT_EVAL_SERVICE_URL (job plane)"
+fi
 echo ""
 echo "停止: ./stop.sh"

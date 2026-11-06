@@ -51,8 +51,10 @@ assert "accuracy" not in out["metrics"]
 comp = out["scoring"]["composite"]
 assert comp["accuracy_claim"] is False
 assert comp["score"] is not None
-assert "text_quality" in comp["scored_metrics"]
+# v1.1: text_quality is report-only smoke; content_safety stays scored
+assert "text_quality" in (comp.get("report_only_metrics") or {})
 assert "content_safety" in comp["scored_metrics"]
+assert "text_quality" not in (comp.get("scored_metrics") or {})
 
 
 stamp = "${STAMP}"

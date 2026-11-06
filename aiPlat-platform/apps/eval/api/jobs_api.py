@@ -108,3 +108,93 @@ async def package_kb_eval_run(
         detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL; use cohost kb-eval/run sync",
     )
 
+
+@router.post("/package/session-eval/run", response_model=StatusResponse)
+async def package_session_eval_run(
+    request: Request,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    """Enqueue B2 session_eval (multi-turn fixture/live)."""
+    proxied = await proxy_eval_store(request, path="/session-eval/run")
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="session_eval",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL",
+    )
+
+
+@router.post("/package/arena/run", response_model=StatusResponse)
+async def package_arena_run(
+    request: Request,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    """Enqueue B2 arena length-smoke (≠ quality gate)."""
+    proxied = await proxy_eval_store(request, path="/arena/run")
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="arena",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL",
+    )
+
+
+@router.post("/package/skill-evals/suites/{suite_id}/run", response_model=StatusResponse)
+async def package_skill_suite_run(
+    request: Request,
+    suite_id: str,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    """Enqueue skill_suite fixture (needs sandbox admit; docker for wrap)."""
+    proxied = await proxy_eval_store(
+        request, path=f"/skill-evals/suites/{suite_id}/run"
+    )
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="skill_suite",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL (+ sandbox for skill_suite)",
+    )
+
+
+@router.post("/package/context-mgmt/run", response_model=StatusResponse)
+async def package_context_mgmt_run(
+    request: Request,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/context-mgmt/run")
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="context_mgmt",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL",
+    )
+
+
+@router.post("/package/memory-persist/run", response_model=StatusResponse)
+async def package_memory_persist_run(
+    request: Request,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/memory-persist/run")
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="memory_persist",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL",
+    )
+
+
+@router.post("/package/self-learn/run", response_model=StatusResponse)
+async def package_self_learn_run(
+    request: Request,
+    _auth: str = Depends(require_auth),
+) -> Union[Dict[str, Any], Response]:
+    proxied = await proxy_eval_store(request, path="/self-learn/run")
+    if proxied is not None:
+        return proxied
+    return _not_migrated(
+        runner_id="self_learn",
+        detail="package enqueue requires AIPLAT_EVAL_SERVICE_URL",
+    )
+

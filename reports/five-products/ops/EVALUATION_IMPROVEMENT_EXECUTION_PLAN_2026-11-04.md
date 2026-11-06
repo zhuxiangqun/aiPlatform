@@ -3,7 +3,7 @@
 > **日期**：2026-11-04  
 > **依据**：[评测产品评审基线](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
 > **执行边界**：P0/P1/P2 分轨执行；生产拆分仍独立授权。计划正文可随阶段 closeout 更新状态栏，不替代 ADR/证据链。  
-> **当前状态**：**本地范围已关**（[董事会收口](./EVAL_BOARD_LOCAL_SCOPE_CLOSEOUT_2026-11-06.md)）。P0/P1b/P2-0..3 ✅；A1 本地足够；生产 A1 / P2-4 **Parked**。无公网则无继续切片。
+> **当前状态**：**本地优先**（[决策](./EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md)）——先做完/测完本机评测系统，**不**因对外发布卡住。A1 本地足够；生产 A1 / P2-4 Parked。本地轨 closeout **v3**（含 P2 context/memory/self_learn）。
 
 ## 1. 执行结论
 

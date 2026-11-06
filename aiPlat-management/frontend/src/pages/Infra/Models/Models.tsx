@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { modelsGlossaryPromptText } from './modelsGlossary';
 import { motion } from 'framer-motion';
 import { Plus, RotateCw, Network, Settings, Trash2, Laptop, Key, Save, Sliders } from 'lucide-react';
 import { Table, Button, Modal, Select, toast } from '../../../components/ui';
@@ -393,12 +394,14 @@ const Models: React.FC = () => {
     const statusCount: Record<string, number> = {};
     models.forEach(m => { statusCount[m.status] = (statusCount[m.status] || 0) + 1; });
     reportPageData('/infra/models', {
+      screen: '模型管理：目录与启用；选模走 purpose→unified_pipeline',
       totalModels: models.length,
       statusCount,
       enabled: statusCount['enabled'] || 0,
       disabled: statusCount['disabled'] || 0,
       unhealthy: (statusCount['unhealthy'] || 0) + (statusCount['error'] || 0),
       providerCount: providers.length,
+      guideGlossary: modelsGlossaryPromptText(1200),
     });
     return () => clearPageData('/infra/models');
   }, [models, providers]);

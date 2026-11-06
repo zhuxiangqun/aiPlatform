@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { ontologyGlossaryText } from '../../lib/consultantLayerA';
 import { Box, ChevronRight, Plus, Trash2, Save, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
 import { apiClient } from '../../services/apiClient';
 import {
@@ -286,6 +287,7 @@ export default function OntologyEditor() {
       classCount,
       selectedClass: selectedClass || undefined,
       hasSchema: !!schema,
+      guideGlossary: ontologyGlossaryText(),
     });
     return () => clearPageData('/ontology-editor');
   }, [domains, selectedDomain, schema, selectedClass]);

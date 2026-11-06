@@ -32,6 +32,10 @@ def _headers() -> dict:
 
 def test_classify_runner_matrix():
     assert classify_runner("prompt_eval") == "allowed"
+    assert classify_runner("session_eval") == "allowed"
+    assert classify_runner("context_mgmt") == "allowed"
+    assert classify_runner("memory_persist") == "allowed"
+    assert classify_runner("self_learn") == "allowed"
     assert classify_runner("skill_suite") == "sandbox_required"
     assert classify_runner("http_probe") == "sandbox_required"
     assert classify_runner("unknown_runner_xyz") == "forbidden"

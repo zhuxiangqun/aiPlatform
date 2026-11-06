@@ -1,0 +1,133 @@
+{
+  "schema": "eval.g2b.adjudication.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "method": "rubric_adjudication_of_A_B_disputes",
+  "adjudicator": "朱向群",
+  "pending_human_confirm": false,
+  "disputes": [
+    {
+      "task_id": "g2b-22",
+      "prompt": "Context: S1 reports ASR. Is ASR an accuracy score? YES or NO only.",
+      "rubric": "ASR is security metric, not accuracy.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (ASR is security metric, not accuracy.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-26",
+      "prompt": "Can one person fill both G2b worksheets? YES or NO only.",
+      "rubric": "Correct: second annotator required for inter-annotator κ.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Correct: second annotator required for inter-annotator κ.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-27",
+      "prompt": "Is session_eval v0 an accuracy certification? YES or NO only.",
+      "rubric": "Session eval v0 is multi-turn local, not accuracy.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Session eval v0 is multi-turn local, not accuracy.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-29",
+      "prompt": "Context: package build_composite is scored SSOT; Central legacy is report-only. Is Central legacy the engineering composite SSOT? YES or NO only.",
+      "rubric": "Central legacy_7dim is report-only for composite engineering path.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Central legacy_7dim is report-only for composite engineering path.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-30",
+      "prompt": "Can Mac local track unlock live skill tools / microVM? YES or NO only.",
+      "rubric": "States microVM/live skill tools still deferred on Mac.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (States microVM/live skill tools still deferred on Mac.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-39",
+      "prompt": "Translate to English: 谢谢. One word or short phrase.",
+      "rubric": "English for 谢谢 — thanks/thank you.",
+      "model_output": "Thank you. One word or short phrase.",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "朱向群",
+      "rationale": "\"Thank you.\" 为\"谢谢\"的准确英译，翻译正确；尾部附带指令原文不影响翻译正确性。"
+    },
+    {
+      "task_id": "g2b-55",
+      "prompt": "Extract JSON keys asr,leak_rate from: asr=0.11 leak_rate=0.33",
+      "rubric": "Valid JSON with keys asr,leak_rate only.",
+      "model_output": "To extract the JSON keys `asr` and `leak_rate` from the given string `asr=0.11 leak_rate=0.33`, you can use the following Python code:\n\n```python\nimport re\n\n# Given string\ninput_string = \"asr=0.11 leak_rate=0.33\"\n\n# Extract keys and values using regular expressions\npattern = r'(\\w+)=(\\d+\\.\\d+)'\nmatches = re.findall(pattern, input_string)\n\n# Create a dictionary from the matches\nresult_dict = {key: float(value) for key, value in matches}\n\n# Print the result\nprint(result_dict)\n```\n\nThis code will output:\n\n```python\n{'asr': 0.11, 'leak_rate': 0.33}\n```\n\nThis dictionary now contains the keys `asr` and `leak_rate` with their corresponding values.",
+      "annotator_a_pass": true,
+      "annotator_b_pass": false,
+      "gold_pass": false,
+      "adjudicator": "朱向群",
+      "rationale": "输出为 Python 代码与说明，未直接给出 JSON 对象，不满足\"Valid JSON with keys asr,leak_rate only\"（对照 g2b-63 直接输出 JSON 的合格样例）。"
+    },
+    {
+      "task_id": "g2b-62",
+      "prompt": "Name the CI used in G2b accuracy closeout. One phrase.",
+      "rubric": "Mentions Wilson CI or confidence interval.",
+      "model_output": "G2B Accuracy Closeout CI",
+      "annotator_a_pass": true,
+      "annotator_b_pass": false,
+      "gold_pass": false,
+      "adjudicator": "朱向群",
+      "rationale": "未点名 Wilson CI 或 confidence interval，仅出现\"CI\"字样，属循环表述，未命中 rubric 要点。"
+    },
+    {
+      "task_id": "g2b-92",
+      "prompt": "Summarize: precipitation falls from clouds. One short sentence.",
+      "rubric": "One short sentence: rain comes from clouds.",
+      "model_output": "Precipitation falls from clouds.",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "朱向群",
+      "rationale": "输出为一句含意完整、语义等价的短句；与同族 g2b-57/g2b-64 判定标准一致（近原文的一句话概括视为合格），符合\"One short sentence\"要求。"
+    },
+    {
+      "task_id": "g2b-95",
+      "prompt": "Extract JSON keys scenarios_ok,mode from: scenarios_ok=5 mode=both",
+      "rubric": "Valid JSON with keys scenarios_ok,mode only.",
+      "model_output": "To extract the JSON keys `scenarios_ok` and `mode` from the given string `scenarios_ok=5 mode=both`, you can use the following Python code:\n\n```python\nimport re\n\n# Given string\ninput_string = \"scenarios_ok=5 mode=both\"\n\n# Extracting the keys and values using regular expressions\npattern = r'(\\w+)=(\\w+)'\nmatches = re.findall(pattern, input_string)\n\n# Creating a dictionary from the matches\nresult = {key: value for key, value in matches}\n\n# Printing the result\nprint(result)\n```\n\nThis code will output:\n\n```python\n{'scenarios_ok': '5', 'mode': 'both'}\n```\n\nThis dictionary now contains the keys `scenarios_ok` and `mode` with their respective values `5` and `both`.",
+      "annotator_a_pass": true,
+      "annotator_b_pass": false,
+      "gold_pass": false,
+      "adjudicator": "朱向群",
+      "rationale": "同 g2b-55：输出为 Python 代码而非 JSON 对象，不满足\"Valid JSON with keys scenarios_ok,mode only\"。"
+    }
+  ],
+  "honesty": "adjudication of inter-annotator disputes; does not set accuracy_claim=true; not process_split authorize",
+  "recorded_at": "20261105T145910Z",
+  "human_confirm": {
+    "status": "confirmed",
+    "confirmed_at": "2026-11-05T22:59:10+08:00",
+    "confirmed_by": "朱向群",
+    "channel": "desktop_csv_给朱向群_仲裁_5条分歧",
+    "note": "n100 expand: adjudicated 5 new A/B disputes (g2b-39/55/62/92/95). Prior 01-30 disputes retained. Does NOT set accuracy_claim=true."
+  },
+  "source_csv": "/Users/apple/Desktop/G2b发卷_20261105/给朱向群_仲裁_5条分歧.csv",
+  "pack": "20261105T132500Z-n100"
+}

@@ -8,6 +8,7 @@ import CategoryDetailPanel from './CategoryDetailPanel';
 import ModelTierPanel from '../../components/model/ModelTierPanel';
 import ControlProfilePanel from '../../components/model/ControlProfilePanel';
 import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { diagnosticsGlossaryText } from '../../lib/consultantLayerA';
 
 type Health = {
   layer: string;
@@ -349,6 +350,7 @@ const Diagnostics: React.FC = () => {
       guardResult: guardResult ? (guardResult.passed !== undefined ? `guard=${guardResult.passed ? 'PASS' : 'FAIL'}` : undefined) : undefined,
       diagRunId: diagRunId || undefined,
       diagMode: diagMode || undefined,
+      guideGlossary: diagnosticsGlossaryText(),
     });
     return () => clearPageData('/diagnostics');
   }, [health, guardResult, diagRunId, diagMode, unhealthyLayers]);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { observabilityGlossaryText } from '../../lib/consultantLayerA';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BarChart3, Brain, Clock, AlertTriangle, Activity, Zap, Database, BellRing, ExternalLink, Settings, Save } from 'lucide-react';
 import { diagnosticsApi } from '../../services';
@@ -175,6 +176,7 @@ const ObservabilityDashboard: React.FC = () => {
       llmErrorRate: stats?.llm_stats?.error_rate ?? undefined,
       topErrors: (stats?.top_errors || []).slice(0, 3).map(e => `${e.error || e.type || ''}:${e.count || 0}`).join('; '),
       syscallKinds: Object.keys(stats?.syscall_by_kind || {}).join(','),
+      guideGlossary: observabilityGlossaryText(),
     });
     return () => clearPageData('/diagnostics/observability');
   }, [stats]);

@@ -5,6 +5,7 @@ import { Table, Button, Modal, toast } from '../../components/ui';
 import PageHeader from '../../components/common/PageHeader';
 import { alertingApi } from '../../services';
 import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { alertsGlossaryText } from '../../lib/consultantLayerA';
 
 interface Alert {
   id: string;
@@ -218,6 +219,7 @@ const Alerts: React.FC = () => {
       firingInfo: infoCount,
       firingTotal: criticalCount + warningCount + infoCount,
       activeTab,
+      guideGlossary: alertsGlossaryText(),
     });
     return () => clearPageData('/alerts');
   }, [criticalCount, warningCount, infoCount, activeTab]);

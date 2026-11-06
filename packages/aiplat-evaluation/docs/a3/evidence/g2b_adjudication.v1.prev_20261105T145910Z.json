@@ -1,0 +1,76 @@
+{
+  "schema": "eval.g2b.adjudication.v1",
+  "product_id": "evaluation",
+  "environment": "local",
+  "accuracy_claim": false,
+  "not_accuracy_certification": true,
+  "method": "rubric_adjudication_of_A_B_disputes",
+  "adjudicator": "rubric_facilitator",
+  "pending_human_confirm": false,
+  "disputes": [
+    {
+      "task_id": "g2b-22",
+      "prompt": "Context: S1 reports ASR. Is ASR an accuracy score? YES or NO only.",
+      "rubric": "ASR is security metric, not accuracy.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (ASR is security metric, not accuracy.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-26",
+      "prompt": "Can one person fill both G2b worksheets? YES or NO only.",
+      "rubric": "Correct: second annotator required for inter-annotator κ.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Correct: second annotator required for inter-annotator κ.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-27",
+      "prompt": "Is session_eval v0 an accuracy certification? YES or NO only.",
+      "rubric": "Session eval v0 is multi-turn local, not accuracy.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Session eval v0 is multi-turn local, not accuracy.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-29",
+      "prompt": "Context: package build_composite is scored SSOT; Central legacy is report-only. Is Central legacy the engineering composite SSOT? YES or NO only.",
+      "rubric": "Central legacy_7dim is report-only for composite engineering path.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (Central legacy_7dim is report-only for composite engineering path.); score pass=true. Annotator A false is overruled."
+    },
+    {
+      "task_id": "g2b-30",
+      "prompt": "Can Mac local track unlock live skill tools / microVM? YES or NO only.",
+      "rubric": "States microVM/live skill tools still deferred on Mac.",
+      "model_output": "NO",
+      "annotator_a_pass": false,
+      "annotator_b_pass": true,
+      "gold_pass": true,
+      "adjudicator": "rubric_facilitator",
+      "rationale": "Model output 'NO' matches rubric (States microVM/live skill tools still deferred on Mac.); score pass=true. Annotator A false is overruled."
+    }
+  ],
+  "honesty": "adjudication of inter-annotator disputes; human_confirm=confirmed; does not set accuracy_claim=true; not process_split authorize",
+  "recorded_at": "20261103T224146Z",
+  "human_confirm": {
+    "status": "confirmed",
+    "confirmed_at": "2026-11-04T07:00:17+08:00",
+    "confirmed_by": "operator",
+    "channel": "chat_confirm_同意",
+    "note": "Operator agreed with rubric adjudication of 5 A/B disputes (g2b-22/26/27/29/30 → gold_pass=true). Does NOT set accuracy_claim=true."
+  }
+}

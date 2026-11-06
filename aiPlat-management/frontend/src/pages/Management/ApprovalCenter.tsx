@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, Button, Input, Select, toast } from '../../components/ui';
+import { reportPageData, clearPageData } from '../../lib/pageDataBridge';
+import { approvalGlossaryText } from '../../lib/consultantLayerA';
 
 interface ApprovalItem {
   id: string;
@@ -68,6 +70,19 @@ const ApprovalCenter: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchList(); }, [fetchList]);
+
+  useEffect(() => {
+    const ready = items.filter((i) => i.status === 'ready').length;
+    reportPageData('/approval', {
+      screen: '资产审批：通过/上架工作区资产；不是运行时 HITL',
+      totalItems: items.length,
+      ready,
+      typeFilter: typeFilter || 'all',
+      statusFilter: statusFilter || 'all',
+      guideGlossary: approvalGlossaryText(),
+    });
+    return () => clearPageData('/approval');
+  }, [items, typeFilter, statusFilter]);
 
   // Filtered items
   const filtered = useMemo(() => {

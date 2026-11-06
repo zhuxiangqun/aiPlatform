@@ -588,11 +588,15 @@ async def generate_answer(
                 from core.harness.digital_human.consultant_knowledge import (
                     build_on_demand_pack,
                     load_constitution_card,
+                    page_data_has_glossary,
                 )
 
                 constitution = load_constitution_card()
                 if not page_only_brief:
-                    knowledge = build_on_demand_pack(text)
+                    knowledge = build_on_demand_pack(
+                        text,
+                        page_has_glossary=page_data_has_glossary(page_data),
+                    )
             except Exception:
                 logger.debug("consultant knowledge pack failed", exc_info=True)
             user_payload = _consultant_user_payload(
@@ -633,16 +637,6 @@ async def generate_answer(
                         answer = str(out or "")
                     answer = (answer or "").strip() or "收到。"
                     answer = _strip_consultant_cot(_rewrite_empty_model_answer(answer))
-                    try:
-                        from core.harness.digital_human.consultant_knowledge import (
-                            ensure_generic_disclaimer,
-                        )
-
-                        answer = ensure_generic_disclaimer(
-                            answer, text, page_only=page_only_brief
-                        )
-                    except Exception:
-                        logger.debug("generic disclaimer failed", exc_info=True)
                 else:
                     answer = result.error or "抱歉，我不太明白"
                     answer = _strip_consultant_cot(_rewrite_empty_model_answer(answer))
@@ -667,6 +661,19 @@ async def generate_answer(
                 "请在本页再点一次「AI 审核」后问我。"
             )
             logger.warning("consultant answered role instructions; used page facts")
+
+    try:
+        from core.harness.digital_human.consultant_knowledge import (
+            ensure_generic_disclaimer,
+            ensure_unreported_page_field_note,
+        )
+
+        answer = ensure_generic_disclaimer(answer, text, page_only=page_only_brief)
+        answer = ensure_unreported_page_field_note(
+            answer, text, page_data=page_data or ""
+        )
+    except Exception:
+        logger.debug("consultant answer post-gates failed", exc_info=True)
 
     # TTS opt-in (default off — 小朱 text-only)
     audio = b""

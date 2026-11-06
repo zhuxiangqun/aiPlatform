@@ -11,12 +11,27 @@ import {
   messageForEvalExecutionPayload,
 } from './evalExecutionErrors';
 import {
+  defaultArenaPayload,
   defaultCodeReviewJobPayload,
+  defaultContextMgmtPayload,
+  defaultMemoryPersistPayload,
+  defaultSelfLearnPayload,
+  defaultSessionEvalPayload,
+  defaultSkillSuitePayload,
   formatEvalJobSummary,
   isEvalJobTerminal,
 } from './evalRunPanelHelpers';
 
-export type EvalRunKind = 'code_review' | 'prompt_eval' | 'kb_rag';
+export type EvalRunKind =
+  | 'code_review'
+  | 'prompt_eval'
+  | 'kb_rag'
+  | 'session_eval'
+  | 'arena'
+  | 'skill_suite'
+  | 'context_mgmt'
+  | 'memory_persist'
+  | 'self_learn';
 
 type Props = {
   kind: EvalRunKind;
@@ -38,10 +53,16 @@ type JobRow = {
   result_json?: unknown;
 };
 
-const KIND_META: Record<
-  EvalRunKind,
-  { title: string; syncHint: string; packagePath: string; runnerId: string }
-> = {
+type KindMeta = {
+  title: string;
+  syncHint: string;
+  packagePath: string;
+  runnerId: string;
+  /** Job-only kinds have no cohost sync path. */
+  jobOnly?: boolean;
+};
+
+const KIND_META: Record<EvalRunKind, KindMeta> = {
   code_review: {
     title: 'Code-review gold',
     syncHint: 'Cohost match_only（fixture predicted，无 LLM）',
@@ -60,11 +81,83 @@ const KIND_META: Record<
     packagePath: '/platform/apps/eval/package/kb-eval/run',
     runnerId: 'kb_rag',
   },
+  session_eval: {
+    title: 'Session · 多轮对话评测',
+    syncHint: '预制多轮对账；成功只证明链路通，不是真实准确率',
+    packagePath: '/platform/apps/eval/package/session-eval/run',
+    runnerId: 'session_eval',
+    jobOnly: true,
+  },
+  arena: {
+    title: 'Arena · 长度烟雾测试',
+    syncHint: '默认比谁更长，不是质量裁判；不打开质量门禁',
+    packagePath: '/platform/apps/eval/package/arena/run',
+    runnerId: 'arena',
+    jobOnly: true,
+  },
+  skill_suite: {
+    title: 'Skill · 技能 fixture',
+    syncHint: '需 Docker 沙箱探针；不会真跑 live 工具',
+    packagePath: '/platform/apps/eval/package/skill-evals/suites/ui-fixture/run',
+    runnerId: 'skill_suite',
+    jobOnly: true,
+  },
+  context_mgmt: {
+    title: 'P2 · 上下文管理',
+    syncHint: '工程自检门；不能替代 Session，也不能宣称准确率',
+    packagePath: '/platform/apps/eval/package/context-mgmt/run',
+    runnerId: 'context_mgmt',
+    jobOnly: true,
+  },
+  memory_persist: {
+    title: 'P2 · 记忆持久化',
+    syncHint: '工程自检门；不等于生产 Memory 已写回',
+    packagePath: '/platform/apps/eval/package/memory-persist/run',
+    runnerId: 'memory_persist',
+    jobOnly: true,
+  },
+  self_learn: {
+    title: 'P2 · 自学习',
+    syncHint: '工程自检门；writeback 未授权，不会写回生产',
+    packagePath: '/platform/apps/eval/package/self-learn/run',
+    runnerId: 'self_learn',
+    jobOnly: true,
+  },
 };
+
+function buildJobPayload(kind: EvalRunKind, extras: {
+  templateId: string;
+  versionA: string;
+  versionB: string;
+  kbTag: string;
+}): Record<string, unknown> {
+  const stamp = Date.now();
+  if (kind === 'code_review') return defaultCodeReviewJobPayload();
+  if (kind === 'prompt_eval') {
+    return {
+      idempotency_key: `ui1-prompt-${stamp}`,
+      template_id: extras.templateId.trim() || 'demo',
+      version_a: extras.versionA.trim() || 'v1',
+      version_b: extras.versionB.trim() || 'v2',
+    };
+  }
+  if (kind === 'kb_rag') {
+    const body: Record<string, unknown> = { idempotency_key: `ui1-kb-${stamp}` };
+    if (extras.kbTag.trim()) body.tag = extras.kbTag.trim();
+    return body;
+  }
+  if (kind === 'session_eval') return defaultSessionEvalPayload();
+  if (kind === 'arena') return defaultArenaPayload();
+  if (kind === 'skill_suite') return defaultSkillSuitePayload();
+  if (kind === 'context_mgmt') return defaultContextMgmtPayload();
+  if (kind === 'memory_persist') return defaultMemoryPersistPayload();
+  return defaultSelfLearnPayload();
+}
 
 export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' }: Props) {
   const meta = KIND_META[kind];
   const jobPlane = String(upstreamMode || '').toLowerCase() === 'proxy';
+  const syncEnabled = !meta.jobOnly;
 
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
@@ -105,25 +198,32 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
         const d = unwrap(res) as { items?: unknown[]; total?: number };
         const n = d?.total ?? (Array.isArray(d?.items) ? d.items.length : 0);
         setReportsPreview(`prompt runs ≈${n}`);
-      } else {
+      } else if (kind === 'kb_rag') {
         const res = await apiClient.get<Envelope<{ items?: unknown[]; total?: number }>>(
           `/platform/apps/eval/kb-eval/reports?limit=5`,
         );
         const d = unwrap(res) as { items?: unknown[]; total?: number };
         const n = d?.total ?? (Array.isArray(d?.items) ? d.items.length : 0);
         setReportsPreview(`kb reports ≈${n}`);
+      } else {
+        setReportsPreview(
+          jobPlane
+            ? `job plane · runner=${meta.runnerId} · enqueue 后看 job 摘要`
+            : `需 AIPLAT_EVAL_SERVICE_URL（mode=proxy）才能 enqueue ${meta.runnerId}`,
+        );
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setReportsPreview(`读取失败: ${msg}`);
     }
-  }, [kind, tenantId]);
+  }, [kind, tenantId, jobPlane, meta.runnerId]);
 
   useEffect(() => {
     void loadReports();
   }, [loadReports]);
 
   const runSync = async () => {
+    if (!syncEnabled) return;
     setSyncBusy(true);
     setSyncMsg(null);
     try {
@@ -183,7 +283,7 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
         setSyncMsg(
           `sync run · id=${d.run_id || d.id || '—'} · status=${d.status || (d.ok ? 'ok' : '—')}`,
         );
-      } else {
+      } else if (kind === 'kb_rag') {
         const body: Record<string, unknown> = {};
         if (kbTag.trim()) body.tag = kbTag.trim();
         const res = await apiClient.post<Envelope<{ session_id?: string; ok?: boolean; status?: string }>>(
@@ -237,19 +337,7 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
     setJob(null);
     stopPoll();
     try {
-      let body: Record<string, unknown> = { idempotency_key: `ui1-${kind}-${Date.now()}` };
-      if (kind === 'code_review') {
-        body = { ...defaultCodeReviewJobPayload() };
-      } else if (kind === 'prompt_eval') {
-        body = {
-          ...body,
-          template_id: templateId.trim() || 'demo',
-          version_a: versionA.trim() || 'v1',
-          version_b: versionB.trim() || 'v2',
-        };
-      } else if (kbTag.trim()) {
-        body = { ...body, tag: kbTag.trim() };
-      }
+      const body = buildJobPayload(kind, { templateId, versionA, versionB, kbTag });
       const res = await apiClient.post<Envelope<JobRow>>(meta.packagePath, body);
       const row = unwrap(res) as JobRow;
       const jobId = String(row.job_id || '');
@@ -359,16 +447,18 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
       ) : null}
 
       <div className="flex flex-wrap gap-2 items-center">
-        <button
-          type="button"
-          data-testid="eval-run-sync"
-          disabled={syncBusy}
-          onClick={() => void runSync()}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-700/80 hover:bg-blue-600 disabled:opacity-50 text-white"
-        >
-          {syncBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          {kind === 'code_review' ? 'Run match-only' : 'Run sync'}
-        </button>
+        {syncEnabled ? (
+          <button
+            type="button"
+            data-testid="eval-run-sync"
+            disabled={syncBusy}
+            onClick={() => void runSync()}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-700/80 hover:bg-blue-600 disabled:opacity-50 text-white"
+          >
+            {syncBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            {kind === 'code_review' ? 'Run match-only' : 'Run sync'}
+          </button>
+        ) : null}
         {jobPlane ? (
           <>
             <button
@@ -399,6 +489,7 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
         ) : (
           <span className="text-xs text-gray-500">
             Job 平面需 <code className="text-gray-400">AIPLAT_EVAL_SERVICE_URL</code>（mode=proxy）
+            {meta.jobOnly ? ' · 本 runner 仅 job 平面' : ''}
           </span>
         )}
       </div>

@@ -21,6 +21,8 @@ import ImportBar from '../../../components/workspace/ImportBar';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { SKILL_CATEGORIES } from '../../../utils/categoryConfig';
 import { GovDetailBadge, StatusBadge } from '../../../utils/statusLabel';
+import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { skillsConsultantPageData } from './skillsGlossary';
 
 const governanceBadge = (record: any) => <GovDetailBadge record={record} />;
 
@@ -66,6 +68,26 @@ const WorkspaceSkills: React.FC = () => {
   useEffect(() => {
     fetchSkills();
   }, [fetchSkills]);
+
+  // Layer A：实况计数 + 画面科目 glossary → 小朱
+  useEffect(() => {
+    const statusCount: Record<string, number> = {};
+    skills.forEach((s) => {
+      const st = (s.status || 'draft').toLowerCase();
+      statusCount[st] = (statusCount[st] || 0) + 1;
+    });
+    reportPageData(
+      '/workspace/skills',
+      skillsConsultantPageData({
+        totalSkills: skills.length,
+        statusCount,
+        ready: statusCount.ready || 0,
+        listed: statusCount.listed || 0,
+        deprecated: statusCount.deprecated || 0,
+      }),
+    );
+    return () => clearPageData('/workspace/skills');
+  }, [skills]);
 
   // Skill Pack -> Workspace Skill quick filter (by navigation state)
   useEffect(() => {

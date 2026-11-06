@@ -84,13 +84,21 @@ def g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "pending_dual_human": pending_dual,
         "dual_human_complete": dual_human_complete,
         "kappa_kind": kappa.get("kappa_kind") or "inter_annotator",
-        "kappa": kappa.get("kappa"),
+        # Aggregate uses inter_annotator_kappa; accept legacy "kappa" key too.
+        "kappa": kappa.get("inter_annotator_kappa", kappa.get("kappa")),
         "accuracy_claim": False,
         "not_accuracy_certification": True,
         "note": (
-            "G2b pack status is facilitation-only. Pack n=100 ≠ closeout; "
-            "dual-human labels for unfinished ids still required; "
-            "accuracy_claim stays false until attestation."
+            (
+                "G2b dual-human closeout complete (n=closeout); "
+                "scoped observed pass_rate only; accuracy_claim stays false."
+            )
+            if dual_human_complete
+            else (
+                "G2b pack status is facilitation-only. Pack n=100 ≠ closeout; "
+                "dual-human labels for unfinished ids still required; "
+                "accuracy_claim stays false."
+            )
         ),
         "runbook": "packages/aiplat-evaluation/docs/a3/G2B_N100.md",
         "families": _family_counts(tasks),

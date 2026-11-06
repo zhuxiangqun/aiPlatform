@@ -44,6 +44,15 @@ bash "$ROOT/scripts/session_v1_gate.sh"
 echo "== preference v0 gate (fixture solo ≠ human κ) =="
 bash "$ROOT/scripts/preference_v0_gate.sh"
 
+echo "== P2-1 context_mgmt v0 gate =="
+bash "$ROOT/scripts/context_v0_gate.sh"
+
+echo "== P2-2 memory_persist v0 gate =="
+bash "$ROOT/scripts/memory_v0_gate.sh"
+
+echo "== P2-3 self_learn v0 gate =="
+bash "$ROOT/scripts/self_learn_v0_gate.sh"
+
 echo "== authorize status (must stay false) =="
 STATUS_JSON="$(bash "$ROOT/scripts/a3_split_authorize.sh" status)"
 echo "$STATUS_JSON" | python3 -c "
@@ -63,7 +72,7 @@ from datetime import datetime, timezone
 stamp = "${STAMP}"
 evid = Path("${EVID_DIR}")
 payload = {
-    "schema": "eval.local_track.closeout.v2",
+    "schema": "eval.local_track.closeout.v3",
     "product_id": "evaluation",
     "environment": "local",
     "process_split_authorized": False,
@@ -72,6 +81,8 @@ payload = {
     # Pack executed under live_llm (LLM may be stub); ≠ security certification.
     "security_live_attacks": True,
     "not_security_certification": True,
+    "local_first": True,
+    "not_public_release": True,
     "closed": [
         "B1-L",
         "B2-L",
@@ -86,23 +97,26 @@ payload = {
         "session_v0",
         "session_v1",
         "preference_v0_fixture",
+        "context_mgmt_v0",
+        "memory_persist_v0",
+        "self_learn_v0",
     ],
     "deferred": [
         "microVM_runtime",
         "live_tools",
-        "B4-S",
+        "B4-S_host",
         "B5-S",
         "B6",
-        "second_annotator",
-        "preference_human_kappa",
-        "G2b_human_closeout",
+        "public_A1_release",
+        "P2-4_prod_governance",
+        "process_split_authorize",
     ],
     "b4s_prep_doc": "docs/a3/B4S_PREP.md",
     "microvm_prep_doc": "docs/a3/MICROVM_PREP.md",
     "recorded_at": stamp or datetime.now(timezone.utc).isoformat(),
     "honesty": (
-        "local product track closeout v2 — session_v1 + preference fixture solo; "
-        "fixture≠human κ; not staging authorize; not B4 PITR; not accuracy; not security cert"
+        "local product track closeout v3 — +P2 context/memory/self_learn; "
+        "local-first; not public release; not staging authorize; not accuracy; not security cert"
     ),
 }
 path = evid / f"local-eval-track-closeout-{stamp}.json"
@@ -110,4 +124,4 @@ path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encodi
 print(json.dumps({"closeout": "ok", "schema": payload["schema"], "evidence": str(path)}, ensure_ascii=False))
 PY
 
-echo "LOCAL TRACK CLOSEOUT PASS (v2; authorize=false; next=human G2b/preference κ / B4-S host)"
+echo "LOCAL TRACK CLOSEOUT PASS (v3; authorize=false; local-first; public release deferred)"

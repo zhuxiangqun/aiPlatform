@@ -1,8 +1,8 @@
-"""Platform constitution card + on-demand CAPABILITIES / registry snippets for 小朱.
+"""Platform constitution card + on-demand CAPABILITIES / registry / controlled Wiki for 小朱.
 
-Not semantic RAG: keyword → short section extract. Live inventory stays in
-``platform_status_brief``; this pack only adds stable "how the platform works"
-when the user question looks conceptual.
+Not open semantic RAG: keyword → short section extract (+ optional allowlisted Wiki
+short excerpts). Live inventory stays in ``platform_status_brief``; this pack only
+adds stable "how the platform works" when the user question looks conceptual.
 """
 from __future__ import annotations
 
@@ -25,6 +25,23 @@ _MAX_CONSTITUTION_CHARS = 2200
 _MAX_PACK_CHARS = 2800
 _MAX_SECTION_CHARS = 1400
 _MAX_REGISTRY_LINES = 24
+_WIKI_MAX_SNIPPETS = 2
+_WIKI_MAX_CHARS = 800
+_WIKI_PER_FILE_CHARS = 400
+_WIKI_PREFIX = "Wiki短摘（手册；与简报/当前页冲突时以简报为准）"
+
+# Default allowlist when AIPLAT_CONSULTANT_WIKI_COLLECTIONS is unset (intersected with disk).
+_DEFAULT_WIKI_COLLECTIONS: Tuple[str, ...] = (
+    "aiplat-system",
+    "fde-delivery",
+    "AI_评估",
+    "AI_Harness",
+    "AI_Skill",
+    "AI_Agent",
+    "AI_RAG",
+    "AI_Loop",
+    "ai-knowledge",
+)
 
 # (keywords in question) → CAPABILITIES.md section title substring
 _TOPIC_MAP: Sequence[Tuple[Tuple[str, ...], str]] = (
@@ -184,14 +201,203 @@ def _registry_hits(question: str, *, limit: int = _MAX_REGISTRY_LINES) -> str:
     return "capability_registry 命中（符号级，非实时名单）:\n" + "\n".join(f"- {h}" for h in hits)
 
 
+def _looks_page_field_question(question: str) -> bool:
+    """True when the ask is about an on-screen field/term (prefer Layer A glossary)."""
+    q = (question or "").strip().lower()
+    if len(q) < 2:
+        return False
+    field_hints = (
+        "什么意思",
+        "是什么意思",
+        "这个字段",
+        "这个科目",
+        "这个指标",
+        "这个参数",
+        "accuracy_claim",
+        "gate_claim",
+        "κ",
+        "kappa",
+    )
+    if any(h in q for h in field_hints):
+        return True
+    design = ("怎么用", "架构", "区别", "选模", "链路", "系统", "原理", "边界", "如何")
+    if ("是什么" in q or "什么是" in q) and not any(k in q for k in design):
+        return True
+    return False
+
+
+def page_data_has_glossary(page_data: Optional[str]) -> bool:
+    """Detect structured page glossary (e.g. Eval guideGlossary) in reported pageData."""
+    raw = page_data or ""
+    if not raw:
+        return False
+    low = raw.lower()
+    return "guideglossary" in low or "guide_glossary" in low
+
+
+def _wiki_collections_allowlist() -> List[str]:
+    """Resolve Wiki collection allowlist.
+
+    - Env unset → built-in defaults (later intersected with disk).
+    - Env set to empty / whitespace → disabled (no Wiki short excerpts).
+    - Env set to comma list → that list only.
+    """
+    raw = os.getenv("AIPLAT_CONSULTANT_WIKI_COLLECTIONS")
+    if raw is not None:
+        return [x.strip() for x in raw.split(",") if x.strip()]
+    return list(_DEFAULT_WIKI_COLLECTIONS)
+
+
+def _wiki_root() -> Path:
+    try:
+        from core.utils.paths import get_aiplat_home
+
+        return Path(get_aiplat_home()) / "wiki" / "collections"
+    except Exception:
+        return Path.home() / ".aiplat" / "wiki" / "collections"
+
+
+def _question_tokens(question: str) -> List[str]:
+    """Latin words + CJK n-grams (2–4) so space-less Chinese still matches stems."""
+    q = (question or "").strip().lower()
+    q = re.sub(r"[？?！!。；;：:，,、/（）()【】\[\]\"']+", " ", q)
+    parts = [p for p in re.split(r"\s+", q) if p]
+    out: List[str] = []
+    seen = set()
+
+    def _add(tok: str) -> None:
+        if tok and tok not in seen:
+            seen.add(tok)
+            out.append(tok)
+
+    for t in parts:
+        if re.search(r"[\u4e00-\u9fff]", t):
+            if len(t) >= 2:
+                _add(t)
+            for n in (2, 3, 4):
+                for i in range(0, max(0, len(t) - n + 1)):
+                    _add(t[i : i + n])
+        elif len(t) >= 3:
+            _add(t)
+    return out
+
+
+def _score_wiki_file(path: Path, tokens: Sequence[str]) -> int:
+    stem = path.stem.lower()
+    name = path.name.lower()
+    score = 0
+    for t in tokens:
+        if len(t) < 2:
+            continue
+        if t in stem or t in name:
+            # Prefer longer overlaps
+            score += min(len(t), 4)
+    if score <= 0:
+        return 0
+    # Light body peek (first 1KB) for extra hits without reading whole files
+    try:
+        head = path.read_text(encoding="utf-8", errors="ignore")[:1024].lower()
+    except OSError:
+        return score
+    for t in tokens:
+        if len(t) >= 2 and t in head:
+            score += 1
+    return score
+
+
+def _snip_wiki_md(path: Path, *, max_chars: int) -> str:
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore").strip()
+    except OSError:
+        return ""
+    if not text:
+        return ""
+    # Drop YAML frontmatter if present
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            text = text[end + 4 :].strip()
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    blob = "\n".join(lines)
+    if len(blob) > max_chars:
+        blob = blob[:max_chars].rstrip() + "…"
+    return blob
+
+
+def build_controlled_wiki_excerpts(
+    question: str,
+    *,
+    budget: int = _WIKI_MAX_CHARS,
+) -> str:
+    """Allowlisted Wiki short excerpts for Layer B. Empty if disabled / no hit.
+
+    Does not use CRAG or ``semantic_injection``; filesystem title/keyword match only.
+    """
+    if budget <= 0:
+        return ""
+    allow = _wiki_collections_allowlist()
+    if not allow:
+        return ""
+    root = _wiki_root()
+    if not root.is_dir():
+        return ""
+    tokens = _question_tokens(question)
+    if not tokens:
+        return ""
+    scored: List[Tuple[int, Path, str]] = []
+    for coll in allow:
+        cdir = root / coll
+        if not cdir.is_dir():
+            continue
+        try:
+            files = sorted(cdir.glob("*.md"))
+        except OSError:
+            continue
+        for fp in files:
+            if fp.name.lower() in ("readme.md", "index.md"):
+                continue
+            sc = _score_wiki_file(fp, tokens)
+            if sc <= 0:
+                continue
+            scored.append((sc, fp, coll))
+    if not scored:
+        return ""
+    scored.sort(key=lambda x: (-x[0], x[1].name))
+    parts: List[str] = [_WIKI_PREFIX + ":"]
+    used = 0
+    for _, fp, coll in scored[:_WIKI_MAX_SNIPPETS]:
+        room = min(_WIKI_PER_FILE_CHARS, budget - used)
+        if room < 80:
+            break
+        body = _snip_wiki_md(fp, max_chars=room)
+        if not body:
+            continue
+        block = f"[{coll}/{fp.stem}]\n{body}"
+        parts.append(block)
+        used += len(block)
+        if used >= budget:
+            break
+    if len(parts) <= 1:
+        return ""
+    blob = "\n\n".join(parts)
+    if len(blob) > budget + len(_WIKI_PREFIX) + 8:
+        blob = blob[: budget + len(_WIKI_PREFIX) + 8].rstrip() + "\n…"
+    return blob
+
+
 def build_on_demand_pack(
     question: str,
     *,
     max_chars: int = _MAX_PACK_CHARS,
     force: bool = False,
+    page_has_glossary: bool = False,
+    skip_wiki: bool = False,
 ) -> str:
-    """Keyword-selected CAPABILITIES / registry snippets. Empty if not needed."""
+    """Keyword-selected CAPABILITIES / registry / optional controlled Wiki. Empty if not needed."""
     if not force and not _wants_concept_pack(question):
+        return ""
+    # Layer A wins: on-page glossary + field/term question → do not flood with B
+    if page_has_glossary and _looks_page_field_question(question) and not force:
         return ""
     topics = _match_topics(question)
     parts: List[str] = [
@@ -209,7 +415,15 @@ def build_on_demand_pack(
             break
     reg = _registry_hits(question)
     if reg and used < max_chars:
-        parts.append(reg[: max_chars - used])
+        chunk = reg[: max_chars - used]
+        parts.append(chunk)
+        used += len(chunk)
+    if not skip_wiki and used < max_chars:
+        wiki_budget = min(_WIKI_MAX_CHARS, max_chars - used)
+        wiki = build_controlled_wiki_excerpts(question, budget=wiki_budget)
+        if wiki:
+            parts.append(wiki)
+            used += len(wiki)
     if len(parts) <= 1:
         return ""
     blob = "\n\n".join(parts)
@@ -307,6 +521,41 @@ def ensure_generic_disclaimer(
     if not looks_external_generic_question(question):
         return answer
     return f"（{_GENERIC_DISCLAIMER}）\n\n{raw}"
+
+
+_UNREPORTED_FIELD_NOTE = "本页未上报科目"
+_UNREPORTED_FIELD_PREFIX = (
+    "本页未上报该科目的结构化释义；以下仅按菜单用途或通识说明，勿当作本页字段核验。"
+)
+
+
+def ensure_unreported_page_field_note(
+    answer: str,
+    question: str,
+    *,
+    page_data: str = "",
+) -> str:
+    """When user asks field/term meaning but page has no glossary/live audit facts.
+
+    Soft post-gate (prompt may already say it); does not invent field meanings.
+    """
+    raw = (answer or "").strip()
+    if not raw:
+        return answer
+    if _UNREPORTED_FIELD_NOTE in raw or "未上报该科目" in raw:
+        return answer
+    if not _looks_page_field_question(question):
+        return answer
+    if page_data_has_glossary(page_data):
+        return answer
+    try:
+        from core.harness.digital_human.platform_status_brief import page_data_has_live_facts
+
+        if page_data_has_live_facts(page_data):
+            return answer
+    except Exception:
+        logger.debug("live facts check failed", exc_info=True)
+    return f"{_UNREPORTED_FIELD_PREFIX}\n\n{raw}"
 
 
 def clear_knowledge_caches(*, reset_reload: bool = True) -> None:

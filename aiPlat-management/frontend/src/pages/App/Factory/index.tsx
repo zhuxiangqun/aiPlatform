@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { projectApi, builderTeamApi, type ProjectItem, type ProjectRun } from '../../../services';
 import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { factoryGlossaryPromptText } from './factoryGlossary';
 import { Card, CardContent, Button, Textarea, toast } from '../../../components/ui';
 import { toastGateError } from '../../../components/ui';
 import type { BuilderSession } from '../../../services';
@@ -3145,6 +3146,7 @@ const FactoryPage: React.FC = () => {
       ? Math.round(Object.values(projectPassRates).reduce((a, b) => a + (b || 0), 0) / Object.values(projectPassRates).length * 100) / 100
       : undefined;
     reportPageData('/app/factory', {
+      screen: '应用工厂：交付流水线，不是工作区 Agent 页',
       projectCount: projects.length,
       deployedAppCount: deployedApps.length,
       stageCount,
@@ -3157,6 +3159,7 @@ const FactoryPage: React.FC = () => {
       avgPassRate,
       selectedProject: selectedProject?.name || undefined,
       selectedProjectPhase: selectedProject ? (projectStates[selectedProject.project_id] || undefined) : undefined,
+      guideGlossary: factoryGlossaryPromptText(1200),
     });
     return () => clearPageData('/app/factory');
   }, [projects, deployedApps, projectStates, projectPassRates, projectStuckHints, selectedProject]);

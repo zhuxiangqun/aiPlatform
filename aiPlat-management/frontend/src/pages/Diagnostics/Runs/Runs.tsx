@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { reportPageData, clearPageData } from '../../../lib/pageDataBridge';
+import { runsGlossaryText } from '../../../lib/consultantLayerA';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Copy, RefreshCw, Ban, RotateCcw } from 'lucide-react';
 
@@ -378,6 +379,7 @@ const Runs: React.FC = () => {
       eventCount: events.length,
       eventKinds,
       lastSeq,
+      guideGlossary: runsGlossaryText(),
     });
     return () => clearPageData('/diagnostics/runs');
   }, [runId, run, events, lastSeq]);

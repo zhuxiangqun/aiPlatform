@@ -9,6 +9,10 @@ import { Button, Input, Modal, Select, Textarea, toast } from '../ui';
 import PromptDiffModal from './PromptDiffModal';
 import AssetAuditPanel, { auditRemainToast } from './AssetAuditPanel';
 import type { AssetAuditResult } from './AssetAuditPanel';
+import {
+  clearAssetAuditPageFields,
+  reportAssetAuditToPage,
+} from '../../lib/pageDataBridge';
 import { SkillBoundCapabilitiesPicker } from './SkillBoundCapabilitiesPicker';
 import { SkillPermissionChips } from './SkillPermissionChips';
 import { detectSkillBindIntent, ioHintForIntent } from './skillBindingIntent';
@@ -414,6 +418,22 @@ const EditSkillModal: React.FC<EditSkillModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, skill?.id, initialSection]);
+
+  // Layer A：编辑/审核实况 → 小朱（issue0… + skillId）
+  useEffect(() => {
+    if (!open || !skill?.id) {
+      clearAssetAuditPageFields('/workspace/skills');
+      return;
+    }
+    reportAssetAuditToPage({
+      route: '/workspace/skills',
+      kind: 'skill',
+      id: String(skill.id),
+      name: String(skill.name || name || skill.id),
+      result: auditResult,
+    });
+    return () => clearAssetAuditPageFields('/workspace/skills');
+  }, [open, skill?.id, skill?.name, name, auditResult]);
 
   const intentText = `${name} ${description}`;
   const bindIntent = useMemo(() => detectSkillBindIntent(intentText), [intentText]);

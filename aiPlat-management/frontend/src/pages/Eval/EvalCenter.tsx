@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { apiClient } from '../../services';
+import { clearPageData, reportPageData } from '../../lib/pageDataBridge';
 import EvalExecutionPlaneBanner from './EvalExecutionPlaneBanner';
 import EvalAgentsPanel from './EvalAgentsPanel';
 import EvalEvidencePanel from './EvalEvidencePanel';
@@ -19,7 +20,9 @@ import EvalReviewPanel from './EvalReviewPanel';
 import EvalRunPanel from './EvalRunPanel';
 import EvalSetsPanel from './EvalSetsPanel';
 import EvalSettingsPanel from './EvalSettingsPanel';
+import EvalTabGuide from './EvalTabGuide';
 import EvalWorksheetPanel from './EvalWorksheetPanel';
+import { EVAL_TAB_GUIDES, evalConsultantPageData } from './evalTabGuides';
 import {
   EXECUTION_NOT_MIGRATED_COPY,
   shouldShowExecutionPlaneBanner,
@@ -86,6 +89,10 @@ const TABS = [
   { id: 'knowledge', label: 'Knowledge' },
   { id: 'prompts', label: 'Prompts' },
   { id: 'code-review', label: 'Code-review' },
+  { id: 'session', label: 'Session' },
+  { id: 'arena', label: 'Arena' },
+  { id: 'skill', label: 'Skill' },
+  { id: 'research', label: 'P2 Research' },
   { id: 'settings', label: '设置' },
 ] as const;
 
@@ -178,6 +185,33 @@ const EvalCenter: React.FC = () => {
     return null;
   }, [queue, status]);
 
+  // P2-4: feed 小朱 — current tab guide + all-tab catalog + live G2a snapshot.
+  useEffect(() => {
+    reportPageData(
+      '/eval',
+      evalConsultantPageData({
+        tabId: tab,
+        upstreamMode,
+        accuracyClaim: accuracy,
+        g2aReady: Boolean(status?.g2a_ready),
+        v0Locked: Boolean(status?.v0_locked),
+        pending: pendingCount,
+        setsCount: sets.length,
+        gatesCount: gates.length,
+      }),
+    );
+    return () => clearPageData('/eval');
+  }, [
+    tab,
+    upstreamMode,
+    accuracy,
+    status?.g2a_ready,
+    status?.v0_locked,
+    pendingCount,
+    sets.length,
+    gates.length,
+  ]);
+
   const showExecBanner = shouldShowExecutionPlaneBanner({
     upstreamMode,
     b1lExecutionStubs: b1lStubs,
@@ -198,7 +232,8 @@ const EvalCenter: React.FC = () => {
           </button>
         </div>
         <p className="text-sm text-gray-400">
-          EVAL_V1 E6 · canonical{' '}
+          本机评测工作台 · 用来校准与联调，不是对外准确率看板
+          {' · '}
           <code className="text-blue-300">/api/platform/apps/eval</code>
           {' · '}tenant <code className="text-blue-300">{TENANT}</code>
         </p>
@@ -209,8 +244,8 @@ const EvalCenter: React.FC = () => {
           code="execution_not_migrated"
           detail={
             upstreamMode === 'proxy'
-              ? `上游 mode=proxy · ${EXECUTION_NOT_MIGRATED_COPY}`
-              : null
+              ? `当前上游 mode=proxy（本机 Job 已接到 :8010）· 产品上仍记「${EXECUTION_NOT_MIGRATED_COPY}」`
+              : '当前上游 mode=cohost：Session/Arena/Skill 等 Job 需先起本地 eval proxy'
           }
         />
       ) : null}
@@ -221,15 +256,21 @@ const EvalCenter: React.FC = () => {
       >
         <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-sm space-y-1">
-          <div className="font-medium text-amber-200">诚实约束（强制）</div>
+          <div className="font-medium text-amber-200">诚实约束（强制）· 防误读</div>
+          <p className="text-amber-100/80 text-xs sm:text-sm">
+            页面上的分数、κ、门禁，默认都是「工程自检」，不要当成「模型已经测准」或「可以对外发布」。
+          </p>
           <ul className="list-disc pl-5 text-amber-100/90 space-y-0.5">
             <li>
-              <code>accuracy_claim</code> 必须为 false（当前：{String(accuracy)}）
+              <code>accuracy_claim</code>＝是否宣称准确率 · 必须为 false（当前：
+              {String(accuracy)}）
             </li>
             <li>
-              D5 本地 κ=null（单人复核）；G2b inter-annotator κ 仅见 n=30 closeout（≠ accuracy）
+              κ（kappa）＝两个人标得是否一致 · 本地单人复核时为 null；G2b 的 κ 也不是准确率
             </li>
-            <li>local <code>gate_claim</code> ≠ 外部 / staging / authorize</li>
+            <li>
+              <code>gate_claim</code>＝本机门禁过了没 · 不等于外部 / staging / 生产授权
+            </li>
           </ul>
         </div>
       </div>
@@ -239,6 +280,7 @@ const EvalCenter: React.FC = () => {
           <button
             key={t.id}
             type="button"
+            title={EVAL_TAB_GUIDES[t.id]?.what || t.label}
             onClick={() => setTab(t.id)}
             className={`px-3 py-1.5 text-sm rounded-t ${
               tab === t.id
@@ -250,6 +292,8 @@ const EvalCenter: React.FC = () => {
           </button>
         ))}
       </nav>
+
+      <EvalTabGuide tabId={tab} />
 
       {error ? (
         <div className="rounded border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">
@@ -323,6 +367,41 @@ const EvalCenter: React.FC = () => {
               打开 Governance
             </Link>
           </div>
+        </section>
+      )}
+
+      {tab === 'session' && (
+        <section className="space-y-3 text-sm">
+          <EvalRunPanel kind="session_eval" upstreamMode={upstreamMode} tenantId={TENANT} />
+        </section>
+      )}
+
+      {tab === 'arena' && (
+        <section className="space-y-3 text-sm">
+          <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-100/90">
+            默认只比「谁写得更长」（烟雾测试），不是质量裁判；盲评结果只当证据展示，不打开质量门禁。
+          </div>
+          <EvalRunPanel kind="arena" upstreamMode={upstreamMode} tenantId={TENANT} />
+        </section>
+      )}
+
+      {tab === 'skill' && (
+        <section className="space-y-3 text-sm">
+          <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-100/90">
+            只跑预制用例对账；需要 Docker 沙箱探针。不会真的执行 live 工具/技能。
+          </div>
+          <EvalRunPanel kind="skill_suite" upstreamMode={upstreamMode} tenantId={TENANT} />
+        </section>
+      )}
+
+      {tab === 'research' && (
+        <section className="space-y-4 text-sm">
+          <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-100/90">
+            三项都是工程自检门（上下文 / 记忆 / 自学习）。通过 ≠ 生产已写回记忆或授权自学习上线。
+          </div>
+          <EvalRunPanel kind="context_mgmt" upstreamMode={upstreamMode} tenantId={TENANT} />
+          <EvalRunPanel kind="memory_persist" upstreamMode={upstreamMode} tenantId={TENANT} />
+          <EvalRunPanel kind="self_learn" upstreamMode={upstreamMode} tenantId={TENANT} />
         </section>
       )}
 

@@ -1,8 +1,11 @@
 import multiprocessing
 import os
 
-_port = os.getenv("AIPLAT_PORT", "8001")
-bind = f"0.0.0.0:{_port}"
+# Local default loopback; non-loopback needs AIPLAT_INFRA_API_TOKEN (see run_server.py).
+# Docker/LAN: export AIPLAT_INFRA_API_HOST=0.0.0.0 and set the token.
+_host = os.getenv("AIPLAT_INFRA_API_HOST", "127.0.0.1")
+_port = os.getenv("AIPLAT_PORT", os.getenv("AIPLAT_INFRA_API_PORT", "8001"))
+bind = f"{_host}:{_port}"
 
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = "uvicorn.workers.UvicornWorker"

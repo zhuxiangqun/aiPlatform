@@ -21,13 +21,14 @@ const ALL_MENU_KEYS: string[] = (() => {
 // ── Role-based sidebar visibility ──────────────────────────────────────
 
 const ROLE_MENUS: Record<string, string[]> = {
-  admin:     ["dashboard","knowledge","build","diagnostics","platform","help"],
-  developer: ["dashboard","knowledge","build","diagnostics","help"],
-  operator:  ["dashboard","diagnostics","platform","help"],
+  // "eval" = 评测一级组（与 build 平级）；漏列会被 L1 过滤掉
+  admin:     ["dashboard","knowledge","eval","build","diagnostics","platform","help"],
+  developer: ["dashboard","knowledge","eval","build","diagnostics","help"],
+  operator:  ["dashboard","eval","diagnostics","platform","help"],
   business:  ["dashboard","help"],
   user:      ["dashboard","help"],
   approver:  ["dashboard","diagnostics","help"],
-  fde:       ["dashboard","knowledge","build","diagnostics","help"],
+  fde:       ["dashboard","knowledge","eval","build","diagnostics","help"],
   viewer:    ["dashboard","help"],
 };
 

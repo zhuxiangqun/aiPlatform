@@ -59,8 +59,10 @@ $PIP install -e . 2>&1 | grep -E "(Successfully|ERROR|error)" || {
 }
 
 echo ""
-echo "启动 aiPlat-infra API 服务 (端口 8001)..."
-nohup "$PY" -m infra.management.api.run_server --host 0.0.0.0 --port 8001 > /tmp/aiplat-infra.log 2>&1 &
+# 默认 127.0.0.1：非 loopback 绑定时 infra 强制要求 AIPLAT_INFRA_API_TOKEN
+INFRA_HOST="${AIPLAT_INFRA_API_HOST:-127.0.0.1}"
+echo "启动 aiPlat-infra API 服务 (${INFRA_HOST}:8001)..."
+nohup "$PY" -m infra.management.api.run_server --host "$INFRA_HOST" --port 8001 > /tmp/aiplat-infra.log 2>&1 &
 INFRA_PID=$!
 echo "aiPlat-infra PID: $INFRA_PID"
 

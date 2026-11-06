@@ -118,7 +118,7 @@ export default function EvalScorecardPanel({ tenantId = 'eval-v1' }: Props) {
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">G2b pass_rate (n=30)</dt>
+              <dt className="text-gray-500">G2b pass_rate (scoped n)</dt>
               <dd>{status.g2b_pass_rate ?? '—'}</dd>
             </div>
             <div className="col-span-2 sm:col-span-3">

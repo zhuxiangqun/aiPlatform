@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1792
+total_capabilities: 1802
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 507
+    caps_count: 514
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1344,10 +1344,38 @@ domains:
         type: "function"
         signature: "POST /package/code-review-gold/run → proxy|503"
         module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_session_eval_run"
+        type: "function"
+        signature: "POST /package/session-eval/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_arena_run"
+        type: "function"
+        signature: "POST /package/arena/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_skill_suite_run"
+        type: "function"
+        signature: "POST /package/skill-evals/suites/{suite_id}/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_context_mgmt_run"
+        type: "function"
+        signature: "POST /package/context-mgmt/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_memory_persist_run"
+        type: "function"
+        signature: "POST /package/memory-persist/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "package_self_learn_run"
+        type: "function"
+        signature: "POST /package/self-learn/run → proxy|503"
+        module: "aiPlat-platform/apps/eval/api/jobs_api.py"
       - symbol: "get_eval_job"
         type: "function"
         signature: "GET /jobs/{job_id} → proxy|503"
         module: "aiPlat-platform/apps/eval/api/jobs_api.py"
+      - symbol: "defaultSessionEvalPayload"
+        type: "function"
+        signature: "defaultSessionEvalPayload()→Record"
+        module: "aiPlat-management/frontend/src/pages/Eval/evalRunPanelHelpers.ts"
       - symbol: "EvalReportsPanel"
         type: "component"
         signature: "EvalReportsPanel({tenantId})"
@@ -3339,7 +3367,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 169
+    caps_count: 172
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -3376,7 +3404,19 @@ domains:
       - symbol: "build_on_demand_pack"
         module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
         type: function
-        signature: "概念题按需注入 CAPABILITIES/registry 短摘"
+        signature: "概念题按需注入 CAPABILITIES/registry + 受控 Wiki 短摘"
+      - symbol: "build_controlled_wiki_excerpts"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+        type: function
+        signature: "白名单 Wiki 短摘（非 CRAG；简报优先）"
+      - symbol: "page_data_has_glossary"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+        type: function
+        signature: "检测 pageData 是否含 guideGlossary（Layer A）"
+      - symbol: "ensure_unreported_page_field_note"
+        module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
+        type: function
+        signature: "无 glossary/审核实况时字段题前置未上报科目说明"
       - symbol: "load_constitution_card"
         module: aiPlat-core/core/harness/digital_human/consultant_knowledge.py
         type: function

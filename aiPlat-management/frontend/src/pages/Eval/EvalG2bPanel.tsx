@@ -62,8 +62,11 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
       <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-100/90 space-y-1">
         <div className="font-medium">G2b 诚实约束</div>
         <ul className="list-disc pl-5 space-y-0.5">
-          <li>task pack n=100 ≠ closeout 完成</li>
-          <li>g2b-31..100 仍需双人盲标 · 不可由 agent 伪造</li>
+          <li>
+            pack n=100 · dual-human closeout{' '}
+            {status?.dual_human_complete ? '已完成' : '未完成'}（scoped observed only）
+          </li>
+          <li>κ / agreement ≠ accuracy · 不可由 agent 伪造标注</li>
           <li>
             <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} · ≠ process_split / staging
           </li>
@@ -141,10 +144,10 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
         <h3 className="font-medium text-gray-200 text-sm">Facilitator checklist</h3>
         <ol className="list-decimal pl-5 space-y-1">
           <li>
-            Pack: <code>bash packages/aiplat-evaluation/scripts/g2b_n100_pack.sh</code>
+            Pack / evidence: <code>docs/a3/G2B_N100.md</code>（n=100 closeout 已归档）
           </li>
-          <li>Fill model outputs → copy into annotator A/B sheets (blind; no gold)</li>
-          <li>Humans label g2b-31..100 independently</li>
+          <li>若重开标注：Fill model outputs → annotator A/B sheets（blind; no gold）</li>
+          <li>Humans label independently · 不可由 agent 伪造</li>
           <li>
             After return: <code>g2b_kappa.py</code> + <code>g2b_accuracy_closeout.py</code>（仍
             accuracy_claim=false）

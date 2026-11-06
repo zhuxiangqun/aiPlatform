@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2731
+total_capabilities: 2741
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| defaultSessionEvalPayload | `aiPlat-management/frontend/src/pages/Eval/evalRunPanelHelpers.ts` | ✅ | 自动同步 | 已合入 |
 | compare_eval_reports_by_id | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
 | compare_eval_reports | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
 | get_eval_job | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | 自动同步 | 已合入 |
@@ -1698,7 +1699,10 @@ scan_hash: 8f9548ec24f4
 | collect_turn | `core/harness/digital_human/trajectory_collector.py` | ✅ | 自动同步 | 已合入 |
 | voice_chat_handler | `core/harness/digital_human/voice_pipeline.py` | ✅ | 自动同步 | 已合入 |
 | build_platform_status_brief | `core/harness/digital_human/platform_status_brief.py` | ✅ | 顾问实况简报（工作区资产/菜单/页面对齐） | 已合入 |
-| build_on_demand_pack | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 概念题按需注入 CAPABILITIES/registry 短摘 | 已合入 |
+| build_on_demand_pack | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 概念题按需注入 CAPABILITIES/registry + 受控 Wiki 短摘 | 已合入 |
+| build_controlled_wiki_excerpts | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 白名单 Wiki 短摘（非 CRAG；简报优先） | 已合入 |
+| page_data_has_glossary | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 检测 pageData 是否含 guideGlossary（Layer A） | 已合入 |
+| ensure_unreported_page_field_note | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 无 glossary/审核实况时字段题前置未上报科目说明 | 已合入 |
 | load_constitution_card | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 顾问心智卡（consultant_constitution.md） | 已合入 |
 | ensure_generic_disclaimer | `core/harness/digital_human/consultant_knowledge.py` | ✅ | 外部泛知识答句前置「非本平台资产」标注 | 已合入 |
 | load_personal_notes | `core/harness/digital_human/consultant_personal.py` | ✅ | 租户级小朱个人笔记 | 已合入 |
@@ -2652,7 +2656,14 @@ scan_hash: 8f9548ec24f4
 | Evaluation B1-L execute stubs 503 | `packages/aiplat-evaluation/app/api/execution_stubs.py` + `app/errors.py` | ✅ | 动态执行统一 `execution_not_migrated` 503；`environment=local`；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B1-L PG EvalStore | `packages/aiplat-evaluation/app/store/pg_store.py` + `pg_runtime.py` + `migrate.py` | ✅ | `postgresql://` via asyncpg；同 schema migrations；密码脱敏；SQLite 仍默认；生成物适用：不适用 | 本批 |
 | Evaluation B1-L /eval UI 降级 | `aiPlat-management/frontend/src/pages/Eval/evalExecutionErrors.ts` + `EvalExecutionPlaneBanner.tsx` | ✅ | `execution_not_migrated`/`sandbox_required` 固定文案；proxy/stubs 显示 Banner；store 只读可用；生成物适用：不适用 | 本批 |
-| Eval UI-1 Run Panel（sync+job） | `pages/Eval/EvalRunPanel.tsx` + `evalRunPanelHelpers.ts` + `apps/eval/api/jobs_api.py` | ✅ | Code-review/Prompt/KB 统一 Run：cohost sync（match_only/evaluate）+ proxy 时 package enqueue/poll/cancel；`process_split_authorized=false`；生成物适用：不适用（管理端 UI） | 本批 |
+| Eval UI-1 Run Panel（sync+job） | `pages/Eval/EvalRunPanel.tsx` + `evalRunPanelHelpers.ts` + `apps/eval/api/jobs_api.py` | ✅ | Code-review/Prompt/KB sync + Session/Arena/Skill/P2 Research job enqueue；proxy 时 package poll/cancel；`process_split_authorized=false`；生成物适用：不适用（管理端 UI） | 本批 |
+| Evaluation local proxy up/down | `packages/aiplat-evaluation/scripts/local_proxy_{up,down}.sh` + `start.sh` Step 2b | ✅ | 本机 `:8010`+worker + `AIPLAT_EVAL_SERVICE_URL`；默认 `AIPLAT_EVAL_LOCAL_PROXY=1`；≠ staging；生成物适用：不适用 | 本批 |
+| package_session_eval_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue session_eval | 本批 |
+| package_arena_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue arena length-smoke | 本批 |
+| package_skill_suite_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue skill_suite fixture | 本批 |
+| package_context_mgmt_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue context_mgmt | 本批 |
+| package_memory_persist_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue memory_persist | 本批 |
+| package_self_learn_run | `aiPlat-platform/apps/eval/api/jobs_api.py` | ✅ | proxy enqueue self_learn | 本批 |
 | Eval UI-2 Reports 浏览器 | `pages/Eval/EvalReportsPanel.tsx` + `GET …/store/reports` + `EvalStore.list_reports` / `eval_list_reports` | ✅ | store 报告列表+按 id 拉取+gold JSONL 摘要；accuracy 不宣称；proxy/cohost 双模；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-3 Sets/Review 交互 | `pages/Eval/EvalSetsPanel.tsx` + `EvalReviewPanel.tsx` | ✅ | Sets 点选加载 tasks；Review pending + Pass/Fail adjudicate + preannotate/lock-v0；accuracy_claim 恒诚实；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-4 Gates 交互 | `pages/Eval/EvalGatesPanel.tsx` | ✅ | gates 列表/详情 + Run E5/G2a + Calibrate E4；local gate_claim ≠ accuracy；生成物适用：不适用（管理端 UI） | 本批 |
@@ -2662,7 +2673,7 @@ scan_hash: 8f9548ec24f4
 | Eval Preference ops panel | `pages/Eval/EvalPreferencePanel.tsx` + `core/apps/eval/service/preference.py` + `GET …/store/preference-status` + CoreFacade `eval_preference_pack_status` | ✅ | pairs/aggregate facilitation（agreement/κ ≠ accuracy；fixture solo ≠ human）；`accuracy_claim=false`；生成物适用：不适用（管理端 UI） | 本批 |
 | preference_pack_status | `core/apps/eval/service/preference.py` | ✅ | 读 preference pairs + aggregate；facilitation-only | 本批 |
 | eval_preference_pack_status | `core/api/core_facade.py` | ✅ | Preference pack status facade | 本批 |
-| Eval Scorecard ops panel | `pages/Eval/EvalScorecardPanel.tsx` + `core/apps/eval/service/scorecard.py` + `GET …/store/scorecard-status` + CoreFacade `eval_scorecard_status` | ✅ | axes/attestation honesty；`accuracy_claim=false`；≠ authorize；G2b n=30≠n=100；生成物适用：不适用（管理端 UI） | 本批 |
+| Eval Scorecard ops panel | `pages/Eval/EvalScorecardPanel.tsx` + `core/apps/eval/service/scorecard.py` + `GET …/store/scorecard-status` + CoreFacade `eval_scorecard_status` | ✅ | axes/attestation honesty；`accuracy_claim=false`；≠ authorize；G2b scoped closeout n=100；生成物适用：不适用（管理端 UI） | 本批 |
 | scorecard_status | `core/apps/eval/service/scorecard.py` | ✅ | 读 scorecard_v1 + evidence_manifest；honesty-only | 本批 |
 | eval_scorecard_status | `core/api/core_facade.py` | ✅ | Scorecard honesty facade | 本批 |
 | Eval Evidence audit panel | `pages/Eval/EvalEvidencePanel.tsx` + `core/apps/eval/service/evidence_audit.py` + `GET …/store/evidence-audit-status` + CoreFacade `eval_evidence_audit_status` | ✅ | tracked aggregate SHA256 + dual-human attestation；`feature5_audit_ready≠accuracy`；生成物适用：不适用（管理端 UI） | 本批 |
@@ -3635,7 +3646,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 175 | 0 | 175 |
+| Agent 系统 | 178 | 0 | 178 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3643,7 +3654,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 283 | 0 | 283 |
+| 评估系统 | 290 | 0 | 290 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3675,7 +3686,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2721** | **10** | **2731** |
+| **总计** | **2731** | **10** | **2741** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

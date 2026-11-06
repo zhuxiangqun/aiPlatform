@@ -142,6 +142,30 @@ async def _stub_security_redteam_run(request: Request):
     )
 
 
+async def _stub_session_eval_run(request: Request):
+    claims = require_bearer(request)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="session_eval", claims=claims, payload=body)
+
+
+async def _stub_context_mgmt_run(request: Request):
+    claims = require_bearer(request)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="context_mgmt", claims=claims, payload=body)
+
+
+async def _stub_memory_persist_run(request: Request):
+    claims = require_bearer(request)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="memory_persist", claims=claims, payload=body)
+
+
+async def _stub_self_learn_run(request: Request):
+    claims = require_bearer(request)
+    body = await _read_json(request)
+    return _enqueue_or_deny(request, runner_id="self_learn", claims=claims, payload=body)
+
+
 async def _get_job(request: Request, job_id: str):
     require_bearer(request)
     from app.store.jobs import get_job
@@ -240,6 +264,26 @@ def register_execution_stubs(application: FastAPI) -> None:
     application.add_api_route(
         f"{prefix}/security/redteam/run",
         _stub_security_redteam_run,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        f"{prefix}/session-eval/run",
+        _stub_session_eval_run,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        f"{prefix}/context-mgmt/run",
+        _stub_context_mgmt_run,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        f"{prefix}/memory-persist/run",
+        _stub_memory_persist_run,
+        methods=["POST"],
+    )
+    application.add_api_route(
+        f"{prefix}/self-learn/run",
+        _stub_self_learn_run,
         methods=["POST"],
     )
     application.add_api_route(

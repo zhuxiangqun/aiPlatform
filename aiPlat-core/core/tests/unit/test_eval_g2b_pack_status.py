@@ -12,10 +12,11 @@ def test_g2b_pack_status_reads_n100_pack():
     assert st["task_count"] == 100
     assert st["target_n"] == 100
     assert st["pack_ready"] is True
-    # Committed closeout is still n=30 until dual-human 31–100 lands.
-    assert st["closeout_n"] == 30
-    assert st["pending_dual_human"] == 70
-    assert st["dual_human_complete"] is False
+    # Dual-human closeout evidence is n=100 (scoped; accuracy_claim stays false).
+    assert st["closeout_n"] == 100
+    assert st["pending_dual_human"] == 0
+    assert st["dual_human_complete"] is True
+    assert st.get("kappa") is not None
     assert "prompt" in (st.get("families") or {})
 
 

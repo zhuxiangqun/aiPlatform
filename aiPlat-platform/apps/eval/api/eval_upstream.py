@@ -106,4 +106,10 @@ def _probe_paths() -> Tuple[str, ...]:
         "/code-review-gold/run",
         "/prompts/eval/runs",
         "/kb-eval/run",
+        "/arena/run",
+        "/session-eval/run",
+        "/skill-evals/suites/{suite_id}/run",
+        "/context-mgmt/run",
+        "/memory-persist/run",
+        "/self-learn/run",
     )

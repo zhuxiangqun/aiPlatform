@@ -14,6 +14,13 @@ import type { ToolInfo } from '../../../services';
 import { getSourceLabel, extractProvenance } from '../../../utils/sourceLabel';
 import { StatusBadge } from '../../../utils/statusLabel';
 import { TOOL_CATEGORIES } from '../../../utils/categoryConfig';
+import {
+  reportPageData,
+  clearPageData,
+  clearAssetAuditPageFields,
+  reportAssetAuditToPage,
+} from '../../../lib/pageDataBridge';
+import { toolsConsultantPageData } from './toolsGlossary';
 
 /** Best-effort patch TOOL_DEF["description"] / description= in Python source. */
 function patchToolSourceDescription(source: string, description: string): string {
@@ -139,6 +146,36 @@ const WorkspaceTools: React.FC = () => {
   const [installingSeed, setInstallingSeed] = useState<string | null>(null);
 
   useEffect(() => { fetchTools(); }, [fetchTools]);
+
+  useEffect(() => {
+    const statusCount: Record<string, number> = {};
+    tools.forEach((t: any) => {
+      const st = String(t.status || t.enabled || 'unknown').toLowerCase();
+      statusCount[st] = (statusCount[st] || 0) + 1;
+    });
+    reportPageData(
+      '/workspace/tools',
+      toolsConsultantPageData({ totalTools: tools.length, statusCount }),
+    );
+    return () => clearPageData('/workspace/tools');
+  }, [tools]);
+
+  // Layer A：编辑弹窗打开时上报审核实况
+  useEffect(() => {
+    const id = String(editTool?.name || '');
+    if (!editOpen || !id) {
+      clearAssetAuditPageFields('/workspace/tools');
+      return;
+    }
+    reportAssetAuditToPage({
+      route: '/workspace/tools',
+      kind: 'tool',
+      id,
+      name: id,
+      result: auditResult,
+    });
+    return () => clearAssetAuditPageFields('/workspace/tools');
+  }, [editOpen, editTool?.name, auditResult]);
 
   // --- Handlers ---
 
