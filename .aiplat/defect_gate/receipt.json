@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-06T15:26:06+08:00",
+  "reviewed_at": "2026-11-06T15:42:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e1780f0f458d1cf0795c513d1d08cdca4bcb5595",
+  "merge_base": "5a5ae534693992dcfbb4039edb02d50ba5c3b5a6",
   "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "e1780f0f458d1cf0795c513d1d08cdca4bcb5595",
+  "head_sha": "5a5ae534693992dcfbb4039edb02d50ba5c3b5a6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Refresh after eval docs archive + WS proxy push (e1780f0f). Empty merge diff lock. Local lock only."
+  "note": "Refresh after inventories/a3 closeout archive push (5a5ae534). Empty merge diff lock. Local lock only."
 }
