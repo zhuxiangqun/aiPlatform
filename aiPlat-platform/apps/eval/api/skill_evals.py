@@ -57,9 +57,11 @@ async def list_skill_eval_suites(
     from core.api.core_facade import skill_eval_list_suites
 
     try:
-        return await skill_eval_list_suites(
+        out = await skill_eval_list_suites(
             limit=limit, offset=offset, tenant_id=tenant_id
         )
+        # ItemResponse expects {data: ...}; facade returns {items,total,...}.
+        return {"data": out if isinstance(out, dict) else {"value": out}}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 
@@ -69,7 +71,8 @@ async def get_skill_eval_suite(suite_id: str):
     from core.api.core_facade import skill_eval_get_suite
 
     try:
-        return await skill_eval_get_suite(suite_id=suite_id)
+        out = await skill_eval_get_suite(suite_id=suite_id)
+        return {"data": out if isinstance(out, dict) else {"value": out}}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 

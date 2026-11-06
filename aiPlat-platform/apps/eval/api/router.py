@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from auth.deps import require_auth
 
 router = APIRouter(tags=["eval-platform"], dependencies=[Depends(require_auth)])
+from .product_health import router as _hz; router.include_router(_hz)  # FE /eval/healthz
 from .skill_evals import router as _a; router.include_router(_a)
 from .runs_eval import router as _b; router.include_router(_b)
 from .kb_eval import router as _c; router.include_router(_c)

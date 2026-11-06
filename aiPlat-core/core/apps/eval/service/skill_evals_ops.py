@@ -25,16 +25,39 @@ def _rt():
 
 
 def _store():
+    """Prefer KernelRuntime.execution_store; else open shared ExecutionStore.
+
+    Platform process often has no KernelRuntime wired (unlike Core). Without
+    this fallback, /platform/apps/eval/skill-evals/* returns 503.
+    """
     rt = _rt()
     store = getattr(rt, "execution_store", None) if rt else None
-    if not store:
-        raise RuntimeError("ExecutionStore not initialized")
-    return store
+    if store:
+        return store
+    try:
+        from core.api.core_facade import get_execution_store
+
+        return get_execution_store()
+    except Exception as e:
+        _log.warning("skill_evals: get_execution_store failed: %s", e)
+        raise RuntimeError("ExecutionStore not initialized") from e
 
 
 def _require_runtime():
+    """For execute paths that need skill_manager — KernelRuntime required."""
     rt = _rt()
     store = getattr(rt, "execution_store", None) if rt else None
+    if not store and rt is None:
+        # List/CRUD can use _store() fallback; run still needs a live runtime.
+        raise RuntimeError("Runtime not initialized")
+    if not store:
+        try:
+            from core.api.core_facade import get_execution_store
+
+            store = get_execution_store()
+        except Exception as e:
+            _log.warning("skill_evals: get_execution_store failed: %s", e)
+            store = None
     if not store or not rt:
         raise RuntimeError("Runtime not initialized")
     return rt, store

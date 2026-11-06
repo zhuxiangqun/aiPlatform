@@ -68,6 +68,39 @@ async def test_proxy_eval_store_forwards(monkeypatch):
     assert args[1] == "http://127.0.0.1:8010/api/platform/apps/eval/store/healthz"
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_product_healthz_proxies_when_url_set(monkeypatch):
+    from apps.eval.api.eval_upstream import proxy_eval_store
+
+    monkeypatch.setenv("AIPLAT_EVAL_SERVICE_URL", "http://127.0.0.1:8010")
+
+    req = MagicMock(spec=Request)
+    req.method = "GET"
+    req.headers = {}
+    req.query_params = MagicMock()
+    req.query_params.multi_items.return_value = []
+    req.body = AsyncMock(return_value=b"")
+
+    fake_resp = MagicMock()
+    fake_resp.status_code = 200
+    fake_resp.json.return_value = {"status": "ok", "b1l_execution_stubs": True}
+    fake_resp.content = b"{}"
+    fake_resp.headers = {"content-type": "application/json"}
+
+    mock_client = AsyncMock()
+    mock_client.request = AsyncMock(return_value=fake_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("apps.eval.api.eval_upstream.httpx.AsyncClient", return_value=mock_client):
+        out = await proxy_eval_store(req, path="/healthz")
+
+    assert out is not None
+    args, _kwargs = mock_client.request.await_args
+    assert args[1] == "http://127.0.0.1:8010/api/platform/apps/eval/healthz"
+
+
 @pytest.mark.asyncio
 async def test_proxy_returns_none_when_disabled():
     from apps.eval.api.eval_upstream import proxy_eval_store

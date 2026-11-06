@@ -25,6 +25,13 @@ async def _require_store() -> Any:
     rt = get_kernel_runtime()
     store = getattr(rt, "execution_store", None) if rt else None
     if not store:
+        try:
+            from core.api.core_facade import get_execution_store
+
+            store = get_execution_store()
+        except Exception as e:
+            raise RuntimeError("ExecutionStore not initialized") from e
+    if not store:
         raise RuntimeError("ExecutionStore not initialized")
     await store.init()
     return store

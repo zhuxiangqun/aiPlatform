@@ -97,6 +97,7 @@ def proxy_status() -> Dict[str, Any]:
 def _probe_paths() -> Tuple[str, ...]:
     """Documented proxied suffixes (for tests / status)."""
     return (
+        "/healthz",
         "/store/healthz",
         "/store/sets",
         "/store/reports",
