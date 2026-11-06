@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-06T16:00:30+08:00",
+  "reviewed_at": "2026-11-06T16:15:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "429fcdade689a204c4029cb0f7692135d954cc31",
+  "merge_base": "89054e4b700f7fe7c1f63115170879884fb08835",
   "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "429fcdade689a204c4029cb0f7692135d954cc31",
+  "head_sha": "89054e4b700f7fe7c1f63115170879884fb08835",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Refresh after eval healthz/store fallback push. Empty merge diff lock. Local lock only."
+  "note": "Refresh after prompt_eval ItemResponse wrap push. Empty merge diff lock. Local lock only."
 }
