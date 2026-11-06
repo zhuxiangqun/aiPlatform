@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-05T18:40:00+08:00",
+  "reviewed_at": "2026-11-06T13:19:11+08:00",
   "base_ref": "origin/main",
-  "merge_base": "797da10e891af4eed0f25e7981f7be3157ac690a",
-  "diff_sha256": "cfe90220f9e3b1565629c4cd74022ec5353d92682f3f143b69ceedf5c1b39d0d",
-  "head_sha": "2ec7b6315643b65677b2280af4190b2c529b8b25",
+  "merge_base": "068be63e40c40193f1a4d0c379833627ff81826b",
+  "diff_sha256": "d77fc832423afe30b858d5d3a60ffa09c2aee8c2446616b1ad3ca2a49f341ee1",
+  "head_sha": "dec58f2f2b362f652ae64a365ed378911612ee49",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only object-card eng refresh; owners still unsigned. Local lock only."
+  "note": "Layer A reportPageData/audit issue0 + controlled Wiki shorts gated by allowlist; semantic_injection remains off; Eval local plane honesty UI. Local lock only."
 }
