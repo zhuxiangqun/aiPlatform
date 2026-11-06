@@ -44,7 +44,10 @@ def test_bootstrap_e3_meets_runnable_gate(tmp_path):
 
 def test_e3_source_inventory_exists():
     root = Path(__file__).resolve().parents[4]
-    inv = root / "reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md"
+    # Body archived 2026-11-06; ops path keeps stub for freeze_check -f.
+    stub = root / "reports/five-products/ops/EVAL_V1_E3_GOLD_SOURCES.md"
+    inv = root / "reports/five-products/ops/_archive/eval-inventories/EVAL_V1_E3_GOLD_SOURCES.md"
+    assert stub.is_file()
     assert inv.is_file()
     text = inv.read_text(encoding="utf-8")
     assert "≥15" in text or ">=15" in text or "E3" in text

@@ -40,7 +40,11 @@
 
 含 `ENGINEERING_UNFREEZE_EVAL_*.md`（16 份）。原路径留 **stub**；`ops_engineering_freeze_check.sh` 仍按原路径做存在性检查。
 
-仍留 `ops/` 原位（盘点 / handoff，本批未迁）：`EVAL_V1_E1_INVENTORY.md`、`EVAL_V1_E3_GOLD_SOURCES.md`、`EVAL_P1B_AGENT_HANDOFF.md`。新工作写新 living 决策，不回填这些文件当说明书。
+## inventories（本批已迁 archive）
+
+目录：[`_archive/eval-inventories/`](./_archive/eval-inventories/)  
+
+含 `EVAL_V1_E1_INVENTORY.md`、`EVAL_V1_E3_GOLD_SOURCES.md`、`EVAL_P1B_AGENT_HANDOFF.md`。原路径留 **stub**；E3 正文断言读 archive（`test_eval_v1_e3_gold`）。
 
 ## evidence（已迁 archive）
 
@@ -52,6 +56,8 @@
 
 `packages/aiplat-evaluation/docs/a3/`：门禁、基准协议、证据清单。入口横幅已标明「非白皮书」。对外叙事仍走平台 `docs/whitepaper/volumes/01|02`。
 
+已收官 closeout（索引-only，正文在 [`packages/aiplat-evaluation/docs/a3/_archive/`](../../../packages/aiplat-evaluation/docs/a3/_archive/)）：`A_LOCAL_CLOSEOUT`、`B2L_LOCAL_CLOSEOUT`、`B3L_LOCAL_CLOSEOUT`、`G2B_ACCURACY_CLOSEOUT`。原路径留 stub（`oidc_minimal_v0_gate` 仍可读 `A_LOCAL` 中的 JWT/OIDC 字样）。
+
 ## 明确不存在
 
 - 仓库内**没有**「评测产品技术白皮书」「评测产品产品白皮书」成对专册。
@@ -59,5 +65,4 @@
 
 ## 后续批次（未做）
 
-- a3 内已收官单点协议降权为索引-only（保留脚本引用路径）
-- 可选：迁 `EVAL_V1_E1_INVENTORY` / `E3_GOLD_SOURCES` / `P1B_AGENT_HANDOFF`（先做入链普查）
+- a3 内其余已收官单点协议（非 CLOSEOUT 命名）按需再降权；保留脚本/JSON 引用路径不动

@@ -5,7 +5,8 @@
 >
 > **文档定位（2026-11-06 收口）**：本目录是 **prep / 门禁 / 证据包**，**不是**评测产品白皮书。  
 > 产品现行入口 → [`reports/five-products/modules/evaluation/README.md`](../../../../reports/five-products/modules/evaluation/README.md)  
-> 收口凭证归档 → [`reports/five-products/ops/_archive/eval-receipts/`](../../../../reports/five-products/ops/_archive/eval-receipts/)
+> 收口凭证归档 → [`reports/five-products/ops/_archive/eval-receipts/`](../../../../reports/five-products/ops/_archive/eval-receipts/)  
+> 已收官 closeout 正文 → [`_archive/`](./_archive/)（原路径为索引 stub，脚本引用路径不变）
 
 | Doc | Purpose |
 |-----|---------|
@@ -19,7 +20,7 @@
 | [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md) | 进程拆分硬门 |
 | [`PREP_STATUS.json`](./PREP_STATUS.json) | 自动检查结果 |
 | [`LIVE_DRILL_EVIDENCE.md`](./LIVE_DRILL_EVIDENCE.md) | 生产 live 证据模板 |
-| [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | B2-L 本地工程验收（≠ staging authorize） |
+| [`B2L_LOCAL_CLOSEOUT.md`](./B2L_LOCAL_CLOSEOUT.md) | **索引** → [`_archive/B2L_LOCAL_CLOSEOUT.md`](./_archive/B2L_LOCAL_CLOSEOUT.md)（≠ staging authorize） |
 | [`B3L_LOCAL.md`](./B3L_LOCAL.md) | B3-L local_stub 沙箱雏形（无真实隔离） |
 | [`LLM_LOCAL.md`](./LLM_LOCAL.md) | 可选 prompt_eval LLM + `b2l_llm_dynamic_gate.sh`（stub 必过 / live 可选） |
 | [`LIVE_LLM_SMOKE.md`](./LIVE_LLM_SMOKE.md) | 10 条 stub vs live×3 smoke（`accuracy_claim=false`；证据 `local-eval-live-llm-*.json`） |
@@ -31,7 +32,7 @@
 | [`SELF_LEARN_V0.md`](./SELF_LEARN_V0.md) | P2-3 自学习抗性 v0（错误反馈拒绝/遗忘/回滚；writeback=false） |
 | [`CALIBRATION_V0.md`](./CALIBRATION_V0.md) | P2-0 人工评估器校准协议（已收口；≠ accuracy） |
 | [`PREFERENCE_V0.md`](./PREFERENCE_V0.md) | 人评/偏好 A/B v0（≠ accuracy） |
-| [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | B3-L 本地工程验收（≠ staging authorize） |
+| [`B3L_LOCAL_CLOSEOUT.md`](./B3L_LOCAL_CLOSEOUT.md) | **索引** → [`_archive/B3L_LOCAL_CLOSEOUT.md`](./_archive/B3L_LOCAL_CLOSEOUT.md)（≠ staging authorize） |
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
 | [`S1_LIVE.md`](./S1_LIVE.md) | S1 live_llm 攻击集（ASR/leak/false_refusal；无 skill tools；≠安全认证） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |
@@ -45,7 +46,7 @@
 | [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（v1.1 text_quality smoke） |
 | [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |
 | [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | 落地 E0–E5 ↔ EET-1..4 映射（✅ Accepted 2026-11-05；不另建 gate 等级） |
-| [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | G2b 仲裁金标 + 模型 pass-rate（当前 committed n=30；κ≠accuracy；claim 默认 false） |
+| [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | **索引** → [`_archive/G2B_ACCURACY_CLOSEOUT.md`](./_archive/G2B_ACCURACY_CLOSEOUT.md)（κ≠accuracy；claim 默认 false） |
 | [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |
 | [`LOCAL_CHAOS.md`](./LOCAL_CHAOS.md) | 本机 chaos 备份恢复（SQLite+可选 B4-S kill/restart；≠ staging） |
 | [`B4S_PREP.md`](./B4S_PREP.md) | B4-S 主机前置（未确认 → 阻塞 staging；≠ authorize） |
