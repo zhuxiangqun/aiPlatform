@@ -1,6 +1,8 @@
 """Prompt Eval API — thin HTTP over CoreFacade prompt_eval_* (ARCH v1.1b)."""
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, HTTPException
 from core.schemas_prompt_app import PromptTestCaseCreate, PromptTestCaseUpdate, PromptEvalRunCreate
 from apps.common_schemas import StatusResponse, ItemResponse
@@ -8,13 +10,30 @@ from apps.common_schemas import StatusResponse, ItemResponse
 router = APIRouter()
 
 
+def _as_item(out: Any) -> Dict[str, Any]:
+    """Wrap facade payloads for ItemResponse ({data: dict}).
+
+    list_runs returns a bare list; list_test_cases returns {items,total}.
+    FE unwrap uses res.data ?? res and reads items/total.
+    """
+    if isinstance(out, list):
+        return {"data": {"items": out, "total": len(out)}}
+    if isinstance(out, dict):
+        if "items" in out or "total" in out or "data" in out:
+            return {"data": out}
+        return {"data": out}
+    return {"data": {"value": out}}
+
+
 @router.get("/prompts/eval/test-cases", response_model=ItemResponse)
 async def list_test_cases(template_id: str = "", limit: int = 100, offset: int = 0):
     from core.api.core_facade import prompt_eval_list_test_cases
 
     try:
-        return await prompt_eval_list_test_cases(
-            template_id=template_id, limit=limit, offset=offset
+        return _as_item(
+            await prompt_eval_list_test_cases(
+                template_id=template_id, limit=limit, offset=offset
+            )
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -87,8 +106,10 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
     from core.api.core_facade import prompt_eval_list_runs
 
     try:
-        return await prompt_eval_list_runs(
-            template_id=template_id, limit=limit, offset=offset
+        return _as_item(
+            await prompt_eval_list_runs(
+                template_id=template_id, limit=limit, offset=offset
+            )
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -99,7 +120,7 @@ async def get_eval_run(run_id: str):
     from core.api.core_facade import prompt_eval_get_run
 
     try:
-        return await prompt_eval_get_run(run_id=run_id)
+        return _as_item(await prompt_eval_get_run(run_id=run_id))
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
