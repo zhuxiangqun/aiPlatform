@@ -56,7 +56,14 @@
 
 `packages/aiplat-evaluation/docs/a3/`：门禁、基准协议、证据清单。入口横幅已标明「非白皮书」。对外叙事仍走平台 `docs/whitepaper/volumes/01|02`。
 
-已收官 closeout（索引-only，正文在 [`packages/aiplat-evaluation/docs/a3/_archive/`](../../../packages/aiplat-evaluation/docs/a3/_archive/)）：`A_LOCAL_CLOSEOUT`、`B2L_LOCAL_CLOSEOUT`、`B3L_LOCAL_CLOSEOUT`、`G2B_ACCURACY_CLOSEOUT`。原路径留 stub（`oidc_minimal_v0_gate` 仍可读 `A_LOCAL` 中的 JWT/OIDC 字样）。
+已收官（索引-only，正文在 [`packages/aiplat-evaluation/docs/a3/_archive/`](../../../packages/aiplat-evaluation/docs/a3/_archive/)）：
+
+- CLOSEOUT：`A_LOCAL` / `B2L_LOCAL` / `B3L_LOCAL` / `G2B_ACCURACY`
+- 已签/已收官：`G2B_100_PROTOCOL` / `G2B_N100` / `G2B_PREP` / `EVAL_EVIDENCE_LEVEL_MAP_V1` / `ARENA_BLIND_PILOT` / `ARENA_BLIND_DESIGN`
+
+原路径留 stub。`A_LOCAL` stub 仍含 JWT/OIDC 字样。
+
+**刻意全文保留**：`ARENA_BLIND_SEND_*`、`ARENA_BLIND_RUBRIC_V1`（pack 复制正文）；OIDC/SANDBOX/ARCH 等门禁读内容的 prep；SCORE_* / PRODUCT_ROOT 等 living。
 
 ## 明确不存在
 
@@ -65,4 +72,4 @@
 
 ## 后续批次（未做）
 
-- a3 内其余已收官单点协议（非 CLOSEOUT 命名）按需再降权；保留脚本/JSON 引用路径不动
+- 无强制下一批；其余 a3 prep 仅在「内容断言门禁已迁走 / 不再被 pack 复制」后再降权

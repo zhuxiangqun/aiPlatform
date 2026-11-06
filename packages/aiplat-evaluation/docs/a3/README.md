@@ -36,16 +36,16 @@
 | [`S1_LOCAL.md`](./S1_LOCAL.md) | S1 SECURITY_EVAL_V1 fixture 门禁（ASR≠accuracy） |
 | [`S1_LIVE.md`](./S1_LIVE.md) | S1 live_llm 攻击集（ASR/leak/false_refusal；无 skill tools；≠安全认证） |
 | [`P1_LOCAL.md`](./P1_LOCAL.md) | P1–P1.2 + engineering composite（text/safety 计分；asr 报告项；≠accuracy） |
-| [`G2B_PREP.md`](./G2B_PREP.md) | G2b 第二标注者预备（任务库 **100**；`accuracy_claim=false`） |
-| [`G2B_N100.md`](./G2B_N100.md) | G2b n=100 扩样 runbook（31–100 双人标注 pending） |
-| [`G2B_100_PROTOCOL.md`](./G2B_100_PROTOCOL.md) | G2b-100 预注册 protocol（✅ SIGNED 2026-11-05 · Holdout A；可开 31–100） |
-| [`ARENA_BLIND_DESIGN.md`](./ARENA_BLIND_DESIGN.md) | Arena 盲评设计（P1a）；现行 length winner = smoke only |
+| [`G2B_PREP.md`](./G2B_PREP.md) | **索引** → [`_archive/G2B_PREP.md`](./_archive/G2B_PREP.md)（`accuracy_claim=false`） |
+| [`G2B_N100.md`](./G2B_N100.md) | **索引** → [`_archive/G2B_N100.md`](./_archive/G2B_N100.md)（n=100 已收官） |
+| [`G2B_100_PROTOCOL.md`](./G2B_100_PROTOCOL.md) | **索引** → [`_archive/G2B_100_PROTOCOL.md`](./_archive/G2B_100_PROTOCOL.md)（✅ SIGNED） |
+| [`ARENA_BLIND_DESIGN.md`](./ARENA_BLIND_DESIGN.md) | **索引** → [`_archive/ARENA_BLIND_DESIGN.md`](./_archive/ARENA_BLIND_DESIGN.md)（P1a；length=smoke） |
 | [`ARENA_BLIND_RUBRIC_V1.md`](./ARENA_BLIND_RUBRIC_V1.md) | Arena 盲评 rubric 冻结稿（A/B/Tie） |
-| [`ARENA_BLIND_PILOT.md`](./ARENA_BLIND_PILOT.md) | P1b pilot 手册 + pack 脚手架；完成仍依赖真人 |
+| [`ARENA_BLIND_PILOT.md`](./ARENA_BLIND_PILOT.md) | **索引** → [`_archive/ARENA_BLIND_PILOT.md`](./_archive/ARENA_BLIND_PILOT.md)（P1b 已收口） |
 | [`ADR_CANONICAL_RUNNERS_V1.md`](./ADR_CANONICAL_RUNNERS_V1.md) | Prompt/KB package runner canonical；legacy core 只读 |
 | [`ADR_SCORE_SCHEMA_VERSIONING_V1.md`](./ADR_SCORE_SCHEMA_VERSIONING_V1.md) | score/composite 版本与历史兼容（v1.1 text_quality smoke） |
 | [`REPORT_COMPARE_V0.md`](./REPORT_COMPARE_V0.md) | P1b 报告对比：同 composite_version 才 comparable |
-| [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | 落地 E0–E5 ↔ EET-1..4 映射（✅ Accepted 2026-11-05；不另建 gate 等级） |
+| [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./EVAL_EVIDENCE_LEVEL_MAP_V1.md) | **索引** → [`_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md)（✅ Accepted） |
 | [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md) | **索引** → [`_archive/G2B_ACCURACY_CLOSEOUT.md`](./_archive/G2B_ACCURACY_CLOSEOUT.md)（κ≠accuracy；claim 默认 false） |
 | [`PROD_LIVE.md`](./PROD_LIVE.md) | 生产候选模型 live 基线（25×3；≠ 3B smoke） |
 | [`LOCAL_CHAOS.md`](./LOCAL_CHAOS.md) | 本机 chaos 备份恢复（SQLite+可选 B4-S kill/restart；≠ staging） |
