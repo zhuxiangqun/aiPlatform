@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-06T13:19:11+08:00",
+  "reviewed_at": "2026-11-06T15:26:06+08:00",
   "base_ref": "origin/main",
-  "merge_base": "068be63e40c40193f1a4d0c379833627ff81826b",
-  "diff_sha256": "d77fc832423afe30b858d5d3a60ffa09c2aee8c2446616b1ad3ca2a49f341ee1",
-  "head_sha": "dec58f2f2b362f652ae64a365ed378911612ee49",
+  "merge_base": "e1780f0f458d1cf0795c513d1d08cdca4bcb5595",
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "head_sha": "e1780f0f458d1cf0795c513d1d08cdca4bcb5595",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Layer A reportPageData/audit issue0 + controlled Wiki shorts gated by allowlist; semantic_injection remains off; Eval local plane honesty UI. Local lock only."
+  "note": "Refresh after eval docs archive + WS proxy push (e1780f0f). Empty merge diff lock. Local lock only."
 }
