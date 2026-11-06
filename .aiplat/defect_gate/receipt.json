@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-06T15:46:30+08:00",
+  "reviewed_at": "2026-11-06T16:00:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f9fd5383369c429e91f33975818f6d41819d2975",
+  "merge_base": "429fcdade689a204c4029cb0f7692135d954cc31",
   "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "f9fd5383369c429e91f33975818f6d41819d2975",
+  "head_sha": "429fcdade689a204c4029cb0f7692135d954cc31",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Refresh after a3 protocol demotion push. Empty merge diff lock. Local lock only."
+  "note": "Refresh after eval healthz/store fallback push. Empty merge diff lock. Local lock only."
 }
