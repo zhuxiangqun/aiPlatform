@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T00:06:00+08:00",
+  "reviewed_at": "2026-11-08T00:10:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
-  "diff_sha256": "91fb39540f477aa4c08cee189abcccb88c84c63e6e687337a7b468e03c5a9b83",
-  "head_sha": "137c11c4beed6ff48e1515779a3871dd56110f04",
+  "diff_sha256": "e7541b5359f029be0262fcdc661cf7e59a694d0542050dc46ffd033e8be853b2",
+  "head_sha": "faac18b220e3f55bcfa8b5c774729fb14b9757ec",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI unblock: facade store prefer; §80 Wiki; scorecard n=100; contract §78. Local lock only."
+  "note": "After whitepaper sync. Local lock only; CI unlock needs non-author Approve."
 }
