@@ -13,7 +13,8 @@ def test_scorecard_status_reads_v1():
     assert st["dual_human_attestation"] == "confirmed"
     assert isinstance(st["axes"], list) and len(st["axes"]) >= 3
     assert st["dimensions_n"] >= 5
-    assert st["g2b_closeout_n"] == 30
+    # evidence_manifest.v1.json method.g2b_accuracy (n=100 closeout; claim=false)
+    assert st["g2b_closeout_n"] == 100
     assert st["g2b_target_n"] == 100
 
 

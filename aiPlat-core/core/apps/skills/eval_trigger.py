@@ -48,8 +48,18 @@ class SkillEvalTriggerSkill(BaseSkill):
         super().__init__(cfg)
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        rt = get_kernel_runtime()
-        store = getattr(rt, "execution_store", None) if rt else None
+        # Prefer CoreFacade store so store-direct / tests are not shadowed by a
+        # stale KernelRuntime.execution_store left from another suite.
+        store = None
+        try:
+            from core.api.core_facade import get_execution_store
+
+            store = get_execution_store()
+        except Exception:
+            store = None
+        if store is None:
+            rt = get_kernel_runtime()
+            store = getattr(rt, "execution_store", None) if rt else None
         if store is None:
             return SkillResult(success=False, error="ExecutionStore not initialized")
 

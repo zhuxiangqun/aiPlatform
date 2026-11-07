@@ -97,7 +97,7 @@ const KIND_META: Record<EvalRunKind, KindMeta> = {
   },
   skill_suite: {
     title: 'Skill · 技能 fixture',
-    syncHint: '需 Docker 沙箱探针；不会真跑 live 工具',
+    syncHint: 'Enqueue 前请先启动 Docker；无沙箱会 sandbox_required。不会真跑 live 工具',
     packagePath: '/platform/apps/eval/package/skill-evals/suites/ui-fixture/run',
     runnerId: 'skill_suite',
     jobOnly: true,
@@ -237,6 +237,7 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
             p0_recall?: number | null;
             case_count?: number;
             gold_dir?: string;
+            tip?: string;
           };
         }>('/platform/apps/eval/code-review-gold/evaluate', {
           match_only: true,
@@ -254,10 +255,14 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
           p0_recall?: number | null;
           case_count?: number;
           gold_dir?: string;
+          tip?: string;
         };
         if (!d?.ok) {
+          const tip =
+            d?.tip ||
+            `python3 scripts/eval_code_review_gold.py --install-seeds --tenant-id ${tenantId}`;
           setSyncMsg(
-            `失败: ${d?.reason || 'unknown'}${d?.gold_dir ? ` · dir=${d.gold_dir}` : ''} · tip: ops_harness_ready_check.sh --install-seeds`,
+            `失败: ${d?.reason || 'unknown'}${d?.gold_dir ? ` · dir=${d.gold_dir}` : ''} · tip: ${tip}`,
           );
         } else {
           setSyncMsg(
@@ -389,6 +394,14 @@ export default function EvalRunPanel({ kind, upstreamMode, tenantId = 'eval-v1' 
       data-testid="eval-run-panel"
       data-kind={kind}
     >
+      <div
+        className="rounded border border-sky-800/40 bg-sky-950/20 px-3 py-2 text-xs text-sky-100/90"
+        data-testid="eval-run-pipe-banner"
+      >
+        <strong className="font-medium text-sky-50">评测对象：评测管道（fixture）</strong>
+        <span className="text-sky-200/70"> · 不是某个 Agent / 模型 / 真实项目。要评成果物请去「评测 Agent」。</span>
+      </div>
+
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-medium text-gray-100">{meta.title} · Run</h3>

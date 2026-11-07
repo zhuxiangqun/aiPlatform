@@ -485,7 +485,13 @@ def resolve_workspace_agent_model_purpose(agent_info: Any) -> str:
     loop_type = str(getattr(agent_info, "loop_type", None) or meta.get("loop_type") or "").strip().lower()
     if loop_type in ("react", "plan", "plan_execute", "function_call"):
         return "agent"
-    agent_type = str(getattr(agent_info, "agent_type", None) or meta.get("agent_type") or "").strip().lower()
+    # AgentInfo uses `.type`; some stubs use `.agent_type`.
+    agent_type = str(
+        getattr(agent_info, "agent_type", None)
+        or getattr(agent_info, "type", None)
+        or meta.get("agent_type")
+        or ""
+    ).strip().lower()
     return {
         "rag": "chat",
         "react": "agent",
@@ -1676,6 +1682,8 @@ async def watch_agent_no_progress(
     delay = max(30.0, agent_no_progress_seconds())
     try:
         await asyncio.sleep(delay)
+    except asyncio.CancelledError:
+        return
     except Exception:
         return
 

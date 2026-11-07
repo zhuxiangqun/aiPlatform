@@ -29,6 +29,26 @@ pipeline:
 config:
   model: deepseek-reasoner
   system_prompt: 你是 react_agent，通用 ReAct Agent。引擎内置（engine）：仅核心能力层默认可用；对外（workspace）需白名单/审批后方可调用。
+# Object-contract: general ReAct exam profile (tools + recovery).
+eval_profile:
+  capabilities:
+  - error_recovery
+  - code_gen
+  - clarify_or_ask
+  permissions:
+  - read_only
+  - shell
+  roles:
+  - react
+  target_runtime:
+  - workspace_execute
+  eval_purpose:
+  - behavior
+  - regression
+  - safety
+  - reliability
+  boundaries:
+    note: seed sample — general tool-using agent
 ---
 
 

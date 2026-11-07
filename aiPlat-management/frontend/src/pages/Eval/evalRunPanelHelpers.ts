@@ -17,11 +17,16 @@ export function formatEvalJobSummary(job: {
   detail?: string;
 } | null): string {
   if (!job) return '';
+  let detail = job.detail ? String(job.detail) : '';
+  // Worker may surface ValueError text; map to fixed UI copy.
+  if (/sandbox_required/i.test(detail)) {
+    detail = '该评测需沙箱（B3），当前不可用 · 请先启动 Docker 再 Enqueue';
+  }
   const parts = [
     job.job_id ? `job=${job.job_id}` : '',
     job.status ? `status=${job.status}` : '',
     job.runner_id ? `runner=${job.runner_id}` : '',
-    job.detail ? String(job.detail) : '',
+    detail,
   ].filter(Boolean);
   return parts.join(' · ');
 }

@@ -1,0 +1,196 @@
+{
+  "schema": "eval.case_applicability_draft.v1",
+  "notes": "Set-level defaults for MatchReport + Plan P2. compile_evaluation_plan filters execution; special needs purpose safety|perf|reliability or include_special.",
+  "sets": {
+    "default/normal": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["task_result", "grounding", "efficiency"],
+      "pack": "core",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "default/missing_info": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": ["clarify_or_ask"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["interaction", "robustness", "grounding"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "default/tool_failure": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": ["error_recovery"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["failure_observability", "robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "default/high_risk": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": ["shell"],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["safety"],
+      "pack": "special",
+      "risk_level": "high",
+      "obligation": "refuse_or_handoff",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "default/noise": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "default/multi_turn": {
+      "applies_to": { "object_types": ["agent"] },
+      "requires": {
+        "capabilities": ["multi_turn_memory"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["memory_horizon", "interaction"],
+      "pack": "special",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "skill/trigger": {
+      "applies_to": { "object_types": ["skill"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["core_skill_execute"] }
+      },
+      "evaluates": ["skill_trigger_routing"],
+      "pack": "core",
+      "risk_level": "low",
+      "oracle": { "type": "deterministic_assert" },
+      "requires_contract": false
+    },
+    "skill/quality": {
+      "applies_to": { "object_types": ["skill"] },
+      "requires": {
+        "capabilities": ["skill_invoke"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["core_skill_execute"] }
+      },
+      "evaluates": ["skill_quality"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "semantic_rubric" }
+    },
+    "api/chat_pull": {
+      "applies_to": { "object_types": ["api"] },
+      "requires": {
+        "capabilities": ["http_chat_pull"],
+        "tools": [],
+        "permissions": ["network"],
+        "runtime": { "check": "target_runtime", "any_of": ["external_pull"] }
+      },
+      "evaluates": ["task_result", "grounding"],
+      "pack": "core",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "generated_app/pi_smoke": {
+      "applies_to": { "object_types": ["generated_app"] },
+      "requires": {
+        "capabilities": ["pi_export"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["pi"] }
+      },
+      "evaluates": ["compat", "structural"],
+      "pack": "core",
+      "risk_level": "low",
+      "oracle": { "type": "deterministic_assert" },
+      "requires_contract": false
+    },
+    "generated_app/runs_eval": {
+      "applies_to": { "object_types": ["generated_app"] },
+      "requires": {
+        "capabilities": ["pi_export"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["pi"] }
+      },
+      "evaluates": ["runs_eval"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "deterministic_assert" }
+    },
+    "prompt/basic": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture"] }
+      },
+      "evaluates": ["prompt_basic"],
+      "pack": "core",
+      "requires_contract": false,
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "model/basic": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture"] }
+      },
+      "evaluates": ["model_basic"],
+      "pack": "core",
+      "requires_contract": false,
+      "oracle": { "type": "deterministic_assert" }
+    },
+    "dataset/basic": {
+      "applies_to": { "object_types": ["dataset"] },
+      "requires": {
+        "capabilities": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture"] }
+      },
+      "evaluates": ["dataset_basic"],
+      "pack": "core",
+      "requires_contract": false,
+      "oracle": { "type": "deterministic_assert" }
+    },
+    "workflow/basic": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
+      },
+      "evaluates": ["workflow_basic"],
+      "pack": "core",
+      "requires_contract": false,
+      "oracle": { "type": "trajectory_in_order" }
+    }
+  }
+}

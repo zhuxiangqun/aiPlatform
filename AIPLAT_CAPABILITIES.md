@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2742
+total_capabilities: 2840
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,52 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| extract_workspace_id_from_request | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| get_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| reset_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| set_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| NamedWorkspaceContext | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| build_remote_url | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| assert_remote_url_allowed | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| normalize_remote_base_url | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| RemoteProxyError | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| create_local_workspace | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| get_registry_entry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| list_registry_entries | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| load_registry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| ensure_registry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| validate_workspace_id | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| registry_path | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| workspace_meta | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| named_workspace_scope | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| require_local_disk | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| resolve_request_workspace | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceForbidden | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceNotFound | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceRequired | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceError | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| invalidate_agent_manager | `core/harness/named_workspace/agent_mgr.py` | ✅ | 自动同步 | 已合入 |
+| agent_manager_for | `core/harness/named_workspace/agent_mgr.py` | ✅ | 自动同步 | 已合入 |
+| generatedAppRuntimeAnn | `aiPlat-management/frontend/src/pages/Eval/examRuntimeTier.ts` | ✅ | 自动同步 | 已合入 |
+| agentExamRuntimeAnn | `aiPlat-management/frontend/src/pages/Eval/examRuntimeTier.ts` | ✅ | 自动同步 | 已合入 |
+| eval_run_generated_app_pi_smoke | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| run_generated_app_pi_smoke | `core/apps/eval/service/generated_app_pi_ops.py` | ✅ | 自动同步 | 已合入 |
+| skill_eval_ensure_builtin_suites | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| builtin_skill_eval_suite_spec | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
+| annotate_external_exam_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| eval_resolve_agent_eval_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| build_eval_profile_from_declarations | `core/apps/eval/service/eval_profile_resolve.py` | ✅ | 自动同步 | 已合入 |
+| build_generated_app_target_contract | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| build_api_target_contract | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| build_skill_target_contract | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| build_contract_for_object_type | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| case_spec_for_set | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
+| build_match_report | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
+| normalize_target_contract | `core/apps/eval/service/target_contract.py` | ✅ | 自动同步 | 已合入 |
+| build_target_contract | `core/apps/eval/service/target_contract.py` | ✅ | 自动同步 | 已合入 |
+| _is_multi_turn_eval_set | `core/harness/evaluation/eval_runner.py` | ✅ | 自动同步 | 已合入 |
+| mergeMatrixStatuses | `aiPlat-management/frontend/src/pages/Eval/examSuite.ts` | ✅ | 自动同步 | 已合入 |
 | defaultSessionEvalPayload | `aiPlat-management/frontend/src/pages/Eval/evalRunPanelHelpers.ts` | ✅ | 自动同步 | 已合入 |
 | compare_eval_reports_by_id | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
 | compare_eval_reports | `core/apps/eval/service/report_compare.py` | ✅ | 自动同步 | 已合入 |
@@ -1573,6 +1619,25 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| advisory_runtime_tier | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| default_set_ids_for_type | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| resolve_auth_header | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| build_invoke_url | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| assert_url_allowed | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| public_target_view | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| get_external_target | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| load_targets_doc | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| targets_path_for_workspace | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| external_agent_id | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| validate_target_id | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| register_target | `core/apps/eval/service/external_exam_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_targets | `core/apps/eval/service/external_exam_ops.py` | ✅ | 自动同步 | 已合入 |
+| probe_target | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| tool_names_to_syscall_events | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| NoRedirectHandler | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| merge_runtime_fields | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| clear_applicability_draft_cache | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
+| load_applicability_draft | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | slice_signoff_requires_report | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` | ✅ | 自动同步 | 已合入 |
 | validate_slice_signoff_reports | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
@@ -2533,6 +2598,11 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| build_attributable_report_from_agent | `core/apps/eval/service/agent_attributable_report.py` | ✅ | 自动同步 | 已合入 |
+| parse_trajectory_tool_names | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| resolve_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| is_route_allowlisted | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| proxy_request | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
 | create_skill_eval_job | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
 | compare_skill_eval_runs | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
 | apply_skill_md_suggestion | `core/apps/eval/service/skill_evals_ops.py` | ✅ | 自动同步 | 已合入 |
@@ -2599,6 +2669,33 @@ scan_hash: 8f9548ec24f4
 | eval_run_e4_calibration | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | run_e4_calibration | `core/apps/eval/service/judge_v1.py` | ✅ | 自动同步 | 已合入 |
 | eval_bootstrap_e3_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_list_exam_sets / eval_run_agent_exam | `core/api/core_facade.py` + `agent_exam_ops.py` | ✅ | Agent 评测（绑用例集→dry/live）+ 可归因报告；生成物适用：已接线（apps/eval UI） | 本批 |
+| EvalExamSuitePanel / buildDimensionMatrix / BUILTIN_EXAM_SUITE | `EvalExamSuitePanel.tsx` + `examSuite.ts` | ✅ | Agent 本地标准冒烟（含 multi_turn + normal 复跑）+ 本机模型前置 + 维度矩阵；high_risk 无确认≠安全通过；空工具轨迹≠通过；tool_failure 不宣称 tools/trajectory 覆盖；线上/κ 未测；accuracy_claim=false；生成物适用：已接线（评测 Agent） | 本批 |
+| EvalFullReportPanel / buildFullSmokeReport（formal_report.v1 / meta.v1.12） | `EvalFullReportPanel.tsx` + `fullExamReport.ts` | ✅ | v1.12：§8 强制披露 Plan/MatchReport/三包/失败归因粗分；五态含 not_applicable；accuracy/sufficiency=false；生成物适用：已接线 | 本批 |
+| buildObjectContractDisclosure | `fullExamReport.ts` | ✅ | 从 suite attributable 聚合 plan_id/入选排除/pack_coverage/attribution；生成物适用：已接线 | 本批 |
+| checkLocalExamPreflight / isLocalModelProvider | `localExamPreflight.ts` | ✅ | 本地冒烟开跑前检查本机 LLM provider；阻断仅远程模型；生成物适用：已接线 | 本批 |
+| default/multi_turn eval set + shared session | `engine/eval_sets/multi_turn.json` + `eval_runner._execute_single_task(session_id=)` | ✅ | 多轮记忆冒烟卷；同卷共享 session_id；触发 memory_horizon；生成物适用：已接线 | 本批 |
+| _resolve_exam_agent_info | `eval_runner.py` | ✅ | 正式评测加载命名工作区真实 AgentInfo（model/skills/tools），与 Execute 同环境；禁止默认桩选模；生成物适用：已接线 | 本批 |
+| eval-exam-runtime-tiers / annotate_agent_exam_runtime | `docs/.../eval-exam-runtime-tiers.md` + `exam_runtime_tier.py` + `examRuntimeTier.ts` | ✅ | v1.3：实际 `runtime_tier` 与 `target_runtime` 拆分；含 `core_skill_execute`；runtime_claim/reason；B2 双态分离；不改选模/执行路径；生成物适用：已接线（评测 UI 标注） | 本批 |
+| generated_app_pi_smoke / annotate_generated_app_runtime | `generated_app_pi_ops.py` + `POST /evaluation/generated-app-pi-smoke` + EvalGeneratedAppsPanel | ✅ | 目标 `target_runtime=pi`；offline/runs_eval→实际 `fixture`；live Pi CLI→实际 `pi`+claim；生成物适用：已接线 | 本批 |
+| annotate_skill_eval_runtime / skillEvalRuntimeAnn | `exam_runtime_tier.py` + `skill_evals_ops.run` + EvalSkillsPanel | ✅ | trigger→fixture；quality→`core_skill_execute`（skill_manager 已调）；≠ 验管道 skill Job；生成物适用：已接线（评测 UI） | 本批 |
+| eval-object-contract P0 / build_agent_target_contract / match_eval_sets_for_target | `docs/.../eval-object-contract-and-plan.md` + `target_contract.py` + `case_match.py` + `applicability_draft.json` + `POST /evaluation/match-cases` + agent exam 挂载 MatchReport | ✅ | `eval.target_contract.v1` + 可解释 MatchReport；high_risk refuse_or_handoff 例外；P0 仅 advisory 不筛题；生成物适用：已接线（评测 API） | 本批 |
+| eval_match_cases_for_agent_target / match_cases_for_agent_target | `core_facade` + `agent_exam_ops.py` | ✅ | 给定契约字段产出入选/不适用原因；≠ 已按画像自动选题；生成物适用：已接线 | 本批 |
+| formal_report v1.11 / not_applicable 五态 | `fullExamReport.ts` + `examSuite.ts`（merge/count/paperMatchDecision） | ✅ | 矩阵与正式报告分列未测/不适用；MatchReport 排除卷→维 N/A；不计失败；生成物适用：已接线 | 本批 |
+| compile_evaluation_plan / eval_compile_evaluation_plan | `eval_plan.py` + `POST /evaluation/compile-plan` + EvalExamSuitePanel | ✅ | P2/P3+Plan v2：core+匹配 capability；special 未授权→untested；冒烟预览 Plan+purpose；编译失败阻断（不回退全套）；套件仅模板；生成物适用：已接线 | 本批 |
+| object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 挂载 | ✅ | skill→core_skill_execute；api→external_pull；generated_app→pi；同一 Plan schema；生成物适用：已接线 | 本批 |
+| resolve_agent_eval_profile / derive_capability_hints | `eval_profile_resolve.py` + `POST /evaluation/resolve-eval-profile` + compile-plan 自动注入 | ✅ | 显式 `config.eval_profile` 优先（AGENT.md 顶层由 AgentManager 注入 config）；否则 skills/tools 子串 hint；种子样例 conversational/rag/react/platform_consultant；禁止 agent_id 分支；生成物适用：已接线 | 本批 |
+| countMatrixStatuses / paperMatchDecision | `examSuite.ts` | ✅ | 五态计数 + 读 match_report；生成物适用：已接线（正式报告） | 本批 |
+| ensure_builtin_skill_eval_suites / builtin_trigger_demo | `skill_evals_ops.py` + `POST …/suites/ensure-builtin` + Skills 空态按钮 | ✅ | list 自动/一键登记内置触发样例（内嵌 skills_override）；run 自动注入 override；生成物适用：已接线 | 本批 |
+| skill_eval_preflight / store_direct trigger | `skill_evals_ops.py` + `GET …/preflight` + Skills 预检条 | ✅ | 预检 store/builtin/path；无 skill_manager 时 trigger 走 store-direct；quality 仍需 manager；生成物适用：已接线 | 本批 |
+| eval_list_external_targets / eval_upsert_external_target / eval_run_external_exam | `core_facade` + `external_targets.py` + `external_chat_pull.py` + `external_exam_ops.py` + compat `/evaluation/external-*` | ✅ | 外部拉模式对话 HTTP 评测（SSRF 白名单登记；结果 `ext:{id}` 落当前命名工作区）；accuracy_claim=false；生成物适用：已接线（Eval 外部目标分区） | 本批 |
+| HttpChatPullAdapter / run_external_exam | `external_chat_pull.py` / `external_exam_ops.py` | ✅ | chat_pull.v0 协议 + 试卷 lexical/可归因复用；轨迹预留不评分；生成物适用：已接线 | 本批 |
+| compute_exam_fact_support | `agent_exam_ops.py` | ✅ | 试卷事实金标 lexical support_rate（expected_facts/answer/cite）；≠ 语义 NLI；生成物适用：已接线（attributable grounding） | 本批 |
+| eval_agent_attributable_report / build_attributable_report | `core_facade` + `agent_attributable_report.py` | ✅ | 可归因 v1：高风险角色感知；confirm_unverified（设计稿词面）→unknown；legacy_dim_scores 与 cost.overall 对齐；摘录脱敏；accuracy/sufficiency_claim=false；生成物适用：已接线 | 本批 |
+| named_workspace / list_named_workspaces / create_named_workspace | `core/harness/named_workspace/` + `GET/POST /core/workspaces` + facade | ✅ | 本机命名分区 + remote Core 档案；读默 default、写必显式 header；ACL；agents+eval_results 隔离；契约见 workspace-isolation-contract；生成物适用：已接线（评测 Agent） | 本批 |
+| create_remote_workspace / workspace-proxy / remote_proxy | `registry.create_remote_workspace` + `remote_proxy.py` + `GET/POST /core/workspace-proxy/{id}/…` | ✅ | 远程 Core 白名单 proxy（Eval 路径）；SSRF；剥离本地 workspace header；服务端 token；失败不回退本机；生成物适用：已接线（Eval picker） | 本批 |
+| HttpChatPullAdapter trajectory v1 / IN_ORDER | `external_chat_pull.py` + `external_exam_ops.py` | ✅ | chat_pull.v1 tool_calls 有序名 → TrajectoryQuality IN_ORDER；v0 兼容；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| list_exam_sets / run_agent_exam | `core/apps/eval/service/agent_exam_ops.py` | ✅ | 试卷列表与 live 开考；accuracy_claim=false | 本批 |
 | bootstrap_e3_gold | `core/apps/eval/service/gold_bootstrap.py` | ✅ | 自动同步 | 已合入 |
 | eval_store_import_code_review_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_store_health | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -2669,6 +2766,7 @@ scan_hash: 8f9548ec24f4
 | Eval UI-4 Gates 交互 | `pages/Eval/EvalGatesPanel.tsx` | ✅ | gates 列表/详情 + Run E5/G2a + Calibrate E4；local gate_claim ≠ accuracy；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-5 Settings/G2c | `pages/Eval/EvalSettingsPanel.tsx` | ✅ | G2c status + retest queue Pass/Fail + compute report；intra_rater ≠ accuracy/G2b；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-6 Overview/Agents | `pages/Eval/EvalOverviewPanel.tsx` + `EvalAgentsPanel.tsx` | ✅ | Overview 快跳+upstream；Agents suites 只读条+诊断嵌入；生成物适用：不适用（管理端 UI） | 本批 |
+| Eval 成果物三入口 Agent/Skill/生成应用 | `EvalCenter` + `EvalSkillsPanel` + `EvalGeneratedAppsPanel` + `skillEvalApi` | ✅ | 成果物并列：Agent exam、Skill suite(skill_evals)、生成应用 run(runs_eval)；管道 Skill 改名防混；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval G2b ops panel | `pages/Eval/EvalG2bPanel.tsx` + `core/apps/eval/service/g2b.py` + `GET …/store/g2b-status` + CoreFacade `eval_g2b_pack_status` | ✅ | n=100 pack facilitation facts（pending_dual_human / closeout_n）；`accuracy_claim=false`；≠ 伪造双人标注；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval Preference ops panel | `pages/Eval/EvalPreferencePanel.tsx` + `core/apps/eval/service/preference.py` + `GET …/store/preference-status` + CoreFacade `eval_preference_pack_status` | ✅ | pairs/aggregate facilitation（agreement/κ ≠ accuracy；fixture solo ≠ human）；`accuracy_claim=false`；生成物适用：不适用（管理端 UI） | 本批 |
 | preference_pack_status | `core/apps/eval/service/preference.py` | ✅ | 读 preference pairs + aggregate；facilitation-only | 本批 |
@@ -3641,12 +3739,12 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 391 | 1 | 392 |
+| Harness 执行引擎 | 437 | 1 | 438 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 178 | 0 | 178 |
+| Agent 系统 | 197 | 0 | 197 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3654,7 +3752,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 290 | 0 | 290 |
+| 评估系统 | 323 | 0 | 323 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3686,7 +3784,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2732** | **10** | **2742** |
+| **总计** | **2830** | **10** | **2840** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

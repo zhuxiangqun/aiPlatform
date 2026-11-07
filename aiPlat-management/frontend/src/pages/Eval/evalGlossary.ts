@@ -108,8 +108,111 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   {
     term: '执行平面尚未迁移',
     aliases: ['B2', 'execution_not_migrated', '执行平面'],
-    meaning: '产品上未签完正式拆分；本机能跑 Job 只代表本地联调，不是生产已迁移',
+    meaning:
+      '产品上未签完正式拆分；本机能跑 Job 只代表本地联调，不是生产已迁移。≠ 某条 Job 的 runtime_tier=eval_worker；≠ Agent exam 已上 Worker',
     domain: 'plane',
+  },
+  {
+    term: 'runtime_tier',
+    aliases: ['运行时档位', '评测运行时', '实际执行面'],
+    meaning:
+      '本次实际执行面（归档主键）：fixture|pi|workspace_execute|core_skill_execute|eval_worker|external_pull；≠ target_runtime；见 eval-exam-runtime-tiers.md v1.3',
+    domain: 'plane',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'target_runtime',
+    aliases: ['目标交付形态'],
+    meaning:
+      '对象打算在哪交付/被评；可与本次 runtime_tier 不同（如 Pi 离线：tier=fixture · target=pi）',
+    domain: 'plane',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'runtime_claim',
+    aliases: ['runtime_claim_reason'],
+    meaning:
+      '本次结论是否可就实际 runtime_tier 范围作有限陈述；≠ accuracy/充分/发布认证；false 时必带 reason',
+    domain: 'honesty',
+    surfaces: ['agents'],
+  },
+  {
+    term: 'workspace_execute',
+    aliases: ['工作区 Execute'],
+    meaning: 'Agent 正式 live 当前路径：run_workspace_agent + 真实 AgentInfo；≠ eval_worker',
+    domain: 'plane',
+    surfaces: ['agents'],
+  },
+  {
+    term: 'core_skill_execute',
+    aliases: ['Skill 执行档', 'skill_manager quality'],
+    meaning:
+      '实际经 Core skill_manager 调用被测 Skill（quality）；≠ fixture；≠ Agent workspace_execute',
+    domain: 'plane',
+    surfaces: ['overview'],
+  },
+  {
+    term: 'external_pull',
+    aliases: ['外部拉模式'],
+    meaning: '外部 HTTP 拉对话评测档位；≠ 本机 Agent；≠ pi',
+    domain: 'plane',
+    surfaces: ['agents'],
+  },
+  {
+    term: 'fixture',
+    aliases: ['规则/dry-run 档'],
+    meaning:
+      '实际未加载、未调用被测对象（规则/dry-run/结构校验）；target_runtime 仍可写目标形态',
+    domain: 'plane',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'not_applicable',
+    aliases: ['不适用', '契约不适用'],
+    meaning:
+      '对象契约/requires 不匹配；≠未测、≠失败；不得单独驱动综合不通过；见 formal_report v1.12',
+    domain: 'honesty',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'MatchReport',
+    aliases: ['match_report', '适用性报告'],
+    meaning:
+      'eval.match_report.v1：入选/不适用原因；P2+ 冒烟按此筛题；正式报告 §2.1 强制披露',
+    domain: 'honesty',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'Evaluation Plan',
+    aliases: ['evaluation_plan', 'plan_id', '评测计划'],
+    meaning:
+      'eval.evaluation_plan.v1：契约→选题→runtime；冒烟 UI 以 Plan 为选题真相（模板=内置卷）；正式报告披露 plan_id 与三包覆盖；≠充分/准确认证',
+    domain: 'honesty',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'eval_profile',
+    aliases: ['eval_profile_source', '能力画像', 'derived_hints'],
+    meaning:
+      'Agent 评测契约：显式 config.eval_profile 优先；否则 skills/tools 子串 derived_hints；禁止按 agent_id 猜角色',
+    domain: 'honesty',
+    surfaces: ['agents'],
+  },
+  {
+    term: 'pi',
+    aliases: ['Pi 交付冒烟', 'runtime_tier=pi', 'target_runtime=pi', '厂外薄宿主'],
+    meaning:
+      'target_runtime=pi 表示目标交付；仅 live pi CLI 成功时 runtime_tier=pi·claim=true；offline/runs_eval→tier=fixture·claim=false',
+    domain: 'plane',
+    surfaces: ['overview'],
+  },
+  {
+    term: 'skill_evals',
+    aliases: ['Skill suite', '技能成果物评测'],
+    meaning:
+      'platform skill_evals：trigger→runtime_tier=fixture；quality→core_skill_execute（skill_manager 已调）；≠ Run 面板 skill_suite Job；≠ Agent exam',
+    domain: 'plane',
+    surfaces: ['overview'],
   },
   {
     term: 'Enqueue',
@@ -230,7 +333,7 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   {
     term: '评测集',
     aliases: ['set', 'set_id', 'eval set'],
-    meaning: '评测题目/样本集合；有集合 ≠ 模型已测准',
+    meaning: '评测题目/样本集合；画面可新建 set/追加 task/导入黄金集；有集合 ≠ 模型已测准',
     domain: 'sets',
     surfaces: ['sets'],
   },
@@ -408,7 +511,8 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   {
     term: 'Session',
     aliases: ['session_eval', '多轮对话'],
-    meaning: '多轮对话 fixture 评测；成功证明链路通，不是真实用户准确率',
+    meaning:
+      '多轮对账冒烟：Enqueue 用预制 prompt/expected/actual（默认 2 轮口算）跑 session_eval；无真模型。succeeded≠对话 Agent 测准',
     domain: 'runners',
     surfaces: ['session'],
   },
@@ -421,8 +525,9 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   },
   {
     term: 'Skill',
-    aliases: ['skill_suite', '技能'],
-    meaning: '技能/工具类 fixture；需 Docker 沙箱探针；不真跑 live 工具',
+    aliases: ['skill_suite', 'Skill 管道', '技能 fixture'],
+    meaning:
+      '技能 fixture + Docker 沙箱探针；Enqueue 默认 mode=fixture 不对真工具。成功≠工具能力认证；无 Docker 可能失败',
     domain: 'runners',
     surfaces: ['skill'],
   },
@@ -435,8 +540,9 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   },
   {
     term: 'Code-review',
-    aliases: ['code_review_gold', 'code_review'],
-    meaning: '代码评审黄金集工程跑分；匹配率是工程指标，不是对外准确率认证',
+    aliases: ['code_review_gold', 'code_review', 'Run match-only'],
+    meaning:
+      '自检打分尺子：默认 match-only 用写死的假装评审结果对标准缺陷算 P/R（无 LLM、不跑评审 Agent、不读仓库）。为的是先保证计分管线可靠；≠测准模型/真项目。题在种子目录，≠评测集 Tab',
     domain: 'runners',
     surfaces: ['code-review'],
   },
@@ -455,9 +561,74 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     surfaces: ['prompts'],
   },
   {
-    term: 'Agents',
-    aliases: ['suites', 'agent suites'],
-    meaning: '评测相关套件列表（只读/诊断）；列表存在 ≠ 执行平面已正式拆分',
+    term: '评测 Agent',
+    aliases: [
+      '考 Agent',
+      '历史分',
+      'Agents',
+      'agent suites',
+      '历史分 / 脚手架',
+      '从零开考',
+      '正式评测',
+      '8维',
+      '完整评测',
+    ],
+    meaning:
+      '成果物入口之一：命名工作区本机 Agent；框架=维度(8维+专项)/方法/结论；正式评测落工程分+可归因；覆盖≠充分；≠ Skill/生成应用/管道',
+    domain: 'runners',
+    surfaces: ['agents'],
+  },
+  {
+    term: '外部拉模式',
+    aliases: [
+      '外部目标',
+      'http_chat_pull',
+      'ext:target',
+      'external exam',
+      '对话 HTTP 评测',
+    ],
+    meaning:
+      'aiPlat 按试卷 POST 外部对话 HTTP；评 output_text，可选 IN_ORDER 工具序(v1 tool_calls)；结果 ext:{target_id}；≠ 副作用充分/准确率；accuracy_claim=false',
+    domain: 'runners',
+    surfaces: ['agents'],
+  },
+  {
+    term: '评测框架三层',
+    aliases: ['维度方法结论', '8维框架', '专项切片'],
+    meaning:
+      '第1层评测维度(8维+记忆长程/评测集可靠性/失败可观测/线上体验)；第2层方法；第3层结论(覆盖范围/置信度/失败证据/veto/适用环境)。产品现状=覆盖描述≠充分性证明',
+    domain: 'runners',
+    surfaces: ['agents'],
+  },
+  {
+    term: '评测 Skill',
+    aliases: ['skills tab', 'skill_evals', 'Skill suite 成果物'],
+    meaning:
+      '成果物入口：已登记 Skill suite → platform skill_evals run/results；≠ 验管道「Skill 管道」fixture',
+    domain: 'runners',
+    surfaces: ['skills'],
+  },
+  {
+    term: '评测生成应用',
+    aliases: ['apps tab', 'runs_eval', '生成应用 Run'],
+    meaning:
+      '成果物入口：run_id → runs_eval latest/autoEvaluate；身份权威为 run_id；≠ Agent 历史分',
+    domain: 'runners',
+    surfaces: ['apps'],
+  },
+  {
+    term: '生成评估代码',
+    aliases: ['generate_agent_eval', '生成评估脚手架'],
+    meaning:
+      '对选中 agent_id 调用 POST /core/entropy/eval/generate：写 AGENT.md scoring_dimensions + ~/.aiplat/eval/{id}/eval_metric.py+eval_runner.py；已齐全则跳过。≠ Skill-eval suite / upsert_skill_eval_suite / 跑 Job',
+    domain: 'runners',
+    surfaces: ['agents'],
+  },
+  {
+    term: '强制重生成',
+    aliases: ['force regenerate', 'force=true'],
+    meaning:
+      '同上 generate_agent_eval(force=true)：覆盖已有维度与评估脚手架文件；仍不是 run_skill_eval_suite，也不等于模型准确率评测',
     domain: 'runners',
     surfaces: ['agents'],
   },

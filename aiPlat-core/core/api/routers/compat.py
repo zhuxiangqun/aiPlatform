@@ -7,9 +7,9 @@ Repairs/workbench stubs delegate to existing handlers.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 logger = logging.getLogger("aiplat.compat")
 
@@ -17,7 +17,7 @@ router = APIRouter(tags=["compat"])
 
 
 # ════════════════════════════════════════════════════════════
-# Evaluation — powered by LearningManager
+# Evaluation — LearningManager + eval_results disk store
 # ════════════════════════════════════════════════════════════
 
 async def _get_learning_manager():
@@ -25,16 +25,564 @@ async def _get_learning_manager():
     return LearningManager()
 
 
+def _score_payload(
+    agent_id: str,
+    results: List[Dict[str, Any]],
+    *,
+    set_id: str = "",
+) -> Dict[str, Any]:
+    """Shape expected by EvalDashboard (legacy_7dim; accuracy_claim false)."""
+    want = (set_id or "").strip()
+    if not results:
+        return {
+            "agent_id": agent_id,
+            "set_id": want or None,
+            "latest_score": None,
+            "grade": "",
+            "eval_time": None,
+            "total_evals": 0,
+            "has_data": False,
+            "accuracy_claim": False,
+            "note": (
+                f"no eval_results for set={want} — run live exam on this paper"
+                if want
+                else "no eval_results yet — run scripts/eval.sh or enable AIPLAT_ENABLE_AUTO_EVAL"
+            ),
+        }
+    latest = results[0]
+    dim_keys = (
+        "task_completion",
+        "tool_quality",
+        "trajectory",
+        "text_quality",
+        "step_efficiency",
+        "error_recovery",
+        "safety",
+        "content_safety",
+        "refusal",
+        "cost",
+    )
+    dimensions = {k: latest[k] for k in dim_keys if isinstance(latest.get(k), dict)}
+    from core.apps.eval.service.agent_attributable_report import build_attributable_report
+
+    attributable = latest.get("attributable_report")
+    if not isinstance(attributable, dict):
+        attributable = build_attributable_report(latest, agent_id=agent_id)
+    return {
+        "agent_id": agent_id,
+        "latest_score": latest.get("composite_score"),
+        "grade": latest.get("grade") or "",
+        "eval_time": latest.get("eval_time"),
+        "total_evals": len(results),
+        "total_tasks": latest.get("total_tasks"),
+        "dimensions": dimensions or None,
+        "has_data": True,
+        "accuracy_claim": False,
+        "scoring": latest.get("scoring"),
+        "attributable_report": attributable,
+        "gate_pass": bool((attributable.get("gate") or {}).get("pass")),
+        "safety_veto": bool((attributable.get("gate") or {}).get("veto")),
+        "publish_allowed": bool((attributable.get("publish") or {}).get("allowed")),
+        "sufficiency_claim": False,
+    }
+
+
 @router.get("/evaluation/overview")
 async def compat_evaluation_overview():
-    """Evaluation dashboard overview — aggregates learning artifacts."""
+    """Evaluation dashboard overview — learning artifacts + disk eval_results agents."""
     try:
         mgr = await _get_learning_manager()
         overview = await mgr.get_overview()
-        return {"status": "ok", **overview}
     except Exception as e:
         logger.debug("evaluation overview failed", exc_info=True)
-        return {"status": "error", "message": str(e)[:200]}
+        overview = {"status": "error", "message": str(e)[:200]}
+
+    agents: List[Dict[str, Any]] = []
+    eval_sets = 0
+    try:
+        from core.harness.evaluation.eval_runner import (
+            list_agents_with_eval_results,
+            list_eval_sets,
+        )
+
+        agents = list_agents_with_eval_results(limit=100)
+        eval_sets = len(list_eval_sets())
+    except Exception:
+        logger.debug("evaluation overview disk agents failed", exc_info=True)
+
+    total_evals = sum(int(a.get("evals_count") or 0) for a in agents)
+    return {
+        "status": "ok",
+        **(overview if isinstance(overview, dict) else {}),
+        "agents": agents,
+        "agents_evaluated": len(agents),
+        "total_evals": total_evals,
+        "eval_sets": eval_sets,
+        "accuracy_claim": False,
+    }
+
+
+@router.get("/evaluation/agents/{agent_id}/score")
+async def compat_evaluation_agent_score(
+    agent_id: str,
+    request: Request,
+    set_id: str = Query("", description="Optional filter by eval_set_id"),
+):
+    """Latest AgentEvalResult from workspace eval_results (empty ≠ 404)."""
+    from core.harness.evaluation.eval_runner import load_agent_eval_results
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    want = (set_id or "").strip()
+    with named_workspace_scope(request, method="GET", require_local=True) as nw:
+        results = load_agent_eval_results(agent_id, limit=50 if not want else 200)
+        if want:
+            results = [
+                r
+                for r in results
+                if str(r.get("eval_set_id") or r.get("set_id") or "").strip() == want
+            ]
+        out = _score_payload(agent_id, results, set_id=want)
+        out.update(workspace_meta(nw))
+        return out
+
+
+@router.get("/evaluation/agents/{agent_id}/attributable-report")
+async def compat_evaluation_agent_attributable_report(
+    agent_id: str,
+    request: Request,
+    limit: int = Query(5, ge=1, le=20),
+    set_id: str = Query("", description="Scope to this exam set; empty = latest any set"),
+):
+    """Task / tools / safety-veto / cost attributable report (accuracy_claim=false)."""
+    from core.api.core_facade import eval_agent_attributable_report
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    with named_workspace_scope(request, method="GET", require_local=True) as nw:
+        out = eval_agent_attributable_report(
+            agent_id=agent_id, limit=limit, set_id=(set_id or "").strip()
+        )
+        if isinstance(out, dict):
+            out.update(workspace_meta(nw))
+        return out
+
+
+@router.get("/evaluation/agents/{agent_id}/history")
+async def compat_evaluation_agent_history(
+    agent_id: str,
+    request: Request,
+    limit: int = Query(20, ge=1, le=100),
+    set_id: str = Query("", description="Optional filter by eval_set_id"),
+):
+    """Eval history for dashboard trend chart (empty list when none)."""
+    from core.harness.evaluation.eval_runner import load_agent_eval_results
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    want = (set_id or "").strip()
+    with named_workspace_scope(request, method="GET", require_local=True) as nw:
+        fetch_n = max(limit * 10, 50) if want else limit
+        results = load_agent_eval_results(agent_id, limit=fetch_n)
+        if want:
+            results = [
+                r
+                for r in results
+                if str(r.get("eval_set_id") or r.get("set_id") or "").strip() == want
+            ][:limit]
+        else:
+            results = results[:limit]
+        history = [
+            {
+                "eval_time": r.get("eval_time"),
+                "composite_score": r.get("composite_score"),
+                "grade": r.get("grade") or "",
+                "eval_set_id": r.get("eval_set_id") or "",
+                "total_tasks": r.get("total_tasks") or 0,
+            }
+            for r in results
+        ]
+        out = {
+            "agent_id": agent_id,
+            "set_id": want or None,
+            "history": history,
+            "count": len(history),
+            "accuracy_claim": False,
+        }
+        out.update(workspace_meta(nw))
+        return out
+
+
+@router.get("/evaluation/sets")
+async def compat_evaluation_list_sets():
+    """List exam papers (built-in eval sets) for Agent 从零开考."""
+    from core.api.core_facade import eval_list_exam_sets
+
+    items = eval_list_exam_sets()
+    return {
+        "items": items,
+        "total": len(items),
+        "accuracy_claim": False,
+    }
+
+
+@router.post("/evaluation/match-cases")
+async def compat_evaluation_match_cases(body: Dict[str, Any]):
+    """Object-contract P0: advisory MatchReport for agent vs set applicability.
+
+    Body: {agent_id, set_ids?, capabilities?, tools?, permissions?, roles?, eval_profile?}
+    Does not execute agents.
+    """
+    from core.api.core_facade import eval_match_cases_for_agent_target
+
+    agent_id = str((body or {}).get("agent_id") or "").strip()
+    if not agent_id:
+        return {"ok": False, "error": "agent_id required", "accuracy_claim": False}
+    set_ids = (body or {}).get("set_ids")
+    if set_ids is not None and not isinstance(set_ids, list):
+        return {"ok": False, "error": "set_ids must be a list", "accuracy_claim": False}
+    profile = (body or {}).get("eval_profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "eval_profile must be an object", "accuracy_claim": False}
+    try:
+        return eval_match_cases_for_agent_target(
+            agent_id=agent_id,
+            set_ids=set_ids,
+            capabilities=(body or {}).get("capabilities"),
+            tools=(body or {}).get("tools"),
+            permissions=(body or {}).get("permissions"),
+            roles=(body or {}).get("roles"),
+            eval_profile=profile,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("evaluation match-cases failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/compile-plan")
+async def compat_evaluation_compile_plan(body: Dict[str, Any]):
+    """Object-contract P2/P3: compile Evaluation Plan for agent/skill/api/generated_app/….
+
+    Body: {agent_id|object_id, object_type?, set_ids?, purpose?, include_special?, …}
+    For agent without eval_profile/capabilities, server derives hints from skills/tools.
+    """
+    from core.api.core_facade import eval_compile_evaluation_plan
+
+    agent_id = str((body or {}).get("agent_id") or "").strip()
+    object_id = str((body or {}).get("object_id") or "").strip()
+    if not agent_id and not object_id:
+        return {
+            "ok": False,
+            "error": "object_id or agent_id required",
+            "accuracy_claim": False,
+        }
+    set_ids = (body or {}).get("set_ids")
+    purpose = (body or {}).get("purpose")
+    if set_ids is not None and not isinstance(set_ids, list):
+        return {"ok": False, "error": "set_ids must be a list", "accuracy_claim": False}
+    if purpose is not None and not isinstance(purpose, list):
+        return {"ok": False, "error": "purpose must be a list", "accuracy_claim": False}
+    profile = (body or {}).get("eval_profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "eval_profile must be an object", "accuracy_claim": False}
+    object_type = str((body or {}).get("object_type") or "agent").strip() or "agent"
+    capabilities = (body or {}).get("capabilities")
+    # Auto-resolve agent profile when caller did not supply capabilities/profile.
+    if (
+        object_type == "agent"
+        and agent_id
+        and not profile
+        and not capabilities
+    ):
+        try:
+            from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
+
+            profile = await resolve_agent_eval_profile(agent_id)
+        except FileNotFoundError as e:
+            # Do not silently compile an empty Plan for a missing agent — UI would
+            # show wrong N/A counts while the picker still lists the id.
+            return {
+                "ok": False,
+                "error": str(e),
+                "accuracy_claim": False,
+            }
+        except Exception as e:  # noqa: BLE001 — unexpected resolve errors
+            logger.debug("resolve_agent_eval_profile failed: %s", e)
+            return {
+                "ok": False,
+                "error": f"resolve_agent_eval_profile failed: {e}"[:300],
+                "accuracy_claim": False,
+            }
+    try:
+        return eval_compile_evaluation_plan(
+            agent_id=agent_id,
+            object_id=object_id,
+            object_type=object_type,
+            set_ids=set_ids,
+            purpose=purpose,
+            include_special=bool((body or {}).get("include_special")),
+            live=bool((body or {}).get("live")),
+            capabilities=capabilities,
+            tools=(body or {}).get("tools"),
+            permissions=(body or {}).get("permissions"),
+            roles=(body or {}).get("roles"),
+            eval_profile=profile,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("evaluation compile-plan failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/resolve-eval-profile")
+async def compat_evaluation_resolve_eval_profile(body: Dict[str, Any]):
+    """Resolve Agent eval_profile (explicit config or derived skill/tool hints)."""
+    from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
+
+    agent_id = str((body or {}).get("agent_id") or "").strip()
+    if not agent_id:
+        return {"ok": False, "error": "agent_id required", "accuracy_claim": False}
+    try:
+        profile = await resolve_agent_eval_profile(agent_id)
+        return {
+            "ok": True,
+            "agent_id": agent_id,
+            "eval_profile": profile,
+            "accuracy_claim": False,
+            "sufficiency_claim": False,
+            "honesty": (
+                "explicit config.eval_profile wins; else derived_hints from skills/tools "
+                "substrings — not a certified capability declaration"
+            ),
+        }
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("resolve-eval-profile failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/exam")
+async def compat_evaluation_exam(body: Dict[str, Any], request: Request):
+    """从零开考：选 agent + 试卷 → dry-run 或 live 执行并落分。
+
+    Body: {agent_id, set_id, live?: bool, max_tasks?: int}
+    Write: requires X-Aiplat-Workspace-Id (no silent default).
+    """
+    from fastapi import HTTPException
+
+    from core.api.core_facade import eval_run_agent_exam
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    agent_id = str((body or {}).get("agent_id") or "").strip()
+    set_id = str((body or {}).get("set_id") or "").strip()
+    live = bool((body or {}).get("live"))
+    max_tasks = int((body or {}).get("max_tasks") or 0)
+    if not agent_id or not set_id:
+        return {
+            "ok": False,
+            "error": "agent_id and set_id required",
+            "accuracy_claim": False,
+        }
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = await eval_run_agent_exam(
+                agent_id=agent_id,
+                set_id=set_id,
+                live=live,
+                max_tasks=max_tasks,
+                persist=True,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except HTTPException as e:
+        detail = e.detail if isinstance(e.detail, dict) else {"error": str(e.detail)}
+        return {
+            "ok": False,
+            "error": detail.get("error") or "workspace_error",
+            "message": detail.get("message") or str(e.detail),
+            "accuracy_claim": False,
+        }
+    except FileNotFoundError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("evaluation exam failed", exc_info=True)
+        return {
+            "ok": False,
+            "error": str(e)[:300],
+            "accuracy_claim": False,
+        }
+    except BaseException as e:
+        # CancelledError (BaseException) must not become Starlette "No response returned".
+        if type(e).__name__ == "CancelledError":
+            logger.warning("evaluation exam cancelled", exc_info=True)
+            return {
+                "ok": False,
+                "error": "exam_cancelled",
+                "message": "评测任务被取消，请重试正式评测",
+                "accuracy_claim": False,
+            }
+        raise
+
+
+@router.get("/evaluation/external-targets")
+async def compat_evaluation_list_external_targets(request: Request):
+    """List external http_chat_pull targets for the selected named workspace."""
+    from fastapi import HTTPException
+
+    from core.api.core_facade import eval_list_external_targets
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_list_external_targets(workspace_id=nw.workspace_id)
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except HTTPException as e:
+        detail = e.detail if isinstance(e.detail, dict) else {"error": str(e.detail)}
+        return {
+            "ok": False,
+            "error": detail.get("error") or "workspace_error",
+            "message": detail.get("message") or str(e.detail),
+            "items": [],
+            "accuracy_claim": False,
+        }
+
+
+@router.post("/evaluation/external-targets")
+async def compat_evaluation_upsert_external_target(body: Dict[str, Any], request: Request):
+    """Register external chat-pull target. Write requires X-Aiplat-Workspace-Id."""
+    from fastapi import HTTPException
+
+    from core.api.core_facade import eval_upsert_external_target
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_upsert_external_target(
+                workspace_id=nw.workspace_id,
+                target_id=str((body or {}).get("target_id") or "").strip(),
+                label=str((body or {}).get("label") or "").strip(),
+                base_url=str((body or {}).get("base_url") or "").strip(),
+                path=str((body or {}).get("path") or "/v1/chat").strip() or "/v1/chat",
+                auth_header_name=str((body or {}).get("auth_header_name") or "").strip(),
+                auth_secret_env=str((body or {}).get("auth_secret_env") or "").strip(),
+                timeout_ms=int((body or {}).get("timeout_ms") or 30_000),
+                response_mode=str((body or {}).get("response_mode") or "aiplat_v0").strip(),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except HTTPException as e:
+        detail = e.detail if isinstance(e.detail, dict) else {"error": str(e.detail)}
+        return {
+            "ok": False,
+            "error": detail.get("error") or "workspace_error",
+            "message": detail.get("message") or str(e.detail),
+            "accuracy_claim": False,
+        }
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("external target upsert failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/external-exam")
+async def compat_evaluation_external_exam(body: Dict[str, Any], request: Request):
+    """External pull-mode exam: target_id + set_id → dry-run or live score.
+
+    Body: {target_id, set_id, live?: bool, max_tasks?: int}
+    Write: requires X-Aiplat-Workspace-Id.
+    """
+    from fastapi import HTTPException
+
+    from core.api.core_facade import eval_run_external_exam
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    target_id = str((body or {}).get("target_id") or "").strip()
+    set_id = str((body or {}).get("set_id") or "").strip()
+    live = bool((body or {}).get("live"))
+    max_tasks = int((body or {}).get("max_tasks") or 0)
+    if not target_id or not set_id:
+        return {
+            "ok": False,
+            "error": "target_id and set_id required",
+            "accuracy_claim": False,
+        }
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = await eval_run_external_exam(
+                workspace_id=nw.workspace_id,
+                target_id=target_id,
+                set_id=set_id,
+                live=live,
+                max_tasks=max_tasks,
+                persist=True,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except HTTPException as e:
+        detail = e.detail if isinstance(e.detail, dict) else {"error": str(e.detail)}
+        return {
+            "ok": False,
+            "error": detail.get("error") or "workspace_error",
+            "message": detail.get("message") or str(e.detail),
+            "accuracy_claim": False,
+        }
+    except FileNotFoundError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("external exam failed", exc_info=True)
+        return {
+            "ok": False,
+            "error": str(e)[:300],
+            "accuracy_claim": False,
+        }
+
+
+@router.post("/evaluation/generated-app-pi-smoke")
+async def compat_evaluation_generated_app_pi_smoke(body: Dict[str, Any]):
+    """Generated-app Pi delivery smoke: sample/project/path → offline or live pi CLI.
+
+    Body: {source?: sample|project|path, project_id?, app_home?, live?: bool, model?, timeout_s?}
+    """
+    from core.api.core_facade import eval_run_generated_app_pi_smoke
+
+    source = str((body or {}).get("source") or "sample").strip() or "sample"
+    project_id = str((body or {}).get("project_id") or "").strip()
+    app_home = str((body or {}).get("app_home") or "").strip()
+    live = bool((body or {}).get("live"))
+    model = str((body or {}).get("model") or "").strip()
+    try:
+        timeout_s = float((body or {}).get("timeout_s") or 90.0)
+    except (TypeError, ValueError):
+        timeout_s = 90.0
+    try:
+        return eval_run_generated_app_pi_smoke(
+            source=source,
+            project_id=project_id,
+            app_home=app_home,
+            live=live,
+            model=model,
+            timeout_s=timeout_s,
+        )
+    except FileNotFoundError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("generated-app pi smoke failed", exc_info=True)
+        return {
+            "ok": False,
+            "error": str(e)[:300],
+            "accuracy_claim": False,
+        }
 
 
 @router.post("/evaluation/policy")

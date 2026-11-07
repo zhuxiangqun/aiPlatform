@@ -392,6 +392,26 @@ export default function GovernanceDashboard() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Must run every render (before any early return) — loading gate used to skip this hook → React #310.
+  useEffect(() => {
+    if (!data) return;
+    const mechanism = Object.fromEntries(
+      Object.entries(data.mechanism_status || {}).map(([k, v]) => [k, v.status])
+    );
+    const attentionCount = Object.values(data.mechanism_status || {}).filter(v => v.status !== 'good').length;
+    reportPageData('/governance', {
+      overallHealth: data.overall_health,
+      healthLevel: data.health_level,
+      pendingApprovals: data.pending_approvals,
+      todayCalls: data.audit_summary?.total_events_today || 0,
+      deniedCalls: data.audit_summary?.denied_calls || 0,
+      mechanismsNeedingAttention: attentionCount,
+      mechanismStatus: mechanism,
+      guideGlossary: governanceGlossaryText(),
+    });
+    return () => clearPageData('/governance');
+  }, [data]);
+
   if (loading) return <div style={{ padding: 20, color: '#888', fontFamily: 'monospace' }}>Loading...</div>;
   if (!data) return <div style={{ padding: 20, color: '#f88', fontFamily: 'monospace' }}>Failed to load governance data</div>;
 
@@ -429,25 +449,6 @@ export default function GovernanceDashboard() {
   const goldP = orgHarness?.summary?.gold_precision;
   const p0Miss = orgHarness?.summary?.p0_miss_rate;
   const approvalLat = orgHarness?.summary?.avg_approval_latency_sec;
-
-  // P2-4: 向数字人上报治理仪表盘实时状态
-  useEffect(() => {
-    const mechanism = Object.fromEntries(
-      Object.entries(data.mechanism_status || {}).map(([k, v]) => [k, v.status])
-    );
-    const attentionCount = Object.values(data.mechanism_status || {}).filter(v => v.status !== 'good').length;
-    reportPageData('/governance', {
-      overallHealth: data.overall_health,
-      healthLevel: data.health_level,
-      pendingApprovals: data.pending_approvals,
-      todayCalls: data.audit_summary?.total_events_today || 0,
-      deniedCalls: data.audit_summary?.denied_calls || 0,
-      mechanismsNeedingAttention: attentionCount,
-      mechanismStatus: mechanism,
-      guideGlossary: governanceGlossaryText(),
-    });
-    return () => clearPageData('/governance');
-  }, [data]);
 
   return (
     <div style={{ padding: 24, fontFamily: 'monospace', fontSize: 13, background: '#0f0f1a', minHeight: '100vh', color: '#d0d0d0' }}>

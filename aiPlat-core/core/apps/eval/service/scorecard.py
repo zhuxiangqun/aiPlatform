@@ -89,7 +89,7 @@ def scorecard_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "note": (
             "Scorecard status is honesty/facilitation-only. "
             "Feature 5 ≠ accuracy; local 5 ≠ process_split_authorized; "
-            "G2b n=30 closeout ≠ n=100 dual-human complete."
+            "G2b n=100 closeout recorded; pass_rate below protocol → accuracy_claim=false."
         ),
         "runbook": "packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md",
     }

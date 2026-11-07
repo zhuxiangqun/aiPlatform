@@ -3,13 +3,18 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Trophy, Brain, Target } from 'lucide-react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import { BarChart } from 'echarts/charts';
+import { BarChart, LineChart } from 'echarts/charts';
 import { TooltipComponent, GridComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { Button, Card, CardContent, CardHeader, Input } from '../../components/ui';
-import { agentEvalApi } from '../../services';
+import { agentEvalApi, workspaceAgentApi } from '../../services';
+import type { Agent } from '../../services';
+import EvalAttributableReportCard, {
+  type AttributableReport,
+} from '../Eval/EvalAttributableReportCard';
+import { namedWorkspaceHeaders } from '../Eval/namedWorkspace';
 
-echarts.use([BarChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
+echarts.use([BarChart, LineChart, TooltipComponent, GridComponent, LegendComponent, CanvasRenderer]);
 
 interface EvalAgent {
   agent_id: string;
@@ -51,6 +56,9 @@ interface AgentScore {
     refusal: { is_refusal?: boolean; refusal_type?: string };
     cost: { tokens_per_task?: number; calls_per_task?: number };
   };
+  attributable_report?: AttributableReport;
+  gate_pass?: boolean;
+  safety_veto?: boolean;
 }
 
 interface EvalHistory {
@@ -73,9 +81,27 @@ const TREND_ICON: Record<string, string> = {
   stable: '→',
 };
 
-const EvalDashboard: React.FC = () => {
+type EvalDashboardProps = {
+  /** When true (Eval Center Agents tab): hide legacy /eval promo; emphasize manual pick. */
+  embedded?: boolean;
+  /** Prefill agent picker (e.g. after 正式评测). */
+  initialAgentId?: string;
+  /** When historyOnly: scope score/history to this exam paper. */
+  initialSetId?: string;
+  /** Artifact-eval embed: score history only — no scaffold / pipe copy. */
+  historyOnly?: boolean;
+};
+
+const EvalDashboard: React.FC<EvalDashboardProps> = ({
+  embedded = false,
+  initialAgentId = '',
+  initialSetId = '',
+  historyOnly = false,
+}) => {
   const [overview, setOverview] = useState<EvalOverview | null>(null);
-  const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [selectedAgent, setSelectedAgent] = useState<string>(
+    () => (initialAgentId || '').trim(),
+  );
   const [agentScore, setAgentScore] = useState<AgentScore | null>(null);
   const [agentHistory, setAgentHistory] = useState<EvalHistory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,41 +109,101 @@ const EvalDashboard: React.FC = () => {
   const [evalSnap, setEvalSnap] = useState<Record<string, unknown> | null>(null);
   const [evalSnapError, setEvalSnapError] = useState<string | null>(null);
   const [evalBusy, setEvalBusy] = useState(false);
-  const [agentDraft, setAgentDraft] = useState('');
+  const [agentDraft, setAgentDraft] = useState(() => (initialAgentId || '').trim());
+  const [workspaceAgents, setWorkspaceAgents] = useState<Agent[]>([]);
+
+  const pickAgent = (id: string) => {
+    const next = id.trim();
+    if (!next) return;
+    setSelectedAgent(next);
+    setAgentDraft(next);
+  };
 
   useEffect(() => {
     const urlAgent = (searchParams.get('agent') || '').trim();
-    fetch('/api/core/evaluation/overview')
+    const pref = (initialAgentId || '').trim() || urlAgent;
+    fetch('/api/core/evaluation/overview', { headers: namedWorkspaceHeaders() })
       .then(r => r.json())
       .then(data => {
         setOverview(data);
-        if (urlAgent) {
-          setSelectedAgent(urlAgent);
-          setAgentDraft(urlAgent);
-        } else if (data.agents?.length > 0) {
-          setSelectedAgent(data.agents[0].agent_id);
-          setAgentDraft(data.agents[0].agent_id);
+        if (pref) {
+          pickAgent(pref);
+        } else if (!historyOnly && data.agents?.length > 0) {
+          // Standalone dashboard: default to first scored agent.
+          // historyOnly (Eval Agents tab): stay empty until exam panel picks one.
+          pickAgent(data.agents[0].agent_id);
+        } else if (historyOnly && !pref) {
+          setSelectedAgent('');
+          setAgentDraft('');
         }
       })
       .catch(() => {
-        if (urlAgent) {
-          setSelectedAgent(urlAgent);
-          setAgentDraft(urlAgent);
+        if (pref) pickAgent(pref);
+        else if (historyOnly) {
+          setSelectedAgent('');
+          setAgentDraft('');
         }
       })
       .finally(() => setLoading(false));
-  }, [searchParams]);
+  }, [searchParams, initialAgentId, historyOnly]);
+
+  // Keep focus locked to the agent under exam when parent changes selection.
+  useEffect(() => {
+    if (!historyOnly) return;
+    const pref = (initialAgentId || '').trim();
+    if (pref && pref !== selectedAgent) {
+      pickAgent(pref);
+    }
+    if (!pref && selectedAgent) {
+      setSelectedAgent('');
+      setAgentDraft('');
+      setAgentScore(null);
+      setAgentHistory(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to parent agent id
+  }, [historyOnly, initialAgentId]);
+
+  useEffect(() => {
+    workspaceAgentApi
+      .list({ limit: 200 })
+      .then((res) => {
+        const list = Array.isArray(res?.agents) ? res.agents : [];
+        setWorkspaceAgents(list);
+      })
+      .catch(() => setWorkspaceAgents([]));
+  }, []);
+
+  const scopedSetId = historyOnly ? (initialSetId || '').trim() : '';
 
   useEffect(() => {
     if (!selectedAgent) return;
-    fetch(`/api/core/evaluation/agents/${selectedAgent}/score`)
-      .then(r => r.json())
-      .then(setAgentScore)
-      .catch(() => {});
-    fetch(`/api/core/evaluation/agents/${selectedAgent}/history?limit=20`)
-      .then(r => r.json())
-      .then(setAgentHistory)
-      .catch(() => {});
+    setAgentScore(null);
+    setAgentHistory(null);
+    const scoreQs = scopedSetId
+      ? `?set_id=${encodeURIComponent(scopedSetId)}`
+      : '';
+    fetch(
+      `/api/core/evaluation/agents/${encodeURIComponent(selectedAgent)}/score${scoreQs}`,
+      { headers: namedWorkspaceHeaders() },
+    )
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`score HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => setAgentScore(data as AgentScore))
+      .catch(() => setAgentScore(null));
+    fetch(
+      `/api/core/evaluation/agents/${encodeURIComponent(selectedAgent)}/history?limit=20${
+        scopedSetId ? `&set_id=${encodeURIComponent(scopedSetId)}` : ''
+      }`,
+      { headers: namedWorkspaceHeaders() },
+    )
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`history HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => setAgentHistory(data as EvalHistory))
+      .catch(() => setAgentHistory(null));
     setEvalSnapError(null);
     agentEvalApi.inspect(selectedAgent)
       .then((res) => setEvalSnap(res as Record<string, unknown>))
@@ -125,7 +211,7 @@ const EvalDashboard: React.FC = () => {
         setEvalSnap(null);
         setEvalSnapError(e?.message || '无法读取评估脚手架');
       });
-  }, [selectedAgent]);
+  }, [selectedAgent, scopedSetId]);
 
   const runGenerateEval = async (force: boolean) => {
     if (!selectedAgent) return;
@@ -144,39 +230,85 @@ const EvalDashboard: React.FC = () => {
 
   const scoreBar = useMemo(() => {
     if (!overview?.agents?.length) return null;
-    const top = [...overview.agents].sort((a, b) => b.latest_score - a.latest_score).slice(0, 15);
+    // Prefer avg: latest is often inflated (e.g. auto_session→100) and looks "all perfect".
+    const top = [...overview.agents]
+      .sort((a, b) => Number(b.avg_score ?? b.latest_score) - Number(a.avg_score ?? a.latest_score))
+      .slice(0, 15);
     return {
-      tooltip: { trigger: 'axis' as const, axisPointer: { type: 'shadow' as const } },
+      tooltip: {
+        trigger: 'axis' as const,
+        axisPointer: { type: 'shadow' as const },
+        formatter: (params: unknown) => {
+          const row = Array.isArray(params) ? params[0] : params;
+          const p = row as { name?: string; value?: number; dataIndex?: number };
+          const agent = top[top.length - 1 - Number(p.dataIndex ?? 0)];
+          if (!agent) return String(p.name || '');
+          return `${agent.agent_id}<br/>平均 ${agent.avg_score}<br/>最新 ${agent.latest_score} · ${agent.evals_count} 次`;
+        },
+      },
       grid: { top: 10, right: 20, bottom: 20, left: 100 },
       xAxis: { type: 'value' as const, max: 100, axisLabel: { fontSize: 9, color: '#8b949e' } },
-      yAxis: { type: 'category' as const, data: top.map(a => a.agent_id).reverse(),
-        axisLabel: { fontSize: 10, color: '#c9d1d9' }, inverse: true },
-      series: [{
-        name: '评分', type: 'bar', data: top.map(a => a.latest_score).reverse(),
-        itemStyle: { color: (p: any) => {
-          const v = p.value ?? 0;
-          return v >= 90 ? '#3fb950' : v >= 75 ? '#58a6ff' : v >= 60 ? '#d29922' : '#f85149';
-        }},
-        barWidth: 16,
-      }],
+      yAxis: {
+        type: 'category' as const,
+        data: top.map((a) => a.agent_id).reverse(),
+        axisLabel: { fontSize: 10, color: '#c9d1d9' },
+        inverse: true,
+      },
+      series: [
+        {
+          name: '平均分',
+          type: 'bar',
+          data: top.map((a) => Number(a.avg_score ?? a.latest_score)).reverse(),
+          itemStyle: {
+            color: (p: { value?: number }) => {
+              const v = p.value ?? 0;
+              return v >= 90 ? '#3fb950' : v >= 75 ? '#58a6ff' : v >= 60 ? '#d29922' : '#f85149';
+            },
+          },
+          barWidth: 16,
+        },
+      ],
     };
   }, [overview]);
 
   const trendChart = useMemo(() => {
     if (!agentHistory?.history?.length) return null;
+    // API returns newest-first; chart left→right chronological.
     const h = [...agentHistory.history].reverse();
+    const points = h.map((e) =>
+      e.composite_score == null || Number.isNaN(Number(e.composite_score))
+        ? null
+        : Number(e.composite_score),
+    );
+    if (!points.some((v) => v != null)) return null;
     return {
       tooltip: { trigger: 'axis' as const },
-      grid: { top: 10, right: 10, bottom: 20, left: 40 },
-      xAxis: { type: 'category' as const, data: h.map((_, i) => `#${i + 1}`),
-        axisLabel: { fontSize: 9, color: '#8b949e' } },
-      yAxis: { type: 'value' as const, min: 0, max: 100, axisLabel: { fontSize: 9, color: '#8b949e' } },
-      series: [{
-        name: '评分', type: 'line', data: h.map(e => e.composite_score || 0),
-        smooth: true, lineStyle: { color: '#58a6ff', width: 2 },
-        itemStyle: { color: '#58a6ff' }, symbol: 'circle', symbolSize: 4,
-        areaStyle: { color: 'rgba(88,166,255,0.1)' },
-      }],
+      grid: { top: 16, right: 12, bottom: 24, left: 40 },
+      xAxis: {
+        type: 'category' as const,
+        data: h.map((_, i) => `#${i + 1}`),
+        axisLabel: { fontSize: 9, color: '#8b949e' },
+      },
+      yAxis: {
+        type: 'value' as const,
+        min: 0,
+        max: 100,
+        axisLabel: { fontSize: 9, color: '#8b949e' },
+      },
+      series: [
+        {
+          name: '评分',
+          type: 'line',
+          data: points,
+          connectNulls: false,
+          smooth: true,
+          lineStyle: { color: '#58a6ff', width: 2 },
+          itemStyle: { color: '#58a6ff' },
+          symbol: 'circle',
+          symbolSize: 6,
+          areaStyle: { color: 'rgba(88,166,255,0.12)' },
+        },
+      ],
     };
   }, [agentHistory]);
 
@@ -184,25 +316,83 @@ const EvalDashboard: React.FC = () => {
 
   return (
     <>
-    <div className="mx-4 mt-4 mb-0 rounded border border-blue-800/40 bg-blue-950/20 px-3 py-2 text-sm text-blue-100">
-      EVAL_V1 评测中心 Preview 已解冻（G2a local，非 accuracy）→{' '}
-      <Link to="/eval" className="text-blue-300 underline hover:text-blue-200">
-        /eval
-      </Link>
-    </div>
-    <div className="space-y-6 p-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-200">Agent 运行评估</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          六维实时评分 · 任务完成率 · 工具调用质量 · 步骤效率 · 错误恢复 · 安全边界 · 成本
-        </p>
+    {!embedded ? (
+      <div className="mx-4 mt-4 mb-0 rounded border border-blue-800/40 bg-blue-950/20 px-3 py-2 text-sm text-blue-100">
+        EVAL_V1 评测中心 Preview 已解冻（G2a local，非 accuracy）→{' '}
+        <Link to="/eval" className="text-blue-300 underline hover:text-blue-200">
+          /eval
+        </Link>
       </div>
+    ) : null}
+    <div className={`space-y-6 ${embedded ? 'p-0 pt-2' : 'p-4'}`}>
+      {historyOnly ? (
+        <p className="text-xs text-gray-500 -mt-1" data-testid="eval-history-scope-note">
+          {selectedAgent
+            ? scopedSetId
+              ? `仅展示 Agent「${selectedAgent}」在用例集「${scopedSetId}」上的正式评测；不含其它 set（如 auto_session）。工程分，不是准确率认证。`
+              : '仅展示上方所选 Agent 的正式评测记录与趋势。工程分，不是准确率认证。'
+            : '请先在上方选择正在评测的 Agent；此处不再展示全站评分榜。'}
+        </p>
+      ) : (
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-200">
+            {embedded ? 'Agent 评估诊断（历史分 / 脚手架）' : 'Agent 运行评估'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {embedded
+              ? '评分榜只列「已经跑过评估」的 Agent；榜空时请在下方选工作区 Agent 或手填 agent_id。'
+              : '六维实时评分 · 任务完成率 · 工具调用质量 · 步骤效率 · 错误恢复 · 安全边界 · 成本'}
+          </p>
+        </div>
+      )}
 
-      <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
-        <ArrowLeft className="w-3 h-3" />返回诊断中心
-      </Link>
+      {!historyOnly ? (
+        <Link to="/diagnostics" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+          <ArrowLeft className="w-3 h-3" />返回诊断中心
+        </Link>
+      ) : null}
 
-      {/* Stats Row */}
+      {/* Stats Row — agent-scoped when historyOnly */}
+      {historyOnly ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="bg-dark-card border-dark-border">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-400">
+                {agentScore?.latest_score ?? '—'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">最新分</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-dark-card border-dark-border">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-blue-400">
+                {agentScore?.total_evals ?? agentHistory?.count ?? '—'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">本 Agent 评估次数</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-dark-card border-dark-border">
+            <CardContent className="p-4 text-center">
+              <div
+                className={`text-2xl font-bold ${
+                  agentScore?.grade ? GRADE_CLASS[agentScore.grade]?.split(' ')[0] || 'text-gray-300' : 'text-gray-500'
+                }`}
+              >
+                {agentScore?.grade || '—'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">最新等级</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-dark-card border-dark-border">
+            <CardContent className="p-4 text-center">
+              <div className="text-sm font-mono text-purple-300 truncate px-1">
+                {selectedAgent || '未选择'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">当前评测对象</div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
       <div className="grid grid-cols-5 gap-4">
         <Card className="bg-dark-card border-dark-border">
           <CardContent className="p-4 text-center">
@@ -246,27 +436,45 @@ const EvalDashboard: React.FC = () => {
           </Card>
         ) : null}
       </div>
+      )}
 
+      {!historyOnly ? (
       <Card className="bg-dark-card border-dark-border">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <div className="text-sm font-semibold text-gray-200">评估脚手架（eval_engineer）</div>
+                <div className="text-sm font-semibold text-gray-200">评估脚手架（generate_agent_eval）</div>
                 <p className="text-xs text-gray-500 mt-1">
-                  与 Arena 评分榜分开：走唯一入口 generate_agent_eval。上架 listed 会自动入队；失败不挡上架。无 Arena 数据也可填 agent_id。
+                  「生成评估代码」= 为该 Agent 写 scoring_dimensions + eval_metric/eval_runner 脚手架（POST
+                  /entropy/eval/generate）；「强制重生成」= force=true 覆盖已有文件。都不是 Skill-eval
+                  suite，也不跑模型准确率 Job。上架 listed 会自动入队；失败不挡上架。
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <select
+                  data-testid="eval-dashboard-agent-select"
+                  className="h-8 min-w-[12rem] rounded border border-dark-border bg-dark-card px-2 text-xs text-gray-200"
+                  value={
+                    workspaceAgents.some((a) => a.id === selectedAgent) ? selectedAgent : ''
+                  }
+                  onChange={(e) => pickAgent(e.target.value)}
+                  aria-label="从工作区选择 Agent"
+                >
+                  <option value="">从工作区选择 Agent…</option>
+                  {workspaceAgents.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.display_name || a.name || a.id}
+                      {a.id !== (a.display_name || a.name) ? ` (${a.id})` : ''}
+                    </option>
+                  ))}
+                </select>
                 <div className="w-48">
                 <Input
-                  placeholder="agent_id，如 qa_agent"
+                  placeholder="或手填 agent_id"
                   value={agentDraft}
                   onChange={(e) => setAgentDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const id = agentDraft.trim();
-                      if (id) setSelectedAgent(id);
-                    }
+                    if (e.key === 'Enter') pickAgent(agentDraft);
                   }}
                 />
                 </div>
@@ -274,10 +482,7 @@ const EvalDashboard: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   disabled={!agentDraft.trim()}
-                  onClick={() => {
-                    const id = agentDraft.trim();
-                    if (id) setSelectedAgent(id);
-                  }}
+                  onClick={() => pickAgent(agentDraft)}
                 >
                   查看
                 </Button>
@@ -359,7 +564,138 @@ const EvalDashboard: React.FC = () => {
             )}
           </CardContent>
         </Card>
+      ) : null}
 
+      {historyOnly ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" data-testid="eval-history-focused">
+          <Card className="bg-dark-card border-dark-border">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+                <Brain className="w-4 h-4 text-purple-400" />
+                {selectedAgent || '未选择 Agent'}
+                {agentScore?.grade ? (
+                  <span className={`text-xs px-2 py-0.5 rounded ${GRADE_CLASS[agentScore.grade] || ''}`}>
+                    {agentScore.grade}
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 font-normal">
+                分数趋势（仅当前 Agent）
+              </p>
+            </CardHeader>
+            <CardContent>
+              {!selectedAgent ? (
+                <p className="text-xs text-gray-500">在上方「评测 Agent」选择对象后，这里显示该 Agent 的历史趋势。</p>
+              ) : agentScore?.latest_score != null || (agentHistory?.history?.length || 0) > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">最新评分</span>
+                    <span
+                      className={
+                        (agentScore?.latest_score ?? 0) >= 90
+                          ? 'text-green-400'
+                          : (agentScore?.latest_score ?? 0) >= 75
+                            ? 'text-blue-400'
+                            : (agentScore?.latest_score ?? 0) >= 60
+                              ? 'text-yellow-400'
+                              : 'text-red-400'
+                      }
+                    >
+                      {agentScore?.latest_score ?? '—'}
+                    </span>
+                  </div>
+                  {trendChart ? (
+                    <ReactEChartsCore
+                      echarts={echarts}
+                      option={trendChart}
+                      style={{ width: '100%', height: '180px' }}
+                      notMerge
+                      lazyUpdate
+                    />
+                  ) : (agentHistory?.history?.length || 0) > 0 ? (
+                    <p className="text-xs text-gray-500">历史记录无有效 composite_score，无法画趋势</p>
+                  ) : (
+                    <p className="text-xs text-gray-500">暂无历史曲线（正式评测写入后会出现）</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">
+                  该 Agent 尚无 eval_results。请上方正式评测（live）写入后再看。
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-dark-card border-dark-border">
+            <CardHeader>
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+                <Trophy className="w-4 h-4 text-yellow-400" />
+                {scopedSetId ? '本卷评测记录' : '本 Agent 评测记录'}
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1 font-normal">
+                最近 {agentHistory?.history?.length || 0} 条
+                {scopedSetId ? ` · set=${scopedSetId}` : '（非全站榜）'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              {!selectedAgent ? (
+                <p className="text-xs text-gray-500">选择 Agent 后列出其正式评测记录。</p>
+              ) : (agentHistory?.history?.length || 0) > 0 ? (
+                <div className="space-y-1 max-h-72 overflow-y-auto">
+                  {agentHistory!.history.map((row, i) => {
+                    const when =
+                      row.eval_time && Number(row.eval_time) > 0
+                        ? new Date(
+                            Number(row.eval_time) < 1e12
+                              ? Number(row.eval_time) * 1000
+                              : Number(row.eval_time),
+                          ).toLocaleString()
+                        : '';
+                    return (
+                    <div
+                      key={`${row.eval_time}-${row.eval_set_id}-${i}`}
+                      className="flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs bg-dark-hover/40"
+                    >
+                      <span className="text-gray-400 shrink-0">#{i + 1}</span>
+                      <span
+                        className="text-gray-300 truncate flex-1"
+                        title={`${row.eval_set_id || ''}${when ? ` · ${when}` : ''}`}
+                      >
+                        {row.eval_set_id || '—'}
+                        {when ? (
+                          <span className="text-gray-500 ml-1.5 font-normal">{when}</span>
+                        ) : null}
+                      </span>
+                      <span
+                        className={`font-mono shrink-0 ${
+                          row.composite_score >= 90
+                            ? 'text-green-400'
+                            : row.composite_score >= 75
+                              ? 'text-blue-400'
+                              : row.composite_score >= 60
+                                ? 'text-yellow-400'
+                                : 'text-red-400'
+                        }`}
+                      >
+                        {row.composite_score}
+                      </span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${GRADE_CLASS[row.grade] || 'text-gray-400'}`}
+                      >
+                        {row.grade || '—'}
+                      </span>
+                      <span className="text-gray-500 shrink-0">{row.total_tasks ?? '—'}题</span>
+                    </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">暂无该 Agent 的评测记录。</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Agent Scoreboard */}
         <Card className="bg-dark-card border-dark-border lg:col-span-1">
@@ -368,11 +704,18 @@ const EvalDashboard: React.FC = () => {
               <Trophy className="w-4 h-4 text-yellow-400" />
               Agent 评分榜
             </div>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">显示 平均/最新</p>
           </CardHeader>
           <CardContent>
             {overview?.agents?.length ? (
               <div className="space-y-1">
-                {[...overview.agents].sort((a, b) => b.latest_score - a.latest_score).map((a, i) => (
+                {[...overview.agents]
+                  .sort(
+                    (a, b) =>
+                      Number(b.avg_score ?? b.latest_score) -
+                      Number(a.avg_score ?? a.latest_score),
+                  )
+                  .map((a, i) => (
                   <div
                     key={a.agent_id}
                     onClick={() => {
@@ -387,9 +730,21 @@ const EvalDashboard: React.FC = () => {
                       {a.agent_id}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span className={a.latest_score >= 90 ? 'text-green-400' : a.latest_score >= 75 ? 'text-blue-400' : a.latest_score >= 60 ? 'text-yellow-400' : 'text-red-400'}>
-                        {a.latest_score}
+                      <span
+                        className={
+                          a.avg_score >= 90
+                            ? 'text-green-400'
+                            : a.avg_score >= 75
+                              ? 'text-blue-400'
+                              : a.avg_score >= 60
+                                ? 'text-yellow-400'
+                                : 'text-red-400'
+                        }
+                        title={`平均 ${a.avg_score} · 最新 ${a.latest_score}`}
+                      >
+                        {a.avg_score}
                       </span>
+                      <span className="text-gray-600">/{a.latest_score}</span>
                       <span>{TREND_ICON[a.trend] || ''}</span>
                       <span className="text-gray-500">{a.evals_count}次</span>
                     </span>
@@ -397,10 +752,20 @@ const EvalDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-gray-500">
-                暂无评估数据。设置 <code className="text-blue-400">AIPLAT_ENABLE_AUTO_EVAL=true</code> 启用自动评估，或运行
-                <code className="text-blue-400 ml-1">bash scripts/eval.sh run default/normal --live</code>
-              </p>
+              <div className="text-xs text-gray-500 space-y-2">
+                <p>
+                  评分榜为空＝还没有任何 Agent 的历史评估结果，所以这里点不了行。
+                  <strong className="text-gray-300"> 不等于不能评测。</strong>
+                </p>
+                <p>
+                  请用上方「从工作区选择 Agent」或手填 <code className="text-blue-400">agent_id</code> 后点「查看 / 生成评估代码」。
+                </p>
+                <p>
+                  或启用 <code className="text-blue-400">AIPLAT_ENABLE_AUTO_EVAL=true</code> / 跑
+                  <code className="text-blue-400 ml-1">bash scripts/eval.sh run default/normal --live</code>
+                  产生历史分后再出现在榜上。
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -410,8 +775,11 @@ const EvalDashboard: React.FC = () => {
           <CardHeader>
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
               <Target className="w-4 h-4 text-green-400" />
-              评分分布
+              平均分分布
             </div>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal">
+              用历史平均分，避免「最新一次 auto_session=100」把图刷成全满分
+            </p>
           </CardHeader>
           <CardContent>
             {scoreBar ? (
@@ -437,7 +805,7 @@ const EvalDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {agentScore?.latest_score !== undefined ? (
+            {agentScore?.latest_score != null ? (
               <div className="space-y-3">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">最新评分</span>
@@ -450,126 +818,224 @@ const EvalDashboard: React.FC = () => {
                   <span className="text-gray-300">{agentScore.total_evals}</span>
                 </div>
                 {trendChart ? (
-                  <ReactEChartsCore echarts={echarts} option={trendChart}
-                    style={{ width: '100%', height: '140px' }} notMerge lazyUpdate />
+                  <ReactEChartsCore
+                    echarts={echarts}
+                    option={trendChart}
+                    style={{ width: '100%', height: '140px' }}
+                    notMerge
+                    lazyUpdate
+                  />
+                ) : agentHistory && (agentHistory.history?.length || 0) > 0 ? (
+                  <p className="text-xs text-gray-500">历史记录无有效 composite_score，无法画趋势</p>
                 ) : (
-                  <p className="text-xs text-gray-500">至少 2 次评估才显示趋势</p>
+                  <p className="text-xs text-gray-500">暂无历史曲线（正式评测写入后会出现）</p>
                 )}
               </div>
             ) : (
               <p className="text-xs text-gray-500">
-                {selectedAgent ? '暂无评估数据' : '选择一个 Agent 查看详情'}
+                {selectedAgent
+                  ? '暂无评估数据（还没有 eval_results）。请上方正式评测（live）或 scripts/eval.sh run … --live。'
+                  : '选择一个 Agent 查看详情'}
               </p>
             )}
           </CardContent>
         </Card>
       </div>
+      )}
 
-      {/* Six-Dimension Detail for Selected Agent */}
+      {/* historyOnly: attributable already shown above in exam panel — avoid duplicate. */}
+      {!historyOnly && agentScore?.attributable_report ? (
+        <EvalAttributableReportCard report={agentScore.attributable_report} />
+      ) : null}
+
+      {/* Central legacy dimensions — not a full agent capability taxonomy */}
       {agentScore?.dimensions && (
-        <Card className="bg-dark-card border-dark-border">
+        <Card className="bg-dark-card border-dark-border" data-testid="eval-dimension-panel">
           <CardHeader>
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-200">
               <Target className="w-4 h-4 text-green-400" />
-              {selectedAgent} · 六维详情
+              {selectedAgent} · 工程维度明细
               <span className={`text-xs px-2 py-0.5 rounded ${GRADE_CLASS[agentScore.grade] || ''}`}>
                 {agentScore.grade}
               </span>
             </div>
+            <p className="text-[11px] text-gray-500 mt-1 font-normal leading-relaxed">
+              这不是「Agent 该有的全部能力维度」。当前 Central 总分只加权下面
+              <strong className="text-gray-300"> 7 项工程维</strong>
+              （任务完成 30% · 工具 20% · 轨迹 5% · 步骤 15% · 错误恢复 15% · 安全 10% · 成本 5%）。
+              文本质量 / 内容安全 / 拒答仅展示、不进总分。业务侧自定义
+              scoring_dimensions 也不会自动出现在这里。
+            </p>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3 text-xs">
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">任务完成</div>
-                <div className={agentScore.dimensions.task_completion.score ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.task_completion.score ?? '—'}
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-xs text-gray-400 mb-2">计入总分（7）</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-xs">
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">任务完成</div>
+                  <div className={agentScore.dimensions.task_completion?.score != null ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.task_completion?.score ?? '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.task_completion?.complete ?? 0}/
+                    {agentScore.dimensions.task_completion?.total ?? 0} tasks
+                  </div>
                 </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.task_completion.complete ?? 0}/{agentScore.dimensions.task_completion.total ?? 0} tasks
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">工具质量</div>
+                  <div className={agentScore.dimensions.tool_quality?.overall != null ? 'text-blue-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.tool_quality?.overall != null
+                      ? `${agentScore.dimensions.tool_quality.overall}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.tool_quality?.violations != null
+                      ? `${agentScore.dimensions.tool_quality.violations} 违规`
+                      : ''}
+                  </div>
                 </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">工具质量</div>
-                <div className={agentScore.dimensions.tool_quality.overall != null ? 'text-blue-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.tool_quality.overall != null ? `${agentScore.dimensions.tool_quality.overall}%` : '—'}
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">轨迹匹配</div>
+                  <div className={agentScore.dimensions.trajectory?.score != null ? 'text-teal-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.trajectory?.score != null
+                      ? `${(agentScore.dimensions.trajectory.score * 100).toFixed(0)}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    {agentScore.dimensions.trajectory?.matched ? '匹配' : '不匹配'}
+                  </div>
                 </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.tool_quality.violations != null ? `${agentScore.dimensions.tool_quality.violations} 违规` : ''}
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">步骤效率</div>
+                  <div className={agentScore.dimensions.step_efficiency?.score != null ? 'text-purple-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.step_efficiency?.score != null
+                      ? `${agentScore.dimensions.step_efficiency.score}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.step_efficiency?.avg_steps != null
+                      ? `${agentScore.dimensions.step_efficiency.avg_steps} 步`
+                      : ''}
+                  </div>
                 </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">步骤效率</div>
-                <div className={agentScore.dimensions.step_efficiency.score != null ? 'text-purple-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.step_efficiency.score != null ? `${agentScore.dimensions.step_efficiency.score}%` : '—'}
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">错误恢复</div>
+                  <div className={agentScore.dimensions.error_recovery?.rate != null ? 'text-yellow-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.error_recovery?.rate != null
+                      ? `${agentScore.dimensions.error_recovery.rate}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.error_recovery?.total_failures != null
+                      ? `${agentScore.dimensions.error_recovery.total_failures} 失败`
+                      : ''}
+                  </div>
                 </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.step_efficiency.avg_steps != null ? `${agentScore.dimensions.step_efficiency.avg_steps} 步` : ''}
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">安全边界</div>
+                  <div className={agentScore.dimensions.safety?.score != null ? 'text-red-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.safety?.score != null
+                      ? `${agentScore.dimensions.safety.score}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.safety?.violations != null
+                      ? `${agentScore.dimensions.safety.violations} 违规`
+                      : ''}
+                  </div>
                 </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">错误恢复</div>
-                <div className={agentScore.dimensions.error_recovery.rate != null ? 'text-yellow-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.error_recovery.rate != null ? `${agentScore.dimensions.error_recovery.rate}%` : '—'}
-                </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.error_recovery.total_failures != null ? `${agentScore.dimensions.error_recovery.total_failures} 失败` : ''}
-                </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">安全边界</div>
-                <div className={agentScore.dimensions.safety.score != null ? 'text-red-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.safety.score != null ? `${agentScore.dimensions.safety.score}%` : '—'}
-                </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.safety.violations != null ? `${agentScore.dimensions.safety.violations} 违规` : ''}
-                </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">成本效率</div>
-                <div className={agentScore.dimensions.cost.calls_per_task != null ? 'text-orange-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.cost.calls_per_task != null ? `${agentScore.dimensions.cost.calls_per_task}` : '—'}
-                </div>
-                <div className="text-gray-500">
-                  {agentScore.dimensions.cost.tokens_per_task != null ? `${agentScore.dimensions.cost.tokens_per_task} tok` : ''}
-                </div>
-              </div>
-              {/* v2.9: New dimensions */}
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">轨迹匹配</div>
-                <div className={agentScore.dimensions.trajectory?.score != null ? 'text-teal-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.trajectory?.score != null ? `${(agentScore.dimensions.trajectory.score * 100).toFixed(0)}%` : '—'}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  {agentScore.dimensions.trajectory?.matched ? '✅ 匹配' : '❌ 不匹配'}
-                </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover col-span-2">
-                <div className="text-gray-500 mb-1">文本质量 (v2.9)</div>
-                <div className="flex gap-3 justify-center text-xs">
-                  <span className="text-cyan-400">连贯 {agentScore.dimensions.text_quality?.coherence != null ? (agentScore.dimensions.text_quality.coherence * 100).toFixed(0) : '—'}%</span>
-                  <span className="text-pink-400">简洁 {agentScore.dimensions.text_quality?.conciseness != null ? (agentScore.dimensions.text_quality.conciseness * 100).toFixed(0) : '—'}%</span>
-                  <span className="text-amber-400">指令 {agentScore.dimensions.text_quality?.instruction_following != null ? (agentScore.dimensions.text_quality.instruction_following * 100).toFixed(0) : '—'}%</span>
-                </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">内容安全</div>
-                <div className={agentScore.dimensions.content_safety?.harmful != null ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
-                  {agentScore.dimensions.content_safety?.harmful != null ? `${(agentScore.dimensions.content_safety.harmful * 100).toFixed(0)}%` : '—'}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  {agentScore.dimensions.content_safety?.flagged?.length ? `${agentScore.dimensions.content_safety.flagged.length} 标记` : '清洁'}
-                </div>
-              </div>
-              <div className="text-center p-2 rounded bg-dark-hover">
-                <div className="text-gray-500 mb-1">拒答检测</div>
-                <div className={agentScore.dimensions.refusal?.is_refusal ? 'text-red-400 text-lg font-bold' : 'text-green-400 text-lg font-bold'}>
-                  {agentScore.dimensions.refusal?.is_refusal ? '是' : '否'}
-                </div>
-                <div className="text-gray-500 text-xs">
-                  {agentScore.dimensions.refusal?.refusal_type || '—'}
+                <div className="text-center p-2 rounded bg-dark-hover">
+                  <div className="text-gray-500 mb-1">成本效率</div>
+                  <div className={agentScore.dimensions.cost?.calls_per_task != null ? 'text-orange-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.cost?.calls_per_task != null
+                      ? `${agentScore.dimensions.cost.calls_per_task}`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500">
+                    {agentScore.dimensions.cost?.tokens_per_task != null
+                      ? `${agentScore.dimensions.cost.tokens_per_task} tok`
+                      : ''}
+                  </div>
                 </div>
               </div>
             </div>
+
+            <div>
+              <div className="text-xs text-gray-400 mb-2">仅展示 · 不进总分（3）</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="text-center p-2 rounded border border-gray-800 bg-dark-hover/60">
+                  <div className="text-gray-500 mb-1">文本质量</div>
+                  <div className="flex gap-3 justify-center text-xs">
+                    <span className="text-cyan-400">
+                      连贯{' '}
+                      {agentScore.dimensions.text_quality?.coherence != null
+                        ? `${(agentScore.dimensions.text_quality.coherence * 100).toFixed(0)}%`
+                        : '—'}
+                    </span>
+                    <span className="text-pink-400">
+                      简洁{' '}
+                      {agentScore.dimensions.text_quality?.conciseness != null
+                        ? `${(agentScore.dimensions.text_quality.conciseness * 100).toFixed(0)}%`
+                        : '—'}
+                    </span>
+                    <span className="text-amber-400">
+                      指令{' '}
+                      {agentScore.dimensions.text_quality?.instruction_following != null
+                        ? `${(agentScore.dimensions.text_quality.instruction_following * 100).toFixed(0)}%`
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-center p-2 rounded border border-gray-800 bg-dark-hover/60">
+                  <div className="text-gray-500 mb-1">内容安全</div>
+                  <div className={agentScore.dimensions.content_safety?.harmful != null ? 'text-green-400 text-lg font-bold' : 'text-gray-500'}>
+                    {agentScore.dimensions.content_safety?.harmful != null
+                      ? `${(agentScore.dimensions.content_safety.harmful * 100).toFixed(0)}%`
+                      : '—'}
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    {agentScore.dimensions.content_safety?.flagged?.length
+                      ? `${agentScore.dimensions.content_safety.flagged.length} 标记`
+                      : '清洁'}
+                  </div>
+                </div>
+                <div className="text-center p-2 rounded border border-gray-800 bg-dark-hover/60">
+                  <div className="text-gray-500 mb-1">拒答检测</div>
+                  <div className={agentScore.dimensions.refusal?.is_refusal ? 'text-red-400 text-lg font-bold' : 'text-green-400 text-lg font-bold'}>
+                    {agentScore.dimensions.refusal?.is_refusal ? '是' : '否'}
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    {agentScore.dimensions.refusal?.refusal_type || '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {Array.isArray(evalSnap?.scoring_dimensions) &&
+            (evalSnap!.scoring_dimensions as unknown[]).length > 0 ? (
+              <div>
+                <div className="text-xs text-gray-400 mb-2">
+                  该 Agent 声明的业务维度（来自脚手架 / AGENT.md · 未并入上方工程总分）
+                </div>
+                <ul className="list-disc pl-4 space-y-1 text-xs text-gray-300">
+                  {(
+                    evalSnap!.scoring_dimensions as Array<{
+                      name?: string;
+                      weight?: number;
+                      description?: string;
+                      threshold?: number;
+                    }>
+                  ).map((d) => (
+                    <li key={String(d.name)}>
+                      <code className="text-gray-100">{String(d.name)}</code>
+                      {d.weight != null ? ` · w=${d.weight}` : ''}
+                      {d.threshold != null ? ` · 阈=${d.threshold}` : ''}
+                      {d.description ? ` — ${d.description}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       )}

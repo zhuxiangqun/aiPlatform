@@ -275,9 +275,8 @@ def _maybe_record_novel(novels: Sequence[Dict[str, Any]], *, source: str = "code
     return recorded
 
 
-def load_gold_cases(gold_dir: Optional[str] = None, *, tenant_id: str = "") -> List[GoldCase]:
-    """Load ``*.yaml`` / ``*.yml`` / ``*.json`` from gold directory."""
-    root = resolve_gold_dir(gold_dir, tenant_id)
+def _read_gold_cases_from_dir(root: Path) -> List[GoldCase]:
+    """Parse gold case files under ``root`` (no path policy)."""
     if not root.is_dir():
         return []
     cases: List[GoldCase] = []
@@ -315,6 +314,40 @@ def load_gold_cases(gold_dir: Optional[str] = None, *, tenant_id: str = "") -> L
         if cid:
             by_id[cid] = c
     return list(by_id.values()) if by_id else cases
+
+
+def _workspace_seed_gold_dir() -> Optional[Path]:
+    try:
+        seed = Path(__file__).resolve().parents[3] / "workspace_seeds" / "eval" / "code_review_gold"
+        return seed if seed.is_dir() else None
+    except Exception:
+        return None
+
+
+def load_gold_cases(gold_dir: Optional[str] = None, *, tenant_id: str = "") -> List[GoldCase]:
+    """Load ``*.yaml`` / ``*.yml`` / ``*.json`` from gold directory.
+
+    When ``gold_dir`` is omitted and the tenant runtime dir is empty, fall back to
+    workspace_seeds then the legacy non-tenant dir so Eval Center match-only works
+    before ``--install-seeds``.
+    """
+    root = resolve_gold_dir(gold_dir, tenant_id)
+    cases = _read_gold_cases_from_dir(root)
+    if cases or gold_dir:
+        return cases
+    seed = _workspace_seed_gold_dir()
+    if seed is not None:
+        cases = _read_gold_cases_from_dir(seed)
+        if cases:
+            logger.info("gold cases empty at %s; using workspace seeds %s", root, seed)
+            return cases
+    legacy = default_gold_dir("")
+    if legacy.resolve() != root.resolve():
+        cases = _read_gold_cases_from_dir(legacy)
+        if cases:
+            logger.info("gold cases empty at %s; using legacy dir %s", root, legacy)
+            return cases
+    return []
 
 
 def _issue_blob(issue: Dict[str, Any]) -> str:
@@ -471,13 +504,19 @@ async def run_code_review_gold_eval(
         cases = cases[: int(limit)]
 
     if not cases:
+        gdir = resolve_gold_dir(gold_dir, tenant_id)
+        tip = (
+            "python3 scripts/eval_code_review_gold.py --install-seeds"
+            + (f" --tenant-id {tenant_id}" if (tenant_id or "").strip() else " --tenant-id eval-v1")
+        )
         return {
             "ok": False,
             "reason": "no_gold_cases",
-            "gold_dir": str(resolve_gold_dir(gold_dir, tenant_id)),
+            "gold_dir": str(gdir),
             "profile": profile,
             "tenant_id": tenant_id or "",
             "cases": [],
+            "tip": tip,
         }
 
     base_args = profile_to_autoreview_args(profile)

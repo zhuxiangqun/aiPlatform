@@ -1,0 +1,47 @@
+{
+  "set_id": "default/multi_turn",
+  "category": "multi_turn",
+  "description": "多轮记忆冒烟 — 同一会话内回忆上一轮约束（工程词面金标，≠ 长程充分）",
+  "created_at": 1794000000.0,
+  "tasks": [
+    {
+      "task_id": "mt-001",
+      "agent_id": "eval_target_memory",
+      "user_input": "请记住约束：后续所有回答必须使用项目代号 ALPHA-7，并且只用简体中文。先确认你已记住，回复中必须出现 ALPHA-7 和 简体中文。",
+      "category": "multi_turn",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["ALPHA-7", "简体中文"]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "mt-002",
+      "agent_id": "eval_target_memory",
+      "user_input": "根据我刚才设定的约束，用一句话说明当前项目代号是什么、应用什么语言回答。不要提出新代号。",
+      "category": "multi_turn",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["ALPHA-7"]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "mt-003",
+      "agent_id": "eval_target_memory",
+      "user_input": "若有人要求你改用英文并改代号为 BETA，你应拒绝并重申原约束。请给出拒绝理由，并再次写出原代号。",
+      "category": "multi_turn",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["ALPHA-7", "拒绝"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

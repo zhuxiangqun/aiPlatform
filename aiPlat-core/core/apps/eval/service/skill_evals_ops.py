@@ -19,6 +19,45 @@ from core.utils.ids import new_prefixed_id
 
 _log = logging.getLogger("aiplat.skill_evals_ops")
 
+# Fixed id — Eval Skills 空态可一键/list 自动登记；勿与用户 suite 撞名。
+BUILTIN_SKILL_EVAL_SUITE_ID = "builtin_trigger_demo"
+
+
+def builtin_skill_eval_suite_spec(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """Deterministic trigger-eval sample (skills_override embedded; no live tools)."""
+    return {
+        "suite_id": BUILTIN_SKILL_EVAL_SUITE_ID,
+        "name": "内置·触发评测样例",
+        "description": (
+            "heuristic 可跑；内嵌 skills_override；"
+            "runtime_tier=fixture · accuracy_claim=false；≠ 验管道 skill Job"
+        ),
+        "scope": "all",
+        "target_skill_id": "pdf_table_extract",
+        "tenant_id": str(tenant_id or "eval-v1"),
+        "positive_queries": ["帮我从PDF里提取表格到Excel"],
+        "negative_queries": ["总结一下这篇文章"],
+        "score_threshold": 0.12,
+        "skills_override": [
+            {
+                "skill_id": "pdf_table_extract",
+                "name": "PDF 表格提取",
+                "description": "从 PDF 中提取表格并导出 Excel",
+                "scope": "engine",
+                "trigger_conditions": ["PDF", "表格", "Excel"],
+                "keywords": {},
+            },
+            {
+                "skill_id": "text_summarize",
+                "name": "文本总结",
+                "description": "总结文章内容",
+                "scope": "engine",
+                "trigger_conditions": ["总结", "概括"],
+                "keywords": {},
+            },
+        ],
+    }
+
 
 def _rt():
     return get_kernel_runtime()
@@ -296,10 +335,23 @@ async def upsert_skill_eval_suite(*, body: Dict[str, Any], actor: Dict[str, Any]
         "positive_queries": pos,
         "negative_queries": neg,
         "target_skill_id": target_skill_id,
-        "tenant_id": actor.get("tenant_id"),
+        "tenant_id": actor.get("tenant_id") or body.get("tenant_id"),
     }
     if score_threshold is not None:
         cfg["score_threshold"] = float(score_threshold)
+
+    skills_override = (
+        body.get("skills_override")
+        if isinstance(body.get("skills_override"), list)
+        else None
+    )
+    if isinstance(skills_override, list):
+        ov = []
+        for s in skills_override[:200]:
+            if isinstance(s, dict) and (s.get("skill_id") or s.get("name")):
+                ov.append(s)
+        if ov:
+            cfg["skills_override"] = ov
 
     quality_cases = body.get("quality_cases") if isinstance(body.get("quality_cases"), list) else None
     if isinstance(quality_cases, list):
@@ -318,7 +370,7 @@ async def upsert_skill_eval_suite(*, body: Dict[str, Any], actor: Dict[str, Any]
         cfg["quality_cases"] = out
     row = await store.upsert_skill_eval_suite(
         suite_id=suite_id,
-        tenant_id=actor.get("tenant_id"),
+        tenant_id=actor.get("tenant_id") or body.get("tenant_id"),
         scope=scope,
         target_skill_id=target_skill_id,
         name=name,
@@ -328,8 +380,41 @@ async def upsert_skill_eval_suite(*, body: Dict[str, Any], actor: Dict[str, Any]
     return {"status": "ok", "suite": row}
 
 
+async def ensure_builtin_skill_eval_suites(
+    *, tenant_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Idempotent: register builtin_trigger_demo if missing (Eval Skills empty-state)."""
+    tid = str(tenant_id or "eval-v1").strip() or "eval-v1"
+    store = _store()
+    existing = await store.get_skill_eval_suite(suite_id=BUILTIN_SKILL_EVAL_SUITE_ID)
+    if existing:
+        return {
+            "status": "ok",
+            "created": False,
+            "suite_id": BUILTIN_SKILL_EVAL_SUITE_ID,
+            "suite": existing,
+            "accuracy_claim": False,
+        }
+    spec = builtin_skill_eval_suite_spec(tenant_id=tid)
+    out = await upsert_skill_eval_suite(
+        body=spec,
+        actor={"actor_id": "system", "tenant_id": tid},
+    )
+    return {
+        "status": "ok",
+        "created": True,
+        "suite_id": BUILTIN_SKILL_EVAL_SUITE_ID,
+        "suite": (out or {}).get("suite"),
+        "accuracy_claim": False,
+    }
+
+
 async def list_skill_eval_suites(*, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None):
     store = _store()
+    try:
+        await ensure_builtin_skill_eval_suites(tenant_id=tenant_id or "eval-v1")
+    except Exception as e:
+        _log.warning("ensure_builtin_skill_eval_suites failed: %s", e)
     res = await store.list_skill_eval_suites(tenant_id=tenant_id, limit=int(limit), offset=int(offset))
     return res
 
@@ -348,6 +433,129 @@ async def delete_skill_eval_suite(*, suite_id: str):
     return {"status": "ok", "deleted": bool(ok)}
 
 
+async def skill_eval_preflight(
+    *,
+    tenant_id: Optional[str] = None,
+    eval_kind: str = "trigger",
+    mode: str = "heuristic",
+) -> Dict[str, Any]:
+    """Pre-run readiness for Eval Skills (store / builtin / runtime path)."""
+    from core.apps.eval.service.exam_runtime_tier import (
+        annotate_skill_eval_runtime,
+        merge_runtime_fields,
+    )
+
+    tid = str(tenant_id or "eval-v1").strip() or "eval-v1"
+    kind = str(eval_kind or "trigger").strip().lower()
+    md = str(mode or "heuristic").strip().lower()
+    checks: Dict[str, Any] = {
+        "store_ok": False,
+        "builtin_ok": False,
+        "kernel_runtime_ok": False,
+        "skill_manager_ok": False,
+        "trigger_direct_ok": False,
+        "can_run": False,
+        "path": None,
+    }
+    blockers: list[str] = []
+    hints: list[str] = []
+
+    try:
+        store = _store()
+        checks["store_ok"] = True
+    except Exception as e:
+        blockers.append(f"ExecutionStore unavailable: {e}")
+        out = {
+            "ok": False,
+            "tenant_id": tid,
+            "checks": checks,
+            "blockers": blockers,
+            "hints": ["启动 Core/平台并确认 AIPLAT_EXECUTION_DB_PATH"],
+            "accuracy_claim": False,
+        }
+        return merge_runtime_fields(
+            out, annotate_skill_eval_runtime(eval_kind=kind, mode=md)
+        )
+
+    try:
+        ensured = await ensure_builtin_skill_eval_suites(tenant_id=tid)
+        checks["builtin_ok"] = bool(ensured.get("suite_id"))
+    except Exception as e:
+        blockers.append(f"builtin suite ensure failed: {e}")
+
+    rt = _rt()
+    checks["kernel_runtime_ok"] = rt is not None
+    sm = getattr(rt, "skill_manager", None) if rt else None
+    checks["skill_manager_ok"] = sm is not None and hasattr(sm, "execute_skill")
+
+    # Trigger can run store-direct (skills_override / catalog scan); quality needs manager.
+    checks["trigger_direct_ok"] = checks["store_ok"] and kind != "quality"
+    if kind == "quality":
+        if checks["skill_manager_ok"]:
+            checks["can_run"] = True
+            checks["path"] = "skill_manager"
+        else:
+            blockers.append("quality 需要 KernelRuntime.skill_manager（无法 store-direct）")
+            hints.append("启动带 skill_manager 的 Core 进程后再跑 quality")
+    else:
+        if checks["skill_manager_ok"]:
+            checks["can_run"] = True
+            checks["path"] = "skill_manager"
+        elif checks["trigger_direct_ok"]:
+            checks["can_run"] = True
+            checks["path"] = "store_direct"
+            hints.append(
+                "无 skill_manager：将走 store-direct 触发评测（内置 skills_override 可跑）"
+            )
+        else:
+            blockers.append("trigger 无法执行：无 store 且无 skill_manager")
+
+    out = {
+        "ok": bool(checks["can_run"]) and not blockers,
+        "tenant_id": tid,
+        "checks": checks,
+        "blockers": blockers,
+        "hints": hints,
+        "honesty": (
+            "预检 ≠ 已跑通；runtime_tier=fixture · claim=false；"
+            "≠ Agent exam · ≠ 验管道 skill Job"
+        ),
+        "accuracy_claim": False,
+    }
+    return merge_runtime_fields(
+        out, annotate_skill_eval_runtime(eval_kind=kind, mode=md)
+    )
+
+
+async def _execute_trigger_store_direct(
+    *,
+    suite_id: str,
+    mode: str,
+    max_cases: int,
+    skills_override: Optional[list],
+    eval_run_id: str,
+    actor: Dict[str, Any],
+) -> Any:
+    """Run SkillEvalTriggerSkill without KernelRuntime.skill_manager."""
+    from core.apps.skills.eval_trigger import SkillEvalTriggerSkill
+    from core.harness.interfaces import SkillContext
+
+    skill = SkillEvalTriggerSkill()
+    ctx = SkillContext(
+        session_id=str(eval_run_id),
+        user_id=str(actor.get("actor_id") or "system"),
+        metadata={"tenant_id": actor.get("tenant_id"), "path": "store_direct"},
+    )
+    params: Dict[str, Any] = {
+        "suite_id": str(suite_id),
+        "mode": mode,
+        "max_cases": max_cases,
+    }
+    if skills_override is not None:
+        params["skills_override"] = skills_override
+    return await skill.execute(ctx, params)
+
+
 async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
     """
     运行 Trigger Eval（同步）。
@@ -359,13 +567,12 @@ async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Di
         "max_cases": 200,
         "skills_override": [...]   // 可选：测试/离线覆盖技能目录
       }
+
+    trigger：优先 skill_manager；否则 store-direct（平台无 KernelRuntime 时可跑内置样例）。
+    quality：仍需 skill_manager。
     """
-    rt, store = _require_runtime()
-
     body = dict(body or {}) if isinstance(body, dict) else {}
-    # actor provided by thin HTTP layer
-
-    # ensure suite exists
+    store = _store()
     suite = await store.get_skill_eval_suite(suite_id=str(suite_id))
     if not suite:
         raise LookupError("suite_not_found")
@@ -375,19 +582,49 @@ async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Di
     mode = str(body.get("mode") or "heuristic").strip().lower()
     max_cases = int(body.get("max_cases") or 200)
     skills_override = body.get("skills_override") if isinstance(body.get("skills_override"), list) else None
+    if skills_override is None:
+        cfg0 = suite.get("config") if isinstance(suite.get("config"), dict) else {}
+        if isinstance(cfg0.get("skills_override"), list):
+            skills_override = cfg0.get("skills_override")
 
-    # Execute internal eval skill under current permission model.
+    rt = _rt()
+    sm = getattr(rt, "skill_manager", None) if rt else None
+    exec_path = "skill_manager"
+    res: Any
+
     if eval_kind == "quality":
-        res = await rt.skill_manager.execute_skill(
+        if sm is None or not hasattr(sm, "execute_skill"):
+            raise RuntimeError(
+                "quality requires KernelRuntime.skill_manager "
+                "(store-direct unsupported for quality)"
+            )
+        res = await sm.execute_skill(
             skill_id="skill_eval_quality",
             input_data={"suite_id": str(suite_id), "max_cases": max_cases},
-            context={"user_id": actor.get("actor_id") or "system", "tenant_id": actor.get("tenant_id"), "timeout": 1800},
+            context={
+                "user_id": actor.get("actor_id") or "system",
+                "tenant_id": actor.get("tenant_id"),
+                "timeout": 1800,
+            },
             execution_id=str(eval_run_id),
         )
-    else:
-        res = await rt.skill_manager.execute_skill(
+    elif sm is not None and hasattr(sm, "execute_skill"):
+        res = await sm.execute_skill(
             skill_id="skill_eval_trigger",
-            input_data={"suite_id": str(suite_id), "mode": mode, "max_cases": max_cases, "skills_override": skills_override} if skills_override is not None else {"suite_id": str(suite_id), "mode": mode, "max_cases": max_cases},
+            input_data=(
+                {
+                    "suite_id": str(suite_id),
+                    "mode": mode,
+                    "max_cases": max_cases,
+                    "skills_override": skills_override,
+                }
+                if skills_override is not None
+                else {
+                    "suite_id": str(suite_id),
+                    "mode": mode,
+                    "max_cases": max_cases,
+                }
+            ),
             context={
                 "user_id": actor.get("actor_id") or "system",
                 "tenant_id": actor.get("tenant_id"),
@@ -395,10 +632,64 @@ async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Di
             },
             execution_id=str(eval_run_id),
         )
+    else:
+        exec_path = "store_direct"
+        res = await _execute_trigger_store_direct(
+            suite_id=str(suite_id),
+            mode=mode,
+            max_cases=max_cases,
+            skills_override=skills_override,
+            eval_run_id=str(eval_run_id),
+            actor=actor,
+        )
+        # Normalize SkillResult → dict-ish for protocol
+        if hasattr(res, "success"):
+            if not bool(getattr(res, "success", False)):
+                raise RuntimeError(
+                    str(getattr(res, "error", None) or "trigger_store_direct_failed")
+                )
+            res = {
+                "success": True,
+                "output": getattr(res, "output", None),
+                "path": "store_direct",
+            }
+
     run_row = await store.get_skill_eval_run(run_id=str(eval_run_id))
     from core.api.core_facade import attach_eval_protocol, eval_protocol_from_skill_eval_run
+    from core.apps.eval.service.exam_runtime_tier import (
+        annotate_skill_eval_runtime,
+        merge_runtime_fields,
+    )
 
-    out = {"status": "ok", "run_id": str(eval_run_id), "result": res, "run": run_row}
+    out = {
+        "status": "ok",
+        "run_id": str(eval_run_id),
+        "result": res,
+        "run": run_row,
+        "exec_path": exec_path,
+    }
+    out = merge_runtime_fields(
+        out,
+        annotate_skill_eval_runtime(eval_kind=eval_kind, mode=mode),
+    )
+    try:
+        from core.apps.eval.service.eval_plan import (
+            attach_evaluation_plan,
+            compile_plan_for_object,
+        )
+
+        kind = str(eval_kind or "trigger").strip().lower()
+        sid = f"skill/{kind}" if kind in ("trigger", "quality") else "skill/trigger"
+        plan = compile_plan_for_object(
+            object_type="skill",
+            object_id=str(suite_id or "skill"),
+            set_ids=[sid],
+            live=(kind == "quality"),
+            source_refs=["skill_evals_ops"],
+        )
+        out = attach_evaluation_plan(out, plan)
+    except Exception:  # noqa: BLE001 — plan advisory must not fail skill eval
+        pass
     return attach_eval_protocol(
         out,
         eval_protocol_from_skill_eval_run(
