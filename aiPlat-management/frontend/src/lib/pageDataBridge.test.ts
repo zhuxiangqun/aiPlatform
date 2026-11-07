@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   clearAssetAuditPageFields,
   clearPageData,
+  clearSmokeEvalPageFields,
   formatAuditIssueForPage,
   getPageData,
   pageDataToText,
+  patchPageData,
   reportAssetAuditToPage,
   reportPageData,
 } from './pageDataBridge';
@@ -74,5 +76,37 @@ describe('reportAssetAuditToPage', () => {
     expect(cleared.issue0).toBeUndefined();
     expect(cleared.guideGlossary).toBe('Skill=可复用动作');
     expect(pageDataToText(cleared)).toMatch(/guideGlossary/);
+  });
+});
+
+describe('eval smoke page fields', () => {
+  const route = '/eval';
+
+  beforeEach(() => {
+    (globalThis as any).window = (globalThis as any).window || {};
+    (globalThis as any).window.__AIPLAT_PAGE_DATA__ = {};
+  });
+
+  afterEach(() => {
+    clearPageData(route);
+  });
+
+  it('preserves smokeIssue* across EvalCenter reportPageData refresh', () => {
+    reportPageData(route, { selectedTab: 'agents', pending: 10 });
+    patchPageData(route, {
+      smokeSummary: 'fail=1,warn=2',
+      smokeIssue0: 'fail|task_result|任务结果|原因:未完成|对策:去单卷|卷:default/normal',
+      smokeHint: '按 smokeIssue* 答',
+    });
+    reportPageData(route, { selectedTab: 'agents', pending: 11 });
+    const after = getPageData(route)!;
+    expect(after.pending).toBe(11);
+    expect(after.smokeIssue0).toMatch(/task_result/);
+    expect(pageDataToText(after)).toMatch(/smokeIssue0/);
+
+    clearSmokeEvalPageFields(route);
+    const cleared = getPageData(route)!;
+    expect(cleared.smokeIssue0).toBeUndefined();
+    expect(cleared.selectedTab).toBe('agents');
   });
 });

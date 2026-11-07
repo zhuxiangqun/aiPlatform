@@ -106,25 +106,26 @@ export default function FloatingDigitalHuman({ currentRoute }: { currentRoute?: 
       setHandoffCard(null);
       return;
     }
+    // Never auto-navigate: both handoff and navigate become a clickable CTA.
+    // (Auto [ACTION:navigate:/diagnostics/runs] yanked users off Eval Center.)
     const handoff = answer.match(/\[ACTION:handoff:([^\]]+)\]/);
-    if (handoff && handoff[1].startsWith('/')) {
-      const route = handoff[1];
-      const label =
-        route.startsWith('/governance') ? '去治理确认审批'
-          : route.startsWith('/core/runs') ? '去执行记录取消/查看'
-            : '去应用工厂确认并执行';
+    const nav = answer.match(/\[ACTION:navigate:([^\]]+)\]/);
+    const route = String(handoff?.[1] || nav?.[1] || '').trim();
+    if (route.startsWith('/')) {
+      const label = handoff
+        ? route.startsWith('/governance')
+          ? '去治理确认审批'
+          : route.startsWith('/core/runs') || route.startsWith('/diagnostics/runs')
+            ? '去执行记录取消/查看'
+            : '去应用工厂确认并执行'
+        : route.startsWith('/diagnostics/runs')
+          ? '打开运行记录（需你确认）'
+          : `打开 ${route}（需你确认）`;
       setHandoffCard({ route, label });
-      return; // never auto-navigate operational handoffs
+      return;
     }
     setHandoffCard(null);
-    const actionMatch = answer.match(/\[ACTION:(\w+):([^\]]+)\]/);
-    if (actionMatch) {
-      const [, action, target] = actionMatch;
-      if (action === 'navigate' && target.startsWith('/')) {
-        navigate(target);
-      }
-    }
-  }, [answer, navigate]);
+  }, [answer]);
 
   /** Hide machine ACTION markers from chat bubbles; handoff shows as CTA card. */
   const displayText = (text: string) =>

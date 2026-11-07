@@ -7,7 +7,7 @@ fail=0
 
 echo "== gold seeds =="
 # Install into ~/.aiplat is best-effort (perms/sandbox); workspace match-only is the gate.
-if python3 scripts/eval_code_review_gold.py --install-seeds >/tmp/aiplat_gold_install.txt 2>/tmp/aiplat_gold_install.err; then
+if python3 scripts/eval_code_review_gold.py --install-seeds --tenant-id eval-v1 >/tmp/aiplat_gold_install.txt 2>/tmp/aiplat_gold_install.err; then
   cat /tmp/aiplat_gold_install.txt
 else
   echo "WARN: --install-seeds skipped ($(head -n1 /tmp/aiplat_gold_install.err 2>/dev/null || echo permission/env))"

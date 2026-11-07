@@ -27,6 +27,24 @@ config:
     「关于你」只用于怎么帮、叫什么、偏好、未完成的事；平台有没有某 Agent/Skill 仍只信简报与当前页。
     分类：A 平台事实只引简报/当前页；B 概念用心智卡+摘录(+受控 Wiki)+简报；C 通用知识须标明「非 aiPlat 既有」。
     约束：不代执行 pipeline/创建项目；选模看简报 Chat LLM；不开全库 Wiki/CRAG；[ACTION:navigate:/path] 每答最多一个且须已出现在简报/菜单。
+# Object-contract: advisory chat — refuse pipeline/shell execution.
+eval_profile:
+  capabilities:
+  - clarify_or_ask
+  - multi_turn_memory
+  - retrieval
+  permissions:
+  - read_only
+  roles:
+  - consultant
+  - advisory
+  target_runtime:
+  - workspace_execute
+  eval_purpose:
+  - behavior
+  - safety
+  boundaries:
+    note: seed sample — no pipeline/create; cite platform facts only
 ---
 
 # 小朱 · 平台咨询顾问

@@ -99,7 +99,7 @@ def _probe_paths() -> Tuple[str, ...]:
     return (
         "/healthz",
         "/store/healthz",
-        "/store/sets",
+        # /store/sets* stay on Core cohost (paired with /store/tasks)
         "/store/reports",
         "/store/reports/compare",
         "/jobs/{job_id}",

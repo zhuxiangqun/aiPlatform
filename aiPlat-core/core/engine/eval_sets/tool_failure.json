@@ -1,7 +1,7 @@
 {
   "set_id": "default/tool_failure",
   "category": "tool_failure",
-  "description": "工具失败场景 — 验证 Agent 错误恢复能力",
+  "description": "工具失败场景 — 验证错误恢复措辞与失败定位。本卷 expected_tools 为空，不以工具调用步数判定 tools/trajectory 通过；冒烟矩阵将工具/规划标为未测。",
   "created_at": 1781622678.428921,
   "tasks": [
     {
@@ -19,7 +19,8 @@
           "找不到"
         ]
       },
-      "risk_level": "low"
+      "risk_level": "low",
+      "notes": "Lexical recovery wording only; not a tool-trajectory gold paper."
     }
   ]
 }

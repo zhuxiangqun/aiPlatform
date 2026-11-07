@@ -1,8 +1,9 @@
 """EVAL_V1 E2 — thin CRUD / migrate over EvalStore (canonical under /eval).
 
-A3-local: when AIPLAT_EVAL_SERVICE_URL is set, healthz/sets/reports proxy to
-standalone :8010; otherwise cohost CoreFacade (default).
-process_split_authorized stays false.
+A3-local: when AIPLAT_EVAL_SERVICE_URL is set, healthz/reports proxy to
+standalone :8010. Sets list/create/get stay on Core cohost so they share
+the same EvalStore as /store/tasks (UI maintenance). process_split_authorized
+stays false.
 """
 from __future__ import annotations
 
@@ -43,10 +44,10 @@ async def list_sets(
     tenant_id: str = "",
     limit: int = Query(100, ge=1, le=1000),
     _auth: str = Depends(require_auth),
-) -> Union[Dict[str, Any], Response]:
-    proxied = await proxy_eval_store(request, path="/store/sets")
-    if proxied is not None:
-        return proxied
+) -> Dict[str, Any]:
+    # Sets + tasks share Core EvalStore. Do not proxy to :8010 — package store
+    # has no task CRUD; dual-write would break Eval Center maintenance UI.
+    _ = request
     from core.api.core_facade import eval_store_list_sets
 
     items = eval_store_list_sets(tenant_id=tenant_id, limit=limit)
@@ -58,10 +59,9 @@ async def create_set(
     request: Request,
     body: Dict[str, Any],
     _auth: str = Depends(require_auth),
-) -> Union[Dict[str, Any], Response]:
-    proxied = await proxy_eval_store(request, path="/store/sets")
-    if proxied is not None:
-        return proxied
+) -> Dict[str, Any]:
+    # Same cohost store as POST /store/tasks (see list_sets).
+    _ = request
     from core.api.core_facade import eval_store_create_set
 
     row = eval_store_create_set(
@@ -81,10 +81,8 @@ async def get_set(
     set_id: str,
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
-) -> Union[Dict[str, Any], Response]:
-    proxied = await proxy_eval_store(request, path=f"/store/sets/{set_id}")
-    if proxied is not None:
-        return proxied
+) -> Dict[str, Any]:
+    _ = request
     from core.api.core_facade import eval_store_get_set
 
     row = eval_store_get_set(set_id, tenant_id=tenant_id)

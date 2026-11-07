@@ -31,6 +31,7 @@ export {
   skillPackApi,
   runApi,
   agentEvalApi,
+  skillEvalApi,
   auditApi,
   policyApi,
   gatePolicyApi,

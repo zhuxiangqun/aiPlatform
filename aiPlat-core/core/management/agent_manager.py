@@ -136,7 +136,9 @@ class AgentManager:
         """Resolve all agents paths in increasing priority order (low -> high)."""
         repo_root = Path(__file__).resolve().parents[2]  # aiPlat-core/
         engine_default = repo_root / "core" / "engine" / "agents"
-        workspace_default = Path(get_aiplat_home()) / "agents"
+        from core.utils.paths import get_agents_dir
+
+        workspace_default = Path(get_agents_dir())
 
         scope = (self._scope or "engine").strip().lower()
         if scope not in {"engine", "workspace"}:
@@ -212,6 +214,9 @@ class AgentManager:
                     # skill_model_purpose / loop_type (see resolve_workspace_agent_model_purpose).
                     if not config.get("model"):
                         config["model"] = fm.get("model") or "auto"
+                    # Object-contract: top-level AGENT.md eval_profile → config (explicit wins).
+                    if "eval_profile" not in config and isinstance(fm.get("eval_profile"), dict):
+                        config["eval_profile"] = dict(fm["eval_profile"])
 
                     category = str(fm.get("category") or "")
                     tags = fm.get("tags") or []

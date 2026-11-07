@@ -161,6 +161,7 @@ def _autosmoke_gate_error(*, message: str) -> Dict[str, Any]:
 
 @router.get("/workspace/agents", response_model=Dict[str, Any])
 async def list_workspace_agents(
+    request: Request,
     agent_type: Optional[str] = None,
     status: Optional[str] = None,
     category: Optional[str] = None,
@@ -169,33 +170,74 @@ async def list_workspace_agents(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
-    mgr = _ws_agent_mgr(rt)
-    if not mgr:
-        return {"agents": [], "total": 0, "limit": limit, "offset": offset}
-    tag_list = [t.strip() for t in tags.split(",")] if tags else None
-    agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
-    # Filter out engine agents (reserved IDs) — workspace page should only show workspace agents
-    agents = [a for a in agents if a.id not in (mgr._reserved_ids or set())]
-    return {
-        "agents": [
-            {"id": a.id, "name": a.name,
-             "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
-             "description": a.metadata.get("description", ""),
-             "agent_type": a.type, "status": a.status,
-             "runtime_state": getattr(a, "runtime_state", "stopped"),
-             "is_shell": _detect_shell_agent(a),
-             "category": a.category, "tags": a.tags, "phase": a.phase,
-             "output_artifact": a.metadata.get("output_artifact", ""),
-              "config": a.config,
-              "skills": a.skills, "tools": a.tools,
-              "workflow_ids": a.workflow_ids, "agent_ids": a.agent_ids,
-              "metadata": a.metadata}
-            for a in agents
-        ],
-        "total": mgr.get_agent_count().get("total", 0),
-        "limit": limit,
-        "offset": offset,
-    }
+    # Named workspace partition (read → default if header omitted).
+    from core.harness.named_workspace.agent_mgr import agent_manager_for
+    from core.harness.named_workspace.errors import WorkspaceError
+    from core.harness.named_workspace.resolve import (
+        reset_active_named_workspace,
+        resolve_from_http,
+        set_active_named_workspace,
+    )
+
+    nw_ctx = None
+    nw_token = None
+    try:
+        actor = actor_from_http(request, {})
+        nw_ctx = resolve_from_http(
+            method="GET",
+            headers={k: v for k, v in request.headers.items()},
+            query=dict(request.query_params),
+            tenant_id=str(actor.get("tenant_id") or "") or None,
+            actor_id=str(actor.get("actor_id") or "") or None,
+        )
+        nw_token = set_active_named_workspace(nw_ctx)
+        mgr = agent_manager_for(nw_ctx)
+    except WorkspaceError as e:
+        raise HTTPException(
+            status_code=int(e.http_status),
+            detail={"error": e.code, "message": str(e) or e.code},
+        ) from e
+    except Exception:
+        mgr = _ws_agent_mgr(rt)
+        nw_ctx = None
+
+    try:
+        if not mgr:
+            return {"agents": [], "total": 0, "limit": limit, "offset": offset}
+        tag_list = [t.strip() for t in tags.split(",")] if tags else None
+        agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
+        # Filter out engine agents (reserved IDs) — workspace page should only show workspace agents
+        agents = [a for a in agents if a.id not in (mgr._reserved_ids or set())]
+        return {
+            "agents": [
+                {"id": a.id, "name": a.name,
+                 "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
+                 "description": a.metadata.get("description", ""),
+                 "agent_type": a.type, "status": a.status,
+                 "runtime_state": getattr(a, "runtime_state", "stopped"),
+                 "is_shell": _detect_shell_agent(a),
+                 "category": a.category, "tags": a.tags, "phase": a.phase,
+                 "output_artifact": a.metadata.get("output_artifact", ""),
+                  "config": a.config,
+                  "skills": a.skills, "tools": a.tools,
+                  "workflow_ids": a.workflow_ids, "agent_ids": a.agent_ids,
+                  "metadata": a.metadata}
+                for a in agents
+            ],
+            "total": mgr.get_agent_count().get("total", 0),
+            "limit": limit,
+            "offset": offset,
+            "named_workspace_id": getattr(nw_ctx, "workspace_id", None),
+            "phase1_boundary": (
+                "本工作区一期只隔离 Agent 与评测结果；traces/缓存/附件/其它 DB 仍共享。"
+            ),
+        }
+    finally:
+        if nw_token is not None:
+            try:
+                reset_active_named_workspace(nw_token)
+            except Exception:
+                pass  # noqa: optional-dependency
 
 
 @router.post("/workspace/agents", response_model=Dict[str, Any])

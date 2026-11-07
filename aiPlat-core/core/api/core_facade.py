@@ -2871,6 +2871,10 @@ async def _execute_workspace_agent_background(
                 await watch_task
             except Exception:
                 pass  # noqa: cleanup-best-effort
+            except _asyncio.CancelledError:
+                # Py3.8+: CancelledError is BaseException — must not escape finally
+                # or the HTTP request becomes Starlette "No response returned" 500.
+                pass  # noqa: normal-cancellation
         if ws_token is not None:
             try:
                 from core.harness.kernel.execution_context import reset_active_workspace_context
@@ -6126,6 +6130,314 @@ def eval_bootstrap_e3_gold(
     )
 
 
+def eval_list_exam_sets() -> list:
+    """List built-in Agent exam papers (eval sets)."""
+    from core.apps.eval.service.agent_exam_ops import list_exam_sets
+
+    return list_exam_sets()
+
+
+def list_named_workspaces(*, tenant_id: str = "") -> Dict[str, Any]:
+    """List local + remote named workspace profiles visible to tenant."""
+    from urllib.parse import urlparse
+
+    from core.harness.named_workspace.registry import ensure_registry, list_registry_entries
+    from core.harness.named_workspace.resolve import resolve_named_workspace
+    from core.harness.named_workspace.errors import WorkspaceError
+
+    ensure_registry()
+    items = []
+    for row in list_registry_entries():
+        try:
+            resolve_named_workspace(
+                row["id"], method="GET", tenant_id=tenant_id or None
+            )
+        except WorkspaceError:
+            continue
+        kind = str(row.get("kind") or "local")
+        host = None
+        if kind == "remote" and row.get("base_url"):
+            host = urlparse(str(row["base_url"])).hostname
+        items.append(
+            {
+                "id": row["id"],
+                "label": row["label"],
+                "kind": kind,
+                "base_url_host": host,
+            }
+        )
+    return {
+        "ok": True,
+        "items": items,
+        "phase1_boundary": (
+            "本工作区一期只隔离 Agent 与评测结果；traces/缓存/附件/其它 DB 仍共享。"
+        ),
+        "remote_boundary": (
+            "远程 Core = 换 API 目标；≠ 本机分区；≠ 外部拉模式 Agent。"
+        ),
+    }
+
+
+def create_named_workspace(
+    *,
+    workspace_id: str,
+    label: str = "",
+    tenant_id: str = "",
+    kind: str = "local",
+    base_url: str = "",
+    auth_secret_env: str = "",
+    allowed_routes: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Create local empty named workspace or remote Core profile (idempotent by id)."""
+    from core.harness.named_workspace.agent_mgr import invalidate_agent_manager
+    from core.harness.named_workspace.registry import (
+        create_local_workspace,
+        create_remote_workspace,
+    )
+
+    k = (kind or "local").strip().lower()
+    tenants = ["*"] if not tenant_id else [tenant_id, "*"]
+    if k == "remote":
+        entry = create_remote_workspace(
+            workspace_id,
+            label=label,
+            base_url=base_url,
+            auth_secret_env=auth_secret_env,
+            allowed_routes=list(allowed_routes or []),
+            allowed_tenants=tenants,
+        )
+    else:
+        entry = create_local_workspace(
+            workspace_id,
+            label=label,
+            allowed_tenants=tenants,
+        )
+        invalidate_agent_manager(str(entry.get("id") or ""))
+    return {
+        "ok": True,
+        "workspace": {
+            "id": entry.get("id"),
+            "label": entry.get("label"),
+            "kind": entry.get("kind"),
+            "base_url": entry.get("base_url"),
+            "auth_secret_configured": bool(entry.get("auth_secret_env")),
+        },
+    }
+
+
+async def eval_run_agent_exam(
+    *,
+    agent_id: str,
+    set_id: str,
+    live: bool = False,
+    max_tasks: int = 0,
+    persist: bool = True,
+) -> Dict[str, Any]:
+    """Bind exam set tasks to agent_id and dry-run or live-execute."""
+    from core.apps.eval.service.agent_exam_ops import run_agent_exam
+
+    return await run_agent_exam(
+        agent_id=agent_id,
+        set_id=set_id,
+        live=live,
+        max_tasks=max_tasks,
+        persist=persist,
+    )
+
+
+def eval_match_cases_for_agent_target(
+    *,
+    agent_id: str,
+    set_ids: Optional[list] = None,
+    capabilities: Optional[list] = None,
+    tools: Optional[list] = None,
+    permissions: Optional[list] = None,
+    roles: Optional[list] = None,
+    eval_profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """P0 Object Contract: advisory MatchReport for agent vs set applicability draft."""
+    from core.apps.eval.service.agent_exam_ops import match_cases_for_agent_target
+
+    return match_cases_for_agent_target(
+        agent_id=agent_id,
+        set_ids=set_ids,
+        capabilities=capabilities,
+        tools=tools,
+        permissions=permissions,
+        roles=roles,
+        eval_profile=eval_profile,
+    )
+
+
+def eval_compile_evaluation_plan(
+    *,
+    agent_id: str = "",
+    object_id: str = "",
+    object_type: str = "agent",
+    set_ids: Optional[list] = None,
+    purpose: Optional[list] = None,
+    include_special: bool = False,
+    live: bool = False,
+    capabilities: Optional[list] = None,
+    tools: Optional[list] = None,
+    permissions: Optional[list] = None,
+    roles: Optional[list] = None,
+    eval_profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """P2/P3: compile Evaluation Plan for any object_type (same plan schema)."""
+    from core.apps.eval.service.eval_plan import compile_plan_for_object
+
+    oid = (object_id or agent_id or "").strip()
+    if not oid:
+        raise ValueError("object_id or agent_id required")
+    ot = (object_type or "agent").strip() or "agent"
+    plan = compile_plan_for_object(
+        object_type=ot,
+        object_id=oid,
+        set_ids=set_ids,
+        purpose=purpose,
+        include_special=include_special,
+        live=live,
+        capabilities=capabilities,
+        tools=tools,
+        permissions=permissions,
+        roles=roles,
+        eval_profile=eval_profile,
+    )
+    src = None
+    if isinstance(eval_profile, dict) and eval_profile.get("profile_source"):
+        src = str(eval_profile.get("profile_source"))
+    elif isinstance(plan.get("eval_profile_source"), str):
+        src = plan.get("eval_profile_source")
+    return {
+        "ok": True,
+        "accuracy_claim": False,
+        "sufficiency_claim": False,
+        "plan": plan,
+        "target_contract": plan.get("target_contract"),
+        "object_type": ot,
+        "eval_profile_source": src,
+    }
+
+
+async def eval_resolve_agent_eval_profile(*, agent_id: str) -> Dict[str, Any]:
+    """Resolve Agent eval_profile (explicit or derived skill/tool hints)."""
+    from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
+
+    profile = await resolve_agent_eval_profile(agent_id)
+    return {
+        "ok": True,
+        "agent_id": agent_id,
+        "eval_profile": profile,
+        "accuracy_claim": False,
+        "sufficiency_claim": False,
+    }
+
+
+def eval_list_external_targets(*, workspace_id: str) -> Dict[str, Any]:
+    """List registered external http_chat_pull targets for a named workspace."""
+    from core.apps.eval.service.external_exam_ops import list_targets
+
+    items = list_targets(workspace_id)
+    return {
+        "ok": True,
+        "items": items,
+        "total": len(items),
+        "accuracy_claim": False,
+        "honesty": "外部拉模式 · 仅对话文本结果；≠ 本机 live Agent；≠ 轨迹充分。",
+    }
+
+
+def eval_upsert_external_target(
+    *,
+    workspace_id: str,
+    target_id: str,
+    label: str = "",
+    base_url: str = "",
+    path: str = "/v1/chat",
+    auth_header_name: str = "",
+    auth_secret_env: str = "",
+    timeout_ms: int = 30_000,
+    response_mode: str = "aiplat_v0",
+) -> Dict[str, Any]:
+    """Register or update an external pull-mode chat target (SSRF-checked)."""
+    from core.apps.eval.service.external_exam_ops import register_target
+
+    target = register_target(
+        workspace_id,
+        target_id=target_id,
+        label=label,
+        base_url=base_url,
+        path=path,
+        auth_header_name=auth_header_name,
+        auth_secret_env=auth_secret_env,
+        timeout_ms=timeout_ms,
+        response_mode=response_mode,
+    )
+    return {"ok": True, "target": target, "accuracy_claim": False}
+
+
+async def eval_run_external_exam(
+    *,
+    workspace_id: str,
+    target_id: str,
+    set_id: str,
+    live: bool = False,
+    max_tasks: int = 0,
+    persist: bool = True,
+) -> Dict[str, Any]:
+    """Pull-mode exam against external HTTP chat target (not local ReAct)."""
+    from core.apps.eval.service.external_exam_ops import run_external_exam
+
+    return await run_external_exam(
+        workspace_id=workspace_id,
+        target_id=target_id,
+        set_id=set_id,
+        live=live,
+        max_tasks=max_tasks,
+        persist=persist,
+    )
+
+
+def eval_run_generated_app_pi_smoke(
+    *,
+    source: str = "sample",
+    project_id: str = "",
+    app_home: str = "",
+    live: bool = False,
+    model: str = "",
+    timeout_s: float = 90.0,
+) -> Dict[str, Any]:
+    """Generated-app Pi delivery smoke (offline structural or live pi CLI)."""
+    from core.apps.eval.service.generated_app_pi_ops import run_generated_app_pi_smoke
+
+    return run_generated_app_pi_smoke(
+        source=source,
+        project_id=project_id,
+        app_home=app_home,
+        live=live,
+        model=model,
+        timeout_s=timeout_s,
+    )
+
+
+def eval_agent_attributable_report(
+    *,
+    agent_id: str,
+    limit: int = 5,
+    set_id: str = "",
+) -> Dict[str, Any]:
+    """Attributable report + publish conclusion (safety veto hard gate; variance uses history).
+
+    Optional ``set_id`` scopes to that exam paper — does not substitute another set.
+    """
+    from core.apps.eval.service.agent_attributable_report import (
+        build_attributable_report_from_agent,
+    )
+
+    return build_attributable_report_from_agent(agent_id, limit=limit, set_id=set_id)
+
+
 def eval_e3_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.gold_bootstrap import e3_status
 
@@ -6783,6 +7095,27 @@ async def skill_eval_list_suites(
     from core.apps.eval.service.skill_evals_ops import list_skill_eval_suites as _fn
 
     return await _fn(limit=limit, offset=offset, tenant_id=tenant_id)
+
+
+async def skill_eval_ensure_builtin_suites(*, tenant_id: Optional[str] = None):
+    """Register builtin_trigger_demo if missing (Eval Skills empty-state)."""
+    from core.apps.eval.service.skill_evals_ops import (
+        ensure_builtin_skill_eval_suites as _fn,
+    )
+
+    return await _fn(tenant_id=tenant_id)
+
+
+async def skill_eval_preflight(
+    *,
+    tenant_id: Optional[str] = None,
+    eval_kind: str = "trigger",
+    mode: str = "heuristic",
+):
+    """Eval Skills pre-run readiness (store / builtin / skill_manager|store_direct)."""
+    from core.apps.eval.service.skill_evals_ops import skill_eval_preflight as _fn
+
+    return await _fn(tenant_id=tenant_id, eval_kind=eval_kind, mode=mode)
 
 
 async def skill_eval_get_suite(*, suite_id: str):

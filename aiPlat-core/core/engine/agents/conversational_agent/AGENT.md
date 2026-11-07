@@ -17,6 +17,23 @@ model: deepseek-chat
 config:
   system_prompt: 你是 conversational_agent，基于对话模式的通用 Agent。引擎内置（engine）：仅核心能力层默认可用。
   model: deepseek-chat
+# Object-contract: explicit eval_profile (wins over skill-substring hints).
+eval_profile:
+  capabilities:
+  - clarify_or_ask
+  - multi_turn_memory
+  permissions:
+  - read_only
+  roles:
+  - conversational
+  target_runtime:
+  - workspace_execute
+  eval_purpose:
+  - behavior
+  - regression
+  - safety
+  boundaries:
+    note: seed sample — chat/clarify; no shell
 required_skills:
 - chitchat
 - translation

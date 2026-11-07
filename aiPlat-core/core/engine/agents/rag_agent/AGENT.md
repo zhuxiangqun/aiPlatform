@@ -19,6 +19,22 @@ model: deepseek-reasoner
 config:
   system_prompt: 你是 rag_agent，基于检索增强生成的问答 Agent。引擎内置（engine）：仅核心能力层默认可用。
   model: deepseek-chat
+# Object-contract: retrieval-centric exam profile (config-driven).
+eval_profile:
+  capabilities:
+  - retrieval
+  - clarify_or_ask
+  permissions:
+  - read_only
+  roles:
+  - rag
+  target_runtime:
+  - workspace_execute
+  eval_purpose:
+  - behavior
+  - regression
+  boundaries:
+    note: seed sample — KB/RAG; refuse shell
 required_skills:
 - knowledge_retrieval
 - summarization

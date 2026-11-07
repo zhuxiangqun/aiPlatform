@@ -39,12 +39,16 @@ def main(argv: list | None = None) -> int:
     parser.add_argument(
         "--install-seeds",
         action="store_true",
-        help="copy workspace_seeds/eval/code_review_gold → ~/.aiplat/eval/code_review_gold",
+        help="copy workspace_seeds → tenant gold dir (use --tenant-id; default also installs eval-v1)",
     )
     parser.add_argument("--json", action="store_true", help="print full JSON")
     args = parser.parse_args(argv)
 
-    from core.harness.evaluation.code_review_gold import list_profiles, run_code_review_gold_eval
+    from core.harness.evaluation.code_review_gold import (
+        default_gold_dir,
+        list_profiles,
+        run_code_review_gold_eval,
+    )
 
     if args.list_profiles:
         print(json.dumps(list_profiles(), indent=2, ensure_ascii=False))
@@ -54,19 +58,22 @@ def main(argv: list | None = None) -> int:
         import shutil
 
         src = _ROOT / "aiPlat-core" / "workspace_seeds" / "eval" / "code_review_gold"
-        try:
-            from core.utils.paths import get_aiplat_data_dir
-
-            dest = Path(get_aiplat_data_dir("eval/code_review_gold"))
-        except Exception:
-            dest = Path.home() / ".aiplat" / "eval" / "code_review_gold"
-        dest.mkdir(parents=True, exist_ok=True)
-        n = 0
-        for f in sorted(src.glob("*.yaml")):
-            shutil.copy2(f, dest / f.name)
-            n += 1
-        print(f"installed {n} seed files → {dest}")
-        return 0 if n else 1
+        # Eval Center UI uses tenant_id=eval-v1; bare install must cover that path.
+        dests: list[Path] = []
+        tid = (args.tenant_id or "").strip()
+        if tid:
+            dests.append(default_gold_dir(tid))
+        else:
+            dests.append(default_gold_dir(""))
+            dests.append(default_gold_dir("eval-v1"))
+        n_files = 0
+        for dest in dests:
+            dest.mkdir(parents=True, exist_ok=True)
+            for f in sorted(src.glob("*.yaml")):
+                shutil.copy2(f, dest / f.name)
+                n_files += 1
+            print(f"installed {len(list(src.glob('*.yaml')))} seed files → {dest}")
+        return 0 if n_files else 1
 
     out = asyncio.run(
         run_code_review_gold_eval(

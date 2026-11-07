@@ -1,0 +1,6 @@
+layer: core
+rationale: |
+  Harness 子模块目录（named_workspace）。符合 boundary-standard.md §3.1——
+  命名工作区分区、本地/远程 profile 解析与 AgentManager 绑定属于 AI Runtime
+  Kernel 横切能力，不是业务 app 模块。
+known_debt: []

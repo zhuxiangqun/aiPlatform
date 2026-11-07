@@ -23,6 +23,18 @@ describe('evalRunPanelHelpers', () => {
     ).toBe('job=j1 · status=queued · runner=code_review_gold');
   });
 
+  it('maps sandbox_required detail to fixed copy', () => {
+    const s = formatEvalJobSummary({
+      job_id: 'j2',
+      status: 'failed',
+      runner_id: 'skill_suite',
+      detail: 'sandbox_required:skill_suite',
+    });
+    expect(s).toContain('job=j2');
+    expect(s).toContain('Docker');
+    expect(s).not.toContain('sandbox_required:skill_suite');
+  });
+
   it('builds fixture enqueue payload', () => {
     const p = defaultCodeReviewJobPayload();
     expect(p.findings).toEqual(p.gold);

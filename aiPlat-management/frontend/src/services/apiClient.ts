@@ -8,6 +8,10 @@
  */
 
 import { storedIdentityHeaders } from './identityHeaders';
+import {
+  namedWorkspaceHeaders,
+  resolveEvalEndpoint,
+} from '../pages/Eval/namedWorkspace';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -28,13 +32,16 @@ class ApiClient {
     endpoint: string,
     options: RequestInit & { timeoutMs?: number } = {}
   ): Promise<ApiResult<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const resolved = resolveEvalEndpoint(endpoint);
+    const url = `${this.baseUrl}${resolved}`;
     const { timeoutMs, ...fetchOptions } = options;
     
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };
     Object.assign(defaultHeaders, storedIdentityHeaders());
+    // Named workspace partition — local writes require explicit id; remote omits on proxy.
+    Object.assign(defaultHeaders, namedWorkspaceHeaders(resolved));
 
     const TIMEOUT_MS = typeof timeoutMs === 'number' && timeoutMs > 0 ? timeoutMs : 180_000;
     const controller = new AbortController();

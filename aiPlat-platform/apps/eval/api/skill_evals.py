@@ -50,6 +50,53 @@ async def upsert_skill_eval_suite(request: dict, http_request: Request):
         raise _map_ops_errors(exc) from exc
 
 
+@router.post("/skill-evals/suites/ensure-builtin", response_model=ItemResponse)
+async def ensure_builtin_skill_eval_suites(
+    request: dict, http_request: Request
+):
+    """Idempotent seed: builtin_trigger_demo for Eval Skills empty-state."""
+    body = dict(request or {}) if isinstance(request, dict) else {}
+    actor = actor_from_http(http_request, body)
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload=body,
+        action="update",
+        resource_type="skill_eval",
+        resource_id="builtin_trigger_demo",
+        run_id=None,
+    )
+    if deny:
+        return deny
+    from core.api.core_facade import skill_eval_ensure_builtin_suites
+
+    tenant_id = str(body.get("tenant_id") or actor.get("tenant_id") or "eval-v1")
+    try:
+        out = await skill_eval_ensure_builtin_suites(tenant_id=tenant_id)
+        return {"data": out if isinstance(out, dict) else {"value": out}}
+    except Exception as exc:
+        raise _map_ops_errors(exc) from exc
+
+
+@router.get("/skill-evals/preflight", response_model=ItemResponse)
+async def skill_eval_preflight_api(
+    tenant_id: Optional[str] = None,
+    eval_kind: str = "trigger",
+    mode: str = "heuristic",
+):
+    """Pre-run readiness: store / builtin / skill_manager|store_direct."""
+    from core.api.core_facade import skill_eval_preflight
+
+    try:
+        out = await skill_eval_preflight(
+            tenant_id=tenant_id or "eval-v1",
+            eval_kind=eval_kind,
+            mode=mode,
+        )
+        return {"data": out if isinstance(out, dict) else {"value": out}}
+    except Exception as exc:
+        raise _map_ops_errors(exc) from exc
+
+
 @router.get("/skill-evals/suites", response_model=ItemResponse)
 async def list_skill_eval_suites(
     limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None
@@ -97,7 +144,7 @@ async def delete_skill_eval_suite(suite_id: str, http_request: Request):
         raise _map_ops_errors(exc) from exc
 
 
-@router.post("/skill-evals/suites/{suite_id}/run", response_model=StatusResponse)
+@router.post("/skill-evals/suites/{suite_id}/run", response_model=ItemResponse)
 async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Request):
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
@@ -114,9 +161,11 @@ async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Reque
     from core.api.core_facade import skill_eval_run_suite
 
     try:
-        return await skill_eval_run_suite(
+        out = await skill_eval_run_suite(
             suite_id=suite_id, body=body, actor=actor
         )
+        # Preserve run_id / runtime_tier (StatusResponse would strip extras).
+        return {"data": out if isinstance(out, dict) else {"value": out}}
     except Exception as exc:
         raise _map_ops_errors(exc) from exc
 

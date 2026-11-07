@@ -51,6 +51,13 @@ class SkillEvalTriggerSkill(BaseSkill):
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         if store is None:
+            try:
+                from core.api.core_facade import get_execution_store
+
+                store = get_execution_store()
+            except Exception:
+                store = None
+        if store is None:
             return SkillResult(success=False, error="ExecutionStore not initialized")
 
         run_id = str(getattr(context, "session_id", None) or "") or f"eval_{int(time.time()*1000)}"

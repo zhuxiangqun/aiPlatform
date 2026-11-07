@@ -2576,6 +2576,349 @@ export const agentEvalApi = {
       {},
     );
   },
+  listExamSets: async () => {
+    return apiClient.get<{
+      items: Array<{
+        set_id: string;
+        category?: string;
+        description?: string;
+        tasks?: number;
+      }>;
+      total?: number;
+    }>('/core/evaluation/sets');
+  },
+  /** From-zero exam: bind paper tasks to agent_id; live executes agent. */
+  runExam: async (body: {
+    agent_id: string;
+    set_id: string;
+    live?: boolean;
+    max_tasks?: number;
+  }) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      message?: string;
+      composite_score?: number;
+      grade?: string;
+      total_tasks?: number;
+      live?: boolean;
+      accuracy_claim?: boolean;
+      gate_pass?: boolean;
+      safety_veto?: boolean;
+      run_id?: string;
+      model?: string;
+      agent_version?: string;
+      code_revision?: string;
+      runtime_tier?: string;
+      runtime_claim?: boolean;
+      runtime_claim_reason?: string;
+      attributable_report?: Record<string, unknown>;
+      match_report?: Record<string, unknown>;
+      target_contract?: Record<string, unknown>;
+      evaluation_plan?: Record<string, unknown>;
+      plan_id?: string;
+      eval_profile_source?: string;
+    }>('/core/evaluation/exam', body, { timeoutMs: 600_000 });
+  },
+  /** P2/P3 Evaluation Plan: selected vs not_applicable vs deferred special. */
+  compilePlan: async (body: {
+    agent_id?: string;
+    object_id?: string;
+    object_type?: string;
+    set_ids?: string[];
+    purpose?: string[];
+    include_special?: boolean;
+    live?: boolean;
+    capabilities?: string[];
+    tools?: string[];
+    permissions?: string[];
+    roles?: string[];
+    eval_profile?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      object_type?: string;
+      eval_profile_source?: string | null;
+      plan?: {
+        plan_id?: string;
+        selected_cases?: Array<{ set_id?: string; pack?: string; status?: string }>;
+        excluded_cases?: Array<{
+          set_id?: string;
+          status?: string;
+          reasons?: string[];
+          pack?: string;
+        }>;
+        counts?: Record<string, number>;
+        honesty?: string;
+        target_contract?: Record<string, unknown>;
+        eval_profile_source?: string | null;
+      };
+      target_contract?: Record<string, unknown>;
+      accuracy_claim?: boolean;
+    }>('/core/evaluation/compile-plan', body);
+  },
+  /** Explicit config.eval_profile or derived skill/tool capability hints. */
+  resolveEvalProfile: async (body: { agent_id: string }) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      agent_id?: string;
+      eval_profile?: Record<string, unknown>;
+      honesty?: string;
+      accuracy_claim?: boolean;
+    }>('/core/evaluation/resolve-eval-profile', body);
+  },
+  /** Attributable + publish conclusion (safety veto; variance uses history). */
+  attributableReport: async (agentId: string, limit = 5, setId = '') => {
+    const q = new URLSearchParams();
+    q.set('limit', String(limit));
+    if (setId.trim()) q.set('set_id', setId.trim());
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/agents/${encodeURIComponent(agentId)}/attributable-report?${q}`,
+    );
+  },
+  /** External http_chat_pull targets (current named workspace). */
+  listExternalTargets: async () => {
+    return apiClient.get<{
+      ok?: boolean;
+      items?: Array<{
+        target_id: string;
+        label?: string;
+        base_url?: string;
+        path?: string;
+        agent_id?: string;
+        response_mode?: string;
+      }>;
+      total?: number;
+      honesty?: string;
+    }>('/core/evaluation/external-targets');
+  },
+  upsertExternalTarget: async (body: {
+    target_id: string;
+    label?: string;
+    base_url: string;
+    path?: string;
+    auth_header_name?: string;
+    auth_secret_env?: string;
+    timeout_ms?: number;
+    response_mode?: string;
+  }) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      target?: Record<string, unknown>;
+    }>('/core/evaluation/external-targets', body);
+  },
+  runExternalExam: async (body: {
+    target_id: string;
+    set_id: string;
+    live?: boolean;
+    max_tasks?: number;
+  }) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      message?: string;
+      agent_id?: string;
+      target_id?: string;
+      composite_score?: number;
+      grade?: string;
+      total_tasks?: number;
+      live?: boolean;
+      accuracy_claim?: boolean;
+      honesty?: string;
+      attributable_report?: Record<string, unknown>;
+    }>('/core/evaluation/external-exam', body, { timeoutMs: 600_000 });
+  },
+  /** Generated-app Pi delivery smoke (offline structural or live pi CLI). */
+  runGeneratedAppPiSmoke: async (body: {
+    source?: 'sample' | 'project' | 'path';
+    project_id?: string;
+    app_home?: string;
+    live?: boolean;
+    model?: string;
+    timeout_s?: number;
+  } = {}) => {
+    return apiClient.post<{
+      ok?: boolean;
+      error?: string;
+      msg?: string;
+      source?: string;
+      project_id?: string;
+      app_home?: string;
+      pi_bundle?: string;
+      live?: boolean;
+      runtime_tier?: string;
+      runtime_claim?: boolean;
+      runtime_claim_reason?: string;
+      accuracy_claim?: boolean;
+      honesty?: string;
+      structural?: { ok?: boolean; errors?: string[] };
+      pi_cli?: Record<string, unknown>;
+      model?: string;
+    }>('/core/evaluation/generated-app-pi-smoke', body, {
+      timeoutMs: 180_000,
+    });
+  },
+};
+
+/** Skill suite artifact eval (platform skill_evals) — not pipe fixture. */
+export const skillEvalApi = {
+  listSuites: async (params: { limit?: number; offset?: number; tenant_id?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    const qs = q.toString();
+    return apiClient.get<{
+      data?: {
+        items?: Array<Record<string, unknown>>;
+        total?: number;
+      };
+      items?: Array<Record<string, unknown>>;
+      total?: number;
+    }>(`/platform/apps/eval/skill-evals/suites${qs ? `?${qs}` : ''}`);
+  },
+  preflight: async (params: {
+    tenant_id?: string;
+    eval_kind?: string;
+    mode?: string;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.tenant_id) q.set('tenant_id', params.tenant_id);
+    if (params.eval_kind) q.set('eval_kind', params.eval_kind);
+    if (params.mode) q.set('mode', params.mode);
+    const qs = q.toString();
+    const res = await apiClient.get<{
+      data?: {
+        ok?: boolean;
+        checks?: Record<string, unknown>;
+        blockers?: string[];
+        hints?: string[];
+        honesty?: string;
+        runtime_tier?: string;
+        runtime_claim?: boolean;
+        runtime_claim_reason?: string;
+      };
+    }>(`/platform/apps/eval/skill-evals/preflight${qs ? `?${qs}` : ''}`);
+    return (
+      (res as { data?: Record<string, unknown> })?.data ||
+      (res as Record<string, unknown>)
+    );
+  },
+  /** Idempotent seed builtin_trigger_demo (Eval Skills empty-state). */
+  ensureBuiltinSuites: async (body: { tenant_id?: string } = {}) => {
+    const res = await apiClient.post<{
+      data?: {
+        status?: string;
+        created?: boolean;
+        suite_id?: string;
+        suite?: Record<string, unknown>;
+        accuracy_claim?: boolean;
+      };
+      status?: string;
+      created?: boolean;
+      suite_id?: string;
+      error?: string;
+    }>('/platform/apps/eval/skill-evals/suites/ensure-builtin', body);
+    const data = (res as { data?: Record<string, unknown> })?.data;
+    if (data && typeof data === 'object') {
+      return data as {
+        status?: string;
+        created?: boolean;
+        suite_id?: string;
+        suite?: Record<string, unknown>;
+        accuracy_claim?: boolean;
+      };
+    }
+    return res as {
+      status?: string;
+      created?: boolean;
+      suite_id?: string;
+      suite?: Record<string, unknown>;
+      accuracy_claim?: boolean;
+    };
+  },
+  upsertSuite: async (body: Record<string, unknown>) => {
+    return apiClient.post<{
+      status?: string;
+      suite?: Record<string, unknown>;
+      error?: string;
+    }>('/platform/apps/eval/skill-evals/suites', body);
+  },
+  runSuite: async (
+    suiteId: string,
+    body: { eval_kind?: string; mode?: string; max_cases?: number } = {},
+  ) => {
+    const res = await apiClient.post<{
+      data?: {
+        status?: string;
+        run_id?: string;
+        run?: Record<string, unknown>;
+        result?: Record<string, unknown>;
+        error?: string;
+        runtime_tier?: string;
+        runtime_claim?: boolean;
+        runtime_claim_reason?: string;
+        accuracy_claim?: boolean;
+      };
+      status?: string;
+      run_id?: string;
+      error?: string;
+      detail?: unknown;
+      runtime_tier?: string;
+      runtime_claim?: boolean;
+      runtime_claim_reason?: string;
+    }>(
+      `/platform/apps/eval/skill-evals/suites/${encodeURIComponent(suiteId)}/run`,
+      body,
+      { timeoutMs: 600_000 },
+    );
+    const data = (res as { data?: Record<string, unknown> })?.data;
+    if (data && typeof data === 'object') {
+      return data as {
+        status?: string;
+        run_id?: string;
+        run?: Record<string, unknown>;
+        result?: Record<string, unknown>;
+        error?: string;
+        runtime_tier?: string;
+        runtime_claim?: boolean;
+        runtime_claim_reason?: string;
+        accuracy_claim?: boolean;
+      };
+    }
+    return res as {
+      status?: string;
+      run_id?: string;
+      run?: Record<string, unknown>;
+      result?: Record<string, unknown>;
+      error?: string;
+      runtime_tier?: string;
+      runtime_claim?: boolean;
+      runtime_claim_reason?: string;
+      accuracy_claim?: boolean;
+    };
+  },
+  getRun: async (runId: string) => {
+    return apiClient.get<Record<string, unknown>>(
+      `/platform/apps/eval/skill-evals/runs/${encodeURIComponent(runId)}`,
+    );
+  },
+  listResults: async (runId: string, params: { limit?: number; offset?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiClient.get<{
+      data?: { items?: Array<Record<string, unknown>>; total?: number };
+      items?: Array<Record<string, unknown>>;
+      total?: number;
+    }>(
+      `/platform/apps/eval/skill-evals/runs/${encodeURIComponent(runId)}/results${qs ? `?${qs}` : ''}`,
+    );
+  },
 };
 
 export const auditApi = {

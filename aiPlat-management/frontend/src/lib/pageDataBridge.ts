@@ -65,7 +65,14 @@ const _LIVE_AUDIT_ID_KEYS = new Set([
 ]);
 
 function _isLiveAuditKey(key: string): boolean {
-  return key.startsWith('issue') || _LIVE_AUDIT_ID_KEYS.has(key);
+  return (
+    key.startsWith('issue') ||
+    key.startsWith('smokeIssue') ||
+    key === 'smokeSummary' ||
+    key === 'smokeHint' ||
+    key === 'smokeAgentId' ||
+    _LIVE_AUDIT_ID_KEYS.has(key)
+  );
 }
 
 /** 上报页面数据；保留同 route 上未在本次 payload 出现的审核实况键（issueN / skillId 等）。 */
@@ -104,6 +111,28 @@ export function clearAssetAuditPageFields(route: string): void {
   const next: PageData = {};
   for (const [k, v] of Object.entries(prev)) {
     if (!_isLiveAuditKey(k)) next[k] = v;
+  }
+  getStore()[route] = next;
+  _notify();
+}
+
+function _isSmokeEvalKey(key: string): boolean {
+  return (
+    key.startsWith('smokeIssue') ||
+    key === 'smokeSummary' ||
+    key === 'smokeHint' ||
+    key === 'smokeAgentId'
+  );
+}
+
+/** Drop Eval smoke-matrix fields only (keep G2a guide + asset audit). */
+export function clearSmokeEvalPageFields(route: string): void {
+  if (!route) return;
+  const prev = getStore()[route];
+  if (!prev) return;
+  const next: PageData = {};
+  for (const [k, v] of Object.entries(prev)) {
+    if (!_isSmokeEvalKey(k)) next[k] = v;
   }
   getStore()[route] = next;
   _notify();
@@ -208,8 +237,11 @@ export function pageDataToText(data: PageData | undefined, maxLen = 1400): strin
   for (const [k, v] of Object.entries(data)) {
     if (v === undefined || v === null || v === '') continue;
     const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
-    // issue*/guide* allow longer facts (e.g. Eval tab catalog for 小朱).
-    const cap = k.startsWith('issue') || k.startsWith('guide') ? 900 : 120;
+    // issue*/guide*/smoke* allow longer facts (Eval smoke matrix for 小朱).
+    const cap =
+      k.startsWith('issue') || k.startsWith('guide') || k.startsWith('smoke')
+        ? 900
+        : 120;
     if (val.length > cap) {
       lines.push(`${k}: ${val.slice(0, cap)}…`);
     } else {
@@ -238,7 +270,13 @@ export function mergeConsultantPageText(
 export function consultantPagePayload(route: string, maxLen = 2000): string {
   const data = getPageData(route);
   const hasEditorFacts = Boolean(
-    data && (data.issue0 || data.skillId || data.toolId || data.mcpId || data.agentId),
+    data &&
+      (data.issue0 ||
+        data.smokeIssue0 ||
+        data.skillId ||
+        data.toolId ||
+        data.mcpId ||
+        data.agentId),
   );
   const hasGuidePack = Boolean(
     data && (data.guideCatalog || data.guideGlossary || data.issueGuide),

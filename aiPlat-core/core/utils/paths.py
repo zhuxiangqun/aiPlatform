@@ -55,7 +55,42 @@ def get_aiplat_data_dir(subdir: Optional[str] = None) -> str:
 # ── Common subdirectory shortcuts ──
 
 def get_agents_dir() -> str:
+    """Agents directory — prefers active NamedWorkspaceContext when set."""
+    try:
+        from core.harness.named_workspace.resolve import get_active_named_workspace
+
+        ctx = get_active_named_workspace()
+        if ctx is not None and getattr(ctx, "is_remote", False):
+            raise RuntimeError(
+                "remote profile has no local agents_dir — use workspace-proxy"
+            )
+        if ctx is not None and getattr(ctx, "agents_dir", None):
+            return str(ctx.agents_dir)
+    except RuntimeError:
+        raise
+    except Exception:
+        pass  # noqa: optional-dependency
     return get_aiplat_data_dir("agents")
+
+
+def get_eval_results_dir() -> str:
+    """Eval results directory — prefers active NamedWorkspaceContext when set."""
+    try:
+        from core.harness.named_workspace.resolve import get_active_named_workspace
+
+        ctx = get_active_named_workspace()
+        if ctx is not None and getattr(ctx, "is_remote", False):
+            raise RuntimeError(
+                "remote profile has no local eval_results_dir — use workspace-proxy"
+            )
+        if ctx is not None and getattr(ctx, "eval_results_dir", None):
+            return str(ctx.eval_results_dir)
+    except RuntimeError:
+        raise
+    except Exception:
+        pass  # noqa: optional-dependency
+    return get_aiplat_data_dir("eval_results")
+
 
 def get_skills_dir() -> str:
     return get_aiplat_data_dir("skills")
@@ -98,6 +133,7 @@ __all__ = [
     "get_aiplat_home",
     "get_aiplat_data_dir",
     "get_agents_dir",
+    "get_eval_results_dir",
     "get_skills_dir",
     "get_tools_dir",
     "get_kb_dir",
