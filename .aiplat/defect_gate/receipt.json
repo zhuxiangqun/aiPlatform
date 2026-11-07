@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T00:10:53+08:00",
+  "reviewed_at": "2026-11-08T00:26:12+08:00",
   "base_ref": "origin/main",
   "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
-  "diff_sha256": "e7541b5359f029be0262fcdc661cf7e59a694d0542050dc46ffd033e8be853b2",
-  "head_sha": "faac18b220e3f55bcfa8b5c774729fb14b9757ec",
+  "diff_sha256": "e7dc9860f9e232701706341ffdccded6f6dfa521b51ec7391315c69b5bd56608",
+  "head_sha": "9d5e8e6614e483074ac1ffb640b1f7260fd53835",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "After whitepaper sync. Local lock only; CI unlock needs non-author Approve."
+  "note": "After CAPABILITIES AUTO-STATS 2840 + whitepaper sync. Local lock only."
 }
