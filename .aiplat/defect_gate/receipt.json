@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-07T23:53:44+08:00",
+  "reviewed_at": "2026-11-08T00:06:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
-  "diff_sha256": "dd90dfeb6c8c7299fe9d46e8ce8e372849bb10826ee1820261ba039ea34e4892",
-  "head_sha": "8950856da2c1065ded78b24da62146e8e919a506",
+  "diff_sha256": "91fb39540f477aa4c08cee189abcccb88c84c63e6e687337a7b468e03c5a9b83",
+  "head_sha": "137c11c4beed6ff48e1515779a3871dd56110f04",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. Reviewed object-contract/Plan v2/engine-fallback/smoke: no silent empty Plan; compile-plan fails loud on missing agent; engine AgentManager fallback for exam resolve. CI unlock is non-author Approve."
+  "note": "CI unblock: facade store prefer; §80 Wiki; scorecard n=100; contract §78. Local lock only."
 }
