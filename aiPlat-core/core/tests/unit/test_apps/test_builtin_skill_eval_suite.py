@@ -72,6 +72,10 @@ async def test_preflight_and_store_direct_run(tmp_path, monkeypatch):
         lambda: None,
     )
     monkeypatch.setattr(
+        "core.harness.kernel.runtime.get_kernel_runtime",
+        lambda: None,
+    )
+    monkeypatch.setattr(
         "core.api.core_facade.get_execution_store",
         lambda: store,
     )

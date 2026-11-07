@@ -90,15 +90,18 @@ class SkillEvalQualitySkill(BaseSkill):
         return {"checklist": checklist, "passed": passed, "total": total, "score": score}
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        rt = get_kernel_runtime()
-        store = getattr(rt, "execution_store", None) if rt else None
-        if store is None:
-            try:
-                from core.api.core_facade import get_execution_store
+        # Prefer CoreFacade store (same as SkillEvalTriggerSkill) so a stale
+        # KernelRuntime.execution_store cannot hide the suite under test.
+        store = None
+        try:
+            from core.api.core_facade import get_execution_store
 
-                store = get_execution_store()
-            except Exception:
-                store = None
+            store = get_execution_store()
+        except Exception:
+            store = None
+        if store is None:
+            rt = get_kernel_runtime()
+            store = getattr(rt, "execution_store", None) if rt else None
         if store is None:
             return SkillResult(success=False, error="ExecutionStore not initialized")
 

@@ -31,9 +31,9 @@ _WIKI_PER_FILE_CHARS = 400
 _WIKI_PREFIX = "Wiki短摘（手册；与简报/当前页冲突时以简报为准）"
 
 # Default allowlist when AIPLAT_CONSULTANT_WIKI_COLLECTIONS is unset (intersected with disk).
+# Domain collection IDs (e.g. delivery / industry packs) must come from env — not hardcoded here (§80).
 _DEFAULT_WIKI_COLLECTIONS: Tuple[str, ...] = (
     "aiplat-system",
-    "fde-delivery",
     "AI_评估",
     "AI_Harness",
     "AI_Skill",

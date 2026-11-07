@@ -570,6 +570,33 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| extract_workspace_id_from_request | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| get_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| reset_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| set_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| NamedWorkspaceContext | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
+| build_remote_url | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| assert_remote_url_allowed | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| normalize_remote_base_url | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| RemoteProxyError | `core/harness/named_workspace/remote_proxy.py` | ✅ | 自动同步 | 已合入 |
+| create_local_workspace | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| get_registry_entry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| list_registry_entries | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| load_registry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| ensure_registry | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| validate_workspace_id | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| registry_path | `core/harness/named_workspace/registry.py` | ✅ | 自动同步 | 已合入 |
+| workspace_meta | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| named_workspace_scope | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| require_local_disk | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| resolve_request_workspace | `core/harness/named_workspace/http_bind.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceForbidden | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceNotFound | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceRequired | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| WorkspaceError | `core/harness/named_workspace/errors.py` | ✅ | 自动同步 | 已合入 |
+| invalidate_agent_manager | `core/harness/named_workspace/agent_mgr.py` | ✅ | 自动同步 | 已合入 |
+| agent_manager_for | `core/harness/named_workspace/agent_mgr.py` | ✅ | 自动同步 | 已合入 |
 | generatedAppRuntimeAnn | `aiPlat-management/frontend/src/pages/Eval/examRuntimeTier.ts` | ✅ | 自动同步 | 已合入 |
 | agentExamRuntimeAnn | `aiPlat-management/frontend/src/pages/Eval/examRuntimeTier.ts` | ✅ | 自动同步 | 已合入 |
 | eval_run_generated_app_pi_smoke | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -1592,6 +1619,25 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| advisory_runtime_tier | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| default_set_ids_for_type | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| resolve_auth_header | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| build_invoke_url | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| assert_url_allowed | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| public_target_view | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| get_external_target | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| load_targets_doc | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| targets_path_for_workspace | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| external_agent_id | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| validate_target_id | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
+| register_target | `core/apps/eval/service/external_exam_ops.py` | ✅ | 自动同步 | 已合入 |
+| list_targets | `core/apps/eval/service/external_exam_ops.py` | ✅ | 自动同步 | 已合入 |
+| probe_target | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| tool_names_to_syscall_events | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| NoRedirectHandler | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
+| merge_runtime_fields | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| clear_applicability_draft_cache | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
+| load_applicability_draft | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | slice_signoff_requires_report | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_slice_offline_policy | `core/apps/fde/service/slice_offline_policy.py` | ✅ | 自动同步 | 已合入 |
 | validate_slice_signoff_reports | `core/apps/fde/service/slice_evidence.py` | ✅ | 自动同步 | 已合入 |
