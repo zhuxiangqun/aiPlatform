@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-07T23:52:37+08:00",
+  "reviewed_at": "2026-11-07T23:53:44+08:00",
   "base_ref": "origin/main",
   "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
   "diff_sha256": "dd90dfeb6c8c7299fe9d46e8ce8e372849bb10826ee1820261ba039ea34e4892",
-  "head_sha": "2ae6e072b93aca7269d607a469ccc3aa46aec4b8",
+  "head_sha": "8950856da2c1065ded78b24da62146e8e919a506",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
