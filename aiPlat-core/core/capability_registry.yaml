@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1870
+total_capabilities: 1917
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 561
+    caps_count: 588
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2224,6 +2224,114 @@ domains:
         type: function
         signature: 'attach_control_plane(response, envelope)'
         module: aiPlat-core/core/harness/meta/control_plane.py
+      - symbol: agent_manager_for
+        type: function
+        signature: 'Return AgentManager loaded from ctx.agents_dir (cached by workspace_id).'
+        module: aiPlat-core/core/harness/named_workspace/agent_mgr.py
+      - symbol: invalidate_agent_manager
+        type: function
+        signature: 'invalidate_agent_manager(workspace_id)'
+        module: aiPlat-core/core/harness/named_workspace/agent_mgr.py
+      - symbol: WorkspaceError
+        type: class
+        signature: 'WorkspaceError'
+        module: aiPlat-core/core/harness/named_workspace/errors.py
+      - symbol: WorkspaceRequired
+        type: class
+        signature: 'WorkspaceRequired'
+        module: aiPlat-core/core/harness/named_workspace/errors.py
+      - symbol: WorkspaceNotFound
+        type: class
+        signature: 'WorkspaceNotFound'
+        module: aiPlat-core/core/harness/named_workspace/errors.py
+      - symbol: WorkspaceForbidden
+        type: class
+        signature: 'WorkspaceForbidden'
+        module: aiPlat-core/core/harness/named_workspace/errors.py
+      - symbol: resolve_request_workspace
+        type: function
+        signature: 'resolve_request_workspace(request)'
+        module: aiPlat-core/core/harness/named_workspace/http_bind.py
+      - symbol: require_local_disk
+        type: function
+        signature: 'Local agents/eval_results APIs must not run under a remote profile header.'
+        module: aiPlat-core/core/harness/named_workspace/http_bind.py
+      - symbol: named_workspace_scope
+        type: function
+        signature: 'named_workspace_scope(request)'
+        module: aiPlat-core/core/harness/named_workspace/http_bind.py
+      - symbol: workspace_meta
+        type: function
+        signature: 'workspace_meta(ctx)'
+        module: aiPlat-core/core/harness/named_workspace/http_bind.py
+      - symbol: registry_path
+        type: function
+        signature: 'registry_path()'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: validate_workspace_id
+        type: function
+        signature: 'validate_workspace_id(workspace_id)'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: ensure_registry
+        type: function
+        signature: 'Create default-only registry if missing; return loaded doc.'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: load_registry
+        type: function
+        signature: 'Load registry; fail closed on unsupported/corrupt schema.'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: list_registry_entries
+        type: function
+        signature: 'list_registry_entries()'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: get_registry_entry
+        type: function
+        signature: 'get_registry_entry(workspace_id)'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: create_local_workspace
+        type: function
+        signature: 'Idempotent create of a local empty workspace entry + dirs.'
+        module: aiPlat-core/core/harness/named_workspace/registry.py
+      - symbol: RemoteProxyError
+        type: class
+        signature: 'RemoteProxyError'
+        module: aiPlat-core/core/harness/named_workspace/remote_proxy.py
+      - symbol: normalize_remote_base_url
+        type: function
+        signature: 'normalize_remote_base_url(base_url)'
+        module: aiPlat-core/core/harness/named_workspace/remote_proxy.py
+      - symbol: assert_remote_url_allowed
+        type: function
+        signature: 'assert_remote_url_allowed(url)'
+        module: aiPlat-core/core/harness/named_workspace/remote_proxy.py
+      - symbol: build_remote_url
+        type: function
+        signature: 'build_remote_url(base_url, path)'
+        module: aiPlat-core/core/harness/named_workspace/remote_proxy.py
+      - symbol: NamedWorkspaceContext
+        type: class
+        signature: 'Validated named workspace — pass explicitly into services/workers.'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: set_active_named_workspace
+        type: function
+        signature: 'set_active_named_workspace(ctx)'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: reset_active_named_workspace
+        type: function
+        signature: 'reset_active_named_workspace(token)'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: get_active_named_workspace
+        type: function
+        signature: 'get_active_named_workspace()'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: extract_workspace_id_from_request
+        type: function
+        signature: 'Header wins over query. Returns None if absent.'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: resolve_from_http
+        type: function
+        signature: 'resolve_from_http()'
+        module: aiPlat-core/core/harness/named_workspace/resolve.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -3555,7 +3663,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 172
+    caps_count: 192
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4235,6 +4343,86 @@ domains:
         type: function
         signature: 'prompt_eval_get_run()'
         module: aiPlat-core/core/apps/eval/service/prompt_eval_ops.py
+      - symbol: load_applicability_draft
+        type: function
+        signature: 'load_applicability_draft()'
+        module: aiPlat-core/core/apps/eval/service/case_match.py
+      - symbol: clear_applicability_draft_cache
+        type: function
+        signature: 'clear_applicability_draft_cache()'
+        module: aiPlat-core/core/apps/eval/service/case_match.py
+      - symbol: merge_runtime_fields
+        type: function
+        signature: 'Merge annotation into response; never upgrade accuracy_claim to true.'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: NoRedirectHandler
+        type: class
+        signature: 'redirect_request'
+        module: aiPlat-core/core/apps/eval/service/external_chat_pull.py
+      - symbol: tool_names_to_syscall_events
+        type: function
+        signature: 'Synthetic events for EvalMetricsEngine.compute_trajectory_quality.'
+        module: aiPlat-core/core/apps/eval/service/external_chat_pull.py
+      - symbol: probe_target
+        type: function
+        signature: 'Dry connectivity check: POST a tiny probe (may 4xx — still proves reachability).'
+        module: aiPlat-core/core/apps/eval/service/external_chat_pull.py
+      - symbol: list_targets
+        type: function
+        signature: 'list_targets(workspace_id)'
+        module: aiPlat-core/core/apps/eval/service/external_exam_ops.py
+      - symbol: register_target
+        type: function
+        signature: 'register_target(workspace_id)'
+        module: aiPlat-core/core/apps/eval/service/external_exam_ops.py
+      - symbol: validate_target_id
+        type: function
+        signature: 'validate_target_id(target_id)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: external_agent_id
+        type: function
+        signature: 'Synthetic agent_id for eval_results persistence.'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: targets_path_for_workspace
+        type: function
+        signature: 'targets_path_for_workspace(workspace_id)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: load_targets_doc
+        type: function
+        signature: 'load_targets_doc(workspace_id)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: list_external_targets
+        type: function
+        signature: 'list_external_targets(workspace_id)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: get_external_target
+        type: function
+        signature: 'get_external_target(workspace_id, target_id)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: public_target_view
+        type: function
+        signature: 'public_target_view(row)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: assert_url_allowed
+        type: function
+        signature: 'SSRF guard for registered external eval endpoints.'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: build_invoke_url
+        type: function
+        signature: 'build_invoke_url(base_url, path)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: resolve_auth_header
+        type: function
+        signature: 'resolve_auth_header(row)'
+        module: aiPlat-core/core/apps/eval/service/external_targets.py
+      - symbol: default_set_ids_for_type
+        type: function
+        signature: 'default_set_ids_for_type(object_type)'
+        module: aiPlat-core/core/apps/eval/service/object_adapters.py
+      - symbol: advisory_runtime_tier
+        type: function
+        signature: 'Plan-time advisory actual tier (re-annotated at execution).'
+        module: aiPlat-core/core/apps/eval/service/object_adapters.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
