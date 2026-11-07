@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-06T16:15:30+08:00",
+  "reviewed_at": "2026-11-07T23:52:37+08:00",
   "base_ref": "origin/main",
-  "merge_base": "89054e4b700f7fe7c1f63115170879884fb08835",
-  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "head_sha": "89054e4b700f7fe7c1f63115170879884fb08835",
+  "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
+  "diff_sha256": "dd90dfeb6c8c7299fe9d46e8ce8e372849bb10826ee1820261ba039ea34e4892",
+  "head_sha": "2ae6e072b93aca7269d607a469ccc3aa46aec4b8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Refresh after prompt_eval ItemResponse wrap push. Empty merge diff lock. Local lock only."
+  "note": "Local lock only. Reviewed object-contract/Plan v2/engine-fallback/smoke: no silent empty Plan; compile-plan fails loud on missing agent; engine AgentManager fallback for exam resolve. CI unlock is non-author Approve."
 }
