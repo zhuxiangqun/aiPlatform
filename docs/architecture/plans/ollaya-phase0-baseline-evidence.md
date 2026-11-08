@@ -2,15 +2,15 @@
 
 > **状态**：工程可采数已接线 · **≠ 阶段 0 完成 · ≠ Go 阶段 1 · ≠ 已立项 · ≠ 影子已开**  
 > **依据**：[ollaya-decision-layer-implementation-plan.md](./ollaya-decision-layer-implementation-plan.md) §4  
-> **日期**：2026-11-08（续 · collector + 评审包）
+> **日期**：2026-11-08（续 · #613 合入 + 本机 core 重启采数）
 
 ## 0.1 观测窗口与环境说明（模板 · 待负责人填实）
 
 | 字段 | 填写 |
 |------|------|
-| 环境 | ☐dev ☐staging ☐prod（分表，勿混） |
-| 观测窗口起止 | ____ ～ ____（建议 ≥7 天或业务高峰周） |
-| 进程/副本 | 部署拓扑简述；**每进程各自计数**（进程内共享，跨副本需聚合） |
+| 环境 | ☑dev ☐staging ☐prod（分表，勿混） |
+| 观测窗口起止 | 本机冒烟：`2026-11-08T12:20+08`（重启后即时快照）· **staging/prod ≥7 天窗口仍待填** |
+| 进程/副本 | 本机 `gunicorn -w 1` @ `127.0.0.1:8002`（PID 重启后新 master）；**每进程各自计数** |
 | 采集方式 | `scripts/collect_domain_router_route_stats.py` 或 `GET /api/core/diagnostics/domain-router/route-stats` |
 | 联系人 | |
 
@@ -30,15 +30,16 @@
 
 **T2 边界定义（有条件 Go）**：T1 未命中且 T2 **接受**，但 `score < min_conf + boundary_score_slack`（默认 0.05）或 `margin < min_margin * boundary_margin_factor`（默认 2.0）。`t2_reject_hits` = 有 embedding 信号但未过阈值、将走 T3。
 
-## 0.3 / 0.4 采集表（待现网窗口填数）
+## 0.3 / 0.4 采集表（本机冒烟已填 · staging/prod 窗口仍空）
 
 | 环境 | 窗口 | total | t1% | t2% | t3% | t3_n | T3 p50 ms | T3 p95 ms | t2_boundary | t2_reject | 备注 |
 |------|------|------|-----|-----|-----|------|-----------|-----------|-------------|-----------|------|
-| | | | | | | | | | | | |
+| dev | 2026-11-08T12:20+08 post-restart | 0 | 0.0 | 0.0 | 0.0 | 0 | None | None | 0 | 0 | #613 合入后重启 gunicorn；uptime≈70s；JSONL→`.aiplat/ollaya_phase0/route_stats.jsonl`；全 0 为预期（无 classify 流量）≠ Go |
+| dev | 2026-11-08T12:25+08 after-classify-smoke | 10 | 30.0 | 0.0 | 70.0 | 7 | 0.085 | 2.218 | 0 | 3 | 经 `POST /skills/domain_assessor/execute` 打 8 条（含先验 2）；T1=3/T3=7/t2_reject=3；T3 p50 亚毫秒疑似 LLM 快速失败/降级，**≠ 真实 T3 延迟、≠ Go** |
 
 ### 运维采数（推荐）
 
-**先确认 core 已部署含 PR #612 的二进制**（本机旧进程 OpenAPI 可能尚无 `route-stats` → 需重启/重部署）。
+**本机已确认**：重启后 OpenAPI 含 `/api/core/diagnostics/domain-router/route-stats`（HTTP 200）。staging/prod 仍须部署含 #612+#613 的二进制后再采。
 
 ```bash
 # 单副本 → 打印可粘贴进上表的 markdown 行，并追加 JSONL
@@ -106,7 +107,7 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 | **No-Go** | T3 与 boundary 均远低于阈值；或 C5/C7/C8 任一驳回；或无人维护决策服务 |
 | **意图叙事** | 维持 0.5：禁止「省线上意图 LLM fallback」 |
 
-**当前书面结论**：❌ 未开 Go（缺现网窗口数据与 0.6 会签）。
+**当前书面结论**：❌ 未开 Go（本机 smoke `total=10`/`t3_hits=7` 远低于 0.7 阈值，且 T3 延迟不可信；缺 staging/prod 窗口与 0.6 会签）。
 
 ## 明确不交付
 
@@ -114,6 +115,7 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 
 ## 下一步
 
-1. **重启/重部署** 含 route-stats 端点的 core，再跑 collector 填 0.3/0.4。  
-2. 负责人填 0.1；召开 0.6 评审 → 按 0.7 出书面 Go/No-Go。  
-3. **仅 Go 后** 才允许实现阶段 1 影子。
+1. ✅ 本机 core 已重启；collector 冒烟 + classify 流量行已写入 0.3/0.4 + JSONL。  
+2. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
+3. 召开 0.6 评审 → 按 0.7 出书面 Go/No-Go。  
+4. **仅 Go 后** 才允许实现阶段 1 影子。
