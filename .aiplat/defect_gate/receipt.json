@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T23:29:05+08:00",
+  "reviewed_at": "2026-11-08T23:43:34+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "5e81d8b71ad6870b4fc939024959e889e2e40bacb89c9fbc41099dc34fde4fce",
-  "head_sha": "7977e679847e082eb553c3f7e46cf217b870134d",
+  "diff_sha256": "98417b54e706afad19a409ca9927cde01752de918f8a66d255552e33b33197e0",
+  "head_sha": "03010bff09942e55716bfa7cff0e379a5da967b1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "T0 schemas+validators+fixtures; registry symbols under evaluation-system; V1_IN_SCOPE unchanged; mock≠live runtime map."
+  "note": "T1 mock harness + A3/A4 fixture suite; V1_IN_SCOPE unchanged; claim=false; scripted tool_calls only (no live tools)."
 }
