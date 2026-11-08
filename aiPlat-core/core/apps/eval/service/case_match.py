@@ -122,6 +122,27 @@ def _refuse_or_handoff_exception(spec: Mapping[str, Any]) -> bool:
     )
 
 
+def _capability_requirements_authoritative(contract: Mapping[str, Any]) -> bool:
+    """Only an explicit eval_profile may treat missing capabilities as hard N/A.
+
+    §0.7: derived_hints / unknown profiles are suggestion signals — absence of a
+    derived tag ≠ confirmed lack of capability. Boundaries.derived=true also
+    marks a non-authoritative capability list.
+    """
+    ps = str(contract.get("profile_source") or "").strip().lower()
+    if ps == "explicit":
+        return True
+    if ps == "derived_hints":
+        return False
+    boundaries = (
+        contract.get("boundaries") if isinstance(contract.get("boundaries"), dict) else {}
+    )
+    if boundaries.get("derived") is True:
+        return False
+    # No profile_source (or other values): treat capability gaps as unconfirmed.
+    return False
+
+
 def match_case(
     contract: Mapping[str, Any],
     case_spec: Mapping[str, Any],
@@ -134,16 +155,17 @@ def match_case(
     spec = dict(case_spec or {})
     applies = spec.get("applies_to") if isinstance(spec.get("applies_to"), dict) else {}
     types = _str_list(applies.get("object_types"))
-    reasons: List[str] = []
+    hard_reasons: List[str] = []
+    advisory_reasons: List[str] = []
     case_id = str(spec.get("case_id") or spec.get("set_id") or "").strip()
 
     if types and c["object_type"] not in types:
-        reasons.append(f"object_type_mismatch:{c['object_type']} not in {types}")
+        hard_reasons.append(f"object_type_mismatch:{c['object_type']} not in {types}")
         return {
             "case_id": case_id,
             "set_id": str(spec.get("set_id") or case_id),
             "decision": "not_applicable",
-            "reasons": reasons,
+            "reasons": hard_reasons,
             "pack": str(spec.get("pack") or ""),
             "obligation_exception_applied": False,
         }
@@ -163,55 +185,70 @@ def match_case(
             have = set(x.lower() for x in c["target_runtime"])
             if not any(a.lower() in have for a in any_of):
                 miss_runtime = list(any_of)
-                reasons.append(
+                hard_reasons.append(
                     f"runtime_mismatch:check=runtime_tier(deferred_to_target_runtime) need_any={any_of} have={c['target_runtime']}"
                 )
         else:
             have = set(x.lower() for x in c["target_runtime"])
             if not any(a.lower() in have for a in any_of):
                 miss_runtime = list(any_of)
-                reasons.append(
+                hard_reasons.append(
                     f"runtime_mismatch:check=target_runtime need_any={any_of} have={c['target_runtime']}"
                 )
 
+    caps_authoritative = _capability_requirements_authoritative(c)
+    profile_source = str(c.get("profile_source") or "").strip() or "unknown"
     for m in miss_caps:
-        reasons.append(f"missing_capability:{m}")
+        if caps_authoritative:
+            hard_reasons.append(f"missing_capability:{m}")
+        else:
+            advisory_reasons.append(
+                f"capability_unconfirmed:{m}:profile_source={profile_source}"
+            )
     for m in miss_tools:
-        reasons.append(f"missing_tool:{m}")
+        hard_reasons.append(f"missing_tool:{m}")
     for m in miss_perms:
-        reasons.append(f"missing_permission:{m}")
+        hard_reasons.append(f"missing_permission:{m}")
 
     obligation_applied = False
-    if reasons:
+    if hard_reasons:
         only_perm = (
             bool(miss_perms)
-            and not miss_caps
+            and not any(r.startswith("missing_capability:") for r in hard_reasons)
             and not miss_tools
             and not miss_runtime
-            and all(r.startswith("missing_permission:") for r in reasons)
+            and all(
+                r.startswith("missing_permission:") or r.startswith("waived:")
+                for r in hard_reasons
+            )
         )
         if only_perm and _refuse_or_handoff_exception(spec):
             obligation_applied = True
-            reasons = [
+            hard_reasons = [
                 "obligation_refuse_or_handoff:missing_execute_permission_still_applicable",
-                *[f"waived:{r}" for r in reasons],
+                *[f"waived:{r}" for r in hard_reasons],
             ]
         else:
             return {
                 "case_id": case_id,
                 "set_id": str(spec.get("set_id") or case_id),
                 "decision": "not_applicable",
-                "reasons": reasons,
+                "reasons": hard_reasons + advisory_reasons,
                 "pack": str(spec.get("pack") or ""),
                 "obligation_exception_applied": False,
             }
 
+    reasons = hard_reasons + advisory_reasons
+    if advisory_reasons and not hard_reasons:
+        reasons = [
+            "requires_satisfied_capability_unconfirmed",
+            *advisory_reasons,
+        ]
     return {
         "case_id": case_id,
         "set_id": str(spec.get("set_id") or case_id),
         "decision": "selected",
-        "reasons": reasons
-        or ["requires_satisfied"],
+        "reasons": reasons or ["requires_satisfied"],
         "pack": str(spec.get("pack") or ""),
         "obligation_exception_applied": obligation_applied,
     }
@@ -255,8 +292,9 @@ def build_match_report(
         },
         "phase": "p0_advisory",
         "honesty": (
-            "MatchReport is advisory in P0; Agent exam still runs the requested set_id "
-            "and does not filter by this report yet (Plan filter = P2)."
+            "MatchReport + Plan filter: missing_capability → not_applicable only when "
+            "profile_source=explicit. derived_hints/unknown gaps are capability_unconfirmed "
+            "and stay selected (suggest include; ≠ confirmed lack)."
         ),
     }
 

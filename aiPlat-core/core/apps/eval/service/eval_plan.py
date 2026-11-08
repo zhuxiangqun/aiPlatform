@@ -177,7 +177,8 @@ def compile_evaluation_plan(
         "honesty": (
             "P3 Plan: same schema for agent/skill/api/generated_app/…; "
             "default core+matched capability; special needs purpose "
-            "safety|perf|reliability or include_special. Excluded not executed."
+            "safety|perf|reliability or include_special. Excluded not executed. "
+            "derived_hints/unknown must not alone drive not_applicable on capabilities (§0.7)."
         ),
     }
     return plan

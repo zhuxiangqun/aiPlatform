@@ -54,6 +54,31 @@ def test_derived_profile_feeds_plan_selection():
     assert (plan.get("target_contract") or {}).get("profile_source") == "derived_hints"
 
 
+def test_derived_profile_empty_caps_still_selects_capability_packs():
+    profile = build_eval_profile_from_declarations(
+        skills=["unrelated_skill"],
+        tools=[],
+        permissions=["read_only"],
+    )
+    assert profile["profile_source"] == "derived_hints"
+    assert "clarify_or_ask" not in profile["capabilities"]
+    plan = compile_plan_for_object(
+        object_type="agent",
+        object_id="qa_agent",
+        purpose=["behavior", "regression", "safety", "reliability"],
+        eval_profile=profile,
+    )
+    selected = {x["set_id"] for x in plan["selected_cases"]}
+    assert "default/missing_info" in selected
+    assert "default/tool_failure" in selected
+    assert "default/multi_turn" in selected
+    assert not any(
+        x.get("status") == "not_applicable"
+        and x.get("set_id") in {"default/missing_info", "default/tool_failure", "default/multi_turn"}
+        for x in plan["excluded_cases"]
+    )
+
+
 def test_explicit_profile_source_on_plan():
     plan = compile_plan_for_object(
         object_type="agent",

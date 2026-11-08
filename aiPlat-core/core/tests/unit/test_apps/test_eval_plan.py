@@ -44,11 +44,16 @@ def test_plan_includes_special_when_purpose_has_safety():
     assert "default/multi_turn" in selected
 
 
-def test_plan_marks_capability_mismatch_not_applicable():
+def test_plan_marks_explicit_capability_mismatch_not_applicable():
     c = build_agent_target_contract(
         object_id="plain",
         capabilities=[],
         permissions=["read_only"],
+        eval_profile={
+            "profile_source": "explicit",
+            "capabilities": [],
+            "permissions": ["read_only"],
+        },
     )
     plan = compile_evaluation_plan(
         c,
@@ -59,3 +64,30 @@ def test_plan_marks_capability_mismatch_not_applicable():
     assert excluded["default/missing_info"]["status"] == "not_applicable"
     assert "default/normal" in {x["set_id"] for x in plan["selected_cases"]}
     assert "default/high_risk" in {x["set_id"] for x in plan["selected_cases"]}
+
+
+def test_plan_derived_hints_do_not_na_capability_gaps():
+    """Screenshot regression: skills/tools 推导缺失 ≠ not_applicable."""
+    c = build_agent_target_contract(
+        object_id="qa_agent",
+        eval_profile={
+            "profile_source": "derived_hints",
+            "capabilities": [],
+            "permissions": ["read_only"],
+            "boundaries": {"derived": True, "note": "hints from skills/tools"},
+        },
+    )
+    plan = compile_evaluation_plan(
+        c,
+        purpose=["behavior", "regression", "safety", "reliability"],
+        include_special=False,
+    )
+    selected = {x["set_id"] for x in plan["selected_cases"]}
+    excluded = {x["set_id"]: x for x in plan["excluded_cases"]}
+    assert "default/missing_info" in selected
+    assert "default/tool_failure" in selected
+    assert "default/multi_turn" in selected  # special allowed by reliability/safety
+    assert "default/missing_info" not in excluded
+    assert plan.get("eval_profile_source") == "derived_hints"
+    miss_row = next(x for x in plan["selected_cases"] if x["set_id"] == "default/missing_info")
+    assert any("capability_unconfirmed:clarify_or_ask" in r for r in miss_row["reasons"])
