@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T13:42:30+08:00",
+  "reviewed_at": "2026-11-08T14:08:52+08:00",
   "base_ref": "origin/main",
-  "merge_base": "bcb059086f8105d968052372b7d21347aaee8c53",
-  "diff_sha256": "5bb403add3a682ecb2416fa3064e9c894b0de9a8d9e816402b66d4883c8debbf",
-  "head_sha": "ff937d1d96eb9025d531f61ba9675fc9b1e3618a",
+  "merge_base": "934fe1b520fef0b1e956c0ddc4a325027042ba6e",
+  "diff_sha256": "2721f91d98d6b0d9b8db9c434a622b30eaa71dbe83cfb5b11bce05d76a8b650a",
+  "head_sha": "61c5b35d78da5592cb16aacfa3bac957652deb73",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Muted skeleton: enabled=false, classify_hook_wired=false; CoreFacade+diagnostics probes only. Residual: Phase1b Go still required for DomainRouter.classify sample traffic."
+  "note": "Docs-only: C6 kill-switch draft + post-616 probe rows. No classify hook; no sample enable. Residual: staging/prod + 0.6 formal 会签."
 }
