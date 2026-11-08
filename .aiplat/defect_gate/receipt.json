@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T19:23:11+08:00",
+  "reviewed_at": "2026-11-08T19:54:06+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "3ce3b0ad00c3fddf131c30603851fc91df0b461d3dcac38a55b923eee8efa849",
-  "head_sha": "ab27cbaddc9fe735790110ab9f92c4cb0f25014a",
+  "diff_sha256": "1930407ba87956e4950c0fcd25473ef72f502b64b2e79e3de3f2617decd6e312",
+  "head_sha": "ca816d7f476dc726cb8a51eded560683e65ceac0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "UI wording: Plan\u5377\uff08\u672a\u6d4b\uff09for purpose_deferred_special. Local lock only."
+  "note": "Docs-only taxonomy freeze (Subject×Capability×Method×Evidence). OBJECT_TYPES=9 matches target_contract.py. No code path change. Local lock only; CI needs non-author Approve."
 }
