@@ -1,10 +1,13 @@
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
-- **状态**：Proposed（设计评审用，不实施；v0.2.1 吸收 scope 按创建来源默认）
+- **状态**：Proposed（设计评审用，不实施；v0.2.2 §6.1 四份冻结稿已挂出，待签字）
 - **日期**：2026-11-08
 - **决策范围**：Evaluation 题库、选题、执行与证据组织
 - **关联**：
-  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2
+  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2.2
+  - [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md)
+  - [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md)
+  - [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md)
   - [`eval-case-pack-factory.md`](../plans/eval-case-pack-factory.md)
   - [`eval-object-contract-and-plan.md`](../plans/eval-object-contract-and-plan.md)
   - [`eval-trust-boundary-lab-vs-cert.md`](../plans/eval-trust-boundary-lab-vs-cert.md)
@@ -278,16 +281,17 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 
 ### 6.1 阻塞 P0（必须先签/先冻结）
 
-| # | 项 | 状态 |
-|---|---|---|
-| 1 | 能力矩阵 v1（含 A13）+ legacy↔canonical 对照表 | 草案在 Plan §4.2.1；**待正式冻结签字** |
-| 2 | v1 可测能力子集（Plan §4.2.2） | 草案已写；**待正式采纳签字** |
-| 3 | `EvalCase.test_purpose` schema | **未冻结** |
-| 4 | Suite Profile schema | **未冻结** |
-| 5 | 权威存储路径 `$AIPLAT_HOME/eval_packs/...` | ✅ 决策 7.1 |
-| 6 | scope 按创建来源默认 + 配套规则 | ✅ **本次采纳**（决策 7.2–7.3） |
+| # | 项 | 产出 | 状态 |
+|---|---|---|---|
+| 1 | capability ID 对照表 | [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) | Frozen-draft · **待 owner 签字** |
+| 2 | v1 可测子集 | Plan §4.2.2 签字页 | Frozen-draft · **待 `SIGNED v1_measurable_subset`** |
+| 3 | `test_purpose` schema | [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) | Frozen-draft · **待签字** |
+| 4 | Suite Profile schema | [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) | Frozen-draft · **待签字** |
+| 5 | 权威存储路径 | ADR 决策 7.1 | ✅ |
+| 6 | scope 按创建来源默认 | ADR 决策 7.2–7.3 | ✅ 闭环（不单独签 ADR） |
 
-**`scope` 已定，不必为它单独签 ADR；ADR 整体仍保持 Proposed，待 1–4 齐后再签。**
+**签字顺序建议**：#1 → #3 → #4 → #2 → 四项齐后 ADR Proposed→**Accepted** → 另开实施变更单（勾选 §6.1）。  
+**scope 不与「是否实施」绑定。**
 
 ### 6.2 可后置到 P2/P4
 
@@ -304,17 +308,18 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 
 ### 阻塞 P0（仍待签）
 
-1. ~~`scope` 默认~~ → **已采纳决策 7.2–7.3**（按创建来源；非全局默认 global）
-2. capability_id 对照表是否按 Plan §4.2.1 正式冻结？
-3. v1 可测子集是否按 Plan §4.2.2 正式采纳？
-4. `test_purpose` / Profile schema 字段是否锁定？
+1. ~~`scope`~~ → 已采纳决策 7.2–7.3  
+2. [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) owner 签字？  
+3. [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) owner 签字？  
+4. [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) owner 签字？  
+5. Plan §4.2.2 `SIGNED v1_measurable_subset`？
 
 ### 可后置 P2/P4
 
-5. Regression 最低题数按能力固定，还是按风险加权？
-6. Benchmark 的 holdout 比例与统计方法由谁批准？
-7. judge 校准达到什么一致率才允许 report-only 升级？
-8. 工具环境就绪后，A3–A5 如何从 `unknown` 升为 in-scope？
+6. Regression 配额风险加权（v1 已定 **fixed**，见 Profile schema）  
+7. Benchmark holdout 比例与统计方法由谁批准？  
+8. judge 校准达到什么一致率才允许 report-only 升级？  
+9. 工具/Session 环境就绪后，A3–A5 / A8 / A9 如何升为 in-scope？
 
 ---
 

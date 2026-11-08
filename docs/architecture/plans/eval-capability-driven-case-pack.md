@@ -1,11 +1,11 @@
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  
-> **版本**：v0.2.1 · 2026-11-08  
-> **状态**：**Proposed（设计评审用，不实施；v0.2.1 吸收 scope 按创建来源默认）**  
+> **版本**：v0.2.2 · 2026-11-08  
+> **状态**：**Proposed（设计评审用，不实施；v0.2.2 挂出 §6.1 四份冻结稿）**  
 > **范围**：先 Agent，后 Prompt / KB / Code Review / Session；不包含业务验收  
 > **诚实锁**：不打开 `accuracy_claim`；生成题默认不可 claim；禁止运行时随机出题当金标；G2b/Arena 仍走独立人工协议  
-> **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md)
+> **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md) · [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](./CASE_TEST_PURPOSE_SCHEMA_V1.md) · [`SUITE_PROFILE_SCHEMA_V1.md`](./SUITE_PROFILE_SCHEMA_V1.md) · [`ADR-EVAL-CAPABILITY-CASE-PACK-V1.md`](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)
 
 ---
 
@@ -132,53 +132,43 @@
 
 **canonical_id 是覆盖报表与 Profile 配额的唯一主键。**
 
-### 4.2.1 Legacy ↔ Canonical 对照表（P0 前置 · 冻结）
+### 4.2.1 Legacy ↔ Canonical 对照表
 
-现有 `applicability_draft.json` / 卷级 `requires.capabilities` 使用 legacy 字符串。  
-**不得直接替换**，须经 alias 映射，否则 `default/missing_info` 等匹配会断。
+**权威冻结稿**：[`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md)（含 `clarify_or_ask → clarification`、A13、全量 legacy）。  
+本节仅作索引；冲突以冻结稿为准。
 
-| legacy_id | canonical_id | 说明 |
-|---|---|---|
-| `clarify_or_ask` | `clarification` | 缺信息时追问/澄清（**矩阵缺口，必须补 A13**） |
-| `error_recovery` | `error_recovery` | 失败恢复 |
-| `multi_turn_memory` | `multi_turn_memory` | 多轮记忆 |
-| `skill_invoke` | `task_completion` | Agent 技能调用→任务完成（迁移期 alias） |
-| `http_chat_pull` | `task_completion` | 外部 HTTP 目标→任务完成（迁移期 alias） |
-| `pi_export` | `task_completion` | 生成应用导出→任务完成（迁移期 alias） |
-| `format_constraint` | `task_completion` | Prompt/格式约束（对象扩展前先 alias） |
-| `consistency` | `robustness` | 一致性/抗扰近似 |
-| `multi_slot_context` | `long_context` | 多槽位上下文 |
-| `long_chain` | `planning` | 长链/分解近似 |
+### 4.2.2 v1 可测能力子集（文本可观测）· 签字页
 
-规则：
+本阶段**不接** live skill tools / microVM。无对应环境时，能力只能标 `unknown` / `in_scope=false`，**禁止因写了题就标 `covered`**。
 
-- **canonical 唯一主键**；覆盖报表只认 canonical；
-- legacy 仅作 alias（双写/映射）；
-- 新 case / Profile 只写 canonical；
-- ADR 将本表列为 P0 阻塞前置条件。
-
-### 4.2.2 v1 可测能力子集（文本可观测）
-
-本阶段**不接** live skill tools / microVM。无对应环境时，能力只能标 `unknown`，**禁止因写了题就标 `covered`**。
-
-| 能力 | v1 可测？ | 说明 |
-|---|---|---|
-| A1 `task_completion` | ✅ | 文本可测 |
-| A2 `planning` | ⚠️ | 仅文本 trace / 步骤措辞 |
-| A3 `tool_selection` | ❌ → `unknown` | 需工具环境 |
-| A4 `tool_args` | ❌ → `unknown` | 需工具环境 |
-| A5 `tool_result_use` | ❌ → `unknown` | 需工具环境 |
-| A6 `error_recovery` | ⚠️ | **只能测失败措辞/定位，不能测真实工具恢复**（对齐现 `tool_failure` 卷） |
-| A7 `safety` | ✅ | 权限/确认文本可测 |
-| A8 `multi_turn_memory` | ⚠️ | 需 session；当前冒烟有限可测 |
-| A9 `long_context` | ⚠️ | 需长输入 fixture |
-| A10 `robustness` | ✅ | 文本噪声可测 |
-| A11 `efficiency` | ✅ | 有审计/步骤计数 |
-| A12 `observability` | ✅ | trace schema |
-| A13 `clarification` | ✅ | 缺信息追问文本可测 |
+| 能力 | v1 可测？ | Profile 默认 | 说明 |
+|---|---|---|---|
+| A1 `task_completion` | ✅ 可测 | in_scope | 文本可测 |
+| A2 `planning` | ✅ 可测（limited） | in_scope | 仅文本 trace / 步骤措辞 |
+| A3 `tool_selection` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
+| A4 `tool_args` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
+| A5 `tool_result_use` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
+| A6 `error_recovery` | ✅ 可测（limited） | in_scope | **只测失败措辞/定位，不测真实工具恢复** |
+| A7 `safety` | ✅ 可测 | in_scope | 权限/确认文本可测 |
+| A8 `multi_turn_memory` | ❌ | **`in_scope=false` → `unknown`** | 需可靠 session；v1 不宣称 covered |
+| A9 `long_context` | ❌ | **`in_scope=false` → `unknown`** | 需长输入 fixture 协议；v1 不宣称 |
+| A10 `robustness` | ✅ 可测 | in_scope | 文本噪声可测 |
+| A11 `efficiency` | ✅ 可测 | in_scope | 有审计/步骤计数 |
+| A12 `observability` | ✅ 可测 | in_scope | trace schema |
+| A13 `clarification` | ✅ 可测 | in_scope | 缺信息追问文本可测 |
 
 **v1 声明范围 =「Agent 文本可观测能力子集」≠「Agent 全能力」。**  
-A3–A5 在 v1 Profile 中默认 `in_scope=false` 或强制 `unknown`，直到工具环境就绪。
+可测集合：**A1 / A2 / A6 / A7 / A10 / A11 / A12 / A13**。  
+不可测（强制 unknown）：**A3 / A4 / A5 / A8 / A9**。
+
+#### §4.2.2 签字栏（ADR §6.1 #2）
+
+| 角色 | 勾选 | 签字（`SIGNED v1_measurable_subset`） | 日期 |
+|------|:----:|--------------------------------------|------|
+| 评测方法负责人 | 采纳上表可测/不可测划分 | | |
+| 工程负责人（可选） | 实现上强制 A3–A5/A8/A9 不得 covered | | |
+
+**未签字前：子集视为草案；Profile 不得据此宣称能力完整。**
 
 ### 4.3 其他对象
 
