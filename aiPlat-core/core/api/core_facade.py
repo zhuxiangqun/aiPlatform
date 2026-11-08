@@ -6403,6 +6403,81 @@ def eval_compile_plan_from_suite_profile(
     )
 
 
+def eval_analyze_capability_coverage(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: capability have/need/gap inventory (claim closed)."""
+    from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
+
+    return analyze_capability_coverage(
+        cases,
+        profile=profile,
+        min_per_capability=min_per_capability,
+    )
+
+
+def eval_generate_coverage_fill_candidates(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    method: str = "mutation",
+    seed: str = "7",
+    ops: Optional[list] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: draft fill candidates via factory mutation/template (not gold)."""
+    from core.apps.eval.service.capability_coverage_fill import (
+        generate_coverage_fill_candidates,
+    )
+
+    return generate_coverage_fill_candidates(
+        cases=cases,
+        profile=profile,
+        min_per_capability=min_per_capability,
+        method=method,
+        seed=seed,
+        ops=ops,
+    )
+
+
+def eval_fill_capability_coverage(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    method: str = "mutation",
+    seed: str = "7",
+    ops: Optional[list] = None,
+    apply: bool = False,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: gap analyze → candidates → optional expand (claim_eligible=false)."""
+    from core.apps.eval.service.capability_coverage_fill import fill_capability_coverage
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id,
+        "profile": profile,
+        "min_per_capability": min_per_capability,
+        "method": method,
+        "seed": seed,
+        "ops": ops,
+        "apply": apply,
+        "cases": cases,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return fill_capability_coverage(**kwargs)
+
+
 def eval_publish_draft_case_pack(
     *,
     pack_id: str,

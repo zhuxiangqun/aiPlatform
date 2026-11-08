@@ -953,6 +953,94 @@ async def compat_evaluation_suite_profiles():
     }
 
 
+@router.post("/evaluation/case-packs/capability-coverage")
+async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
+    """P3: capability gap inventory vs profile quotas or min_per_capability."""
+    from core.api.core_facade import (
+        eval_agent_regression_profile,
+        eval_analyze_capability_coverage,
+    )
+
+    profile = (body or {}).get("profile")
+    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
+        "",
+        "agent.regression.v1",
+    ):
+        profile = eval_agent_regression_profile()
+    min_raw = (body or {}).get("min_per_capability")
+    min_n = None
+    if min_raw is not None and str(min_raw).strip() != "":
+        try:
+            min_n = int(min_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": "min_per_capability must be int",
+                "accuracy_claim": False,
+            }
+    try:
+        return eval_analyze_capability_coverage(
+            profile=profile if isinstance(profile, dict) else None,
+            min_per_capability=min_n,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("capability-coverage failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/coverage-fill")
+async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request):
+    """P3: coverage-driven fill — dry by default; apply=true expands draft pack."""
+    from core.api.core_facade import (
+        eval_agent_regression_profile,
+        eval_fill_capability_coverage,
+    )
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    profile = (body or {}).get("profile")
+    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
+        "",
+        "agent.regression.v1",
+    ):
+        profile = eval_agent_regression_profile()
+    min_raw = (body or {}).get("min_per_capability")
+    min_n = None
+    if min_raw is not None and str(min_raw).strip() != "":
+        try:
+            min_n = int(min_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": "min_per_capability must be int",
+                "accuracy_claim": False,
+            }
+    apply = bool((body or {}).get("apply"))
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_fill_capability_coverage(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                profile=profile if isinstance(profile, dict) else None,
+                min_per_capability=min_n,
+                method=str((body or {}).get("method") or "mutation"),
+                seed=str((body or {}).get("seed") or "7"),
+                ops=(body or {}).get("ops")
+                if isinstance((body or {}).get("ops"), list)
+                else None,
+                apply=apply,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("coverage-fill failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/case-packs/expand")
 async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Request):
     """P1.4: append cases into non-frozen draft/in_review/rejected pack."""

@@ -2791,6 +2791,32 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** P3: capability have/need/gap inventory. */
+  casePackCapabilityCoverage: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    min_per_capability?: number;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/capability-coverage',
+      body || {},
+    );
+  },
+  /** P3: coverage-driven fill (dry by default; apply expands draft). */
+  casePackCoverageFill: async (body?: {
+    pack_id?: string;
+    version?: string;
+    profile_id?: string;
+    min_per_capability?: number;
+    method?: 'mutation' | 'template' | string;
+    seed?: string;
+    apply?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/coverage-fill',
+      body || {},
+    );
+  },
   casePackExpand: async (body: Record<string, unknown>) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/expand', body);
   },

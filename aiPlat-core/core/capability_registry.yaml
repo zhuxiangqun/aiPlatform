@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2088
+total_capabilities: 2095
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,12 +6788,40 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 152
+    caps_count: 159
     provides:
       - symbol: SuiteProfileCompileError
         type: class
         signature: 'Profile compile fail-closed.'
         module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: analyze_capability_coverage
+        type: function
+        signature: 'analyze_capability_coverage(cases?,profile?,min_per_capability?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: generate_coverage_fill_candidates
+        type: function
+        signature: 'generate_coverage_fill_candidates(…method=mutation|template)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: fill_capability_coverage
+        type: function
+        signature: 'fill_capability_coverage(workspace_id,…,apply=False)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: CapabilityCoverageFillError
+        type: class
+        signature: 'Coverage fill fail-closed.'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: eval_analyze_capability_coverage
+        type: function
+        signature: 'eval_analyze_capability_coverage(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_generate_coverage_fill_candidates
+        type: function
+        signature: 'eval_generate_coverage_fill_candidates(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_fill_capability_coverage
+        type: function
+        signature: 'eval_fill_capability_coverage(workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: "resolve_capability_id"
         type: "function"
         signature: "resolve_capability_id(capability_id,fail_closed=True)→str"

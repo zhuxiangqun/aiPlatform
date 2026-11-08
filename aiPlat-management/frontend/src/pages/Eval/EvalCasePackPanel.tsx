@@ -276,6 +276,62 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
+          data-testid="eval-case-pack-cap-coverage"
+          onClick={() =>
+            run('capability-coverage', () =>
+              agentEvalApi.casePackCapabilityCoverage({
+                profile_id: profileId.trim() || 'agent.regression.v1',
+                min_per_capability: 8,
+              }),
+            )
+          }
+        >
+          Cap coverage (min=8)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
+          data-testid="eval-case-pack-coverage-fill-dry"
+          onClick={() =>
+            run('coverage-fill-dry', () =>
+              agentEvalApi.casePackCoverageFill({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                profile_id: profileId.trim() || 'agent.regression.v1',
+                min_per_capability: 8,
+                method: 'mutation',
+                apply: false,
+              }),
+            )
+          }
+        >
+          Coverage fill (dry)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
+          data-testid="eval-case-pack-coverage-fill-apply"
+          onClick={() =>
+            run('coverage-fill-apply', () =>
+              agentEvalApi.casePackCoverageFill({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                profile_id: profileId.trim() || 'agent.regression.v1',
+                min_per_capability: 8,
+                method: 'mutation',
+                apply: true,
+              }),
+            )
+          }
+        >
+          Coverage fill (apply)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
           onClick={() =>
             run('holdout', () =>
