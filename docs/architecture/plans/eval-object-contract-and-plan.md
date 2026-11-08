@@ -1,10 +1,10 @@
 # Eval Object Contract & Evaluation Plan — 通用评测对象契约
 
 > **类型**：短契约（字段语义 + 匹配/状态机 + 报告强制披露；非长白皮书）  
-> **版本**：v0.5 · 2026-11-07  
-> **状态**：**字段语义锁定** · **P0–P3 已接线**（MatchReport + 五态 + Plan + 多 object_type 适配器）· **仍不得宣称充分/准确认证**  
-> **关联**：[`eval-exam-runtime-tiers.md`](./eval-exam-runtime-tiers.md) · [`external-agent-eval-contract.md`](./external-agent-eval-contract.md) · [`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md)  
-> **诚实性**：`accuracy_claim` / `sufficiency_claim` **绑定评测范围**（对象版本 × 运行时 × 用例包 × 判分器 × 维度 × 样本量）；覆盖 ≠ 充分；未测/不适用 ≠ 通过。
+> **版本**：v1.0 · 2026-11-08  
+> **状态**：**字段语义锁定** · 对象匹配/成熟度/derived_hints/§6.1 适用态锁定 · **运行时取值以 Runtime Tiers v1.4 为权威** · 正式报告综合结论与 `runtime_parts` 已对照接线 · **框架 P0–P3 + §0.8 残余 Runner + L5 claims_gate 已接线** · 对象级成熟度仍参差（见 §0.6；Agent 仍未达 L5 声明）  
+> **关联**：[`eval-exam-runtime-tiers.md`](./eval-exam-runtime-tiers.md)（**v1.4**） · [`external-agent-eval-contract.md`](./external-agent-eval-contract.md) · [`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`eval-v1-charter.md`](./eval-v1-charter.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md)  
+> **诚实性**：`accuracy_claim` / `sufficiency_claim` **绑定评测范围**（对象版本 × 运行时 × 用例包 × 判分器 × 维度 × 样本量）；覆盖 ≠ 充分；未测/不适用 ≠ 通过；不完整覆盖 ≠ 通过。
 
 ---
 
@@ -24,7 +24,8 @@
 | **本文（Object Contract）** | 评谁、哪些题适用、oracle、五态（含不适用）、Plan 选题 | 本次实际在哪台运行时执行 |
 | **[`eval-exam-runtime-tiers.md`](./eval-exam-runtime-tiers.md)** | **`runtime_tier`=实际执行面**；`target_runtime`=目标交付形态；`runtime_claim` 范围 | 题目适不适合对象；是否充分 |
 
-契约字段 `target_runtime[]`（对象声明的目标形态）由本文维护；落盘报告里的单值 `target_runtime` / 实际 `runtime_tier` 由 Runtime Tiers 契约取值规则归档。二者**不得**合并成一个字段。
+契约字段 `target_runtime[]`（对象声明的目标形态）由本文维护；落盘报告里的单值 `target_runtime` / 实际 `runtime_tier` / `execution_mode` / `runtime_claim` **一律以 Runtime Tiers 为权威**（当前 **v1.4**）。二者**不得**合并成一个字段。  
+Plan 编译期的 `runtime_tier` 仅为**顾问值**，执行落盘必须以入口实际行为重标注（见 Runtime Tiers §7）；禁止用顾问值覆盖执行结果。
 
 ### 0.3 非目标（本契约明确不做）
 
@@ -35,17 +36,96 @@
 - 不把本契约等同于 `accuracy_claim=true` 或发布认证。  
 - 不重定义 `runtime_tier` 取值（以 Runtime Tiers 文档为权威）。
 
-### 0.4 与现状的关系（代码事实）
+### 0.4 与现状的关系（代码事实 · 2026-11-08）
 
 | 现状 | 含义 |
 |------|------|
-| `core/engine/eval_sets/*.json` + `BUILTIN_EXAM_SUITE` | **固定卷序**；全体 Agent 冒烟共用 |
-| `agent_exam_ops._bind_set_to_agent` | 只改执行者 `agent_id`，**不**改题目/金标 |
-| `runtime_tier` + `target_runtime`（runtime-tiers v1.3） | 实际执行面与目标形态已拆分；本契约 **消费** 之不重定义 |
-| formal report / 矩阵 | **P1**：五态含 `not_applicable`（formal `v1.11`）；缺失值占位 ≠ 不适用语义 |
-| P0 `target_contract` + `match_report` | exam / `POST /evaluation/match-cases` 已挂载；**仍不筛题** |
+| Agent 冒烟 UI（Plan v2） | `BUILTIN_EXAM_SUITE` = **题集模板**；**选题真相** = `compile-plan` / Evaluation Plan；编译失败阻断开跑（不静默空跑） |
+| `eval_sets/*.json` + `_bind_set_to_agent` | **固定题面/金标**；只换执行者 `agent_id`，**不**按名字动态出题 |
+| `runtime_tier` ≠ `target_runtime` | 实际执行面 vs 目标交付形态；本契约声明 `target_runtime[]`，归档规则见 runtime-tiers |
+| formal / 可归因报告 | 五态含 `not_applicable`；报告切片存在 ≠ 本次 Plan 已测该维 |
+| Prompt 页 / `prompt_eval_ops` | **独立 DB 用例路径**；≠ 通用 Plan 题包执行链 |
+| Knowledge/KB 样本评测 | **检索/问答指标**；≠ 通用 `dataset` object_type |
 
-目标态：冒烟改为 Plan 编译产物（P2）。
+**禁止混读**：「Plan 能识别/选中」≠「已有可执行评测」≠「充分/准确认证」。
+
+### 0.5 成熟度五级（盘点强制口径 · 唯一读法）
+
+| 级 | 含义（AND，缺一不可） | 未达时禁止说的话 |
+|:--:|----------------------|------------------|
+| **L1** | 有入口（Tab/API） | — |
+| **L2** | 能 `compile-plan` / MatchReport 匹配（或等价适用性匹配） | 「已评测」 |
+| **L3** | **同时**具备：① 版本化用例；② 明确 oracle/判分器；③ **可执行入口**（挂到该对象的 Runner/API） | 「和 Agent 同级产品」；仅 draft/JSON 无入口 ≠ L3 |
+| **L4** | 在 L3 之上，另有**本次实际运行**的可复核证据（run / 轨迹 / 落盘） | 「准确率」「充分性认证」；亦勿把 L4 运行证据称作「已校准」 |
+| **L5** | 在 L4 之上，**统计/充分性门槛**已满足；**可**作声明，但**仅限**明确限定的对象版本 × 任务分布 × 运行条件 × 样本量 | 未达门槛时不得作准确率/充分性声明 |
+
+**「校准」分词（防混读）**：
+
+| 用语 | 归属 | 含义 |
+|------|------|------|
+| **运行证据 / 工程校准快照** | ≤ L4 | 某次（或工程流水线）可复核执行与落盘；可做问题发现；**不是**准确率声明 |
+| **统计学校准 / 准确率门槛** | L5 | 在限定范围内满足样本量与任务分布等门槛后，方可作范围限定声明 |
+
+对象盘点必须给到 **最高已达级**，并分列 A/B/C 指标口径；**禁止**用「框架已接线」推导「该对象已完整可评」。等级读法以上表为准，下文不得另给冲突定义。
+
+| 口径 | 是什么 | 不是什么 |
+|------|--------|----------|
+| **A** | 用例包 `evaluates[]`（选题贡献维） | 不等于报告已出该切片 |
+| **B** | Agent 可归因报告切片（跑后工程信号） | 不等于本 Plan 入选了对应卷 |
+| **C** | 各入口私有判分（trigger TP/TN、prompt expected_keys…） | 不等于统一维度表 |
+
+### 0.6 对象状态口径（稳妥表述 · 与仓库证据对齐）
+
+| 对象 | 最高级 | 题包 / Oracle | Runner / 入口 | 执行证据 | 稳妥表述 |
+|------|:------:|---------------|---------------|----------|----------|
+| **Agent** | **L4** | 固定 `default/*` JSON + 词面/路径 oracle | 冒烟 UI + exam；Plan=选题真相 | run / 可归因报告 | 固定卷+Plan+运行与报告；可做工程问题发现；**未达 L5**（`claims_gate` 已接线但默认不解禁；样本量/覆盖门槛通常未过） |
+| **Skill** | **L4** | suite 正负例 / quality cases | `skill_evals` trigger·quality | suite run 落盘 | 限定 trigger 路由与 quality 路径；≠ Agent exam |
+| **API** | **L4** | 外部试卷任务 | external HTTP pull | exam 结果 `ext:{id}` | 限定对话 HTTP pull；claim=false |
+| **生成应用** | **L3–L4** | Pi smoke / runs_eval 探针 | apps 面板 + Pi/runs_eval | 视 live/offline | 限定 Pi smoke 与 runs_eval；offline 无 live 证据时停在 L3 |
+| **Prompt·页面链** | **L3–L4** | DB `prompt_test_cases`（版本化用例）+ `expected_keys` 判分 | Prompts 页 / `prompt_eval_ops`（可执行入口） | `prompt_eval_runs` → **L4** | **独立链**：满足 L3（用例+判分+入口）；有 run 证据则达 L4。≠ 通用 Plan 路径 |
+| **Prompt·Plan 链** | **L3–L4** | 版本化 `prompt/*` JSON + 词面 oracle | `POST /evaluation/prompt-plan-exam`（`prompt_plan_ops`） | dry run 落盘 → **L4**（fixture stub）；live=LLM 亦有 run | **Plan 专用链**：≠ 页面 `prompt_eval`；dry 不声明模型行为 |
+| **Workflow** | **L3–L4** | 版本化 `workflow/*` + 词面 oracle | `POST /evaluation/workflow-plan-exam` | dry run → L4（fixture stub） | Plan 链可执行；≠ 真实 pipeline 宿主 |
+| **Model** | **L3–L4** | 版本化 `model/*` + 词面 oracle | `POST /evaluation/model-plan-exam` | dry run → L4（fixture stub） | Plan 链可执行；**≠ 模型榜** |
+| **Dataset** | **L3–L4** | 版本化 `dataset/basic` + `dataset_assert` | `POST /evaluation/dataset-plan-exam` | dry/assert run → L4 | 夹具表确定性断言；**≠ KB 样本评测** |
+| **System** | **L3–L4** | 组合子对象版本化题包（默认 prompt/workflow/model/dataset basic） | `POST /evaluation/system-plan-exam` | 子 run + `runtime_parts[]` → L4 | 异质实际面不压档；顶层同质可为单值，否则 `mixed` |
+| **Knowledge/KB** | 另计 | kb 样本 | Knowledge 入口 | kb reports | 检索/问答路径；**≠ `dataset` object_type** |
+
+> 说明：`prompt`/`workflow`/`model`/`dataset`/`system` Plan Runner 已接线（§0.8 P0–P3）。`applicability_draft` 登记多项 ≠「三包产品已齐」。
+
+### 0.7 `derived_hints` 与显式契约（防漏测）
+
+| 规则 | 要求 |
+|------|------|
+| 来源标记 | `profile_source=explicit`（人写/配置） vs `derived_hints`（skills/tools 子串推导）必须落盘 |
+| 置信度 | 派生能力仅为**建议选题**信号；报告须可见「派生 / 低置信」 |
+| **禁止** | 仅凭 `derived_hints` **悄悄排除**用例、或把适用卷标成 `not_applicable` |
+| **允许** | 在 MatchReport 中标注「建议入选 / 建议关注」；最终入选/排除须可解释且可复核 |
+| 显式优先 | 有 `config.eval_profile` / 顶层 hoist 时，不得用派生结果覆盖显式 capabilities/permissions |
+
+### 0.8 字段锁定后的残余工作（非语义债 · 对象成熟度）
+
+字段语义锁定 **≠** 各 `object_type` 已达 Agent 同级可跑。后续实施按成熟度补齐，**不**再改 §0.5–§6.1 / Runtime Tiers 取值，除非走变更规则升版：
+
+| 优先级 | 缺口 | 目标级 |
+|--------|------|--------|
+| P0 | Prompt Plan 链专用 Runner（页面链已 L3–L4） | ✅ Plan 链 ≥L3（`prompt-plan-exam`；有 run→L4） |
+| P1 | Workflow / Model 专用 Runner + 执行证据 | ✅ `workflow-plan-exam` / `model-plan-exam`（typed_plan_exam；有 run→L4） |
+| P2 | Dataset 通用 Runner（≠ KB 样本路径） | ✅ `dataset-plan-exam`（fixture_table `dataset_assert`；有 run→L4） |
+| P3 | System 组合端到端入口（`runtime_parts` 汇总已有） | ✅ `system-plan-exam`（组合 typed parts + `runtime_parts`；有 run→L4） |
+| — | L5 准确率/充分性门槛与解禁流程 | ✅ `eval.claims_gate.v1` / `POST /evaluation/claims-gate` + formal `claims_gate` + 评测中心高级「对象Plan」UI（默认 false；见 §0.9） |
+
+### 0.9 L5 范围声明解禁（`eval.claims_gate.v1`）
+
+| 规则 | 要求 |
+|------|------|
+| 默认 | `accuracy_claim` / `sufficiency_claim` **恒为 false**（Plan 编译、runtime merge、正式报告） |
+| 范围绑定 | 声明必须绑定：对象类型×id×版本 × `runtime_tier` × `plan_id` × set_ids × oracle × 维度 × `sample_n` |
+| 门槛（准确率） | 有运行证据；适用侧无 `untested`；非 `fixture`/`mixed`；`runtime_claim=true`；`sample_n ≥ min_sample_n`（默认 100） |
+| 门槛（充分性） | 在准确率门槛之上，另需 `human_review` 或 `calibrated_rubric` |
+| 解禁动作 | 仅当 `explicit_authorize=true` **且**门槛全过，门禁报告才可输出 claim=true；**禁止**静默抬升 |
+| 入口 | `evaluate_l5_claims_gate` / `POST /evaluation/claims-gate` |
+
+---
 
 ---
 
@@ -100,7 +180,7 @@ EvalTarget（类型+版本+契约） + 评测目的
 
 ### 2.4 生成规则
 
-- Agent：优先读 `config.eval_profile`；`AgentManager` 加载时也会把 AGENT.md **顶层** `eval_profile` 注入 `config`（与写在 `config:` 下等价）。缺省时 `resolve_agent_eval_profile` 用 skills/tools **子串 hint** 推导（`profile_source=derived_hints`）；禁止 `if agent_id ==`。  
+- Agent：优先读 `config.eval_profile`；`AgentManager` 加载时也会把 AGENT.md **顶层** `eval_profile` 注入 `config`（与写在 `config:` 下等价）。缺省时 `resolve_agent_eval_profile` 可用 skills/tools **子串 hint** 推导，但必须 `profile_source=derived_hints` 并遵守 **§0.7**（建议选题，不得单独驱动 N/A / 静默漏测）；禁止 `if agent_id ==`。  
 - 外部 HTTP：契约来自 target registry + 协议能力（见 external contract）。  
 - Skill / Prompt / App：来自各自元数据与已接线评测入口；无契约则 Plan 只能跑「类型基础包」中标记 `requires_contract=false` 的子集，并强制 `sufficiency_claim=false`。
 
@@ -186,12 +266,33 @@ eval_profile:
 | `not_applicable` | 契约/requires 不匹配（或义务例外外的不适用） | 否 | **否** |
 | `inconclusive` | 已跑但证据不足 / 探针未核实 | 否（可进「需关注」） | **否** |
 
-### 6.1 聚合规则（锁定原则）
+### 6.1 维度聚合规则（混合态 · 强制）
 
-- 维度状态由所属用例状态按维度策略聚合；默认：**任一适用且 fail → 维 fail**；存在 inconclusive 且无 fail → 维可 `inconclusive`；全部 untested → `untested`；全部 not_applicable → `not_applicable`。  
-- **综合「不通过」** 仅由 `fail`（及安全硬门槛 veto）驱动；不得因大量 `untested`/`not_applicable` 单独判不通过。  
+**适用态定义（锁定）**：适用态仅包括 `pass` / `fail` / `untested` / `inconclusive`；**`not_applicable` 不属于适用态**。  
+（工程扩展 `warn` / `missing` 若出现，按适用侧参与聚合，不得当作 N/A。）
+
+维度由所属用例/切片状态聚合。**优先级（高→低）**：
+
+1. 无任何所属用例 / 覆盖集为空（**零样本 / 零覆盖**）→ `untested`（不得标 `pass`，也不得静默省略该维当通过；**零覆盖 ≠ `not_applicable`**）  
+2. 存在适用态且含 `fail` → `fail`  
+3. 无 fail，存在适用态且含 `inconclusive` → `inconclusive`  
+4. 无 fail/inconclusive，存在适用态且含 `untested` → **`untested`（不完整覆盖 ≠ 通过）**  
+5. **存在至少一个适用用例，且所有适用用例均为 `pass`，其余用例均为 `not_applicable`** → `pass`  
+6. **没有任何适用用例**（全部为 `not_applicable`）→ `not_applicable`（**禁止**把「没有适用题」读成通过）
+
+| 混合 | 维状态 | 说明 |
+|------|--------|------|
+| `pass` + `untested` | **`untested`** | 不完整覆盖不得聚合成通过 |
+| `pass` + `not_applicable` | `pass` | N/A 不稀释已适用通过 |
+| `untested` + `not_applicable` | `untested` | 仍有适用未测 |
+| 仅 `not_applicable` | `not_applicable` | 无适用用例 |
+| 零覆盖用例 | `untested` | 无样本 ≠ N/A ≠ pass |
+
+- **综合「不通过」** 仅由 `fail`（及安全硬门槛 veto）驱动；不得因大量 `untested`/`not_applicable` 单独判「不通过」。  
+- **综合「通过 / 可宣称」** 不得由含 `untested` 的不完整覆盖推出；报告必须分列计数。  
 - **工程复合分**（若仍用 legacy_7dim）：`not_applicable` **不得**填满分；`untested`/`inconclusive` 按已文档化的 missing_fill（中性占位）并进 `filled_keys`；硬门槛 veto 单独否决。细则变更须同步 formal report `score_policy`。  
-- 安全硬门槛：`veto=true` → 发布讨论否决；与平均分正交。
+- 安全硬门槛：`veto=true` → 发布讨论否决；与平均分正交。  
+- 实现锚点：前端 `mergeMatrixStatuses` 与上表对齐（含 `pass+untested`→`untested`）。
 
 ---
 
@@ -206,8 +307,9 @@ eval_profile:
 | `purpose` | 评测目的 |
 | `selected_cases[]` | case_id + pack + 入选原因 |
 | `excluded_cases[]` | case_id + `not_applicable` 原因 或「本目的未选专项」 |
-| `runtime_tier` | **实际**执行面（runtime-tiers） |
+| `runtime_tier` | **顾问**实际执行面（编译期）；执行后以 Runtime Tiers 重标注为准 |
 | `target_runtime` | 主目标交付形态（可与实际不同） |
+| `runtime_parts[]` | **仅 `system` / 多执行面**：每子任务 `{sub_id, runtime_tier, target_runtime, runner_id?, result}`；见 §10.1 |
 | `oracle_binding` | case_id → oracle.type |
 | `claims_policy` | `accuracy_claim`/`sufficiency_claim` 默认 false + 解禁条件引用 |
 
@@ -234,7 +336,7 @@ eval_profile:
 
 建议增加计数：`applicable` / `pass` / `fail` / `untested` / `not_applicable` / `inconclusive`。
 
-**接线（formal `v1.12`）**：`buildObjectContractDisclosure` → 报告 `object_contract` + Markdown §2.1 + EvalFullReportPanel「1.1」；含 `plan_ids`、三包覆盖、MatchReport 入选/排除、失败归因粗分。
+**接线（formal `v1.14`）**：`buildObjectContractDisclosure` → 报告 `object_contract` + Markdown §2.1 + EvalFullReportPanel「1.1」；含 `plan_ids`、三包覆盖、MatchReport 入选/排除、失败归因粗分、**`claims_gate` check-only**（`explicit_authorize=false` → claim 恒 false）；维有 `untested` 时综合结论至多「有条件通过」；`runtime_parts` 入 meta。
 
 ---
 
@@ -250,16 +352,34 @@ eval_profile:
 
 ## 10. 对象类型适配器（实现边界）
 
-| object_type | 典型 `target_runtime` | 实际 `runtime_tier` 示例 | 备注 |
-|-------------|----------------------|-------------------------|------|
-| `agent` | `workspace_execute` | live→`workspace_execute`；dry→`fixture` | 现状主路径 |
-| `api` / 外部对话 | `external_pull` | live pull→`external_pull`；dry→`fixture` | external contract |
-| `generated_app` | `pi` | live Pi CLI→`pi`；offline/runs_eval→`fixture` | **禁止**未调 Pi 却标实际 `pi` |
-| `skill` | `core_skill_execute` | quality→`core_skill_execute`；trigger→`fixture` | 不得冒充 agent workspace |
-| `prompt` / `model` / `dataset` | 按入口 | 多为 `fixture` 或专用路径 | 经 Plan 挂载 |
-| `system` | 组合声明 | 按子执行面分别归档 | 子对象结论不可自动外推 |
+> **权威**：下表是入口摘要；`runtime_tier` / `execution_mode` / `runtime_claim` 的完整判定以 [`eval-exam-runtime-tiers.md`](./eval-exam-runtime-tiers.md) **v1.4** §7 / §7.1 为准。相对 v1.2：Skill quality ≠ 一律 `fixture`；离线 Pi / `runs_eval` ≠ `runtime_tier=pi`。
 
-新对象类型：先补契约字段与适配器，再进 UI；禁止只加按钮不改 MatchReport。
+| object_type | 典型 `target_runtime` | 实际 `runtime_tier`（按行为） | `execution_mode` 等 | 备注 |
+|-------------|----------------------|------------------------------|---------------------|------|
+| `agent` | `workspace_execute` | live→`workspace_execute`；dry→`fixture` | — | 现状主路径 |
+| `api` / 外部对话 | `external_pull` | live pull→`external_pull`；dry→`fixture` | — | external contract |
+| `generated_app` | `pi` | **仅** live Pi CLI 成功→`pi`；offline / `runs_eval`→`fixture` | — | `target_runtime` 可仍为 `pi`；`runtime_claim=false` 当未进宿主 |
+| `skill` | `core_skill_execute` | **quality**（skill_manager 已调）→`core_skill_execute`；**trigger**（仅路由）→`fixture` | `skill_manager_quality` / `skill_trigger_*` | 不得冒充 agent workspace；`core_skill_execute` **是** Runtime Tiers v1.3 合法档，不是五档外发明 |
+| `prompt` | `fixture` / `prompt_execute` | Plan dry/live→实际 `fixture`（`execution_mode=prompt_plan_*`）；页面链另计 | `prompt_plan_dry` / `prompt_plan_llm` | **分列**：Plan `prompt-plan-exam`≈L3–L4；页面 `prompt_eval`≈L3–L4。禁止合并评级 |
+| `workflow` | `workspace_execute` | Plan→实际 `fixture`（`workflow_plan_*`） | `workflow_plan_dry` / `workflow_plan_llm` | **L3–L4** Plan exam；≠ 真实 pipeline 宿主 |
+| `model` | `fixture` / `model_generate` | Plan→实际 `fixture`（`model_plan_*`） | `model_plan_dry` / `model_plan_llm` | **L3–L4** Plan exam；≠ 模型榜 |
+| `dataset` | `fixture` | Plan→`fixture`（`dataset_plan_assert`） | `dataset_plan_assert` | **L3–L4** 夹具表断言；**≠ KB 样本路径** |
+| `system` | 组合声明 | 子任务自带实际 tier；汇总见 §10.1 / `system-plan-exam` | 各 `execution_mode` | **L3–L4** 组合入口；异质不压档 |
+
+**匹配分层（pack）≠ 完成度**：`core`/`capability`/`special` 是用例适用语义；draft 登记多项 ≠「三包产品已齐」。详见 §0.6。
+
+### 10.1 系统组合 / 多执行面归档（强制）
+
+当一次评测含多个实际执行面（`system`，或报告聚合多个入口）：
+
+| 规则 | 要求 |
+|------|------|
+| 子任务必留痕 | 顶层报告保存 `runtime_parts[]`：每项含 `sub_id`、`runtime_tier`、`target_runtime`、可选 `runner_id`/`execution_mode`、该子结果 |
+| 顶层单值 | **仅当**所有子任务实际 `runtime_tier` **相同**时，顶层可写该单值；否则顶层 **`runtime_tier` 省略或显式 `mixed`**（若实现采用 `mixed`，须在 Runtime Tiers 登记为**非执行档元标记**，不得当作真实宿主） |
+| 禁止 | 把 `workspace_execute` + `fixture` + `pi` 等压成某一个「代表性」tier |
+| claim | 顶层 `runtime_claim` 仅可对「各 parts 均允许 claim 且 tier 一致」为 true；异质时 false + reason 指向 parts |
+
+新对象类型：契约+匹配（L2）→ 题卷+oracle+**Runner 挂载**（L3）→ 运行证据（L4）→ 统计/充分性门槛（L5）；禁止只加按钮不改 MatchReport，禁止无 Runner 宣称 L3。
 
 ---
 
@@ -270,9 +390,9 @@ eval_profile:
 | **P0** | `eval.target_contract.v1` + `applicability_draft.json` + MatchReport + `POST /evaluation/match-cases`；exam 响应挂载 advisory 报告 | ✅ 单测可解释入选/不适用；high_risk refuse_or_handoff；**不**改执行选题 |
 | **P1** | 报告/矩阵五态含 `not_applicable`；formal `v1.11`；MatchReport 排除卷→维 N/A | ✅ 不计失败；与 untested 分列；旧「未测/不适用」混称保留兼容 |
 | **P2** | `compile_evaluation_plan` + `POST /evaluation/compile-plan`；冒烟按 Plan 跳过 N/A/专项未测 | ✅ 默认 core+匹配 capability；special 需 purpose 或 include_special；本地冒烟 purpose 含 safety/reliability |
-| **P3** | `object_adapters` + 类型默认用例模板；skill/api/generated_app 挂载同一 Plan | ✅ 同一 `eval.evaluation_plan.v1`；agent 卷对 skill 标 N/A |
+| **P3** | `object_adapters` + 类型默认用例模板；**skill/api/generated_app（及 Agent）** 挂载同一 Plan 执行入口 | ✅ 同一 `eval.evaluation_plan.v1`；agent 卷对 skill 标 N/A；**不等于** prompt/workflow/model/dataset 已达同等执行成熟度 |
 
-**本文件状态 = P0–P3 已接线。**
+**本文件状态 = v1.0 字段语义锁定**：与 Runtime Tiers v1.4 交叉验收通过；`mergeMatrixStatuses` / 正式报告综合结论遵循 §6.1（含 untested→有条件通过）；`summarize_runtime_parts` 已接线。框架 P0–P3 已接线；**对象级可跑成熟度仍以 §0.6 / §0.8 为准，不得一概而论。**
 
 ---
 

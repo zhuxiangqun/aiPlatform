@@ -2658,6 +2658,46 @@ export const agentEvalApi = {
       accuracy_claim?: boolean;
     }>('/core/evaluation/compile-plan', body);
   },
+  /** Typed Plan-chain exam: prompt|workflow|model|dataset (≠ page prompt_eval / KB). */
+  typedPlanExam: async (
+    objectType: 'prompt' | 'workflow' | 'model' | 'dataset',
+    body: {
+      object_id?: string;
+      set_ids?: string[];
+      purpose?: string[];
+      include_special?: boolean;
+      live?: boolean;
+      model?: string;
+      max_tasks_per_set?: number;
+    },
+  ) => {
+    return apiClient.post<Record<string, unknown>>(
+      `/core/evaluation/${objectType}-plan-exam`,
+      body,
+      { timeoutMs: 600_000 },
+    );
+  },
+  /** System combination Plan exam + runtime_parts. */
+  systemPlanExam: async (body: {
+    object_id?: string;
+    parts?: Array<{ object_type: string; object_id?: string; set_ids?: string[] }>;
+    live?: boolean;
+    model?: string;
+    max_tasks_per_set?: number;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/system-plan-exam',
+      body,
+      { timeoutMs: 600_000 },
+    );
+  },
+  /** L5 claims gate check (default authorize false → claims stay false). */
+  claimsGate: async (body: {
+    evidence?: Record<string, unknown>;
+    explicit_authorize?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/claims-gate', body);
+  },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {
     return apiClient.post<{

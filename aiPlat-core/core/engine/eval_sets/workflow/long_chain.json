@@ -1,0 +1,21 @@
+{
+  "set_id": "workflow/long_chain",
+  "category": "multi_turn",
+  "description": "Workflow 专项 — 长链阶段须保持序与终点，不得跳阶段宣称完成",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "wf-long-001",
+      "agent_id": "eval_target_workflow",
+      "user_input": "已完成：ingest→normalize→enrich。下一步应为 validate，然后 publish。请列出剩余两阶段，箭头连接。",
+      "category": "multi_turn",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["validate", "publish"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

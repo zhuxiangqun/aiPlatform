@@ -4,7 +4,11 @@
  * Honesty: accuracy_claim=false; coverage ≠ sufficiency; ≠ release authorization.
  */
 import type { AttributableReport } from './EvalAttributableReportCard';
-import { agentExamRuntimeAnn } from './examRuntimeTier';
+import {
+  evaluateL5ClaimsGate,
+  type ClaimsGateReport,
+} from './claimsGate';
+import { agentExamRuntimeAnn, summarizeRuntimeParts } from './examRuntimeTier';
 import {
   BUILTIN_EXAM_SUITE,
   buildDimensionMatrix,
@@ -114,6 +118,14 @@ export type FormalExamReport = {
     runtime_tier: string;
     runtime_claim: boolean;
     runtime_claim_reason: string;
+    /** Multi-runtime / system parts (Runtime Tiers §7.1); empty when single homogeneous job */
+    runtime_parts?: Array<{
+      sub_id: string;
+      runtime_tier: string;
+      target_runtime?: string;
+      execution_mode?: string;
+      runtime_claim?: boolean;
+    }>;
     /** Explicit: smoke / single formal body is problem-finding grade by default */
     problem_discovery_grade: boolean;
     accuracy_claim: false;
@@ -252,6 +264,8 @@ export type ObjectContractDisclosure = {
     bucket: FailureAttributionBucket;
     note: string;
   }>;
+  /** L5 claims gate check-only (explicitAuthorize=false → claims stay false) */
+  claims_gate: ClaimsGateReport;
   honesty: string;
 };
 
@@ -293,15 +307,24 @@ function conclusionLevel(args: {
   failN: number;
   warnN: number;
   inconclusiveN: number;
+  untestedN: number;
   done: number;
 }): FormalExamReport['conclusion']['level'] {
   if (args.done === 0) return '数据不足';
   if (args.veto || args.failN > 0) return '不通过';
-  if (args.warnN > 0 || args.inconclusiveN > 0) return '有条件通过';
+  // Object-contract §6.1: incomplete coverage (untested) must not aggregate to bare pass
+  if (args.warnN > 0 || args.inconclusiveN > 0 || args.untestedN > 0) {
+    return '有条件通过';
+  }
   return '通过（有限范围）';
 }
 
-function conclusionStatement(level: FormalExamReport['conclusion']['level'], failN: number, warnN: number): string {
+function conclusionStatement(
+  level: FormalExamReport['conclusion']['level'],
+  failN: number,
+  warnN: number,
+  untestedN = 0,
+): string {
   if (level === '数据不足') {
     return '本次尚未形成可归档的评测样本，暂不能给出综合结论。';
   }
@@ -309,9 +332,13 @@ function conclusionStatement(level: FormalExamReport['conclusion']['level'], fai
     return `综合判定为「不通过」：存在 ${failN} 项未通过（或安全否决）。须完成问题整改并复测后，方可再次提交评审。`;
   }
   if (level === '有条件通过') {
-    return `综合判定为「有条件通过」：无硬性未通过项，但存在 ${warnN} 项需关注。可在限定范围内讨论使用，不得外推为充分评测或准确率认证。`;
+    const gaps: string[] = [];
+    if (warnN > 0) gaps.push(`${warnN} 项需关注`);
+    if (untestedN > 0) gaps.push(`${untestedN} 维未测/覆盖不完整`);
+    const gapText = gaps.length ? gaps.join('、') : '仍有缺口';
+    return `综合判定为「有条件通过」：无硬性未通过项，但存在 ${gapText}。可在限定范围内讨论使用；未测/不完整覆盖不得视为通过，不得外推为充分评测或准确率认证。`;
   }
-  return '综合判定为「通过（有限范围）」：本轮已测项未触发失败门槛。结论仅适用于本报告载明的评测范围与运行环境，未测项不得视为合格。';
+  return '综合判定为「通过（有限范围）」：本轮适用维均已测且未触发失败门槛。结论仅适用于本报告载明的评测范围与运行环境。';
 }
 
 function reportId(agentId: string, kind: string): string {
@@ -780,23 +807,39 @@ function _attrBucket(
   return { bucket: 'pending_review', note: '归因待核定' };
 }
 
+export type ObjectContractRuntimeCtx = {
+  object_id?: string;
+  runtime_tier?: string;
+  runtime_claim?: boolean;
+  untested_n?: number;
+};
+
 /** Aggregate Plan / MatchReport / coarse attribution from suite paper attributables. */
 export function buildObjectContractDisclosure(
   papers: SuitePaperResult[],
   findings: FormalFinding[] = [],
   dimensions: DimensionMatrixRow[] = [],
+  runtimeCtx: ObjectContractRuntimeCtx = {},
 ): ObjectContractDisclosure {
   const planIds = new Set<string>();
   const objectTypes = new Set<string>();
   const objectVersions = new Set<string>();
+  const objectIds = new Set<string>();
+  const oracleTypes = new Set<string>();
   const selectedMap = new Map<string, { set_id: string; pack: string; reasons: string[] }>();
   const excludedMap = new Map<
     string,
     { set_id: string; pack: string; status: string; reasons: string[] }
   >();
   const pack_coverage = _emptyPackCounts();
+  let sample_n = 0;
+  let has_run_evidence = false;
 
   for (const p of papers || []) {
+    if (p.status === 'done' || p.status === 'error') has_run_evidence = true;
+    if (typeof p.total_tasks === 'number' && Number.isFinite(p.total_tasks)) {
+      sample_n += Math.max(0, p.total_tasks);
+    }
     const ar = (p.attributable || null) as Record<string, unknown> | null;
     if (!ar) continue;
     if (ar.plan_id != null && String(ar.plan_id).trim()) planIds.add(String(ar.plan_id));
@@ -804,6 +847,7 @@ export function buildObjectContractDisclosure(
     if (tc && typeof tc === 'object') {
       if (tc.object_type) objectTypes.add(String(tc.object_type));
       if (tc.object_version) objectVersions.add(String(tc.object_version));
+      if (tc.object_id) objectIds.add(String(tc.object_id));
     }
     const ep = ar.evaluation_plan as Record<string, unknown> | undefined;
     if (ep?.plan_id) planIds.add(String(ep.plan_id));
@@ -818,6 +862,11 @@ export function buildObjectContractDisclosure(
       const pack = _packOf(sid, String(row.pack || ''));
       const reasons = Array.isArray(row.reasons) ? row.reasons.map(String) : ['selected'];
       selectedMap.set(sid, { set_id: sid, pack, reasons });
+      const ot = row.oracle_type || row.oracle;
+      if (typeof ot === 'string' && ot.trim()) oracleTypes.add(ot.trim());
+      else if (ot && typeof ot === 'object' && (ot as Record<string, unknown>).type) {
+        oracleTypes.add(String((ot as Record<string, unknown>).type));
+      }
     }
     for (const x of excluded) {
       if (!x || typeof x !== 'object') continue;
@@ -835,10 +884,13 @@ export function buildObjectContractDisclosure(
     const bucket = pack_coverage[s.pack as keyof typeof pack_coverage] || pack_coverage.unknown;
     bucket.selected += 1;
   }
+  let packUntested = 0;
   for (const e of excludedMap.values()) {
     const bucket = pack_coverage[e.pack as keyof typeof pack_coverage] || pack_coverage.unknown;
-    if (e.status === 'untested') bucket.untested += 1;
-    else bucket.not_applicable += 1;
+    if (e.status === 'untested') {
+      bucket.untested += 1;
+      packUntested += 1;
+    } else bucket.not_applicable += 1;
   }
 
   const failure_attribution = [
@@ -862,6 +914,36 @@ export function buildObjectContractDisclosure(
       })),
   ];
 
+  const dimKeys = dimensions
+    .filter((d) => d.status !== 'not_applicable')
+    .map((d) => d.id || d.title)
+    .filter(Boolean);
+  const dimUntested = dimensions.filter((d) => d.status === 'untested').length;
+  const untested_applicable_n = Math.max(
+    Number(runtimeCtx.untested_n || 0),
+    packUntested,
+    dimUntested,
+  );
+  const runtime_tier = String(runtimeCtx.runtime_tier || 'workspace_execute');
+  const claims_gate = evaluateL5ClaimsGate(
+    {
+      object_type: [...objectTypes][0] || 'agent',
+      object_id: runtimeCtx.object_id || [...objectIds][0] || '',
+      object_version: [...objectVersions][0] || 'version_unspecified',
+      runtime_tier,
+      plan_id: [...planIds][0] || '',
+      set_ids: [...selectedMap.keys()],
+      oracle_types: oracleTypes.size ? [...oracleTypes] : ['lexical_path'],
+      dimensions: dimKeys.length ? dimKeys : ['task_result'],
+      sample_n,
+      has_run_evidence,
+      untested_applicable_n,
+      runtime_claim: Boolean(runtimeCtx.runtime_claim),
+      fixture_only: runtime_tier === 'fixture',
+    },
+    { explicitAuthorize: false },
+  );
+
   return {
     plan_ids: [...planIds],
     object_types: [...objectTypes],
@@ -870,8 +952,9 @@ export function buildObjectContractDisclosure(
     selected_sets: [...selectedMap.values()],
     excluded_sets: [...excludedMap.values()],
     failure_attribution,
+    claims_gate,
     honesty:
-      'Object Contract 披露：三包覆盖来自 Plan/MatchReport；失败归因粗分仅供整改分流，默认待核定；≠ accuracy/sufficiency。',
+      'Object Contract 披露：三包覆盖来自 Plan/MatchReport；失败归因粗分仅供整改分流；claims_gate 仅核对 L5 门槛（默认不解禁）；≠ accuracy/sufficiency。',
   };
 }
 
@@ -903,15 +986,53 @@ function wrapReport(partial: {
     failN: partial.failN,
     warnN: partial.warnN,
     inconclusiveN: partial.inconclusiveN,
+    untestedN: partial.untestedN,
     done: partial.done,
   });
-  const statement = conclusionStatement(level, partial.failN, partial.warnN);
+  const statement = conclusionStatement(
+    level,
+    partial.failN,
+    partial.warnN,
+    partial.untestedN,
+  );
   const kindLabel = partial.kind === 'smoke_suite' ? '本地标准冒烟（连跑）' : '单用例集正式评测';
   const generated_at = new Date().toISOString();
   const generated_at_local = localNow();
   const id = reportId(partial.agentId, partial.kind);
   const suitePapers = partial.suitePapers || [];
+  const runtimePartsFromPapers = suitePapers
+    .map((p, i) => {
+      const ar = p.attributable as Record<string, unknown> | null | undefined;
+      if (!ar || ar.runtime_tier == null) return null;
+      return {
+        sub_id: String(p.run_key || p.set_id || `part_${i}`),
+        runtime_tier: String(ar.runtime_tier),
+        target_runtime:
+          ar.target_runtime != null ? String(ar.target_runtime) : undefined,
+        execution_mode:
+          ar.execution_mode != null ? String(ar.execution_mode) : undefined,
+        runtime_claim: Boolean(ar.runtime_claim),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => Boolean(x));
+  const runtimeSummary = summarizeRuntimeParts(runtimePartsFromPapers);
   const runtimeFromPaper = (() => {
+    if (runtimeSummary.runtime_parts.length) {
+      if (runtimeSummary.mixed) {
+        return {
+          runtime_tier: 'mixed',
+          runtime_claim: false,
+          runtime_claim_reason: runtimeSummary.runtime_claim_reason,
+        };
+      }
+      if (runtimeSummary.runtime_tier) {
+        return {
+          runtime_tier: runtimeSummary.runtime_tier,
+          runtime_claim: runtimeSummary.runtime_claim,
+          runtime_claim_reason: runtimeSummary.runtime_claim_reason,
+        };
+      }
+    }
     for (const p of suitePapers) {
       const ar = p.attributable as Record<string, unknown> | null | undefined;
       if (!ar) continue;
@@ -970,6 +1091,12 @@ function wrapReport(partial: {
     suitePapers,
     partial.findings,
     partial.dimensions,
+    {
+      object_id: partial.agentId,
+      runtime_tier: runtime.runtime_tier,
+      runtime_claim: runtime.runtime_claim,
+      untested_n: partial.untestedN,
+    },
   );
 
   return {
@@ -983,7 +1110,7 @@ function wrapReport(partial: {
       kind_label: kindLabel,
       generated_at,
       generated_at_local,
-      version: 'v1.12',
+      version: 'v1.14',
       purpose:
         '对指定 Agent 在约定用例集上的工程表现进行问题发现与归档；支撑整改与内部评审，默认不作正式发布认证。',
       scope:
@@ -998,6 +1125,9 @@ function wrapReport(partial: {
       runtime_tier: runtime.runtime_tier,
       runtime_claim: runtime.runtime_claim,
       runtime_claim_reason: runtime.runtime_claim_reason,
+      runtime_parts: runtimeSummary.runtime_parts.length
+        ? runtimeSummary.runtime_parts
+        : undefined,
       problem_discovery_grade: true,
       accuracy_claim: false,
       sufficiency_claim: false,
@@ -1566,6 +1696,17 @@ export function fullExamReportToMarkdown(r: FormalExamReport): string {
       lines.push('');
       for (const a of oc.failure_attribution.slice(0, 12)) {
         lines.push(`- [${a.bucket}] ${a.title}${a.related_set ? ` · ${a.related_set}` : ''} — ${a.note}`);
+      }
+      lines.push('');
+    }
+    const cg = oc.claims_gate;
+    if (cg) {
+      lines.push(
+        `L5 claims_gate（check-only）：accuracy_eligible=${String(cg.accuracy_eligible)} · sufficiency_eligible=${String(cg.sufficiency_eligible)} · accuracy_claim=${String(cg.accuracy_claim)}（explicit_authorize=${String(cg.explicit_authorize)}）`,
+      );
+      const blockers = [...(cg.failed || []), ...(cg.missing || [])].slice(0, 8);
+      if (blockers.length) {
+        lines.push(`- 未解禁原因：${blockers.join('；')}`);
       }
       lines.push('');
     }

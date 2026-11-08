@@ -42,6 +42,16 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '跑/查看本地门禁结果，用于开发自检。',
     not: '本机门禁通过 ≠ 外部/staging/生产已授权。',
   },
+  'typed-plan': {
+    title: '对象Plan',
+    what:
+      '通用对象 Plan 链：prompt/workflow/model/dataset/system 的 *-plan-exam，以及 L5 claims_gate 门槛核对。',
+    why: 'Object Contract §0.8 Runner 与 §0.9 解禁门禁的操作面；与 Agent 冒烟 / 页面 Prompts 分列。',
+    can:
+      '选对象类型跑 dry/live Plan exam；填写范围字段核对 claims_gate（默认不解禁；可本机镜像或调 API）。',
+    not:
+      'Plan exam 绿 ≠ 准确率；fixture dry ≠ 真实宿主；勾选 explicit_authorize 也不自动改正式报告 claim。',
+  },
   reports: {
     title: '报告',
     what: '查看已落库的评测报告与趋势（只读为主）。',

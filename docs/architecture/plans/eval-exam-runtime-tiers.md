@@ -1,8 +1,8 @@
 # Eval Exam Runtime Tiers — 评测档位 ↔ 运行时契约
 
 > **类型**：短契约（字段语义 + 映射；非长白皮书）  
-> **版本**：v1.3 · 2026-11-07  
-> **状态**：字段语义锁定 · **实际执行面**与**目标交付形态**已拆分 · Pi 离线/Skill quality 归档纠偏 · **不**改选模/Agent 执行路径 · **不**改 `process_split_authorized`  
+> **版本**：v1.4 · 2026-11-08  
+> **状态**：**字段语义锁定**（单 job + `runtime_parts` 多执行面）· **实际执行面**与**目标交付形态**已拆分 · Pi 离线/Skill quality 归档纠偏 · **与 Object Contract v1.0 交叉验收** · **不**改选模/Agent 执行路径 · **不**改 `process_split_authorized`  
 > **关联**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · [`pi-thin-runtime.md`](./pi-thin-runtime.md) · [`eval-production-independent-service.md`](./eval-production-independent-service.md) · [`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md)  
 > **诚实性**：`accuracy_claim=false` 与 runtime 正交；覆盖 ≠ 充分；B2-L 本地工程 ≠ 生产切流 ≠ Agent exam 已上 Worker。
 
@@ -12,10 +12,11 @@
 
 ### 0.1 本契约目标
 
-1. 每次评测结果可归档到明确的 **`runtime_tier`（实际执行面，单一主键）**。  
+1. 每次**单一执行面**评测结果可归档到明确的 **`runtime_tier`（实际执行面，主键）**。  
 2. 用独立字段 **`target_runtime`（目标交付形态）** 说明「对象打算在哪交付/被评」，**不得**与实际执行面混写进同一字段。  
 3. 用 **`runtime_claim` / `runtime_claim_reason`** 说明「本次结论可就**实际** `runtime_tier` 范围作何种有限陈述」。  
-4. 分离 **执行平面迁移/授权** 与 **本次 job 实际 runner**，避免误读。
+4. 分离 **执行平面迁移/授权** 与 **本次 job 实际 runner**，避免误读。  
+5. **多执行面 / 系统组合**：不得把异质实际面压成单一 tier；见 §7.1。
 
 **非目标**：决定哪些题适用于哪个对象（见 Object Contract）；宣称充分/准确/发布认证；把 Agent live 接到 Pi；宣称执行平面已迁移。
 
@@ -116,7 +117,7 @@ v1.2→v1.3：**新增** `core_skill_execute`；**纠正**「目标 Pi / 未调 
 
 ---
 
-## 7. 入口映射（实际 tier + 目标；v1.3）
+## 7. 入口映射（实际 tier + 目标；v1.4）
 
 | 入口 | `runtime_tier`（实际） | `target_runtime` | `runtime_claim` | 备注 |
 |------|------------------------|------------------|-----------------|------|
@@ -130,9 +131,28 @@ v1.2→v1.3：**新增** `core_skill_execute`；**纠正**「目标 Pi / 未调 
 | 评测生成应用 · Pi 冒烟 live | `pi` | `pi` | true（CLI 成功） | 失败则 claim=false，tier 仍以是否进入 Pi 为准 |
 | Skill suite · trigger | `fixture` | `core_skill_execute` | false | 仅路由候选；**不**执行被测 handler；`execution_mode=skill_trigger_*` |
 | Skill suite · quality | `core_skill_execute` | `core_skill_execute` | true（限该路径） | 经 Core `skill_manager` **已调**被测 skill；`execution_mode=skill_manager_quality` |
+| Prompt Plan exam · dry | `fixture` | `prompt_execute` | false | 确定性 stub；`execution_mode=prompt_plan_dry`；≠ 页面 prompt_eval |
+| Prompt Plan exam · live | `fixture` | `prompt_execute` | false | `sys_llm_generate`；尚无专用 prompt 宿主档；`execution_mode=prompt_plan_llm` |
+| Workflow Plan exam · dry/live | `fixture` | `workspace_execute` | false | `execution_mode=workflow_plan_*`；≠ 真实 pipeline 宿主 |
+| Model Plan exam · dry/live | `fixture` | `model_generate` | false | `execution_mode=model_plan_*`；≠ 模型榜 |
+| Dataset Plan exam | `fixture` | `fixture` | false | `execution_mode=dataset_plan_assert`；夹具表断言；≠ KB 样本路径 |
+| System Plan exam | 同质→该档；异质→`mixed`/省略 | 组合 | false（异质必 false） | `runtime_parts[]` 必留痕；见 §7.1 / `system-plan-exam` |
 | 验管道 skill_suite Job | `fixture` 或 `eval_worker` | 按 Job | 按 §4 | ≠ Skills 页成果物 |
 
-**v1.2 冲突已消解**：离线 Pi ≠ `runtime_tier=pi`；Skill quality ≠ `fixture`。
+**v1.2 冲突已消解**：离线 Pi ≠ `runtime_tier=pi`；Skill quality ≠ `fixture`（quality→`core_skill_execute` + `execution_mode=skill_manager_quality`）。
+
+### 7.1 系统组合 / 多执行面（v1.4）
+
+一次报告若聚合多个实际执行面：
+
+| 规则 | 要求 |
+|------|------|
+| 子记录 | 必须有 `runtime_parts[]`（每项：`sub_id`、`runtime_tier`∈§2、`target_runtime`、可选 `runner_id`/`execution_mode`、子结果） |
+| 顶层 `runtime_tier` | 全部 parts 实际 tier **相同** → 可写该值；否则 **省略**或元标记 `mixed`（`mixed` **不是** §2 执行档，不得用于 claim 宿主行为） |
+| 禁止 | 按「目标多为 Pi / 主路径是 workspace」挑选一个代表性实际 tier |
+| `runtime_claim` | 异质 parts → 顶层必为 `false`，reason 指向 parts；同质且各 part 可 claim → 可按 §4 |
+
+与 Object Contract §10.1 对齐；选题仍由 Object Contract 负责。
 
 ---
 
@@ -140,7 +160,8 @@ v1.2→v1.3：**新增** `core_skill_execute`；**纠正**「目标 Pi / 未调 
 
 - Pi：厂外薄交付宿主；**目标**用 `target_runtime=pi`；**实际**仅当 Pi 宿主被调用才标 `runtime_tier=pi`。  
 - Eval Worker：见 `EVAL_RUNTIME_CONTRACT.md`；本文只规定 exam 入口如何标注。  
-- 选题 / 适用 / 判分器 / 不适用：见 Object Contract；本文不筛选用例。
+- 选题 / 适用 / 判分器 / 不适用 / 五态聚合：见 Object Contract；本文不筛选用例。  
+- Object Contract Plan 编译期 `runtime_tier` 仅为顾问值；**执行落盘以本节入口映射为准**。
 
 ---
 
@@ -149,4 +170,5 @@ v1.2→v1.3：**新增** `core_skill_execute`；**纠正**「目标 Pi / 未调 
 - 新增实际 tier 必须改本文 + CAPABILITIES + `exam_runtime_tier` / 前端 `examRuntimeTier`，并保证 UI/落盘可归档。  
 - 禁止用「目标交付是 X」填写 `runtime_tier=X`。  
 - 禁止用文案「本地联调成功」暗示 `process_split_authorized=true` 或 Agent exam=`eval_worker`。  
-- 与 Object Contract 的 `target_runtime[]` 对齐时：报告单值字段取主目标；多值时在 reason/附录列出。
+- 与 Object Contract 的 `target_runtime[]` 对齐时：报告单值字段取主目标；多值时在 reason/附录列出。  
+- 引入或改变 `mixed` / `runtime_parts` 语义 → 升本文版本并同步 Object Contract §10.1。

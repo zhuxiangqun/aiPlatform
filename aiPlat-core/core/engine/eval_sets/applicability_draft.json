@@ -152,23 +152,241 @@
       "applies_to": { "object_types": ["prompt"] },
       "requires": {
         "capabilities": [],
-        "runtime": { "check": "target_runtime", "any_of": ["fixture"] }
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
       },
-      "evaluates": ["prompt_basic"],
+      "evaluates": ["task_result", "grounding", "efficiency"],
       "pack": "core",
+      "risk_level": "low",
       "requires_contract": false,
       "oracle": { "type": "lexical_must_contain" }
+    },
+    "prompt/missing_vars": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": ["clarify_or_ask"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
+      },
+      "evaluates": ["interaction", "robustness", "grounding"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "prompt/constraint": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": ["format_constraint"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
+      },
+      "evaluates": ["constraint_adherence", "task_result"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "prompt/noise": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
+      },
+      "evaluates": ["robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "prompt/safety": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
+      },
+      "evaluates": ["safety"],
+      "pack": "special",
+      "risk_level": "high",
+      "obligation": "refuse_or_handoff",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "prompt/multi_slot": {
+      "applies_to": { "object_types": ["prompt"] },
+      "requires": {
+        "capabilities": ["multi_slot_context"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "prompt_execute"] }
+      },
+      "evaluates": ["memory_horizon", "interaction"],
+      "pack": "special",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "workflow/basic": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["task_result", "trajectory_order", "efficiency"],
+      "pack": "core",
+      "risk_level": "low",
+      "requires_contract": false,
+      "oracle": { "type": "trajectory_in_order" }
+    },
+    "workflow/missing_input": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": ["clarify_or_ask"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["interaction", "robustness", "grounding"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "workflow/stage_failure": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": ["error_recovery"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["failure_observability", "robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "workflow/noise": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "workflow/safety": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": ["shell"],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["safety"],
+      "pack": "special",
+      "risk_level": "high",
+      "obligation": "refuse_or_handoff",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "workflow/long_chain": {
+      "applies_to": { "object_types": ["workflow"] },
+      "requires": {
+        "capabilities": ["long_chain"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute", "fixture"] }
+      },
+      "evaluates": ["memory_horizon", "trajectory_order"],
+      "pack": "special",
+      "risk_level": "low",
+      "oracle": { "type": "trajectory_in_order" }
     },
     "model/basic": {
       "applies_to": { "object_types": ["model"] },
       "requires": {
         "capabilities": [],
-        "runtime": { "check": "target_runtime", "any_of": ["fixture"] }
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
       },
-      "evaluates": ["model_basic"],
+      "evaluates": ["task_result", "grounding", "efficiency"],
       "pack": "core",
+      "risk_level": "low",
       "requires_contract": false,
-      "oracle": { "type": "deterministic_assert" }
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "model/missing_info": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": ["clarify_or_ask"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
+      },
+      "evaluates": ["interaction", "robustness", "grounding"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "model/format_constraint": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": ["format_constraint"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
+      },
+      "evaluates": ["constraint_adherence", "task_result"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
+    },
+    "model/noise": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
+      },
+      "evaluates": ["robustness"],
+      "pack": "capability",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "model/safety": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": [],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
+      },
+      "evaluates": ["safety"],
+      "pack": "special",
+      "risk_level": "high",
+      "obligation": "refuse_or_handoff",
+      "oracle": { "type": "lexical_must_contain_any" }
+    },
+    "model/consistency": {
+      "applies_to": { "object_types": ["model"] },
+      "requires": {
+        "capabilities": ["consistency"],
+        "tools": [],
+        "permissions": [],
+        "runtime": { "check": "target_runtime", "any_of": ["fixture", "model_generate"] }
+      },
+      "evaluates": ["score_variance", "task_result"],
+      "pack": "special",
+      "risk_level": "low",
+      "oracle": { "type": "lexical_must_contain" }
     },
     "dataset/basic": {
       "applies_to": { "object_types": ["dataset"] },
@@ -180,17 +398,6 @@
       "pack": "core",
       "requires_contract": false,
       "oracle": { "type": "deterministic_assert" }
-    },
-    "workflow/basic": {
-      "applies_to": { "object_types": ["workflow"] },
-      "requires": {
-        "capabilities": [],
-        "runtime": { "check": "target_runtime", "any_of": ["workspace_execute"] }
-      },
-      "evaluates": ["workflow_basic"],
-      "pack": "core",
-      "requires_contract": false,
-      "oracle": { "type": "trajectory_in_order" }
     }
   }
 }

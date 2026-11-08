@@ -1,12 +1,14 @@
-"""exam_runtime_tier annotations — contract eval-exam-runtime-tiers.md v1.3."""
+"""exam_runtime_tier annotations — contract eval-exam-runtime-tiers.md v1.4."""
 
 from core.apps.eval.service.exam_runtime_tier import (
     VALID_TIERS,
     annotate_agent_exam_runtime,
     annotate_external_exam_runtime,
     annotate_generated_app_runtime,
+    annotate_prompt_plan_runtime,
     annotate_skill_eval_runtime,
     merge_runtime_fields,
+    summarize_runtime_parts,
 )
 
 
@@ -80,3 +82,44 @@ def test_merge_keeps_accuracy_false_and_target_runtime():
     assert out["accuracy_claim"] is False
     assert out["runtime_tier"] == "fixture"
     assert out["target_runtime"] == "pi"
+
+
+def test_annotate_prompt_plan_runtime():
+    d = annotate_prompt_plan_runtime(live=False)
+    assert d["runtime_tier"] == "fixture"
+    assert d["target_runtime"] == "prompt_execute"
+    assert d["execution_mode"] == "prompt_plan_dry"
+    L = annotate_prompt_plan_runtime(live=True)
+    assert L["execution_mode"] == "prompt_plan_llm"
+    assert L["runtime_claim"] is False
+
+
+def test_summarize_runtime_parts_homogeneous_and_mixed():
+    same = summarize_runtime_parts(
+        [
+            {"sub_id": "a", "runtime_tier": "fixture", "runtime_claim": False},
+            {"sub_id": "b", "runtime_tier": "fixture", "runtime_claim": False},
+        ]
+    )
+    assert same["mixed"] is False
+    assert same["runtime_tier"] == "fixture"
+    assert same["runtime_claim"] is False
+
+    claimable = summarize_runtime_parts(
+        [
+            {"sub_id": "a", "runtime_tier": "pi", "runtime_claim": True},
+            {"sub_id": "b", "runtime_tier": "pi", "runtime_claim": True},
+        ]
+    )
+    assert claimable["runtime_claim"] is True
+
+    mixed = summarize_runtime_parts(
+        [
+            {"sub_id": "a", "runtime_tier": "fixture", "runtime_claim": False},
+            {"sub_id": "b", "runtime_tier": "pi", "runtime_claim": True},
+        ]
+    )
+    assert mixed["mixed"] is True
+    assert mixed["runtime_tier"] == "mixed"
+    assert mixed["runtime_claim"] is False
+    assert len(mixed["runtime_parts"]) == 2

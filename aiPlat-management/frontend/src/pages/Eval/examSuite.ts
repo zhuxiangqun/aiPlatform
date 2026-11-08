@@ -557,27 +557,37 @@ function rank(s: MatrixStatus): number {
   return 0;
 }
 
-/** Merge multiple slice statuses for one dimension across papers.
- * Applicable outcomes win; all not_applicable → not_applicable; untested ≠ N/A.
+/**
+ * Merge slice statuses for one dimension (object-contract §6.1).
+ * Applicable states: pass|fail|untested|inconclusive (+ eng warn|missing).
+ * not_applicable is never applicable. Empty cover → untested (≠ N/A ≠ pass).
  */
 export function mergeMatrixStatuses(statuses: MatrixStatus[]): MatrixStatus {
   if (!statuses.length) return 'untested';
-  const applicable = statuses.filter(
-    (s) => s !== 'untested' && s !== 'pending' && s !== 'not_applicable',
-  );
+  const rest = statuses.filter((s) => s !== 'pending');
+  if (!rest.length) return 'pending';
+
+  // Applicable = everything except not_applicable (includes untested).
+  const applicable = rest.filter((s) => s !== 'not_applicable');
   if (!applicable.length) {
-    const rest = statuses.filter((s) => s !== 'pending');
-    if (!rest.length) return 'pending';
-    if (rest.every((s) => s === 'not_applicable')) return 'not_applicable';
-    // Mix of untested + not_applicable → untested (still owe applicable runs)
-    if (rest.some((s) => s === 'untested')) return 'untested';
-    return 'untested';
+    // No applicable cases at all → N/A (must not read as pass)
+    return 'not_applicable';
   }
   if (applicable.some((s) => s === 'fail')) return 'fail';
-  if (applicable.every((s) => s === 'missing')) return 'missing';
-  if (applicable.some((s) => s === 'inconclusive')) return 'inconclusive';
-  if (applicable.some((s) => s === 'warn')) return 'warn';
-  if (applicable.some((s) => s === 'pass')) return 'pass';
+  const decided = applicable.filter((s) => s !== 'untested');
+  if (!decided.length) {
+    // Only untested (+ optional N/A already stripped) → untested
+    return 'untested';
+  }
+  if (decided.every((s) => s === 'missing')) return 'missing';
+  if (decided.some((s) => s === 'inconclusive') || applicable.some((s) => s === 'inconclusive')) {
+    return 'inconclusive';
+  }
+  if (decided.some((s) => s === 'warn')) return 'warn';
+  // Any applicable untested left → incomplete coverage ≠ pass
+  if (applicable.some((s) => s === 'untested')) return 'untested';
+  // ≥1 applicable and all applicable are pass (N/A already excluded)
+  if (applicable.every((s) => s === 'pass')) return 'pass';
   return applicable.reduce((a, b) => (rank(b) > rank(a) ? b : a), applicable[0]);
 }
 

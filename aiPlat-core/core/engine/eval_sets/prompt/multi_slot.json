@@ -1,0 +1,21 @@
+{
+  "set_id": "prompt/multi_slot",
+  "category": "multi_turn",
+  "description": "Prompt 专项 — 多槽位上下文须一并引用，不得丢槽",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "prompt-slot-001",
+      "agent_id": "eval_target_prompt",
+      "user_input": "槽位 city=苏州，device=门锁A。一句话说明两者关系，须同时出现城市与设备名。",
+      "category": "multi_turn",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["苏州", "门锁A"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

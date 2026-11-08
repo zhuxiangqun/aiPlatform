@@ -1,0 +1,32 @@
+{
+  "set_id": "workflow/stage_failure",
+  "category": "tool_failure",
+  "description": "Workflow 能力包 — 中游阶段失败时应可观测并给出恢复/重试建议",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "wf-fail-001",
+      "agent_id": "eval_target_workflow",
+      "user_input": "阶段 test 失败：exit=1，日志 timeout。请说明失败阶段与下一步（重试或回滚），勿假装成功。",
+      "category": "tool_failure",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "test",
+              "失败",
+              "重试",
+              "回滚",
+              "timeout"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

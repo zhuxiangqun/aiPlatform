@@ -24,6 +24,7 @@ describe('evalGlossary (systematic SSOT)', () => {
       'runners',
       'reports',
       'sets',
+      'object_contract',
     ] as const;
     for (const d of domains) {
       expect((counts[d] || 0) > 0, `missing domain ${d}`).toBe(true);
@@ -43,9 +44,13 @@ describe('evalGlossary (systematic SSOT)', () => {
   it('flattens aliases so UI labels resolve', () => {
     const flat = flattenEvalGlossary();
     expect(flat.accuracy_claim).toMatch(/准确率/);
+    expect(flat.claims_gate || flat['L5门禁']).toMatch(/claims-gate|门禁/);
     expect(flat['κ'] || flat.kappa).toMatch(/一致/);
     expect(flat['黄金集锁定'] || flat.v0_locked).toMatch(/锁定/);
     expect(flat.Enqueue || flat['Enqueue job']).toMatch(/worker|排队/);
+    expect(flat['评测成熟度五级'] || flat['L1-L5']).toMatch(/L1|compile-plan|校准/);
+    expect(flat['A维evaluates'] || flat.evaluates).toMatch(/evaluates/);
+    expect(flat['Knowledge≠dataset'] || flat.kb_eval).toMatch(/dataset/);
   });
 
   it('maps every tab guide title into glossary (term or alias)', () => {

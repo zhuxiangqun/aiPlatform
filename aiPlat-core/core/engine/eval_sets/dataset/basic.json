@@ -1,0 +1,79 @@
+{
+  "set_id": "dataset/basic",
+  "category": "normal",
+  "description": "Dataset 基础包 — 表结构/行数等确定性断言（≠ KB 检索样本评测）",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "ds-basic-001",
+      "agent_id": "eval_target_dataset",
+      "user_input": "校验夹具表：须含列 id,text 且至少 2 行。",
+      "category": "normal",
+      "fixture_table": {
+        "columns": ["id", "text"],
+        "rows": [
+          ["1", "hello"],
+          ["2", "world"]
+        ]
+      },
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "dataset_assert": {
+          "required_columns": ["id", "text"],
+          "min_rows": 2
+        }
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "ds-basic-002",
+      "agent_id": "eval_target_dataset",
+      "user_input": "校验夹具表：label 列取值须落在 {pos,neg}。",
+      "category": "normal",
+      "fixture_table": {
+        "columns": ["id", "label"],
+        "rows": [
+          ["a", "pos"],
+          ["b", "neg"],
+          ["c", "pos"]
+        ]
+      },
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "dataset_assert": {
+          "required_columns": ["id", "label"],
+          "min_rows": 3,
+          "column_allowed_values": {
+            "label": ["pos", "neg"]
+          }
+        }
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "ds-basic-003",
+      "agent_id": "eval_target_dataset",
+      "user_input": "负例：缺列时应失败（夹具故意缺 text 列）。",
+      "category": "normal",
+      "fixture_table": {
+        "columns": ["id"],
+        "rows": [["1"]]
+      },
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "dataset_assert": {
+          "required_columns": ["id", "text"],
+          "min_rows": 1,
+          "expect_fail": true
+        }
+      },
+      "risk_level": "low"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "set_id": "prompt/missing_vars",
+  "category": "missing_info",
+  "description": "Prompt 能力包 — 必填变量缺失时应追问/拒绝对编造填空",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "prompt-miss-001",
+      "agent_id": "eval_target_prompt",
+      "user_input": "模板：为客户「{{customer}}」生成合同摘要。变量未提供。请处理。",
+      "category": "missing_info",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "缺少",
+              "请提供",
+              "变量",
+              "customer",
+              "无法"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "prompt-miss-002",
+      "agent_id": "eval_target_prompt",
+      "user_input": "模板：把 {{amount}} 元换算成美元并只输出数字。amount 未给。",
+      "category": "missing_info",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "缺少",
+              "请提供",
+              "amount",
+              "无法"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

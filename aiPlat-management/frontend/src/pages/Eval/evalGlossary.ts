@@ -10,6 +10,7 @@
  *    (Overview, G2b, Preference, Scorecard, Evidence, Settings, Gates, Run…).
  * 3. **Honesty / plane banners** — accuracy_claim · κ · gate_claim · proxy/cohost.
  * 4. **Runners** — Session / Arena / Skill / P2 kinds the UI can enqueue.
+ * 5. **Object contract maturity** — L1–L5 + A/B/C 指标口径（见 eval-object-contract-and-plan.md §0.5）。
  *
  * ## Maintenance rule
  * - Adding a user-visible Eval label or metric → add/update an entry **in the same change**.
@@ -17,6 +18,7 @@
  * - Aliases (中文标签 / 英文 key) go on the same entry.
  * - Do not invent accuracy/production claims in `meaning`.
  * - Do not put long tutorials or design-vision here (those belong in B docs).
+ * - Do not equate「Plan 能选中」with「已有可执行评测」or L5 校准.
  */
 
 export type EvalGlossDomain =
@@ -34,7 +36,8 @@ export type EvalGlossDomain =
   | 'runners'
   | 'reports'
   | 'sets'
-  | 'tabs';
+  | 'tabs'
+  | 'object_contract';
 
 export type EvalGlossEntry = {
   /** Canonical term (prefer API/UI key when both exist). */
@@ -54,8 +57,17 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   {
     term: 'accuracy_claim',
     aliases: ['宣称准确率', 'accuracy'],
-    meaning: '是否宣称「模型准确率」；评测中心本地必须为 false，跑通 Job 也不等于测准',
+    meaning:
+      '是否宣称「模型准确率」：默认false；跑通Job≠测准；仅claims-gate门槛+explicit_authorize后可对限定范围声明',
     domain: 'honesty',
+  },
+  {
+    term: 'claims_gate',
+    aliases: ['L5门禁', 'claims-gate', 'eval.claims_gate.v1', '解禁'],
+    meaning:
+      'POST /evaluation/claims-gate：范围绑定+样本量+运行证据；输出eligible与claim；不静默抬升正式报告',
+    domain: 'object_contract',
+    surfaces: ['overview', 'agents'],
   },
   {
     term: 'kappa',
@@ -116,7 +128,7 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     term: 'runtime_tier',
     aliases: ['运行时档位', '评测运行时', '实际执行面'],
     meaning:
-      '本次实际执行面（归档主键）：fixture|pi|workspace_execute|core_skill_execute|eval_worker|external_pull；≠ target_runtime；见 eval-exam-runtime-tiers.md v1.3',
+      '单 job 实际执行面：fixture|pi|workspace_execute|core_skill_execute|eval_worker|external_pull；≠ target_runtime。多执行面用 runtime_parts[]，禁止异质压成单一值；见 runtime-tiers v1.4',
     domain: 'plane',
     surfaces: ['agents', 'overview'],
   },
@@ -160,17 +172,17 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   },
   {
     term: 'fixture',
-    aliases: ['规则/dry-run 档'],
+    aliases: ['规则/dry-run 档', 'local_fixture', '预制用例', 'runtime_tier=fixture'],
     meaning:
-      '实际未加载、未调用被测对象（规则/dry-run/结构校验）；target_runtime 仍可写目标形态',
+      'runtime_tier=fixture：未加载/未调用被测对象（规则/dry-run/结构校验）或预制用例对账；target_runtime 仍可写目标形态；≠线上流量、≠准确率',
     domain: 'plane',
-    surfaces: ['agents', 'overview'],
+    surfaces: ['agents', 'overview', 'skill'],
   },
   {
     term: 'not_applicable',
     aliases: ['不适用', '契约不适用'],
     meaning:
-      '对象契约/requires 不匹配；≠未测、≠失败；不得单独驱动综合不通过；见 formal_report v1.12',
+      '对象契约/requires 不匹配；≠未测、≠失败；不得单独驱动综合不通过；维有 untested 时综合结论至多为有条件通过；见 formal_report v1.14（含claims_gate check-only）',
     domain: 'honesty',
     surfaces: ['agents', 'overview'],
   },
@@ -184,17 +196,147 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
   },
   {
     term: 'Evaluation Plan',
-    aliases: ['evaluation_plan', 'plan_id', '评测计划'],
+    aliases: ['evaluation_plan', 'plan_id', '评测计划', 'compile-plan'],
     meaning:
-      'eval.evaluation_plan.v1：契约→选题→runtime；冒烟 UI 以 Plan 为选题真相（模板=内置卷）；正式报告披露 plan_id 与三包覆盖；≠充分/准确认证',
+      'eval.evaluation_plan.v1：契约→选题→runtime。Agent 冒烟：BUILTIN_EXAM_SUITE=题集模板，compile-plan=选题真相，失败阻断开跑。Plan 能选中≠题目已执行≠L5 校准',
     domain: 'honesty',
     surfaces: ['agents', 'overview'],
   },
+  // ── object_contract maturity (SSOT: eval-object-contract §0.5) ──
+  {
+    term: '评测成熟度五级',
+    aliases: ['L1-L5', '成熟度表', 'object maturity', '评测对象成熟度'],
+    meaning:
+      'Object Contract v1.0 锁定：L1入口→L2匹配→L3=版本化用例+oracle+可执行入口→L4=另有本次运行证据→L5=门槛满足后仅可作范围限定声明。禁止无入口称L3；未达L5不得作准确率声明',
+    domain: 'object_contract',
+    surfaces: ['agents', 'skills', 'apps', 'prompts', 'overview'],
+  },
+  {
+    term: 'L1入口',
+    aliases: ['成熟度L1', '有入口'],
+    meaning: '有 Tab/API 入口即可；尚不能说「已评测」',
+    domain: 'object_contract',
+  },
+  {
+    term: 'L2计划匹配',
+    aliases: ['成熟度L2', 'Plan能识别', '能编译匹配计划'],
+    meaning: '能 compile-plan / MatchReport 入选或标 N/A；≠有可执行入口、≠有运行证据',
+    domain: 'object_contract',
+  },
+  {
+    term: 'L3题与判分',
+    aliases: ['成熟度L3', '有实际题目与判分器', '可执行入口'],
+    meaning:
+      'AND：版本化用例 + 明确oracle/判分 + 可执行入口(Runner/API)。仅draft/JSON无入口→L2。≠自动等于与Agent同级产品',
+    domain: 'object_contract',
+  },
+  {
+    term: 'L4执行证据',
+    aliases: ['成熟度L4', '有可复核的执行证据', '本次实际运行', '运行证据'],
+    meaning:
+      'L3之上另有本次运行可复核证据。运行证据/工程校准快照≠统计学校准；禁止称「已校准/准确率」',
+    domain: 'object_contract',
+  },
+  {
+    term: 'L5校准',
+    aliases: ['成熟度L5', '充分性或准确性校准', '范围限定声明', '统计学校准'],
+    meaning:
+      '默认claim=false。须claims-gate门槛+explicit_authorize才可对限定对象版本×任务分布×运行条件×样本量声明；fixture/mixed/不完整覆盖不可解禁',
+    domain: 'object_contract',
+  },
+  {
+    term: '五态聚合',
+    aliases: ['维度聚合', 'mergeMatrixStatuses', 'pass+untested', '适用态'],
+    meaning:
+      '适用态=pass/fail/untested/inconclusive，N/A非适用。有适用且全pass其余N/A→pass；无适用→N/A；零覆盖→untested；pass+untested→untested',
+    domain: 'object_contract',
+    surfaces: ['agents', 'overview'],
+  },
+  {
+    term: 'runtime_parts',
+    aliases: ['多执行面', '系统组合运行时', 'mixed runtime'],
+    meaning:
+      'system/多入口报告：各子任务自带 runtime_tier；异质时顶层不得压成单一实际档，可省略或标 mixed（非执行宿主）',
+    domain: 'plane',
+    surfaces: ['overview'],
+  },
+  {
+    term: 'A维evaluates',
+    aliases: ['evaluates', '用例包维度', 'A口径', '选题贡献维'],
+    meaning:
+      '用例/卷在 applicability 上声明的 evaluates[]：只说明「入选后贡献哪些维」；≠报告切片已出、≠本次已测',
+    domain: 'object_contract',
+    surfaces: ['agents', 'sets', 'overview'],
+  },
+  {
+    term: 'B维报告切片',
+    aliases: ['可归因切片', 'B口径', 'attributable slices'],
+    meaning:
+      'Agent 可归因报告工程信号（task_result/tools_trajectory/safety/…）；切片字段存在≠本 Plan 入选了对应卷、≠有足够证据',
+    domain: 'object_contract',
+    surfaces: ['agents', 'reports'],
+  },
+  {
+    term: 'C维入口判分',
+    aliases: ['C口径', '入口私有判分'],
+    meaning:
+      '各入口私有判分：Skill trigger TP/TN、Prompt expected_keys、Pi 结构断言等；≠统一平台维度表，不可与 A/B 合并宣称',
+    domain: 'object_contract',
+    surfaces: ['skills', 'prompts', 'apps'],
+  },
+  {
+    term: 'object_type成熟度',
+    aliases: [
+      '评测对象成熟度表',
+      'Agent成熟度',
+      'Skill成熟度',
+      'Prompt成熟度',
+      'Workflow成熟度',
+      'Model成熟度',
+      'Dataset成熟度',
+    ],
+    meaning:
+      '稳妥口径：Agent≈L4（未达L5）；Skill/API/生成应用有限定执行证据；Prompt/Workflow/Model/Dataset/System Plan链L3–L4；KB≠dataset。框架P0–P3≠对象同级完成；L5未宣称',
+    domain: 'object_contract',
+    surfaces: ['agents', 'skills', 'apps', 'prompts', 'knowledge', 'overview'],
+  },
+  {
+    term: 'Prompt评测路径',
+    aliases: ['prompt_eval', 'Prompts页', 'Prompt Plan', 'Prompt页面链', 'Prompt Plan链'],
+    meaning:
+      '分列：①页面链=L3–L4（DB用例+expected_keys+prompt_eval）；②Plan链=L3–L4（prompt/*+词面oracle+POST /evaluation/prompt-plan-exam）。禁止合并评级',
+    domain: 'object_contract',
+    surfaces: ['prompts'],
+  },
+  {
+    term: '框架P0-P3接线',
+    aliases: ['P0–P3已接线', 'Object Contract接线'],
+    meaning:
+      '仅指通用匹配、Plan编译、以及Agent/Skill/API/生成应用等部分执行适配已接线；≠Prompt/Workflow/Model/Dataset已有同等题库+Runner+证据。对象级以成熟度表逐项举证',
+    domain: 'object_contract',
+    surfaces: ['overview', 'agents'],
+  },
+  {
+    term: '已登记匹配项',
+    aliases: ['基础匹配项', 'applicability set', '三包已齐'],
+    meaning:
+      'applicability_draft 有 set 元数据=已登记匹配项（常含*/basic）；≠core/capability/special产品题包已齐，≠有可执行题卷与Runner。勿把「能匹配」写成「三包已齐」',
+    domain: 'object_contract',
+    surfaces: ['sets', 'overview'],
+  },
+  {
+    term: 'Knowledge≠dataset',
+    aliases: ['KB评测', 'kb_eval', '知识评测'],
+    meaning:
+      'Knowledge/KB 样本是检索/问答指标路径；≠通用 object_type=dataset 的 Plan 评测；盘点须分列',
+    domain: 'object_contract',
+    surfaces: ['knowledge'],
+  },
   {
     term: 'eval_profile',
-    aliases: ['eval_profile_source', '能力画像', 'derived_hints'],
+    aliases: ['eval_profile_source', '能力画像', 'derived_hints', 'profile_source'],
     meaning:
-      'Agent 评测契约：显式 config.eval_profile 优先；否则 skills/tools 子串 derived_hints；禁止按 agent_id 猜角色',
+      '显式 eval_profile 优先。derived_hints=skills/tools 子串建议选题，须标来源/低置信；禁止仅凭派生悄悄排除用例或判 N/A；禁止按 agent_id 猜角色',
     domain: 'honesty',
     surfaces: ['agents'],
   },
@@ -241,13 +383,6 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     domain: 'plane',
     surfaces: ['skill'],
   },
-  {
-    term: 'fixture',
-    aliases: ['local_fixture', '预制用例'],
-    meaning: '预制用例对账，验证链路/门禁；不是真实线上流量，也不等于准确率',
-    domain: 'plane',
-  },
-
   // ── tabs (Chinese labels users ask about) ────────────────────────
   {
     term: '总览',
@@ -343,6 +478,14 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     meaning: '本机工程「过不过」记录与动作；通过 ≠ 外部授权',
     domain: 'gates',
     surfaces: ['gates'],
+  },
+  {
+    term: '对象Plan',
+    aliases: ['typed-plan', 'typed plan exam', 'plan-exam', '对象 Plan'],
+    meaning:
+      '高级Tab：prompt/workflow/model/dataset/system Plan exam + claims_gate核对；≠页面Prompts；默认不解禁',
+    domain: 'object_contract',
+    surfaces: ['typed-plan'],
   },
   {
     term: '报告',
@@ -596,7 +739,7 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     term: '评测框架三层',
     aliases: ['维度方法结论', '8维框架', '专项切片'],
     meaning:
-      '第1层评测维度(8维+记忆长程/评测集可靠性/失败可观测/线上体验)；第2层方法；第3层结论(覆盖范围/置信度/失败证据/veto/适用环境)。产品现状=覆盖描述≠充分性证明',
+      'Agent 报告叙事层：维/方法/结论。≠ Object Contract 的 A/B/C 口径；≠评测成熟度 L1–L5。覆盖描述≠充分性证明',
     domain: 'runners',
     surfaces: ['agents'],
   },

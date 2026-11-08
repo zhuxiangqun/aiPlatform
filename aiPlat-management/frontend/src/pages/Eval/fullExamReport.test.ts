@@ -72,11 +72,15 @@ describe('formalExamReport', () => {
     }));
     const report = buildFullSmokeReport({ agentId: 'qa_agent', papers });
     expect(report.schema).toBe('eval.agent.formal_report.v1');
-    expect(report.meta.version).toBe('v1.12');
+    expect(report.meta.version).toBe('v1.14');
     expect(typeof report.conclusion.not_applicable_n).toBe('number');
     expect(report.meta.score_policy.missing_fill.note).toMatch(/not_applicable|不适用/);
     expect(report.object_contract).toBeTruthy();
-    expect(report.object_contract.honesty).toMatch(/Object Contract|MatchReport/);
+    expect(report.object_contract.honesty).toMatch(/Object Contract|MatchReport|claims_gate/);
+    expect(report.object_contract.claims_gate.schema).toBe('eval.claims_gate.v1');
+    expect(report.object_contract.claims_gate.accuracy_claim).toBe(false);
+    expect(report.object_contract.claims_gate.explicit_authorize).toBe(false);
+    expect(report.object_contract.claims_gate.accuracy_eligible).toBe(false);
     expect(report.meta.reproduction.plan_ids).toEqual(expect.any(Array));
     expect(report.meta.report_id).toMatch(/^EVAL-SMOKE-/);
     expect(report.meta.title).toBe('智能体（Agent）评测报告');
@@ -139,6 +143,38 @@ describe('formalExamReport', () => {
     expect(md).toMatch(/## 6\. 证据附录/);
     expect(md).toMatch(/## 8\. 签署/);
     expect(md).toMatch(/qa_agent/);
+  });
+
+  it('does not conclude bare pass when matrix still has untested dims (§6.1)', () => {
+    const papers: SuitePaperResult[] = BUILTIN_EXAM_SUITE.map((p) => ({
+      run_key: p.run_key,
+      set_id: p.set_id,
+      status: 'done' as const,
+      composite_score: 80,
+      dimensions: {
+        task_result: { status: 'pass', summary: 'ok' },
+        grounding: { status: 'pass', summary: 'ok' },
+        cost: { status: 'pass', summary: 'ok' },
+        tools_trajectory: { status: 'pass', summary: 'ok' },
+        safety: { status: 'pass', summary: 'ok' },
+        robustness: { status: 'pass', summary: 'ok' },
+        interaction: { status: 'pass', summary: 'ok' },
+      },
+      attributable: {
+        composite_score: 80,
+        runtime_tier: 'workspace_execute',
+        runtime_claim: true,
+        runtime_claim_reason: 'workspace_execute only',
+        dimensions: {
+          task_result: { status: 'pass', summary: 'ok' },
+          safety: { status: 'pass', summary: 'ok' },
+        },
+      },
+    }));
+    const report = buildFullSmokeReport({ agentId: 'qa_agent', papers });
+    expect(report.conclusion.untested_n).toBeGreaterThan(0);
+    expect(report.conclusion.level).toBe('有条件通过');
+    expect(report.conclusion.statement).toMatch(/未测|覆盖不完整/);
   });
 
   it('lists multi_turn over_refusal in report-only even when slice undeclared', () => {

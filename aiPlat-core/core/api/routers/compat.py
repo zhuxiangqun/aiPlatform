@@ -585,6 +585,157 @@ async def compat_evaluation_generated_app_pi_smoke(body: Dict[str, Any]):
         }
 
 
+async def _typed_plan_exam_compat(
+    *,
+    object_type: str,
+    body: Dict[str, Any],
+    default_object_id: str,
+    runner,
+):
+    set_ids = (body or {}).get("set_ids")
+    purpose = (body or {}).get("purpose")
+    if set_ids is not None and not isinstance(set_ids, list):
+        return {"ok": False, "error": "set_ids must be a list", "accuracy_claim": False}
+    if purpose is not None and not isinstance(purpose, list):
+        return {"ok": False, "error": "purpose must be a list", "accuracy_claim": False}
+    try:
+        max_tasks = int((body or {}).get("max_tasks_per_set") or 20)
+    except (TypeError, ValueError):
+        max_tasks = 20
+    try:
+        return await runner(
+            object_id=str((body or {}).get("object_id") or default_object_id).strip(),
+            set_ids=set_ids,
+            purpose=purpose,
+            include_special=bool((body or {}).get("include_special")),
+            live=bool((body or {}).get("live")),
+            model=str((body or {}).get("model") or "").strip(),
+            max_tasks_per_set=max_tasks,
+        )
+    except FileNotFoundError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("%s-plan-exam failed", object_type, exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/prompt-plan-exam")
+async def compat_evaluation_prompt_plan_exam(body: Dict[str, Any]):
+    """Prompt Plan-chain exam (≠ page/DB prompt_eval)."""
+    from core.api.core_facade import eval_run_prompt_plan_exam
+
+    return await _typed_plan_exam_compat(
+        object_type="prompt",
+        body=body or {},
+        default_object_id="prompt_under_test",
+        runner=eval_run_prompt_plan_exam,
+    )
+
+
+@router.post("/evaluation/workflow-plan-exam")
+async def compat_evaluation_workflow_plan_exam(body: Dict[str, Any]):
+    """Workflow Plan-chain exam: workflow/* lexical oracle."""
+    from core.api.core_facade import eval_run_workflow_plan_exam
+
+    return await _typed_plan_exam_compat(
+        object_type="workflow",
+        body=body or {},
+        default_object_id="workflow_under_test",
+        runner=eval_run_workflow_plan_exam,
+    )
+
+
+@router.post("/evaluation/model-plan-exam")
+async def compat_evaluation_model_plan_exam(body: Dict[str, Any]):
+    """Model Plan-chain exam: model/* lexical oracle (≠ model leaderboard)."""
+    from core.api.core_facade import eval_run_model_plan_exam
+
+    return await _typed_plan_exam_compat(
+        object_type="model",
+        body=body or {},
+        default_object_id="model_under_test",
+        runner=eval_run_model_plan_exam,
+    )
+
+
+@router.post("/evaluation/dataset-plan-exam")
+async def compat_evaluation_dataset_plan_exam(body: Dict[str, Any]):
+    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample path)."""
+    from core.api.core_facade import eval_run_dataset_plan_exam
+
+    return await _typed_plan_exam_compat(
+        object_type="dataset",
+        body=body or {},
+        default_object_id="dataset_under_test",
+        runner=eval_run_dataset_plan_exam,
+    )
+
+
+@router.post("/evaluation/system-plan-exam")
+async def compat_evaluation_system_plan_exam(body: Dict[str, Any]):
+    """System combination exam: typed parts + runtime_parts (§10.1).
+
+    Body: {object_id?, parts?: [{object_type, object_id?, set_ids?}], live?, model?, max_tasks_per_set?}
+    Default parts: prompt/workflow/model/dataset basic dry packs.
+    """
+    from core.api.core_facade import eval_run_system_plan_exam
+
+    parts = (body or {}).get("parts")
+    if parts is not None and not isinstance(parts, list):
+        return {"ok": False, "error": "parts must be a list", "accuracy_claim": False}
+    try:
+        max_tasks = int((body or {}).get("max_tasks_per_set") or 20)
+    except (TypeError, ValueError):
+        max_tasks = 20
+    try:
+        return await eval_run_system_plan_exam(
+            object_id=str((body or {}).get("object_id") or "system_under_test").strip(),
+            parts=parts,
+            live=bool((body or {}).get("live")),
+            model=str((body or {}).get("model") or "").strip(),
+            max_tasks_per_set=max_tasks,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("system-plan-exam failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/claims-gate")
+async def compat_evaluation_claims_gate(body: Dict[str, Any]):
+    """L5 scope-bound claims gate (eval.claims_gate.v1).
+
+    Body: {evidence: {...scope fields...}, explicit_authorize?: bool}
+    Never auto-publishes certification; fixture/dry/incomplete → not eligible.
+    """
+    from core.api.core_facade import eval_evaluate_l5_claims_gate
+
+    evidence = (body or {}).get("evidence")
+    if evidence is None:
+        evidence = body or {}
+    if not isinstance(evidence, dict):
+        return {"ok": False, "error": "evidence must be an object", "accuracy_claim": False}
+    # Strip control keys if whole body was passed as evidence
+    ev = {
+        k: v
+        for k, v in evidence.items()
+        if k not in ("explicit_authorize", "evidence")
+    }
+    try:
+        report = eval_evaluate_l5_claims_gate(
+            evidence=ev,
+            explicit_authorize=bool((body or {}).get("explicit_authorize")),
+        )
+        report["ok"] = True
+        return report
+    except Exception as e:
+        logger.debug("claims-gate failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
     """Create or update an evaluation policy artifact."""

@@ -134,6 +134,17 @@ export default function EvalOverviewPanel({
             </p>
           </button>
         </div>
+        <p className="text-[11px] text-violet-200/60">
+          其它对象 Plan 链（prompt/workflow/model/dataset/system + L5 门槛核对）→{' '}
+          <button
+            type="button"
+            className="underline text-violet-100 hover:text-white"
+            data-testid="eval-overview-typed-plan"
+            onClick={() => onNavigate?.('typed-plan')}
+          >
+            高级 · 对象Plan
+          </button>
+        </p>
       </section>
 
       <EvalCollapsibleBanner
