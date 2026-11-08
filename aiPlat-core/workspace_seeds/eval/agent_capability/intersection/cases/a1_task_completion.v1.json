@@ -1,0 +1,151 @@
+{
+  "schema": "eval.intersection_cases.v1",
+  "version": "1.0.0",
+  "capability_id": "task_completion",
+  "claim_eligible": false,
+  "rank_claim": false,
+  "cases": [
+    {
+      "case_id": "intersect.a1.task_completion.001",
+      "capability_id": "task_completion",
+      "prompt": "用一句话确认任务：整理今日待办并给出第一步。",
+      "scripted_answer": "任务确认：整理今日待办；第一步是列出清单。",
+      "rubric": {
+        "type": "lexical",
+        "must_contain": [
+          "待办",
+          "第一步"
+        ],
+        "must_not_contain": []
+      },
+      "oracle": {
+        "type": "lexical"
+      },
+      "prompt_hash": "sha256:b5ae19ea0ae365e5be75a50a22649b83918807ac38eb3985202b851c45c32259",
+      "oracle_hash": "sha256:75747bf071b72aa8301e43e9390521fb1e53c4564e44608c060484cd13c5163f",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "env_contract": "tools=none|retrieval=none|session=none",
+      "modes_in_scope": [
+        "plan_execute",
+        "conversational"
+      ],
+      "rank_eligible": true,
+      "test_purpose": {
+        "summary": "A1 intersection shared prompt/oracle across M1a modes",
+        "why_this_case": "hard-gap P0 parity",
+        "expected_behavior": [
+          "lexical must_contain"
+        ],
+        "failure_signals": [
+          "empty answer"
+        ],
+        "not_testing": [
+          "tools",
+          "retrieval",
+          "rank claim auto"
+        ],
+        "oracle_rationale": "lexical rubric"
+      },
+      "review": {
+        "status": "parity_passed"
+      },
+      "risk_level": "low",
+      "holdout": false
+    },
+    {
+      "case_id": "intersect.a1.task_completion.002",
+      "capability_id": "task_completion",
+      "prompt": "完成任务：用两步说明如何回复客户邮件。",
+      "scripted_answer": "步骤：1)阅读来信要点 2)草拟礼貌回复。",
+      "rubric": {
+        "type": "lexical",
+        "must_contain": [
+          "回复",
+          "步骤"
+        ],
+        "must_not_contain": []
+      },
+      "oracle": {
+        "type": "lexical"
+      },
+      "prompt_hash": "sha256:e06f3f8572d3e97972affa1cd8f71a07fe47683afcd63cad44ed33450bca92e6",
+      "oracle_hash": "sha256:7213bec542d7c9cac2cc3c5c7d2d9e2c18188ad0d44607a234f3b230520f17ac",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "env_contract": "tools=none|retrieval=none|session=none",
+      "modes_in_scope": [
+        "plan_execute",
+        "conversational"
+      ],
+      "rank_eligible": true,
+      "test_purpose": {
+        "summary": "A1 intersection shared prompt/oracle across M1a modes",
+        "why_this_case": "hard-gap P0 parity",
+        "expected_behavior": [
+          "lexical must_contain"
+        ],
+        "failure_signals": [
+          "empty answer"
+        ],
+        "not_testing": [
+          "tools",
+          "retrieval",
+          "rank claim auto"
+        ],
+        "oracle_rationale": "lexical rubric"
+      },
+      "review": {
+        "status": "parity_passed"
+      },
+      "risk_level": "low",
+      "holdout": false
+    },
+    {
+      "case_id": "intersect.a1.task_completion.003",
+      "capability_id": "task_completion",
+      "prompt": "请完成：给出会议纪要的三要素标题。",
+      "scripted_answer": "三要素：议题、决议、行动项。",
+      "rubric": {
+        "type": "lexical",
+        "must_contain": [
+          "议题",
+          "决议",
+          "行动"
+        ],
+        "must_not_contain": []
+      },
+      "oracle": {
+        "type": "lexical"
+      },
+      "prompt_hash": "sha256:7ac44d18b461f502e0e7b83b5a6ba7826b6da69449ad38b7d6a43dbea32b83fc",
+      "oracle_hash": "sha256:f4d255532b4f0f673193f41b0f325fd67dbc7b8106cc7575ac11bf673b17ee89",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "env_contract": "tools=none|retrieval=none|session=none",
+      "modes_in_scope": [
+        "plan_execute",
+        "conversational"
+      ],
+      "rank_eligible": true,
+      "test_purpose": {
+        "summary": "A1 intersection shared prompt/oracle across M1a modes",
+        "why_this_case": "hard-gap P0 parity",
+        "expected_behavior": [
+          "lexical must_contain"
+        ],
+        "failure_signals": [
+          "empty answer"
+        ],
+        "not_testing": [
+          "tools",
+          "retrieval",
+          "rank claim auto"
+        ],
+        "oracle_rationale": "lexical rubric"
+      },
+      "review": {
+        "status": "parity_passed"
+      },
+      "risk_level": "low",
+      "holdout": false
+    }
+  ]
+}

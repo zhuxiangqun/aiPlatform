@@ -9,7 +9,9 @@ from core.apps.eval.service.mode_intersection_rank import (
     dominance_relation,
     evaluate_rank_gate,
     list_rank_eligible_cases,
+    load_intersection_cases,
     pareto_frontier,
+    verify_intersection_case_hashes,
     wilson_score_ci,
 )
 
@@ -37,9 +39,29 @@ def test_pareto_no_single_winner():
     assert pf["single_winner"] is None
 
 
-def test_list_eligible_default_empty():
-    # Current parity sample keeps all rank_eligible=false
-    assert list_rank_eligible_cases() == []
+def test_list_eligible_a1_passed():
+    eligible = list_rank_eligible_cases()
+    assert len(eligible) >= 2
+    assert all(c.get("capability_id") == "task_completion" for c in eligible)
+    assert all(c.get("parity_status") == "passed" for c in eligible)
+    assert all(c.get("rank_eligible") is True for c in eligible)
+    # A12 never eligible via blocked_trace_parity
+    assert all(c.get("capability_id") != "observability" for c in eligible)
+
+
+def test_load_intersection_cases_hash_ok():
+    cases = load_intersection_cases()
+    assert len(cases) >= 3
+    for c in cases:
+        assert verify_intersection_case_hashes(c) == []
+
+
+def test_load_intersection_cases_hash_mismatch():
+    cases = load_intersection_cases(verify_hashes=False)
+    bad = dict(cases[0])
+    bad["prompt"] = "tampered prompt body"
+    errs = verify_intersection_case_hashes(bad)
+    assert "prompt_hash_mismatch" in errs
 
 
 def test_gate_blocks_fixture_and_unsigned():

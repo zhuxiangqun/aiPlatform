@@ -8,6 +8,8 @@ Honesty (eval-agent-impl-mode-exam.md):
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -17,12 +19,16 @@ from core.apps.eval.service.agent_impl_mode import (
     compute_rank_fingerprint,
     load_parity_sample,
 )
+from core.apps.eval.service.capability_case_bank import default_seed_dir
 
 RANK_SCHEMA = "eval.mode_intersection_rank.v1"
 GATE_SCHEMA = "eval.mode_rank_gate.v1"
 CI_METHOD = "wilson"
 CI_VERSION = "wilson_z1.96_v1"
 MIN_N_DEFAULT = 5
+# Engineering intersection compare (A1 hard-gap); L5 accuracy still uses claims_gate min_sample_n=100.
+MIN_N_INTERSECTION_ENGINEERING = 2
+A1_CASES_REL = "intersection/cases/a1_task_completion.v1.json"
 
 
 class ModeIntersectionRankError(ValueError):
@@ -124,7 +130,81 @@ def list_rank_eligible_cases(
             continue
         if str(c.get("parity_status") or "") == "blocked_trace_parity":
             continue
+        if str(c.get("parity_status") or "") != "passed":
+            continue
         out.append(dict(c))
+    return out
+
+
+def _sha256_text(text: str) -> str:
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def compute_prompt_hash(prompt: str) -> str:
+    return _sha256_text(str(prompt or ""))
+
+
+def compute_oracle_hash(case: Mapping[str, Any]) -> str:
+    blob = {
+        "rubric": case.get("rubric"),
+        "oracle": case.get("oracle"),
+        "scripted_answer": case.get("scripted_answer"),
+    }
+    return _sha256_text(json.dumps(blob, sort_keys=True, ensure_ascii=False))
+
+
+def compute_env_contract_hash(env_contract: str) -> str:
+    return _sha256_text(str(env_contract or ""))
+
+
+def verify_intersection_case_hashes(case: Mapping[str, Any]) -> List[str]:
+    """Fail-closed: body must match declared prompt/oracle/env hashes."""
+    errors: List[str] = []
+    ph = str(case.get("prompt_hash") or "")
+    oh = str(case.get("oracle_hash") or "")
+    eh = str(case.get("env_contract_hash") or "")
+    if "placeholder" in ph or "pending" in ph:
+        errors.append("prompt_hash_placeholder")
+    if "placeholder" in oh or "pending" in oh:
+        errors.append("oracle_hash_placeholder")
+    if ph and ph != compute_prompt_hash(str(case.get("prompt") or "")):
+        errors.append("prompt_hash_mismatch")
+    if oh and oh != compute_oracle_hash(case):
+        errors.append("oracle_hash_mismatch")
+    env = str(case.get("env_contract") or "")
+    if env and eh and eh != compute_env_contract_hash(env):
+        errors.append("env_contract_hash_mismatch")
+    return errors
+
+
+def load_intersection_cases(
+    *,
+    seed_dir: Optional[Path] = None,
+    rel_path: str = A1_CASES_REL,
+    verify_hashes: bool = True,
+) -> List[Dict[str, Any]]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    path = root / rel_path
+    if not path.is_file():
+        raise ModeIntersectionRankError(f"intersection_cases_missing:{path}")
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, Mapping):
+        raise ModeIntersectionRankError("intersection_cases_not_object")
+    cases = raw.get("cases")
+    if not isinstance(cases, list) or not cases:
+        raise ModeIntersectionRankError("intersection_cases_empty")
+    out: List[Dict[str, Any]] = []
+    for c in cases:
+        if not isinstance(c, Mapping):
+            continue
+        row = dict(c)
+        if verify_hashes:
+            errs = verify_intersection_case_hashes(row)
+            if errs:
+                raise ModeIntersectionRankError(
+                    f"intersection_hash_fail:{row.get('case_id')}:{','.join(errs)}"
+                )
+        out.append(row)
     return out
 
 

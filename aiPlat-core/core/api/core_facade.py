@@ -6425,6 +6425,42 @@ def eval_probe_m1c_sandbox() -> Dict[str, Any]:
     return probe_m1c_sandbox()
 
 
+def eval_probe_linux_microvm() -> Dict[str, Any]:
+    """Linux/KVM microVM host probe hook. Never flips covered / process_split_authorized."""
+    from core.apps.eval.service.mode_aware_exam import probe_linux_microvm_host
+
+    return probe_linux_microvm_host()
+
+
+async def eval_run_a1_intersection_compare(
+    *,
+    live: bool = False,
+    persist: bool = True,
+    signoff: Optional[Dict[str, Any]] = None,
+    model_fingerprint: str = "unresolved",
+    min_n_per_capability: int = 2,
+) -> Dict[str, Any]:
+    """A1 Track A+B compare (plan_execute vs conversational). rank_claim never auto-true."""
+    from core.apps.eval.service.a1_intersection_ops import (
+        eval_run_a1_intersection_compare as _fn,
+    )
+
+    return await _fn(
+        live=bool(live),
+        persist=bool(persist),
+        signoff=signoff,
+        model_fingerprint=str(model_fingerprint or "unresolved"),
+        min_n_per_capability=int(min_n_per_capability or 2),
+    )
+
+
+def eval_a1_intersection_status() -> Dict[str, Any]:
+    """Read-only A1 intersection gate/Pareto status for UI. Never certifies."""
+    from core.apps.eval.service.a1_intersection_ops import a1_intersection_status_report
+
+    return a1_intersection_status_report()
+
+
 def eval_build_mode_intersection_rank(
     mode_columns: Dict[str, Any],
     *,
@@ -7858,6 +7894,13 @@ def eval_g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2b import g2b_pack_status
 
     return g2b_pack_status(tenant_id=tenant_id)
+
+
+def eval_g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """G2b distance-to-L5 disclosure; claims_gate default authorize=false; accuracy_claim false."""
+    from core.apps.eval.service.g2b import g2b_l5_gap_disclosure
+
+    return g2b_l5_gap_disclosure(tenant_id=tenant_id)
 
 
 def eval_preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:

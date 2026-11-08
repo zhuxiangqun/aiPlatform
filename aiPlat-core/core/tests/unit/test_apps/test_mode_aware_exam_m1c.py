@@ -21,10 +21,22 @@ def test_m1c_cases_load():
 
 
 def test_probe_fixture_sandbox_ready():
+    from core.apps.eval.service.mode_aware_exam import probe_linux_microvm_host
+
     probe = probe_m1c_sandbox()
     assert probe["fixture_sandbox_ready"] is True
     assert probe["sandbox_backend"] == "fixture_mock"
     assert probe["microvm_covered"] is False
+    assert probe["capability_coverage_a3_a5"] == "unknown"
+    linux = probe.get("linux_microvm") or {}
+    assert linux.get("microvm_covered") is False
+    assert linux.get("process_split_authorized") is False
+    host = probe_linux_microvm_host()
+    assert host["microvm_covered"] is False
+    assert host["process_split_authorized"] is False
+    # Darwin CI: non_linux → admit_ready false
+    if host.get("os") != "linux":
+        assert host["admit_ready"] is False
 
 
 def test_env_lock_tools_required():

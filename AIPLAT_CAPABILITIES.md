@@ -1,7 +1,7 @@
 ---
-total_capabilities: 3107
-last_updated: 2026-10-22
-version: "30.12"
+total_capabilities: 3117
+last_updated: 2026-11-09
+version: "30.13"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -642,6 +642,11 @@ scan_hash: 8f9548ec24f4
 | m1b_environment_lock / m1c_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M1b/M1c 环境依赖锁（矩阵权威）；生成物适用：已接线 | 本批 |
 | run_m1c_mode_exam / enforce_m1c_environment / probe_m1c_sandbox | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1c react 分栏；fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM；生成物适用：已接线 | 本批 |
 | eval_run_m1c_mode_exam / eval_probe_m1c_sandbox | `core/api/core_facade.py` | ✅ | CoreFacade M1c 入口；生成物适用：已接线 | 本批 |
+| probe_linux_microvm_host | `core/apps/eval/service/mode_aware_exam.py` | ✅ | Linux/KVM microVM 探测钩子；Darwin unknown；不翻转 covered/process_split；生成物适用：已接线 | 本批 |
+| eval_probe_linux_microvm | `core/api/core_facade.py` | ✅ | CoreFacade microVM 探针；生成物适用：已接线 | 本批 |
+| run_a1_intersection_track_a / run_a1_intersection_compare / a1_intersection_status_report | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | A1 交集 Track A 证据 + Track B 比较；rank_claim 永不自动；生成物适用：已接线 | 本批 |
+| eval_run_a1_intersection_compare / eval_a1_intersection_status | `core/api/core_facade.py` | ✅ | CoreFacade A1 交集入口；生成物适用：已接线 | 本批 |
+| EvalA1IntersectionCard | `pages/Eval/EvalA1IntersectionCard.tsx` | ✅ | Agent 评测区只读 gate/Pareto/allowed；无一键认证；生成物适用：不适用（管理端 UI） | 本批 |
 | build_mode_intersection_rank / evaluate_rank_gate / wilson_score_ci / pareto_frontier | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | M3 交集 Pareto/CI + rank gate；默认无 winner；rank_claim 不自动；生成物适用：已接线 | 本批 |
 | eval_build_mode_intersection_rank / eval_evaluate_mode_rank_gate | `core/api/core_facade.py` | ✅ | CoreFacade M3 入口；生成物适用：已接线 | 本批 |
 | estimate_m2_deferred_modes / validate_runtime_parts / assert_m2_not_live | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | M2 另估；deferred≠unknown；runtime_parts 门；禁 live；生成物适用：已接线 | 本批 |
@@ -3057,6 +3062,8 @@ scan_hash: 8f9548ec24f4
 | generate_human_worksheet_pack | `packages/aiplat-evaluation/scripts/human_worksheet_pack.py` | ✅ | 可调用空白包生成（CLI+API） | 本批 |
 | g2b_pack_status | `core/apps/eval/service/g2b.py` | ✅ | 读 task pack + evidence aggregates；facilitation-only | 本批 |
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
+| g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；accuracy_claim 默认 false；生成物适用：已接线 | 本批 |
+| eval_g2b_l5_gap_disclosure | `core/api/core_facade.py` | ✅ | G2b L5 gap facade；生成物适用：已接线 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
@@ -4009,7 +4016,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 517 | 1 | 518 |
+| Harness 执行引擎 | 522 | 1 | 523 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4022,7 +4029,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 408 | 0 | 408 |
+| 评估系统 | 413 | 0 | 413 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4054,7 +4061,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3097** | **10** | **3107** |
+| **总计** | **3107** | **10** | **3117** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

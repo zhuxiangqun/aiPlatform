@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2230
+total_capabilities: 2240
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 607
+    caps_count: 609
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1679,6 +1679,14 @@ domains:
       - symbol: "eval_g2b_pack_status"
         type: "function"
         signature: "eval_g2b_pack_status(tenant_id='eval-v1')→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "g2b_l5_gap_disclosure"
+        type: "function"
+        signature: "g2b_l5_gap_disclosure(tenant_id='eval-v1')→Dict (accuracy_claim=false)"
+        module: "aiPlat-core/core/apps/eval/service/g2b.py"
+      - symbol: "eval_g2b_l5_gap_disclosure"
+        type: "function"
+        signature: "eval_g2b_l5_gap_disclosure(tenant_id='eval-v1')→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "EvalPreferencePanel"
         type: "component"
@@ -6788,7 +6796,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 294
+    caps_count: 302
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -6914,6 +6922,10 @@ domains:
         type: function
         signature: "probe_m1c_sandbox()→Dict"
         module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: probe_linux_microvm_host
+        type: function
+        signature: "probe_linux_microvm_host()→Dict (covered=false)"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
       - symbol: eval_run_m1c_mode_exam
         type: function
         signature: "eval_run_m1c_mode_exam(live?,modes?,…)→Dict"
@@ -6922,6 +6934,34 @@ domains:
         type: function
         signature: "eval_probe_m1c_sandbox()→Dict"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_probe_linux_microvm
+        type: function
+        signature: "eval_probe_linux_microvm()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_a1_intersection_track_a
+        type: function
+        signature: "run_a1_intersection_track_a(live?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
+      - symbol: run_a1_intersection_compare
+        type: function
+        signature: "run_a1_intersection_compare(…)→Dict (rank_claim=false)"
+        module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
+      - symbol: a1_intersection_status_report
+        type: function
+        signature: "a1_intersection_status_report(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
+      - symbol: eval_run_a1_intersection_compare
+        type: function
+        signature: "eval_run_a1_intersection_compare(live?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_a1_intersection_status
+        type: function
+        signature: "eval_a1_intersection_status()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: EvalA1IntersectionCard
+        type: component
+        signature: "EvalA1IntersectionCard()"
+        module: aiPlat-management/frontend/src/pages/Eval/EvalA1IntersectionCard.tsx
       - symbol: ModeAwareExamError
         type: class
         signature: "Fail-closed mode exam error."

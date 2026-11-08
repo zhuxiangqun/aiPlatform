@@ -217,20 +217,21 @@ M0 → M1a（无工具 live）→ M1b（rag）→ M1c（react/沙箱后）→ M3
 | M0 契约门 | `evaluate_m0_impl_mode_contracts()` |
 | M1a 分栏实评 | `core/apps/eval/service/mode_aware_exam.py` → `run_m1a_mode_exam` |
 | M1b rag 分栏 | `run_m1b_mode_exam` / `enforce_m1b_environment` |
-| M1c react 分栏 | `run_m1c_mode_exam` / `probe_m1c_sandbox` |
+| M1c react 分栏 | `run_m1c_mode_exam` / `probe_m1c_sandbox` / `probe_linux_microvm_host` |
 | M3 交集排行 | `mode_intersection_rank.py` → `build_mode_intersection_rank` / `evaluate_rank_gate` |
+| A1 Track A/B | `a1_intersection_ops.py` → `run_a1_intersection_track_a` / `eval_run_a1_intersection_compare` |
 | M2 另估 | `mode_deferred_estimate.py` + `m2_deferred_estimate.v1.yaml` |
 | Fixtures | `fixtures/mode_exam/{plan_execute,conversational,rag,react}/cases.json` |
-| Facade | `eval_run_m1a/b/c_*` / `eval_build_mode_intersection_rank` / `eval_estimate_m2_deferred_modes` |
-| Parity 样例 | `intersection/parity_sample.v1.json` |
+| Facade | `eval_run_m1a/b/c_*` / `eval_run_a1_intersection_compare` / `eval_build_mode_intersection_rank` / `eval_estimate_m2_deferred_modes` |
+| Parity 样例 | `intersection/parity_sample.v1.json` + `intersection/cases/a1_task_completion.v1.json` |
 
 **M1a 诚实边界**：默认 `live=False` 为 `create_agent(tools=[])` + scripted oracle，`runtime_tier=fixture`；`live=True` 才走 agent.execute 并标 `workspace_execute`。tools/retrieval/network 违规 → `environment_violation`。无跨模式排行。
 
 **M1b 诚实边界**：`create_agent(rag)` + case `retrieval_fixture` hits；缺 hit → 无效。默认 scripted=`fixture`；live 用 fixture-patched `_retrieve`（**≠** 生产 CRAG KB covered）。tools/network/session 违规 → `environment_violation`。无跨模式排行。
 
-**M1c 诚实边界**：`create_agent(react)` + mock tool harness；`sandbox_backend=fixture_mock`；A3–A5 **`coverage_status=unknown`**。`live=True` 需 `AIPLAT_EVAL_M1C_SANDBOX=1`，仍 **≠** microVM isolation covered。无跨模式排行。
+**M1c 诚实边界**：`create_agent(react)` + mock tool harness；`sandbox_backend=fixture_mock`；A3–A5 **`coverage_status=unknown`**。`live=True` 需 `AIPLAT_EVAL_M1C_SANDBOX=1`，仍 **≠** microVM isolation covered。`probe_linux_microvm_host` 为 Linux/KVM 探测钩子：Darwin 保持 `admit_ready=false` / `microvm_covered=false`；**不**翻转 `process_split_authorized`；本切片不把 coverage 从 unknown 改为 covered。无跨模式排行。
 
-**M3 诚实边界**：仅 `rank_eligible=true` 且过 gate 的交集 case 可比较；fixture 禁入榜；Wilson CI + Pareto；**默认无单一 winner**；`rank_claim` **永不**由 builder 自动置 true（仅 `rank_claim_allowed` 在门禁+三方签字后解锁权限）。当前种子候选仍全部 `rank_eligible=false`。
+**M3 / A1 诚实边界**：仅 `rank_eligible=true` 且过 gate 的交集 case 可比较（当前 A1 `task_completion` 2–3 条已 `parity_status=passed`）；fixture 禁入榜；工程 `min_n>=2`（披露低于 L5 `min_sample_n=100`）；Wilson CI + Pareto；**默认无单一 winner**；`rank_claim` **永不**由 builder 自动置 true（仅 `rank_claim_allowed` 在门禁+三方签字后解锁权限）。A12 保持 `blocked_trace_parity`；rag/react 不得挤进该 env hash。
 
 **M2 诚实边界**：`multi_agent` / `pipeline` / `operator` 为 **deferred≠unknown**；`estimate_m2_deferred_modes` 只出工期与 `runtime_parts` 依赖；`assert_m2_not_live` 禁 live 分栏；parts 未齐前不得 covered / rank。
 

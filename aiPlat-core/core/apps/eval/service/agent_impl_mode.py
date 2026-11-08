@@ -510,14 +510,31 @@ def evaluate_m0_impl_mode_contracts(
     try:
         parity = load_parity_sample(path=root / PARITY_FILENAME)
         cases = parity.get("cases") if isinstance(parity.get("cases"), list) else []
-        none_eligible = all(not bool(c.get("rank_eligible")) for c in cases if isinstance(c, Mapping))
+        # Eligible only when parity_status=passed and hashes are not placeholders.
+        eligible_ok = True
+        has_passed_eligible = False
+        for c in cases:
+            if not isinstance(c, Mapping):
+                continue
+            if not bool(c.get("rank_eligible")):
+                continue
+            has_passed_eligible = True
+            if str(c.get("parity_status") or "") != "passed":
+                eligible_ok = False
+            ph = str(c.get("prompt_hash") or "")
+            oh = str(c.get("oracle_hash") or "")
+            if "placeholder" in ph or "pending" in ph or "placeholder" in oh or "pending" in oh:
+                eligible_ok = False
         has_a12_block = any(
             isinstance(c, Mapping)
             and c.get("capability_id") == "observability"
             and c.get("parity_status") == "blocked_trace_parity"
             for c in cases
         )
-        _add("parity_sample_no_auto_eligible", bool(cases) and none_eligible)
+        _add(
+            "parity_eligible_requires_passed",
+            bool(cases) and eligible_ok and has_passed_eligible,
+        )
         _add("a12_blocked_until_trace_parity", has_a12_block)
         _add(
             "pareto_ci_rules_documented",
@@ -544,7 +561,7 @@ def evaluate_m0_impl_mode_contracts(
         "unknown_not_default_react",
         "deferred_ne_unknown",
         "rank_fingerprint_excludes_agent_id",
-        "parity_sample_no_auto_eligible",
+        "parity_eligible_requires_passed",
         "a12_blocked_until_trace_parity",
         "pareto_ci_rules_documented",
         "subject_unit_documented",

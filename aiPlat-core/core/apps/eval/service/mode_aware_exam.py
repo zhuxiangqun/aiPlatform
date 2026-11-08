@@ -715,11 +715,53 @@ async def run_m1b_mode_exam(
     }
 
 
+def probe_linux_microvm_host() -> Dict[str, Any]:
+    """Best-effort Linux/KVM microVM host probe. Never flips process_split_authorized.
+
+    Darwin and missing packages → ready=false. Coverage stays unknown until
+    a Linux admit path is green; this hook does **not** set covered=true.
+    """
+    import platform
+    import sys
+
+    out: Dict[str, Any] = {
+        "os": platform.system().lower(),
+        "linux": platform.system().lower() == "linux",
+        "kvm_device": False,
+        "host_ok": False,
+        "admit_ready": False,
+        "microvm_covered": False,
+        "process_split_authorized": False,
+        "detail": "",
+    }
+    if out["os"] != "linux":
+        out["detail"] = "non_linux_host"
+        return out
+    kvm = Path("/dev/kvm")
+    out["kvm_device"] = kvm.exists()
+    # Optional package probe — never import as hard dep on Darwin CI.
+    try:
+        root = Path(__file__).resolve().parents[5]
+        pkg = root / "packages" / "aiplat-evaluation"
+        if str(pkg) not in sys.path:
+            sys.path.insert(0, str(pkg))
+        from app.sandbox.microvm import microvm_host_ok  # type: ignore
+
+        out["host_ok"] = bool(microvm_host_ok())
+    except Exception as exc:  # noqa: BLE001
+        out["detail"] = f"microvm_probe:{type(exc).__name__}"
+        out["host_ok"] = bool(out["kvm_device"])
+    out["admit_ready"] = bool(out["host_ok"] and out["kvm_device"])
+    # Hard lock: covered remains false in this hard-gap slice (hook only).
+    out["microvm_covered"] = False
+    return out
+
+
 def probe_m1c_sandbox() -> Dict[str, Any]:
     """Fixture mock sandbox ready when catalog loads; live needs explicit env flag.
 
     ``AIPLAT_EVAL_M1C_SANDBOX=1`` opts into live_sandbox_ready — does **not**
-    imply microVM/KVM isolation covered.
+    imply microVM/KVM isolation covered. Linux probe is advisory only.
     """
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog
 
@@ -735,6 +777,7 @@ def probe_m1c_sandbox() -> Dict[str, Any]:
         "true",
         "yes",
     }
+    linux = probe_linux_microvm_host()
     return {
         "fixture_sandbox_ready": fixture_ok,
         "live_sandbox_ready": bool(live_flag and fixture_ok),
@@ -742,6 +785,8 @@ def probe_m1c_sandbox() -> Dict[str, Any]:
         "live_opt_in_env": "AIPLAT_EVAL_M1C_SANDBOX",
         "detail": detail,
         "microvm_covered": False,
+        "linux_microvm": linux,
+        "capability_coverage_a3_a5": "unknown",
     }
 
 
