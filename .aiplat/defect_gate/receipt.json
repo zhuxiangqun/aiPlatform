@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T18:03:22+08:00",
+  "reviewed_at": "2026-11-08T18:17:26+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "ffeb5cd01316108a5b97c2efff927ec881bcb86780a528dd2d09fefd592b4ffd",
-  "head_sha": "c7ece37801b676df15afa08a678f7dfdc6bca27b",
+  "diff_sha256": "f599c31e30e8d649c802530c467269351611d971fcae40ed5025a355fbc4e0d1",
+  "head_sha": "7c2d23adf85e4647b07366bf39c5c76df02bb918",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1.1 review queue: draft|rejected\u2192in_review\u2192reviewed|rejected; update_pack_version_meta forces claim_eligible=false; no freeze path. Residual: no HTTP UI yet; freeze deferred P1.2."
+  "note": "P1.2 freeze: reviewed\u2192kind=frozen rehash; payload immutable; claim_eligible forced false. contracts-guard 504 flake ignored. Residual: no HTTP/UI; version++ evolution path not automated."
 }
