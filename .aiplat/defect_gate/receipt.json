@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T17:21:49+08:00",
+  "reviewed_at": "2026-11-08T17:30:02+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "859a40a0bf78633248e84aae1c6120bc7aea9f46fcf8b01d4775071daaf5d253",
-  "head_sha": "30cec3c08a1104d5cc38be112787817ff9e6596d",
+  "diff_sha256": "13f473bcc85408d11fa7c94cfd6aecaa68c3afae87b18c2cb3b647dbac9cb582",
+  "head_sha": "7f0bb3911340c97ffb53217c4dfd5eecce8f8d17",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0.4: clause-sync §78 for contracts-guard; assert_session_groups_intact (T4); exam run_key binds execution_fingerprint only (T11). No accuracy_claim."
+  "note": "P0.5: pack_claim_disclosure on attach_evaluation_plan; L5 blocks claim_eligible false/unspecified; whitepaper sync for Code References. No accuracy_claim open."
 }
