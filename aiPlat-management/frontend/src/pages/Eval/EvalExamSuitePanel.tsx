@@ -711,7 +711,9 @@ export default function EvalExamSuitePanel({
               return (
                 <tr key={meta.run_key} className="border-b border-gray-800/80 text-gray-200">
                   <td className="py-1.5 pr-2 font-mono">{suiteRunLabel(paperMeta)}</td>
-                  <td className="py-1.5 pr-2 text-gray-500">{planStepKindLabel(kind)}</td>
+                  <td className="py-1.5 pr-2 text-gray-500">
+                    {planStepKindLabel(kind, planRows ? meta.intent : undefined)}
+                  </td>
                   <td className="py-1.5 pr-2 text-gray-400">
                     {meta.probes_what}
                     {reasons ? (

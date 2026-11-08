@@ -13,6 +13,7 @@ import {
   papersFromPlanPreview,
   planIntentPreviewLabel,
   preferredSetForDim,
+  planStepKindLabel,
   summarizePlanExecution,
   type SuitePaperResult,
 } from './examSuite';
@@ -113,6 +114,15 @@ describe('examSuite', () => {
     expect(sum.template_steps_run).toBe(7);
     expect(sum.template_reruns).toBe(1);
     expect(sum.sets_with_n[0].n_cases).toBe(2);
+  });
+
+  it('planStepKindLabel marks deferred special as 未测', () => {
+    expect(planStepKindLabel('plan_set', 'run')).toBe('Plan 卷');
+    expect(planStepKindLabel('plan_set', 'skip_untested')).toBe('Plan 卷（未测）');
+    expect(planStepKindLabel('plan_set', 'skip_not_applicable')).toBe(
+      'Plan 卷（不适用）',
+    );
+    expect(planStepKindLabel('template_rerun', 'run')).toBe('模板复跑');
   });
 
   it('papersFromPlanPreview seeds pending vs skipped with match_report', () => {

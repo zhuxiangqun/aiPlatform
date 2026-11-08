@@ -307,8 +307,15 @@ export function planIntentPreviewLabel(intent: PlanPaperIntent): string {
   return '将跳过';
 }
 
-export function planStepKindLabel(kind: PlanPaperStepKind): string {
-  return kind === 'template_rerun' ? '模板复跑' : 'Plan 卷';
+export function planStepKindLabel(
+  kind: PlanPaperStepKind,
+  intent?: PlanPaperIntent,
+): string {
+  if (kind === 'template_rerun') return '模板复跑';
+  if (intent === 'skip_untested') return 'Plan 卷（未测）';
+  if (intent === 'skip_not_applicable') return 'Plan 卷（不适用）';
+  if (intent === 'skip_unknown') return 'Plan 卷（跳过）';
+  return 'Plan 卷';
 }
 
 /** Seed SuitePaperResult rows from a Plan (selected=pending, excluded=skipped). */
