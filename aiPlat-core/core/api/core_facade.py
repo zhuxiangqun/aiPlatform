@@ -6402,6 +6402,29 @@ async def eval_run_m1b_mode_exam(
     )
 
 
+async def eval_run_m1c_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[list] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1c: react per-mode exam (fixture_mock sandbox; A3–A5 coverage unknown)."""
+    from core.apps.eval.service.mode_aware_exam import run_m1c_mode_exam
+
+    return await run_m1c_mode_exam(
+        live=bool(live),
+        modes=modes,
+        max_cases_per_mode=int(max_cases_per_mode or 0),
+    )
+
+
+def eval_probe_m1c_sandbox() -> Dict[str, Any]:
+    """M1c sandbox readiness probe (fixture_mock vs live opt-in)."""
+    from core.apps.eval.service.mode_aware_exam import probe_m1c_sandbox
+
+    return probe_m1c_sandbox()
+
+
 def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     """Load + validate default mock tool catalog seed (T0)."""
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog

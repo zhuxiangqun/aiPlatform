@@ -2,7 +2,7 @@
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  
 > **版本**：v0.1 · M0 设计单 · 2026-11-09  
-> **状态**：**M0 · M1a · M1b 工程完成**（rag 分栏；retrieval=required fixture corpus；tools/network/session=none）— M1c/排行不抢跑  
+> **状态**：**M0 · M1a · M1b · M1c 工程完成**（react + fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM）— 排行（M3）不抢跑  
 > **关联**：[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md) · [eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md) · [eval-object-contract-and-plan.md](./eval-object-contract-and-plan.md) · [eval-agent-tool-session-inscope.md](./eval-agent-tool-session-inscope.md)
 
 ---
@@ -217,13 +217,16 @@ M0 → M1a（无工具 live）→ M1b（rag）→ M1c（react/沙箱后）→ M3
 | M0 契约门 | `evaluate_m0_impl_mode_contracts()` |
 | M1a 分栏实评 | `core/apps/eval/service/mode_aware_exam.py` → `run_m1a_mode_exam` |
 | M1b rag 分栏 | `run_m1b_mode_exam` / `enforce_m1b_environment` |
-| Fixtures | `fixtures/mode_exam/{plan_execute,conversational,rag}/cases.json` |
-| Facade | `eval_evaluate_m0_*` / `eval_run_m1a_mode_exam` / `eval_run_m1b_mode_exam` |
+| M1c react 分栏 | `run_m1c_mode_exam` / `probe_m1c_sandbox` |
+| Fixtures | `fixtures/mode_exam/{plan_execute,conversational,rag,react}/cases.json` |
+| Facade | `eval_run_m1a/b/c_mode_exam` / `eval_probe_m1c_sandbox` |
 | Parity 样例 | `intersection/parity_sample.v1.json` |
 
 **M1a 诚实边界**：默认 `live=False` 为 `create_agent(tools=[])` + scripted oracle，`runtime_tier=fixture`；`live=True` 才走 agent.execute 并标 `workspace_execute`。tools/retrieval/network 违规 → `environment_violation`。无跨模式排行。
 
 **M1b 诚实边界**：`create_agent(rag)` + case `retrieval_fixture` hits；缺 hit → 无效。默认 scripted=`fixture`；live 用 fixture-patched `_retrieve`（**≠** 生产 CRAG KB covered）。tools/network/session 违规 → `environment_violation`。无跨模式排行。
+
+**M1c 诚实边界**：`create_agent(react)` + mock tool harness；`sandbox_backend=fixture_mock`；A3–A5 **`coverage_status=unknown`**。`live=True` 需 `AIPLAT_EVAL_M1C_SANDBOX=1`，仍 **≠** microVM isolation covered。无跨模式排行。
 
 ---
 

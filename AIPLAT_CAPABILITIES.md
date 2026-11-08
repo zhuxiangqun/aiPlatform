@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3093
+total_capabilities: 3096
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -640,6 +640,8 @@ scan_hash: 8f9548ec24f4
 | run_m1b_mode_exam / enforce_m1b_environment | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1b rag 分栏；retrieval=required（fixture corpus）；tools/network/session=none；生成物适用：已接线 | 本批 |
 | eval_run_m1b_mode_exam | `core/api/core_facade.py` | ✅ | CoreFacade M1b 入口；生成物适用：已接线 | 本批 |
 | m1b_environment_lock / m1c_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M1b/M1c 环境依赖锁（矩阵权威）；生成物适用：已接线 | 本批 |
+| run_m1c_mode_exam / enforce_m1c_environment / probe_m1c_sandbox | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1c react 分栏；fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM；生成物适用：已接线 | 本批 |
+| eval_run_m1c_mode_exam / eval_probe_m1c_sandbox | `core/api/core_facade.py` | ✅ | CoreFacade M1c 入口；生成物适用：已接线 | 本批 |
 | get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考实现）；生成物适用：已接线 | 已合入 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
@@ -2773,6 +2775,7 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| load_m1c_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
 | load_m1b_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
 | m1a_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
 | load_parity_sample | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
@@ -3993,7 +3996,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 510 | 1 | 511 |
+| Harness 执行引擎 | 512 | 1 | 513 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4006,7 +4009,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 401 | 0 | 401 |
+| 评估系统 | 402 | 0 | 402 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4038,7 +4041,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3083** | **10** | **3093** |
+| **总计** | **3086** | **10** | **3096** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

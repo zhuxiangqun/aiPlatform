@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2205
+total_capabilities: 2211
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 269
+    caps_count: 275
     provides:
       - symbol: run_m1a_mode_exam
         type: function
@@ -6821,6 +6821,30 @@ domains:
       - symbol: eval_run_m1b_mode_exam
         type: function
         signature: "eval_run_m1b_mode_exam(live?,modes?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_m1c_mode_exam
+        type: function
+        signature: "run_m1c_mode_exam(live?,modes?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: enforce_m1c_environment
+        type: function
+        signature: "enforce_m1c_environment(mode,observed,matrix?)→List[str]"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: load_m1c_mode_cases
+        type: function
+        signature: "load_m1c_mode_cases(mode,seed_dir?)→List"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: probe_m1c_sandbox
+        type: function
+        signature: "probe_m1c_sandbox()→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: eval_run_m1c_mode_exam
+        type: function
+        signature: "eval_run_m1c_mode_exam(live?,modes?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_probe_m1c_sandbox
+        type: function
+        signature: "eval_probe_m1c_sandbox()→Dict"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: ModeAwareExamError
         type: class

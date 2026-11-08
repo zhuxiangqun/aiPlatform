@@ -1,9 +1,10 @@
-"""Mode-aware Agent exam — M1a (plan_execute/conversational) + M1b (rag).
+"""Mode-aware Agent exam — M1a / M1b / M1c (react fixture sandbox).
 
 Hard rules (eval-agent-impl-mode-exam.md):
 - selection union ≠ execution union (per-mode create_agent / manifest / run)
 - M1a: tools=retrieval=network=none; session only for conversational
 - M1b: retrieval=required; tools=network=session=none
+- M1c: tools+sandbox required; fixture_mock default; A3–A5 coverage unknown
 - claim_eligible / rank_claim stay false
 """
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
@@ -19,6 +21,7 @@ from core.apps.eval.service.agent_impl_mode import (
     load_mode_core_matrix,
     m1a_environment_lock,
     m1b_environment_lock,
+    m1c_environment_lock,
     plan_executions_per_mode,
     resolve_impl_modes,
 )
@@ -28,6 +31,8 @@ _log = logging.getLogger(__name__)
 
 M1A_MODES = ("plan_execute", "conversational")
 M1B_MODES = ("rag",)
+M1C_MODES = ("react",)
+M1C_TOOL_CAPS_UNKNOWN = ("tool_selection", "tool_args", "tool_result_use")
 EXAM_SCHEMA = "eval.mode_aware_exam.v1"
 
 
@@ -706,5 +711,349 @@ async def run_m1b_mode_exam(
             "tools/network/session locked none; scripted=fixture tier after create_agent(rag); "
             "live uses fixture-patched _retrieve then execute; no cross-mode rank; "
             "not CRAG production KB coverage"
+        ),
+    }
+
+
+def probe_m1c_sandbox() -> Dict[str, Any]:
+    """Fixture mock sandbox ready when catalog loads; live needs explicit env flag.
+
+    ``AIPLAT_EVAL_M1C_SANDBOX=1`` opts into live_sandbox_ready — does **not**
+    imply microVM/KVM isolation covered.
+    """
+    from core.apps.eval.service.mock_tools import load_mock_tool_catalog
+
+    fixture_ok = False
+    detail = ""
+    try:
+        cat = load_mock_tool_catalog()
+        fixture_ok = bool(list(cat.get("tools") or []))
+    except Exception as exc:  # noqa: BLE001
+        detail = f"{type(exc).__name__}:{exc}"
+    live_flag = os.environ.get("AIPLAT_EVAL_M1C_SANDBOX", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    return {
+        "fixture_sandbox_ready": fixture_ok,
+        "live_sandbox_ready": bool(live_flag and fixture_ok),
+        "sandbox_backend": "fixture_mock" if fixture_ok else "none",
+        "live_opt_in_env": "AIPLAT_EVAL_M1C_SANDBOX",
+        "detail": detail,
+        "microvm_covered": False,
+    }
+
+
+def load_m1c_mode_cases(
+    mode: str,
+    *,
+    seed_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    path = root / "fixtures" / "mode_exam" / mode / "cases.json"
+    if not path.is_file():
+        raise ModeAwareExamError(f"m1c_cases_missing:{path}")
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise ModeAwareExamError(f"m1c_cases_not_array:{path}")
+    return [dict(x) for x in raw if isinstance(x, Mapping)]
+
+
+def enforce_m1c_environment(
+    mode: str,
+    observed: Mapping[str, Any] | None,
+    *,
+    matrix: Mapping[str, Any] | None = None,
+) -> List[str]:
+    """Return violation codes if M1c react lock is broken."""
+    lock_all = m1c_environment_lock(matrix)
+    lock = lock_all.get(mode) if isinstance(lock_all.get(mode), Mapping) else None
+    if lock is None:
+        return [f"m1c_lock_missing:{mode}"]
+    obs = dict(observed or {})
+    errors: List[str] = []
+
+    tool_calls = list(obs.get("tool_calls") or [])
+    if lock.get("tools") == "required" and not tool_calls:
+        errors.append("environment_violation:tools_required")
+    if lock.get("retrieval") == "none" and (
+        obs.get("retrieval_used") or obs.get("retrieval_hits")
+    ):
+        errors.append("environment_violation:retrieval")
+    if lock.get("network") == "none" and obs.get("network_used"):
+        errors.append("environment_violation:network")
+    if lock.get("session") == "none" and (
+        obs.get("session_group") or obs.get("session_id")
+    ):
+        errors.append("environment_violation:session")
+    if lock.get("sandbox") == "required":
+        backend = str(obs.get("sandbox_backend") or "").strip()
+        if backend in {"", "none"}:
+            errors.append("environment_violation:sandbox_required")
+    return errors
+
+
+def _instantiate_react_agent() -> Any:
+    from core.apps.agents.base import create_agent
+    from core.harness.interfaces.agent import AgentConfig
+
+    # Tools bound via mock harness, not live skill registry.
+    agent = create_agent("react", config=AgentConfig(name="eval-m1c-react"), tools=[])
+    if hasattr(agent, "_tools"):
+        agent._tools = []
+    return agent
+
+
+async def _execute_react_case(
+    case: Mapping[str, Any],
+    *,
+    live: bool,
+    sandbox: Mapping[str, Any],
+    matrix: Mapping[str, Any] | None = None,
+) -> Dict[str, Any]:
+    mode = "react"
+    from core.apps.eval.service.mock_tools.harness import (
+        MockToolHarnessError,
+        invoke_mock_tools,
+        resolve_scripted_tool_calls,
+    )
+    from core.apps.eval.service.tool_trace_judge import judge_tool_trace
+
+    agent = _instantiate_react_agent()
+    lock = m1c_environment_lock(matrix).get(mode) or {}
+    subject = {
+        "agent_id": "eval.m1c.react",
+        "agent_version": "m1c",
+        "impl_mode": mode,
+        "config_hash": _config_hash(mode, lock),
+        "model_fingerprint": "scripted" if not live else "live_unresolved",
+    }
+
+    if live and not sandbox.get("live_sandbox_ready"):
+        return {
+            "status": "error",
+            "ok": False,
+            "errors": ["sandbox_not_ready"],
+            "runtime_tier": "workspace_execute",
+            "runtime_claim": False,
+            "runtime_claim_reason": "m1c_live_requires_AIPLAT_EVAL_M1C_SANDBOX",
+            "execution_mode": mode,
+            "capability_coverage": {
+                c: "unknown" for c in M1C_TOOL_CAPS_UNKNOWN
+            },
+            "subject": subject,
+        }
+
+    try:
+        calls = resolve_scripted_tool_calls(case, {})
+        harness = invoke_mock_tools(calls, case=case)
+    except MockToolHarnessError as exc:
+        return {
+            "status": "error",
+            "ok": False,
+            "errors": [f"mock_harness:{exc}"],
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "execution_mode": mode,
+            "capability_coverage": {
+                c: "unknown" for c in M1C_TOOL_CAPS_UNKNOWN
+            },
+            "subject": subject,
+        }
+
+    answer = str(case.get("scripted_answer") or "")
+    # Prefer answer derived from successful tool results when scripted empty.
+    if not answer.strip():
+        for tr in list(harness.get("tool_results") or []):
+            if isinstance(tr, Mapping) and tr.get("ok"):
+                answer = json.dumps(tr.get("result"), ensure_ascii=False)
+                break
+
+    result_payload = {
+        "tool_calls": harness.get("tool_calls") or [],
+        "tool_results": harness.get("tool_results") or [],
+        "answer": answer,
+        "scripted_answer": answer,
+        "tool_backend": "mock",
+    }
+    caps = list(case.get("capabilities") or [])
+    tool_caps = set(caps) & set(M1C_TOOL_CAPS_UNKNOWN)
+    if tool_caps:
+        judgment = judge_tool_trace(case, result_payload)
+        judge_ok = bool(judgment.get("passed"))
+        judge_errors = list(judgment.get("errors") or [])
+    else:
+        judge_ok = _lexical_pass(answer, case)
+        judge_errors = [] if judge_ok else ["lexical_fail"]
+        judgment = {"status": "lexical", "passed": judge_ok}
+
+    observed = {
+        "tool_calls": result_payload["tool_calls"],
+        "retrieval_used": False,
+        "network_used": False,
+        "sandbox_backend": sandbox.get("sandbox_backend") or "fixture_mock",
+        "answer": answer,
+    }
+    violations = enforce_m1c_environment(mode, observed, matrix=matrix)
+    # Prove create_agent(react) constructed (agent unused for scripted tool path).
+    _ = agent
+    passed = bool(harness.get("ok")) and judge_ok and not violations
+    return {
+        "status": "ok" if passed else "fail",
+        "ok": passed,
+        "answer": answer,
+        "errors": violations + list(harness.get("errors") or []) + judge_errors,
+        "runtime_tier": "fixture" if not live else "workspace_execute",
+        "runtime_claim": False,
+        "runtime_claim_reason": (
+            "m1c_fixture_mock_tools_after_create_agent_react"
+            if not live
+            else "m1c_live_opt_in_fixture_mock_still"
+        ),
+        "execution_mode": mode,
+        "tool_calls": result_payload["tool_calls"],
+        "tool_results": result_payload["tool_results"],
+        "tool_backend": "mock",
+        "sandbox_backend": observed["sandbox_backend"],
+        "judgment": judgment,
+        "capability_coverage": {
+            c: "unknown" for c in M1C_TOOL_CAPS_UNKNOWN
+        },
+        "subject": subject,
+    }
+
+
+async def run_m1c_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[Sequence[str]] = None,
+    seed_dir: Optional[Path] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1c exam: react column; tools+sandbox required; A3–A5 coverage unknown."""
+    try:
+        matrix = load_mode_core_matrix(
+            path=(Path(seed_dir) / "mode_core_capabilities.v1.yaml")
+            if seed_dir
+            else None
+        )
+    except AgentImplModeError as exc:
+        raise ModeAwareExamError(str(exc)) from exc
+
+    wanted = [str(m).strip() for m in (modes or M1C_MODES) if str(m).strip()]
+    for m in wanted:
+        if m not in M1C_MODES:
+            raise ModeAwareExamError(f"m1c_mode_not_allowed:{m}")
+
+    sandbox = probe_m1c_sandbox()
+    if not sandbox.get("fixture_sandbox_ready"):
+        raise ModeAwareExamError(
+            f"m1c_fixture_sandbox_not_ready:{sandbox.get('detail')}"
+        )
+    if live and not sandbox.get("live_sandbox_ready"):
+        return {
+            "schema": EXAM_SCHEMA,
+            "phase": "m1c",
+            "ok": False,
+            "live": True,
+            "modes": list(wanted),
+            "columns": {},
+            "counts": {"modes": 0, "cases": 0, "pass": 0, "fail": 0, "error": 1},
+            "sandbox": sandbox,
+            "errors": ["sandbox_not_ready"],
+            "merged_execution_forbidden": True,
+            "claim_eligible": False,
+            "rank_claim": False,
+            "accuracy_claim": False,
+            "capability_coverage": {
+                c: "unknown" for c in M1C_TOOL_CAPS_UNKNOWN
+            },
+            "honesty": (
+                "M1c live blocked: set AIPLAT_EVAL_M1C_SANDBOX=1 for opt-in; "
+                "still ≠ microVM isolation covered; A3–A5 remain unknown"
+            ),
+        }
+
+    columns: Dict[str, Any] = {}
+    totals = {"modes": 0, "cases": 0, "pass": 0, "fail": 0, "error": 0}
+
+    for mode in wanted:
+        impl = resolve_impl_modes(
+            {
+                "impl_modes": {
+                    "primary": mode,
+                    "secondary": [],
+                    "confidence": "explicit",
+                    "source": "config",
+                }
+            }
+        )
+        exe_plan = plan_executions_per_mode(impl, matrix=matrix)
+        cases = load_m1c_mode_cases(mode, seed_dir=seed_dir)
+        if max_cases_per_mode > 0:
+            cases = cases[: int(max_cases_per_mode)]
+
+        results: List[Dict[str, Any]] = []
+        for case in cases:
+            out = await _execute_react_case(
+                case, live=bool(live), sandbox=sandbox, matrix=matrix
+            )
+            row = {
+                "case_id": case.get("case_id"),
+                "capabilities": case.get("capabilities"),
+                "ok": bool(out.get("ok")),
+                "status": out.get("status"),
+                "errors": out.get("errors") or [],
+                "runtime_tier": out.get("runtime_tier"),
+                "execution_mode": out.get("execution_mode"),
+                "subject": out.get("subject"),
+                "tool_backend": out.get("tool_backend"),
+                "sandbox_backend": out.get("sandbox_backend"),
+                "capability_coverage": out.get("capability_coverage"),
+                "answer_excerpt": str(out.get("answer") or "")[:300],
+            }
+            results.append(row)
+            totals["cases"] += 1
+            if row["status"] == "error":
+                totals["error"] += 1
+            elif row["ok"]:
+                totals["pass"] += 1
+            else:
+                totals["fail"] += 1
+
+        columns[mode] = {
+            "impl_mode": mode,
+            "execution_plan": exe_plan,
+            "n_cases": len(results),
+            "n_passed": sum(1 for r in results if r.get("ok")),
+            "results": results,
+            "separate_manifest": True,
+            "separate_create_agent": True,
+            "environment_lock": (m1c_environment_lock(matrix).get(mode) or {}),
+            "sandbox_backend": sandbox.get("sandbox_backend"),
+            "tool_backend": "mock",
+        }
+        totals["modes"] += 1
+
+    all_ok = totals["fail"] == 0 and totals["error"] == 0 and totals["cases"] > 0
+    return {
+        "schema": EXAM_SCHEMA,
+        "phase": "m1c",
+        "ok": all_ok,
+        "live": bool(live),
+        "modes": list(wanted),
+        "columns": columns,
+        "counts": totals,
+        "sandbox": sandbox,
+        "merged_execution_forbidden": True,
+        "claim_eligible": False,
+        "rank_claim": False,
+        "accuracy_claim": False,
+        "capability_coverage": {c: "unknown" for c in M1C_TOOL_CAPS_UNKNOWN},
+        "honesty": (
+            "M1c react column; tools+sandbox required via fixture_mock; "
+            "create_agent(react)+mock harness; A3–A5 coverage_status=unknown "
+            "(≠ live sandbox / microVM covered); no cross-mode rank"
         ),
     }

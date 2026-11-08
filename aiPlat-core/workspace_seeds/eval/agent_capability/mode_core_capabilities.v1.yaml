@@ -148,7 +148,8 @@ m1b_environment_lock:
     network: none
     session: none
 
-# M1c (not opened here): tools/sandbox required — listed for dependency inventory only.
+# M1c: tools+sandbox required. Default exam uses fixture_mock sandbox (≠ microVM covered).
+# Live sandbox requires AIPLAT_EVAL_M1C_SANDBOX=1; A3–A5 stay coverage unknown until then.
 m1c_environment_lock:
   react:
     tools: required
