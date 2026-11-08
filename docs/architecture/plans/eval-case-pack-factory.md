@@ -1,8 +1,8 @@
 # Eval Case Pack 工厂 — 设计基线（P0 前契约锁定）
 
 > **类型**：架构方案 / 实施前契约  
-> **版本**：v0.2-baseline · 2026-11-08  
-> **状态**：**设计基线已评审可入库** · **禁止直接开工 P0** · 须本文件 §2 六钉全部签字后再开变更单  
+> **版本**：v0.2.1-baseline · 2026-11-08  
+> **状态**：**设计基线会签中（PR #621）** · 附录 A/B 已填 · **禁止直接开工 P0** · 须 §8.1 两名必签角色齐后再开变更单  
 > **关联**：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md) · #618 `derived_hints`  
 > **诚实锁**：不打开 `accuracy_claim`；L3 生成题不可 claim；禁止运行时随机出题当金标；G2b/Arena 另轨  
 
@@ -301,6 +301,16 @@ P0 **不以「1–2 周」承诺**。P1 扩题依赖审核人力，进度与「�
 
 **No-Go：** 六钉未签、或试图在 v1 上偷加字段、或允许 manifest 失败回退整包。
 
+### 8.1 会签栏（PR #621）
+
+| 角色 | 勾选范围 | 签字（GitHub Approve / 评论 `SIGNED §2`） | 日期 |
+|------|----------|------------------------------------------|------|
+| 产品负责人 | 钉 1–3、§3.3 claim 门、§6 排期 | | |
+| 评测方法负责人 | 钉 4–6、§3.1–3.2、附录 A/B | | |
+| 工程负责人（可选） | T1–T12 可测性、存储路径与 ACL | | |
+
+合并本 PR **≠** Go P0；仅表示基线入库。Go 须上表两名必签角色齐 + 单独开 P0 变更单。
+
 ---
 
 ## 9. 附录 A — 旧 `set_id` → `pack_id`（冻结表 · 待填版本号）
@@ -321,14 +331,27 @@ P0 **不以「1–2 周」承诺**。P1 扩题依赖审核人力，进度与「�
 
 ---
 
-## 10. 附录 B — Hash 测试向量（实施时补）
+## 10. 附录 B — Hash 测试向量（冻结 · 2026-11-08）
+
+**算法（与钉 4 一致）：** 取纳入字段 → list 字段排序（`tags`/`expected_tools`/`forbidden_tools`）→ `json.dumps(..., sort_keys=True, ensure_ascii=False, separators=(',',':'))` → UTF-8 → `sha256:` + hex。  
+Pack：`pack_id/version/kind/claim_eligible/scope/object_types(sorted)` + `case_hashes[{case_id,hash}]`（按 `case_id` 排序）。
+
+**Fixture A（canonical 字节串）：**
+
+```text
+{"applies_to":{},"case_id":"fixture-a-001","category":"normal","difficulty":"medium","expected_steps":[],"expected_tools":["code_generation"],"forbidden_tools":[],"holdout":false,"oracle":{},"prompt":"echo hello","provenance":{"generator":"manual","generator_version":"0","seed":null},"requires":{},"risk_level":"low","rubric":{"must_contain":["hello"],"type":"lexical"},"session_group":null,"tags":["normal"]}
+```
 
 | 夹具 | 期望 |
 |------|------|
-| 最小 case fixture A | `case_hash = <填入>` |
-| 仅改 `review.notes` | case_hash **不变** |
-| 改 `prompt` 一字 | case_hash **变** |
-| 两 case 顺序对调的 pack | pack_hash **不变**（按 case_id 排序后） |
+| 最小 case fixture A | `case_hash = sha256:f82bc84cdd2b83fb4dd01c8ec5985abfa1bea44c3f1e77906c0d0660cca80c61` |
+| 仅改 `review.notes` / `review.status` | case_hash **不变**（同上） |
+| 改 `prompt` → `echo hello!` | `sha256:9b1046c3de99d194f2d0c2e27d03c489199f5e0034b702357c0ff54de07f3916`（**变**） |
+| Fixture B (`fixture-a-002`, prompt=`echo world`) | `sha256:457fda9cde2ec70ff82c821e633858ce226dec2f0b64ea708078b4eda4930703` |
+| Pack `fixture.pack@1.0.0` kind=frozen claim=false scope=global object_types=[agent]，含 A+B | `pack_hash = sha256:fab6005f50da43f7bbf393a6adc6d9703af67ad16a03443ba4e219db9373806b` |
+| 两 case **写入顺序对调** 的同一 pack | pack_hash **不变**（同上） |
+
+P0 实现必须用同一算法复现上表；算法变更须升本附录日期并重算向量。
 
 ---
 
