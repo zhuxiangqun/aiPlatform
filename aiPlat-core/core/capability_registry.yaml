@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2072
+total_capabilities: 2078
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 136
+    caps_count: 142
     provides:
       - symbol: "resolve_capability_id"
         type: "function"
@@ -6850,6 +6850,30 @@ domains:
         type: function
         signature: 'list_subject_kinds()'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: "build_agent_capability_cases"
+        type: "function"
+        signature: "build_agent_capability_cases()→List[Dict]"
+        module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
+      - symbol: "validate_agent_capability_bank"
+        type: "function"
+        signature: "validate_agent_capability_bank(cases?)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
+      - symbol: "agent_regression_profile"
+        type: "function"
+        signature: "agent_regression_profile()→Dict suite_profile.v1"
+        module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
+      - symbol: "eval_validate_agent_capability_bank"
+        type: "function"
+        signature: "eval_validate_agent_capability_bank()→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_list_agent_capability_cases"
+        type: "function"
+        signature: "eval_list_agent_capability_cases()→list"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_agent_regression_profile"
+        type: "function"
+        signature: "eval_agent_regression_profile()→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "run_g2a_gate"
         type: "function"
         signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"

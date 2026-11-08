@@ -6337,6 +6337,27 @@ def eval_validate_agent_case(case: Optional[Dict[str, Any]] = None) -> Dict[str,
     return {"ok": not errors, "errors": errors, "subject_kind": "agent"}
 
 
+def eval_validate_agent_capability_bank() -> Dict[str, Any]:
+    """P1: validate curated agent.capability Regression seed bank (draft)."""
+    from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
+
+    return validate_agent_capability_bank()
+
+
+def eval_list_agent_capability_cases() -> list:
+    """P1: list agent.capability curated cases (canonical caps + test_purpose)."""
+    from core.apps.eval.service.capability_case_bank import build_agent_capability_cases
+
+    return build_agent_capability_cases()
+
+
+def eval_agent_regression_profile() -> Dict[str, Any]:
+    """P1: agent.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.capability_case_bank import agent_regression_profile
+
+    return agent_regression_profile()
+
+
 def eval_publish_draft_case_pack(
     *,
     pack_id: str,
