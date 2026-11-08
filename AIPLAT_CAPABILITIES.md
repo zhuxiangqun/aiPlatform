@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2840
+total_capabilities: 2861
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| systemPlanExam | `aiPlat-management/frontend/src/services/coreApi.ts` | ✅ | 自动同步 | 已合入 |
 | resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
 | extract_workspace_id_from_request | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
 | get_active_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
@@ -1619,6 +1620,20 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| score_prompt_output | `core/apps/eval/service/prompt_plan_ops.py` | ✅ | 自动同步 | 已合入 |
+| load_prompt_set_json | `core/apps/eval/service/prompt_plan_ops.py` | ✅ | 自动同步 | 已合入 |
+| annotate_model_plan_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| annotate_workflow_plan_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| annotate_typed_plan_runtime | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
+| score_lexical_output | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
+| load_typed_set_json | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
+| annotate_dataset_plan_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
+| score_dataset_task | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
+| eval_evaluate_l5_claims_gate | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_run_dataset_plan_exam | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_run_model_plan_exam | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_run_workflow_plan_exam | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| annotate_prompt_plan_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
 | advisory_runtime_tier | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
 | default_set_ids_for_type | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
 | resolve_auth_header | `core/apps/eval/service/external_targets.py` | ✅ | 自动同步 | 已合入 |
@@ -2671,20 +2686,26 @@ scan_hash: 8f9548ec24f4
 | eval_bootstrap_e3_gold | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_list_exam_sets / eval_run_agent_exam | `core/api/core_facade.py` + `agent_exam_ops.py` | ✅ | Agent 评测（绑用例集→dry/live）+ 可归因报告；生成物适用：已接线（apps/eval UI） | 本批 |
 | EvalExamSuitePanel / buildDimensionMatrix / BUILTIN_EXAM_SUITE | `EvalExamSuitePanel.tsx` + `examSuite.ts` | ✅ | Agent 本地标准冒烟（含 multi_turn + normal 复跑）+ 本机模型前置 + 维度矩阵；high_risk 无确认≠安全通过；空工具轨迹≠通过；tool_failure 不宣称 tools/trajectory 覆盖；线上/κ 未测；accuracy_claim=false；生成物适用：已接线（评测 Agent） | 本批 |
-| EvalFullReportPanel / buildFullSmokeReport（formal_report.v1 / meta.v1.12） | `EvalFullReportPanel.tsx` + `fullExamReport.ts` | ✅ | v1.12：§8 强制披露 Plan/MatchReport/三包/失败归因粗分；五态含 not_applicable；accuracy/sufficiency=false；生成物适用：已接线 | 本批 |
-| buildObjectContractDisclosure | `fullExamReport.ts` | ✅ | 从 suite attributable 聚合 plan_id/入选排除/pack_coverage/attribution；生成物适用：已接线 | 本批 |
+| EvalFullReportPanel / buildFullSmokeReport（formal_report.v1 / meta.v1.14） | `EvalFullReportPanel.tsx` + `fullExamReport.ts` | ✅ | v1.14：§8 披露 + claims_gate check-only + untested→有条件通过 + `runtime_parts`；accuracy/sufficiency=false；生成物适用：已接线 | 本批 |
+| buildObjectContractDisclosure | `fullExamReport.ts` | ✅ | 聚合 plan_id/入选排除/pack_coverage/attribution + `claims_gate`（默认不解禁）；生成物适用：已接线 | 本批 |
+| evaluateL5ClaimsGate（FE） | `claimsGate.ts` | ✅ | 镜像 core `eval.claims_gate.v1`；正式报告 check-only；生成物适用：已接线 | 本批 |
+| EvalTypedPlanPanel / typedPlanExam / claimsGate API | `EvalTypedPlanPanel.tsx` + `agentEvalApi` + 高级 Tab「对象Plan」 | ✅ | UI 一键 `*-plan-exam`/`system-plan-exam`/`claims-gate`；默认不解禁；生成物适用：已接线 | 本批 |
 | checkLocalExamPreflight / isLocalModelProvider | `localExamPreflight.ts` | ✅ | 本地冒烟开跑前检查本机 LLM provider；阻断仅远程模型；生成物适用：已接线 | 本批 |
 | default/multi_turn eval set + shared session | `engine/eval_sets/multi_turn.json` + `eval_runner._execute_single_task(session_id=)` | ✅ | 多轮记忆冒烟卷；同卷共享 session_id；触发 memory_horizon；生成物适用：已接线 | 本批 |
 | _resolve_exam_agent_info | `eval_runner.py` | ✅ | 正式评测加载命名工作区真实 AgentInfo（model/skills/tools），与 Execute 同环境；禁止默认桩选模；生成物适用：已接线 | 本批 |
-| eval-exam-runtime-tiers / annotate_agent_exam_runtime | `docs/.../eval-exam-runtime-tiers.md` + `exam_runtime_tier.py` + `examRuntimeTier.ts` | ✅ | v1.3：实际 `runtime_tier` 与 `target_runtime` 拆分；含 `core_skill_execute`；runtime_claim/reason；B2 双态分离；不改选模/执行路径；生成物适用：已接线（评测 UI 标注） | 本批 |
+| eval-exam-runtime-tiers / annotate_agent_exam_runtime / summarize_runtime_parts | `docs/.../eval-exam-runtime-tiers.md` + `exam_runtime_tier.py` + `examRuntimeTier.ts` + formal report | ✅ | v1.4：实际 vs 目标拆分；Skill quality→`core_skill_execute`；offline/runs_eval→`fixture`；`summarize_runtime_parts`/`summarizeRuntimeParts` 异质→mixed·claim=false；正式报告接线；生成物适用：已接线 | 本批 |
 | generated_app_pi_smoke / annotate_generated_app_runtime | `generated_app_pi_ops.py` + `POST /evaluation/generated-app-pi-smoke` + EvalGeneratedAppsPanel | ✅ | 目标 `target_runtime=pi`；offline/runs_eval→实际 `fixture`；live Pi CLI→实际 `pi`+claim；生成物适用：已接线 | 本批 |
 | annotate_skill_eval_runtime / skillEvalRuntimeAnn | `exam_runtime_tier.py` + `skill_evals_ops.run` + EvalSkillsPanel | ✅ | trigger→fixture；quality→`core_skill_execute`（skill_manager 已调）；≠ 验管道 skill Job；生成物适用：已接线（评测 UI） | 本批 |
 | eval-object-contract P0 / build_agent_target_contract / match_eval_sets_for_target | `docs/.../eval-object-contract-and-plan.md` + `target_contract.py` + `case_match.py` + `applicability_draft.json` + `POST /evaluation/match-cases` + agent exam 挂载 MatchReport | ✅ | `eval.target_contract.v1` + 可解释 MatchReport；high_risk refuse_or_handoff 例外；P0 仅 advisory 不筛题；生成物适用：已接线（评测 API） | 本批 |
 | eval_match_cases_for_agent_target / match_cases_for_agent_target | `core_facade` + `agent_exam_ops.py` | ✅ | 给定契约字段产出入选/不适用原因；≠ 已按画像自动选题；生成物适用：已接线 | 本批 |
 | formal_report v1.11 / not_applicable 五态 | `fullExamReport.ts` + `examSuite.ts`（merge/count/paperMatchDecision） | ✅ | 矩阵与正式报告分列未测/不适用；MatchReport 排除卷→维 N/A；不计失败；生成物适用：已接线 | 本批 |
 | compile_evaluation_plan / eval_compile_evaluation_plan | `eval_plan.py` + `POST /evaluation/compile-plan` + EvalExamSuitePanel | ✅ | P2/P3+Plan v2：core+匹配 capability；special 未授权→untested；冒烟预览 Plan+purpose；编译失败阻断（不回退全套）；套件仅模板；生成物适用：已接线 | 本批 |
-| object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 挂载 | ✅ | skill→core_skill_execute；api→external_pull；generated_app→pi；同一 Plan schema；生成物适用：已接线 | 本批 |
-| resolve_agent_eval_profile / derive_capability_hints | `eval_profile_resolve.py` + `POST /evaluation/resolve-eval-profile` + compile-plan 自动注入 | ✅ | 显式 `config.eval_profile` 优先（AGENT.md 顶层由 AgentManager 注入 config）；否则 skills/tools 子串 hint；种子样例 conversational/rag/react/platform_consultant；禁止 agent_id 分支；生成物适用：已接线 | 本批 |
+| object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
+| run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
+| run_typed_plan_exam / workflow-plan-exam / model-plan-exam / dataset-plan-exam | `typed_plan_exam.py` + CoreFacade + `POST /evaluation/{workflow,model,dataset}-plan-exam` | ✅ | Workflow/Model 词面 oracle；Dataset=`dataset_assert` 夹具表；≠ pipeline/模型榜/KB；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
+| run_system_plan_exam / eval_run_system_plan_exam / system-plan-exam | `system_plan_ops.py` + CoreFacade + `POST /evaluation/system-plan-exam` | ✅ | System 组合 L3–L4：默认 prompt/workflow/model/dataset basic；`runtime_parts` 归档；异质不压档；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
+| evaluate_l5_claims_gate / claims-gate / claims_policy_stub | `claims_gate.py` + CoreFacade + `POST /evaluation/claims-gate` + Plan `claims_policy` | ✅ | L5 范围声明门禁：默认 false；fixture/mixed/不完整覆盖不可解禁；须 explicit_authorize；生成物适用：已接线（评测 API） | 本批 |
+| resolve_agent_eval_profile / derive_capability_hints | `eval_profile_resolve.py` + `POST /evaluation/resolve-eval-profile` + compile-plan 自动注入 | ✅ | 显式 `config.eval_profile` 优先；`derived_hints` 须标来源/低置信，仅建议选题，禁止单独驱动 N/A/静默漏测；禁止 agent_id 分支；生成物适用：已接线 | 本批 |
 | countMatrixStatuses / paperMatchDecision | `examSuite.ts` | ✅ | 五态计数 + 读 match_report；生成物适用：已接线（正式报告） | 本批 |
 | ensure_builtin_skill_eval_suites / builtin_trigger_demo | `skill_evals_ops.py` + `POST …/suites/ensure-builtin` + Skills 空态按钮 | ✅ | list 自动/一键登记内置触发样例（内嵌 skills_override）；run 自动注入 override；生成物适用：已接线 | 本批 |
 | skill_eval_preflight / store_direct trigger | `skill_evals_ops.py` + `GET …/preflight` + Skills 预检条 | ✅ | 预检 store/builtin/path；无 skill_manager 时 trigger 走 store-direct；quality 仍需 manager；生成物适用：已接线 | 本批 |
@@ -3739,12 +3760,12 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 437 | 1 | 438 |
+| Harness 执行引擎 | 438 | 1 | 439 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 197 | 0 | 197 |
+| Agent 系统 | 211 | 0 | 211 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3752,7 +3773,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 323 | 0 | 323 |
+| 评估系统 | 329 | 0 | 329 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3784,7 +3805,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2830** | **10** | **2840** |
+| **总计** | **2851** | **10** | **2861** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

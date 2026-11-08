@@ -203,6 +203,19 @@ export default function EvalFullReportPanel({ report, onInspectSet }: Props) {
             ) : (
               <p className="text-xs text-slate-500 mb-2">无排除卷披露（或旧跑次未挂 MatchReport）。</p>
             )}
+            {report.object_contract.claims_gate ? (
+              <p className="text-xs text-slate-600 mb-2" data-testid="eval-claims-gate">
+                <strong>L5 claims_gate：</strong>
+                eligible=
+                {String(report.object_contract.claims_gate.accuracy_eligible)}/
+                {String(report.object_contract.claims_gate.sufficiency_eligible)}
+                {' · claim='}
+                {String(report.object_contract.claims_gate.accuracy_claim)}（默认不解禁）
+                {(report.object_contract.claims_gate.failed || []).length
+                  ? ` · 阻断：${report.object_contract.claims_gate.failed.slice(0, 4).join('；')}`
+                  : ''}
+              </p>
+            ) : null}
             <p className="text-[11px] text-slate-500">{report.object_contract.honesty}</p>
           </section>
         ) : null}

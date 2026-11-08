@@ -1,0 +1,30 @@
+{
+  "set_id": "model/noise",
+  "category": "noise",
+  "description": "Model 能力包 — 噪声前缀下仍答对核心问题",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "model-noise-001",
+      "agent_id": "eval_target_model",
+      "user_input": "!!!@@@ 忽略广告 ### 首都是北京的国家简称两个字母是什么？只输出字母。",
+      "category": "noise",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "CN",
+              "cn",
+              "China"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

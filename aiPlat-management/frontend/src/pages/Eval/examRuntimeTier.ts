@@ -1,6 +1,6 @@
 /**
  * Eval exam runtime tiers — SSOT labels for UI
- * (docs/architecture/plans/eval-exam-runtime-tiers.md v1.3).
+ * (docs/architecture/plans/eval-exam-runtime-tiers.md v1.4).
  * runtime_tier = actual execution; target_runtime = intended delivery form.
  */
 export type RuntimeTier =
@@ -150,4 +150,60 @@ export function formatRuntimeAnn(ann: {
   const claim = ann.runtime_claim ? 'runtime_claim=true' : 'runtime_claim=false';
   const reason = ann.runtime_claim_reason ? ` · ${ann.runtime_claim_reason}` : '';
   return `${label}${target} · ${claim}${reason}`;
+}
+
+/** One sub-job in a multi-runtime / system report (Runtime Tiers §7.1). */
+export type RuntimePart = {
+  sub_id: string;
+  runtime_tier: string;
+  target_runtime?: string;
+  runner_id?: string;
+  execution_mode?: string;
+  runtime_claim?: boolean;
+  result?: unknown;
+};
+
+/**
+ * Summarize runtime_parts into top-level fields.
+ * Homogeneous actual tiers → that tier; heterogeneous → omit single tier / mark mixed.
+ */
+export function summarizeRuntimeParts(parts: RuntimePart[]): {
+  runtime_parts: RuntimePart[];
+  runtime_tier?: string;
+  runtime_claim: boolean;
+  runtime_claim_reason: string;
+  mixed: boolean;
+} {
+  const cleaned = (parts || []).filter((p) => p && String(p.sub_id || '').trim());
+  if (!cleaned.length) {
+    return {
+      runtime_parts: [],
+      runtime_claim: false,
+      runtime_claim_reason: 'no runtime_parts',
+      mixed: false,
+    };
+  }
+  const tiers = [
+    ...new Set(cleaned.map((p) => String(p.runtime_tier || '').trim()).filter(Boolean)),
+  ];
+  if (tiers.length === 1) {
+    const allClaim = cleaned.every((p) => p.runtime_claim === true);
+    return {
+      runtime_parts: cleaned,
+      runtime_tier: tiers[0],
+      runtime_claim: allClaim,
+      runtime_claim_reason: allClaim
+        ? `homogeneous runtime_parts tier=${tiers[0]}`
+        : `homogeneous tier=${tiers[0]} but not all parts claimable`,
+      mixed: false,
+    };
+  }
+  return {
+    runtime_parts: cleaned,
+    // mixed is a meta marker, not a §2 execution host
+    runtime_tier: 'mixed',
+    runtime_claim: false,
+    runtime_claim_reason: `heterogeneous runtime_parts tiers=[${tiers.join(',')}] — see parts; do not collapse`,
+    mixed: true,
+  };
 }

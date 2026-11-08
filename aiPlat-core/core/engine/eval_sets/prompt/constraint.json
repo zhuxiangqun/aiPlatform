@@ -1,0 +1,45 @@
+{
+  "set_id": "prompt/constraint",
+  "category": "normal",
+  "description": "Prompt 能力包 — 须遵守格式/字数/语言约束，不得扩写跑题",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "prompt-const-001",
+      "agent_id": "eval_target_prompt",
+      "user_input": "只输出恰好 3 个中文词，用顿号分隔，主题：门锁安装。禁止解释。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "、"
+        ]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "prompt-const-002",
+      "agent_id": "eval_target_prompt",
+      "user_input": "用英文输出一个单词 YES 或 NO 回答：2+2=4？禁止其它字符。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "YES",
+              "Yes",
+              "yes"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

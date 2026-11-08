@@ -1,0 +1,34 @@
+{
+  "set_id": "workflow/basic",
+  "category": "normal",
+  "description": "Workflow 基础包 — 声明阶段序须可被理解/复述，最小交付完整",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "wf-basic-001",
+      "agent_id": "eval_target_workflow",
+      "user_input": "流程：clarify → plan → execute。请按顺序用箭头列出三阶段英文 id，不要解释。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [3, 3],
+      "success_criteria": {
+        "must_contain": ["clarify", "plan", "execute"]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "wf-basic-002",
+      "agent_id": "eval_target_workflow",
+      "user_input": "工作流目标：生成周报。输入已齐。请输出下一阶段名称：draft。只输出该词。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["draft"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

@@ -71,7 +71,7 @@ def _eval_dir() -> Path:
 
 def _ensure_dirs():
 
-    for cat in ("default", "custom"):
+    for cat in ("default", "custom", "prompt", "workflow", "model"):
 
         (_eval_dir() / cat).mkdir(parents=True, exist_ok=True)
 
@@ -184,7 +184,9 @@ def list_eval_sets() -> List[Dict[str, Any]]:
 
     result = []
 
-    for cat_dir in (_eval_dir() / "default", _eval_dir() / "custom"):
+    for cat_name in ("default", "custom", "prompt", "workflow", "model"):
+
+        cat_dir = _eval_dir() / cat_name
 
         if not cat_dir.exists():
 
@@ -1230,11 +1232,13 @@ def create_builtin_eval_sets() -> List[str]:
 
     """Copy built-in eval set templates from engine directory to user workspace.
 
-    
+
 
     Templates are stored as JSON in core/engine/eval_sets/ (version-controlled).
 
-    On first use, they are copied to ~/.aiplat/eval_sets/default/ (user-writable).
+    On first use, they are copied to ~/.aiplat/eval_sets/ (user-writable).
+
+    Flat agent papers → default/{stem}.json; typed packs → {prompt|workflow|model}/{stem}.json.
 
     """
 
@@ -1250,7 +1254,13 @@ def create_builtin_eval_sets() -> List[str]:
 
     created = []
 
+    skip = {"applicability_draft.json"}
+
     for template in sorted(engine_dir.glob("*.json")):
+
+        if template.name in skip:
+
+            continue
 
         dst = _eval_dir() / "default" / template.name
 
@@ -1261,6 +1271,30 @@ def create_builtin_eval_sets() -> List[str]:
             dst.write_text(content, encoding="utf-8")
 
             created.append(f"default/{template.stem}")
+
+
+
+    for ot in ("prompt", "workflow", "model", "dataset"):
+
+        src_dir = engine_dir / ot
+
+        if not src_dir.is_dir():
+
+            continue
+
+        dst_dir = _eval_dir() / ot
+
+        dst_dir.mkdir(parents=True, exist_ok=True)
+
+        for template in sorted(src_dir.glob("*.json")):
+
+            dst = dst_dir / template.name
+
+            if not dst.exists():
+
+                dst.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+
+                created.append(f"{ot}/{template.stem}")
 
 
 
@@ -1276,17 +1310,36 @@ def ensure_builtin_sets() -> None:
 
     _ensure_dirs()
 
-    default_dir = _eval_dir() / "default"
-    needed_files = (
-        "normal.json",
-        "missing_info.json",
-        "tool_failure.json",
-        "high_risk.json",
-        "noise.json",
-        "multi_turn.json",
+    needed = (
+        ("default", "normal.json"),
+        ("default", "missing_info.json"),
+        ("default", "tool_failure.json"),
+        ("default", "high_risk.json"),
+        ("default", "noise.json"),
+        ("default", "multi_turn.json"),
+        ("prompt", "basic.json"),
+        ("prompt", "missing_vars.json"),
+        ("prompt", "constraint.json"),
+        ("prompt", "noise.json"),
+        ("prompt", "safety.json"),
+        ("prompt", "multi_slot.json"),
+        ("workflow", "basic.json"),
+        ("workflow", "missing_input.json"),
+        ("workflow", "stage_failure.json"),
+        ("workflow", "noise.json"),
+        ("workflow", "safety.json"),
+        ("workflow", "long_chain.json"),
+        ("model", "basic.json"),
+        ("model", "missing_info.json"),
+        ("model", "format_constraint.json"),
+        ("model", "noise.json"),
+        ("model", "safety.json"),
+        ("model", "consistency.json"),
+        ("dataset", "basic.json"),
     )
-    if any(not (default_dir / name).exists() for name in needed_files):
+    if any(not (_eval_dir() / cat / name).exists() for cat, name in needed):
         create_builtin_eval_sets()
+
 
 
 def _is_multi_turn_eval_set(evalset: EvalSet) -> bool:

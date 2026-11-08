@@ -1,0 +1,21 @@
+{
+  "set_id": "prompt/noise",
+  "category": "noise",
+  "description": "Prompt 能力包 — 变量含噪声/无关前后缀时仍锚定有效字段",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "prompt-noise-001",
+      "agent_id": "eval_target_prompt",
+      "user_input": "模板：提取订单号。输入：【广告】订单 ORD-9981 点击领券。只输出订单号。",
+      "category": "noise",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["ORD-9981"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

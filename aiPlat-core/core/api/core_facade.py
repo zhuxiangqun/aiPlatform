@@ -6421,6 +6421,141 @@ def eval_run_generated_app_pi_smoke(
     )
 
 
+async def eval_run_prompt_plan_exam(
+    *,
+    object_id: str = "prompt_under_test",
+    set_ids: Optional[list] = None,
+    purpose: Optional[list] = None,
+    include_special: bool = False,
+    live: bool = False,
+    model: str = "",
+    max_tasks_per_set: int = 20,
+) -> Dict[str, Any]:
+    """Prompt Plan-chain exam: compile plan + run prompt/* lexical/oracle sets."""
+    from core.apps.eval.service.prompt_plan_ops import run_prompt_plan_exam
+
+    return await run_prompt_plan_exam(
+        object_id=object_id,
+        set_ids=set_ids,
+        purpose=purpose,
+        include_special=include_special,
+        live=live,
+        model=model,
+        max_tasks_per_set=max_tasks_per_set,
+    )
+
+
+async def eval_run_workflow_plan_exam(
+    *,
+    object_id: str = "workflow_under_test",
+    set_ids: Optional[list] = None,
+    purpose: Optional[list] = None,
+    include_special: bool = False,
+    live: bool = False,
+    model: str = "",
+    max_tasks_per_set: int = 20,
+) -> Dict[str, Any]:
+    """Workflow Plan-chain exam: compile plan + run workflow/* lexical sets."""
+    from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
+
+    return await run_typed_plan_exam(
+        object_type="workflow",
+        object_id=object_id,
+        set_ids=set_ids,
+        purpose=purpose,
+        include_special=include_special,
+        live=live,
+        model=model,
+        max_tasks_per_set=max_tasks_per_set,
+        source_refs=["workflow_plan_ops"],
+    )
+
+
+async def eval_run_model_plan_exam(
+    *,
+    object_id: str = "model_under_test",
+    set_ids: Optional[list] = None,
+    purpose: Optional[list] = None,
+    include_special: bool = False,
+    live: bool = False,
+    model: str = "",
+    max_tasks_per_set: int = 20,
+) -> Dict[str, Any]:
+    """Model Plan-chain exam: compile plan + run model/* lexical sets (≠ leaderboard)."""
+    from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
+
+    return await run_typed_plan_exam(
+        object_type="model",
+        object_id=object_id,
+        set_ids=set_ids,
+        purpose=purpose,
+        include_special=include_special,
+        live=live,
+        model=model,
+        max_tasks_per_set=max_tasks_per_set,
+        source_refs=["model_plan_ops"],
+    )
+
+
+async def eval_run_dataset_plan_exam(
+    *,
+    object_id: str = "dataset_under_test",
+    set_ids: Optional[list] = None,
+    purpose: Optional[list] = None,
+    include_special: bool = False,
+    live: bool = False,
+    model: str = "",
+    max_tasks_per_set: int = 20,
+) -> Dict[str, Any]:
+    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample retrieval)."""
+    from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
+
+    return await run_typed_plan_exam(
+        object_type="dataset",
+        object_id=object_id,
+        set_ids=set_ids,
+        purpose=purpose,
+        include_special=include_special,
+        live=live,
+        model=model,
+        max_tasks_per_set=max_tasks_per_set,
+        source_refs=["dataset_plan_ops"],
+    )
+
+
+async def eval_run_system_plan_exam(
+    *,
+    object_id: str = "system_under_test",
+    parts: Optional[list] = None,
+    live: bool = False,
+    model: str = "",
+    max_tasks_per_set: int = 20,
+) -> Dict[str, Any]:
+    """System combination exam: typed parts + runtime_parts (≠ single-object)."""
+    from core.apps.eval.service.system_plan_ops import run_system_plan_exam
+
+    return await run_system_plan_exam(
+        object_id=object_id,
+        parts=parts,
+        live=live,
+        model=model,
+        max_tasks_per_set=max_tasks_per_set,
+    )
+
+
+def eval_evaluate_l5_claims_gate(
+    *,
+    evidence: Optional[Dict[str, Any]] = None,
+    explicit_authorize: bool = False,
+) -> Dict[str, Any]:
+    """L5 scope-bound claims gate (advisory; default claims stay false)."""
+    from core.apps.eval.service.claims_gate import evaluate_l5_claims_gate
+
+    return evaluate_l5_claims_gate(
+        evidence, explicit_authorize=bool(explicit_authorize)
+    )
+
+
 def eval_agent_attributable_report(
     *,
     agent_id: str,

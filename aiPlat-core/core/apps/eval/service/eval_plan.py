@@ -16,6 +16,7 @@ from core.apps.eval.service.case_match import (
     load_applicability_draft,
     match_eval_sets_for_target,
 )
+from core.apps.eval.service.claims_gate import claims_policy_stub
 from core.apps.eval.service.object_adapters import (
     advisory_runtime_tier,
     default_set_ids_for_type,
@@ -159,15 +160,9 @@ def compile_evaluation_plan(
         "target_runtime": target_runtime,
         "oracle_binding": oracle_binding,
         "eval_profile_source": profile_source or None,
-        "claims_policy": {
-            "accuracy_claim": False,
-            "sufficiency_claim": False,
-            "note": (
-                "Plan compile ≠ accuracy/sufficiency; special deferred → untested not fail"
-                + ("; thin_contract" if thin else "")
-                + (f"; profile_source={profile_source}" if profile_source else "")
-            ),
-        },
+        "claims_policy": claims_policy_stub(
+            thin=thin, profile_source=str(profile_source or "")
+        ),
         "match_report": match,
         "draft_schema": draft.get("schema"),
         "counts": {

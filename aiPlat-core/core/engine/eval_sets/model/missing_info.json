@@ -1,0 +1,33 @@
+{
+  "set_id": "model/missing_info",
+  "category": "missing_info",
+  "description": "Model 能力包 — 信息不足时追问或声明无法确定，禁止瞎编",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "model-miss-001",
+      "agent_id": "eval_target_model",
+      "user_input": "他昨天的会议结论是什么？无其它上下文。",
+      "category": "missing_info",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "无法",
+              "不知道",
+              "缺少",
+              "请提供",
+              "不确定",
+              "没有足够"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

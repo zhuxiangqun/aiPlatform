@@ -1,0 +1,46 @@
+{
+  "set_id": "model/basic",
+  "category": "normal",
+  "description": "Model 基础包 — 指令跟随与最小事实答复",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "model-basic-001",
+      "agent_id": "eval_target_model",
+      "user_input": "只输出数字：3+5=?",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": [
+          "8"
+        ]
+      },
+      "risk_level": "low"
+    },
+    {
+      "task_id": "model-basic-002",
+      "agent_id": "eval_target_model",
+      "user_input": "把「门锁」翻译成英文，只输出一个单词。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "lock",
+              "Lock",
+              "doorlock",
+              "Doorlock"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

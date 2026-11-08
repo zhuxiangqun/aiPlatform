@@ -13,6 +13,7 @@ from core.apps.eval.service.target_contract import (
 )
 
 # Default case/set templates per object_type (applicability_draft.json keys).
+# prompt/workflow/model mirror agent: 1 core + 3 capability + 2 special.
 DEFAULT_SET_IDS: Dict[str, tuple] = {
     "agent": (
         "default/normal",
@@ -25,12 +26,39 @@ DEFAULT_SET_IDS: Dict[str, tuple] = {
     "skill": ("skill/trigger", "skill/quality"),
     "api": ("api/chat_pull",),
     "generated_app": ("generated_app/pi_smoke", "generated_app/runs_eval"),
-    # Thin stubs — Plan can mount later; empty → only explicit set_ids
-    "prompt": ("prompt/basic",),
-    "model": ("model/basic",),
+    "prompt": (
+        "prompt/basic",
+        "prompt/missing_vars",
+        "prompt/constraint",
+        "prompt/noise",
+        "prompt/safety",
+        "prompt/multi_slot",
+    ),
+    "workflow": (
+        "workflow/basic",
+        "workflow/missing_input",
+        "workflow/stage_failure",
+        "workflow/noise",
+        "workflow/safety",
+        "workflow/long_chain",
+    ),
+    "model": (
+        "model/basic",
+        "model/missing_info",
+        "model/format_constraint",
+        "model/noise",
+        "model/safety",
+        "model/consistency",
+    ),
     "dataset": ("dataset/basic",),
-    "workflow": ("workflow/basic",),
     "system": (),
+}
+
+# Default capabilities so capability/special packs can match without empty contract.
+_DEFAULT_CAPS: Dict[str, tuple] = {
+    "prompt": ("clarify_or_ask", "format_constraint", "multi_slot_context"),
+    "workflow": ("clarify_or_ask", "error_recovery", "long_chain"),
+    "model": ("clarify_or_ask", "format_constraint", "consistency"),
 }
 
 
@@ -186,21 +214,29 @@ def build_contract_for_object_type(
     # Generic fallback for prompt/model/dataset/workflow/system
     profile = dict(eval_profile or {})
     tr_default = {
-        "prompt": ["fixture"],
-        "model": ["fixture"],
+        "prompt": ["fixture", "prompt_execute"],
+        "model": ["fixture", "model_generate"],
         "dataset": ["fixture"],
-        "workflow": ["workspace_execute"],
+        "workflow": ["workspace_execute", "fixture"],
         "system": ["workspace_execute"],
     }.get(ot, ["fixture"])
+    caps = list(capabilities or profile.get("capabilities") or [])
+    if not caps:
+        caps = list(_DEFAULT_CAPS.get(ot) or [])
+    purpose_default = (
+        ["behavior", "regression", "safety"]
+        if ot in ("prompt", "workflow", "model")
+        else ["behavior"]
+    )
     return build_target_contract(
         object_type=ot,
         object_id=object_id,
         object_version=object_version or str(profile.get("object_version") or ""),
-        capabilities=list(capabilities or profile.get("capabilities") or []),
+        capabilities=caps,
         tools=list(tools or profile.get("tools") or []),
         permissions=list(permissions or profile.get("permissions") or []),
         target_runtime=list(profile.get("target_runtime") or tr_default),
-        eval_purpose=list(profile.get("eval_purpose") or ["behavior"]),
+        eval_purpose=list(profile.get("eval_purpose") or purpose_default),
         boundaries=profile.get("boundaries") if isinstance(profile.get("boundaries"), dict) else {},
         roles=list(roles or profile.get("roles") or []),
         required_env=list(profile.get("required_env") or []),

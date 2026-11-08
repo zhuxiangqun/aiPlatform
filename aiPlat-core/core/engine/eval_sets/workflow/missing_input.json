@@ -1,0 +1,32 @@
+{
+  "set_id": "workflow/missing_input",
+  "category": "missing_info",
+  "description": "Workflow 能力包 — 缺关键输入时应停在澄清而非臆造阶段结果",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "wf-miss-001",
+      "agent_id": "eval_target_workflow",
+      "user_input": "启动部署流水线。未提供环境名与版本号。请处理。",
+      "category": "missing_info",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "paths": [
+          {
+            "id": "any_hit",
+            "must_contain_any": [
+              "环境",
+              "版本",
+              "请提供",
+              "缺少",
+              "澄清"
+            ]
+          }
+        ]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

@@ -89,7 +89,7 @@ describe('examSuite', () => {
     expect(ex?.status).toBe('untested');
   });
 
-  it('mergeMatrixStatuses prefers fail then warn; separates not_applicable', () => {
+  it('mergeMatrixStatuses prefers fail; incomplete pass+untested ≠ pass', () => {
     expect(mergeMatrixStatuses([])).toBe('untested');
     expect(mergeMatrixStatuses(['pass', 'fail'])).toBe('fail');
     expect(mergeMatrixStatuses(['pass', 'warn'])).toBe('warn');
@@ -101,6 +101,13 @@ describe('examSuite', () => {
     );
     expect(mergeMatrixStatuses(['not_applicable', 'pass'])).toBe('pass');
     expect(mergeMatrixStatuses(['not_applicable', 'untested'])).toBe('untested');
+    expect(mergeMatrixStatuses(['pass', 'untested'])).toBe('untested');
+    expect(mergeMatrixStatuses(['pass', 'inconclusive'])).toBe('inconclusive');
+    // No applicable cases → N/A (never pass); zero cover stays untested above
+    expect(mergeMatrixStatuses(['untested', 'untested'])).toBe('untested');
+    expect(
+      mergeMatrixStatuses(['pass', 'not_applicable', 'not_applicable']),
+    ).toBe('pass');
   });
 
   it('marks covering dims not_applicable when MatchReport excludes the set', () => {

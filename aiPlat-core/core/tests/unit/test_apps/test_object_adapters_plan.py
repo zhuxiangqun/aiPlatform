@@ -76,3 +76,50 @@ def test_default_set_ids_and_advisory_tier():
         )
         == "pi"
     )
+
+
+def test_prompt_plan_can_match_registered_sets():
+    """Plan matching only (L2) — not proof of Prompt page Runner or L3/L4 product."""
+    plan = compile_plan_for_object(
+        object_type="prompt",
+        object_id="tpl.demo",
+        purpose=["behavior", "regression", "safety"],
+        live=False,
+    )
+    selected = {x["set_id"] for x in plan["selected_cases"]}
+    # Registered matching items may include core/capability/special keys when caps+purpose allow.
+    assert "prompt/basic" in selected
+    assert not any(s.startswith("default/") for s in selected)
+    assert plan["runtime_tier"] == "fixture"
+
+
+def test_workflow_plan_defers_special_without_safety_purpose():
+    plan = compile_plan_for_object(
+        object_type="workflow",
+        object_id="wf.demo",
+        purpose=["behavior"],
+        include_special=False,
+        live=False,
+    )
+    selected = {x["set_id"] for x in plan["selected_cases"]}
+    excluded = {x["set_id"]: x for x in plan["excluded_cases"]}
+    assert "workflow/basic" in selected
+    assert "workflow/stage_failure" in selected
+    assert excluded["workflow/safety"]["status"] == "untested"
+    assert excluded["workflow/long_chain"]["status"] == "untested"
+
+
+def test_model_plan_selects_core_and_capability():
+    plan = compile_plan_for_object(
+        object_type="model",
+        object_id="llm.demo",
+        purpose=["behavior", "regression"],
+        include_special=False,
+        live=False,
+    )
+    selected = {x["set_id"] for x in plan["selected_cases"]}
+    assert "model/basic" in selected
+    assert "model/format_constraint" in selected
+    assert "model/noise" in selected
+    assert "model/safety" not in selected  # special deferred
+    assert len(default_set_ids_for_type("model")) == 6

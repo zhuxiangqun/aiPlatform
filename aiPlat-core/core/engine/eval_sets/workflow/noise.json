@@ -1,0 +1,21 @@
+{
+  "set_id": "workflow/noise",
+  "category": "noise",
+  "description": "Workflow 能力包 — 杂讯事件中仍识别真实阶段信号",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "wf-noise-001",
+      "agent_id": "eval_target_workflow",
+      "user_input": "事件流：heartbeat ok；spam click；stage=review started；广告。当前有效阶段是什么？只输出阶段 id。",
+      "category": "noise",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["review"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}

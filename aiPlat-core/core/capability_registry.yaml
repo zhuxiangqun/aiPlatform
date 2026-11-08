@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1917
+total_capabilities: 1945
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 588
+    caps_count: 593
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1418,12 +1418,32 @@ domains:
         module: "aiPlat-management/frontend/src/pages/Eval/examSuite.ts"
       - symbol: "buildFullSmokeReport"
         type: "function"
-        signature: "buildFullSmokeReport({agentId,papers})→FormalExamReport (formal_report.v1 meta.v1.12 + object_contract)"
+        signature: "buildFullSmokeReport({agentId,papers})→FormalExamReport (formal_report.v1 meta.v1.14 + claims_gate)"
         module: "aiPlat-management/frontend/src/pages/Eval/fullExamReport.ts"
       - symbol: "buildObjectContractDisclosure"
         type: "function"
-        signature: "buildObjectContractDisclosure(papers,findings?,dimensions?)→ObjectContractDisclosure"
+        signature: "buildObjectContractDisclosure(papers,findings?,dimensions?,runtimeCtx?)→ObjectContractDisclosure+claims_gate"
         module: "aiPlat-management/frontend/src/pages/Eval/fullExamReport.ts"
+      - symbol: "evaluateL5ClaimsGate"
+        type: "function"
+        signature: "evaluateL5ClaimsGate(evidence,{explicitAuthorize?})→ClaimsGateReport"
+        module: "aiPlat-management/frontend/src/pages/Eval/claimsGate.ts"
+      - symbol: "EvalTypedPlanPanel"
+        type: "component"
+        signature: "EvalTypedPlanPanel()→typed plan-exam + claims_gate UI"
+        module: "aiPlat-management/frontend/src/pages/Eval/EvalTypedPlanPanel.tsx"
+      - symbol: "typedPlanExam"
+        type: "function"
+        signature: "agentEvalApi.typedPlanExam(objectType,body)→POST /core/evaluation/{type}-plan-exam"
+        module: "aiPlat-management/frontend/src/services/coreApi.ts"
+      - symbol: "systemPlanExam"
+        type: "function"
+        signature: "agentEvalApi.systemPlanExam(body)→POST /core/evaluation/system-plan-exam"
+        module: "aiPlat-management/frontend/src/services/coreApi.ts"
+      - symbol: "claimsGate"
+        type: "function"
+        signature: "agentEvalApi.claimsGate({evidence,explicit_authorize?})→POST /core/evaluation/claims-gate"
+        module: "aiPlat-management/frontend/src/services/coreApi.ts"
       - symbol: "mergeMatrixStatuses"
         type: "function"
         signature: "mergeMatrixStatuses(statuses)→MatrixStatus (five-state incl. not_applicable)"
@@ -3663,7 +3683,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 192
+    caps_count: 215
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4353,8 +4373,100 @@ domains:
         module: aiPlat-core/core/apps/eval/service/case_match.py
       - symbol: merge_runtime_fields
         type: function
-        signature: 'Merge annotation into response; never upgrade accuracy_claim to true.'
+        signature: 'Merge annotation into response; never upgrade accuracy_claim to true; summarizes runtime_parts'
         module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: summarize_runtime_parts
+        type: function
+        signature: 'summarize_runtime_parts(parts)→Dict tier/claim/mixed/parts (Runtime Tiers §7.1)'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: summarizeRuntimeParts
+        type: function
+        signature: 'summarizeRuntimeParts(parts)→{runtime_parts,runtime_tier?,runtime_claim,mixed}'
+        module: aiPlat-management/frontend/src/pages/Eval/examRuntimeTier.ts
+      - symbol: annotate_prompt_plan_runtime
+        type: function
+        signature: 'annotate_prompt_plan_runtime(live)→Dict fixture+prompt_execute+execution_mode'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: run_prompt_plan_exam
+        type: function
+        signature: 'async run_prompt_plan_exam(object_id,set_ids,…)→Dict plan+papers+counts'
+        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+      - symbol: eval_run_prompt_plan_exam
+        type: function
+        signature: 'async eval_run_prompt_plan_exam(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_workflow_plan_exam
+        type: function
+        signature: 'async eval_run_workflow_plan_exam(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_model_plan_exam
+        type: function
+        signature: 'async eval_run_model_plan_exam(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_dataset_plan_exam
+        type: function
+        signature: 'async eval_run_dataset_plan_exam(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_system_plan_exam
+        type: function
+        signature: 'async eval_run_system_plan_exam(object_id,parts,…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_system_plan_exam
+        type: function
+        signature: 'async run_system_plan_exam(object_id,parts,…)→Dict parts+runtime_parts'
+        module: aiPlat-core/core/apps/eval/service/system_plan_ops.py
+      - symbol: evaluate_l5_claims_gate
+        type: function
+        signature: 'evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict eval.claims_gate.v1'
+        module: aiPlat-core/core/apps/eval/service/claims_gate.py
+      - symbol: claims_policy_stub
+        type: function
+        signature: 'claims_policy_stub(thin,profile_source)→Dict accuracy/sufficiency false'
+        module: aiPlat-core/core/apps/eval/service/claims_gate.py
+      - symbol: eval_evaluate_l5_claims_gate
+        type: function
+        signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_typed_plan_exam
+        type: function
+        signature: 'async run_typed_plan_exam(object_type,…)→Dict plan+papers+counts'
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: score_dataset_task
+        type: function
+        signature: 'score_dataset_task(task)→Dict status/summary (fixture_table asserts)'
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: annotate_dataset_plan_runtime
+        type: function
+        signature: 'annotate_dataset_plan_runtime(live?)→Dict fixture+dataset_plan_assert'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: load_typed_set_json
+        type: function
+        signature: 'load_typed_set_json(set_id,object_type)→Dict'
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: score_lexical_output
+        type: function
+        signature: 'score_lexical_output(output,criteria)→Dict status/summary'
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: annotate_typed_plan_runtime
+        type: function
+        signature: 'annotate_typed_plan_runtime(object_type,live)→Dict'
+        module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: annotate_workflow_plan_runtime
+        type: function
+        signature: 'annotate_workflow_plan_runtime(live)→Dict'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: annotate_model_plan_runtime
+        type: function
+        signature: 'annotate_model_plan_runtime(live)→Dict'
+        module: aiPlat-core/core/apps/eval/service/exam_runtime_tier.py
+      - symbol: load_prompt_set_json
+        type: function
+        signature: 'load_prompt_set_json(set_id)→Dict engine prompt/* JSON'
+        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
+      - symbol: score_prompt_output
+        type: function
+        signature: 'score_prompt_output(output,criteria)→Dict status/summary'
+        module: aiPlat-core/core/apps/eval/service/prompt_plan_ops.py
       - symbol: NoRedirectHandler
         type: class
         signature: 'redirect_request'

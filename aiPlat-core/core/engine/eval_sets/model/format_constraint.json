@@ -1,0 +1,21 @@
+{
+  "set_id": "model/format_constraint",
+  "category": "normal",
+  "description": "Model 能力包 — 严格格式约束（JSON / 枚举）",
+  "created_at": 1794153600.0,
+  "tasks": [
+    {
+      "task_id": "model-fmt-001",
+      "agent_id": "eval_target_model",
+      "user_input": "只输出 JSON：{\"verdict\":\"pass\"} 或 {\"verdict\":\"fail\"}。问题：1<2？选 pass。",
+      "category": "normal",
+      "expected_tools": [],
+      "forbidden_tools": [],
+      "expected_steps": [],
+      "success_criteria": {
+        "must_contain": ["verdict", "pass"]
+      },
+      "risk_level": "low"
+    }
+  ]
+}
