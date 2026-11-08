@@ -6515,6 +6515,35 @@ async def eval_run_suite_profile_exam(
     )
 
 
+def eval_capability_heatmap(
+    *,
+    profile_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    exam: Optional[Dict[str, Any]] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """§8.4 capability coverage heatmap (claim closed)."""
+    from core.apps.eval.service.suite_profile_report import build_capability_heatmap
+
+    return build_capability_heatmap(
+        cases=cases,
+        exam=exam,
+        profile=profile,
+        profile_id=profile_id,
+    )
+
+
+def eval_suite_profile_report(
+    exam: Optional[Dict[str, Any]] = None,
+    *,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Compose heatmap + §11 disclosure from an exam payload."""
+    from core.apps.eval.service.suite_profile_report import build_suite_profile_report
+
+    return build_suite_profile_report(exam or {}, cases=cases)
+
+
 async def eval_run_suite_profile_exam(
     *,
     profile_id: str = "agent.regression.v1",

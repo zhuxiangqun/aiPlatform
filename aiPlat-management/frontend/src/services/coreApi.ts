@@ -2805,6 +2805,17 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** §8.4 capability coverage heatmap. */
+  casePackCapabilityHeatmap: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    exam?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/capability-heatmap',
+      body || {},
+    );
+  },
   /** P3: capability have/need/gap inventory. */
   casePackCapabilityCoverage: async (body?: {
     profile_id?: string;

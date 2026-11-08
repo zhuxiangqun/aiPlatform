@@ -292,6 +292,42 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-orange-700/60 px-3 py-1.5 text-orange-100 disabled:opacity-50"
+          data-testid="eval-case-pack-run-profile-live"
+          onClick={() =>
+            run('run-profile-live', () =>
+              agentEvalApi.casePackRunSuiteProfile({
+                profile_id: profileId.trim() || 'agent.smoke.v1',
+                live: true,
+                max_cases: 4,
+              }),
+            )
+          }
+        >
+          Run Profile (live·smoke·4)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-sky-700/60 px-3 py-1.5 text-sky-100 disabled:opacity-50"
+          data-testid="eval-case-pack-heatmap"
+          onClick={() =>
+            run('capability-heatmap', () =>
+              agentEvalApi.casePackCapabilityHeatmap({
+                profile_id: profileId.trim() || 'agent.regression.v1',
+                exam:
+                  result && result.report
+                    ? (result as Record<string, unknown>)
+                    : result || undefined,
+              }),
+            )
+          }
+        >
+          Coverage heatmap
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
           data-testid="eval-case-pack-cap-coverage"
           onClick={() =>
@@ -581,6 +617,99 @@ export default function EvalCasePackPanel() {
 
       {msg ? <p className="text-emerald-300/90">{msg}</p> : null}
       {error ? <p className="text-red-300">{error}</p> : null}
+
+      {result && typeof result.report === 'object' && result.report ? (
+        <div
+          className="space-y-3 rounded border border-slate-800 bg-slate-950/60 p-3"
+          data-testid="eval-case-pack-report"
+        >
+          {(() => {
+            const report = result.report as Record<string, unknown>;
+            const disc =
+              report.disclosure && typeof report.disclosure === 'object'
+                ? (report.disclosure as Record<string, unknown>)
+                : {};
+            const heat =
+              report.heatmap && typeof report.heatmap === 'object'
+                ? (report.heatmap as Record<string, unknown>)
+                : {};
+            const rows = Array.isArray(heat.rows) ? heat.rows : [];
+            const unknown = Array.isArray(heat.unknown_capabilities)
+              ? heat.unknown_capabilities
+              : [];
+            return (
+              <>
+                <div className="text-xs text-slate-400 space-y-1">
+                  <div>
+                    profile=<span className="text-slate-200">{String(disc.profile_id || '—')}</span>
+                    {' · '}
+                    claim_eligible=
+                    <span className="text-amber-200">{String(disc.claim_eligible ?? false)}</span>
+                    {' · '}
+                    live=<span className="text-slate-200">{String(disc.live ?? false)}</span>
+                  </div>
+                  <div className="truncate">
+                    manifest_hash={String(disc.manifest_hash || '—')}
+                  </div>
+                  <div className="truncate">
+                    execution_fingerprint={String(disc.execution_fingerprint || '—')}
+                  </div>
+                </div>
+                <div className="overflow-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="py-1 pr-2">capability</th>
+                        <th className="py-1 pr-2">cases</th>
+                        <th className="py-1 pr-2">need</th>
+                        <th className="py-1 pr-2">selected</th>
+                        <th className="py-1 pr-2">pass</th>
+                        <th className="py-1 pr-2">fail</th>
+                        <th className="py-1 pr-2">gap</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((raw) => {
+                        const r = raw as Record<string, unknown>;
+                        const gap = Number(r.gap || 0);
+                        return (
+                          <tr key={String(r.capability_id)} className="border-t border-slate-800">
+                            <td className="py-1 pr-2 text-slate-200">{String(r.capability_id)}</td>
+                            <td className="py-1 pr-2">{String(r.cases ?? 0)}</td>
+                            <td className="py-1 pr-2">{String(r.need ?? 0)}</td>
+                            <td className="py-1 pr-2">{String(r.selected ?? 0)}</td>
+                            <td className="py-1 pr-2 text-emerald-300">{String(r.pass ?? 0)}</td>
+                            <td className="py-1 pr-2 text-red-300">{String(r.fail ?? 0)}</td>
+                            <td
+                              className={`py-1 pr-2 ${gap > 0 ? 'text-amber-300' : 'text-slate-400'}`}
+                            >
+                              {gap}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {unknown.length ? (
+                  <p className="text-xs text-slate-500">
+                    unknown (out of scope):{' '}
+                    {unknown
+                      .map((u) =>
+                        u && typeof u === 'object'
+                          ? String((u as Record<string, unknown>).capability_id || '')
+                          : '',
+                      )
+                      .filter(Boolean)
+                      .join(', ')}
+                  </p>
+                ) : null}
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
       {result ? (
         <pre
           className="max-h-80 overflow-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300"

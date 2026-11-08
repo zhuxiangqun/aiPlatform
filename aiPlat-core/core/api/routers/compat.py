@@ -954,6 +954,30 @@ async def compat_evaluation_run_suite_profile(body: Dict[str, Any]):
         return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
 
 
+@router.post("/evaluation/case-packs/capability-heatmap")
+async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
+    """§8.4 capability coverage heatmap (claim closed)."""
+    from core.api.core_facade import eval_capability_heatmap
+
+    profile = (body or {}).get("profile")
+    exam = (body or {}).get("exam")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    if exam is not None and not isinstance(exam, dict):
+        return {"ok": False, "error": "exam must be an object", "accuracy_claim": False}
+    try:
+        return eval_capability_heatmap(
+            profile_id=str((body or {}).get("profile_id") or ""),
+            profile=profile if isinstance(profile, dict) else None,
+            exam=exam if isinstance(exam, dict) else None,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("capability-heatmap failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
 @router.get("/evaluation/case-packs/suite-profiles")
 async def compat_evaluation_suite_profiles():
     """List built-in Suite Profiles (smoke / regression / benchmark)."""

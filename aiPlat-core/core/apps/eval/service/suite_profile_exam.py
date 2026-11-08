@@ -248,4 +248,8 @@ async def run_suite_profile_exam(
             "holdout skipped; claim_eligible=false"
         ),
     }
-    return attach_evaluation_plan(out, plan)
+    out = attach_evaluation_plan(out, plan)
+    from core.apps.eval.service.suite_profile_report import build_suite_profile_report
+
+    out["report"] = build_suite_profile_report(out, cases=bank)
+    return out
