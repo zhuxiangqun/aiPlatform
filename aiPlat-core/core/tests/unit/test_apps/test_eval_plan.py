@@ -1,7 +1,11 @@
 """Evaluation Plan compiler — object-contract P2."""
 from __future__ import annotations
 
-from core.apps.eval.service.eval_plan import PLAN_SCHEMA, compile_evaluation_plan
+from core.apps.eval.service.eval_plan import (
+    PLAN_SCHEMA,
+    PLAN_SCHEMA_V2,
+    compile_evaluation_plan,
+)
 from core.apps.eval.service.target_contract import build_agent_target_contract
 
 
@@ -16,8 +20,10 @@ def test_plan_defaults_core_capability_defers_special_without_purpose():
         purpose=["behavior", "regression"],
         include_special=False,
     )
-    assert plan["schema"] == PLAN_SCHEMA
+    assert plan["schema"] == PLAN_SCHEMA == PLAN_SCHEMA_V2
     assert plan["plan_id"].startswith("plan-")
+    assert plan["sample_manifest"]
+    assert all("hash" in row for row in plan["sample_manifest"])
     selected = {x["set_id"] for x in plan["selected_cases"]}
     excluded = {x["set_id"]: x for x in plan["excluded_cases"]}
     assert "default/normal" in selected
@@ -27,6 +33,10 @@ def test_plan_defaults_core_capability_defers_special_without_purpose():
     assert "default/multi_turn" in excluded
     assert excluded["default/multi_turn"]["status"] == "untested"
     assert plan["claims_policy"]["accuracy_claim"] is False
+    # high_risk / multi_turn deferred → not in execution manifest
+    man_sets = {row.get("set_id") for row in plan["sample_manifest"]}
+    assert "default/high_risk" not in man_sets
+    assert "default/multi_turn" not in man_sets
 
 
 def test_plan_includes_special_when_purpose_has_safety():

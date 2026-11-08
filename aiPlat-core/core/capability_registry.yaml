@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1957
+total_capabilities: 1964
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 593
+    caps_count: 600
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1514,16 +1514,44 @@ domains:
         module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "compile_evaluation_plan"
         type: "function"
-        signature: "compile_evaluation_plan(contract,set_ids?,purpose?,include_special?,live?)→Dict plan.v1"
+        signature: "compile_evaluation_plan(contract,set_ids?,purpose?,include_special?,live?)→Dict plan.v2"
         module: "aiPlat-core/core/apps/eval/service/eval_plan.py"
       - symbol: "compile_plan_for_object"
         type: "function"
-        signature: "compile_plan_for_object(object_type,object_id,…)→Dict plan.v1"
+        signature: "compile_plan_for_object(object_type,object_id,…)→Dict plan.v2"
         module: "aiPlat-core/core/apps/eval/service/eval_plan.py"
       - symbol: "attach_evaluation_plan"
         type: "function"
         signature: "attach_evaluation_plan(out,plan)→Dict"
         module: "aiPlat-core/core/apps/eval/service/eval_plan.py"
+      - symbol: "project_plan_to_v1"
+        type: "function"
+        signature: "project_plan_to_v1(plan)→Dict plan.v1 projection"
+        module: "aiPlat-core/core/apps/eval/service/eval_plan.py"
+      - symbol: "compute_case_hash"
+        type: "function"
+        signature: "compute_case_hash(case)→sha256:hex"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_hash.py"
+      - symbol: "compute_pack_hash"
+        type: "function"
+        signature: "compute_pack_hash(pack_id,version,kind,claim_eligible,scope,object_types,cases)→sha256"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_hash.py"
+      - symbol: "compute_manifest_hash"
+        type: "function"
+        signature: "compute_manifest_hash(manifest)→sha256:hex"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_hash.py"
+      - symbol: "require_sample_manifest"
+        type: "function"
+        signature: "require_sample_manifest(plan)→List[manifest row] fail-closed"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_legacy.py"
+      - symbol: "expand_sets_to_manifest"
+        type: "function"
+        signature: "expand_sets_to_manifest(set_ids,…)→(manifest,pack_refs,coverage)"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_legacy.py"
+      - symbol: "assert_claim_eligible_allowed"
+        type: "function"
+        signature: "assert_claim_eligible_allowed(kind,claim_eligible)→None|raises"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_legacy.py"
       - symbol: "build_contract_for_object_type"
         type: "function"
         signature: "build_contract_for_object_type(object_type,object_id,…)→Dict contract.v1"
