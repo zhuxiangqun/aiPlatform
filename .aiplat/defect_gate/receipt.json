@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T20:10:48+08:00",
+  "reviewed_at": "2026-11-08T20:28:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "94ef41ad18848eeaf3d984aa02a9d2fc9b19aebce3e25704dfa71344ad8b9adc",
-  "head_sha": "d7037852f77be04672e493dd244ffc91aca69a19",
+  "diff_sha256": "fc74bcbbb776f97b676ec8af883b7bd9b6ae4cd7cc9c2d72db4fc94a2ac4215a",
+  "head_sha": "434e50d46e26c87728ae9acd0ae16d35da83a704",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0: capability_id_map + test_purpose + AgentSubjectAdapter wired to MatchReport/CoreFacade; execute/judge deferred. Local lock only."
+  "note": "P1 draft case bank (32 cases + regression profile). claim_eligible=false; not frozen. Local lock only."
 }
