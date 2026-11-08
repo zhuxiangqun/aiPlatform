@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-09T00:19:29+08:00",
+  "reviewed_at": "2026-11-09T03:39:28+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "9f6854695944eaa6cebd1b4be20adab601316553e0bb3994f4d1e59eb5a5772a",
-  "head_sha": "b1d401017c539990af2e030c4dc967e45258ee8d",
+  "diff_sha256": "77350c02020a1a88ad9959e5e20c793cc1d71ae074de25cc868379bbfcb192b8",
+  "head_sha": "22fbd458b2e0cadcce9ea45983024212a6a3987c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "T3 v1.1: V1_IN_SCOPE=13; mock≠live; claim/Certification closed. Five checks: no old_fallback undoing scope; facade Optional min_per matches callee; fixture expect_judge_fail still inverted correctly; single adapter path; coverage/heatmap not self-certifying accuracy. Local lock only."
+  "note": "Local lock for Agent hard-gap closeout. CI unlock is non-author GitHub Approve. head_sha informational; diff_sha256 is the lock."
 }
