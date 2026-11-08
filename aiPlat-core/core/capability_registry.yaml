@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1993
+total_capabilities: 1999
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 239
+    caps_count: 245
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4591,6 +4591,30 @@ domains:
         type: function
         signature: 'eval_freeze_workspace_case_pack(…)→Dict (CoreFacade)'
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: compat_evaluation_case_pack_draft
+        type: function
+        signature: 'POST /evaluation/case-packs/draft'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_enqueue_review
+        type: function
+        signature: 'POST /evaluation/case-packs/enqueue-review'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_review_queue
+        type: function
+        signature: 'GET /evaluation/case-packs/review-queue'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_review
+        type: function
+        signature: 'POST /evaluation/case-packs/review'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_freeze
+        type: function
+        signature: 'POST /evaluation/case-packs/freeze'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: _case_pack_http_error
+        type: function
+        signature: '_case_pack_http_error(exc)→Dict ok=false'
+        module: aiPlat-core/core/api/routers/compat.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
