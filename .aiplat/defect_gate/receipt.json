@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T22:40:48+08:00",
+  "reviewed_at": "2026-11-08T22:54:33+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "c36df417b62f21c7cd999955ff10093828ab2e2102e4d540f71d9d4d5c3ba3b8",
-  "head_sha": "e5b8b5bdf274c7ddeb031ff95b728cc89f2717ac",
+  "diff_sha256": "fa4c029c098879a29de0e20855f86f9a1212345db18a74b814925d23968bbfc6",
+  "head_sha": "8fb4bcece3d57fc94f4ed3622823105ba8b41782",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Case Editor: seed read-only + workspace draft CRUD; frozen→bump; claim/cert closed; no dual git write path. Local lock only."
+  "note": "Case Editor routes now declare response_model=Dict[str, Any] on decorator line; satisfies §5.76 new-route check. Local lock only."
 }
