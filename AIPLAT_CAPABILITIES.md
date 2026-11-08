@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2861
+total_capabilities: 2863
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1563,7 +1563,7 @@ scan_hash: 8f9548ec24f4
 | CRAG 3级回退 | harness/knowledge/retriever.py:262 | ✅ | 本体优先→FTS5→HyDE | 已合入 |
 | HyDE 假设答案 | harness/knowledge/hyde_expander.py:27 | ✅ | LLM生成假设 → 向量检索 | 已合入 |
 | Wiki CircuitBreaker | harness/syscalls/retrieval.py:506 | ✅ | CLOSED→OPEN(3次失败)→HALF_OPEN | 已合入 |
-| DomainRouter | harness/knowledge/domain_router.py:26 | ✅ | T1标签→T2向量→T3 LLM，3层级联（T1/T2 共享助手去重，2026-08-25） | 已合入 |
+| DomainRouter / get_domain_router / domain_router_route_stats | harness/knowledge/domain_router.py + CoreFacade | ✅ | T1→T2→T3；进程共享 route_stats（命中+T3 p50/p95）；Ollaya 阶段0采数；≠影子/≠accuracy；生成物不适用：平台横切路由观测 | 本批 |
 | quality gate 真正降级 | harness/knowledge/retriever.py | ✅ | gate 失败 + AIPLAT_DEEP_RESEARCH_ENABLED → DuckDuckGo web fallback 并入（source_category=web_fallback）；否则仅打标记 | 待合入 |
 | knowledge-extraction 模板 | harness/knowledge_pipeline/extractor.py + prompt_loader | ✅ | EXTRACTION_PROMPT 注册 prompt_loader（${chunk_text}）；VALID_CLASS_TYPES 域本体配置驱动 | 待合入 |
 | ABox TBox 感知 | harness/knowledge/knowledge_abox_builder.py | ✅ | _map_to_domain_class（wiki category→域 TBox 类）+ _add_data_validated（prop TBox 校验） | 待合入 |
@@ -1620,6 +1620,8 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| live_llm_output | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
+| dry_stub_output | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
 | score_prompt_output | `core/apps/eval/service/prompt_plan_ops.py` | ✅ | 自动同步 | 已合入 |
 | load_prompt_set_json | `core/apps/eval/service/prompt_plan_ops.py` | ✅ | 自动同步 | 已合入 |
 | annotate_model_plan_runtime | `core/apps/eval/service/exam_runtime_tier.py` | ✅ | 自动同步 | 已合入 |
@@ -3765,7 +3767,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 386 | 9 | 395 |
 | RAG 检索 | 57 | 0 | 57 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 211 | 0 | 211 |
+| Agent 系统 | 213 | 0 | 213 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3805,7 +3807,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2851** | **10** | **2861** |
+| **总计** | **2853** | **10** | **2863** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

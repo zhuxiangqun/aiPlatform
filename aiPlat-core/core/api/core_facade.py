@@ -369,9 +369,17 @@ def run_security_review_dry(**kwargs: Any) -> Any:
 
 
 def get_domain_router() -> Any:
-    """Get DomainRouter for multi-domain classification."""
-    from core.harness.knowledge.domain_router import DomainRouter
-    return DomainRouter()
+    """Get DomainRouter for multi-domain classification (process singleton)."""
+    from core.harness.knowledge.domain_router import get_domain_router as _get
+
+    return _get()
+
+
+def domain_router_route_stats() -> Dict[str, Any]:
+    """Process-wide DomainRouter T1/T2/T3 hit + T3 latency snapshot (Ollaya Phase 0)."""
+    from core.harness.knowledge.domain_router import get_domain_router as _get
+
+    return dict(_get().route_stats() or {})
 
 
 def get_skill_registry() -> Any:

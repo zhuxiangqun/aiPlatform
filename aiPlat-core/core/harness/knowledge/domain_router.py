@@ -17,13 +17,41 @@ Callers:
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
-import sys as _sys
 
 import json
 import os
+import threading
+import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+
+# Process-wide route counters (Ollaya Phase 0). Instance-local stats were useless:
+# callers do DomainRouter() repeatedly → every snapshot looked empty.
+_ROUTE_STATS_LOCK = threading.Lock()
+_ROUTE_STATS: Dict[str, int] = {"t1_hits": 0, "t2_hits": 0, "t3_hits": 0, "total": 0}
+_T3_LATENCIES_MS: List[float] = []
+_T3_LATENCY_CAP = 2000
+
+_DEFAULT_ROUTER: Optional["DomainRouter"] = None
+
+
+def get_domain_router() -> "DomainRouter":
+    """Process-local DomainRouter singleton (ontology cache + shared route_stats)."""
+    global _DEFAULT_ROUTER
+    if _DEFAULT_ROUTER is None:
+        _DEFAULT_ROUTER = DomainRouter()
+    return _DEFAULT_ROUTER
+
+
+def _reset_domain_router_for_tests() -> None:
+    """Clear singleton + process route stats (unit tests only; not a product API)."""
+    global _DEFAULT_ROUTER
+    with _ROUTE_STATS_LOCK:
+        for k in _ROUTE_STATS:
+            _ROUTE_STATS[k] = 0
+        _T3_LATENCIES_MS.clear()
+    _DEFAULT_ROUTER = None
 
 
 class DomainRouter:
@@ -51,7 +79,8 @@ class DomainRouter:
         self._built = False
         self._registry_cache: Optional[dict] = None
         self._llm_model = os.environ.get("AIPLAT_DOMAIN_ROUTER_MODEL", "qwen2.5-coder:7b")
-        self._route_stats: Dict[str, int] = {"t1_hits": 0, "t2_hits": 0, "t3_hits": 0, "total": 0}
+        # Kept for introspect/compat; increments go to process-wide _ROUTE_STATS.
+        self._route_stats = _ROUTE_STATS
 
     # ═══════════════════════════════════════════════════════════════
     # Public API
@@ -76,6 +105,32 @@ class DomainRouter:
         norm = np.linalg.norm(qvec) * np.linalg.norm(dvec)
         return float(np.dot(qvec, dvec) / (norm + 1e-8))
 
+    @staticmethod
+    def _record_route_hit(tier: str, *, latency_ms: Optional[float] = None) -> None:
+        key = {"t1": "t1_hits", "t2": "t2_hits", "t3": "t3_hits"}.get(tier)
+        if not key:
+            return
+        with _ROUTE_STATS_LOCK:
+            _ROUTE_STATS[key] += 1
+            _ROUTE_STATS["total"] += 1
+            if tier == "t3" and latency_ms is not None:
+                _T3_LATENCIES_MS.append(float(latency_ms))
+                overflow = len(_T3_LATENCIES_MS) - _T3_LATENCY_CAP
+                if overflow > 0:
+                    del _T3_LATENCIES_MS[:overflow]
+
+    @staticmethod
+    def _percentile(sorted_vals: List[float], p: float) -> Optional[float]:
+        if not sorted_vals:
+            return None
+        if len(sorted_vals) == 1:
+            return round(sorted_vals[0], 3)
+        rank = (len(sorted_vals) - 1) * (p / 100.0)
+        lo = int(rank)
+        hi = min(lo + 1, len(sorted_vals) - 1)
+        frac = rank - lo
+        return round(sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac, 3)
+
     def classify(self, query: str) -> Optional[str]:
         u"""3-tier domain classification. Returns domain_id or None if no match."""
         self._ensure_built()
@@ -85,11 +140,10 @@ class DomainRouter:
 
         q = query.lower()
 
-
         # ── Tier 1: Label match (<1ms) ──
         hit = self._t1_label_match(q)
         if hit is not None:
-            self._route_stats["t1_hits"] += 1; self._route_stats["total"] += 1
+            self._record_route_hit("t1")
             return hit
 
         # ── Tier 2: Embedding cosine similarity (~50ms) ──
@@ -106,20 +160,25 @@ class DomainRouter:
         min_margin = routing_cfg.get("min_margin", 0.08)
 
         if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
-            self._route_stats["t2_hits"] += 1; self._route_stats["total"] += 1
+            self._record_route_hit("t2")
             return best_did
 
         # ── Tier 3: LLM classification (~300ms, rare) ──
-        self._route_stats["t3_hits"] += 1; self._route_stats["total"] += 1
+        t0 = time.perf_counter()
         did = self._llm_classify(query)
-        if self._route_stats["total"] % 10 == 0:  # Log every 10 classifications
-            import logging as _logging; _logging.warning(
+        self._record_route_hit(
+            "t3", latency_ms=(time.perf_counter() - t0) * 1000.0
+        )
+        snap = self.route_stats()
+        if snap["total"] % 10 == 0:  # Log every 10 classifications
+            logging.warning(
                 "route_stats: T1=%.0f%% T2=%.0f%% T3=%.0f%% (total=%d, LLM calls avoided=%d)",
-                self._route_stats["t1_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["t2_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["t3_hits"]*100/max(self._route_stats["total"],1),
-                self._route_stats["total"],
-                self._route_stats["t1_hits"] + self._route_stats["t2_hits"], file=_sys.stderr)
+                snap["t1_label_pct"],
+                snap["t2_embedding_pct"],
+                snap["t3_llm_pct"],
+                snap["total"],
+                snap["llm_calls_avoided"],
+            )
         return did if did else None
 
     def suggest(self, query: str, top_k: int = 3) -> List[tuple[str, float]]:
@@ -134,21 +193,34 @@ class DomainRouter:
         return scores[:top_k]
 
     def route_stats(self) -> Dict[str, Any]:
-        """Return routing tier hit distribution and estimated LLM cost savings."""
-        total = max(self._route_stats["total"], 1)
-        t1 = self._route_stats["t1_hits"]
-        t2 = self._route_stats["t2_hits"]
-        t3 = self._route_stats["t3_hits"]
-        # T3 is ~100 tokens per call, T1/T2 are 0 tokens
+        """Process-wide routing tier hits + T3 latency (Ollaya Phase 0)."""
+        with _ROUTE_STATS_LOCK:
+            t1 = int(_ROUTE_STATS["t1_hits"])
+            t2 = int(_ROUTE_STATS["t2_hits"])
+            t3 = int(_ROUTE_STATS["t3_hits"])
+            total = int(_ROUTE_STATS["total"])
+            lat = list(_T3_LATENCIES_MS)
+        denom = total if total > 0 else 1
         llm_calls_avoided = t1 + t2
-        estimated_token_saved = llm_calls_avoided * 100
+        lat_sorted = sorted(lat)
         return {
             "total": total,
-            "t1_label_pct": round(100 * t1 / total, 1),
-            "t2_embedding_pct": round(100 * t2 / total, 1),
-            "t3_llm_pct": round(100 * t3 / total, 1),
+            "t1_hits": t1,
+            "t2_hits": t2,
+            "t3_hits": t3,
+            "t1_label_pct": round(100 * t1 / denom, 1) if total else 0.0,
+            "t2_embedding_pct": round(100 * t2 / denom, 1) if total else 0.0,
+            "t3_llm_pct": round(100 * t3 / denom, 1) if total else 0.0,
             "llm_calls_avoided": llm_calls_avoided,
-            "estimated_token_saved": estimated_token_saved,
+            "estimated_token_saved": llm_calls_avoided * 100,
+            "t3_latency_samples": len(lat_sorted),
+            "t3_latency_ms_p50": self._percentile(lat_sorted, 50),
+            "t3_latency_ms_p95": self._percentile(lat_sorted, 95),
+            "scope": "process",
+            "honesty": (
+                "in-process counters only; restart clears; "
+                "≠ Ollaya shadow latency; ≠ accuracy"
+            ),
         }
 
     def per_domain_cost(self, query: str) -> Dict[str, Any]:
