@@ -1037,6 +1037,90 @@ async def compat_evaluation_case_pack_from_trace(
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/llm-candidates")
+async def compat_evaluation_case_pack_llm_candidates(
+    body: Dict[str, Any], request: Request
+):
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    from core.api.core_facade import eval_publish_llm_candidate_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    theme = str((body or {}).get("theme") or "").strip()
+    if not theme:
+        return {"ok": False, "error": "theme required", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = await eval_publish_llm_candidate_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                theme=theme,
+                n=int((body or {}).get("n") or 3),
+                category=str((body or {}).get("category") or "normal"),
+                seed=str((body or {}).get("seed") or "0"),
+                model_name=str((body or {}).get("model_name") or ""),
+                dry=bool((body or {}).get("dry", True)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs llm-candidates failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/propose-difficulty")
+async def compat_evaluation_case_pack_propose_difficulty(
+    body: Dict[str, Any], request: Request
+):
+    """P3.0: heuristic difficulty (optional persist; not calibrated)."""
+    from core.api.core_facade import eval_propose_case_pack_difficulty
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_propose_case_pack_difficulty(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                persist=bool((body or {}).get("persist", False)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs propose-difficulty failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-ticket")
+async def compat_evaluation_case_pack_judge_calibration_ticket(
+    body: Dict[str, Any], request: Request
+):
+    """P3.0: open judge calibration work order (no claim unlock)."""
+    from core.api.core_facade import eval_open_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_judge_calibration_ticket(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                sample_case_ids=(body or {}).get("sample_case_ids"),
+                notes=str((body or {}).get("notes") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-ticket failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
     """Create or update an evaluation policy artifact."""

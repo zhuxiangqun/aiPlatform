@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2024
+total_capabilities: 2037
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 270
+    caps_count: 283
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4714,6 +4714,58 @@ domains:
       - symbol: compat_evaluation_case_pack_from_trace
         type: function
         signature: 'POST /evaluation/case-packs/from-trace'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: generate_llm_candidate_cases
+        type: function
+        signature: 'async generate_llm_candidate_cases(theme,n?,dry?)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: stub_llm_candidate_json
+        type: function
+        signature: 'stub_llm_candidate_json(theme,n?,seed?)→str'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: propose_difficulty
+        type: function
+        signature: 'propose_difficulty(cases)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: build_judge_calibration_ticket
+        type: function
+        signature: 'build_judge_calibration_ticket(pack_id,version,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: build_llm_candidate_draft_pack
+        type: function
+        signature: 'async build_llm_candidate_draft_pack(…,theme,dry?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: propose_pack_difficulty
+        type: function
+        signature: 'propose_pack_difficulty(pack_id,version,workspace_id,persist?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: open_judge_calibration_ticket_for_pack
+        type: function
+        signature: 'open_judge_calibration_ticket_for_pack(…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: eval_publish_llm_candidate_case_pack
+        type: function
+        signature: 'async eval_publish_llm_candidate_case_pack(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_propose_case_pack_difficulty
+        type: function
+        signature: 'eval_propose_case_pack_difficulty(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_open_judge_calibration_ticket
+        type: function
+        signature: 'eval_open_judge_calibration_ticket(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: compat_evaluation_case_pack_llm_candidates
+        type: function
+        signature: 'POST /evaluation/case-packs/llm-candidates'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_propose_difficulty
+        type: function
+        signature: 'POST /evaluation/case-packs/propose-difficulty'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_judge_calibration_ticket
+        type: function
+        signature: 'POST /evaluation/case-packs/judge-calibration-ticket'
         module: aiPlat-core/core/api/routers/compat.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function

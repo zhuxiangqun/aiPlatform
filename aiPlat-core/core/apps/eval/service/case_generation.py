@@ -1,13 +1,15 @@
-"""P2.0 Case generation — deterministic mutation + trace→case + holdout flags.
+"""Case generation — mutation/trace/holdout (P2) + LLM candidates (P3.0).
 
-No LLM. L3 kinds (generated/trace) are claim_eligible=false forever.
+L3 kinds (generated/trace) are claim_eligible=false forever.
+LLM path uses best_model_for_purpose → create_selected_adapter → sys_llm_generate.
 Does not open accuracy_claim.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import re
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 
 from core.apps.eval.service.case_factory import (
     CaseFactoryError,
@@ -15,6 +17,8 @@ from core.apps.eval.service.case_factory import (
     validate_case_dict,
 )
 from core.apps.eval.service.case_pack_legacy import task_dict_to_case
+
+LlmGenerateFn = Callable[[str], Awaitable[str]]
 
 VALID_MUTATIONS = frozenset(
     {"append_noise", "drop_punctuation", "case_swap", "prefix_typo"}
@@ -232,4 +236,202 @@ def partition_holdout(
         "holdout": holdout_cases,
         "n_eval": len(eval_cases),
         "n_holdout": len(holdout_cases),
+    }
+
+
+def _extract_json_array(text: str) -> List[Any]:
+    raw = str(text or "").strip()
+    if not raw:
+        raise CaseGenerationError("empty LLM response")
+    # fenced ```json ... ```
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw, re.IGNORECASE)
+    if fence:
+        raw = fence.group(1).strip()
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        start = raw.find("[")
+        end = raw.rfind("]")
+        if start < 0 or end <= start:
+            raise CaseGenerationError("LLM response is not a JSON array")
+        try:
+            parsed = json.loads(raw[start : end + 1])
+        except json.JSONDecodeError as e:
+            raise CaseGenerationError(f"LLM JSON parse failed: {e}") from e
+    if not isinstance(parsed, list):
+        raise CaseGenerationError("LLM JSON root must be array")
+    return parsed
+
+
+def stub_llm_candidate_json(
+    *,
+    theme: str,
+    n: int = 3,
+    category: str = "normal",
+    seed: str = "0",
+) -> str:
+    """Deterministic stub JSON for dry/tests (no network)."""
+    rows = []
+    for i in range(max(1, int(n))):
+        tag = _stable_int(seed, f"llm-{i}") % 10000
+        rows.append(
+            {
+                "case_id": f"llm-{seed}-{i+1:03d}",
+                "prompt": f"{theme} — candidate {i+1} (tag={tag})",
+                "rubric": {"type": "lexical", "must_contain": [str(theme)[:24] or "ok"]},
+                "category": category,
+                "difficulty": "medium",
+            }
+        )
+    return json.dumps(rows, ensure_ascii=False)
+
+
+async def generate_llm_candidate_cases(
+    *,
+    theme: str,
+    n: int = 3,
+    category: str = "normal",
+    seed: str = "0",
+    model_name: str = "",
+    dry: bool = False,
+    llm_generate_fn: Optional[LlmGenerateFn] = None,
+) -> List[Dict[str, Any]]:
+    """Ask LLM (or stub) for candidate cases; validate + provenance=case_llm.
+
+    Always L3 discovery material — never claim_eligible.
+    """
+    theme_s = str(theme or "").strip()
+    if not theme_s:
+        raise CaseGenerationError("theme required")
+    count = max(1, min(int(n or 3), 20))
+    sid = str(seed or "0")
+
+    if dry and llm_generate_fn is None:
+        text = stub_llm_candidate_json(
+            theme=theme_s, n=count, category=category, seed=sid
+        )
+    elif llm_generate_fn is not None:
+        prompt = (
+            "Return ONLY a JSON array of eval cases. Each object needs "
+            "case_id, prompt, rubric{type,must_contain}, category. "
+            f"Theme={theme_s!r} n={count} seed={sid} category={category}."
+        )
+        text = await llm_generate_fn(prompt)
+    else:
+        from core.api.core_facade import create_selected_adapter, sys_llm_generate
+        from core.harness.utils.model_injection import best_model_for_purpose
+
+        name = (model_name or "").strip() or best_model_for_purpose("clarify")
+        model = create_selected_adapter(model_name=name)
+        prompt = (
+            "You generate evaluation cases for an AI agent exam. "
+            "Return ONLY a JSON array (no markdown prose). Each item: "
+            '{"case_id":"...","prompt":"...","rubric":{"type":"lexical",'
+            '"must_contain":["..."]},"category":"...","difficulty":"easy|medium|hard"}. '
+            f"Theme: {theme_s}. Produce exactly {count} items. Seed={sid}."
+        )
+        resp = await sys_llm_generate(
+            model,
+            [{"role": "user", "content": prompt}],
+            trace_context={
+                "skip_claude_md": True,
+                "source": "case_llm_candidates",
+            },
+        )
+        text = getattr(resp, "content", None) or str(resp)
+
+    parsed = _extract_json_array(text)
+    out: List[Dict[str, Any]] = []
+    for i, item in enumerate(parsed[:count]):
+        if not isinstance(item, Mapping):
+            raise CaseGenerationError(f"candidate[{i}] must be object")
+        merged = dict(item)
+        if not merged.get("case_id"):
+            merged["case_id"] = f"llm-{sid}-{i+1:03d}"
+        if not merged.get("category"):
+            merged["category"] = category
+        if not merged.get("rubric"):
+            merged["rubric"] = {
+                "type": "lexical",
+                "must_contain": [theme_s[:24]],
+            }
+        case = task_dict_to_case(merged, set_id="")
+        tags = list(case.get("tags") or [])
+        if "llm_candidate" not in tags:
+            tags.append("llm_candidate")
+        case["tags"] = tags
+        case["provenance"] = {
+            "generator": "case_llm",
+            "generator_version": "1",
+            "seed": sid,
+            "theme": theme_s,
+            "dry": bool(dry and llm_generate_fn is None),
+        }
+        case["review"] = {"status": "draft", "notes": "llm_candidate"}
+        try:
+            validate_case_dict(case)
+        except CaseFactoryError as e:
+            raise CaseGenerationError(str(e)) from e
+        out.append(case)
+    if not out:
+        raise CaseGenerationError("no valid LLM candidates")
+    return dedupe_cases_by_hash(out)
+
+
+def propose_difficulty(
+    cases: Sequence[Mapping[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Heuristic difficulty labels (not calibrated; claim closed)."""
+    out: List[Dict[str, Any]] = []
+    for c in cases:
+        prompt = str(c.get("prompt") or "")
+        tools = c.get("expected_tools") if isinstance(c.get("expected_tools"), list) else []
+        steps = c.get("expected_steps") if isinstance(c.get("expected_steps"), list) else []
+        score = len(prompt) + 40 * len(tools) + 20 * len(steps)
+        if bool(c.get("holdout")):
+            score += 15
+        if score < 80:
+            diff = "easy"
+        elif score < 200:
+            diff = "medium"
+        else:
+            diff = "hard"
+        row = dict(c)
+        row["difficulty"] = diff
+        row["difficulty_proposal"] = {
+            "method": "heuristic_v1",
+            "score": score,
+            "calibrated": False,
+            "accuracy_claim": False,
+        }
+        out.append(row)
+    return out
+
+
+def build_judge_calibration_ticket(
+    *,
+    pack_id: str,
+    version: str,
+    sample_case_ids: Optional[Sequence[str]] = None,
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Open a work-order style ticket for judge calibration (no claim)."""
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    if not pid or not ver:
+        raise CaseGenerationError("pack_id and version required")
+    ids = [str(x).strip() for x in (sample_case_ids or []) if str(x).strip()]
+    return {
+        "ok": True,
+        "ticket_kind": "judge_calibration",
+        "schema": "eval.judge_calibration_ticket.v1",
+        "pack_id": pid,
+        "version": ver,
+        "sample_case_ids": ids,
+        "status": "open",
+        "notes": str(notes or ""),
+        "calibrated": False,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "honesty": "ticket only — does not calibrate or unlock claims",
     }

@@ -14,9 +14,12 @@ from core.apps.eval.service.case_factory import (
 from core.apps.eval.service.case_generation import (
     CaseGenerationError,
     apply_holdout_flags,
+    build_judge_calibration_ticket,
     cases_from_trace,
+    generate_llm_candidate_cases,
     mutate_cases,
     partition_holdout,
+    propose_difficulty,
 )
 from core.apps.eval.service.case_pack_hash import compute_pack_hash
 from core.apps.eval.service.case_pack_legacy import assert_claim_eligible_allowed
@@ -499,6 +502,184 @@ def build_trace_draft_pack(
     )
     out["generator"] = "case_trace"
     return out
+
+
+async def build_llm_candidate_draft_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    theme: str,
+    n: int = 3,
+    category: str = "normal",
+    seed: str = "0",
+    model_name: str = "",
+    dry: bool = False,
+    llm_generate_fn=None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: LLM (or dry stub) candidates → kind=generated draft (claim closed)."""
+    try:
+        cases = await generate_llm_candidate_cases(
+            theme=theme,
+            n=n,
+            category=category,
+            seed=seed,
+            model_name=model_name,
+            dry=dry,
+            llm_generate_fn=llm_generate_fn,
+        )
+    except CaseGenerationError as e:
+        raise CasePackOpsError(str(e)) from e
+    out = publish_generated_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        kind="generated",
+        cases=cases,
+        caller_workspace_id=caller_workspace_id,
+    )
+    out["generator"] = "case_llm"
+    out["n_candidates"] = len(cases)
+    out["dry"] = bool(dry and llm_generate_fn is None)
+    return out
+
+
+def propose_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    persist: bool = False,
+) -> Dict[str, Any]:
+    """Heuristic difficulty on pack cases; optional persist (non-frozen only)."""
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    wid = str(workspace_id or "").strip()
+    if not pid or not ver or not wid:
+        raise CasePackOpsError("pack_id, version, workspace_id required")
+    try:
+        cur = get_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+        payload = load_pack_payload(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    cases = list((payload or {}).get("cases") or [])
+    labeled = propose_difficulty(cases)
+    result: Dict[str, Any] = {
+        "ok": True,
+        "pack_id": pid,
+        "version": ver,
+        "n": len(labeled),
+        "cases": [
+            {
+                "case_id": c.get("case_id"),
+                "difficulty": c.get("difficulty"),
+                "difficulty_proposal": c.get("difficulty_proposal"),
+            }
+            for c in labeled
+        ],
+        "calibrated": False,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "persisted": False,
+        "honesty": "heuristic only — not calibrated; no accuracy_claim",
+    }
+    if not persist:
+        return result
+    if str(cur.get("kind") or "").lower() == "frozen":
+        raise CasePackOpsError("frozen pack immutable — bump first")
+    st = str(cur.get("status") or "").lower()
+    if st not in _EXPANDABLE_STATUSES:
+        raise CasePackOpsError(
+            f"difficulty persist requires status in {sorted(_EXPANDABLE_STATUSES)}, got {st!r}"
+        )
+    ots = list(cur.get("object_types") or ["agent"])
+    kind = str(cur.get("kind") or "curated")
+    assert_claim_eligible_allowed(kind=kind, claim_eligible=False)
+    new_hash = compute_pack_hash(
+        pack_id=pid,
+        version=ver,
+        kind=kind,
+        claim_eligible=False,
+        scope="workspace",
+        object_types=ots,
+        cases=labeled,
+    )
+    try:
+        meta = update_pack_version_meta(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+            pack_hash=new_hash,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    write_pack_payload(
+        pack_id=pid,
+        version=ver,
+        scope="workspace",
+        cases=labeled,
+        meta={
+            "kind": kind,
+            "claim_eligible": False,
+            "hash": new_hash,
+            "object_types": ots,
+            "status": st,
+        },
+        workspace_id=wid,
+        caller_workspace_id=caller_workspace_id or wid,
+    )
+    result["persisted"] = True
+    result["pack_hash"] = new_hash
+    result["registry"] = meta
+    return result
+
+
+def open_judge_calibration_ticket_for_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    sample_case_ids: Optional[Sequence[str]] = None,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0 judge calibration work order (no claim unlock)."""
+    wid = str(workspace_id or "").strip()
+    if not wid:
+        raise CasePackOpsError("workspace_id required")
+    assert_pack_acl(
+        scope="workspace",
+        workspace_id=wid,
+        caller_workspace_id=caller_workspace_id or wid,
+        write=False,
+    )
+    try:
+        ticket = build_judge_calibration_ticket(
+            pack_id=pack_id,
+            version=version,
+            sample_case_ids=sample_case_ids,
+            notes=notes,
+        )
+    except CaseGenerationError as e:
+        raise CasePackOpsError(str(e)) from e
+    ticket["workspace_id"] = wid
+    return ticket
 
 
 def summarize_workspace_pack_coverage(

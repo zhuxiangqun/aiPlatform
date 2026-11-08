@@ -22,6 +22,9 @@ def test_case_pack_routes_registered():
         "/evaluation/case-packs/holdout",
         "/evaluation/case-packs/mutate",
         "/evaluation/case-packs/from-trace",
+        "/evaluation/case-packs/llm-candidates",
+        "/evaluation/case-packs/propose-difficulty",
+        "/evaluation/case-packs/judge-calibration-ticket",
     ):
         assert p in paths
 

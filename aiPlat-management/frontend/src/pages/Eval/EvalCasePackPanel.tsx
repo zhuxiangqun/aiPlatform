@@ -253,6 +253,58 @@ export default function EvalCasePackPanel() {
         >
           From-trace
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-200 disabled:opacity-50"
+          data-testid="eval-case-pack-llm"
+          onClick={() =>
+            run('llm-candidates', () =>
+              agentEvalApi.casePackLlmCandidates({
+                pack_id: `${packId.trim()}.llm`,
+                version: version.trim(),
+                theme: prompt.trim() || 'agent smoke',
+                n: 2,
+                seed: 'ui',
+                dry: true,
+              }),
+            )
+          }
+        >
+          LLM candidates (dry)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('propose-difficulty', () =>
+              agentEvalApi.casePackProposeDifficulty({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                persist: false,
+              }),
+            )
+          }
+        >
+          Propose difficulty
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('judge-ticket', () =>
+              agentEvalApi.casePackJudgeCalibrationTicket({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                notes: 'ui open',
+              }),
+            )
+          }
+        >
+          Judge ticket
+        </button>
         {busy ? <Loader2 className="h-4 w-4 animate-spin self-center text-slate-400" /> : null}
       </div>
 

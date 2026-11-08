@@ -2758,6 +2758,24 @@ export const agentEvalApi = {
       body,
     );
   },
+  casePackLlmCandidates: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/llm-candidates',
+      body,
+    );
+  },
+  casePackProposeDifficulty: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/propose-difficulty',
+      body,
+    );
+  },
+  casePackJudgeCalibrationTicket: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-ticket',
+      body,
+    );
+  },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {
     return apiClient.post<{

@@ -6546,6 +6546,82 @@ def eval_publish_trace_case_pack(
     )
 
 
+async def eval_publish_llm_candidate_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    theme: str,
+    n: int = 3,
+    category: str = "normal",
+    seed: str = "0",
+    model_name: str = "",
+    dry: bool = False,
+    llm_generate_fn=None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_llm_candidate_draft_pack
+
+    return await build_llm_candidate_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        theme=theme,
+        n=n,
+        category=category,
+        seed=seed,
+        model_name=model_name,
+        dry=dry,
+        llm_generate_fn=llm_generate_fn,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_propose_case_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    persist: bool = False,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: heuristic difficulty labels (not calibrated)."""
+    from core.apps.eval.service.case_pack_ops import propose_pack_difficulty
+
+    return propose_pack_difficulty(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        persist=persist,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_open_judge_calibration_ticket(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    sample_case_ids: Optional[list] = None,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: judge calibration work order — does not unlock claims."""
+    from core.apps.eval.service.case_pack_ops import (
+        open_judge_calibration_ticket_for_pack,
+    )
+
+    return open_judge_calibration_ticket_for_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        sample_case_ids=sample_case_ids,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",

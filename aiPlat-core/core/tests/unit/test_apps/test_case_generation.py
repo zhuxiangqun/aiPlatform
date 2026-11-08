@@ -1,4 +1,4 @@
-"""P2.0 mutation / trace / holdout generation."""
+"""P2.0 mutation / trace / holdout + P3.0 LLM candidates / difficulty / judge ticket."""
 from __future__ import annotations
 
 import pytest
@@ -11,15 +11,21 @@ from core.apps.eval.service.case_freeze import freeze_workspace_pack
 from core.apps.eval.service.case_generation import (
     CaseGenerationError,
     apply_holdout_flags,
+    build_judge_calibration_ticket,
     cases_from_trace,
+    generate_llm_candidate_cases,
     mutate_cases,
     partition_holdout,
+    propose_difficulty,
 )
 from core.apps.eval.service.case_pack_ops import (
     CasePackOpsError,
+    build_llm_candidate_draft_pack,
     build_mutation_draft_pack,
     build_trace_draft_pack,
     mark_pack_holdout,
+    open_judge_calibration_ticket_for_pack,
+    propose_pack_difficulty,
 )
 from core.apps.eval.service.case_review_queue import (
     enqueue_pack_for_review,
@@ -139,4 +145,85 @@ def test_unknown_mutation_rejected():
         mutate_cases(
             [{"case_id": "x", "prompt": "p", "rubric": {"type": "lexical"}, "category": "normal"}],
             ops=["llm_rewrite"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_llm_candidates_dry_and_pack(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    cases = await generate_llm_candidate_cases(
+        theme="unlock door", n=2, seed="s1", dry=True
+    )
+    assert len(cases) == 2
+    assert all(c["provenance"]["generator"] == "case_llm" for c in cases)
+    assert all("llm_candidate" in (c.get("tags") or []) for c in cases)
+
+    async def fake_llm(_prompt: str) -> str:
+        return (
+            '[{"case_id":"c1","prompt":"p1","rubric":{"type":"lexical",'
+            '"must_contain":["ok"]},"category":"normal"}]'
+        )
+
+    injected = await generate_llm_candidate_cases(
+        theme="t", n=1, seed="i", llm_generate_fn=fake_llm
+    )
+    assert injected[0]["case_id"] == "c1"
+
+    pub = await build_llm_candidate_draft_pack(
+        pack_id="ws.gen.llm",
+        version="0.1.0",
+        workspace_id="ws-a",
+        theme="smoke",
+        n=2,
+        seed="9",
+        dry=True,
+    )
+    assert pub["ok"] is True
+    assert pub["kind"] == "generated"
+    assert pub["claim_eligible"] is False
+    assert pub["generator"] == "case_llm"
+
+
+def test_propose_difficulty_and_judge_ticket(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    seeds = generate_cases_from_template(
+        {"prompt": "short", "rubric": {"type": "lexical"}, "category": "normal"},
+        variants=[{"case_id": "d1"}, {"case_id": "d2", "prompt": "x" * 250}],
+    )
+    labeled = propose_difficulty(seeds)
+    assert labeled[0]["difficulty"] in ("easy", "medium", "hard")
+    assert labeled[0]["difficulty_proposal"]["calibrated"] is False
+
+    publish_draft_workspace_pack(
+        pack_id="ws.gen.diff",
+        version="0.1.0",
+        cases=seeds,
+        workspace_id="ws-a",
+        caller_workspace_id="ws-a",
+    )
+    prop = propose_pack_difficulty(
+        pack_id="ws.gen.diff",
+        version="0.1.0",
+        workspace_id="ws-a",
+        persist=True,
+    )
+    assert prop["ok"] is True
+    assert prop["persisted"] is True
+    assert prop["accuracy_claim"] is False
+
+    ticket = build_judge_calibration_ticket(
+        pack_id="ws.gen.diff", version="0.1.0", notes="unit"
+    )
+    assert ticket["claim_eligible"] is False
+    assert ticket["ticket_kind"] == "judge_calibration"
+    opened = open_judge_calibration_ticket_for_pack(
+        pack_id="ws.gen.diff",
+        version="0.1.0",
+        workspace_id="ws-a",
+        notes="ops",
+    )
+    assert opened["workspace_id"] == "ws-a"
+    with pytest.raises(CasePackOpsError):
+        open_judge_calibration_ticket_for_pack(
+            pack_id="", version="0.1.0", workspace_id="ws-a"
         )

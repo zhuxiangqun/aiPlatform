@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2024 capabilities (caps_count) | 2024 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2037 capabilities (caps_count) | 2037 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -118,7 +118,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 270 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 283 | Agent REST 端点 |
 
 ### core/api/routers/builder_project_service.py
 
@@ -182,7 +182,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 270 | Builder 创建 Agent |
+| agent-system | §五 Agent 系统 | 283 | Builder 创建 Agent |
 
 ### core/apps/mcp/adapter.py
 
@@ -235,7 +235,7 @@
 | management-and-quality | §二十五 管理 & 质量 | 102 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
-| agent-system | §五 Agent 系统 | 270 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 283 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | skill-system | §六 Skill 系统 | 187 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
@@ -430,7 +430,7 @@
 - **core/apps/agents/multi_agent.py** — MultiAgent 通信
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker agent discovery
 
-### §五 Agent 系统 (270 caps)
+### §五 Agent 系统 (283 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/apps/builder/builder_project_service.py** — Builder 创建 Agent

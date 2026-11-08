@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2917
+total_capabilities: 2946
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1628,6 +1628,19 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| compat_evaluation_case_pack_judge_calibration_ticket | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_propose_difficulty | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_llm_candidates | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| eval_open_judge_calibration_ticket | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_propose_case_pack_difficulty | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_publish_llm_candidate_case_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| open_judge_calibration_ticket_for_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| propose_pack_difficulty | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| build_llm_candidate_draft_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| build_judge_calibration_ticket | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| propose_difficulty | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| stub_llm_candidate_json | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| generate_llm_candidate_cases | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_from_trace | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_mutate | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_holdout | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
@@ -2770,6 +2783,7 @@ scan_hash: 8f9548ec24f4
 | case-packs HTTP draft/enqueue-review/review-queue/review/freeze | `compat.py` `/evaluation/case-packs/*` | ✅ | P1.3：命名工作区 scope + CoreFacade 薄路由；claim 仍关；生成物适用：已接线 | 本批 |
 | case_pack_ops expand/bump/coverage + HTTP + EvalCasePackPanel | `case_pack_ops.py` + compat + Eval UI | ✅ | P1.4：非冻结扩题；frozen→version++ 新 draft；coverage 库存；claim=false；生成物适用：已接线 | 本批 |
 | case_generation mutate/trace/holdout + pack publish HTTP | `case_generation.py` + case_pack_ops + compat | ✅ | P2.0：确定性变异/trace→draft；holdout 标记；kind=generated\|trace 恒 claim=false 且禁 freeze；生成物适用：已接线 | 本批 |
+| case_generation LLM candidates + difficulty + judge ticket | `case_generation.py` + case_pack_ops + CoreFacade + compat + Eval UI | ✅ | P3.0：`generate_llm_candidate_cases`（dry/stub 或 sys_llm_generate）→kind=generated；`propose_difficulty` 启发式；`build_judge_calibration_ticket` 工单；claim=false；生成物适用：已接线 | 本批 |
 | case_pack_registry / register_pack_version / assert_pack_acl | `case_pack_registry.py` | ✅ | scope global\|workspace\|tenant；跨 workspace ACL 拒；原子写+锁；global P0 只读；生成物适用：已接线（评测 Plan） | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -3836,7 +3850,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 244 | 0 | 244 |
+| Agent 系统 | 272 | 0 | 272 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3844,7 +3858,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 344 | 0 | 344 |
+| 评估系统 | 345 | 0 | 345 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3876,7 +3890,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2907** | **10** | **2917** |
+| **总计** | **2936** | **10** | **2946** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
