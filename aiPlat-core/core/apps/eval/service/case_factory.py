@@ -1,7 +1,8 @@
 """Case Pack factory — P1.0 draft path (template → validate → dedupe → register).
 
-No LLM. claim_eligible stays false. Freeze is later (P1.2+).
-Human review queue: see ``case_review_queue`` (P1.1). Does not open accuracy_claim.
+No LLM. claim_eligible stays false.
+Human review: ``case_review_queue`` (P1.1). Freeze: ``case_freeze`` (P1.2).
+Does not open accuracy_claim.
 """
 from __future__ import annotations
 
@@ -13,7 +14,10 @@ from core.apps.eval.service.case_pack_legacy import (
     assert_claim_eligible_allowed,
     task_dict_to_case,
 )
-from core.apps.eval.service.case_pack_registry import register_pack_version
+from core.apps.eval.service.case_pack_registry import (
+    register_pack_version,
+    write_pack_payload,
+)
 
 
 class CaseFactoryError(ValueError):
@@ -128,9 +132,11 @@ def publish_draft_workspace_pack(
         object_types=ots,
         cases=cleaned,
     )
+    pid = str(pack_id).strip()
+    ver = str(version).strip()
     meta = register_pack_version(
-        pack_id=str(pack_id).strip(),
-        version=str(version).strip(),
+        pack_id=pid,
+        version=ver,
         kind=k,
         claim_eligible=False,
         scope="workspace",
@@ -140,10 +146,25 @@ def publish_draft_workspace_pack(
         caller_workspace_id=caller_workspace_id or wid,
         status="draft",
     )
+    write_pack_payload(
+        pack_id=pid,
+        version=ver,
+        scope="workspace",
+        cases=cleaned,
+        meta={
+            "kind": k,
+            "claim_eligible": False,
+            "hash": pack_hash,
+            "object_types": ots,
+            "status": "draft",
+        },
+        workspace_id=wid,
+        caller_workspace_id=caller_workspace_id or wid,
+    )
     return {
         "ok": True,
-        "pack_id": str(pack_id).strip(),
-        "version": str(version).strip(),
+        "pack_id": pid,
+        "version": ver,
         "pack_hash": pack_hash,
         "kind": k,
         "claim_eligible": False,

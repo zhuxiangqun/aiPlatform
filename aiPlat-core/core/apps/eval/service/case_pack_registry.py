@@ -11,7 +11,7 @@ import os
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from core.apps.eval.service.case_pack_legacy import assert_claim_eligible_allowed
 from core.utils.paths import get_aiplat_home
@@ -88,6 +88,108 @@ def assert_pack_acl(
 
 def _registry_path(root: Path) -> Path:
     return root / "registry.json"
+
+
+def _pack_payload_path(
+    *,
+    scope: str,
+    pack_id: str,
+    version: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+) -> Path:
+    root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    safe_pid = str(pack_id).strip().replace("/", "_")
+    safe_ver = str(version).strip().replace("/", "_")
+    return root / "packs" / safe_pid / safe_ver / "pack.json"
+
+
+def write_pack_payload(
+    *,
+    pack_id: str,
+    version: str,
+    scope: str,
+    cases: Sequence[Mapping[str, Any]],
+    meta: Mapping[str, Any],
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+    allow_overwrite_frozen: bool = False,
+) -> Path:
+    """Persist cases+meta for a pack version (needed so freeze can rehash kind)."""
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=True,
+    )
+    path = _pack_payload_path(
+        scope=scope,
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+    )
+    if path.is_file() and not allow_overwrite_frozen:
+        existing_kind = ""
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+            existing_kind = str((existing.get("meta") or {}).get("kind") or "").lower()
+        except (OSError, json.JSONDecodeError):
+            existing_kind = ""  # unreadable ≠ frozen; allow rewrite
+        if existing_kind == "frozen":
+            raise PackRegistryError(
+                f"refuse overwrite frozen pack payload {pack_id}@{version}"
+            )
+    payload = {
+        "schema": "eval.pack_payload.v1",
+        "pack_id": str(pack_id).strip(),
+        "version": str(version).strip(),
+        "scope": scope,
+        "cases": [dict(c) for c in cases],
+        "meta": dict(meta),
+    }
+    _atomic_write_json(path, payload)
+    return path
+
+
+def load_pack_payload(
+    *,
+    pack_id: str,
+    version: str,
+    scope: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+) -> Dict[str, Any]:
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=False,
+    )
+    path = _pack_payload_path(
+        scope=scope,
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+    )
+    if not path.is_file():
+        raise PackRegistryError(f"pack payload missing: {pack_id}@{version}")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise PackRegistryError(f"pack payload corrupt: {e}") from e
+    if not isinstance(raw, dict):
+        raise PackRegistryError("pack payload root must be object")
+    return raw
 
 
 def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
@@ -302,6 +404,91 @@ def update_pack_version_meta(
             updated["review"] = prev
         # honesty lock
         updated["claim_eligible"] = False
+        versions[ver] = updated
+        _atomic_write_json(path, reg)
+        return dict(updated)
+
+
+def freeze_pack_version(
+    *,
+    pack_id: str,
+    version: str,
+    scope: str,
+    pack_hash: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+    frozen_by: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Mark reviewed pack as kind=frozen. claim_eligible stays false (P1.2)."""
+    from datetime import datetime, timezone
+
+    assert_claim_eligible_allowed(kind="frozen", claim_eligible=False)
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=True,
+    )
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    ph = str(pack_hash or "").strip()
+    if not pid or not ver:
+        raise PackRegistryError("pack_id and version required")
+    if not ph.startswith("sha256:"):
+        raise PackRegistryError("pack_hash must be sha256:…")
+
+    root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    path = _registry_path(root)
+    lock = _lock_for(path)
+    with lock:
+        reg = load_registry(
+            scope=scope, workspace_id=workspace_id, tenant_id=tenant_id
+        )
+        packs = reg.setdefault("packs", {})
+        entry = packs.get(pid)
+        if not isinstance(entry, dict):
+            raise PackRegistryError(f"pack not found: {pid}")
+        versions = entry.setdefault("versions", {})
+        cur = versions.get(ver)
+        if not isinstance(cur, dict):
+            raise PackRegistryError(f"pack version not found: {pid}@{ver}")
+        st = str(cur.get("status") or "").lower()
+        kind = str(cur.get("kind") or "").lower()
+        if kind == "frozen":
+            # idempotent: require same hash
+            if str(cur.get("hash") or "") != ph:
+                raise PackRegistryError(
+                    "already frozen with different hash — refuse clobber"
+                )
+            return dict(cur)
+        if st != "reviewed":
+            raise PackRegistryError(
+                f"freeze requires status=reviewed, got {st!r}"
+            )
+        if kind in ("generated", "trace", "exploratory"):
+            raise PackRegistryError(
+                f"kind={kind!r} cannot freeze into L1 claim candidate path"
+            )
+        updated = dict(cur)
+        updated["kind"] = "frozen"
+        updated["status"] = "active"
+        updated["claim_eligible"] = False
+        updated["hash"] = ph
+        review = dict(updated.get("review") or {}) if isinstance(updated.get("review"), dict) else {}
+        review.update(
+            {
+                "status": "frozen",
+                "frozen_at": datetime.now(timezone.utc).isoformat(),
+                "frozen_by": str(frozen_by or ""),
+                "notes": str(notes or review.get("notes") or ""),
+            }
+        )
+        updated["review"] = review
         versions[ver] = updated
         _atomic_write_json(path, reg)
         return dict(updated)

@@ -6390,6 +6390,28 @@ def eval_submit_case_pack_review(
     )
 
 
+def eval_freeze_workspace_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    frozen_by: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1.2: reviewed → kind=frozen. claim_eligible stays false; no accuracy_claim."""
+    from core.apps.eval.service.case_freeze import freeze_workspace_pack
+
+    return freeze_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        frozen_by=frozen_by,
+        notes=notes,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",

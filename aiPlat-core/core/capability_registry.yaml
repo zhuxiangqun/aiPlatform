@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1987
+total_capabilities: 1993
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 233
+    caps_count: 239
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4571,6 +4571,26 @@ domains:
         type: function
         signature: 'eval_submit_case_pack_review(…)→Dict (CoreFacade)'
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: write_pack_payload
+        type: function
+        signature: 'write_pack_payload(pack_id,version,scope,cases,meta,…)→Path'
+        module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
+      - symbol: load_pack_payload
+        type: function
+        signature: 'load_pack_payload(pack_id,version,scope,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
+      - symbol: freeze_pack_version
+        type: function
+        signature: 'freeze_pack_version(pack_id,version,scope,pack_hash,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
+      - symbol: freeze_workspace_pack
+        type: function
+        signature: 'freeze_workspace_pack(pack_id,version,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_freeze.py
+      - symbol: eval_freeze_workspace_case_pack
+        type: function
+        signature: 'eval_freeze_workspace_case_pack(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
@@ -4703,6 +4723,10 @@ domains:
         type: class
         signature: 'Human review queue failure.'
         module: aiPlat-core/core/apps/eval/service/case_review_queue.py
+      - symbol: CaseFreezeError
+        type: class
+        signature: 'Freeze path failure.'
+        module: aiPlat-core/core/apps/eval/service/case_freeze.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
