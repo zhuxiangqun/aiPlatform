@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T19:00:06+08:00",
+  "reviewed_at": "2026-11-08T19:12:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "26452c27ec93ac74327fc4bbe12c48d12d24acd2d2a52aaa78ae583ff05c4592",
-  "head_sha": "c370855511acf92449568e59cbdbede1abc83b47",
+  "diff_sha256": "eef9a9b5fecbab9e71811131f544f248e34211b2f511455e7c3bf44dde75904f",
+  "head_sha": "d45114e8f07ca0d9f3cd12c3bf9844d17cbedc66",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P3.0 LLM dry/candidates + heuristic difficulty + judge ticket; claim_eligible stays false; HTTP dry defaults true. Local lock only."
+  "note": "P3.1 difficulty human labels + judge open/rate/close; accuracy_claim stays false. Local lock only."
 }
