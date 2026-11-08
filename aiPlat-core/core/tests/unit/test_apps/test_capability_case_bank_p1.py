@@ -15,12 +15,18 @@ from core.apps.eval.service.capability_id_map import V1_IN_SCOPE, V1_OUT_OF_SCOP
 
 def test_bank_size_and_all_valid():
     cases = build_agent_capability_cases()
-    assert len(cases) >= 30
+    assert len(cases) == 64
     report = validate_agent_capability_bank(cases)
     assert report["ok"] is True
     assert report["invalid_count"] == 0
     assert report["claim_eligible"] is False
     assert report["pack_id"] == PACK_ID
+    counts: dict = {}
+    for c in cases:
+        cap = c["capabilities"][0]
+        counts[cap] = counts.get(cap, 0) + 1
+    for cap in V1_IN_SCOPE:
+        assert counts.get(cap, 0) >= 8, cap
 
 
 def test_only_v1_in_scope_capabilities():

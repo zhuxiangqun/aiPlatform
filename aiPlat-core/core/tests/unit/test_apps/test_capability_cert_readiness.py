@@ -27,12 +27,22 @@ def test_smoke_frozen_profile_complete_but_not_certifiable():
     assert out["snapshot"]["profile_id"] == PROFILE_ID_SMOKE
 
 
-def test_benchmark_incomplete_due_to_gaps():
-    out = evaluate_certification_readiness(profile_id=PROFILE_ID_BENCHMARK)
-    assert out["profile_complete"] is False
+def test_benchmark_profile_complete_but_not_certifiable_when_frozen():
+    out = evaluate_certification_readiness(
+        profile_id=PROFILE_ID_BENCHMARK,
+        pack_kind="frozen",
+        pack_status="active",
+    )
+    assert out["profile_complete"] is True
     assert out["certification_eligible"] is False
-    assert any("capability_case_gaps" in b for b in out["blockers"])
-    assert any("manifest_shortfall" in b for b in out["blockers"])
+    assert out["claim_eligible"] is False
+    assert out["blockers"] == []
+
+
+def test_benchmark_draft_bank_still_blocked_on_review():
+    out = evaluate_certification_readiness(profile_id=PROFILE_ID_BENCHMARK)
+    assert out["certification_eligible"] is False
+    assert "cases_not_fully_reviewed_or_pack_not_frozen" in out["blockers"]
 
 
 def test_regression_without_frozen_blocked_on_review():

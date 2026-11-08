@@ -77,13 +77,15 @@ def test_judge_gate_below_threshold():
     assert gate["report_only"] is True
 
 
-def test_benchmark_readiness_discloses_gaps(tmp_path, monkeypatch):
+def test_benchmark_readiness_meets_quotas(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
     out = benchmark_readiness_report(min_per_capability=8, compile_plan=True)
     assert out["ok"] is True
-    assert out["ready_for_benchmark_quotas"] is False
-    assert out["coverage"]["n_gaps"] > 0
+    assert out["ready_for_benchmark_quotas"] is True
+    assert out["coverage"]["n_gaps"] == 0
     assert out["plan"]["selection"]["holdout"]["enabled"] is True
+    assert out["plan"]["ok"] is True
+    assert len(out["plan"]["sample_manifest"]) >= 1
     assert out["claim_eligible"] is False
 
 
@@ -101,4 +103,4 @@ def test_benchmark_profile_holdout_shape():
     p = agent_benchmark_profile()
     assert p["holdout"]["enabled"] is True
     assert 0 < float(p["holdout"]["ratio"]) <= 0.5
-    assert p["on_insufficient"] == "degraded"
+    assert p["on_insufficient"] == "error"

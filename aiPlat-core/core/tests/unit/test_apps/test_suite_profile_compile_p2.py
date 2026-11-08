@@ -72,7 +72,7 @@ def test_promote_agent_capability_bank_freezes(tmp_path, monkeypatch):
     assert out["version"] == PACK_VERSION
     assert out["kind"] == "frozen"
     assert out["status"] == "active"
-    assert out["n_cases"] == 32
+    assert out["n_cases"] == 64
     assert out["claim_eligible"] is False
     assert out["accuracy_claim"] is False
 

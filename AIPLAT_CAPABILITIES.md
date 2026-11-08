@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3028
+total_capabilities: 3029
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -620,7 +620,7 @@ scan_hash: 8f9548ec24f4
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_agent_capability_catalog | `core/api/core_facade.py` | ✅ | Agent 能力目录（in_scope/unknown）；生成物适用：已接线 | 已合入 |
 | eval_validate_agent_case | `core/api/core_facade.py` | ✅ | Agent case 机械门；生成物适用：已接线 | 已合入 |
-| build_agent_capability_cases | `core/apps/eval/service/capability_case_bank.py` | ✅ | P1 Regression 题库种子（32 题+test_purpose）；生成物适用：已接线 | 已合入 |
+| build_agent_capability_cases | `core/apps/eval/service/capability_case_bank.py` | ✅ | Agent 能力题库种子（64 题=8×8 Benchmark 地板+test_purpose；A3–A5/A8/A9 仍 out-of-scope）；生成物适用：已接线 | 已合入 |
 | validate_agent_capability_bank | `core/apps/eval/service/capability_case_bank.py` | ✅ | 题库机械校验；生成物适用：已接线 | 已合入 |
 | agent_regression_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | agent.regression.v1 Profile；生成物适用：已接线 | 已合入 |
 | eval_validate_agent_capability_bank | `core/api/core_facade.py` | ✅ | CoreFacade；生成物适用：已接线 | 已合入 |
@@ -3941,7 +3941,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 362 | 0 | 362 |
+| 评估系统 | 363 | 0 | 363 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3973,7 +3973,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3018** | **10** | **3028** |
+| **总计** | **3019** | **10** | **3029** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

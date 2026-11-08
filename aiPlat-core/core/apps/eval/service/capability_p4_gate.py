@@ -181,6 +181,6 @@ def benchmark_readiness_report(
         "accuracy_claim": False,
         "honesty": (
             "benchmark readiness is coverage/holdout disclosure only; "
-            "not an accuracy claim; fill gaps via P3 before treating as Benchmark"
+            "not an accuracy claim; not Certification; claim_eligible stays false"
         ),
     }
