@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2135
+total_capabilities: 2136
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 199
+    caps_count: 200
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -6821,6 +6821,10 @@ domains:
       - symbol: CapabilityCaseEditorError
         type: class
         signature: 'CapabilityCaseEditorError'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: resolve_capability_id_safe
+        type: function
+        signature: 'resolve_capability_id_safe(raw)→str'
         module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
       - symbol: eval_open_capability_bank_editor
         type: function
