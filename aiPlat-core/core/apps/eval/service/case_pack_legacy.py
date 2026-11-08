@@ -4,6 +4,7 @@ Appendix A set_id→pack_id; nail 6 field map. Does not open accuracy_claim.
 """
 from __future__ import annotations
 
+import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from core.apps.eval.service.case_pack_hash import (
@@ -374,12 +375,189 @@ def expand_sets_to_manifest(
                     "pack_version": ref["version"],
                     "session_group": c.get("session_group"),
                     "set_id": sid,
+                    "category": c.get("category") or "normal",
                 }
             )
             coverage["cases"] = int(coverage["cases"]) + 1
 
     manifest.sort(key=lambda r: str(r.get("case_id") or ""))
     return manifest, pack_refs, coverage
+
+
+def apply_manifest_sampling(
+    manifest: Sequence[Mapping[str, Any]],
+    *,
+    strategy: str = "all",
+    sample_n: Optional[int] = None,
+    seed: Optional[int] = None,
+    min_per_stratum: int = 1,
+    on_insufficient: str = "error",
+    stratum_key: str = "category",
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Sample ``sample_manifest`` (T12 / §3.1–3.2).
+
+    Units honor ``session_group`` (整组). Stratified shortfalls never silently
+    rewrite quotas — ``error`` raises, ``degrade`` records ``selection.degraded``.
+    """
+    rows = [dict(r) for r in manifest if isinstance(r, Mapping)]
+    strat = str(strategy or "all").strip().lower() or "all"
+    meta: Dict[str, Any] = {
+        "strategy": strat,
+        "sample_n": sample_n,
+        "seed": seed,
+        "min_per_stratum": int(min_per_stratum),
+        "on_insufficient": str(on_insufficient or "error"),
+        "stratum_key": stratum_key,
+        "quota_trace": [],
+        "degraded": False,
+        "degraded_reasons": [],
+    }
+    if strat == "all" or sample_n is None:
+        meta["taken"] = len(rows)
+        return rows, meta
+
+    try:
+        n = int(sample_n)
+    except (TypeError, ValueError) as e:
+        raise ManifestValidationError(f"sample_n invalid: {sample_n!r}") from e
+    if n < 0:
+        raise ManifestValidationError("sample_n must be >= 0")
+    if n == 0:
+        meta["taken"] = 0
+        return [], meta
+
+    # Build atomic units: session_group → all rows; else single case
+    units: List[Dict[str, Any]] = []
+    seen_groups: Dict[str, int] = {}
+    for row in rows:
+        sg = row.get("session_group")
+        if sg is not None and sg != "":
+            key = f"g:{sg}"
+            if key in seen_groups:
+                units[seen_groups[key]]["rows"].append(row)
+                continue
+            seen_groups[key] = len(units)
+            units.append(
+                {
+                    "key": key,
+                    "rows": [row],
+                    "stratum": str(row.get(stratum_key) or "unknown"),
+                }
+            )
+        else:
+            units.append(
+                {
+                    "key": f"c:{row.get('case_id')}",
+                    "rows": [row],
+                    "stratum": str(row.get(stratum_key) or "unknown"),
+                }
+            )
+
+    rng = random.Random(int(seed) if seed is not None else 0)
+
+    if strat == "random":
+        shuffled = list(units)
+        rng.shuffle(shuffled)
+        taken_units: List[Dict[str, Any]] = []
+        count = 0
+        for u in shuffled:
+            if count >= n:
+                break
+            taken_units.append(u)
+            count += len(u["rows"])
+        out_rows: List[Dict[str, Any]] = []
+        for u in taken_units:
+            out_rows.extend(u["rows"])
+        out_rows.sort(key=lambda r: str(r.get("case_id") or ""))
+        meta["taken"] = len(out_rows)
+        meta["quota_trace"].append(
+            {
+                "stratum": "*",
+                "quota": n,
+                "available_units": len(units),
+                "taken_cases": len(out_rows),
+            }
+        )
+        return out_rows, meta
+
+    if strat != "stratified":
+        raise ManifestValidationError(
+            f"unknown selection.strategy={strategy!r} (all|random|stratified)"
+        )
+
+    by_stratum: Dict[str, List[Dict[str, Any]]] = {}
+    for u in units:
+        by_stratum.setdefault(str(u["stratum"]), []).append(u)
+
+    strata = sorted(by_stratum.keys())
+    if not strata:
+        meta["taken"] = 0
+        return [], meta
+
+    # Equal split of sample_n across strata; remainder to early strata (stable order)
+    base_q = max(int(min_per_stratum), n // len(strata))
+    rem = n - base_q * len(strata)
+    if rem < 0:
+        # sample_n too small for min_per_stratum * strata
+        base_q = int(min_per_stratum)
+        rem = 0
+
+    taken_units = []
+    for i, st in enumerate(strata):
+        pool = list(by_stratum[st])
+        rng.shuffle(pool)
+        available_cases = sum(len(u["rows"]) for u in pool)
+        # quota in cases (approx by units first, expand)
+        quota = base_q + (1 if i < rem else 0)
+        if quota < int(min_per_stratum):
+            quota = int(min_per_stratum)
+
+        picked: List[Dict[str, Any]] = []
+        case_count = 0
+        for u in pool:
+            if case_count >= quota:
+                break
+            picked.append(u)
+            case_count += len(u["rows"])
+
+        # T12: only min_per_stratum shortfall is hard; unfilled equal-split
+        # quota is recorded but must NOT silently steal from other strata.
+        shortfall = case_count < int(min_per_stratum)
+        quota_unfilled = case_count < quota and len(picked) == len(pool)
+        trace = {
+            "stratum": st,
+            "quota": quota,
+            "available_units": len(pool),
+            "available_cases": available_cases,
+            "taken_units": len(picked),
+            "taken_cases": case_count,
+            "degraded": bool(shortfall),
+            "quota_unfilled": bool(quota_unfilled),
+        }
+        meta["quota_trace"].append(trace)
+
+        if shortfall:
+            reason = (
+                f"stratum={st!r} available_cases={available_cases} "
+                f"< min_per_stratum={min_per_stratum}"
+            )
+            mode = str(on_insufficient or "error").strip().lower()
+            if mode == "degrade":
+                meta["degraded"] = True
+                meta["degraded_reasons"].append(reason)
+            else:
+                raise ManifestValidationError(
+                    f"stratified shortfall — fail closed ({reason})"
+                )
+
+        taken_units.extend(picked)
+
+    out_rows = []
+    for u in taken_units:
+        out_rows.extend(u["rows"])
+    out_rows.sort(key=lambda r: str(r.get("case_id") or ""))
+    meta["taken"] = len(out_rows)
+    return out_rows, meta
 
 
 def assert_claim_eligible_allowed(*, kind: str, claim_eligible: bool) -> None:

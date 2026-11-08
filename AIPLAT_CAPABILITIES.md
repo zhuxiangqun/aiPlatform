@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2880
+total_capabilities: 2881
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2718,6 +2718,7 @@ scan_hash: 8f9548ec24f4
 | assert_session_groups_intact | `case_pack_legacy.py` + `require_sample_manifest` | ✅ | T4：同 `session_group` 不可拆散；生成物适用：已接线 | 本批 |
 | exam run_key → execution_fingerprint | typed/agent exam | ✅ | T11：改 `run_key` 只变 `execution_fingerprint`，不变 `manifest_hash`；生成物适用：已接线 | 本批 |
 | pack_claim_disclosure_from_plan / claim_eligible L5 gate | `claims_gate.py` + `attach_evaluation_plan` | ✅ | §3.3：报告强制 `pack_kind`+`claim_eligible`；false/缺省阻断 accuracy；生成物适用：已接线 | 本批 |
+| apply_manifest_sampling (stratified/random) | `case_pack_legacy.py` + `compile_evaluation_plan` | ✅ | T12：seed 稳定；`session_group` 整组；不足层 error/degrade+quota_trace，禁静默改配额；生成物适用：已接线 | 本批 |
 | case_pack_registry / register_pack_version / assert_pack_acl | `case_pack_registry.py` | ✅ | scope global\|workspace\|tenant；跨 workspace ACL 拒；原子写+锁；global P0 只读；生成物适用：已接线（评测 Plan） | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -3792,7 +3793,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 337 | 0 | 337 |
+| 评估系统 | 338 | 0 | 338 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3824,7 +3825,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2870** | **10** | **2880** |
+| **总计** | **2871** | **10** | **2881** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

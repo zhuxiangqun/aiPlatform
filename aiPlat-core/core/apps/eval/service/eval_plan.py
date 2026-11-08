@@ -65,11 +65,18 @@ def compile_evaluation_plan(
     purpose: Optional[Sequence[str]] = None,
     include_special: bool = False,
     live: bool = False,
+    selection_strategy: str = "all",
+    sample_n: Optional[int] = None,
+    seed: Optional[int] = None,
+    min_per_stratum: int = 1,
+    on_insufficient: str = "error",
 ) -> Dict[str, Any]:
     """Compile Plan from target contract + applicability draft.
 
     Returns selected_cases to run, excluded_cases (not_applicable | untested deferred).
     When set_ids omitted, uses object_type defaults (agent/skill/api/generated_app/…).
+    ``selection_strategy``: all|random|stratified (T12); shortfalls never silently
+    rewrite quotas.
     """
     c = normalize_target_contract(contract)
     ot = str(c.get("object_type") or "")
@@ -156,13 +163,15 @@ def compile_evaluation_plan(
         profile_source = str(c.get("profile_source"))
 
     selected_set_ids = [x["set_id"] for x in selected]
-    selection = {
+    selection: Dict[str, Any] = {
         "mode": "legacy_sets",
         "set_ids": list(selected_set_ids),
         "filter": {},
-        "sample_n": None,
-        "seed": None,
-        "strategy": "all",
+        "sample_n": sample_n,
+        "seed": seed,
+        "strategy": str(selection_strategy or "all"),
+        "min_per_stratum": int(min_per_stratum),
+        "on_insufficient": str(on_insufficient or "error"),
     }
 
     from core.apps.eval.service.case_pack_hash import (
@@ -170,7 +179,10 @@ def compile_evaluation_plan(
         compute_manifest_hash,
         compute_plan_id_v2,
     )
-    from core.apps.eval.service.case_pack_legacy import expand_sets_to_manifest
+    from core.apps.eval.service.case_pack_legacy import (
+        apply_manifest_sampling,
+        expand_sets_to_manifest,
+    )
 
     sample_manifest, pack_refs, coverage = expand_sets_to_manifest(
         selected_set_ids,
@@ -179,6 +191,21 @@ def compile_evaluation_plan(
         kind="frozen",
         object_types=[ot] if ot else ["agent"],
     )
+    sample_manifest, sample_meta = apply_manifest_sampling(
+        sample_manifest,
+        strategy=str(selection_strategy or "all"),
+        sample_n=sample_n,
+        seed=seed,
+        min_per_stratum=int(min_per_stratum),
+        on_insufficient=str(on_insufficient or "error"),
+    )
+    selection["quota_trace"] = sample_meta.get("quota_trace") or []
+    if sample_meta.get("degraded"):
+        selection["degraded"] = True
+        selection["degraded_reasons"] = list(sample_meta.get("degraded_reasons") or [])
+    coverage = dict(coverage or {})
+    coverage["manifest_cases_after_sample"] = len(sample_manifest)
+
     manifest_hash = compute_manifest_hash(sample_manifest)
     pack_ref = pack_refs[0] if len(pack_refs) == 1 else None
     plan_id = compute_plan_id_v2(
@@ -316,6 +343,11 @@ def compile_plan_for_object(
     roles: Optional[Sequence[str]] = None,
     eval_profile: Optional[Mapping[str, Any]] = None,
     source_refs: Optional[Sequence[str]] = None,
+    selection_strategy: str = "all",
+    sample_n: Optional[int] = None,
+    seed: Optional[int] = None,
+    min_per_stratum: int = 1,
+    on_insufficient: str = "error",
 ) -> Dict[str, Any]:
     """Adapter + compile in one call (P3 unified entry)."""
     from core.apps.eval.service.object_adapters import (
@@ -337,6 +369,11 @@ def compile_plan_for_object(
     return compile_evaluation_plan(
         contract,
         set_ids=ids,
+        selection_strategy=selection_strategy,
+        sample_n=sample_n,
+        seed=seed,
+        min_per_stratum=min_per_stratum,
+        on_insufficient=on_insufficient,
         purpose=purpose,
         include_special=include_special,
         live=live,
