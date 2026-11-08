@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T19:17:27+08:00",
+  "reviewed_at": "2026-11-08T19:23:11+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "8b517243dee0d5753a5ddbb6610b093443927aff82ff1d4521501d2425ad9df5",
-  "head_sha": "94f8586f1ed300ee7c6c8231c8e46adbee0f3014",
+  "diff_sha256": "3ce3b0ad00c3fddf131c30603851fc91df0b461d3dcac38a55b923eee8efa849",
+  "head_sha": "ab27cbaddc9fe735790110ab9f92c4cb0f25014a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Plan preview: 6 volumes vs 7 template steps split; reasons+manifest shown. Local lock only."
+  "note": "UI wording: Plan\u5377\uff08\u672a\u6d4b\uff09for purpose_deferred_special. Local lock only."
 }
