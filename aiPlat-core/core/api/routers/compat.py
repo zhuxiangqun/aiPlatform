@@ -978,6 +978,49 @@ async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
         return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
 
 
+@router.post("/evaluation/case-packs/certification-readiness")
+async def compat_evaluation_certification_readiness(body: Dict[str, Any]):
+    """P5 pre-gate: §8.5 relative completeness; never unlocks certification/claim."""
+    from core.api.core_facade import eval_certification_readiness
+
+    profile = (body or {}).get("profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    judge_agreement = (body or {}).get("judge_agreement")
+    if judge_agreement is not None and not isinstance(judge_agreement, dict):
+        return {
+            "ok": False,
+            "error": "judge_agreement must be an object",
+            "accuracy_claim": False,
+        }
+    thr_raw = (body or {}).get("judge_threshold", 0.8)
+    try:
+        thr = float(thr_raw)
+    except (TypeError, ValueError):
+        return {
+            "ok": False,
+            "error": "judge_threshold must be float",
+            "accuracy_claim": False,
+        }
+    try:
+        return eval_certification_readiness(
+            profile_id=str((body or {}).get("profile_id") or "agent.benchmark.v1"),
+            profile=profile if isinstance(profile, dict) else None,
+            pack_kind=str((body or {}).get("pack_kind") or ""),
+            pack_status=str((body or {}).get("pack_status") or ""),
+            judge_agreement=judge_agreement
+            if isinstance(judge_agreement, dict)
+            else None,
+            judge_threshold=thr,
+            compile_plan=bool((body or {}).get("compile_plan", True)),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("certification-readiness failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
 @router.get("/evaluation/case-packs/suite-profiles")
 async def compat_evaluation_suite_profiles():
     """List built-in Suite Profiles (smoke / regression / benchmark)."""

@@ -328,6 +328,24 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-rose-700/60 px-3 py-1.5 text-rose-100 disabled:opacity-50"
+          data-testid="eval-case-pack-cert-ready"
+          onClick={() =>
+            run('certification-readiness', () =>
+              agentEvalApi.casePackCertificationReadiness({
+                profile_id: profileId.trim() || 'agent.benchmark.v1',
+                pack_kind: 'frozen',
+                pack_status: 'active',
+                compile_plan: true,
+              }),
+            )
+          }
+        >
+          Cert readiness (pre-P5)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
           data-testid="eval-case-pack-cap-coverage"
           onClick={() =>

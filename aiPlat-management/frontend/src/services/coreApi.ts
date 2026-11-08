@@ -2816,6 +2816,20 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** P5 pre-gate: §8.5 relative completeness (certification_eligible always false). */
+  casePackCertificationReadiness: async (body?: {
+    profile_id?: string;
+    pack_kind?: string;
+    pack_status?: string;
+    judge_agreement?: Record<string, unknown>;
+    judge_threshold?: number;
+    compile_plan?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/certification-readiness',
+      body || {},
+    );
+  },
   /** P3: capability have/need/gap inventory. */
   casePackCapabilityCoverage: async (body?: {
     profile_id?: string;

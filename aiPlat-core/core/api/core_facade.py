@@ -6544,6 +6544,34 @@ def eval_suite_profile_report(
     return build_suite_profile_report(exam or {}, cases=cases)
 
 
+def eval_certification_readiness(
+    *,
+    profile_id: str = "agent.benchmark.v1",
+    profile: Optional[Dict[str, Any]] = None,
+    pack_kind: str = "",
+    pack_status: str = "",
+    judge_agreement: Optional[Dict[str, Any]] = None,
+    judge_threshold: float = 0.8,
+    compile_plan: bool = True,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P5 pre-gate: §8.5 relative completeness; certification_eligible always false."""
+    from core.apps.eval.service.capability_cert_readiness import (
+        evaluate_certification_readiness,
+    )
+
+    return evaluate_certification_readiness(
+        profile_id=profile_id,
+        profile=profile,
+        cases=cases,
+        pack_kind=pack_kind,
+        pack_status=pack_status,
+        judge_agreement=judge_agreement,
+        judge_threshold=judge_threshold,
+        compile_plan=compile_plan,
+    )
+
+
 async def eval_run_suite_profile_exam(
     *,
     profile_id: str = "agent.regression.v1",

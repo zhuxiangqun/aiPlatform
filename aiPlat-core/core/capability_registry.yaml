@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2119
+total_capabilities: 2122
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 183
+    caps_count: 186
     provides:
       - symbol: SuiteProfileCompileError
         type: class
@@ -6798,6 +6798,18 @@ domains:
         type: class
         signature: 'Suite profile exam fail-closed.'
         module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
+      - symbol: evaluate_certification_readiness
+        type: function
+        signature: 'evaluate_certification_readiness(…)→Dict cert_eligible=false'
+        module: aiPlat-core/core/apps/eval/service/capability_cert_readiness.py
+      - symbol: CapabilityCertReadinessError
+        type: class
+        signature: 'Certification readiness evaluation failure.'
+        module: aiPlat-core/core/apps/eval/service/capability_cert_readiness.py
+      - symbol: eval_certification_readiness
+        type: function
+        signature: 'eval_certification_readiness(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: build_capability_heatmap
         type: function
         signature: 'build_capability_heatmap(…)→Dict heatmap'
