@@ -29,9 +29,18 @@ import numpy as np
 # Process-wide route counters (Ollaya Phase 0). Instance-local stats were useless:
 # callers do DomainRouter() repeatedly → every snapshot looked empty.
 _ROUTE_STATS_LOCK = threading.Lock()
-_ROUTE_STATS: Dict[str, int] = {"t1_hits": 0, "t2_hits": 0, "t3_hits": 0, "total": 0}
+_ROUTE_STATS: Dict[str, int] = {
+    "t1_hits": 0,
+    "t2_hits": 0,
+    "t3_hits": 0,
+    "total": 0,
+    # Side counters (not in total): for Ollaya Phase 0 conditional-Go evidence
+    "t2_boundary_hits": 0,
+    "t2_reject_hits": 0,
+}
 _T3_LATENCIES_MS: List[float] = []
 _T3_LATENCY_CAP = 2000
+_STATS_STARTED_AT = time.time()
 
 _DEFAULT_ROUTER: Optional["DomainRouter"] = None
 
@@ -46,11 +55,12 @@ def get_domain_router() -> "DomainRouter":
 
 def _reset_domain_router_for_tests() -> None:
     """Clear singleton + process route stats (unit tests only; not a product API)."""
-    global _DEFAULT_ROUTER
+    global _DEFAULT_ROUTER, _STATS_STARTED_AT
     with _ROUTE_STATS_LOCK:
         for k in _ROUTE_STATS:
             _ROUTE_STATS[k] = 0
         _T3_LATENCIES_MS.clear()
+    _STATS_STARTED_AT = time.time()
     _DEFAULT_ROUTER = None
 
 
@@ -120,6 +130,13 @@ class DomainRouter:
                     del _T3_LATENCIES_MS[:overflow]
 
     @staticmethod
+    def _record_side_counter(name: str) -> None:
+        """Increment a side counter that does not affect total/T1–T3 pct."""
+        with _ROUTE_STATS_LOCK:
+            if name in _ROUTE_STATS:
+                _ROUTE_STATS[name] += 1
+
+    @staticmethod
     def _percentile(sorted_vals: List[float], p: float) -> Optional[float]:
         if not sorted_vals:
             return None
@@ -156,12 +173,24 @@ class DomainRouter:
                 best_did = did
 
         routing_cfg = self._load_registry().get("routing", {}).get("embedding", {})
-        min_conf = routing_cfg.get("min_confidence", 0.4)
-        min_margin = routing_cfg.get("min_margin", 0.08)
+        min_conf = float(routing_cfg.get("min_confidence", 0.4))
+        min_margin = float(routing_cfg.get("min_margin", 0.08))
+        score_slack = float(routing_cfg.get("boundary_score_slack", 0.05))
+        margin_factor = float(routing_cfg.get("boundary_margin_factor", 2.0))
+        margin = (best_score - runner_up) if best_did is not None else 0.0
 
-        if best_did and best_score >= min_conf and (best_score - runner_up) >= min_margin:
+        if best_did and best_score >= min_conf and margin >= min_margin:
+            # Accepted T2 but near threshold → conditional-Go / future shadow band
+            if (best_score < min_conf + score_slack) or (
+                margin_factor > 0 and margin < min_margin * margin_factor
+            ):
+                self._record_side_counter("t2_boundary_hits")
             self._record_route_hit("t2")
             return best_did
+
+        if best_did is not None:
+            # Had embedding signal but failed gates → going to T3
+            self._record_side_counter("t2_reject_hits")
 
         # ── Tier 3: LLM classification (~300ms, rare) ──
         t0 = time.perf_counter()
@@ -199,7 +228,10 @@ class DomainRouter:
             t2 = int(_ROUTE_STATS["t2_hits"])
             t3 = int(_ROUTE_STATS["t3_hits"])
             total = int(_ROUTE_STATS["total"])
+            t2_boundary = int(_ROUTE_STATS["t2_boundary_hits"])
+            t2_reject = int(_ROUTE_STATS["t2_reject_hits"])
             lat = list(_T3_LATENCIES_MS)
+            started = float(_STATS_STARTED_AT)
         denom = total if total > 0 else 1
         llm_calls_avoided = t1 + t2
         lat_sorted = sorted(lat)
@@ -208,6 +240,8 @@ class DomainRouter:
             "t1_hits": t1,
             "t2_hits": t2,
             "t3_hits": t3,
+            "t2_boundary_hits": t2_boundary,
+            "t2_reject_hits": t2_reject,
             "t1_label_pct": round(100 * t1 / denom, 1) if total else 0.0,
             "t2_embedding_pct": round(100 * t2 / denom, 1) if total else 0.0,
             "t3_llm_pct": round(100 * t3 / denom, 1) if total else 0.0,
@@ -216,10 +250,13 @@ class DomainRouter:
             "t3_latency_samples": len(lat_sorted),
             "t3_latency_ms_p50": self._percentile(lat_sorted, 50),
             "t3_latency_ms_p95": self._percentile(lat_sorted, 95),
+            "stats_started_at": round(started, 3),
+            "stats_uptime_s": round(max(0.0, time.time() - started), 1),
             "scope": "process",
             "honesty": (
                 "in-process counters only; restart clears; "
-                "≠ Ollaya shadow latency; ≠ accuracy"
+                "t2_boundary/t2_reject are side counters (not in total); "
+                "≠ Ollaya shadow latency; ≠ accuracy; ≠ Go Phase 1"
             ),
         }
 

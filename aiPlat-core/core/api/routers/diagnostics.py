@@ -2484,6 +2484,31 @@ async def get_all_alerts():
         return {"total": 0, "by_severity": {}, "alerts": [], "error": str(e)[:200]}
 
 
+@router.get("/diagnostics/domain-router/route-stats", response_model=Dict[str, Any])
+async def get_domain_router_route_stats():
+    """Ollaya Phase 0: process-wide DomainRouter T1/T2/T3 + T3 latency snapshot.
+
+    Ops scrape this to fill the baseline evidence table. Per-process only;
+    restart clears counters. ≠ Ollaya accuracy / ≠ decision_shadow / ≠ Go Phase 1.
+    """
+    try:
+        from core.api.core_facade import domain_router_route_stats
+
+        snap = dict(domain_router_route_stats() or {})
+        snap["ok"] = True
+        snap["endpoint"] = "/diagnostics/domain-router/route-stats"
+        return snap
+    except Exception as e:
+        _log.warning("domain_router route_stats failed: %s", e, exc_info=True)
+        return {
+            "ok": False,
+            "total": 0,
+            "error": str(e)[:200],
+            "scope": "process",
+            "honesty": "snapshot failed; ≠ Ollaya accuracy; ≠ Go Phase 1",
+        }
+
+
 # ── Phase 14: Model tier status + cost + health dashboard ──
 
 @router.get("/diagnostics/model-tier", response_model=Dict[str, Any])
