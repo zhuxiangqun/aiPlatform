@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T11:51:13+08:00",
+  "reviewed_at": "2026-11-08T12:28:07+08:00",
   "base_ref": "origin/main",
-  "merge_base": "835985ab8f13c6b44e6476f02f4c6f69be0b9c67",
-  "diff_sha256": "cd61fdfb880355494ca5df49019c2f8d7faa9af99942c7abf1cbfbea87ddbcb5",
-  "head_sha": "50ab54630bf5fde713cd263e20fcae57700ec01a",
+  "merge_base": "6d1e8021212b69533ba6861eb0ccdcce375baa9b",
+  "diff_sha256": "7e358b14f9023bbdfa525ec0ada1ac40e991204b77f8d6cda0bfaf64a2bdfaad",
+  "head_sha": "76d4b74644ede79b3c8302a3dac7cb7fb9932a12",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Docs+ops collector only; no decision_shadow; five checks pass."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. Docs+JSONL only: honesty still No-Go; T3 p50 marked untrusted; no decision_shadow; no product code."
 }
