@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T21:37:11+08:00",
+  "reviewed_at": "2026-11-08T21:46:39+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "6b1addd9930a9cb8e203b694153bc9f3e61d8c1beae3e1b24693e623ec2be6a2",
-  "head_sha": "ee9aa68d62b066e79bc7dc625ac1e970363e36b1",
+  "diff_sha256": "e5a8504131b210aff821a295acc576fc7b3ec1f1bad98579195356e6c899590f",
+  "head_sha": "1b3b8b8ba37301852d32decb2419d87f033f6f93",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Heatmap+disclosure on suite profile exam; claim stays false; unknown out-of-scope listed; live path capped in UI."
+  "note": "P5 pre-gate: profile_complete vs §8.5; certification_eligible always false; claim closed; external audit out of band."
 }
