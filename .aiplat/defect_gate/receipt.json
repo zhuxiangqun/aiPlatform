@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T16:12:00+08:00",
+  "reviewed_at": "2026-11-08T16:14:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "00a1e1b74da99e8baa0bdfb8e5b352c7cb6f2372126d4c0829b232e7fa2ff6e4",
-  "head_sha": "74fbffbfb8cce658cc40911eee12c0bc0806340f",
+  "diff_sha256": "0ced21b7877c64e255e0e3b325b632522791670d8a2237158d73cfcbbc0aa30c",
+  "head_sha": "e3c2eaf9f4ad419752a19eda7095fca0c665f658",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only baseline: six nails + fail-closed/no full-pack fallback; no product code. Signoff PR; CI still needs non-author Approve."
+  "note": "Docs-only: Appendix B hash vectors + §8.1 signoff; merge≠Go P0. CI still needs non-author Approve."
 }
