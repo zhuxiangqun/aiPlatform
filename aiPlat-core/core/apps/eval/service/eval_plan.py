@@ -281,6 +281,8 @@ def attach_evaluation_plan(out: Dict[str, Any], plan: Mapping[str, Any]) -> Dict
     """Stamp Plan fields onto an eval response (shared report contract)."""
     if not isinstance(out, dict):
         return out
+    from core.apps.eval.service.claims_gate import pack_claim_disclosure_from_plan
+
     p = dict(plan or {})
     out["evaluation_plan"] = p
     out["plan_id"] = p.get("plan_id")
@@ -288,6 +290,15 @@ def attach_evaluation_plan(out: Dict[str, Any], plan: Mapping[str, Any]) -> Dict
         out["target_contract"] = p.get("target_contract")
     if p.get("match_report") is not None:
         out["match_report"] = p.get("match_report")
+    # §3.3: force pack_kind / claim_eligible disclosure; block false packs from claim
+    disc = pack_claim_disclosure_from_plan(p)
+    out["pack_claim_disclosure"] = disc
+    out["pack_kinds"] = disc.get("pack_kinds") or []
+    out["claim_eligible"] = bool(disc.get("claim_eligible"))
+    if not out["claim_eligible"]:
+        out["accuracy_claim"] = False
+    else:
+        out.setdefault("accuracy_claim", False)
     return out
 
 

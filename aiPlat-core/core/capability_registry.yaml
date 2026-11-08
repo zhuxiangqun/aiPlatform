@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1971
+total_capabilities: 1972
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3775,7 +3775,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 218
+    caps_count: 219
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4514,6 +4514,10 @@ domains:
       - symbol: claims_policy_stub
         type: function
         signature: 'claims_policy_stub(thin,profile_source)→Dict accuracy/sufficiency false'
+        module: aiPlat-core/core/apps/eval/service/claims_gate.py
+      - symbol: pack_claim_disclosure_from_plan
+        type: function
+        signature: 'pack_claim_disclosure_from_plan(plan)→Dict pack_kind+claim_eligible'
         module: aiPlat-core/core/apps/eval/service/claims_gate.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function

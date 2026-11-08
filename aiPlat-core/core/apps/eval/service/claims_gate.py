@@ -102,6 +102,12 @@ def evaluate_l5_claims_gate(
     if sample_n < min_n:
         failed.append(f"sample_n<{min_n}")
 
+    # §3.3 Case Pack claim gate: false/missing → cannot unlock accuracy
+    if "claim_eligible" not in ev:
+        failed.append("claim_eligible_unspecified")
+    elif not bool(ev.get("claim_eligible")):
+        failed.append("pack_not_claim_eligible")
+
     set_ids = _as_list(ev.get("set_ids"))
     oracle_types = _as_list(ev.get("oracle_types"))
     dimensions = _as_list(ev.get("dimensions"))
@@ -156,6 +162,7 @@ def evaluate_l5_claims_gate(
             ),
             "runtime_claim": bool(ev.get("runtime_claim")),
             "sample_n_met": sample_n >= min_n,
+            "claim_eligible": bool(ev.get("claim_eligible")),
             "human_review_or_calibrated_rubric": sufficiency_extra_ok,
         },
         "missing": missing,
@@ -183,6 +190,41 @@ def evaluate_l5_claims_gate(
     }
 
 
+def pack_claim_disclosure_from_plan(plan: Mapping[str, Any]) -> Dict[str, Any]:
+    """Report disclosure: pack_kind + claim_eligible per pack_ref (§3.3)."""
+    refs: List[Mapping[str, Any]] = []
+    raw_refs = plan.get("pack_refs")
+    if isinstance(raw_refs, list) and raw_refs:
+        refs = [r for r in raw_refs if isinstance(r, Mapping)]
+    elif isinstance(plan.get("pack_ref"), Mapping):
+        refs = [plan["pack_ref"]]  # type: ignore[list-item]
+    packs: List[Dict[str, Any]] = []
+    for r in refs:
+        kind = str(r.get("kind") or "unknown")
+        packs.append(
+            {
+                "pack_id": r.get("pack_id"),
+                "version": r.get("version") or r.get("pack_version"),
+                "pack_kind": kind,
+                "claim_eligible": bool(r.get("claim_eligible")),
+                "hash": r.get("hash"),
+            }
+        )
+    all_eligible = bool(packs) and all(bool(p["claim_eligible"]) for p in packs)
+    kinds = sorted({str(p["pack_kind"]) for p in packs})
+    return {
+        "schema": "eval.pack_claim_disclosure.v1",
+        "packs": packs,
+        "pack_kinds": kinds,
+        "claim_eligible": all_eligible,
+        "note": (
+            "Reports must disclose pack_kind + claim_eligible; "
+            "claim_eligible=false packs excluded from accuracy aggregation; "
+            "accuracy_claim stays closed unless L5 authorize + eligible packs"
+        ),
+    }
+
+
 def claims_policy_stub(*, thin: bool = False, profile_source: str = "") -> Dict[str, Any]:
     """Default Plan claims_policy block (always locked false at compile)."""
     note = "Plan compile ≠ accuracy/sufficiency; special deferred → untested not fail"
@@ -193,6 +235,7 @@ def claims_policy_stub(*, thin: bool = False, profile_source: str = "") -> Dict[
     return {
         "accuracy_claim": False,
         "sufficiency_claim": False,
+        "claim_eligible": False,
         "note": note,
         "unlock_ref": "eval.claims_gate.v1 / eval-object-contract §0.9",
     }
