@@ -1,0 +1,45 @@
+{
+  "schema": "aiplat.eval_trust.plan_rerun.v1",
+  "captured_at": "2026-11-08T15:12:25+08:00",
+  "git_head": "ref: refs/heads/main",
+  "fix_pr": 618,
+  "fix_commit": "44dd889b",
+  "agent_id": "qa_agent",
+  "eval_profile_source": "derived_hints",
+  "capabilities": [],
+  "plan_id": "plan-ed6fe2bb40fc087f",
+  "counts": {
+    "selected": 6,
+    "not_applicable": 0,
+    "untested": 0,
+    "excluded": 0,
+    "total": 6
+  },
+  "selected_set_ids": [
+    "default/normal",
+    "default/missing_info",
+    "default/tool_failure",
+    "default/noise",
+    "default/high_risk",
+    "default/multi_turn"
+  ],
+  "excluded": [],
+  "invalidates": [
+    {
+      "plan_id": "plan-924f6c070f4e1927",
+      "status": "pre-fix_invalid",
+      "reason": "derived_hints missing_capability→not_applicable prior to #618; do not use for product conclusions"
+    }
+  ],
+  "honesty": "Lab instrument re-run evidence only. accuracy_claim=false. capability_unconfirmed ≠ proven capability. ≠ certification / staging / FDE accept.",
+  "artifacts": {
+    "compile_plan": "qa_agent_compile_plan_post618.json",
+    "eval_profile": "qa_agent_eval_profile_post618.json",
+    "compile_plan_sha256": "1c00ca270234a4063bd80784337ef159418049de1994c877f19142bb65e13e42"
+  },
+  "assertions": {
+    "not_applicable_count_is_0": true,
+    "selected_includes_former_na": true,
+    "source_is_derived_hints": true
+  }
+}
