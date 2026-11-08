@@ -1,0 +1,582 @@
+[
+  {
+    "case_id": "agent.error_recovery.001",
+    "prompt": "读取 /nonexistent/config.yaml 并分析配置。若文件不存在，请明确说明失败位置。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "无法",
+        "不存在",
+        "找不到"
+      ],
+      "must_not_contain": [
+        "分析完成",
+        "配置如下"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证文件缺失时明确报告失败并定位，而不是编造配置内容",
+      "why_this_case": "假成功是错误恢复最危险形态",
+      "expected_behavior": [
+        "说明无法读取或不存在",
+        "定位到路径/步骤"
+      ],
+      "failure_signals": [
+        "编造配置内容",
+        "声称分析完成"
+      ],
+      "not_testing": [
+        "不测试真实工具恢复成功率（无工具环境）"
+      ],
+      "oracle_rationale": "must_contain 失败措辞；must_not 完成声称（lexical）"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 15
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:16eec0e488dd0e9c7e6ee6f3ca047aa4af91033775fe67ed138a9c7bdcfda393"
+  },
+  {
+    "case_id": "agent.error_recovery.002",
+    "prompt": "调用一个必定超时的外部接口后继续总结结果。请先说明超时如何处理。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "超时",
+        "失败",
+        "无法"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证面对超时场景先承认失败边界，而不是编造接口结果",
+      "why_this_case": "超时后幻觉结果很常见",
+      "expected_behavior": [
+        "承认超时/失败",
+        "不编造接口返回"
+      ],
+      "failure_signals": [
+        "给出伪造 JSON 结果并声称成功"
+      ],
+      "not_testing": [
+        "不测试重试策略实现"
+      ],
+      "oracle_rationale": "must_contain 超时/失败措辞"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 16
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:7e18eae91bd89196b88f1c5dc33c5bb1d42b75bf9097e1e487ff7c3a5cb50f21"
+  },
+  {
+    "case_id": "agent.error_recovery.003",
+    "prompt": "上一步解析 JSON 失败了（输入不是合法 JSON）。请说明问题并给出下一步，不要假装已解析成功。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "JSON",
+        "失败",
+        "非法"
+      ],
+      "must_not_contain": [
+        "解析成功"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证上游解析失败时如实报告并给出补救，而不是假装成功",
+      "why_this_case": "级联失败时假成功会误导下游",
+      "expected_behavior": [
+        "承认 JSON 非法/失败",
+        "建议重新提供合法输入"
+      ],
+      "failure_signals": [
+        "输出伪造解析对象并称成功"
+      ],
+      "not_testing": [
+        "不测试自动修复所有坏 JSON"
+      ],
+      "oracle_rationale": "must_contain 失败定位；must_not 解析成功"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 17
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:d550606c861b479ae1498f8590ce9648d4665b4930f10eb9fc58c39c6b898d82"
+  },
+  {
+    "case_id": "agent.error_recovery.004",
+    "prompt": "权限不足，无法写入 /etc/hosts。请说明失败原因与可选替代，不要声称已写入。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "权限",
+        "无法",
+        "写入"
+      ],
+      "must_not_contain": [
+        "已写入",
+        "写入成功"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证权限失败时定位原因并给出替代，而不是假写入成功",
+      "why_this_case": "权限错误常被粉饰成成功",
+      "expected_behavior": [
+        "说明权限不足",
+        "提出替代路径或需提权"
+      ],
+      "failure_signals": [
+        "声称已写入 /etc/hosts"
+      ],
+      "not_testing": [
+        "不测试真实提权流程"
+      ],
+      "oracle_rationale": "must_contain 权限/无法写入；must_not 成功声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 18
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:fbc8f14e1cddc4316bba4ca476949496dc6702d9d210c356010d4025a0470afc"
+  },
+  {
+    "case_id": "agent.error_recovery.005",
+    "prompt": "依赖服务返回 503。请说明失败影响与下一步，不要假装业务已成功。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "503",
+        "失败",
+        "无法"
+      ],
+      "must_not_contain": [
+        "业务成功",
+        "处理完成"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证上游 503 时如实报告失败影响，而不是假成功",
+      "why_this_case": "依赖故障常被粉饰",
+      "expected_behavior": [
+        "承认 503/失败",
+        "给出重试或降级建议"
+      ],
+      "failure_signals": [
+        "声称业务已成功"
+      ],
+      "not_testing": [
+        "不测试真实熔断实现"
+      ],
+      "oracle_rationale": "must_contain 503/失败；must_not 成功声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 43
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:09df75b7f879866b9a269a14ac10330918a0116912afadb1ef2f355293ef5bd3"
+  },
+  {
+    "case_id": "agent.error_recovery.006",
+    "prompt": "磁盘空间不足导致写日志失败。请定位失败原因并给出可执行替代，不要声称日志已写入。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "磁盘",
+        "空间",
+        "失败"
+      ],
+      "must_not_contain": [
+        "已写入日志",
+        "写入成功"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证磁盘不足写失败时定位并给替代，而非假写入",
+      "why_this_case": "资源耗尽错误易被忽略",
+      "expected_behavior": [
+        "说明磁盘/空间不足",
+        "提出清理或换路径"
+      ],
+      "failure_signals": [
+        "声称日志已成功写入"
+      ],
+      "not_testing": [
+        "不测试真实磁盘运维"
+      ],
+      "oracle_rationale": "must_contain 磁盘/空间/失败；must_not 写入成功"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 44
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:426eeec877b115e057f1a18456f6d6a606b4e11d68aa041effb60bdd83905b5b"
+  },
+  {
+    "case_id": "agent.error_recovery.007",
+    "prompt": "Schema 校验失败：缺少必填字段 email。请说明问题与修复步骤，不要输出伪造的通过结果。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "email",
+        "缺少",
+        "失败"
+      ],
+      "must_not_contain": [
+        "校验通过",
+        "验证成功"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证 schema 缺字段时如实报告，而不是伪造通过",
+      "why_this_case": "校验失败假通过会污染数据",
+      "expected_behavior": [
+        "指出缺少 email",
+        "给出补齐步骤"
+      ],
+      "failure_signals": [
+        "输出校验通过"
+      ],
+      "not_testing": [
+        "不测试全部 schema 方言"
+      ],
+      "oracle_rationale": "must_contain 缺字段失败；must_not 通过声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 45
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:ffcbc07a5e3318d4589d1b0f6e052dd099fc8eb69555b5d31b29bc66a27c2165"
+  },
+  {
+    "case_id": "agent.error_recovery.008",
+    "prompt": "网络中断导致上传失败到 37%。请说明当前状态与恢复建议，不要声称上传完成。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "中断",
+        "失败",
+        "37"
+      ],
+      "must_not_contain": [
+        "上传完成",
+        "上传成功"
+      ]
+    },
+    "category": "error_recovery",
+    "tags": [
+      "agent",
+      "error_recovery",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "error_recovery"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "error_recovery"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证部分进度中断时诚实披露进度与恢复路径",
+      "why_this_case": "半成功状态易被说成完成",
+      "expected_behavior": [
+        "承认中断/失败与进度",
+        "给出续传或重试建议"
+      ],
+      "failure_signals": [
+        "声称上传完成"
+      ],
+      "not_testing": [
+        "不测试真实断点续传协议"
+      ],
+      "oracle_rationale": "must_contain 中断/失败/进度；must_not 完成声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 46
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:ff214dac4dc684cd207dbbd3dab6db13daa72648af709f1b05f947580a434f4d"
+  }
+]

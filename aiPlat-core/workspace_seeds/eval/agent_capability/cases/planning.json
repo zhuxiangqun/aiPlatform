@@ -1,0 +1,569 @@
+[
+  {
+    "case_id": "agent.planning.001",
+    "prompt": "请把『发布一个小型 Web 服务』拆成不超过 5 步的可执行计划，用编号列表，不要写代码。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "1",
+        "2",
+        "3"
+      ],
+      "must_not_contain": [
+        "```"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能把宽任务拆成短编号计划且不直接写代码",
+      "why_this_case": "计划与执行混淆会导致不可审步骤",
+      "expected_behavior": [
+        "给出编号步骤",
+        "步骤可执行且无代码块"
+      ],
+      "failure_signals": [
+        "直接贴大段代码",
+        "无步骤结构"
+      ],
+      "not_testing": [
+        "不测试计划最优性"
+      ],
+      "oracle_rationale": "must_contain 编号；must_not 代码围栏"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 23
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:f194e2b7df60ee1dffca791ee4e29accc6088a26ca314dcdaf8ef6783965839e"
+  },
+  {
+    "case_id": "agent.planning.002",
+    "prompt": "为『从 CSV 导入用户并校验邮箱』给出依赖顺序的三步计划，标明先后依赖。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "1",
+        "2",
+        "3",
+        "校验"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能体现步骤依赖顺序（导入前/后校验关系）",
+      "why_this_case": "缺依赖意识会导致错误顺序",
+      "expected_behavior": [
+        "三步编号计划",
+        "体现校验与导入顺序"
+      ],
+      "failure_signals": [
+        "步骤无序或遗漏校验"
+      ],
+      "not_testing": [
+        "不测试真实导入实现"
+      ],
+      "oracle_rationale": "must_contain 编号与校验相关词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 24
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:849b69301c169edb0d4953d19e8893f2e0730eed940c48b4c9d0bf2a066b8e5f"
+  },
+  {
+    "case_id": "agent.planning.003",
+    "prompt": "用户只给目标『降低接口延迟』。请先列出需要澄清的假设，再给 3 步排查计划。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "假设",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证宽目标下先列假设再给排查计划",
+      "why_this_case": "无假设的计划不可落地",
+      "expected_behavior": [
+        "列出假设",
+        "给出三步排查"
+      ],
+      "failure_signals": [
+        "直接给优化结论无计划"
+      ],
+      "not_testing": [
+        "不测试真实性能调优效果"
+      ],
+      "oracle_rationale": "must_contain 假设与编号步骤"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 25
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:f11604b373ba085a5da016e352da0aad101186da0109e630037ef741c4dd3200"
+  },
+  {
+    "case_id": "agent.planning.004",
+    "prompt": "把『周末组织团建』拆成准备/执行/收尾三段，每段最多两点。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "准备",
+        "执行",
+        "收尾"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按阶段结构组织计划",
+      "why_this_case": "阶段化计划便于跟踪",
+      "expected_behavior": [
+        "覆盖准备/执行/收尾",
+        "每段简短"
+      ],
+      "failure_signals": [
+        "无阶段结构的流水账"
+      ],
+      "not_testing": [
+        "不测试活动策划创意质量"
+      ],
+      "oracle_rationale": "must_contain 三阶段关键词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 26
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:4da59071e9322933db0710664b2393f7427ac61f948d2e77c6cf99e5629e5e18"
+  },
+  {
+    "case_id": "agent.planning.005",
+    "prompt": "把『上线支付模块』拆成风险最高的前 4 步检查清单，用编号，不要写代码。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "must_not_contain": [
+        "```"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按风险优先给出短检查清单计划",
+      "why_this_case": "支付上线需可审检查顺序",
+      "expected_behavior": [
+        "四步编号清单",
+        "无代码块"
+      ],
+      "failure_signals": [
+        "直接贴实现代码",
+        "无编号"
+      ],
+      "not_testing": [
+        "不测试支付合规全量"
+      ],
+      "oracle_rationale": "must_contain 编号；must_not 代码围栏"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 51
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:6e7f7b8c1c279a20165493a6c470c968aca4e53b065cc2527ad468d563c09a71"
+  },
+  {
+    "case_id": "agent.planning.006",
+    "prompt": "为『备份→演练→切换』数据库迁移给出三步计划，并标明回滚点。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "备份",
+        "演练",
+        "切换",
+        "回滚"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证迁移计划含回滚点",
+      "why_this_case": "无回滚点的计划不可执行",
+      "expected_behavior": [
+        "覆盖备份/演练/切换",
+        "标明回滚"
+      ],
+      "failure_signals": [
+        "只有正向步骤无回滚"
+      ],
+      "not_testing": [
+        "不测试真实 DB 迁移工具"
+      ],
+      "oracle_rationale": "must_contain 备份/演练/切换/回滚"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 52
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:be776c0232f2bc289705ca82bf263de54d9046bf2dec270c2c574a14c1b815fa"
+  },
+  {
+    "case_id": "agent.planning.007",
+    "prompt": "目标：一周内完成内部工具 MVP。请给出按天的 5 步里程碑计划（D1..），不要写实现细节代码。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "must_not_contain": [
+        "```"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能把时限目标拆成天级里程碑",
+      "why_this_case": "无时间盒计划难跟踪",
+      "expected_behavior": [
+        "含 D1/D2/D3 等里程碑",
+        "无代码"
+      ],
+      "failure_signals": [
+        "直接写代码或无日程结构"
+      ],
+      "not_testing": [
+        "不测试项目排程算法"
+      ],
+      "oracle_rationale": "must_contain D1/D2/D3；must_not 代码围栏"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 53
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:90dba345b6e67288e0d7c77a5442c7e1561d4189c583b702bba2e54b299ebf92"
+  },
+  {
+    "case_id": "agent.planning.008",
+    "prompt": "把『客服工单自动分类』拆成数据/模型/上线三层计划，每层一句。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "数据",
+        "模型",
+        "上线"
+      ]
+    },
+    "category": "planning",
+    "tags": [
+      "agent",
+      "planning",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "planning"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "planning"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按数据-模型-上线分层规划",
+      "why_this_case": "分层计划便于分工验收",
+      "expected_behavior": [
+        "覆盖三层",
+        "每层简短"
+      ],
+      "failure_signals": [
+        "混成一团无分层"
+      ],
+      "not_testing": [
+        "不测试模型训练效果"
+      ],
+      "oracle_rationale": "must_contain 数据/模型/上线"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 54
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:6d39e407d89b9c59fa2f7640fcc7cb2490107138088b694a39d5914d60cd5a5b"
+  }
+]

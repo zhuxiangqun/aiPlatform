@@ -1,4 +1,4 @@
-"""P1 agent.capability Case Bank + regression profile."""
+"""Agent capability Case Bank — seed content authority + regression profile."""
 from __future__ import annotations
 
 from core.apps.eval.service.capability_case_bank import (
@@ -7,6 +7,7 @@ from core.apps.eval.service.capability_case_bank import (
     agent_regression_profile,
     build_agent_capability_cases,
     default_seed_dir,
+    load_agent_capability_cases,
     validate_agent_capability_bank,
     validate_capability_case,
 )
@@ -21,12 +22,22 @@ def test_bank_size_and_all_valid():
     assert report["invalid_count"] == 0
     assert report["claim_eligible"] is False
     assert report["pack_id"] == PACK_ID
+    assert "cases" in str(report.get("content_authority") or "")
     counts: dict = {}
     for c in cases:
         cap = c["capabilities"][0]
         counts[cap] = counts.get(cap, 0) + 1
     for cap in V1_IN_SCOPE:
         assert counts.get(cap, 0) >= 8, cap
+
+
+def test_loader_reads_per_capability_files():
+    root = default_seed_dir()
+    assert (root / "cases").is_dir()
+    assert (root / "pack.meta.json").is_file()
+    loaded = load_agent_capability_cases()
+    assert loaded == build_agent_capability_cases()
+    assert all((root / "cases" / f"{cap}.json").is_file() for cap in V1_IN_SCOPE)
 
 
 def test_only_v1_in_scope_capabilities():
@@ -65,5 +76,9 @@ def test_seed_dir_under_workspace_seeds():
     path = default_seed_dir()
     assert path.name == "agent_capability"
     assert "workspace_seeds" in path.parts
+    assert (path / "cases").is_dir()
+    assert (path / "pack.meta.json").is_file()
     assert (path / f"pack.{PACK_ID}.v0.1.0.json").is_file()
     assert (path / f"profile.{PROFILE_ID}.json").is_file()
+    assert (path / "profile.agent.smoke.v1.json").is_file()
+    assert (path / "profile.agent.benchmark.v1.json").is_file()

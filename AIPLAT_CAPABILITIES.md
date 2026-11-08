@@ -620,7 +620,7 @@ scan_hash: 8f9548ec24f4
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_agent_capability_catalog | `core/api/core_facade.py` | ✅ | Agent 能力目录（in_scope/unknown）；生成物适用：已接线 | 已合入 |
 | eval_validate_agent_case | `core/api/core_facade.py` | ✅ | Agent case 机械门；生成物适用：已接线 | 已合入 |
-| build_agent_capability_cases | `core/apps/eval/service/capability_case_bank.py` | ✅ | Agent 能力题库种子（64 题=8×8 Benchmark 地板+test_purpose；A3–A5/A8/A9 仍 out-of-scope）；生成物适用：已接线 | 已合入 |
+| build_agent_capability_cases / load_agent_capability_cases | `core/apps/eval/service/capability_case_bank.py` | ✅ | Agent 能力题库 **从 seeds 加载**（`workspace_seeds/eval/agent_capability/cases/*.json` 为内容权威；64 题=8×8；A3–A5/A8/A9 out-of-scope）；生成物适用：已接线 | 已合入 |
 | validate_agent_capability_bank | `core/apps/eval/service/capability_case_bank.py` | ✅ | 题库机械校验；生成物适用：已接线 | 已合入 |
 | agent_regression_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | agent.regression.v1 Profile；生成物适用：已接线 | 已合入 |
 | eval_validate_agent_capability_bank | `core/api/core_facade.py` | ✅ | CoreFacade；生成物适用：已接线 | 已合入 |
@@ -2747,6 +2747,8 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| CapabilityCaseBankError | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| load_pack_meta | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
 | CapabilityCertReadinessError | `core/apps/eval/service/capability_cert_readiness.py` | ✅ | 自动同步 | 已合入 |
 | SuiteProfileExamError | `core/apps/eval/service/suite_profile_exam.py` | ✅ | 自动同步 | 已合入 |
 | index_cases_by_id | `core/apps/eval/service/suite_profile_exam.py` | ✅ | 自动同步 | 已合入 |
@@ -2755,7 +2757,7 @@ scan_hash: 8f9548ec24f4
 | judge_calibration_gate_for_ticket | `core/apps/eval/service/capability_p4_gate.py` | ✅ | 自动同步 | 已合入 |
 | CapabilityCoverageFillError | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | 自动同步 | 已合入 |
 | SuiteProfileCompileError | `core/apps/eval/service/suite_profile_compile.py` | ✅ | 自动同步 | 已合入 |
-| write_agent_capability_seeds | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| write_agent_capability_seeds | `core/apps/eval/service/capability_case_bank.py` | ✅ | 从 `cases/*` 权威组装派生 combined pack（不回写题目正文）；生成物适用：已接线 | 已合入 |
 | default_seed_dir | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
 | build_agent_capability_pack_document | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
 | validate_capability_case | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |

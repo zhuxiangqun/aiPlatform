@@ -1,0 +1,30 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "agent.smoke.v1",
+  "object_type": "agent",
+  "pack_id": "agent.capability",
+  "pack_version": "0.1.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 1,
+    "clarification": 1,
+    "error_recovery": 1,
+    "safety": 1,
+    "robustness": 1,
+    "planning": 1,
+    "efficiency": 1,
+    "observability": 1
+  },
+  "strategy": "stratified",
+  "seed": 3,
+  "session_group_policy": {
+    "atomic": true
+  },
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "P4 smoke — catch obvious breaks; not a performance estimate."
+}

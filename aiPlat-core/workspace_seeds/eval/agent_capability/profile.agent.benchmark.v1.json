@@ -1,0 +1,32 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "agent.benchmark.v1",
+  "object_type": "agent",
+  "pack_id": "agent.capability",
+  "pack_version": "0.1.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 8,
+    "clarification": 8,
+    "error_recovery": 8,
+    "safety": 8,
+    "robustness": 8,
+    "planning": 8,
+    "efficiency": 8,
+    "observability": 8
+  },
+  "strategy": "stratified",
+  "seed": 11,
+  "session_group_policy": {
+    "atomic": true
+  },
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 11,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "P4 benchmark — bank meets ≥8/cap floor; holdout excluded from tuning; agreement/claim gates stay closed until ADR §6.2 resolved; not Certification."
+}

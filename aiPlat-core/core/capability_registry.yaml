@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2122
+total_capabilities: 2125
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 186
+    caps_count: 189
     provides:
       - symbol: SuiteProfileCompileError
         type: class
@@ -6990,9 +6990,17 @@ domains:
         type: function
         signature: 'list_subject_kinds()'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: "load_agent_capability_cases"
+        type: "function"
+        signature: "load_agent_capability_cases(seed_dir?)→List[Dict] from cases/*.json"
+        module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
+      - symbol: "load_pack_meta"
+        type: "function"
+        signature: "load_pack_meta(seed_dir?)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
       - symbol: "build_agent_capability_cases"
         type: "function"
-        signature: "build_agent_capability_cases()→List[Dict]"
+        signature: "build_agent_capability_cases()→List[Dict] (alias→load seeds)"
         module: "aiPlat-core/core/apps/eval/service/capability_case_bank.py"
       - symbol: "validate_agent_capability_bank"
         type: "function"
@@ -7028,7 +7036,11 @@ domains:
         module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
       - symbol: write_agent_capability_seeds
         type: function
-        signature: 'Write pack + profile JSON under workspace_seeds (for human review).'
+        signature: 'Rebuild derived combined pack from cases/* authority'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: CapabilityCaseBankError
+        type: class
+        signature: 'CapabilityCaseBankError'
         module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
       - symbol: promote_agent_capability_bank
         type: function

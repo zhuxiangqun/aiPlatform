@@ -1,0 +1,13 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "agent.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "object_types": [
+    "agent"
+  ],
+  "notes": "Content authority: cases/*.json (+ pack.meta.json). Combined pack.*.json is derived via write_agent_capability_seeds. A3–A5/A8/A9 remain out-of-scope."
+}
