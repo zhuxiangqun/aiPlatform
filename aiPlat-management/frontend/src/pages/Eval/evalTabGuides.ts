@@ -52,6 +52,13 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     not:
       'Plan exam 绿 ≠ 准确率；fixture dry ≠ 真实宿主；勾选 explicit_authorize 也不自动改正式报告 claim。',
   },
+  'case-packs': {
+    title: 'Case Pack',
+    what: '工作区 Case Pack 工厂：草稿扩题、人审、freeze、version++、coverage 盘点。',
+    why: 'Plan v2 的题库载体；frozen 保可比，draft/curated 保覆盖，均默认不可 claim。',
+    can: 'draft→enqueue→approve→freeze；对非冻结包 expand；对冻结包 bump 出新 draft；看 coverage。',
+    not: 'freeze ≠ 准确率；coverage 是库存盘点；claim_eligible 在此面板恒 false。',
+  },
   reports: {
     title: '报告',
     what: '查看已落库的评测报告与趋势（只读为主）。',

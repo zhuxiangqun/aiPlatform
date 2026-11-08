@@ -343,11 +343,12 @@ def update_pack_version_meta(
     caller_tenant_id: str = "",
     status: Optional[str] = None,
     review: Optional[Mapping[str, Any]] = None,
+    pack_hash: Optional[str] = None,
     allow_claim_eligible: bool = False,
 ) -> Dict[str, Any]:
-    """Update status/review metadata only. Never flips claim_eligible unless explicit.
+    """Update status/review/hash metadata. Never flips claim_eligible unless explicit.
 
-    Refuse kind→frozen and refuse setting claim_eligible=true here (P1.1).
+    Refuse kind→frozen and refuse setting claim_eligible=true here.
     """
     if allow_claim_eligible:
         raise PackRegistryError(
@@ -402,6 +403,13 @@ def update_pack_version_meta(
             prev = dict(updated.get("review") or {}) if isinstance(updated.get("review"), dict) else {}
             prev.update({k: review[k] for k in review})
             updated["review"] = prev
+        if pack_hash is not None:
+            ph = str(pack_hash).strip()
+            if not ph.startswith("sha256:"):
+                raise PackRegistryError("pack_hash must be sha256:…")
+            if str(updated.get("kind") or "").lower() == "frozen":
+                raise PackRegistryError("cannot rewrite hash of frozen pack — version++")
+            updated["hash"] = ph
         # honesty lock
         updated["claim_eligible"] = False
         versions[ver] = updated

@@ -6412,6 +6412,70 @@ def eval_freeze_workspace_case_pack(
     )
 
 
+def eval_expand_draft_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    cases: Optional[list] = None,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    from core.apps.eval.service.case_pack_ops import expand_draft_workspace_pack
+
+    return expand_draft_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        cases=cases,
+        template=template,
+        variants=variants,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_bump_case_pack_version(
+    *,
+    pack_id: str,
+    from_version: str,
+    workspace_id: str,
+    to_version: str = "",
+    extra_cases: Optional[list] = None,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: version++ → new draft curated (frozen source untouched)."""
+    from core.apps.eval.service.case_pack_ops import bump_workspace_pack_version
+
+    return bump_workspace_pack_version(
+        pack_id=pack_id,
+        from_version=from_version,
+        workspace_id=workspace_id,
+        to_version=to_version,
+        extra_cases=extra_cases,
+        template=template,
+        variants=variants,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_summarize_case_pack_coverage(
+    *,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: workspace pack coverage inventory (not an accuracy claim)."""
+    from core.apps.eval.service.case_pack_ops import summarize_workspace_pack_coverage
+
+    return summarize_workspace_pack_coverage(
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",

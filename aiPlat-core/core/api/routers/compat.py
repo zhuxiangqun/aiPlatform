@@ -880,6 +880,81 @@ async def compat_evaluation_case_pack_freeze(body: Dict[str, Any], request: Requ
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/expand")
+async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Request):
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    from core.api.core_facade import eval_expand_draft_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_expand_draft_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                cases=(body or {}).get("cases"),
+                template=(body or {}).get("template"),
+                variants=(body or {}).get("variants"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs expand failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/bump")
+async def compat_evaluation_case_pack_bump(body: Dict[str, Any], request: Request):
+    """P1.4: version++ → new draft curated (source frozen untouched)."""
+    from core.api.core_facade import eval_bump_case_pack_version
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_bump_case_pack_version(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                from_version=str(
+                    (body or {}).get("from_version")
+                    or (body or {}).get("version")
+                    or ""
+                ).strip(),
+                workspace_id=nw.workspace_id,
+                to_version=str((body or {}).get("to_version") or "").strip(),
+                extra_cases=(body or {}).get("extra_cases") or (body or {}).get("cases"),
+                template=(body or {}).get("template"),
+                variants=(body or {}).get("variants"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs bump failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/coverage")
+async def compat_evaluation_case_pack_coverage(request: Request):
+    """P1.4: workspace pack coverage inventory (not accuracy)."""
+    from core.api.core_facade import eval_summarize_case_pack_coverage
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_summarize_case_pack_coverage(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs coverage failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
     """Create or update an evaluation policy artifact."""

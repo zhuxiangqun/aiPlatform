@@ -2698,6 +2698,54 @@ export const agentEvalApi = {
   }) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/claims-gate', body);
   },
+  /** Case Pack factory coverage inventory (claim closed). */
+  casePackCoverage: async () => {
+    return apiClient.get<Record<string, unknown>>('/core/evaluation/case-packs/coverage');
+  },
+  casePackDraft: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/draft', body);
+  },
+  casePackEnqueueReview: async (body: {
+    pack_id: string;
+    version: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/enqueue-review',
+      body,
+    );
+  },
+  casePackReviewQueue: async (statuses?: string) => {
+    const q = statuses?.trim()
+      ? `?statuses=${encodeURIComponent(statuses.trim())}`
+      : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/review-queue${q}`,
+    );
+  },
+  casePackReview: async (body: {
+    pack_id: string;
+    version: string;
+    decision: 'approve' | 'reject' | string;
+    reviewer?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/review', body);
+  },
+  casePackFreeze: async (body: {
+    pack_id: string;
+    version: string;
+    frozen_by?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/freeze', body);
+  },
+  casePackExpand: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/expand', body);
+  },
+  casePackBump: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/bump', body);
+  },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {
     return apiClient.post<{

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1999
+total_capabilities: 2009
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 245
+    caps_count: 255
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4615,6 +4615,46 @@ domains:
         type: function
         signature: '_case_pack_http_error(exc)→Dict ok=false'
         module: aiPlat-core/core/api/routers/compat.py
+      - symbol: expand_draft_workspace_pack
+        type: function
+        signature: 'expand_draft_workspace_pack(pack_id,version,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: bump_workspace_pack_version
+        type: function
+        signature: 'bump_workspace_pack_version(pack_id,from_version,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: summarize_workspace_pack_coverage
+        type: function
+        signature: 'summarize_workspace_pack_coverage(workspace_id)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: eval_expand_draft_case_pack
+        type: function
+        signature: 'eval_expand_draft_case_pack(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_bump_case_pack_version
+        type: function
+        signature: 'eval_bump_case_pack_version(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_summarize_case_pack_coverage
+        type: function
+        signature: 'eval_summarize_case_pack_coverage(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: compat_evaluation_case_pack_expand
+        type: function
+        signature: 'POST /evaluation/case-packs/expand'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_bump
+        type: function
+        signature: 'POST /evaluation/case-packs/bump'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_coverage
+        type: function
+        signature: 'GET /evaluation/case-packs/coverage'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: CasePackOpsError
+        type: class
+        signature: 'Pack expand / bump / coverage failure.'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
