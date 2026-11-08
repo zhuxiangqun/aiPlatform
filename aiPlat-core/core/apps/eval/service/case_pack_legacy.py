@@ -24,6 +24,14 @@ LEGACY_SET_TO_PACK: Dict[str, Tuple[str, str]] = {
 DEFAULT_PACK_VERSION = "1.0.0"
 
 
+class ClaimEligibilityError(ValueError):
+    """generated/exploratory packs cannot be claim_eligible."""
+
+
+class ManifestValidationError(ValueError):
+    """Fail-closed: Plan v2 must not execute without a valid sample_manifest."""
+
+
 def pack_ref_for_set_id(set_id: str) -> Dict[str, str]:
     sid = str(set_id or "").strip()
     if sid in LEGACY_SET_TO_PACK:
@@ -176,6 +184,113 @@ def load_set_tasks(set_id: str) -> List[Dict[str, Any]]:
     return []
 
 
+def _sync_pack_ref_with_registry(
+    *,
+    pack_id: str,
+    version: str,
+    pack_hash: str,
+    kind: str,
+    claim_eligible: bool,
+    scope: str,
+    object_types: Sequence[str],
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+) -> None:
+    """Workspace/tenant: register or verify hash. Global: verify only if already registered."""
+    from core.apps.eval.service.case_pack_registry import (
+        PackRegistryError,
+        get_pack_version,
+        load_registry,
+        register_pack_version,
+    )
+
+    sc = str(scope or "global").strip().lower()
+    if sc == "workspace" and workspace_id:
+        try:
+            register_pack_version(
+                pack_id=pack_id,
+                version=version,
+                kind=kind,
+                claim_eligible=claim_eligible,
+                scope=sc,
+                pack_hash=pack_hash,
+                object_types=list(object_types),
+                workspace_id=workspace_id,
+                caller_workspace_id=caller_workspace_id or workspace_id,
+            )
+            return
+        except PackRegistryError as e:
+            if "already registered" not in str(e):
+                raise
+            existing = get_pack_version(
+                pack_id=pack_id,
+                version=version,
+                scope=sc,
+                workspace_id=workspace_id,
+                caller_workspace_id=caller_workspace_id or workspace_id,
+            )
+            if str(existing.get("hash") or "") != pack_hash:
+                raise ManifestValidationError(
+                    f"registry hash mismatch pack={pack_id}@{version}: "
+                    f"registry={existing.get('hash')} live={pack_hash}"
+                ) from e
+            return
+    if sc == "tenant" and tenant_id:
+        try:
+            register_pack_version(
+                pack_id=pack_id,
+                version=version,
+                kind=kind,
+                claim_eligible=claim_eligible,
+                scope=sc,
+                pack_hash=pack_hash,
+                object_types=list(object_types),
+                tenant_id=tenant_id,
+                caller_tenant_id=caller_tenant_id or tenant_id,
+            )
+            return
+        except PackRegistryError as e:
+            if "already registered" not in str(e):
+                raise
+            existing = get_pack_version(
+                pack_id=pack_id,
+                version=version,
+                scope=sc,
+                tenant_id=tenant_id,
+                caller_tenant_id=caller_tenant_id or tenant_id,
+            )
+            if str(existing.get("hash") or "") != pack_hash:
+                raise ManifestValidationError(
+                    f"registry hash mismatch pack={pack_id}@{version}: "
+                    f"registry={existing.get('hash')} live={pack_hash}"
+                ) from e
+            return
+    # global / unread registry: verify if entry exists; never write in P0
+    try:
+        reg = load_registry(scope=sc)
+    except PackRegistryError:
+        return
+    packs = reg.get("packs") or {}
+    entry = packs.get(pack_id)
+    if not isinstance(entry, dict):
+        return
+    versions = entry.get("versions") or {}
+    if version not in versions:
+        return
+    existing = get_pack_version(
+        pack_id=pack_id,
+        version=version,
+        scope=sc,
+    )
+    if str(existing.get("hash") or "") != pack_hash:
+        raise ManifestValidationError(
+            f"registry hash mismatch pack={pack_id}@{version}: "
+            f"registry={existing.get('hash')} live={pack_hash}"
+        )
+
+
 def expand_sets_to_manifest(
     set_ids: Sequence[str],
     *,
@@ -183,10 +298,15 @@ def expand_sets_to_manifest(
     scope: str = "global",
     kind: str = "frozen",
     object_types: Optional[Sequence[str]] = None,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
     """Expand selected legacy set_ids → sample_manifest + pack_refs + coverage.
 
     session_group: multi_turn sets share set_id as group (整组入选).
+    Workspace/tenant scopes sync pack_refs into the scoped registry (nail 5).
     """
     ots = list(object_types or ["agent"])
     manifest: List[Dict[str, Any]] = []
@@ -214,6 +334,19 @@ def expand_sets_to_manifest(
             scope=scope,
             object_types=ots,
             cases=cases,
+        )
+        _sync_pack_ref_with_registry(
+            pack_id=ref["pack_id"],
+            version=ref["version"],
+            pack_hash=pack_hash,
+            kind=kind,
+            claim_eligible=claim_eligible,
+            scope=scope,
+            object_types=ots,
+            workspace_id=workspace_id,
+            tenant_id=tenant_id,
+            caller_workspace_id=caller_workspace_id,
+            caller_tenant_id=caller_tenant_id,
         )
         pack_refs.append(
             {
@@ -249,10 +382,6 @@ def expand_sets_to_manifest(
     return manifest, pack_refs, coverage
 
 
-class ClaimEligibilityError(ValueError):
-    """generated/exploratory packs cannot be claim_eligible."""
-
-
 def assert_claim_eligible_allowed(*, kind: str, claim_eligible: bool) -> None:
     """CI/runtime guard: generated + claim_eligible=true is rejected."""
     k = str(kind or "").strip().lower()
@@ -262,8 +391,55 @@ def assert_claim_eligible_allowed(*, kind: str, claim_eligible: bool) -> None:
         )
 
 
-class ManifestValidationError(ValueError):
-    """Fail-closed: Plan v2 must not execute without a valid sample_manifest."""
+def verify_manifest_case_hashes(
+    manifest: Sequence[Mapping[str, Any]],
+) -> None:
+    """Fail closed if any manifest case hash ≠ live canonical hash (nail 2/4).
+
+    Reloads tasks by ``set_id`` (legacy path). Missing set/case → fail closed.
+    Does **not** fall back to running the full pack.
+    """
+    by_set: Dict[str, List[Mapping[str, Any]]] = {}
+    for row in manifest:
+        if not isinstance(row, Mapping):
+            continue
+        sid = str(row.get("set_id") or "").strip()
+        if not sid:
+            raise ManifestValidationError(
+                "manifest row missing set_id — fail closed (cannot verify hash)"
+            )
+        by_set.setdefault(sid, []).append(row)
+
+    for sid, rows in by_set.items():
+        tasks = load_set_tasks(sid)
+        by_id = {
+            str(t.get("case_id") or t.get("task_id") or ""): t for t in tasks
+        }
+        for row in rows:
+            cid = str(row.get("case_id") or "").strip()
+            expected = str(row.get("hash") or "").strip()
+            if not cid or not expected:
+                raise ManifestValidationError(
+                    f"manifest row incomplete for set={sid!r} — fail closed"
+                )
+            raw = by_id.get(cid)
+            if raw is None:
+                raise ManifestValidationError(
+                    f"case_id={cid!r} not in set={sid!r} — fail closed"
+                )
+            case = task_dict_to_case(
+                raw,
+                set_id=sid,
+                session_group=row.get("session_group"),
+            )
+            if "multi_turn" in sid.replace("-", "_"):
+                case["session_group"] = sid
+            live = compute_case_hash(case)
+            if live != expected:
+                raise ManifestValidationError(
+                    f"case hash mismatch case_id={cid!r} set={sid!r}: "
+                    f"manifest={expected} live={live} — fail closed"
+                )
 
 
 def require_sample_manifest(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1964
+total_capabilities: 1969
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 600
+    caps_count: 605
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -1552,6 +1552,26 @@ domains:
         type: "function"
         signature: "assert_claim_eligible_allowed(kind,claim_eligible)→None|raises"
         module: "aiPlat-core/core/apps/eval/service/case_pack_legacy.py"
+      - symbol: "verify_manifest_case_hashes"
+        type: "function"
+        signature: "verify_manifest_case_hashes(manifest)→None|raises fail-closed"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_legacy.py"
+      - symbol: "register_pack_version"
+        type: "function"
+        signature: "register_pack_version(pack_id,version,kind,claim_eligible,scope,pack_hash,…)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_registry.py"
+      - symbol: "assert_pack_acl"
+        type: "function"
+        signature: "assert_pack_acl(scope,workspace_id?,tenant_id?,caller_*,write?)→None|raises"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_registry.py"
+      - symbol: "get_pack_version"
+        type: "function"
+        signature: "get_pack_version(pack_id,version,scope,…)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_registry.py"
+      - symbol: "load_registry"
+        type: "function"
+        signature: "load_registry(scope,workspace_id?,tenant_id?)→Dict"
+        module: "aiPlat-core/core/apps/eval/service/case_pack_registry.py"
       - symbol: "build_contract_for_object_type"
         type: "function"
         signature: "build_contract_for_object_type(object_type,object_id,…)→Dict contract.v1"

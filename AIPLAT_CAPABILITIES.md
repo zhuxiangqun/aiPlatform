@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2873
+total_capabilities: 2876
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_pack_version | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
 | systemPlanExam | `aiPlat-management/frontend/src/services/coreApi.ts` | ✅ | 自动同步 | 已合入 |
 | resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
 | extract_workspace_id_from_request | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
@@ -2712,6 +2713,8 @@ scan_hash: 8f9548ec24f4
 | compute_case_hash / compute_pack_hash / compute_manifest_hash | `case_pack_hash.py` + 附录 B 向量测试 | ✅ | Case Pack canonical hash（排除 review/agent_id）；指纹三分开；生成物适用：已接线（评测 Plan） | 本批 |
 | require_sample_manifest / expand_sets_to_manifest / assert_claim_eligible_allowed / project_plan_to_v1 | `case_pack_legacy.py` + `eval_plan.py` + typed_plan_exam + agent_exam | ✅ | legacy set→manifest；v2 空 manifest fail-closed；agent exam 按 manifest 滤题；generated+claim 拒；v1 只投影；生成物适用：已接线 | 本批 |
 | load_eval_set ignores unknown task keys / eval_sets user overlay | `eval_runner.py` + overlay 单测 | ✅ | dataset `fixture_table` 可加载；`create_builtin`/`ensure_builtin` **永不覆盖**已存在用户卷；生成物适用：已接线 | 本批 |
+| verify_manifest_case_hashes | `case_pack_legacy.py` + typed/agent exam | ✅ | 执行前 live case hash ≠ manifest → fail closed（无整包回退）；生成物适用：已接线 | 本批 |
+| case_pack_registry / register_pack_version / assert_pack_acl | `case_pack_registry.py` | ✅ | scope global\|workspace\|tenant；跨 workspace ACL 拒；原子写+锁；global P0 只读；生成物适用：已接线（评测 Plan） | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
 | run_typed_plan_exam / workflow-plan-exam / model-plan-exam / dataset-plan-exam | `typed_plan_exam.py` + CoreFacade + `POST /evaluation/{workflow,model,dataset}-plan-exam` | ✅ | Workflow/Model 词面 oracle；Dataset=`dataset_assert` 夹具表；≠ pipeline/模型榜/KB；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -3772,7 +3775,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 438 | 1 | 439 |
+| Harness 执行引擎 | 439 | 1 | 440 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -3785,7 +3788,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 332 | 0 | 332 |
+| 评估系统 | 334 | 0 | 334 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3817,7 +3820,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2863** | **10** | **2873** |
+| **总计** | **2866** | **10** | **2876** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

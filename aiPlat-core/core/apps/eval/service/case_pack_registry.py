@@ -1,0 +1,230 @@
+"""Minimal Eval Case Pack registry: scope + ACL + atomic write (P0 nail 5).
+
+global = builtin/platform (read-mostly under AIPLAT_HOME/eval_packs/global)
+workspace = private under AIPLAT_HOME/workspaces/{id}/eval_packs
+Cross-scope / cross-workspace references are rejected.
+"""
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import threading
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional
+
+from core.apps.eval.service.case_pack_legacy import assert_claim_eligible_allowed
+from core.utils.paths import get_aiplat_home
+
+_LOCKS: Dict[str, threading.Lock] = {}
+_LOCKS_GUARD = threading.Lock()
+
+VALID_SCOPES = frozenset({"global", "workspace", "tenant"})
+
+
+class PackRegistryError(ValueError):
+    """Pack registry / ACL / atomic-write failure."""
+
+
+def _lock_for(path: Path) -> threading.Lock:
+    key = str(path.resolve())
+    with _LOCKS_GUARD:
+        if key not in _LOCKS:
+            _LOCKS[key] = threading.Lock()
+        return _LOCKS[key]
+
+
+def _scope_root(scope: str, *, workspace_id: str = "", tenant_id: str = "") -> Path:
+    home = Path(get_aiplat_home())
+    sc = str(scope or "").strip().lower()
+    if sc not in VALID_SCOPES:
+        raise PackRegistryError(f"invalid scope={scope!r}")
+    if sc == "global":
+        return home / "eval_packs" / "global"
+    if sc == "workspace":
+        wid = str(workspace_id or "").strip()
+        if not wid:
+            raise PackRegistryError("workspace scope requires workspace_id")
+        return home / "workspaces" / wid / "eval_packs"
+    tid = str(tenant_id or "").strip()
+    if not tid:
+        raise PackRegistryError("tenant scope requires tenant_id")
+    return home / "tenants" / tid / "eval_packs"
+
+
+def assert_pack_acl(
+    *,
+    scope: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+    write: bool = False,
+) -> None:
+    """Fail closed on cross-scope / cross-workspace / cross-tenant access."""
+    sc = str(scope or "").strip().lower()
+    if sc not in VALID_SCOPES:
+        raise PackRegistryError(f"invalid scope={scope!r}")
+    if sc == "global":
+        if write:
+            # Platform publish role not modeled yet — refuse writes in P0.
+            raise PackRegistryError("global packs are read-only in P0")
+        return
+    if sc == "workspace":
+        wid = str(workspace_id or "").strip()
+        caller = str(caller_workspace_id or "").strip()
+        if not wid or not caller or wid != caller:
+            raise PackRegistryError(
+                f"workspace ACL deny: pack workspace={wid!r} caller={caller!r}"
+            )
+        return
+    tid = str(tenant_id or "").strip()
+    caller_t = str(caller_tenant_id or "").strip()
+    if not tid or not caller_t or tid != caller_t:
+        raise PackRegistryError(
+            f"tenant ACL deny: pack tenant={tid!r} caller={caller_t!r}"
+        )
+
+
+def _registry_path(root: Path) -> Path:
+    return root / "registry.json"
+
+
+def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(dict(payload), ensure_ascii=False, indent=2, sort_keys=True)
+    fd, tmp_name = tempfile.mkstemp(
+        dir=str(path.parent), prefix=".registry.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_name, path)
+    finally:
+        if os.path.exists(tmp_name):
+            try:
+                os.unlink(tmp_name)
+            except OSError:  # noqa: cleanup-best-effort
+                pass
+
+
+def load_registry(
+    *,
+    scope: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+) -> Dict[str, Any]:
+    root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    path = _registry_path(root)
+    if not path.is_file():
+        return {"schema": "eval.pack_registry.v1", "scope": scope, "packs": {}}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise PackRegistryError(f"registry corrupt: {e}") from e
+    if not isinstance(raw, dict):
+        raise PackRegistryError("registry root must be object")
+    packs = raw.get("packs")
+    if packs is None:
+        raw["packs"] = {}
+    elif not isinstance(packs, dict):
+        raise PackRegistryError("registry.packs must be object")
+    raw.setdefault("schema", "eval.pack_registry.v1")
+    raw["scope"] = scope
+    return raw
+
+
+def register_pack_version(
+    *,
+    pack_id: str,
+    version: str,
+    kind: str,
+    claim_eligible: bool,
+    scope: str,
+    pack_hash: str,
+    object_types: Optional[List[str]] = None,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+    status: str = "active",
+) -> Dict[str, Any]:
+    """Atomically register ``(pack_id, version)``. Duplicate → fail (no clobber)."""
+    assert_claim_eligible_allowed(kind=kind, claim_eligible=claim_eligible)
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=True,
+    )
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    if not pid or not ver:
+        raise PackRegistryError("pack_id and version required")
+    ph = str(pack_hash or "").strip()
+    if not ph.startswith("sha256:"):
+        raise PackRegistryError("pack_hash must be sha256:…")
+
+    root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    path = _registry_path(root)
+    lock = _lock_for(path)
+    with lock:
+        reg = load_registry(
+            scope=scope, workspace_id=workspace_id, tenant_id=tenant_id
+        )
+        packs = reg.setdefault("packs", {})
+        entry = packs.get(pid)
+        if not isinstance(entry, dict):
+            entry = {"versions": {}}
+            packs[pid] = entry
+        versions = entry.setdefault("versions", {})
+        if ver in versions:
+            raise PackRegistryError(
+                f"pack {pid}@{ver} already registered — refuse overwrite"
+            )
+        versions[ver] = {
+            "kind": str(kind),
+            "claim_eligible": bool(claim_eligible),
+            "hash": ph,
+            "object_types": sorted(str(x) for x in (object_types or [])),
+            "status": str(status or "active"),
+            "scope": scope,
+            "workspace_id": workspace_id or None,
+            "tenant_id": tenant_id or None,
+        }
+        entry["latest"] = ver
+        _atomic_write_json(path, reg)
+        return dict(versions[ver])
+
+
+def get_pack_version(
+    *,
+    pack_id: str,
+    version: str,
+    scope: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+) -> Dict[str, Any]:
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=False,
+    )
+    reg = load_registry(scope=scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    packs = reg.get("packs") or {}
+    entry = packs.get(str(pack_id or "").strip())
+    if not isinstance(entry, dict):
+        raise PackRegistryError(f"pack not found: {pack_id}")
+    ver = (entry.get("versions") or {}).get(str(version or "").strip())
+    if not isinstance(ver, dict):
+        raise PackRegistryError(f"pack version not found: {pack_id}@{version}")
+    return dict(ver)

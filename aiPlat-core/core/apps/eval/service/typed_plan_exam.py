@@ -304,10 +304,12 @@ async def run_typed_plan_exam(
     from core.apps.eval.service.case_pack_legacy import (
         ManifestValidationError,
         require_sample_manifest,
+        verify_manifest_case_hashes,
     )
 
     try:
         sample_manifest = require_sample_manifest(plan)
+        verify_manifest_case_hashes(sample_manifest)
     except ManifestValidationError as e:
         out_fail: Dict[str, Any] = {
             "ok": False,

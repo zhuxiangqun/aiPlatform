@@ -283,6 +283,7 @@ async def run_agent_exam(
     from core.apps.eval.service.case_pack_legacy import (
         ManifestValidationError,
         require_sample_manifest,
+        verify_manifest_case_hashes,
     )
 
     plan: Optional[Dict[str, Any]] = None
@@ -304,6 +305,7 @@ async def run_agent_exam(
             source_refs=["agent_exam"],
         )
         manifest = require_sample_manifest(plan)
+        verify_manifest_case_hashes(manifest)
         allow = {
             str(row.get("case_id") or "")
             for row in manifest
