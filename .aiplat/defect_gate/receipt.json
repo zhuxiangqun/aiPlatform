@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T22:56:58+08:00",
+  "reviewed_at": "2026-11-08T23:03:13+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "4f1c6ee115618c856cf9c2b078be0e5db66ccb5caf2f0b9fc4a57cb018d8ffea",
-  "head_sha": "35d7d9cce833f25815883dc159363bfa37aa08d8",
+  "diff_sha256": "36b312896779bebdf341343bae8435321481aaf7e36c840f81a03e2c25425def",
+  "head_sha": "0e650d0324698436769a402cabe4da76ada66b4e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Whitepaper sync only; hashes refreshed vs CAPABILITIES after Case Editor registration."
+  "note": "Docs-only charter for tool/session/long-context in-scope lift; no product code."
 }
