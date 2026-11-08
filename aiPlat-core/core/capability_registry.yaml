@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2066
+total_capabilities: 2072
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 130
+    caps_count: 136
     provides:
       - symbol: "resolve_capability_id"
         type: "function"
@@ -6826,6 +6826,30 @@ domains:
         type: "function"
         signature: "eval_validate_agent_case(case?)→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: UnknownCapabilityId
+        type: class
+        signature: 'Unknown legacy/canonical capability id (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/capability_id_map.py
+      - symbol: is_v1_in_scope
+        type: function
+        signature: 'True if canonical (or resolvable) id is in signed v1 measurable subset.'
+        module: aiPlat-core/core/apps/eval/service/capability_id_map.py
+      - symbol: capability_match_set
+        type: function
+        signature: 'Canonical set for matching; unknown ids kept as lowercased tokens (migration).'
+        module: aiPlat-core/core/apps/eval/service/capability_id_map.py
+      - symbol: EvalSubjectAdapter
+        type: class
+        signature: 'build_contract, capability_catalog, validate_case, execute'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: AgentSubjectAdapter
+        type: class
+        signature: 'Agent reference adapter (P0: contract / catalog / validate_case).'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: list_subject_kinds
+        type: function
+        signature: 'list_subject_kinds()'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
       - symbol: "run_g2a_gate"
         type: "function"
         signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"
