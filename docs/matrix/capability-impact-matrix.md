@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 1947 capabilities (caps_count) | 1947 symbols (provides)
+> Version: 1.1.0 | 34 domains | 1949 capabilities (caps_count) | 1949 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -81,7 +81,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | FDE 能力自描述 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | FDE 能力自描述 |
 
 ### aiPlat-platform/apps/fde/api/fde_pipeline.py
 
@@ -156,7 +156,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | Wiki CRUD + index + ingest 端点 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | Wiki CRUD + index + ingest 端点 |
 | ai-knowledge-layer | §三十一 AI知识层增强 | 3 | /wiki/index-md + /ingest/url 端点 |
 | document-intelligence | §十五 文档智能 | 3 | Upload/ingest 端点 |
 
@@ -164,7 +164,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 本体引擎 REST API |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | 本体引擎 REST API |
 
 ### core/apps/agents/materials_chat.py
 
@@ -267,13 +267,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 10层上下文注入 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | 10层上下文注入 |
 
 ### core/harness/knowledge/domain_maturity.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | 域成熟度评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | 域成熟度评分 |
 
 ### core/harness/knowledge/domain_router.py
 
@@ -285,13 +285,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | KnowledgeSynthesizer 合成 Wiki 页 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | KnowledgeSynthesizer 合成 Wiki 页 |
 
 ### core/harness/knowledge/ontology_completeness.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | OCS 本体完整性六维评分 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | OCS 本体完整性六维评分 |
 
 ### core/harness/knowledge/seci_engine.py
 
@@ -370,7 +370,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| knowledge-engine-ontology | §三 知识引擎（本体） | 239 | GraphIndex 遍历检索 |
+| knowledge-engine-ontology | §三 知识引擎（本体） | 241 | GraphIndex 遍历检索 |
 | memory-subsystem | §二 记忆子系统 | 59 | 语义记忆检索 |
 | rag-retrieval | §四 RAG 检索 | 7 | 检索路由 + 多路融合 |
 
@@ -516,7 +516,7 @@
 - **aiPlat-management/frontend/src/pages/Infra** — Infra 管理前端
 - **aiPlat-infra/infra/management/model/config_loader.py** — adapters 发现与 CredentialPool 共用 DB 路径
 
-### §三 知识引擎（本体） (239 caps)
+### §三 知识引擎（本体） (241 caps)
 
 - **core/api/routers/wiki.py** — Wiki CRUD + index + ingest 端点
 - **core/api/routers/wiki_ontology_engine.py** — 本体引擎 REST API

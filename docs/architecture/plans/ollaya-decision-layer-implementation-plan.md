@@ -180,10 +180,12 @@
 
 ### 4.6 阶段 0 交付物清单
 
-- [ ] 《DomainRouter 现网基线报告》（含环境、窗口、表格、图表）  
-- [x] 《意图 classify_with_llm 调用链结论》— 离线草稿见 [`ollaya-phase0-baseline-evidence.md`](./ollaya-phase0-baseline-evidence.md)（**仅 0.5**；≠ 阶段 0 完成）  
-- [ ] 《阶段 1 工程与审计设计评审通过》纪要  
+- [ ] 《DomainRouter 现网基线报告》（含环境、窗口、表格、图表）— 模板+进程级 `route_stats` 已就绪，**缺现网填数**；见 [`ollaya-phase0-baseline-evidence.md`](./ollaya-phase0-baseline-evidence.md)  
+- [x] 《意图 classify_with_llm 调用链结论》— 同上证据包 §0.5  
+- [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表草稿见证据包 §0.6（**未签字**）  
 - [ ] Go/No-Go 书面结论  
+
+**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`。**仍禁止**未 Go 合并影子。
 
 **阶段 0 明确不交付**：影子延迟数字、Ollaya 准确率、线上替换。
 

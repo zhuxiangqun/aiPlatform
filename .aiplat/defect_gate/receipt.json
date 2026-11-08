@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T00:26:12+08:00",
+  "reviewed_at": "2026-11-08T10:02:49+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4f1c8ab92f35939fd6eeedc01b743e7d1813aa51",
-  "diff_sha256": "e7dc9860f9e232701706341ffdccded6f6dfa521b51ec7391315c69b5bd56608",
-  "head_sha": "9d5e8e6614e483074ac1ffb640b1f7260fd53835",
+  "merge_base": "c2c052e9b2b4d6932114baeb0c3cabe4a2b77892",
+  "diff_sha256": "54909fcb10915957006b1f8674331da6ca2728eebe5c7805996f2098590d27fa",
+  "head_sha": "fc2fba4aba852d7b53db335270343d27a2140295",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "After CAPABILITIES AUTO-STATS 2840 + whitepaper sync. Local lock only."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. clause-sync §79 DomainRouter process-wide route_stats; five checks pass on merge diff."
 }
