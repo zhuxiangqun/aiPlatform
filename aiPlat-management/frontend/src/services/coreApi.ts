@@ -2760,6 +2760,37 @@ export const agentEvalApi = {
   }) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/freeze', body);
   },
+  /** P1: seed agent.capability → draft → approve → freeze (claim=false). */
+  casePackPromoteAgentCapability: async (body?: {
+    reviewer?: string;
+    frozen_by?: string;
+    pack_id?: string;
+    version?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/promote-agent-capability',
+      body || {},
+    );
+  },
+  /** Built-in Suite Profiles (agent.regression.v1). */
+  casePackSuiteProfiles: async () => {
+    return apiClient.get<Record<string, unknown>>(
+      '/core/evaluation/case-packs/suite-profiles',
+    );
+  },
+  /** P2: Profile quotas → Plan v2 sample_manifest. */
+  casePackCompileSuiteProfile: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    object_id?: string;
+    object_version?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/compile-suite-profile',
+      body || {},
+    );
+  },
   casePackExpand: async (body: Record<string, unknown>) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/expand', body);
   },

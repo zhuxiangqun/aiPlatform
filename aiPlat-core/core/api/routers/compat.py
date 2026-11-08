@@ -880,6 +880,79 @@ async def compat_evaluation_case_pack_freeze(body: Dict[str, Any], request: Requ
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/promote-agent-capability")
+async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], request: Request):
+    """P1 closeout: seed bank → draft → approve → freeze (claim_eligible=false)."""
+    from core.api.core_facade import eval_promote_agent_capability_bank
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_promote_agent_capability_bank(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                reviewer=str((body or {}).get("reviewer") or ""),
+                frozen_by=str((body or {}).get("frozen_by") or ""),
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("promote-agent-capability failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/compile-suite-profile")
+async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
+    """P2: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
+    from core.api.core_facade import (
+        eval_agent_regression_profile,
+        eval_compile_plan_from_suite_profile,
+    )
+
+    profile = (body or {}).get("profile")
+    if profile is None:
+        profile_id = str((body or {}).get("profile_id") or "").strip()
+        if profile_id in ("", "agent.regression.v1"):
+            profile = eval_agent_regression_profile()
+        else:
+            return {
+                "ok": False,
+                "error": f"unknown profile_id={profile_id!r}; supply profile object",
+                "accuracy_claim": False,
+            }
+    if not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    try:
+        return eval_compile_plan_from_suite_profile(
+            profile=profile,
+            object_id=str((body or {}).get("object_id") or "agent.capability.target"),
+            object_version=str((body or {}).get("object_version") or "0.1.0"),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("compile-suite-profile failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.get("/evaluation/case-packs/suite-profiles")
+async def compat_evaluation_suite_profiles():
+    """List built-in Suite Profiles (v1: agent.regression only)."""
+    from core.api.core_facade import eval_agent_regression_profile
+
+    profile = eval_agent_regression_profile()
+    return {
+        "ok": True,
+        "profiles": [profile],
+        "claim_eligible": False,
+        "accuracy_claim": False,
+    }
+
+
 @router.post("/evaluation/case-packs/expand")
 async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Request):
     """P1.4: append cases into non-frozen draft/in_review/rejected pack."""

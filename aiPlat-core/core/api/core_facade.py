@@ -6358,6 +6358,51 @@ def eval_agent_regression_profile() -> Dict[str, Any]:
     return agent_regression_profile()
 
 
+def eval_promote_agent_capability_bank(
+    *,
+    workspace_id: str,
+    reviewer: str = "",
+    frozen_by: str = "",
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1 closeout: validate → draft → review → freeze agent.capability (claim=false)."""
+    from core.apps.eval.service.capability_case_bank import promote_agent_capability_bank
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "reviewer": reviewer,
+        "frozen_by": frozen_by,
+        "caller_workspace_id": caller_workspace_id,
+        "notes": notes,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return promote_agent_capability_bank(**kwargs)
+
+
+def eval_compile_plan_from_suite_profile(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    cases: Optional[list] = None,
+    object_id: str = "agent.capability.target",
+    object_version: str = "0.1.0",
+) -> Dict[str, Any]:
+    """P2: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
+    from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
+
+    return compile_plan_from_suite_profile(
+        profile=profile,
+        cases=cases,
+        object_id=object_id,
+        object_version=object_version,
+    )
+
+
 def eval_publish_draft_case_pack(
     *,
     pack_id: str,

@@ -1,8 +1,8 @@
 /**
- * Case Pack P1 factory ops (draft → review → freeze + expand/bump/coverage).
+ * Case Pack P1 factory ops + P2 Suite Profile compile.
  * Honesty: claim_eligible stays false; frozen≠accuracy.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { agentEvalApi } from '../../services';
 
@@ -11,10 +11,44 @@ export default function EvalCasePackPanel() {
   const [version, setVersion] = useState('0.1.0');
   const [prompt, setPrompt] = useState('say ok');
   const [ticketId, setTicketId] = useState('');
+  const [profileId, setProfileId] = useState('agent.regression.v1');
+  const [profileOptions, setProfileOptions] = useState<string[]>(['agent.regression.v1']);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const out = await agentEvalApi.casePackSuiteProfiles();
+        const rows = Array.isArray(out?.profiles) ? out.profiles : [];
+        const ids = rows
+          .map((p) =>
+            p && typeof p === 'object'
+              ? String((p as Record<string, unknown>).profile_id || '').trim()
+              : '',
+          )
+          .filter(Boolean);
+        if (!cancelled && ids.length) {
+          setProfileOptions(ids);
+          if (!ids.includes(profileId)) setProfileId(ids[0]);
+        }
+      } catch (e) {
+        // keep default profile id when suite-profiles unavailable
+        if (!cancelled) {
+          setMsg(
+            `suite-profiles load skipped: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
+  }, []);
 
   const run = useCallback(
     async (label: string, fn: () => Promise<Record<string, unknown>>) => {
@@ -60,7 +94,7 @@ export default function EvalCasePackPanel() {
         <span className="text-amber-300/90"> claim_eligible 恒 false；frozen ≠ 准确率宣称。</span>
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-1">
           <span className="text-xs text-slate-500">pack_id</span>
           <input
@@ -86,6 +120,21 @@ export default function EvalCasePackPanel() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
           />
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs text-slate-500">suite profile</span>
+          <select
+            className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5"
+            value={profileId}
+            onChange={(e) => setProfileId(e.target.value)}
+            data-testid="eval-case-pack-profile"
+          >
+            {profileOptions.map((id) => (
+              <option key={id} value={id}>
+                {id}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
@@ -150,6 +199,23 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-amber-700/60 px-3 py-1.5 text-amber-100 disabled:opacity-50"
+          data-testid="eval-case-pack-promote-capability"
+          onClick={() =>
+            run('promote-capability', () =>
+              agentEvalApi.casePackPromoteAgentCapability({
+                reviewer: 'ui',
+                frozen_by: 'ui',
+                notes: 'P1 UI promote',
+              }),
+            )
+          }
+        >
+          Promote agent.capability
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
           onClick={() =>
             run('expand', () =>
@@ -191,6 +257,21 @@ export default function EvalCasePackPanel() {
           onClick={() => run('coverage', () => agentEvalApi.casePackCoverage())}
         >
           Coverage
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-sky-700/60 px-3 py-1.5 text-sky-100 disabled:opacity-50"
+          data-testid="eval-case-pack-compile-profile"
+          onClick={() =>
+            run('compile-profile', () =>
+              agentEvalApi.casePackCompileSuiteProfile({
+                profile_id: profileId.trim() || 'agent.regression.v1',
+              }),
+            )
+          }
+        >
+          Compile Profile → Plan
         </button>
         <button
           type="button"

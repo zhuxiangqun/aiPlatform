@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2082
+total_capabilities: 2087
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 146
+    caps_count: 151
     provides:
       - symbol: "resolve_capability_id"
         type: "function"
@@ -6890,6 +6890,26 @@ domains:
         type: function
         signature: 'Write pack + profile JSON under workspace_seeds (for human review).'
         module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: promote_agent_capability_bank
+        type: function
+        signature: 'promote_agent_capability_bank(workspace_id,…)→Dict frozen claim=false'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: eval_promote_agent_capability_bank
+        type: function
+        signature: 'eval_promote_agent_capability_bank(workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: compile_plan_from_suite_profile
+        type: function
+        signature: 'compile_plan_from_suite_profile(profile?,cases?)→Dict plan.v2'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: select_cases_for_profile
+        type: function
+        signature: 'select_cases_for_profile(cases,profile)→(cases,meta)'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: eval_compile_plan_from_suite_profile
+        type: function
+        signature: 'eval_compile_plan_from_suite_profile(profile?,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: "run_g2a_gate"
         type: "function"
         signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"

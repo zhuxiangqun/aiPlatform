@@ -799,3 +799,148 @@ def write_agent_capability_seeds(*, seed_dir: Optional[Path] = None) -> Dict[str
         json.dumps(profile, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return {"pack": str(pack_path), "profile": str(profile_path)}
+
+
+def _stamp_purpose_ok(cases: Sequence[Mapping[str, Any]], *, reviewer: str) -> List[Dict[str, Any]]:
+    """Stamp mechanical+owner review purpose_ok (claim still closed)."""
+    out: List[Dict[str, Any]] = []
+    for raw in cases:
+        c = dict(raw)
+        review = dict(c.get("review") or {})
+        review.update(
+            {
+                "status": "purpose_ok",
+                "decision": "purpose_ok",
+                "reviewer": str(reviewer or "owner"),
+                "notes": "P1 ordered promote: mechanical validate + owner sign-off path",
+            }
+        )
+        c["review"] = review
+        out.append(c)
+    return out
+
+
+def promote_agent_capability_bank(
+    *,
+    workspace_id: str,
+    reviewer: str = "",
+    frozen_by: str = "",
+    pack_id: str = PACK_ID,
+    version: str = PACK_VERSION,
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1 closeout: validate → draft → enqueue → approve → freeze (claim=false).
+
+    Uses workspace registry (same path as Case Pack factory). Does not open
+    accuracy_claim. Idempotent if already frozen.
+    """
+    from core.apps.eval.service.case_factory import publish_draft_workspace_pack
+    from core.apps.eval.service.case_freeze import CaseFreezeError, freeze_workspace_pack
+    from core.apps.eval.service.case_pack_registry import PackRegistryError, get_pack_version
+    from core.apps.eval.service.case_review_queue import (
+        CaseReviewError,
+        enqueue_pack_for_review,
+        submit_review_decision,
+    )
+
+    wid = str(workspace_id or "").strip()
+    if not wid:
+        raise ValueError("workspace_id required")
+    pid = str(pack_id or PACK_ID).strip() or PACK_ID
+    ver = str(version or PACK_VERSION).strip() or PACK_VERSION
+    who = str(reviewer or frozen_by or "owner").strip() or "owner"
+    caller = str(caller_workspace_id or wid).strip() or wid
+
+    report = validate_agent_capability_bank()
+    if not report.get("ok"):
+        raise ValueError(
+            f"capability bank invalid: invalid_count={report.get('invalid_count')}"
+        )
+    cases = _stamp_purpose_ok(build_agent_capability_cases(), reviewer=who)
+
+    # Already frozen? return noop.
+    try:
+        cur = get_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller,
+        )
+        if (
+            str(cur.get("kind") or "").lower() == "frozen"
+            and str(cur.get("status") or "").lower() == "active"
+        ):
+            return {
+                "ok": True,
+                "noop": True,
+                "pack_id": pid,
+                "version": ver,
+                "kind": "frozen",
+                "status": "active",
+                "n_cases": report.get("case_count"),
+                "claim_eligible": False,
+                "accuracy_claim": False,
+                "profile_id": PROFILE_ID,
+                "honesty": "already frozen; claim_eligible=false",
+            }
+    except PackRegistryError:
+        # noqa: pack not registered yet — continue to draft publish
+        cur = None
+
+    draft = publish_draft_workspace_pack(
+        pack_id=pid,
+        version=ver,
+        cases=cases,
+        workspace_id=wid,
+        caller_workspace_id=caller,
+        object_types=["agent"],
+        kind="curated",
+    )
+    enqueue_pack_for_review(
+        pack_id=pid,
+        version=ver,
+        workspace_id=wid,
+        caller_workspace_id=caller,
+        notes=str(notes or "P1 capability bank promote"),
+    )
+    submit_review_decision(
+        pack_id=pid,
+        version=ver,
+        workspace_id=wid,
+        decision="approve",
+        reviewer=who,
+        notes="purpose_ok (ordered P1 closeout)",
+        caller_workspace_id=caller,
+    )
+    try:
+        frozen = freeze_workspace_pack(
+            pack_id=pid,
+            version=ver,
+            workspace_id=wid,
+            caller_workspace_id=caller,
+            frozen_by=str(frozen_by or who),
+            notes=str(notes or "P1 agent.capability freeze"),
+        )
+    except (CaseFreezeError, CaseReviewError) as exc:
+        raise ValueError(str(exc)) from exc
+
+    return {
+        "ok": True,
+        "pack_id": pid,
+        "version": ver,
+        "kind": frozen.get("kind"),
+        "status": frozen.get("status"),
+        "pack_hash": frozen.get("pack_hash"),
+        "n_cases": frozen.get("n_cases") or len(cases),
+        "draft_hash": draft.get("pack_hash"),
+        "profile_id": PROFILE_ID,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "reviewer": who,
+        "honesty": (
+            "P1 frozen curated bank; claim_eligible=false; accuracy_claim closed; "
+            "purpose_ok stamped before freeze"
+        ),
+    }
