@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T21:46:39+08:00",
+  "reviewed_at": "2026-11-08T22:13:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "e5a8504131b210aff821a295acc576fc7b3ec1f1bad98579195356e6c899590f",
-  "head_sha": "1b3b8b8ba37301852d32decb2419d87f033f6f93",
+  "diff_sha256": "880c40d30daead40f0383bcdcc3ec799892f82e2718ebd5a17662b895db371d9",
+  "head_sha": "58575e3d8371e67595e4b1159507239270f15b59",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P5 pre-gate: profile_complete vs §8.5; certification_eligible always false; claim closed; external audit out of band."
+  "note": "Agent bank filled to 64=8x8 Benchmark floor; ready_for_benchmark_quotas=true; claim_eligible/certification_eligible remain false; A3-A5/A8/A9 still out-of-scope. Local lock only."
 }
