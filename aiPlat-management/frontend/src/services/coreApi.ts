@@ -2791,6 +2791,20 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** Post-P4: execute only sample_manifest from Suite Profile Plan. */
+  casePackRunSuiteProfile: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    live?: boolean;
+    model?: string;
+    run_key?: string;
+    max_cases?: number;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/run-suite-profile',
+      body || {},
+    );
+  },
   /** P3: capability have/need/gap inventory. */
   casePackCapabilityCoverage: async (body?: {
     profile_id?: string;

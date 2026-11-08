@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2110
+total_capabilities: 2114
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,12 +6788,28 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 174
+    caps_count: 178
     provides:
       - symbol: SuiteProfileCompileError
         type: class
         signature: 'Profile compile fail-closed.'
         module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: run_suite_profile_exam
+        type: function
+        signature: 'run_suite_profile_exam(profile_id?,…)→Dict exam'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
+      - symbol: verify_capability_manifest_hashes
+        type: function
+        signature: 'verify_capability_manifest_hashes(manifest,cases_by_id)'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
+      - symbol: index_cases_by_id
+        type: function
+        signature: 'index_cases_by_id(cases)→Dict'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
+      - symbol: eval_run_suite_profile_exam
+        type: function
+        signature: 'eval_run_suite_profile_exam(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: agent_smoke_profile
         type: function
         signature: 'agent_smoke_profile()→Dict'

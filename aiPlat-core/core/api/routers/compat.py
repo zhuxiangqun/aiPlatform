@@ -928,6 +928,32 @@ async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
         return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
 
 
+@router.post("/evaluation/case-packs/run-suite-profile")
+async def compat_evaluation_run_suite_profile(body: Dict[str, Any]):
+    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
+    from core.api.core_facade import eval_run_suite_profile_exam
+
+    profile = (body or {}).get("profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    try:
+        return await eval_run_suite_profile_exam(
+            profile_id=str((body or {}).get("profile_id") or "agent.regression.v1"),
+            profile=profile if isinstance(profile, dict) else None,
+            live=bool((body or {}).get("live")),
+            model=str((body or {}).get("model") or ""),
+            run_key=str((body or {}).get("run_key") or ""),
+            object_id=str((body or {}).get("object_id") or "agent.capability.target"),
+            object_version=str((body or {}).get("object_version") or "0.1.0"),
+            max_cases=int((body or {}).get("max_cases") or 0),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("run-suite-profile failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
 @router.get("/evaluation/case-packs/suite-profiles")
 async def compat_evaluation_suite_profiles():
     """List built-in Suite Profiles (smoke / regression / benchmark)."""

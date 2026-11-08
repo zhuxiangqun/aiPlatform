@@ -276,6 +276,22 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-sky-700/60 px-3 py-1.5 text-sky-100 disabled:opacity-50"
+          data-testid="eval-case-pack-run-profile"
+          onClick={() =>
+            run('run-profile', () =>
+              agentEvalApi.casePackRunSuiteProfile({
+                profile_id: profileId.trim() || 'agent.regression.v1',
+                live: false,
+              }),
+            )
+          }
+        >
+          Run Profile (dry)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
           data-testid="eval-case-pack-cap-coverage"
           onClick={() =>
