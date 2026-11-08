@@ -6425,6 +6425,46 @@ def eval_probe_m1c_sandbox() -> Dict[str, Any]:
     return probe_m1c_sandbox()
 
 
+def eval_build_mode_intersection_rank(
+    mode_columns: Dict[str, Any],
+    *,
+    parity: Optional[Dict[str, Any]] = None,
+    signoff: Optional[Dict[str, Any]] = None,
+    min_n_per_capability: int = 5,
+    track_a_complete: bool = True,
+) -> Dict[str, Any]:
+    """M3 Track B: intersection Pareto/CI report; rank_claim never auto-emitted."""
+    from core.apps.eval.service.mode_intersection_rank import build_mode_intersection_rank
+
+    return build_mode_intersection_rank(
+        mode_columns,
+        parity=parity,
+        signoff=signoff,
+        min_n_per_capability=int(min_n_per_capability or 5),
+        track_a_complete=bool(track_a_complete),
+    )
+
+
+def eval_evaluate_mode_rank_gate(
+    mode_columns: Dict[str, Any],
+    *,
+    parity: Optional[Dict[str, Any]] = None,
+    signoff: Optional[Dict[str, Any]] = None,
+    min_n_per_capability: int = 5,
+    track_a_complete: bool = True,
+) -> Dict[str, Any]:
+    """M3 rank gate checklist (fail closed for rank_claim)."""
+    from core.apps.eval.service.mode_intersection_rank import evaluate_rank_gate
+
+    return evaluate_rank_gate(
+        mode_columns=mode_columns,
+        parity=parity,
+        signoff=signoff,
+        min_n_per_capability=int(min_n_per_capability or 5),
+        track_a_complete=bool(track_a_complete),
+    )
+
+
 def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     """Load + validate default mock tool catalog seed (T0)."""
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2211
+total_capabilities: 2222
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,52 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 275
+    caps_count: 286
     provides:
+      - symbol: build_mode_intersection_rank
+        type: function
+        signature: "build_mode_intersection_rank(mode_columns,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: evaluate_rank_gate
+        type: function
+        signature: "evaluate_rank_gate(mode_columns,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: wilson_score_ci
+        type: function
+        signature: "wilson_score_ci(successes,n,z?)→(lo,hi)"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: dominance_relation
+        type: function
+        signature: "dominance_relation(a_lo,a_hi,b_lo,b_hi)→str"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: pareto_frontier
+        type: function
+        signature: "pareto_frontier(mode_vectors)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: list_rank_eligible_cases
+        type: function
+        signature: "list_rank_eligible_cases(parity?)→List"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: attach_rank_fingerprint_to_column
+        type: function
+        signature: "attach_rank_fingerprint_to_column(column,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: load_parity_for_rank
+        type: function
+        signature: "load_parity_for_rank(seed_dir?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: ModeIntersectionRankError
+        type: class
+        signature: "Fail-closed intersection / rank gate error."
+        module: aiPlat-core/core/apps/eval/service/mode_intersection_rank.py
+      - symbol: eval_build_mode_intersection_rank
+        type: function
+        signature: "eval_build_mode_intersection_rank(mode_columns,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_mode_rank_gate
+        type: function
+        signature: "eval_evaluate_mode_rank_gate(mode_columns,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: run_m1a_mode_exam
         type: function
         signature: "run_m1a_mode_exam(live?,modes?,…)→Dict"

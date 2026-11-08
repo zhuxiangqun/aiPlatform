@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3096
+total_capabilities: 3101
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -642,6 +642,10 @@ scan_hash: 8f9548ec24f4
 | m1b_environment_lock / m1c_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M1b/M1c 环境依赖锁（矩阵权威）；生成物适用：已接线 | 本批 |
 | run_m1c_mode_exam / enforce_m1c_environment / probe_m1c_sandbox | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1c react 分栏；fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM；生成物适用：已接线 | 本批 |
 | eval_run_m1c_mode_exam / eval_probe_m1c_sandbox | `core/api/core_facade.py` | ✅ | CoreFacade M1c 入口；生成物适用：已接线 | 本批 |
+| build_mode_intersection_rank / evaluate_rank_gate / wilson_score_ci / pareto_frontier | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | M3 交集 Pareto/CI + rank gate；默认无 winner；rank_claim 不自动；生成物适用：已接线 | 本批 |
+| eval_build_mode_intersection_rank / eval_evaluate_mode_rank_gate | `core/api/core_facade.py` | ✅ | CoreFacade M3 入口；生成物适用：已接线 | 本批 |
+| build_mode_intersection_rank / evaluate_rank_gate / wilson_score_ci / pareto_frontier | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | M3 轨 B：交集 Pareto+Wilson；fixture 禁入榜；rank_claim 不自动产生；生成物适用：已接线 | 本批 |
+| eval_build_mode_intersection_rank / eval_evaluate_mode_rank_gate | `core/api/core_facade.py` | ✅ | CoreFacade M3 入口；生成物适用：已接线 | 本批 |
 | get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考实现）；生成物适用：已接线 | 已合入 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
@@ -2775,6 +2779,11 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| ModeIntersectionRankError | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| load_parity_for_rank | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| attach_rank_fingerprint_to_column | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| list_rank_eligible_cases | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| dominance_relation | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
 | load_m1c_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
 | load_m1b_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
 | m1a_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
@@ -3996,7 +4005,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 512 | 1 | 513 |
+| Harness 执行引擎 | 516 | 1 | 517 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4009,7 +4018,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 402 | 0 | 402 |
+| 评估系统 | 403 | 0 | 403 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4041,7 +4050,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3086** | **10** | **3096** |
+| **总计** | **3091** | **10** | **3101** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

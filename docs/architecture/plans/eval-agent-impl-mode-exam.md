@@ -2,7 +2,7 @@
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  
 > **版本**：v0.1 · M0 设计单 · 2026-11-09  
-> **状态**：**M0 · M1a · M1b · M1c 工程完成**（react + fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM）— 排行（M3）不抢跑  
+> **状态**：**M0 · M1a · M1b · M1c · M3 工程完成**（交集 rank gate + Wilson/Pareto；默认无 winner；parity 仍全 `rank_eligible=false` → 无自动 rank_claim）— M2 另估  
 > **关联**：[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md) · [eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md) · [eval-object-contract-and-plan.md](./eval-object-contract-and-plan.md) · [eval-agent-tool-session-inscope.md](./eval-agent-tool-session-inscope.md)
 
 ---
@@ -218,8 +218,9 @@ M0 → M1a（无工具 live）→ M1b（rag）→ M1c（react/沙箱后）→ M3
 | M1a 分栏实评 | `core/apps/eval/service/mode_aware_exam.py` → `run_m1a_mode_exam` |
 | M1b rag 分栏 | `run_m1b_mode_exam` / `enforce_m1b_environment` |
 | M1c react 分栏 | `run_m1c_mode_exam` / `probe_m1c_sandbox` |
+| M3 交集排行 | `mode_intersection_rank.py` → `build_mode_intersection_rank` / `evaluate_rank_gate` |
 | Fixtures | `fixtures/mode_exam/{plan_execute,conversational,rag,react}/cases.json` |
-| Facade | `eval_run_m1a/b/c_mode_exam` / `eval_probe_m1c_sandbox` |
+| Facade | `eval_run_m1a/b/c_*` / `eval_build_mode_intersection_rank` / `eval_evaluate_mode_rank_gate` |
 | Parity 样例 | `intersection/parity_sample.v1.json` |
 
 **M1a 诚实边界**：默认 `live=False` 为 `create_agent(tools=[])` + scripted oracle，`runtime_tier=fixture`；`live=True` 才走 agent.execute 并标 `workspace_execute`。tools/retrieval/network 违规 → `environment_violation`。无跨模式排行。
@@ -227,6 +228,8 @@ M0 → M1a（无工具 live）→ M1b（rag）→ M1c（react/沙箱后）→ M3
 **M1b 诚实边界**：`create_agent(rag)` + case `retrieval_fixture` hits；缺 hit → 无效。默认 scripted=`fixture`；live 用 fixture-patched `_retrieve`（**≠** 生产 CRAG KB covered）。tools/network/session 违规 → `environment_violation`。无跨模式排行。
 
 **M1c 诚实边界**：`create_agent(react)` + mock tool harness；`sandbox_backend=fixture_mock`；A3–A5 **`coverage_status=unknown`**。`live=True` 需 `AIPLAT_EVAL_M1C_SANDBOX=1`，仍 **≠** microVM isolation covered。无跨模式排行。
+
+**M3 诚实边界**：仅 `rank_eligible=true` 且过 gate 的交集 case 可比较；fixture 禁入榜；Wilson CI + Pareto；**默认无单一 winner**；`rank_claim` **永不**由 builder 自动置 true（仅 `rank_claim_allowed` 在门禁+三方签字后解锁权限）。当前种子候选仍全部 `rank_eligible=false`。
 
 ---
 

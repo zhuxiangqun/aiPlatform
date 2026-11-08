@@ -44,6 +44,28 @@
     "method_owner": "",
     "engineering": "",
     "independent_qa": "",
-    "status": "unsigned"
-  }
+    "product": "",
+    "status": "unsigned",
+    "roles": [
+      "method_owner",
+      "engineering",
+      "independent_qa"
+    ],
+    "note": "M3 rank_claim requires status=signed|approved and all three roles non-empty; product optional for claim wording."
+  },
+  "rank_gate_checklist": [
+    "track_a_complete",
+    "modes_present",
+    "rank_eligible_cases",
+    "no_fixture_on_board",
+    "same_runtime_tier",
+    "same_model_fingerprint",
+    "rank_fingerprint_consistent",
+    "completion_rate_100",
+    "unknown_not_as_pass_or_zero",
+    "sample_size_ci",
+    "oracle_env_hashes",
+    "same_intersection_manifest",
+    "three_party_signoff"
+  ]
 }
