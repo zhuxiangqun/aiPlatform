@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T16:14:00+08:00",
+  "reviewed_at": "2026-11-08T16:30:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "0ced21b7877c64e255e0e3b325b632522791670d8a2237158d73cfcbbc0aa30c",
-  "head_sha": "e3c2eaf9f4ad419752a19eda7095fca0c665f658",
+  "diff_sha256": "93c4fe2fb4ec24cd8309219f167274db7012db4708aecd59736111650b3f5162",
+  "head_sha": "031e2410853720e23b613bdc03dcb31793433136",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: Appendix B hash vectors + §8.1 signoff; merge≠Go P0. CI still needs non-author Approve."
+  "note": "P0.1 Plan v2+manifest+hash; typed fail-closed; claim guard. No accuracy_claim. Five checks: no old full-pack fallback; signatures ok; empty manifest not success; single manifest path; docs not self-certifying execution."
 }
