@@ -1,0 +1,19 @@
+{
+  "schema": "eval.arena.blind.pack.meta.v0",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "stamp": "20261108T073806Z",
+  "pairs_source": "packages/aiplat-evaluation/docs/a3/arena_blind_pairs.v0.json",
+  "pair_count": 3,
+  "annotators": [
+    "r1",
+    "r2"
+  ],
+  "rubric": "docs/a3/ARENA_BLIND_RUBRIC_V1.md",
+  "pilot": "docs/a3/ARENA_BLIND_PILOT.md",
+  "for_annotators": "for_annotators/",
+  "facilitator_only": "facilitator_only/",
+  "send_annotator": "docs/a3/ARENA_BLIND_SEND_ANNOTATOR.md",
+  "send_facilitator": "docs/a3/ARENA_BLIND_SEND_FACILITATOR.md",
+  "note": "Send only for_annotators/ to reviewers. Never send facilitator_only/ or files that name model_a/model_b. accuracy_claim=false; length smoke not replaced."
+}

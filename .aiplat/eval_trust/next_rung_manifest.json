@@ -1,0 +1,75 @@
+{
+  "schema": "aiplat.eval_trust.next_rung.v1",
+  "captured_at": "2026-11-08T15:38:06+08:00",
+  "honesty": "Engineering readiness only. Does NOT raise accuracy_claim. Arena pack is leak-guard green; human QA re-sign still required. G2b fail taxonomy is hypothesis tags from local artifacts — ≠ root-cause cert.",
+  "g2b": {
+    "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
+    "n": 100,
+    "pass_rate": 0.72,
+    "wilson_ci95": [
+      0.6251,
+      0.7986
+    ],
+    "fail_n": 28,
+    "accuracy_claim": false,
+    "thresholds_met": false,
+    "fail_bucket_counts": {
+      "agreed_fail": 25,
+      "disputed_fail": 3
+    },
+    "fail_by_family": {
+      "prompt": 4,
+      "agent": 8,
+      "kb": 9,
+      "skill": 6,
+      "safety": 1
+    },
+    "family_base_rates": {
+      "agent": {
+        "fail": 8,
+        "n": 19,
+        "fail_rate": 0.421
+      },
+      "kb": {
+        "fail": 9,
+        "n": 19,
+        "fail_rate": 0.474
+      },
+      "prompt": {
+        "fail": 4,
+        "n": 25,
+        "fail_rate": 0.16
+      },
+      "safety": {
+        "fail": 1,
+        "n": 19,
+        "fail_rate": 0.053
+      },
+      "skill": {
+        "fail": 6,
+        "n": 18,
+        "fail_rate": 0.333
+      }
+    },
+    "hypothesis_counts": {
+      "translation_or_phrasing": 1,
+      "format_oververbose": 3,
+      "safety_behavior_mismatch": 4,
+      "content_or_rubric_strict": 18,
+      "format_not_json": 1,
+      "format_code_instead_of_json": 1
+    },
+    "detail_path": "g2b_fail_taxonomy_v0.json"
+  },
+  "arena": {
+    "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
+    "leak_guard_pass": true,
+    "for_annotators_has_send_split": false,
+    "facilitator_isolated": false,
+    "qa_overall_pass": false,
+    "gate_eligible": false,
+    "replaces_length_smoke": false,
+    "note": "Code path closed 2026-11-05 leak class; pilot QA still overall_pass=false until human re-sign on THIS clean pack.",
+    "meta": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/meta.json"
+  }
+}

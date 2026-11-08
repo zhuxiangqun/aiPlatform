@@ -40,16 +40,34 @@
 - `counts.not_applicable == 0`
 - 原 N/A 三套（`missing_info` / `tool_failure` / `multi_turn`）均在 `selected`
 
+## 下一档工程进展（仍 ≠ 认证）
+
+| 项 | 状态 | 证据 |
+|----|------|------|
+| Plan 重跑 | ✅ | `.aiplat/eval_trust/plan_rerun_manifest.json` |
+| Arena SEND 泄漏类缺陷（代码路径） | ✅ leak-guard 绿；**人签 QA 仍未过** | `.aiplat/eval_trust/arena_clean_pack_20261108/` + `next_rung_manifest.json` |
+| G2b 28 失败工程分桶 | ✅ 假设标签（≠ 根因认证） | `.aiplat/eval_trust/g2b_fail_taxonomy_v0.json` |
+| G2b ≥ 80% / CI 下界 ≥ 70% | ❌ 仍 72% / [62.5%, 79.9%] | 既有 `g2b_accuracy_aggregate.v1.json` |
+| Arena QA `overall_pass` / 替换 length smoke | ❌ | 需对人发**本干净包**重签；默认 runner 仍 length smoke |
+| staging / 外部审计 | ❌ | — |
+
+G2b 失败分桶摘要（n=28，本地假设）：
+
+- 桶：`agreed_fail=25` · `disputed_fail=3`
+- family：kb 9 / agent 8 / skill 6 / prompt 4 / safety 1
+- 假设：`content_or_rubric_strict=18` · `safety_behavior_mismatch=4` · `format_*=5` · 其它
+
 ## 仍缺（进入「更可信任」之前）
 
-1. G2b ≥ 门槛或明确 scoped 披露（当前 72% / CI 下界未达 70% → `accuracy_claim=false`）  
-2. Arena clean pack + QA pass 后再谈替换 length smoke  
+1. G2b 达门槛 **或** 产品 owner 明确 scoped 披露（继续 `accuracy_claim=false`）  
+2. 对本干净 Arena pack **独立 QA 重签** `overall_pass=true` 后，再单独立项是否 shadow length smoke  
 3. staging + 生产轴证据；独立第三方审计  
-4. 代表性任务扩样 + 失败归因；人评 `filled_by`/签名强化  
-5. 冻结 commit / 题集 / 判分器 / 执行清单的完整可复现包（本文件 + manifest 仅为 Plan 切片）
+4. 代表性任务扩样；把假设标签升级为有人复核的错误类型  
+5. 冻结 commit / 题集 / 判分器 / 执行清单的完整可复现包
 
 ## 诚实约束
 
 - `accuracy_claim=false` 保持默认。  
 - `capability_unconfirmed:*` ≠ 已证明具备该能力。  
+- 失败分桶 / 干净 Arena 包 = **工程就绪证据**，不是准确率或质量认证。  
 - 本文件是**信任边界声明**，不是认证证书。
