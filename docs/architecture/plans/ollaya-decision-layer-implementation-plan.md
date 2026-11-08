@@ -173,8 +173,8 @@
 
 | 结论 | 条件（示例，立项会可改数字） |
 |------|------------------------------|
-| **Go 阶段 1** | 观测窗内 T3 命中 ≥ N 次（或占比 ≥ p%），且基线报告完整、§5/§6 方案已批 |
-| **有条件 Go** | T3 很少但 T2 边界带样本足，且约定影子只打「T2 低置信/边界」样本 |
+| **Go 阶段 1** | 观测窗内 T3 命中 ≥ N 次（或占比 ≥ p%），且基线报告完整、§5/§6 方案已批。**建议默认**（证据包 §0.7，立项会可改）：`t3_hits ≥ 100` 或（`t3_llm_pct ≥ 5%` 且 `total ≥ 500`） |
+| **有条件 Go** | T3 很少但 T2 边界带样本足，且约定影子只打「T2 低置信/边界」样本。**建议默认**：`t2_boundary_hits ≥ 100` |
 | **No-Go** | 几乎无 T3/无边界样本；或无法做脱敏审计；或无人维护决策服务 |
 | **意图 LLM 叙事** | 若 0.5 证实无生产 caller → 文档与宣讲**禁止**「省 LLM fallback」 |
 
@@ -182,10 +182,10 @@
 
 - [ ] 《DomainRouter 现网基线报告》（含环境、窗口、表格、图表）— 模板+进程级 `route_stats` 已就绪，**缺现网填数**；见 [`ollaya-phase0-baseline-evidence.md`](./ollaya-phase0-baseline-evidence.md)  
 - [x] 《意图 classify_with_llm 调用链结论》— 同上证据包 §0.5  
-- [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表草稿见证据包 §0.6（**未签字**）  
-- [ ] Go/No-Go 书面结论  
+- [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表见证据包 §0.6（**未签字**）  
+- [ ] Go/No-Go 书面结论 — 建议默认阈值见证据包 §0.7  
 
-**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`。**仍禁止**未 Go 合并影子。
+**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`；`scripts/collect_domain_router_route_stats.py`。**仍禁止**未 Go 合并影子。
 
 **阶段 0 明确不交付**：影子延迟数字、Ollaya 准确率、线上替换。
 
