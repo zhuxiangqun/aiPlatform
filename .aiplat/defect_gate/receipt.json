@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T17:30:02+08:00",
+  "reviewed_at": "2026-11-08T17:37:26+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "13f473bcc85408d11fa7c94cfd6aecaa68c3afae87b18c2cb3b647dbac9cb582",
-  "head_sha": "7f0bb3911340c97ffb53217c4dfd5eecce8f8d17",
+  "diff_sha256": "0ead8a3fdb89c4b28fae7a480cf3c09e4012937bd9e3af1a7dc8b605fdc3024e",
+  "head_sha": "7b659a5e06b343bf80ac481e9bf8efe8311b6594",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0.5: pack_claim_disclosure on attach_evaluation_plan; L5 blocks claim_eligible false/unspecified; whitepaper sync for Code References. No accuracy_claim open."
+  "note": "P0.6 T12: apply_manifest_sampling stratified/random; session_group intact; min_per_stratum shortfall error|degrade+quota_trace; no silent quota rewrite."
 }
