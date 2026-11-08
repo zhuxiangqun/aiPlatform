@@ -160,11 +160,20 @@ def test_project_plan_to_v1_not_execution_list():
 
 
 def test_multi_turn_session_group_intact():
+    from core.apps.eval.service.case_pack_legacy import assert_session_groups_intact
+
     manifest, _, cov = expand_sets_to_manifest(["default/multi_turn"])
     assert manifest
     groups = {row.get("session_group") for row in manifest}
     assert groups == {"default/multi_turn"}
     assert cov["sets"]["default/multi_turn"]["session_group"] == "default/multi_turn"
+    assert_session_groups_intact(manifest)
+    # T4: dropping one turn from the group must fail closed
+    if len(manifest) >= 2:
+        bad = copy.deepcopy(manifest)
+        bad.pop()
+        with pytest.raises(ManifestValidationError, match="session_group"):
+            assert_session_groups_intact(bad)
 
 
 def test_task_map_prompt_priority():

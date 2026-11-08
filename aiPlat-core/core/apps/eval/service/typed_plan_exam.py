@@ -277,6 +277,7 @@ async def run_typed_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
     source_refs: Optional[Sequence[str]] = None,
+    run_key: str = "",
 ) -> Dict[str, Any]:
     """Compile Plan for typed object + execute selected ``{type}/*`` sets."""
     from core.apps.eval.service.eval_plan import (
@@ -340,6 +341,16 @@ async def run_typed_plan_exam(
         return attach_evaluation_plan(out_fail, plan)
 
     run_id = f"{ot}-plan-{uuid.uuid4().hex[:12]}"
+    rk = str(run_key or "").strip() or run_id
+    from core.apps.eval.service.case_pack_hash import compute_execution_fingerprint
+
+    plan = dict(plan)
+    plan["execution_fingerprint"] = compute_execution_fingerprint(
+        plan_id=str(plan.get("plan_id") or ""),
+        manifest_hash=str(plan.get("manifest_hash") or ""),
+        runner_id=f"{ot}_plan_exam",
+        run_key=rk,
+    )
     started = time.time()
     paper_results: List[Dict[str, Any]] = []
     totals = {"pass": 0, "fail": 0, "inconclusive": 0, "error": 0, "tasks": 0}
@@ -428,11 +439,13 @@ async def run_typed_plan_exam(
     out: Dict[str, Any] = {
         "ok": True,
         "run_id": run_id,
+        "run_key": rk,
         "object_type": ot,
         "object_id": oid,
         "live": bool(live),
         "selected_set_ids": selected,
         "manifest_hash": plan.get("manifest_hash"),
+        "execution_fingerprint": plan.get("execution_fingerprint"),
         "manifest_case_count": len(sample_manifest),
         "papers": paper_results,
         "counts": totals,

@@ -442,6 +442,56 @@ def verify_manifest_case_hashes(
                 )
 
 
+def assert_session_groups_intact(
+    manifest: Sequence[Mapping[str, Any]],
+) -> None:
+    """Fail closed if any ``session_group`` is only partially present (T4 / §3.1).
+
+    For each non-null group, every case in the source set that maps to that
+    group must appear in the manifest (整组入选). Partial groups → error.
+    """
+    by_group: Dict[str, List[Mapping[str, Any]]] = {}
+    for row in manifest:
+        if not isinstance(row, Mapping):
+            continue
+        sg = row.get("session_group")
+        if sg is None or sg == "":
+            continue
+        by_group.setdefault(str(sg), []).append(row)
+
+    for sg, rows in by_group.items():
+        set_ids = sorted(
+            {str(r.get("set_id") or "").strip() for r in rows if r.get("set_id")}
+        )
+        if not set_ids:
+            raise ManifestValidationError(
+                f"session_group={sg!r} rows missing set_id — fail closed"
+            )
+        selected = {
+            str(r.get("case_id") or "").strip() for r in rows if r.get("case_id")
+        }
+        selected.discard("")
+        expected: set = set()
+        for sid in set_ids:
+            for t in load_set_tasks(sid):
+                case = task_dict_to_case(t, set_id=sid, session_group=None)
+                if "multi_turn" in sid.replace("-", "_"):
+                    case["session_group"] = sid
+                if str(case.get("session_group") or "") == sg:
+                    cid = str(case.get("case_id") or "").strip()
+                    if cid:
+                        expected.add(cid)
+        if not expected:
+            continue
+        if selected != expected:
+            missing = sorted(expected - selected)
+            extra = sorted(selected - expected)
+            raise ManifestValidationError(
+                f"session_group={sg!r} split — fail closed "
+                f"(missing={missing[:5]} extra={extra[:5]})"
+            )
+
+
 def require_sample_manifest(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
     """Runner entry: only sample_manifest is executable (nail 2).
 
@@ -451,7 +501,9 @@ def require_sample_manifest(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
     schema = str(plan.get("schema") or "")
     raw = plan.get("sample_manifest")
     if isinstance(raw, list) and raw:
-        return [dict(x) for x in raw if isinstance(x, Mapping)]
+        out = [dict(x) for x in raw if isinstance(x, Mapping)]
+        assert_session_groups_intact(out)
+        return out
 
     if schema.endswith(".v2") or schema == "eval.evaluation_plan.v2":
         raise ManifestValidationError(
@@ -471,4 +523,5 @@ def require_sample_manifest(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
     manifest, _, _ = expand_sets_to_manifest(set_ids)
     if not manifest:
         raise ManifestValidationError("expanded sample_manifest empty — fail closed")
+    assert_session_groups_intact(manifest)
     return manifest

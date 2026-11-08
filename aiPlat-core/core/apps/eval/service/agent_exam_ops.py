@@ -260,6 +260,7 @@ async def run_agent_exam(
     live: bool = False,
     max_tasks: int = 0,
     persist: bool = True,
+    run_key: str = "",
 ) -> Dict[str, Any]:
     """Run exam paper ``set_id`` with all tasks bound to ``agent_id``.
 
@@ -452,6 +453,19 @@ async def run_agent_exam(
             )
         else:
             profile = {"profile_source": plan.get("eval_profile_source")}
+        from core.apps.eval.service.case_pack_hash import compute_execution_fingerprint
+
+        plan = dict(plan)
+        rk = str(run_key or "").strip() or str(payload.get("run_id") or "")
+        if rk and plan.get("plan_id") and plan.get("manifest_hash"):
+            plan["execution_fingerprint"] = compute_execution_fingerprint(
+                plan_id=str(plan.get("plan_id") or ""),
+                manifest_hash=str(plan.get("manifest_hash") or ""),
+                runner_id="agent_exam",
+                run_key=rk,
+            )
+            payload["run_key"] = rk
+            payload["execution_fingerprint"] = plan["execution_fingerprint"]
         stamped = attach_evaluation_plan({"ok": True}, plan)
         payload["target_contract"] = stamped.get("target_contract")
         payload["match_report"] = stamped.get("match_report")
