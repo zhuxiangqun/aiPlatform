@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T22:26:48+08:00",
+  "reviewed_at": "2026-11-08T22:40:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "e6e4e62cf33e0a3618ced065f414b7fe695482e8270b0fb194131d2986e2492c",
-  "head_sha": "713f72ecf1e97898c478e4cd3e9ba3b61dfa5c35",
+  "diff_sha256": "c36df417b62f21c7cd999955ff10093828ab2e2102e4d540f71d9d4d5c3ba3b8",
+  "head_sha": "e5b8b5bdf274c7ddeb031ff95b728cc89f2717ac",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Agent case bank content authority moved to workspace_seeds cases/*.json; Python is loader-only; combined pack derived; claim/cert remain closed. Local lock only."
+  "note": "Case Editor: seed read-only + workspace draft CRUD; frozen→bump; claim/cert closed; no dual git write path. Local lock only."
 }
