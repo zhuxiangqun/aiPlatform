@@ -2748,6 +2748,7 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| resolve_capability_id_safe | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
 | eval_upsert_workspace_pack_case | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_open_capability_bank_editor | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | CapabilityCaseEditorError | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |

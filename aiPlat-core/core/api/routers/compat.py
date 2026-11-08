@@ -1123,7 +1123,7 @@ async def compat_evaluation_open_capability_judge_calibration(
         return _case_pack_http_error(e)
 
 
-@router.get("/evaluation/case-packs/seed-cases")
+@router.get("/evaluation/case-packs/seed-cases", response_model=Dict[str, Any])
 async def compat_evaluation_seed_cases(capability_id: str = ""):
     """Read-only browse of repo seed capability cases."""
     from core.api.core_facade import eval_list_seed_capability_cases
@@ -1135,7 +1135,7 @@ async def compat_evaluation_seed_cases(capability_id: str = ""):
         return _case_pack_http_error(e)
 
 
-@router.get("/evaluation/case-packs/seed-cases/{case_id}")
+@router.get("/evaluation/case-packs/seed-cases/{case_id}", response_model=Dict[str, Any])
 async def compat_evaluation_seed_case_get(case_id: str):
     from core.api.core_facade import eval_get_seed_capability_case
 
@@ -1146,7 +1146,7 @@ async def compat_evaluation_seed_case_get(case_id: str):
         return _case_pack_http_error(e)
 
 
-@router.post("/evaluation/case-packs/editor/open")
+@router.post("/evaluation/case-packs/editor/open", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_open(body: Dict[str, Any], request: Request):
     """Open editable workspace draft (from seeds or bump frozen)."""
     from core.api.core_facade import eval_open_capability_bank_editor
@@ -1169,7 +1169,7 @@ async def compat_evaluation_case_editor_open(body: Dict[str, Any], request: Requ
         return _case_pack_http_error(e)
 
 
-@router.get("/evaluation/case-packs/editor/cases")
+@router.get("/evaluation/case-packs/editor/cases", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_list(
     request: Request,
     pack_id: str = "agent.capability",
@@ -1196,7 +1196,7 @@ async def compat_evaluation_case_editor_list(
         return _case_pack_http_error(e)
 
 
-@router.get("/evaluation/case-packs/editor/cases/{case_id}")
+@router.get("/evaluation/case-packs/editor/cases/{case_id}", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_get(
     case_id: str,
     request: Request,
@@ -1223,7 +1223,7 @@ async def compat_evaluation_case_editor_get(
         return _case_pack_http_error(e)
 
 
-@router.post("/evaluation/case-packs/editor/upsert")
+@router.post("/evaluation/case-packs/editor/upsert", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Request):
     from core.api.core_facade import eval_upsert_workspace_pack_case
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
@@ -1252,7 +1252,7 @@ async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Re
         return _case_pack_http_error(e)
 
 
-@router.post("/evaluation/case-packs/editor/delete")
+@router.post("/evaluation/case-packs/editor/delete", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_delete(body: Dict[str, Any], request: Request):
     from core.api.core_facade import eval_delete_workspace_pack_case
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
