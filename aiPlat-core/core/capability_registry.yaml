@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2125
+total_capabilities: 2135
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,48 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 189
+    caps_count: 199
     provides:
+      - symbol: list_seed_capability_cases
+        type: function
+        signature: 'list_seed_capability_cases(capability_id?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: get_seed_capability_case
+        type: function
+        signature: 'get_seed_capability_case(case_id)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: list_workspace_pack_cases
+        type: function
+        signature: 'list_workspace_pack_cases(workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: get_workspace_pack_case
+        type: function
+        signature: 'get_workspace_pack_case(workspace_id,case_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: upsert_workspace_pack_case
+        type: function
+        signature: 'upsert_workspace_pack_case(workspace_id,case,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: delete_workspace_pack_case
+        type: function
+        signature: 'delete_workspace_pack_case(workspace_id,case_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: open_capability_bank_editor
+        type: function
+        signature: 'open_capability_bank_editor(workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: CapabilityCaseEditorError
+        type: class
+        signature: 'CapabilityCaseEditorError'
+        module: aiPlat-core/core/apps/eval/service/capability_case_editor.py
+      - symbol: eval_open_capability_bank_editor
+        type: function
+        signature: 'eval_open_capability_bank_editor(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_upsert_workspace_pack_case
+        type: function
+        signature: 'eval_upsert_workspace_pack_case(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: SuiteProfileCompileError
         type: class
         signature: 'Profile compile fail-closed.'

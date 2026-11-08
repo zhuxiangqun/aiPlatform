@@ -2773,6 +2773,77 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** Case Editor: read-only repo seed browse. */
+  caseEditorSeedList: async (capabilityId?: string) => {
+    const q = capabilityId?.trim()
+      ? `?capability_id=${encodeURIComponent(capabilityId.trim())}`
+      : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/seed-cases${q}`,
+    );
+  },
+  caseEditorSeedGet: async (caseId: string) => {
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/seed-cases/${encodeURIComponent(caseId)}`,
+    );
+  },
+  /** Case Editor: open workspace draft (from seeds or bump frozen). */
+  caseEditorOpen: async (body?: {
+    pack_id?: string;
+    version?: string;
+    bump_if_frozen?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/open',
+      body || {},
+    );
+  },
+  caseEditorList: async (opts?: {
+    pack_id?: string;
+    version?: string;
+    capability_id?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.pack_id) params.set('pack_id', opts.pack_id);
+    if (opts?.version) params.set('version', opts.version);
+    if (opts?.capability_id) params.set('capability_id', opts.capability_id);
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/editor/cases${q}`,
+    );
+  },
+  caseEditorGet: async (
+    caseId: string,
+    opts?: { pack_id?: string; version?: string },
+  ) => {
+    const params = new URLSearchParams();
+    if (opts?.pack_id) params.set('pack_id', opts.pack_id);
+    if (opts?.version) params.set('version', opts.version);
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/editor/cases/${encodeURIComponent(caseId)}${q}`,
+    );
+  },
+  caseEditorUpsert: async (body: {
+    pack_id?: string;
+    version?: string;
+    case: Record<string, unknown>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/upsert',
+      body,
+    );
+  },
+  caseEditorDelete: async (body: {
+    pack_id?: string;
+    version?: string;
+    case_id: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/delete',
+      body,
+    );
+  },
   /** Built-in Suite Profiles (agent.regression.v1). */
   casePackSuiteProfiles: async () => {
     return apiClient.get<Record<string, unknown>>(

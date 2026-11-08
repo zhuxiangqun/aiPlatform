@@ -1123,6 +1123,157 @@ async def compat_evaluation_open_capability_judge_calibration(
         return _case_pack_http_error(e)
 
 
+@router.get("/evaluation/case-packs/seed-cases")
+async def compat_evaluation_seed_cases(capability_id: str = ""):
+    """Read-only browse of repo seed capability cases."""
+    from core.api.core_facade import eval_list_seed_capability_cases
+
+    try:
+        return eval_list_seed_capability_cases(capability_id=capability_id)
+    except Exception as e:
+        logger.debug("seed-cases list failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/seed-cases/{case_id}")
+async def compat_evaluation_seed_case_get(case_id: str):
+    from core.api.core_facade import eval_get_seed_capability_case
+
+    try:
+        return eval_get_seed_capability_case(case_id=case_id)
+    except Exception as e:
+        logger.debug("seed-case get failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/open")
+async def compat_evaluation_case_editor_open(body: Dict[str, Any], request: Request):
+    """Open editable workspace draft (from seeds or bump frozen)."""
+    from core.api.core_facade import eval_open_capability_bank_editor
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_capability_bank_editor(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                bump_if_frozen=bool((body or {}).get("bump_if_frozen", True)),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor open failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/editor/cases")
+async def compat_evaluation_case_editor_list(
+    request: Request,
+    pack_id: str = "agent.capability",
+    version: str = "0.1.0",
+    capability_id: str = "",
+):
+    from core.api.core_facade import eval_list_workspace_pack_cases
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_list_workspace_pack_cases(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=pack_id,
+                version=version,
+                capability_id=capability_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor list failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/editor/cases/{case_id}")
+async def compat_evaluation_case_editor_get(
+    case_id: str,
+    request: Request,
+    pack_id: str = "agent.capability",
+    version: str = "0.1.0",
+):
+    from core.api.core_facade import eval_get_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_get_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case_id=case_id,
+                pack_id=pack_id,
+                version=version,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor get failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/upsert")
+async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Request):
+    from core.api.core_facade import eval_upsert_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    case = (body or {}).get("case")
+    if not isinstance(case, dict):
+        return {
+            "ok": False,
+            "error": "case object required",
+            "accuracy_claim": False,
+        }
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_upsert_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case=case,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor upsert failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/delete")
+async def compat_evaluation_case_editor_delete(body: Dict[str, Any], request: Request):
+    from core.api.core_facade import eval_delete_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_delete_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case_id=str((body or {}).get("case_id") or "").strip(),
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor delete failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/case-packs/capability-coverage")
 async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
     """P3: capability gap inventory vs profile quotas or min_per_capability."""

@@ -59,6 +59,13 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: 'draft→review→freeze；mutate/trace/LLM；难度启发式+人标校准；judge 开单→打分→关单；holdout；coverage。',
     not: 'freeze ≠ 准确率；校准 ≠ accuracy_claim；generated/trace 不可 freeze 入 claim。',
   },
+  'case-editor': {
+    title: '题目维护',
+    what: '能力题库编辑器：只读浏览 repo seeds；在命名工作区 draft pack 上增删改 case（含 test_purpose）。',
+    why: '题目是评测一等资产，应可在管理端维护，而不是改 Python。',
+    can: 'Open draft（种子→draft / frozen→bump）；列表筛选；JSON 编辑 upsert/delete；再走 Case Pack 人审/freeze。',
+    not: '不直接改 git seeds；freeze ≠ 准确率；A3–A5/A8/A9 仍不可写入 in-scope。',
+  },
   reports: {
     title: '报告',
     what: '查看已落库的评测报告与趋势（只读为主）。',

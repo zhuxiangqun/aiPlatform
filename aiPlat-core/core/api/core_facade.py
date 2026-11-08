@@ -6675,6 +6675,129 @@ def eval_fill_capability_coverage(
     return fill_capability_coverage(**kwargs)
 
 
+def eval_list_seed_capability_cases(*, capability_id: str = "") -> Dict[str, Any]:
+    """Browse repo seed cases (read-only)."""
+    from core.apps.eval.service.capability_case_editor import list_seed_capability_cases
+
+    return list_seed_capability_cases(capability_id=capability_id)
+
+
+def eval_get_seed_capability_case(*, case_id: str) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import get_seed_capability_case
+
+    return get_seed_capability_case(case_id=case_id)
+
+
+def eval_list_workspace_pack_cases(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    capability_id: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import list_workspace_pack_cases
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+        "capability_id": capability_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return list_workspace_pack_cases(**kwargs)
+
+
+def eval_get_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import get_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case_id": case_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return get_workspace_pack_case(**kwargs)
+
+
+def eval_upsert_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case: Dict[str, Any],
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import upsert_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case": case,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return upsert_workspace_pack_case(**kwargs)
+
+
+def eval_delete_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import delete_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case_id": case_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return delete_workspace_pack_case(**kwargs)
+
+
+def eval_open_capability_bank_editor(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    bump_if_frozen: bool = True,
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import open_capability_bank_editor
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+        "bump_if_frozen": bump_if_frozen,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return open_capability_bank_editor(**kwargs)
+
+
 def eval_publish_draft_case_pack(
     *,
     pack_id: str,
