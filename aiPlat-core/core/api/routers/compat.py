@@ -907,28 +907,17 @@ async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], reque
 
 @router.post("/evaluation/case-packs/compile-suite-profile")
 async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
-    """P2: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
-    from core.api.core_facade import (
-        eval_agent_regression_profile,
-        eval_compile_plan_from_suite_profile,
-    )
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
+    from core.api.core_facade import eval_compile_plan_from_suite_profile
 
     profile = (body or {}).get("profile")
-    if profile is None:
-        profile_id = str((body or {}).get("profile_id") or "").strip()
-        if profile_id in ("", "agent.regression.v1"):
-            profile = eval_agent_regression_profile()
-        else:
-            return {
-                "ok": False,
-                "error": f"unknown profile_id={profile_id!r}; supply profile object",
-                "accuracy_claim": False,
-            }
-    if not isinstance(profile, dict):
+    profile_id = str((body or {}).get("profile_id") or "").strip()
+    if profile is not None and not isinstance(profile, dict):
         return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
     try:
         return eval_compile_plan_from_suite_profile(
-            profile=profile,
+            profile=profile if isinstance(profile, dict) else None,
+            profile_id=profile_id,
             object_id=str((body or {}).get("object_id") or "agent.capability.target"),
             object_version=str((body or {}).get("object_version") or "0.1.0"),
         )
@@ -941,16 +930,104 @@ async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
 
 @router.get("/evaluation/case-packs/suite-profiles")
 async def compat_evaluation_suite_profiles():
-    """List built-in Suite Profiles (v1: agent.regression only)."""
-    from core.api.core_facade import eval_agent_regression_profile
+    """List built-in Suite Profiles (smoke / regression / benchmark)."""
+    from core.api.core_facade import eval_list_suite_profiles
 
-    profile = eval_agent_regression_profile()
+    profiles = eval_list_suite_profiles()
     return {
         "ok": True,
-        "profiles": [profile],
+        "profiles": profiles,
         "claim_eligible": False,
         "accuracy_claim": False,
     }
+
+
+@router.post("/evaluation/case-packs/benchmark-readiness")
+async def compat_evaluation_benchmark_readiness(body: Dict[str, Any]):
+    """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
+    from core.api.core_facade import eval_benchmark_readiness
+
+    min_raw = (body or {}).get("min_per_capability", 8)
+    try:
+        min_n = int(min_raw)
+    except (TypeError, ValueError):
+        return {
+            "ok": False,
+            "error": "min_per_capability must be int",
+            "accuracy_claim": False,
+        }
+    compile_plan = bool((body or {}).get("compile_plan", True))
+    try:
+        return eval_benchmark_readiness(
+            min_per_capability=min_n,
+            compile_plan=compile_plan,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("benchmark-readiness failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/judge-calibration-gate")
+async def compat_evaluation_judge_calibration_gate(
+    body: Dict[str, Any], request: Request
+):
+    """P4: engineering agreement gate — always report_only / claim=false."""
+    from core.api.core_facade import eval_judge_calibration_gate
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    ticket_id = str((body or {}).get("ticket_id") or "").strip()
+    thr_raw = (body or {}).get("threshold", 0.8)
+    try:
+        thr = float(thr_raw)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "threshold must be float", "accuracy_claim": False}
+    ratings = (body or {}).get("ratings")
+    if ratings is not None and not isinstance(ratings, list):
+        return {"ok": False, "error": "ratings must be a list", "accuracy_claim": False}
+    try:
+        if ticket_id:
+            with named_workspace_scope(request, method="POST", require_local=True) as nw:
+                out = eval_judge_calibration_gate(
+                    workspace_id=nw.workspace_id,
+                    ticket_id=ticket_id,
+                    threshold=thr,
+                    caller_workspace_id=nw.workspace_id,
+                )
+                if isinstance(out, dict):
+                    out.update(workspace_meta(nw))
+                return out
+        return eval_judge_calibration_gate(threshold=thr, ratings=ratings)
+    except Exception as e:
+        logger.debug("judge-calibration-gate failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/open-capability-judge-calibration")
+async def compat_evaluation_open_capability_judge_calibration(
+    body: Dict[str, Any], request: Request
+):
+    """P4: open judge ticket sampling capability bank cases."""
+    from core.api.core_facade import eval_open_capability_judge_calibration
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_capability_judge_calibration(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                sample_n=int((body or {}).get("sample_n") or 8),
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("open-capability-judge-calibration failed", exc_info=True)
+        return _case_pack_http_error(e)
 
 
 @router.post("/evaluation/case-packs/capability-coverage")

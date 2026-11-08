@@ -15,12 +15,14 @@ from core.apps.eval.service.capability_case_bank import (
     PROFILE_ID,
     agent_regression_profile,
     build_agent_capability_cases,
+    get_suite_profile,
 )
 from core.apps.eval.service.capability_id_map import (
     V1_IN_SCOPE,
     V1_OUT_OF_SCOPE,
     resolve_capability_id,
 )
+from core.apps.eval.service.case_generation import apply_holdout_flags, partition_holdout
 from core.apps.eval.service.case_pack_hash import (
     compute_case_hash,
     compute_execution_fingerprint,
@@ -133,40 +135,78 @@ def select_cases_for_profile(
     return selected, meta
 
 
-def compile_plan_from_suite_profile(
-    *,
-    profile: Optional[Mapping[str, Any]] = None,
-    cases: Optional[Sequence[Mapping[str, Any]]] = None,
-    object_id: str = "agent.capability.target",
-    object_version: str = "0.1.0",
-) -> Dict[str, Any]:
-    """Compile Plan v2 whose sample_manifest is the Profile-selected case list."""
-    prof = dict(profile or agent_regression_profile())
-    if str(prof.get("schema") or "") != PROFILE_SCHEMA:
-        # allow missing schema if profile_id matches known
-        if str(prof.get("profile_id") or "") != PROFILE_ID and not prof.get("quotas"):
-            raise SuiteProfileCompileError("invalid suite profile")
-        prof.setdefault("schema", PROFILE_SCHEMA)
+def _purpose_for_profile(profile_id: str) -> List[str]:
+    pid = str(profile_id or "").lower()
+    if "smoke" in pid:
+        return ["behavior", "smoke"]
+    if "benchmark" in pid:
+        return ["behavior", "benchmark"]
+    return ["behavior", "regression"]
 
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
-    selected, selection_meta = select_cases_for_profile(bank, prof)
 
-    pack_id = str(prof.get("pack_id") or PACK_ID)
-    pack_version = str(prof.get("pack_version") or PACK_VERSION)
-    ots = ["agent"]
-    pack_hash = compute_pack_hash(
-        pack_id=pack_id,
-        version=pack_version,
-        kind="frozen",
-        claim_eligible=False,
-        scope=str(prof.get("pack_scope") or "global"),
-        object_types=ots,
-        cases=selected,
+def apply_profile_holdout(
+    selected: Sequence[Mapping[str, Any]],
+    profile: Mapping[str, Any],
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
+    """Split selected into eval vs holdout per profile.holdout.
+
+    Returns (eval_cases, holdout_cases, holdout_meta).
+    Holdout cases are excluded from sample_manifest when exclude_from_tuning.
+    """
+    hold = profile.get("holdout") if isinstance(profile.get("holdout"), Mapping) else {}
+    enabled = bool(hold.get("enabled"))
+    rows = [dict(c) for c in selected]
+    if not enabled:
+        return rows, [], {
+            "enabled": False,
+            "exclude_from_tuning": True,
+            "n_eval": len(rows),
+            "n_holdout": 0,
+            "ratio": 0.0,
+        }
+    try:
+        ratio = float(hold.get("ratio") if hold.get("ratio") is not None else 0.2)
+    except (TypeError, ValueError) as e:
+        raise SuiteProfileCompileError(f"holdout.ratio invalid: {hold.get('ratio')!r}") from e
+    if ratio <= 0 or ratio > 0.5:
+        raise SuiteProfileCompileError(
+            f"holdout.ratio must be in (0, 0.5], got {ratio}"
+        )
+    seed = hold.get("seed")
+    if seed is None:
+        seed = profile.get("seed")
+    marked = apply_holdout_flags(
+        rows,
+        ratio=ratio,
+        seed=str(seed if seed is not None else 0),
+        holdout=True,
     )
+    parts = partition_holdout(marked)
+    exclude = bool(hold.get("exclude_from_tuning", True))
+    eval_cases = list(parts["eval"]) if exclude else marked
+    holdout_cases = list(parts["holdout"]) if exclude else []
+    meta = {
+        "enabled": True,
+        "ratio": ratio,
+        "seed": seed,
+        "exclude_from_tuning": exclude,
+        "n_eval": len(eval_cases),
+        "n_holdout": len(parts["holdout"]),
+        "holdout_case_ids": [str(c.get("case_id") or "") for c in parts["holdout"]],
+    }
+    return eval_cases, holdout_cases, meta
 
-    sample_manifest: List[Dict[str, Any]] = []
-    for c in selected:
-        sample_manifest.append(
+
+def _manifest_rows(
+    cases: Sequence[Mapping[str, Any]],
+    *,
+    pack_id: str,
+    pack_version: str,
+    holdout: bool = False,
+) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for c in cases:
+        rows.append(
             {
                 "case_id": str(c.get("case_id") or ""),
                 "hash": compute_case_hash(c),
@@ -176,10 +216,63 @@ def compile_plan_from_suite_profile(
                 "session_group": c.get("session_group"),
                 "category": str(c.get("category") or _cap_of(c) or ""),
                 "capability_id": _cap_of(c),
+                "holdout": bool(holdout or c.get("holdout")),
             }
         )
+    return rows
 
-    caps = sorted({_cap_of(c) for c in selected if _cap_of(c)})
+
+def compile_plan_from_suite_profile(
+    *,
+    profile: Optional[Mapping[str, Any]] = None,
+    profile_id: str = "",
+    cases: Optional[Sequence[Mapping[str, Any]]] = None,
+    object_id: str = "agent.capability.target",
+    object_version: str = "0.1.0",
+) -> Dict[str, Any]:
+    """Compile Plan v2 whose sample_manifest is the Profile-selected case list."""
+    if profile is not None:
+        prof = dict(profile)
+    elif str(profile_id or "").strip():
+        try:
+            prof = get_suite_profile(str(profile_id).strip())
+        except ValueError as e:
+            raise SuiteProfileCompileError(str(e)) from e
+    else:
+        prof = agent_regression_profile()
+
+    if str(prof.get("schema") or "") != PROFILE_SCHEMA:
+        if str(prof.get("profile_id") or "") != PROFILE_ID and not prof.get("quotas"):
+            raise SuiteProfileCompileError("invalid suite profile")
+        prof.setdefault("schema", PROFILE_SCHEMA)
+
+    bank = list(cases) if cases is not None else build_agent_capability_cases()
+    selected, selection_meta = select_cases_for_profile(bank, prof)
+    eval_cases, holdout_cases, holdout_meta = apply_profile_holdout(selected, prof)
+
+    pack_id = str(prof.get("pack_id") or PACK_ID)
+    pack_version = str(prof.get("pack_version") or PACK_VERSION)
+    pid = str(prof.get("profile_id") or PROFILE_ID)
+    purpose = _purpose_for_profile(pid)
+    ots = ["agent"]
+    pack_hash = compute_pack_hash(
+        pack_id=pack_id,
+        version=pack_version,
+        kind="frozen",
+        claim_eligible=False,
+        scope=str(prof.get("pack_scope") or "global"),
+        object_types=ots,
+        cases=eval_cases,
+    )
+
+    sample_manifest = _manifest_rows(
+        eval_cases, pack_id=pack_id, pack_version=pack_version, holdout=False
+    )
+    holdout_manifest = _manifest_rows(
+        holdout_cases, pack_id=pack_id, pack_version=pack_version, holdout=True
+    )
+
+    caps = sorted({_cap_of(c) for c in eval_cases if _cap_of(c)})
     contract = normalize_target_contract(
         build_agent_target_contract(
             object_id=object_id,
@@ -188,7 +281,7 @@ def compile_plan_from_suite_profile(
             eval_profile={
                 "profile_source": "explicit",
                 "capabilities": caps,
-                "eval_purpose": ["behavior", "regression"],
+                "eval_purpose": purpose,
             },
         )
     )
@@ -200,7 +293,8 @@ def compile_plan_from_suite_profile(
         "quota_trace": selection_meta.get("quota_trace") or [],
         "degraded": bool(selection_meta.get("degraded")),
         "degraded_reasons": [],
-        "profile_id": str(prof.get("profile_id") or PROFILE_ID),
+        "profile_id": pid,
+        "holdout": holdout_meta,
     }
     if selection["degraded"]:
         selection["degraded_reasons"] = [
@@ -218,12 +312,12 @@ def compile_plan_from_suite_profile(
             "kind": "frozen",
             "claim_eligible": False,
             "scope": str(prof.get("pack_scope") or "global"),
-            "profile_id": str(prof.get("profile_id") or PROFILE_ID),
+            "profile_id": pid,
         }
     ]
     plan_id = compute_plan_id_v2(
         contract=contract,
-        purpose=["behavior", "regression"],
+        purpose=purpose,
         selection=selection,
         pack_refs=pack_refs,
         manifest_hash=manifest_hash,
@@ -233,12 +327,13 @@ def compile_plan_from_suite_profile(
         plan_id=plan_id,
         manifest_hash=manifest_hash,
         runner_id="suite_profile_compile",
-        run_key=str(prof.get("profile_id") or PROFILE_ID),
+        run_key=pid,
     )
 
     coverage = {
         "cases": len(selected),
         "manifest_cases_after_sample": len(sample_manifest),
+        "holdout_cases": len(holdout_cases),
         "by_capability": {
             t["capability_id"]: {"quota": t["quota"], "taken": t["taken"]}
             for t in selection["quota_trace"]
@@ -250,19 +345,20 @@ def compile_plan_from_suite_profile(
         "schema": PLAN_SCHEMA_V2,
         "ok": True,
         "plan_id": plan_id,
-        "profile_id": str(prof.get("profile_id") or PROFILE_ID),
+        "profile_id": pid,
         "suite_profile": {
             "schema": prof.get("schema"),
-            "profile_id": prof.get("profile_id"),
+            "profile_id": pid,
             "pack_id": pack_id,
             "pack_version": pack_version,
             "quotas": prof.get("quotas"),
             "strategy": prof.get("strategy"),
             "seed": prof.get("seed"),
+            "holdout": holdout_meta,
             "claim_eligible": False,
         },
         "target_contract": contract,
-        "purpose": ["behavior", "regression"],
+        "purpose": purpose,
         "selected_cases": [
             {
                 "set_id": str(c.get("category") or _cap_of(c)),
@@ -271,13 +367,21 @@ def compile_plan_from_suite_profile(
                 "status": "selected",
                 "reasons": ["profile_quota"],
             }
-            for c in selected
+            for c in eval_cases
         ],
-        "excluded_cases": [],
+        "excluded_cases": [
+            {
+                "case_id": c.get("case_id"),
+                "status": "holdout",
+                "reasons": ["profile_holdout"],
+            }
+            for c in holdout_cases
+        ],
         "selection": selection,
         "pack_ref": pack_refs[0],
         "pack_refs": pack_refs,
         "sample_manifest": sample_manifest,
+        "holdout_manifest": holdout_manifest,
         "manifest_hash": manifest_hash,
         "execution_fingerprint": execution_fingerprint,
         "coverage": coverage,
@@ -285,13 +389,15 @@ def compile_plan_from_suite_profile(
         "claim_eligible": False,
         "accuracy_claim": False,
         "counts": {
-            "selected": len(selected),
+            "selected": len(eval_cases),
             "manifest_cases": len(sample_manifest),
-            "excluded": 0,
+            "holdout": len(holdout_cases),
+            "excluded": len(holdout_cases),
             "total": len(selected),
         },
         "honesty": (
             "Plan v2 from Suite Profile: sample_manifest is sole execution list; "
+            "holdout disclosed and excluded from tuning when enabled; "
             "claim_eligible=false; accuracy_claim closed; quotas fixed (v1)."
         ),
     }

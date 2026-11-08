@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3001
+total_capabilities: 3014
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -637,6 +637,17 @@ scan_hash: 8f9548ec24f4
 | eval_analyze_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 缺口分析；生成物适用：已接线 | 已合入 |
 | eval_generate_coverage_fill_candidates | `core/api/core_facade.py` | ✅ | CoreFacade 补题候选；生成物适用：已接线 | 已合入 |
 | eval_fill_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 覆盖补题；生成物适用：已接线 | 已合入 |
+| agent_smoke_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Smoke Profile；生成物适用：已接线 | 已合入 |
+| agent_benchmark_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Benchmark+holdout Profile；生成物适用：已接线 | 已合入 |
+| list_suite_profiles | `core/apps/eval/service/capability_case_bank.py` | ✅ | smoke/regression/benchmark 列表；生成物适用：已接线 | 已合入 |
+| get_suite_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | 按 profile_id 解析；生成物适用：已接线 | 已合入 |
+| apply_profile_holdout | `core/apps/eval/service/suite_profile_compile.py` | ✅ | Profile holdout 分割；生成物适用：已接线 | 已合入 |
+| evaluate_judge_calibration_gate | `core/apps/eval/service/capability_p4_gate.py` | ✅ | P4 judge 一致率门（report-only）；生成物适用：已接线 | 已合入 |
+| benchmark_readiness_report | `core/apps/eval/service/capability_p4_gate.py` | ✅ | Benchmark 就绪披露；生成物适用：已接线 | 已合入 |
+| eval_list_suite_profiles | `core/api/core_facade.py` | ✅ | CoreFacade Profile 列表；生成物适用：已接线 | 已合入 |
+| eval_benchmark_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Benchmark 就绪；生成物适用：已接线 | 已合入 |
+| eval_judge_calibration_gate | `core/api/core_facade.py` | ✅ | CoreFacade judge 门；生成物适用：已接线 | 已合入 |
+| eval_open_capability_judge_calibration | `core/api/core_facade.py` | ✅ | CoreFacade 开 judge 工单；生成物适用：已接线 | 已合入 |
 | case_spec_for_set | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | build_match_report | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | normalize_target_contract | `core/apps/eval/service/target_contract.py` | ✅ | 自动同步 | 已合入 |
@@ -2727,6 +2738,9 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_get_suite_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityP4GateError | `core/apps/eval/service/capability_p4_gate.py` | ✅ | 自动同步 | 已合入 |
+| judge_calibration_gate_for_ticket | `core/apps/eval/service/capability_p4_gate.py` | ✅ | 自动同步 | 已合入 |
 | CapabilityCoverageFillError | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | 自动同步 | 已合入 |
 | SuiteProfileCompileError | `core/apps/eval/service/suite_profile_compile.py` | ✅ | 自动同步 | 已合入 |
 | write_agent_capability_seeds | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
@@ -3902,7 +3916,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 464 | 1 | 465 |
+| Harness 执行引擎 | 475 | 1 | 476 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -3915,7 +3929,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 355 | 0 | 355 |
+| 评估系统 | 357 | 0 | 357 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3947,7 +3961,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2991** | **10** | **3001** |
+| **总计** | **3004** | **10** | **3014** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

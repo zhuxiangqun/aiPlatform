@@ -6358,6 +6358,88 @@ def eval_agent_regression_profile() -> Dict[str, Any]:
     return agent_regression_profile()
 
 
+def eval_list_suite_profiles() -> list:
+    """P4: list smoke/regression/benchmark Suite Profiles."""
+    from core.apps.eval.service.capability_case_bank import list_suite_profiles
+
+    return list_suite_profiles()
+
+
+def eval_get_suite_profile(profile_id: str = "") -> Dict[str, Any]:
+    """P4: resolve built-in Suite Profile by id."""
+    from core.apps.eval.service.capability_case_bank import get_suite_profile
+
+    return get_suite_profile(profile_id)
+
+
+def eval_benchmark_readiness(
+    *,
+    min_per_capability: int = 8,
+    compile_plan: bool = True,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
+    from core.apps.eval.service.capability_p4_gate import benchmark_readiness_report
+
+    return benchmark_readiness_report(
+        cases=cases,
+        min_per_capability=min_per_capability,
+        compile_plan=compile_plan,
+    )
+
+
+def eval_judge_calibration_gate(
+    *,
+    workspace_id: str = "",
+    ticket_id: str = "",
+    threshold: float = 0.8,
+    caller_workspace_id: str = "",
+    ratings: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P4: engineering judge agreement gate — always report_only / claim=false."""
+    from core.apps.eval.service.capability_p4_gate import (
+        evaluate_judge_calibration_gate,
+        judge_calibration_gate_for_ticket,
+    )
+
+    if ticket_id and workspace_id:
+        return judge_calibration_gate_for_ticket(
+            workspace_id=workspace_id,
+            ticket_id=ticket_id,
+            threshold=threshold,
+            caller_workspace_id=caller_workspace_id or workspace_id,
+        )
+    return evaluate_judge_calibration_gate(
+        ratings=ratings,
+        threshold=threshold,
+    )
+
+
+def eval_open_capability_judge_calibration(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    sample_n: int = 8,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P4: open judge calibration ticket against capability bank sample."""
+    from core.apps.eval.service.capability_p4_gate import open_capability_judge_calibration
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "sample_n": sample_n,
+        "notes": notes,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return open_capability_judge_calibration(**kwargs)
+
+
 def eval_promote_agent_capability_bank(
     *,
     workspace_id: str,
@@ -6388,15 +6470,17 @@ def eval_promote_agent_capability_bank(
 def eval_compile_plan_from_suite_profile(
     *,
     profile: Optional[Dict[str, Any]] = None,
+    profile_id: str = "",
     cases: Optional[list] = None,
     object_id: str = "agent.capability.target",
     object_version: str = "0.1.0",
 ) -> Dict[str, Any]:
-    """P2: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
     from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
 
     return compile_plan_from_suite_profile(
         profile=profile,
+        profile_id=profile_id,
         cases=cases,
         object_id=object_id,
         object_version=object_version,

@@ -2817,6 +2817,39 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** P4: benchmark readiness (coverage + holdout compile). */
+  casePackBenchmarkReadiness: async (body?: {
+    min_per_capability?: number;
+    compile_plan?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/benchmark-readiness',
+      body || {},
+    );
+  },
+  /** P4: open judge calibration ticket for capability bank. */
+  casePackOpenCapabilityJudgeCalibration: async (body?: {
+    pack_id?: string;
+    version?: string;
+    sample_n?: number;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/open-capability-judge-calibration',
+      body || {},
+    );
+  },
+  /** P4: engineering judge agreement gate (always report_only). */
+  casePackJudgeCalibrationGate: async (body?: {
+    ticket_id?: string;
+    threshold?: number;
+    ratings?: Array<Record<string, unknown>>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-gate',
+      body || {},
+    );
+  },
   casePackExpand: async (body: Record<string, unknown>) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/expand', body);
   },

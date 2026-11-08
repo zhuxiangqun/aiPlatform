@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2095
+total_capabilities: 2110
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,12 +6788,72 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 159
+    caps_count: 174
     provides:
       - symbol: SuiteProfileCompileError
         type: class
         signature: 'Profile compile fail-closed.'
         module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: agent_smoke_profile
+        type: function
+        signature: 'agent_smoke_profile()→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: agent_benchmark_profile
+        type: function
+        signature: 'agent_benchmark_profile()→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: list_suite_profiles
+        type: function
+        signature: 'list_suite_profiles()→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: get_suite_profile
+        type: function
+        signature: 'get_suite_profile(profile_id)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: apply_profile_holdout
+        type: function
+        signature: 'apply_profile_holdout(selected,profile)→(eval,holdout,meta)'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
+      - symbol: evaluate_judge_calibration_gate
+        type: function
+        signature: 'evaluate_judge_calibration_gate(…)→Dict report_only'
+        module: aiPlat-core/core/apps/eval/service/capability_p4_gate.py
+      - symbol: open_capability_judge_calibration
+        type: function
+        signature: 'open_capability_judge_calibration(workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_p4_gate.py
+      - symbol: judge_calibration_gate_for_ticket
+        type: function
+        signature: 'judge_calibration_gate_for_ticket(workspace_id,ticket_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_p4_gate.py
+      - symbol: benchmark_readiness_report
+        type: function
+        signature: 'benchmark_readiness_report(…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_p4_gate.py
+      - symbol: CapabilityP4GateError
+        type: class
+        signature: 'P4 gate failure.'
+        module: aiPlat-core/core/apps/eval/service/capability_p4_gate.py
+      - symbol: eval_list_suite_profiles
+        type: function
+        signature: 'eval_list_suite_profiles()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_get_suite_profile
+        type: function
+        signature: 'eval_get_suite_profile(profile_id)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_benchmark_readiness
+        type: function
+        signature: 'eval_benchmark_readiness(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_judge_calibration_gate
+        type: function
+        signature: 'eval_judge_calibration_gate(…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_open_capability_judge_calibration
+        type: function
+        signature: 'eval_open_capability_judge_calibration(workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: analyze_capability_coverage
         type: function
         signature: 'analyze_capability_coverage(cases?,profile?,min_per_capability?)→Dict'

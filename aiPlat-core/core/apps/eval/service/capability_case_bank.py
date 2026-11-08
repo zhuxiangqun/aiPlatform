@@ -22,6 +22,8 @@ PACK_SCHEMA = "eval.case_pack.v1"
 PACK_ID = "agent.capability"
 PACK_VERSION = "0.1.0"
 PROFILE_ID = "agent.regression.v1"
+PROFILE_ID_SMOKE = "agent.smoke.v1"
+PROFILE_ID_BENCHMARK = "agent.benchmark.v1"
 PROFILE_SCHEMA = "eval.suite_profile.v1"
 
 
@@ -711,6 +713,97 @@ def agent_regression_profile() -> Dict[str, Any]:
         "claim_eligible": False,
         "notes": "P1 draft bank; human purpose_ok required before freeze. A3–A5/A8/A9 excluded.",
     }
+
+
+def agent_smoke_profile() -> Dict[str, Any]:
+    """Suite Profile v1 smoke: 1 case per in-scope capability (claim=false)."""
+    return {
+        "schema": PROFILE_SCHEMA,
+        "profile_id": PROFILE_ID_SMOKE,
+        "object_type": "agent",
+        "pack_id": PACK_ID,
+        "pack_version": PACK_VERSION,
+        "pack_scope": "global",
+        "quotas": {
+            "task_completion": 1,
+            "clarification": 1,
+            "error_recovery": 1,
+            "safety": 1,
+            "robustness": 1,
+            "planning": 1,
+            "efficiency": 1,
+            "observability": 1,
+        },
+        "strategy": "stratified",
+        "seed": 3,
+        "session_group_policy": {"atomic": True},
+        "holdout": {"enabled": False, "exclude_from_tuning": True},
+        "on_insufficient": "error",
+        "claim_eligible": False,
+        "notes": "P4 smoke — catch obvious breaks; not a performance estimate.",
+    }
+
+
+def agent_benchmark_profile() -> Dict[str, Any]:
+    """Suite Profile v1 benchmark: target ≥8/cap + holdout (claim=false).
+
+    Quotas set to 8 (acceptance floor). Current bank may shortfall →
+    ``on_insufficient=degraded`` discloses gaps; fill via P3 before claiming.
+    Holdout ratio 0.2 is engineering default until ADR §6.2 #7 is approved.
+    """
+    return {
+        "schema": PROFILE_SCHEMA,
+        "profile_id": PROFILE_ID_BENCHMARK,
+        "object_type": "agent",
+        "pack_id": PACK_ID,
+        "pack_version": PACK_VERSION,
+        "pack_scope": "global",
+        "quotas": {
+            "task_completion": 8,
+            "clarification": 8,
+            "error_recovery": 8,
+            "safety": 8,
+            "robustness": 8,
+            "planning": 8,
+            "efficiency": 8,
+            "observability": 8,
+        },
+        "strategy": "stratified",
+        "seed": 11,
+        "session_group_policy": {"atomic": True},
+        "holdout": {
+            "enabled": True,
+            "ratio": 0.2,
+            "seed": 11,
+            "exclude_from_tuning": True,
+        },
+        "on_insufficient": "degraded",
+        "claim_eligible": False,
+        "notes": (
+            "P4 benchmark — estimate performance; holdout excluded from tuning; "
+            "agreement/claim gates stay closed until ADR §6.2 resolved."
+        ),
+    }
+
+
+def list_suite_profiles() -> List[Dict[str, Any]]:
+    """Built-in Suite Profiles (smoke / regression / benchmark)."""
+    return [
+        agent_smoke_profile(),
+        agent_regression_profile(),
+        agent_benchmark_profile(),
+    ]
+
+
+def get_suite_profile(profile_id: str) -> Dict[str, Any]:
+    """Resolve built-in profile by id (fail closed on unknown)."""
+    pid = str(profile_id or "").strip()
+    for p in list_suite_profiles():
+        if str(p.get("profile_id") or "") == pid:
+            return dict(p)
+    if not pid or pid == PROFILE_ID:
+        return agent_regression_profile()
+    raise ValueError(f"unknown suite profile_id={pid!r}")
 
 
 def validate_capability_case(case: Mapping[str, Any]) -> List[str]:

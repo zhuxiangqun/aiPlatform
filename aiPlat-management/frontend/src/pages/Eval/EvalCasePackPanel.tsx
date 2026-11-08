@@ -332,6 +332,55 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-fuchsia-700/60 px-3 py-1.5 text-fuchsia-100 disabled:opacity-50"
+          data-testid="eval-case-pack-benchmark-ready"
+          onClick={() =>
+            run('benchmark-readiness', () =>
+              agentEvalApi.casePackBenchmarkReadiness({
+                min_per_capability: 8,
+                compile_plan: true,
+              }),
+            )
+          }
+        >
+          Benchmark readiness
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-fuchsia-700/60 px-3 py-1.5 text-fuchsia-100 disabled:opacity-50"
+          data-testid="eval-case-pack-open-judge-cal"
+          onClick={() =>
+            run('open-judge-cal', () =>
+              agentEvalApi.casePackOpenCapabilityJudgeCalibration({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                sample_n: 8,
+              }),
+            )
+          }
+        >
+          Open judge calibration
+        </button>
+        <button
+          type="button"
+          disabled={busy || !ticketId.trim()}
+          className="rounded border border-fuchsia-700/60 px-3 py-1.5 text-fuchsia-100 disabled:opacity-50"
+          data-testid="eval-case-pack-judge-gate"
+          onClick={() =>
+            run('judge-gate', () =>
+              agentEvalApi.casePackJudgeCalibrationGate({
+                ticket_id: ticketId.trim(),
+                threshold: 0.8,
+              }),
+            )
+          }
+        >
+          Judge gate
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
           onClick={() =>
             run('holdout', () =>
