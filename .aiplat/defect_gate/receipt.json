@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T16:40:00+08:00",
+  "reviewed_at": "2026-11-08T17:07:07+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "582f8f41315be1dd8d788865105074039b9b07e9b1127ade90fea86859d33958",
-  "head_sha": "edae1442155f9efc6ca1da11e4d1c3f2d104b6b9",
+  "diff_sha256": "2b22ada922a964ec39ab663e3618ad41f988ec8bb26772a05d2676ff5b8248f5",
+  "head_sha": "c816de44dd8eb8c6e09503efa343911692ae5785",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0.2: dataset EvalTask filter + overlay never overwrite + agent exam manifest filter. Fixes empty sample_manifest CI fail. No accuracy_claim."
+  "note": "P0.3: verify_manifest_case_hashes fail-closed; case_pack_registry ACL+atomic write; expand syncs workspace register/get; PackRegistryError registered. No accuracy_claim. Local lock only."
 }
