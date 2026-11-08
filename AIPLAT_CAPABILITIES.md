@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3075
+total_capabilities: 3081
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -631,6 +631,10 @@ scan_hash: 8f9548ec24f4
 | build_long_context_fixture / generate_long_context_case / judge_long_context | `core/apps/eval/service/long_context_generator.py` | ✅ | T3 A9 长上下文 fixture 生成 + must_retain_claims 机判；生成物适用：已接线（adapter + bank） | 已合入 |
 | eval_generate_long_context_case / eval_judge_long_context | `core/api/core_facade.py` | ✅ | CoreFacade T3 入口；生成物适用：已接线 | 已合入 |
 | V1_IN_SCOPE v1.1（13 caps） | `core/apps/eval/service/capability_id_map.py` | ✅ | A3–A5/A8/A9 升域；`SIGNED v1_1_measurable_subset`；claim/Certification 关闭；生成物适用：已接线 | 已合入 |
+| resolve_impl_modes / select_capabilities_union / plan_executions_per_mode | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M0 多值 impl_modes；选题并集≠执行并集；生成物适用：已接线（facade） | 本批 |
+| compute_rank_fingerprint / evaluate_m0_impl_mode_contracts | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M0 rank_fingerprint + 十条契约门（无 live）；生成物适用：已接线 | 本批 |
+| eval_evaluate_m0_impl_mode_contracts / eval_resolve_impl_modes / eval_compute_rank_fingerprint / eval_plan_mode_executions | `core/api/core_facade.py` | ✅ | CoreFacade M0 入口；生成物适用：已接线 | 本批 |
+| mode_core_capabilities.v1 / intersection parity sample | `workspace_seeds/eval/agent_capability/` | ✅ | 模式×能力矩阵 + 交集 parity 候选；生成物适用：已接线 | 本批 |
 | get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考实现）；生成物适用：已接线 | 已合入 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
@@ -2764,6 +2768,7 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| load_mode_core_matrix | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
 | render_long_context_prompt | `core/apps/eval/service/long_context_generator.py` | ✅ | 自动同步 | 已合入 |
 | run_all_session_groups | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
 | judge_memory_probe | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
@@ -3975,7 +3980,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 501 | 1 | 502 |
+| Harness 执行引擎 | 505 | 1 | 506 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -3988,7 +3993,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 392 | 0 | 392 |
+| 评估系统 | 394 | 0 | 394 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4020,7 +4025,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3065** | **10** | **3075** |
+| **总计** | **3071** | **10** | **3081** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

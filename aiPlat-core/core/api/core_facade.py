@@ -6329,6 +6329,47 @@ def eval_evaluate_t0_inscope_contracts() -> Dict[str, Any]:
     return evaluate_t0_inscope_contracts()
 
 
+def eval_evaluate_m0_impl_mode_contracts() -> Dict[str, Any]:
+    """M0: impl_modes / matrix / rank_fingerprint / parity contracts (no live runner)."""
+    from core.apps.eval.service.agent_impl_mode import evaluate_m0_impl_mode_contracts
+
+    return evaluate_m0_impl_mode_contracts()
+
+
+def eval_resolve_impl_modes(source: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """M0: resolve multi-value impl_modes (unknown≠react; deferred≠unknown)."""
+    from core.apps.eval.service.agent_impl_mode import resolve_impl_modes
+
+    return resolve_impl_modes(source or {})
+
+
+def eval_compute_rank_fingerprint(**kwargs: Any) -> Dict[str, Any]:
+    """M0: cross-subject rank_fingerprint (excludes agent_id / workspace / time)."""
+    from core.apps.eval.service.agent_impl_mode import compute_rank_fingerprint
+
+    return compute_rank_fingerprint(**kwargs)
+
+
+def eval_plan_mode_executions(
+    source: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """M0: selection union + per-mode separate execution plan (no live)."""
+    from core.apps.eval.service.agent_impl_mode import (
+        plan_executions_per_mode,
+        resolve_impl_modes,
+        select_capabilities_union,
+    )
+
+    impl = resolve_impl_modes(source or {})
+    return {
+        "impl_modes": impl,
+        "selection": select_capabilities_union(impl),
+        "execution": plan_executions_per_mode(impl),
+        "claim_eligible": False,
+        "rank_claim": False,
+    }
+
+
 def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     """Load + validate default mock tool catalog seed (T0)."""
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog

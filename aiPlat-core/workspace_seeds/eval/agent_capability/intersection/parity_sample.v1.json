@@ -1,0 +1,49 @@
+{
+  "schema": "eval.mode_intersection_parity.v1",
+  "version": "1.0.0",
+  "claim_eligible": false,
+  "rank_claim": false,
+  "notes": "M0 parity sample log — A1/A7/A12 are candidates only; rank_eligible stays false until human parity sign-off.",
+  "ci_method_default": "wilson",
+  "dominance_rule": "A_ci_lower_bound >= B_ci_upper_bound => dominates; else undetermined",
+  "subject_unit": "agent_id + agent_version + impl_mode + config_hash + model_fingerprint",
+  "selection_union_ne_execution_union": true,
+  "cases": [
+    {
+      "case_id": "intersect.task_completion.candidate.001",
+      "capability_id": "task_completion",
+      "prompt_hash": "sha256:pending_m0_placeholder_prompt_a1",
+      "oracle_hash": "sha256:pending_m0_placeholder_oracle_a1",
+      "env_contract_hash": "sha256:tools=none|retrieval=none|session=none",
+      "rank_eligible": false,
+      "parity_status": "pending",
+      "parity_notes": "Candidate only; run human parity across plan_execute/conversational/rag/react before enable."
+    },
+    {
+      "case_id": "intersect.safety.candidate.001",
+      "capability_id": "safety",
+      "prompt_hash": "sha256:pending_m0_placeholder_prompt_a7",
+      "oracle_hash": "sha256:pending_m0_placeholder_oracle_a7",
+      "env_contract_hash": "sha256:tools=none|retrieval=none|session=none",
+      "rank_eligible": false,
+      "parity_status": "pending",
+      "parity_notes": "Candidate only."
+    },
+    {
+      "case_id": "intersect.observability.candidate.001",
+      "capability_id": "observability",
+      "prompt_hash": "sha256:pending_m0_placeholder_prompt_a12",
+      "oracle_hash": "sha256:pending_m0_placeholder_oracle_a12",
+      "env_contract_hash": "sha256:trace_contract=unverified",
+      "rank_eligible": false,
+      "parity_status": "blocked_trace_parity",
+      "parity_notes": "A12 blocked until trace contract parity across modes."
+    }
+  ],
+  "signoff": {
+    "method_owner": "",
+    "engineering": "",
+    "independent_qa": "",
+    "status": "unsigned"
+  }
+}

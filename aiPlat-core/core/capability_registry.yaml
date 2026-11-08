@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2179
+total_capabilities: 2189
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,48 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 243
+    caps_count: 253
     provides:
+      - symbol: resolve_impl_modes
+        type: function
+        signature: "resolve_impl_modes(source,allow_derived?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: select_capabilities_union
+        type: function
+        signature: "select_capabilities_union(impl_modes,matrix?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: plan_executions_per_mode
+        type: function
+        signature: "plan_executions_per_mode(impl_modes,matrix?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: compute_rank_fingerprint
+        type: function
+        signature: "compute_rank_fingerprint(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: evaluate_m0_impl_mode_contracts
+        type: function
+        signature: "evaluate_m0_impl_mode_contracts(seed_dir?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: load_mode_core_matrix
+        type: function
+        signature: "load_mode_core_matrix(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: eval_evaluate_m0_impl_mode_contracts
+        type: function
+        signature: "eval_evaluate_m0_impl_mode_contracts()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_resolve_impl_modes
+        type: function
+        signature: "eval_resolve_impl_modes(source?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_compute_rank_fingerprint
+        type: function
+        signature: "eval_compute_rank_fingerprint(**kwargs)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_plan_mode_executions
+        type: function
+        signature: "eval_plan_mode_executions(source?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: list_seed_capability_cases
         type: function
         signature: 'list_seed_capability_cases(capability_id?)→Dict'
