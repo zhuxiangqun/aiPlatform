@@ -136,28 +136,44 @@ def case_to_eval_task_dict(
 
 
 def load_set_tasks(set_id: str) -> List[Dict[str, Any]]:
-    """Load tasks for a legacy set_id (builtin ensure + disk)."""
-    from core.harness.evaluation.eval_runner import load_eval_set
+    """Load raw task dicts for a legacy set_id (user overlay or engine).
 
-    es = load_eval_set(set_id)
-    if es is None:
+    Prefer ``~/.aiplat/eval_sets`` after ``ensure_builtin_sets`` (never overwrites
+    user-modified files). Fall back to engine templates when disk load fails.
+    Reads JSON directly so typed extras (e.g. ``fixture_table``) are preserved.
+    """
+    import json
+    from pathlib import Path
+
+    from core.harness.evaluation.eval_runner import ensure_builtin_sets, _eval_dir
+
+    sid = str(set_id or "").strip()
+    if not sid:
         return []
-    out: List[Dict[str, Any]] = []
-    for t in es.tasks or []:
-        out.append(
-            {
-                "task_id": t.task_id,
-                "agent_id": t.agent_id,
-                "user_input": t.user_input,
-                "category": t.category,
-                "expected_tools": list(t.expected_tools or []),
-                "forbidden_tools": list(t.forbidden_tools or []),
-                "expected_steps": list(t.expected_steps or []),
-                "success_criteria": dict(t.success_criteria or {}),
-                "risk_level": t.risk_level,
-            }
-        )
-    return out
+    ensure_builtin_sets()
+    candidates: List[Path] = [_eval_dir() / f"{sid}.json"]
+    engine = Path(__file__).resolve().parents[3] / "engine" / "eval_sets"
+    if "/" in sid:
+        kind, stem = sid.split("/", 1)
+        if kind == "default":
+            candidates.append(engine / f"{stem}.json")
+        else:
+            candidates.append(engine / kind / f"{stem}.json")
+    else:
+        candidates.append(engine / f"{sid}.json")
+
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        tasks = data.get("tasks") if isinstance(data, dict) else None
+        if not isinstance(tasks, list):
+            continue
+        return [dict(t) for t in tasks if isinstance(t, dict)]
+    return []
 
 
 def expand_sets_to_manifest(

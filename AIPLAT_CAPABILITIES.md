@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2872
+total_capabilities: 2873
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -2710,7 +2710,8 @@ scan_hash: 8f9548ec24f4
 | formal_report v1.11 / not_applicable 五态 | `fullExamReport.ts` + `examSuite.ts`（merge/count/paperMatchDecision） | ✅ | 矩阵与正式报告分列未测/不适用；MatchReport 排除卷→维 N/A；不计失败；生成物适用：已接线 | 本批 |
 | compile_evaluation_plan / eval_compile_evaluation_plan | `eval_plan.py` + `POST /evaluation/compile-plan` + EvalExamSuitePanel | ✅ | Plan **v2**：`sample_manifest` 唯一执行清单；`selected_cases` 仅 legacy 卷投影；`manifest_hash`/`execution_fingerprint`；special 未授权→untested；编译失败阻断（不回退整包）；accuracy_claim 仍关；生成物适用：已接线 | 本批 |
 | compute_case_hash / compute_pack_hash / compute_manifest_hash | `case_pack_hash.py` + 附录 B 向量测试 | ✅ | Case Pack canonical hash（排除 review/agent_id）；指纹三分开；生成物适用：已接线（评测 Plan） | 本批 |
-| require_sample_manifest / expand_sets_to_manifest / assert_claim_eligible_allowed / project_plan_to_v1 | `case_pack_legacy.py` + `eval_plan.py` + typed_plan_exam | ✅ | legacy set→manifest；v2 空 manifest fail-closed；generated+claim 拒；v1 只投影；生成物适用：已接线 | 本批 |
+| require_sample_manifest / expand_sets_to_manifest / assert_claim_eligible_allowed / project_plan_to_v1 | `case_pack_legacy.py` + `eval_plan.py` + typed_plan_exam + agent_exam | ✅ | legacy set→manifest；v2 空 manifest fail-closed；agent exam 按 manifest 滤题；generated+claim 拒；v1 只投影；生成物适用：已接线 | 本批 |
+| load_eval_set ignores unknown task keys / eval_sets user overlay | `eval_runner.py` + overlay 单测 | ✅ | dataset `fixture_table` 可加载；`create_builtin`/`ensure_builtin` **永不覆盖**已存在用户卷；生成物适用：已接线 | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
 | run_typed_plan_exam / workflow-plan-exam / model-plan-exam / dataset-plan-exam | `typed_plan_exam.py` + CoreFacade + `POST /evaluation/{workflow,model,dataset}-plan-exam` | ✅ | Workflow/Model 词面 oracle；Dataset=`dataset_assert` 夹具表；≠ pipeline/模型榜/KB；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -3784,7 +3785,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 331 | 0 | 331 |
+| 评估系统 | 332 | 0 | 332 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3816,7 +3817,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2862** | **10** | **2872** |
+| **总计** | **2863** | **10** | **2873** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
