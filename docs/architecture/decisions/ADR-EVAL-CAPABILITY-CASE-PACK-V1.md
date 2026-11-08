@@ -1,6 +1,6 @@
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
-- **状态**：Proposed（设计评审用，不实施；v0.2 吸收路径/能力 ID/可测子集修订）
+- **状态**：Proposed（设计评审用，不实施；v0.2.1 吸收 scope 按创建来源默认）
 - **日期**：2026-11-08
 - **决策范围**：Evaluation 题库、选题、执行与证据组织
 - **关联**：
@@ -139,7 +139,9 @@ validate → dedupe → oracle check → human review → freeze
 
 **理由**：题多/档高不等于准确率或安全认证。
 
-### 决策 7：权威存储路径与工厂一致（硬约束）
+### 决策 7：权威存储路径 + scope 按创建来源默认（硬约束）
+
+#### 7.1 权威路径
 
 Case Pack / Capability Bank 运行时权威路径：
 
@@ -151,6 +153,58 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs
 
 **拒绝** `core/engine/eval_packs/` 作为权威存储（双源风险）。  
 仓库 `core/engine/eval_sets/*.json` 仅作旧卷种子/映射源。
+
+#### 7.2 Scope 默认：按创建来源，禁止「全局默认 global」
+
+| 创建来源 | 默认 scope | 写权限 | 说明 |
+|---|---|---|---|
+| 内置 / 官方导入 | **`global`** | P0 只读；平台发布角色才能发新版本 | 跨工作区可见的官方基准 |
+| 用户新建 pack | **`workspace`** | 同 workspace ACL | **默认**；防跨工作区泄漏 |
+| 租户共享 pack | **`tenant`** | 同 tenant ACL | **必须显式开启**；P0 不默认 |
+
+**不要设“全局默认 global”。** 用户随手建的 pack 若默认 global 会直接泄漏。
+
+#### 7.3 配套规则（与默认值一并冻结）
+
+1. **缺省 scope 不得静默推断**  
+   - 内置导入 → `global`；  
+   - 用户创建 → `workspace`；  
+   - `tenant` → 必须显式传，且需 tenant admin；  
+   - 调用方无法判定创建来源 → **400 `scope_required`**，禁止默认成 global。
+
+2. **跨 scope 引用**  
+
+   | 引用方 | 可引用 |
+   |---|---|
+   | workspace | 自己的 workspace + `global` 只读 |
+   | tenant | 同 tenant + `global` 只读 |
+   | global | **不得**引用用户 workspace/tenant pack |
+
+   **禁止跨 workspace 引用。**
+
+3. **修改 scope = 新 pack version**  
+   - 禁止原地把 workspace pack 改成 global/tenant；  
+   - 只能 clone + 新 version + 新 hash；  
+   - 保留 provenance；  
+   - 升入 global 需平台审核。
+
+4. **frozen / deprecate**  
+   - frozen 不可改，只能 deprecate；  
+   - `global` 由平台 deprecate；workspace 由 owner deprecate；  
+   - 删除/deprecate 前检查是否被 Profile / manifest 引用。
+
+5. **manifest / report 必须带 scope**  
+
+   ```json
+   {
+     "pack_id": "agent.capability",
+     "version": "0.1.0",
+     "scope": "workspace",
+     "workspace_id": "ws-a"
+   }
+   ```
+
+   审计须能区分「全局基准」与「工作区私有题」。
 
 ### 决策 8：v1 声明范围为「文本可观测能力子集」
 
@@ -200,6 +254,8 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 | LLM 出题直接当 gold | 拒绝 | 自证循环、偏差、泄漏 |
 | 只做能力矩阵，不改执行 | 拒绝 | 无法证明实际跑了哪些题 |
 | 在 `core/engine/eval_packs/` 新建权威库 | 拒绝 | 与工厂双源 |
+| 用户新建 pack 默认 `global` | 拒绝 | 跨工作区泄漏 |
+| 缺省 scope 静默推断为 global | 拒绝 | 必须 `scope_required` |
 | 无工具环境却标工具能力 covered | 拒绝 | 违反 unknown≠pass |
 | 现有方案 | 采纳 | 能力 + 工厂复用 + Profile + manifest + claim gate |
 
@@ -222,12 +278,16 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 
 ### 6.1 阻塞 P0（必须先签/先冻结）
 
-1. 能力矩阵 v1（含 A13 `clarification`）+ **legacy↔canonical 对照表**；
-2. **v1 可测能力子集**（文本可观测；A3–A5 规则）；
-3. `EvalCase.test_purpose` schema；
-4. Suite Profile schema；
-5. 权威存储路径确认（`$AIPLAT_HOME/eval_packs/...`）；
-6. `scope` 默认值（建议：内置映射 `global` 只读；用户新 pack 默认 `workspace`）。
+| # | 项 | 状态 |
+|---|---|---|
+| 1 | 能力矩阵 v1（含 A13）+ legacy↔canonical 对照表 | 草案在 Plan §4.2.1；**待正式冻结签字** |
+| 2 | v1 可测能力子集（Plan §4.2.2） | 草案已写；**待正式采纳签字** |
+| 3 | `EvalCase.test_purpose` schema | **未冻结** |
+| 4 | Suite Profile schema | **未冻结** |
+| 5 | 权威存储路径 `$AIPLAT_HOME/eval_packs/...` | ✅ 决策 7.1 |
+| 6 | scope 按创建来源默认 + 配套规则 | ✅ **本次采纳**（决策 7.2–7.3） |
+
+**`scope` 已定，不必为它单独签 ADR；ADR 整体仍保持 Proposed，待 1–4 齐后再签。**
 
 ### 6.2 可后置到 P2/P4
 
@@ -242,11 +302,11 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 
 ## 7. 开放问题（已分类）
 
-### 阻塞 P0
+### 阻塞 P0（仍待签）
 
-1. `scope` 默认是 `global` 还是 `workspace`？（建议见 §6.1.6）
-2. capability_id 对照表是否按 Plan §4.2.1 冻结？
-3. v1 可测子集是否按 Plan §4.2.2 采纳？
+1. ~~`scope` 默认~~ → **已采纳决策 7.2–7.3**（按创建来源；非全局默认 global）
+2. capability_id 对照表是否按 Plan §4.2.1 正式冻结？
+3. v1 可测子集是否按 Plan §4.2.2 正式采纳？
 4. `test_purpose` / Profile schema 字段是否锁定？
 
 ### 可后置 P2/P4

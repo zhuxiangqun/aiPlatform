@@ -1,8 +1,8 @@
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  
-> **版本**：v0.2 · 2026-11-08  
-> **状态**：**Proposed（设计评审用，不实施；v0.2 吸收路径/能力 ID/可测子集/路线图修订）**  
+> **版本**：v0.2.1 · 2026-11-08  
+> **状态**：**Proposed（设计评审用，不实施；v0.2.1 吸收 scope 按创建来源默认）**  
 > **范围**：先 Agent，后 Prompt / KB / Code Review / Session；不包含业务验收  
 > **诚实锁**：不打开 `accuracy_claim`；生成题默认不可 claim；禁止运行时随机出题当金标；G2b/Arena 仍走独立人工协议  
 > **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md)
@@ -304,7 +304,8 @@ needs_edit
   "kind": "curated",
   "status": "frozen",
   "claim_eligible": false,
-  "scope": "global",
+  "scope": "workspace",
+  "workspace_id": "ws-a",
   "object_types": ["agent"],
   "cases": [],
   "hash": "sha256:..."
@@ -341,6 +342,8 @@ needs_edit
   "profile_id": "agent.regression.v1",
   "pack_id": "agent.capability",
   "pack_version": "0.1.0",
+  "scope": "workspace",
+  "workspace_id": "ws-a",
   "seed": 7,
   "cases": [
     {"case_id": "agent.tool_failure.001", "hash": "..."}
@@ -522,16 +525,35 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs/
   packs/{pack_id}/{version}/pack.json
 ```
 
-| scope | 路径 | 写权限 |
-|---|---|---|
-| `global` | `$AIPLAT_HOME/eval_packs/global` | P0 只读（平台发布另议） |
-| `workspace` | `$AIPLAT_HOME/workspaces/{id}/eval_packs` | 同 workspace ACL |
-| `tenant` | `$AIPLAT_HOME/tenants/{id}/eval_packs` | 同 tenant ACL |
+| scope | 路径 | 写权限 | 默认何时用 |
+|---|---|---|---|
+| `global` | `$AIPLAT_HOME/eval_packs/global` | P0 只读；平台发布角色才能发新版本 | **仅**内置/官方导入 |
+| `workspace` | `$AIPLAT_HOME/workspaces/{id}/eval_packs` | 同 workspace ACL | **用户新建默认** |
+| `tenant` | `$AIPLAT_HOME/tenants/{id}/eval_packs` | 同 tenant ACL | **显式开启**；P0 不默认 |
 
+#### Scope 按创建来源（禁止「全局默认 global」）
+
+| 创建来源 | 默认 scope |
+|---|---|
+| 内置 / 官方导入 | `global` |
+| 用户新建 pack | `workspace` |
+| 租户共享 | `tenant`（必须显式传 + tenant admin） |
+| 来源无法判定 | **400 `scope_required`**，禁止静默推断 |
+
+跨 scope 引用：
+
+| 引用方 | 可引用 |
+|---|---|
+| workspace | 自己的 workspace + `global` 只读 |
+| tenant | 同 tenant + `global` 只读 |
+| global | 不得引用用户 workspace/tenant pack |
+
+- **禁止跨 workspace 引用**；
+- 改 scope = clone + 新 version + 新 hash（禁止原地改）；升 global 需平台审核；
+- frozen 只能 deprecate；删除前检查 Profile/manifest 引用；
+- **manifest / report 必须带 `scope`（及 workspace_id/tenant_id）**，否则无法审计「全局基准 vs 工作区私有」；
 - 仓库内 `core/engine/eval_sets/*.json` 仍是**旧卷种子/映射源**，不是 Case Pack 权威存储；
-- registry 原子写 + 锁；
-- frozen 不可改；
-- 跨 workspace / 跨 tenant 引用禁止。
+- registry 原子写 + 锁。
 
 ### 10.2 API（经 CoreFacade）
 
