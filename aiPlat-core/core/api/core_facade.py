@@ -6339,10 +6339,17 @@ def eval_load_mock_tool_catalog() -> Dict[str, Any]:
 def eval_run_tool_fixture_suite(
     capability_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """T1: run A3/A4 scripted mock-tool fixture suite (claim=false, out of V1_IN_SCOPE)."""
+    """T1/T2: run A3/A4/A5 scripted mock-tool fixture suite (claim=false, out of V1_IN_SCOPE)."""
     from core.apps.eval.service.tool_capability_fixtures import run_tool_fixture_suite
 
     return run_tool_fixture_suite(capability_id=capability_id)
+
+
+def eval_run_session_fixture_suite() -> Dict[str, Any]:
+    """T2: run A8 multi_turn_memory session fixture suite (claim=false)."""
+    from core.apps.eval.service.tool_capability_fixtures import run_session_fixture_suite
+
+    return run_session_fixture_suite()
 
 
 def eval_invoke_mock_tools(

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2164
+total_capabilities: 2169
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 228
+    caps_count: 233
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -7045,6 +7045,26 @@ domains:
       - symbol: eval_invoke_mock_tools
         type: function
         signature: "eval_invoke_mock_tools(tool_calls?,case?,fail_mode?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: judge_tool_result_use
+        type: function
+        signature: "judge_tool_result_use(case,result)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_trace_judge.py
+      - symbol: run_session_group
+        type: function
+        signature: "run_session_group(cases,answers?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/session_runner.py
+      - symbol: assert_session_groups_complete
+        type: function
+        signature: "assert_session_groups_complete(selected,universe)→None"
+        module: aiPlat-core/core/apps/eval/service/session_runner.py
+      - symbol: run_session_fixture_suite
+        type: function
+        signature: "run_session_fixture_suite(seed_dir?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_capability_fixtures.py
+      - symbol: eval_run_session_fixture_suite
+        type: function
+        signature: "eval_run_session_fixture_suite()→Dict"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: MockToolHarnessError
         type: class

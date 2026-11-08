@@ -2,7 +2,7 @@
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  
 > **版本**：v0.1 · 2026-11-08  
-> **状态**：**T1 进行中**（mock harness + A3/A4 fixture 机判；仍不改 `V1_IN_SCOPE`）· T0 已签 · 见 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md)  
+> **状态**：**T2 工程完成**（A5 + Session/A8；仍不改 `V1_IN_SCOPE`）· 见 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md)  
 > **触发**：`[ADR-EVAL-CAPABILITY-CASE-PACK-V1](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)` §7 #9；v1 签字子集强制 A3–A5/A8/A9 = `unknown`  
 > **关联**：`[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md)` §4.2.2 · `[CAPABILITY_ID_MAP_V1.md](./CAPABILITY_ID_MAP_V1.md)` · `[eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md)` · PR #622（v1 文本子集已落地）
 
@@ -109,7 +109,7 @@ A3–A5（工具）、A8（多轮 Session）、A9（长上下文）在代码与 
 
 **工程完成（2026-11-08）**：`mock_tools/harness.py` + `tool_trace_judge` + `AgentSubjectAdapter` tool 路径 + `fixtures/tool_{selection,args}/cases.json`（各≥5，含正/负例）+ `run_tool_fixture_suite`；claim/v1_in_scope 仍 false。  
 
-**Go T2**：A3/A4 机判稳定（同 seed 字节一致）→ 可开 Session/A5。
+**Go T2**：✅ A3/A4 机判稳定 → 已开 Session/A5。
 
 ### 阶段 T2 — A5 + Session Runner（A8）（约 2–3 周）
 
@@ -121,7 +121,9 @@ A3–A5（工具）、A8（多轮 Session）、A9（长上下文）在代码与 
 | A8：跨轮探针题（前轮埋事实 → 后轮追问）               | regression≥5                                 |
 
 
-**Go T3**：A5/A8 证据链可审计。
+**工程完成（2026-11-08）**：`judge_tool_result_use` + `session_runner` + fixtures `tool_result_use` / `multi_turn_memory` + suite；claim/v1_in_scope 仍 false。  
+
+**Go T3**：A5/A8 证据链可审计 → 可开 long-context / 升域签字。
 
 ### 阶段 T3 — Long-context（A9）+ 升域签字（约 2–4 周）
 

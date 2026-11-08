@@ -179,6 +179,12 @@ class AgentSubjectAdapter:
         tier_errs = validate_tool_backend_runtime(
             tool_backend="mock", runtime_tier="fixture"
         )
+        answer = str(
+            env_map.get("answer")
+            or env_map.get("scripted_answer")
+            or case.get("scripted_answer")
+            or ""
+        )
         return {
             "schema": ADAPTER_SCHEMA,
             "status": "ok" if harness.get("ok") and not claim_errs and not tier_errs else "error",
@@ -191,6 +197,8 @@ class AgentSubjectAdapter:
             "tool_calls": harness.get("tool_calls") or [],
             "tool_results": harness.get("tool_results") or [],
             "allowed_tools": harness.get("allowed_tools") or [],
+            "answer": answer,
+            "scripted_answer": answer,
             "harness": harness,
             "gate_errors": claim_errs + tier_errs,
         }

@@ -1,0 +1,107 @@
+[
+  {
+    "case_id": "agent.tool_result_use.t2.001",
+    "capabilities": ["tool_result_use"],
+    "prompt": "查 key=alpha 并用结果回答。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "alpha" } }],
+    "scripted_answer": "查到的值为 42。",
+    "must_contain_from_tools": ["42"],
+    "use_tool_result_values": false,
+    "test_purpose": {
+      "summary": "验证回答引用 lookup_fact 返回值 42",
+      "why_this_case": "A5 正例",
+      "expected_behavior": ["回答含 42"],
+      "failure_signals": ["忽略工具结果"],
+      "not_testing": ["不测工具选择顺序"],
+      "oracle_rationale": "must_contain_from_tools / answer"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_result_use.t2.002",
+    "capabilities": ["tool_result_use"],
+    "prompt": "回显工具结果。",
+    "expected_tools": ["echo"],
+    "scripted_tool_calls": [{ "name": "echo", "args": { "text": "ORION" } }],
+    "scripted_answer": "工具回显：ORION",
+    "use_tool_result_values": true,
+    "test_purpose": {
+      "summary": "验证 use_tool_result_values 自动抽取结果词",
+      "why_this_case": "A5 自动派生",
+      "expected_behavior": ["回答含 ORION"],
+      "failure_signals": ["未引用 echo 结果"],
+      "not_testing": ["不测 forbidden"],
+      "oracle_rationale": "flatten tool_results into must_contain"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_result_use.t2.003",
+    "capabilities": ["tool_result_use"],
+    "prompt": "负例：未使用工具结果。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "alpha" } }],
+    "scripted_answer": "我猜大概是一百。",
+    "must_contain_from_tools": ["42"],
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "负例：回答未含工具返回 42",
+      "why_this_case": "A5 失败形态",
+      "expected_behavior": ["judge 报 answer_missing:42"],
+      "failure_signals": ["误通过"],
+      "not_testing": ["不测参数 schema"],
+      "oracle_rationale": "must_contain_from_tools miss → fail"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_result_use.t2.004",
+    "capabilities": ["tool_result_use"],
+    "prompt": "负例：空回答。",
+    "expected_tools": ["echo"],
+    "scripted_tool_calls": [{ "name": "echo", "args": { "text": "x" } }],
+    "scripted_answer": "",
+    "must_contain_from_tools": ["x"],
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "负例：缺少最终回答",
+      "why_this_case": "A5 missing_answer",
+      "expected_behavior": ["judge 报 missing_answer"],
+      "failure_signals": ["误通过"],
+      "not_testing": ["不测多轮"],
+      "oracle_rationale": "empty answer fail-closed"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_result_use.t2.005",
+    "capabilities": ["tool_result_use"],
+    "prompt": "负例：回答含禁止幻觉词。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "alpha" } }],
+    "scripted_answer": "值为 42，另外我编造了 SECRET",
+    "must_contain_from_tools": ["42"],
+    "must_not_contain": ["SECRET"],
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "负例：must_not_contain 命中",
+      "why_this_case": "A5 禁止幻觉片段",
+      "expected_behavior": ["answer_forbidden:SECRET"],
+      "failure_signals": ["误通过"],
+      "not_testing": ["不测 session"],
+      "oracle_rationale": "must_not_contain → fail"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  }
+]
