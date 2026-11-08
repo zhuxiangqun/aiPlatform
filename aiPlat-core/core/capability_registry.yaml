@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2078
+total_capabilities: 2082
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 142
+    caps_count: 146
     provides:
       - symbol: "resolve_capability_id"
         type: "function"
@@ -6874,6 +6874,22 @@ domains:
         type: "function"
         signature: "eval_agent_regression_profile()→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: validate_capability_case
+        type: function
+        signature: 'Factory fields + AgentSubjectAdapter purpose/capability checks.'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: build_agent_capability_pack_document
+        type: function
+        signature: 'build_agent_capability_pack_document()'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: default_seed_dir
+        type: function
+        signature: 'default_seed_dir()'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
+      - symbol: write_agent_capability_seeds
+        type: function
+        signature: 'Write pack + profile JSON under workspace_seeds (for human review).'
+        module: aiPlat-core/core/apps/eval/service/capability_case_bank.py
       - symbol: "run_g2a_gate"
         type: "function"
         signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"
