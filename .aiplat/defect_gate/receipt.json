@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T10:47:53+08:00",
+  "reviewed_at": "2026-11-08T10:56:46+08:00",
   "base_ref": "origin/main",
   "merge_base": "7284e5e1c8d78db818f4f872c796411217f75af5",
-  "diff_sha256": "cf68b0a689fa722d08c651926a428285bb46bd08f780af6079e657e35e0e2e52",
-  "head_sha": "cfb5851b0b171f921f06bc304663549e8301b15f",
+  "diff_sha256": "365a25436ee29646a3832832962357e7484d89a75dc95ebb54fa64f4a51e6ef0",
+  "head_sha": "a23f6c1e38bd8fc7f4c8902317d103a27828ecfd",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Whitepaper freshness fix after CAPABILITIES sync; five checks still pass."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. AUTO-STATS/whitepaper consistency fix; five checks still pass on product diff."
 }
