@@ -1,10 +1,10 @@
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
-- **状态**：Proposed（设计评审用，不实施；v0.2.4 区分 Subject×Capability×Method×Evidence；§6.1 待签字）
+- **状态**：**Accepted**（§6.1 #1–#4 已 Frozen · 朱向群 · 2026-11-08；实施另开变更单）
 - **日期**：2026-11-08
 - **决策范围**：Evaluation 题库、选题、执行与证据组织
 - **关联**：
-  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2.4
+  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2.5
   - [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md)
   - [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md)
   - [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md)
@@ -323,14 +323,14 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 
 | # | 项 | 产出 | 状态 |
 |---|---|---|---|
-| 1 | capability ID 对照表 | [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) | Frozen-draft · **待 owner 签字** |
-| 2 | v1 可测子集 | Plan §4.2.2 签字页 | Frozen-draft · **待 `SIGNED v1_measurable_subset`** |
-| 3 | `test_purpose` schema | [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) | Frozen-draft · **待签字** |
-| 4 | Suite Profile schema | [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) | Frozen-draft · **待签字** |
+| 1 | capability ID 对照表 | [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) | ✅ **Frozen** · `SIGNED capability_id_map.v1` · 朱向群 · 2026-11-08 |
+| 2 | v1 可测子集 | Plan §4.2.2 签字页 | ✅ **Frozen** · `SIGNED v1_measurable_subset` · 朱向群 · 2026-11-08 |
+| 3 | `test_purpose` schema | [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) | ✅ **Frozen** · `SIGNED case_test_purpose.v1` · 朱向群 · 2026-11-08 |
+| 4 | Suite Profile schema | [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) | ✅ **Frozen** · `SIGNED suite_profile.v1` · 朱向群 · 2026-11-08 |
 | 5 | 权威存储路径 | ADR 决策 7.1 | ✅ |
 | 6 | scope 按创建来源默认 | ADR 决策 7.2–7.3 | ✅ 闭环（不单独签 ADR） |
 
-**签字顺序建议**：#1 → #3 → #4 → #2 → 四项齐后 ADR Proposed→**Accepted** → 另开实施变更单（勾选 §6.1）。  
+**§6.1 四项已齐；本 ADR 已 Accepted。** 另开实施变更单时须勾选 §6.1 已满足。  
 **scope 不与「是否实施」绑定。**
 
 ### 6.2 可后置到 P2/P4
@@ -346,13 +346,13 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 
 ## 7. 开放问题（已分类）
 
-### 阻塞 P0（仍待签）
+### 阻塞 P0（已关闭）
 
 1. ~~`scope`~~ → 已采纳决策 7.2–7.3  
-2. [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) owner 签字？  
-3. [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) owner 签字？  
-4. [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) owner 签字？  
-5. Plan §4.2.2 `SIGNED v1_measurable_subset`？
+2. ~~[`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md)~~ → ✅ Frozen · 朱向群 · 2026-11-08  
+3. ~~[`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md)~~ → ✅ Frozen · 朱向群 · 2026-11-08  
+4. ~~[`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md)~~ → ✅ Frozen · 朱向群 · 2026-11-08  
+5. ~~Plan §4.2.2 `SIGNED v1_measurable_subset`~~ → ✅ Frozen · 朱向群 · 2026-11-08  
 
 ### 可后置 P2/P4
 
@@ -383,4 +383,4 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 
 不采纳“固定卷无限加题”“运行时随机出题”“LLM 直接当 gold”“题数等于完整性”“双源存储”“无环境却宣称工具能力已测”“一套题通吃所有 Subject”“把 Arena/G2b/S1/维度硬塞进 object_type”。
 
-**本 ADR 只做设计决策，不实施；实施需另开变更单，且 §6.1 阻塞项齐备。**
+**本 ADR 已 Accepted；§6.1 齐备。产品代码实施须另开变更单（勾选 §6.1），不在本 ADR 内直接改代码。**

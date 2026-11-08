@@ -1,8 +1,8 @@
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  
-> **版本**：v0.2.4 · 2026-11-08  
-> **状态**：**Proposed（设计评审用，不实施；v0.2.4 区分 Subject×Capability×Method×Evidence）**  
+> **版本**：v0.2.5 · 2026-11-08  
+> **状态**：**Accepted（§6.1 齐 · ADR Accepted；实施另开变更单；v0.2.5）**  
 > **范围**：先 Agent（参考实现）；Subject 可扩展，**方法不得混入 object_type**；统一编排与治理，不统一题面；不包含业务验收  
 > **诚实锁**：不打开 `accuracy_claim`；生成题默认不可 claim；禁止运行时随机出题当金标；G2b/Arena 仍走独立人工协议  
 > **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md) · [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](./CASE_TEST_PURPOSE_SCHEMA_V1.md) · [`SUITE_PROFILE_SCHEMA_V1.md`](./SUITE_PROFILE_SCHEMA_V1.md) · [`ADR-EVAL-CAPABILITY-CASE-PACK-V1.md`](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)
@@ -165,10 +165,10 @@
 
 | 角色 | 勾选 | 签字（`SIGNED v1_measurable_subset`） | 日期 |
 |------|:----:|--------------------------------------|------|
-| 评测方法负责人 | 采纳上表可测/不可测划分 | | |
+| 评测方法负责人 | 采纳上表可测/不可测划分 | `SIGNED v1_measurable_subset` · 朱向群 | 2026-11-08 |
 | 工程负责人（可选） | 实现上强制 A3–A5/A8/A9 不得 covered | | |
 
-**未签字前：子集视为草案；Profile 不得据此宣称能力完整。**
+**已签字：子集 Frozen；Profile 可据此划分 in_scope / unknown，不得将 A3–A5/A8/A9 标 covered。**
 
 ### 4.3 其他对象
 
@@ -786,5 +786,4 @@ class EvalSubjectAdapter:
 > **Subject × Capability × Method × Evidence。**  
 > 统一“怎么评”；Subject 用 adapter 扩展；Method（Arena/G2b/S1）不混入 `object_type`；Agent 先跑通，再逐个接入。
 
-**开 P0 前：§6.1 四份冻结稿签字 → ADR Accepted → 单独变更单。**  
-**本文件仍不直接改代码。**
+**§6.1 已齐 · ADR Accepted。** 开实施变更单后进入 P0（能力矩阵接线 + `test_purpose` + alias）；本文件不直接改代码。
