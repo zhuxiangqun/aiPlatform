@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T12:50:15+08:00",
+  "reviewed_at": "2026-11-08T13:42:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fd3aacaad9deadddeecfe28d4a2a1818b711bfc9",
-  "diff_sha256": "f922cb6f9bfd09fb96eca784bdb4ecc1a4650c8c962e04aba8363957f1d4a1c4",
-  "head_sha": "1a3f10efd5a33e9d115af86e85742f4b0e6f9c13",
+  "merge_base": "bcb059086f8105d968052372b7d21347aaee8c53",
+  "diff_sha256": "5bb403add3a682ecb2416fa3064e9c894b0de9a8d9e816402b66d4883c8debbf",
+  "head_sha": "ff937d1d96eb9025d531f61ba9675fc9b1e3618a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Docs only: §0.6.1 draft keeps formal checkboxes empty; C7/C8 not self-signed; still No-Go; no decision_shadow."
+  "note": "Muted skeleton: enabled=false, classify_hook_wired=false; CoreFacade+diagnostics probes only. Residual: Phase1b Go still required for DomainRouter.classify sample traffic."
 }
