@@ -1099,7 +1099,7 @@ async def compat_evaluation_case_pack_propose_difficulty(
 async def compat_evaluation_case_pack_judge_calibration_ticket(
     body: Dict[str, Any], request: Request
 ):
-    """P3.0: open judge calibration work order (no claim unlock)."""
+    """P3.1: open + persist judge calibration ticket (no claim unlock)."""
     from core.api.core_facade import eval_open_judge_calibration_ticket
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1118,6 +1118,110 @@ async def compat_evaluation_case_pack_judge_calibration_ticket(
             return out
     except Exception as e:
         logger.debug("case-packs judge-calibration-ticket failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/calibrate-difficulty")
+async def compat_evaluation_case_pack_calibrate_difficulty(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: human difficulty labels → pack (engineering; claim closed)."""
+    from core.api.core_facade import eval_calibrate_case_pack_difficulty
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    labels = (body or {}).get("labels") or []
+    if not isinstance(labels, list):
+        return {"ok": False, "error": "labels must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_calibrate_case_pack_difficulty(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                labels=labels,
+                rater=str((body or {}).get("rater") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs calibrate-difficulty failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-ratings")
+async def compat_evaluation_case_pack_judge_calibration_ratings(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: append judge ratings + agreement."""
+    from core.api.core_facade import eval_record_judge_calibration_ratings
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    ratings = (body or {}).get("ratings") or []
+    if not isinstance(ratings, list):
+        return {"ok": False, "error": "ratings must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_record_judge_calibration_ratings(
+                workspace_id=nw.workspace_id,
+                ticket_id=str((body or {}).get("ticket_id") or "").strip(),
+                ratings=ratings,
+                rater=str((body or {}).get("rater") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-ratings failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-close")
+async def compat_evaluation_case_pack_judge_calibration_close(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: close judge ticket (engineering calibrated; claim closed)."""
+    from core.api.core_facade import eval_close_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_close_judge_calibration_ticket(
+                workspace_id=nw.workspace_id,
+                ticket_id=str((body or {}).get("ticket_id") or "").strip(),
+                notes=str((body or {}).get("notes") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-close failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/judge-calibration-ticket/{ticket_id}")
+async def compat_evaluation_case_pack_judge_calibration_get(
+    ticket_id: str, request: Request
+):
+    """P3.1: load persisted judge ticket."""
+    from core.api.core_facade import eval_get_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_get_judge_calibration_ticket(
+                workspace_id=nw.workspace_id,
+                ticket_id=str(ticket_id or "").strip(),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-get failed", exc_info=True)
         return _case_pack_http_error(e)
 
 

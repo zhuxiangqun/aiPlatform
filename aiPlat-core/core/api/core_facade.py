@@ -6607,7 +6607,7 @@ def eval_open_judge_calibration_ticket(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.0: judge calibration work order — does not unlock claims."""
+    """P3.1: persist judge calibration ticket — does not unlock claims."""
     from core.apps.eval.service.case_pack_ops import (
         open_judge_calibration_ticket_for_pack,
     )
@@ -6618,6 +6618,88 @@ def eval_open_judge_calibration_ticket(
         workspace_id=workspace_id,
         sample_case_ids=sample_case_ids,
         notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_calibrate_case_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    labels: list,
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: human difficulty labels → pack (engineering calibrated; claim closed)."""
+    from core.apps.eval.service.case_pack_ops import calibrate_pack_difficulty
+
+    return calibrate_pack_difficulty(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        labels=labels,
+        rater=rater,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_record_judge_calibration_ratings(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    ratings: list,
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: append judge ratings + agreement (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import (
+        record_judge_calibration_ratings_for_pack,
+    )
+
+    return record_judge_calibration_ratings_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
+        ratings=ratings,
+        rater=rater,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_close_judge_calibration_ticket(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: close judge ticket after ratings (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import (
+        close_judge_calibration_ticket_for_pack,
+    )
+
+    return close_judge_calibration_ticket_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_get_judge_calibration_ticket(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: load persisted judge ticket."""
+    from core.apps.eval.service.case_pack_ops import (
+        get_judge_calibration_ticket_for_pack,
+    )
+
+    return get_judge_calibration_ticket_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
         caller_workspace_id=caller_workspace_id or workspace_id,
     )
 

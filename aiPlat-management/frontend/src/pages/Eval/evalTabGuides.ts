@@ -54,10 +54,10 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
   },
   'case-packs': {
     title: 'Case Pack',
-    what: '工作区 Case Pack 工厂：草稿扩题、人审、freeze、version++、coverage、变异/trace/holdout、LLM 候选。',
+    what: '工作区 Case Pack 工厂：草稿扩题、人审、freeze、version++、coverage、变异/trace/holdout、LLM 候选、校准闭环。',
     why: 'Plan v2 的题库载体；frozen 保可比，L3 generated/trace 保发现，均默认不可 claim。',
-    can: 'draft→review→freeze；expand/bump；mutate/from-trace；LLM dry 候选；难度启发式；judge 工单；holdout；coverage。',
-    not: 'freeze ≠ 准确率；generated/trace 不可 freeze 入 claim；claim_eligible 恒 false。',
+    can: 'draft→review→freeze；mutate/trace/LLM；难度启发式+人标校准；judge 开单→打分→关单；holdout；coverage。',
+    not: 'freeze ≠ 准确率；校准 ≠ accuracy_claim；generated/trace 不可 freeze 入 claim。',
   },
   reports: {
     title: '报告',

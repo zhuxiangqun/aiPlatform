@@ -10,6 +10,7 @@ export default function EvalCasePackPanel() {
   const [packId, setPackId] = useState('ws.demo.pack');
   const [version, setVersion] = useState('0.1.0');
   const [prompt, setPrompt] = useState('say ok');
+  const [ticketId, setTicketId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
@@ -27,6 +28,9 @@ export default function EvalCasePackPanel() {
           setError(String(out.error || out.message || `${label} failed`));
         } else {
           setMsg(`${label} ok · claim_eligible=${String(out?.claim_eligible ?? false)}`);
+          if (typeof out?.ticket_id === 'string' && out.ticket_id.trim()) {
+            setTicketId(out.ticket_id.trim());
+          }
         }
         setResult(out);
       } catch (e) {
@@ -304,6 +308,71 @@ export default function EvalCasePackPanel() {
           }
         >
           Judge ticket
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-amber-700/60 px-3 py-1.5 text-amber-200 disabled:opacity-50"
+          data-testid="eval-case-pack-calibrate-diff"
+          onClick={() =>
+            run('calibrate-difficulty', () =>
+              agentEvalApi.casePackCalibrateDifficulty({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                rater: 'ui',
+                labels: [
+                  {
+                    case_id: `${packId.trim().split('.').pop() || 'c'}-1`,
+                    difficulty: 'medium',
+                  },
+                ],
+              }),
+            )
+          }
+        >
+          Calibrate difficulty
+        </button>
+        <button
+          type="button"
+          disabled={busy || !ticketId.trim()}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('judge-rate', () =>
+              agentEvalApi.casePackJudgeCalibrationRatings({
+                ticket_id: ticketId.trim(),
+                rater: 'ui-a',
+                ratings: [
+                  {
+                    case_id: `${packId.trim().split('.').pop() || 'c'}-1`,
+                    score: 1,
+                    rater: 'ui-a',
+                  },
+                  {
+                    case_id: `${packId.trim().split('.').pop() || 'c'}-1`,
+                    score: 1,
+                    rater: 'ui-b',
+                  },
+                ],
+              }),
+            )
+          }
+        >
+          Judge rate
+        </button>
+        <button
+          type="button"
+          disabled={busy || !ticketId.trim()}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('judge-close', () =>
+              agentEvalApi.casePackJudgeCalibrationClose({
+                ticket_id: ticketId.trim(),
+                notes: 'ui close',
+              }),
+            )
+          }
+        >
+          Judge close
         </button>
         {busy ? <Loader2 className="h-4 w-4 animate-spin self-center text-slate-400" /> : null}
       </div>

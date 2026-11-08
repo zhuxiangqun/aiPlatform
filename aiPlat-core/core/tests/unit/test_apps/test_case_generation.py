@@ -8,6 +8,7 @@ from core.apps.eval.service.case_factory import (
     publish_draft_workspace_pack,
 )
 from core.apps.eval.service.case_freeze import freeze_workspace_pack
+from core.apps.eval.service.case_calibration import compute_rating_agreement
 from core.apps.eval.service.case_generation import (
     CaseGenerationError,
     apply_holdout_flags,
@@ -23,9 +24,12 @@ from core.apps.eval.service.case_pack_ops import (
     build_llm_candidate_draft_pack,
     build_mutation_draft_pack,
     build_trace_draft_pack,
+    calibrate_pack_difficulty,
+    close_judge_calibration_ticket_for_pack,
     mark_pack_holdout,
     open_judge_calibration_ticket_for_pack,
     propose_pack_difficulty,
+    record_judge_calibration_ratings_for_pack,
 )
 from core.apps.eval.service.case_review_queue import (
     enqueue_pack_for_review,
@@ -221,8 +225,42 @@ def test_propose_difficulty_and_judge_ticket(tmp_path, monkeypatch):
         version="0.1.0",
         workspace_id="ws-a",
         notes="ops",
+        sample_case_ids=["d1"],
     )
     assert opened["workspace_id"] == "ws-a"
+    assert opened.get("ticket_id")
+    rated = record_judge_calibration_ratings_for_pack(
+        workspace_id="ws-a",
+        ticket_id=opened["ticket_id"],
+        ratings=[
+            {"case_id": "d1", "score": 1, "rater": "a"},
+            {"case_id": "d1", "score": 1, "rater": "b"},
+        ],
+    )
+    assert rated["status"] == "in_progress"
+    assert rated["agreement"]["agreement"] == 1.0
+    closed = close_judge_calibration_ticket_for_pack(
+        workspace_id="ws-a", ticket_id=opened["ticket_id"]
+    )
+    assert closed["status"] == "closed"
+    assert closed["calibrated"] is True
+    assert closed["accuracy_claim"] is False
+
+    cal = calibrate_pack_difficulty(
+        pack_id="ws.gen.diff",
+        version="0.1.0",
+        workspace_id="ws-a",
+        labels=[{"case_id": "d1", "difficulty": "hard"}],
+        rater="unit",
+    )
+    assert cal["calibrated"] is True
+    assert cal["accuracy_claim"] is False
+    assert cal["n_labeled"] >= 1
+
+    agr = compute_rating_agreement(
+        [{"case_id": "x", "score": 0}, {"case_id": "x", "score": 1}]
+    )
+    assert agr["agreement"] == 0.0
     with pytest.raises(CasePackOpsError):
         open_judge_calibration_ticket_for_pack(
             pack_id="", version="0.1.0", workspace_id="ws-a"

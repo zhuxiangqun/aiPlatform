@@ -11,10 +11,18 @@ from core.apps.eval.service.case_factory import (
     dedupe_cases_by_hash,
     generate_cases_from_template,
 )
+from core.apps.eval.service.case_calibration import (
+    CaseCalibrationError,
+    apply_difficulty_labels,
+    close_judge_ticket,
+    create_judge_ticket,
+    load_judge_ticket,
+    record_judge_ratings,
+    save_difficulty_calibration_record,
+)
 from core.apps.eval.service.case_generation import (
     CaseGenerationError,
     apply_holdout_flags,
-    build_judge_calibration_ticket,
     cases_from_trace,
     generate_llm_candidate_cases,
     mutate_cases,
@@ -659,27 +667,187 @@ def open_judge_calibration_ticket_for_pack(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.0 judge calibration work order (no claim unlock)."""
+    """P3.1: create + persist judge calibration ticket (no claim unlock)."""
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")
-    assert_pack_acl(
-        scope="workspace",
-        workspace_id=wid,
-        caller_workspace_id=caller_workspace_id or wid,
-        write=False,
-    )
     try:
-        ticket = build_judge_calibration_ticket(
+        return create_judge_ticket(
+            workspace_id=wid,
             pack_id=pack_id,
             version=version,
             sample_case_ids=sample_case_ids,
             notes=notes,
+            caller_workspace_id=caller_workspace_id or wid,
         )
-    except CaseGenerationError as e:
+    except (CaseCalibrationError, PackRegistryError) as e:
         raise CasePackOpsError(str(e)) from e
-    ticket["workspace_id"] = wid
-    return ticket
+
+
+def record_judge_calibration_ratings_for_pack(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    ratings: Sequence[Mapping[str, Any]],
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: append ratings + recompute agreement."""
+    try:
+        return record_judge_ratings(
+            workspace_id=workspace_id,
+            ticket_id=ticket_id,
+            ratings=ratings,
+            rater=rater,
+            caller_workspace_id=caller_workspace_id or workspace_id,
+        )
+    except (CaseCalibrationError, PackRegistryError) as e:
+        raise CasePackOpsError(str(e)) from e
+
+
+def close_judge_calibration_ticket_for_pack(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: close ticket after ratings (engineering calibrated; claim closed)."""
+    try:
+        return close_judge_ticket(
+            workspace_id=workspace_id,
+            ticket_id=ticket_id,
+            notes=notes,
+            caller_workspace_id=caller_workspace_id or workspace_id,
+        )
+    except (CaseCalibrationError, PackRegistryError) as e:
+        raise CasePackOpsError(str(e)) from e
+
+
+def get_judge_calibration_ticket_for_pack(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    try:
+        return load_judge_ticket(
+            workspace_id=workspace_id,
+            ticket_id=ticket_id,
+            caller_workspace_id=caller_workspace_id or workspace_id,
+        )
+    except (CaseCalibrationError, PackRegistryError) as e:
+        raise CasePackOpsError(str(e)) from e
+
+
+def calibrate_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    labels: Sequence[Mapping[str, Any]],
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: apply human difficulty labels to non-frozen pack + save record."""
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    wid = str(workspace_id or "").strip()
+    if not pid or not ver or not wid:
+        raise CasePackOpsError("pack_id, version, workspace_id required")
+    try:
+        cur = get_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+        payload = load_pack_payload(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    if str(cur.get("kind") or "").lower() == "frozen":
+        raise CasePackOpsError("frozen pack immutable — bump first")
+    st = str(cur.get("status") or "").lower()
+    if st not in _EXPANDABLE_STATUSES:
+        raise CasePackOpsError(
+            f"difficulty calibrate requires status in {sorted(_EXPANDABLE_STATUSES)}, got {st!r}"
+        )
+    cases = list((payload or {}).get("cases") or [])
+    try:
+        labeled = apply_difficulty_labels(cases, labels)
+        rec = save_difficulty_calibration_record(
+            workspace_id=wid,
+            pack_id=pid,
+            version=ver,
+            labels=labels,
+            rater=rater,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+    except (CaseCalibrationError, PackRegistryError) as e:
+        raise CasePackOpsError(str(e)) from e
+    ots = list(cur.get("object_types") or ["agent"])
+    kind = str(cur.get("kind") or "curated")
+    assert_claim_eligible_allowed(kind=kind, claim_eligible=False)
+    new_hash = compute_pack_hash(
+        pack_id=pid,
+        version=ver,
+        kind=kind,
+        claim_eligible=False,
+        scope="workspace",
+        object_types=ots,
+        cases=labeled,
+    )
+    try:
+        meta = update_pack_version_meta(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+            pack_hash=new_hash,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    write_pack_payload(
+        pack_id=pid,
+        version=ver,
+        scope="workspace",
+        cases=labeled,
+        meta={
+            "kind": kind,
+            "claim_eligible": False,
+            "hash": new_hash,
+            "object_types": ots,
+            "status": st,
+        },
+        workspace_id=wid,
+        caller_workspace_id=caller_workspace_id or wid,
+    )
+    return {
+        "ok": True,
+        "pack_id": pid,
+        "version": ver,
+        "pack_hash": new_hash,
+        "n_labeled": sum(
+            1
+            for c in labeled
+            if isinstance(c.get("difficulty_proposal"), dict)
+            and c["difficulty_proposal"].get("method") == "human_label_v1"
+        ),
+        "registry": meta,
+        "record": {k: rec[k] for k in ("path", "updated_at", "rater") if k in rec},
+        "calibrated": True,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "honesty": "engineering difficulty calibration — not an accuracy claim",
+    }
 
 
 def summarize_workspace_pack_coverage(

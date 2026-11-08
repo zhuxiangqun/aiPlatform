@@ -1,8 +1,8 @@
 # Eval Case Pack 工厂 — 设计基线 + 实施进度
 
 > **类型**：架构方案 / 实施契约  
-> **版本**：v0.5.0 · 2026-11-08  
-> **状态**：**P0–P2.0** + **P3.0**（LLM dry/候选 + 难度启发式 + judge 校准工单；仍不可 claim）· PR #622 · 基线会签栏仍见 §8.1  
+> **版本**：v0.6.0 · 2026-11-08  
+> **状态**：**P0–P3.1**（LLM 候选 + 难度人标校准 + judge 开单→打分→关单；仍不可 claim）· PR #622 · 基线会签栏仍见 §8.1（人工签字另轨）  
 > **关联**：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md) · #618 `derived_hints`  
 > **诚实锁**：不打开 `accuracy_claim`；L3 生成题不可 claim；禁止运行时随机出题当金标；G2b/Arena 另轨  
 
@@ -11,7 +11,7 @@
 ## 0. 一句话
 
 **L1 冻结保可比 · L2 人审保覆盖 · L3 生成保发现；Plan 升 v2 负责选池/过滤/采样并输出 `sample_manifest`；Runner 只执行 manifest。**  
-P0–P3.0 已接线：工厂链 + expand/bump/coverage/UI + 变异/trace/holdout + LLM 候选（默认 dry）+ 难度启发式 + judge 工单；L3 generated|trace 禁 freeze 入 claim；未开 accuracy_claim。
+P0–P3.1 已接线：工厂链 + 变异/trace/holdout + LLM 候选（默认 dry）+ 难度启发式/人标校准 + judge 持久化工单闭环；L3 禁 freeze 入 claim；未开 accuracy_claim。
 
 ```text
 种子/模板/trace/变异/LLM候选
@@ -301,7 +301,7 @@ P0 **不以「1–2 周」承诺**。P1 扩题依赖审核人力，进度与「�
 
 **No-Go：** 六钉未签、或试图在 v1 上偷加字段、或允许 manifest 失败回退整包。
 
-### 8.1 会签栏（PR #621）
+### 8.1 会签栏（PR #621 / 实施跟踪 #622）
 
 | 角色 | 勾选范围 | 签字（GitHub Approve / 评论 `SIGNED §2`） | 日期 |
 |------|----------|------------------------------------------|------|
@@ -310,6 +310,8 @@ P0 **不以「1–2 周」承诺**。P1 扩题依赖审核人力，进度与「�
 | 工程负责人（可选） | T1–T12 可测性、存储路径与 ACL | | |
 
 合并本 PR **≠** Go P0；仅表示基线入库。Go 须上表两名必签角色齐 + 单独开 P0 变更单。
+
+**工程进度（#622，非会签替代）**：P0–P3.1 代码已接线（含难度人标 + judge 闭环）；诚实锁未破。人工会签仍须上表。
 
 ---
 

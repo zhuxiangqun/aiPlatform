@@ -25,8 +25,18 @@ def test_case_pack_routes_registered():
         "/evaluation/case-packs/llm-candidates",
         "/evaluation/case-packs/propose-difficulty",
         "/evaluation/case-packs/judge-calibration-ticket",
+        "/evaluation/case-packs/calibrate-difficulty",
+        "/evaluation/case-packs/judge-calibration-ratings",
+        "/evaluation/case-packs/judge-calibration-close",
     ):
         assert p in paths
+    # GET with path param
+    assert any(
+        str(getattr(r, "path", "")).startswith(
+            "/evaluation/case-packs/judge-calibration-ticket/"
+        )
+        for r in compat.router.routes
+    )
 
 
 def test_case_pack_http_error_shapes_value_error():

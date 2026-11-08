@@ -2776,6 +2776,29 @@ export const agentEvalApi = {
       body,
     );
   },
+  casePackCalibrateDifficulty: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/calibrate-difficulty',
+      body,
+    );
+  },
+  casePackJudgeCalibrationRatings: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-ratings',
+      body,
+    );
+  },
+  casePackJudgeCalibrationClose: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-close',
+      body,
+    );
+  },
+  casePackJudgeCalibrationGet: async (ticketId: string) => {
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/judge-calibration-ticket/${encodeURIComponent(ticketId)}`,
+    );
+  },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {
     return apiClient.post<{
