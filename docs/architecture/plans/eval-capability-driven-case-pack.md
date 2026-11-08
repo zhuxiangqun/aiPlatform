@@ -1,9 +1,9 @@
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  
-> **版本**：v0.2.3 · 2026-11-08  
-> **状态**：**Proposed（设计评审用，不实施；v0.2.3 明确通用框架≠通用题目）**  
-> **范围**：先 Agent（参考实现），后 Prompt / KB / Code Review / Session；**统一编排与治理，不统一题面**；不包含业务验收  
+> **版本**：v0.2.4 · 2026-11-08  
+> **状态**：**Proposed（设计评审用，不实施；v0.2.4 区分 Subject×Capability×Method×Evidence）**  
+> **范围**：先 Agent（参考实现）；Subject 可扩展，**方法不得混入 object_type**；统一编排与治理，不统一题面；不包含业务验收  
 > **诚实锁**：不打开 `accuracy_claim`；生成题默认不可 claim；禁止运行时随机出题当金标；G2b/Arena 仍走独立人工协议  
 > **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md) · [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](./CASE_TEST_PURPOSE_SCHEMA_V1.md) · [`SUITE_PROFILE_SCHEMA_V1.md`](./SUITE_PROFILE_SCHEMA_V1.md) · [`ADR-EVAL-CAPABILITY-CASE-PACK-V1.md`](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)
 
@@ -676,57 +676,102 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs/
 
 ---
 
-## 15. 通用对象方法（框架统一，题面不统一）
+## 15. 通用方法：Subject × Capability × Method × Evidence
 
-> **通用的是评测框架；不是通用题目。**  
-> 一套题不可能通吃 Agent / Prompt / KB / Code Review / Session。  
-> 一套 **元模型 + 对象适配器 + Profile + Manifest + 证据链** 可以覆盖所有对象。
+> **通用的是评测框架；不是通用题目；也不是把“方法/维度”硬塞进 `object_type`。**  
+> 四元组：`Subject（被测物） × Capability（测什么） × Method（怎么测） × Evidence（证据）`。
 
-### 15.1 五层统一 · 两层适配
+### 15.1 当前代码中的 `object_type`（9 类）
+
+权威：`core/apps/eval/service/target_contract.py` → `OBJECT_TYPES`：
+
+```text
+agent | prompt | skill | workflow | model | api | generated_app | dataset | system
+```
+
+**下列不是（或尚未成为）一等 `object_type`：**
+
+| 名称 | 当前归属 | 分类 |
+|------|----------|------|
+| KB / RAG | 独立 KB eval 路径 | Subject 候选（建议纳入） |
+| Code Review | code-review-gold runner | Subject 候选（建议纳入） |
+| Session | session_eval | 运行时 / evidence 为主；可作 Subject 候选 |
+| Tool / MCP | 协议/工具 | Subject 候选（未来） |
+| Multi-Agent | 组合系统 | Subject 候选（未来） |
+| Arena / Preference | 人评偏好 | **Method** |
+| G2b | 人工双盲基准 | **Method** |
+| S1 Redteam | 攻击包 | **Method** |
+| Calibration | 评估器校准 | **Method** |
+| PII / 合规 / 成本 / 延迟 | 规则或指标 | **Dimension**（可跨 Subject 复用） |
+
+> **评测对象 ≠ 评测方法 ≠ 评分维度。** Prompt/KB/Code/Session 只是示例，不是完整清单。
+
+### 15.2 分类
+
+**A. 可版本化产物（Artifact / Subject）** — 可挂 Target Contract + Case Pack  
+
+| Subject | 当前 |
+|---------|------|
+| Agent / Skill / Prompt / Workflow / Model / API / Generated App / Dataset / System | ✅ 在 9 类 |
+| KB / RAG、Code Review | ⚠️ 独立路径，建议 SubjectAdapter |
+| Tool/MCP、Multi-Agent | ⚠️ 未来 Subject |
+
+**B. 运行时对象** — 多为 evidence，不一定升 `object_type`  
+
+Session / Conversation、Agent Run、Tool Call Trace、Deployment / Environment。
+
+**C. Method** — 不得对象化进 `OBJECT_TYPES`  
+
+Arena、G2b、S1、Calibration、Human Review、Static/Replay/Dynamic。
+
+**D. Dimension** — 跨 Subject 复用  
+
+安全、合规/PII、成本、延迟、鲁棒性、可观测性、记忆、长上下文（与能力矩阵可对齐，但不是 object_type）。
+
+### 15.3 五层统一 · Subject 适配
 
 ```text
 Target Contract → Capability Resolver → Case Selector (Profile)
         → Execution Adapter → Oracle Adapter → Evidence Normalizer → Claim Gate
 ```
 
-| 统一 | 适配（对象特定） |
-|------|------------------|
-| EvalTarget 契约字段 | 执行器（工具 / 模型 / 检索 / 仓库 / 多轮） |
-| Capability 元字段 | 环境（tools / retrieval / repo / session） |
-| EvalCase 外壳 + `test_purpose` | `input` / `env` / `oracle` 载荷 |
-| SuiteProfile / sample_manifest | 判分（tool_trace / exact / claims / human） |
-| Evidence / claim_eligible / fail closed | 人审问题清单 |
+```python
+class EvalSubjectAdapter:
+    subject_kind: str  # agent|prompt|kb|code_review|session|...
+    def build_contract(...): ...
+    def capability_catalog(...): ...
+    def validate_case(...): ...
+    def execute(...): ...
+    def judge(...): ...
+    def normalize(...): ...
+```
 
-**Core 禁止 `if object_type ==` 硬编码业务分支；用 adapter registry 分发。**  
-已有基础：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) + `object_adapters.py`（契约/默认卷）；本方案补能力矩阵、Profile、Case Pack 内容，**不另起一套 Plan 引擎**。
+| 统一 | 按 Subject 适配 |
+|------|-----------------|
+| 契约外壳 / Capability 元字段 / Case+`test_purpose` | 执行器与环境 |
+| SuiteProfile / sample_manifest | oracle 形态 |
+| Evidence / claim gate / fail closed | 人审清单 |
 
-### 15.2 为什么不能强行一套题
+**Core 禁止 `if object_type ==` 堆业务；用 SubjectAdapter registry。**  
+已有：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) + `object_adapters.py`（契约侧）。本方案补能力 Case Pack；**不另起 Plan 引擎，不把 Method 塞进 OBJECT_TYPES。**
 
-| 对象 | 题面 | 判分 |
-|------|------|------|
-| Agent | 任务 + 工具 + trace | tool_trace / 措辞 |
-| Prompt | 输入 + 期望输出 | exact / rubric |
-| KB | query + 文档 | 检索指标 / claims |
-| Code Review | diff + 缺陷 | P/R |
-| Session | 多轮 | 会话状态 |
-| Arena | 成对回答 | **人评**（不进自动 claim） |
+### 15.4 落地顺序
 
-强行 `prompt + must_contain` 会丢掉工具轨迹、检索指标与 Code Review 召回。
+1. **AgentAdapter**（本文件 P0–P4）参考实现；  
+2. 抽出 `EvalSubjectAdapter`；  
+3. Prompt / Workflow / Model（文本类，复用多）；  
+4. KB/RAG → Code Review → Session；  
+5. Tool/MCP / Multi-Agent；  
+6. Arena / G2b / S1 **保持方法轨**；  
+7. **不**为 15 种对象各写一套 Plan。
 
-### 15.3 落地顺序
+### 15.5 边界
 
-1. **AgentAdapter** 作为参考实现（本文件 P0–P4）；  
-2. 抽出 `EvalObjectAdapter`：`build_contract` / `capability_catalog` / `validate_case` / `execute` / `judge` / `normalize`；  
-3. Prompt → KB → Code Review → Session 只实现适配层；  
-4. Arena 独立人评轨；  
-5. **不重写** Plan / Profile / Manifest / Evidence。
-
-### 15.4 边界
-
-- 无环境 → `unknown`，不假装 covered；  
-- 不同对象分数不可直接比较；  
+- 无环境 → `unknown`；  
+- 不同 Subject 分数不可直接比较；  
 - 通用框架 ≠ 通用准确率；  
-- 业务验收仍不在范围。
+- Method 独立，不自动 claim；  
+- 业务验收不在范围。
 
 ---
 
@@ -736,9 +781,10 @@ Target Contract → Capability Resolver → Case Selector (Profile)
 
 > **能力矩阵定义“测什么”；Case Factory 生产“可审的题”；Profile 决定“这次测多少”；Manifest 保证“跑的是哪几题”；Coverage 证明“有没有漏”；Claim Gate 决定“能说什么”。**
 
-**对象扩展的核心不是复制题库，而是：**
+**跨对象扩展的核心：**
 
-> **统一“怎么评”（契约 / Profile / Manifest / Evidence）；Agent 先跑通 adapter；再把同一骨架接到 Prompt / KB / Code / Session——不统一“评什么”。**
+> **Subject × Capability × Method × Evidence。**  
+> 统一“怎么评”；Subject 用 adapter 扩展；Method（Arena/G2b/S1）不混入 `object_type`；Agent 先跑通，再逐个接入。
 
 **开 P0 前：§6.1 四份冻结稿签字 → ADR Accepted → 单独变更单。**  
 **本文件仍不直接改代码。**

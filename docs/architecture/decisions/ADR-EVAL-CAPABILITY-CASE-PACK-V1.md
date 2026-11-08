@@ -1,10 +1,10 @@
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
-- **状态**：Proposed（设计评审用，不实施；v0.2.3 明确通用框架≠通用题目；§6.1 待签字）
+- **状态**：Proposed（设计评审用，不实施；v0.2.4 区分 Subject×Capability×Method×Evidence；§6.1 待签字）
 - **日期**：2026-11-08
 - **决策范围**：Evaluation 题库、选题、执行与证据组织
 - **关联**：
-  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2.2
+  - [`eval-capability-driven-case-pack.md`](../plans/eval-capability-driven-case-pack.md) v0.2.4
   - [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md)
   - [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md)
   - [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md)
@@ -12,6 +12,7 @@
   - [`eval-object-contract-and-plan.md`](../plans/eval-object-contract-and-plan.md)
   - [`eval-trust-boundary-lab-vs-cert.md`](../plans/eval-trust-boundary-lab-vs-cert.md)
   - [`workspace-isolation-contract.md`](../plans/workspace-isolation-contract.md)
+  - 权威 `OBJECT_TYPES`：`core/apps/eval/service/target_contract.py`（9 类）
 
 ---
 
@@ -217,24 +218,39 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 A8 / A9 在 v1 默认可测子集外（`in_scope=false` → `unknown`）。  
 **详见 Plan §4.2.2。**
 
-### 决策 9：通用框架，非通用题目；Agent 为参考实现
+### 决策 9：Subject × Capability × Method × Evidence；Agent 为参考实现
 
-采纳：
+采纳四元组（**对象 ≠ 方法 ≠ 维度**）：
 
 ```text
-统一：Target Contract / Capability 元模型 / Case 外壳+test_purpose /
-      SuiteProfile / sample_manifest / Evidence / Claim Gate
-适配：Execution Adapter / Oracle Adapter / 环境 / 对象能力表
+Subject（被测物） × Capability（测什么） × Method（怎么测） × Evidence（证据）
 ```
+
+统一骨架：
+
+```text
+Target Contract / Capability 元模型 / Case+test_purpose /
+SuiteProfile / sample_manifest / Evidence / Claim Gate
+```
+
+按 Subject 适配（`EvalSubjectAdapter`）：`build_contract` / `capability_catalog` /
+`validate_case` / `execute` / `judge` / `normalize`。
+
+**当前 `OBJECT_TYPES`（9）**：`agent|prompt|skill|workflow|model|api|generated_app|dataset|system`。  
+**不是一等 object_type**：KB/Code Review（独立路径→Subject 候选）；Session/Trace（偏 runtime/evidence）；Tool/MCP、Multi-Agent（未来 Subject）。  
+**Method（禁止塞进 OBJECT_TYPES）**：Arena、G2b、S1、Calibration、Human Review、Static/Replay/Dynamic。  
+**Dimension（跨 Subject 复用）**：安全、PII/合规、成本、延迟等——对齐能力矩阵，不新建 object_type。
 
 拒绝：
 
-- 一套 `prompt + must_contain` 通吃所有 object_type；  
-- 为每个对象复制一整套 Plan/Profile/Manifest 引擎；  
-- Core 内 `if object_type ==` 堆业务分支（须 adapter registry）。
+- 一套 `prompt + must_contain` 通吃所有 Subject；  
+- 为每个 Subject 复制一整套 Plan/Profile/Manifest 引擎；  
+- 把 Arena/G2b/S1/PII/成本等 **方法或维度** 硬编码成 `object_type`；  
+- Core 内 `if object_type ==` 堆业务分支（须 SubjectAdapter registry）。
 
-落地顺序：Agent 参考实现 → 抽象 `EvalObjectAdapter` → Prompt / KB / Code Review / Session 按接口接入；Arena 人评另轨。  
-已有契约层见 [`eval-object-contract-and-plan.md`](../plans/eval-object-contract-and-plan.md)；本 ADR 不重写该契约，只约束能力 Case Pack 扩展方式。
+落地顺序：AgentAdapter → 抽出 `EvalSubjectAdapter` → Prompt/Workflow/Model →
+KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保持方法轨。  
+已有契约层见 [`eval-object-contract-and-plan.md`](../plans/eval-object-contract-and-plan.md)；本 ADR 不重写该契约，只约束能力 Case Pack 与跨 Subject 扩展方式。
 
 ---
 
@@ -280,9 +296,11 @@ A8 / A9 在 v1 默认可测子集外（`in_scope=false` → `unknown`）。
 | 用户新建 pack 默认 `global` | 拒绝 | 跨工作区泄漏 |
 | 缺省 scope 静默推断为 global | 拒绝 | 必须 `scope_required` |
 | 无工具环境却标工具能力 covered | 拒绝 | 违反 unknown≠pass |
-| 一套题通吃所有 object_type | 拒绝 | 执行/判分形态不可通约 |
-| 每对象复制 Plan 引擎 | 拒绝 | 应用 adapter，复用编排 |
-| 现有方案 | 采纳 | 能力 + 工厂复用 + Profile + manifest + claim gate + Agent-first adapter |
+| 一套题通吃所有 Subject | 拒绝 | 执行/判分形态不可通约 |
+| 每 Subject 复制 Plan 引擎 | 拒绝 | SubjectAdapter，复用编排 |
+| Arena/G2b/S1 升为 object_type | 拒绝 | 属 Method，保持方法轨 |
+| PII/成本等升为 object_type | 拒绝 | 属 Dimension，跨 Subject 复用 |
+| 现有方案 | 采纳 | 四元组 + 工厂复用 + Profile + manifest + claim gate + Agent-first adapter |
 
 ---
 
@@ -292,8 +310,8 @@ A8 / A9 在 v1 默认可测子集外（`in_scope=false` → `unknown`）。
 |---|---|
 | Case Pack 工厂 P0–P3.1 | **复用，不重写**；P3 只做覆盖驱动补题 |
 | Plan v2 | 增量支持 `profile_id` / 能力配额 / `sample_manifest` |
-| G2b-100 | 独立 L1，不被本方案吞并 |
-| Arena / S1 / calibration | 独立轨，可选导入为 pack 镜像 |
+| G2b-100 | **Method** 轨（人工双盲），独立 L1，不升 object_type |
+| Arena / S1 / calibration | **Method** 轨，可选导入为 pack 镜像；不升 object_type |
 | Workspace 隔离 | pack 必须声明 `scope`，跨 workspace 禁止 |
 | Scorecard | 只读消费证据；不因本方案自动改分 |
 
@@ -361,8 +379,8 @@ A8 / A9 在 v1 默认可测子集外（`in_scope=false` → `unknown`）。
 
 ## 9. 结论
 
-**采纳“能力驱动 Case Pack + Suite Profile + test_purpose + manifest”作为 Evaluation 题库扩展的设计基线；采纳“通用框架 + 对象适配器，Agent 参考实现”作为跨对象扩展方式。**
+**采纳“能力驱动 Case Pack + Suite Profile + test_purpose + manifest”作为题库扩展基线；采纳 `Subject × Capability × Method × Evidence` + `EvalSubjectAdapter`（Agent 参考实现）作为跨对象扩展方式。**
 
-不采纳“固定卷无限加题”“运行时随机出题”“LLM 直接当 gold”“题数等于完整性”“双源存储”“无环境却宣称工具能力已测”“一套题通吃所有对象”。
+不采纳“固定卷无限加题”“运行时随机出题”“LLM 直接当 gold”“题数等于完整性”“双源存储”“无环境却宣称工具能力已测”“一套题通吃所有 Subject”“把 Arena/G2b/S1/维度硬塞进 object_type”。
 
 **本 ADR 只做设计决策，不实施；实施需另开变更单，且 §6.1 阻塞项齐备。**
