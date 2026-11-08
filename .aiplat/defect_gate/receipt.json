@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T15:38:38+08:00",
+  "reviewed_at": "2026-11-08T16:12:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c0f0e9882587e522b32243300354d3db32688835",
-  "diff_sha256": "c6abae1962426de2ff9b0dfb8d867651d674a563eb49a99fb29650d95e579aac",
-  "head_sha": "c8b516ede314914e0e059b42457f273dccdc0d17",
+  "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
+  "diff_sha256": "00a1e1b74da99e8baa0bdfb8e5b352c7cb6f2372126d4c0829b232e7fa2ff6e4",
+  "head_sha": "74fbffbfb8cce658cc40911eee12c0bc0806340f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs+evidence: G2b fail taxonomy hypotheses + Arena clean pack leak-guard. No accuracy_claim; no QA overall_pass forge; no length-smoke replace."
+  "note": "Docs-only baseline: six nails + fail-closed/no full-pack fallback; no product code. Signoff PR; CI still needs non-author Approve."
 }
