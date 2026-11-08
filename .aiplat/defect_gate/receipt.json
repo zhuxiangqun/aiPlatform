@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T10:43:01+08:00",
+  "reviewed_at": "2026-11-08T10:47:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "7284e5e1c8d78db818f4f872c796411217f75af5",
-  "diff_sha256": "f1888aae51734323a098152010da0b08d519afbc8a8b318ccd772abd8e72de96",
-  "head_sha": "de7ccd871b5f57c79f92e3f2dae4905042bfc76c",
+  "diff_sha256": "cf68b0a689fa722d08c651926a428285bb46bd08f780af6079e657e35e0e2e52",
+  "head_sha": "cfb5851b0b171f921f06bc304663549e8301b15f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve. Five checks pass: side counters additive; classify return unchanged; endpoint ok=False on error; single CoreFacade path; honesty ≠ Go/shadow."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. Whitepaper freshness fix after CAPABILITIES sync; five checks still pass."
 }
