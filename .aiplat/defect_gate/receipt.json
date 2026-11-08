@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T19:12:42+08:00",
+  "reviewed_at": "2026-11-08T19:17:03+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "eef9a9b5fecbab9e71811131f544f248e34211b2f511455e7c3bf44dde75904f",
-  "head_sha": "d45114e8f07ca0d9f3cd12c3bf9844d17cbedc66",
+  "diff_sha256": "8b517243dee0d5753a5ddbb6610b093443927aff82ff1d4521501d2425ad9df5",
+  "head_sha": "d3e57fa7cfdfe1e8c622fce4b5e792f782bb3cd8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P3.1 difficulty human labels + judge open/rate/close; accuracy_claim stays false. Local lock only."
+  "note": "Plan preview: 6 volumes vs 7 template steps split; reasons+manifest shown. Local lock only."
 }
