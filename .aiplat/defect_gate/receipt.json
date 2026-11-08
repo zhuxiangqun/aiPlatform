@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T18:22:25+08:00",
+  "reviewed_at": "2026-11-08T18:34:55+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "c8cf7d2fe1edf0a49cdcab5720ecc4200a55f27cdefb6c6ecd3ee436f253de27",
-  "head_sha": "01cd7e1bd7d6c90dd3443ccffdf993bbfc26e408",
+  "diff_sha256": "e4f8b3c0f5f8af5bf06f1185bbc8bdf95315289f533cfa70dcdafac668d3151a",
+  "head_sha": "83a7e466c2f741b294c922afd01decebf39b9624",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1.3 HTTP: /evaluation/case-packs/* thin over CoreFacade + named workspace. Honesty locks unchanged. Residual: no management UI panel yet."
+  "note": "P1.4: expand non-frozen; bump frozen\u2192new draft; coverage inventory; Eval Case Pack tab. claim_eligible false throughout. Residual: no LLM gen."
 }
