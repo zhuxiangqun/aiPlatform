@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T23:52:37+08:00",
+  "reviewed_at": "2026-11-09T00:19:29+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "a44731d9d36d68fc95f725465fcf0049d74322f1847ab842e6c343d868bfcfff",
-  "head_sha": "c08b2a7cf3595658ec61f2288092067c11b84c67",
+  "diff_sha256": "9f6854695944eaa6cebd1b4be20adab601316553e0bb3994f4d1e59eb5a5772a",
+  "head_sha": "b1d401017c539990af2e030c4dc967e45258ee8d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "T2 A5+session/A8 fixtures; V1_IN_SCOPE unchanged; claim=false."
+  "note": "T3 v1.1: V1_IN_SCOPE=13; mock≠live; claim/Certification closed. Five checks: no old_fallback undoing scope; facade Optional min_per matches callee; fixture expect_judge_fail still inverted correctly; single adapter path; coverage/heatmap not self-certifying accuracy. Local lock only."
 }
