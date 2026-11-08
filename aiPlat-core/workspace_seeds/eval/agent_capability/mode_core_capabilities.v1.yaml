@@ -139,3 +139,26 @@ m1a_environment_lock:
     retrieval: none
     network: none
     session: allowed
+
+# M1b: open retrieval for rag; tools/network stay none. session none.
+m1b_environment_lock:
+  rag:
+    tools: none
+    retrieval: required
+    network: none
+    session: none
+
+# M1c (not opened here): tools/sandbox required — listed for dependency inventory only.
+m1c_environment_lock:
+  react:
+    tools: required
+    retrieval: none
+    network: none
+    session: none
+    sandbox: required
+  tool_loop:
+    tools: required
+    retrieval: none
+    network: none
+    session: none
+    sandbox: required

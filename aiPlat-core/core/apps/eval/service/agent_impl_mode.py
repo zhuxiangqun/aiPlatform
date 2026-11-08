@@ -350,6 +350,22 @@ def m1a_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, A
     return dict(lock)
 
 
+def m1b_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    mat = matrix or load_mode_core_matrix()
+    lock = mat.get("m1b_environment_lock")
+    if not isinstance(lock, Mapping):
+        raise AgentImplModeError("m1b_environment_lock_missing")
+    return dict(lock)
+
+
+def m1c_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    mat = matrix or load_mode_core_matrix()
+    lock = mat.get("m1c_environment_lock")
+    if not isinstance(lock, Mapping):
+        raise AgentImplModeError("m1c_environment_lock_missing")
+    return dict(lock)
+
+
 def evaluate_m0_impl_mode_contracts(
     *,
     seed_dir: Optional[Path] = None,
@@ -414,6 +430,31 @@ def evaluate_m0_impl_mode_contracts(
         _add("m1a_environment_lock", lock_ok)
     except AgentImplModeError as exc:
         _add("m1a_environment_lock", False, str(exc))
+
+    try:
+        lock_b = m1b_environment_lock(matrix)
+        rag_lock = lock_b.get("rag") if isinstance(lock_b.get("rag"), Mapping) else {}
+        m1b_ok = (
+            rag_lock.get("tools") == "none"
+            and rag_lock.get("retrieval") == "required"
+            and rag_lock.get("network") == "none"
+            and rag_lock.get("session") == "none"
+        )
+        _add("m1b_environment_lock", m1b_ok)
+    except AgentImplModeError as exc:
+        _add("m1b_environment_lock", False, str(exc))
+
+    try:
+        lock_c = m1c_environment_lock(matrix)
+        react_lock = lock_c.get("react") if isinstance(lock_c.get("react"), Mapping) else {}
+        m1c_ok = (
+            react_lock.get("tools") == "required"
+            and react_lock.get("sandbox") == "required"
+            and react_lock.get("retrieval") == "none"
+        )
+        _add("m1c_environment_lock", m1c_ok)
+    except AgentImplModeError as exc:
+        _add("m1c_environment_lock", False, str(exc))
 
     # selection ≠ execution
     resolved = resolve_impl_modes(
@@ -497,6 +538,8 @@ def evaluate_m0_impl_mode_contracts(
         "matrix_five_field_shape",
         "plan_execute_a6_subtypes",
         "m1a_environment_lock",
+        "m1b_environment_lock",
+        "m1c_environment_lock",
         "selection_ne_execution",
         "unknown_not_default_react",
         "deferred_ne_unknown",
