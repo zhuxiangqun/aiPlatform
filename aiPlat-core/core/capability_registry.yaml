@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2143
+total_capabilities: 2152
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 207
+    caps_count: 216
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -7014,6 +7014,42 @@ domains:
         type: "function"
         signature: "eval_load_mock_tool_catalog()→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: validate_case_long_context_fields
+        type: function
+        signature: 'If case has long_context_fixture or capability long_context, validate fixture.'
+        module: aiPlat-core/core/apps/eval/service/long_context_fixture_schema.py
+      - symbol: MockToolCatalogError
+        type: class
+        signature: 'Catalog load / parse failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/catalog_load.py
+      - symbol: default_mock_tools_dir
+        type: function
+        signature: 'default_mock_tools_dir()'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/catalog_load.py
+      - symbol: validate_mock_tool
+        type: function
+        signature: 'Return error codes for one tool entry; empty = pass.'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/schema.py
+      - symbol: assert_mock_tool_catalog_valid
+        type: function
+        signature: 'assert_mock_tool_catalog_valid(catalog)'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/schema.py
+      - symbol: validate_session_group_unique_turns
+        type: function
+        signature: 'Volume-level: turn_index unique within each session_group.'
+        module: aiPlat-core/core/apps/eval/service/session_case_schema.py
+      - symbol: validate_tool_backend_runtime
+        type: function
+        signature: 'Return error codes if backend/tier pair is disallowed.'
+        module: aiPlat-core/core/apps/eval/service/tool_eval_runtime_map.py
+      - symbol: assert_mock_not_claimed_as_live
+        type: function
+        signature: 'Fail closed if mock backend reason text claims production/live tools.'
+        module: aiPlat-core/core/apps/eval/service/tool_eval_runtime_map.py
+      - symbol: tool_eval_runtime_map_document
+        type: function
+        signature: 'Machine-readable map for readiness / docs sync.'
+        module: aiPlat-core/core/apps/eval/service/tool_eval_runtime_map.py
       - symbol: "get_subject_adapter"
         type: "function"
         signature: "get_subject_adapter(subject_kind)→EvalSubjectAdapter"
