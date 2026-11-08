@@ -6465,6 +6465,27 @@ def eval_evaluate_mode_rank_gate(
     )
 
 
+def eval_estimate_m2_deferred_modes(
+    *,
+    impl_source: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """M2: multi_agent/pipeline/operator estimate (runtime_parts deps; no live)."""
+    from core.apps.eval.service.mode_deferred_estimate import estimate_m2_deferred_modes
+
+    return estimate_m2_deferred_modes(impl_source=impl_source)
+
+
+def eval_validate_m2_runtime_parts(
+    parts: list,
+    *,
+    mode: str,
+) -> Dict[str, Any]:
+    """M2: validate runtime_parts shape for a deferred mode."""
+    from core.apps.eval.service.mode_deferred_estimate import validate_runtime_parts
+
+    return validate_runtime_parts(parts, mode=mode)
+
+
 def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     """Load + validate default mock tool catalog seed (T0)."""
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog

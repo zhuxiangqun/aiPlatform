@@ -18,6 +18,7 @@
 | `pack.agent.capability.v0.1.0.json` | **派生** — 由 loader 组装，便于整体审阅；勿当作唯一编辑源 |
 | `mode_core_capabilities.v1.yaml` | M0 模式×能力矩阵（选题/执行分栏权威） |
 | `intersection/parity_sample.v1.json` | 交集候选 + parity/rank_gate 清单（默认 rank_eligible=false） |
+| `m2_deferred_estimate.v1.yaml` | M2 multi_agent/pipeline/operator 另估 + runtime_parts 契约 |
 | `fixtures/mock_tools/` | Mock tool 目录 / harness fixtures |
 | `fixtures/session/` | Session 卷字段样例 |
 | `fixtures/long_context/` | 长上下文 fixtures |

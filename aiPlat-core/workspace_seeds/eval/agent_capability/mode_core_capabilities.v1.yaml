@@ -118,6 +118,49 @@ modes:
     environment_required: tools
     m1_phase: m1c
 
+  # M2 deferred — disclosed in matrix; live exam blocked until runtime_parts (see m2_deferred_estimate.v1.yaml)
+  multi_agent:
+    mode_core:
+      - task_completion
+      - safety
+      - observability
+      - clarification
+    mode_optional: []
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - long_context
+    environment_required: multi_agent_runtime
+    m1_phase: m2
+    status: deferred
+
+  pipeline:
+    mode_core:
+      - task_completion
+      - planning
+      - safety
+      - observability
+    mode_optional: []
+    mode_not_applicable:
+      - multi_turn_memory
+    environment_required: pipeline_runtime
+    m1_phase: m2
+    status: deferred
+
+  operator:
+    mode_core:
+      - task_completion
+      - safety
+      - clarification
+      - observability
+    mode_optional: []
+    mode_not_applicable:
+      - long_context
+    environment_required: operator_runtime
+    m1_phase: m2
+    status: deferred
+
 # Intersection candidates only — not auto rank_eligible (parity required).
 intersection_candidates:
   capabilities:

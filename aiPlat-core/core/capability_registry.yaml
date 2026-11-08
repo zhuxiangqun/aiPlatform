@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2222
+total_capabilities: 2230
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,40 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 286
+    caps_count: 294
     provides:
+      - symbol: estimate_m2_deferred_modes
+        type: function
+        signature: "estimate_m2_deferred_modes(seed_dir?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: load_m2_deferred_estimate
+        type: function
+        signature: "load_m2_deferred_estimate(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: validate_runtime_parts
+        type: function
+        signature: "validate_runtime_parts(parts,mode,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: assert_m2_not_live
+        type: function
+        signature: "assert_m2_not_live(mode)→None"
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: default_m2_estimate_path
+        type: function
+        signature: "default_m2_estimate_path()→Path"
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: ModeDeferredEstimateError
+        type: class
+        signature: "Fail-closed M2 estimate error."
+        module: aiPlat-core/core/apps/eval/service/mode_deferred_estimate.py
+      - symbol: eval_estimate_m2_deferred_modes
+        type: function
+        signature: "eval_estimate_m2_deferred_modes(impl_source?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_validate_m2_runtime_parts
+        type: function
+        signature: "eval_validate_m2_runtime_parts(parts,mode)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: build_mode_intersection_rank
         type: function
         signature: "build_mode_intersection_rank(mode_columns,…)→Dict"
