@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1969
+total_capabilities: 1970
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3771,7 +3771,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 217
+    caps_count: 218
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4631,6 +4631,10 @@ domains:
         type: function
         signature: 'live_llm_output(user_input)'
         module: aiPlat-core/core/apps/eval/service/typed_plan_exam.py
+      - symbol: PackRegistryError
+        type: class
+        signature: 'Pack registry / ACL / atomic-write failure.'
+        module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
