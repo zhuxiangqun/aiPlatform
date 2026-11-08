@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2240
+total_capabilities: 2242
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3787,7 +3787,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 303
+    caps_count: 305
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4991,6 +4991,14 @@ domains:
         type: class
         signature: 'Freeze path failure.'
         module: aiPlat-core/core/apps/eval/service/case_freeze.py
+      - symbol: default_a1_evidence_dir
+        type: function
+        signature: 'default_a1_evidence_dir()'
+        module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
+      - symbol: load_a1_track_a_evidence
+        type: function
+        signature: 'load_a1_track_a_evidence(path)'
+        module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
