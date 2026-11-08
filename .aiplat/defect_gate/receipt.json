@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T10:02:49+08:00",
+  "reviewed_at": "2026-11-08T10:43:01+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c2c052e9b2b4d6932114baeb0c3cabe4a2b77892",
-  "diff_sha256": "54909fcb10915957006b1f8674331da6ca2728eebe5c7805996f2098590d27fa",
-  "head_sha": "fc2fba4aba852d7b53db335270343d27a2140295",
+  "merge_base": "7284e5e1c8d78db818f4f872c796411217f75af5",
+  "diff_sha256": "f1888aae51734323a098152010da0b08d519afbc8a8b318ccd772abd8e72de96",
+  "head_sha": "de7ccd871b5f57c79f92e3f2dae4905042bfc76c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Local lock only. CI unlock is non-author GitHub Approve (defect_gate_independence.py). head_sha informational; diff_sha256 is the lock. clause-sync §79 DomainRouter process-wide route_stats; five checks pass on merge diff."
+  "note": "Local lock only. CI unlock is non-author GitHub Approve. Five checks pass: side counters additive; classify return unchanged; endpoint ok=False on error; single CoreFacade path; honesty ≠ Go/shadow."
 }
