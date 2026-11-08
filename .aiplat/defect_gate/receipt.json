@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T20:29:11+08:00",
+  "reviewed_at": "2026-11-08T20:58:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "1f75c19842f2cc097118a4c70fc17d442903517fdde7f265d41d3ee42af920d8",
-  "head_sha": "003b588dd474f351b40bbfbcb24db6845c110487",
+  "diff_sha256": "a8c24a03ee81806a06e7edf8063ec6492b1dc8fbe6d2136cbdd11bba2fa51c30",
+  "head_sha": "ac553313e5aa97fad7f624cbdcc91bec3bfe58e9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 bank + registry helpers. Local lock only."
+  "note": "P1 promote + P2 profile compile: claim_eligible/accuracy_claim forced false; shortfall fail-closed; residual: promote stamps purpose_ok after owner-signed closeout path."
 }
