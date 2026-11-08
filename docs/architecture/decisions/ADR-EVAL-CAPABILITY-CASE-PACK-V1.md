@@ -1,6 +1,6 @@
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
-- **状态**：Proposed（设计评审用，不实施；v0.2.2 §6.1 四份冻结稿已挂出，待签字）
+- **状态**：Proposed（设计评审用，不实施；v0.2.3 明确通用框架≠通用题目；§6.1 待签字）
 - **日期**：2026-11-08
 - **决策范围**：Evaluation 题库、选题、执行与证据组织
 - **关联**：
@@ -214,7 +214,27 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs
 本阶段不接 live tools / microVM。  
 A3–A5（工具选择/参数/结果使用）默认不可宣称 `covered`，无环境时标 `unknown`。  
 A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复已测。  
+A8 / A9 在 v1 默认可测子集外（`in_scope=false` → `unknown`）。  
 **详见 Plan §4.2.2。**
+
+### 决策 9：通用框架，非通用题目；Agent 为参考实现
+
+采纳：
+
+```text
+统一：Target Contract / Capability 元模型 / Case 外壳+test_purpose /
+      SuiteProfile / sample_manifest / Evidence / Claim Gate
+适配：Execution Adapter / Oracle Adapter / 环境 / 对象能力表
+```
+
+拒绝：
+
+- 一套 `prompt + must_contain` 通吃所有 object_type；  
+- 为每个对象复制一整套 Plan/Profile/Manifest 引擎；  
+- Core 内 `if object_type ==` 堆业务分支（须 adapter registry）。
+
+落地顺序：Agent 参考实现 → 抽象 `EvalObjectAdapter` → Prompt / KB / Code Review / Session 按接口接入；Arena 人评另轨。  
+已有契约层见 [`eval-object-contract-and-plan.md`](../plans/eval-object-contract-and-plan.md)；本 ADR 不重写该契约，只约束能力 Case Pack 扩展方式。
 
 ---
 
@@ -260,7 +280,9 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 | 用户新建 pack 默认 `global` | 拒绝 | 跨工作区泄漏 |
 | 缺省 scope 静默推断为 global | 拒绝 | 必须 `scope_required` |
 | 无工具环境却标工具能力 covered | 拒绝 | 违反 unknown≠pass |
-| 现有方案 | 采纳 | 能力 + 工厂复用 + Profile + manifest + claim gate |
+| 一套题通吃所有 object_type | 拒绝 | 执行/判分形态不可通约 |
+| 每对象复制 Plan 引擎 | 拒绝 | 应用 adapter，复用编排 |
+| 现有方案 | 采纳 | 能力 + 工厂复用 + Profile + manifest + claim gate + Agent-first adapter |
 
 ---
 
@@ -339,8 +361,8 @@ A6 仅允许「失败措辞/定位」级证据，不得宣称真实工具恢复�
 
 ## 9. 结论
 
-**采纳“能力驱动 Case Pack + Suite Profile + test_purpose + manifest”作为 Evaluation 题库扩展的设计基线。**
+**采纳“能力驱动 Case Pack + Suite Profile + test_purpose + manifest”作为 Evaluation 题库扩展的设计基线；采纳“通用框架 + 对象适配器，Agent 参考实现”作为跨对象扩展方式。**
 
-不采纳“固定卷无限加题”“运行时随机出题”“LLM 直接当 gold”“题数等于完整性”“双源存储”“无环境却宣称工具能力已测”。
+不采纳“固定卷无限加题”“运行时随机出题”“LLM 直接当 gold”“题数等于完整性”“双源存储”“无环境却宣称工具能力已测”“一套题通吃所有对象”。
 
 **本 ADR 只做设计决策，不实施；实施需另开变更单，且 §6.1 阻塞项齐备。**

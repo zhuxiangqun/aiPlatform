@@ -1,9 +1,9 @@
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  
-> **版本**：v0.2.2 · 2026-11-08  
-> **状态**：**Proposed（设计评审用，不实施；v0.2.2 挂出 §6.1 四份冻结稿）**  
-> **范围**：先 Agent，后 Prompt / KB / Code Review / Session；不包含业务验收  
+> **版本**：v0.2.3 · 2026-11-08  
+> **状态**：**Proposed（设计评审用，不实施；v0.2.3 明确通用框架≠通用题目）**  
+> **范围**：先 Agent（参考实现），后 Prompt / KB / Code Review / Session；**统一编排与治理，不统一题面**；不包含业务验收  
 > **诚实锁**：不打开 `accuracy_claim`；生成题默认不可 claim；禁止运行时随机出题当金标；G2b/Arena 仍走独立人工协议  
 > **关联**：[`eval-case-pack-factory.md`](./eval-case-pack-factory.md) · [`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md) · [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](./CASE_TEST_PURPOSE_SCHEMA_V1.md) · [`SUITE_PROFILE_SCHEMA_V1.md`](./SUITE_PROFILE_SCHEMA_V1.md) · [`ADR-EVAL-CAPABILITY-CASE-PACK-V1.md`](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)
 
@@ -676,11 +676,69 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs/
 
 ---
 
-## 15. 结论
+## 15. 通用对象方法（框架统一，题面不统一）
+
+> **通用的是评测框架；不是通用题目。**  
+> 一套题不可能通吃 Agent / Prompt / KB / Code Review / Session。  
+> 一套 **元模型 + 对象适配器 + Profile + Manifest + 证据链** 可以覆盖所有对象。
+
+### 15.1 五层统一 · 两层适配
+
+```text
+Target Contract → Capability Resolver → Case Selector (Profile)
+        → Execution Adapter → Oracle Adapter → Evidence Normalizer → Claim Gate
+```
+
+| 统一 | 适配（对象特定） |
+|------|------------------|
+| EvalTarget 契约字段 | 执行器（工具 / 模型 / 检索 / 仓库 / 多轮） |
+| Capability 元字段 | 环境（tools / retrieval / repo / session） |
+| EvalCase 外壳 + `test_purpose` | `input` / `env` / `oracle` 载荷 |
+| SuiteProfile / sample_manifest | 判分（tool_trace / exact / claims / human） |
+| Evidence / claim_eligible / fail closed | 人审问题清单 |
+
+**Core 禁止 `if object_type ==` 硬编码业务分支；用 adapter registry 分发。**  
+已有基础：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) + `object_adapters.py`（契约/默认卷）；本方案补能力矩阵、Profile、Case Pack 内容，**不另起一套 Plan 引擎**。
+
+### 15.2 为什么不能强行一套题
+
+| 对象 | 题面 | 判分 |
+|------|------|------|
+| Agent | 任务 + 工具 + trace | tool_trace / 措辞 |
+| Prompt | 输入 + 期望输出 | exact / rubric |
+| KB | query + 文档 | 检索指标 / claims |
+| Code Review | diff + 缺陷 | P/R |
+| Session | 多轮 | 会话状态 |
+| Arena | 成对回答 | **人评**（不进自动 claim） |
+
+强行 `prompt + must_contain` 会丢掉工具轨迹、检索指标与 Code Review 召回。
+
+### 15.3 落地顺序
+
+1. **AgentAdapter** 作为参考实现（本文件 P0–P4）；  
+2. 抽出 `EvalObjectAdapter`：`build_contract` / `capability_catalog` / `validate_case` / `execute` / `judge` / `normalize`；  
+3. Prompt → KB → Code Review → Session 只实现适配层；  
+4. Arena 独立人评轨；  
+5. **不重写** Plan / Profile / Manifest / Evidence。
+
+### 15.4 边界
+
+- 无环境 → `unknown`，不假装 covered；  
+- 不同对象分数不可直接比较；  
+- 通用框架 ≠ 通用准确率；  
+- 业务验收仍不在范围。
+
+---
+
+## 16. 结论
 
 **能力驱动 Case Pack 的核心不是“自动生成 100 道题”，而是：**
 
 > **能力矩阵定义“测什么”；Case Factory 生产“可审的题”；Profile 决定“这次测多少”；Manifest 保证“跑的是哪几题”；Coverage 证明“有没有漏”；Claim Gate 决定“能说什么”。**
 
-**开 P0 前必须先修齐：权威存储路径、capability_id 对照表（含 `clarify_or_ask`）、v1 可测子集、内容+Profile 优先路线图。**  
-**下一步：评审签 ADR → 单独变更单实施；本文件仍不直接改代码。**
+**对象扩展的核心不是复制题库，而是：**
+
+> **统一“怎么评”（契约 / Profile / Manifest / Evidence）；Agent 先跑通 adapter；再把同一骨架接到 Prompt / KB / Code / Session——不统一“评什么”。**
+
+**开 P0 前：§6.1 四份冻结稿签字 → ADR Accepted → 单独变更单。**  
+**本文件仍不直接改代码。**
