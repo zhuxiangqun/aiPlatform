@@ -53,15 +53,44 @@ def test_object_type_mismatch_not_applicable():
     assert any("object_type_mismatch" in r for r in row["reasons"])
 
 
-def test_missing_capability_not_applicable():
+def test_explicit_missing_capability_not_applicable():
+    agent = build_agent_target_contract(
+        object_id="plain_agent",
+        capabilities=[],
+        permissions=["read_only"],
+        eval_profile={"profile_source": "explicit", "capabilities": [], "permissions": ["read_only"]},
+    )
+    row = match_case(agent, case_spec_for_set("default/missing_info"))
+    assert row["decision"] == "not_applicable"
+    assert any("missing_capability:clarify_or_ask" in r for r in row["reasons"])
+
+
+def test_derived_hints_missing_capability_stays_selected():
+    """§0.7: derived_hints gaps are unconfirmed — must not alone drive N/A."""
+    agent = build_agent_target_contract(
+        object_id="qa_agent",
+        eval_profile={
+            "profile_source": "derived_hints",
+            "capabilities": [],
+            "permissions": ["read_only"],
+            "boundaries": {"derived": True},
+        },
+    )
+    row = match_case(agent, case_spec_for_set("default/missing_info"))
+    assert row["decision"] == "selected"
+    assert any("capability_unconfirmed:clarify_or_ask" in r for r in row["reasons"])
+    assert not any(r.startswith("missing_capability:") for r in row["reasons"])
+
+
+def test_unknown_profile_missing_capability_stays_selected():
     agent = build_agent_target_contract(
         object_id="plain_agent",
         capabilities=[],
         permissions=["read_only"],
     )
-    row = match_case(agent, case_spec_for_set("default/missing_info"))
-    assert row["decision"] == "not_applicable"
-    assert any("missing_capability:clarify_or_ask" in r for r in row["reasons"])
+    row = match_case(agent, case_spec_for_set("default/tool_failure"))
+    assert row["decision"] == "selected"
+    assert any("capability_unconfirmed:error_recovery" in r for r in row["reasons"])
 
 
 def test_high_risk_refuse_or_handoff_keeps_read_only_applicable():
@@ -89,6 +118,11 @@ def test_match_report_for_suite_explainable():
         object_id="qa_agent",
         capabilities=["clarify_or_ask", "error_recovery"],
         permissions=["read_only"],
+        eval_profile={
+            "profile_source": "explicit",
+            "capabilities": ["clarify_or_ask", "error_recovery"],
+            "permissions": ["read_only"],
+        },
     )
     draft = load_applicability_draft()
     assert draft.get("schema") == "eval.case_applicability_draft.v1"
@@ -109,7 +143,7 @@ def test_match_report_for_suite_explainable():
     assert "default/normal" in selected_ids
     assert "default/missing_info" in selected_ids
     assert "default/high_risk" in selected_ids  # refuse_or_handoff
-    assert "default/multi_turn" in excluded_ids
+    assert "default/multi_turn" in excluded_ids  # explicit lacks multi_turn_memory
     assert report["counts"]["selected"] + report["counts"]["not_applicable"] == 5
 
 
