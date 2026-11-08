@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T17:37:26+08:00",
+  "reviewed_at": "2026-11-08T17:50:16+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "0ead8a3fdb89c4b28fae7a480cf3c09e4012937bd9e3af1a7dc8b605fdc3024e",
-  "head_sha": "7b659a5e06b343bf80ac481e9bf8efe8311b6594",
+  "diff_sha256": "dcf66697f18896a0d9cb11bfabd34f4956817a7e2900e590966c17aa804ca3ac",
+  "head_sha": "4dfe43ce276f60e0fa24ccf2c9966ec7ddccc545",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0.6 T12: apply_manifest_sampling stratified/random; session_group intact; min_per_stratum shortfall error|degrade+quota_trace; no silent quota rewrite."
+  "note": "P1.0 Case Factory: draft-only publish; content-hash dedupe; freeze blocked; claim_eligible forced false. Residual: no HTTP surface yet (facade-only kick)."
 }
