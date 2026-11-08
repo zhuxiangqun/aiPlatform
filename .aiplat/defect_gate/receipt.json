@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T14:34:21+08:00",
+  "reviewed_at": "2026-11-08T15:13:04+08:00",
   "base_ref": "origin/main",
-  "merge_base": "56b085e5e24584c4d9dd8fc90f1da1a663ff9b6b",
-  "diff_sha256": "a023236d71ac7100f6c47f7e03265ac4bbab7dd32f9cf67fe5ae988457369be0",
-  "head_sha": "44dd889bdd29f9e04d0390431b096bced39423c5",
+  "merge_base": "f0d83bcb01ac22d8ed55c3c1386eb215be0b2620",
+  "diff_sha256": "aa730ad70c1132474600790f139efea06e9b1ecafddbe54f30649772e85b7e76",
+  "head_sha": "47f03e07aa9e4a3ebade4f6a056921f1b2ea3e9b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "§0.7 align: only explicit profile_source hard-NAs missing_capability; derived/unknown → capability_unconfirmed + selected. No classify/Ollaya."
+  "note": "Docs+evidence only: lab-vs-cert boundary; archive post-#618 Plan re-run; mark plan-924f6c070f4e1927 pre-fix_invalid. No accuracy_claim."
 }
