@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T20:00:30+08:00",
+  "reviewed_at": "2026-11-08T20:10:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "e0541c665ecaa6ca7e4ecbcad1191d4d2e0e9564d46190810b56f7bc8ec238b7",
-  "head_sha": "cc5d0ddf5eae0dd8b903ded7af28b7ad2eaa0302",
+  "diff_sha256": "94ef41ad18848eeaf3d984aa02a9d2fc9b19aebce3e25704dfa71344ad8b9adc",
+  "head_sha": "d7037852f77be04672e493dd244ffc91aca69a19",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only ADR Accepted + §6.1 Frozen signoff. Local lock only; CI needs non-author Approve."
+  "note": "P0: capability_id_map + test_purpose + AgentSubjectAdapter wired to MatchReport/CoreFacade; execute/judge deferred. Local lock only."
 }
