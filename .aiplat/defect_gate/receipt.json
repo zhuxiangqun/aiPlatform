@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T19:54:06+08:00",
+  "reviewed_at": "2026-11-08T20:00:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "1930407ba87956e4950c0fcd25473ef72f502b64b2e79e3de3f2617decd6e312",
-  "head_sha": "ca816d7f476dc726cb8a51eded560683e65ceac0",
+  "diff_sha256": "e0541c665ecaa6ca7e4ecbcad1191d4d2e0e9564d46190810b56f7bc8ec238b7",
+  "head_sha": "cc5d0ddf5eae0dd8b903ded7af28b7ad2eaa0302",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only taxonomy freeze (Subject×Capability×Method×Evidence). OBJECT_TYPES=9 matches target_contract.py. No code path change. Local lock only; CI needs non-author Approve."
+  "note": "Docs-only ADR Accepted + §6.1 Frozen signoff. Local lock only; CI needs non-author Approve."
 }
