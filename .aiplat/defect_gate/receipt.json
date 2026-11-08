@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T21:18:24+08:00",
+  "reviewed_at": "2026-11-08T21:28:17+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "c010860acf9d528dda500d1bb9d50af76ad74ad056bab223cac9333e41e61867",
-  "head_sha": "4a25f94ef7d1b27427a3138240a34e520d0cfe79",
+  "diff_sha256": "ab8e355ca94280d48b13e1f9f836a07bff6afb243c20901a6f00d72a68d2a406",
+  "head_sha": "2229e6086a9c0c8d0086d74fa7b4a05e379bbdad",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P4: smoke/benchmark profiles; holdout excluded from sample_manifest; judge gate always report_only/claim=false (ADR 6.2 open)."
+  "note": "Suite profile exam: sample_manifest sole execution; hash verify fail-closed; holdout skipped; claim=false."
 }
