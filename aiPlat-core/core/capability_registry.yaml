@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2160
+total_capabilities: 2164
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 224
+    caps_count: 228
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -7046,6 +7046,22 @@ domains:
         type: function
         signature: "eval_invoke_mock_tools(tool_calls?,case?,fail_mode?)→Dict"
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: MockToolHarnessError
+        type: class
+        signature: 'Harness failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/harness.py
+      - symbol: validate_tool_args_against_schema
+        type: function
+        signature: 'Minimal JSON-Schema object check; prefer jsonschema when installed.'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/harness.py
+      - symbol: resolve_scripted_tool_calls
+        type: function
+        signature: 'Prefer env.tool_calls, else case.scripted_tool_calls.'
+        module: aiPlat-core/core/apps/eval/service/mock_tools/harness.py
+      - symbol: load_tool_capability_fixture_cases
+        type: function
+        signature: 'Load fixtures/tool_selection/*.json and fixtures/tool_args/*.json arrays.'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_fixtures.py
       - symbol: validate_case_long_context_fields
         type: function
         signature: 'If case has long_context_fixture or capability long_context, validate fixture.'
