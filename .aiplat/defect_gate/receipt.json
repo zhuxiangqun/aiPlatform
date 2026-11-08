@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T21:06:28+08:00",
+  "reviewed_at": "2026-11-08T21:18:24+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "cac09d6291fea1f75a1f2162fe7d1d88e89edca521b8b5cb5802bb4e4de90c22",
-  "head_sha": "fae65203520740edc5020fc28915e6364a7fe1ab",
+  "diff_sha256": "c010860acf9d528dda500d1bb9d50af76ad74ad056bab223cac9333e41e61867",
+  "head_sha": "4a25f94ef7d1b27427a3138240a34e520d0cfe79",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P3 coverage fill: reuses mutate/template; apply expands draft only; frozen fail-closed; claim stays false."
+  "note": "P4: smoke/benchmark profiles; holdout excluded from sample_manifest; judge gate always report_only/claim=false (ADR 6.2 open)."
 }
