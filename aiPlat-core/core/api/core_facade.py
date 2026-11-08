@@ -6370,6 +6370,22 @@ def eval_plan_mode_executions(
     }
 
 
+async def eval_run_m1a_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[list] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1a: plan_execute + conversational per-mode exam (tools/retrieval/network=none)."""
+    from core.apps.eval.service.mode_aware_exam import run_m1a_mode_exam
+
+    return await run_m1a_mode_exam(
+        live=bool(live),
+        modes=modes,
+        max_cases_per_mode=int(max_cases_per_mode or 0),
+    )
+
+
 def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     """Load + validate default mock tool catalog seed (T0)."""
     from core.apps.eval.service.mock_tools import load_mock_tool_catalog

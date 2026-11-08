@@ -22,6 +22,7 @@
 | `fixtures/session/` | Session 卷字段样例 |
 | `fixtures/long_context/` | 长上下文 fixtures |
 | `fixtures/{tool_*,multi_turn_memory}/` | A3–A5/A8 fixture cases |
+| `fixtures/mode_exam/` | M1a plan_execute / conversational 分栏 smoke cases |
 
 扩题：在对应 `cases/*.json` 追加 case → `validate_agent_capability_bank` →（可选）`write_agent_capability_seeds` 刷新派生 pack → promote / freeze。  
 工厂 mutation/template 仍可生成 draft 候选，人审后写入 `cases/` 或 workspace pack bump。

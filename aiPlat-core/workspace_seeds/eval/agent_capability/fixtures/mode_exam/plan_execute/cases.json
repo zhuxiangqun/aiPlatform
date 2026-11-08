@@ -1,0 +1,61 @@
+[
+  {
+    "case_id": "m1a.plan_execute.task_completion.001",
+    "capabilities": ["task_completion"],
+    "prompt": "用三步计划完成：列出今日待办并给出第一步行动。",
+    "scripted_answer": "计划：1)收集待办 2)排序 3)执行第一步。第一步：打开待办列表。",
+    "a6_subtype": null,
+    "test_purpose": {
+      "summary": "验证 plan_execute 能产出可执行计划与首步",
+      "why_this_case": "M1a mode_core A1",
+      "expected_behavior": ["给出步骤计划", "明确第一步"],
+      "failure_signals": ["无计划直接空答"],
+      "not_testing": ["不测工具调用", "不测检索"],
+      "oracle_rationale": "must_contain 计划/步骤"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["计划", "第一步"], "must_not_contain": []},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "m1a.plan_execute.planning.001",
+    "capabilities": ["planning"],
+    "prompt": "分解任务：为发布一份周报写计划（至少三步）。",
+    "scripted_answer": "步骤：收集数据；起草摘要；校对发布。",
+    "test_purpose": {
+      "summary": "验证计划分解为多步",
+      "why_this_case": "M1a mode_core A2",
+      "expected_behavior": ["至少三步"],
+      "failure_signals": ["单步糊弄"],
+      "not_testing": ["不测工具"],
+      "oracle_rationale": "must_contain 步骤"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["步骤"], "must_not_contain": []},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "m1a.plan_execute.error_recovery.replan.001",
+    "capabilities": ["error_recovery"],
+    "a6_subtype": "replan",
+    "prompt": "原计划失败：数据源不可用。请重规划并说明替代步骤。",
+    "scripted_answer": "重规划：改用本地缓存数据；重新起草；标记数据缺口。",
+    "test_purpose": {
+      "summary": "验证无工具场景下的重规划（A6 replan）",
+      "why_this_case": "M1a A6 subtype lock",
+      "expected_behavior": ["提出替代计划"],
+      "failure_signals": ["假装调用工具修复"],
+      "not_testing": ["不测 tool_failure_recovery"],
+      "oracle_rationale": "must_contain 重规划/替代"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["重规划"], "must_not_contain": ["调用工具"]},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  }
+]

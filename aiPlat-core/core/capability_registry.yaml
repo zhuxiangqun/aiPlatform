@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2189
+total_capabilities: 2199
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,48 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 253
+    caps_count: 263
     provides:
+      - symbol: run_m1a_mode_exam
+        type: function
+        signature: "run_m1a_mode_exam(live?,modes?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: enforce_m1a_environment
+        type: function
+        signature: "enforce_m1a_environment(mode,observed,matrix?)→List[str]"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: load_m1a_mode_cases
+        type: function
+        signature: "load_m1a_mode_cases(mode,seed_dir?)→List"
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: eval_run_m1a_mode_exam
+        type: function
+        signature: "eval_run_m1a_mode_exam(live?,modes?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: ModeAwareExamError
+        type: class
+        signature: "Fail-closed mode exam error."
+        module: aiPlat-core/core/apps/eval/service/mode_aware_exam.py
+      - symbol: AgentImplModeError
+        type: class
+        signature: "Fail-closed mode / matrix / fingerprint error."
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: default_matrix_path
+        type: function
+        signature: "default_matrix_path()→Path"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: default_parity_path
+        type: function
+        signature: "default_parity_path()→Path"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: load_parity_sample
+        type: function
+        signature: "load_parity_sample(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
+      - symbol: m1a_environment_lock
+        type: function
+        signature: "m1a_environment_lock(matrix?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/agent_impl_mode.py
       - symbol: resolve_impl_modes
         type: function
         signature: "resolve_impl_modes(source,allow_derived?)→Dict"
