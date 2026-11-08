@@ -2642,7 +2642,13 @@ export const agentEvalApi = {
       eval_profile_source?: string | null;
       plan?: {
         plan_id?: string;
-        selected_cases?: Array<{ set_id?: string; pack?: string; status?: string }>;
+        schema?: string;
+        selected_cases?: Array<{
+          set_id?: string;
+          pack?: string;
+          status?: string;
+          reasons?: string[];
+        }>;
         excluded_cases?: Array<{
           set_id?: string;
           status?: string;
@@ -2650,6 +2656,20 @@ export const agentEvalApi = {
           pack?: string;
         }>;
         counts?: Record<string, number>;
+        sample_manifest?: Array<{
+          case_id?: string;
+          hash?: string;
+          set_id?: string;
+          pack_id?: string;
+          pack_version?: string;
+        }>;
+        manifest_hash?: string;
+        execution_fingerprint?: string;
+        coverage?: {
+          cases?: number;
+          sets?: Record<string, { pack_id?: string; n_cases?: number }>;
+          manifest_cases_after_sample?: number;
+        };
         honesty?: string;
         target_contract?: Record<string, unknown>;
         eval_profile_source?: string | null;

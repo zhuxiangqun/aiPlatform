@@ -24,8 +24,10 @@ import {
   matrixStatusLabel,
   papersFromPlanPreview,
   planIntentPreviewLabel,
+  planStepKindLabel,
   preferredSetForDim,
   suiteRunLabel,
+  summarizePlanExecution,
   type MatrixStatus,
   type PlanCaseRow,
   type PlanPreviewInput,
@@ -213,6 +215,7 @@ export default function EvalExamSuitePanel({
         (plan as { eval_profile_source?: string }).eval_profile_source ||
         '',
     ).trim();
+    const planAny = plan as PlanPreviewInput & Record<string, unknown>;
     const snap: PlanPreviewState = {
       plan_id: String(plan.plan_id || ''),
       selected_cases: plan.selected_cases || [],
@@ -220,6 +223,20 @@ export default function EvalExamSuitePanel({
       counts: plan.counts || {},
       eval_profile_source: src,
       purpose: [...purposeList],
+      sample_manifest: Array.isArray(planAny.sample_manifest)
+        ? planAny.sample_manifest
+        : [],
+      manifest_hash: planAny.manifest_hash
+        ? String(planAny.manifest_hash)
+        : null,
+      execution_fingerprint: planAny.execution_fingerprint
+        ? String(planAny.execution_fingerprint)
+        : null,
+      coverage:
+        planAny.coverage && typeof planAny.coverage === 'object'
+          ? (planAny.coverage as PlanPreviewInput['coverage'])
+          : undefined,
+      schema: planAny.schema ? String(planAny.schema) : null,
     };
     if (!snap.selected_cases.length && !snap.excluded_cases.length) {
       throw new Error('compile-plan returned empty selected/excluded');
@@ -248,12 +265,16 @@ export default function EvalExamSuitePanel({
       const snap = await compilePlanSnapshot(aid, purposes);
       setPlanPreview(snap);
       setPlanDirty(false);
-      const c = snap.counts;
+      const sum = summarizePlanExecution(snap);
       const hint = profileSourceHint(snap.eval_profile_source);
       setMsg(
-        `Plan ${snap.plan_id || 'ok'}：跑 ${c.selected ?? snap.selected_cases.length}` +
-          ` · 不适用 ${c.not_applicable ?? 0}` +
-          ` · 专项未测 ${c.untested ?? 0}` +
+        `Plan ${snap.plan_id || 'ok'}：${sum.plan_sets} 卷 / ${sum.plan_cases} 题` +
+          ` · 执行模板 ${sum.template_steps_run} 步` +
+          (sum.template_reruns
+            ? `（含复跑 ×${sum.template_reruns}）`
+            : '') +
+          ` · 不适用 ${sum.not_applicable}` +
+          ` · 专项未测 ${sum.untested}` +
           (hint ? ` · ${hint}` : ''),
       );
     } catch (e: unknown) {
@@ -321,11 +342,14 @@ export default function EvalExamSuitePanel({
     setBusyBoth(true);
     let lastFinishedSet = '';
 
+    const sum = summarizePlanExecution(snap);
     const hint = profileSourceHint(snap.eval_profile_source);
     setMsg(
-      `Plan ${snap.plan_id || 'ok'}：跑 ${snap.counts.selected ?? selectedSets.size}` +
-        ` · 不适用 ${snap.counts.not_applicable ?? 0}` +
-        ` · 专项未测 ${snap.counts.untested ?? 0}` +
+      `Plan ${snap.plan_id || 'ok'}：${sum.plan_sets} 卷 / ${sum.plan_cases} 题` +
+        ` · 执行模板 ${sum.template_steps_run} 步` +
+        (sum.template_reruns ? `（含复跑 ×${sum.template_reruns}）` : '') +
+        ` · 不适用 ${sum.not_applicable}` +
+        ` · 专项未测 ${sum.untested}` +
         (hint ? ` · ${hint}` : '') +
         `。开始 live… ${pre.message}`,
     );
@@ -541,31 +565,77 @@ export default function EvalExamSuitePanel({
           <div className="text-xs text-sky-100 font-medium">Evaluation Plan 预览</div>
           <p className="text-[11px] font-mono text-sky-100/80">
             plan_id={planPreview.plan_id || '—'}
+            {planPreview.schema ? ` · ${planPreview.schema}` : ''}
             {planPreview.eval_profile_source
               ? ` · ${profileSourceHint(planPreview.eval_profile_source) || planPreview.eval_profile_source}`
               : ''}
           </p>
-          <p className="text-[11px] text-gray-300">
-            入选 {planPreview.counts.selected ?? planPreview.selected_cases.length}
-            {' · '}不适用 {planPreview.counts.not_applicable ?? 0}
-            {' · '}专项未测 {planPreview.counts.untested ?? 0}
-          </p>
-          <div className="text-[11px] text-gray-400 space-y-0.5 max-h-28 overflow-y-auto">
-            {(planPreview.selected_cases || []).map((c) => (
-              <div key={`sel-${c.set_id}`} className="font-mono text-green-300/90">
-                + {c.set_id}
-                {c.pack ? ` (${c.pack})` : ''}
-              </div>
-            ))}
-            {(planPreview.excluded_cases || []).map((c) => (
-              <div key={`ex-${c.set_id}-${c.status}`} className="font-mono text-gray-400">
-                − {c.set_id} · {c.status || 'excluded'}
-                {Array.isArray(c.reasons) && c.reasons.length
-                  ? ` · ${c.reasons.slice(0, 2).join('; ')}`
-                  : ''}
-              </div>
-            ))}
-          </div>
+          {(() => {
+            const sum = summarizePlanExecution(planPreview);
+            return (
+              <>
+                <p className="text-[11px] text-gray-300" data-testid="eval-exam-suite-plan-counts">
+                  Plan：{sum.plan_sets} 卷 / {sum.plan_cases} 题
+                  {' · '}执行模板：{sum.template_steps_run} 步
+                  {sum.template_reruns
+                    ? `（normal 复跑 ×${sum.template_reruns}，不计入卷数）`
+                    : ''}
+                  {' · '}不适用 {sum.not_applicable}
+                  {' · '}专项未测 {sum.untested}
+                </p>
+                <p className="text-[10px] font-mono text-gray-500 break-all">
+                  {planPreview.manifest_hash
+                    ? `manifest_hash=${planPreview.manifest_hash}`
+                    : 'manifest_hash=—'}
+                  {planPreview.execution_fingerprint
+                    ? ` · fingerprint=${planPreview.execution_fingerprint}`
+                    : ''}
+                </p>
+                <div className="text-[11px] text-gray-400 space-y-0.5 max-h-36 overflow-y-auto">
+                  {sum.sets_with_n.map((c) => (
+                    <div key={`sel-${c.set_id}`} className="font-mono text-green-300/90">
+                      + {c.set_id}
+                      {c.pack ? ` (${c.pack})` : ''}
+                      {c.n_cases ? ` · ${c.n_cases} 题` : ''}
+                      {c.reasons.length
+                        ? ` · ${c.reasons.slice(0, 3).join('; ')}`
+                        : ''}
+                    </div>
+                  ))}
+                  {(planPreview.excluded_cases || []).map((c) => (
+                    <div
+                      key={`ex-${c.set_id}-${c.status}`}
+                      className="font-mono text-gray-400"
+                    >
+                      − {c.set_id} · {c.status || 'excluded'}
+                      {Array.isArray(c.reasons) && c.reasons.length
+                        ? ` · ${c.reasons.slice(0, 3).join('; ')}`
+                        : ''}
+                    </div>
+                  ))}
+                </div>
+                {Array.isArray(planPreview.sample_manifest) &&
+                planPreview.sample_manifest.length ? (
+                  <details className="text-[10px] text-gray-500" data-testid="eval-exam-suite-manifest">
+                    <summary className="cursor-pointer text-sky-200/80">
+                      sample_manifest（{planPreview.sample_manifest.length} case · 唯一执行清单）
+                    </summary>
+                    <ul className="mt-1 max-h-24 overflow-y-auto font-mono space-y-0.5">
+                      {planPreview.sample_manifest.slice(0, 40).map((m) => (
+                        <li key={`${m.case_id}-${m.hash}`}>
+                          {m.set_id || '?'} / {m.case_id || '?'}
+                          {m.hash ? ` · ${String(m.hash).slice(0, 18)}…` : ''}
+                        </li>
+                      ))}
+                      {planPreview.sample_manifest.length > 40 ? (
+                        <li>… +{planPreview.sample_manifest.length - 40} more</li>
+                      ) : null}
+                    </ul>
+                  </details>
+                ) : null}
+              </>
+            );
+          })()}
         </div>
       ) : !busy ? (
         <p className="text-[11px] text-gray-500" data-testid="eval-exam-suite-plan-hint">
@@ -583,26 +653,31 @@ export default function EvalExamSuitePanel({
       <div className="overflow-x-auto" data-testid="eval-exam-suite-progress">
         <h3 className="text-xs font-medium text-gray-200 mb-1">
           {suiteStarted
-            ? '本轮步骤进度'
+            ? '本轮执行模板进度（≠ Plan 卷数）'
             : planRows
-              ? 'Plan 映射步骤（尚未开跑）'
+              ? '执行模板步骤（Plan 卷 + 复跑；尚未开跑）'
               : '模板步骤（预览 Plan 后显示入选/跳过）'}
         </h3>
         <table className="w-full text-xs text-left border-collapse">
           <thead>
             <tr className="text-gray-500 border-b border-gray-700">
               <th className="py-1.5 pr-2 font-medium">步骤</th>
+              <th className="py-1.5 pr-2 font-medium">类型</th>
               <th className="py-1.5 pr-2 font-medium">测什么</th>
               <th className="py-1.5 pr-2 font-medium">状态</th>
             </tr>
           </thead>
           <tbody>
-            {(planRows || BUILTIN_EXAM_SUITE.map((m) => ({
-              run_key: m.run_key,
-              set_id: m.set_id,
-              probes_what: m.probes_what,
-              intent: 'run' as const,
-            }))).map((meta) => {
+            {(planRows ||
+              BUILTIN_EXAM_SUITE.map((m) => ({
+                run_key: m.run_key,
+                set_id: m.set_id,
+                probes_what: m.probes_what,
+                intent: 'run' as const,
+                step_kind: (m.run_key.includes('#')
+                  ? 'template_rerun'
+                  : 'plan_set') as const,
+              }))).map((meta) => {
               const paperMeta =
                 BUILTIN_EXAM_SUITE.find((p) => p.run_key === meta.run_key) ||
                 ({
@@ -623,10 +698,28 @@ export default function EvalExamSuitePanel({
                   : planRows
                     ? planIntentPreviewLabel(meta.intent)
                     : '待预览';
+              const kind =
+                'step_kind' in meta && meta.step_kind
+                  ? meta.step_kind
+                  : meta.run_key.includes('#')
+                    ? 'template_rerun'
+                    : 'plan_set';
+              const reasons =
+                planRows && meta.intent === 'run' && 'selected' in meta && meta.selected?.reasons
+                  ? meta.selected.reasons.slice(0, 2).join('; ')
+                  : '';
               return (
                 <tr key={meta.run_key} className="border-b border-gray-800/80 text-gray-200">
                   <td className="py-1.5 pr-2 font-mono">{suiteRunLabel(paperMeta)}</td>
-                  <td className="py-1.5 pr-2 text-gray-400">{meta.probes_what}</td>
+                  <td className="py-1.5 pr-2 text-gray-500">{planStepKindLabel(kind)}</td>
+                  <td className="py-1.5 pr-2 text-gray-400">
+                    {meta.probes_what}
+                    {reasons ? (
+                      <span className="block text-[10px] text-amber-200/70 font-mono">
+                        {reasons}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="py-1.5 pr-2 font-mono">{statusText}</td>
                 </tr>
               );

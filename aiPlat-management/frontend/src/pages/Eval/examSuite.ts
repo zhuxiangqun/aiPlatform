@@ -137,6 +137,22 @@ export type PlanCaseRow = {
   reasons?: string[];
 };
 
+export type PlanManifestRow = {
+  case_id?: string;
+  hash?: string;
+  set_id?: string;
+  pack_id?: string;
+  pack_version?: string;
+  session_group?: string | null;
+  category?: string;
+};
+
+export type PlanCoverageSet = {
+  pack_id?: string;
+  n_cases?: number;
+  session_group?: string | null;
+};
+
 export type PlanPreviewInput = {
   plan_id?: string;
   selected_cases?: PlanCaseRow[];
@@ -144,6 +160,16 @@ export type PlanPreviewInput = {
   counts?: Record<string, number>;
   eval_profile_source?: string | null;
   purpose?: string[];
+  /** Plan v2 sole execution list (case-level). */
+  sample_manifest?: PlanManifestRow[];
+  manifest_hash?: string | null;
+  execution_fingerprint?: string | null;
+  coverage?: {
+    cases?: number;
+    sets?: Record<string, PlanCoverageSet>;
+    manifest_cases_after_sample?: number;
+  };
+  schema?: string | null;
 };
 
 export type PlanPaperIntent =
@@ -152,21 +178,32 @@ export type PlanPaperIntent =
   | 'skip_untested'
   | 'skip_unknown';
 
+/** plan_set = one Plan volume; template_rerun = suite template extra step (e.g. normal#2). */
+export type PlanPaperStepKind = 'plan_set' | 'template_rerun';
+
 export type PlanPaperRow = {
   run_key: string;
   set_id: string;
   probes_what: string;
   intent: PlanPaperIntent;
+  step_kind: PlanPaperStepKind;
+  /** Selected-case reasons when intent=run (incl. capability_unconfirmed). */
+  selected?: PlanCaseRow;
   excluded?: PlanCaseRow;
 };
 
+export function isTemplateRerunKey(runKey: string): boolean {
+  return String(runKey || '').includes('#');
+}
+
 /** Map compile-plan selected/excluded onto builtin template run_keys (incl. #2). */
 export function mapPlanToPaperRows(plan: PlanPreviewInput): PlanPaperRow[] {
-  const selected = new Set(
-    (plan.selected_cases || [])
-      .map((x) => String(x.set_id || '').trim())
-      .filter(Boolean),
-  );
+  const selectedBySet = new Map<string, PlanCaseRow>();
+  for (const x of plan.selected_cases || []) {
+    const sid = String(x.set_id || '').trim();
+    if (sid) selectedBySet.set(sid, x);
+  }
+  const selected = new Set(selectedBySet.keys());
   const excludedBySet = new Map<string, PlanCaseRow>();
   for (const x of plan.excluded_cases || []) {
     const sid = String(x.set_id || '').trim();
@@ -174,12 +211,17 @@ export function mapPlanToPaperRows(plan: PlanPreviewInput): PlanPaperRow[] {
   }
 
   return BUILTIN_EXAM_SUITE.map((meta) => {
+    const step_kind: PlanPaperStepKind = isTemplateRerunKey(meta.run_key)
+      ? 'template_rerun'
+      : 'plan_set';
     if (selected.has(meta.set_id)) {
       return {
         run_key: meta.run_key,
         set_id: meta.set_id,
         probes_what: meta.probes_what,
         intent: 'run' as const,
+        step_kind,
+        selected: selectedBySet.get(meta.set_id),
       };
     }
     const ex = excludedBySet.get(meta.set_id);
@@ -194,6 +236,7 @@ export function mapPlanToPaperRows(plan: PlanPreviewInput): PlanPaperRow[] {
       set_id: meta.set_id,
       probes_what: meta.probes_what,
       intent,
+      step_kind,
       excluded:
         ex ||
         ({
@@ -205,11 +248,67 @@ export function mapPlanToPaperRows(plan: PlanPreviewInput): PlanPaperRow[] {
   });
 }
 
+/** Split Plan volumes vs template execution steps (fixes 6-vs-7 confusion). */
+export function summarizePlanExecution(plan: PlanPreviewInput): {
+  plan_sets: number;
+  plan_cases: number;
+  template_steps_run: number;
+  template_reruns: number;
+  not_applicable: number;
+  untested: number;
+  sets_with_n: Array<{ set_id: string; n_cases: number; pack?: string; reasons: string[] }>;
+} {
+  const selected = plan.selected_cases || [];
+  const excluded = plan.excluded_cases || [];
+  const rows = mapPlanToPaperRows(plan);
+  const runRows = rows.filter((r) => r.intent === 'run');
+  const coverageSets = plan.coverage?.sets || {};
+  const manifest = plan.sample_manifest || [];
+  const casesFromManifest = manifest.length;
+  const casesFromCoverage =
+    typeof plan.counts?.manifest_cases === 'number'
+      ? plan.counts.manifest_cases
+      : typeof plan.coverage?.manifest_cases_after_sample === 'number'
+        ? plan.coverage.manifest_cases_after_sample
+        : typeof plan.coverage?.cases === 'number'
+          ? plan.coverage.cases
+          : casesFromManifest;
+
+  const sets_with_n = selected.map((c) => {
+    const sid = String(c.set_id || '').trim();
+    const cov = coverageSets[sid];
+    let n = typeof cov?.n_cases === 'number' ? cov.n_cases : 0;
+    if (!n && manifest.length) {
+      n = manifest.filter((m) => String(m.set_id || '') === sid).length;
+    }
+    return {
+      set_id: sid,
+      n_cases: n,
+      pack: c.pack,
+      reasons: Array.isArray(c.reasons) ? c.reasons.map(String) : [],
+    };
+  });
+
+  return {
+    plan_sets: selected.length,
+    plan_cases: casesFromCoverage || sets_with_n.reduce((a, x) => a + x.n_cases, 0),
+    template_steps_run: runRows.length,
+    template_reruns: runRows.filter((r) => r.step_kind === 'template_rerun').length,
+    not_applicable: excluded.filter((x) => x.status === 'not_applicable').length,
+    untested: excluded.filter((x) => x.status === 'untested').length,
+    sets_with_n,
+  };
+}
+
 export function planIntentPreviewLabel(intent: PlanPaperIntent): string {
   if (intent === 'run') return '将跑';
   if (intent === 'skip_not_applicable') return '将跳过·不适用';
   if (intent === 'skip_untested') return '将跳过·专项未测';
   return '将跳过';
+}
+
+export function planStepKindLabel(kind: PlanPaperStepKind): string {
+  return kind === 'template_rerun' ? '模板复跑' : 'Plan 卷';
 }
 
 /** Seed SuitePaperResult rows from a Plan (selected=pending, excluded=skipped). */
