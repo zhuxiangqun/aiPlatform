@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T22:54:33+08:00",
+  "reviewed_at": "2026-11-08T22:56:58+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "fa4c029c098879a29de0e20855f86f9a1212345db18a74b814925d23968bbfc6",
-  "head_sha": "8fb4bcece3d57fc94f4ed3622823105ba8b41782",
+  "diff_sha256": "4f1c6ee115618c856cf9c2b078be0e5db66ccb5caf2f0b9fc4a57cb018d8ffea",
+  "head_sha": "35d7d9cce833f25815883dc159363bfa37aa08d8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Case Editor routes now declare response_model=Dict[str, Any] on decorator line; satisfies §5.76 new-route check. Local lock only."
+  "note": "Whitepaper sync only; hashes refreshed vs CAPABILITIES after Case Editor registration."
 }
