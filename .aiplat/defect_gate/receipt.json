@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T14:08:52+08:00",
+  "reviewed_at": "2026-11-08T14:34:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "934fe1b520fef0b1e956c0ddc4a325027042ba6e",
-  "diff_sha256": "2721f91d98d6b0d9b8db9c434a622b30eaa71dbe83cfb5b11bce05d76a8b650a",
-  "head_sha": "61c5b35d78da5592cb16aacfa3bac957652deb73",
+  "merge_base": "56b085e5e24584c4d9dd8fc90f1da1a663ff9b6b",
+  "diff_sha256": "a023236d71ac7100f6c47f7e03265ac4bbab7dd32f9cf67fe5ae988457369be0",
+  "head_sha": "44dd889bdd29f9e04d0390431b096bced39423c5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs-only: C6 kill-switch draft + post-616 probe rows. No classify hook; no sample enable. Residual: staging/prod + 0.6 formal 会签."
+  "note": "§0.7 align: only explicit profile_source hard-NAs missing_capability; derived/unknown → capability_unconfirmed + selected. No classify/Ollaya."
 }
