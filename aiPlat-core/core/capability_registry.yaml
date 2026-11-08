@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1973
+total_capabilities: 1979
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 219
+    caps_count: 225
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4523,6 +4523,26 @@ domains:
         type: function
         signature: 'pack_claim_disclosure_from_plan(plan)→Dict pack_kind+claim_eligible'
         module: aiPlat-core/core/apps/eval/service/claims_gate.py
+      - symbol: generate_cases_from_template
+        type: function
+        signature: 'generate_cases_from_template(template,variants?)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_factory.py
+      - symbol: validate_case_dict
+        type: function
+        signature: 'validate_case_dict(case)→None|raises'
+        module: aiPlat-core/core/apps/eval/service/case_factory.py
+      - symbol: dedupe_cases_by_hash
+        type: function
+        signature: 'dedupe_cases_by_hash(cases)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_factory.py
+      - symbol: publish_draft_workspace_pack
+        type: function
+        signature: 'publish_draft_workspace_pack(pack_id,version,cases,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_factory.py
+      - symbol: eval_publish_draft_case_pack
+        type: function
+        signature: 'eval_publish_draft_case_pack(pack_id,version,workspace_id,…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
@@ -4647,6 +4667,10 @@ domains:
         type: class
         signature: 'Pack registry / ACL / atomic-write failure.'
         module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
+      - symbol: CaseFactoryError
+        type: class
+        signature: 'Case factory validation / publish failure.'
+        module: aiPlat-core/core/apps/eval/service/case_factory.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

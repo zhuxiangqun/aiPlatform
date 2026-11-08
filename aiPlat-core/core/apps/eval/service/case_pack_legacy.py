@@ -320,6 +320,8 @@ def expand_sets_to_manifest(
             continue
         ref = pack_ref_for_set_id(sid)
         tasks = load_set_tasks(sid)
+        from core.apps.eval.service.case_factory import CaseFactoryError, validate_case_dict
+
         cases = [
             task_dict_to_case(t, set_id=sid, session_group=None) for t in tasks
         ]
@@ -327,6 +329,13 @@ def expand_sets_to_manifest(
         if "multi_turn" in sid.replace("-", "_"):
             for c in cases:
                 c["session_group"] = sid
+        for c in cases:
+            try:
+                validate_case_dict(c)
+            except CaseFactoryError as e:
+                raise ManifestValidationError(
+                    f"invalid case in set={sid!r}: {e}"
+                ) from e
         pack_hash = compute_pack_hash(
             pack_id=ref["pack_id"],
             version=ref["version"],

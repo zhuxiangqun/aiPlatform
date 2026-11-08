@@ -6291,6 +6291,45 @@ def eval_match_cases_for_agent_target(
     )
 
 
+def eval_publish_draft_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    cases: Optional[list] = None,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    object_types: Optional[list] = None,
+    kind: str = "curated",
+) -> Dict[str, Any]:
+    """P1.0 Case Factory: template/variants or raw cases → workspace draft pack.
+
+    claim_eligible=false; cannot publish frozen. No accuracy_claim.
+    """
+    from core.apps.eval.service.case_factory import (
+        generate_cases_from_template,
+        publish_draft_workspace_pack,
+    )
+
+    if cases is not None:
+        built = list(cases)
+    else:
+        built = generate_cases_from_template(
+            dict(template or {}),
+            variants=list(variants or [{}]),
+        )
+    return publish_draft_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        cases=built,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        object_types=object_types,
+        kind=kind,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",

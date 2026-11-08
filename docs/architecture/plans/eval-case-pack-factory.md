@@ -1,8 +1,8 @@
-# Eval Case Pack 工厂 — 设计基线（P0 前契约锁定）
+# Eval Case Pack 工厂 — 设计基线 + 实施进度
 
-> **类型**：架构方案 / 实施前契约  
-> **版本**：v0.2.1-baseline · 2026-11-08  
-> **状态**：**设计基线会签中（PR #621）** · 附录 A/B 已填 · **禁止直接开工 P0** · 须 §8.1 两名必签角色齐后再开变更单  
+> **类型**：架构方案 / 实施契约  
+> **版本**：v0.3.0 · 2026-11-08  
+> **状态**：**P0 已在 `feat/eval-case-pack-p0`（PR #622）落地**（T1–T12 主路径）· **P1.0 草稿工厂起步**（template→validate→dedupe→workspace draft register；无人审队列/freeze）· 基线会签栏仍见 §8.1  
 > **关联**：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md) · #618 `derived_hints`  
 > **诚实锁**：不打开 `accuracy_claim`；L3 生成题不可 claim；禁止运行时随机出题当金标；G2b/Arena 另轨  
 
@@ -11,7 +11,7 @@
 ## 0. 一句话
 
 **L1 冻结保可比 · L2 人审保覆盖 · L3 生成保发现；Plan 升 v2 负责选池/过滤/采样并输出 `sample_manifest`；Runner 只执行 manifest。**  
-当前是**架构基线**，不是实施单。
+P0 代码路径已接线；P1 工厂仅草稿注册，未宣称金标/freeze。
 
 ```text
 种子/模板/trace/变异/LLM候选
