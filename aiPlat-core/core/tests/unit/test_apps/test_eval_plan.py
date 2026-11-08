@@ -107,7 +107,7 @@ def test_plan_derived_hints_do_not_na_capability_gaps():
     assert "default/missing_info" not in excluded
     assert plan.get("eval_profile_source") == "derived_hints"
     miss_row = next(x for x in plan["selected_cases"] if x["set_id"] == "default/missing_info")
-    assert any("capability_unconfirmed:clarify_or_ask" in r for r in miss_row["reasons"])
+    assert any("capability_unconfirmed:clarification" in r for r in miss_row["reasons"])
 
 
 def test_stratified_seed_stable_and_group_intact():

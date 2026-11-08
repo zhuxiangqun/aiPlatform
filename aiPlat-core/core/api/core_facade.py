@@ -6291,6 +6291,52 @@ def eval_match_cases_for_agent_target(
     )
 
 
+def eval_resolve_capability_id(capability_id: str, *, fail_closed: bool = True) -> str:
+    """Capability ID Map v1: legacy → canonical (fail closed by default)."""
+    from core.apps.eval.service.capability_id_map import resolve_capability_id
+
+    return resolve_capability_id(capability_id, fail_closed=fail_closed)
+
+
+def eval_resolve_capability_ids(
+    ids: Optional[list] = None, *, fail_closed: bool = True
+) -> list:
+    """Resolve many capability ids to canonical (deduped)."""
+    from core.apps.eval.service.capability_id_map import resolve_capability_ids
+
+    return resolve_capability_ids(ids or [], fail_closed=fail_closed)
+
+
+def eval_validate_test_purpose(
+    purpose: Optional[Dict[str, Any]] = None,
+    *,
+    prompt: str = "",
+    capabilities: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Validate EvalCase.test_purpose (schema v1); returns {ok, errors}."""
+    from core.apps.eval.service.test_purpose import validate_test_purpose
+
+    errors = validate_test_purpose(
+        purpose, prompt=prompt, capabilities=capabilities
+    )
+    return {"ok": not errors, "errors": errors, "schema": "eval.case_test_purpose.v1"}
+
+
+def eval_agent_capability_catalog() -> list:
+    """Agent SubjectAdapter capability catalog (canonical + v1 in_scope flags)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("agent").capability_catalog()
+
+
+def eval_validate_agent_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """AgentSubjectAdapter.validate_case — purpose + capabilities mechanical gate."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("agent").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "agent"}
+
+
 def eval_publish_draft_case_pack(
     *,
     pack_id: str,

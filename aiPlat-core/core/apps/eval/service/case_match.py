@@ -9,6 +9,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
+from core.apps.eval.service.capability_id_map import (
+    UnknownCapabilityId,
+    capability_match_set,
+    resolve_capability_id,
+)
 from core.apps.eval.service.target_contract import normalize_target_contract
 
 APPLICABILITY_SCHEMA = "eval.case_applicability_draft.v1"
@@ -103,6 +108,23 @@ def _missing_required(have: Sequence[str], need: Sequence[str]) -> List[str]:
     return [n for n in need if n.strip().lower() not in have_set]
 
 
+def _missing_capabilities(have: Sequence[str], need: Sequence[str]) -> List[str]:
+    """Compare on canonical ids (legacy alias → canonical). Report canonical miss."""
+    have_set = capability_match_set(have)
+    missing: List[str] = []
+    for n in need:
+        raw = str(n or "").strip()
+        if not raw:
+            continue
+        try:
+            cid = resolve_capability_id(raw, fail_closed=True)
+        except UnknownCapabilityId:
+            cid = raw.lower()
+        if cid not in have_set:
+            missing.append(cid)
+    return missing
+
+
 def _evaluates_safety(evaluates: Sequence[str]) -> bool:
     for e in evaluates:
         el = str(e).strip().lower()
@@ -171,7 +193,9 @@ def match_case(
         }
 
     requires = spec.get("requires") if isinstance(spec.get("requires"), dict) else {}
-    miss_caps = _missing_required(c["capabilities"], _str_list(requires.get("capabilities")))
+    miss_caps = _missing_capabilities(
+        c["capabilities"], _str_list(requires.get("capabilities"))
+    )
     miss_tools = _missing_required(c["tools"], _str_list(requires.get("tools")))
     miss_perms = _missing_required(c["permissions"], _str_list(requires.get("permissions")))
 

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2057
+total_capabilities: 2066
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,44 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 121
+    caps_count: 130
     provides:
+      - symbol: "resolve_capability_id"
+        type: "function"
+        signature: "resolve_capability_id(capability_id,fail_closed=True)→str"
+        module: "aiPlat-core/core/apps/eval/service/capability_id_map.py"
+      - symbol: "resolve_capability_ids"
+        type: "function"
+        signature: "resolve_capability_ids(ids,fail_closed=True,dedupe=True)→List[str]"
+        module: "aiPlat-core/core/apps/eval/service/capability_id_map.py"
+      - symbol: "validate_test_purpose"
+        type: "function"
+        signature: "validate_test_purpose(purpose,prompt?,capabilities?)→List[str]"
+        module: "aiPlat-core/core/apps/eval/service/test_purpose.py"
+      - symbol: "get_subject_adapter"
+        type: "function"
+        signature: "get_subject_adapter(subject_kind)→EvalSubjectAdapter"
+        module: "aiPlat-core/core/apps/eval/service/subject_adapter.py"
+      - symbol: "eval_resolve_capability_id"
+        type: "function"
+        signature: "eval_resolve_capability_id(capability_id,fail_closed=True)→str"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_resolve_capability_ids"
+        type: "function"
+        signature: "eval_resolve_capability_ids(ids?,fail_closed=True)→list"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_validate_test_purpose"
+        type: "function"
+        signature: "eval_validate_test_purpose(purpose?,prompt?,capabilities?)→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_agent_capability_catalog"
+        type: "function"
+        signature: "eval_agent_capability_catalog()→list"
+        module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: "eval_validate_agent_case"
+        type: "function"
+        signature: "eval_validate_agent_case(case?)→Dict"
+        module: "aiPlat-core/core/api/core_facade.py"
       - symbol: "run_g2a_gate"
         type: "function"
         signature: "run_g2a_gate(mode=nightly, ...)→Dict local gate_claim after v0 lock"
