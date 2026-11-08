@@ -2764,6 +2764,7 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| render_long_context_prompt | `core/apps/eval/service/long_context_generator.py` | ✅ | 自动同步 | 已合入 |
 | run_all_session_groups | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
 | judge_memory_probe | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
 | group_session_cases | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
