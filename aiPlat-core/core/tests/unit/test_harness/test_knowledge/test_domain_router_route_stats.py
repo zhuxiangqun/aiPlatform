@@ -67,4 +67,66 @@ def test_facade_route_stats():
     snap = domain_router_route_stats()
     assert snap["t1_hits"] >= 1
     assert "honesty" in snap
-    assert "accuracy" not in snap.get("honesty", "").lower() or "≠ accuracy" in snap["honesty"]
+    assert "≠ accuracy" in snap["honesty"]
+
+
+def test_t2_boundary_and_reject_side_counters():
+    r = DomainRouter()
+    cfg = {
+        "routing": {
+            "embedding": {
+                "min_confidence": 0.4,
+                "min_margin": 0.08,
+                "boundary_score_slack": 0.05,
+                "boundary_margin_factor": 2.0,
+            }
+        }
+    }
+
+    # Accepted T2 near boundary (score 0.42 < 0.4+0.05)
+    with patch.object(r, "list_domains", return_value=["d1", "d2"]):
+        with patch.object(r, "_ensure_built"):
+            with patch.object(r, "_t1_label_match", return_value=None):
+                with patch.object(r, "_load_registry", return_value=cfg):
+
+                    def _scores(query, did):
+                        return {"d1": 0.42, "d2": 0.10}[did]
+
+                    with patch.object(r, "_t2_embed_score", side_effect=_scores):
+                        assert r.classify("near") == "d1"
+    snap = r.route_stats()
+    assert snap["t2_hits"] == 1
+    assert snap["t2_boundary_hits"] == 1
+    assert snap["t2_reject_hits"] == 0
+
+    # Reject → T3 path increments t2_reject
+    with patch.object(r, "list_domains", return_value=["d1", "d2"]):
+        with patch.object(r, "_ensure_built"):
+            with patch.object(r, "_t1_label_match", return_value=None):
+                with patch.object(r, "_load_registry", return_value=cfg):
+                    with patch.object(r, "_t2_embed_score", return_value=0.1):
+                        with patch.object(r, "_llm_classify", return_value="d2"):
+                            assert r.classify("far") == "d2"
+    snap = r.route_stats()
+    assert snap["t3_hits"] == 1
+    assert snap["t2_reject_hits"] == 1
+    assert "stats_uptime_s" in snap
+
+
+def test_diagnostics_route_stats_endpoint():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from core.api.routers.diagnostics import router
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    resp = client.get("/diagnostics/domain-router/route-stats")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body.get("ok") is True
+    assert body.get("scope") == "process"
+    assert "honesty" in body
+    assert "t2_boundary_hits" in body
+    assert "≠" in body["honesty"]

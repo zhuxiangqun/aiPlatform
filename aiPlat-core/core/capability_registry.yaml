@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1949
+total_capabilities: 1950
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2628,7 +2628,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 241
+    caps_count: 242
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -2738,7 +2738,11 @@ domains:
       - symbol: "domain_router_route_stats"
         module: core/api/core_facade.py
         type: function
-        signature: "domain_router_route_stats()→Dict T1/T2/T3 hits + t3 p50/p95"
+        signature: "domain_router_route_stats()→Dict T1/T2/T3 + t2_boundary/reject + t3 p50/p95"
+      - symbol: "get_domain_router_route_stats"
+        module: core/api/routers/diagnostics.py
+        type: endpoint
+        signature: "GET /diagnostics/domain-router/route-stats → process route_stats via CoreFacade"
       - symbol: "EntityExtractor"
         module: core/harness/knowledge_pipeline/extractor.py
         type: class

@@ -185,7 +185,7 @@
 - [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表草稿见证据包 §0.6（**未签字**）  
 - [ ] Go/No-Go 书面结论  
 
-**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`。**仍禁止**未 Go 合并影子。
+**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`。**仍禁止**未 Go 合并影子。
 
 **阶段 0 明确不交付**：影子延迟数字、Ollaya 准确率、线上替换。
 
