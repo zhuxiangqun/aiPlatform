@@ -188,6 +188,71 @@ export default function EvalCasePackPanel() {
         >
           Coverage
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('holdout', () =>
+              agentEvalApi.casePackHoldout({
+                pack_id: packId.trim(),
+                version: version.trim(),
+                ratio: 0.5,
+                seed: 'ui',
+              }),
+            )
+          }
+        >
+          Holdout 50%
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          data-testid="eval-case-pack-mutate"
+          onClick={() =>
+            run('mutate', () =>
+              agentEvalApi.casePackMutate({
+                pack_id: `${packId.trim()}.mut`,
+                version: version.trim(),
+                seed: 'ui',
+                ops: ['append_noise'],
+                seed_cases: [
+                  {
+                    case_id: 'seed-ui',
+                    prompt: prompt.trim() || 'say ok',
+                    rubric: { type: 'lexical', must_contain: ['ok'] },
+                    category: 'normal',
+                  },
+                ],
+              }),
+            )
+          }
+        >
+          Mutate→generated
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="rounded border border-slate-600 px-3 py-1.5 disabled:opacity-50"
+          onClick={() =>
+            run('from-trace', () =>
+              agentEvalApi.casePackFromTrace({
+                pack_id: `${packId.trim()}.trace`,
+                version: version.trim(),
+                traces: [
+                  {
+                    prompt: prompt.trim() || 'say ok',
+                    tool_calls: [{ name: 'demo_tool' }],
+                    must_contain: ['ok'],
+                  },
+                ],
+              }),
+            )
+          }
+        >
+          From-trace
+        </button>
         {busy ? <Loader2 className="h-4 w-4 animate-spin self-center text-slate-400" /> : null}
       </div>
 

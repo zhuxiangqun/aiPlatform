@@ -11,6 +11,13 @@ from core.apps.eval.service.case_factory import (
     dedupe_cases_by_hash,
     generate_cases_from_template,
 )
+from core.apps.eval.service.case_generation import (
+    CaseGenerationError,
+    apply_holdout_flags,
+    cases_from_trace,
+    mutate_cases,
+    partition_holdout,
+)
 from core.apps.eval.service.case_pack_hash import compute_pack_hash
 from core.apps.eval.service.case_pack_legacy import assert_claim_eligible_allowed
 from core.apps.eval.service.case_pack_registry import (
@@ -300,6 +307,198 @@ def bump_workspace_pack_version(
             "claim_eligible=false"
         ),
     }
+
+
+def mark_pack_holdout(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    case_ids: Optional[Sequence[str]] = None,
+    ratio: float = 0.0,
+    seed: str = "0",
+    holdout: bool = True,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """Mark holdout flags on a non-frozen pack and rehash."""
+    wid = str(workspace_id or "").strip()
+    if not wid:
+        raise CasePackOpsError("workspace_id required")
+    pid = str(pack_id).strip()
+    ver = str(version).strip()
+    try:
+        cur = get_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+        payload = load_pack_payload(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    if str(cur.get("kind") or "").lower() == "frozen":
+        raise CasePackOpsError("frozen pack immutable — bump first")
+    st = str(cur.get("status") or "").lower()
+    if st not in _EXPANDABLE_STATUSES:
+        raise CasePackOpsError(
+            f"holdout mark requires status in {sorted(_EXPANDABLE_STATUSES)}, got {st!r}"
+        )
+    try:
+        updated_cases = apply_holdout_flags(
+            list(payload.get("cases") or []),
+            case_ids=case_ids,
+            ratio=ratio,
+            seed=seed,
+            holdout=holdout,
+        )
+    except CaseGenerationError as e:
+        raise CasePackOpsError(str(e)) from e
+    parts = partition_holdout(updated_cases)
+    ots = list(cur.get("object_types") or ["agent"])
+    kind = str(cur.get("kind") or "curated")
+    assert_claim_eligible_allowed(kind=kind, claim_eligible=False)
+    new_hash = compute_pack_hash(
+        pack_id=pid,
+        version=ver,
+        kind=kind,
+        claim_eligible=False,
+        scope="workspace",
+        object_types=ots,
+        cases=updated_cases,
+    )
+    try:
+        meta = update_pack_version_meta(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller_workspace_id or wid,
+            pack_hash=new_hash,
+        )
+    except PackRegistryError as e:
+        raise CasePackOpsError(str(e)) from e
+    write_pack_payload(
+        pack_id=pid,
+        version=ver,
+        scope="workspace",
+        cases=updated_cases,
+        meta={
+            "kind": kind,
+            "claim_eligible": False,
+            "hash": new_hash,
+            "object_types": ots,
+            "status": st,
+        },
+        workspace_id=wid,
+        caller_workspace_id=caller_workspace_id or wid,
+    )
+    return {
+        "ok": True,
+        "pack_id": pid,
+        "version": ver,
+        "pack_hash": new_hash,
+        "n_eval": parts["n_eval"],
+        "n_holdout": parts["n_holdout"],
+        "registry": meta,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "honesty": "holdout flags only; not an accuracy claim",
+    }
+
+
+def publish_generated_workspace_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    kind: str,
+    cases: Sequence[Mapping[str, Any]],
+    caller_workspace_id: str = "",
+    object_types: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Publish L3 draft pack (generated|trace). claim_eligible forced false."""
+    from core.apps.eval.service.case_factory import publish_draft_workspace_pack
+
+    k = str(kind or "").strip().lower()
+    if k not in ("generated", "trace"):
+        raise CasePackOpsError("kind must be generated|trace for L3 publish")
+    try:
+        return publish_draft_workspace_pack(
+            pack_id=pack_id,
+            version=version,
+            cases=cases,
+            workspace_id=workspace_id,
+            caller_workspace_id=caller_workspace_id,
+            object_types=object_types,
+            kind=k,
+        )
+    except CaseFactoryError as e:
+        raise CasePackOpsError(str(e)) from e
+
+
+def build_mutation_draft_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    seed_cases: Sequence[Mapping[str, Any]],
+    ops: Optional[Sequence[str]] = None,
+    seed: str = "0",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """Mutate seeds → publish kind=generated draft pack."""
+    try:
+        cases = mutate_cases(seed_cases, ops=ops, seed=seed)
+    except CaseGenerationError as e:
+        raise CasePackOpsError(str(e)) from e
+    out = publish_generated_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        kind="generated",
+        cases=cases,
+        caller_workspace_id=caller_workspace_id,
+    )
+    out["generator"] = "case_mutation"
+    out["n_mutations"] = len(cases)
+    return out
+
+
+def build_trace_draft_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    traces: Sequence[Mapping[str, Any]],
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """Trace dicts → publish kind=trace draft pack."""
+    cases: List[Dict[str, Any]] = []
+    try:
+        for i, tr in enumerate(traces):
+            if not isinstance(tr, Mapping):
+                raise CasePackOpsError(f"traces[{i}] must be object")
+            cases.extend(cases_from_trace(tr))
+    except CaseGenerationError as e:
+        raise CasePackOpsError(str(e)) from e
+    cleaned = dedupe_cases_by_hash(cases)
+    out = publish_generated_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        kind="trace",
+        cases=cleaned,
+        caller_workspace_id=caller_workspace_id,
+    )
+    out["generator"] = "case_trace"
+    return out
 
 
 def summarize_workspace_pack_coverage(

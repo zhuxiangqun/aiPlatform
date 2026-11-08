@@ -1,8 +1,8 @@
 # Eval Case Pack 工厂 — 设计基线 + 实施进度
 
 > **类型**：架构方案 / 实施契约  
-> **版本**：v0.3.4 · 2026-11-08  
-> **状态**：**P0–P1.4**（扩题/version++/coverage + Eval「Case Pack」面板）· `claim_eligible` 仍 false · PR #622 · 基线会签栏仍见 §8.1  
+> **版本**：v0.4.0 · 2026-11-08  
+> **状态**：**P0–P1.4** + **P2.0**（mutation/trace/holdout；L3 kind 恒不可 claim）· PR #622 · 基线会签栏仍见 §8.1  
 > **关联**：[`eval-object-contract-and-plan.md`](./eval-object-contract-and-plan.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`workspace-isolation-contract.md`](./workspace-isolation-contract.md) · #618 `derived_hints`  
 > **诚实锁**：不打开 `accuracy_claim`；L3 生成题不可 claim；禁止运行时随机出题当金标；G2b/Arena 另轨  
 
@@ -11,7 +11,7 @@
 ## 0. 一句话
 
 **L1 冻结保可比 · L2 人审保覆盖 · L3 生成保发现；Plan 升 v2 负责选池/过滤/采样并输出 `sample_manifest`；Runner 只执行 manifest。**  
-P0–P1.4 已接线：draft→review→freeze + expand/bump/coverage + HTTP/UI；frozen 不可原地改（version++→新 draft）；未开 claim。
+P0–P2.0 已接线：工厂链 + expand/bump/coverage/UI + 确定性变异/trace→题/holdout；L3 generated|trace 禁 freeze 入 claim；未开 accuracy_claim。
 
 ```text
 种子/模板/trace/变异/LLM候选

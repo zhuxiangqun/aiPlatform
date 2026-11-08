@@ -2746,6 +2746,18 @@ export const agentEvalApi = {
   casePackBump: async (body: Record<string, unknown>) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/bump', body);
   },
+  casePackHoldout: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/holdout', body);
+  },
+  casePackMutate: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/mutate', body);
+  },
+  casePackFromTrace: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/from-trace',
+      body,
+    );
+  },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {
     return apiClient.post<{

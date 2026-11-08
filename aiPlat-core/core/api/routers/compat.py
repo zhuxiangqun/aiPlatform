@@ -955,6 +955,88 @@ async def compat_evaluation_case_pack_coverage(request: Request):
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/holdout")
+async def compat_evaluation_case_pack_holdout(body: Dict[str, Any], request: Request):
+    """P2.0: mark holdout flags on non-frozen pack."""
+    from core.api.core_facade import eval_mark_case_pack_holdout
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_mark_case_pack_holdout(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                case_ids=(body or {}).get("case_ids"),
+                ratio=float((body or {}).get("ratio") or 0.0),
+                seed=str((body or {}).get("seed") or "0"),
+                holdout=bool((body or {}).get("holdout", True)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs holdout failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/mutate")
+async def compat_evaluation_case_pack_mutate(body: Dict[str, Any], request: Request):
+    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    from core.api.core_facade import eval_publish_mutation_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    seeds = (body or {}).get("seed_cases") or (body or {}).get("cases") or []
+    if not isinstance(seeds, list):
+        return {"ok": False, "error": "seed_cases must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_publish_mutation_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                seed_cases=seeds,
+                ops=(body or {}).get("ops"),
+                seed=str((body or {}).get("seed") or "0"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs mutate failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/from-trace")
+async def compat_evaluation_case_pack_from_trace(
+    body: Dict[str, Any], request: Request
+):
+    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    from core.api.core_facade import eval_publish_trace_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    traces = (body or {}).get("traces") or []
+    if not isinstance(traces, list):
+        return {"ok": False, "error": "traces must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_publish_trace_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                traces=traces,
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs from-trace failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
     """Create or update an evaluation policy artifact."""

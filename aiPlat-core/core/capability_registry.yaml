@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2009
+total_capabilities: 2024
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 255
+    caps_count: 270
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4655,6 +4655,66 @@ domains:
         type: class
         signature: 'Pack expand / bump / coverage failure.'
         module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: mutate_cases
+        type: function
+        signature: 'mutate_cases(seeds,ops?,seed?)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: cases_from_trace
+        type: function
+        signature: 'cases_from_trace(trace)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: apply_holdout_flags
+        type: function
+        signature: 'apply_holdout_flags(cases,case_ids?,ratio?,seed?)→List[case]'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: partition_holdout
+        type: function
+        signature: 'partition_holdout(cases)→Dict eval/holdout'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: CaseGenerationError
+        type: class
+        signature: 'Mutation / trace / holdout generation failure.'
+        module: aiPlat-core/core/apps/eval/service/case_generation.py
+      - symbol: mark_pack_holdout
+        type: function
+        signature: 'mark_pack_holdout(pack_id,version,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: publish_generated_workspace_pack
+        type: function
+        signature: 'publish_generated_workspace_pack(…,kind=generated|trace)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: build_mutation_draft_pack
+        type: function
+        signature: 'build_mutation_draft_pack(…,seed_cases,ops?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: build_trace_draft_pack
+        type: function
+        signature: 'build_trace_draft_pack(…,traces)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_ops.py
+      - symbol: eval_mark_case_pack_holdout
+        type: function
+        signature: 'eval_mark_case_pack_holdout(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_publish_mutation_case_pack
+        type: function
+        signature: 'eval_publish_mutation_case_pack(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_publish_trace_case_pack
+        type: function
+        signature: 'eval_publish_trace_case_pack(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: compat_evaluation_case_pack_holdout
+        type: function
+        signature: 'POST /evaluation/case-packs/holdout'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_mutate
+        type: function
+        signature: 'POST /evaluation/case-packs/mutate'
+        module: aiPlat-core/core/api/routers/compat.py
+      - symbol: compat_evaluation_case_pack_from_trace
+        type: function
+        signature: 'POST /evaluation/case-packs/from-trace'
+        module: aiPlat-core/core/api/routers/compat.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'

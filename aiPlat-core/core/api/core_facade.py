@@ -6476,6 +6476,76 @@ def eval_summarize_case_pack_coverage(
     )
 
 
+def eval_mark_case_pack_holdout(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    case_ids: Optional[list] = None,
+    ratio: float = 0.0,
+    seed: str = "0",
+    holdout: bool = True,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: mark holdout flags on non-frozen pack (rehash)."""
+    from core.apps.eval.service.case_pack_ops import mark_pack_holdout
+
+    return mark_pack_holdout(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        case_ids=case_ids,
+        ratio=ratio,
+        seed=seed,
+        holdout=holdout,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_publish_mutation_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    seed_cases: list,
+    ops: Optional[list] = None,
+    seed: str = "0",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_mutation_draft_pack
+
+    return build_mutation_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        seed_cases=seed_cases,
+        ops=ops,
+        seed=seed,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_publish_trace_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    traces: list,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_trace_draft_pack
+
+    return build_trace_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        traces=traces,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",

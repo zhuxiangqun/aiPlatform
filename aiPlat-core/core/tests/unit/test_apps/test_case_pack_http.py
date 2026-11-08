@@ -19,6 +19,9 @@ def test_case_pack_routes_registered():
         "/evaluation/case-packs/expand",
         "/evaluation/case-packs/bump",
         "/evaluation/case-packs/coverage",
+        "/evaluation/case-packs/holdout",
+        "/evaluation/case-packs/mutate",
+        "/evaluation/case-packs/from-trace",
     ):
         assert p in paths
 
