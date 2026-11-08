@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2152
+total_capabilities: 2160
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 216
+    caps_count: 224
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -7014,6 +7014,38 @@ domains:
         type: "function"
         signature: "eval_load_mock_tool_catalog()→Dict"
         module: "aiPlat-core/core/api/core_facade.py"
+      - symbol: invoke_mock_tools
+        type: function
+        signature: "invoke_mock_tools(tool_calls,case,catalog?,fail_mode?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/mock_tools/harness.py
+      - symbol: allowed_tool_names
+        type: function
+        signature: "allowed_tool_names(case,catalog?)→Set[str]"
+        module: aiPlat-core/core/apps/eval/service/mock_tools/harness.py
+      - symbol: judge_tool_trace
+        type: function
+        signature: "judge_tool_trace(case,result)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_trace_judge.py
+      - symbol: judge_tool_selection
+        type: function
+        signature: "judge_tool_selection(case,result)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_trace_judge.py
+      - symbol: judge_tool_args
+        type: function
+        signature: "judge_tool_args(case,result,catalog?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_trace_judge.py
+      - symbol: run_tool_fixture_suite
+        type: function
+        signature: "run_tool_fixture_suite(seed_dir?,capability_id?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/tool_capability_fixtures.py
+      - symbol: eval_run_tool_fixture_suite
+        type: function
+        signature: "eval_run_tool_fixture_suite(capability_id?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_invoke_mock_tools
+        type: function
+        signature: "eval_invoke_mock_tools(tool_calls?,case?,fail_mode?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: validate_case_long_context_fields
         type: function
         signature: 'If case has long_context_fixture or capability long_context, validate fixture.'

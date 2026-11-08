@@ -130,7 +130,8 @@ Case 可挂 `long_context_fixture` 对象（A9）：
 
 | 角色 | 勾选 | 签字（`SIGNED t0_contracts_usable`） | 日期 |
 |------|:----:|--------------------------------------|------|
-| 评测方法负责人 | 契约可用 → 可开 T1 | | |
-| 工程负责人 | 样例 + 校验测试绿 | | |
+| 评测方法负责人 | 契约可用 → 可开 T1 | `SIGNED t0_contracts_usable` · 朱向群 | 2026-11-08 |
+| 工程负责人 | 样例 + 校验测试绿 | `SIGNED t0_contracts_usable` · 朱向群 | 2026-11-08 |
 
-**工程侧 T0 完成标准**：本文件入库 + 样例校验测试通过 + 公共 validate 符号已注册。方法负责人签字后开 T1 代码（harness），不在本文件内改 `V1_IN_SCOPE`。
+**工程侧 T0 完成标准**：本文件入库 + 样例校验测试通过 + 公共 validate 符号已注册。方法负责人签字后开 T1 代码（harness），不在本文件内改 `V1_IN_SCOPE`。  
+**T1 已开工（2026-11-08）**：mock harness + A3/A4 judge + fixtures（仍 `V1_OUT_OF_SCOPE`）。

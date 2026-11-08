@@ -6336,6 +6336,31 @@ def eval_load_mock_tool_catalog() -> Dict[str, Any]:
     return load_mock_tool_catalog()
 
 
+def eval_run_tool_fixture_suite(
+    capability_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """T1: run A3/A4 scripted mock-tool fixture suite (claim=false, out of V1_IN_SCOPE)."""
+    from core.apps.eval.service.tool_capability_fixtures import run_tool_fixture_suite
+
+    return run_tool_fixture_suite(capability_id=capability_id)
+
+
+def eval_invoke_mock_tools(
+    tool_calls: Optional[list] = None,
+    *,
+    case: Optional[Dict[str, Any]] = None,
+    fail_mode: Optional[str] = None,
+) -> Dict[str, Any]:
+    """T1: invoke scripted tool_calls against mock catalog."""
+    from core.apps.eval.service.mock_tools import invoke_mock_tools
+
+    return invoke_mock_tools(
+        tool_calls or [],
+        case=case or {},
+        fail_mode=fail_mode,
+    )
+
+
 def eval_agent_capability_catalog() -> list:
     """Agent SubjectAdapter capability catalog (canonical + v1 in_scope flags)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter

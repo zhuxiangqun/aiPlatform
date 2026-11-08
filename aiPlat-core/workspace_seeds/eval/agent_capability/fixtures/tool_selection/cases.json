@@ -1,0 +1,107 @@
+[
+  {
+    "case_id": "agent.tool_selection.t1.001",
+    "capabilities": ["tool_selection"],
+    "prompt": "把用户输入原文原样回显。",
+    "expected_tools": ["echo"],
+    "forbidden_tools": ["lookup_fact"],
+    "exact_tool_set": true,
+    "scripted_tool_calls": [{ "name": "echo", "args": { "text": "hello" } }],
+    "test_purpose": {
+      "summary": "验证仅选择 echo 完成回显，不调用 lookup_fact",
+      "why_this_case": "A3 正例：单工具精确集合",
+      "expected_behavior": ["调用 echo", "不调用 lookup_fact"],
+      "failure_signals": ["漏调 echo", "误调 lookup_fact"],
+      "not_testing": ["不测参数 schema", "不宣称 v1 covered"],
+      "oracle_rationale": "tool_trace expected/forbidden + exact_tool_set"
+    },
+    "review": { "status": "draft", "notes": "T1 fixture — out of V1_IN_SCOPE" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_selection.t1.002",
+    "capabilities": ["tool_selection"],
+    "prompt": "查询 key=alpha 的事实。",
+    "expected_tools": ["lookup_fact"],
+    "forbidden_tools": [],
+    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "alpha" } }],
+    "test_purpose": {
+      "summary": "验证查询事实时选择 lookup_fact",
+      "why_this_case": "A3 正例：必要工具出现即可",
+      "expected_behavior": ["调用 lookup_fact"],
+      "failure_signals": ["未调用 lookup_fact"],
+      "not_testing": ["不测参数值", "不测多轮"],
+      "oracle_rationale": "tool_trace must include expected_tools"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_selection.t1.003",
+    "capabilities": ["tool_selection"],
+    "prompt": "先查事实再回显结果标签。",
+    "expected_tools": ["lookup_fact", "echo"],
+    "expected_tool_order": ["lookup_fact", "echo"],
+    "forbidden_tools": [],
+    "scripted_tool_calls": [
+      { "name": "lookup_fact", "args": { "key": "alpha" } },
+      { "name": "echo", "args": { "text": "42" } }
+    ],
+    "test_purpose": {
+      "summary": "验证工具调用顺序 lookup_fact → echo",
+      "why_this_case": "A3 顺序约束",
+      "expected_behavior": ["先 lookup_fact 后 echo"],
+      "failure_signals": ["顺序颠倒", "缺一工具"],
+      "not_testing": ["不测参数正确性细节"],
+      "oracle_rationale": "expected_tool_order subsequence check"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_selection.t1.004",
+    "capabilities": ["tool_selection"],
+    "prompt": "负例：不应调用禁止工具（scripted 故意违规供 judge 抓）。",
+    "expected_tools": ["echo"],
+    "forbidden_tools": ["lookup_fact"],
+    "scripted_tool_calls": [
+      { "name": "echo", "args": { "text": "x" } },
+      { "name": "lookup_fact", "args": { "key": "alpha" } }
+    ],
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "负例：forbidden lookup_fact 被调用时应判失败",
+      "why_this_case": "A3 负例校准",
+      "expected_behavior": ["judge 标记 forbidden_tool_used"],
+      "failure_signals": ["judge 误通过"],
+      "not_testing": ["不测真实 agent"],
+      "oracle_rationale": "forbidden_tools 命中 → fail"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "agent.tool_selection.t1.005",
+    "capabilities": ["tool_selection"],
+    "prompt": "负例：缺少期望工具。",
+    "expected_tools": ["echo", "lookup_fact"],
+    "forbidden_tools": [],
+    "scripted_tool_calls": [{ "name": "echo", "args": { "text": "only" } }],
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "负例：缺 lookup_fact 应判失败",
+      "why_this_case": "A3 missing_expected_tool",
+      "expected_behavior": ["judge 报 missing_expected_tool"],
+      "failure_signals": ["judge 误通过"],
+      "not_testing": ["不测参数"],
+      "oracle_rationale": "expected_tools 未齐 → fail"
+    },
+    "review": { "status": "draft" },
+    "risk_level": "low",
+    "holdout": false
+  }
+]

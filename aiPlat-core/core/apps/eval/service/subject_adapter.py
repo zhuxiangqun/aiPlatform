@@ -129,19 +129,92 @@ class AgentSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        from core.apps.eval.service.mock_tools.harness import (
+            MockToolHarnessError,
+            invoke_mock_tools,
+            resolve_scripted_tool_calls,
+        )
+        from core.apps.eval.service.tool_eval_runtime_map import (
+            assert_mock_not_claimed_as_live,
+            validate_tool_backend_runtime,
+        )
+
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
+        if not tool_caps:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "agent_execute_deferred_non_tool",
+            }
+
+        env_map = dict(env or {})
+        try:
+            calls = resolve_scripted_tool_calls(case, env_map)
+            harness = invoke_mock_tools(
+                calls,
+                case=case,
+                fail_mode=str(env_map.get("fail_mode") or "") or None,
+            )
+        except MockToolHarnessError as exc:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "error",
+                "subject_kind": self.subject_kind,
+                "tool_backend": "mock",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "runtime_claim_reason": "mock_harness_error",
+                "error": str(exc),
+                "ok": False,
+            }
+
+        claim_errs = assert_mock_not_claimed_as_live(
+            tool_backend="mock",
+            runtime_claim_reason=str(env_map.get("runtime_claim_reason") or ""),
+        )
+        tier_errs = validate_tool_backend_runtime(
+            tool_backend="mock", runtime_tier="fixture"
+        )
         return {
             "schema": ADAPTER_SCHEMA,
-            "status": "not_implemented",
+            "status": "ok" if harness.get("ok") and not claim_errs and not tier_errs else "error",
             "subject_kind": self.subject_kind,
-            "reason": "agent_execute_deferred_p1",
+            "tool_backend": "mock",
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "runtime_claim_reason": "mock_tool_trace_only",
+            "ok": bool(harness.get("ok")) and not claim_errs and not tier_errs,
+            "tool_calls": harness.get("tool_calls") or [],
+            "tool_results": harness.get("tool_results") or [],
+            "allowed_tools": harness.get("allowed_tools") or [],
+            "harness": harness,
+            "gate_errors": claim_errs + tier_errs,
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        from core.apps.eval.service.tool_trace_judge import judge_tool_trace
+
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
+        if not tool_caps:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "agent_judge_deferred_non_tool",
+            }
+        judgment = judge_tool_trace(case, result if isinstance(result, Mapping) else {})
         return {
             "schema": ADAPTER_SCHEMA,
-            "status": "not_implemented",
+            "status": judgment.get("status") or "ok",
             "subject_kind": self.subject_kind,
-            "reason": "agent_judge_deferred_p1",
+            **judgment,
         }
 
     def normalize(
@@ -150,11 +223,33 @@ class AgentSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
+        if not tool_caps:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "agent_normalize_deferred_non_tool",
+            }
         return {
             "schema": ADAPTER_SCHEMA,
-            "status": "not_implemented",
+            "status": "ok",
             "subject_kind": self.subject_kind,
-            "reason": "agent_normalize_deferred_p1",
+            "passed": bool(judgment.get("passed")),
+            "errors": list(judgment.get("errors") or []),
+            "tool_backend": str(
+                (result or {}).get("tool_backend")
+                or judgment.get("tool_backend")
+                or "mock"
+            ),
+            "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
+            "claim_eligible": False,
+            "certification_eligible": False,
+            "v1_in_scope": False,
+            "capabilities": caps,
         }
 
 
