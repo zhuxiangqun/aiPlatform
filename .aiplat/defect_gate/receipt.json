@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T23:43:34+08:00",
+  "reviewed_at": "2026-11-08T23:52:37+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "98417b54e706afad19a409ca9927cde01752de918f8a66d255552e33b33197e0",
-  "head_sha": "03010bff09942e55716bfa7cff0e379a5da967b1",
+  "diff_sha256": "a44731d9d36d68fc95f725465fcf0049d74322f1847ab842e6c343d868bfcfff",
+  "head_sha": "c08b2a7cf3595658ec61f2288092067c11b84c67",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "T1 mock harness + A3/A4 fixture suite; V1_IN_SCOPE unchanged; claim=false; scripted tool_calls only (no live tools)."
+  "note": "T2 A5+session/A8 fixtures; V1_IN_SCOPE unchanged; claim=false."
 }
