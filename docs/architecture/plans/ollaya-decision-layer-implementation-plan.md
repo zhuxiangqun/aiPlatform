@@ -118,7 +118,7 @@
 
 | 模块（建议路径） | 职责 | 层 |
 |------------------|------|-----|
-| `core/harness/decision_shadow/`（新包，待建） | 队列、采样、超时、丢弃原因码、与 DomainRouter 的钩子 | core |
+| `core/harness/decision_shadow/`（✅ 默关骨架已合入；钩子/采样仍待 Go） | 队列、采样、超时、丢弃原因码；**DomainRouter 钩子未挂** | core |
 | `DecisionClient` 协议 + `OllayaHttpClient` | HTTP 调用、健康检查、版本字符串 | core（或薄 infra 客户端，实现期定） |
 | 配置：`decision_shadow.yaml` 或 env | 开关、采样、超时、队列、endpoint、TTL | 配置 |
 | 指标：`decision_shadow_*` | 投递/丢弃/超时/一致/延迟直方图 | 可观测 |
@@ -188,7 +188,7 @@
 
 **阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`；`scripts/collect_domain_router_route_stats.py`。
 
-**有条件豁免 · 默关骨架（2026-11-08）**：`core/harness/decision_shadow/`（config/dispatcher/client/audit）；`CoreFacade.decision_shadow_status`；`GET /diagnostics/decision-shadow/status`；`classify_hook_wired=false`。**仍禁止**未另批即开采样 / 挂 classify / 进 1b。骨架 ≠ 已集成 Ollaya 流量 ≠ 省 token。
+**有条件豁免 · 默关骨架（2026-11-08 · #616）**：`core/harness/decision_shadow/`（config/dispatcher/client/audit）；`CoreFacade.decision_shadow_status` / `decision_shadow_try_enqueue`；`GET|POST /diagnostics/decision-shadow/*`；`classify_hook_wired=false`。C6 关闭演练草稿见 [`ollaya-decision-shadow-kill-switch.md`](./ollaya-decision-shadow-kill-switch.md)。**仍禁止**未另批即开采样 / 挂 classify / 进 1b。骨架 ≠ 已集成 Ollaya 流量 ≠ 省 token。
 
 **阶段 0 明确不交付**：影子延迟数字、Ollaya 准确率、线上替换。
 
@@ -205,7 +205,7 @@
 | C3 | 队列满 / 超时 / 服务挂 → 仅增 drop 计数，无异常冒泡到调用方 | 故障注入测试 |
 | C4 | 特征开关默认 `false` | 配置审查 |
 | C5 | 审计字段 ⊆ 白名单；默认无原文 | 抽样日志审查 |
-| C6 | 可一键关闭影子（env/配置热更新或进程重启策略写明） | 运维手册演练 |
+| C6 | 可一键关闭影子（env/配置热更新或进程重启策略写明） | 运维手册演练；工程附页 [`ollaya-decision-shadow-kill-switch.md`](./ollaya-decision-shadow-kill-switch.md)（≠ 会签） |
 
 ### 5.2 配置项设计（建议名，实现期可改）
 
