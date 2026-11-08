@@ -258,8 +258,11 @@ def validate_agent_capability_bank(
             }
         )
     meta = load_pack_meta()
+    from core.apps.eval.service.inscope_contracts_t0 import evaluate_t0_inscope_contracts
+
+    t0 = evaluate_t0_inscope_contracts()
     return {
-        "ok": bad == 0,
+        "ok": bad == 0 and bool(t0.get("ok")),
         "pack_id": str(meta.get("pack_id") or PACK_ID),
         "pack_version": str(meta.get("version") or PACK_VERSION),
         "case_count": len(rows),
@@ -268,6 +271,7 @@ def validate_agent_capability_bank(
         "claim_eligible": False,
         "review_status": "draft",
         "content_authority": "workspace_seeds/eval/agent_capability/cases",
+        "t0_inscope_contracts": t0,
     }
 
 

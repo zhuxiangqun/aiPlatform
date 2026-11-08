@@ -2,7 +2,7 @@
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  
 > **版本**：v0.1 · 2026-11-08  
-> **状态**：**立项 / 未开工**（等评测方法负责人 + 工程负责人 Go）  
+> **状态**：**T0 工程契约已落地**（样例 + validate；等方法负责人 `SIGNED t0_contracts_usable` 后开 T1）· 见 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md)  
 > **触发**：`[ADR-EVAL-CAPABILITY-CASE-PACK-V1](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)` §7 #9；v1 签字子集强制 A3–A5/A8/A9 = `unknown`  
 > **关联**：`[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md)` §4.2.2 · `[CAPABILITY_ID_MAP_V1.md](./CAPABILITY_ID_MAP_V1.md)` · `[eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md)` · PR #622（v1 文本子集已落地）
 
@@ -92,7 +92,9 @@ A3–A5（工具）、A8（多轮 Session）、A9（长上下文）在代码与 
 | `runtime_tier` 映射表（mock vs live）                                                   | 对齐 exam-runtime-tiers；mock ≠ live claim |
 
 
-**Go T1**：评测方法负责人签字「契约可用」。
+**工程完成（2026-11-08）**：契约文档 Frozen + `fixtures/mock_tools|session|long_context` 样例 + `validate_*` / `evaluate_t0_inscope_contracts` 测试绿；**未**改 `V1_IN_SCOPE`。  
+
+**Go T1**：评测方法负责人在 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md) §5 签字「契约可用」。
 
 ### 阶段 T1 — Mock Tool Harness + A3/A4（约 2–3 周）
 

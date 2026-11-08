@@ -16,6 +16,9 @@
 | `pack.meta.json` | Pack 元数据（无 cases） |
 | `profile.agent.*.json` | Suite Profile 配额 / holdout |
 | `pack.agent.capability.v0.1.0.json` | **派生** — 由 loader 组装，便于整体审阅；勿当作唯一编辑源 |
+| `fixtures/mock_tools/` | T0 Mock tool 目录样例（升域立项；非 covered） |
+| `fixtures/session/` | T0 Session 卷字段样例 |
+| `fixtures/long_context/` | T0 长上下文 fixture 样例 |
 
 扩题：在对应 `cases/*.json` 追加 case → `validate_agent_capability_bank` →（可选）`write_agent_capability_seeds` 刷新派生 pack → promote / freeze。  
 工厂 mutation/template 仍可生成 draft 候选，人审后写入 `cases/` 或 workspace pack bump。

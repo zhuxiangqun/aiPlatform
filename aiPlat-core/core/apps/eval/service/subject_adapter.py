@@ -16,7 +16,11 @@ from core.apps.eval.service.capability_id_map import (
     V1_OUT_OF_SCOPE,
     resolve_capability_ids,
 )
+from core.apps.eval.service.long_context_fixture_schema import (
+    validate_case_long_context_fields,
+)
 from core.apps.eval.service.object_adapters import build_contract_for_object_type
+from core.apps.eval.service.session_case_schema import validate_session_case_fields
 from core.apps.eval.service.test_purpose import validate_test_purpose
 
 ADAPTER_SCHEMA = "eval.subject_adapter.v1"
@@ -117,6 +121,9 @@ class AgentSubjectAdapter:
                 capabilities=caps,
             )
         )
+        # T0 contracts: session + long-context fields when present / required.
+        errors.extend(validate_session_case_fields(case))
+        errors.extend(validate_case_long_context_fields(case))
         return errors
 
     def execute(

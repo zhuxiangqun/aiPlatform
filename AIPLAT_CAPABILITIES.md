@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3042
+total_capabilities: 3048
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -615,6 +615,11 @@ scan_hash: 8f9548ec24f4
 | resolve_capability_id | `core/apps/eval/service/capability_id_map.py` | ✅ | Capability ID Map v1 legacy→canonical；生成物适用：已接线（MatchReport 能力比对） | 已合入 |
 | resolve_capability_ids | `core/apps/eval/service/capability_id_map.py` | ✅ | 批量 resolve + dedupe；生成物适用：已接线 | 已合入 |
 | validate_test_purpose | `core/apps/eval/service/test_purpose.py` | ✅ | EvalCase.test_purpose schema v1 机械校验；生成物适用：已接线（AgentSubjectAdapter.validate_case） | 已合入 |
+| validate_mock_tool_catalog / load_mock_tool_catalog | `core/apps/eval/service/mock_tools/` | ✅ | T0 Mock tool 目录契约；生成物适用：已接线（bank validate + facade） | 已合入 |
+| validate_session_case_fields | `core/apps/eval/service/session_case_schema.py` | ✅ | T0 Session 卷字段；生成物适用：已接线（AgentSubjectAdapter.validate_case） | 已合入 |
+| validate_long_context_fixture | `core/apps/eval/service/long_context_fixture_schema.py` | ✅ | T0 长上下文 fixture；生成物适用：已接线（validate_case） | 已合入 |
+| tool_eval_runtime_map / evaluate_t0_inscope_contracts | `tool_eval_runtime_map.py` / `inscope_contracts_t0.py` | ✅ | mock≠live runtime 映射 + T0 样例门；生成物适用：已接线 | 已合入 |
+| eval_evaluate_t0_inscope_contracts / eval_load_mock_tool_catalog | `core/api/core_facade.py` | ✅ | CoreFacade T0 入口；生成物适用：已接线 | 已合入 |
 | get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考实现）；生成物适用：已接线 | 已合入 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
@@ -3942,7 +3947,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 485 | 1 | 486 |
+| Harness 执行引擎 | 490 | 1 | 491 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -3955,7 +3960,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 375 | 0 | 375 |
+| 评估系统 | 376 | 0 | 376 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3987,7 +3992,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3032** | **10** | **3042** |
+| **总计** | **3038** | **10** | **3048** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

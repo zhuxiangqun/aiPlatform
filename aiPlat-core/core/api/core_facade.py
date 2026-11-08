@@ -6322,6 +6322,20 @@ def eval_validate_test_purpose(
     return {"ok": not errors, "errors": errors, "schema": "eval.case_test_purpose.v1"}
 
 
+def eval_evaluate_t0_inscope_contracts() -> Dict[str, Any]:
+    """T0: validate mock-tool/session/long-context fixtures + runtime map (no execute)."""
+    from core.apps.eval.service.inscope_contracts_t0 import evaluate_t0_inscope_contracts
+
+    return evaluate_t0_inscope_contracts()
+
+
+def eval_load_mock_tool_catalog() -> Dict[str, Any]:
+    """Load + validate default mock tool catalog seed (T0)."""
+    from core.apps.eval.service.mock_tools import load_mock_tool_catalog
+
+    return load_mock_tool_catalog()
+
+
 def eval_agent_capability_catalog() -> list:
     """Agent SubjectAdapter capability catalog (canonical + v1 in_scope flags)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
