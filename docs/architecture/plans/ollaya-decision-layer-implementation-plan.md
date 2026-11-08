@@ -2,9 +2,9 @@
 
 > **类型**：实施方案（设计 + 工作拆解 + 准入门槛；**本版不改程序**）  
 > **版本**：v1.0 · 2026-11-07  
-> **状态**：待立项评审 · **≠ 试点批准 · ≠ 性能承诺 · ≠ 已实现**  
+> **状态**：阶段 0 工程齐 · **有条件豁免：默关骨架可合入** · **≠ 开采样影子 · ≠ 1b 替换 · ≠ 性能承诺**  
 > **依据**：[ollaya-decision-layer-fit-analysis.md](./ollaya-decision-layer-fit-analysis.md) **v1.3**（下称「分析报告」）  
-> **原则**：先证据、后影子、再评估替换；影子异步有界不阻塞；PolicyGate 唯一权限点不变。
+> **原则**：先证据、后影子流量、再评估替换；默关骨架允许预埋；影子异步有界不阻塞；PolicyGate 唯一权限点不变。
 
 ---
 
@@ -173,10 +173,11 @@
 
 | 结论 | 条件（示例，立项会可改数字） |
 |------|------------------------------|
-| **Go 阶段 1** | 观测窗内 T3 命中 ≥ N 次（或占比 ≥ p%），且基线报告完整、§5/§6 方案已批。**建议默认**（证据包 §0.7，立项会可改）：`t3_hits ≥ 100` 或（`t3_llm_pct ≥ 5%` 且 `total ≥ 500`） |
-| **有条件 Go** | T3 很少但 T2 边界带样本足，且约定影子只打「T2 低置信/边界」样本。**建议默认**：`t2_boundary_hits ≥ 100` |
-| **No-Go** | 几乎无 T3/无边界样本；或无法做脱敏审计；或无人维护决策服务 |
-| **意图 LLM 叙事** | 若 0.5 证实无生产 caller → 文档与宣讲**禁止**「省 LLM fallback」 |
+| **Go 阶段 1 采样影子** | 观测窗内 T3 命中 ≥ N 次（或占比 ≥ p%），且基线报告完整、§5/§6 / 0.6 会签通过。**建议默认**（证据包 §0.7）：`t3_hits ≥ 100` 或（`t3_llm_pct ≥ 5%` 且 `total ≥ 500`）——卡的是**开采样 + 挂 classify 钩子**，不是默关骨架入库 |
+| **有条件 Go（流量）** | T3 很少但 T2 边界带样本足，且约定影子只打「T2 低置信/边界」样本。**建议默认**：`t2_boundary_hits ≥ 100` |
+| **有条件豁免（骨架）** | **已启用（2026-11-08）**：允许合入 `decision_shadow/` **默关**包 + 诊断 status；**禁止**默认 `enabled=true`；**禁止**在未另批前挂 `DomainRouter.classify` 钩子 / 开采样流量 |
+| **No-Go（替换/开流）** | 几乎无 T3/无边界样本；或无法做脱敏审计；或无人维护决策服务 → 不得开采样、不得进 1b |
+| **意图 LLM 叙事** | 若 0.5 证实无生产 caller → 文档与宣讲**禁止**「省 LLM fallback」；骨架 ≠ 省 token |
 
 ### 4.6 阶段 0 交付物清单
 
@@ -185,7 +186,9 @@
 - [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表见证据包 §0.6（**未签字**）；§0.6.1 仅工程自评草稿（≠会签、≠授权编码）  
 - [ ] Go/No-Go 书面结论 — 建议默认阈值见证据包 §0.7  
 
-**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`；`scripts/collect_domain_router_route_stats.py`。**仍禁止**未 Go 合并影子。
+**阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`；`scripts/collect_domain_router_route_stats.py`。
+
+**有条件豁免 · 默关骨架（2026-11-08）**：`core/harness/decision_shadow/`（config/dispatcher/client/audit）；`CoreFacade.decision_shadow_status`；`GET /diagnostics/decision-shadow/status`；`classify_hook_wired=false`。**仍禁止**未另批即开采样 / 挂 classify / 进 1b。骨架 ≠ 已集成 Ollaya 流量 ≠ 省 token。
 
 **阶段 0 明确不交付**：影子延迟数字、Ollaya 准确率、线上替换。
 
@@ -410,17 +413,18 @@
 | 审计隐私 §5.2 | §6 |
 | 阶段 1b | §7 |
 
-## 附录 B — 建议新建文件清单（实现期，本版不创建）
+## 附录 B — 文件清单
 
-| 路径（建议） | 用途 |
-|--------------|------|
-| `core/harness/decision_shadow/__init__.py` | 包 |
-| `.../dispatcher.py` | 有界队列与丢弃 |
-| `.../client.py` | DecisionClient |
-| `.../audit.py` | 脱敏与 sink |
-| `.../config.py` | 配置加载 |
-| `docs/.../ollaya-domainrouter-baseline-template.md` | 阶段 0 报告模板 |
-| 测试：`test_decision_shadow_*.py` | C1–C3 |
+| 路径 | 用途 | 状态 |
+|------|------|------|
+| `core/harness/decision_shadow/__init__.py` | 包 | ✅ 默关骨架 |
+| `.../dispatcher.py` | 有界队列与丢弃 | ✅ |
+| `.../client.py` | DecisionClient（skeleton_no_http） | ✅ |
+| `.../audit.py` | 脱敏白名单 | ✅ |
+| `.../config.py` | 配置加载（默认 off） | ✅ |
+| `GET /diagnostics/decision-shadow/status` | 运维只读 | ✅ |
+| 测试：`test_decision_shadow_skeleton.py` | 默关 / 无 hook / 脱敏 | ✅ |
+| DomainRouter.classify 钩子 | 采样投递 | ❌ 未挂（另批） |
 
 ## 附录 C — 阶段 0 基线报告模板（提纲）
 
@@ -437,7 +441,8 @@
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1.0 | 2026-11-07 | 首版；依据分析报告 v1.3；明确暂不改程序 |
+| v1.1 | 2026-11-08 | 有条件豁免默关骨架；开采样/挂钩子仍须窗口+会签 |
 
 ---
 
-*下一步：组织 M0 评审。通过后先做阶段 0 埋点/采数（届时才改程序）；阶段 1 编码须另开变更单并默认关闭影子开关。*
+*下一步：staging/prod 采数 + 0.6 正式会签后，另批「挂 classify 钩子 + 开采样」；1b 替换仍另案。*

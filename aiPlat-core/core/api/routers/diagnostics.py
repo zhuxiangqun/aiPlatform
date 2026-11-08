@@ -2509,6 +2509,63 @@ async def get_domain_router_route_stats():
         }
 
 
+@router.get("/diagnostics/decision-shadow/status", response_model=Dict[str, Any])
+async def get_decision_shadow_status():
+    """Ollaya Phase 1 skeleton: muted decision-shadow status (default off).
+
+    Does not prove live Ollaya traffic or DomainRouter hook wiring.
+    classify_hook_wired must stay false until a written Go enables the hook.
+    """
+    try:
+        from core.api.core_facade import decision_shadow_status
+
+        snap = dict(decision_shadow_status() or {})
+        snap["ok"] = True
+        snap["endpoint"] = "/diagnostics/decision-shadow/status"
+        return snap
+    except Exception as e:
+        _log.warning("decision_shadow status failed: %s", e, exc_info=True)
+        return {
+            "ok": False,
+            "enabled": False,
+            "error": str(e)[:200],
+            "classify_hook_wired": False,
+            "honesty": "status failed; ≠ live shadow; ≠ token savings",
+        }
+
+
+@router.post("/diagnostics/decision-shadow/try-enqueue", response_model=Dict[str, Any])
+async def post_decision_shadow_try_enqueue(body: Dict[str, Any] = None):
+    """Ops probe for ShadowDispatcher.try_enqueue (still honors enabled=false).
+
+    Not a DomainRouter hook. Default config drops with reason=disabled.
+    """
+    try:
+        from core.api.core_facade import decision_shadow_status, decision_shadow_try_enqueue
+
+        payload = dict(body or {})
+        accepted = decision_shadow_try_enqueue(payload)
+        snap = dict(decision_shadow_status() or {})
+        return {
+            "ok": True,
+            "accepted": bool(accepted),
+            "endpoint": "/diagnostics/decision-shadow/try-enqueue",
+            "status": snap,
+            "honesty": (
+                "probe only; ≠ classify hook; default drops when disabled; "
+                "≠ token savings"
+            ),
+        }
+    except Exception as e:
+        _log.warning("decision_shadow try-enqueue failed: %s", e, exc_info=True)
+        return {
+            "ok": False,
+            "accepted": False,
+            "error": str(e)[:200],
+            "honesty": "probe failed; ≠ live shadow",
+        }
+
+
 # ── Phase 14: Model tier status + cost + health dashboard ──
 
 @router.get("/diagnostics/model-tier", response_model=Dict[str, Any])

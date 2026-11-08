@@ -1,8 +1,8 @@
 # Ollaya 决策层 · 阶段 0 证据包（进行中）
 
-> **状态**：工程可采数已接线 · **≠ 阶段 0 完成 · ≠ Go 阶段 1 · ≠ 已立项 · ≠ 影子已开**  
-> **依据**：[ollaya-decision-layer-implementation-plan.md](./ollaya-decision-layer-implementation-plan.md) §4  
-> **日期**：2026-11-08（续 · #614 合入 + §0.6.1 工程自评草稿）
+> **状态**：工程可采数已接线 · 默关 `decision_shadow` 骨架已预埋 · **≠ 开采样影子 · ≠ 挂 classify · ≠ 1b 替换 · ≠ 省 token**  
+> **依据**：[ollaya-decision-layer-implementation-plan.md](./ollaya-decision-layer-implementation-plan.md) §4 / §0.7 有条件豁免  
+> **日期**：2026-11-08（续 · 默关骨架有条件豁免）
 
 ## 0.1 观测窗口与环境说明（模板 · 待负责人填实）
 
@@ -119,21 +119,25 @@ rg -n 'classify_with_llm\(' --glob '*.py'
 
 | 结论 | 建议默认条件（可改） |
 |------|----------------------|
-| **Go 阶段 1** | 0.1 填实；0.3/0.4 表有真实窗口；0.6 C1–C8 会签通过；且窗口内 **`t3_hits ≥ 100`** **或** **`t3_llm_pct ≥ 5%` 且 total ≥ 500** |
-| **有条件 Go** | T3 未达标，但 **`t2_boundary_hits ≥ 100`**，且书面约定影子 trigger 仅 `t2_boundary`（或等价） |
-| **No-Go** | T3 与 boundary 均远低于阈值；或 C5/C7/C8 任一驳回；或无人维护决策服务 |
-| **意图叙事** | 维持 0.5：禁止「省线上意图 LLM fallback」 |
+| **Go 采样影子** | 0.1 填实；0.3/0.4 真实窗口；0.6 C1–C8 会签；且 **`t3_hits ≥ 100`** 或（`t3_llm_pct ≥ 5%` 且 total ≥ 500）——卡挂钩子/开采样 |
+| **有条件 Go（流量）** | T3 未达标但 **`t2_boundary_hits ≥ 100`**，且约定 trigger 仅 `t2_boundary` |
+| **有条件豁免（骨架）** | ✅ 已启用：默关包可合入；禁止默认开、禁止未批挂 classify |
+| **No-Go（开流/1b）** | T3 与 boundary 均远低于阈值；或 C5/C7/C8 驳回；或无人维护决策服务 |
+| **意图叙事** | 维持 0.5：禁止「省线上意图 LLM fallback」；骨架 ≠ 省 token |
 
-**当前书面结论**：❌ 未开 Go（本机 smoke `total=10`/`t3_hits=7` 远低于 0.7 阈值，且 T3 延迟不可信；缺 staging/prod 窗口与 0.6 会签）。
+**当前书面结论**：
+- ✅ **有条件豁免（骨架）**：默关 `decision_shadow/` 可合入（`enabled=false`，`classify_hook_wired=false`）。
+- ❌ **未开采样 Go**（本机 smoke `total=10`/`t3_hits=7` 远低于 0.7；缺 staging/prod 窗口与 0.6 正式会签）→ 不得挂 `classify`、不得开采样流量、不得进 1b。
 
 ## 明确不交付
 
-影子延迟、Ollaya 准确率、线上替换、`decision_shadow` 包。
+影子延迟认证、Ollaya 准确率、线上 T3 替换、默认开启的采样影子。
 
 ## 下一步
 
 1. ✅ 本机 core 已重启；collector 冒烟 + classify 流量行已写入 0.3/0.4 + JSONL。  
 2. ✅ §0.6.1 工程自评草稿已备（≠ 会签）。  
-3. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
-4. 召开 0.6 正式评审（填上方勾选 + C7/C8 签字）→ 按 0.7 出书面 Go/No-Go。  
-5. **仅 Go 后** 才允许实现阶段 1 影子。
+3. ✅ 默关 `decision_shadow` 骨架 + `GET /diagnostics/decision-shadow/status`。  
+4. staging/prod 部署后跑 collector 填真实窗口；负责人补全 0.1。  
+5. 召开 0.6 正式评审 → 书面批准后另批「挂 classify 钩子 + 开采样」。  
+6. **仅采样 Go 后** 才允许影子流量；**仅 1b 另案** 才谈替换 T3 / 省 token。

@@ -382,6 +382,20 @@ def domain_router_route_stats() -> Dict[str, Any]:
     return dict(_get().route_stats() or {})
 
 
+def decision_shadow_status() -> Dict[str, Any]:
+    """Muted decision-shadow skeleton status (default off; classify not hooked)."""
+    from core.harness.decision_shadow import get_shadow_dispatcher
+
+    return dict(get_shadow_dispatcher().status() or {})
+
+
+def decision_shadow_try_enqueue(payload: Dict[str, Any]) -> bool:
+    """Non-blocking enqueue probe (honors enabled=false; no classify hook)."""
+    from core.harness.decision_shadow import get_shadow_dispatcher
+
+    return bool(get_shadow_dispatcher().try_enqueue(dict(payload or {})))
+
+
 def get_skill_registry() -> Any:
     """Get SkillRegistry for skill discovery and management."""
     from core.harness.integration import get_skill_registry

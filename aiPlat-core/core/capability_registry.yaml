@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1950
+total_capabilities: 1957
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -2628,7 +2628,7 @@ domains:
   knowledge-engine-ontology:
     section: "三"
     section_name: "知识引擎（本体）"
-    caps_count: 242
+    caps_count: 249
     provides:
       - symbol: "to_ontology_api_v0"
         type: "function"
@@ -2743,6 +2743,34 @@ domains:
         module: core/api/routers/diagnostics.py
         type: endpoint
         signature: "GET /diagnostics/domain-router/route-stats → process route_stats via CoreFacade"
+      - symbol: "ShadowDispatcher"
+        module: core/harness/decision_shadow/dispatcher.py
+        type: class
+        signature: "try_enqueue/status; default enabled=false; classify NOT hooked (Ollaya Phase1 skeleton)"
+      - symbol: "get_shadow_dispatcher"
+        module: core/harness/decision_shadow/dispatcher.py
+        type: function
+        signature: "get_shadow_dispatcher()→ShadowDispatcher process singleton"
+      - symbol: "load_decision_shadow_config"
+        module: core/harness/decision_shadow/config.py
+        type: function
+        signature: "load_decision_shadow_config()→DecisionShadowConfig (env/YAML; default off)"
+      - symbol: "decision_shadow_status"
+        module: core/api/core_facade.py
+        type: function
+        signature: "decision_shadow_status()→Dict muted skeleton status"
+      - symbol: "decision_shadow_try_enqueue"
+        module: core/api/core_facade.py
+        type: function
+        signature: "decision_shadow_try_enqueue(payload)→bool (honors enabled=false; ≠ classify hook)"
+      - symbol: "get_decision_shadow_status"
+        module: core/api/routers/diagnostics.py
+        type: endpoint
+        signature: "GET /diagnostics/decision-shadow/status → muted skeleton via CoreFacade"
+      - symbol: "post_decision_shadow_try_enqueue"
+        module: core/api/routers/diagnostics.py
+        type: endpoint
+        signature: "POST /diagnostics/decision-shadow/try-enqueue → probe try_enqueue via CoreFacade"
       - symbol: "EntityExtractor"
         module: core/harness/knowledge_pipeline/extractor.py
         type: class

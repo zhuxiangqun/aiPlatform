@@ -1,0 +1,7 @@
+layer: core
+rationale: |
+  Harness 子模块目录（decision_shadow）。符合 boundary-standard.md §3.1——Harness 是
+  AI Runtime Kernel，本目录为 Ollaya typed-decision 旁路骨架（默认 enabled=false，
+  无 DomainRouter.classify 钩子）。平台经 CoreFacade 访问；≠ 在线决策流量 / ≠ 省 token。
+known_debt:
+  - "Phase 1b: DomainRouter.classify hook + sample traffic still require written Go"
