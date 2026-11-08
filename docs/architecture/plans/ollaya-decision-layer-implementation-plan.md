@@ -182,7 +182,7 @@
 
 - [ ] 《DomainRouter 现网基线报告》（含环境、窗口、表格、图表）— 模板+进程级 `route_stats` 已就绪，**缺现网填数**；见 [`ollaya-phase0-baseline-evidence.md`](./ollaya-phase0-baseline-evidence.md)  
 - [x] 《意图 classify_with_llm 调用链结论》— 同上证据包 §0.5  
-- [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表见证据包 §0.6（**未签字**）  
+- [ ] 《阶段 1 工程与审计设计评审通过》纪要 — 检查表见证据包 §0.6（**未签字**）；§0.6.1 仅工程自评草稿（≠会签、≠授权编码）  
 - [ ] Go/No-Go 书面结论 — 建议默认阈值见证据包 §0.7  
 
 **阶段 0 工程增量（2026-11-08）**：`DomainRouter` 进程共享命中计数 + T3 延迟 p50/p95；`get_domain_router` / `CoreFacade.domain_router_route_stats`；`t2_boundary_hits` / `t2_reject_hits`；`GET /diagnostics/domain-router/route-stats`；`scripts/collect_domain_router_route_stats.py`。**仍禁止**未 Go 合并影子。
