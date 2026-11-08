@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2087
+total_capabilities: 2088
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,8 +6788,12 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 151
+    caps_count: 152
     provides:
+      - symbol: SuiteProfileCompileError
+        type: class
+        signature: 'Profile compile fail-closed.'
+        module: aiPlat-core/core/apps/eval/service/suite_profile_compile.py
       - symbol: "resolve_capability_id"
         type: "function"
         signature: "resolve_capability_id(capability_id,fail_closed=True)→str"
