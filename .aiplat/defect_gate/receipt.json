@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T18:17:26+08:00",
+  "reviewed_at": "2026-11-08T18:22:25+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "f599c31e30e8d649c802530c467269351611d971fcae40ed5025a355fbc4e0d1",
-  "head_sha": "7c2d23adf85e4647b07366bf39c5c76df02bb918",
+  "diff_sha256": "c8cf7d2fe1edf0a49cdcab5720ecc4200a55f27cdefb6c6ecd3ee436f253de27",
+  "head_sha": "01cd7e1bd7d6c90dd3443ccffdf993bbfc26e408",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1.2 freeze: reviewed\u2192kind=frozen rehash; payload immutable; claim_eligible forced false. contracts-guard 504 flake ignored. Residual: no HTTP/UI; version++ evolution path not automated."
+  "note": "P1.3 HTTP: /evaluation/case-packs/* thin over CoreFacade + named workspace. Honesty locks unchanged. Residual: no management UI panel yet."
 }
