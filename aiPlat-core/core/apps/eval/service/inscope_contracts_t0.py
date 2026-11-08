@@ -27,7 +27,7 @@ CONTRACTS_SCHEMA = "eval.agent.inscope_contracts.t0"
 def evaluate_t0_inscope_contracts(
     *, seed_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
-    """Validate T0 sample fixtures + runtime map. Does not change V1_IN_SCOPE."""
+    """Validate T0 sample fixtures + runtime map (read-only; does not mutate frozensets)."""
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     checks: List[Dict[str, Any]] = []
     blockers: List[str] = []

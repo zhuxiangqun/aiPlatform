@@ -143,6 +143,29 @@ class AgentSubjectAdapter:
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
         tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
+        text_caps = {"long_context", "multi_turn_memory"} & set(caps)
+        env_map = dict(env or {})
+        answer = str(
+            env_map.get("answer")
+            or env_map.get("scripted_answer")
+            or case.get("scripted_answer")
+            or ""
+        )
+
+        if text_caps and not tool_caps:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "ok",
+                "subject_kind": self.subject_kind,
+                "tool_backend": "none",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "runtime_claim_reason": "scripted_text_fixture",
+                "ok": True,
+                "answer": answer,
+                "scripted_answer": answer,
+            }
+
         if not tool_caps:
             return {
                 "schema": ADAPTER_SCHEMA,
@@ -151,7 +174,6 @@ class AgentSubjectAdapter:
                 "reason": "agent_execute_deferred_non_tool",
             }
 
-        env_map = dict(env or {})
         try:
             calls = resolve_scripted_tool_calls(case, env_map)
             harness = invoke_mock_tools(
@@ -179,12 +201,6 @@ class AgentSubjectAdapter:
         tier_errs = validate_tool_backend_runtime(
             tool_backend="mock", runtime_tier="fixture"
         )
-        answer = str(
-            env_map.get("answer")
-            or env_map.get("scripted_answer")
-            or case.get("scripted_answer")
-            or ""
-        )
         return {
             "schema": ADAPTER_SCHEMA,
             "status": "ok" if harness.get("ok") and not claim_errs and not tier_errs else "error",
@@ -204,25 +220,50 @@ class AgentSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        from core.apps.eval.service.long_context_generator import judge_long_context
         from core.apps.eval.service.tool_trace_judge import judge_tool_trace
 
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
         tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
-        if not tool_caps:
+        res = result if isinstance(result, Mapping) else {}
+        if "long_context" in caps:
+            judgment = judge_long_context(case, res)
             return {
                 "schema": ADAPTER_SCHEMA,
-                "status": "not_implemented",
+                "status": "ok",
                 "subject_kind": self.subject_kind,
-                "reason": "agent_judge_deferred_non_tool",
+                "passed": bool(judgment.get("passed")),
+                "errors": list(judgment.get("errors") or []),
+                "judgments": {"long_context": judgment},
+                "tool_backend": str(res.get("tool_backend") or "none"),
             }
-        judgment = judge_tool_trace(case, result if isinstance(result, Mapping) else {})
+        if tool_caps:
+            judgment = judge_tool_trace(case, res)
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": judgment.get("status") or "ok",
+                "subject_kind": self.subject_kind,
+                **judgment,
+            }
+        if "multi_turn_memory" in caps:
+            # Group-level judging is session_runner; single-turn scripted smoke.
+            answer = str(res.get("answer") or res.get("scripted_answer") or "")
+            ok = bool(answer.strip())
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "ok",
+                "subject_kind": self.subject_kind,
+                "passed": ok,
+                "errors": [] if ok else ["missing_answer"],
+                "tool_backend": "none",
+            }
         return {
             "schema": ADAPTER_SCHEMA,
-            "status": judgment.get("status") or "ok",
+            "status": "not_implemented",
             "subject_kind": self.subject_kind,
-            **judgment,
+            "reason": "agent_judge_deferred_non_tool",
         }
 
     def normalize(
@@ -231,11 +272,19 @@ class AgentSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        from core.apps.eval.service.capability_id_map import is_v1_in_scope
+
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
-        tool_caps = {"tool_selection", "tool_args", "tool_result_use"} & set(caps)
-        if not tool_caps:
+        handled = {
+            "tool_selection",
+            "tool_args",
+            "tool_result_use",
+            "long_context",
+            "multi_turn_memory",
+        } & set(caps)
+        if not handled:
             return {
                 "schema": ADAPTER_SCHEMA,
                 "status": "not_implemented",
@@ -251,12 +300,12 @@ class AgentSubjectAdapter:
             "tool_backend": str(
                 (result or {}).get("tool_backend")
                 or judgment.get("tool_backend")
-                or "mock"
+                or "none"
             ),
             "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
             "claim_eligible": False,
             "certification_eligible": False,
-            "v1_in_scope": False,
+            "v1_in_scope": all(is_v1_in_scope(c) for c in caps) if caps else False,
             "capabilities": caps,
         }
 

@@ -26,17 +26,28 @@ def test_analyze_regression_quotas_no_gap():
     assert report["covered_capabilities"] == report["total_in_scope"]
 
 
-def test_analyze_benchmark_min8_no_gap():
+def test_analyze_benchmark_min8_legacy_full_v11_floor_gaps():
+    """Legacy 8 caps meet ≥8; A3–A5/A8/A9 stay at fixture floor (5–6) → gaps."""
     report = analyze_capability_coverage(min_per_capability=8)
-    assert report["n_gaps"] == 0
+    assert report["n_gaps"] == 5
+    assert report["covered_capabilities"] == 8
+    assert report["total_in_scope"] == 13
+    gap_ids = {g["capability_id"] for g in report["gaps"] if not g.get("ok")}
+    assert gap_ids == {
+        "tool_selection",
+        "tool_args",
+        "tool_result_use",
+        "multi_turn_memory",
+        "long_context",
+    }
     for g in report["gaps"]:
         assert g["need"] == 8
-        assert g["have"] >= 8
-        assert g["gap"] == 0
 
 
 def _one_per_in_scope_bank():
     """One seed per in-scope capability so mutation fill has parents + gaps."""
+    from core.apps.eval.service.capability_id_map import V1_IN_SCOPE
+
     seen = set()
     out = []
     for c in build_agent_capability_cases():
@@ -45,7 +56,7 @@ def _one_per_in_scope_bank():
             continue
         seen.add(cap)
         out.append(c)
-        if len(out) >= 8:
+        if len(out) >= len(V1_IN_SCOPE):
             break
     return out
 
@@ -65,9 +76,9 @@ def test_generate_mutation_candidates_for_thin_bank():
 
 
 def test_fill_dry_full_bank_noop_candidates():
+    # Default = regression Profile quotas (v1.1); bank meets them → no fill.
     out = fill_capability_coverage(
         workspace_id="ws-fill",
-        min_per_capability=8,
         apply=False,
     )
     assert out["applied"] is False

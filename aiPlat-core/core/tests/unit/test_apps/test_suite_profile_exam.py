@@ -22,16 +22,16 @@ async def test_run_smoke_profile_dry_executes_manifest_only():
     assert out["ok"] is True
     assert out["claim_eligible"] is False
     assert out["accuracy_claim"] is False
-    assert out["manifest_case_count"] == 8
-    assert out["executed_case_count"] == 8
-    assert out["counts"]["tasks"] == 8
+    assert out["manifest_case_count"] == 13  # v1.1: 1× per in-scope capability
+    assert out["executed_case_count"] == 13
+    assert out["counts"]["tasks"] == 13
     # dry stub should pass most lexical must_contain by construction
     assert out["counts"]["pass"] + out["counts"]["fail"] + out["counts"]["inconclusive"] + out[
         "counts"
-    ]["error"] == 8
+    ]["error"] == 13
     plan = out.get("evaluation_plan") or {}
     assert plan.get("sample_manifest")
-    assert len(out["cases"]) == 8
+    assert len(out["cases"]) == 13
 
 
 @pytest.mark.asyncio

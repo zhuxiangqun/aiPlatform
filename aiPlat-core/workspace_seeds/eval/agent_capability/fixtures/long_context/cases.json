@@ -1,0 +1,386 @@
+[
+  {
+    "case_id": "agent.long_context.t3.001",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. 合同编号 CN-2026-1108\n2. 交付窗口为 14 个工作日\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 200,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 112
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 48
+        }
+      ],
+      "must_retain_claims": [
+        "合同编号 CN-2026-1108",
+        "交付窗口为 14 个工作日"
+      ],
+      "tier": "ci_short"
+    },
+    "scripted_answer": "关键事实：合同编号 CN-2026-1108；交付窗口为 14 个工作日",
+    "expect_judge_fail": false,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 合同编号 CN-2026-1108",
+        "保留 交付窗口为 14 个工作日"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "合同编号 CN-2026-1108",
+        "交付窗口为 14 个工作日"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.long_context.t3.002",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. 客户代号 NEBULA\n2. 预算上限 80 万\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 200,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 112
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 48
+        }
+      ],
+      "must_retain_claims": [
+        "客户代号 NEBULA",
+        "预算上限 80 万"
+      ],
+      "tier": "ci_short"
+    },
+    "scripted_answer": "关键事实：客户代号 NEBULA；预算上限 80 万",
+    "expect_judge_fail": false,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 客户代号 NEBULA",
+        "保留 预算上限 80 万"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "客户代号 NEBULA",
+        "预算上限 80 万"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.long_context.t3.003",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. 负责人张三\n2. 上线日 2026-12-01\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 400,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 251
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 108
+        }
+      ],
+      "must_retain_claims": [
+        "负责人张三",
+        "上线日 2026-12-01"
+      ],
+      "tier": "smoke"
+    },
+    "scripted_answer": "关键事实：负责人张三；上线日 2026-12-01",
+    "expect_judge_fail": false,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 负责人张三",
+        "保留 上线日 2026-12-01"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "负责人张三",
+        "上线日 2026-12-01"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.long_context.t3.004",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. 密钥轮换周期 90 天\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 200,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 112
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 48
+        }
+      ],
+      "must_retain_claims": [
+        "密钥轮换周期 90 天"
+      ],
+      "tier": "ci_short"
+    },
+    "scripted_answer": "关键事实：密钥轮换周期 90 天",
+    "expect_judge_fail": false,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 密钥轮换周期 90 天"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "密钥轮换周期 90 天"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.long_context.t3.005",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. SLA 目标 99.9%\n2. 区域 cn-east\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 800,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 532
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 228
+        }
+      ],
+      "must_retain_claims": [
+        "SLA 目标 99.9%",
+        "区域 cn-east"
+      ],
+      "tier": "regression"
+    },
+    "scripted_answer": "关键事实：SLA 目标 99.9%；区域 cn-east",
+    "expect_judge_fail": false,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 SLA 目标 99.9%",
+        "保留 区域 cn-east"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "SLA 目标 99.9%",
+        "区域 cn-east"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.long_context.t3.006.neg",
+    "capabilities": [
+      "long_context"
+    ],
+    "prompt": "【关键事实】\n1. 必须保留的标记 KEEP-ME\n\n【填充 filler_main】\n[filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 [filler_main filler] 无关叙述。 \n【干扰 distractor_main】\n[distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 [distractor_main filler] 无关叙述。 \n\n【问题】请列出上文中需要保留的关键事实。",
+    "long_context_fixture": {
+      "schema": "eval.long_context_fixture.v1",
+      "context_tokens_est": 200,
+      "noise_slots": [
+        {
+          "slot_id": "filler_main",
+          "kind": "filler",
+          "approx_tokens": 112
+        },
+        {
+          "slot_id": "distractor_main",
+          "kind": "distractor",
+          "approx_tokens": 48
+        }
+      ],
+      "must_retain_claims": [
+        "必须保留的标记 KEEP-ME"
+      ],
+      "tier": "ci_short"
+    },
+    "scripted_answer": "无关闲聊，没有要点。",
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "验证长上下文噪声后仍保留关键事实",
+      "why_this_case": "A9 retention",
+      "expected_behavior": [
+        "保留 必须保留的标记 KEEP-ME"
+      ],
+      "failure_signals": [
+        "遗漏关键 claim",
+        "采信冲突干扰"
+      ],
+      "not_testing": [
+        "不测真实百万 token 窗",
+        "不宣称 Certification"
+      ],
+      "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft",
+      "notes": "T3 fixture"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "generator": "eval.long_context_generator.v1",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "必须保留的标记 KEEP-ME"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  }
+]

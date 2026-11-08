@@ -15,7 +15,7 @@ def test_heatmap_lists_in_scope_and_unknown():
     heat = build_capability_heatmap(profile_id="agent.regression.v1")
     assert heat["ok"] is True
     assert heat["claim_eligible"] is False
-    assert len(heat["rows"]) == 8
+    assert len(heat["rows"]) == 13  # v1.1 measurable subset
     assert heat["n_gaps"] == 0
     unknown_ids = {u["capability_id"] for u in heat["unknown_capabilities"]}
     assert unknown_ids == set(V1_OUT_OF_SCOPE)
@@ -33,9 +33,9 @@ async def test_exam_embeds_report_with_disclosure():
     assert disc.get("claim_eligible") is False
     assert disc.get("accuracy_claim") is False
     heat = report.get("heatmap") or {}
-    assert len(heat.get("rows") or []) == 8
-    # smoke selected 1 per capability
-    assert sum(int(r.get("selected") or 0) for r in heat["rows"]) == 8
+    assert len(heat.get("rows") or []) == 13
+    # smoke selected ≥1 per in-scope capability (session groups may add turns)
+    assert sum(int(r.get("selected") or 0) for r in heat["rows"]) >= 13
 
 
 def test_build_report_from_exam_dict():

@@ -22,9 +22,10 @@ def test_select_cases_meets_exact_quotas():
     cases = build_agent_capability_cases()
     profile = agent_regression_profile()
     selected, meta = select_cases_for_profile(cases, profile)
-    assert meta["taken"] == 32
+    # v1.1 regression quotas sum (legacy + A3–A5/A8/A9 floors)
+    assert meta["taken"] == 57
     assert meta["degraded"] is False
-    assert len(selected) == 32
+    assert len(selected) == 57
     for row in meta["quota_trace"]:
         assert row["taken"] == row["quota"]
 
@@ -37,7 +38,7 @@ def test_compile_plan_writes_sample_manifest_and_closes_claim():
     assert plan["claim_eligible"] is False
     assert plan["accuracy_claim"] is False
     manifest = plan["sample_manifest"]
-    assert len(manifest) == 32
+    assert len(manifest) == 57
     assert plan["manifest_hash"].startswith("sha256:")
     assert plan["plan_id"].startswith("plan-")
     ids = [m["case_id"] for m in manifest]
@@ -72,7 +73,7 @@ def test_promote_agent_capability_bank_freezes(tmp_path, monkeypatch):
     assert out["version"] == PACK_VERSION
     assert out["kind"] == "frozen"
     assert out["status"] == "active"
-    assert out["n_cases"] == 64
+    assert out["n_cases"] >= 64
     assert out["claim_eligible"] is False
     assert out["accuracy_claim"] is False
 

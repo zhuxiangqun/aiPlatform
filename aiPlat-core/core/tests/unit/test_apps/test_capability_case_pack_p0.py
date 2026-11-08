@@ -40,7 +40,7 @@ def test_resolve_ids_dedupe():
 def test_v1_in_scope_flags():
     assert is_v1_in_scope("clarification") is True
     assert is_v1_in_scope("clarify_or_ask") is True
-    assert is_v1_in_scope("tool_selection") is False
+    assert is_v1_in_scope("tool_selection") is True
 
 
 def test_match_alias_legacy_contract_vs_canonical_need():
@@ -110,7 +110,7 @@ def test_agent_adapter_catalog_and_validate():
     catalog = adapter.capability_catalog()
     assert any(r["capability_id"] == "clarification" and r["in_scope"] for r in catalog)
     assert any(
-        r["capability_id"] == "tool_selection" and r["v1_unknown"] for r in catalog
+        r["capability_id"] == "tool_selection" and not r["v1_unknown"] for r in catalog
     )
     ok_case = {
         "case_id": "agent.clarification.001",

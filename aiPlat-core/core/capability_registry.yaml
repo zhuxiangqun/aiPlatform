@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2173
+total_capabilities: 2178
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6788,7 +6788,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 237
+    caps_count: 242
     provides:
       - symbol: list_seed_capability_cases
         type: function
@@ -7065,6 +7065,26 @@ domains:
       - symbol: eval_run_session_fixture_suite
         type: function
         signature: "eval_run_session_fixture_suite()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: build_long_context_fixture
+        type: function
+        signature: "build_long_context_fixture(must_retain_claims,tier?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/long_context_generator.py
+      - symbol: generate_long_context_case
+        type: function
+        signature: "generate_long_context_case(case_id,must_retain_claims,tier?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/long_context_generator.py
+      - symbol: judge_long_context
+        type: function
+        signature: "judge_long_context(case,result)→Dict"
+        module: aiPlat-core/core/apps/eval/service/long_context_generator.py
+      - symbol: eval_generate_long_context_case
+        type: function
+        signature: "eval_generate_long_context_case(case_id?,must_retain_claims?,tier?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_judge_long_context
+        type: function
+        signature: "eval_judge_long_context(case?,result?)→Dict"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: SessionRunnerError
         type: class

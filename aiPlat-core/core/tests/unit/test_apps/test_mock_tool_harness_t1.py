@@ -109,7 +109,7 @@ def test_adapter_execute_judge_normalize_tool_path():
     n = adapter.normalize(case, exe, j)
     assert n["passed"] is True
     assert n["claim_eligible"] is False
-    assert n["v1_in_scope"] is False
+    assert n["v1_in_scope"] is True  # v1.1 measurable subset (mock ≠ claim)
 
 
 def test_fixture_suite_has_five_each_and_passes():

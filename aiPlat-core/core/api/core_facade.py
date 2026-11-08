@@ -6339,14 +6339,14 @@ def eval_load_mock_tool_catalog() -> Dict[str, Any]:
 def eval_run_tool_fixture_suite(
     capability_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """T1/T2: run A3/A4/A5 scripted mock-tool fixture suite (claim=false, out of V1_IN_SCOPE)."""
+    """T1–T3: run mock-tool / long_context fixture suite (claim=false; v1.1 in-scope)."""
     from core.apps.eval.service.tool_capability_fixtures import run_tool_fixture_suite
 
     return run_tool_fixture_suite(capability_id=capability_id)
 
 
 def eval_run_session_fixture_suite() -> Dict[str, Any]:
-    """T2: run A8 multi_turn_memory session fixture suite (claim=false)."""
+    """T2: run A8 multi_turn_memory session fixture suite (claim=false; v1.1 in-scope)."""
     from core.apps.eval.service.tool_capability_fixtures import run_session_fixture_suite
 
     return run_session_fixture_suite()
@@ -6366,6 +6366,32 @@ def eval_invoke_mock_tools(
         case=case or {},
         fail_mode=fail_mode,
     )
+
+
+def eval_generate_long_context_case(
+    *,
+    case_id: str = "",
+    must_retain_claims: Optional[list] = None,
+    tier: str = "ci_short",
+) -> Dict[str, Any]:
+    """T3: build a long_context fixture case (claim closed)."""
+    from core.apps.eval.service.long_context_generator import generate_long_context_case
+
+    return generate_long_context_case(
+        case_id=case_id or "agent.long_context.generated",
+        must_retain_claims=list(must_retain_claims or ["CLAIM-1"]),
+        tier=tier,
+    )
+
+
+def eval_judge_long_context(
+    case: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """T3: A9 must_retain_claims judge (claim closed)."""
+    from core.apps.eval.service.long_context_generator import judge_long_context
+
+    return judge_long_context(case or {}, result or {})
 
 
 def eval_agent_capability_catalog() -> list:
@@ -6420,11 +6446,15 @@ def eval_get_suite_profile(profile_id: str = "") -> Dict[str, Any]:
 
 def eval_benchmark_readiness(
     *,
-    min_per_capability: int = 8,
+    min_per_capability: Optional[int] = None,
     compile_plan: bool = True,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
+    """P4: benchmark coverage + holdout compile disclosure (claim closed).
+
+    Default uses Profile quotas (v1.1 heterogeneous floors). Pass a flat
+    ``min_per_capability`` only for uniform-floor audits.
+    """
     from core.apps.eval.service.capability_p4_gate import benchmark_readiness_report
 
     return benchmark_readiness_report(

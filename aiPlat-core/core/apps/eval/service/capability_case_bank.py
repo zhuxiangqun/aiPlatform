@@ -162,6 +162,46 @@ def load_agent_capability_cases(
             raise CapabilityCaseBankError(f"duplicate case_id={cid!r}")
         seen.add(cid)
 
+    # T3+: merge in-scope fixture positives (A3–A5/A8/A9) — negatives stay suite-only.
+    fixtures_root = root / "fixtures"
+    for cap in (
+        "tool_selection",
+        "tool_args",
+        "tool_result_use",
+        "multi_turn_memory",
+        "long_context",
+    ):
+        fpath = fixtures_root / cap / "cases.json"
+        if not fpath.is_file():
+            continue
+        payload = _read_json(fpath)
+        if not isinstance(payload, list):
+            raise CapabilityCaseBankError(f"{fpath.name} must be a JSON array")
+        for item in payload:
+            if not isinstance(item, Mapping):
+                continue
+            if item.get("expect_judge_fail"):
+                continue
+            rows.append(_normalize_case(item))
+
+    rows.sort(
+        key=lambda c: (
+            str((c.get("capabilities") or [""])[0]),
+            str(c.get("case_id") or ""),
+        )
+    )
+    seen = set()
+    deduped: List[Dict[str, Any]] = []
+    for c in rows:
+        cid = str(c.get("case_id") or "")
+        if not cid:
+            raise CapabilityCaseBankError("case missing case_id")
+        if cid in seen:
+            continue
+        seen.add(cid)
+        deduped.append(c)
+    rows = deduped
+
     if len(rows) < 1:
         raise CapabilityCaseBankError("capability bank is empty")
     return rows

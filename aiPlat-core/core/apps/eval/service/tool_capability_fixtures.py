@@ -1,4 +1,4 @@
-"""Load out-of-scope A3/A4/A5 fixture cases (not in V1 bank until G6)."""
+"""Load A3/A4/A5/A9 fixture cases (v1.1 in-scope via mock/session/fixture; claim closed)."""
 from __future__ import annotations
 
 import json
@@ -12,7 +12,12 @@ from core.apps.eval.service.session_runner import (
 )
 from core.apps.eval.service.subject_adapter import get_subject_adapter
 
-FIXTURE_CAPS = ("tool_selection", "tool_args", "tool_result_use")
+FIXTURE_CAPS = (
+    "tool_selection",
+    "tool_args",
+    "tool_result_use",
+    "long_context",
+)
 SESSION_FIXTURE_CAP = "multi_turn_memory"
 
 
@@ -103,14 +108,14 @@ def run_tool_fixture_suite(
                 "errors": norm.get("errors") or judgment.get("errors") or [],
             }
         )
-    min_n = 5 if capability_id else 15
+    min_n = 5 if capability_id else 20
     return {
         "schema": "eval.tool_fixture_suite.v1",
         "ok": passed == len(cases) and len(cases) >= min_n,
         "n_cases": len(cases),
         "n_passed": passed,
         "claim_eligible": False,
-        "v1_in_scope": False,
+        "v1_in_scope": True,  # v1.1 measurable (mock/fixture ≠ live/Certification)
         "results": results,
     }
 
@@ -145,6 +150,6 @@ def run_session_fixture_suite(
         "n_groups": len(results),
         "n_passed_groups": passed,
         "claim_eligible": False,
-        "v1_in_scope": False,
+        "v1_in_scope": True,  # v1.1 measurable (session runner ≠ Certification)
         "results": results,
     }

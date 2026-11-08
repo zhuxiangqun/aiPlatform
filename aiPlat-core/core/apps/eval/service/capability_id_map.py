@@ -43,13 +43,19 @@ LEGACY_TO_CANONICAL = {
     "long_chain": "planning",
 }
 
-# Plan §4.2.2 signed measurable subset (Agent, text-observable).
+# Plan §4.2.2 v1.1 measurable subset (Agent) — SIGNED v1_1_measurable_subset.
+# Includes mock-tool / session / long-context fixture paths (claim still false).
 V1_IN_SCOPE = frozenset(
     {
         "task_completion",
         "planning",
+        "tool_selection",
+        "tool_args",
+        "tool_result_use",
         "error_recovery",
         "safety",
+        "multi_turn_memory",
+        "long_context",
         "robustness",
         "efficiency",
         "observability",
@@ -57,15 +63,8 @@ V1_IN_SCOPE = frozenset(
     }
 )
 
-V1_OUT_OF_SCOPE = frozenset(
-    {
-        "tool_selection",
-        "tool_args",
-        "tool_result_use",
-        "multi_turn_memory",
-        "long_context",
-    }
-)
+# Empty after v1.1 lift; kept as frozenset for callers / coverage reports.
+V1_OUT_OF_SCOPE = frozenset()
 
 
 class UnknownCapabilityId(ValueError):

@@ -324,7 +324,7 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 | # | 项 | 产出 | 状态 |
 |---|---|---|---|
 | 1 | capability ID 对照表 | [`CAPABILITY_ID_MAP_V1.md`](../plans/CAPABILITY_ID_MAP_V1.md) | ✅ **Frozen** · `SIGNED capability_id_map.v1` · 朱向群 · 2026-11-08 |
-| 2 | v1 可测子集 | Plan §4.2.2 签字页 | ✅ **Frozen** · `SIGNED v1_measurable_subset` · 朱向群 · 2026-11-08 |
+| 2 | v1 / v1.1 可测子集 | Plan §4.2.2 签字页 | ✅ **Frozen** · `SIGNED v1_measurable_subset` + **`SIGNED v1_1_measurable_subset`**（A3–A5/A8/A9 mock/session/fixture）· 朱向群 · 2026-11-08 |
 | 3 | `test_purpose` schema | [`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md) | ✅ **Frozen** · `SIGNED case_test_purpose.v1` · 朱向群 · 2026-11-08 |
 | 4 | Suite Profile schema | [`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md) | ✅ **Frozen** · `SIGNED suite_profile.v1` · 朱向群 · 2026-11-08 |
 | 5 | 权威存储路径 | ADR 决策 7.1 | ✅ |
@@ -353,13 +353,14 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 3. ~~[`CASE_TEST_PURPOSE_SCHEMA_V1.md`](../plans/CASE_TEST_PURPOSE_SCHEMA_V1.md)~~ → ✅ Frozen · 朱向群 · 2026-11-08  
 4. ~~[`SUITE_PROFILE_SCHEMA_V1.md`](../plans/SUITE_PROFILE_SCHEMA_V1.md)~~ → ✅ Frozen · 朱向群 · 2026-11-08  
 5. ~~Plan §4.2.2 `SIGNED v1_measurable_subset`~~ → ✅ Frozen · 朱向群 · 2026-11-08  
+5b. ~~Plan §4.2.2 `SIGNED v1_1_measurable_subset`~~ → ✅ Frozen · 升域 A3–A5/A8/A9（mock≠live）· 朱向群 · 2026-11-08  
 
 ### 可后置 P2/P4
 
 6. Regression 配额风险加权（v1 已定 **fixed**，见 Profile schema）  
 7. Benchmark holdout 比例与统计方法由谁批准？  
 8. judge 校准达到什么一致率才允许 report-only 升级？  
-9. ~~工具/Session 环境就绪后，A3–A5 / A8 / A9 如何升为 in-scope？~~ → **已立项**：[eval-agent-tool-session-inscope.md](../plans/eval-agent-tool-session-inscope.md)（T0–T3：mock tools → session → long-context → 再签字扩 `V1_IN_SCOPE`；未开工）
+9. ~~工具/Session 环境就绪后，A3–A5 / A8 / A9 如何升为 in-scope？~~ → ✅ **T0–T3 Done**：[eval-agent-tool-session-inscope.md](../plans/eval-agent-tool-session-inscope.md) · `V1_IN_SCOPE`=13 · `V1_OUT_OF_SCOPE`=∅ · claim/Certification 仍关闭
 
 ---
 

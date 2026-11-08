@@ -30,7 +30,7 @@ def test_compile_smoke_manifest_size():
     plan = compile_plan_from_suite_profile(profile=agent_smoke_profile())
     assert plan["ok"] is True
     assert plan["profile_id"] == PROFILE_ID_SMOKE
-    assert len(plan["sample_manifest"]) == 8
+    assert len(plan["sample_manifest"]) == 13  # v1.1 in-scope
     assert plan["claim_eligible"] is False
     assert "smoke" in plan["purpose"]
 
@@ -79,7 +79,7 @@ def test_judge_gate_below_threshold():
 
 def test_benchmark_readiness_meets_quotas(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
-    out = benchmark_readiness_report(min_per_capability=8, compile_plan=True)
+    out = benchmark_readiness_report(compile_plan=True)  # profile quotas (v1.1 floor)
     assert out["ok"] is True
     assert out["ready_for_benchmark_quotas"] is True
     assert out["coverage"]["n_gaps"] == 0

@@ -1,10 +1,10 @@
 # Eval Agent 能力升域：A3–A5 / A8 / A9 → in-scope
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  
-> **版本**：v0.1 · 2026-11-08  
-> **状态**：**T2 工程完成**（A5 + Session/A8；仍不改 `V1_IN_SCOPE`）· 见 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md)  
-> **触发**：`[ADR-EVAL-CAPABILITY-CASE-PACK-V1](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)` §7 #9；v1 签字子集强制 A3–A5/A8/A9 = `unknown`  
-> **关联**：`[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md)` §4.2.2 · `[CAPABILITY_ID_MAP_V1.md](./CAPABILITY_ID_MAP_V1.md)` · `[eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md)` · PR #622（v1 文本子集已落地）
+> **版本**：v1.1 · 2026-11-08  
+> **状态**：**T0–T3 Done** · `SIGNED v1_1_measurable_subset` · `V1_IN_SCOPE`=13 · `V1_OUT_OF_SCOPE`=∅ · claim/Certification 仍关闭 · 见 [EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md](./EVAL_AGENT_TOOL_SESSION_CONTRACTS_T0.md)  
+> **触发**：`[ADR-EVAL-CAPABILITY-CASE-PACK-V1](../decisions/ADR-EVAL-CAPABILITY-CASE-PACK-V1.md)` §7 #9  
+> **关联**：`[eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md)` §4.2.2 · `[CAPABILITY_ID_MAP_V1.md](./CAPABILITY_ID_MAP_V1.md)` · `[eval-exam-runtime-tiers.md](./eval-exam-runtime-tiers.md)` · PR #622
 
 ---
 
@@ -136,7 +136,9 @@ A3–A5（工具）、A8（多轮 Session）、A9（长上下文）在代码与 
 | ADR §7 #9 关闭；§4.2.2 修订为 v1.1 可测子集             | 变更单勾选                              |
 
 
-**Done**：A3–A5/A8/A9 可标 `covered`（工程宣称）；**仍非** Certification。
+**工程完成（2026-11-08）**：`long_context_generator` + A9 judge + fixtures≥5 + `V1_IN_SCOPE` 扩至 13 + Profile v1.1 配额 + §4.2.2 / ADR / CAPABILITY_ID_MAP `SIGNED v1_1_measurable_subset`；heatmap unknown 空；claim/Certification 仍关闭。
+
+**Done**：A3–A5/A8/A9 可标 `covered`（工程宣称 · mock/session/fixture）；**仍非** Certification。
 
 ### 可选 T4 — Live tools / microVM（另估）
 
@@ -211,4 +213,4 @@ A3–A5（工具）、A8（多轮 Session）、A9（长上下文）在代码与 
 
 ## 8. 一句话
 
-**先 mock 工具 + Session + 长上下文 fixture，再签字扩可测子集；在那之前 A3–A5/A8/A9 继续诚实标** `unknown`**。**
+**T0–T3 已交付：mock 工具 + Session + 长上下文 fixture 已签字扩入 v1.1 可测子集；mock≠live，claim/Certification 仍关闭。**

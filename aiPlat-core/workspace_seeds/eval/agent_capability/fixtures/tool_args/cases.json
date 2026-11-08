@@ -1,99 +1,396 @@
 [
   {
     "case_id": "agent.tool_args.t1.001",
-    "capabilities": ["tool_args"],
+    "capabilities": [
+      "tool_args"
+    ],
     "prompt": "echo 合法参数。",
-    "expected_tools": ["echo"],
-    "scripted_tool_calls": [{ "name": "echo", "args": { "text": "ok" } }],
+    "expected_tools": [
+      "echo"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "ok"
+        }
+      }
+    ],
     "test_purpose": {
       "summary": "验证 echo 参数符合 args_schema",
       "why_this_case": "A4 正例",
-      "expected_behavior": ["args 含 text 字符串"],
-      "failure_signals": ["缺 text", "类型错误"],
-      "not_testing": ["不测工具选择策略"],
-      "oracle_rationale": "JSON schema / catalog args_schema"
+      "expected_behavior": [
+        "args 含 text 字符串"
+      ],
+      "failure_signals": [
+        "缺 text",
+        "类型错误"
+      ],
+      "not_testing": [
+        "不测工具选择策略"
+      ],
+      "oracle_rationale": "JSON schema / catalog args_schema；oracle: must_contain / tool_trace / rubric"
     },
-    "review": { "status": "draft" },
+    "review": {
+      "status": "draft"
+    },
     "risk_level": "low",
-    "holdout": false
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
   },
   {
     "case_id": "agent.tool_args.t1.002",
-    "capabilities": ["tool_args"],
+    "capabilities": [
+      "tool_args"
+    ],
     "prompt": "lookup_fact 合法 key。",
-    "expected_tools": ["lookup_fact"],
-    "expected_tool_args": { "lookup_fact": { "key": "alpha" } },
-    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "alpha" } }],
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "expected_tool_args": {
+      "lookup_fact": {
+        "key": "alpha"
+      }
+    },
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
+    ],
     "test_purpose": {
       "summary": "验证 lookup_fact key 精确匹配 expected_tool_args",
       "why_this_case": "A4 值级断言",
-      "expected_behavior": ["key=alpha"],
-      "failure_signals": ["key 不符"],
-      "not_testing": ["不测禁止工具"],
-      "oracle_rationale": "expected_tool_args 精确比对"
+      "expected_behavior": [
+        "key=alpha"
+      ],
+      "failure_signals": [
+        "key 不符"
+      ],
+      "not_testing": [
+        "不测禁止工具"
+      ],
+      "oracle_rationale": "expected_tool_args 精确比对；oracle: must_contain / tool_trace / rubric"
     },
-    "review": { "status": "draft" },
+    "review": {
+      "status": "draft"
+    },
     "risk_level": "low",
-    "holdout": false
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
   },
   {
     "case_id": "agent.tool_args.t1.003",
-    "capabilities": ["tool_args"],
+    "capabilities": [
+      "tool_args"
+    ],
     "prompt": "负例：echo 缺少 text。",
-    "expected_tools": ["echo"],
-    "scripted_tool_calls": [{ "name": "echo", "args": {} }],
+    "expected_tools": [
+      "echo"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {}
+      }
+    ],
     "expect_judge_fail": true,
     "test_purpose": {
       "summary": "负例：缺必填 text 应失败",
       "why_this_case": "A4 missing_arg",
-      "expected_behavior": ["judge/harness 报 missing_arg:text"],
-      "failure_signals": ["误通过"],
-      "not_testing": ["不测选择"],
-      "oracle_rationale": "args_schema required"
+      "expected_behavior": [
+        "judge/harness 报 missing_arg:text"
+      ],
+      "failure_signals": [
+        "误通过"
+      ],
+      "not_testing": [
+        "不测选择"
+      ],
+      "oracle_rationale": "args_schema required；oracle: must_contain / tool_trace / rubric"
     },
-    "review": { "status": "draft" },
+    "review": {
+      "status": "draft"
+    },
     "risk_level": "low",
-    "holdout": false
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
   },
   {
     "case_id": "agent.tool_args.t1.004",
-    "capabilities": ["tool_args"],
+    "capabilities": [
+      "tool_args"
+    ],
     "prompt": "负例：echo 多余字段。",
-    "expected_tools": ["echo"],
+    "expected_tools": [
+      "echo"
+    ],
     "scripted_tool_calls": [
-      { "name": "echo", "args": { "text": "x", "extra": 1 } }
+      {
+        "name": "echo",
+        "args": {
+          "text": "x",
+          "extra": 1
+        }
+      }
     ],
     "expect_judge_fail": true,
     "test_purpose": {
       "summary": "负例：additionalProperties=false 拒绝 extra",
       "why_this_case": "A4 unexpected_arg",
-      "expected_behavior": ["报 unexpected_arg:extra"],
-      "failure_signals": ["误通过"],
-      "not_testing": ["不测顺序"],
-      "oracle_rationale": "additionalProperties false"
+      "expected_behavior": [
+        "报 unexpected_arg:extra"
+      ],
+      "failure_signals": [
+        "误通过"
+      ],
+      "not_testing": [
+        "不测顺序"
+      ],
+      "oracle_rationale": "additionalProperties false；oracle: must_contain / tool_trace / rubric"
     },
-    "review": { "status": "draft" },
+    "review": {
+      "status": "draft"
+    },
     "risk_level": "low",
-    "holdout": false
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
   },
   {
     "case_id": "agent.tool_args.t1.005",
-    "capabilities": ["tool_args"],
+    "capabilities": [
+      "tool_args"
+    ],
     "prompt": "负例：lookup_fact key 值不符。",
-    "expected_tools": ["lookup_fact"],
-    "expected_tool_args": { "lookup_fact": { "key": "alpha" } },
-    "scripted_tool_calls": [{ "name": "lookup_fact", "args": { "key": "beta" } }],
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "expected_tool_args": {
+      "lookup_fact": {
+        "key": "alpha"
+      }
+    },
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "beta"
+        }
+      }
+    ],
     "expect_judge_fail": true,
     "test_purpose": {
       "summary": "负例：key 值与 expected_tool_args 不符",
       "why_this_case": "A4 arg_value",
-      "expected_behavior": ["arg_value:key 失败"],
-      "failure_signals": ["误通过"],
-      "not_testing": ["不测多工具"],
-      "oracle_rationale": "expected_tool_args 值比对"
+      "expected_behavior": [
+        "arg_value:key 失败"
+      ],
+      "failure_signals": [
+        "误通过"
+      ],
+      "not_testing": [
+        "不测多工具"
+      ],
+      "oracle_rationale": "expected_tool_args 值比对；oracle: must_contain / tool_trace / rubric"
     },
-    "review": { "status": "draft" },
+    "review": {
+      "status": "draft"
+    },
     "risk_level": "low",
-    "holdout": false
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
+  },
+  {
+    "case_id": "agent.tool_args.t1.006",
+    "capabilities": [
+      "tool_args"
+    ],
+    "prompt": "echo hi",
+    "expected_tools": [
+      "echo"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "hi"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证 echo text=hi 合法",
+      "why_this_case": "A4 配额补正例",
+      "expected_behavior": [
+        "args 合法"
+      ],
+      "failure_signals": [
+        "schema 失败"
+      ],
+      "not_testing": [
+        "不测选择"
+      ],
+      "oracle_rationale": "args_schema；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
+  },
+  {
+    "case_id": "agent.tool_args.t1.007",
+    "capabilities": [
+      "tool_args"
+    ],
+    "prompt": "lookup beta 不强制 expected value",
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "beta"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证 lookup_fact key 字符串合法",
+      "why_this_case": "A4 配额补正例",
+      "expected_behavior": [
+        "key 合法"
+      ],
+      "failure_signals": [
+        "缺 key"
+      ],
+      "not_testing": [
+        "不测结果"
+      ],
+      "oracle_rationale": "args_schema；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
+  },
+  {
+    "case_id": "agent.tool_args.t1.008",
+    "capabilities": [
+      "tool_args"
+    ],
+    "prompt": "echo world",
+    "expected_tools": [
+      "echo"
+    ],
+    "expected_tool_args": {
+      "echo": {
+        "text": "world"
+      }
+    },
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "world"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证 expected_tool_args text=world",
+      "why_this_case": "A4 配额补正例",
+      "expected_behavior": [
+        "精确 text"
+      ],
+      "failure_signals": [
+        "值不符"
+      ],
+      "not_testing": [
+        "不测顺序"
+      ],
+      "oracle_rationale": "expected_tool_args；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "tool_trace",
+      "must_contain": [
+        "tool"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "tool_trace"
+    }
   }
 ]

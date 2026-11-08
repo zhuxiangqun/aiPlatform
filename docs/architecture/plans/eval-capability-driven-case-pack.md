@@ -137,39 +137,47 @@
 **权威冻结稿**：[`CAPABILITY_ID_MAP_V1.md`](./CAPABILITY_ID_MAP_V1.md)（含 `clarify_or_ask → clarification`、A13、全量 legacy）。  
 本节仅作索引；冲突以冻结稿为准。
 
-### 4.2.2 v1 可测能力子集（文本可观测）· 签字页
+### 4.2.2 v1 / v1.1 可测能力子集 · 签字页
 
-本阶段**不接** live skill tools / microVM。无对应环境时，能力只能标 `unknown` / `in_scope=false`，**禁止因写了题就标 `covered`**。
+#### v1（历史 Frozen · `SIGNED v1_measurable_subset` · 2026-11-08）
 
-| 能力 | v1 可测？ | Profile 默认 | 说明 |
+文本可观测子集：**A1 / A2 / A6 / A7 / A10 / A11 / A12 / A13**。  
+当时 A3–A5/A8/A9 强制 `unknown`（无 mock/session/long-context 执行链）。
+
+#### v1.1（本页现行 · `SIGNED v1_1_measurable_subset`）
+
+在 **mock tool harness ≠ live tools**、**scripted session**、**long_context fixtures** 就绪后升域。  
+`claim_eligible` / `accuracy_claim` / Certification **仍为 false**；禁止把 mock 证据写成 live/Certification。
+
+| 能力 | v1.1 可测？ | Profile 默认 | 说明 |
 |---|---|---|---|
-| A1 `task_completion` | ✅ 可测 | in_scope | 文本可测 |
-| A2 `planning` | ✅ 可测（limited） | in_scope | 仅文本 trace / 步骤措辞 |
-| A3 `tool_selection` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
-| A4 `tool_args` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
-| A5 `tool_result_use` | ❌ | **`in_scope=false` → `unknown`** | 需工具环境 |
-| A6 `error_recovery` | ✅ 可测（limited） | in_scope | **只测失败措辞/定位，不测真实工具恢复** |
-| A7 `safety` | ✅ 可测 | in_scope | 权限/确认文本可测 |
-| A8 `multi_turn_memory` | ❌ | **`in_scope=false` → `unknown`** | 需可靠 session；v1 不宣称 covered |
-| A9 `long_context` | ❌ | **`in_scope=false` → `unknown`** | 需长输入 fixture 协议；v1 不宣称 |
-| A10 `robustness` | ✅ 可测 | in_scope | 文本噪声可测 |
-| A11 `efficiency` | ✅ 可测 | in_scope | 有审计/步骤计数 |
-| A12 `observability` | ✅ 可测 | in_scope | trace schema |
-| A13 `clarification` | ✅ 可测 | in_scope | 缺信息追问文本可测 |
+| A1 `task_completion` | ✅ | in_scope | 文本可测 |
+| A2 `planning` | ✅（limited） | in_scope | 仅文本 trace / 步骤措辞 |
+| A3 `tool_selection` | ✅（mock） | in_scope | mock catalog + scripted_tool_calls；**≠ live** |
+| A4 `tool_args` | ✅（mock） | in_scope | args schema / 规则机判；**≠ live** |
+| A5 `tool_result_use` | ✅（mock） | in_scope | result→answer rubric；**≠ live** |
+| A6 `error_recovery` | ✅（limited） | in_scope | **只测失败措辞/定位，不测真实工具恢复** |
+| A7 `safety` | ✅ | in_scope | 权限/确认文本可测 |
+| A8 `multi_turn_memory` | ✅（session） | in_scope | session_group atomic + session_runner |
+| A9 `long_context` | ✅（fixture） | in_scope | must_retain_claims / generator fixtures |
+| A10 `robustness` | ✅ | in_scope | 文本噪声可测 |
+| A11 `efficiency` | ✅ | in_scope | 有审计/步骤计数 |
+| A12 `observability` | ✅ | in_scope | trace schema |
+| A13 `clarification` | ✅ | in_scope | 缺信息追问文本可测 |
 
-**v1 声明范围 =「Agent 文本可观测能力子集」≠「Agent 全能力」。**  
-可测集合：**A1 / A2 / A6 / A7 / A10 / A11 / A12 / A13**。  
-不可测（强制 unknown）：**A3 / A4 / A5 / A8 / A9**。  
-升域路径（未开工）：[`eval-agent-tool-session-inscope.md`](./eval-agent-tool-session-inscope.md)。
+**v1.1 声明范围 =「Agent 文本 + mock/session/fixture 可测子集」≠「Agent 全能力 / live tools / Certification」。**  
+可测集合：**A1–A13 全部**（`V1_OUT_OF_SCOPE` 为空）。  
+升域工程：[`eval-agent-tool-session-inscope.md`](./eval-agent-tool-session-inscope.md)（T0–T3 Done）。
 
-#### §4.2.2 签字栏（ADR §6.1 #2）
+#### §4.2.2 签字栏
 
-| 角色 | 勾选 | 签字（`SIGNED v1_measurable_subset`） | 日期 |
-|------|:----:|--------------------------------------|------|
-| 评测方法负责人 | 采纳上表可测/不可测划分 | `SIGNED v1_measurable_subset` · 朱向群 | 2026-11-08 |
-| 工程负责人（可选） | 实现上强制 A3–A5/A8/A9 不得 covered | | |
+| 角色 | 勾选 | 签字 | 日期 |
+|------|:----:|------|------|
+| 评测方法负责人 | v1 文本子集 | `SIGNED v1_measurable_subset` · 朱向群 | 2026-11-08 |
+| 评测方法负责人 | v1.1 升域（mock/session/fixture） | `SIGNED v1_1_measurable_subset` · 朱向群 | 2026-11-08 |
+| 工程负责人 | `V1_IN_SCOPE` / Profile 配额与上表一致；claim 关闭 | `SIGNED v1_1_measurable_subset` · 朱向群 | 2026-11-08 |
 
-**已签字：子集 Frozen；Profile 可据此划分 in_scope / unknown，不得将 A3–A5/A8/A9 标 covered。**
+**已签字：v1.1 可测子集 Frozen；A3–A5/A8/A9 可标工程 `covered`（mock/session/fixture），不得宣称 live 或 Certification。**
 
 ### 4.3 其他对象
 

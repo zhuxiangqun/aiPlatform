@@ -13,7 +13,12 @@
     "robustness": 4,
     "planning": 4,
     "efficiency": 3,
-    "observability": 3
+    "observability": 3,
+    "tool_selection": 5,
+    "tool_args": 5,
+    "tool_result_use": 5,
+    "multi_turn_memory": 5,
+    "long_context": 5
   },
   "strategy": "stratified",
   "seed": 7,
@@ -26,5 +31,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "P1 draft bank; human purpose_ok required before freeze. A3–A5/A8/A9 excluded."
+  "notes": "v1.1 measurable subset; A3–A5/A8/A9 via mock/session/long-context fixtures; claim closed."
 }

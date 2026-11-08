@@ -156,10 +156,14 @@ def judge_calibration_gate_for_ticket(
 def benchmark_readiness_report(
     *,
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
-    min_per_capability: int = BENCHMARK_MIN_PER_CAP,
+    min_per_capability: Optional[int] = None,
     compile_plan: bool = True,
 ) -> Dict[str, Any]:
-    """Coverage vs benchmark floor + optional compile with holdout disclosure."""
+    """Coverage vs benchmark Profile quotas (or flat ``min_per_capability`` override).
+
+    Default uses heterogeneous v1.1 quotas (legacy ≥8; A3–A5/A8/A9 floor 5).
+    Pass ``min_per_capability`` only for flat-floor audits.
+    """
     bank = list(cases) if cases is not None else build_agent_capability_cases()
     profile = agent_benchmark_profile()
     coverage = analyze_capability_coverage(

@@ -13,7 +13,12 @@
     "robustness": 1,
     "planning": 1,
     "efficiency": 1,
-    "observability": 1
+    "observability": 1,
+    "tool_selection": 1,
+    "tool_args": 1,
+    "tool_result_use": 1,
+    "multi_turn_memory": 1,
+    "long_context": 1
   },
   "strategy": "stratified",
   "seed": 3,
@@ -26,5 +31,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "P4 smoke — catch obvious breaks; not a performance estimate."
+  "notes": "v1.1 smoke — includes A3–A5/A8/A9; not a performance estimate."
 }

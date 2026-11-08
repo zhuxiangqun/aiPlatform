@@ -16,7 +16,7 @@ from core.apps.eval.service.capability_id_map import V1_IN_SCOPE, V1_OUT_OF_SCOP
 
 def test_bank_size_and_all_valid():
     cases = build_agent_capability_cases()
-    assert len(cases) == 64
+    assert len(cases) >= 64 + 25  # legacy 8×8 + v1.1 fixture positives
     report = validate_agent_capability_bank(cases)
     assert report["ok"] is True
     assert report["invalid_count"] == 0
@@ -27,8 +27,26 @@ def test_bank_size_and_all_valid():
     for c in cases:
         cap = c["capabilities"][0]
         counts[cap] = counts.get(cap, 0) + 1
-    for cap in V1_IN_SCOPE:
+    legacy = {
+        "task_completion",
+        "planning",
+        "error_recovery",
+        "safety",
+        "robustness",
+        "efficiency",
+        "observability",
+        "clarification",
+    }
+    for cap in legacy:
         assert counts.get(cap, 0) >= 8, cap
+    for cap in (
+        "tool_selection",
+        "tool_args",
+        "tool_result_use",
+        "multi_turn_memory",
+        "long_context",
+    ):
+        assert counts.get(cap, 0) >= 5, cap
 
 
 def test_loader_reads_per_capability_files():
@@ -37,7 +55,17 @@ def test_loader_reads_per_capability_files():
     assert (root / "pack.meta.json").is_file()
     loaded = load_agent_capability_cases()
     assert loaded == build_agent_capability_cases()
-    assert all((root / "cases" / f"{cap}.json").is_file() for cap in V1_IN_SCOPE)
+    legacy = {
+        "task_completion",
+        "planning",
+        "error_recovery",
+        "safety",
+        "robustness",
+        "efficiency",
+        "observability",
+        "clarification",
+    }
+    assert all((root / "cases" / f"{cap}.json").is_file() for cap in legacy)
 
 
 def test_only_v1_in_scope_capabilities():
@@ -49,7 +77,7 @@ def test_only_v1_in_scope_capabilities():
         assert validate_capability_case(c) == []
 
 
-def test_regression_profile_quotas_match_bank_and_exclude_tools():
+def test_regression_profile_quotas_match_bank_including_v1_1():
     profile = agent_regression_profile()
     assert profile["profile_id"] == PROFILE_ID
     assert profile["claim_eligible"] is False
@@ -62,14 +90,14 @@ def test_regression_profile_quotas_match_bank_and_exclude_tools():
     for cap, n in profile["quotas"].items():
         assert cap in V1_IN_SCOPE
         assert counts.get(cap, 0) >= n
-    for banned in (
+    for need in (
         "tool_selection",
         "tool_args",
         "tool_result_use",
         "multi_turn_memory",
         "long_context",
     ):
-        assert banned not in profile["quotas"]
+        assert need in profile["quotas"]
 
 
 def test_seed_dir_under_workspace_seeds():
