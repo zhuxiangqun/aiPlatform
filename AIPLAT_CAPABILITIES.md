@@ -1,5 +1,5 @@
 ---
-total_capabilities: 2882
+total_capabilities: 2887
 last_updated: 2026-10-22
 version: "30.12"
 auto_sync: true
@@ -1628,6 +1628,13 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| CaseReviewError | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
+| CaseFactoryError | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| eval_submit_case_pack_review | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_list_case_pack_review_queue | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_enqueue_case_pack_review | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| submit_review_decision | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
+| enqueue_pack_for_review | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
 | publish_draft_workspace_pack | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
 | dedupe_cases_by_hash | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
 | validate_case_dict | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
@@ -2724,6 +2731,7 @@ scan_hash: 8f9548ec24f4
 | pack_claim_disclosure_from_plan / claim_eligible L5 gate | `claims_gate.py` + `attach_evaluation_plan` | ✅ | §3.3：报告强制 `pack_kind`+`claim_eligible`；false/缺省阻断 accuracy；生成物适用：已接线 | 本批 |
 | apply_manifest_sampling (stratified/random) | `case_pack_legacy.py` + `compile_evaluation_plan` | ✅ | T12：seed 稳定；`session_group` 整组；不足层 error/degrade+quota_trace，禁静默改配额；生成物适用：已接线 | 本批 |
 | case_factory generate/validate/dedupe/publish_draft + eval_publish_draft_case_pack | `case_factory.py` + CoreFacade | ✅ | P1.0：模板扩题（无 LLM）→校验→去重→workspace draft 注册；禁 freeze；claim_eligible=false；生成物适用：已接线 | 本批 |
+| case_review_queue enqueue/list/decide + eval_*_case_pack_review* + update_pack_version_meta | `case_review_queue.py` + registry + CoreFacade | ✅ | P1.1：draft→in_review→reviewed\|rejected；reviewed≠frozen；claim_eligible 强制 false；生成物适用：已接线 | 本批 |
 | case_pack_registry / register_pack_version / assert_pack_acl | `case_pack_registry.py` | ✅ | scope global\|workspace\|tenant；跨 workspace ACL 拒；原子写+锁；global P0 只读；生成物适用：已接线（评测 Plan） | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -3790,7 +3798,7 @@ scan_hash: 8f9548ec24f4
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 214 | 0 | 214 |
+| Agent 系统 | 218 | 0 | 218 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -3798,7 +3806,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 339 | 0 | 339 |
+| 评估系统 | 340 | 0 | 340 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3830,7 +3838,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2872** | **10** | **2882** |
+| **总计** | **2877** | **10** | **2887** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

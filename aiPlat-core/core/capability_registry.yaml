@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 1979
+total_capabilities: 1987
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3779,7 +3779,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 225
+    caps_count: 233
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4543,6 +4543,34 @@ domains:
         type: function
         signature: 'eval_publish_draft_case_pack(pack_id,version,workspace_id,…)→Dict (CoreFacade)'
         module: aiPlat-core/core/api/core_facade.py
+      - symbol: update_pack_version_meta
+        type: function
+        signature: 'update_pack_version_meta(pack_id,version,scope,status?,review?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_pack_registry.py
+      - symbol: enqueue_pack_for_review
+        type: function
+        signature: 'enqueue_pack_for_review(pack_id,version,workspace_id,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_review_queue.py
+      - symbol: list_review_queue
+        type: function
+        signature: 'list_review_queue(workspace_id,statuses?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_review_queue.py
+      - symbol: submit_review_decision
+        type: function
+        signature: 'submit_review_decision(pack_id,version,workspace_id,decision,…)→Dict'
+        module: aiPlat-core/core/apps/eval/service/case_review_queue.py
+      - symbol: eval_enqueue_case_pack_review
+        type: function
+        signature: 'eval_enqueue_case_pack_review(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_list_case_pack_review_queue
+        type: function
+        signature: 'eval_list_case_pack_review_queue(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_submit_case_pack_review
+        type: function
+        signature: 'eval_submit_case_pack_review(…)→Dict (CoreFacade)'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_evaluate_l5_claims_gate
         type: function
         signature: 'eval_evaluate_l5_claims_gate(evidence,explicit_authorize)→Dict (CoreFacade)'
@@ -4671,6 +4699,10 @@ domains:
         type: class
         signature: 'Case factory validation / publish failure.'
         module: aiPlat-core/core/apps/eval/service/case_factory.py
+      - symbol: CaseReviewError
+        type: class
+        signature: 'Human review queue failure.'
+        module: aiPlat-core/core/apps/eval/service/case_review_queue.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"

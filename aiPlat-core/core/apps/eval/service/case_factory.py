@@ -1,7 +1,7 @@
 """Case Pack factory — P1.0 draft path (template → validate → dedupe → register).
 
-No LLM. claim_eligible stays false. Freeze / human_review queue are later slices.
-Does not open accuracy_claim.
+No LLM. claim_eligible stays false. Freeze is later (P1.2+).
+Human review queue: see ``case_review_queue`` (P1.1). Does not open accuracy_claim.
 """
 from __future__ import annotations
 

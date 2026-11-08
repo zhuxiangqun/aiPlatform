@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-08T09:51:41Z"
+generated_at: "2026-11-08T10:02:23Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "82a80a2ac662f8bc19deb4815f8a7be5c2e5286ce1dc493ce91dd031bdeb5efb"
+caps_sha256: "dcd409f46347b898ba33468eddc8241a061bdd55d6944c38ddefe0af65897972"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=82a80a2ac662f8bc19deb4815f8a7be5c2e5286ce1dc493ce91dd031bdeb5efb scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=dcd409f46347b898ba33468eddc8241a061bdd55d6944c38ddefe0af65897972 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-08T09:51:41Z` |
-| CAPABILITIES sha256 | `82a80a2ac662…` |
+| 生成时间 (UTC) | `2026-11-08T10:02:23Z` |
+| CAPABILITIES sha256 | `dcd409f46347…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -90,7 +90,7 @@ language: zh-CN
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 214 | 0 | 214 |
+| Agent 系统 | 218 | 0 | 218 |
 | Skill 系统 | 171 | 0 | 171 |
 | 安全与治理 | 90 | 0 | 90 |
 | 可观测性 | 43 | 0 | 43 |
@@ -98,7 +98,7 @@ language: zh-CN
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 339 | 0 | 339 |
+| 评估系统 | 340 | 0 | 340 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2872** | **10** | **2882** |
+| **总计** | **2877** | **10** | **2887** |
 
 ### 3.2 上手路径（节选）
 

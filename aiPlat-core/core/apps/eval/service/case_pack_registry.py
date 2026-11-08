@@ -228,3 +228,80 @@ def get_pack_version(
     if not isinstance(ver, dict):
         raise PackRegistryError(f"pack version not found: {pack_id}@{version}")
     return dict(ver)
+
+
+def update_pack_version_meta(
+    *,
+    pack_id: str,
+    version: str,
+    scope: str,
+    workspace_id: str = "",
+    tenant_id: str = "",
+    caller_workspace_id: str = "",
+    caller_tenant_id: str = "",
+    status: Optional[str] = None,
+    review: Optional[Mapping[str, Any]] = None,
+    allow_claim_eligible: bool = False,
+) -> Dict[str, Any]:
+    """Update status/review metadata only. Never flips claim_eligible unless explicit.
+
+    Refuse kind→frozen and refuse setting claim_eligible=true here (P1.1).
+    """
+    if allow_claim_eligible:
+        raise PackRegistryError(
+            "update_pack_version_meta refuses claim_eligible flips — freeze path later"
+        )
+    assert_pack_acl(
+        scope=scope,
+        workspace_id=workspace_id,
+        tenant_id=tenant_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        caller_tenant_id=caller_tenant_id or tenant_id,
+        write=True,
+    )
+    pid = str(pack_id or "").strip()
+    ver = str(version or "").strip()
+    if not pid or not ver:
+        raise PackRegistryError("pack_id and version required")
+
+    root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
+    path = _registry_path(root)
+    lock = _lock_for(path)
+    with lock:
+        reg = load_registry(
+            scope=scope, workspace_id=workspace_id, tenant_id=tenant_id
+        )
+        packs = reg.setdefault("packs", {})
+        entry = packs.get(pid)
+        if not isinstance(entry, dict):
+            raise PackRegistryError(f"pack not found: {pid}")
+        versions = entry.setdefault("versions", {})
+        cur = versions.get(ver)
+        if not isinstance(cur, dict):
+            raise PackRegistryError(f"pack version not found: {pid}@{ver}")
+        if str(cur.get("kind") or "").lower() == "frozen" and status not in (
+            None,
+            str(cur.get("status") or ""),
+        ):
+            # allow no-op status; refuse mutating frozen packs in P1.1
+            if status is not None and str(status) != str(cur.get("status") or ""):
+                raise PackRegistryError("cannot mutate frozen pack status in P1.1")
+        updated = dict(cur)
+        if status is not None:
+            st = str(status).strip().lower()
+            if st == "frozen":
+                raise PackRegistryError(
+                    "status=frozen is not a registry status — use freeze path later"
+                )
+            updated["status"] = st
+        if review is not None:
+            if not isinstance(review, Mapping):
+                raise PackRegistryError("review must be object")
+            prev = dict(updated.get("review") or {}) if isinstance(updated.get("review"), dict) else {}
+            prev.update({k: review[k] for k in review})
+            updated["review"] = prev
+        # honesty lock
+        updated["claim_eligible"] = False
+        versions[ver] = updated
+        _atomic_write_json(path, reg)
+        return dict(updated)

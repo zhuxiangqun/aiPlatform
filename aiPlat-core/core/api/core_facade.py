@@ -6330,6 +6330,66 @@ def eval_publish_draft_case_pack(
     )
 
 
+def eval_enqueue_case_pack_review(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1.1: draft|rejected → in_review. claim_eligible stays false."""
+    from core.apps.eval.service.case_review_queue import enqueue_pack_for_review
+
+    return enqueue_pack_for_review(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        notes=notes,
+    )
+
+
+def eval_list_case_pack_review_queue(
+    *,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    statuses: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P1.1: list workspace packs in review queue statuses."""
+    from core.apps.eval.service.case_review_queue import list_review_queue
+
+    return list_review_queue(
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        statuses=statuses,
+    )
+
+
+def eval_submit_case_pack_review(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    decision: str,
+    reviewer: str = "",
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.1: approve→reviewed / reject→rejected. Never freezes or opens claim."""
+    from core.apps.eval.service.case_review_queue import submit_review_decision
+
+    return submit_review_decision(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        decision=decision,
+        reviewer=reviewer,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",
