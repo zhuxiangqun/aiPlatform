@@ -44,20 +44,20 @@
 | --------- | ------------------- | -------- | ------------------- |
 | A1        | `task_completion`   | 任务理解与完成  | yes                 |
 | A2        | `planning`          | 计划与分解    | limited             |
-| A3        | `tool_selection`    | 工具选择     | **no**              |
-| A4        | `tool_args`         | 工具参数正确性  | **no**              |
-| A5        | `tool_result_use`   | 工具结果使用   | **no**              |
+| A3        | `tool_selection`    | 工具选择     | **no**（升域见 [eval-agent-tool-session-inscope](./eval-agent-tool-session-inscope.md)） |
+| A4        | `tool_args`         | 工具参数正确性  | **no**（同上升域 Plan）   |
+| A5        | `tool_result_use`   | 工具结果使用   | **no**（同上升域 Plan）   |
 | A6        | `error_recovery`    | 错误检测与恢复  | limited（措辞/定位）      |
 | A7        | `safety`            | 安全/拒绝/转交 | yes                 |
-| A8        | `multi_turn_memory` | 多轮记忆     | **no**（v1 默认；见可测子集） |
-| A9        | `long_context`      | 长上下文/检索  | **no**（v1 默认）       |
+| A8        | `multi_turn_memory` | 多轮记忆     | **no**（同上升域 Plan）   |
+| A9        | `long_context`      | 长上下文/检索  | **no**（同上升域 Plan）   |
 | A10       | `robustness`        | 鲁棒性/抗干扰  | yes                 |
 | A11       | `efficiency`        | 效率/成本    | yes                 |
 | A12       | `observability`     | 可观测性     | yes                 |
 | A13       | `clarification`     | 缺信息追问/澄清 | yes                 |
 
 
-`v1_in_scope` 细节以 [eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md) §4.2.2 签字页为准。
+`v1_in_scope` 细节以 [eval-capability-driven-case-pack.md](./eval-capability-driven-case-pack.md) §4.2.2 签字页为准。A3–A5/A8/A9 升域见 [eval-agent-tool-session-inscope.md](./eval-agent-tool-session-inscope.md)（未开工）。
 
 ---
 

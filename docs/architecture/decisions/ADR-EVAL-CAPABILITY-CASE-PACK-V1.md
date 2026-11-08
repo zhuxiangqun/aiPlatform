@@ -359,7 +359,7 @@ KB/RAG → Code Review → Session → Tool/MCP / Multi-Agent；Arena/G2b/S1 保
 6. Regression 配额风险加权（v1 已定 **fixed**，见 Profile schema）  
 7. Benchmark holdout 比例与统计方法由谁批准？  
 8. judge 校准达到什么一致率才允许 report-only 升级？  
-9. 工具/Session 环境就绪后，A3–A5 / A8 / A9 如何升为 in-scope？
+9. ~~工具/Session 环境就绪后，A3–A5 / A8 / A9 如何升为 in-scope？~~ → **已立项**：[eval-agent-tool-session-inscope.md](../plans/eval-agent-tool-session-inscope.md)（T0–T3：mock tools → session → long-context → 再签字扩 `V1_IN_SCOPE`；未开工）
 
 ---
 

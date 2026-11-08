@@ -159,7 +159,8 @@
 
 **v1 声明范围 =「Agent 文本可观测能力子集」≠「Agent 全能力」。**  
 可测集合：**A1 / A2 / A6 / A7 / A10 / A11 / A12 / A13**。  
-不可测（强制 unknown）：**A3 / A4 / A5 / A8 / A9**。
+不可测（强制 unknown）：**A3 / A4 / A5 / A8 / A9**。  
+升域路径（未开工）：[`eval-agent-tool-session-inscope.md`](./eval-agent-tool-session-inscope.md)。
 
 #### §4.2.2 签字栏（ADR §6.1 #2）
 
@@ -638,6 +639,7 @@ $AIPLAT_HOME/tenants/{tenant_id}/eval_packs/
 | **P3** | **复用现有工厂**做覆盖驱动补题（模板/变异/trace/LLM） | 3–4 周 |
 | **P4** | judge 校准 + holdout + Benchmark | 4–8 周 |
 | P5 | Certification 外部审计 | 另立项 |
+| **P6** | **A3–A5 / A8 / A9 升 in-scope**（mock tools + session + long-context） | **[另立项](./eval-agent-tool-session-inscope.md)** |
 
 ### 验收指标
 
