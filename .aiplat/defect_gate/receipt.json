@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T17:07:07+08:00",
+  "reviewed_at": "2026-11-08T17:21:49+08:00",
   "base_ref": "origin/main",
   "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
-  "diff_sha256": "2b22ada922a964ec39ab663e3618ad41f988ec8bb26772a05d2676ff5b8248f5",
-  "head_sha": "c816de44dd8eb8c6e09503efa343911692ae5785",
+  "diff_sha256": "859a40a0bf78633248e84aae1c6120bc7aea9f46fcf8b01d4775071daaf5d253",
+  "head_sha": "30cec3c08a1104d5cc38be112787817ff9e6596d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P0.3: verify_manifest_case_hashes fail-closed; case_pack_registry ACL+atomic write; expand syncs workspace register/get; PackRegistryError registered. No accuracy_claim. Local lock only."
+  "note": "P0.4: clause-sync §78 for contracts-guard; assert_session_groups_intact (T4); exam run_key binds execution_fingerprint only (T11). No accuracy_claim."
 }
