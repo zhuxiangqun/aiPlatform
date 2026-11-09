@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2421
+total_capabilities: 2427
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 437
+    caps_count: 443
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8102,10 +8102,34 @@ domains:
         type: class
         signature: 'Agent reference adapter (P0: contract / catalog / validate_case).'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: PromptSubjectAdapter
+        type: class
+        signature: 'Prompt Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
       - symbol: list_subject_kinds
         type: function
         signature: 'list_subject_kinds()'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: validate_prompt_capability_bank
+        type: function
+        signature: 'validate_prompt_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/prompt_capability_bank.py
+      - symbol: run_prompt_capability_smoke
+        type: function
+        signature: 'run_prompt_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/prompt_capability_bank.py
+      - symbol: eval_list_subject_kinds
+        type: function
+        signature: 'eval_list_subject_kinds()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_prompt_capability_catalog
+        type: function
+        signature: 'eval_prompt_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_prompt_capability_smoke
+        type: function
+        signature: 'eval_run_prompt_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: "load_agent_capability_cases"
         type: "function"
         signature: "load_agent_capability_cases(seed_dir?)→List[Dict] from cases/*.json"
