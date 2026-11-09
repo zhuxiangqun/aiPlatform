@@ -27,6 +27,7 @@ _HASH_EXCLUDE = frozenset(
     {
         "manifest_hash",
         "signature",
+        "attestation",
         "signed_at",
         "reviewer_notes",
         "generated_at",
@@ -123,10 +124,55 @@ def verify_manifest_signature(manifest_hash: str, signature: str) -> Tuple[bool,
     return True, "ok"
 
 
+def attestation_for_signature(signature: str) -> Dict[str, Any]:
+    """ci-or-platform attestation metadata (not a certification claim)."""
+    sig = (signature or "").strip()
+    if sig.startswith("ed25519:"):
+        alg = "ed25519"
+        kind = "ci-or-platform"
+    elif sig.startswith("hmac-sha256:"):
+        alg = "hmac-sha256"
+        kind = "ci-or-platform"
+    else:
+        alg = "unsigned_dev"
+        kind = "dev_only"
+    return {
+        "kind": kind,
+        "alg": alg,
+        "signer": "ci-or-platform" if kind == "ci-or-platform" else "local_dev",
+        "binds": ["manifest_hash", "threat_model_hash"],
+        "certification": False,
+    }
+
+
+def validate_attestation(signature: str, attestation: Any) -> List[str]:
+    """Require attestation present and consistent with signature alg."""
+    errors: List[str] = []
+    if not isinstance(attestation, dict) or not attestation:
+        return ["missing_attestation"]
+    expected = attestation_for_signature(signature)
+    alg = str(attestation.get("alg") or "").strip()
+    kind = str(attestation.get("kind") or "").strip()
+    if alg != expected["alg"]:
+        errors.append(f"attestation_alg_mismatch:{alg or 'empty'}")
+    if kind != expected["kind"]:
+        errors.append(f"attestation_kind_mismatch:{kind or 'empty'}")
+    if attestation.get("certification") is True:
+        errors.append("attestation_certification_must_be_false")
+    binds = attestation.get("binds")
+    if not isinstance(binds, list) or "manifest_hash" not in binds:
+        errors.append("attestation_missing_manifest_hash_bind")
+    return errors
+
+
 _TM_REQUIRED_LISTS = (
     "top_threats",
     "mitigations",
     "out_of_scope",
+    "privacy",
+    "data_sensitivity",
+    "severity",
+    "likelihood",
 )
 _TM_REVIEWER_ROLES = frozenset(
     {"security_owner", "product_security", "independent_qa"}
@@ -355,7 +401,9 @@ def build_manifest(
     data["security_certification"] = False  # force
     h = compute_manifest_hash(data)
     data["manifest_hash"] = h
-    data["signature"] = sign_manifest_hash(h)
+    sig = sign_manifest_hash(h)
+    data["signature"] = sig
+    data["attestation"] = attestation_for_signature(sig)
     data["signed_at"] = datetime.now(timezone.utc).isoformat()
     return data
 
@@ -394,6 +442,7 @@ def validate_manifest_integrity(data: Dict[str, Any]) -> Dict[str, Any]:
             reason = "unsigned_dev_allowed_non_prodish"
     elif not ok_sig:
         errors.append(f"signature:{reason}")
+    errors.extend(validate_attestation(sig, data.get("attestation")))
     if data.get("security_certification") is True:
         errors.append("security_certification_must_be_false")
     return {
