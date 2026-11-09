@@ -168,6 +168,127 @@ def check_engineering_closeout() -> Dict[str, Any]:
     }
 
 
+def _parse_fail_mode(raw: Optional[str], *, default: str = "open") -> str:
+    """Mirror policy_gate._parse_policy_fail_mode (stdlib-only for CI)."""
+    v = (raw or default or "open").strip().lower()
+    if v in ("closed", "deny", "fail-closed", "fail_closed"):
+        return "closed"
+    if v in ("ask", "approval", "fail-ask", "fail_ask"):
+        return "ask"
+    if v in ("open", "allow", "fail-open", "fail_open"):
+        return "open"
+    return "open"
+
+
+def _normalize_profile(raw: str) -> str:
+    p = (raw or "").strip().lower()
+    if p in ("production", "prod"):
+        return "production"
+    if p in ("staging", "stage", "preprod"):
+        return "staging"
+    if p in ("development", "dev", "local", "test"):
+        return "development"
+    return p
+
+
+def _default_fail_mode(profile: str) -> str:
+    p = _normalize_profile(profile)
+    if p in ("production", "staging"):
+        return "closed"
+    if p == "development":
+        return "ask"
+    return "open"
+
+
+def _fail_open_honored(profile: str, until: Optional[str]) -> bool:
+    """Prod/staging open override requires a future UNTIL (mirror policy_gate)."""
+    p = _normalize_profile(profile)
+    if p not in ("production", "staging"):
+        return True
+    future = _iso_future(until or "")
+    if future is True:
+        return True
+    if future is False:
+        return False  # expired or invalid → not honored
+    return False  # missing → not honored
+
+
+def _resolve_critical_fail_mode(
+    *,
+    profile: str,
+    explicit: Optional[str],
+    until: Optional[str],
+    critical_override: Optional[str] = None,
+) -> str:
+    """Stdlib mirror of policy_gate.resolve_policy_fail_mode(critical=True)."""
+    if critical_override is not None and str(critical_override).strip() != "":
+        return _parse_fail_mode(critical_override, default="open")
+    if explicit is not None and str(explicit).strip() != "":
+        base = _parse_fail_mode(explicit, default="open")
+        if base == "open" and not _fail_open_honored(profile, until):
+            return _default_fail_mode(profile)
+        return base
+    return _default_fail_mode(profile)
+
+
+def simulate_profile_matrix() -> Dict[str, Any]:
+    """Dry-run expected fail-mode defaults per profile (P0-2 cutover aid).
+
+    Pure env simulation (no core import) so CI minimal venv can run it.
+    Does not mutate process env permanently.
+    """
+    rows: List[Dict[str, Any]] = []
+    scenarios = [
+        {"profile": "production", "explicit": None, "until": None, "expect": "closed"},
+        {"profile": "staging", "explicit": None, "until": None, "expect": "closed"},
+        {"profile": "development", "explicit": None, "until": None, "expect": "ask"},
+        {
+            "profile": "production",
+            "explicit": "open",
+            "until": None,
+            "expect": "closed",  # open not honored without UNTIL
+        },
+        {
+            "profile": "production",
+            "explicit": "open",
+            "until": "2099-01-01T00:00:00Z",
+            "expect": "open",
+        },
+    ]
+    for sc in scenarios:
+        effective = _resolve_critical_fail_mode(
+            profile=sc["profile"],
+            explicit=sc["explicit"],
+            until=sc["until"],
+        )
+        # Drift: effective open in prodish, OR attempted open without valid UNTIL
+        prodish = _normalize_profile(sc["profile"]) in ("production", "staging")
+        explicit_open = (
+            sc["explicit"] is not None
+            and _parse_fail_mode(sc["explicit"], default="") == "open"
+        )
+        honored = _fail_open_honored(sc["profile"], sc["until"])
+        drift = bool(prodish and (effective == "open" or (explicit_open and not honored)))
+        rows.append(
+            {
+                "profile": sc["profile"],
+                "explicit": sc["explicit"] or "(unset)",
+                "until": sc["until"] or "(unset)",
+                "effective_critical": effective,
+                "expect": sc["expect"],
+                "ok": effective == sc["expect"],
+                "drift": drift,
+                "source": "stdlib_mirror",
+            }
+        )
+    return {
+        "ok": all(r.get("ok") for r in rows) and bool(rows),
+        "rows": rows,
+        "security_certification": False,
+        "honesty": "Matrix is local dry-run ≠ production cutover proof.",
+    }
+
+
 def run_ops_audit() -> Dict[str, Any]:
     checks = {
         "ir_contacts": check_ir_contacts(),
@@ -193,6 +314,15 @@ def run_ops_audit() -> Dict[str, Any]:
 
 
 def main() -> int:
+    if "--profile-matrix" in sys.argv:
+        matrix = simulate_profile_matrix()
+        print(json.dumps(matrix, ensure_ascii=False, indent=2))
+        print(
+            f"profile_matrix ok={matrix.get('ok')} cert=false",
+            file=sys.stderr,
+        )
+        return 0 if matrix.get("ok") else 1
+
     report = run_ops_audit()
     print(json.dumps(report, ensure_ascii=False, indent=2))
     strict = "--strict" in sys.argv

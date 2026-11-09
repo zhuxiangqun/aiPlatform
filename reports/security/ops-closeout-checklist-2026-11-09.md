@@ -17,7 +17,7 @@
 
 | # | 项 | Owner | 完成 |
 |---|---|---|---|
-| 1 | 生产/预发 `AIPLAT_PROFILE` + fail-closed 审计；open 须 UNTIL | Platform Security | [ ] |
+| 1 | 生产/预发 `AIPLAT_PROFILE` + fail-closed 审计；open 须 UNTIL | Platform Security | [~] 干跑：`python3 scripts/security_ops_audit.py --profile-matrix` + [`P0-2-fail-closed-cutover.md`](./P0-2-fail-closed-cutover.md)；**预发故障拒绝+生产 env 证据后勾完** |
 | 2 | 填写 `security/ir/contacts.local.yaml`；`python3 scripts/security_ir_contacts.py` exit 0；On-call 抽检 | IR Lead | [~] 本地已从 example 落盘并通过校验；**须替换为真实 on-call 后再勾完** |
 | 3 | Authz pilot：2 类 × ≥3 样本 + 负向 + Owner 书面退出 | Product Security | [ ] |
 

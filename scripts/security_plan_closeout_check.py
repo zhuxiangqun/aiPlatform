@@ -38,6 +38,7 @@ ENGINEERING: List[Tuple[str, str]] = [
     ("ops", "scripts/security_plan_closeout_check.py"),
     ("ops", "scripts/security_ops_audit.py"),
     ("ops", "scripts/run_security_p1_units.py"),
+    ("P0-2", "reports/security/P0-2-fail-closed-cutover.md"),
     ("P0-IR", "scripts/security_ir_contacts.py"),
     ("P0-IR", "security/ir/contacts.example.yaml"),
     ("P0-IR", "security/ir/contacts.local.yaml.example"),
