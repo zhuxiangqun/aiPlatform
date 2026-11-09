@@ -1,0 +1,26 @@
+# SEC-P1b — severity / remediation / claim_revocation defaults (engineering; ≠ certification)
+schema: eval.security_severity_loop_defaults.v1
+version: "1.0.0"
+claim_eligible: false
+accuracy_claim: false
+security_certification: false
+defaults:
+  severities: [low, medium, high, critical]
+  impacts: [data, tool, host, tenant, availability]
+  statuses: [open, mitigated, accepted_risk, retested_pass]
+  # critical/high must be closed (retested_pass) or accepted_risk with signoff
+  # before any family containing them can be L5-declared.
+  l5_block_severities: [high, critical]
+  # Prompt-only fix without retest_case_id result does not close.
+  require_retest_to_close: true
+  # Same-family critical regression → claim_revocation for declared scope.
+  revoke_on_critical_regression: true
+  sla_days:
+    critical: 7
+    high: 14
+    medium: 30
+    low: 60
+honesty: |
+  Severity loop is engineering governance only.
+  Closing findings ≠ security_certification.
+  L5 declare still requires authorize + signoff elsewhere.

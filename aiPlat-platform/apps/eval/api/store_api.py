@@ -374,6 +374,16 @@ async def get_a1_intersection_status(
     return {"data": eval_a1_intersection_status()}
 
 
+@router.get("/security-sec-p2a-status", response_model=ItemResponse)
+async def get_security_sec_p2a_status(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """SEC-P2a S1 pack + OOS/untested disclosure — accuracy_claim stays false."""
+    from core.api.core_facade import eval_security_sec_p2a_status
+
+    return {"data": eval_security_sec_p2a_status()}
+
+
 @router.get("/preference-status", response_model=ItemResponse)
 async def get_preference_status(
     tenant_id: str = "eval-v1",

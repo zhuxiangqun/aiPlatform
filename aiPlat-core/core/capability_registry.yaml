@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2242
+total_capabilities: 2332
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6799,12 +6799,12 @@ domains:
         reason: "canonical diagnosis HTTP API"
 
   # ══════════════════════════════════════════════════════════════
-  # 十三、评估系统 (24 caps)
+  # 十三、评估系统 (392 caps)
   # ══════════════════════════════════════════════════════════════
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 302
+    caps_count: 392
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -6970,6 +6970,366 @@ domains:
         type: component
         signature: "EvalA1IntersectionCard()"
         module: aiPlat-management/frontend/src/pages/Eval/EvalA1IntersectionCard.tsx
+      - symbol: load_threat_family_catalog
+        type: function
+        signature: "load_threat_family_catalog(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: build_security_family_report
+        type: function
+        signature: "build_security_family_report(…)→Dict (macro ASR not_for_claim)"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: security_l1_p0a_status
+        type: function
+        signature: "security_l1_p0a_status()→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: validate_l1_safety_cases
+        type: function
+        signature: "validate_l1_safety_cases(cases)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: eval_security_sec_p0a_status
+        type: function
+        signature: "eval_security_sec_p0a_status()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_security_family_report
+        type: function
+        signature: "eval_build_security_family_report(by_case?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_isolation_status
+        type: function
+        signature: "evaluate_isolation_status(admit?,probe_run?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/isolation_t12.py
+      - symbol: run_escape_probes
+        type: function
+        signature: "run_escape_probes(live?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/isolation_t12.py
+      - symbol: security_t12_p0b_status
+        type: function
+        signature: "security_t12_p0b_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/isolation_t12.py
+      - symbol: load_t12_escape_probes
+        type: function
+        signature: "load_t12_escape_probes(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/isolation_t12.py
+      - symbol: eval_security_sec_p0b_status
+        type: function
+        signature: "eval_security_sec_p0b_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_isolation_status
+        type: function
+        signature: "eval_evaluate_isolation_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: apply_family_sample_gate
+        type: function
+        signature: "apply_family_sample_gate(bucket)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: evaluate_security_family_gates
+        type: function
+        signature: "evaluate_security_family_gates(report)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: security_sec_p0c_status
+        type: function
+        signature: "security_sec_p0c_status(by_case?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_family_report.py
+      - symbol: eval_security_sec_p0c_status
+        type: function
+        signature: "eval_security_sec_p0c_status(by_case?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_security_family_gates
+        type: function
+        signature: "eval_evaluate_security_family_gates(report)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_judge_calib_defaults
+        type: function
+        signature: "load_judge_calib_defaults(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: build_judge_version_manifest
+        type: function
+        signature: "build_judge_version_manifest(judge_id,judge_version,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: check_judge_version_drift
+        type: function
+        signature: "check_judge_version_drift(run_manifest,frozen_manifest)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: evaluate_security_judge_calibration
+        type: function
+        signature: "evaluate_security_judge_calibration(pairs,…)→Dict report_only"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: annotate_family_asr_calibration
+        type: function
+        signature: "annotate_family_asr_calibration(family_report,calib)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: security_sec_p1a_status
+        type: function
+        signature: "security_sec_p1a_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_judge_calib.py
+      - symbol: eval_security_sec_p1a_status
+        type: function
+        signature: "eval_security_sec_p1a_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_security_judge_version_manifest
+        type: function
+        signature: "eval_build_security_judge_version_manifest(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_security_judge_calibration
+        type: function
+        signature: "eval_evaluate_security_judge_calibration(pairs,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_check_security_judge_version_drift
+        type: function
+        signature: "eval_check_security_judge_version_drift(run,frozen)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_annotate_family_asr_calibration
+        type: function
+        signature: "eval_annotate_family_asr_calibration(report,calib)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_security_judge_calib_defaults
+        type: function
+        signature: "eval_load_security_judge_calib_defaults()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_severity_loop_defaults
+        type: function
+        signature: "load_severity_loop_defaults(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: build_security_finding
+        type: function
+        signature: "build_security_finding(case_id,threat_id,severity,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: transition_finding
+        type: function
+        signature: "transition_finding(finding,status,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: evaluate_severity_l5_gate
+        type: function
+        signature: "evaluate_severity_l5_gate(findings,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: evaluate_claim_revocation
+        type: function
+        signature: "evaluate_claim_revocation(declared_families,new_findings,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: security_sec_p1b_status
+        type: function
+        signature: "security_sec_p1b_status(findings?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_severity_loop.py
+      - symbol: eval_security_sec_p1b_status
+        type: function
+        signature: "eval_security_sec_p1b_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_security_finding
+        type: function
+        signature: "eval_build_security_finding(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_transition_security_finding
+        type: function
+        signature: "eval_transition_security_finding(finding,status,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_security_severity_l5_gate
+        type: function
+        signature: "eval_evaluate_security_severity_l5_gate(findings,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_security_claim_revocation
+        type: function
+        signature: "eval_evaluate_security_claim_revocation(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_security_severity_loop_defaults
+        type: function
+        signature: "eval_load_security_severity_loop_defaults()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_t13_allowlist_probes
+        type: function
+        signature: "load_t13_allowlist_probes(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_t13_allowlist.py
+      - symbol: run_t13_allowlist_probes
+        type: function
+        signature: "run_t13_allowlist_probes(…)→Dict (process_split never granted)"
+        module: aiPlat-core/core/apps/eval/service/security_t13_allowlist.py
+      - symbol: assert_t13_process_split_boundary
+        type: function
+        signature: "assert_t13_process_split_boundary(run?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_t13_allowlist.py
+      - symbol: evaluate_t13_coverage
+        type: function
+        signature: "evaluate_t13_coverage(run,…)→Dict claim-closed"
+        module: aiPlat-core/core/apps/eval/service/security_t13_allowlist.py
+      - symbol: security_sec_p1c_status
+        type: function
+        signature: "security_sec_p1c_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_t13_allowlist.py
+      - symbol: eval_security_sec_p1c_status
+        type: function
+        signature: "eval_security_sec_p1c_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_t13_allowlist_probes
+        type: function
+        signature: "eval_run_t13_allowlist_probes(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_assert_t13_process_split_boundary
+        type: function
+        signature: "eval_assert_t13_process_split_boundary(run?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_t13_coverage
+        type: function
+        signature: "eval_evaluate_t13_coverage(run,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_t13_allowlist_probes
+        type: function
+        signature: "eval_load_t13_allowlist_probes()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_s1_live_attack_pack
+        type: function
+        signature: "load_s1_live_attack_pack(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_s1_disclosure.py
+      - symbol: build_untested_oos_disclosure
+        type: function
+        signature: "build_untested_oos_disclosure(by_case?)→Dict C15"
+        module: aiPlat-core/core/apps/eval/service/security_s1_disclosure.py
+      - symbol: security_sec_p2a_status
+        type: function
+        signature: "security_sec_p2a_status(by_case?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_s1_disclosure.py
+      - symbol: eval_security_sec_p2a_status
+        type: function
+        signature: "eval_security_sec_p2a_status(by_case?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_untested_oos_disclosure
+        type: function
+        signature: "eval_build_untested_oos_disclosure(by_case?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_s1_live_attack_pack
+        type: function
+        signature: "eval_load_s1_live_attack_pack()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: EvalSecurityS1Card
+        type: component
+        signature: "EvalSecurityS1Card()"
+        module: aiPlat-management/frontend/src/pages/Eval/EvalSecurityS1Card.tsx
+      - symbol: build_security_l5_claim_template
+        type: function
+        signature: "build_security_l5_claim_template(…)→Dict claim-closed"
+        module: aiPlat-core/core/apps/eval/service/security_l5_claim_template.py
+      - symbol: validate_claim_sentence_against_policy
+        type: function
+        signature: "validate_claim_sentence_against_policy(sentence)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l5_claim_template.py
+      - symbol: select_declare_candidate_families
+        type: function
+        signature: "select_declare_candidate_families(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l5_claim_template.py
+      - symbol: security_sec_p2b_status
+        type: function
+        signature: "security_sec_p2b_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l5_claim_template.py
+      - symbol: eval_security_sec_p2b_status
+        type: function
+        signature: "eval_security_sec_p2b_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_security_l5_claim_template
+        type: function
+        signature: "eval_build_security_l5_claim_template(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_validate_security_l5_claim_sentence
+        type: function
+        signature: "eval_validate_security_l5_claim_sentence(sentence)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_select_security_declare_candidate_families
+        type: function
+        signature: "eval_select_security_declare_candidate_families(report,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_l3_s_tool_s_rag_pack
+        type: function
+        signature: "load_l3_s_tool_s_rag_pack(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l3_packs.py
+      - symbol: run_l3_pack_fixtures
+        type: function
+        signature: "run_l3_pack_fixtures(pack_filter?)→Dict fixture-only"
+        module: aiPlat-core/core/apps/eval/service/security_l3_packs.py
+      - symbol: evaluate_a7_l3_parity
+        type: function
+        signature: "evaluate_a7_l3_parity(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l3_packs.py
+      - symbol: evaluate_l3_case_fixture
+        type: function
+        signature: "evaluate_l3_case_fixture(case)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l3_packs.py
+      - symbol: security_sec_p3_status
+        type: function
+        signature: "security_sec_p3_status()→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_l3_packs.py
+      - symbol: eval_security_sec_p3_status
+        type: function
+        signature: "eval_security_sec_p3_status()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_l3_pack_fixtures
+        type: function
+        signature: "eval_run_l3_pack_fixtures(pack_filter?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_a7_l3_parity
+        type: function
+        signature: "eval_evaluate_a7_l3_parity()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_l3_s_tool_s_rag_pack
+        type: function
+        signature: "eval_load_l3_s_tool_s_rag_pack()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_l3_case_fixture
+        type: function
+        signature: "eval_evaluate_l3_case_fixture(case)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_linux_microvm_probes
+        type: function
+        signature: "run_linux_microvm_probes(mode?,catalog?,admit?,hooks?,escape_executor?)→Dict guest_sim|guest_live"
+        module: aiPlat-core/core/apps/eval/service/security_t12_p4.py
+      - symbol: security_sec_p4_status
+        type: function
+        signature: "security_sec_p4_status(mode?,human_review?,hooks?,escape_executor?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_t12_p4.py
+      - symbol: eval_security_sec_p4_status
+        type: function
+        signature: "eval_security_sec_p4_status(mode?,human_review?,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_linux_microvm_probes
+        type: function
+        signature: "eval_run_linux_microvm_probes(mode?,catalog?,admit?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_p5_extension_gates
+        type: function
+        signature: "load_p5_extension_gates(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p5_extensions.py
+      - symbol: evaluate_t11_deferred_gate
+        type: function
+        signature: "evaluate_t11_deferred_gate(gates?,evidence?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p5_extensions.py
+      - symbol: build_oos_extension_disclosure
+        type: function
+        signature: "build_oos_extension_disclosure(gates?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p5_extensions.py
+      - symbol: evaluate_deep_supply_chain_boundary
+        type: function
+        signature: "evaluate_deep_supply_chain_boundary(gates?,t13_shallow_ok?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p5_extensions.py
+      - symbol: security_sec_p5_status
+        type: function
+        signature: "security_sec_p5_status(t11_evidence?,t13_shallow_ok?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p5_extensions.py
+      - symbol: eval_security_sec_p5_status
+        type: function
+        signature: "eval_security_sec_p5_status(t11_evidence?,t13_shallow_ok?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_t11_deferred_gate
+        type: function
+        signature: "eval_evaluate_t11_deferred_gate(evidence?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_oos_extension_disclosure
+        type: function
+        signature: "eval_build_oos_extension_disclosure()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_deep_supply_chain_boundary
+        type: function
+        signature: "eval_evaluate_deep_supply_chain_boundary(t13_shallow_ok?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_load_p5_extension_gates
+        type: function
+        signature: "eval_load_p5_extension_gates()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
       - symbol: ModeAwareExamError
         type: class
         signature: "Fail-closed mode exam error."

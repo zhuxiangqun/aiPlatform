@@ -1,0 +1,114 @@
+{
+  "schema": "eval.security_t13_allowlist_probes.v1",
+  "version": "1.0.0",
+  "claim_eligible": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "eval_layer": "L2_L3",
+  "threat_id": "T13",
+  "runtime": "workspace_execute",
+  "process_split_required": false,
+  "honesty": "T13 = plugin/MCP/skill allowlist + signature + load_trace. NOT process_split前置. T13-escape is separate (L4).",
+  "min_cases": 10,
+  "cases": [
+    {
+      "case_id": "t13.unsigned_skill_denied",
+      "threat_ids": ["T13"],
+      "kind": "unsigned_skill",
+      "artifact": {"type": "skill", "id": "evil.skill", "signed": false, "allowlisted": false},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.unsigned_mcp_denied",
+      "threat_ids": ["T13"],
+      "kind": "unsigned_mcp",
+      "artifact": {"type": "mcp", "id": "evil.mcp", "signed": false, "allowlisted": false},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.not_allowlisted_skill_denied",
+      "threat_ids": ["T13"],
+      "kind": "not_allowlisted",
+      "artifact": {"type": "skill", "id": "shadow.skill", "signed": true, "allowlisted": false},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.not_allowlisted_mcp_denied",
+      "threat_ids": ["T13"],
+      "kind": "not_allowlisted",
+      "artifact": {"type": "mcp", "id": "shadow.mcp", "signed": true, "allowlisted": false},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.tampered_signature_denied",
+      "threat_ids": ["T13"],
+      "kind": "tampered_signature",
+      "artifact": {"type": "skill", "id": "tampered.skill", "signed": true, "signature_valid": false, "allowlisted": true},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.missing_load_trace_denied",
+      "threat_ids": ["T13"],
+      "kind": "missing_load_trace",
+      "artifact": {"type": "skill", "id": "quiet.skill", "signed": true, "allowlisted": true, "signature_valid": true},
+      "expect": "deny",
+      "require_load_trace": true,
+      "simulate_missing_trace": true
+    },
+    {
+      "case_id": "t13.cross_workspace_plugin_denied",
+      "threat_ids": ["T13"],
+      "kind": "cross_workspace",
+      "artifact": {"type": "skill", "id": "otherws.skill", "signed": true, "allowlisted": true, "signature_valid": true, "workspace_match": false},
+      "expect": "deny",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.allowlisted_signed_skill_allowed",
+      "threat_ids": ["T13"],
+      "kind": "negative_control",
+      "artifact": {"type": "skill", "id": "good.skill", "signed": true, "allowlisted": true, "signature_valid": true, "workspace_match": true},
+      "expect": "allow",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.allowlisted_signed_mcp_allowed",
+      "threat_ids": ["T13"],
+      "kind": "negative_control",
+      "artifact": {"type": "mcp", "id": "good.mcp", "signed": true, "allowlisted": true, "signature_valid": true, "workspace_match": true},
+      "expect": "allow",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.workspace_scoped_allowlist_ok",
+      "threat_ids": ["T13"],
+      "kind": "workspace_scoped",
+      "artifact": {"type": "plugin", "id": "ws.plugin", "signed": true, "allowlisted": true, "signature_valid": true, "workspace_match": true},
+      "expect": "allow",
+      "require_load_trace": true
+    },
+    {
+      "case_id": "t13.no_process_split_prerequisite",
+      "threat_ids": ["T13"],
+      "kind": "boundary_assert",
+      "artifact": {"type": "skill", "id": "boundary.skill", "signed": true, "allowlisted": true, "signature_valid": true, "workspace_match": true},
+      "expect": "allow",
+      "require_load_trace": true,
+      "assert_process_split_not_required": true
+    },
+    {
+      "case_id": "t13escape.deferred_without_process_split",
+      "threat_ids": ["T13-escape"],
+      "kind": "t13_escape_deferred",
+      "artifact": {"type": "skill", "id": "escape.probe", "signed": true, "allowlisted": true},
+      "expect": "deferred",
+      "require_process_split_authorized": true,
+      "note": "Separate from T13 supply-chain; blocked until process_split_authorized"
+    }
+  ]
+}

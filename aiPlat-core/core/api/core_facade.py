@@ -6461,6 +6461,572 @@ def eval_a1_intersection_status() -> Dict[str, Any]:
     return a1_intersection_status_report()
 
 
+def eval_security_sec_p0a_status() -> Dict[str, Any]:
+    """SEC-P0a: L1 threat_ids validation + per-family report schema. Never certifies."""
+    from core.apps.eval.service.security_family_report import security_l1_p0a_status
+
+    return security_l1_p0a_status()
+
+
+def eval_security_sec_p0b_status(
+    *,
+    live_probes: bool = False,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """SEC-P0b: T12 isolation state machine + probe interface. Never auto-covered."""
+    from core.apps.eval.service.isolation_t12 import security_t12_p0b_status
+
+    return security_t12_p0b_status(
+        live_probes=bool(live_probes),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_security_sec_p0c_status(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P0c: per-threat-family min_n/CI/report_only gate. Never unlocks L5 declare."""
+    from core.apps.eval.service.security_family_report import security_sec_p0c_status
+
+    return security_sec_p0c_status(by_case=by_case)
+
+
+def eval_evaluate_security_family_gates(
+    report: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Apply/recompute per-family min_n gates on a security family report."""
+    from core.apps.eval.service.security_family_report import (
+        evaluate_security_family_gates,
+    )
+
+    return evaluate_security_family_gates(report)
+
+
+def eval_security_sec_p1a_status(
+    *,
+    pairs: Optional[List[Dict[str, Any]]] = None,
+    judge_id: str = "security.policy_judge",
+    judge_version: str = "1.0.0",
+    judge_model: str = "eval-judge-model",
+    subject_model: str = "subject-under-test",
+) -> Dict[str, Any]:
+    """SEC-P1a: judge calibration protocol + judge_version manifest. Never certifies."""
+    from core.apps.eval.service.security_judge_calib import security_sec_p1a_status
+
+    return security_sec_p1a_status(
+        pairs=pairs,
+        judge_id=str(judge_id or "security.policy_judge"),
+        judge_version=str(judge_version or "1.0.0"),
+        judge_model=str(judge_model or "eval-judge-model"),
+        subject_model=str(subject_model or "subject-under-test"),
+    )
+
+
+def eval_build_security_judge_version_manifest(
+    *,
+    judge_id: str,
+    judge_version: str,
+    judge_model: str,
+    subject_model: str,
+    prompt_hash: str = "",
+    frozen: bool = True,
+) -> Dict[str, Any]:
+    """Build frozen judge_id+judge_version manifest; self-judge forbidden."""
+    from core.apps.eval.service.security_judge_calib import build_judge_version_manifest
+
+    return build_judge_version_manifest(
+        judge_id=judge_id,
+        judge_version=judge_version,
+        judge_model=judge_model,
+        subject_model=subject_model,
+        prompt_hash=str(prompt_hash or ""),
+        frozen=bool(frozen),
+    )
+
+
+def eval_evaluate_security_judge_calibration(
+    pairs: List[Dict[str, Any]],
+    *,
+    manifest: Optional[Dict[str, Any]] = None,
+    frozen_manifest: Optional[Dict[str, Any]] = None,
+    failure_case_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Gold vs judge agreement + FP/FN gate; uncalibrated → judge_uncalibrated."""
+    from core.apps.eval.service.security_judge_calib import (
+        evaluate_security_judge_calibration,
+    )
+
+    return evaluate_security_judge_calibration(
+        pairs=pairs,
+        manifest=manifest,
+        frozen_manifest=frozen_manifest,
+        failure_case_ids=failure_case_ids,
+    )
+
+
+def eval_check_security_judge_version_drift(
+    *,
+    run_manifest: Dict[str, Any],
+    frozen_manifest: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Detect judge_id/version/model/prompt_hash drift; invalidates claim candidate."""
+    from core.apps.eval.service.security_judge_calib import check_judge_version_drift
+
+    return check_judge_version_drift(
+        run_manifest=run_manifest, frozen_manifest=frozen_manifest
+    )
+
+
+def eval_annotate_family_asr_calibration(
+    family_report: Dict[str, Any],
+    *,
+    calib: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Stamp per-family asr_calibration_status; never unlocks claim."""
+    from core.apps.eval.service.security_judge_calib import (
+        annotate_family_asr_calibration,
+    )
+
+    return annotate_family_asr_calibration(family_report, calib=calib)
+
+
+def eval_load_security_judge_calib_defaults() -> Dict[str, Any]:
+    """Load SEC-P1a judge calibration defaults seed (engineering thresholds)."""
+    from core.apps.eval.service.security_judge_calib import load_judge_calib_defaults
+
+    return load_judge_calib_defaults()
+
+
+def eval_security_sec_p1b_status(
+    *,
+    findings: Optional[List[Dict[str, Any]]] = None,
+    declared_families: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """SEC-P1b: severity/remediation/retest/claim_revocation. Never certifies."""
+    from core.apps.eval.service.security_severity_loop import security_sec_p1b_status
+
+    return security_sec_p1b_status(
+        findings=findings,
+        declared_families=declared_families,
+    )
+
+
+def eval_build_security_finding(
+    *,
+    case_id: str,
+    threat_id: str,
+    severity: str,
+    impact: str,
+    remediation_owner: str,
+    retest_case_id: str = "",
+    status: str = "open",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Build structured §6.5 security finding (claim closed)."""
+    from core.apps.eval.service.security_severity_loop import build_security_finding
+
+    return build_security_finding(
+        case_id=case_id,
+        threat_id=threat_id,
+        severity=severity,
+        impact=impact,
+        remediation_owner=remediation_owner,
+        retest_case_id=retest_case_id,
+        status=status,
+        notes=notes,
+    )
+
+
+def eval_transition_security_finding(
+    finding: Dict[str, Any],
+    *,
+    status: str,
+    accepted_risk_signoff: str = "",
+    retest_passed: Optional[bool] = None,
+    retest_evidence: str = "",
+    retest_case_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Transition finding status; retested_pass requires retest evidence."""
+    from core.apps.eval.service.security_severity_loop import transition_finding
+
+    return transition_finding(
+        finding,
+        status=status,
+        accepted_risk_signoff=accepted_risk_signoff,
+        retest_passed=retest_passed,
+        retest_evidence=retest_evidence,
+        retest_case_id=retest_case_id,
+        notes=notes,
+    )
+
+
+def eval_evaluate_security_severity_l5_gate(
+    findings: List[Dict[str, Any]],
+    *,
+    declare_families: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Block L5 declare for families with open high/critical findings."""
+    from core.apps.eval.service.security_severity_loop import (
+        evaluate_severity_l5_gate,
+    )
+
+    return evaluate_severity_l5_gate(
+        findings, declare_families=declare_families
+    )
+
+
+def eval_evaluate_security_claim_revocation(
+    *,
+    declared_families: List[str],
+    new_findings: List[Dict[str, Any]],
+    reason: str = "",
+) -> Dict[str, Any]:
+    """Critical regression on declared family → claim_revocation required."""
+    from core.apps.eval.service.security_severity_loop import (
+        evaluate_claim_revocation,
+    )
+
+    return evaluate_claim_revocation(
+        declared_families=declared_families,
+        new_findings=new_findings,
+        reason=reason,
+    )
+
+
+def eval_load_security_severity_loop_defaults() -> Dict[str, Any]:
+    """Load SEC-P1b severity loop defaults seed."""
+    from core.apps.eval.service.security_severity_loop import (
+        load_severity_loop_defaults,
+    )
+
+    return load_severity_loop_defaults()
+
+
+def eval_security_sec_p1c_status(
+    *,
+    coverage_mode: str = "exercised_fixture",
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """SEC-P1c: T13 allowlist pack + process_split boundary. Never certifies."""
+    from core.apps.eval.service.security_t13_allowlist import security_sec_p1c_status
+
+    return security_sec_p1c_status(
+        coverage_mode=str(coverage_mode or "exercised_fixture"),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_run_t13_allowlist_probes(
+    *,
+    coverage_mode: str = "exercised_fixture",
+    process_split_authorized: bool = False,
+) -> Dict[str, Any]:
+    """Run T13 allowlist fixture probes; process_split never required/granted."""
+    from core.apps.eval.service.security_t13_allowlist import run_t13_allowlist_probes
+
+    return run_t13_allowlist_probes(
+        coverage_mode=str(coverage_mode or "exercised_fixture"),
+        process_split_authorized=bool(process_split_authorized),
+    )
+
+
+def eval_assert_t13_process_split_boundary(
+    *,
+    run: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """C17: T13 must not use process_split as supply-chain前置."""
+    from core.apps.eval.service.security_t13_allowlist import (
+        assert_t13_process_split_boundary,
+    )
+
+    return assert_t13_process_split_boundary(run=run)
+
+
+def eval_evaluate_t13_coverage(
+    run: Dict[str, Any],
+    *,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """Map T13 run → coverage; claim_candidate still accuracy_claim=false."""
+    from core.apps.eval.service.security_t13_allowlist import evaluate_t13_coverage
+
+    return evaluate_t13_coverage(
+        run,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_load_t13_allowlist_probes() -> Dict[str, Any]:
+    """Load SEC-P1c T13 allowlist probe pack seed."""
+    from core.apps.eval.service.security_t13_allowlist import load_t13_allowlist_probes
+
+    return load_t13_allowlist_probes()
+
+
+def eval_security_sec_p2a_status(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P2a: S1 pack read-only + OOS/untested family auto-list. Never certifies."""
+    from core.apps.eval.service.security_s1_disclosure import security_sec_p2a_status
+
+    return security_sec_p2a_status(by_case=by_case)
+
+
+def eval_build_untested_oos_disclosure(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """C15: auto-list untested / below_min_n / deferred / OOS threat families."""
+    from core.apps.eval.service.security_s1_disclosure import (
+        build_untested_oos_disclosure,
+    )
+
+    return build_untested_oos_disclosure(by_case=by_case)
+
+
+def eval_load_s1_live_attack_pack() -> Dict[str, Any]:
+    """Load S1 live_attack pack (read-only; does not run live attacks)."""
+    from core.apps.eval.service.security_s1_disclosure import load_s1_live_attack_pack
+
+    return load_s1_live_attack_pack()
+
+
+def eval_security_sec_p2b_status(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    subject: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P2b: L5 per-family claim template status. Never certifies."""
+    from core.apps.eval.service.security_l5_claim_template import security_sec_p2b_status
+
+    return security_sec_p2b_status(by_case=by_case, subject=subject)
+
+
+def eval_build_security_l5_claim_template(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    subject: Optional[Dict[str, Any]] = None,
+    pack_id: str = "agent.safety.l1",
+    pack_version: str = "0.0.0",
+    runtime_tier: str = "workspace_execute",
+    judge_id: str = "security.policy_judge",
+    judge_version: str = "1.0.0",
+    severity_blocked: Optional[List[str]] = None,
+    judge_usable: bool = True,
+    asr_calibration_status: str = "judge_uncalibrated",
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build per-family L5 claim template; accuracy_claim stays false."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        build_security_l5_claim_template,
+    )
+
+    return build_security_l5_claim_template(
+        by_case=by_case,
+        subject=subject,
+        pack_id=pack_id,
+        pack_version=pack_version,
+        runtime_tier=runtime_tier,
+        judge_id=judge_id,
+        judge_version=judge_version,
+        severity_blocked=severity_blocked,
+        judge_usable=judge_usable,
+        asr_calibration_status=asr_calibration_status,
+        explicit_authorize=explicit_authorize,
+        signoffs=signoffs,
+    )
+
+
+def eval_validate_security_l5_claim_sentence(sentence: str) -> Dict[str, Any]:
+    """Reject forbidden false-green / marketing claim sentences."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        validate_claim_sentence_against_policy,
+    )
+
+    return validate_claim_sentence_against_policy(sentence)
+
+
+def eval_select_security_declare_candidate_families(
+    family_report: Dict[str, Any],
+    *,
+    severity_blocked: Optional[List[str]] = None,
+    judge_usable: bool = True,
+    asr_calibration_status: str = "",
+) -> Dict[str, Any]:
+    """Select per-family L5 declare *candidates* (not emitted declaration)."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        select_declare_candidate_families,
+    )
+
+    return select_declare_candidate_families(
+        family_report=family_report,
+        severity_blocked=severity_blocked,
+        judge_usable=judge_usable,
+        asr_calibration_status=asr_calibration_status,
+    )
+
+
+def eval_security_sec_p3_status() -> Dict[str, Any]:
+    """SEC-P3: S-Tool/S-RAG L3 fixtures + A7 parity. Never certifies / live exec."""
+    from core.apps.eval.service.security_l3_packs import security_sec_p3_status
+
+    return security_sec_p3_status()
+
+
+def eval_security_sec_p4_status(
+    *,
+    mode: str = "guest_sim",
+    human_review: bool = False,
+    human_reviewer: str = "",
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P4/P4b: Linux microVM probed path. guest_sim≠certification; covered needs review."""
+    from core.apps.eval.service.security_t12_p4 import security_sec_p4_status
+
+    return security_sec_p4_status(
+        mode=str(mode or "guest_sim"),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+        admit=admit,
+    )
+
+
+def eval_run_linux_microvm_probes(
+    *,
+    mode: str = "guest_sim",
+    catalog: Optional[Dict[str, Any]] = None,
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P4/P4b guest_sim|guest_live. Live deny needs escape_executor; never auto-covered."""
+    from core.apps.eval.service.security_t12_p4 import run_linux_microvm_probes
+
+    return run_linux_microvm_probes(mode=str(mode or "guest_sim"), catalog=catalog, admit=admit)
+
+
+def eval_security_sec_p5_status(
+    *,
+    t11_evidence: Optional[Dict[str, Any]] = None,
+    t13_shallow_ok: bool = False,
+) -> Dict[str, Any]:
+    """SEC-P5: T11 deferred gate + OOS extension cards. Never auto-graduate / certify."""
+    from core.apps.eval.service.security_p5_extensions import security_sec_p5_status
+
+    return security_sec_p5_status(
+        t11_evidence=t11_evidence,
+        t13_shallow_ok=bool(t13_shallow_ok),
+    )
+
+
+def eval_evaluate_t11_deferred_gate(
+    *,
+    evidence: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Evaluate T11 graduate-from-deferred conditions (all-required; default deferred)."""
+    from core.apps.eval.service.security_p5_extensions import evaluate_t11_deferred_gate
+
+    return evaluate_t11_deferred_gate(evidence=evidence)
+
+
+def eval_build_oos_extension_disclosure() -> Dict[str, Any]:
+    """SEC-P5 structured OOS extension cards (model poison / deep MCP / T11)."""
+    from core.apps.eval.service.security_p5_extensions import build_oos_extension_disclosure
+
+    return build_oos_extension_disclosure()
+
+
+def eval_evaluate_deep_supply_chain_boundary(
+    *,
+    t13_shallow_ok: bool = False,
+) -> Dict[str, Any]:
+    """Assert T13 shallow pass ≠ OOS-06 deep supply-chain covered."""
+    from core.apps.eval.service.security_p5_extensions import (
+        evaluate_deep_supply_chain_boundary,
+    )
+
+    return evaluate_deep_supply_chain_boundary(t13_shallow_ok=bool(t13_shallow_ok))
+
+
+def eval_load_p5_extension_gates() -> Dict[str, Any]:
+    """Load SEC-P5 extension gates seed."""
+    from core.apps.eval.service.security_p5_extensions import load_p5_extension_gates
+
+    return load_p5_extension_gates()
+
+
+def eval_run_l3_pack_fixtures(
+    *,
+    pack_filter: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run L3 S-Tool/S-RAG fixture tool_trace cases (mock only)."""
+    from core.apps.eval.service.security_l3_packs import run_l3_pack_fixtures
+
+    return run_l3_pack_fixtures(pack_filter=pack_filter)
+
+
+def eval_evaluate_a7_l3_parity() -> Dict[str, Any]:
+    """A7/L1 must not host T05-exec/T06/T07/T08; L3 pack must cover them."""
+    from core.apps.eval.service.security_l3_packs import evaluate_a7_l3_parity
+
+    return evaluate_a7_l3_parity()
+
+
+def eval_load_l3_s_tool_s_rag_pack() -> Dict[str, Any]:
+    """Load SEC-P3 L3 S-Tool/S-RAG fixture pack seed."""
+    from core.apps.eval.service.security_l3_packs import load_l3_s_tool_s_rag_pack
+
+    return load_l3_s_tool_s_rag_pack()
+
+
+def eval_evaluate_l3_case_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
+    """Score one L3 fixture case via tool_trace side-effect monitor."""
+    from core.apps.eval.service.security_l3_packs import evaluate_l3_case_fixture
+
+    return evaluate_l3_case_fixture(case)
+
+
+def eval_evaluate_isolation_status(
+    *,
+    admit: Optional[Dict[str, Any]] = None,
+    probe_run: Optional[Dict[str, Any]] = None,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """Derive isolation_admitted|probed|covered. admit alone never covered."""
+    from core.apps.eval.service.isolation_t12 import evaluate_isolation_status
+
+    return evaluate_isolation_status(
+        admit=admit,
+        probe_run=probe_run,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_build_security_family_report(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    eval_layer: str = "L1",
+    pack_id: str = "agent.safety.l1",
+    subject: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Per-threat-family security report skeleton; macro ASR not_for_claim."""
+    from core.apps.eval.service.security_family_report import build_security_family_report
+
+    return build_security_family_report(
+        by_case=by_case,
+        subject=subject,
+        pack_id=str(pack_id or "agent.safety.l1"),
+        eval_layer=str(eval_layer or "L1"),
+    )
+
+
 def eval_build_mode_intersection_rank(
     mode_columns: Dict[str, Any],
     *,

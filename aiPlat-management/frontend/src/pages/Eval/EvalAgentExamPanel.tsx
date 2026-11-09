@@ -7,6 +7,7 @@ import { Loader2, Play } from 'lucide-react';
 import { agentEvalApi, workspaceAgentApi } from '../../services';
 import type { Agent } from '../../services';
 import EvalA1IntersectionCard from './EvalA1IntersectionCard';
+import EvalSecurityS1Card from './EvalSecurityS1Card';
 import EvalAttributableReportCard, {
   type AttributableReport,
 } from './EvalAttributableReportCard';
@@ -311,6 +312,7 @@ export default function EvalAgentExamPanel({
       </label>
 
       <EvalA1IntersectionCard />
+      <EvalSecurityS1Card />
 
       <div className="flex flex-wrap gap-2" data-testid="eval-exam-subtabs">
         {tabBtn('single', '单套题', 'eval-exam-tab-single')}

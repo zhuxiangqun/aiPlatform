@@ -3,19 +3,19 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-08T19:38:13Z"
+generated_at: "2026-11-09T02:50:27Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "036be1ed9f216120ff0156c01043d6cf1652ec6972a5aa020378dd2c4bafb3e3"
+caps_sha256: "1d26e93a71a3d43c78b9fc6ebc9549c87676d9c8d918057cdfc43e3927da7b1e"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=commercial-value suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=036be1ed9f216120ff0156c01043d6cf1652ec6972a5aa020378dd2c4bafb3e3 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=commercial-value suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=1d26e93a71a3d43c78b9fc6ebc9549c87676d9c8d918057cdfc43e3927da7b1e scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 商业价值白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-08T19:38:13Z` |
-| CAPABILITIES sha256 | `036be1ed9f21…` |
+| 生成时间 (UTC) | `2026-11-09T02:50:27Z` |
+| CAPABILITIES sha256 | `1d26e93a71a3…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：

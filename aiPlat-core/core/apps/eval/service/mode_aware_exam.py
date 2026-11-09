@@ -752,8 +752,13 @@ def probe_linux_microvm_host() -> Dict[str, Any]:
         out["detail"] = f"microvm_probe:{type(exc).__name__}"
         out["host_ok"] = bool(out["kvm_device"])
     out["admit_ready"] = bool(out["host_ok"] and out["kvm_device"])
-    # Hard lock: covered remains false in this hard-gap slice (hook only).
+    # Hard lock: covered remains false from admit hook alone (SEC-P0b state machine).
     out["microvm_covered"] = False
+    # Advisory label only — full state machine is evaluate_isolation_status().
+    if out["admit_ready"] and out["linux"]:
+        out["isolation_status"] = "isolation_admitted"
+    else:
+        out["isolation_status"] = "unknown"
     return out
 
 
@@ -778,6 +783,15 @@ def probe_m1c_sandbox() -> Dict[str, Any]:
         "yes",
     }
     linux = probe_linux_microvm_host()
+    # Prefer SEC-P0b evaluator when available (admit ≠ covered).
+    isolation_status = str(linux.get("isolation_status") or "unknown")
+    try:
+        from core.apps.eval.service.isolation_t12 import evaluate_isolation_status
+
+        iso = evaluate_isolation_status(admit=linux, probe_run=None)
+        isolation_status = str(iso.get("isolation_status") or isolation_status)
+    except Exception:  # noqa: BLE001
+        pass
     return {
         "fixture_sandbox_ready": fixture_ok,
         "live_sandbox_ready": bool(live_flag and fixture_ok),
@@ -786,6 +800,7 @@ def probe_m1c_sandbox() -> Dict[str, Any]:
         "detail": detail,
         "microvm_covered": False,
         "linux_microvm": linux,
+        "isolation_status": isolation_status,
         "capability_coverage_a3_a5": "unknown",
     }
 

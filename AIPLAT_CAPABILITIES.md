@@ -1,7 +1,7 @@
 ---
-total_capabilities: 3117
+total_capabilities: 3140
 last_updated: 2026-11-09
-version: "30.13"
+version: "30.14"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -1711,6 +1711,8 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| load_a1_track_a_evidence | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
+| default_a1_evidence_dir | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_judge_calibration_get | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_judge_calibration_close | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_judge_calibration_ratings | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
@@ -2785,6 +2787,14 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_evaluate_l3_case_fixture | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_l3_case_fixture | `core/apps/eval/service/security_l3_packs.py` | ✅ | 自动同步 | 已合入 |
+| eval_select_security_declare_candidate_families | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| select_declare_candidate_families | `core/apps/eval/service/security_l5_claim_template.py` | ✅ | 自动同步 | 已合入 |
+| load_severity_loop_defaults | `core/apps/eval/service/security_severity_loop.py` | ✅ | 自动同步 | 已合入 |
+| check_judge_version_drift | `core/apps/eval/service/security_judge_calib.py` | ✅ | 自动同步 | 已合入 |
+| load_t12_escape_probes | `core/apps/eval/service/isolation_t12.py` | ✅ | 自动同步 | 已合入 |
+| validate_l1_safety_cases | `core/apps/eval/service/security_family_report.py` | ✅ | 自动同步 | 已合入 |
 | ModeDeferredEstimateError | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
 | default_m2_estimate_path | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
 | load_m2_deferred_estimate | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
@@ -3064,6 +3074,29 @@ scan_hash: 8f9548ec24f4
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
 | g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；accuracy_claim 默认 false；生成物适用：已接线 | 本批 |
 | eval_g2b_l5_gap_disclosure | `core/api/core_facade.py` | ✅ | G2b L5 gap facade；生成物适用：已接线 | 本批 |
+| load_threat_family_catalog / build_security_family_report / security_l1_p0a_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0a 威胁族目录 + L1 threat_ids 校验 + 分族报告 schema；T05-text≠T05-exec；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0a_status / eval_build_security_family_report | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| evaluate_isolation_status / run_escape_probes / security_t12_p0b_status | `core/apps/eval/service/isolation_t12.py` | ✅ | SEC-P0b T12 三级状态机 + 探针接口；admit≠covered；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0b_status / eval_evaluate_isolation_status | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0b 入口；生成物适用：已接线 | 本批 |
+| apply_family_sample_gate / evaluate_security_family_gates / security_sec_p0c_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0c 分族 min_n+Wilson+report_only；L5 declare 永不自动；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0c_status / eval_evaluate_security_family_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0c 入口；生成物适用：已接线 | 本批 |
+| load_judge_calib_defaults / build_judge_version_manifest / evaluate_security_judge_calibration / security_sec_p1a_status | `core/apps/eval/service/security_judge_calib.py` | ✅ | SEC-P1a judge 校准协议 + judge_version manifest；自判禁止；uncalibrated≠L5；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1a_status / eval_build_security_judge_version_manifest / eval_evaluate_security_judge_calibration / eval_check_security_judge_version_drift / eval_annotate_family_asr_calibration / eval_load_security_judge_calib_defaults | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| build_security_finding / transition_finding / evaluate_severity_l5_gate / evaluate_claim_revocation / security_sec_p1b_status | `core/apps/eval/service/security_severity_loop.py` | ✅ | SEC-P1b severity/remediation/retest/claim_revocation；high/critical 未关闭阻断 L5 族声明；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1b_status / eval_build_security_finding / eval_transition_security_finding / eval_evaluate_security_severity_l5_gate / eval_evaluate_security_claim_revocation / eval_load_security_severity_loop_defaults | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_t13_allowlist_probes / run_t13_allowlist_probes / assert_t13_process_split_boundary / security_sec_p1c_status | `core/apps/eval/service/security_t13_allowlist.py` | ✅ | SEC-P1c T13 allowlist 测包；process_split≠供应链前置；T13≠T13-escape；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1c_status / eval_run_t13_allowlist_probes / eval_assert_t13_process_split_boundary / eval_evaluate_t13_coverage / eval_load_t13_allowlist_probes | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1c 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_s1_live_attack_pack / build_untested_oos_disclosure / security_sec_p2a_status | `core/apps/eval/service/security_s1_disclosure.py` | ✅ | SEC-P2a S1→Facade + C15 未测/OOS/deferred 自动清单；生成物适用：已接线 | 本批 |
+| eval_security_sec_p2a_status / eval_build_untested_oos_disclosure / eval_load_s1_live_attack_pack | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P2a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| EvalSecurityS1Card | `aiPlat-management/frontend/src/pages/Eval/EvalSecurityS1Card.tsx` | ✅ | SEC-P2a 只读 UI；无一键认证；生成物适用：不适用（管理端 UI） | 本批 |
+| build_security_l5_claim_template / validate_claim_sentence_against_policy / security_sec_p2b_status | `core/apps/eval/service/security_l5_claim_template.py` | ✅ | SEC-P2b 按族 L5 声明模板；禁假绿句式；不自动 certification；生成物适用：已接线 | 本批 |
+| eval_security_sec_p2b_status / eval_build_security_l5_claim_template / eval_validate_security_l5_claim_sentence | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P2b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_l3_s_tool_s_rag_pack / run_l3_pack_fixtures / evaluate_a7_l3_parity / security_sec_p3_status | `core/apps/eval/service/security_l3_packs.py` | ✅ | SEC-P3 S-Tool/S-RAG L3 fixture + A7 parity；fixture≠live exec；生成物适用：已接线 | 本批 |
+| eval_security_sec_p3_status / eval_run_l3_pack_fixtures / eval_evaluate_a7_l3_parity / eval_load_l3_s_tool_s_rag_pack | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P3 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| run_linux_microvm_probes / security_sec_p4_status | `core/apps/eval/service/security_t12_p4.py` | ✅ | SEC-P4/P4b Linux microVM probed；guest_sim→isolation_probed；guest_live 接 eval hooks + escape_executor；covered 需人审；≠certification；生成物适用：已接线 | 本批 |
+| eval_security_sec_p4_status / eval_run_linux_microvm_probes | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P4/P4b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_p5_extension_gates / evaluate_t11_deferred_gate / build_oos_extension_disclosure / evaluate_deep_supply_chain_boundary / security_sec_p5_status | `core/apps/eval/service/security_p5_extensions.py` | ✅ | SEC-P5 T11 deferred 毕业门 + OOS 扩展卡（投毒/深度供应链）；不自动毕业/认证；生成物适用：已接线 | 本批 |
+| eval_security_sec_p5_status / eval_evaluate_t11_deferred_gate / eval_build_oos_extension_disclosure / eval_evaluate_deep_supply_chain_boundary / eval_load_p5_extension_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P5 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
@@ -4029,7 +4062,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 413 | 0 | 413 |
+| 评估系统 | 436 | 0 | 436 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4061,7 +4094,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3107** | **10** | **3117** |
+| **总计** | **3130** | **10** | **3140** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
