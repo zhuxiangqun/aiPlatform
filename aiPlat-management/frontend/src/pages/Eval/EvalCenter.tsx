@@ -25,6 +25,8 @@ import EvalSetsPanel from './EvalSetsPanel';
 import EvalSettingsPanel from './EvalSettingsPanel';
 import EvalTabGuide from './EvalTabGuide';
 import EvalTypedPlanPanel from './EvalTypedPlanPanel';
+import EvalCasePackPanel from './EvalCasePackPanel';
+import EvalCaseEditorPanel from './EvalCaseEditorPanel';
 import EvalWorksheetPanel from './EvalWorksheetPanel';
 import { EVAL_TAB_GUIDES, evalConsultantPageData } from './evalTabGuides';
 import {
@@ -99,6 +101,8 @@ const ADVANCED_TABS = [
   { id: 'review', label: '复核' },
   { id: 'gates', label: '门禁' },
   { id: 'typed-plan', label: '对象Plan' },
+  { id: 'case-packs', label: 'Case Pack' },
+  { id: 'case-editor', label: '题目维护' },
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
   { id: 'scorecard', label: 'Scorecard' },
@@ -455,6 +459,10 @@ const EvalCenter: React.FC = () => {
       {tab === 'gates' && <EvalGatesPanel tenantId={TENANT} />}
 
       {tab === 'typed-plan' && <EvalTypedPlanPanel />}
+
+      {tab === 'case-packs' && <EvalCasePackPanel />}
+
+      {tab === 'case-editor' && <EvalCaseEditorPanel />}
 
       {tab === 'reports' && <EvalReportsPanel tenantId={TENANT} />}
 

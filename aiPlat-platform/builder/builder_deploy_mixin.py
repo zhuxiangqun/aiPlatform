@@ -116,6 +116,78 @@ class BuilderDeployMixin:
                     "detail": "测试证据显示 pass_rate=0（真实 pytest 全失败）——拒绝部署（证据门控）。"
                               "请先修复测试并重建，或确认后重试。"}
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
+        # P0-3a: artifact.security.json publish gate (SAST/secrets/deps + hash/signature)
+        # Enforce on production/staging by default; set AIPLAT_ARTIFACT_SECURITY_GATE=enforce
+        # to force locally; =0/off disables.
+        _sec_flag = (os.getenv("AIPLAT_ARTIFACT_SECURITY_GATE") or "").strip().lower()
+        _prof = (os.getenv("AIPLAT_PROFILE") or os.getenv("AIPLAT_ENV") or "").strip().lower()
+        _prodish = _prof in ("production", "prod", "staging", "stage", "preprod")
+        if _sec_flag in ("0", "false", "off", "no"):
+            _sec_enforce = False
+        elif _sec_flag in ("1", "true", "yes", "enforce", "on"):
+            _sec_enforce = True
+        else:
+            _sec_enforce = _prodish  # default: enforce only prodish
+        if deploy_dir and os.path.isdir(deploy_dir):
+            try:
+                from builder.artifact_security_manifest import build_and_gate_for_dir
+
+                _smoke_url = (os.getenv("AIPLAT_AUTHZ_SMOKE_URL") or "").strip()
+                # Prefer runtime-derived local URL when app already has a port record
+                if not _smoke_url:
+                    try:
+                        from builder.app_runtime import _derive_port
+
+                        _smoke_url = f"http://127.0.0.1:{_derive_port(project_id)}"
+                        # Only use derived URL when explicitly enabled (app may not be up)
+                        if os.getenv("AIPLAT_AUTHZ_SMOKE_USE_RUNTIME", "").lower() not in (
+                            "1", "true", "yes",
+                        ):
+                            _smoke_url = ""
+                    except Exception:
+                        _smoke_url = ""
+                _sec = build_and_gate_for_dir(
+                    deploy_dir,
+                    artifact_id=f"builder:{project_id}",
+                    artifact_type="app",
+                    owner=str(proj.get("owner") or "builder"),
+                    require_authz=False,  # auto-raised after pilot exit for crud/report
+                    write=True,
+                    authz_base_url=_smoke_url or None,
+                    authz_sample_id=project_id,
+                )
+                proj["last_artifact_security"] = {
+                    "manifest_path": _sec.get("manifest_path"),
+                    "publish_allowed": bool(_sec.get("publish_allowed")),
+                    "enforced": _sec_enforce,
+                }
+                self._save_projects()
+                if _sec_enforce and not _sec.get("publish_allowed"):
+                    _blockers = ((_sec.get("gate") or {}).get("blockers") or [])
+                    _dl.warning(
+                        "Deploy blocked by artifact security gate project=%s blockers=%s",
+                        project_id,
+                        _blockers[:8],
+                    )
+                    return {
+                        "status": "error",
+                        "detail": (
+                            "成果物安全门拒绝发布（P0-3a）："
+                            + ", ".join(str(b) for b in _blockers[:8])
+                        ),
+                        "artifact_security": _sec,
+                    }
+            except Exception as _sec_exc:
+                _dl.warning(
+                    "artifact security gate error project=%s: %s",
+                    project_id,
+                    str(_sec_exc)[:200],
+                )
+                if _sec_enforce:
+                    return {
+                        "status": "error",
+                        "detail": f"成果物安全门执行失败——拒绝发布：{type(_sec_exc).__name__}",
+                    }
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
 
     async def export_pi_bundle(self, project_id: str) -> Dict[str, Any]:

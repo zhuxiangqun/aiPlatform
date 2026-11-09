@@ -1,0 +1,102 @@
+{
+  "schema": "eval.mode_intersection_parity.v1",
+  "version": "1.1.0",
+  "claim_eligible": false,
+  "rank_claim": false,
+  "notes": "A1 task_completion parity passed for plan_execute+conversational only (env tools=none|retrieval=none|session=none). A7 pending. A12 blocked_trace_parity. rag/react out of this env hash.",
+  "ci_method_default": "wilson",
+  "dominance_rule": "A_ci_lower_bound >= B_ci_upper_bound => dominates; else undetermined",
+  "subject_unit": "agent_id + agent_version + impl_mode + config_hash + model_fingerprint",
+  "selection_union_ne_execution_union": true,
+  "intersection_manifest_hash": "sha256:a1_task_completion.v1",
+  "cases_file": "intersection/cases/a1_task_completion.v1.json",
+  "cases": [
+    {
+      "case_id": "intersect.a1.task_completion.001",
+      "capability_id": "task_completion",
+      "prompt_hash": "sha256:b5ae19ea0ae365e5be75a50a22649b83918807ac38eb3985202b851c45c32259",
+      "oracle_hash": "sha256:75747bf071b72aa8301e43e9390521fb1e53c4564e44608c060484cd13c5163f",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "rank_eligible": true,
+      "parity_status": "passed",
+      "parity_modes": ["plan_execute", "conversational"],
+      "parity_reviewer": "engineering",
+      "parity_date": "2026-11-09",
+      "parity_notes": "Shared prompt/oracle lexical; M1a env only."
+    },
+    {
+      "case_id": "intersect.a1.task_completion.002",
+      "capability_id": "task_completion",
+      "prompt_hash": "sha256:e06f3f8572d3e97972affa1cd8f71a07fe47683afcd63cad44ed33450bca92e6",
+      "oracle_hash": "sha256:7213bec542d7c9cac2cc3c5c7d2d9e2c18188ad0d44607a234f3b230520f17ac",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "rank_eligible": true,
+      "parity_status": "passed",
+      "parity_modes": ["plan_execute", "conversational"],
+      "parity_reviewer": "engineering",
+      "parity_date": "2026-11-09",
+      "parity_notes": "Shared prompt/oracle lexical; M1a env only."
+    },
+    {
+      "case_id": "intersect.a1.task_completion.003",
+      "capability_id": "task_completion",
+      "prompt_hash": "sha256:7ac44d18b461f502e0e7b83b5a6ba7826b6da69449ad38b7d6a43dbea32b83fc",
+      "oracle_hash": "sha256:f4d255532b4f0f673193f41b0f325fd67dbc7b8106cc7575ac11bf673b17ee89",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "rank_eligible": true,
+      "parity_status": "passed",
+      "parity_modes": ["plan_execute", "conversational"],
+      "parity_reviewer": "engineering",
+      "parity_date": "2026-11-09",
+      "parity_notes": "Shared prompt/oracle lexical; M1a env only."
+    },
+    {
+      "case_id": "intersect.safety.candidate.001",
+      "capability_id": "safety",
+      "prompt_hash": "sha256:pending_placeholder_prompt_a7",
+      "oracle_hash": "sha256:pending_placeholder_oracle_a7",
+      "env_contract_hash": "sha256:cfc71727f6759b0d9ffd8a0e4b47bbdd606df82319d5e7c92cc84c8a94b9f269",
+      "rank_eligible": false,
+      "parity_status": "pending",
+      "parity_notes": "A7 not in this hard-gap slice."
+    },
+    {
+      "case_id": "intersect.observability.candidate.001",
+      "capability_id": "observability",
+      "prompt_hash": "sha256:pending_placeholder_prompt_a12",
+      "oracle_hash": "sha256:pending_placeholder_oracle_a12",
+      "env_contract_hash": "sha256:trace_contract=unverified",
+      "rank_eligible": false,
+      "parity_status": "blocked_trace_parity",
+      "parity_notes": "A12 blocked until trace contract parity across modes."
+    }
+  ],
+  "signoff": {
+    "method_owner": "",
+    "engineering": "",
+    "independent_qa": "",
+    "product": "",
+    "status": "unsigned",
+    "roles": ["method_owner", "engineering", "independent_qa"],
+    "note": "M3 rank_claim requires status=signed|approved and all three roles non-empty; product optional for claim wording."
+  },
+  "rank_gate_checklist": [
+    "track_a_complete",
+    "modes_present",
+    "rank_eligible_cases",
+    "no_fixture_on_board",
+    "same_runtime_tier",
+    "same_model_fingerprint",
+    "rank_fingerprint_consistent",
+    "completion_rate_100",
+    "unknown_not_as_pass_or_zero",
+    "sample_size_ci",
+    "oracle_env_hashes",
+    "same_intersection_manifest",
+    "three_party_signoff"
+  ],
+  "honesty": {
+    "min_n_protocol_note": "Intersection engineering compare may use min_n>=2; L5/default accuracy still requires min_sample_n>=100 and claims_gate authorize.",
+    "rank_claim_never_auto": true
+  }
+}

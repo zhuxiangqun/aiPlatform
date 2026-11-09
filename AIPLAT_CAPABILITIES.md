@@ -1,7 +1,7 @@
 ---
-total_capabilities: 2870
-last_updated: 2026-10-22
-version: "30.12"
+total_capabilities: 3205
+last_updated: 2026-11-09
+version: "30.14"
 auto_sync: true
 core_guarantees:
   auto:  # 23 active, 0 missing
@@ -570,6 +570,7 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| get_pack_version | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
 | systemPlanExam | `aiPlat-management/frontend/src/services/coreApi.ts` | ✅ | 自动同步 | 已合入 |
 | resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
 | extract_workspace_id_from_request | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
@@ -611,6 +612,89 @@ scan_hash: 8f9548ec24f4
 | build_api_target_contract | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
 | build_skill_target_contract | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
 | build_contract_for_object_type | `core/apps/eval/service/object_adapters.py` | ✅ | 自动同步 | 已合入 |
+| resolve_capability_id | `core/apps/eval/service/capability_id_map.py` | ✅ | Capability ID Map v1 legacy→canonical；生成物适用：已接线（MatchReport 能力比对） | 已合入 |
+| resolve_capability_ids | `core/apps/eval/service/capability_id_map.py` | ✅ | 批量 resolve + dedupe；生成物适用：已接线 | 已合入 |
+| validate_test_purpose | `core/apps/eval/service/test_purpose.py` | ✅ | EvalCase.test_purpose schema v1 机械校验；生成物适用：已接线（AgentSubjectAdapter.validate_case） | 已合入 |
+| validate_mock_tool_catalog / load_mock_tool_catalog | `core/apps/eval/service/mock_tools/` | ✅ | T0 Mock tool 目录契约；生成物适用：已接线（bank validate + facade） | 已合入 |
+| validate_session_case_fields | `core/apps/eval/service/session_case_schema.py` | ✅ | T0 Session 卷字段；生成物适用：已接线（AgentSubjectAdapter.validate_case） | 已合入 |
+| validate_long_context_fixture | `core/apps/eval/service/long_context_fixture_schema.py` | ✅ | T0 长上下文 fixture；生成物适用：已接线（validate_case） | 已合入 |
+| tool_eval_runtime_map / evaluate_t0_inscope_contracts | `tool_eval_runtime_map.py` / `inscope_contracts_t0.py` | ✅ | mock≠live runtime 映射 + T0 样例门；生成物适用：已接线 | 已合入 |
+| eval_evaluate_t0_inscope_contracts / eval_load_mock_tool_catalog | `core/api/core_facade.py` | ✅ | CoreFacade T0 入口；生成物适用：已接线 | 已合入 |
+| invoke_mock_tools / allowed_tool_names | `core/apps/eval/service/mock_tools/harness.py` | ✅ | T1 Mock harness（强制可选工具集 + 确定性 invoke）；生成物适用：已接线 | 已合入 |
+| judge_tool_trace / judge_tool_selection / judge_tool_args | `core/apps/eval/service/tool_trace_judge.py` | ✅ | T1 A3/A4 机判；生成物适用：已接线（AgentSubjectAdapter） | 已合入 |
+| run_tool_fixture_suite | `core/apps/eval/service/tool_capability_fixtures.py` | ✅ | T1 A3/A4 fixture 套件（out-of-scope，claim=false）；生成物适用：已接线 | 已合入 |
+| eval_run_tool_fixture_suite / eval_invoke_mock_tools | `core/api/core_facade.py` | ✅ | CoreFacade T1 入口；生成物适用：已接线 | 已合入 |
+| judge_tool_result_use | `core/apps/eval/service/tool_trace_judge.py` | ✅ | T2 A5 工具结果使用机判；生成物适用：已接线 | 已合入 |
+| run_session_group / assert_session_groups_complete | `core/apps/eval/service/session_runner.py` | ✅ | T2 Session runner（整组 fail-closed）+ A8 probe；生成物适用：已接线 | 已合入 |
+| run_session_fixture_suite | `core/apps/eval/service/tool_capability_fixtures.py` | ✅ | T2 A8 fixture 套件；生成物适用：已接线 | 已合入 |
+| eval_run_session_fixture_suite | `core/api/core_facade.py` | ✅ | CoreFacade T2 入口；生成物适用：已接线 | 已合入 |
+| build_long_context_fixture / generate_long_context_case / judge_long_context | `core/apps/eval/service/long_context_generator.py` | ✅ | T3 A9 长上下文 fixture 生成 + must_retain_claims 机判；生成物适用：已接线（adapter + bank） | 已合入 |
+| eval_generate_long_context_case / eval_judge_long_context | `core/api/core_facade.py` | ✅ | CoreFacade T3 入口；生成物适用：已接线 | 已合入 |
+| V1_IN_SCOPE v1.1（13 caps） | `core/apps/eval/service/capability_id_map.py` | ✅ | A3–A5/A8/A9 升域；`SIGNED v1_1_measurable_subset`；claim/Certification 关闭；生成物适用：已接线 | 已合入 |
+| resolve_impl_modes / select_capabilities_union / plan_executions_per_mode | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M0 多值 impl_modes；选题并集≠执行并集；生成物适用：已接线（facade） | 本批 |
+| compute_rank_fingerprint / evaluate_m0_impl_mode_contracts | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M0 rank_fingerprint + 十条契约门（无 live）；生成物适用：已接线 | 本批 |
+| eval_evaluate_m0_impl_mode_contracts / eval_resolve_impl_modes / eval_compute_rank_fingerprint / eval_plan_mode_executions | `core/api/core_facade.py` | ✅ | CoreFacade M0 入口；生成物适用：已接线 | 本批 |
+| mode_core_capabilities.v1 / intersection parity sample | `workspace_seeds/eval/agent_capability/` | ✅ | 模式×能力矩阵 + 交集 parity 候选；生成物适用：已接线 | 本批 |
+| run_m1a_mode_exam / enforce_m1a_environment | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1a plan_execute/conversational 分栏实评；tools/retrieval/network=none；生成物适用：已接线 | 本批 |
+| eval_run_m1a_mode_exam | `core/api/core_facade.py` | ✅ | CoreFacade M1a 入口；生成物适用：已接线 | 本批 |
+| run_m1b_mode_exam / enforce_m1b_environment | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1b rag 分栏；retrieval=required（fixture corpus）；tools/network/session=none；生成物适用：已接线 | 本批 |
+| eval_run_m1b_mode_exam | `core/api/core_facade.py` | ✅ | CoreFacade M1b 入口；生成物适用：已接线 | 本批 |
+| m1b_environment_lock / m1c_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | M1b/M1c 环境依赖锁（矩阵权威）；生成物适用：已接线 | 本批 |
+| run_m1c_mode_exam / enforce_m1c_environment / probe_m1c_sandbox | `core/apps/eval/service/mode_aware_exam.py` | ✅ | M1c react 分栏；fixture_mock 沙箱；A3–A5 coverage=unknown；≠microVM；生成物适用：已接线 | 本批 |
+| eval_run_m1c_mode_exam / eval_probe_m1c_sandbox | `core/api/core_facade.py` | ✅ | CoreFacade M1c 入口；生成物适用：已接线 | 本批 |
+| probe_linux_microvm_host | `core/apps/eval/service/mode_aware_exam.py` | ✅ | Linux/KVM microVM 探测钩子；Darwin unknown；不翻转 covered/process_split；生成物适用：已接线 | 本批 |
+| eval_probe_linux_microvm | `core/api/core_facade.py` | ✅ | CoreFacade microVM 探针；生成物适用：已接线 | 本批 |
+| run_a1_intersection_track_a / run_a1_intersection_compare / a1_intersection_status_report | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | A1 交集 Track A 证据 + Track B 比较；rank_claim 永不自动；生成物适用：已接线 | 本批 |
+| eval_run_a1_intersection_compare / eval_a1_intersection_status | `core/api/core_facade.py` | ✅ | CoreFacade A1 交集入口；生成物适用：已接线 | 本批 |
+| EvalA1IntersectionCard | `pages/Eval/EvalA1IntersectionCard.tsx` | ✅ | Agent 评测区只读 gate/Pareto/allowed；无一键认证；生成物适用：不适用（管理端 UI） | 本批 |
+| build_mode_intersection_rank / evaluate_rank_gate / wilson_score_ci / pareto_frontier | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | M3 交集 Pareto/CI + rank gate；默认无 winner；rank_claim 不自动；生成物适用：已接线 | 本批 |
+| eval_build_mode_intersection_rank / eval_evaluate_mode_rank_gate | `core/api/core_facade.py` | ✅ | CoreFacade M3 入口；生成物适用：已接线 | 本批 |
+| estimate_m2_deferred_modes / validate_runtime_parts / assert_m2_not_live | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | M2 另估；deferred≠unknown；runtime_parts 门；禁 live；生成物适用：已接线 | 本批 |
+| eval_estimate_m2_deferred_modes / eval_validate_m2_runtime_parts | `core/api/core_facade.py` | ✅ | CoreFacade M2 入口；生成物适用：已接线 | 本批 |
+| m2_deferred_estimate.v1 | `workspace_seeds/eval/agent_capability/` | ✅ | multi_agent/pipeline/operator 工期与 parts 契约；生成物适用：已接线 | 本批 |
+| get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考实现）；生成物适用：已接线 | 已合入 |
+| eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
+| eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
+| eval_agent_capability_catalog | `core/api/core_facade.py` | ✅ | Agent 能力目录（in_scope/unknown）；生成物适用：已接线 | 已合入 |
+| eval_validate_agent_case | `core/api/core_facade.py` | ✅ | Agent case 机械门；生成物适用：已接线 | 已合入 |
+| build_agent_capability_cases / load_agent_capability_cases | `core/apps/eval/service/capability_case_bank.py` | ✅ | Agent 能力题库 **从 seeds 加载**（cases + fixtures 合并；v1.1 含 A3–A5/A8/A9；claim 关闭）；生成物适用：已接线 | 已合入 |
+| capability_case_editor（open/list/upsert/delete） | `core/apps/eval/service/capability_case_editor.py` + Eval「题目维护」 | ✅ | 管理端维护题目：seed 只读 + workspace draft CRUD（frozen 需 bump；claim 关闭）；生成物适用：已接线 | 已合入 |
+| validate_agent_capability_bank | `core/apps/eval/service/capability_case_bank.py` | ✅ | 题库机械校验；生成物适用：已接线 | 已合入 |
+| agent_regression_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | agent.regression.v1 Profile；生成物适用：已接线 | 已合入 |
+| eval_validate_agent_capability_bank | `core/api/core_facade.py` | ✅ | CoreFacade；生成物适用：已接线 | 已合入 |
+| eval_list_agent_capability_cases | `core/api/core_facade.py` | ✅ | CoreFacade；生成物适用：已接线 | 已合入 |
+| eval_agent_regression_profile | `core/api/core_facade.py` | ✅ | CoreFacade；生成物适用：已接线 | 已合入 |
+| promote_agent_capability_bank | `core/apps/eval/service/capability_case_bank.py` | ✅ | P1 closeout draft→review→freeze（claim=false）；生成物适用：已接线 | 已合入 |
+| eval_promote_agent_capability_bank | `core/api/core_facade.py` | ✅ | CoreFacade promote 入口；生成物适用：已接线 | 已合入 |
+| compile_plan_from_suite_profile | `core/apps/eval/service/suite_profile_compile.py` | ✅ | P2 Profile→Plan v2 sample_manifest；生成物适用：已接线 | 已合入 |
+| select_cases_for_profile | `core/apps/eval/service/suite_profile_compile.py` | ✅ | 固定配额分层抽样；生成物适用：已接线 | 已合入 |
+| eval_compile_plan_from_suite_profile | `core/api/core_facade.py` | ✅ | CoreFacade Profile 编译；生成物适用：已接线 | 已合入 |
+| analyze_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 能力缺口 inventory；生成物适用：已接线 | 已合入 |
+| generate_coverage_fill_candidates | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 复用 mutation/template 补题候选；生成物适用：已接线 | 已合入 |
+| fill_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 dry/apply 扩 draft；生成物适用：已接线 | 已合入 |
+| eval_analyze_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 缺口分析；生成物适用：已接线 | 已合入 |
+| eval_generate_coverage_fill_candidates | `core/api/core_facade.py` | ✅ | CoreFacade 补题候选；生成物适用：已接线 | 已合入 |
+| eval_fill_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 覆盖补题；生成物适用：已接线 | 已合入 |
+| agent_smoke_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Smoke Profile；生成物适用：已接线 | 已合入 |
+| agent_benchmark_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Benchmark+holdout Profile；生成物适用：已接线 | 已合入 |
+| list_suite_profiles | `core/apps/eval/service/capability_case_bank.py` | ✅ | smoke/regression/benchmark 列表；生成物适用：已接线 | 已合入 |
+| get_suite_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | 按 profile_id 解析；生成物适用：已接线 | 已合入 |
+| apply_profile_holdout | `core/apps/eval/service/suite_profile_compile.py` | ✅ | Profile holdout 分割；生成物适用：已接线 | 已合入 |
+| evaluate_judge_calibration_gate | `core/apps/eval/service/capability_p4_gate.py` | ✅ | P4 judge 一致率门（report-only）；生成物适用：已接线 | 已合入 |
+| benchmark_readiness_report | `core/apps/eval/service/capability_p4_gate.py` | ✅ | Benchmark 就绪披露；生成物适用：已接线 | 已合入 |
+| eval_list_suite_profiles | `core/api/core_facade.py` | ✅ | CoreFacade Profile 列表；生成物适用：已接线 | 已合入 |
+| eval_benchmark_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Benchmark 就绪；生成物适用：已接线 | 已合入 |
+| eval_judge_calibration_gate | `core/api/core_facade.py` | ✅ | CoreFacade judge 门；生成物适用：已接线 | 已合入 |
+| eval_open_capability_judge_calibration | `core/api/core_facade.py` | ✅ | CoreFacade 开 judge 工单；生成物适用：已接线 | 已合入 |
+| run_suite_profile_exam | `core/apps/eval/service/suite_profile_exam.py` | ✅ | Profile Plan 只跑 sample_manifest；生成物适用：已接线 | 已合入 |
+| verify_capability_manifest_hashes | `core/apps/eval/service/suite_profile_exam.py` | ✅ | 能力题库 manifest hash 门；生成物适用：已接线 | 已合入 |
+| eval_run_suite_profile_exam | `core/api/core_facade.py` | ✅ | CoreFacade Profile exam；生成物适用：已接线 | 已合入 |
+| build_capability_heatmap | `core/apps/eval/service/suite_profile_report.py` | ✅ | §8.4 覆盖热力；生成物适用：已接线 | 已合入 |
+| build_suite_profile_report | `core/apps/eval/service/suite_profile_report.py` | ✅ | Profile exam 披露报告；生成物适用：已接线 | 已合入 |
+| eval_capability_heatmap | `core/api/core_facade.py` | ✅ | CoreFacade 热力；生成物适用：已接线 | 已合入 |
+| eval_suite_profile_report | `core/api/core_facade.py` | ✅ | CoreFacade 报告；生成物适用：已接线 | 已合入 |
+| evaluate_certification_readiness | `core/apps/eval/service/capability_cert_readiness.py` | ✅ | P5 前置 §8.5 完整度（cert 恒 false）；生成物适用：已接线 | 已合入 |
+| eval_certification_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Cert 就绪门；生成物适用：已接线 | 已合入 |
 | case_spec_for_set | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | build_match_report | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | normalize_target_contract | `core/apps/eval/service/target_contract.py` | ✅ | 自动同步 | 已合入 |
@@ -1627,6 +1711,108 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| default_tool_retrieval_cases | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| environment_ready_for_family | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| retrieval_env_available | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| tools_env_available | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| SecurityToolRetrievalLiveError | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| execute_text_case | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| load_text_live_cases | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| default_safety_cases_path | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| environment_for_family | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| SecurityTextLiveError | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| dual_human_completed | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| failure_case_ids | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| save_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| load_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| empty_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| default_session_path | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| SecurityP12SessionError | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| assert_not_http_escape | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| default_p14_probes_path | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| SecurityP14Error | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| default_http_transport | `core/apps/eval/service/security_dynamic_p13.py` | ✅ | 自动同步 | 已合入 |
+| load_a1_track_a_evidence | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
+| default_a1_evidence_dir | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_judge_calibration_get | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_judge_calibration_close | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_judge_calibration_ratings | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_calibrate_difficulty | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| eval_get_judge_calibration_ticket | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_close_judge_calibration_ticket | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_record_judge_calibration_ratings | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_calibrate_case_pack_difficulty | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| get_judge_calibration_ticket_for_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| close_judge_calibration_ticket_for_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| record_judge_calibration_ratings_for_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| calibrate_pack_difficulty | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| close_judge_ticket | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| record_judge_ratings | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| compute_rating_agreement | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| load_judge_ticket | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| create_judge_ticket | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| save_difficulty_calibration_record | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| apply_difficulty_labels | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| CaseCalibrationError | `core/apps/eval/service/case_calibration.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_judge_calibration_ticket | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_propose_difficulty | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_llm_candidates | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| eval_open_judge_calibration_ticket | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_propose_case_pack_difficulty | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_publish_llm_candidate_case_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| open_judge_calibration_ticket_for_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| propose_pack_difficulty | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| build_llm_candidate_draft_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| build_judge_calibration_ticket | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| propose_difficulty | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| stub_llm_candidate_json | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| generate_llm_candidate_cases | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_from_trace | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_mutate | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_holdout | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| eval_publish_trace_case_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_publish_mutation_case_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_mark_case_pack_holdout | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| build_trace_draft_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| build_mutation_draft_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| publish_generated_workspace_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| mark_pack_holdout | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| CaseGenerationError | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| partition_holdout | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| apply_holdout_flags | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| cases_from_trace | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| mutate_cases | `core/apps/eval/service/case_generation.py` | ✅ | 自动同步 | 已合入 |
+| CasePackOpsError | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_coverage | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_bump | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_expand | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| eval_summarize_case_pack_coverage | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_bump_case_pack_version | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_expand_draft_case_pack | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| summarize_workspace_pack_coverage | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| bump_workspace_pack_version | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| expand_draft_workspace_pack | `core/apps/eval/service/case_pack_ops.py` | ✅ | 自动同步 | 已合入 |
+| _case_pack_http_error | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_freeze | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_review | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_review_queue | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_enqueue_review | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| compat_evaluation_case_pack_draft | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |
+| CaseFreezeError | `core/apps/eval/service/case_freeze.py` | ✅ | 自动同步 | 已合入 |
+| freeze_pack_version | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
+| write_pack_payload | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
+| CaseReviewError | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
+| CaseFactoryError | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| eval_submit_case_pack_review | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_list_case_pack_review_queue | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_enqueue_case_pack_review | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| submit_review_decision | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
+| enqueue_pack_for_review | `core/apps/eval/service/case_review_queue.py` | ✅ | 自动同步 | 已合入 |
+| publish_draft_workspace_pack | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| dedupe_cases_by_hash | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| validate_case_dict | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| generate_cases_from_template | `core/apps/eval/service/case_factory.py` | ✅ | 自动同步 | 已合入 |
+| PackRegistryError | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
 | live_llm_output | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
 | dry_stub_output | `core/apps/eval/service/typed_plan_exam.py` | ✅ | 自动同步 | 已合入 |
 | score_prompt_output | `core/apps/eval/service/prompt_plan_ops.py` | ✅ | 自动同步 | 已合入 |
@@ -2081,7 +2267,9 @@ scan_hash: 8f9548ec24f4
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
-| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级策略 open/ask/closed（默认 open；生产 ask 灰度；CRITICAL_MODE 可 closed；非关键固定 open+审计） | 已合入 |
+| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
+| default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
+| is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
 | apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
@@ -2622,6 +2810,79 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_evaluate_l3_case_fixture | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_l3_case_fixture | `core/apps/eval/service/security_l3_packs.py` | ✅ | 自动同步 | 已合入 |
+| eval_select_security_declare_candidate_families | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| select_declare_candidate_families | `core/apps/eval/service/security_l5_claim_template.py` | ✅ | 自动同步 | 已合入 |
+| load_severity_loop_defaults | `core/apps/eval/service/security_severity_loop.py` | ✅ | 自动同步 | 已合入 |
+| check_judge_version_drift | `core/apps/eval/service/security_judge_calib.py` | ✅ | 自动同步 | 已合入 |
+| load_t12_escape_probes | `core/apps/eval/service/isolation_t12.py` | ✅ | 自动同步 | 已合入 |
+| validate_l1_safety_cases | `core/apps/eval/service/security_family_report.py` | ✅ | 自动同步 | 已合入 |
+| ModeDeferredEstimateError | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
+| default_m2_estimate_path | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
+| load_m2_deferred_estimate | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | 自动同步 | 已合入 |
+| ModeIntersectionRankError | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| load_parity_for_rank | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| attach_rank_fingerprint_to_column | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| list_rank_eligible_cases | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| dominance_relation | `core/apps/eval/service/mode_intersection_rank.py` | ✅ | 自动同步 | 已合入 |
+| load_m1c_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
+| load_m1b_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
+| m1a_environment_lock | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| load_parity_sample | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| default_parity_path | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| default_matrix_path | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| AgentImplModeError | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| ModeAwareExamError | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
+| load_m1a_mode_cases | `core/apps/eval/service/mode_aware_exam.py` | ✅ | 自动同步 | 已合入 |
+| load_mode_core_matrix | `core/apps/eval/service/agent_impl_mode.py` | ✅ | 自动同步 | 已合入 |
+| render_long_context_prompt | `core/apps/eval/service/long_context_generator.py` | ✅ | 自动同步 | 已合入 |
+| run_all_session_groups | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
+| judge_memory_probe | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
+| group_session_cases | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
+| SessionRunnerError | `core/apps/eval/service/session_runner.py` | ✅ | 自动同步 | 已合入 |
+| load_tool_capability_fixture_cases | `core/apps/eval/service/tool_capability_fixtures.py` | ✅ | 自动同步 | 已合入 |
+| resolve_scripted_tool_calls | `core/apps/eval/service/mock_tools/harness.py` | ✅ | 自动同步 | 已合入 |
+| validate_tool_args_against_schema | `core/apps/eval/service/mock_tools/harness.py` | ✅ | 自动同步 | 已合入 |
+| MockToolHarnessError | `core/apps/eval/service/mock_tools/harness.py` | ✅ | 自动同步 | 已合入 |
+| tool_eval_runtime_map_document | `core/apps/eval/service/tool_eval_runtime_map.py` | ✅ | 自动同步 | 已合入 |
+| assert_mock_not_claimed_as_live | `core/apps/eval/service/tool_eval_runtime_map.py` | ✅ | 自动同步 | 已合入 |
+| validate_tool_backend_runtime | `core/apps/eval/service/tool_eval_runtime_map.py` | ✅ | 自动同步 | 已合入 |
+| validate_session_group_unique_turns | `core/apps/eval/service/session_case_schema.py` | ✅ | 自动同步 | 已合入 |
+| assert_mock_tool_catalog_valid | `core/apps/eval/service/mock_tools/schema.py` | ✅ | 自动同步 | 已合入 |
+| default_mock_tools_dir | `core/apps/eval/service/mock_tools/catalog_load.py` | ✅ | 自动同步 | 已合入 |
+| MockToolCatalogError | `core/apps/eval/service/mock_tools/catalog_load.py` | ✅ | 自动同步 | 已合入 |
+| validate_case_long_context_fields | `core/apps/eval/service/long_context_fixture_schema.py` | ✅ | 自动同步 | 已合入 |
+| resolve_capability_id_safe | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| eval_upsert_workspace_pack_case | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_open_capability_bank_editor | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityCaseEditorError | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| open_capability_bank_editor | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| delete_workspace_pack_case | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| upsert_workspace_pack_case | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| get_workspace_pack_case | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| list_workspace_pack_cases | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| get_seed_capability_case | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| list_seed_capability_cases | `core/apps/eval/service/capability_case_editor.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityCaseBankError | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| load_pack_meta | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityCertReadinessError | `core/apps/eval/service/capability_cert_readiness.py` | ✅ | 自动同步 | 已合入 |
+| SuiteProfileExamError | `core/apps/eval/service/suite_profile_exam.py` | ✅ | 自动同步 | 已合入 |
+| index_cases_by_id | `core/apps/eval/service/suite_profile_exam.py` | ✅ | 自动同步 | 已合入 |
+| eval_get_suite_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityP4GateError | `core/apps/eval/service/capability_p4_gate.py` | ✅ | 自动同步 | 已合入 |
+| judge_calibration_gate_for_ticket | `core/apps/eval/service/capability_p4_gate.py` | ✅ | 自动同步 | 已合入 |
+| CapabilityCoverageFillError | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | 自动同步 | 已合入 |
+| SuiteProfileCompileError | `core/apps/eval/service/suite_profile_compile.py` | ✅ | 自动同步 | 已合入 |
+| write_agent_capability_seeds | `core/apps/eval/service/capability_case_bank.py` | ✅ | 从 `cases/*` 权威组装派生 combined pack（不回写题目正文）；生成物适用：已接线 | 已合入 |
+| default_seed_dir | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_agent_capability_pack_document | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_capability_case | `core/apps/eval/service/capability_case_bank.py` | ✅ | 自动同步 | 已合入 |
+| list_subject_kinds | `core/apps/eval/service/subject_adapter.py` | ✅ | 自动同步 | 已合入 |
+| capability_match_set | `core/apps/eval/service/capability_id_map.py` | ✅ | 自动同步 | 已合入 |
+| is_v1_in_scope | `core/apps/eval/service/capability_id_map.py` | ✅ | 自动同步 | 已合入 |
+| UnknownCapabilityId | `core/apps/eval/service/capability_id_map.py` | ✅ | 自动同步 | 已合入 |
+| eval_resolve_capability_ids | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | build_attributable_report_from_agent | `core/apps/eval/service/agent_attributable_report.py` | ✅ | 自动同步 | 已合入 |
 | parse_trajectory_tool_names | `core/apps/eval/service/external_chat_pull.py` | ✅ | 自动同步 | 已合入 |
 | resolve_named_workspace | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
@@ -2708,7 +2969,24 @@ scan_hash: 8f9548ec24f4
 | eval-object-contract P0 / build_agent_target_contract / match_eval_sets_for_target | `docs/.../eval-object-contract-and-plan.md` + `target_contract.py` + `case_match.py` + `applicability_draft.json` + `POST /evaluation/match-cases` + agent exam 挂载 MatchReport | ✅ | `eval.target_contract.v1` + 可解释 MatchReport；high_risk refuse_or_handoff 例外；P0 仅 advisory 不筛题；生成物适用：已接线（评测 API） | 本批 |
 | eval_match_cases_for_agent_target / match_cases_for_agent_target | `core_facade` + `agent_exam_ops.py` + `case_match.py` | ✅ | 给定契约字段产出入选/不适用原因；仅 `profile_source=explicit` 时 missing_capability→N/A；`derived_hints`/未知记 capability_unconfirmed 并入选（§0.7）；≠ Ollaya 选题；生成物适用：已接线 | 本批 |
 | formal_report v1.11 / not_applicable 五态 | `fullExamReport.ts` + `examSuite.ts`（merge/count/paperMatchDecision） | ✅ | 矩阵与正式报告分列未测/不适用；MatchReport 排除卷→维 N/A；不计失败；生成物适用：已接线 | 本批 |
-| compile_evaluation_plan / eval_compile_evaluation_plan | `eval_plan.py` + `POST /evaluation/compile-plan` + EvalExamSuitePanel | ✅ | P2/P3+Plan v2：core+匹配 capability；special 未授权→untested；冒烟预览 Plan+purpose；编译失败阻断（不回退全套）；套件仅模板；生成物适用：已接线 | 本批 |
+| compile_evaluation_plan / eval_compile_evaluation_plan | `eval_plan.py` + `POST /evaluation/compile-plan` + EvalExamSuitePanel | ✅ | Plan **v2**：`sample_manifest` 唯一执行清单；`selected_cases` 仅 legacy 卷投影；`manifest_hash`/`execution_fingerprint`；special 未授权→untested；编译失败阻断（不回退整包）；accuracy_claim 仍关；生成物适用：已接线 | 本批 |
+| compute_case_hash / compute_pack_hash / compute_manifest_hash | `case_pack_hash.py` + 附录 B 向量测试 | ✅ | Case Pack canonical hash（排除 review/agent_id）；指纹三分开；生成物适用：已接线（评测 Plan） | 本批 |
+| require_sample_manifest / expand_sets_to_manifest / assert_claim_eligible_allowed / project_plan_to_v1 | `case_pack_legacy.py` + `eval_plan.py` + typed_plan_exam + agent_exam | ✅ | legacy set→manifest；v2 空 manifest fail-closed；agent exam 按 manifest 滤题；generated+claim 拒；v1 只投影；生成物适用：已接线 | 本批 |
+| load_eval_set ignores unknown task keys / eval_sets user overlay | `eval_runner.py` + overlay 单测 | ✅ | dataset `fixture_table` 可加载；`create_builtin`/`ensure_builtin` **永不覆盖**已存在用户卷；生成物适用：已接线 | 本批 |
+| verify_manifest_case_hashes | `case_pack_legacy.py` + typed/agent exam | ✅ | 执行前 live case hash ≠ manifest → fail closed（无整包回退）；生成物适用：已接线 | 本批 |
+| assert_session_groups_intact | `case_pack_legacy.py` + `require_sample_manifest` | ✅ | T4：同 `session_group` 不可拆散；生成物适用：已接线 | 本批 |
+| exam run_key → execution_fingerprint | typed/agent exam | ✅ | T11：改 `run_key` 只变 `execution_fingerprint`，不变 `manifest_hash`；生成物适用：已接线 | 本批 |
+| pack_claim_disclosure_from_plan / claim_eligible L5 gate | `claims_gate.py` + `attach_evaluation_plan` | ✅ | §3.3：报告强制 `pack_kind`+`claim_eligible`；false/缺省阻断 accuracy；生成物适用：已接线 | 本批 |
+| apply_manifest_sampling (stratified/random) | `case_pack_legacy.py` + `compile_evaluation_plan` | ✅ | T12：seed 稳定；`session_group` 整组；不足层 error/degrade+quota_trace，禁静默改配额；生成物适用：已接线 | 本批 |
+| case_factory generate/validate/dedupe/publish_draft + eval_publish_draft_case_pack | `case_factory.py` + CoreFacade | ✅ | P1.0：模板扩题（无 LLM）→校验→去重→workspace draft 注册；禁 freeze；claim_eligible=false；生成物适用：已接线 | 本批 |
+| case_review_queue enqueue/list/decide + eval_*_case_pack_review* + update_pack_version_meta | `case_review_queue.py` + registry + CoreFacade | ✅ | P1.1：draft→in_review→reviewed\|rejected；reviewed≠frozen；claim_eligible 强制 false；生成物适用：已接线 | 本批 |
+| case_freeze freeze_workspace_pack + write/load_pack_payload + eval_freeze_workspace_case_pack | `case_freeze.py` + registry + CoreFacade | ✅ | P1.2：reviewed→kind=frozen 重算 pack_hash；payload 落盘；禁原地改；claim_eligible=false；生成物适用：已接线 | 本批 |
+| case-packs HTTP draft/enqueue-review/review-queue/review/freeze | `compat.py` `/evaluation/case-packs/*` | ✅ | P1.3：命名工作区 scope + CoreFacade 薄路由；claim 仍关；生成物适用：已接线 | 本批 |
+| case_pack_ops expand/bump/coverage + HTTP + EvalCasePackPanel | `case_pack_ops.py` + compat + Eval UI | ✅ | P1.4：非冻结扩题；frozen→version++ 新 draft；coverage 库存；claim=false；生成物适用：已接线 | 本批 |
+| case_generation mutate/trace/holdout + pack publish HTTP | `case_generation.py` + case_pack_ops + compat | ✅ | P2.0：确定性变异/trace→draft；holdout 标记；kind=generated\|trace 恒 claim=false 且禁 freeze；生成物适用：已接线 | 本批 |
+| case_generation LLM candidates + difficulty + judge ticket | `case_generation.py` + case_pack_ops + CoreFacade + compat + Eval UI | ✅ | P3.0：`generate_llm_candidate_cases`（dry/stub 或 sys_llm_generate）→kind=generated；`propose_difficulty` 启发式；`build_judge_calibration_ticket` 工单；claim=false；生成物适用：已接线 | 本批 |
+| case_calibration difficulty labels + judge ticket loop | `case_calibration.py` + case_pack_ops + CoreFacade + compat + Eval UI | ✅ | P3.1：人标难度回写 pack；judge 开单→打分 agreement→关单；工程校准旗标；claim=false；生成物适用：已接线 | 本批 |
+| case_pack_registry / register_pack_version / assert_pack_acl | `case_pack_registry.py` | ✅ | scope global\|workspace\|tenant；跨 workspace ACL 拒；原子写+锁；global P0 只读；生成物适用：已接线（评测 Plan） | 本批 |
 | object_adapters / compile_plan_for_object / attach_evaluation_plan | `object_adapters.py` + skill/external/generated_app 执行挂载；prompt/workflow/model 可 Plan 匹配 | ✅ | 契约 v1.0 字段语义锁定；运行时以 Runtime Tiers v1.4 为准；§6.1 五态混合；system `runtime_parts`；对象成熟度见 §0.6/§0.8；生成物适用：已接线（评测 API） | 本批 |
 | run_prompt_plan_exam / eval_run_prompt_plan_exam / prompt-plan-exam | `prompt_plan_ops.py` + CoreFacade + `POST /evaluation/prompt-plan-exam` | ✅ | Prompt Plan 链 L3–L4：compile-plan + prompt/* 词面 oracle；dry=fixture stub；≠ 页面 prompt_eval；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
 | run_typed_plan_exam / workflow-plan-exam / model-plan-exam / dataset-plan-exam | `typed_plan_exam.py` + CoreFacade + `POST /evaluation/{workflow,model,dataset}-plan-exam` | ✅ | Workflow/Model 词面 oracle；Dataset=`dataset_assert` 夹具表；≠ pipeline/模型榜/KB；accuracy_claim=false；生成物适用：已接线（评测 API） | 本批 |
@@ -2817,6 +3095,45 @@ scan_hash: 8f9548ec24f4
 | generate_human_worksheet_pack | `packages/aiplat-evaluation/scripts/human_worksheet_pack.py` | ✅ | 可调用空白包生成（CLI+API） | 本批 |
 | g2b_pack_status | `core/apps/eval/service/g2b.py` | ✅ | 读 task pack + evidence aggregates；facilitation-only | 本批 |
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
+| g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；accuracy_claim 默认 false；生成物适用：已接线 | 本批 |
+| eval_g2b_l5_gap_disclosure | `core/api/core_facade.py` | ✅ | G2b L5 gap facade；生成物适用：已接线 | 本批 |
+| load_threat_family_catalog / build_security_family_report / security_l1_p0a_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0a 威胁族目录 + L1 threat_ids 校验 + 分族报告 schema；T05-text≠T05-exec；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0a_status / eval_build_security_family_report | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| evaluate_isolation_status / run_escape_probes / security_t12_p0b_status | `core/apps/eval/service/isolation_t12.py` | ✅ | SEC-P0b T12 三级状态机 + 探针接口；admit≠covered；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0b_status / eval_evaluate_isolation_status | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0b 入口；生成物适用：已接线 | 本批 |
+| apply_family_sample_gate / evaluate_security_family_gates / security_sec_p0c_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0c 分族 min_n+Wilson+report_only；L5 declare 永不自动；生成物适用：已接线 | 本批 |
+| eval_security_sec_p0c_status / eval_evaluate_security_family_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0c 入口；生成物适用：已接线 | 本批 |
+| load_judge_calib_defaults / build_judge_version_manifest / evaluate_security_judge_calibration / security_sec_p1a_status | `core/apps/eval/service/security_judge_calib.py` | ✅ | SEC-P1a judge 校准协议 + judge_version manifest；自判禁止；uncalibrated≠L5；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1a_status / eval_build_security_judge_version_manifest / eval_evaluate_security_judge_calibration / eval_check_security_judge_version_drift / eval_annotate_family_asr_calibration / eval_load_security_judge_calib_defaults | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| build_security_finding / transition_finding / evaluate_severity_l5_gate / evaluate_claim_revocation / security_sec_p1b_status | `core/apps/eval/service/security_severity_loop.py` | ✅ | SEC-P1b severity/remediation/retest/claim_revocation；high/critical 未关闭阻断 L5 族声明；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1b_status / eval_build_security_finding / eval_transition_security_finding / eval_evaluate_security_severity_l5_gate / eval_evaluate_security_claim_revocation / eval_load_security_severity_loop_defaults | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_t13_allowlist_probes / run_t13_allowlist_probes / assert_t13_process_split_boundary / security_sec_p1c_status | `core/apps/eval/service/security_t13_allowlist.py` | ✅ | SEC-P1c T13 allowlist 测包；process_split≠供应链前置；T13≠T13-escape；生成物适用：已接线 | 本批 |
+| eval_security_sec_p1c_status / eval_run_t13_allowlist_probes / eval_assert_t13_process_split_boundary / eval_evaluate_t13_coverage / eval_load_t13_allowlist_probes | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P1c 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_s1_live_attack_pack / build_untested_oos_disclosure / security_sec_p2a_status | `core/apps/eval/service/security_s1_disclosure.py` | ✅ | SEC-P2a S1→Facade + C15 未测/OOS/deferred 自动清单；生成物适用：已接线 | 本批 |
+| eval_security_sec_p2a_status / eval_build_untested_oos_disclosure / eval_load_s1_live_attack_pack | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P2a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| EvalSecurityS1Card | `aiPlat-management/frontend/src/pages/Eval/EvalSecurityS1Card.tsx` | ✅ | SEC-P2a 只读 UI；无一键认证；生成物适用：不适用（管理端 UI） | 本批 |
+| build_security_l5_claim_template / validate_claim_sentence_against_policy / security_sec_p2b_status | `core/apps/eval/service/security_l5_claim_template.py` | ✅ | SEC-P2b 按族 L5 声明模板；禁假绿句式；不自动 certification；生成物适用：已接线 | 本批 |
+| eval_security_sec_p2b_status / eval_build_security_l5_claim_template / eval_validate_security_l5_claim_sentence | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P2b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_l3_s_tool_s_rag_pack / run_l3_pack_fixtures / evaluate_a7_l3_parity / security_sec_p3_status | `core/apps/eval/service/security_l3_packs.py` | ✅ | SEC-P3 S-Tool/S-RAG L3 fixture + A7 parity；fixture≠live exec；生成物适用：已接线 | 本批 |
+| eval_security_sec_p3_status / eval_run_l3_pack_fixtures / eval_evaluate_a7_l3_parity / eval_load_l3_s_tool_s_rag_pack | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P3 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| run_linux_microvm_probes / security_sec_p4_status | `core/apps/eval/service/security_t12_p4.py` | ✅ | SEC-P4/P4b Linux microVM probed；guest_sim→isolation_probed；guest_live 接 eval hooks + escape_executor；covered 需人审；≠certification；生成物适用：已接线 | 本批 |
+| eval_security_sec_p4_status / eval_run_linux_microvm_probes | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P4/P4b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_p5_extension_gates / evaluate_t11_deferred_gate / build_oos_extension_disclosure / evaluate_deep_supply_chain_boundary / security_sec_p5_status | `core/apps/eval/service/security_p5_extensions.py` | ✅ | SEC-P5 T11 deferred 毕业门 + OOS 扩展卡（投毒/深度供应链）；不自动毕业/认证；生成物适用：已接线 | 本批 |
+| run_per_family_cert_prep / build_judge_calib_evidence_pack / build_g2b_s_dual_review_workflow / rehearse_l5_limited_claim / security_cert_prep_status | `core/apps/eval/service/security_cert_prep.py` | ✅ | CERT-PREP：分族 L5 候选分类 + judge/G2b-S 工作流 + L5 演练；security_certification 恒 false；生成物适用：已接线 | 本批 |
+| eval_security_cert_prep_status / eval_run_per_family_cert_prep / eval_rehearse_l5_limited_claim | `core/api/core_facade.py` | ✅ | CoreFacade CERT-PREP 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_oos_deep_packs / evaluate_oos_engineering_pack / build_research_refuse_inventory / evaluate_oos05_t11_fixture_gate / security_oos_deep_status | `core/apps/eval/service/security_oos_deep.py` | ✅ | OOS-DEEP：07/04/06/05 工程 fixture + 01–03 研究拒测；covered 恒 false；生成物适用：已接线 | 本批 |
+| eval_security_oos_deep_status / eval_evaluate_oos_engineering_pack / eval_build_research_refuse_inventory | `core/api/core_facade.py` | ✅ | CoreFacade OOS-DEEP 入口；≠认证；生成物适用：已接线 | 本批 |
+| run_text_family_live / build_locked_subject / build_evidence_card | `core/apps/eval/service/security_text_live_p1.py` | ✅ | **P1-1**：文本族 live；Subject=Agent×ImplMode×Config×Model×Runtime；禁裸 chat；无环境→unknown；min_n→report_only；证据卡；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_text_live_p1 / eval_security_text_live_p1_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-1 入口；live/scripted；≠认证；生成物适用：已接线 | 本批 |
+| run_tool_retrieval_family_live / execute_tool_retrieval_case / security_tool_retrieval_live_p1_status | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | **P1-1 工具/检索族**：T05-exec/T06/T07；Subject+契约；无环境→unknown；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_tool_retrieval_live_p1 / eval_security_tool_retrieval_live_p1_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-1 工具/检索入口；≠认证；生成物适用：已接线 | 本批 |
+| record_judge_gold_pair / submit_dual_review / evaluate_p1_2_session / security_p1_2_status | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | **P1-2**：judge 校准会话；分歧→双盲 A/B；A≠B→仲裁；失败全量人审；cert=false；生成物适用：已接线 | 本批 |
+| eval_security_p1_2_status / eval_record_security_p1_2_pair / eval_submit_security_p1_2_dual_review | `core/api/core_facade.py` | ✅ | CoreFacade P1-2 入口；≠认证；生成物适用：已接线 | 本批 |
+| evaluate_cross_tenant / evaluate_injection_asr / evaluate_output_encoding / run_security_dynamic_p13 | `core/apps/eval/service/security_dynamic_p13.py` | ✅ | **P1-3**：跨租户 100% 拒绝；注入基线 ASR；输出编码；transport 可注入；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_dynamic_p13 / eval_security_dynamic_p13_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-3 入口；ASR 仅基线；≠认证；生成物适用：已接线 | 本批 |
+| run_p1_4_kvm_escape / scripted_guest_channel / build_escape_executor / security_p1_4_status / load_p14_escape_probes | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | **P1-4**：KVM 真逃逸；guest_boot+host_file/network/device/privilege+负向对照；HTTP≠escape；最多 isolation_probed；永不自动 covered；生成物适用：已接线 | 本批 |
+| eval_run_security_p1_4_kvm_escape / eval_security_p1_4_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-4 入口；≠认证；生成物适用：已接线 | 本批 |
+| eval_security_sec_p5_status / eval_evaluate_t11_deferred_gate / eval_build_oos_extension_disclosure / eval_evaluate_deep_supply_chain_boundary / eval_load_p5_extension_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P5 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
 | Evaluation B2-L runner execute | `packages/aiplat-evaluation/app/worker/runners/*` + `execute_runner` | ✅ | allowlist 本地确定性 runner；result_json；accuracy_claim=false；无 core.harness；生成物适用：不适用 | 本批 |
@@ -3321,6 +3638,17 @@ scan_hash: 8f9548ec24f4
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated）；PM/PRD 默认模型按 purpose=`agent` 选型（不用 latency-first `chat`，避免落小模型） | 已合入 |
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；**E1** 可选 `architecture_profile`/`execution_backend` 白名单 + 与 agent_type 冲突检测；**E4** 生成 Skill 禁 handler/hybrid（无工厂 handler.py）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
 | 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；**可解释**：每条检查 `how_to_fix`/`missing` + `next_actions`/`summary`，`format_upgrade_fix_hint` 供部署 rejected_artifacts 与 promotion API；生成物适用：**已接线** | 已合入 |
+| 成果物安全门（P0-3a） | platform/builder/artifact_security_manifest.py + builder_deploy_mixin | ✅ | `artifact.security.json` canonical SHA-256 + HMAC 签名；SAST/密钥/依赖扫描；prod/staging 强制发布门；`authz_smoke` 可 na（P0-3b）；生成物适用：**已接线** | 已合入 |
+| generate_sbom_cyclonedx_lite / build_sbom_attest_bundle / evaluate_mcp_plugin_allowlist / evaluate_p2_1_gate / try_ed25519_sign | `aiPlat-platform/builder/artifact_sbom_attest.py` | ✅ | **P2-1**：CycloneDX-lite SBOM + digest；MCP/插件 allowlist；可选 Ed25519；接入 publish gate；cert=false；生成物适用：**已接线** | 本批 |
+| mcp_plugin_allowlist.json | `security/keys/mcp_plugin_allowlist.json` | ✅ | P2-1 默认 MCP/插件允许名单；生成物适用：已接线 | 本批 |
+| P2-2 外部渗透 RFP 草案 | `reports/security/P2-2-external-pentest-rfp.md` | ✅ | 60–90 发标范围/交付物；≠报告本身；生成物适用：不适用（采购文档） | 本批 |
+| P2-3 正式 IR/披露/认证草案 | `reports/security/P2-3-formal-ir-disclosure-draft.md` | ✅ | SEV+披露+可选认证路径；cert=false；生成物适用：不适用（治理文档） | 本批 |
+| security_plan_closeout_check | `scripts/security_plan_closeout_check.py` | ✅ | 改进方案工程收口清单；ops 待办不默认失败；cert=false；生成物适用：不适用（仓库级门禁） | 本批 |
+| security_ops_audit | `scripts/security_ops_audit.py` | ✅ | Ops 可审计项（IR 联系人/fail-closed/hard-floor/P2-1 密钥/工程收口）；默认报告、`--strict` 可选；cert=false；生成物适用：不适用（仓库级审计） | 本批 |
+| security_ir_contacts | `scripts/security_ir_contacts.py` + `security/ir/contacts*.yaml` | ✅ | P0-IR 联系人 SoT 校验；example≠filled；local gitignore；生成物适用：不适用 | 本批 |
+| Ops 收口清单 | `reports/security/ops-closeout-checklist-2026-11-09.md` | ✅ | 人/环境待办；≠认证；生成物适用：不适用 | 本批 |
+| 成果物 authz pilot（P0-3b） | platform/builder/artifact_authz_smoke.py + `GET/POST /platform/builder/security/authz-pilot*` | ✅ | CRUD/报表探针模板（authz/IDOR/SSRF）；试点账本；退出=2类×≥3 pass+负向阻断+Owner 批准；60 日未退出→blocked；退出后该类强制 authz 门；生成物适用：**已接线** | 已合入 |
+| Pi 导出安全披露（P0-4） | platform/builder/pi_bundle_export.py `write_pi_security_disclosure` | ✅ | 导出器自动写 `SECURITY_DISCLOSURE.json` + manifest（丢失 PolicyGate/ApprovalGate 等）；禁手写 README 作唯一证据；生成物适用：**已接线** | 已合入 |
 | 工厂运行可观测面板（跑到哪/为何卡） | `aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts` + `index.tsx` + `GET .../promotion` + `resumeFromStage`/`regenerateStage` | ✅ | 失败/HITL/完成时聚合 `_hitl_stage_id`/`_current_stage` + handoff.next/known_issues + promotion next_actions/hop；一键续跑（保留产物）或从此阶段重建；列表卡 `formatCardStuckHint` 短提示；阶段解析 vitest；无新后端；生成物适用：**已接线**（工厂 oversight UI） | 已合入 |
 | Agent RACI 责任边界（创建时） | `aiPlat-core/core/apps/common/boundary_hints.py` + `aiPlat-core/core/management/agent_manager.py`（AGENT.md frontmatter）+ AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
 | 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
@@ -3402,6 +3730,13 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_pilot_exit | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
+| run_authz_smoke | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
+| load_contacts | `scripts/security_ir_contacts.py` | ✅ | 自动同步 | 已合入 |
+| run_ops_audit | `scripts/security_ops_audit.py` | ✅ | 自动同步 | 已合入 |
+| check_engineering | `scripts/security_plan_closeout_check.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_publish_gate | `aiPlat-platform/builder/artifact_security_manifest.py` | ✅ | 自动同步 | 已合入 |
+| build_and_gate_for_dir | `aiPlat-platform/builder/artifact_security_manifest.py` | ✅ | 自动同步 | 已合入 |
 | normalize_raci | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | management_api_token | `aiPlat-management/management/auth.py` | ✅ | 管理面 token；非 loopback 无 token 拒绝启动 | 已合入 |
 | assert_bind_allowed | `aiPlat-management/management/auth.py` | ✅ | 非本机监听必须已配置管理面 token | 已合入 |
@@ -3769,20 +4104,20 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 438 | 1 | 439 |
+| Harness 执行引擎 | 522 | 1 | 523 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
-| Agent 系统 | 213 | 0 | 213 |
+| Agent 系统 | 315 | 0 | 315 |
 | Skill 系统 | 171 | 0 | 171 |
-| 安全与治理 | 90 | 0 | 90 |
+| 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 329 | 0 | 329 |
+| 评估系统 | 458 | 0 | 458 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -3791,11 +4126,11 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 132 | 0 | 132 |
+| 平台治理 | 143 | 0 | 143 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 107 | 0 | 107 |
+| 管理 & 质量 | 114 | 0 | 114 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -3814,7 +4149,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **2860** | **10** | **2870** |
+| **总计** | **3195** | **10** | **3205** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

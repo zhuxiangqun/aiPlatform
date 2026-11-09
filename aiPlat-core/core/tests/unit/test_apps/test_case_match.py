@@ -62,7 +62,8 @@ def test_explicit_missing_capability_not_applicable():
     )
     row = match_case(agent, case_spec_for_set("default/missing_info"))
     assert row["decision"] == "not_applicable"
-    assert any("missing_capability:clarify_or_ask" in r for r in row["reasons"])
+    # Capability ID Map v1: legacy clarify_or_ask → canonical clarification
+    assert any("missing_capability:clarification" in r for r in row["reasons"])
 
 
 def test_derived_hints_missing_capability_stays_selected():
@@ -78,7 +79,7 @@ def test_derived_hints_missing_capability_stays_selected():
     )
     row = match_case(agent, case_spec_for_set("default/missing_info"))
     assert row["decision"] == "selected"
-    assert any("capability_unconfirmed:clarify_or_ask" in r for r in row["reasons"])
+    assert any("capability_unconfirmed:clarification" in r for r in row["reasons"])
     assert not any(r.startswith("missing_capability:") for r in row["reasons"])
 
 

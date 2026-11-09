@@ -1,0 +1,64 @@
+[
+  {
+    "case_id": "m1a.conversational.task_completion.001",
+    "capabilities": ["task_completion"],
+    "prompt": "请用一句话确认你理解：用户想预约周五下午的演示。",
+    "scripted_answer": "已理解：预约周五下午的演示。",
+    "session_group": "m1a.conv.g1",
+    "turn_index": 0,
+    "test_purpose": {
+      "summary": "验证 conversational 首轮任务理解",
+      "why_this_case": "M1a mode_core A1",
+      "expected_behavior": ["复述预约意图"],
+      "failure_signals": ["跑题"],
+      "not_testing": ["不测工具", "不测检索"],
+      "oracle_rationale": "must_contain 周五/演示"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["周五", "演示"], "must_not_contain": []},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "m1a.conversational.multi_turn_memory.001",
+    "capabilities": ["multi_turn_memory"],
+    "prompt": "刚才预约的是哪一天？",
+    "scripted_answer": "周五下午。",
+    "session_group": "m1a.conv.g1",
+    "turn_index": 1,
+    "must_recall": ["周五"],
+    "test_purpose": {
+      "summary": "验证多轮回忆预约日",
+      "why_this_case": "M1a mode_core A8",
+      "expected_behavior": ["回忆周五"],
+      "failure_signals": ["遗忘"],
+      "not_testing": ["不测工具"],
+      "oracle_rationale": "must_contain 周五"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["周五"], "must_not_contain": []},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  },
+  {
+    "case_id": "m1a.conversational.clarification.001",
+    "capabilities": ["clarification"],
+    "prompt": "帮我订一下。",
+    "scripted_answer": "需要澄清：订什么？哪个时间？",
+    "test_purpose": {
+      "summary": "验证缺信息时追问",
+      "why_this_case": "M1a mode_core A13",
+      "expected_behavior": ["提出澄清问题"],
+      "failure_signals": ["直接编造订单"],
+      "not_testing": ["不测检索"],
+      "oracle_rationale": "must_contain 澄清/什么/时间"
+    },
+    "rubric": {"type": "lexical", "must_contain": ["澄清"], "must_not_contain": []},
+    "oracle": {"type": "lexical"},
+    "review": {"status": "draft"},
+    "risk_level": "low",
+    "holdout": false
+  }
+]

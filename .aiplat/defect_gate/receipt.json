@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-08T15:38:38+08:00",
+  "reviewed_at": "2026-11-09T03:39:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "c0f0e9882587e522b32243300354d3db32688835",
-  "diff_sha256": "c6abae1962426de2ff9b0dfb8d867651d674a563eb49a99fb29650d95e579aac",
-  "head_sha": "c8b516ede314914e0e059b42457f273dccdc0d17",
+  "merge_base": "9a309557d68d11275a61c9c667aa2a517db09e6f",
+  "diff_sha256": "77350c02020a1a88ad9959e5e20c793cc1d71ae074de25cc868379bbfcb192b8",
+  "head_sha": "22fbd458b2e0cadcce9ea45983024212a6a3987c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Docs+evidence: G2b fail taxonomy hypotheses + Arena clean pack leak-guard. No accuracy_claim; no QA overall_pass forge; no length-smoke replace."
+  "note": "Local lock for Agent hard-gap closeout. CI unlock is non-author GitHub Approve. head_sha informational; diff_sha256 is the lock."
 }

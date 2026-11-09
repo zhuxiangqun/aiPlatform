@@ -372,28 +372,87 @@ def _seed_coding_closed_loop() -> Dict[str, Any]:
 def build_architecture_health_checks() -> List[Dict[str, Any]]:
     """Return check rows compatible with production_depth UI."""
     checks: List[Dict[str, Any]] = []
-    profile = (os.getenv("AIPLAT_PROFILE") or "").strip().lower()
-    fail_mode = (os.getenv("AIPLAT_POLICY_FAIL_MODE") or "open").strip().lower()
-    crit_mode = (os.getenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE") or "").strip().lower()
-    prodish = profile == "production"
+    try:
+        from core.harness.infrastructure.gates.policy_gate import (
+            audit_policy_fail_mode_config,
+            resolve_policy_fail_mode,
+            resolve_runtime_profile,
+        )
+        from core.harness.infrastructure.gates.approval_gate import audit_hard_floor_escape
+    except Exception:
+        audit_policy_fail_mode_config = None  # type: ignore
+        resolve_policy_fail_mode = None  # type: ignore
+        resolve_runtime_profile = None  # type: ignore
+        audit_hard_floor_escape = None  # type: ignore
 
-    # 1) Policy fail_mode
+    profile = (
+        resolve_runtime_profile()
+        if resolve_runtime_profile
+        else (os.getenv("AIPLAT_PROFILE") or "").strip().lower()
+    )
+    fail_mode = (os.getenv("AIPLAT_POLICY_FAIL_MODE") or "").strip().lower() or "(unset)"
+    crit_mode = (os.getenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE") or "").strip().lower()
+    prodish = profile in ("production", "staging")
+    effective = (
+        resolve_policy_fail_mode(critical=True)
+        if resolve_policy_fail_mode
+        else (fail_mode if fail_mode != "(unset)" else "open")
+    )
+
+    # 1) Policy fail_mode (P0-2: effective mode + drift, not just env string)
     if prodish:
-        mode_ok = fail_mode in ("ask", "closed") or crit_mode in ("ask", "closed")
+        attempted_open = fail_mode in ("open", "allow", "fail-open", "fail_open")
+        mode_ok = effective in ("ask", "closed") and not attempted_open
         checks.append({
             "id": "policy_fail_mode",
             "title": "架构健康 · PolicyGate 降级策略",
             "status": _status(mode_ok, warn=True),
-            "detail": f"FAIL_MODE={fail_mode} CRITICAL_MODE={crit_mode or '(unset)'} profile=production",
-            "hint": "生产建议 AIPLAT_POLICY_FAIL_MODE=ask，关键路径 AIPLAT_POLICY_FAIL_CRITICAL_MODE=closed",
+            "detail": (
+                f"profile={profile or '(unset)'} explicit={fail_mode} "
+                f"effective_critical={effective} CRITICAL_MODE={crit_mode or '(unset)'}"
+            ),
+            "hint": (
+                "production/staging 默认 closed；临时 open 须设 AIPLAT_POLICY_FAIL_OPEN_UNTIL；"
+                "验收=故障时拒绝+审计，不是只写了 closed"
+            ),
         })
     else:
         checks.append({
             "id": "policy_fail_mode",
             "title": "架构健康 · PolicyGate 降级策略",
             "status": "pass",
-            "detail": f"FAIL_MODE={fail_mode} (non-production default open OK)",
-            "hint": "生产切换 profile=production 后改 ask/closed",
+            "detail": (
+                f"profile={profile or '(unset)'} explicit={fail_mode} "
+                f"effective_critical={effective} (non-prodish OK)"
+            ),
+            "hint": "设 AIPLAT_PROFILE=staging|production 启用 fail-closed 默认",
+        })
+
+    if audit_policy_fail_mode_config:
+        snap = audit_policy_fail_mode_config()
+        checks.append({
+            "id": "policy_fail_mode_drift",
+            "title": "架构健康 · PolicyGate fail-open 漂移",
+            "status": _status(bool(snap.get("ok")), warn=True),
+            "detail": (
+                f"expected_default={snap.get('expected_default')} "
+                f"open_until={snap.get('fail_open_until')} "
+                f"override_honored={snap.get('fail_open_override_honored')}"
+            ),
+            "hint": "prod/staging 上 effective=open 视为漂移，除非在 UNTIL 白名单窗内",
+        })
+
+    if audit_hard_floor_escape:
+        hf = audit_hard_floor_escape()
+        checks.append({
+            "id": "hard_floor_escape",
+            "title": "架构健康 · ApprovalGate hard-floor 逃生",
+            "status": _status(not bool(hf.get("drift_flag_without_window")), warn=True),
+            "detail": (
+                f"flag_set={hf.get('flag_set')} until={hf.get('until')} "
+                f"escape_active={hf.get('escape_active')}"
+            ),
+            "hint": "AIPLAT_HARD_FLOOR_DISABLED 须配对 UNTIL；过期自动恢复；默认关",
         })
 
     # 2) security_degraded volume (observability)

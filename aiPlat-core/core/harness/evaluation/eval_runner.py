@@ -79,6 +79,33 @@ def _ensure_dirs():
 
 
 
+def _eval_task_from_dict(raw: Dict[str, Any]) -> Optional[EvalTask]:
+    """Build EvalTask ignoring unknown keys (e.g. dataset fixture_table)."""
+    if not isinstance(raw, dict):
+        return None
+    known = {
+        "task_id",
+        "agent_id",
+        "user_input",
+        "category",
+        "expected_tools",
+        "forbidden_tools",
+        "expected_steps",
+        "success_criteria",
+        "risk_level",
+    }
+    payload = {k: raw[k] for k in known if k in raw}
+    # prompt-only rows (Case Pack) → user_input
+    if "user_input" not in payload and raw.get("prompt") is not None:
+        payload["user_input"] = raw.get("prompt")
+    if "task_id" not in payload and raw.get("case_id") is not None:
+        payload["task_id"] = raw.get("case_id")
+    try:
+        return EvalTask(**payload)
+    except TypeError:
+        return None
+
+
 def load_eval_set(set_id: str) -> Optional[EvalSet]:
 
     """Load an eval set from disk."""
@@ -95,7 +122,11 @@ def load_eval_set(set_id: str) -> Optional[EvalSet]:
 
         data = json.loads(path.read_text(encoding="utf-8"))
 
-        tasks = [EvalTask(**t) for t in data.get("tasks", [])]
+        tasks = []
+        for t in data.get("tasks", []) or []:
+            et = _eval_task_from_dict(t if isinstance(t, dict) else {})
+            if et is not None:
+                tasks.append(et)
 
         return EvalSet(
 
@@ -1264,6 +1295,7 @@ def create_builtin_eval_sets() -> List[str]:
 
         dst = _eval_dir() / "default" / template.name
 
+        # User overlay: never overwrite existing file (even if content differs).
         if not dst.exists():
 
             content = template.read_text(encoding="utf-8")
@@ -1290,6 +1322,7 @@ def create_builtin_eval_sets() -> List[str]:
 
             dst = dst_dir / template.name
 
+            # User overlay: never overwrite existing file (even if content differs).
             if not dst.exists():
 
                 dst.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")

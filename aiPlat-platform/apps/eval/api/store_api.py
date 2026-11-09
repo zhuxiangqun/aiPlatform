@@ -353,6 +353,37 @@ async def get_g2b_status(
     return {"data": eval_g2b_pack_status(tenant_id=tenant_id)}
 
 
+@router.get("/g2b-l5-gap", response_model=ItemResponse)
+async def get_g2b_l5_gap(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """G2b L5 gap disclosure — accuracy_claim / authorize stay false."""
+    from core.api.core_facade import eval_g2b_l5_gap_disclosure
+
+    return {"data": eval_g2b_l5_gap_disclosure(tenant_id=tenant_id)}
+
+
+@router.get("/a1-intersection-status", response_model=ItemResponse)
+async def get_a1_intersection_status(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """A1 intersection read-only gate/Pareto — rank_claim never auto-true."""
+    from core.api.core_facade import eval_a1_intersection_status
+
+    return {"data": eval_a1_intersection_status()}
+
+
+@router.get("/security-sec-p2a-status", response_model=ItemResponse)
+async def get_security_sec_p2a_status(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """SEC-P2a S1 pack + OOS/untested disclosure — accuracy_claim stays false."""
+    from core.api.core_facade import eval_security_sec_p2a_status
+
+    return {"data": eval_security_sec_p2a_status()}
+
+
 @router.get("/preference-status", response_model=ItemResponse)
 async def get_preference_status(
     tenant_id: str = "eval-v1",

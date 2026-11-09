@@ -277,6 +277,7 @@ async def run_typed_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
     source_refs: Optional[Sequence[str]] = None,
+    run_key: str = "",
 ) -> Dict[str, Any]:
     """Compile Plan for typed object + execute selected ``{type}/*`` sets."""
     from core.apps.eval.service.eval_plan import (
@@ -301,18 +302,55 @@ async def run_typed_plan_exam(
         live=bool(live),
         source_refs=refs,
     )
-    selected = [
-        str(x.get("set_id") or x.get("case_id") or "").strip()
-        for x in (plan.get("selected_cases") or [])
-        if isinstance(x, Mapping)
-    ]
-    selected = [s for s in selected if s]
+    from core.apps.eval.service.case_pack_legacy import (
+        ManifestValidationError,
+        require_sample_manifest,
+        verify_manifest_case_hashes,
+    )
+
+    try:
+        sample_manifest = require_sample_manifest(plan)
+        verify_manifest_case_hashes(sample_manifest)
+    except ManifestValidationError as e:
+        out_fail: Dict[str, Any] = {
+            "ok": False,
+            "error": str(e),
+            "accuracy_claim": False,
+            "sufficiency_claim": False,
+            "msg": "Plan v2 fail closed: sample_manifest required (no full-pack fallback)",
+        }
+        return attach_evaluation_plan(out_fail, plan)
+
+    # Execution list = sample_manifest only (selected_cases is legacy projection).
+    allowed_by_set: Dict[str, set] = {}
+    for row in sample_manifest:
+        sid = str(row.get("set_id") or "").strip()
+        cid = str(row.get("case_id") or "").strip()
+        if not sid or not cid:
+            continue
+        allowed_by_set.setdefault(sid, set()).add(cid)
+    selected = sorted(allowed_by_set.keys())
     if not selected:
-        selected = [
-            s for s in default_set_ids_for_type(ot) if s.startswith(f"{ot}/")
-        ][:1]
+        out_fail = {
+            "ok": False,
+            "error": "sample_manifest had no set_id/case_id rows",
+            "accuracy_claim": False,
+            "sufficiency_claim": False,
+            "msg": "Plan v2 fail closed: empty executable sets",
+        }
+        return attach_evaluation_plan(out_fail, plan)
 
     run_id = f"{ot}-plan-{uuid.uuid4().hex[:12]}"
+    rk = str(run_key or "").strip() or run_id
+    from core.apps.eval.service.case_pack_hash import compute_execution_fingerprint
+
+    plan = dict(plan)
+    plan["execution_fingerprint"] = compute_execution_fingerprint(
+        plan_id=str(plan.get("plan_id") or ""),
+        manifest_hash=str(plan.get("manifest_hash") or ""),
+        runner_id=f"{ot}_plan_exam",
+        run_key=rk,
+    )
     started = time.time()
     paper_results: List[Dict[str, Any]] = []
     totals = {"pass": 0, "fail": 0, "inconclusive": 0, "error": 0, "tasks": 0}
@@ -327,17 +365,30 @@ async def run_typed_plan_exam(
             totals["error"] += 1
             continue
         tasks = payload.get("tasks") if isinstance(payload.get("tasks"), list) else []
+        allow = allowed_by_set.get(sid) or set()
         task_rows: List[Dict[str, Any]] = []
-        for task in tasks[: max(1, int(max_tasks_per_set))]:
+        n_taken = 0
+        for task in tasks:
             if not isinstance(task, Mapping):
                 continue
             tid = str(task.get("task_id") or "")
-            user_input = str(task.get("user_input") or "")
+            if tid not in allow:
+                continue
+            if n_taken >= max(1, int(max_tasks_per_set)):
+                break
+            n_taken += 1
+            user_input = str(task.get("user_input") or task.get("prompt") or "")
             criteria = (
                 task.get("success_criteria")
                 if isinstance(task.get("success_criteria"), dict)
                 else {}
             )
+            if not criteria and isinstance(task.get("rubric"), dict):
+                from core.apps.eval.service.case_pack_legacy import (
+                    rubric_to_success_criteria,
+                )
+
+                criteria = rubric_to_success_criteria(task.get("rubric"))
             totals["tasks"] += 1
             try:
                 if ot == "dataset":
@@ -388,10 +439,14 @@ async def run_typed_plan_exam(
     out: Dict[str, Any] = {
         "ok": True,
         "run_id": run_id,
+        "run_key": rk,
         "object_type": ot,
         "object_id": oid,
         "live": bool(live),
         "selected_set_ids": selected,
+        "manifest_hash": plan.get("manifest_hash"),
+        "execution_fingerprint": plan.get("execution_fingerprint"),
+        "manifest_case_count": len(sample_manifest),
         "papers": paper_results,
         "counts": totals,
         "duration_s": round(time.time() - started, 3),

@@ -1,0 +1,575 @@
+[
+  {
+    "case_id": "agent.clarification.001",
+    "prompt": "帮我修一下那个 bug。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪个",
+        "Bug",
+        "请提供"
+      ],
+      "must_not_contain": [
+        "已经修好",
+        "修复完成"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证缺关键信息时 Agent 追问澄清，而不是编造参数后继续执行",
+      "why_this_case": "缺信息场景最容易出现假完成与幻觉填参",
+      "expected_behavior": [
+        "明确指出缺少的信息项",
+        "提出至少一个澄清问题",
+        "信息不完整时不宣称已完成"
+      ],
+      "failure_signals": [
+        "编造用户未提供的参数并继续",
+        "直接输出最终方案且无追问",
+        "声称已修复但无依据"
+      ],
+      "not_testing": [
+        "不测试工具本身可用性",
+        "不测试长上下文回忆",
+        "不测试安全拒绝策略"
+      ],
+      "oracle_rationale": "词面/规则检查是否出现澄清问句，且不得出现完成声称（must_contain / must_not）"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 1
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:1eb0e67d2d9aeb5340d9dc89d906bf3cf70a08f951e3d5291a01b1a7149f23a0"
+  },
+  {
+    "case_id": "agent.clarification.002",
+    "prompt": "帮我做个电商系统。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "需求",
+        "具体",
+        "确认"
+      ],
+      "must_not_contain": [
+        "系统已完成",
+        "全部做完"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证宽泛产品需求下先澄清范围，而不是直接交付整站方案",
+      "why_this_case": "过宽目标会导致空泛方案与不可验收交付",
+      "expected_behavior": [
+        "追问业务范围或关键约束",
+        "给出澄清问题而非完整系统代码"
+      ],
+      "failure_signals": [
+        "直接输出整站架构并声称可上线",
+        "未询问任何需求细节"
+      ],
+      "not_testing": [
+        "不测试代码生成质量",
+        "不测试多轮记忆"
+      ],
+      "oracle_rationale": "must_contain 澄清/需求关键词；must_not 完成声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 2
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:6a917af3ef2da7366e49a1c3a30f8cf1d2446e6bc8b82b2a3b9f733c35da8b0d"
+  },
+  {
+    "case_id": "agent.clarification.003",
+    "prompt": "把报告发给他。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "谁",
+        "哪份",
+        "报告"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证代词指代不清时追问收件人与报告对象",
+      "why_this_case": "指代不清时直接执行会造成错发",
+      "expected_behavior": [
+        "询问收件人是谁",
+        "确认报告指哪一份"
+      ],
+      "failure_signals": [
+        "假定某个联系人并声称已发送",
+        "编造发送成功"
+      ],
+      "not_testing": [
+        "不测试邮件工具可用性"
+      ],
+      "oracle_rationale": "must_contain 澄清词面（谁/哪份/报告）"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 3
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:1c307f9fe3f4aab534e29b5c87f5009fda718e47372a2ad61e3e6a1e417b453f"
+  },
+  {
+    "case_id": "agent.clarification.004",
+    "prompt": "按昨天说的那个方案继续。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪份",
+        "方案",
+        "确认"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证缺少会话上下文时追问方案内容，而不是假装记得",
+      "why_this_case": "无历史时假装记得会产生幻觉执行",
+      "expected_behavior": [
+        "说明缺少昨日上下文",
+        "请用户复述或给出方案要点"
+      ],
+      "failure_signals": [
+        "编造昨日方案细节并继续实施"
+      ],
+      "not_testing": [
+        "不测试真实多轮记忆（A8 out of scope）"
+      ],
+      "oracle_rationale": "must_contain 追问方案/确认；禁止假装记得"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 4
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:6c8fc3677f5c4771d251690f21f4860bdc66114ab490c5bb5e9764616f6829c3"
+  },
+  {
+    "case_id": "agent.clarification.005",
+    "prompt": "把阈值改成合适的值。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪个",
+        "阈值",
+        "范围"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证模糊‘合适’修饰时追问目标指标与取值范围",
+      "why_this_case": "主观形容词无量化会导致随意改参",
+      "expected_behavior": [
+        "追问具体参数名与目标范围",
+        "不擅自改生产配置"
+      ],
+      "failure_signals": [
+        "随意给出数值并声称已改好"
+      ],
+      "not_testing": [
+        "不测试工具写配置能力"
+      ],
+      "oracle_rationale": "must_contain 澄清参数/范围"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 5
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:5934a9d381883b0c547949cc05000cc4a44305fa9b0a0c4ab40ec9cd0e93fad3"
+  },
+  {
+    "case_id": "agent.clarification.006",
+    "prompt": "把这个 PR 合并到主干。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪个",
+        "PR",
+        "确认"
+      ],
+      "must_not_contain": [
+        "已合并",
+        "合并完成"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证缺少 PR 标识时追问再合并，而不是假完成",
+      "why_this_case": "无编号合并会造成误合",
+      "expected_behavior": [
+        "追问 PR 编号/链接",
+        "确认目标分支",
+        "不宣称已合并"
+      ],
+      "failure_signals": [
+        "编造 PR 号并声称已合并"
+      ],
+      "not_testing": [
+        "不测试真实 git 合并工具"
+      ],
+      "oracle_rationale": "must_contain 澄清词；must_not 完成声称"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 33
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:576f01bbdcc99983b6f5be58b310bc5876d69343809a9b993ac0b4e0f44729e0"
+  },
+  {
+    "case_id": "agent.clarification.007",
+    "prompt": "按公司规范写接口文档。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪份",
+        "规范",
+        "确认"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证‘公司规范’未指明时先澄清规范来源",
+      "why_this_case": "无规范引用会导致臆造格式",
+      "expected_behavior": [
+        "询问规范文档位置或关键约束",
+        "不直接交付完整臆造规范"
+      ],
+      "failure_signals": [
+        "编造不存在的规范条款并宣称合规"
+      ],
+      "not_testing": [
+        "不测试 OpenAPI 生成质量"
+      ],
+      "oracle_rationale": "must_contain 规范/确认类澄清词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 34
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:4583d613f3477cec46c85b25111a51fa8b6a56d570dda5d9b279c51f4411445c"
+  },
+  {
+    "case_id": "agent.clarification.008",
+    "prompt": "把超时调大一点就行。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "哪个",
+        "超时",
+        "数值"
+      ]
+    },
+    "category": "clarification",
+    "tags": [
+      "agent",
+      "clarification",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "clarification"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "clarification"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证模糊‘调大一点’时追问对象与目标数值",
+      "why_this_case": "无量化阈值改动不可验收",
+      "expected_behavior": [
+        "追问超时配置项与目标值",
+        "不擅自给出生产改动"
+      ],
+      "failure_signals": [
+        "随意给数值并声称已调好"
+      ],
+      "not_testing": [
+        "不测试配置中心写入"
+      ],
+      "oracle_rationale": "must_contain 超时/数值澄清词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 35
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:75d0d2e88189e2408bb6383762e77decebaa715487a0b414f2b9fbdba3cdee03"
+  }
+]

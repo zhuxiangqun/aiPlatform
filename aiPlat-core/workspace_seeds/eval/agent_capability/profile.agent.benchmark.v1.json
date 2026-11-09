@@ -1,0 +1,37 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "agent.benchmark.v1",
+  "object_type": "agent",
+  "pack_id": "agent.capability",
+  "pack_version": "0.1.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 8,
+    "clarification": 8,
+    "error_recovery": 8,
+    "safety": 8,
+    "robustness": 8,
+    "planning": 8,
+    "efficiency": 8,
+    "observability": 8,
+    "tool_selection": 5,
+    "tool_args": 5,
+    "tool_result_use": 5,
+    "multi_turn_memory": 5,
+    "long_context": 5
+  },
+  "strategy": "stratified",
+  "seed": 11,
+  "session_group_policy": {
+    "atomic": true
+  },
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 11,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "v1.1 benchmark — legacy caps ≥8; A3–A5/A8/A9 floor 5 until bank expands; claim/Certification closed."
+}

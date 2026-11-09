@@ -8,7 +8,8 @@ hermes-agent parity: tools/approval.py — dangerous command catalog + approval 
 
 OpenWorker-inspired hard floors (2026-10): CRITICAL matches always escalate to a
 human — auto-approve modes, session caches, and AIPLAT_APPROVALS_DISABLED cannot
-lower them. Only ``AIPLAT_HARD_FLOOR_DISABLED=1`` (audited escape) skips floors.
+lower them. Only ``AIPLAT_HARD_FLOOR_DISABLED=1`` (audited escape) skips floors,
+and only while ``AIPLAT_HARD_FLOOR_DISABLED_UNTIL`` is in the future (P0-2 auto-restore).
 """
 from __future__ import annotations
 
@@ -20,11 +21,65 @@ import logging
 import os
 import re
 import time
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
+
+
+def is_hard_floor_escape_active() -> bool:
+    """Return True only while hard-floor escape is explicitly on and not expired.
+
+    Env:
+      AIPLAT_HARD_FLOOR_DISABLED — 1/true to request escape (default off)
+      AIPLAT_HARD_FLOOR_DISABLED_UNTIL — ISO-8601 deadline; required for escape
+        to remain active. Missing/invalid/expired → escape OFF (auto-restore).
+    """
+    flag = os.getenv("AIPLAT_HARD_FLOOR_DISABLED", "false").lower() in ("1", "true", "yes")
+    if not flag:
+        return False
+    until = (os.getenv("AIPLAT_HARD_FLOOR_DISABLED_UNTIL") or "").strip()
+    if not until:
+        # Escape requested without deadline → do not honor (fail-safe restore)
+        logger.warning(
+            "AIPLAT_HARD_FLOOR_DISABLED set without AIPLAT_HARD_FLOOR_DISABLED_UNTIL; "
+            "escape ignored (auto-restore)"
+        )
+        return False
+    try:
+        text = until.replace("Z", "+00:00")
+        deadline = datetime.fromisoformat(text)
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) >= deadline:
+            logger.warning(
+                "AIPLAT_HARD_FLOOR_DISABLED_UNTIL expired (%s); escape auto-restored",
+                until,
+            )
+            return False
+    except ValueError:
+        logger.warning(
+            "invalid AIPLAT_HARD_FLOOR_DISABLED_UNTIL=%r; escape ignored",
+            until,
+        )
+        return False
+    return True
+
+
+def audit_hard_floor_escape() -> Dict[str, Any]:
+    """Health/IR snapshot for hard-floor escape (P0-2)."""
+    flag = os.getenv("AIPLAT_HARD_FLOOR_DISABLED", "false").lower() in ("1", "true", "yes")
+    until = (os.getenv("AIPLAT_HARD_FLOOR_DISABLED_UNTIL") or "").strip()
+    active = is_hard_floor_escape_active()
+    return {
+        "flag_set": flag,
+        "until": until or "(unset)",
+        "escape_active": active,
+        "ok": (not flag) or active,  # flag without valid window is drift
+        "drift_flag_without_window": bool(flag and not active),
+    }
 
 
 # ── Enums ────────────────────────────────────────────────────────────────────
@@ -194,11 +249,9 @@ class ApprovalGate:
         self._cache_ttl: float = float(os.getenv("AIPLAT_APPROVAL_CACHE_TTL", "300"))  # 5 min
 
         # Override: soft-disable non-floor rules (hard floors still apply unless
-        # AIPLAT_HARD_FLOOR_DISABLED=1).
+        # AIPLAT_HARD_FLOOR_DISABLED=1 with a future AIPLAT_HARD_FLOOR_DISABLED_UNTIL).
         self._disabled: bool = os.getenv("AIPLAT_APPROVAL_GATE_DISABLED", "false").lower() in ("1", "true", "yes")
-        self._hard_floor_disabled: bool = os.getenv("AIPLAT_HARD_FLOOR_DISABLED", "false").lower() in (
-            "1", "true", "yes",
-        )
+        self._hard_floor_disabled: bool = is_hard_floor_escape_active()
 
         self._build_rules()
 
@@ -271,11 +324,12 @@ class ApprovalGate:
 
         Used when PolicyGate has approvals soft-disabled — floors still escalate.
         """
-        if self._hard_floor_disabled:
+        # Re-evaluate escape each call so UNTIL expiry auto-restores mid-process (P0-2).
+        if is_hard_floor_escape_active():
             return ApprovalGateResult(
                 verdict=ApprovalVerdict.ALLOW,
                 approval_source=APPROVAL_SOURCE_DISABLED,
-                message="hard floors disabled via AIPLAT_HARD_FLOOR_DISABLED",
+                message="hard floors disabled via AIPLAT_HARD_FLOOR_DISABLED (within UNTIL window)",
             )
         args = tool_args or {}
 
@@ -560,7 +614,7 @@ class ApprovalGate:
             "whitelisted_users": len(self._user_whitelist),
             "active_sessions": len(self._session_approved),
             "disabled": self._disabled,
-            "hard_floor_disabled": self._hard_floor_disabled,
+            "hard_floor_disabled": is_hard_floor_escape_active(),
             "cache_size": len(self._approval_cache),
         }
 

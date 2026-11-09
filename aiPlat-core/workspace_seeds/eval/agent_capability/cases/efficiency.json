@@ -1,0 +1,552 @@
+[
+  {
+    "case_id": "agent.efficiency.001",
+    "prompt": "用一句话回答：Python 里如何获取当前时间？不要展开教程。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "datetime",
+        "now"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能在一句话约束下给出要点，避免冗长教程",
+      "why_this_case": "效率维度关注不必要冗长",
+      "expected_behavior": [
+        "简短回答含关键 API",
+        "不展开长教程"
+      ],
+      "failure_signals": [
+        "超长教程淹没答案"
+      ],
+      "not_testing": [
+        "不测试 token 精确计量基础设施"
+      ],
+      "oracle_rationale": "must_contain datetime/now；人审看篇幅"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 27
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:f071e2d2594fc96cda104cbecad52010a700bed7ae5a41274e208354c3917a7c"
+  },
+  {
+    "case_id": "agent.efficiency.002",
+    "prompt": "只要结论：下列哪个更快做成员检查，list 还是 set？（只输出其中一个词）",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "set"
+      ],
+      "must_not_contain": [
+        "因为",
+        "首先"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证在‘只输出一词’约束下不绕弯解释",
+      "why_this_case": "多余解释浪费步骤/成本",
+      "expected_behavior": [
+        "只输出 set"
+      ],
+      "failure_signals": [
+        "长篇比较文"
+      ],
+      "not_testing": [
+        "不测试渐进复杂度证明"
+      ],
+      "oracle_rationale": "must_contain set；must_not 解释连接词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 28
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:4e7a1891fa907550c2f4059b65c456e92f98a3f7fc12cca2f4811464bc2ad4dc"
+  },
+  {
+    "case_id": "agent.efficiency.003",
+    "prompt": "把这段需求压缩成一句话验收标准：用户登录后应在 2 秒内看到首页，失败要有错误提示。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "2",
+        "秒",
+        "错误"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能把多句需求压缩为可验收的一句话",
+      "why_this_case": "冗长复述降低沟通效率",
+      "expected_behavior": [
+        "一句话含时延与错误提示"
+      ],
+      "failure_signals": [
+        "原样粘贴多段不压缩"
+      ],
+      "not_testing": [
+        "不测试产品指标统计"
+      ],
+      "oracle_rationale": "must_contain 2/秒/错误"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 29
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:dcc06ce28f76b8153d0377b99383af8743aa213e843bc44e9f7f256fc5b4bc9e"
+  },
+  {
+    "case_id": "agent.efficiency.004",
+    "prompt": "用不超过 10 个汉字回答：HTTP 204 表示什么？",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "无内容",
+        "成功"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证字数约束下给出要点，避免长教程",
+      "why_this_case": "效率维度惩罚不必要冗长",
+      "expected_behavior": [
+        "短答点出无内容/成功语义"
+      ],
+      "failure_signals": [
+        "超长协议教程"
+      ],
+      "not_testing": [
+        "不测试全部状态码手册"
+      ],
+      "oracle_rationale": "must_contain 无内容/成功；人审篇幅"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 55
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:3418ed82260328af017ef63de0df0daa7323da73607780c8096dc228ee3a1a29"
+  },
+  {
+    "case_id": "agent.efficiency.005",
+    "prompt": "只要命令本身：列出当前目录文件（Linux），不要解释。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ls"
+      ],
+      "must_not_contain": [
+        "首先",
+        "例如"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证‘只要命令’约束下不夹带教程",
+      "why_this_case": "多余解释浪费交互步数",
+      "expected_behavior": [
+        "输出 ls 或等价短命令"
+      ],
+      "failure_signals": [
+        "长篇 shell 教程"
+      ],
+      "not_testing": [
+        "不测试真实 shell 执行"
+      ],
+      "oracle_rationale": "must_contain ls；must_not 解释连接词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 56
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:d2059e9431e3381a93977d7e8de62943b8f066e0b4b847ee77c5483276298016"
+  },
+  {
+    "case_id": "agent.efficiency.006",
+    "prompt": "一句话：Git 撤销未提交的工作区修改用什么命令？（只给命令）",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "git",
+        "checkout",
+        "--"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证一句话约束下给出关键命令",
+      "why_this_case": "效率要求最短可用答案",
+      "expected_behavior": [
+        "给出 git checkout -- 类命令"
+      ],
+      "failure_signals": [
+        "长篇 Git 原理课"
+      ],
+      "not_testing": [
+        "不测试 destructive git 安全确认（属 safety）"
+      ],
+      "oracle_rationale": "must_contain git checkout --"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 57
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:0c386c462fbaeb825f9e0426d015bd6c3e74b8f4e45e96c14548ae49a7f7df3d"
+  },
+  {
+    "case_id": "agent.efficiency.007",
+    "prompt": "压缩成关键词列表（逗号分隔，最多 5 个）：需要鉴权、分页、缓存、日志、告警的 API 改造。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "鉴权",
+        "分页",
+        "缓存"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能把多要点压成短关键词列表",
+      "why_this_case": "关键词化降低沟通成本",
+      "expected_behavior": [
+        "逗号分隔关键词",
+        "覆盖鉴权/分页/缓存等"
+      ],
+      "failure_signals": [
+        "原样长段落复述"
+      ],
+      "not_testing": [
+        "不测试真实 API 改造"
+      ],
+      "oracle_rationale": "must_contain 鉴权/分页/缓存"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 58
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:f48f5a097c7b4506450fb6c2f010d1c9a31b230927153b148998d463f5425465"
+  },
+  {
+    "case_id": "agent.efficiency.008",
+    "prompt": "是/否题：Python 的 dict 键必须可哈希？只输出 是 或 否。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "是"
+      ],
+      "must_not_contain": [
+        "因为",
+        "原因"
+      ]
+    },
+    "category": "efficiency",
+    "tags": [
+      "agent",
+      "efficiency",
+      "regression"
+    ],
+    "difficulty": "easy",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "efficiency"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "efficiency"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证是/否约束下不附加解释",
+      "why_this_case": "多余解释降低效率",
+      "expected_behavior": [
+        "只输出 是"
+      ],
+      "failure_signals": [
+        "长篇解释哈希原理"
+      ],
+      "not_testing": [
+        "不测试哈希冲突细节"
+      ],
+      "oracle_rationale": "must_contain 是；must_not 解释词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 59
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:a47c4e0f2f28143dd0f108589c6bbf8dd7a5cb510e2bbec6607caa3e831e0838"
+  }
+]

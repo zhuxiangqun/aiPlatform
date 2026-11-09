@@ -2642,7 +2642,13 @@ export const agentEvalApi = {
       eval_profile_source?: string | null;
       plan?: {
         plan_id?: string;
-        selected_cases?: Array<{ set_id?: string; pack?: string; status?: string }>;
+        schema?: string;
+        selected_cases?: Array<{
+          set_id?: string;
+          pack?: string;
+          status?: string;
+          reasons?: string[];
+        }>;
         excluded_cases?: Array<{
           set_id?: string;
           status?: string;
@@ -2650,6 +2656,20 @@ export const agentEvalApi = {
           pack?: string;
         }>;
         counts?: Record<string, number>;
+        sample_manifest?: Array<{
+          case_id?: string;
+          hash?: string;
+          set_id?: string;
+          pack_id?: string;
+          pack_version?: string;
+        }>;
+        manifest_hash?: string;
+        execution_fingerprint?: string;
+        coverage?: {
+          cases?: number;
+          sets?: Record<string, { pack_id?: string; n_cases?: number }>;
+          manifest_cases_after_sample?: number;
+        };
         honesty?: string;
         target_contract?: Record<string, unknown>;
         eval_profile_source?: string | null;
@@ -2697,6 +2717,307 @@ export const agentEvalApi = {
     explicit_authorize?: boolean;
   }) => {
     return apiClient.post<Record<string, unknown>>('/core/evaluation/claims-gate', body);
+  },
+  /** Case Pack factory coverage inventory (claim closed). */
+  casePackCoverage: async () => {
+    return apiClient.get<Record<string, unknown>>('/core/evaluation/case-packs/coverage');
+  },
+  casePackDraft: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/draft', body);
+  },
+  casePackEnqueueReview: async (body: {
+    pack_id: string;
+    version: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/enqueue-review',
+      body,
+    );
+  },
+  casePackReviewQueue: async (statuses?: string) => {
+    const q = statuses?.trim()
+      ? `?statuses=${encodeURIComponent(statuses.trim())}`
+      : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/review-queue${q}`,
+    );
+  },
+  casePackReview: async (body: {
+    pack_id: string;
+    version: string;
+    decision: 'approve' | 'reject' | string;
+    reviewer?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/review', body);
+  },
+  casePackFreeze: async (body: {
+    pack_id: string;
+    version: string;
+    frozen_by?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/freeze', body);
+  },
+  /** P1: seed agent.capability → draft → approve → freeze (claim=false). */
+  casePackPromoteAgentCapability: async (body?: {
+    reviewer?: string;
+    frozen_by?: string;
+    pack_id?: string;
+    version?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/promote-agent-capability',
+      body || {},
+    );
+  },
+  /** Case Editor: read-only repo seed browse. */
+  caseEditorSeedList: async (capabilityId?: string) => {
+    const q = capabilityId?.trim()
+      ? `?capability_id=${encodeURIComponent(capabilityId.trim())}`
+      : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/seed-cases${q}`,
+    );
+  },
+  caseEditorSeedGet: async (caseId: string) => {
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/seed-cases/${encodeURIComponent(caseId)}`,
+    );
+  },
+  /** Case Editor: open workspace draft (from seeds or bump frozen). */
+  caseEditorOpen: async (body?: {
+    pack_id?: string;
+    version?: string;
+    bump_if_frozen?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/open',
+      body || {},
+    );
+  },
+  caseEditorList: async (opts?: {
+    pack_id?: string;
+    version?: string;
+    capability_id?: string;
+  }) => {
+    const params = new URLSearchParams();
+    if (opts?.pack_id) params.set('pack_id', opts.pack_id);
+    if (opts?.version) params.set('version', opts.version);
+    if (opts?.capability_id) params.set('capability_id', opts.capability_id);
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/editor/cases${q}`,
+    );
+  },
+  caseEditorGet: async (
+    caseId: string,
+    opts?: { pack_id?: string; version?: string },
+  ) => {
+    const params = new URLSearchParams();
+    if (opts?.pack_id) params.set('pack_id', opts.pack_id);
+    if (opts?.version) params.set('version', opts.version);
+    const q = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/editor/cases/${encodeURIComponent(caseId)}${q}`,
+    );
+  },
+  caseEditorUpsert: async (body: {
+    pack_id?: string;
+    version?: string;
+    case: Record<string, unknown>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/upsert',
+      body,
+    );
+  },
+  caseEditorDelete: async (body: {
+    pack_id?: string;
+    version?: string;
+    case_id: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/editor/delete',
+      body,
+    );
+  },
+  /** Built-in Suite Profiles (agent.regression.v1). */
+  casePackSuiteProfiles: async () => {
+    return apiClient.get<Record<string, unknown>>(
+      '/core/evaluation/case-packs/suite-profiles',
+    );
+  },
+  /** P2: Profile quotas → Plan v2 sample_manifest. */
+  casePackCompileSuiteProfile: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    object_id?: string;
+    object_version?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/compile-suite-profile',
+      body || {},
+    );
+  },
+  /** Post-P4: execute only sample_manifest from Suite Profile Plan. */
+  casePackRunSuiteProfile: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    live?: boolean;
+    model?: string;
+    run_key?: string;
+    max_cases?: number;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/run-suite-profile',
+      body || {},
+    );
+  },
+  /** §8.4 capability coverage heatmap. */
+  casePackCapabilityHeatmap: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    exam?: Record<string, unknown>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/capability-heatmap',
+      body || {},
+    );
+  },
+  /** P5 pre-gate: §8.5 relative completeness (certification_eligible always false). */
+  casePackCertificationReadiness: async (body?: {
+    profile_id?: string;
+    pack_kind?: string;
+    pack_status?: string;
+    judge_agreement?: Record<string, unknown>;
+    judge_threshold?: number;
+    compile_plan?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/certification-readiness',
+      body || {},
+    );
+  },
+  /** P3: capability have/need/gap inventory. */
+  casePackCapabilityCoverage: async (body?: {
+    profile_id?: string;
+    profile?: Record<string, unknown>;
+    min_per_capability?: number;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/capability-coverage',
+      body || {},
+    );
+  },
+  /** P3: coverage-driven fill (dry by default; apply expands draft). */
+  casePackCoverageFill: async (body?: {
+    pack_id?: string;
+    version?: string;
+    profile_id?: string;
+    min_per_capability?: number;
+    method?: 'mutation' | 'template' | string;
+    seed?: string;
+    apply?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/coverage-fill',
+      body || {},
+    );
+  },
+  /** P4: benchmark readiness (coverage + holdout compile). */
+  casePackBenchmarkReadiness: async (body?: {
+    min_per_capability?: number;
+    compile_plan?: boolean;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/benchmark-readiness',
+      body || {},
+    );
+  },
+  /** P4: open judge calibration ticket for capability bank. */
+  casePackOpenCapabilityJudgeCalibration: async (body?: {
+    pack_id?: string;
+    version?: string;
+    sample_n?: number;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/open-capability-judge-calibration',
+      body || {},
+    );
+  },
+  /** P4: engineering judge agreement gate (always report_only). */
+  casePackJudgeCalibrationGate: async (body?: {
+    ticket_id?: string;
+    threshold?: number;
+    ratings?: Array<Record<string, unknown>>;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-gate',
+      body || {},
+    );
+  },
+  casePackExpand: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/expand', body);
+  },
+  casePackBump: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/bump', body);
+  },
+  casePackHoldout: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/holdout', body);
+  },
+  casePackMutate: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>('/core/evaluation/case-packs/mutate', body);
+  },
+  casePackFromTrace: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/from-trace',
+      body,
+    );
+  },
+  casePackLlmCandidates: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/llm-candidates',
+      body,
+    );
+  },
+  casePackProposeDifficulty: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/propose-difficulty',
+      body,
+    );
+  },
+  casePackJudgeCalibrationTicket: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-ticket',
+      body,
+    );
+  },
+  casePackCalibrateDifficulty: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/calibrate-difficulty',
+      body,
+    );
+  },
+  casePackJudgeCalibrationRatings: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-ratings',
+      body,
+    );
+  },
+  casePackJudgeCalibrationClose: async (body: Record<string, unknown>) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/judge-calibration-close',
+      body,
+    );
+  },
+  casePackJudgeCalibrationGet: async (ticketId: string) => {
+    return apiClient.get<Record<string, unknown>>(
+      `/core/evaluation/case-packs/judge-calibration-ticket/${encodeURIComponent(ticketId)}`,
+    );
   },
   /** Explicit config.eval_profile or derived skill/tool capability hints. */
   resolveEvalProfile: async (body: { agent_id: string }) => {

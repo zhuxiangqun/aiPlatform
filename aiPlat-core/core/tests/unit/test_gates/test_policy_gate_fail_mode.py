@@ -1,4 +1,4 @@
-"""PolicyGate fail-mode (安全体系审计 §4.1 方案 C)."""
+"""PolicyGate fail-mode (安全体系审计 §4.1 方案 C + P0-2 grayscale)."""
 from __future__ import annotations
 
 import pytest
@@ -7,6 +7,8 @@ from core.apps.tools.permission import Permission, get_permission_manager
 from core.harness.infrastructure.gates.policy_gate import (
     PolicyDecision,
     PolicyGate,
+    audit_policy_fail_mode_config,
+    default_fail_mode_for_profile,
     resolve_policy_fail_mode,
 )
 
@@ -23,6 +25,9 @@ from core.harness.infrastructure.gates.policy_gate import (
     ],
 )
 def test_resolve_policy_fail_mode(monkeypatch, env, critical, expected):
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    monkeypatch.delenv("AIPLAT_ENV", raising=False)
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL", raising=False)
     if env is None:
         monkeypatch.delenv("AIPLAT_POLICY_FAIL_MODE", raising=False)
     else:
@@ -31,7 +36,31 @@ def test_resolve_policy_fail_mode(monkeypatch, env, critical, expected):
     assert resolve_policy_fail_mode(critical=critical) == expected
 
 
+def test_profile_default_closed_when_unset(monkeypatch):
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_MODE", raising=False)
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE", raising=False)
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL", raising=False)
+    monkeypatch.setenv("AIPLAT_PROFILE", "production")
+    assert default_fail_mode_for_profile() == "closed"
+    assert resolve_policy_fail_mode(critical=True) == "closed"
+
+
+def test_prod_open_override_requires_until(monkeypatch):
+    monkeypatch.setenv("AIPLAT_PROFILE", "production")
+    monkeypatch.setenv("AIPLAT_POLICY_FAIL_MODE", "open")
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL", raising=False)
+    monkeypatch.delenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE", raising=False)
+    # Missing UNTIL → open not honored → profile default closed
+    assert resolve_policy_fail_mode(critical=True) == "closed"
+    monkeypatch.setenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL", "2099-06-01T00:00:00Z")
+    assert resolve_policy_fail_mode(critical=True) == "open"
+    snap = audit_policy_fail_mode_config()
+    assert snap["fail_open_override_honored"] is True
+
+
 def test_critical_mode_override(monkeypatch):
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    monkeypatch.delenv("AIPLAT_ENV", raising=False)
     monkeypatch.setenv("AIPLAT_POLICY_FAIL_MODE", "ask")
     monkeypatch.setenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE", "closed")
     assert resolve_policy_fail_mode(critical=True) == "closed"
@@ -40,6 +69,8 @@ def test_critical_mode_override(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_skill_load_resolver_fail_open_default(monkeypatch):
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    monkeypatch.delenv("AIPLAT_ENV", raising=False)
     monkeypatch.delenv("AIPLAT_POLICY_FAIL_MODE", raising=False)
     monkeypatch.delenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE", raising=False)
     monkeypatch.setenv("AIPLAT_SKILL_PERMISSION_RULES", '{"secret-*":"deny","*":"allow"}')
@@ -115,7 +146,9 @@ async def test_skill_load_resolver_fail_ask(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rollback_to_open(monkeypatch):
-    """One-click rollback: FAIL_MODE=open restores fail-open."""
+    """One-click rollback: FAIL_MODE=open restores fail-open (dev / with UNTIL)."""
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    monkeypatch.delenv("AIPLAT_ENV", raising=False)
     monkeypatch.setenv("AIPLAT_POLICY_FAIL_MODE", "open")
     monkeypatch.setenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE", "")
     monkeypatch.setenv("AIPLAT_SKILL_PERMISSION_RULES", '{"secret-*":"deny","*":"allow"}')

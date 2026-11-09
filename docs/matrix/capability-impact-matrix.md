@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 1957 capabilities (caps_count) | 1957 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2417 capabilities (caps_count) | 2417 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -36,7 +36,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 102 | 诊断仪表盘 |
+| management-and-quality | §二十五 管理 & 质量 | 115 | 诊断仪表盘 |
 | observability | §八 可观测性 | 23 | 诊断仪表盘 |
 
 ### aiPlat-management/frontend/src/pages/Infra
@@ -87,13 +87,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 593 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 609 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 121 | FDE 质量摘要 |
+| evaluation-system | §十三 评估系统 | 437 | FDE 质量摘要 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -118,13 +118,13 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 217 | Agent REST 端点 |
+| agent-system | §五 Agent 系统 | 328 | Agent REST 端点 |
 
 ### core/api/routers/builder_project_service.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 593 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 609 | PipelineEngine 调度入口 |
 
 ### core/api/routers/diagnostics.py
 
@@ -182,7 +182,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| agent-system | §五 Agent 系统 | 217 | Builder 创建 Agent |
+| agent-system | §五 Agent 系统 | 328 | Builder 创建 Agent |
 
 ### core/apps/mcp/adapter.py
 
@@ -227,19 +227,19 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 593 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 609 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
-| management-and-quality | §二十五 管理 & 质量 | 102 | Pipeline 质量评分 |
+| management-and-quality | §二十五 管理 & 质量 | 115 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
-| agent-system | §五 Agent 系统 | 217 | Pipeline 调度 Agent |
+| agent-system | §五 Agent 系统 | 328 | Pipeline 调度 Agent |
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
-| skill-system | §六 Skill 系统 | 187 | HITL → PolicyGate + ApprovalGate |
+| skill-system | §六 Skill 系统 | 191 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
-| evaluation-system | §十三 评估系统 | 121 | Pipeline 质量评分 |
+| evaluation-system | §十三 评估系统 | 437 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
 | knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
@@ -259,7 +259,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 593 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 609 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -357,7 +357,7 @@
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | model-infrastructure | §九 模型基础设施 | 7 | sys_llm_generate → best_model_for_purpose |
-| skill-system | §六 Skill 系统 | 187 | _guard_messages → PII masking |
+| skill-system | §六 Skill 系统 | 191 | _guard_messages → PII masking |
 | runtime-intervention | §十九 运行时干预 | 66 | 最佳模型选择 |
 
 ### core/harness/syscalls/moa_executor.py
@@ -378,14 +378,14 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| skill-system | §六 Skill 系统 | 187 | sys_skill_call → PolicyGate |
+| skill-system | §六 Skill 系统 | 191 | sys_skill_call → PolicyGate |
 
 ### core/harness/syscalls/tool.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
 | observability | §八 可观测性 | 23 | 工具调用审计 |
-| skill-system | §六 Skill 系统 | 187 | sys_tool_call → PolicyGate.check_tool |
+| skill-system | §六 Skill 系统 | 191 | sys_tool_call → PolicyGate.check_tool |
 | tool-ecosystem | §十六 工具生态 | 62 | sys_tool_call → ToolRegistry |
 
 ### core/harness/utils/model_injection.py
@@ -430,7 +430,7 @@
 - **core/apps/agents/multi_agent.py** — MultiAgent 通信
 - **core/harness/coordination/swarm_broker.py** — SwarmBroker agent discovery
 
-### §五 Agent 系统 (217 caps)
+### §五 Agent 系统 (328 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 调度 Agent
 - **core/apps/builder/builder_project_service.py** — Builder 创建 Agent
@@ -472,7 +472,7 @@
 - **core/harness/ontology_engine/engine.py** — OntologyEngine 文档输入
 - **core/api/routers/wiki.py** — Upload/ingest 端点
 
-### §十三 评估系统 (121 caps)
+### §十三 评估系统 (437 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要
@@ -496,7 +496,7 @@
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (593 caps)
+### §一 Harness 执行引擎 (609 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
@@ -541,7 +541,7 @@
 - **core/server.py** — DiscoveryListener 启动
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — _get_goal_decomposition_stats
 
-### §二十五 管理 & 质量 (102 caps)
+### §二十五 管理 & 质量 (115 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
@@ -626,7 +626,7 @@
 - **core/harness/syscalls/llm.py** — 最佳模型选择
 - **core/api/routers/diagnostics.py** — adoption-metrics 附带 Howl 干预次数
 
-### §六 Skill 系统 (187 caps)
+### §六 Skill 系统 (191 caps)
 
 - **core/harness/syscalls/tool.py** — sys_tool_call → PolicyGate.check_tool
 - **core/harness/syscalls/skill.py** — sys_skill_call → PolicyGate

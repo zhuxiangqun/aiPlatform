@@ -3,19 +3,19 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-08T06:33:38Z"
+generated_at: "2026-11-09T08:01:49Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "ce614dfe5dbfc7ce63614f1531e8147eba474c77673380a4acd05e2fbefebf4b"
+caps_sha256: "7eafc26295d03c4c3750d45272bf07c1ab91b223ac8b8ced06a04fd632c15ce4"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=ce614dfe5dbfc7ce63614f1531e8147eba474c77673380a4acd05e2fbefebf4b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=7eafc26295d03c4c3750d45272bf07c1ab91b223ac8b8ced06a04fd632c15ce4 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-08T06:33:38Z` |
-| CAPABILITIES sha256 | `ce614dfe5dbf…` |
+| 生成时间 (UTC) | `2026-11-09T08:01:49Z` |
+| CAPABILITIES sha256 | `7eafc26295d0…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -239,7 +239,9 @@ rules:
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
-| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级策略 open/ask/closed（默认 open；生产 ask 灰度；CRITICAL_MODE 可 closed；非关键固定 open+审计） | 已合入 |
+| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
+| default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
+| is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
 | apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
@@ -268,9 +270,7 @@ rules:
 | CrisisDetector | harness/security/crisis_detector.py | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
 | CrisisGate | harness/security/crisis_gate.py | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
 | EmotionTracker | harness/security/emotion_tracker.py | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
-| ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准 / `AIPLAT_APPROVALS_DISABLED` 降低（仅 `AIPLAT_HARD_FLOOR_DISABLED` 逃生）；审计写 `approval_provenance` | 已合入 |
-| Tool RiskClass | harness/infrastructure/gates/risk_class.py | ✅ | OpenWorker 启发：`READ/EGRESS/WRITE_LOCAL/EXEC/EXTERNAL`；覆盖只可加严；`PolicyGate.check_tool` + `sys_tool_call` 审计透传；生成物不适用（平台横切治理） | 已合入 |
-| Shell command risk | harness/infrastructure/gates/shell_command_risk.py | ✅ | OpenWorker P1：opaque/`$()`/管道、arg-exec
+| ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准
 
 …
 

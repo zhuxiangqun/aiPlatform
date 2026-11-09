@@ -1,0 +1,208 @@
+# Mode × capability matrix v1 — M0 authority (eval-agent-impl-mode-exam.md)
+# schema: eval.mode_core_capabilities.v1
+# Rules: mode_core ≠ rank_eligible; not_applicable ≠ unknown; unknown not in denominator.
+schema: eval.mode_core_capabilities.v1
+version: "1.0.0"
+claim_eligible: false
+accuracy_claim: false
+notes: >
+  Selection may union primary∪secondary cores; execution MUST be per-mode
+  (separate create_agent / manifest / run). rank_eligible is case-level only
+  (see intersection/); capabilities listed here as candidates.
+
+deferred_modes:
+  - multi_agent
+  - pipeline
+  - operator
+
+modes:
+  plan_execute:
+    mode_core:
+      - task_completion
+      - planning
+      - error_recovery   # subtypes: replan | step_conflict | text_recovery only
+      - safety
+      - clarification
+      - observability
+    mode_optional:
+      - efficiency
+      - robustness
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - multi_turn_memory
+      - long_context
+    environment_required: none
+    a6_allowed_subtypes:
+      - replan
+      - step_conflict
+      - text_recovery
+    a6_forbidden_subtypes:
+      - tool_failure_recovery
+    m1_phase: m1a
+
+  conversational:
+    mode_core:
+      - task_completion
+      - multi_turn_memory
+      - clarification
+      - safety
+      - observability
+    mode_optional:
+      - robustness
+      - efficiency
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - planning
+      - long_context
+    environment_required: session
+    m1_phase: m1a
+
+  rag:
+    mode_core:
+      - task_completion
+      - long_context
+      - safety
+      - observability
+    mode_optional:
+      - clarification
+      - robustness
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - multi_turn_memory
+      - planning
+    environment_required: retrieval
+    m1_phase: m1b
+
+  react:
+    mode_core:
+      - task_completion
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - error_recovery
+      - safety
+      - clarification
+      - observability
+    mode_optional:
+      - planning
+      - efficiency
+      - robustness
+    mode_not_applicable:
+      - multi_turn_memory
+      - long_context
+    environment_required: tools
+    m1_phase: m1c
+    notes: A3–A5 stay unknown until sandbox/live tools ready
+
+  tool_loop:
+    mode_core:
+      - task_completion
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - error_recovery
+      - safety
+      - observability
+    mode_optional:
+      - clarification
+    mode_not_applicable:
+      - multi_turn_memory
+      - long_context
+      - planning
+    environment_required: tools
+    m1_phase: m1c
+
+  # M2 deferred — disclosed in matrix; live exam blocked until runtime_parts (see m2_deferred_estimate.v1.yaml)
+  multi_agent:
+    mode_core:
+      - task_completion
+      - safety
+      - observability
+      - clarification
+    mode_optional: []
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+      - long_context
+    environment_required: multi_agent_runtime
+    m1_phase: m2
+    status: deferred
+
+  pipeline:
+    mode_core:
+      - task_completion
+      - planning
+      - safety
+      - observability
+    mode_optional: []
+    mode_not_applicable:
+      - multi_turn_memory
+    environment_required: pipeline_runtime
+    m1_phase: m2
+    status: deferred
+
+  operator:
+    mode_core:
+      - task_completion
+      - safety
+      - clarification
+      - observability
+    mode_optional: []
+    mode_not_applicable:
+      - long_context
+    environment_required: operator_runtime
+    m1_phase: m2
+    status: deferred
+
+# Intersection candidates only — not auto rank_eligible (parity required).
+intersection_candidates:
+  capabilities:
+    - task_completion
+    - safety
+    - observability
+  notes: >
+    A12 observability requires trace contract parity before any case
+    may set rank_eligible=true. tools/retrieval/multi_turn default out.
+
+m1a_environment_lock:
+  plan_execute:
+    tools: none
+    retrieval: none
+    network: none
+    session: none
+  conversational:
+    tools: none
+    retrieval: none
+    network: none
+    session: allowed
+
+# M1b: open retrieval for rag; tools/network stay none. session none.
+m1b_environment_lock:
+  rag:
+    tools: none
+    retrieval: required
+    network: none
+    session: none
+
+# M1c: tools+sandbox required. Default exam uses fixture_mock sandbox (≠ microVM covered).
+# Live sandbox requires AIPLAT_EVAL_M1C_SANDBOX=1; A3–A5 stay coverage unknown until then.
+m1c_environment_lock:
+  react:
+    tools: required
+    retrieval: none
+    network: none
+    session: none
+    sandbox: required
+  tool_loop:
+    tools: required
+    retrieval: none
+    network: none
+    session: none
+    sandbox: required

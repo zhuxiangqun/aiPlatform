@@ -63,7 +63,10 @@ async def test_run_prompt_plan_exam_dry_basic():
     )
     plan = out.get("evaluation_plan") or {}
     assert isinstance(plan, dict)
-    assert plan.get("schema") == "eval.evaluation_plan.v1" or "selected_cases" in plan or out.get(
+    assert plan.get("schema") in (
+        "eval.evaluation_plan.v1",
+        "eval.evaluation_plan.v2",
+    ) or "selected_cases" in plan or out.get(
         "selected_set_ids"
     )
     assert "prompt/basic" in (out.get("selected_set_ids") or [])

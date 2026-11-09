@@ -29,12 +29,29 @@ type G2bStatus = {
   families?: Record<string, number>;
 };
 
+type G2bL5Gap = {
+  ok?: boolean;
+  pass_rate?: number | null;
+  wilson_ci95?: Array<number | null>;
+  wilson_lower_threshold?: number;
+  pass_rate_target?: number;
+  sample_n?: number;
+  l5_default_min_sample_n?: number;
+  gaps?: string[];
+  distance_summary?: string;
+  accuracy_claim?: boolean;
+  explicit_authorize?: boolean;
+  claims_gate?: { accuracy_claim?: boolean; ok?: boolean };
+  note?: string;
+};
+
 type Props = { tenantId?: string };
 
 export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState<G2bStatus | null>(null);
+  const [l5Gap, setL5Gap] = useState<G2bL5Gap | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -44,6 +61,14 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
         `/platform/apps/eval/store/g2b-status?tenant_id=${encodeURIComponent(tenantId)}`,
       );
       setStatus(unwrap(res));
+      try {
+        const gapRes = await apiClient.get<Envelope<G2bL5Gap>>(
+          `/platform/apps/eval/store/g2b-l5-gap?tenant_id=${encodeURIComponent(tenantId)}`,
+        );
+        setL5Gap(unwrap(gapRes));
+      } catch {
+        setL5Gap(null);
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -139,6 +164,49 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
           </div>
         ) : null}
       </div>
+
+      {l5Gap ? (
+        <div
+          className="rounded-lg border border-slate-700 bg-slate-950/40 p-4 space-y-2 text-xs"
+          data-testid="eval-g2b-l5-gap"
+        >
+          <h3 className="font-medium text-slate-100 text-sm">L5 / G2b 差距披露</h3>
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <dt className="text-gray-500">pass_rate</dt>
+              <dd>{l5Gap.pass_rate ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Wilson lo / thr</dt>
+              <dd>
+                {l5Gap.wilson_ci95?.[0] ?? '—'} / {l5Gap.wilson_lower_threshold ?? 0.7}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">sample_n / L5</dt>
+              <dd>
+                {l5Gap.sample_n ?? '—'}/{l5Gap.l5_default_min_sample_n ?? 100}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">distance</dt>
+              <dd data-testid="eval-g2b-l5-distance">{l5Gap.distance_summary ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">accuracy_claim</dt>
+              <dd>{String(Boolean(l5Gap.accuracy_claim))}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">authorize</dt>
+              <dd>{String(Boolean(l5Gap.explicit_authorize))}</dd>
+            </div>
+          </dl>
+          {l5Gap.gaps?.length ? (
+            <p className="text-amber-200/80">gaps: {l5Gap.gaps.join('; ')}</p>
+          ) : null}
+          <p className="text-gray-500">{l5Gap.note}</p>
+        </div>
+      ) : null}
 
       <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4 space-y-2 text-xs text-gray-400">
         <h3 className="font-medium text-gray-200 text-sm">Facilitator checklist</h3>

@@ -736,6 +736,977 @@ async def compat_evaluation_claims_gate(body: Dict[str, Any]):
         return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
 
 
+def _case_pack_http_error(exc: BaseException) -> Dict[str, Any]:
+    from fastapi import HTTPException
+
+    if isinstance(exc, HTTPException):
+        detail = exc.detail if isinstance(exc.detail, dict) else {"error": str(exc.detail)}
+        return {
+            "ok": False,
+            "error": detail.get("error") or "workspace_error",
+            "message": detail.get("message") or str(exc.detail),
+            "accuracy_claim": False,
+        }
+    return {
+        "ok": False,
+        "error": str(exc)[:300],
+        "accuracy_claim": False,
+    }
+
+
+@router.post("/evaluation/case-packs/draft")
+async def compat_evaluation_case_pack_draft(body: Dict[str, Any], request: Request):
+    """P1.0/P1.3: template|cases → workspace draft pack (claim_eligible=false)."""
+    from core.api.core_facade import eval_publish_draft_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_publish_draft_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                template=(body or {}).get("template"),
+                variants=(body or {}).get("variants"),
+                cases=(body or {}).get("cases"),
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                object_types=(body or {}).get("object_types"),
+                kind=str((body or {}).get("kind") or "curated"),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs draft failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/enqueue-review")
+async def compat_evaluation_case_pack_enqueue_review(
+    body: Dict[str, Any], request: Request
+):
+    """P1.1/P1.3: draft|rejected → in_review."""
+    from core.api.core_facade import eval_enqueue_case_pack_review
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_enqueue_case_pack_review(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs enqueue-review failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/review-queue")
+async def compat_evaluation_case_pack_review_queue(
+    request: Request,
+    statuses: str = Query(""),
+):
+    """P1.1/P1.3: list workspace draft/in_review packs. statuses=comma list optional."""
+    from core.api.core_facade import eval_list_case_pack_review_queue
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    status_list = [s.strip() for s in (statuses or "").split(",") if s.strip()] or None
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_list_case_pack_review_queue(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                statuses=status_list,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs review-queue failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/review")
+async def compat_evaluation_case_pack_review(body: Dict[str, Any], request: Request):
+    """P1.1/P1.3: approve→reviewed / reject→rejected. Never freezes."""
+    from core.api.core_facade import eval_submit_case_pack_review
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_submit_case_pack_review(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                decision=str((body or {}).get("decision") or "").strip(),
+                reviewer=str((body or {}).get("reviewer") or ""),
+                notes=str((body or {}).get("notes") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs review failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/freeze")
+async def compat_evaluation_case_pack_freeze(body: Dict[str, Any], request: Request):
+    """P1.2/P1.3: reviewed → kind=frozen; claim_eligible stays false."""
+    from core.api.core_facade import eval_freeze_workspace_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_freeze_workspace_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                frozen_by=str((body or {}).get("frozen_by") or ""),
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs freeze failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/promote-agent-capability")
+async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], request: Request):
+    """P1 closeout: seed bank → draft → approve → freeze (claim_eligible=false)."""
+    from core.api.core_facade import eval_promote_agent_capability_bank
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_promote_agent_capability_bank(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                reviewer=str((body or {}).get("reviewer") or ""),
+                frozen_by=str((body or {}).get("frozen_by") or ""),
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("promote-agent-capability failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/compile-suite-profile")
+async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
+    from core.api.core_facade import eval_compile_plan_from_suite_profile
+
+    profile = (body or {}).get("profile")
+    profile_id = str((body or {}).get("profile_id") or "").strip()
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    try:
+        return eval_compile_plan_from_suite_profile(
+            profile=profile if isinstance(profile, dict) else None,
+            profile_id=profile_id,
+            object_id=str((body or {}).get("object_id") or "agent.capability.target"),
+            object_version=str((body or {}).get("object_version") or "0.1.0"),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("compile-suite-profile failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/run-suite-profile")
+async def compat_evaluation_run_suite_profile(body: Dict[str, Any]):
+    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
+    from core.api.core_facade import eval_run_suite_profile_exam
+
+    profile = (body or {}).get("profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    try:
+        return await eval_run_suite_profile_exam(
+            profile_id=str((body or {}).get("profile_id") or "agent.regression.v1"),
+            profile=profile if isinstance(profile, dict) else None,
+            live=bool((body or {}).get("live")),
+            model=str((body or {}).get("model") or ""),
+            run_key=str((body or {}).get("run_key") or ""),
+            object_id=str((body or {}).get("object_id") or "agent.capability.target"),
+            object_version=str((body or {}).get("object_version") or "0.1.0"),
+            max_cases=int((body or {}).get("max_cases") or 0),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("run-suite-profile failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/capability-heatmap")
+async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
+    """§8.4 capability coverage heatmap (claim closed)."""
+    from core.api.core_facade import eval_capability_heatmap
+
+    profile = (body or {}).get("profile")
+    exam = (body or {}).get("exam")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    if exam is not None and not isinstance(exam, dict):
+        return {"ok": False, "error": "exam must be an object", "accuracy_claim": False}
+    try:
+        return eval_capability_heatmap(
+            profile_id=str((body or {}).get("profile_id") or ""),
+            profile=profile if isinstance(profile, dict) else None,
+            exam=exam if isinstance(exam, dict) else None,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("capability-heatmap failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/certification-readiness")
+async def compat_evaluation_certification_readiness(body: Dict[str, Any]):
+    """P5 pre-gate: §8.5 relative completeness; never unlocks certification/claim."""
+    from core.api.core_facade import eval_certification_readiness
+
+    profile = (body or {}).get("profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    judge_agreement = (body or {}).get("judge_agreement")
+    if judge_agreement is not None and not isinstance(judge_agreement, dict):
+        return {
+            "ok": False,
+            "error": "judge_agreement must be an object",
+            "accuracy_claim": False,
+        }
+    thr_raw = (body or {}).get("judge_threshold", 0.8)
+    try:
+        thr = float(thr_raw)
+    except (TypeError, ValueError):
+        return {
+            "ok": False,
+            "error": "judge_threshold must be float",
+            "accuracy_claim": False,
+        }
+    try:
+        return eval_certification_readiness(
+            profile_id=str((body or {}).get("profile_id") or "agent.benchmark.v1"),
+            profile=profile if isinstance(profile, dict) else None,
+            pack_kind=str((body or {}).get("pack_kind") or ""),
+            pack_status=str((body or {}).get("pack_status") or ""),
+            judge_agreement=judge_agreement
+            if isinstance(judge_agreement, dict)
+            else None,
+            judge_threshold=thr,
+            compile_plan=bool((body or {}).get("compile_plan", True)),
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("certification-readiness failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.get("/evaluation/case-packs/suite-profiles")
+async def compat_evaluation_suite_profiles():
+    """List built-in Suite Profiles (smoke / regression / benchmark)."""
+    from core.api.core_facade import eval_list_suite_profiles
+
+    profiles = eval_list_suite_profiles()
+    return {
+        "ok": True,
+        "profiles": profiles,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+    }
+
+
+@router.post("/evaluation/case-packs/benchmark-readiness")
+async def compat_evaluation_benchmark_readiness(body: Dict[str, Any]):
+    """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
+    from core.api.core_facade import eval_benchmark_readiness
+
+    min_raw = (body or {}).get("min_per_capability", 8)
+    try:
+        min_n = int(min_raw)
+    except (TypeError, ValueError):
+        return {
+            "ok": False,
+            "error": "min_per_capability must be int",
+            "accuracy_claim": False,
+        }
+    compile_plan = bool((body or {}).get("compile_plan", True))
+    try:
+        return eval_benchmark_readiness(
+            min_per_capability=min_n,
+            compile_plan=compile_plan,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("benchmark-readiness failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/judge-calibration-gate")
+async def compat_evaluation_judge_calibration_gate(
+    body: Dict[str, Any], request: Request
+):
+    """P4: engineering agreement gate — always report_only / claim=false."""
+    from core.api.core_facade import eval_judge_calibration_gate
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    ticket_id = str((body or {}).get("ticket_id") or "").strip()
+    thr_raw = (body or {}).get("threshold", 0.8)
+    try:
+        thr = float(thr_raw)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "threshold must be float", "accuracy_claim": False}
+    ratings = (body or {}).get("ratings")
+    if ratings is not None and not isinstance(ratings, list):
+        return {"ok": False, "error": "ratings must be a list", "accuracy_claim": False}
+    try:
+        if ticket_id:
+            with named_workspace_scope(request, method="POST", require_local=True) as nw:
+                out = eval_judge_calibration_gate(
+                    workspace_id=nw.workspace_id,
+                    ticket_id=ticket_id,
+                    threshold=thr,
+                    caller_workspace_id=nw.workspace_id,
+                )
+                if isinstance(out, dict):
+                    out.update(workspace_meta(nw))
+                return out
+        return eval_judge_calibration_gate(threshold=thr, ratings=ratings)
+    except Exception as e:
+        logger.debug("judge-calibration-gate failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/open-capability-judge-calibration")
+async def compat_evaluation_open_capability_judge_calibration(
+    body: Dict[str, Any], request: Request
+):
+    """P4: open judge ticket sampling capability bank cases."""
+    from core.api.core_facade import eval_open_capability_judge_calibration
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_capability_judge_calibration(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                sample_n=int((body or {}).get("sample_n") or 8),
+                notes=str((body or {}).get("notes") or ""),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("open-capability-judge-calibration failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/seed-cases", response_model=Dict[str, Any])
+async def compat_evaluation_seed_cases(capability_id: str = ""):
+    """Read-only browse of repo seed capability cases."""
+    from core.api.core_facade import eval_list_seed_capability_cases
+
+    try:
+        return eval_list_seed_capability_cases(capability_id=capability_id)
+    except Exception as e:
+        logger.debug("seed-cases list failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/seed-cases/{case_id}", response_model=Dict[str, Any])
+async def compat_evaluation_seed_case_get(case_id: str):
+    from core.api.core_facade import eval_get_seed_capability_case
+
+    try:
+        return eval_get_seed_capability_case(case_id=case_id)
+    except Exception as e:
+        logger.debug("seed-case get failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/open", response_model=Dict[str, Any])
+async def compat_evaluation_case_editor_open(body: Dict[str, Any], request: Request):
+    """Open editable workspace draft (from seeds or bump frozen)."""
+    from core.api.core_facade import eval_open_capability_bank_editor
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_capability_bank_editor(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                bump_if_frozen=bool((body or {}).get("bump_if_frozen", True)),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor open failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/editor/cases", response_model=Dict[str, Any])
+async def compat_evaluation_case_editor_list(
+    request: Request,
+    pack_id: str = "agent.capability",
+    version: str = "0.1.0",
+    capability_id: str = "",
+):
+    from core.api.core_facade import eval_list_workspace_pack_cases
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_list_workspace_pack_cases(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=pack_id,
+                version=version,
+                capability_id=capability_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor list failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/editor/cases/{case_id}", response_model=Dict[str, Any])
+async def compat_evaluation_case_editor_get(
+    case_id: str,
+    request: Request,
+    pack_id: str = "agent.capability",
+    version: str = "0.1.0",
+):
+    from core.api.core_facade import eval_get_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_get_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case_id=case_id,
+                pack_id=pack_id,
+                version=version,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor get failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/upsert", response_model=Dict[str, Any])
+async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Request):
+    from core.api.core_facade import eval_upsert_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    case = (body or {}).get("case")
+    if not isinstance(case, dict):
+        return {
+            "ok": False,
+            "error": "case object required",
+            "accuracy_claim": False,
+        }
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_upsert_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case=case,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor upsert failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/editor/delete", response_model=Dict[str, Any])
+async def compat_evaluation_case_editor_delete(body: Dict[str, Any], request: Request):
+    from core.api.core_facade import eval_delete_workspace_pack_case
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_delete_workspace_pack_case(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                case_id=str((body or {}).get("case_id") or "").strip(),
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-editor delete failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/capability-coverage")
+async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
+    """P3: capability gap inventory vs profile quotas or min_per_capability."""
+    from core.api.core_facade import (
+        eval_agent_regression_profile,
+        eval_analyze_capability_coverage,
+    )
+
+    profile = (body or {}).get("profile")
+    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
+        "",
+        "agent.regression.v1",
+    ):
+        profile = eval_agent_regression_profile()
+    min_raw = (body or {}).get("min_per_capability")
+    min_n = None
+    if min_raw is not None and str(min_raw).strip() != "":
+        try:
+            min_n = int(min_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": "min_per_capability must be int",
+                "accuracy_claim": False,
+            }
+    try:
+        return eval_analyze_capability_coverage(
+            profile=profile if isinstance(profile, dict) else None,
+            min_per_capability=min_n,
+        )
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "accuracy_claim": False}
+    except Exception as e:
+        logger.debug("capability-coverage failed", exc_info=True)
+        return {"ok": False, "error": str(e)[:300], "accuracy_claim": False}
+
+
+@router.post("/evaluation/case-packs/coverage-fill")
+async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request):
+    """P3: coverage-driven fill — dry by default; apply=true expands draft pack."""
+    from core.api.core_facade import (
+        eval_agent_regression_profile,
+        eval_fill_capability_coverage,
+    )
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    profile = (body or {}).get("profile")
+    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
+        "",
+        "agent.regression.v1",
+    ):
+        profile = eval_agent_regression_profile()
+    min_raw = (body or {}).get("min_per_capability")
+    min_n = None
+    if min_raw is not None and str(min_raw).strip() != "":
+        try:
+            min_n = int(min_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": "min_per_capability must be int",
+                "accuracy_claim": False,
+            }
+    apply = bool((body or {}).get("apply"))
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_fill_capability_coverage(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                profile=profile if isinstance(profile, dict) else None,
+                min_per_capability=min_n,
+                method=str((body or {}).get("method") or "mutation"),
+                seed=str((body or {}).get("seed") or "7"),
+                ops=(body or {}).get("ops")
+                if isinstance((body or {}).get("ops"), list)
+                else None,
+                apply=apply,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("coverage-fill failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/expand")
+async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Request):
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    from core.api.core_facade import eval_expand_draft_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_expand_draft_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                cases=(body or {}).get("cases"),
+                template=(body or {}).get("template"),
+                variants=(body or {}).get("variants"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs expand failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/bump")
+async def compat_evaluation_case_pack_bump(body: Dict[str, Any], request: Request):
+    """P1.4: version++ → new draft curated (source frozen untouched)."""
+    from core.api.core_facade import eval_bump_case_pack_version
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_bump_case_pack_version(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                from_version=str(
+                    (body or {}).get("from_version")
+                    or (body or {}).get("version")
+                    or ""
+                ).strip(),
+                workspace_id=nw.workspace_id,
+                to_version=str((body or {}).get("to_version") or "").strip(),
+                extra_cases=(body or {}).get("extra_cases") or (body or {}).get("cases"),
+                template=(body or {}).get("template"),
+                variants=(body or {}).get("variants"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs bump failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/coverage")
+async def compat_evaluation_case_pack_coverage(request: Request):
+    """P1.4: workspace pack coverage inventory (not accuracy)."""
+    from core.api.core_facade import eval_summarize_case_pack_coverage
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_summarize_case_pack_coverage(
+                workspace_id=nw.workspace_id,
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs coverage failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/holdout")
+async def compat_evaluation_case_pack_holdout(body: Dict[str, Any], request: Request):
+    """P2.0: mark holdout flags on non-frozen pack."""
+    from core.api.core_facade import eval_mark_case_pack_holdout
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_mark_case_pack_holdout(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                case_ids=(body or {}).get("case_ids"),
+                ratio=float((body or {}).get("ratio") or 0.0),
+                seed=str((body or {}).get("seed") or "0"),
+                holdout=bool((body or {}).get("holdout", True)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs holdout failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/mutate")
+async def compat_evaluation_case_pack_mutate(body: Dict[str, Any], request: Request):
+    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    from core.api.core_facade import eval_publish_mutation_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    seeds = (body or {}).get("seed_cases") or (body or {}).get("cases") or []
+    if not isinstance(seeds, list):
+        return {"ok": False, "error": "seed_cases must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_publish_mutation_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                seed_cases=seeds,
+                ops=(body or {}).get("ops"),
+                seed=str((body or {}).get("seed") or "0"),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs mutate failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/from-trace")
+async def compat_evaluation_case_pack_from_trace(
+    body: Dict[str, Any], request: Request
+):
+    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    from core.api.core_facade import eval_publish_trace_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    traces = (body or {}).get("traces") or []
+    if not isinstance(traces, list):
+        return {"ok": False, "error": "traces must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_publish_trace_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                traces=traces,
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs from-trace failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/llm-candidates")
+async def compat_evaluation_case_pack_llm_candidates(
+    body: Dict[str, Any], request: Request
+):
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    from core.api.core_facade import eval_publish_llm_candidate_case_pack
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    theme = str((body or {}).get("theme") or "").strip()
+    if not theme:
+        return {"ok": False, "error": "theme required", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = await eval_publish_llm_candidate_case_pack(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                theme=theme,
+                n=int((body or {}).get("n") or 3),
+                category=str((body or {}).get("category") or "normal"),
+                seed=str((body or {}).get("seed") or "0"),
+                model_name=str((body or {}).get("model_name") or ""),
+                dry=bool((body or {}).get("dry", True)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs llm-candidates failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/propose-difficulty")
+async def compat_evaluation_case_pack_propose_difficulty(
+    body: Dict[str, Any], request: Request
+):
+    """P3.0: heuristic difficulty (optional persist; not calibrated)."""
+    from core.api.core_facade import eval_propose_case_pack_difficulty
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_propose_case_pack_difficulty(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                persist=bool((body or {}).get("persist", False)),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs propose-difficulty failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-ticket")
+async def compat_evaluation_case_pack_judge_calibration_ticket(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: open + persist judge calibration ticket (no claim unlock)."""
+    from core.api.core_facade import eval_open_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_open_judge_calibration_ticket(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                sample_case_ids=(body or {}).get("sample_case_ids"),
+                notes=str((body or {}).get("notes") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-ticket failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/calibrate-difficulty")
+async def compat_evaluation_case_pack_calibrate_difficulty(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: human difficulty labels → pack (engineering; claim closed)."""
+    from core.api.core_facade import eval_calibrate_case_pack_difficulty
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    labels = (body or {}).get("labels") or []
+    if not isinstance(labels, list):
+        return {"ok": False, "error": "labels must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_calibrate_case_pack_difficulty(
+                pack_id=str((body or {}).get("pack_id") or "").strip(),
+                version=str((body or {}).get("version") or "").strip(),
+                workspace_id=nw.workspace_id,
+                labels=labels,
+                rater=str((body or {}).get("rater") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs calibrate-difficulty failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-ratings")
+async def compat_evaluation_case_pack_judge_calibration_ratings(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: append judge ratings + agreement."""
+    from core.api.core_facade import eval_record_judge_calibration_ratings
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    ratings = (body or {}).get("ratings") or []
+    if not isinstance(ratings, list):
+        return {"ok": False, "error": "ratings must be a list", "accuracy_claim": False}
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_record_judge_calibration_ratings(
+                workspace_id=nw.workspace_id,
+                ticket_id=str((body or {}).get("ticket_id") or "").strip(),
+                ratings=ratings,
+                rater=str((body or {}).get("rater") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-ratings failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.post("/evaluation/case-packs/judge-calibration-close")
+async def compat_evaluation_case_pack_judge_calibration_close(
+    body: Dict[str, Any], request: Request
+):
+    """P3.1: close judge ticket (engineering calibrated; claim closed)."""
+    from core.api.core_facade import eval_close_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            out = eval_close_judge_calibration_ticket(
+                workspace_id=nw.workspace_id,
+                ticket_id=str((body or {}).get("ticket_id") or "").strip(),
+                notes=str((body or {}).get("notes") or ""),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-close failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
+@router.get("/evaluation/case-packs/judge-calibration-ticket/{ticket_id}")
+async def compat_evaluation_case_pack_judge_calibration_get(
+    ticket_id: str, request: Request
+):
+    """P3.1: load persisted judge ticket."""
+    from core.api.core_facade import eval_get_judge_calibration_ticket
+    from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
+
+    try:
+        with named_workspace_scope(request, method="GET", require_local=True) as nw:
+            out = eval_get_judge_calibration_ticket(
+                workspace_id=nw.workspace_id,
+                ticket_id=str(ticket_id or "").strip(),
+                caller_workspace_id=nw.workspace_id,
+            )
+            if isinstance(out, dict):
+                out.update(workspace_meta(nw))
+            return out
+    except Exception as e:
+        logger.debug("case-packs judge-calibration-get failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
     """Create or update an evaluation policy artifact."""

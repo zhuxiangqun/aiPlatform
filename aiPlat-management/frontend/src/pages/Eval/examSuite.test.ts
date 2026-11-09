@@ -13,6 +13,8 @@ import {
   papersFromPlanPreview,
   planIntentPreviewLabel,
   preferredSetForDim,
+  planStepKindLabel,
+  summarizePlanExecution,
   type SuitePaperResult,
 } from './examSuite';
 
@@ -36,7 +38,13 @@ describe('examSuite', () => {
 
   it('mapPlanToPaperRows keeps #2 only when set selected; marks N/A and untested', () => {
     const rows = mapPlanToPaperRows({
-      selected_cases: [{ set_id: 'default/normal' }, { set_id: 'default/noise' }],
+      selected_cases: [
+        {
+          set_id: 'default/normal',
+          reasons: ['requires_satisfied_capability_unconfirmed', 'capability_unconfirmed:x'],
+        },
+        { set_id: 'default/noise' },
+      ],
       excluded_cases: [
         {
           set_id: 'default/high_risk',
@@ -62,11 +70,59 @@ describe('examSuite', () => {
     });
     const byKey = Object.fromEntries(rows.map((r) => [r.run_key, r]));
     expect(byKey['default/normal'].intent).toBe('run');
+    expect(byKey['default/normal'].step_kind).toBe('plan_set');
     expect(byKey['default/normal#2'].intent).toBe('run');
+    expect(byKey['default/normal#2'].step_kind).toBe('template_rerun');
+    expect(byKey['default/normal'].selected?.reasons?.[0]).toContain('capability_unconfirmed');
     expect(byKey['default/noise'].intent).toBe('run');
     expect(byKey['default/high_risk'].intent).toBe('skip_untested');
     expect(byKey['default/multi_turn'].intent).toBe('skip_not_applicable');
     expect(planIntentPreviewLabel('skip_untested')).toContain('专项');
+  });
+
+  it('summarizePlanExecution separates Plan volumes from template rerun steps', () => {
+    const sum = summarizePlanExecution({
+      selected_cases: [
+        { set_id: 'default/normal', pack: 'core', reasons: ['requires_satisfied'] },
+        { set_id: 'default/noise', pack: 'capability' },
+        { set_id: 'default/missing_info', pack: 'capability' },
+        { set_id: 'default/tool_failure', pack: 'capability' },
+        { set_id: 'default/high_risk', pack: 'special' },
+        { set_id: 'default/multi_turn', pack: 'special' },
+      ],
+      excluded_cases: [],
+      counts: { selected: 6, manifest_cases: 12 },
+      coverage: {
+        cases: 12,
+        sets: {
+          'default/normal': { n_cases: 2 },
+          'default/noise': { n_cases: 2 },
+          'default/missing_info': { n_cases: 2 },
+          'default/tool_failure': { n_cases: 2 },
+          'default/high_risk': { n_cases: 2 },
+          'default/multi_turn': { n_cases: 2 },
+        },
+      },
+      sample_manifest: Array.from({ length: 12 }, (_, i) => ({
+        case_id: `c${i}`,
+        set_id: 'default/normal',
+        hash: `sha256:${i}`,
+      })),
+    });
+    expect(sum.plan_sets).toBe(6);
+    expect(sum.plan_cases).toBe(12);
+    expect(sum.template_steps_run).toBe(7);
+    expect(sum.template_reruns).toBe(1);
+    expect(sum.sets_with_n[0].n_cases).toBe(2);
+  });
+
+  it('planStepKindLabel marks deferred special as 未测', () => {
+    expect(planStepKindLabel('plan_set', 'run')).toBe('Plan 卷');
+    expect(planStepKindLabel('plan_set', 'skip_untested')).toBe('Plan 卷（未测）');
+    expect(planStepKindLabel('plan_set', 'skip_not_applicable')).toBe(
+      'Plan 卷（不适用）',
+    );
+    expect(planStepKindLabel('template_rerun', 'run')).toBe('模板复跑');
   });
 
   it('papersFromPlanPreview seeds pending vs skipped with match_report', () => {

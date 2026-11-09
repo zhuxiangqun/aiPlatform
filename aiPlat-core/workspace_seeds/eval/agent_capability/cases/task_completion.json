@@ -1,0 +1,564 @@
+[
+  {
+    "case_id": "agent.task_completion.001",
+    "prompt": "用 Python 写一个函数 calculate_tax(amount, rate)，返回税额。只输出代码，不要解释。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "def calculate_tax",
+        "return",
+        "amount",
+        "rate"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证信息完整时能按约束交付可运行函数代码",
+      "why_this_case": "基本完成力是回归基线",
+      "expected_behavior": [
+        "给出含 def calculate_tax 的代码",
+        "使用 amount/rate 并 return"
+      ],
+      "failure_signals": [
+        "只有解释没有代码",
+        "函数签名错误"
+      ],
+      "not_testing": [
+        "不测试工具调用",
+        "不测试多文件工程"
+      ],
+      "oracle_rationale": "must_contain 代码结构关键词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 6
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:941499cbcbbf9b66533297c32ef7048940a870e0cb281d2ff23cf0b13dba9d53"
+  },
+  {
+    "case_id": "agent.task_completion.002",
+    "prompt": "把下面句子翻译成英文，只输出译文：今天天气很好。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "weather",
+        "good"
+      ],
+      "must_not_contain": [
+        "今天天气很好"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证简单翻译任务遵守‘只输出译文’约束",
+      "why_this_case": "格式约束常被额外解释破坏",
+      "expected_behavior": [
+        "输出英文译文",
+        "不夹带原文整句"
+      ],
+      "failure_signals": [
+        "输出中英混杂冗长解释",
+        "未翻译"
+      ],
+      "not_testing": [
+        "不测试文学翻译质量细标"
+      ],
+      "oracle_rationale": "must_contain 英文关键词；must_not 原文整句"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 7
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:7619378bf64cf80f85df2f6a38192ef1ff14028d82756b11e53f2f6ba0316c46"
+  },
+  {
+    "case_id": "agent.task_completion.003",
+    "prompt": "列出三个常见的 HTTP 状态码及其含义，用编号列表。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "200",
+        "404",
+        "500"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按编号列表交付结构化事实答案",
+      "why_this_case": "结构化输出是日常任务完成的基本形态",
+      "expected_behavior": [
+        "给出编号列表",
+        "包含常见状态码"
+      ],
+      "failure_signals": [
+        "散文无列表",
+        "明显错误状态码编造"
+      ],
+      "not_testing": [
+        "不测试全部状态码覆盖"
+      ],
+      "oracle_rationale": "must_contain 200/404/500"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 8
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:2049937ccd2da3f5fc4dc9ec21423e5b10db276499625e4b389ba4e59718c1da"
+  },
+  {
+    "case_id": "agent.task_completion.004",
+    "prompt": "检查以下代码，给出 3 条改进建议:\ndef add(a,b):\n  return a+b",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "建议",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证对简短代码给出可计数的改进建议",
+      "why_this_case": "审查类任务需可观察交付条数",
+      "expected_behavior": [
+        "给出至少三条建议",
+        "建议与代码相关"
+      ],
+      "failure_signals": [
+        "空泛夸奖无建议",
+        "条数不足"
+      ],
+      "not_testing": [
+        "不测试真实缺陷召回率（Code Review Subject）"
+      ],
+      "oracle_rationale": "must_contain 建议与编号"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 9
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:662d65c135a1206dc412bf85a284568123d7a1850b47dd4d631d00bbb092e399"
+  },
+  {
+    "case_id": "agent.task_completion.005",
+    "prompt": "把数组 [3,1,2] 升序排序后的结果写成 JSON 数组，只输出 JSON。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "[1, 2, 3]"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证小数据变换任务按指定 JSON 格式交付",
+      "why_this_case": "格式约束下的正确结果是完成力核心",
+      "expected_behavior": [
+        "输出升序 JSON 数组",
+        "无额外说明"
+      ],
+      "failure_signals": [
+        "顺序错误",
+        "非 JSON 输出"
+      ],
+      "not_testing": [
+        "不测试大规模排序性能"
+      ],
+      "oracle_rationale": "must_contain 正确 JSON 数组词面"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 10
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:10396fab87bb373741b51ba7bb8a00c485dec01d2a3dad7154a8c3b920761197"
+  },
+  {
+    "case_id": "agent.task_completion.006",
+    "prompt": "写一条 SQL：查询 users 表中 age>18 的 id 与 name，只输出 SQL。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "SELECT",
+        "users",
+        "age",
+        "18"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按约束交付简单过滤查询 SQL",
+      "why_this_case": "结构化交付是任务完成基线",
+      "expected_behavior": [
+        "输出含 SELECT/users/age 条件的 SQL"
+      ],
+      "failure_signals": [
+        "只有解释无 SQL",
+        "条件错误"
+      ],
+      "not_testing": [
+        "不测试真实数据库执行"
+      ],
+      "oracle_rationale": "must_contain SQL 关键词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 36
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:2d8fd084b8ac7228487defb88e7d7917c8ad4d241f0e78fc2b92b7b9ec94c8ee"
+  },
+  {
+    "case_id": "agent.task_completion.007",
+    "prompt": "把『red,green,blue』拆成 YAML 列表，只输出 YAML。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "- red",
+        "- green",
+        "- blue"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能把逗号分隔字符串转为 YAML 列表",
+      "why_this_case": "格式转换是常见完成任务",
+      "expected_behavior": [
+        "输出三项 YAML 列表"
+      ],
+      "failure_signals": [
+        "JSON 或散文输出"
+      ],
+      "not_testing": [
+        "不测试复杂 YAML 锚点"
+      ],
+      "oracle_rationale": "must_contain 三项列表词面"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 37
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:e864527b018dab05c85bc0dee1e7ce22eff6e44eada922e1bf4f6b32ddba55bc"
+  },
+  {
+    "case_id": "agent.task_completion.008",
+    "prompt": "用 Markdown 表格给出周一到周三三行，列名为 day 与 task，task 分别为 A/B/C。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "|",
+        "day",
+        "task",
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "category": "task_completion",
+    "tags": [
+      "agent",
+      "regression",
+      "task_completion"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "task_completion"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "task_completion"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能按 Markdown 表格结构交付小表",
+      "why_this_case": "表格约束检验结构化完成力",
+      "expected_behavior": [
+        "含表头与三行数据"
+      ],
+      "failure_signals": [
+        "无表格结构的纯文本"
+      ],
+      "not_testing": [
+        "不测试复杂合并单元格"
+      ],
+      "oracle_rationale": "must_contain 表格分隔与单元格内容"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 38
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:af89011adcdc97007b1520d13689d25cb415513b79e6ab754627557252404533"
+  }
+]

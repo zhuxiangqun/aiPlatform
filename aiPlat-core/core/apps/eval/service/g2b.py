@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 def _repo_root() -> Path:
@@ -113,3 +113,86 @@ def _family_counts(tasks: list) -> Dict[str, int]:
         fam = str(t.get("family") or "unknown")
         out[fam] = out.get(fam, 0) + 1
     return out
+
+
+# Protocol thresholds (eval L5 / G2b closeout docs) — disclosure only.
+G2B_WILSON_LOWER_THRESHOLD = 0.70
+G2B_PASS_RATE_TARGET = 0.80
+L5_DEFAULT_MIN_SAMPLE_N = 100
+
+
+def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """Distance-to-L5 / G2b threshold disclosure. Never sets accuracy_claim=true."""
+    status = g2b_pack_status(tenant_id=tenant_id)
+    acc = _read_json(_evidence_dir() / "g2b_accuracy_aggregate.v1.json") or {}
+    pass_rate = acc.get("pass_rate")
+    wilson = acc.get("wilson_ci95") if isinstance(acc.get("wilson_ci95"), list) else []
+    wilson_lo = float(wilson[0]) if len(wilson) >= 1 and wilson[0] is not None else None
+    wilson_hi = float(wilson[1]) if len(wilson) >= 2 and wilson[1] is not None else None
+    n = int(acc.get("n") or status.get("closeout_n") or 0)
+
+    gaps: List[str] = []
+    if not status.get("dual_human_complete"):
+        gaps.append(f"pending_dual_human:{status.get('pending_dual_human')}")
+    if pass_rate is None:
+        gaps.append("pass_rate_missing")
+    elif float(pass_rate) < G2B_PASS_RATE_TARGET:
+        gaps.append(f"pass_rate_below_target:{pass_rate}<{G2B_PASS_RATE_TARGET}")
+    if wilson_lo is None:
+        gaps.append("wilson_lower_missing")
+    elif wilson_lo < G2B_WILSON_LOWER_THRESHOLD:
+        gaps.append(
+            f"wilson_lower_below_threshold:{wilson_lo}<{G2B_WILSON_LOWER_THRESHOLD}"
+        )
+    if n < L5_DEFAULT_MIN_SAMPLE_N:
+        gaps.append(f"sample_n_below_l5:{n}<{L5_DEFAULT_MIN_SAMPLE_N}")
+
+    # Always refuse accuracy in this disclosure helper.
+    from core.apps.eval.service.claims_gate import evaluate_l5_claims_gate
+
+    gate = evaluate_l5_claims_gate(
+        {
+            "object_type": "agent",
+            "object_id": "g2b_pack",
+            "object_version": "v0",
+            "runtime_tier": "workspace_execute",
+            "plan_id": "g2b",
+            "set_ids": ["g2b"],
+            "oracle_types": ["human_adjudicated"],
+            "dimensions": ["task_result"],
+            "sample_n": n,
+            "has_run_evidence": n > 0,
+            "untested_applicable_n": int(status.get("pending_dual_human") or 0),
+            "runtime_claim": False,
+            "fixture_only": False,
+            "human_review": bool(status.get("dual_human_complete")),
+            "min_sample_n": L5_DEFAULT_MIN_SAMPLE_N,
+        },
+        explicit_authorize=False,
+    )
+
+    return {
+        "schema": "eval.g2b_l5_gap.v1",
+        "ok": True,
+        "tenant_id": tenant_id,
+        "pack_status": status,
+        "pass_rate": pass_rate,
+        "wilson_ci95": [wilson_lo, wilson_hi],
+        "wilson_lower_threshold": G2B_WILSON_LOWER_THRESHOLD,
+        "pass_rate_target": G2B_PASS_RATE_TARGET,
+        "sample_n": n,
+        "l5_default_min_sample_n": L5_DEFAULT_MIN_SAMPLE_N,
+        "gaps": gaps,
+        "distance_summary": (
+            "ready_for_scoped_owner_review"
+            if not gaps
+            else "thresholds_not_met"
+        ),
+        "claims_gate": gate,
+        "accuracy_claim": False,
+        "explicit_authorize": False,
+        "note": (
+            "Facilitation disclosure only. accuracy_claim stays false without "
+            "explicit_authorize + all L5 gates + product attestation."
+        ),
+    }

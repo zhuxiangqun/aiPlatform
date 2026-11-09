@@ -1,0 +1,298 @@
+[
+  {
+    "case_id": "agent.mt.g1.t0",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g1",
+    "turn_index": 0,
+    "memory_probe": {
+      "planted_fact": "项目代号 ORION-7",
+      "ask_after_turns": 2,
+      "must_recall": [
+        "ORION-7"
+      ]
+    },
+    "prompt": "请记住项目代号是 ORION-7。只确认。",
+    "scripted_answer": "已记下项目代号。",
+    "test_purpose": {
+      "summary": "A8 组 g1 轮0：埋下 ORION-7",
+      "why_this_case": "跨轮记忆探针种植",
+      "expected_behavior": [
+        "确认已记录"
+      ],
+      "failure_signals": [
+        "否认"
+      ],
+      "not_testing": [
+        "不测工具",
+        "不宣称 covered"
+      ],
+      "oracle_rationale": "session runner memory_probe；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g1.t1",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g1",
+    "turn_index": 1,
+    "prompt": "先聊聊无关天气。",
+    "scripted_answer": "今天天气一般。",
+    "test_purpose": {
+      "summary": "A8 组 g1 轮1：干扰轮",
+      "why_this_case": "插入噪声后再探针",
+      "expected_behavior": [
+        "可答天气"
+      ],
+      "failure_signals": [
+        "提前泄漏未要求的代号检查"
+      ],
+      "not_testing": [
+        "不测长上下文 token"
+      ],
+      "oracle_rationale": "turn filler；probe 在 t+2；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g1.t2",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g1",
+    "turn_index": 2,
+    "prompt": "刚才的项目代号是什么？",
+    "scripted_answer": "项目代号是 ORION-7。",
+    "test_purpose": {
+      "summary": "A8 组 g1 轮2：追问必须召回 ORION-7",
+      "why_this_case": "memory_probe due",
+      "expected_behavior": [
+        "回答含 ORION-7"
+      ],
+      "failure_signals": [
+        "遗忘代号"
+      ],
+      "not_testing": [
+        "不测工具"
+      ],
+      "oracle_rationale": "must_recall；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g2.t0",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g2",
+    "turn_index": 0,
+    "memory_probe": {
+      "planted_fact": "合同号 CN-2026-1108",
+      "ask_after_turns": 1,
+      "must_recall": [
+        "CN-2026-1108"
+      ]
+    },
+    "prompt": "记住合同号 CN-2026-1108。",
+    "scripted_answer": "已记录合同号。",
+    "test_purpose": {
+      "summary": "A8 组 g2 轮0：埋合同号",
+      "why_this_case": "第二组独立 session",
+      "expected_behavior": [
+        "确认记录"
+      ],
+      "failure_signals": [
+        "否认"
+      ],
+      "not_testing": [
+        "不测跨组串扰于本 runner"
+      ],
+      "oracle_rationale": "session_group isolation；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g2.t1",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g2",
+    "turn_index": 1,
+    "prompt": "合同号是多少？",
+    "scripted_answer": "合同号 CN-2026-1108。",
+    "test_purpose": {
+      "summary": "A8 组 g2 轮1：召回合同号",
+      "why_this_case": "ask_after_turns=1",
+      "expected_behavior": [
+        "含 CN-2026-1108"
+      ],
+      "failure_signals": [
+        "遗忘"
+      ],
+      "not_testing": [
+        "不测工具"
+      ],
+      "oracle_rationale": "must_recall；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g3.neg.t0",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g3.neg",
+    "turn_index": 0,
+    "memory_probe": {
+      "planted_fact": "密钥 ALPHA",
+      "ask_after_turns": 1,
+      "must_recall": [
+        "ALPHA"
+      ]
+    },
+    "prompt": "记住密钥 ALPHA。",
+    "scripted_answer": "好的。",
+    "test_purpose": {
+      "summary": "A8 负例组：种植 ALPHA",
+      "why_this_case": "负例配套",
+      "expected_behavior": [
+        "确认"
+      ],
+      "failure_signals": [
+        "否认"
+      ],
+      "not_testing": [
+        "不测安全策略"
+      ],
+      "oracle_rationale": "plant for negative recall；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  },
+  {
+    "case_id": "agent.mt.g3.neg.t1",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "session_group": "agent.mt.g3.neg",
+    "turn_index": 1,
+    "prompt": "密钥是什么？",
+    "scripted_answer": "我不记得了。",
+    "expect_judge_fail": true,
+    "test_purpose": {
+      "summary": "A8 负例：遗忘 ALPHA 应失败",
+      "why_this_case": "memory_miss",
+      "expected_behavior": [
+        "runner 报 memory_miss:ALPHA"
+      ],
+      "failure_signals": [
+        "误通过"
+      ],
+      "not_testing": [
+        "不测工具"
+      ],
+      "oracle_rationale": "must_recall miss → fail；oracle: must_contain / tool_trace / rubric"
+    },
+    "review": {
+      "status": "draft"
+    },
+    "risk_level": "low",
+    "holdout": false,
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "ok"
+      ],
+      "must_not_contain": []
+    },
+    "oracle": {
+      "type": "lexical"
+    }
+  }
+]

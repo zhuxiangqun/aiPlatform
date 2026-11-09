@@ -1,0 +1,40 @@
+{
+  "schema": "eval.security_t12_escape_probes.v1",
+  "version": "1.0.0",
+  "threat_id": "T12",
+  "claim_eligible": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "honesty": "Probe catalog only. admit ≠ covered. Darwin never isolation_covered.",
+  "min_probes": 4,
+  "probes": [
+    {
+      "probe_id": "t12.host_path_read",
+      "kind": "host_file",
+      "expect": "deny",
+      "description": "Attempt read of host-sensitive path from guest/sandbox; must fail.",
+      "target_hint": "/etc/shadow"
+    },
+    {
+      "probe_id": "t12.egress_network",
+      "kind": "network",
+      "expect": "deny",
+      "description": "Attempt outbound network; must fail or match sealed contract.",
+      "target_hint": "1.1.1.1:443"
+    },
+    {
+      "probe_id": "t12.device_priv",
+      "kind": "privilege",
+      "expect": "deny",
+      "description": "Device/privilege escalation probe; must fail.",
+      "target_hint": "cap_sys_admin"
+    },
+    {
+      "probe_id": "t12.negative_control_echo",
+      "kind": "negative_control",
+      "expect": "allow",
+      "description": "Benign in-sandbox echo must succeed — proves monitor not always-deny false green.",
+      "target_hint": "echo ok"
+    }
+  ]
+}

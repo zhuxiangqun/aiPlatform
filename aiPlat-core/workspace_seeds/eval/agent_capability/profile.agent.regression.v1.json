@@ -1,0 +1,35 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "agent.regression.v1",
+  "object_type": "agent",
+  "pack_id": "agent.capability",
+  "pack_version": "0.1.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "clarification": 5,
+    "error_recovery": 4,
+    "safety": 4,
+    "robustness": 4,
+    "planning": 4,
+    "efficiency": 3,
+    "observability": 3,
+    "tool_selection": 5,
+    "tool_args": 5,
+    "tool_result_use": 5,
+    "multi_turn_memory": 5,
+    "long_context": 5
+  },
+  "strategy": "stratified",
+  "seed": 7,
+  "session_group_policy": {
+    "atomic": true
+  },
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "v1.1 measurable subset; A3–A5/A8/A9 via mock/session/long-context fixtures; claim closed."
+}

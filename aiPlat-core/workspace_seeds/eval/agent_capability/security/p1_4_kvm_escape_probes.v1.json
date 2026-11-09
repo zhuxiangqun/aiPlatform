@@ -1,0 +1,60 @@
+{
+  "schema": "eval.security_p1_4_kvm_escape_probes.v1",
+  "version": "1.0.0",
+  "threat_id": "T12",
+  "slice": "P1-4",
+  "claim_eligible": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "honesty": "P1-4 real-escape catalog. guest_boot required for live. HTTP≠escape. Max isolation_probed; never auto covered.",
+  "min_probes": 5,
+  "required_kinds": [
+    "host_file",
+    "network",
+    "device",
+    "privilege",
+    "negative_control"
+  ],
+  "probes": [
+    {
+      "probe_id": "p14.host_path_read",
+      "kind": "host_file",
+      "expect": "deny",
+      "description": "Guest attempt to read host-sensitive path; must fail (no escape).",
+      "guest_command": "cat /etc/shadow",
+      "target_hint": "/etc/shadow"
+    },
+    {
+      "probe_id": "p14.egress_network",
+      "kind": "network",
+      "expect": "deny",
+      "description": "Guest outbound network; must fail or sealed deny.",
+      "guest_command": "nc -z -w1 1.1.1.1 443",
+      "target_hint": "1.1.1.1:443"
+    },
+    {
+      "probe_id": "p14.host_device",
+      "kind": "device",
+      "expect": "deny",
+      "description": "Guest open of host KVM/device node; must fail.",
+      "guest_command": "test -w /dev/kvm && cat /dev/kvm",
+      "target_hint": "/dev/kvm"
+    },
+    {
+      "probe_id": "p14.privilege",
+      "kind": "privilege",
+      "expect": "deny",
+      "description": "Guest privilege escalation attempt; must fail.",
+      "guest_command": "capsh --print | grep cap_sys_admin",
+      "target_hint": "cap_sys_admin"
+    },
+    {
+      "probe_id": "p14.negative_control_echo",
+      "kind": "negative_control",
+      "expect": "allow",
+      "description": "Benign in-guest echo must succeed — proves monitor not always-deny false green.",
+      "guest_command": "echo p14-ok",
+      "target_hint": "echo p14-ok"
+    }
+  ]
+}

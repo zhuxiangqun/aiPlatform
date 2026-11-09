@@ -1,0 +1,549 @@
+[
+  {
+    "case_id": "agent.observability.001",
+    "prompt": "请用三条要点说明一次失败请求应记录哪些最小可观测字段（不要写代码）。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "trace",
+        "错误",
+        "时间"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能说出失败请求的最小可观测字段",
+      "why_this_case": "缺观测字段会导致不可诊断",
+      "expected_behavior": [
+        "提到时间/错误/追踪相关字段",
+        "分点说明"
+      ],
+      "failure_signals": [
+        "空泛说‘多打日志’无字段"
+      ],
+      "not_testing": [
+        "不测试具体日志平台接线"
+      ],
+      "oracle_rationale": "must_contain trace/错误/时间"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 30
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:69904a1fa5735f6e8cbb85c57bb5df1d5a2e95293fba016dfe198a997273400e"
+  },
+  {
+    "case_id": "agent.observability.002",
+    "prompt": "给一个 JSON 示例，包含 request_id 与 status 字段，用于记录一次 API 调用结果。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "request_id",
+        "status"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能给出含关键关联字段的结构化观测示例",
+      "why_this_case": "缺 request_id 无法串联链路",
+      "expected_behavior": [
+        "JSON 含 request_id 与 status"
+      ],
+      "failure_signals": [
+        "无关联字段的随意文本"
+      ],
+      "not_testing": [
+        "不测试 OpenTelemetry 全规范"
+      ],
+      "oracle_rationale": "must_contain request_id/status"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 31
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:a7c0a3dd841af44b49e31a8d6854045720186cd5bf3d529dc8ad141c726a08e3"
+  },
+  {
+    "case_id": "agent.observability.003",
+    "prompt": "说明为什么仅有‘成功/失败’布尔值不足以排查间歇性故障，并给出应补充的两类信号。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "延迟",
+        "错误",
+        "不足"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证理解布尔结果不足以观测并给出补充信号",
+      "why_this_case": " intermittency 需要更丰富信号",
+      "expected_behavior": [
+        "指出布尔不足",
+        "补充如延迟/错误码等信号"
+      ],
+      "failure_signals": [
+        "认为布尔足够"
+      ],
+      "not_testing": [
+        "不测试监控告警规则配置"
+      ],
+      "oracle_rationale": "must_contain 不足与延迟/错误等信号词"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 32
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:ee576aaba2b8e6eb72e70a21b27eb6caada0e57f49e8930ef5659247f8487e1e"
+  },
+  {
+    "case_id": "agent.observability.004",
+    "prompt": "列出一次后台任务失败日志应包含的三个字段名（英文蛇形），用逗号分隔。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "job_id",
+        "error",
+        "timestamp"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能给出后台任务失败的最小字段名",
+      "why_this_case": "缺关联字段无法排查批任务",
+      "expected_behavior": [
+        "含 job_id/error/timestamp 类字段"
+      ],
+      "failure_signals": [
+        "空泛‘写日志’无字段名"
+      ],
+      "not_testing": [
+        "不测试具体日志采集器"
+      ],
+      "oracle_rationale": "must_contain job_id/error/timestamp"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 60
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:a02a0a981601d9fff6fca6559d12f174635c911ee43806319868332ebd9a4e6c"
+  },
+  {
+    "case_id": "agent.observability.005",
+    "prompt": "解释 trace_id 与 span_id 在排查跨服务调用时各自的作用（各一句）。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "trace",
+        "span",
+        "服务"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证区分 trace 与 span 的观测语义",
+      "why_this_case": "混淆二者导致链路不可读",
+      "expected_behavior": [
+        "说明 trace 串联请求",
+        "说明 span 定位单段"
+      ],
+      "failure_signals": [
+        "把两者当成同义词含糊带过"
+      ],
+      "not_testing": [
+        "不测试 OTel SDK 接线"
+      ],
+      "oracle_rationale": "must_contain trace/span/服务"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 61
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:2f5491a9d756018ab027bfc5e57240abaa1f107f9562f5518c6f826041076ab6"
+  },
+  {
+    "case_id": "agent.observability.006",
+    "prompt": "给一个最小 metrics 标签示例：服务名 + 接口路径 + HTTP 状态码。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "service",
+        "path",
+        "status"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能给出常用 metrics 维度标签",
+      "why_this_case": "缺标签无法按接口聚合",
+      "expected_behavior": [
+        "含 service/path/status 类标签"
+      ],
+      "failure_signals": [
+        "只有裸计数无标签"
+      ],
+      "not_testing": [
+        "不测试 Prometheus 全语法"
+      ],
+      "oracle_rationale": "must_contain service/path/status"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 62
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:0c568dc490d5a93ea41c9132d4744a4e09d9f1598a62e017c989ec6f57aab685"
+  },
+  {
+    "case_id": "agent.observability.007",
+    "prompt": "说明为什么生产告警只看 CPU 百分比不够，并补充两类应观测信号。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "不够",
+        "错误",
+        "延迟"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证理解单指标 CPU 告警不足并补充信号",
+      "why_this_case": "单资源指标无法覆盖业务故障",
+      "expected_behavior": [
+        "指出不够",
+        "补充错误率/延迟等"
+      ],
+      "failure_signals": [
+        "认为 CPU 足够"
+      ],
+      "not_testing": [
+        "不测试告警平台配置"
+      ],
+      "oracle_rationale": "must_contain 不够/错误/延迟"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 63
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:f93323009debff1e904040a4011cb4b4391085d44811f5854071310b0bdc8a1f"
+  },
+  {
+    "case_id": "agent.observability.008",
+    "prompt": "写一条结构化日志行示例（JSON），必须含 level、msg、user_id。",
+    "rubric": {
+      "type": "lexical",
+      "must_contain": [
+        "level",
+        "msg",
+        "user_id"
+      ]
+    },
+    "category": "observability",
+    "tags": [
+      "agent",
+      "observability",
+      "regression"
+    ],
+    "difficulty": "medium",
+    "applies_to": {
+      "object_types": [
+        "agent"
+      ]
+    },
+    "requires": {
+      "capabilities": [
+        "observability"
+      ]
+    },
+    "oracle": {
+      "type": "lexical"
+    },
+    "expected_tools": [],
+    "forbidden_tools": [],
+    "expected_steps": [],
+    "risk_level": "low",
+    "session_group": null,
+    "holdout": false,
+    "capabilities": [
+      "observability"
+    ],
+    "object_types": [
+      "agent"
+    ],
+    "test_purpose": {
+      "summary": "验证能给出含关键关联字段的结构化日志示例",
+      "why_this_case": "缺 user_id 难做用户侧排查",
+      "expected_behavior": [
+        "JSON 含 level/msg/user_id"
+      ],
+      "failure_signals": [
+        "纯文本无字段"
+      ],
+      "not_testing": [
+        "不测试日志采样策略"
+      ],
+      "oracle_rationale": "must_contain level/msg/user_id"
+    },
+    "provenance": {
+      "generator": "capability_case_bank",
+      "generator_version": "1",
+      "seed": 64
+    },
+    "review": {
+      "status": "draft",
+      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+    },
+    "hash": "sha256:3a83b83d2540933de96d8bf0de5439adbeafb53c3b91c740aa0433ef04c14c21"
+  }
+]

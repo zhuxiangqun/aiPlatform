@@ -300,25 +300,126 @@ def _parse_policy_fail_mode(raw: Optional[str], *, default: str = "open") -> str
     return "open"
 
 
+def resolve_runtime_profile() -> str:
+    """Normalize deploy profile for fail-mode grayscale (P0-2).
+
+    Reads ``AIPLAT_PROFILE`` then ``AIPLAT_ENV``. Empty → ``""`` (compat / unset).
+    """
+    raw = (os.getenv("AIPLAT_PROFILE") or os.getenv("AIPLAT_ENV") or "").strip().lower()
+    if raw in ("production", "prod"):
+        return "production"
+    if raw in ("staging", "stage", "preprod"):
+        return "staging"
+    if raw in ("development", "dev", "local", "test"):
+        return "development"
+    return raw
+
+
+def default_fail_mode_for_profile(profile: Optional[str] = None) -> str:
+    """Profile-based default when ``AIPLAT_POLICY_FAIL_MODE`` is unset (P0-2 grayscale).
+
+    - production / staging → closed
+    - development → ask
+    - unset / unknown → open (compat; explicit profile required for fail-closed)
+    """
+    p = resolve_runtime_profile() if profile is None else str(profile or "").strip().lower()
+    if p in ("production", "prod", "staging", "stage", "preprod"):
+        return "closed"
+    if p in ("development", "dev", "local", "test"):
+        return "ask"
+    return "open"
+
+
+def _iso_deadline_passed(raw: Optional[str]) -> Optional[bool]:
+    """Return True if deadline passed, False if still active, None if unset/invalid."""
+    s = (raw or "").strip()
+    if not s:
+        return None
+    try:
+        from datetime import datetime, timezone
+
+        text = s.replace("Z", "+00:00")
+        deadline = datetime.fromisoformat(text)
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) >= deadline
+    except ValueError:
+        return None
+
+
+def fail_open_override_honored() -> bool:
+    """Whether an explicit fail-open in prod/staging is still inside its whitelist window.
+
+    ``AIPLAT_POLICY_FAIL_OPEN_UNTIL`` (ISO-8601) required for production/staging open
+    overrides; expired or missing → override not honored (fall back to profile default).
+    Development / unset profile: explicit open always honored (dev escape).
+    """
+    profile = resolve_runtime_profile()
+    if profile not in ("production", "staging"):
+        return True
+    passed = _iso_deadline_passed(os.getenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL"))
+    if passed is True:
+        return False  # expired → auto restore
+    if passed is False:
+        return True  # still in window
+    # missing/invalid until on prod/staging → do not honor open (force profile default)
+    return False
+
+
 def resolve_policy_fail_mode(*, critical: bool = False) -> str:
-    """Resolve policy infra degradation mode (安全体系审计 §4.1 方案 C).
+    """Resolve policy infra degradation mode (安全体系审计 §4.1 方案 C + P0-2 grayscale).
 
     Env:
-      AIPLAT_POLICY_FAIL_MODE — open|ask|closed (default open, compat / dev)
+      AIPLAT_PROFILE / AIPLAT_ENV — production|staging|development (drives default)
+      AIPLAT_POLICY_FAIL_MODE — open|ask|closed (overrides profile default when set)
+      AIPLAT_POLICY_FAIL_OPEN_UNTIL — ISO deadline; prod/staging open override requires
+        a future value or open is ignored (auto-restore to profile default)
       AIPLAT_POLICY_FAIL_CRITICAL_MODE — optional override for critical paths
-        (skill_load deny rules, skill EXECUTE when request context present)
 
     Non-critical paths always return open (audit + alert only) so DB jitter
     does not mass-deny unrelated tools. One-click rollback: set FAIL_MODE=open
-    and unset CRITICAL_MODE.
+    with FAIL_OPEN_UNTIL in the near future on prod/staging.
     """
-    base = _parse_policy_fail_mode(os.getenv("AIPLAT_POLICY_FAIL_MODE"), default="open")
+    explicit = os.getenv("AIPLAT_POLICY_FAIL_MODE")
+    if explicit is not None and str(explicit).strip() != "":
+        base = _parse_policy_fail_mode(explicit, default="open")
+        if base == "open" and not fail_open_override_honored():
+            base = default_fail_mode_for_profile()
+    else:
+        base = default_fail_mode_for_profile()
     if not critical:
         return "open"
     crit_raw = os.getenv("AIPLAT_POLICY_FAIL_CRITICAL_MODE")
     if crit_raw is not None and str(crit_raw).strip() != "":
         return _parse_policy_fail_mode(crit_raw, default=base)
     return base
+
+
+def audit_policy_fail_mode_config() -> Dict[str, Any]:
+    """Config drift snapshot for health / IR (P0-2). Not a permission decision."""
+    profile = resolve_runtime_profile()
+    explicit = os.getenv("AIPLAT_POLICY_FAIL_MODE")
+    effective_critical = resolve_policy_fail_mode(critical=True)
+    expected = default_fail_mode_for_profile(profile or None)
+    open_until = (os.getenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL") or "").strip()
+    open_honored = fail_open_override_honored()
+    explicit_norm = _parse_policy_fail_mode(explicit, default="") if (explicit or "").strip() else ""
+    explicit_open = explicit_norm == "open"
+    # Drift: effective open in prodish, OR attempted open without valid UNTIL window
+    drift = bool(
+        profile in ("production", "staging")
+        and (effective_critical == "open" or (explicit_open and not open_honored))
+    )
+    return {
+        "profile": profile or "(unset)",
+        "explicit_fail_mode": (explicit or "").strip() or "(unset)",
+        "expected_default": expected,
+        "effective_critical": effective_critical,
+        "fail_open_until": open_until or "(unset)",
+        "fail_open_override_honored": open_honored,
+        "drift_fail_open_in_prodish": drift,
+        "ok": not drift,
+    }
 
 
 class PolicyGate:

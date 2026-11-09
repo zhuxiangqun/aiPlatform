@@ -260,6 +260,7 @@ async def run_agent_exam(
     live: bool = False,
     max_tasks: int = 0,
     persist: bool = True,
+    run_key: str = "",
 ) -> Dict[str, Any]:
     """Run exam paper ``set_id`` with all tasks bound to ``agent_id``.
 
@@ -278,6 +279,51 @@ async def run_agent_exam(
         raise FileNotFoundError(f"eval set not found: {sid}")
 
     bound = _bind_set_to_agent(raw, aid)
+
+    # Plan v2: sample_manifest is the sole execution list (nail 2).
+    from core.apps.eval.service.case_pack_legacy import (
+        ManifestValidationError,
+        require_sample_manifest,
+        verify_manifest_case_hashes,
+    )
+
+    plan: Optional[Dict[str, Any]] = None
+    try:
+        from core.apps.eval.service.eval_plan import compile_plan_for_object
+        from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
+
+        profile = await resolve_agent_eval_profile(aid)
+        plan = compile_plan_for_object(
+            object_type="agent",
+            object_id=aid,
+            set_ids=[sid],
+            purpose=list(
+                profile.get("eval_purpose") or ["behavior", "regression", "safety"]
+            ),
+            include_special=True,  # user picked this paper explicitly
+            live=bool(live),
+            eval_profile=profile,
+            source_refs=["agent_exam"],
+        )
+        manifest = require_sample_manifest(plan)
+        verify_manifest_case_hashes(manifest)
+        allow = {
+            str(row.get("case_id") or "")
+            for row in manifest
+            if str(row.get("set_id") or "") == sid or not row.get("set_id")
+        }
+        allow.discard("")
+        if allow:
+            bound.tasks = [t for t in (bound.tasks or []) if t.task_id in allow]
+        if not bound.tasks:
+            raise ManifestValidationError(
+                f"sample_manifest for {sid!r} matched zero tasks — fail closed"
+            )
+    except ManifestValidationError:
+        raise
+    except Exception:  # noqa: BLE001 — advisory compile must not block dry exam path
+        plan = None
+
     runner = EvalRunner()
     result = await runner.run_eval_set(
         bound,
@@ -383,31 +429,52 @@ async def run_agent_exam(
     payload["runtime_claim"] = rt["runtime_claim"]
     payload["runtime_claim_reason"] = rt["runtime_claim_reason"]
 
-    # Object-contract: resolve eval_profile + attach Plan/MatchReport for this set.
+    # Object-contract: attach Plan/MatchReport (reuse pre-run compile when present).
     try:
-        from core.apps.eval.service.eval_plan import (
-            attach_evaluation_plan,
-            compile_plan_for_object,
-        )
+        from core.apps.eval.service.eval_plan import attach_evaluation_plan
         from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
 
-        profile = await resolve_agent_eval_profile(aid)
-        plan = compile_plan_for_object(
-            object_type="agent",
-            object_id=aid,
-            set_ids=[sid],
-            purpose=list(profile.get("eval_purpose") or ["behavior", "regression", "safety"]),
-            include_special=True,  # single-paper exam: user picked the set explicitly
-            live=bool(live),
-            eval_profile=profile,
-            source_refs=["agent_exam"],
-        )
+        if plan is None:
+            from core.apps.eval.service.eval_plan import compile_plan_for_object
+
+            profile = await resolve_agent_eval_profile(aid)
+            plan = compile_plan_for_object(
+                object_type="agent",
+                object_id=aid,
+                set_ids=[sid],
+                purpose=list(
+                    profile.get("eval_purpose")
+                    or ["behavior", "regression", "safety"]
+                ),
+                include_special=True,
+                live=bool(live),
+                eval_profile=profile,
+                source_refs=["agent_exam"],
+            )
+        else:
+            profile = {"profile_source": plan.get("eval_profile_source")}
+        from core.apps.eval.service.case_pack_hash import compute_execution_fingerprint
+
+        plan = dict(plan)
+        rk = str(run_key or "").strip() or str(payload.get("run_id") or "")
+        if rk and plan.get("plan_id") and plan.get("manifest_hash"):
+            plan["execution_fingerprint"] = compute_execution_fingerprint(
+                plan_id=str(plan.get("plan_id") or ""),
+                manifest_hash=str(plan.get("manifest_hash") or ""),
+                runner_id="agent_exam",
+                run_key=rk,
+            )
+            payload["run_key"] = rk
+            payload["execution_fingerprint"] = plan["execution_fingerprint"]
         stamped = attach_evaluation_plan({"ok": True}, plan)
         payload["target_contract"] = stamped.get("target_contract")
         payload["match_report"] = stamped.get("match_report")
         payload["evaluation_plan"] = stamped.get("evaluation_plan")
         payload["plan_id"] = stamped.get("plan_id")
-        payload["eval_profile_source"] = profile.get("profile_source")
+        payload["manifest_hash"] = (plan or {}).get("manifest_hash")
+        payload["eval_profile_source"] = (
+            profile.get("profile_source") if isinstance(profile, dict) else None
+        ) or plan.get("eval_profile_source")
     except Exception:  # noqa: BLE001 — contract advisory must not fail exam
         payload.setdefault(
             "match_report",

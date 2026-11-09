@@ -1,0 +1,8 @@
+{
+  "schema": "aiplat.mcp_plugin_allowlist.v1",
+  "version": "1.0.0",
+  "honesty": "Empty default allowlist. Declare MCP servers / plugins explicitly before prodish publish.",
+  "mcp_servers": [],
+  "plugins": [],
+  "notes": "Populate via PR. Undeclared MCP/plugin ids block P2-1 publish gate when declared in artifact tree."
+}

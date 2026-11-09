@@ -1,0 +1,48 @@
+{
+  "schema": "eval.mock_tool_catalog.v1",
+  "catalog_id": "agent.mock_tools.default",
+  "version": "0.1.0",
+  "tools": [
+    {
+      "name": "echo",
+      "description": "Return the given text unchanged (deterministic mock).",
+      "args_schema": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "required": ["text"],
+        "additionalProperties": false
+      },
+      "result": { "ok": true, "echo": "{{text}}" },
+      "fail_modes": [
+        {
+          "mode_id": "empty_text",
+          "when": "text_empty",
+          "error": "text must be non-empty",
+          "http_status": 400
+        }
+      ]
+    },
+    {
+      "name": "lookup_fact",
+      "description": "Return a fixed fact for a known key (mock KB).",
+      "args_schema": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" }
+        },
+        "required": ["key"],
+        "additionalProperties": false
+      },
+      "result": { "key": "alpha", "value": "42" },
+      "fail_modes": [
+        {
+          "mode_id": "unknown_key",
+          "when": "key_not_in_store",
+          "error": "unknown key"
+        }
+      ]
+    }
+  ]
+}

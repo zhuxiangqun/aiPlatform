@@ -1,0 +1,118 @@
+# M2 deferred-mode estimate charter (≠ live exam; ≠ unknown)
+# schema: eval.m2_deferred_estimate.v1
+schema: eval.m2_deferred_estimate.v1
+version: "1.0.0"
+claim_eligible: false
+rank_claim: false
+accuracy_claim: false
+notes: >
+  multi_agent / pipeline / operator stay deferred until runtime_parts
+  contracts below are wired. Deferred ≠ unknown (unknown not in denominator;
+  deferred is disclosed and blocked from Track A covered claims).
+
+deferred_modes:
+  multi_agent:
+    status: deferred
+    m_phase: m2
+    mode_core_candidates:
+      - task_completion
+      - safety
+      - observability
+      - clarification
+    mode_not_applicable:
+      - tool_selection
+      - tool_args
+      - tool_result_use
+    environment_required: multi_agent_runtime
+    blockers:
+      - runtime_parts_multi_agent_not_wired
+      - handoff_schema_parity_pending
+      - no_single_agent_create_agent_substitute
+    runtime_parts_required:
+      - part_id: coordinator
+        runtime_tier_allowed: [workspace_execute]
+        must_fields: [sub_id, runtime_tier, target_runtime, role]
+      - part_id: worker
+        runtime_tier_allowed: [workspace_execute, fixture]
+        must_fields: [sub_id, runtime_tier, target_runtime, worker_id]
+      - part_id: aggregate
+        runtime_tier_allowed: [workspace_execute]
+        must_fields: [sub_id, runtime_tier, merge_policy]
+    estimate:
+      engineering_days: 5
+      depends_on: [m1a, m1c_sandbox_or_honest_unknown]
+      open_questions:
+        - handoff artifact schema across workers
+        - whether secondary modes in workers create nested selection≠execution
+
+  pipeline:
+    status: deferred
+    m_phase: m2
+    mode_core_candidates:
+      - task_completion
+      - planning
+      - safety
+      - observability
+    mode_not_applicable:
+      - multi_turn_memory
+    environment_required: pipeline_runtime
+    blockers:
+      - runtime_parts_pipeline_not_wired
+      - stage_artifact_contract_pending
+    runtime_parts_required:
+      - part_id: stage
+        runtime_tier_allowed: [workspace_execute, fixture]
+        must_fields: [sub_id, runtime_tier, stage_id, depends_on]
+      - part_id: gate
+        runtime_tier_allowed: [workspace_execute]
+        must_fields: [sub_id, runtime_tier, gate_id, pass_fail]
+    estimate:
+      engineering_days: 4
+      depends_on: [m1a]
+      open_questions:
+        - stage failure_strategy vs mode exam columns
+        - cross-stage oracle parity for Track B
+
+  operator:
+    status: deferred
+    m_phase: m2
+    mode_core_candidates:
+      - task_completion
+      - safety
+      - clarification
+      - observability
+    mode_not_applicable:
+      - long_context
+    environment_required: operator_runtime
+    blockers:
+      - runtime_parts_operator_not_wired
+      - human_hitl_surface_pending
+    runtime_parts_required:
+      - part_id: propose
+        runtime_tier_allowed: [workspace_execute]
+        must_fields: [sub_id, runtime_tier, proposal_id]
+      - part_id: approve
+        runtime_tier_allowed: [workspace_execute]
+        must_fields: [sub_id, runtime_tier, decision, actor]
+    estimate:
+      engineering_days: 3
+      depends_on: [m1a]
+      open_questions:
+        - HITL timeout / skip semantics for coverage denominator
+
+runtime_parts_contract:
+  schema: eval.runtime_parts.m2.v1
+  rules:
+    - deferred_modes_must_emit_runtime_parts_array
+    - mixed_tiers_forbid_top_level_single_tier_claim
+    - fixture_parts_cannot_enter_rank_board
+    - unknown_not_in_denominator
+  forbidden:
+    - pretend_create_agent_primary_covers_workers
+    - merge_worker_runs_into_one_mode_column
+    - rank_claim_while_deferred
+
+gate:
+  live_exam_allowed: false
+  rank_eligible_allowed: false
+  reason: m2_estimate_only_until_runtime_parts_wired

@@ -103,6 +103,7 @@ Plan 编译期的 `runtime_tier` 仅为**顾问值**，执行落盘必须以入�
 | 显式优先 | 有 `config.eval_profile` / 顶层 hoist 时，不得用派生结果覆盖显式 capabilities/permissions |
 | **实现（2026-11-08）** | `case_match._capability_requirements_authoritative`：仅 `profile_source=explicit` 时 `missing_capability`→N/A；`derived_hints`/未知缺口记 `capability_unconfirmed:*` 并 **selected**（≠ Ollaya 决策） |
 | **信任边界** | 见 [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md)：实验室仪器 ≠ 认证；旧 Plan `plan-924f6c070f4e1927` = `pre-fix_invalid`；重跑证据 `.aiplat/eval_trust/` |
+| **Case Pack 工厂（设计基线）** | [`eval-case-pack-factory.md`](./eval-case-pack-factory.md) v0.2：**P0 前六钉未会签禁止开工**；Plan 须升 v2；`sample_manifest` 唯一执行依据 |
 
 ### 0.8 字段锁定后的残余工作（非语义债 · 对象成熟度）
 

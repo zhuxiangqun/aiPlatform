@@ -1,0 +1,24 @@
+{
+  "case_id": "agent.multi_turn_memory.sample.t0",
+  "capabilities": ["multi_turn_memory"],
+  "session_group": "agent.mt.sample.g1",
+  "turn_index": 0,
+  "memory_probe": {
+    "planted_fact": "用户项目代号为 ORION-7",
+    "ask_after_turns": 2,
+    "must_recall": ["ORION-7"]
+  },
+  "prompt": "请记住：我的项目代号是 ORION-7。先只确认已记下，不要展开方案。",
+  "test_purpose": {
+    "summary": "样例：多轮记忆探针字段形（T0 契约，非 covered）",
+    "why_this_case": "钉死 session_group/turn_index/memory_probe",
+    "expected_behavior": ["确认已记录项目代号"],
+    "failure_signals": ["否认收到代号", "编造其他代号"],
+    "not_testing": ["不测试真实工具", "不宣称 v1 covered"],
+    "oracle_rationale": "T0 仅校验字段；oracle 待 T2 session runner"
+  },
+  "expected_tools": [],
+  "forbidden_tools": [],
+  "holdout": false,
+  "risk_level": "low"
+}

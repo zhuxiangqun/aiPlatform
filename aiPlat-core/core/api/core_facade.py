@@ -6291,6 +6291,2080 @@ def eval_match_cases_for_agent_target(
     )
 
 
+def eval_resolve_capability_id(capability_id: str, *, fail_closed: bool = True) -> str:
+    """Capability ID Map v1: legacy → canonical (fail closed by default)."""
+    from core.apps.eval.service.capability_id_map import resolve_capability_id
+
+    return resolve_capability_id(capability_id, fail_closed=fail_closed)
+
+
+def eval_resolve_capability_ids(
+    ids: Optional[list] = None, *, fail_closed: bool = True
+) -> list:
+    """Resolve many capability ids to canonical (deduped)."""
+    from core.apps.eval.service.capability_id_map import resolve_capability_ids
+
+    return resolve_capability_ids(ids or [], fail_closed=fail_closed)
+
+
+def eval_validate_test_purpose(
+    purpose: Optional[Dict[str, Any]] = None,
+    *,
+    prompt: str = "",
+    capabilities: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Validate EvalCase.test_purpose (schema v1); returns {ok, errors}."""
+    from core.apps.eval.service.test_purpose import validate_test_purpose
+
+    errors = validate_test_purpose(
+        purpose, prompt=prompt, capabilities=capabilities
+    )
+    return {"ok": not errors, "errors": errors, "schema": "eval.case_test_purpose.v1"}
+
+
+def eval_evaluate_t0_inscope_contracts() -> Dict[str, Any]:
+    """T0: validate mock-tool/session/long-context fixtures + runtime map (no execute)."""
+    from core.apps.eval.service.inscope_contracts_t0 import evaluate_t0_inscope_contracts
+
+    return evaluate_t0_inscope_contracts()
+
+
+def eval_evaluate_m0_impl_mode_contracts() -> Dict[str, Any]:
+    """M0: impl_modes / matrix / rank_fingerprint / parity contracts (no live runner)."""
+    from core.apps.eval.service.agent_impl_mode import evaluate_m0_impl_mode_contracts
+
+    return evaluate_m0_impl_mode_contracts()
+
+
+def eval_resolve_impl_modes(source: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """M0: resolve multi-value impl_modes (unknown≠react; deferred≠unknown)."""
+    from core.apps.eval.service.agent_impl_mode import resolve_impl_modes
+
+    return resolve_impl_modes(source or {})
+
+
+def eval_compute_rank_fingerprint(**kwargs: Any) -> Dict[str, Any]:
+    """M0: cross-subject rank_fingerprint (excludes agent_id / workspace / time)."""
+    from core.apps.eval.service.agent_impl_mode import compute_rank_fingerprint
+
+    return compute_rank_fingerprint(**kwargs)
+
+
+def eval_plan_mode_executions(
+    source: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """M0: selection union + per-mode separate execution plan (no live)."""
+    from core.apps.eval.service.agent_impl_mode import (
+        plan_executions_per_mode,
+        resolve_impl_modes,
+        select_capabilities_union,
+    )
+
+    impl = resolve_impl_modes(source or {})
+    return {
+        "impl_modes": impl,
+        "selection": select_capabilities_union(impl),
+        "execution": plan_executions_per_mode(impl),
+        "claim_eligible": False,
+        "rank_claim": False,
+    }
+
+
+async def eval_run_m1a_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[list] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1a: plan_execute + conversational per-mode exam (tools/retrieval/network=none)."""
+    from core.apps.eval.service.mode_aware_exam import run_m1a_mode_exam
+
+    return await run_m1a_mode_exam(
+        live=bool(live),
+        modes=modes,
+        max_cases_per_mode=int(max_cases_per_mode or 0),
+    )
+
+
+async def eval_run_m1b_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[list] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1b: rag per-mode exam (retrieval=required fixture; tools/network/session=none)."""
+    from core.apps.eval.service.mode_aware_exam import run_m1b_mode_exam
+
+    return await run_m1b_mode_exam(
+        live=bool(live),
+        modes=modes,
+        max_cases_per_mode=int(max_cases_per_mode or 0),
+    )
+
+
+async def eval_run_m1c_mode_exam(
+    *,
+    live: bool = False,
+    modes: Optional[list] = None,
+    max_cases_per_mode: int = 0,
+) -> Dict[str, Any]:
+    """M1c: react per-mode exam (fixture_mock sandbox; A3–A5 coverage unknown)."""
+    from core.apps.eval.service.mode_aware_exam import run_m1c_mode_exam
+
+    return await run_m1c_mode_exam(
+        live=bool(live),
+        modes=modes,
+        max_cases_per_mode=int(max_cases_per_mode or 0),
+    )
+
+
+def eval_probe_m1c_sandbox() -> Dict[str, Any]:
+    """M1c sandbox readiness probe (fixture_mock vs live opt-in)."""
+    from core.apps.eval.service.mode_aware_exam import probe_m1c_sandbox
+
+    return probe_m1c_sandbox()
+
+
+def eval_probe_linux_microvm() -> Dict[str, Any]:
+    """Linux/KVM microVM host probe hook. Never flips covered / process_split_authorized."""
+    from core.apps.eval.service.mode_aware_exam import probe_linux_microvm_host
+
+    return probe_linux_microvm_host()
+
+
+async def eval_run_a1_intersection_compare(
+    *,
+    live: bool = False,
+    persist: bool = True,
+    signoff: Optional[Dict[str, Any]] = None,
+    model_fingerprint: str = "unresolved",
+    min_n_per_capability: int = 2,
+) -> Dict[str, Any]:
+    """A1 Track A+B compare (plan_execute vs conversational). rank_claim never auto-true."""
+    from core.apps.eval.service.a1_intersection_ops import (
+        eval_run_a1_intersection_compare as _fn,
+    )
+
+    return await _fn(
+        live=bool(live),
+        persist=bool(persist),
+        signoff=signoff,
+        model_fingerprint=str(model_fingerprint or "unresolved"),
+        min_n_per_capability=int(min_n_per_capability or 2),
+    )
+
+
+def eval_a1_intersection_status() -> Dict[str, Any]:
+    """Read-only A1 intersection gate/Pareto status for UI. Never certifies."""
+    from core.apps.eval.service.a1_intersection_ops import a1_intersection_status_report
+
+    return a1_intersection_status_report()
+
+
+def eval_security_sec_p0a_status() -> Dict[str, Any]:
+    """SEC-P0a: L1 threat_ids validation + per-family report schema. Never certifies."""
+    from core.apps.eval.service.security_family_report import security_l1_p0a_status
+
+    return security_l1_p0a_status()
+
+
+def eval_security_sec_p0b_status(
+    *,
+    live_probes: bool = False,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """SEC-P0b: T12 isolation state machine + probe interface. Never auto-covered."""
+    from core.apps.eval.service.isolation_t12 import security_t12_p0b_status
+
+    return security_t12_p0b_status(
+        live_probes=bool(live_probes),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_security_sec_p0c_status(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P0c: per-threat-family min_n/CI/report_only gate. Never unlocks L5 declare."""
+    from core.apps.eval.service.security_family_report import security_sec_p0c_status
+
+    return security_sec_p0c_status(by_case=by_case)
+
+
+def eval_evaluate_security_family_gates(
+    report: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Apply/recompute per-family min_n gates on a security family report."""
+    from core.apps.eval.service.security_family_report import (
+        evaluate_security_family_gates,
+    )
+
+    return evaluate_security_family_gates(report)
+
+
+def eval_security_sec_p1a_status(
+    *,
+    pairs: Optional[List[Dict[str, Any]]] = None,
+    judge_id: str = "security.policy_judge",
+    judge_version: str = "1.0.0",
+    judge_model: str = "eval-judge-model",
+    subject_model: str = "subject-under-test",
+) -> Dict[str, Any]:
+    """SEC-P1a: judge calibration protocol + judge_version manifest. Never certifies."""
+    from core.apps.eval.service.security_judge_calib import security_sec_p1a_status
+
+    return security_sec_p1a_status(
+        pairs=pairs,
+        judge_id=str(judge_id or "security.policy_judge"),
+        judge_version=str(judge_version or "1.0.0"),
+        judge_model=str(judge_model or "eval-judge-model"),
+        subject_model=str(subject_model or "subject-under-test"),
+    )
+
+
+def eval_build_security_judge_version_manifest(
+    *,
+    judge_id: str,
+    judge_version: str,
+    judge_model: str,
+    subject_model: str,
+    prompt_hash: str = "",
+    frozen: bool = True,
+) -> Dict[str, Any]:
+    """Build frozen judge_id+judge_version manifest; self-judge forbidden."""
+    from core.apps.eval.service.security_judge_calib import build_judge_version_manifest
+
+    return build_judge_version_manifest(
+        judge_id=judge_id,
+        judge_version=judge_version,
+        judge_model=judge_model,
+        subject_model=subject_model,
+        prompt_hash=str(prompt_hash or ""),
+        frozen=bool(frozen),
+    )
+
+
+def eval_evaluate_security_judge_calibration(
+    pairs: List[Dict[str, Any]],
+    *,
+    manifest: Optional[Dict[str, Any]] = None,
+    frozen_manifest: Optional[Dict[str, Any]] = None,
+    failure_case_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Gold vs judge agreement + FP/FN gate; uncalibrated → judge_uncalibrated."""
+    from core.apps.eval.service.security_judge_calib import (
+        evaluate_security_judge_calibration,
+    )
+
+    return evaluate_security_judge_calibration(
+        pairs=pairs,
+        manifest=manifest,
+        frozen_manifest=frozen_manifest,
+        failure_case_ids=failure_case_ids,
+    )
+
+
+def eval_check_security_judge_version_drift(
+    *,
+    run_manifest: Dict[str, Any],
+    frozen_manifest: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Detect judge_id/version/model/prompt_hash drift; invalidates claim candidate."""
+    from core.apps.eval.service.security_judge_calib import check_judge_version_drift
+
+    return check_judge_version_drift(
+        run_manifest=run_manifest, frozen_manifest=frozen_manifest
+    )
+
+
+def eval_annotate_family_asr_calibration(
+    family_report: Dict[str, Any],
+    *,
+    calib: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Stamp per-family asr_calibration_status; never unlocks claim."""
+    from core.apps.eval.service.security_judge_calib import (
+        annotate_family_asr_calibration,
+    )
+
+    return annotate_family_asr_calibration(family_report, calib=calib)
+
+
+def eval_load_security_judge_calib_defaults() -> Dict[str, Any]:
+    """Load SEC-P1a judge calibration defaults seed (engineering thresholds)."""
+    from core.apps.eval.service.security_judge_calib import load_judge_calib_defaults
+
+    return load_judge_calib_defaults()
+
+
+def eval_security_sec_p1b_status(
+    *,
+    findings: Optional[List[Dict[str, Any]]] = None,
+    declared_families: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """SEC-P1b: severity/remediation/retest/claim_revocation. Never certifies."""
+    from core.apps.eval.service.security_severity_loop import security_sec_p1b_status
+
+    return security_sec_p1b_status(
+        findings=findings,
+        declared_families=declared_families,
+    )
+
+
+def eval_build_security_finding(
+    *,
+    case_id: str,
+    threat_id: str,
+    severity: str,
+    impact: str,
+    remediation_owner: str,
+    retest_case_id: str = "",
+    status: str = "open",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Build structured §6.5 security finding (claim closed)."""
+    from core.apps.eval.service.security_severity_loop import build_security_finding
+
+    return build_security_finding(
+        case_id=case_id,
+        threat_id=threat_id,
+        severity=severity,
+        impact=impact,
+        remediation_owner=remediation_owner,
+        retest_case_id=retest_case_id,
+        status=status,
+        notes=notes,
+    )
+
+
+def eval_transition_security_finding(
+    finding: Dict[str, Any],
+    *,
+    status: str,
+    accepted_risk_signoff: str = "",
+    retest_passed: Optional[bool] = None,
+    retest_evidence: str = "",
+    retest_case_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Transition finding status; retested_pass requires retest evidence."""
+    from core.apps.eval.service.security_severity_loop import transition_finding
+
+    return transition_finding(
+        finding,
+        status=status,
+        accepted_risk_signoff=accepted_risk_signoff,
+        retest_passed=retest_passed,
+        retest_evidence=retest_evidence,
+        retest_case_id=retest_case_id,
+        notes=notes,
+    )
+
+
+def eval_evaluate_security_severity_l5_gate(
+    findings: List[Dict[str, Any]],
+    *,
+    declare_families: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Block L5 declare for families with open high/critical findings."""
+    from core.apps.eval.service.security_severity_loop import (
+        evaluate_severity_l5_gate,
+    )
+
+    return evaluate_severity_l5_gate(
+        findings, declare_families=declare_families
+    )
+
+
+def eval_evaluate_security_claim_revocation(
+    *,
+    declared_families: List[str],
+    new_findings: List[Dict[str, Any]],
+    reason: str = "",
+) -> Dict[str, Any]:
+    """Critical regression on declared family → claim_revocation required."""
+    from core.apps.eval.service.security_severity_loop import (
+        evaluate_claim_revocation,
+    )
+
+    return evaluate_claim_revocation(
+        declared_families=declared_families,
+        new_findings=new_findings,
+        reason=reason,
+    )
+
+
+def eval_load_security_severity_loop_defaults() -> Dict[str, Any]:
+    """Load SEC-P1b severity loop defaults seed."""
+    from core.apps.eval.service.security_severity_loop import (
+        load_severity_loop_defaults,
+    )
+
+    return load_severity_loop_defaults()
+
+
+def eval_security_sec_p1c_status(
+    *,
+    coverage_mode: str = "exercised_fixture",
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """SEC-P1c: T13 allowlist pack + process_split boundary. Never certifies."""
+    from core.apps.eval.service.security_t13_allowlist import security_sec_p1c_status
+
+    return security_sec_p1c_status(
+        coverage_mode=str(coverage_mode or "exercised_fixture"),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_run_t13_allowlist_probes(
+    *,
+    coverage_mode: str = "exercised_fixture",
+    process_split_authorized: bool = False,
+) -> Dict[str, Any]:
+    """Run T13 allowlist fixture probes; process_split never required/granted."""
+    from core.apps.eval.service.security_t13_allowlist import run_t13_allowlist_probes
+
+    return run_t13_allowlist_probes(
+        coverage_mode=str(coverage_mode or "exercised_fixture"),
+        process_split_authorized=bool(process_split_authorized),
+    )
+
+
+def eval_assert_t13_process_split_boundary(
+    *,
+    run: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """C17: T13 must not use process_split as supply-chain前置."""
+    from core.apps.eval.service.security_t13_allowlist import (
+        assert_t13_process_split_boundary,
+    )
+
+    return assert_t13_process_split_boundary(run=run)
+
+
+def eval_evaluate_t13_coverage(
+    run: Dict[str, Any],
+    *,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """Map T13 run → coverage; claim_candidate still accuracy_claim=false."""
+    from core.apps.eval.service.security_t13_allowlist import evaluate_t13_coverage
+
+    return evaluate_t13_coverage(
+        run,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_load_t13_allowlist_probes() -> Dict[str, Any]:
+    """Load SEC-P1c T13 allowlist probe pack seed."""
+    from core.apps.eval.service.security_t13_allowlist import load_t13_allowlist_probes
+
+    return load_t13_allowlist_probes()
+
+
+def eval_security_sec_p2a_status(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P2a: S1 pack read-only + OOS/untested family auto-list. Never certifies."""
+    from core.apps.eval.service.security_s1_disclosure import security_sec_p2a_status
+
+    return security_sec_p2a_status(by_case=by_case)
+
+
+def eval_build_untested_oos_disclosure(
+    by_case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """C15: auto-list untested / below_min_n / deferred / OOS threat families."""
+    from core.apps.eval.service.security_s1_disclosure import (
+        build_untested_oos_disclosure,
+    )
+
+    return build_untested_oos_disclosure(by_case=by_case)
+
+
+def eval_load_s1_live_attack_pack() -> Dict[str, Any]:
+    """Load S1 live_attack pack (read-only; does not run live attacks)."""
+    from core.apps.eval.service.security_s1_disclosure import load_s1_live_attack_pack
+
+    return load_s1_live_attack_pack()
+
+
+def eval_security_sec_p2b_status(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    subject: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P2b: L5 per-family claim template status. Never certifies."""
+    from core.apps.eval.service.security_l5_claim_template import security_sec_p2b_status
+
+    return security_sec_p2b_status(by_case=by_case, subject=subject)
+
+
+def eval_build_security_l5_claim_template(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    subject: Optional[Dict[str, Any]] = None,
+    pack_id: str = "agent.safety.l1",
+    pack_version: str = "0.0.0",
+    runtime_tier: str = "workspace_execute",
+    judge_id: str = "security.policy_judge",
+    judge_version: str = "1.0.0",
+    severity_blocked: Optional[List[str]] = None,
+    judge_usable: bool = True,
+    asr_calibration_status: str = "judge_uncalibrated",
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build per-family L5 claim template; accuracy_claim stays false."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        build_security_l5_claim_template,
+    )
+
+    return build_security_l5_claim_template(
+        by_case=by_case,
+        subject=subject,
+        pack_id=pack_id,
+        pack_version=pack_version,
+        runtime_tier=runtime_tier,
+        judge_id=judge_id,
+        judge_version=judge_version,
+        severity_blocked=severity_blocked,
+        judge_usable=judge_usable,
+        asr_calibration_status=asr_calibration_status,
+        explicit_authorize=explicit_authorize,
+        signoffs=signoffs,
+    )
+
+
+def eval_validate_security_l5_claim_sentence(sentence: str) -> Dict[str, Any]:
+    """Reject forbidden false-green / marketing claim sentences."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        validate_claim_sentence_against_policy,
+    )
+
+    return validate_claim_sentence_against_policy(sentence)
+
+
+def eval_select_security_declare_candidate_families(
+    family_report: Dict[str, Any],
+    *,
+    severity_blocked: Optional[List[str]] = None,
+    judge_usable: bool = True,
+    asr_calibration_status: str = "",
+) -> Dict[str, Any]:
+    """Select per-family L5 declare *candidates* (not emitted declaration)."""
+    from core.apps.eval.service.security_l5_claim_template import (
+        select_declare_candidate_families,
+    )
+
+    return select_declare_candidate_families(
+        family_report=family_report,
+        severity_blocked=severity_blocked,
+        judge_usable=judge_usable,
+        asr_calibration_status=asr_calibration_status,
+    )
+
+
+def eval_security_sec_p3_status() -> Dict[str, Any]:
+    """SEC-P3: S-Tool/S-RAG L3 fixtures + A7 parity. Never certifies / live exec."""
+    from core.apps.eval.service.security_l3_packs import security_sec_p3_status
+
+    return security_sec_p3_status()
+
+
+def eval_security_sec_p4_status(
+    *,
+    mode: str = "guest_sim",
+    human_review: bool = False,
+    human_reviewer: str = "",
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P4/P4b: Linux microVM probed path. guest_sim≠certification; covered needs review."""
+    from core.apps.eval.service.security_t12_p4 import security_sec_p4_status
+
+    return security_sec_p4_status(
+        mode=str(mode or "guest_sim"),
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+        admit=admit,
+    )
+
+
+def eval_run_linux_microvm_probes(
+    *,
+    mode: str = "guest_sim",
+    catalog: Optional[Dict[str, Any]] = None,
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SEC-P4/P4b guest_sim|guest_live. Live deny needs escape_executor; never auto-covered."""
+    from core.apps.eval.service.security_t12_p4 import run_linux_microvm_probes
+
+    return run_linux_microvm_probes(mode=str(mode or "guest_sim"), catalog=catalog, admit=admit)
+
+
+def eval_run_security_p1_4_kvm_escape(
+    *,
+    mode: str = "guest_sim",
+    guest_boot: Optional[bool] = None,
+    admit: Optional[Dict[str, Any]] = None,
+    evidence_kind: str = "kvm_guest",
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """P1-4 KVM escape: guest_boot + host probes; max isolation_probed; HTTP≠escape.
+
+    Live mode needs env AIPLAT_EVAL_P1_4_LIVE + AIPLAT_EVAL_T12_GUEST_LIVE and an
+    injected guest channel (use service API). Facade guest_sim path is engineering.
+    """
+    from core.apps.eval.service.security_p1_4_kvm_escape import run_p1_4_kvm_escape
+
+    return run_p1_4_kvm_escape(
+        mode=str(mode or "guest_sim"),
+        guest_boot=guest_boot,
+        admit=admit,
+        evidence_kind=evidence_kind,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_security_p1_4_status(
+    *,
+    mode: str = "guest_sim",
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """P1-4 inventory status (claim locks false)."""
+    from core.apps.eval.service.security_p1_4_kvm_escape import security_p1_4_status
+
+    return security_p1_4_status(mode=str(mode or "guest_sim"), admit=admit)
+
+
+def eval_security_sec_p5_status(
+    *,
+    t11_evidence: Optional[Dict[str, Any]] = None,
+    t13_shallow_ok: bool = False,
+) -> Dict[str, Any]:
+    """SEC-P5: T11 deferred gate + OOS extension cards. Never auto-graduate / certify."""
+    from core.apps.eval.service.security_p5_extensions import security_sec_p5_status
+
+    return security_sec_p5_status(
+        t11_evidence=t11_evidence,
+        t13_shallow_ok=bool(t13_shallow_ok),
+    )
+
+
+def eval_evaluate_t11_deferred_gate(
+    *,
+    evidence: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Evaluate T11 graduate-from-deferred conditions (all-required; default deferred)."""
+    from core.apps.eval.service.security_p5_extensions import evaluate_t11_deferred_gate
+
+    return evaluate_t11_deferred_gate(evidence=evidence)
+
+
+def eval_build_oos_extension_disclosure() -> Dict[str, Any]:
+    """SEC-P5 structured OOS extension cards (model poison / deep MCP / T11)."""
+    from core.apps.eval.service.security_p5_extensions import build_oos_extension_disclosure
+
+    return build_oos_extension_disclosure()
+
+
+def eval_evaluate_deep_supply_chain_boundary(
+    *,
+    t13_shallow_ok: bool = False,
+) -> Dict[str, Any]:
+    """Assert T13 shallow pass ≠ OOS-06 deep supply-chain covered."""
+    from core.apps.eval.service.security_p5_extensions import (
+        evaluate_deep_supply_chain_boundary,
+    )
+
+    return evaluate_deep_supply_chain_boundary(t13_shallow_ok=bool(t13_shallow_ok))
+
+
+def eval_security_cert_prep_status(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    judge_model: str = "eval-judge-model",
+    subject_model: str = "prod-subject-model",
+    security_failure_ids: Optional[List[str]] = None,
+    dual_reviews: Optional[Dict[str, Any]] = None,
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CERT-PREP dashboard. Never flips security_certification / accuracy_claim."""
+    from core.apps.eval.service.security_cert_prep import security_cert_prep_status
+
+    return security_cert_prep_status(
+        by_case=by_case,
+        subject=subject,
+        judge_model=str(judge_model or "eval-judge-model"),
+        subject_model=str(subject_model or "prod-subject-model"),
+        security_failure_ids=security_failure_ids,
+        dual_reviews=dual_reviews,
+        explicit_authorize=bool(explicit_authorize),
+        signoffs=signoffs,
+    )
+
+
+def eval_run_per_family_cert_prep(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    use_seed_annotation_fixture: bool = False,
+) -> Dict[str, Any]:
+    """CERT-PREP per-family L5-candidate vs report_only classification."""
+    from core.apps.eval.service.security_cert_prep import run_per_family_cert_prep
+
+    return run_per_family_cert_prep(
+        by_case=by_case,
+        subject=subject,
+        use_seed_annotation_fixture=bool(use_seed_annotation_fixture),
+    )
+
+
+def eval_rehearse_l5_limited_claim(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    asr_calibration_status: str = "judge_uncalibrated",
+    judge_usable: bool = False,
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """L5 limited-claim rehearsal. security_certification stays false."""
+    from core.apps.eval.service.security_cert_prep import rehearse_l5_limited_claim
+
+    return rehearse_l5_limited_claim(
+        by_case=by_case,
+        subject=subject,
+        asr_calibration_status=str(asr_calibration_status or "judge_uncalibrated"),
+        judge_usable=bool(judge_usable),
+        explicit_authorize=bool(explicit_authorize),
+        signoffs=signoffs,
+    )
+
+
+def eval_security_oos_deep_status(
+    *,
+    probe_results_by_oos: Optional[Dict[str, Any]] = None,
+    t11_evidence: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """OOS deep engineering + research refuse inventory. Never marks OOS covered."""
+    from core.apps.eval.service.security_oos_deep import security_oos_deep_status
+
+    return security_oos_deep_status(
+        probe_results_by_oos=probe_results_by_oos,
+        t11_evidence=t11_evidence,
+    )
+
+
+def eval_run_security_text_live_p1(
+    *,
+    impl_mode: str = "conversational",
+    agent_id: str = "eval.security.p1_1",
+    model: str = "",
+    live: bool = False,
+    owner: str = "eval",
+) -> Dict[str, Any]:
+    """P1-1: text-family security run under locked Agent Subject (create_agent).
+
+    live=False → scripted after create_agent (CI fixture tier).
+    live=True → agent.execute (workspace_execute). Never certification.
+    """
+    import asyncio
+
+    from core.apps.eval.service.security_text_live_p1 import run_text_family_live
+
+    coro = run_text_family_live(
+        impl_mode=impl_mode,
+        agent_id=agent_id,
+        model=model,
+        live=live,
+        owner=owner,
+    )
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            raise RuntimeError("eval_run_security_text_live_p1_requires_await_caller")
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+def eval_security_text_live_p1_status(
+    *,
+    impl_mode: str = "conversational",
+    live: bool = False,
+) -> Dict[str, Any]:
+    """P1-1 status / scripted inventory (Subject-locked; claim locks false)."""
+    from core.apps.eval.service.security_text_live_p1 import security_text_live_p1_status
+
+    return security_text_live_p1_status(impl_mode=impl_mode, live=live)
+
+
+def eval_run_security_tool_retrieval_live_p1(
+    *,
+    impl_mode: str = "conversational",
+    agent_id: str = "eval.security.p1_1.tool_retrieval",
+    model: str = "",
+    live: bool = False,
+    owner: str = "eval",
+    tool_contract: str = "allowlist_v1",
+    retrieval_contract: str = "rag_guard_v1",
+) -> Dict[str, Any]:
+    """P1-1 tool/retrieval families under locked Subject (create_agent).
+
+    Needs AIPLAT_EVAL_P1_1_TOOLS / AIPLAT_EVAL_P1_1_RETRIEVAL or families → unknown.
+    """
+    import asyncio
+
+    from core.apps.eval.service.security_tool_retrieval_live_p1 import (
+        run_tool_retrieval_family_live,
+    )
+
+    coro = run_tool_retrieval_family_live(
+        impl_mode=impl_mode,
+        agent_id=agent_id,
+        model=model,
+        live=live,
+        owner=owner,
+        tool_contract=tool_contract,
+        retrieval_contract=retrieval_contract,
+    )
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            raise RuntimeError("eval_run_security_tool_retrieval_live_p1_requires_await")
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+def eval_security_tool_retrieval_live_p1_status(
+    *,
+    impl_mode: str = "conversational",
+    live: bool = False,
+) -> Dict[str, Any]:
+    """P1-1 tool/retrieval status (claim locks false)."""
+    from core.apps.eval.service.security_tool_retrieval_live_p1 import (
+        security_tool_retrieval_live_p1_status,
+    )
+
+    return security_tool_retrieval_live_p1_status(impl_mode=impl_mode, live=live)
+
+
+def eval_security_p1_2_status(*, path: Optional[str] = None) -> Dict[str, Any]:
+    """P1-2 judge calib session status (dual-review / arbiter; cert=false)."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import security_p1_2_status
+
+    return security_p1_2_status(path=Path(path) if path else None)
+
+
+def eval_record_security_p1_2_pair(
+    *,
+    case_id: str,
+    gold: bool,
+    judge: bool,
+    notes: str = "",
+    path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """P1-2: record gold/judge pair; auto-queue dual review on disagreement."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import (
+        evaluate_p1_2_session,
+        load_session,
+        record_judge_gold_pair,
+        save_session,
+    )
+
+    p = Path(path) if path else None
+    session = load_session(p)
+    record_judge_gold_pair(
+        session, case_id=case_id, gold=gold, judge=judge, notes=notes
+    )
+    save_session(session, p)
+    return evaluate_p1_2_session(session)
+
+
+def eval_submit_security_p1_2_dual_review(
+    *,
+    case_id: str,
+    reviewer: str,
+    slot: str,
+    label: bool,
+    path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """P1-2: submit dual-blind slot a|b|arbiter for a failure case."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import (
+        evaluate_p1_2_session,
+        load_session,
+        save_session,
+        submit_dual_review,
+    )
+
+    p = Path(path) if path else None
+    session = load_session(p)
+    submit_dual_review(
+        session, case_id=case_id, reviewer=reviewer, slot=slot, label=label
+    )
+    save_session(session, p)
+    return evaluate_p1_2_session(session)
+
+
+def eval_run_security_dynamic_p13(
+    *,
+    base_url: str = "",
+    cross_tenant_repeats: int = 2,
+) -> Dict[str, Any]:
+    """P1-3: cross-tenant / injection ASR / output-encoding dynamic probes.
+
+    Uses real HTTP against base_url (or AIPLAT_DYNAMIC_SECURITY_BASE).
+    Injection ASR is baseline-only; never certification.
+    """
+    from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
+
+    return run_security_dynamic_p13(
+        base_url=base_url,
+        cross_tenant_repeats=cross_tenant_repeats,
+    )
+
+
+def eval_security_dynamic_p13_status(
+    *,
+    base_url: str = "",
+) -> Dict[str, Any]:
+    """P1-3 inventory status (same harness; claim locks false)."""
+    from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
+
+    return run_security_dynamic_p13(base_url=base_url, cross_tenant_repeats=1)
+
+
+def eval_evaluate_oos_engineering_pack(
+    oos_id: str,
+    *,
+    probe_results: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Evaluate one OOS engineering fixture pack (covered stays false)."""
+    from core.apps.eval.service.security_oos_deep import evaluate_oos_engineering_pack
+
+    return evaluate_oos_engineering_pack(str(oos_id), probe_results=probe_results)
+
+
+def eval_build_research_refuse_inventory() -> Dict[str, Any]:
+    """OOS-01/02/03 research refuse-to-test cards (never text-ASR covered)."""
+    from core.apps.eval.service.security_oos_deep import build_research_refuse_inventory
+
+    return build_research_refuse_inventory()
+
+
+def eval_load_p5_extension_gates() -> Dict[str, Any]:
+    """Load SEC-P5 extension gates seed."""
+    from core.apps.eval.service.security_p5_extensions import load_p5_extension_gates
+
+    return load_p5_extension_gates()
+
+
+def eval_run_l3_pack_fixtures(
+    *,
+    pack_filter: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Run L3 S-Tool/S-RAG fixture tool_trace cases (mock only)."""
+    from core.apps.eval.service.security_l3_packs import run_l3_pack_fixtures
+
+    return run_l3_pack_fixtures(pack_filter=pack_filter)
+
+
+def eval_evaluate_a7_l3_parity() -> Dict[str, Any]:
+    """A7/L1 must not host T05-exec/T06/T07/T08; L3 pack must cover them."""
+    from core.apps.eval.service.security_l3_packs import evaluate_a7_l3_parity
+
+    return evaluate_a7_l3_parity()
+
+
+def eval_load_l3_s_tool_s_rag_pack() -> Dict[str, Any]:
+    """Load SEC-P3 L3 S-Tool/S-RAG fixture pack seed."""
+    from core.apps.eval.service.security_l3_packs import load_l3_s_tool_s_rag_pack
+
+    return load_l3_s_tool_s_rag_pack()
+
+
+def eval_evaluate_l3_case_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
+    """Score one L3 fixture case via tool_trace side-effect monitor."""
+    from core.apps.eval.service.security_l3_packs import evaluate_l3_case_fixture
+
+    return evaluate_l3_case_fixture(case)
+
+
+def eval_evaluate_isolation_status(
+    *,
+    admit: Optional[Dict[str, Any]] = None,
+    probe_run: Optional[Dict[str, Any]] = None,
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """Derive isolation_admitted|probed|covered. admit alone never covered."""
+    from core.apps.eval.service.isolation_t12 import evaluate_isolation_status
+
+    return evaluate_isolation_status(
+        admit=admit,
+        probe_run=probe_run,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_build_security_family_report(
+    by_case: Optional[Dict[str, Any]] = None,
+    *,
+    eval_layer: str = "L1",
+    pack_id: str = "agent.safety.l1",
+    subject: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Per-threat-family security report skeleton; macro ASR not_for_claim."""
+    from core.apps.eval.service.security_family_report import build_security_family_report
+
+    return build_security_family_report(
+        by_case=by_case,
+        subject=subject,
+        pack_id=str(pack_id or "agent.safety.l1"),
+        eval_layer=str(eval_layer or "L1"),
+    )
+
+
+def eval_build_mode_intersection_rank(
+    mode_columns: Dict[str, Any],
+    *,
+    parity: Optional[Dict[str, Any]] = None,
+    signoff: Optional[Dict[str, Any]] = None,
+    min_n_per_capability: int = 5,
+    track_a_complete: bool = True,
+) -> Dict[str, Any]:
+    """M3 Track B: intersection Pareto/CI report; rank_claim never auto-emitted."""
+    from core.apps.eval.service.mode_intersection_rank import build_mode_intersection_rank
+
+    return build_mode_intersection_rank(
+        mode_columns,
+        parity=parity,
+        signoff=signoff,
+        min_n_per_capability=int(min_n_per_capability or 5),
+        track_a_complete=bool(track_a_complete),
+    )
+
+
+def eval_evaluate_mode_rank_gate(
+    mode_columns: Dict[str, Any],
+    *,
+    parity: Optional[Dict[str, Any]] = None,
+    signoff: Optional[Dict[str, Any]] = None,
+    min_n_per_capability: int = 5,
+    track_a_complete: bool = True,
+) -> Dict[str, Any]:
+    """M3 rank gate checklist (fail closed for rank_claim)."""
+    from core.apps.eval.service.mode_intersection_rank import evaluate_rank_gate
+
+    return evaluate_rank_gate(
+        mode_columns=mode_columns,
+        parity=parity,
+        signoff=signoff,
+        min_n_per_capability=int(min_n_per_capability or 5),
+        track_a_complete=bool(track_a_complete),
+    )
+
+
+def eval_estimate_m2_deferred_modes(
+    *,
+    impl_source: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """M2: multi_agent/pipeline/operator estimate (runtime_parts deps; no live)."""
+    from core.apps.eval.service.mode_deferred_estimate import estimate_m2_deferred_modes
+
+    return estimate_m2_deferred_modes(impl_source=impl_source)
+
+
+def eval_validate_m2_runtime_parts(
+    parts: list,
+    *,
+    mode: str,
+) -> Dict[str, Any]:
+    """M2: validate runtime_parts shape for a deferred mode."""
+    from core.apps.eval.service.mode_deferred_estimate import validate_runtime_parts
+
+    return validate_runtime_parts(parts, mode=mode)
+
+
+def eval_load_mock_tool_catalog() -> Dict[str, Any]:
+    """Load + validate default mock tool catalog seed (T0)."""
+    from core.apps.eval.service.mock_tools import load_mock_tool_catalog
+
+    return load_mock_tool_catalog()
+
+
+def eval_run_tool_fixture_suite(
+    capability_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """T1–T3: run mock-tool / long_context fixture suite (claim=false; v1.1 in-scope)."""
+    from core.apps.eval.service.tool_capability_fixtures import run_tool_fixture_suite
+
+    return run_tool_fixture_suite(capability_id=capability_id)
+
+
+def eval_run_session_fixture_suite() -> Dict[str, Any]:
+    """T2: run A8 multi_turn_memory session fixture suite (claim=false; v1.1 in-scope)."""
+    from core.apps.eval.service.tool_capability_fixtures import run_session_fixture_suite
+
+    return run_session_fixture_suite()
+
+
+def eval_invoke_mock_tools(
+    tool_calls: Optional[list] = None,
+    *,
+    case: Optional[Dict[str, Any]] = None,
+    fail_mode: Optional[str] = None,
+) -> Dict[str, Any]:
+    """T1: invoke scripted tool_calls against mock catalog."""
+    from core.apps.eval.service.mock_tools import invoke_mock_tools
+
+    return invoke_mock_tools(
+        tool_calls or [],
+        case=case or {},
+        fail_mode=fail_mode,
+    )
+
+
+def eval_generate_long_context_case(
+    *,
+    case_id: str = "",
+    must_retain_claims: Optional[list] = None,
+    tier: str = "ci_short",
+) -> Dict[str, Any]:
+    """T3: build a long_context fixture case (claim closed)."""
+    from core.apps.eval.service.long_context_generator import generate_long_context_case
+
+    return generate_long_context_case(
+        case_id=case_id or "agent.long_context.generated",
+        must_retain_claims=list(must_retain_claims or ["CLAIM-1"]),
+        tier=tier,
+    )
+
+
+def eval_judge_long_context(
+    case: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """T3: A9 must_retain_claims judge (claim closed)."""
+    from core.apps.eval.service.long_context_generator import judge_long_context
+
+    return judge_long_context(case or {}, result or {})
+
+
+def eval_agent_capability_catalog() -> list:
+    """Agent SubjectAdapter capability catalog (canonical + v1 in_scope flags)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("agent").capability_catalog()
+
+
+def eval_validate_agent_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """AgentSubjectAdapter.validate_case — purpose + capabilities mechanical gate."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("agent").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "agent"}
+
+
+def eval_validate_agent_capability_bank() -> Dict[str, Any]:
+    """P1: validate curated agent.capability Regression seed bank (draft)."""
+    from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
+
+    return validate_agent_capability_bank()
+
+
+def eval_list_agent_capability_cases() -> list:
+    """P1: list agent.capability curated cases (canonical caps + test_purpose)."""
+    from core.apps.eval.service.capability_case_bank import build_agent_capability_cases
+
+    return build_agent_capability_cases()
+
+
+def eval_agent_regression_profile() -> Dict[str, Any]:
+    """P1: agent.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.capability_case_bank import agent_regression_profile
+
+    return agent_regression_profile()
+
+
+def eval_list_suite_profiles() -> list:
+    """P4: list smoke/regression/benchmark Suite Profiles."""
+    from core.apps.eval.service.capability_case_bank import list_suite_profiles
+
+    return list_suite_profiles()
+
+
+def eval_get_suite_profile(profile_id: str = "") -> Dict[str, Any]:
+    """P4: resolve built-in Suite Profile by id."""
+    from core.apps.eval.service.capability_case_bank import get_suite_profile
+
+    return get_suite_profile(profile_id)
+
+
+def eval_benchmark_readiness(
+    *,
+    min_per_capability: Optional[int] = None,
+    compile_plan: bool = True,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P4: benchmark coverage + holdout compile disclosure (claim closed).
+
+    Default uses Profile quotas (v1.1 heterogeneous floors). Pass a flat
+    ``min_per_capability`` only for uniform-floor audits.
+    """
+    from core.apps.eval.service.capability_p4_gate import benchmark_readiness_report
+
+    return benchmark_readiness_report(
+        cases=cases,
+        min_per_capability=min_per_capability,
+        compile_plan=compile_plan,
+    )
+
+
+def eval_judge_calibration_gate(
+    *,
+    workspace_id: str = "",
+    ticket_id: str = "",
+    threshold: float = 0.8,
+    caller_workspace_id: str = "",
+    ratings: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P4: engineering judge agreement gate — always report_only / claim=false."""
+    from core.apps.eval.service.capability_p4_gate import (
+        evaluate_judge_calibration_gate,
+        judge_calibration_gate_for_ticket,
+    )
+
+    if ticket_id and workspace_id:
+        return judge_calibration_gate_for_ticket(
+            workspace_id=workspace_id,
+            ticket_id=ticket_id,
+            threshold=threshold,
+            caller_workspace_id=caller_workspace_id or workspace_id,
+        )
+    return evaluate_judge_calibration_gate(
+        ratings=ratings,
+        threshold=threshold,
+    )
+
+
+def eval_open_capability_judge_calibration(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    sample_n: int = 8,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P4: open judge calibration ticket against capability bank sample."""
+    from core.apps.eval.service.capability_p4_gate import open_capability_judge_calibration
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "sample_n": sample_n,
+        "notes": notes,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return open_capability_judge_calibration(**kwargs)
+
+
+def eval_promote_agent_capability_bank(
+    *,
+    workspace_id: str,
+    reviewer: str = "",
+    frozen_by: str = "",
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1 closeout: validate → draft → review → freeze agent.capability (claim=false)."""
+    from core.apps.eval.service.capability_case_bank import promote_agent_capability_bank
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "reviewer": reviewer,
+        "frozen_by": frozen_by,
+        "caller_workspace_id": caller_workspace_id,
+        "notes": notes,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return promote_agent_capability_bank(**kwargs)
+
+
+def eval_compile_plan_from_suite_profile(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    profile_id: str = "",
+    cases: Optional[list] = None,
+    object_id: str = "agent.capability.target",
+    object_version: str = "0.1.0",
+) -> Dict[str, Any]:
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
+    from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
+
+    return compile_plan_from_suite_profile(
+        profile=profile,
+        profile_id=profile_id,
+        cases=cases,
+        object_id=object_id,
+        object_version=object_version,
+    )
+
+
+async def eval_run_suite_profile_exam(
+    *,
+    profile_id: str = "agent.regression.v1",
+    profile: Optional[Dict[str, Any]] = None,
+    live: bool = False,
+    model: str = "",
+    run_key: str = "",
+    object_id: str = "agent.capability.target",
+    object_version: str = "0.1.0",
+    max_cases: int = 0,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
+    from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
+
+    return await run_suite_profile_exam(
+        profile_id=profile_id,
+        profile=profile,
+        cases=cases,
+        live=bool(live),
+        model=model,
+        run_key=run_key,
+        object_id=object_id,
+        object_version=object_version,
+        max_cases=max_cases,
+    )
+
+
+def eval_capability_heatmap(
+    *,
+    profile_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    exam: Optional[Dict[str, Any]] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """§8.4 capability coverage heatmap (claim closed)."""
+    from core.apps.eval.service.suite_profile_report import build_capability_heatmap
+
+    return build_capability_heatmap(
+        cases=cases,
+        exam=exam,
+        profile=profile,
+        profile_id=profile_id,
+    )
+
+
+def eval_suite_profile_report(
+    exam: Optional[Dict[str, Any]] = None,
+    *,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Compose heatmap + §11 disclosure from an exam payload."""
+    from core.apps.eval.service.suite_profile_report import build_suite_profile_report
+
+    return build_suite_profile_report(exam or {}, cases=cases)
+
+
+def eval_certification_readiness(
+    *,
+    profile_id: str = "agent.benchmark.v1",
+    profile: Optional[Dict[str, Any]] = None,
+    pack_kind: str = "",
+    pack_status: str = "",
+    judge_agreement: Optional[Dict[str, Any]] = None,
+    judge_threshold: float = 0.8,
+    compile_plan: bool = True,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P5 pre-gate: §8.5 relative completeness; certification_eligible always false."""
+    from core.apps.eval.service.capability_cert_readiness import (
+        evaluate_certification_readiness,
+    )
+
+    return evaluate_certification_readiness(
+        profile_id=profile_id,
+        profile=profile,
+        cases=cases,
+        pack_kind=pack_kind,
+        pack_status=pack_status,
+        judge_agreement=judge_agreement,
+        judge_threshold=judge_threshold,
+        compile_plan=compile_plan,
+    )
+
+
+async def eval_run_suite_profile_exam(
+    *,
+    profile_id: str = "agent.regression.v1",
+    profile: Optional[Dict[str, Any]] = None,
+    live: bool = False,
+    model: str = "",
+    run_key: str = "",
+    object_id: str = "agent.capability.target",
+    object_version: str = "0.1.0",
+    max_cases: int = 0,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Post-P4: execute only Profile sample_manifest (claim closed)."""
+    from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
+
+    return await run_suite_profile_exam(
+        profile_id=profile_id,
+        profile=profile,
+        cases=cases,
+        live=bool(live),
+        model=model,
+        run_key=run_key,
+        object_id=object_id,
+        object_version=object_version,
+        max_cases=max_cases,
+    )
+
+
+def eval_analyze_capability_coverage(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: capability have/need/gap inventory (claim closed)."""
+    from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
+
+    return analyze_capability_coverage(
+        cases,
+        profile=profile,
+        min_per_capability=min_per_capability,
+    )
+
+
+def eval_generate_coverage_fill_candidates(
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    method: str = "mutation",
+    seed: str = "7",
+    ops: Optional[list] = None,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: draft fill candidates via factory mutation/template (not gold)."""
+    from core.apps.eval.service.capability_coverage_fill import (
+        generate_coverage_fill_candidates,
+    )
+
+    return generate_coverage_fill_candidates(
+        cases=cases,
+        profile=profile,
+        min_per_capability=min_per_capability,
+        method=method,
+        seed=seed,
+        ops=ops,
+    )
+
+
+def eval_fill_capability_coverage(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    min_per_capability: Optional[int] = None,
+    method: str = "mutation",
+    seed: str = "7",
+    ops: Optional[list] = None,
+    apply: bool = False,
+    cases: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P3: gap analyze → candidates → optional expand (claim_eligible=false)."""
+    from core.apps.eval.service.capability_coverage_fill import fill_capability_coverage
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id,
+        "profile": profile,
+        "min_per_capability": min_per_capability,
+        "method": method,
+        "seed": seed,
+        "ops": ops,
+        "apply": apply,
+        "cases": cases,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return fill_capability_coverage(**kwargs)
+
+
+def eval_list_seed_capability_cases(*, capability_id: str = "") -> Dict[str, Any]:
+    """Browse repo seed cases (read-only)."""
+    from core.apps.eval.service.capability_case_editor import list_seed_capability_cases
+
+    return list_seed_capability_cases(capability_id=capability_id)
+
+
+def eval_get_seed_capability_case(*, case_id: str) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import get_seed_capability_case
+
+    return get_seed_capability_case(case_id=case_id)
+
+
+def eval_list_workspace_pack_cases(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    capability_id: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import list_workspace_pack_cases
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+        "capability_id": capability_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return list_workspace_pack_cases(**kwargs)
+
+
+def eval_get_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import get_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case_id": case_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return get_workspace_pack_case(**kwargs)
+
+
+def eval_upsert_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case: Dict[str, Any],
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import upsert_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case": case,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return upsert_workspace_pack_case(**kwargs)
+
+
+def eval_delete_workspace_pack_case(
+    *,
+    workspace_id: str,
+    case_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import delete_workspace_pack_case
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "case_id": case_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return delete_workspace_pack_case(**kwargs)
+
+
+def eval_open_capability_bank_editor(
+    *,
+    workspace_id: str,
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    bump_if_frozen: bool = True,
+) -> Dict[str, Any]:
+    from core.apps.eval.service.capability_case_editor import open_capability_bank_editor
+
+    kwargs: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "caller_workspace_id": caller_workspace_id or workspace_id,
+        "bump_if_frozen": bump_if_frozen,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return open_capability_bank_editor(**kwargs)
+
+
+def eval_publish_draft_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    cases: Optional[list] = None,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    object_types: Optional[list] = None,
+    kind: str = "curated",
+) -> Dict[str, Any]:
+    """P1.0 Case Factory: template/variants or raw cases → workspace draft pack.
+
+    claim_eligible=false; cannot publish frozen. No accuracy_claim.
+    """
+    from core.apps.eval.service.case_factory import (
+        generate_cases_from_template,
+        publish_draft_workspace_pack,
+    )
+
+    if cases is not None:
+        built = list(cases)
+    else:
+        built = generate_cases_from_template(
+            dict(template or {}),
+            variants=list(variants or [{}]),
+        )
+    return publish_draft_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        cases=built,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        object_types=object_types,
+        kind=kind,
+    )
+
+
+def eval_enqueue_case_pack_review(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1.1: draft|rejected → in_review. claim_eligible stays false."""
+    from core.apps.eval.service.case_review_queue import enqueue_pack_for_review
+
+    return enqueue_pack_for_review(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        notes=notes,
+    )
+
+
+def eval_list_case_pack_review_queue(
+    *,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    statuses: Optional[list] = None,
+) -> Dict[str, Any]:
+    """P1.1: list workspace packs in review queue statuses."""
+    from core.apps.eval.service.case_review_queue import list_review_queue
+
+    return list_review_queue(
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        statuses=statuses,
+    )
+
+
+def eval_submit_case_pack_review(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    decision: str,
+    reviewer: str = "",
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.1: approve→reviewed / reject→rejected. Never freezes or opens claim."""
+    from core.apps.eval.service.case_review_queue import submit_review_decision
+
+    return submit_review_decision(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        decision=decision,
+        reviewer=reviewer,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_freeze_workspace_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+    frozen_by: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """P1.2: reviewed → kind=frozen. claim_eligible stays false; no accuracy_claim."""
+    from core.apps.eval.service.case_freeze import freeze_workspace_pack
+
+    return freeze_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+        frozen_by=frozen_by,
+        notes=notes,
+    )
+
+
+def eval_expand_draft_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    cases: Optional[list] = None,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    from core.apps.eval.service.case_pack_ops import expand_draft_workspace_pack
+
+    return expand_draft_workspace_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        cases=cases,
+        template=template,
+        variants=variants,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_bump_case_pack_version(
+    *,
+    pack_id: str,
+    from_version: str,
+    workspace_id: str,
+    to_version: str = "",
+    extra_cases: Optional[list] = None,
+    template: Optional[Dict[str, Any]] = None,
+    variants: Optional[list] = None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: version++ → new draft curated (frozen source untouched)."""
+    from core.apps.eval.service.case_pack_ops import bump_workspace_pack_version
+
+    return bump_workspace_pack_version(
+        pack_id=pack_id,
+        from_version=from_version,
+        workspace_id=workspace_id,
+        to_version=to_version,
+        extra_cases=extra_cases,
+        template=template,
+        variants=variants,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_summarize_case_pack_coverage(
+    *,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P1.4: workspace pack coverage inventory (not an accuracy claim)."""
+    from core.apps.eval.service.case_pack_ops import summarize_workspace_pack_coverage
+
+    return summarize_workspace_pack_coverage(
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_mark_case_pack_holdout(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    case_ids: Optional[list] = None,
+    ratio: float = 0.0,
+    seed: str = "0",
+    holdout: bool = True,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: mark holdout flags on non-frozen pack (rehash)."""
+    from core.apps.eval.service.case_pack_ops import mark_pack_holdout
+
+    return mark_pack_holdout(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        case_ids=case_ids,
+        ratio=ratio,
+        seed=seed,
+        holdout=holdout,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_publish_mutation_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    seed_cases: list,
+    ops: Optional[list] = None,
+    seed: str = "0",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_mutation_draft_pack
+
+    return build_mutation_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        seed_cases=seed_cases,
+        ops=ops,
+        seed=seed,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_publish_trace_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    traces: list,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_trace_draft_pack
+
+    return build_trace_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        traces=traces,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+async def eval_publish_llm_candidate_case_pack(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    theme: str,
+    n: int = 3,
+    category: str = "normal",
+    seed: str = "0",
+    model_name: str = "",
+    dry: bool = False,
+    llm_generate_fn=None,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import build_llm_candidate_draft_pack
+
+    return await build_llm_candidate_draft_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        theme=theme,
+        n=n,
+        category=category,
+        seed=seed,
+        model_name=model_name,
+        dry=dry,
+        llm_generate_fn=llm_generate_fn,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_propose_case_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    persist: bool = False,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.0: heuristic difficulty labels (not calibrated)."""
+    from core.apps.eval.service.case_pack_ops import propose_pack_difficulty
+
+    return propose_pack_difficulty(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        persist=persist,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_open_judge_calibration_ticket(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    sample_case_ids: Optional[list] = None,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: persist judge calibration ticket — does not unlock claims."""
+    from core.apps.eval.service.case_pack_ops import (
+        open_judge_calibration_ticket_for_pack,
+    )
+
+    return open_judge_calibration_ticket_for_pack(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        sample_case_ids=sample_case_ids,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_calibrate_case_pack_difficulty(
+    *,
+    pack_id: str,
+    version: str,
+    workspace_id: str,
+    labels: list,
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: human difficulty labels → pack (engineering calibrated; claim closed)."""
+    from core.apps.eval.service.case_pack_ops import calibrate_pack_difficulty
+
+    return calibrate_pack_difficulty(
+        pack_id=pack_id,
+        version=version,
+        workspace_id=workspace_id,
+        labels=labels,
+        rater=rater,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_record_judge_calibration_ratings(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    ratings: list,
+    rater: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: append judge ratings + agreement (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import (
+        record_judge_calibration_ratings_for_pack,
+    )
+
+    return record_judge_calibration_ratings_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
+        ratings=ratings,
+        rater=rater,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_close_judge_calibration_ticket(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    notes: str = "",
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: close judge ticket after ratings (claim closed)."""
+    from core.apps.eval.service.case_pack_ops import (
+        close_judge_calibration_ticket_for_pack,
+    )
+
+    return close_judge_calibration_ticket_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
+        notes=notes,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
+def eval_get_judge_calibration_ticket(
+    *,
+    workspace_id: str,
+    ticket_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """P3.1: load persisted judge ticket."""
+    from core.apps.eval.service.case_pack_ops import (
+        get_judge_calibration_ticket_for_pack,
+    )
+
+    return get_judge_calibration_ticket_for_pack(
+        workspace_id=workspace_id,
+        ticket_id=ticket_id,
+        caller_workspace_id=caller_workspace_id or workspace_id,
+    )
+
+
 def eval_compile_evaluation_plan(
     *,
     agent_id: str = "",
@@ -6705,6 +8779,13 @@ def eval_g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     from core.apps.eval.service.g2b import g2b_pack_status
 
     return g2b_pack_status(tenant_id=tenant_id)
+
+
+def eval_g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """G2b distance-to-L5 disclosure; claims_gate default authorize=false; accuracy_claim false."""
+    from core.apps.eval.service.g2b import g2b_l5_gap_disclosure
+
+    return g2b_l5_gap_disclosure(tenant_id=tenant_id)
 
 
 def eval_preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:

@@ -1,0 +1,18 @@
+{
+  "schema": "eval.security_l3_exec_deferred.v1",
+  "version": "1.1.0",
+  "claim_eligible": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "eval_layer": "L3",
+  "status": "superseded_by_sec_p3",
+  "honesty": "SEC-P0a placeholder superseded. Active pack: l3_s_tool_s_rag.v1.json (fixture/mock only).",
+  "threat_families": ["T05-exec", "T06", "T07", "T08"],
+  "required_oracle": ["tool_trace", "tool_side_effect_monitor"],
+  "active_pack": "l3_s_tool_s_rag.v1.json",
+  "cases": [],
+  "notes": [
+    "Do not load via cases/*.json L1 case bank.",
+    "SEC-P3 S-Tool/S-RAG fixtures live in l3_s_tool_s_rag.v1.json."
+  ]
+}
