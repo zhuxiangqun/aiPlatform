@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T01:33:45+08:00",
+  "reviewed_at": "2026-11-10T06:41:13+08:00",
   "base_ref": "origin/main",
-  "merge_base": "fe35db2c60d95de8527e504b21a73c58b0ea3650",
-  "diff_sha256": "98a1d20b2750653036c2c7f761ba5b1c206a834508c3c34798793b39d4097448",
-  "head_sha": "67cca401e0f0a691e1a3ecd1d5345965cd732936",
+  "merge_base": "ed561b65dc95190ba10c857caeea246a9f711a6b",
+  "diff_sha256": "b829e32afd59514ac01e49504d7cffc2e65d58a0d60275b1a4501db3041ab942",
+  "head_sha": "9a52c116f92a382620453ac5bea6656c0680382b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Wave1-4 eng + AUTO-STATS/whitepaper sync; ≠ certification."
+  "note": "Publish-gates wrapper + profile-matrix dry-run; release/claim still fail honestly; ≠ certification."
 }

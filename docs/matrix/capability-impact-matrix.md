@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2420 capabilities (caps_count) | 2420 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2421 capabilities (caps_count) | 2421 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -36,7 +36,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| management-and-quality | §二十五 管理 & 质量 | 118 | 诊断仪表盘 |
+| management-and-quality | §二十五 管理 & 质量 | 119 | 诊断仪表盘 |
 | observability | §八 可观测性 | 23 | 诊断仪表盘 |
 
 ### aiPlat-management/frontend/src/pages/Infra
@@ -232,7 +232,7 @@
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
 | arena-and-scheduling | §二十 Arena & 调度 | 6 | Pipeline routing_mode dispatch |
-| management-and-quality | §二十五 管理 & 质量 | 118 | Pipeline 质量评分 |
+| management-and-quality | §二十五 管理 & 质量 | 119 | Pipeline 质量评分 |
 | orchestration-layer | §二十六 编排层 | 5 | Pipeline → Swarm/Debate/Roundtable/MoA dispatch |
 | orchestration-system | §二十四 编排系统 | 4 | Pipeline 编排 |
 | agent-system | §五 Agent 系统 | 328 | Pipeline 调度 Agent |
@@ -541,7 +541,7 @@
 - **core/server.py** — DiscoveryListener 启动
 - **aiPlat-platform/apps/fde/api/fde_dashboard_v2.py** — _get_goal_decomposition_stats
 
-### §二十五 管理 & 质量 (118 caps)
+### §二十五 管理 & 质量 (119 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-management/frontend/src/pages/Diagnostics** — 诊断仪表盘
