@@ -1,689 +1,351 @@
 # aiPlat 安全质量改进方案
 
-> **版本**：v1.0 · 2026-11-09  
+> **版本**：v2.2 · 2026-11-09（可执行修订：S7 分层 / pilot 退出 / Subject / canonical 签名）  
 > **类型**：安全改进计划 / 执行方案  
-> **依据**：[aiPlat 平台与成果物安全质量分析报告](./aiplat-security-quality-report-2026-11-09.md)  
-> **状态**：提案，不实施；落地须另开变更单  
-> **诚实锁**：`security_certification=false`；`accuracy_claim=false`；本方案不承诺“认证通过”，只承诺“可验证的安全质量提升”。
+> **依据**：现行 [`v3.1 安全质量报告`](./aiplat-security-quality-report-2026-11-09-v3.md)  
+> **核心命题**：v3 已有**评测仪器**；下一步是把仪器变成**可验证证据**——**不是再堆安全功能**  
+> **状态**：**批准执行**（附 §0.5 条件 + §0.6 四条技术修订）  
+> **评审**：9.5/10 — 结构已可执行；本版修层级/硬定义矛盾  
+> **诚实锁**：`security_certification=false`；`accuracy_claim=false`；本方案不承诺认证通过
 
 ---
 
 ## 0. 执行摘要
 
-### 0.1 目标
+### 0.1 一句话
 
-把 aiPlat 从：
+> **这版已经可执行；把「P0 做真逃逸」这个层级错误修掉，并给 pilot / Subject / 签名补上硬定义后，即可开变更单。**
 
-> **“有安全工程控制、以自测为主”**
+### 0.2 目标状态（相对 v3）
 
-推进到：
-
-> **“平台核心控制可独立验证；成果物有逐应用安全证据；对外声明范围可审计。”**
-
-### 0.2 四个结果
-
-1. **平台**：核心控制从 L1–L2 提升到 L3（独立验证）候选；
-2. **成果物**：从“安全感知生成”提升到“有安全契约、有测试、有证据”；
-3. **运行时**：从 Docker/子进程提升到可验证的强隔离路径；
-4. **治理**：从自评清单提升到控制矩阵 + 证据 + 声明边界。
-
-### 0.3 五个最优先动作
-
-1. 生产 PolicyGate 默认 `ask/closed`，禁止 fail-open；
-2. 生成物安全 manifest + 发布门；
-3. 生成代码强制 SAST/密钥/依赖/authz 测试；
-4. Linux/KVM microVM 逃逸探针；
-5. 外部渗透测试 + 独立红队立项。
-
-### 0.4 不做
-
-- 不把“S1 25 条”当安全认证；
-- 不用“自动扫描通过”代替人工红队；
-- 不在无 microVM 证据时宣称隔离；
-- 不让 Pi 导出物默认继承平台安全声明；
-- 不用单一“安全分”对外认证。
-
----
-
-## 1. 现状与根因
-
-### 1.1 现状摘要
-
-| 对象 | 当前 | 主要问题 |
-|---|---|---|
-| 平台 | L1–L2，少量自动扫描 | 无独立验证/认证；部分默认 open |
-| 身份/权限 | 较强 | 租户隔离待核实；旁路可绕过 |
-| 数据/密钥 | 较强 | retention/删除/DLP 弱 |
-| Prompt/模型 | 基础 | 正则注入；系统提示/投毒弱 |
-| 工具/Agent | 有审批/风险类 | 沙箱弱；记忆/多 Agent 弱 |
-| 运行时 | Docker/子进程 | microVM 未实测 |
-| 供应链 | 扫描/签名 | 无 SBOM/证明链 |
-| 成果物 | 有 conformance/autoreview | 无逐应用威胁模型/验收 |
-
-### 1.2 根因
-
-1. **平台中心化**：安全能力主要在平台横切，成果物自身安全契约弱；
-2. **缺少威胁模型**：平台级有，应用级没有；
-3. **缺少证据门**：实现 ≠ 验证 ≠ 认证；
-4. **fail-open 遗留**：生产配置未强制 closed；
-5. **隔离未证明**：admit ≠ escape test；
-6. **供应链未闭环**：签名有，SBOM/证明/撤销弱；
-7. **红队/认证不足**：自动扫描多，独立验证少。
-
----
-
-## 2. 目标状态与原则
-
-### 2.1 12 个月目标状态
-
-| 维度 | 目标 |
+| 从（v3） | 到（本方案验收后） |
 |---|---|
-| 治理 | 每个核心系统有 threat model + 控制矩阵 + owner |
-| 身份/权限 | 生产 fail-closed；租户/权限回归测试 |
-| 数据 | 数据分类、retention、删除、导出可审计 |
-| Prompt/模型 | 注入对抗集 + 系统提示保护 + judge 校准 |
-| 工具/Agent | 工具 allowlist、审批、记忆/多 Agent 测试 |
-| 运行时 | Linux/KVM microVM + 逃逸探针 |
-| 供应链 | SBOM + 签名 + 证明 + MCP allowlist |
-| 成果物 | 安全 manifest + SAST/DAST/authz 门 |
-| 保证 | 外部渗透 + 独立红队；认证可选 |
-| 声明 | 范围限定、证据绑定、可撤回 |
+| 有控制代码 + 84 单测 + SEC 仪器 | attack-sim **HTTP 语义**可信；生产 fail-closed **可证明拒绝** |
+| fixture / guest_sim / admit | 有环境才 live；无环境标 `unknown`；Subject=Agent 组合 |
+| 生成链路有检查模板 | manifest **canonical hash + 可验证签名**；authz pilot 有退出条件 |
+| Pi 默认可被误解为平台级安全 | **导出器自动生成**丢失控制披露 |
+| 无基本 IR | P0 联系人/止损/回滚；P1 演练；P2 正式披露/认证 |
 
-### 2.2 原则
+### 0.3 优先级总览
 
-1. **shared responsibility**：平台护栏 ≠ 成果物安全；
-2. **secure by default**：默认拒绝、默认最小权限；
-3. **fail closed**：安全基础设施故障时不放行；
-4. **evidence over claims**：每个结论有证据；
-5. **threat-model driven**：先建模，再测试；
-6. **verify, don't trust**：不信任生成物/工具/模型输出；
-7. **no security theater**：不做无法验证的“认证按钮”。
+| 档 | 项 | 不做的后果 |
+|---|---|---|
+| **P0** | P0-1（HTTP only）…4 + P0-IR + P0-3a | 后续皆假绿 |
+| **30–60** | P0-3b pilot + P1 文本族（Subject 锁定）等 | 仪器停在 fixture |
+| **60–90** | 工具族 live、**P1-4 真逃逸**、SBOM、RFP | 无隔离与外部入口 |
+| **90+** | 红队、认证、多 Agent 深度 | 无外部保证 |
+
+### 0.4 进度快照（相对 v3.1）
+
+| 工作项 | 状态 |
+|---|---|
+| SEC / CERT-PREP / OOS 评测仪器 | **已落地（工程）** — **不再**以加 fixture 当成绩 |
+| P0-1 attack-sim（HTTP 语义） | **已修** — 不可达 FAIL+exit1；S7=HTTP 401 only；`scripts/tests/test_security_attack_sim.py` |
+| P0-2 fail-closed 灰度 | **已落地（代码）** — profile 默认 closed/ask；open 须 UNTIL；hard-floor 到期恢复；健康漂移检查。**生产 env 审计/灰度切流仍待 Ops** |
+| P0-3a manifest + 扫描门 | **已落地** — `artifact_security_manifest.py`；deploy 接线；prod/staging 强制 |
+| P0-3b authz pilot | **已落地（工程）** — 模板+账本+退出条件+API；**真人样本跑分与 Owner 批准仍待执行** |
+| P0-4 Pi 自动披露 | **已落地** — `write_pi_security_disclosure` |
+| P0-IR 基本止损 | **已落地（文档+SoT）** — runbook + `security/ir/contacts*.yaml`；**真人联系人仍待填入 local** |
+| P1-1 文本族 live | **已落地（工程）** — Subject 锁定 + 环境矩阵 + 证据卡；scripted CI；**真 live 模型跑分仍待** |
+| P1-1 工具/检索族 | **已落地（工程）** — `security_tool_retrieval_live_p1`：T05-exec/T06/T07；契约强制；无 `AIPLAT_EVAL_P1_1_TOOLS/RETRIEVAL`→unknown；**真工具面 live 仍待** |
+| P1-2 judge 校准起步 | **已落地（工程）** — `security_p1_judge_session` 会话持久化 + 双盲 A/B + 仲裁；失败全量人审门；**真人标定样本仍待** |
+| P1-3 跨租户/注入动态 | **已落地（工程）** — `security_dynamic_p13`：跨租户 100% 拒绝门 + 注入基线 ASR + 输出编码；transport 可注入；**对真实 staging/prod 黑盒跑分仍待** |
+| P1-IR 桌面演练 | **已落地（剧本）** — `reports/security/P1-IR-tabletop-drill.md`；**真人推演与记分仍待**（联系人 TBD 时禁标 pass） |
+| P1-4 真逃逸（原误放 P0-1 S7） | **已落地（工程）** — `security_p1_4_kvm_escape`：guest_boot 门 + 五类探针 + GuestChannel；HTTP≠escape；最多 probed；**真 KVM guest 通道与人审 covered 仍待** |
+| P2-1 SBOM + 签名证明链 | **已落地（工程）** — `artifact_sbom_attest`：CycloneDX-lite + digest 入 manifest；MCP/插件 allowlist；HMAC 默认 / Ed25519 可选；prodish 缺 SBOM 拒发；**syft/cosign 生产加固与公钥入库仪式仍待** |
+| P2-2 外部渗透 RFP | **已落地（草案）** — `reports/security/P2-2-external-pentest-rfp.md`；**发标/选商仍待** |
+| P2-3 正式 IR/披露/认证 | **已落地（草案）** — `reports/security/P2-3-formal-ir-disclosure-draft.md`；**邮箱/立项仍待** |
+| 工程收口门 | **已落地** — `scripts/security_plan_closeout_check.py` + CI job `security-plan-closeout` + Ops 清单；**≠认证** |
+| Ops 审计脚本 | **已落地** — `scripts/security_ops_audit.py`（联系人/fail-closed/hard-floor/P2-1 密钥/工程收口）；CI advisory；`--strict` 可选；单测 `scripts/tests/test_security_ops_audit.py`；**≠认证** |
+
+### 0.5 批准附带的 5 个条件（强制 · 承自 v2.1）
+
+| # | 条件 |
+|---|---|
+| 1 | P0-3 拆 a/b；30 天只收 3a |
+| 2 | fail-closed 灰度；验收=故障真拒绝+审计 |
+| 3 | P1-1 环境矩阵；无环境 → `unknown` |
+| 4 | IR 前移：P0 基本 / P1 演练 / P2 正式 |
+| 5 | 证据卡 + manifest 哈希/签名（细节见 §4） |
+
+### 0.6 四条技术修订（本版强制 · 相对 v2.1）
+
+| # | 修订 | 若不修 |
+|---|---|---|
+| T1 | **S7 真逃逸 → P1-4**；P0-1 的 S7 只做「未授权 MCP/工具调用应 401」等 HTTP 语义 | P0-1 因无 sandbox 无法收口 |
+| T2 | **P0-3b pilot 范围/样本/退出**写死 | 无限期「试点中」 |
+| T3 | **P1-1 Subject = Agent×ImplMode×Config×Model×RuntimeTier**；禁止裸 `/chat/completions` | 「Agent 安全」沦为「模型安全」 |
+| T4 | **canonical hash + 签名验证方**写死 | `signature` 只是装饰字段 |
+
+另：**30–60 容量**见 §6.1；人手不足时强制降级排期。
 
 ---
 
-## 3. 目标运营模型
+## 1. P0：必须先修（不做，后面都是假绿）
+
+| # | 改进 | 验收标准 | 排期 |
+|---|---|---|---|
+| **P0-1** | 修 `scripts/security-attack-sim.py` false-pass（**仅 HTTP 黑盒语义**） | 见 §1.0 | 0–30 |
+| **P0-2** | PolicyGate fail-closed **灰度** | 见 §1.1；验收=故障真拒绝+审计 | 0–30 起 |
+| **P0-3a** | 生成物门骨架 | schema + **canonical hash + 可验证签名** + SAST/密钥/依赖；缺项阻断；`authz_smoke` 可 `na` | 0–30 |
+| **P0-3b** | App authz/IDOR/SSRF **pilot** | 见 §1.2 硬退出条件 | **30–60** |
+| **P0-4** | Pi 导出披露 | **导出器自动**生成；手写 README 不得作唯一证据 | 0–30 |
+| **P0-IR** | 基本事件响应 | 联系人 / 止损 / 回滚 / 24h 可达；演练在 P1 | 0–30 |
+
+**硬约束：** P0-1/2/3a/4/IR 未完成前，禁止把「84 单测 / SEC 仪器」写成对外安全声明依据。  
+**层级约束：** P0 **不**验收 sandbox escape / `isolation_covered`；真逃逸只在 **P1-4**。
+
+### 1.0 P0-1 attack-sim 范围（T1）
+
+`security-attack-sim.py` 是 **HTTP 黑盒**，无 sandbox 执行面。
+
+| 场景 | 归属 | 验收 |
+|---|---|---|
+| 服务器不可达 | **P0-1** | **FAIL + 非零退出**（禁假 PASS） |
+| S2 查 guard 语义 | **P0-1** | 断言响应体现拒绝/守卫，非仅 HTTP 码宽松通过 |
+| S4 查 429 | **P0-1** | 限流语义 |
+| **S7 未授权 MCP/工具调用应 401** | **P0-1** | HTTP 401/权限拒绝（当前脚本意图） |
+| **S7 真实 sandbox escape**（宿主文件/网络/设备/提权） | **P1-4** | 不在 P0；缺 KVM/工具面不得宣称完成 |
+| S7 → `isolation_covered` | **永不自动** | 仅人审协议后可标 covered |
+| S9 查泄漏 | **P0-1** | 响应体泄漏检测 |
+| S10 真实 replay | **P0-1** | replay 拒绝语义 |
+| 回归测试 | **P0-1** | 锁定「不可达不得 PASS」 |
+| 修好前作证据 | **禁止** | — |
+
+### 1.1 P0-2 fail-closed 灰度
+
+| 阶段 | 配置 | 要求 |
+|---|---|---|
+| dev | 默认 `ask` | 禁止把隐式 `open` 当正确 |
+| staging | `closed` | 观察误杀；豁免有记录 |
+| prod | 灰度 `closed` + 白名单 | owner、到期日、审计 |
+| 全程 | `AIPLAT_HARD_FLOOR_DISABLED` 默认关 | 开启审计；**到期自动恢复** |
+| 全程 | 配置漂移检测 | 与声明不符 → 告警 |
+
+> 人为制造故障时敏感调用被**拒绝**且可审计；仅「写了 closed」不算通过。
+
+### 1.2 P0-3b pilot 硬定义（T2）
 
 ```text
-Security Review Board
-  ├─ Platform Security（平台控制）
-  ├─ Product Security（成果物安全）
-  ├─ QA / Red Team（独立验证）
-  ├─ Compliance / Legal（合规）
-  └─ Incident Response（响应）
+pilot 范围：至少 2 类 App（默认：CRUD、报表；可由 Security Owner 书面替换同类）
+每类 ≥ 3 个独立生成样本
+authz / IDOR / SSRF 冒烟：每样本必须 pass|fail，禁止长期 na
+负向：每类至少 1 个负向用例必须被门禁阻断
+pilot 通过 =
+  (2 类 × ≥3 样本全部 pass)
+  AND (每类 ≥1 负向被阻断)
+  AND (Security Owner 书面批准退出试点)
+退出后：该类 App 发布强制 authz 门；未批准退出不得宣称「生成 App 已安全验收」
+超时：启动后 60 个自然日内未退出 → 状态标 blocked，不得无限「试点中」
 ```
 
-### 3.1 角色
-
-| 角色 | 职责 |
-|---|---|
-| Executive Sponsor | 资源、风险接受、对外声明 |
-| Security Owner | 安全质量总负责 |
-| Platform Security Lead | 身份/权限/运行时/审计 |
-| Product Security Lead | 生成物安全契约/测试 |
-| QA / Red Team | 独立验证/对抗测试 |
-| Compliance | 标准映射/审计 |
-| IR Lead | 事件响应/复盘 |
-
-### 3.2 每个成果物必须有
-
-- 安全 owner；
-- threat model；
-- security manifest；
-- 测试证据；
-- 声明边界；
-- 回滚/IR 路径。
-
 ---
 
-## 4. 工作流（Workstreams）
+## 2. P1：把仪器变成动态证据
 
-### WS1 治理、威胁模型与保证
+> 禁止 fixture 当成绩。无环境 → `unknown`。真逃逸只在 P1-4。
 
-**目标**：从“自评清单”到“控制矩阵 + 证据 + 独立验证”。
+### 2.0 环境矩阵
 
-** actions**
-
-1. 建立安全控制矩阵：维度 × 控制 × 证据 × owner × 状态；
-2. 每类成果物 threat model 模板（STRIDE/MAESTRO/ATLAS 映射）；
-3. 安全需求模板（security AC）；
-4. 安全声明模板（范围/证据/限制）；
-5. 外部渗透/红队 RFP；
-6. 认证路线（ISO 42001/NIST AI RMF）。
-
-**交付**
-
-- `SECURITY_CONTROL_MATRIX.md`
-- `THREAT_MODEL_TEMPLATE.md`
-- `SECURITY_CLAIM_TEMPLATE.md`
-- 外部评估计划。
-
-**验收**
-
-- 核心系统 100% 有 threat model；
-- 每个 P0 控制有证据；
-- 声明模板可审计。
-
----
-
-### WS2 身份、权限、租户
-
-**目标**：生产 fail-closed；权限/租户可验证。
-
-** actions**
-
-1. PolicyGate 生产默认 `ask/closed`；
-2. 关闭/限制 `AIPLAT_APPROVALS_DISABLED` 等逃生开关；
-3. 建立权限矩阵：角色 × 资源 × 动作；
-4. 租户隔离负向测试：列表/详情/导出/取消/删除；
-5. admin MFA 强制验证；
-6. 旁路检测：直接 HTTP/CLI/子进程。
-
-**验收**
-
-- 跨租户访问 100% 拒绝；
-- 未授权工具调用 100% 拒绝；
-- 生产 fail mode 不是 open；
-- 旁路有检测/阻断。
-
----
-
-### WS3 数据、隐私、密钥、审计
-
-**目标**：数据可分类、可删除、可审计。
-
-** actions**
-
-1. 数据分类分级；
-2. retention/删除/导出策略；
-3. PII 全链路扫描（输入/输出/日志/报告）；
-4. SecretsManager 强制使用；
-5. 审计链外部锚/WORM；
-6. 备份删除传播。
-
-**验收**
-
-- PII 泄漏用例 0 通过；
-- 删除后不可检索；
-- 审计可验证；
-- 密钥不落日志。
-
----
-
-### WS4 Prompt、模型、输出安全
-
-**目标**：从正则到结构化防护 + 对抗评测。
-
-** actions**
-
-1. 指令层级/消息来源标记；
-2. 工具/RAG 内容视为不可信；
-3. 系统提示泄漏防护；
-4. 输出编码/下游注入测试；
-5. Prompt injection 对抗集（直接/间接/多轮）；
-6. judge 校准与人工复核。
-
-**验收**
-
-- 直接/间接注入有基线 ASR；
-- 输出进入 HTML/SQL/Shell 有编码测试；
-- 系统提示泄漏有专项用例；
-- judge 与人工一致率达标。
-
----
-
-### WS5 工具、Agent、记忆、多 Agent
-
-**目标**：防过度代理、工具投毒、记忆投毒、多 Agent 越权。
-
-** actions**
-
-1. 工具 allowlist + 参数 schema；
-2. 高危工具审批/hard floor；
-3. 记忆写入 provenance/trust/删除；
-4. RAG 来源可信度/引用校验；
-5. 多 Agent handoff 身份/权限；
-6. 工具/记忆投毒攻击集。
-
-**验收**
-
-- 越权工具调用 0 通过；
-- 删除后记忆不可召回；
-- 间接注入有测试；
-- 多 Agent 越权有阻断。
-
----
-
-### WS6 运行时隔离
-
-**目标**：从 Docker 到可验证 microVM。
-
-** actions**
-
-1. Linux/KVM 主机；
-2. Firecracker/microVM admit；
-3. 逃逸探针：宿主文件、网络、设备、提权；
-4. 负向对照；
-5. 网络出口 allowlist；
-6. 审计/监控。
-
-**验收**
-
-- `guest_boot` 成功；
-- 逃逸探针全负；
-- 出网被阻断；
-- 仍不称“隔离认证”。
-
----
-
-### WS7 供应链与制品
-
-**目标**：SBOM + 签名 + 证明 + 撤销。
-
-** actions**
-
-1. SBOM（依赖/模型/插件）；
-2. 制品签名/证明；
-3. MCP/plugin allowlist；
-4. 依赖 pin/漏洞 SLA；
-5. 密钥/签名轮换/撤销；
-6. 供应链攻击演练。
-
-**验收**
-
-- 每个发布物有 SBOM；
-- 未签名制品不可发布；
-- 高危依赖阻断；
-- MCP 未登记拒绝。
-
----
-
-### WS8 成果物安全（Builder）
-
-**目标**：从“生成后检查”到“安全契约 + 发布门”。
-
-** actions**
-
-1. `artifact.security.json` manifest；
-2. 安全模板：authn/authz/tenant/input/output/secrets；
-3. 生成代码强制 SAST + 密钥 + 依赖；
-4. authz/IDOR/SSRF/XSS 测试；
-5. 生成 App DAST；
-6. Pi 导出安全基线；
-7. 发布前安全验收。
-
-**验收**
-
-- 每个成果物有 manifest；
-- 每个成果物有 threat model；
-- 每个成果物通过 SAST/authz 测试；
-- Pi 导出明确列出丢失的控制。
-
----
-
-### WS9 审计、IR、运营
-
-**目标**：可检测、可响应、可回滚。
-
-** actions**
-
-1. 审计外部锚；
-2. IR runbook；
-3. 桌面演练；
-4. 漏洞披露；
-5. 回滚/恢复；
-6. 安全指标看板。
-
-**验收**
-
-- MTTR 有基线；
-- 演练有记录；
-- 回滚可执行；
-- 漏洞披露渠道存在。
-
----
-
-### WS10 人因、审批 UX、透明度
-
-**目标**：减少审批疲劳/误操作/过度依赖。
-
-** actions**
-
-1. 审批风险分级；
-2. 高风险二次确认；
-3. 用户可见安全边界；
-4. 过度依赖提示；
-5. 审批日志可解释。
-
-**验收**
-
-- 高风险审批有明确理由；
-- 误批率下降；
-- 用户能理解“能/不能”。
-
----
-
-### WS11 可用性、资源滥用
-
-**目标**：防 DoS/成本炸弹/无限循环。
-
-** actions**
-
-1. 预算/超时/步数；
-2. 队列背压；
-3. 速率限制；
-4. 成本告警；
-5. 资源滥用测试。
-
-**验收**
-
-- 无限循环被阻断；
-- 成本上限生效；
-- 队列积压有告警。
-
----
-
-### WS12 合规与认证
-
-**目标**：从自评到可审计；认证可选。
-
-** actions**
-
-1. ISO 42001/NIST AI RMF 映射；
-2. SOC2/ISO27001 控制证据；
-3. 数据驻留；
-4. 外部审计；
-5. 认证范围声明。
-
-**验收**
-
-- 控制矩阵可审计；
-- 外部审计完成；
-- 声明范围明确。
-
----
-
-## 5. 阶段路线图
-
-### Phase 0：0–30 天（止血）
-
-| 工作 | 交付 | 验收 |
+| 威胁族 | 所需环境 | 无环境时 |
 |---|---|---|
-| PolicyGate fail-closed | 配置 + 测试 | 生产非 open |
-| 生成物安全 manifest schema | schema + 模板 | 可校验 |
-| SAST/密钥/依赖门 | CI gate | 新代码阻断 |
-| 租户/权限负向测试 | 测试集 | 跨租户拒绝 |
-| Prompt 注入对抗集 v1 | 30–50 用例 | 有基线 ASR |
-| 外部渗透 RFP | 计划 | 供应商确定 |
-| Pi 安全声明 | 文档 | 明确丢失控制 |
-| IR 桌面演练 | 记录 | 发现缺口 |
+| T01/T02/T03/T04/T09/T10/T15 | 文本 live（§2.0b Subject） | —（优先） |
+| T05-exec / T06 | tools | `unknown` |
+| T07 | retrieval + tools | `unknown` |
+| T08 | sandbox / egress | `unknown` |
+| T11 | multi-agent | `unknown` |
+| T12 | microVM / KVM | `unknown` → **P1-4** |
+| T13 | plugin / MCP | `unknown` |
+| T13-escape | process_split | `unknown` |
+| T14 | budget / timeout | `unknown` |
 
-**出口：** 平台基线可复现；成果物有 manifest；不称认证。
+### 2.0b P1-1 Subject 定义（T3 · 强制）
 
-### Phase 1：1–3 个月（平台硬化）
+```text
+Subject = Agent × ImplMode × Config × Model × RuntimeTier
+（可选扩展：ToolContract × RetrievalContract；无则显式 none）
+```
 
-- microVM/Linux KVM 探针；
-- SBOM 原型；
-- 记忆/工具投毒测试；
-- 输出编码/下游注入；
-- 审计外部锚；
-- 生成 App authz 测试模板；
-- 外部渗透执行。
+**必须同时满足：**
 
-**出口：** 平台核心控制 L3 候选；成果物 L2+。
+| 要求 | 禁止 |
+|---|---|
+| 经 `create_agent` / `run_workspace_agent`（或同等正式 Agent 入口） | 仅调 `/chat/completions` / 裸 LLM SDK |
+| 有可检索 **trace**（run_id / session） | 无 trace 的一次性补丁脚本 |
+| 有 **system prompt / Agent 配置** 生效 | 空壳 prompt 冒充 Agent |
+| 工具/检索契约显式声明（可为 `none`） | 隐式「有工具」却未接线 |
+| 证据卡 `subject` 字段写全组合键 | 只写模型名 |
 
-### Phase 2：3–6 个月（成果物安全）
+否则结果只能标 `model_only` / `unknown`，**不得**写入「Agent 安全 live 通过集」。
 
-- secure-by-construction 模板；
-- 生成 App DAST；
-- Pi 安全基线；
-- 多 Agent 安全；
-- 供应链证明；
-- 红队复测。
+### 2.1 P1 项
 
-**出口：** 成果物有逐应用证据；无“平台内自动安全”表述。
-
-### Phase 3：6–12 个月（保证/认证）
-
-- ISO 42001/NIST 映射；
-- 外部审计；
-- 认证范围；
-- 持续监控；
-- 公开透明度报告（可选）。
-
-**出口：** 可对外发范围限定安全声明；认证可选。
+| # | 改进 | 验收 | 排期 |
+|---|---|---|---|
+| **P1-1** | 分族 live | 环境矩阵 + Subject 锁定；文本族优先；不足 `report_only`；无环境 `unknown` | 30–60 文本；60–90 工具/检索 |
+| **P1-2** | judge 校准 + G2b-S | 一致率达标；双盲/仲裁；失败全量人审 | 30–60 起步（人手不足可顺延，见 §6.1） |
+| **P1-3** | 跨租户/越权/注入动态 | 跨租户可重复 100% 拒绝；注入基线 ASR | 30–60（可顺延） |
+| **P1-4** | **Linux/KVM 真逃逸**（承接原 S7 逃逸） | guest_boot + 宿主文件/网络/设备/提权探针 + 负向对照 → 最多 `isolation_probed`；**永不自动** `covered` | **60–90** |
+| **P1-IR** | IR 桌面演练 | 按 P0-IR 剧本推演 | 30–60 |
 
 ---
 
-## 6. 安全质量门
+## 3. P2：保证与认证
 
-### G0 — PR 门（每次提交）
-
-- SAST/Ruff bandit；
-- 密钥扫描；
-- 依赖扫描；
-- 架构守卫；
-- 单元测试。
-
-**阻断：** 高危/密钥/越界。
-
-### G1 — 平台基线门
-
-- 身份/权限/租户测试；
-- PolicyGate fail-closed；
-- 审计/PII/密钥；
-- Prompt 注入基线。
-
-**阻断：** 跨租户/越权/fail-open。
-
-### G2 — 成果物门
-
-- security manifest；
-- threat model；
-- SAST/DAST/authz/tenant；
-- SBOM/签名；
-- 回滚/IR。
-
-**阻断：** 缺 manifest/threat model/高危漏洞。
-
-### G3 — 生产门
-
-- staging 渗透；
-- 红队；
-- SLO/IR；
-- 外部评估。
-
-**阻断：** 未验证/未审计。
-
-### G4 — 认证门（可选）
-
-- 外部审计；
-- ISO/NIST 映射；
-- 范围声明；
-- 签字。
-
-**阻断：** 任何声明超出证据。
+| # | 改进 | 验收 | 排期 |
+|---|---|---|---|
+| **P2-1** | SBOM + 签名证明链 | 每发布物 SBOM；未签名不可发布；MCP/插件 allowlist | 60–90 |
+| **P2-2** | 外部渗透 + 独立红队 | 60–90 RFP；90+ 第三方报告+高危闭环 | 60–90 → 90+ |
+| **P2-3** | 正式 IR / 披露 / 认证路径 | 正式流程；标准映射；认证可选 | 90+（基本 IR 已在 P0） |
 
 ---
 
-## 7. 成果物安全契约
+## 4. 证据卡与 Manifest 签名（T4 · 写死）
 
-每个成果物必须有：
+### 4.1 证据卡最小字段
 
 ```json
 {
-  "artifact_id": "app-x@1.0.0",
-  "type": "app|agent|skill|pi",
-  "owner": "...",
-  "data_classes": ["internal"],
-  "authn": "platform|oidc|none",
-  "authz": {"model": "rbac", "tenant": true},
-  "tools": ["search"],
-  "egress": ["api.example.com"],
-  "secrets": ["vault:..."],
-  "dependencies": ["..."],
-  "threat_model": "docs/security/threat-models/app-x.md",
-  "tests": {
-    "sast": true,
-    "dast": true,
-    "authz": true,
-    "tenant": true,
-    "secrets": true
-  },
-  "sbom": "sbom/app-x.json",
-  "claim": {"security": "scoped", "certified": false}
+  "claim": "string",
+  "subject": "Agent×ImplMode×Config×Model×RuntimeTier",
+  "pack": "string",
+  "manifest_hash": "string",
+  "runtime": "string",
+  "environment": "text|tools|retrieval|sandbox|kvm|multi-agent|none",
+  "n": 0,
+  "ci": [0.0, 1.0],
+  "result": "pass|fail|unknown|report_only|fixture|model_only",
+  "evidence_path": "string",
+  "owner": "string",
+  "date": "YYYY-MM-DD"
 }
 ```
 
-**发布门：**
+- `fixture` / `model_only` / `unknown` **不得**进入对外 pass 声明集。
 
-- manifest 缺失 → 拒绝；
-- threat model 缺失 → 拒绝；
-- SAST/DAST/authz 未过 → 拒绝；
-- 高危依赖/密钥 → 拒绝；
-- Pi 导出未声明丢失控制 → 拒绝。
+### 4.2 `manifest_hash` canonical 规则
 
----
-
-## 8. 指标与 KPI
-
-| 指标 | 目标 |
+| 规则 | 规定 |
 |---|---|
-| 核心系统 threat model 覆盖 | 100% |
-| P0 控制证据覆盖 | 100% |
-| 跨租户负向测试 | 100% 拒绝 |
-| 生成物 security manifest | 100% |
-| 生成代码 SAST 覆盖 | 100% |
-| 生成 App authz 测试 | 100% |
-| SBOM 覆盖 | 100% 发布物 |
-| 未签名制品 | 0 |
-| microVM 逃逸探针 | 全负 |
-| 外部渗透高危 | 0 未修复 |
-| MTTR | 有基线并下降 |
-| 误报率 | 有基线并下降 |
+| 编码 | UTF-8 |
+| 序列化 | JSON Canonical：对象键**字典序**；`separators=(',', ':')`（无多余空白）；数组保序 |
+| **纳入哈希的字段** | 除下方排除项外的全部业务字段（含 `artifact_id`、扫描结果、`claim_boundary`、`platform_controls_*`、`authz_smoke` 等） |
+| **排除字段**（写入前剥离再算） | `manifest_hash`、`signature`、`signed_at`、`reviewer_notes`、`generated_at`（若仅作墙上时钟）、任意 `_*_local` |
+| 算法 | SHA-256，输出小写 hex |
+| 签名覆盖 | 签名覆盖的是 **`manifest_hash` 字节串**（或等价 `sha256:<hex>`），**不是**含签名字段的整文件随意串 |
 
-> 不设“单一安全分”；按维度报告。
+复算：剥离排除字段 → canonical dumps → sha256 → 与文件内 `manifest_hash` 比对。
 
----
+### 4.3 签名 / CI attest 验证方
 
-## 9. RACI
-
-| 工作 | 负责 | 批准 | 咨询 | 知会 |
-|---|---|---|---|---|
-| 安全治理 | Security Owner | Exec Sponsor | Compliance | Eng |
-| 平台控制 | Platform Security | Security Owner | QA | Eng |
-| 成果物安全 | Product Security | Security Owner | Builder | Product |
-| 外部渗透 | QA/Red Team | Security Owner | Vendor | Exec |
-| 认证 | Compliance | Exec Sponsor | External | All |
+| 项 | 规定 |
+|---|---|
+| **谁签** | CI job（推荐）或 Platform Security 发布密钥；开发者笔记本自签**默认不进生产门** |
+| **公钥位置** | 仓库或密钥目录固定路径（如 `security/keys/artifact-manifest-ci.pub` / 平台 KMS key id）；变更走 PR |
+| **算法** | Ed25519 或与平台现有 attest 对齐；方案实施时在变更单写死一种 |
+| **发布门如何验** | ① 复算 hash；② 用公钥验 `signature`；③ 二者任一失败 → **拒绝发布** |
+| **本地手改如何失效** | 改 `sast.status` 等纳入字段 → hash 变 → 旧签名失效 → 门禁拒绝 |
+| **无公钥环境** | 不得跳过；只允许 `result=unsigned_dev` 且**禁止**生产通道 |
 
 ---
 
-## 10. 资源与预算（量级）
+## 5. 应该停止做的事
 
-| 阶段 | 人力 | 外部 |
+1. 84 单测 ≠「安全测试通过」；  
+2. 未修前的 attack-sim 输出不作证据；  
+3. S1 25 ≠ 生产安全；  
+4. guest_sim / admit ≠ isolation covered；  
+5. Pi 不继承平台安全声明；  
+6. 无动态证据不签认证；  
+7. fixture 不冒充 live；  
+8. **P0 不做真逃逸 / 不标 isolation_covered**；  
+9. 裸 LLM API 不冒充 Agent live；  
+10. 无 canonical/验签的 manifest「pass」不放行；  
+11. P0-3b 不得无限「试点中」。
+
+---
+
+## 6. 30 / 60 / 90 / 90+（修订版）
+
+| 周期 | 只做 |
+|---|---|
+| **0–30** | P0-1（**不含** S7 真逃逸）、P0-2 灰度、P0-3a、P0-4、P0-IR |
+| **30–60** | P0-3b pilot（硬退出）、P1-1 **文本族**（Subject 锁定）、P1-2 校准起步、P1-3 跨租户/注入、P1-IR；prod fail-closed 加深 |
+| **60–90** | P1-1 工具/检索族、**P1-4 KVM 真逃逸**、P2-1 SBOM、P2-2 RFP、IR 草案 |
+| **90+** | 外部红队、认证可选、多 Agent/供应链深度 |
+
+### 6.1 容量与降级（强制）
+
+| 配置 | 30–60 可承诺 |
+|---|---|
+| **最低满配**：1 Security Owner + 2 Eng + 0.5 QA | P0-3b + P1-1 文本 + P1-2 起步 + P1-3 + P1-IR |
+| **仅 1 人** | **只做** P0-3b + P1-1 文本族；**P1-2 / P1-3 / P1-IR 顺延到 60–90** |
+| 开窗前 | Security Owner 书面确认人员配置；不符满配则自动启用降级表 |
+
+---
+
+## 7. 验收门
+
+| 门 | 阻断 |
+|---|---|
+| **G-P0** | 不可达仍 PASS；P0 宣称真逃逸/covered；无哈希验签仍发布；Pi 仅手写披露；无 IR 联系人 |
+| **G-P0b** | pilot 未达 §1.2 退出条件却宣称 App 安全验收 |
+| **G-P1** | fixture/model_only 进 live 通过集；裸 LLM 冒充 Agent；guest_sim 冒充 covered |
+| **G-P2** | 无 SBOM/签名；自评代替第三方；无证据卡 |
+
+---
+
+## 8. 成果物契约（摘要）
+
+见 §4 + `artifact.security.json`：含 `manifest_hash` / `signature`；Pi 的 `platform_controls_lost_on_export` 由导出器写入；P0-3a 允许 `authz_smoke=na`；P0-3b 试点类型禁止长期 `na`。
+
+---
+
+## 9. 原则
+
+evidence over claims · fail-closed（可证灰度）· shared responsibility · instruments ≠ evidence · no environment → unknown · **HTTP ≠ escape** · **Agent Subject ≠ model-only** · no security theater。
+
+---
+
+## 10. RACI / 风险（摘）
+
+| 事项 | A | R |
 |---|---|---|
-| Phase 0 | 1 安全负责人 + 1 平台 + 1 产品 + 0.5 QA | 渗透 RFP |
-| Phase 1 | +1 平台 +0.5 合规 | 渗透执行 |
-| Phase 2 | +1 产品 +0.5 红队 | 红队/工具 |
-| Phase 3 | +0.5 合规 | 认证审计 |
-
-> 具体人日/费用需按组织预算另算；不要用“安全是免费”误导。
-
----
-
-## 11. 风险与依赖
+| P0-1 HTTP | Security Owner | Platform Eng |
+| P0-2 灰度 | Platform Security | Eng + Ops |
+| P0-3a/b、P0-4 | Product Security | Builder/Platform |
+| P0-IR / P1-IR | IR Lead | Ops + Security |
+| P1-1 Subject/live | Security Owner | Eval + QA |
+| **P1-4 真逃逸** | Platform Security | Infra |
+| P2 | Exec Sponsor | Security Owner |
 
 | 风险 | 缓解 |
 |---|---|
-| 外部审计排期长 | 提前 RFP |
-| microVM 无 Linux 主机 | 采购/云主机 |
-| 安全门拖慢发布 | 分级门 + baseline |
-| 误报导致绕过 | 校准/豁免流程 |
-| Pi 边界争议 | 明确“导出降级” |
-| 供应链数据缺失 | SBOM 先行 |
-| 生成物 owner 不清 | 强制 manifest owner |
+| P0 塞进逃逸 | **T1** 分层 |
+| pilot 无限期 | **T2** 退出条件 |
+| 测模型当测 Agent | **T3** Subject |
+| 签名不可验 | **T4** canonical + 公钥 |
+| 30–60 过载 | **§6.1** 降级 |
 
 ---
 
-## 12. 未来 30 天行动清单
+## 11. 结论
 
-1. 冻结当前安全基线（commit/build）；
-2. PolicyGate 生产 fail-closed；
-3. 发布 artifact security manifest schema；
-4. CI 加 SAST/密钥/依赖门；
-5. 租户/权限负向测试；
-6. Prompt 注入对抗集 v1；
-7. SBOM 原型；
-8. 外部渗透 RFP；
-9. Pi 安全声明；
-10. IR 桌面演练。
+**批准执行（v2.2）。** 结构条件（§0.5）与技术修订（§0.6）均已写入正文。
+
+> **评测仪器 →（正确层级的）HTTP/Agent/KVM 证据 → 可复算门禁 → 范围限定声明。**
+
+**一句话：开变更单；P0 只收假绿与门禁骨架，真逃逸留给 P1-4；pilot / Subject / 签名按硬定义验收。**
 
 ---
 
-## 13. 验收与声明边界
+## 12. 工程收口（2026-11-09 实施后）
 
-### 13.1 阶段声明
-
-| 阶段 | 可以说 | 不能说 |
-|---|---|---|
-| Phase 0 | 工程基线改进 | 已安全 |
-| Phase 1 | 平台核心控制有证据 | 已认证 |
-| Phase 2 | 成果物有安全证据 | 所有成果物安全 |
-| Phase 3 | 范围限定、外部验证 | 通用安全认证 |
-
-### 13.2 Definition of Done
-
-- 有 threat model；
-- 有 control matrix；
-- 有测试证据；
-- 有 owner；
-- 有声明边界；
-- 有回滚/IR；
-- 无未修复高危。
-
----
-
-## 14. 附录 A：20 维映射
-
-| 维度 | 工作流 |
+| 检查 | 命令 / 路径 |
 |---|---|
-| 治理/威胁建模 | WS1 |
-| 身份/权限/租户 | WS2 |
-| 数据/隐私/密钥/审计 | WS3 |
-| Prompt/模型/输出 | WS4 |
-| 工具/Agent/记忆/多 Agent | WS5 |
-| 运行时隔离 | WS6 |
-| 供应链 | WS7 |
-| 成果物 | WS8 |
-| 审计/IR | WS9 |
-| 人因 | WS10 |
-| 可用性 | WS11 |
-| 合规 | WS12 |
+| 工程清单 | `python3 scripts/security_plan_closeout_check.py`（exit 0 ≠ 认证） |
+| Ops 人审清单 | [`ops-closeout-checklist-2026-11-09.md`](./ops-closeout-checklist-2026-11-09.md) |
+| CI | `.github/workflows/ci.yml` job `security-plan-closeout` |
 
-## 附录 B：框架映射
-
-- OWASP LLM Top 10 2025；
-- OWASP Agentic AI Top 10；
-- NIST AI 600-1；
-- MITRE ATLAS；
-- ISO/IEC 42001；
-- Google SAIF；
-- CSA MAESTRO。
-
-## 附录 C：不做什么
-
-- 不做“安全认证按钮”；
-- 不把自动扫描当红队；
-- 不把 S1 当认证；
-- 不在无证据时宣称隔离；
-- 不让 Pi 默认继承平台声明；
-- 不用单一安全分掩盖维度缺口。
-
----
-
-## 15. 结论
-
-**本方案的核心不是“再加几个安全功能”，而是建立一条可验证的安全质量链：**
-
-> **威胁模型 → 控制 → 测试 → 证据 → 门禁 → 声明 → 复评。**
-
-**一句话：先把平台基线做实，再把成果物安全契约做实，最后才谈外部验证与认证；在此之前，只能说“有安全工程”，不能说“已安全”。**
+**工程结论：** P0–P2 **可编码项已落地**（见 §0.4）。  
+**未结论：** Ops/真人/真 KVM/外部渗透/认证 — 见 ops 清单；`security_certification` 仍为 false。

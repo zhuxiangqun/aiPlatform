@@ -29,9 +29,11 @@ changelog_v1_1:
 # Agent 安全评测完整方案（v1.1 · 已签字）
 
 > **状态**：`signed_sec_p0_engineering_baseline`（2026-11-09 已签）。  
+> **签的是什么**：方法/工程实施基线（允许按 §10 开 SEC 切片）；**不是**安全结论、独立审计、生产配置验证或认证。  
 > 可作为 **SEC-P0a/b/c 工程实施基线**；**仍不是** `security_certification` / 完整安全认证终稿。  
 > **诚实锁**：默认 `accuracy_claim=false`、`security_certification=false`、`rank_claim` 不自动 true。  
-> 评审路径：v1.0 `approve_with_changes`（8/10）→ v1.1 吸收变更 → **签字生效**。
+> **族计数**：工程权威 = `threat_family_catalog.v1.yaml` 的 **17** 个 `families` keys（含 T05 拆分与 T13-escape）+ **9** OOS；§2.3 表与之对齐。勿把缺口/进度表里的重复 T 引用行累加成「19 族」。  
+> 评审路径：v1.0 `approve_with_changes`（8/10）→ v1.1 吸收变更 → **工程基线签字生效**。
 
 ---
 

@@ -154,6 +154,42 @@ async def project_promotion_status(project_id: str, _auth: str = Depends(require
     """Phase C W5: hop metrics + run-through promotion gate snapshot."""
     return _get_svc().get_promotion_status(project_id)
 
+
+@router.get("/security/authz-pilot", response_model=StatusResponse)
+async def authz_pilot_status(_auth: str = Depends(require_builder_access)):
+    """P0-3b: authz/IDOR/SSRF pilot ledger + exit evaluation."""
+    from builder.artifact_authz_smoke import evaluate_pilot_exit, load_pilot_state
+
+    state = load_pilot_state()
+    result = evaluate_pilot_exit(state)
+    return {
+        "ok": True,
+        "pilot": result,
+        "started_at": state.started_at,
+        "sample_count": len(state.samples),
+        "owner_name": state.owner_name,
+        "owner_approval": state.owner_approval,
+    }
+
+
+@router.post("/security/authz-pilot/approve", response_model=StatusResponse)
+async def authz_pilot_approve(
+    body: dict = None,
+    _auth: str = Depends(require_builder_access),
+):
+    """P0-3b: Security Owner approval to exit authz pilot (hard gate)."""
+    from builder.artifact_authz_smoke import approve_pilot_exit
+
+    payload = body if isinstance(body, dict) else {}
+    owner = str(payload.get("owner_name") or "").strip()
+    if not owner:
+        raise HTTPException(status_code=422, detail="owner_name_required")
+    result = approve_pilot_exit(
+        owner_name=owner,
+        note=str(payload.get("note") or ""),
+    )
+    return {"ok": result.get("status") == "passed", "pilot": result}
+
 @router.post("/projects/{project_id}/files/upload", response_model=StatusResponse)
 async def project_file_upload(
     project_id: str,

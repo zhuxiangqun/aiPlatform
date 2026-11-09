@@ -222,6 +222,47 @@ jobs:
         run: |
            bash scripts/notify-release.sh deployed "aiplat-core ${{ github.sha }}"
 
+  security-plan-closeout:
+    name: Security plan closeout (engineering)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Inventory engineering artifacts (≠ certification)
+        run: python3 scripts/security_plan_closeout_check.py
+      - name: Ops audit (advisory; contacts/signing may be unset in CI)
+        run: python3 scripts/security_ops_audit.py
+        # Do not --strict here: IR contacts / prod secrets are Ops-local
+      - name: Install pytest (focused suites)
+        run: pip install pytest pyyaml
+      - name: P0-1 attack-sim + IR contacts + Ops audit unit regressions
+        run: |
+          python3 -m pytest \
+            scripts/tests/test_security_attack_sim.py \
+            scripts/tests/test_security_ir_contacts.py \
+            scripts/tests/test_security_ops_audit.py \
+            -v --tb=short
+      - name: P0-3a / P2-1 artifact security suites
+        run: |
+          python3 -m pytest \
+            aiPlat-platform/tests/test_artifact_security_manifest.py \
+            aiPlat-platform/tests/test_artifact_sbom_attest.py \
+            aiPlat-platform/tests/test_artifact_authz_smoke.py \
+            -v --tb=short
+      - name: P1 security eval suites (importlib)
+        run: |
+          python3 -m pytest \
+            aiPlat-core/core/tests/unit/test_apps/test_security_text_live_p1.py \
+            aiPlat-core/core/tests/unit/test_apps/test_security_tool_retrieval_live_p1.py \
+            aiPlat-core/core/tests/unit/test_apps/test_security_p1_judge_session.py \
+            aiPlat-core/core/tests/unit/test_apps/test_security_dynamic_p13.py \
+            aiPlat-core/core/tests/unit/test_apps/test_security_p1_4_kvm_escape.py \
+            -v --tb=short
+        # Honesty: scripted/fixture suites ≠ live / ≠ certification
+
   dast:
     name: DAST Active Security Scan
     runs-on: ubuntu-latest
@@ -237,6 +278,17 @@ jobs:
           cmd_options: "-a -j -T 3 -m 30"
           issue_title: "OWASP ZAP DAST Active Scan"
         continue-on-error: true
-      - name: Security Attack Simulation
-        run: python scripts/security-attack-sim.py http://localhost:8000 2>/dev/null || echo "Attack sim skipped (needs running instance)"
+      - name: Security Attack Sim unit regressions (P0-1)
+        run: python3 scripts/tests/test_security_attack_sim.py -v
+      - name: Security plan closeout inventory
+        run: python3 scripts/security_plan_closeout_check.py
+      - name: Security Attack Simulation (live HTTP)
+        run: |
+          # Live black-box only when server is up. Unreachable must FAIL the script
+          # (P0-1); do not ||-true the sim itself — skip the live step instead.
+          if curl -sf --max-time 3 http://localhost:8000/api/diagnostics/health/all >/dev/null; then
+            python3 scripts/security-attack-sim.py http://localhost:8000
+          else
+            echo "SKIP live attack-sim: server unreachable (unit regressions already ran)"
+          fi
 

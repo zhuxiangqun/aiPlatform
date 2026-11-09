@@ -31,6 +31,7 @@ def _reset_gate():
     reset_approval_gate()
     os.environ.pop("AIPLAT_APPROVAL_GATE_DISABLED", None)
     os.environ.pop("AIPLAT_HARD_FLOOR_DISABLED", None)
+    os.environ.pop("AIPLAT_HARD_FLOOR_DISABLED_UNTIL", None)
     os.environ.pop("AIPLAT_APPROVALS_DISABLED", None)
 
 
@@ -138,6 +139,8 @@ class TestHardFloors:
 
     def test_hard_floor_escape_hatch(self):
         os.environ["AIPLAT_HARD_FLOOR_DISABLED"] = "true"
+        # P0-2: escape requires a future UNTIL window or it auto-restores
+        os.environ["AIPLAT_HARD_FLOOR_DISABLED_UNTIL"] = "2099-01-01T00:00:00+00:00"
         os.environ["AIPLAT_APPROVAL_GATE_DISABLED"] = "true"
         reset_approval_gate()
         gate = get_approval_gate()
@@ -146,6 +149,18 @@ class TestHardFloors:
             {"operation": "delete", "path": "/tmp/x"},
         )
         assert r.verdict == ApprovalVerdict.ALLOW
+
+    def test_hard_floor_escape_without_until_restored(self):
+        os.environ["AIPLAT_HARD_FLOOR_DISABLED"] = "true"
+        os.environ.pop("AIPLAT_HARD_FLOOR_DISABLED_UNTIL", None)
+        reset_approval_gate()
+        gate = get_approval_gate()
+        r = gate.check(
+            "file_operations",
+            {"operation": "delete", "path": "/tmp/x"},
+        )
+        assert r.verdict == ApprovalVerdict.ASK
+        assert r.hard_floor is True
 
 
 class TestProvenanceHelper:

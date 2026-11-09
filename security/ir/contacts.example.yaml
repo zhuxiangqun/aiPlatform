@@ -1,0 +1,23 @@
+# Copy to contacts.local.yaml (gitignored) or set AIPLAT_IR_CONTACTS_PATH.
+# SoT for P0-IR / P1-IR — do not leave name/channel empty or "TBD".
+schema: aiplat.ir_contacts.v1
+version: "1.0.0"
+updated_at: ""  # ISO-8601 when filled
+roles:
+  security_owner:
+    name: ""
+    channel: ""   # e.g. pager / Slack / phone
+    backup: ""
+  platform_oncall:
+    name: ""
+    channel: ""
+    backup: ""
+  ops_infra:
+    name: ""
+    channel: ""
+    backup: ""
+  exec_sponsor:
+    name: ""
+    channel: ""
+    backup: ""
+notes: "Fill local copy; never commit real personal phones to the public tree."

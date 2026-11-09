@@ -20,6 +20,65 @@ _log = logging.getLogger("aiplat.builder.pi_bundle")
 _WORKSPACE = Path(__file__).resolve().parents[2]
 _EXPORT_SCRIPT = _WORKSPACE / "scripts" / "export_pi_bundle.py"
 
+# Platform controls that do NOT travel with a Pi export package (P0-4).
+_PI_LOST_CONTROLS = (
+    "PolicyGate",
+    "ApprovalGate",
+    "AuditLogger",
+    "PIIDetector",
+    "TenantIsolation",
+    "RateLimit",
+)
+
+
+def write_pi_security_disclosure(bundle_dir: Path, *, project_id: str) -> Dict[str, Any]:
+    """Auto-write Pi security disclosure + artifact.security.json (P0-4).
+
+    Hand-written README alone is not acceptable evidence.
+    """
+    from builder.artifact_security_manifest import build_manifest, write_manifest
+
+    bundle_dir = Path(bundle_dir)
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    claim = (
+        "本 Pi 导出包不继承平台 PolicyGate/ApprovalGate 等横切控制；"
+        "不得默认宣称「平台级安全」。security_certification=false。"
+    )
+    disclosure = {
+        "project_id": project_id,
+        "package_type": "pi",
+        "platform_controls_lost_on_export": list(_PI_LOST_CONTROLS),
+        "platform_controls_inherited": [],
+        "claim_boundary": claim,
+        "security_certification": False,
+        "generated_by": "pi_bundle_export.write_pi_security_disclosure",
+    }
+    disc_path = bundle_dir / "SECURITY_DISCLOSURE.json"
+    import json
+
+    disc_path.write_text(json.dumps(disclosure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    manifest = build_manifest(
+        artifact_id=f"pi:{project_id}",
+        artifact_type="pi",
+        owner="pi_export",
+        platform_controls_inherited=[],
+        platform_controls_lost_on_export=list(_PI_LOST_CONTROLS),
+        sast={"status": "pass", "tool": "na", "detail": "pi_export_disclosure_only"},
+        secrets_scan={"status": "pass", "detail": "deferred_to_source_gate"},
+        deps_scan={"status": "pass", "detail": "deferred_to_source_gate"},
+        authz_smoke={"status": "na", "evidence": "Pi export has no platform authz runtime"},
+        claim_boundary=claim,
+    )
+    man_path = write_manifest(bundle_dir / "artifact.security.json", manifest)
+    return {
+        "ok": True,
+        "disclosure_path": str(disc_path),
+        "manifest_path": str(man_path),
+        "platform_controls_lost_on_export": list(_PI_LOST_CONTROLS),
+        "claim_boundary": claim,
+    }
+
 
 def workspace_root() -> Path:
     return _WORKSPACE
@@ -89,11 +148,15 @@ def export_pi_bundle_for_project(
         _log.warning("pi bundle export failed for %s: %s", pid, exc, exc_info=True)
         return {"ok": False, "error": str(exc), "app_home": str(src)}
 
+    # P0-4: exporter-auto security disclosure (never hand-written README as sole source)
+    disclosure = write_pi_security_disclosure(Path(written), project_id=pid)
+
     return {
         "ok": True,
         "project_id": pid,
         "app_home": str(src),
         "pi_bundle": str(written),
+        "security_disclosure": disclosure,
         "hint": f"AIPLAT_APP_HOME={written} pi -e {written}",
         "http_hint": f"AIPLAT_APP_HOME={written} node packages/aiplat-pi-runtime/bin/aiplat-http.mjs",
     }

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3154
+total_capabilities: 3184
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -2246,7 +2246,9 @@ scan_hash: 8f9548ec24f4
 | Credentials | `aiPlat-management/frontend/src/pages/Core/Credentials/Credentials.tsx` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | PolicyGate | harness/infrastructure/gates/policy_gate.py | ✅ | 统一权限检查 + 架构边界实时拦截 | 已合入 |
-| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级策略 open/ask/closed（默认 open；生产 ask 灰度；CRITICAL_MODE 可 closed；非关键固定 open+审计） | 已合入 |
+| resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
+| default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
+| is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
 | apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
@@ -3100,6 +3102,16 @@ scan_hash: 8f9548ec24f4
 | eval_security_cert_prep_status / eval_run_per_family_cert_prep / eval_rehearse_l5_limited_claim | `core/api/core_facade.py` | ✅ | CoreFacade CERT-PREP 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | load_oos_deep_packs / evaluate_oos_engineering_pack / build_research_refuse_inventory / evaluate_oos05_t11_fixture_gate / security_oos_deep_status | `core/apps/eval/service/security_oos_deep.py` | ✅ | OOS-DEEP：07/04/06/05 工程 fixture + 01–03 研究拒测；covered 恒 false；生成物适用：已接线 | 本批 |
 | eval_security_oos_deep_status / eval_evaluate_oos_engineering_pack / eval_build_research_refuse_inventory | `core/api/core_facade.py` | ✅ | CoreFacade OOS-DEEP 入口；≠认证；生成物适用：已接线 | 本批 |
+| run_text_family_live / build_locked_subject / build_evidence_card | `core/apps/eval/service/security_text_live_p1.py` | ✅ | **P1-1**：文本族 live；Subject=Agent×ImplMode×Config×Model×Runtime；禁裸 chat；无环境→unknown；min_n→report_only；证据卡；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_text_live_p1 / eval_security_text_live_p1_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-1 入口；live/scripted；≠认证；生成物适用：已接线 | 本批 |
+| run_tool_retrieval_family_live / execute_tool_retrieval_case / security_tool_retrieval_live_p1_status | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | **P1-1 工具/检索族**：T05-exec/T06/T07；Subject+契约；无环境→unknown；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_tool_retrieval_live_p1 / eval_security_tool_retrieval_live_p1_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-1 工具/检索入口；≠认证；生成物适用：已接线 | 本批 |
+| record_judge_gold_pair / submit_dual_review / evaluate_p1_2_session / security_p1_2_status | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | **P1-2**：judge 校准会话；分歧→双盲 A/B；A≠B→仲裁；失败全量人审；cert=false；生成物适用：已接线 | 本批 |
+| eval_security_p1_2_status / eval_record_security_p1_2_pair / eval_submit_security_p1_2_dual_review | `core/api/core_facade.py` | ✅ | CoreFacade P1-2 入口；≠认证；生成物适用：已接线 | 本批 |
+| evaluate_cross_tenant / evaluate_injection_asr / evaluate_output_encoding / run_security_dynamic_p13 | `core/apps/eval/service/security_dynamic_p13.py` | ✅ | **P1-3**：跨租户 100% 拒绝；注入基线 ASR；输出编码；transport 可注入；cert=false；生成物适用：已接线 | 本批 |
+| eval_run_security_dynamic_p13 / eval_security_dynamic_p13_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-3 入口；ASR 仅基线；≠认证；生成物适用：已接线 | 本批 |
+| run_p1_4_kvm_escape / scripted_guest_channel / build_escape_executor / security_p1_4_status / load_p14_escape_probes | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | **P1-4**：KVM 真逃逸；guest_boot+host_file/network/device/privilege+负向对照；HTTP≠escape；最多 isolation_probed；永不自动 covered；生成物适用：已接线 | 本批 |
+| eval_run_security_p1_4_kvm_escape / eval_security_p1_4_status | `core/api/core_facade.py` | ✅ | CoreFacade P1-4 入口；≠认证；生成物适用：已接线 | 本批 |
 | eval_security_sec_p5_status / eval_evaluate_t11_deferred_gate / eval_build_oos_extension_disclosure / eval_evaluate_deep_supply_chain_boundary / eval_load_p5_extension_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P5 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
@@ -3605,6 +3617,17 @@ scan_hash: 8f9548ec24f4
 | Builder Project Service | platform/builder/builder_project_service.py | ✅ | 全功能应用项目CRUD + 双模式自动路由（agent→配置/code→代码，team_planner mode 判断）+ pass_rate 来源标注（real_pytest/estimated）；PM/PRD 默认模型按 purpose=`agent` 选型（不用 latency-first `chat`，避免落小模型） | 已合入 |
 | 生成物契约校验（conformance） | platform/builder/generated_conformance.py + generated_conformance.yaml + builder_project_service.py | ✅ | 注册前契约校验生成 AGENT.md/SKILL.md/agent_manifest：首行 `---`、治理字段、schema 对象格式；**Phase A**：`validate_manifest` 校验 mode/skill_routing/ui_bindings；`multi_agent` 必填 rationale+success_metrics+upgrade_criteria（五条 AND）；**E1** 可选 `architecture_profile`/`execution_backend` 白名单 + 与 agent_type 冲突检测；**E4** 生成 Skill 禁 handler/hybrid（无工厂 handler.py）；不合规跳过注册并记 rejected_artifacts；生成物适用：**已接线** | 已合入 |
 | 工厂跑通晋升门（promotion_gate） | platform/builder/promotion_gate.py + promotion_gate.yaml + hop_metrics.py | ✅ | 四维「跑通」+ multi 五条 AND；**Phase C**：hop JSONL 聚合（N/成功率/failed_stage）→ `GET .../promotion` + 部署 `promotion_gate` 快照；**可解释**：每条检查 `how_to_fix`/`missing` + `next_actions`/`summary`，`format_upgrade_fix_hint` 供部署 rejected_artifacts 与 promotion API；生成物适用：**已接线** | 已合入 |
+| 成果物安全门（P0-3a） | platform/builder/artifact_security_manifest.py + builder_deploy_mixin | ✅ | `artifact.security.json` canonical SHA-256 + HMAC 签名；SAST/密钥/依赖扫描；prod/staging 强制发布门；`authz_smoke` 可 na（P0-3b）；生成物适用：**已接线** | 已合入 |
+| generate_sbom_cyclonedx_lite / build_sbom_attest_bundle / evaluate_mcp_plugin_allowlist / evaluate_p2_1_gate / try_ed25519_sign | `aiPlat-platform/builder/artifact_sbom_attest.py` | ✅ | **P2-1**：CycloneDX-lite SBOM + digest；MCP/插件 allowlist；可选 Ed25519；接入 publish gate；cert=false；生成物适用：**已接线** | 本批 |
+| mcp_plugin_allowlist.json | `security/keys/mcp_plugin_allowlist.json` | ✅ | P2-1 默认 MCP/插件允许名单；生成物适用：已接线 | 本批 |
+| P2-2 外部渗透 RFP 草案 | `reports/security/P2-2-external-pentest-rfp.md` | ✅ | 60–90 发标范围/交付物；≠报告本身；生成物适用：不适用（采购文档） | 本批 |
+| P2-3 正式 IR/披露/认证草案 | `reports/security/P2-3-formal-ir-disclosure-draft.md` | ✅ | SEV+披露+可选认证路径；cert=false；生成物适用：不适用（治理文档） | 本批 |
+| security_plan_closeout_check | `scripts/security_plan_closeout_check.py` | ✅ | 改进方案工程收口清单；ops 待办不默认失败；cert=false；生成物适用：不适用（仓库级门禁） | 本批 |
+| security_ops_audit | `scripts/security_ops_audit.py` | ✅ | Ops 可审计项（IR 联系人/fail-closed/hard-floor/P2-1 密钥/工程收口）；默认报告、`--strict` 可选；cert=false；生成物适用：不适用（仓库级审计） | 本批 |
+| security_ir_contacts | `scripts/security_ir_contacts.py` + `security/ir/contacts*.yaml` | ✅ | P0-IR 联系人 SoT 校验；example≠filled；local gitignore；生成物适用：不适用 | 本批 |
+| Ops 收口清单 | `reports/security/ops-closeout-checklist-2026-11-09.md` | ✅ | 人/环境待办；≠认证；生成物适用：不适用 | 本批 |
+| 成果物 authz pilot（P0-3b） | platform/builder/artifact_authz_smoke.py + `GET/POST /platform/builder/security/authz-pilot*` | ✅ | CRUD/报表探针模板（authz/IDOR/SSRF）；试点账本；退出=2类×≥3 pass+负向阻断+Owner 批准；60 日未退出→blocked；退出后该类强制 authz 门；生成物适用：**已接线** | 已合入 |
+| Pi 导出安全披露（P0-4） | platform/builder/pi_bundle_export.py `write_pi_security_disclosure` | ✅ | 导出器自动写 `SECURITY_DISCLOSURE.json` + manifest（丢失 PolicyGate/ApprovalGate 等）；禁手写 README 作唯一证据；生成物适用：**已接线** | 已合入 |
 | 工厂运行可观测面板（跑到哪/为何卡） | `aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts` + `index.tsx` + `GET .../promotion` + `resumeFromStage`/`regenerateStage` | ✅ | 失败/HITL/完成时聚合 `_hitl_stage_id`/`_current_stage` + handoff.next/known_issues + promotion next_actions/hop；一键续跑（保留产物）或从此阶段重建；列表卡 `formatCardStuckHint` 短提示；阶段解析 vitest；无新后端；生成物适用：**已接线**（工厂 oversight UI） | 已合入 |
 | Agent RACI 责任边界（创建时） | `aiPlat-core/core/apps/common/boundary_hints.py` + `aiPlat-core/core/management/agent_manager.py`（AGENT.md frontmatter）+ AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
 | 工厂动态 spawn 门禁（spawn_policy） | ⚠️ deprecated core/harness/coordination/spawn_policy.py + factory_profile + StageRunner + sys_agent_call | ✅ | Phase B W3：工厂阶段 `allow_dynamic_spawn=False`；ContextVar/state 阻断 DynamicOrchestrator.spawn 与 sys_agent_call 自由委派；非工厂默认允许；生成物适用：**已接线**（构建链契约化） | 已合入 |
@@ -3686,6 +3709,13 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| evaluate_pilot_exit | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
+| run_authz_smoke | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
+| load_contacts | `scripts/security_ir_contacts.py` | ✅ | 自动同步 | 已合入 |
+| run_ops_audit | `scripts/security_ops_audit.py` | ✅ | 自动同步 | 已合入 |
+| check_engineering | `scripts/security_plan_closeout_check.py` | ✅ | 自动同步 | 已合入 |
+| evaluate_publish_gate | `aiPlat-platform/builder/artifact_security_manifest.py` | ✅ | 自动同步 | 已合入 |
+| build_and_gate_for_dir | `aiPlat-platform/builder/artifact_security_manifest.py` | ✅ | 自动同步 | 已合入 |
 | normalize_raci | `core/apps/common/boundary_hints.py` | ✅ | 自动同步 | 已合入 |
 | management_api_token | `aiPlat-management/management/auth.py` | ✅ | 管理面 token；非 loopback 无 token 拒绝启动 | 已合入 |
 | assert_bind_allowed | `aiPlat-management/management/auth.py` | ✅ | 非本机监听必须已配置管理面 token | 已合入 |
@@ -4060,13 +4090,13 @@ scan_hash: 8f9548ec24f4
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 294 | 0 | 294 |
 | Skill 系统 | 171 | 0 | 171 |
-| 安全与治理 | 90 | 0 | 90 |
+| 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 448 | 0 | 448 |
+| 评估系统 | 458 | 0 | 458 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4075,11 +4105,11 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 132 | 0 | 132 |
+| 平台治理 | 143 | 0 | 143 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 107 | 0 | 107 |
+| 管理 & 质量 | 114 | 0 | 114 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -4098,7 +4128,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3144** | **10** | **3154** |
+| **总计** | **3174** | **10** | **3184** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

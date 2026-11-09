@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2348
+total_capabilities: 2417
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -3787,7 +3787,7 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 305
+    caps_count: 328
     provides:
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
@@ -4999,6 +4999,98 @@ domains:
         type: function
         signature: 'load_a1_track_a_evidence(path)'
         module: aiPlat-core/core/apps/eval/service/a1_intersection_ops.py
+      - symbol: default_http_transport
+        type: function
+        signature: 'default_http_transport(method, url, body, headers)'
+        module: aiPlat-core/core/apps/eval/service/security_dynamic_p13.py
+      - symbol: SecurityP14Error
+        type: class
+        signature: 'Fail-closed P1-4 KVM escape error.'
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: default_p14_probes_path
+        type: function
+        signature: 'default_p14_probes_path()'
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: assert_not_http_escape
+        type: function
+        signature: 'HTTP black-box must never be filed as sandbox escape evidence.'
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: SecurityP12SessionError
+        type: class
+        signature: 'Fail-closed P1-2 session error.'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: default_session_path
+        type: function
+        signature: 'default_session_path()'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: empty_session
+        type: function
+        signature: 'empty_session()'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: load_session
+        type: function
+        signature: 'load_session(path)'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: save_session
+        type: function
+        signature: 'save_session(session, path)'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: failure_case_ids
+        type: function
+        signature: 'failure_case_ids(session)'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: dual_human_completed
+        type: function
+        signature: 'dual_human_completed(session)'
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: SecurityTextLiveError
+        type: class
+        signature: 'Fail-closed P1-1 error.'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: environment_for_family
+        type: function
+        signature: 'environment_for_family(family_id)'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: build_evidence_card
+        type: function
+        signature: 'Minimal evidence card (improvement plan §4.1).'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: default_safety_cases_path
+        type: function
+        signature: 'default_safety_cases_path()'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: load_text_live_cases
+        type: function
+        signature: 'Load safety cases whose threat_ids intersect text-env families.'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: execute_text_case
+        type: function
+        signature: 'Execute one case via create_agent. live=False → scripted (CI).'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: security_text_live_p1_status
+        type: function
+        signature: 'Sync status helper for facade / diagnostics (runs scripted path).'
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: SecurityToolRetrievalLiveError
+        type: class
+        signature: 'Fail-closed P1-1 tool/retrieval error.'
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: tools_env_available
+        type: function
+        signature: 'tools_env_available()'
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: retrieval_env_available
+        type: function
+        signature: 'retrieval_env_available()'
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: environment_ready_for_family
+        type: function
+        signature: 'environment_ready_for_family(family_id)'
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: default_tool_retrieval_cases
+        type: function
+        signature: 'Minimal engineering fixtures (scripted). Not certification cases.'
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
     breaks: []
     consumers_expected:
       - module: "core/harness/execution/pipeline_engine.py"
@@ -5014,7 +5106,7 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 187
+    caps_count: 191
     provides:
       - symbol: "SkillRegistry"
         module: core/apps/skills/registry.py
@@ -5717,7 +5809,23 @@ domains:
       - symbol: "resolve_policy_fail_mode"
         module: core/harness/infrastructure/gates/policy_gate.py
         type: function
-        signature: "resolve_policy_fail_mode(critical=False) → open|ask|closed; AIPLAT_POLICY_FAIL_MODE + CRITICAL_MODE (§4.1 方案 C)"
+        signature: "resolve_policy_fail_mode(critical=False) → open|ask|closed; profile default + FAIL_OPEN_UNTIL grayscale (P0-2)"
+      - symbol: "default_fail_mode_for_profile"
+        module: core/harness/infrastructure/gates/policy_gate.py
+        type: function
+        signature: "default_fail_mode_for_profile(profile=None) → closed|ask|open from AIPLAT_PROFILE/ENV"
+      - symbol: "audit_policy_fail_mode_config"
+        module: core/harness/infrastructure/gates/policy_gate.py
+        type: function
+        signature: "audit_policy_fail_mode_config() → drift snapshot for health/IR"
+      - symbol: "is_hard_floor_escape_active"
+        module: core/harness/infrastructure/gates/approval_gate.py
+        type: function
+        signature: "is_hard_floor_escape_active() → True only with HARD_FLOOR_DISABLED + future UNTIL"
+      - symbol: "audit_hard_floor_escape"
+        module: core/harness/infrastructure/gates/approval_gate.py
+        type: function
+        signature: "audit_hard_floor_escape() → escape window / drift for architecture health"
       - symbol: "ManagedPolicy"
         module: aiPlat-platform/auth/schemas_policy.py
         type: class
@@ -6804,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 408
+    caps_count: 437
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -7393,6 +7501,122 @@ domains:
       - symbol: eval_build_research_refuse_inventory
         type: function
         signature: "eval_build_research_refuse_inventory()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_text_family_live
+        type: function
+        signature: "P1-1 run_text_family_live(impl_mode, live=)→Subject-locked text family report + evidence cards"
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: build_locked_subject
+        type: function
+        signature: "P1-1 Subject=Agent×ImplMode×Config×Model×RuntimeTier (forbid bare chat)"
+        module: aiPlat-core/core/apps/eval/service/security_text_live_p1.py
+      - symbol: eval_run_security_text_live_p1
+        type: function
+        signature: "CoreFacade eval_run_security_text_live_p1(…)→Dict (cert=false)"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_security_text_live_p1_status
+        type: function
+        signature: "CoreFacade eval_security_text_live_p1_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_tool_retrieval_family_live
+        type: function
+        signature: "P1-1 run_tool_retrieval_family_live(…)→T05-exec/T06/T07 Subject-locked report"
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: execute_tool_retrieval_case
+        type: function
+        signature: "P1-1 execute_tool_retrieval_case(case, subject, live=)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: security_tool_retrieval_live_p1_status
+        type: function
+        signature: "P1-1 security_tool_retrieval_live_p1_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_tool_retrieval_live_p1.py
+      - symbol: eval_run_security_tool_retrieval_live_p1
+        type: function
+        signature: "CoreFacade eval_run_security_tool_retrieval_live_p1(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_security_tool_retrieval_live_p1_status
+        type: function
+        signature: "CoreFacade eval_security_tool_retrieval_live_p1_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: record_judge_gold_pair
+        type: function
+        signature: "P1-2 record_judge_gold_pair(session, case_id, gold, judge)→session (queue dual on disagree)"
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: submit_dual_review
+        type: function
+        signature: "P1-2 submit_dual_review(session, case_id, reviewer, slot=a|b|arbiter, label)→session"
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: evaluate_p1_2_session
+        type: function
+        signature: "P1-2 evaluate_p1_2_session(session)→Dict (engineering bar; cert=false)"
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: security_p1_2_status
+        type: function
+        signature: "P1-2 security_p1_2_status(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_p1_judge_session.py
+      - symbol: eval_security_p1_2_status
+        type: function
+        signature: "CoreFacade eval_security_p1_2_status(path?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_record_security_p1_2_pair
+        type: function
+        signature: "CoreFacade eval_record_security_p1_2_pair(case_id, gold, judge,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_submit_security_p1_2_dual_review
+        type: function
+        signature: "CoreFacade eval_submit_security_p1_2_dual_review(case_id, reviewer, slot, label)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: evaluate_cross_tenant
+        type: function
+        signature: "P1-3 evaluate_cross_tenant(base_url, transport?, repeats)→100% reject gate"
+        module: aiPlat-core/core/apps/eval/service/security_dynamic_p13.py
+      - symbol: evaluate_injection_asr
+        type: function
+        signature: "P1-3 evaluate_injection_asr(base_url, transport?)→baseline ASR (report_only)"
+        module: aiPlat-core/core/apps/eval/service/security_dynamic_p13.py
+      - symbol: evaluate_output_encoding
+        type: function
+        signature: "P1-3 evaluate_output_encoding(base_url, transport?)→raw-echo XSS gate"
+        module: aiPlat-core/core/apps/eval/service/security_dynamic_p13.py
+      - symbol: run_security_dynamic_p13
+        type: function
+        signature: "P1-3 run_security_dynamic_p13(base_url,…)→aggregate (cert=false)"
+        module: aiPlat-core/core/apps/eval/service/security_dynamic_p13.py
+      - symbol: eval_run_security_dynamic_p13
+        type: function
+        signature: "CoreFacade eval_run_security_dynamic_p13(base_url,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_security_dynamic_p13_status
+        type: function
+        signature: "CoreFacade eval_security_dynamic_p13_status(base_url?)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_p1_4_kvm_escape
+        type: function
+        signature: "P1-4 run_p1_4_kvm_escape(mode, guest_boot?, guest_channel?)→max isolation_probed; HTTP≠escape"
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: scripted_guest_channel
+        type: function
+        signature: "P1-4 scripted_guest_channel(deny_escape=, break_negative=)→GuestChannel"
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: build_escape_executor
+        type: function
+        signature: "P1-4 build_escape_executor(channel)→SEC-P4 escape_executor"
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: load_p14_escape_probes
+        type: function
+        signature: "P1-4 load_p14_escape_probes(path?)→catalog (5 kinds)"
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: security_p1_4_status
+        type: function
+        signature: "P1-4 security_p1_4_status(…)→Dict (cert=false)"
+        module: aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py
+      - symbol: eval_run_security_p1_4_kvm_escape
+        type: function
+        signature: "CoreFacade eval_run_security_p1_4_kvm_escape(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_security_p1_4_status
+        type: function
+        signature: "CoreFacade eval_security_p1_4_status(…)→Dict"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: ModeAwareExamError
         type: class
@@ -9363,7 +9587,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 102
+    caps_count: 115
     provides:
       - symbol: "management_api_token"
         module: aiPlat-management/management/auth.py
@@ -9524,6 +9748,58 @@ domains:
         module: aiPlat-platform/builder/promotion_gate.py
         type: function
         signature: "Load promotion_gate.yaml thresholds and checklist"
+      - symbol: "build_and_gate_for_dir"
+        module: aiPlat-platform/builder/artifact_security_manifest.py
+        type: function
+        signature: "P0-3a: scan+canonical hash+HMAC sign artifact.security.json; publish gate"
+      - symbol: "evaluate_publish_gate"
+        module: aiPlat-platform/builder/artifact_security_manifest.py
+        type: function
+        signature: "P0-3a/P2-1: block publish on sast/secrets/deps/SBOM/allowlist fail or hash/signature tamper"
+      - symbol: "generate_sbom_cyclonedx_lite"
+        module: aiPlat-platform/builder/artifact_sbom_attest.py
+        type: function
+        signature: "P2-1: CycloneDX-lite SBOM from requirements/package.json/pyproject"
+      - symbol: "build_sbom_attest_bundle"
+        module: aiPlat-platform/builder/artifact_sbom_attest.py
+        type: function
+        signature: "P2-1: write sbom.cdx.json + digest + MCP/plugin allowlist eval"
+      - symbol: "evaluate_mcp_plugin_allowlist"
+        module: aiPlat-platform/builder/artifact_sbom_attest.py
+        type: function
+        signature: "P2-1: undeclared MCP/plugin ids fail closed"
+      - symbol: "evaluate_p2_1_gate"
+        module: aiPlat-platform/builder/artifact_sbom_attest.py
+        type: function
+        signature: "P2-1: require sbom.digest when AIPLAT_P2_1_SBOM or prodish"
+      - symbol: "try_ed25519_sign"
+        module: aiPlat-platform/builder/artifact_sbom_attest.py
+        type: function
+        signature: "P2-1: optional Ed25519 over sha256:manifest_hash"
+      - symbol: "check_engineering"
+        module: scripts/security_plan_closeout_check.py
+        type: function
+        signature: "P0–P2 engineering inventory; ops pending listed; cert=false"
+      - symbol: "run_ops_audit"
+        module: scripts/security_ops_audit.py
+        type: function
+        signature: "Ops audit (IR/fail-closed/hard-floor/P2-1/closeout); default report-only; cert=false"
+      - symbol: "load_contacts"
+        module: scripts/security_ir_contacts.py
+        type: function
+        signature: "P0-IR contacts SoT loader; example≠filled; cert=false"
+      - symbol: "write_pi_security_disclosure"
+        module: aiPlat-platform/builder/pi_bundle_export.py
+        type: function
+        signature: "P0-4: auto-write SECURITY_DISCLOSURE.json + artifact.security.json on Pi export"
+      - symbol: "run_authz_smoke"
+        module: aiPlat-platform/builder/artifact_authz_smoke.py
+        type: function
+        signature: "P0-3b: crud/report authz+IDOR+SSRF HTTP smoke templates"
+      - symbol: "evaluate_pilot_exit"
+        module: aiPlat-platform/builder/artifact_authz_smoke.py
+        type: function
+        signature: "P0-3b: 2 types × ≥3 pass + negatives + owner approval; 60d → blocked"
       - symbol: "should_skip_dynamic_spawn"
         module: aiPlat-core/core/harness/coordination/spawn_policy.py
         type: function

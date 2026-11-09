@@ -1,6 +1,6 @@
 # aiPlat 平台与成果物安全质量分析报告
 
-> **更正（2026-11-09）**：本报告是桌面评估；后续代码证据审计发现 `scripts/security-attack-sim.py` 存在 false-pass（服务器不可达仍计 PASS）。因此本报告中的“自动渗透/测试通过”不能作为安全证据。请以 [`v2 证据审计版`](./aiplat-security-quality-report-2026-11-09-v2-evidence.md) 为准；本报告仅保留作对比。
+> **更正（2026-11-09）**：本报告是桌面评估；后续代码证据审计发现 `scripts/security-attack-sim.py` 存在 false-pass（服务器不可达仍计 PASS）。因此本报告中的“自动渗透/测试通过”不能作为安全证据。请以现行 [`v3 复审版`](./aiplat-security-quality-report-2026-11-09-v3.md) 为准（[`v2`](./aiplat-security-quality-report-2026-11-09-v2-evidence.md) 为中间证据审计）；本报告仅保留作对比。
 
 > **版本**：v1.0 · 2026-11-09  
 > **类型**：安全质量评估 / 工程审计  

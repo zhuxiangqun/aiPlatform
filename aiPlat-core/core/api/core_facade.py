@@ -6910,6 +6910,43 @@ def eval_run_linux_microvm_probes(
     return run_linux_microvm_probes(mode=str(mode or "guest_sim"), catalog=catalog, admit=admit)
 
 
+def eval_run_security_p1_4_kvm_escape(
+    *,
+    mode: str = "guest_sim",
+    guest_boot: Optional[bool] = None,
+    admit: Optional[Dict[str, Any]] = None,
+    evidence_kind: str = "kvm_guest",
+    human_review: bool = False,
+    human_reviewer: str = "",
+) -> Dict[str, Any]:
+    """P1-4 KVM escape: guest_boot + host probes; max isolation_probed; HTTP≠escape.
+
+    Live mode needs env AIPLAT_EVAL_P1_4_LIVE + AIPLAT_EVAL_T12_GUEST_LIVE and an
+    injected guest channel (use service API). Facade guest_sim path is engineering.
+    """
+    from core.apps.eval.service.security_p1_4_kvm_escape import run_p1_4_kvm_escape
+
+    return run_p1_4_kvm_escape(
+        mode=str(mode or "guest_sim"),
+        guest_boot=guest_boot,
+        admit=admit,
+        evidence_kind=evidence_kind,
+        human_review=bool(human_review),
+        human_reviewer=str(human_reviewer or ""),
+    )
+
+
+def eval_security_p1_4_status(
+    *,
+    mode: str = "guest_sim",
+    admit: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """P1-4 inventory status (claim locks false)."""
+    from core.apps.eval.service.security_p1_4_kvm_escape import security_p1_4_status
+
+    return security_p1_4_status(mode=str(mode or "guest_sim"), admit=admit)
+
+
 def eval_security_sec_p5_status(
     *,
     t11_evidence: Optional[Dict[str, Any]] = None,
@@ -7029,6 +7066,192 @@ def eval_security_oos_deep_status(
         probe_results_by_oos=probe_results_by_oos,
         t11_evidence=t11_evidence,
     )
+
+
+def eval_run_security_text_live_p1(
+    *,
+    impl_mode: str = "conversational",
+    agent_id: str = "eval.security.p1_1",
+    model: str = "",
+    live: bool = False,
+    owner: str = "eval",
+) -> Dict[str, Any]:
+    """P1-1: text-family security run under locked Agent Subject (create_agent).
+
+    live=False → scripted after create_agent (CI fixture tier).
+    live=True → agent.execute (workspace_execute). Never certification.
+    """
+    import asyncio
+
+    from core.apps.eval.service.security_text_live_p1 import run_text_family_live
+
+    coro = run_text_family_live(
+        impl_mode=impl_mode,
+        agent_id=agent_id,
+        model=model,
+        live=live,
+        owner=owner,
+    )
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            raise RuntimeError("eval_run_security_text_live_p1_requires_await_caller")
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+def eval_security_text_live_p1_status(
+    *,
+    impl_mode: str = "conversational",
+    live: bool = False,
+) -> Dict[str, Any]:
+    """P1-1 status / scripted inventory (Subject-locked; claim locks false)."""
+    from core.apps.eval.service.security_text_live_p1 import security_text_live_p1_status
+
+    return security_text_live_p1_status(impl_mode=impl_mode, live=live)
+
+
+def eval_run_security_tool_retrieval_live_p1(
+    *,
+    impl_mode: str = "conversational",
+    agent_id: str = "eval.security.p1_1.tool_retrieval",
+    model: str = "",
+    live: bool = False,
+    owner: str = "eval",
+    tool_contract: str = "allowlist_v1",
+    retrieval_contract: str = "rag_guard_v1",
+) -> Dict[str, Any]:
+    """P1-1 tool/retrieval families under locked Subject (create_agent).
+
+    Needs AIPLAT_EVAL_P1_1_TOOLS / AIPLAT_EVAL_P1_1_RETRIEVAL or families → unknown.
+    """
+    import asyncio
+
+    from core.apps.eval.service.security_tool_retrieval_live_p1 import (
+        run_tool_retrieval_family_live,
+    )
+
+    coro = run_tool_retrieval_family_live(
+        impl_mode=impl_mode,
+        agent_id=agent_id,
+        model=model,
+        live=live,
+        owner=owner,
+        tool_contract=tool_contract,
+        retrieval_contract=retrieval_contract,
+    )
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            raise RuntimeError("eval_run_security_tool_retrieval_live_p1_requires_await")
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+def eval_security_tool_retrieval_live_p1_status(
+    *,
+    impl_mode: str = "conversational",
+    live: bool = False,
+) -> Dict[str, Any]:
+    """P1-1 tool/retrieval status (claim locks false)."""
+    from core.apps.eval.service.security_tool_retrieval_live_p1 import (
+        security_tool_retrieval_live_p1_status,
+    )
+
+    return security_tool_retrieval_live_p1_status(impl_mode=impl_mode, live=live)
+
+
+def eval_security_p1_2_status(*, path: Optional[str] = None) -> Dict[str, Any]:
+    """P1-2 judge calib session status (dual-review / arbiter; cert=false)."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import security_p1_2_status
+
+    return security_p1_2_status(path=Path(path) if path else None)
+
+
+def eval_record_security_p1_2_pair(
+    *,
+    case_id: str,
+    gold: bool,
+    judge: bool,
+    notes: str = "",
+    path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """P1-2: record gold/judge pair; auto-queue dual review on disagreement."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import (
+        evaluate_p1_2_session,
+        load_session,
+        record_judge_gold_pair,
+        save_session,
+    )
+
+    p = Path(path) if path else None
+    session = load_session(p)
+    record_judge_gold_pair(
+        session, case_id=case_id, gold=gold, judge=judge, notes=notes
+    )
+    save_session(session, p)
+    return evaluate_p1_2_session(session)
+
+
+def eval_submit_security_p1_2_dual_review(
+    *,
+    case_id: str,
+    reviewer: str,
+    slot: str,
+    label: bool,
+    path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """P1-2: submit dual-blind slot a|b|arbiter for a failure case."""
+    from pathlib import Path
+
+    from core.apps.eval.service.security_p1_judge_session import (
+        evaluate_p1_2_session,
+        load_session,
+        save_session,
+        submit_dual_review,
+    )
+
+    p = Path(path) if path else None
+    session = load_session(p)
+    submit_dual_review(
+        session, case_id=case_id, reviewer=reviewer, slot=slot, label=label
+    )
+    save_session(session, p)
+    return evaluate_p1_2_session(session)
+
+
+def eval_run_security_dynamic_p13(
+    *,
+    base_url: str = "",
+    cross_tenant_repeats: int = 2,
+) -> Dict[str, Any]:
+    """P1-3: cross-tenant / injection ASR / output-encoding dynamic probes.
+
+    Uses real HTTP against base_url (or AIPLAT_DYNAMIC_SECURITY_BASE).
+    Injection ASR is baseline-only; never certification.
+    """
+    from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
+
+    return run_security_dynamic_p13(
+        base_url=base_url,
+        cross_tenant_repeats=cross_tenant_repeats,
+    )
+
+
+def eval_security_dynamic_p13_status(
+    *,
+    base_url: str = "",
+) -> Dict[str, Any]:
+    """P1-3 inventory status (same harness; claim locks false)."""
+    from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
+
+    return run_security_dynamic_p13(base_url=base_url, cross_tenant_repeats=1)
 
 
 def eval_evaluate_oos_engineering_pack(

@@ -1,0 +1,21 @@
+# Rename/copy to contacts.local.yaml after filling (contacts.local.yaml is gitignored).
+schema: aiplat.ir_contacts.v1
+version: "1.0.0"
+updated_at: "2026-11-09T00:00:00Z"
+roles:
+  security_owner:
+    name: "Alice Example"
+    channel: "#sec-oncall"
+    backup: "Bob Example"
+  platform_oncall:
+    name: "Platform Duty"
+    channel: "pagerduty:aiplat-platform"
+    backup: "secondary-rota"
+  ops_infra:
+    name: "Ops Duty"
+    channel: "pagerduty:aiplat-infra"
+    backup: "infra-backup"
+  exec_sponsor:
+    name: "Exec Sponsor"
+    channel: "email:sponsor@example.com"
+    backup: "deputy@example.com"
