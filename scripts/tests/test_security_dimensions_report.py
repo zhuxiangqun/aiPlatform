@@ -1,4 +1,4 @@
-"""25-dim security ledger — ledger ≠ accounted ≠ release ≠ coverage."""
+"""26-dim security ledger — ledger ≠ accounted ≠ release ≠ coverage."""
 from __future__ import annotations
 
 import importlib.util
@@ -44,7 +44,7 @@ def test_repo_yaml_four_states(report_mod):
     assert r["ledger_ok"] is True, r.get("errors")
     assert r["schema_ok"] is True
     assert r["schema_ok"] == r["ledger_ok"]
-    assert r["dimension_count"] == 25
+    assert r["dimension_count"] == 26
     assert r["security_certification"] is False
     # D03 G owned → accounted can be true; release/coverage false
     assert r["accounted_ok"] is True
@@ -53,7 +53,9 @@ def test_repo_yaml_four_states(report_mod):
     assert "D03" in r["open_gap_ids"]
     assert "D03" in r["release_blocking_ids"]
     assert "D03" in r["external_dependency_ids"]
-    assert "D06" in r["open_gap_ids"]  # E with open gap
+    assert "D06" not in r["open_gap_ids"]  # platform authz narrowed; gap cleared
+    assert "D26" in r["open_gap_ids"]  # artifact authz pilot
+    assert "D26" in r["release_blocking_ids"]
     assert "D19" in r["open_gap_ids"]
 
 

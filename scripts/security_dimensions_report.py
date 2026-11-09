@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Security quality dimensions report (25-dim SoT, A1 semantics).
+"""Security quality dimensions report (26-dim SoT = 25 + D26; A1+A2 semantics).
 
 Contract (ledger_ok primary; schema_ok is alias):
   - ledger_ok / schema_ok = parseable, count, field rules, E⇒≥1 V|T
@@ -12,6 +12,8 @@ Gates:
   default CI / --ledger-gate  → ledger_ok
   --release-gate              → ledger ∧ accounted ∧ release
   --claim-gate / --strict-gaps → ledger ∧ coverage  (claim only; not default publish)
+
+ID stability: D01–D25 keep meaning; D26 appended (artifact authz). Do not renumber.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ DEFAULT_YAML = ROOT / "reports" / "security" / "security_quality_dimensions.yaml
 
 STATUS_OK = frozenset({"E", "I", "O", "G"})
 EVIDENCE_LEVELS = frozenset({"V", "T", "D", "U", "A"})
-EXPECTED_COUNT = 25
+EXPECTED_COUNT = 26
 HONESTY = "ledger_ok ≠ accounted_ok ≠ release_ok ≠ coverage_ok ≠ certification"
 
 
@@ -385,7 +387,7 @@ def build_report(path: Path, *, now: Optional[datetime] = None) -> Dict[str, Any
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="25-dim security ledger/release/claim report")
+    parser = argparse.ArgumentParser(description="26-dim security ledger/release/claim report")
     parser.add_argument("--path", default=str(DEFAULT_YAML))
     parser.add_argument(
         "--ledger-gate",
