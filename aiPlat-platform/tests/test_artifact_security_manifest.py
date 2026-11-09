@@ -45,10 +45,28 @@ def test_canonical_hash_stable_and_excludes_signature(asm):
     )
     h1 = m1["manifest_hash"]
     assert h1 == asm.compute_manifest_hash(m1)
+    assert m1["attestation"]["alg"] == "hmac-sha256"
+    assert m1["attestation"]["kind"] == "ci-or-platform"
+    assert m1["attestation"]["certification"] is False
     m1_tampered = dict(m1)
     m1_tampered["sast"] = {"status": "pass", "tool": "hacked"}
     assert asm.validate_manifest_integrity(m1_tampered)["ok"] is False
     assert "manifest_hash_mismatch" in asm.validate_manifest_integrity(m1_tampered)["errors"]
+
+
+def test_missing_attestation_blocks_integrity(asm):
+    m = asm.build_manifest(
+        artifact_id="a@1",
+        artifact_type="app",
+        owner="t",
+        sast={"status": "pass", "tool": "none"},
+        secrets_scan={"status": "pass"},
+        deps_scan={"status": "pass"},
+    )
+    del m["attestation"]
+    r = asm.validate_manifest_integrity(m)
+    assert r["ok"] is False
+    assert "missing_attestation" in r["errors"]
 
 
 def test_hand_edit_pass_invalidates_signature(asm, tmp_path: Path):
@@ -159,6 +177,18 @@ def test_threat_model_empty_top_threats_fail(asm):
     r = asm.validate_threat_model_doc(_valid_tm_doc(top_threats=[]))
     assert r["ok"] is False
     assert "empty_top_threats" in r["errors"]
+
+
+def test_threat_model_empty_severity_fail(asm):
+    r = asm.validate_threat_model_doc(_valid_tm_doc(severity=[]))
+    assert r["ok"] is False
+    assert "empty_severity" in r["errors"]
+
+
+def test_threat_model_empty_likelihood_fail(asm):
+    r = asm.validate_threat_model_doc(_valid_tm_doc(likelihood=[]))
+    assert r["ok"] is False
+    assert "empty_likelihood" in r["errors"]
 
 
 def test_threat_model_self_approval_fail(asm):

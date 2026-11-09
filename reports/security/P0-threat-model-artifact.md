@@ -9,9 +9,9 @@
 ## 硬规则
 
 1. 文件：`THREAT_MODEL.yaml` 在成果物根目录。  
-2. Hash：canonical JSON → SHA-256 → `threat_model_hash`（进 manifest 签名）。  
-3. `approved=true`：`reviewer_role ∈ {security_owner, product_security, independent_qa}` 且 `reviewed_by ≠ owner`。  
-4. `top_threats` / `mitigations` / `out_of_scope` 非空。  
+2. Hash：统一转 **canonical JSON**（`sort_keys`、UTF-8、compact separators）→ SHA-256 → `threat_model_hash`；manifest 另有 `manifest_hash` + `signature` + `attestation`（手改 `approved`/hash 不匹配 → block）。  
+3. `approved=true`：`reviewer_role ∈ {security_owner, product_security, independent_qa}` 且 `reviewed_by ≠ owner`（须 `reviewed_at`）。  
+4. 非空列表：`top_threats` / `mitigations` / `out_of_scope` / `privacy` / `data_sensitivity` / `severity` / `likelihood`。  
 5. **`crud` / `report`（P0-3b pilot）必须 `threat_model.status=pass`**，`na` 不算 pass。  
 6. Legacy 非 pilot：`na` 须 `na_reason` + `expires_at`（ISO-8601 UTC，默认 30 天）；过期阻断。  
 7. `AIPLAT_REQUIRE_THREAT_MODEL=0` **仅 development** 放行；staging/prod 仍强制。  

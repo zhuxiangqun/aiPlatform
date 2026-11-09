@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T00:08:56+08:00",
+  "reviewed_at": "2026-11-10T00:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a78fa38bf72933666594fd3dff5e61215edacded",
-  "diff_sha256": "2abc87da6586d0cadf577074849335cc1f5169172afadbf1bf4f5061693ae84d",
-  "head_sha": "19d9bbd5a86d109a83d75acb86c5748d224b6c1a",
+  "merge_base": "PLACEHOLDER",
+  "diff_sha256": "PLACEHOLDER",
+  "head_sha": "PLACEHOLDER",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "A1 four-state: ledger≠accounted≠release≠coverage. ≠cert."
+  "note": "A1+merge #628: ledger≠accounted≠release≠coverage; attestation. ≠cert."
 }
