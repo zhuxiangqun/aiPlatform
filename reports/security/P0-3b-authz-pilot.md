@@ -42,8 +42,12 @@ python3 scripts/security_authz_pilot_cli.py --probe \
   --base-url https://<sample-host> \
   --app-type crud \
   --sample-id crud-001 \
+  --git-commit "$(git rev-parse HEAD)" \
+  --build-id "<ci-or-artifact-id>" \
   --record
 ```
+
+> Wave2：pass 样本缺 `git_commit`/`build_id` **不计**入退出；双签后才允许 D26→E（`security_d26_promote_check.py --propose-e`）。
 
 3. 账本默认：`$AIPLAT_HOME/builder/authz_pilot.json`（可用 `AIPLAT_AUTHZ_PILOT_PATH` / `--path`）。  
 4. 查看进度：

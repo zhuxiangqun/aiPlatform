@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3209
+total_capabilities: 3212
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -3648,10 +3648,11 @@ scan_hash: 8f9548ec24f4
 | P0-2 fail-closed 切流手册 | `reports/security/P0-2-fail-closed-cutover.md` | ✅ | 预发→生产灰度步骤+回滚；≠认证；生成物适用：不适用 | 本批 |
 | P0-3b authz pilot Ops CLI/手册 | `scripts/security_authz_pilot_cli.py` + `reports/security/P0-3b-authz-pilot.md` | ✅ | status/dry-run-exit/probe/approve；fixture 干跑≠真人退出≠认证；生成物适用：不适用（仓库级 Ops） | 本批 |
 | 安全质量 26 维覆盖矩阵 | `reports/security/security_quality_dimensions.yaml` + `scripts/security_dimensions_report.py` + crosswalk | ✅ | dimension_set_version=1.1；D26 成果物 authz（未重排 D07–D25）；ledger≠accounted≠release≠coverage；`--release-gate`/`--claim-gate`；cert=false；生成物适用：不适用 | 本批 |
-| 成果物威胁模型门（PR2/PR3） | `security/templates/artifact_threat_model.v1.yaml` + `artifact_security_manifest` threat_model/hash | ✅ | crud/report 强制 pass；legacy na+30d expires；prodish 禁关；双签退出；`--strict-gaps` 进发布清单；cert=false；生成物适用：**已接线** | 本批 |
+| 安全 Wave1–4 工程闸 | `scripts/security_wave_ops.py` + `scripts/security_evidence_card.py` + `scripts/security_d26_promote_check.py` + `reports/security/evidence/wave{1–4}/` | ✅ | W1 不可达归档/IR gitignore/三门禁；W2 sample pin+双签升 D26；W3 证据卡 schema；W4 KVM/SBOM/IR/RFP 脚手架；Ops 真人项仍待；cert=false；生成物适用：不适用（仓库级 Ops） | 本批 |
+| 成果物威胁模型门（PR2/PR3） | `security/templates/artifact_threat_model.v1.yaml` + `artifact_security_manifest` threat_model/hash | ✅ | crud/report 强制 pass；legacy na+30d expires；prodish 禁关；双签退出；普通发布 `--release-gate`；声明才 `--claim-gate`；cert=false；生成物适用：**已接线** | 本批 |
 | security_ir_contacts | `scripts/security_ir_contacts.py` + `security/ir/contacts*.yaml` | ✅ | P0-IR 联系人 SoT 校验；example≠filled；local gitignore；生成物适用：不适用 | 本批 |
 | Ops 收口清单 | `reports/security/ops-closeout-checklist-2026-11-09.md` | ✅ | 人/环境待办；≠认证；生成物适用：不适用 | 本批 |
-| 成果物 authz pilot（P0-3b） | platform/builder/artifact_authz_smoke.py + `GET/POST /platform/builder/security/authz-pilot*` | ✅ | CRUD/报表探针模板（authz/IDOR/SSRF）；试点账本；退出=2类×≥3 pass+负向阻断+Owner 批准；60 日未退出→blocked；退出后该类强制 authz 门；生成物适用：**已接线** | 已合入 |
+| 成果物 authz pilot（P0-3b） | platform/builder/artifact_authz_smoke.py + `GET/POST /platform/builder/security/authz-pilot*` | ✅ | CRUD/报表探针；退出=2类×≥3 **pinned** pass（sample_id+git_commit+build_id）+负向+双签；60 日未退出→blocked；`d26_promote_allowed` 后方可升 D26→E；生成物适用：**已接线** | 已合入 |
 | Pi 导出安全披露（P0-4） | platform/builder/pi_bundle_export.py `write_pi_security_disclosure` | ✅ | 导出器自动写 `SECURITY_DISCLOSURE.json` + manifest（丢失 PolicyGate/ApprovalGate 等）；禁手写 README 作唯一证据；生成物适用：**已接线** | 已合入 |
 | 工厂运行可观测面板（跑到哪/为何卡） | `aiPlat-management/frontend/src/pages/App/Factory/runObsSnapshot.ts` + `index.tsx` + `GET .../promotion` + `resumeFromStage`/`regenerateStage` | ✅ | 失败/HITL/完成时聚合 `_hitl_stage_id`/`_current_stage` + handoff.next/known_issues + promotion next_actions/hop；一键续跑（保留产物）或从此阶段重建；列表卡 `formatCardStuckHint` 短提示；阶段解析 vitest；无新后端；生成物适用：**已接线**（工厂 oversight UI） | 已合入 |
 | Agent RACI 责任边界（创建时） | `aiPlat-core/core/apps/common/boundary_hints.py` + `aiPlat-core/core/management/agent_manager.py`（AGENT.md frontmatter）+ AddAgentModal / AssetBoundaryHint + `agent_engineering` Step 0 | ✅ | 可选写入 `raci.{responsible,accountable,consulted,informed}`；边界提示缺 RACI 时提醒「闭环优先单 Agent」；非运行时门禁（升 multi 仍走五条 AND）；生成物适用：**已接线** | 已合入 |
@@ -3734,6 +3735,8 @@ scan_hash: 8f9548ec24f4
 ## 二十五、管理 & 质量
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| validate_card | `scripts/security_evidence_card.py` | ✅ | 自动同步 | 已合入 |
+| run_wave1 | `scripts/security_wave_ops.py` | ✅ | 自动同步 | 已合入 |
 | evaluate_pilot_exit | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
 | run_authz_smoke | `aiPlat-platform/builder/artifact_authz_smoke.py` | ✅ | 自动同步 | 已合入 |
 | load_contacts | `scripts/security_ir_contacts.py` | ✅ | 自动同步 | 已合入 |
@@ -4130,11 +4133,11 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 147 | 0 | 147 |
+| 平台治理 | 148 | 0 | 148 |
 | Infra 基础设施 | 16 | 0 | 16 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
-| 管理 & 质量 | 114 | 0 | 114 |
+| 管理 & 质量 | 116 | 0 | 116 |
 | 编排层 | 22 | 0 | 22 |
 | L6 自主能力 | 8 | 0 | 8 |
 | 记忆系统白盒化 | 7 | 0 | 7 |
@@ -4153,7 +4156,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3199** | **10** | **3209** |
+| **总计** | **3202** | **10** | **3212** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -1,0 +1,12 @@
+{
+  "schema": "eval.security_authz_pilot_sample.v1",
+  "sample_id": "crud-001",
+  "app_type": "crud",
+  "git_commit": "<40-char-or-short-sha>",
+  "build_id": "<ci-build-or-artifact-id>",
+  "authz_status": "pass",
+  "negatives_blocked": true,
+  "tm_status": "pass",
+  "evidence": "path/or/url",
+  "security_certification": false
+}

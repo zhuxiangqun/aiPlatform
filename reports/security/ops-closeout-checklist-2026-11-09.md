@@ -42,6 +42,22 @@
 | 11 | 发标外部渗透（P2-2 RFP） | Security Owner | [ ] |
 | 12 | 安全邮箱 + 正式 IR/认证是否立项 | Exec Sponsor | [ ] |
 
+## 4. Wave 1–4 工程闸（CI / 本地）
+
+```bash
+python3 scripts/security_wave_ops.py --all
+# 默认 CI = ledger；普通发布 = --release-gate；声明 = --claim-gate
+python3 scripts/security_dimensions_report.py --release-gate
+python3 scripts/security_d26_promote_check.py
+```
+
+| Wave | 工程已接线 | Ops 仍待 |
+|---|---|---|
+| 1 | 不可达 attack-sim 归档 + IR gitignore + 证据卡模板 + 三门禁 CLI | staging fail-closed / 生产只读审计 / 可达 attack-sim |
+| 2 | sample pin + dual-sign + D26 promote check | 真人 2×3 样本 + 双签 + 升 E 卡 |
+| 3 | evidence card schema + 模板 | live 文本族 / 跨租户黑盒 / judge 标定 |
+| 4 | KVM/SBOM/IR scorecard + RFP 路径 | 真探针 / 仪式 / 演练 / 发标 |
+
 ---
 
 **禁止：** 用本清单勾选代替第三方报告或认证声明。

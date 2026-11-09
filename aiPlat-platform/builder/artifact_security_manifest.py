@@ -740,6 +740,30 @@ def build_and_gate_for_dir(
                 app_type=app_type_detected,
                 sample_id=authz_sample_id or artifact_id,
             )
+            # Wave2: pin sample so pass counts toward pilot exit / D26 promote
+            pin_commit = (os.getenv("AIPLAT_AUTHZ_GIT_COMMIT") or "").strip()
+            pin_build = (os.getenv("AIPLAT_AUTHZ_BUILD_ID") or "").strip() or str(
+                artifact_id or ""
+            )
+            if not pin_commit:
+                try:
+                    import subprocess
+
+                    pin_commit = (
+                        subprocess.check_output(
+                            ["git", "rev-parse", "HEAD"],
+                            cwd=str(root),
+                            stderr=subprocess.DEVNULL,
+                            text=True,
+                        ).strip()
+                        or ""
+                    )
+                except Exception:
+                    pin_commit = ""
+            if pin_commit:
+                authz_smoke["git_commit"] = pin_commit
+            if pin_build:
+                authz_smoke["build_id"] = pin_build
             try:
                 record_pilot_sample(authz_smoke)
             except Exception:

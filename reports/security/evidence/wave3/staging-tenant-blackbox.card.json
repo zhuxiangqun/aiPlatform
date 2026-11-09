@@ -1,0 +1,15 @@
+{
+  "schema": "eval.security_evidence_card.v1",
+  "wave": 3,
+  "card_id": "staging-tenant-blackbox",
+  "environment": "staging",
+  "result": "pending",
+  "recorded_at_utc": "2026-11-10T00:00:00Z",
+  "tenants": ["tenant-a", "tenant-b"],
+  "attack_sim_report": "",
+  "pass": null,
+  "fail": null,
+  "unknown": null,
+  "notes": "Archive full pass/fail/unknown; cross-tenant IDOR must fail closed.",
+  "security_certification": false
+}

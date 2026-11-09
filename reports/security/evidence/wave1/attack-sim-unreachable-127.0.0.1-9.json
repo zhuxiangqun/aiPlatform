@@ -1,0 +1,22 @@
+{
+  "timestamp": 1794243871.7650402,
+  "checks": [
+    {
+      "scenario": "REACH",
+      "name": "server_reachable",
+      "ok": false,
+      "detail": "unreachable: <urlopen error [Errno 61] Connection refused>",
+      "kind": "reachability"
+    }
+  ],
+  "passed": 0,
+  "failed": 1,
+  "unreachable": true,
+  "scope": "http_blackbox_p0_1",
+  "not_in_scope": [
+    "real_sandbox_escape",
+    "isolation_covered",
+    "penetration_certification"
+  ],
+  "recommendation": "UNREACHABLE \u2014 cannot claim defenses hold"
+}

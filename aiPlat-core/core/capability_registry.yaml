@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2417
+total_capabilities: 2420
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -9587,7 +9587,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 115
+    caps_count: 118
     provides:
       - symbol: "management_api_token"
         module: aiPlat-management/management/auth.py
@@ -9799,7 +9799,19 @@ domains:
       - symbol: "evaluate_pilot_exit"
         module: aiPlat-platform/builder/artifact_authz_smoke.py
         type: function
-        signature: "P0-3b: 2 types × ≥3 pass + negatives + owner approval; 60d → blocked"
+        signature: "P0-3b/Wave2: 2 types × ≥3 pinned pass (git_commit+build_id) + negatives + dual-sign; d26_promote_allowed; 60d → blocked"
+      - symbol: "run_wave1"
+        module: scripts/security_wave_ops.py
+        type: function
+        signature: "Wave1–4 engineering gates; ledger/release/claim honesty; cert=false"
+      - symbol: "validate_card"
+        module: scripts/security_evidence_card.py
+        type: function
+        signature: "Wave3+ evidence card schema-lite validator; cert must be false"
+      - symbol: "main"
+        module: scripts/security_d26_promote_check.py
+        type: function
+        signature: "Refuse D26→E without pilot dual-sign exit; never edits YAML; cert=false"
       - symbol: "should_skip_dynamic_spawn"
         module: aiPlat-core/core/harness/coordination/spawn_policy.py
         type: function
