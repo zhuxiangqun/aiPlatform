@@ -168,21 +168,75 @@ def check_engineering_closeout() -> Dict[str, Any]:
     }
 
 
+def _parse_fail_mode(raw: Optional[str], *, default: str = "open") -> str:
+    """Mirror policy_gate._parse_policy_fail_mode (stdlib-only for CI)."""
+    v = (raw or default or "open").strip().lower()
+    if v in ("closed", "deny", "fail-closed", "fail_closed"):
+        return "closed"
+    if v in ("ask", "approval", "fail-ask", "fail_ask"):
+        return "ask"
+    if v in ("open", "allow", "fail-open", "fail_open"):
+        return "open"
+    return "open"
+
+
+def _normalize_profile(raw: str) -> str:
+    p = (raw or "").strip().lower()
+    if p in ("production", "prod"):
+        return "production"
+    if p in ("staging", "stage", "preprod"):
+        return "staging"
+    if p in ("development", "dev", "local", "test"):
+        return "development"
+    return p
+
+
+def _default_fail_mode(profile: str) -> str:
+    p = _normalize_profile(profile)
+    if p in ("production", "staging"):
+        return "closed"
+    if p == "development":
+        return "ask"
+    return "open"
+
+
+def _fail_open_honored(profile: str, until: Optional[str]) -> bool:
+    """Prod/staging open override requires a future UNTIL (mirror policy_gate)."""
+    p = _normalize_profile(profile)
+    if p not in ("production", "staging"):
+        return True
+    future = _iso_future(until or "")
+    if future is True:
+        return True
+    if future is False:
+        return False  # expired or invalid → not honored
+    return False  # missing → not honored
+
+
+def _resolve_critical_fail_mode(
+    *,
+    profile: str,
+    explicit: Optional[str],
+    until: Optional[str],
+    critical_override: Optional[str] = None,
+) -> str:
+    """Stdlib mirror of policy_gate.resolve_policy_fail_mode(critical=True)."""
+    if critical_override is not None and str(critical_override).strip() != "":
+        return _parse_fail_mode(critical_override, default="open")
+    if explicit is not None and str(explicit).strip() != "":
+        base = _parse_fail_mode(explicit, default="open")
+        if base == "open" and not _fail_open_honored(profile, until):
+            return _default_fail_mode(profile)
+        return base
+    return _default_fail_mode(profile)
+
+
 def simulate_profile_matrix() -> Dict[str, Any]:
     """Dry-run expected fail-mode defaults per profile (P0-2 cutover aid).
 
-    Does not mutate process env permanently; restores after each row.
+    Pure env simulation (no core import) so CI minimal venv can run it.
+    Does not mutate process env permanently.
     """
-    saved = {
-        k: os.environ.get(k)
-        for k in (
-            "AIPLAT_PROFILE",
-            "AIPLAT_ENV",
-            "AIPLAT_POLICY_FAIL_MODE",
-            "AIPLAT_POLICY_FAIL_OPEN_UNTIL",
-            "AIPLAT_POLICY_FAIL_CRITICAL_MODE",
-        )
-    }
     rows: List[Dict[str, Any]] = []
     scenarios = [
         {"profile": "production", "explicit": None, "until": None, "expect": "closed"},
@@ -201,60 +255,34 @@ def simulate_profile_matrix() -> Dict[str, Any]:
             "expect": "open",
         },
     ]
-    try:
-        sys.path.insert(0, str(ROOT / "aiPlat-core"))
-        from core.harness.infrastructure.gates.policy_gate import (  # type: ignore
-            audit_policy_fail_mode_config,
-            resolve_policy_fail_mode,
+    for sc in scenarios:
+        effective = _resolve_critical_fail_mode(
+            profile=sc["profile"],
+            explicit=sc["explicit"],
+            until=sc["until"],
         )
-
-        for sc in scenarios:
-            for k in saved:
-                if saved[k] is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = saved[k]
-            os.environ["AIPLAT_PROFILE"] = sc["profile"]
-            os.environ.pop("AIPLAT_ENV", None)
-            if sc["explicit"]:
-                os.environ["AIPLAT_POLICY_FAIL_MODE"] = sc["explicit"]
-            else:
-                os.environ.pop("AIPLAT_POLICY_FAIL_MODE", None)
-            if sc["until"]:
-                os.environ["AIPLAT_POLICY_FAIL_OPEN_UNTIL"] = sc["until"]
-            else:
-                os.environ.pop("AIPLAT_POLICY_FAIL_OPEN_UNTIL", None)
-            os.environ.pop("AIPLAT_POLICY_FAIL_CRITICAL_MODE", None)
-            effective = resolve_policy_fail_mode(critical=True)
-            snap = audit_policy_fail_mode_config()
-            # Row ok = effective mode matches expect. Drift is informational
-            # (prod open-with-UNTIL is intentional grayscale and still flags drift).
-            rows.append(
-                {
-                    "profile": sc["profile"],
-                    "explicit": sc["explicit"] or "(unset)",
-                    "until": sc["until"] or "(unset)",
-                    "effective_critical": effective,
-                    "expect": sc["expect"],
-                    "ok": effective == sc["expect"],
-                    "drift": bool(snap.get("drift_fail_open_in_prodish")),
-                }
-            )
-    except Exception as e:
-        return {
-            "ok": False,
-            "error": type(e).__name__,
-            "rows": rows,
-            "security_certification": False,
-        }
-    finally:
-        for k, v in saved.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
+        # Drift: effective open in prodish, OR attempted open without valid UNTIL
+        prodish = _normalize_profile(sc["profile"]) in ("production", "staging")
+        explicit_open = (
+            sc["explicit"] is not None
+            and _parse_fail_mode(sc["explicit"], default="") == "open"
+        )
+        honored = _fail_open_honored(sc["profile"], sc["until"])
+        drift = bool(prodish and (effective == "open" or (explicit_open and not honored)))
+        rows.append(
+            {
+                "profile": sc["profile"],
+                "explicit": sc["explicit"] or "(unset)",
+                "until": sc["until"] or "(unset)",
+                "effective_critical": effective,
+                "expect": sc["expect"],
+                "ok": effective == sc["expect"],
+                "drift": drift,
+                "source": "stdlib_mirror",
+            }
+        )
     return {
-        "ok": all(r.get("ok") for r in rows),
+        "ok": all(r.get("ok") for r in rows) and bool(rows),
         "rows": rows,
         "security_certification": False,
         "honesty": "Matrix is local dry-run ≠ production cutover proof.",
