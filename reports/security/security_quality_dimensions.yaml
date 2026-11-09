@@ -1,11 +1,12 @@
 # Security quality dimensions — unique machine-readable SoT (25-dim).
-# schema_ok ≠ coverage_ok ≠ security_certification
+# ledger_ok(=schema_ok alias) ≠ accounted_ok ≠ release_ok ≠ coverage_ok ≠ security_certification
 schema_version: "1.0"
+dimension_set_version: "1.0"
 superset_of: "v3-20-dim"
 last_reviewed: "2026-11-09"
 owner: "Product Security"
 security_certification: false
-honesty: "Matrix inventory only. schema_ok ≠ coverage_ok ≠ certification."
+honesty: "Matrix inventory only. ledger_ok ≠ accounted_ok ≠ release_ok ≠ coverage_ok ≠ certification."
 
 status_legend:
   E: "evidence verified (code/test) — requires ≥1 evidence level V or T"
@@ -72,6 +73,8 @@ dimensions:
     scope: platform
     owner: "Security Owner"
     last_reviewed: "2026-11-09"
+    external_dependency: true
+    release_blocking: true
     evidence:
       - path: "reports/security/P2-2-external-pentest-rfp.md"
         level: D
@@ -127,6 +130,7 @@ dimensions:
     scope: both
     owner: "Platform Eng"
     last_reviewed: "2026-11-09"
+    release_blocking: true
     evidence:
       - path: "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py"
         level: V
@@ -141,7 +145,7 @@ dimensions:
         verified_at: "2026-11-09"
         owner: "Product Security"
     gap: "成果物 authz 仍 pilot"
-    next: "P0-3b 真人样本 + Owner 退出"
+    next: "P0-3b 真人样本 + Owner 退出（A2 拆 D26）"
 
   - id: D07
     v3_id: "7"
@@ -383,6 +387,7 @@ dimensions:
     scope: both
     owner: "Platform Security"
     last_reviewed: "2026-11-09"
+    release_blocking: true
     evidence:
       - path: "aiPlat-platform/builder/artifact_sbom_attest.py"
         level: V

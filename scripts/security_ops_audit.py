@@ -327,7 +327,7 @@ def simulate_profile_matrix() -> Dict[str, Any]:
 
 
 def check_dimensions() -> Dict[str, Any]:
-    """Advisory: schema_ok of 25-dim SoT (coverage_ok not required here)."""
+    """Advisory: ledger_ok of 25-dim SoT (release/coverage not required here)."""
     script = ROOT / "scripts" / "security_dimensions_report.py"
     if not script.is_file():
         return {
@@ -349,15 +349,20 @@ def check_dimensions() -> Dict[str, Any]:
             "issues": ["dimensions_report_parse_failed"],
             "security_certification": False,
         }
+    ledger = bool(payload.get("ledger_ok", payload.get("schema_ok")))
     return {
-        "ok": bool(payload.get("schema_ok")),
-        "schema_ok": bool(payload.get("schema_ok")),
+        "ok": ledger,
+        "ledger_ok": ledger,
+        "schema_ok": ledger,
+        "accounted_ok": bool(payload.get("accounted_ok")),
+        "release_ok": bool(payload.get("release_ok")),
         "coverage_ok": bool(payload.get("coverage_ok")),
         "gap_count": payload.get("gap_count"),
+        "release_blocking_ids": payload.get("release_blocking_ids"),
         "security_certification": False,
         "honesty": (
-            "Advisory. schema_ok≠coverage_ok. "
-            "Publish gates should run --strict-gaps separately."
+            "Advisory. ledger≠accounted≠release≠coverage. "
+            "Ordinary publish: --release-gate; claim only: --claim-gate."
         ),
     }
 

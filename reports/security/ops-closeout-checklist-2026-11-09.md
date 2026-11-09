@@ -21,7 +21,7 @@
 | 2 | 填写 `security/ir/contacts.local.yaml`；`python3 scripts/security_ir_contacts.py` exit 0；On-call 抽检 | IR Lead | [~] 本地已从 example 落盘并通过校验；**须替换为真实 on-call 后再勾完** |
 | 3 | Authz pilot：2 类 × ≥3 样本 + 负向 + **双签退出**（security_owner + product_security） | Product Security | [~] 干跑：`python3 scripts/security_authz_pilot_cli.py --dry-run-exit` + [`P0-3b-authz-pilot.md`](./P0-3b-authz-pilot.md)；**真人样本+双签后勾完** |
 | 3b | 成果物 threat model：`crud`/`report` 必须 pass；legacy `na`+`expires_at` | Product Security | [~] 模板+门：[`P0-threat-model-artifact.md`](./P0-threat-model-artifact.md)；**逐样本 THREAT_MODEL.yaml 后勾完** |
-| 3c | 发布前 `python3 scripts/security_dimensions_report.py --strict-gaps` | Platform Security | [ ] **发布门必跑**（默认 CI 不因 G 挡） |
+| 3c | 普通发布 `… --release-gate`；对外声明才 `… --claim-gate`（=`--strict-gaps`） | Platform Security | [ ] **发布看 release_ok；声明看 coverage_ok**（默认 CI 只看 ledger） |
 
 ## 2. P1 Ops
 

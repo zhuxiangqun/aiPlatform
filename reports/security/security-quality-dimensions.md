@@ -8,23 +8,33 @@
 
 | 字段 | 含义 |
 |---|---|
-| `schema_ok` | YAML 可解析、恰 25 维、字段合法；**E 必须含 ≥1 条 V/T**（仅 D → schema 失败，禁止静默降级） |
-| `coverage_ok` | 所有 `p0: true` 维无 `G`；O 有 owner+日期 |
+| `ledger_ok`（主） | YAML 可解析、恰 25 维、字段合法；**E 必须含 ≥1 条 V/T** |
+| `schema_ok` | **`ledger_ok` 的兼容别名**（同值） |
+| `accounted_ok` | **有主**：P0 有 owner；G 须 owner+gap+next（允许 G） |
+| `release_ok` | **可发布**：accounted 且无未接受的 `release_blocking`（G 必须 `release_risk_acceptance`） |
+| `coverage_ok` | **做完**：所有 P0 均为 E 且 gap 空 |
 | `security_certification` | 恒 false |
 
 ```text
-E = evidence verified (code/test)
-I = implemented, not independently verified
-O = owned but open
-G = gap / unowned
+有主 ≠ 可发布 ≠ 做完 ≠ 认证
 ```
+
+## 三门禁
+
+| 门 | CLI | 条件 |
+|---|---|---|
+| ledger | 默认 CI / `--ledger-gate` | `ledger_ok` |
+| release | `--release-gate` | `ledger_ok ∧ accounted_ok ∧ release_ok` |
+| claim | `--claim-gate` / `--strict-gaps` | `ledger_ok ∧ coverage_ok`（**仅**对外安全声明） |
+
+**禁止**把 `coverage_ok` / `--strict-gaps` 接到普通发布流水线。
 
 ## 诚实锁
 
-- `schema_ok=true` ≠ 安全覆盖通过。
+- `ledger_ok=true` ≠ 可发布 ≠ 覆盖完成。
+- `accounted_ok=true` ≠ 可发布（D03 有主的 G 仍可挡 `--release-gate`）。
 - `coverage_ok=true` ≠ 认证。
-- `--strict-gaps` 仅用于**发布门**（PR3 接线）；默认 CI 工程收口只要求 `schema_ok`。
 
 ## 当前缺口（摘要）
 
-以 YAML 为准；典型 P0 `G`：独立验证（D03）。其余 P0 多为 I/O（威胁模型、跨租户、隔离真证、IR 演练等）。
+以 YAML 为准。典型：D03（外部红队，`external_dependency`）、D06（E 仍带成果物 authz gap）、D19（供应链）。`release_ok`/`coverage_ok` 当前为 false 属诚实态。

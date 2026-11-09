@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-09T23:47:09+08:00",
+  "reviewed_at": "2026-11-10T00:18:29+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a78fa38bf72933666594fd3dff5e61215edacded",
-  "diff_sha256": "e292461cee817ec4e1b5b8f02d640b83f6346c3c16c39d38029e34aba97b4859",
-  "head_sha": "678ba2dfa077769b9693327642f5c81608fa8124",
+  "merge_base": "9b60699bcdc45e066e0fa5bb43813cf43d246d90",
+  "diff_sha256": "10b0e2e8c0d996b077bec7f555457980e6e3c679b3aac6b4469c24f5570c399c",
+  "head_sha": "a79f2506a9ad44766427e5def9a8706c9a697e8c",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Nail hard contracts: attestation + severity/likelihood required. ≠cert."
+  "note": "A1+merge #628: ledger≠accounted≠release≠coverage; attestation. ≠cert."
 }
