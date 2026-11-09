@@ -177,17 +177,21 @@ async def authz_pilot_approve(
     body: dict = None,
     _auth: str = Depends(require_builder_access),
 ):
-    """P0-3b: Security Owner approval to exit authz pilot (hard gate)."""
+    """P0-3b: Dual-sign exit (security_owner + product_security)."""
     from builder.artifact_authz_smoke import approve_pilot_exit
 
     payload = body if isinstance(body, dict) else {}
     owner = str(payload.get("owner_name") or "").strip()
     if not owner:
         raise HTTPException(status_code=422, detail="owner_name_required")
+    role = str(payload.get("role") or "security_owner").strip()
     result = approve_pilot_exit(
         owner_name=owner,
         note=str(payload.get("note") or ""),
+        role=role,
     )
+    if result.get("status") == "error":
+        raise HTTPException(status_code=422, detail=result.get("error") or "approve_failed")
     return {"ok": result.get("status") == "passed", "pilot": result}
 
 @router.post("/projects/{project_id}/files/upload", response_model=StatusResponse)

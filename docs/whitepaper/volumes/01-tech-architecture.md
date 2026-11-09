@@ -3,19 +3,19 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-09T14:48:32Z"
+generated_at: "2026-11-09T15:17:00Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "f10949bb189d78d46995305bf6f45a4efc54ef43b4bbb8bf3ad93884aa6b2b66"
+caps_sha256: "ef4f47fbae5f3ec3236593b4a31fb3221fa310026eecc25b576a5290f0574fdb"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=f10949bb189d78d46995305bf6f45a4efc54ef43b4bbb8bf3ad93884aa6b2b66 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=tech-architecture suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=ef4f47fbae5f3ec3236593b4a31fb3221fa310026eecc25b576a5290f0574fdb scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 技术架构白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-09T14:48:32Z` |
-| CAPABILITIES sha256 | `f10949bb189d…` |
+| 生成时间 (UTC) | `2026-11-09T15:17:00Z` |
+| CAPABILITIES sha256 | `ef4f47fbae5f…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标

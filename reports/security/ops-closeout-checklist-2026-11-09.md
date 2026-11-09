@@ -19,7 +19,9 @@
 |---|---|---|---|
 | 1 | 生产/预发 `AIPLAT_PROFILE` + fail-closed 审计；open 须 UNTIL | Platform Security | [~] 干跑：`python3 scripts/security_ops_audit.py --profile-matrix` + [`P0-2-fail-closed-cutover.md`](./P0-2-fail-closed-cutover.md)；**预发故障拒绝+生产 env 证据后勾完** |
 | 2 | 填写 `security/ir/contacts.local.yaml`；`python3 scripts/security_ir_contacts.py` exit 0；On-call 抽检 | IR Lead | [~] 本地已从 example 落盘并通过校验；**须替换为真实 on-call 后再勾完** |
-| 3 | Authz pilot：2 类 × ≥3 样本 + 负向 + Owner 书面退出 | Product Security | [~] 干跑：`python3 scripts/security_authz_pilot_cli.py --dry-run-exit` + [`P0-3b-authz-pilot.md`](./P0-3b-authz-pilot.md)；**真人样本+Owner 批准后勾完** |
+| 3 | Authz pilot：2 类 × ≥3 样本 + 负向 + **双签退出**（security_owner + product_security） | Product Security | [~] 干跑：`python3 scripts/security_authz_pilot_cli.py --dry-run-exit` + [`P0-3b-authz-pilot.md`](./P0-3b-authz-pilot.md)；**真人样本+双签后勾完** |
+| 3b | 成果物 threat model：`crud`/`report` 必须 pass；legacy `na`+`expires_at` | Product Security | [~] 模板+门：[`P0-threat-model-artifact.md`](./P0-threat-model-artifact.md)；**逐样本 THREAT_MODEL.yaml 后勾完** |
+| 3c | 发布前 `python3 scripts/security_dimensions_report.py --strict-gaps` | Platform Security | [ ] **发布门必跑**（默认 CI 不因 G 挡） |
 
 ## 2. P1 Ops
 

@@ -326,6 +326,42 @@ def simulate_profile_matrix() -> Dict[str, Any]:
     }
 
 
+def check_dimensions() -> Dict[str, Any]:
+    """Advisory: schema_ok of 25-dim SoT (coverage_ok not required here)."""
+    script = ROOT / "scripts" / "security_dimensions_report.py"
+    if not script.is_file():
+        return {
+            "ok": False,
+            "issues": ["dimensions_report_missing"],
+            "security_certification": False,
+        }
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+    try:
+        payload = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError:
+        return {
+            "ok": False,
+            "issues": ["dimensions_report_parse_failed"],
+            "security_certification": False,
+        }
+    return {
+        "ok": bool(payload.get("schema_ok")),
+        "schema_ok": bool(payload.get("schema_ok")),
+        "coverage_ok": bool(payload.get("coverage_ok")),
+        "gap_count": payload.get("gap_count"),
+        "security_certification": False,
+        "honesty": (
+            "Advisory. schema_ok≠coverage_ok. "
+            "Publish gates should run --strict-gaps separately."
+        ),
+    }
+
+
 def run_ops_audit() -> Dict[str, Any]:
     checks = {
         "ir_contacts": check_ir_contacts(),
@@ -333,6 +369,7 @@ def run_ops_audit() -> Dict[str, Any]:
         "hard_floor": check_hard_floor(),
         "p2_1_keys": check_p2_1_keys(),
         "authz_pilot": check_authz_pilot(),
+        "dimensions": check_dimensions(),
         "engineering_closeout": check_engineering_closeout(),
     }
     failing = [k for k, v in checks.items() if not v.get("ok")]

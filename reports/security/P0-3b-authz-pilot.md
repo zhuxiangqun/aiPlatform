@@ -53,16 +53,19 @@ python3 scripts/security_authz_pilot_cli.py --status
 # 或 GET /platform/builder/security/authz-pilot
 ```
 
-5. 样本齐备后 Owner 批准：
+5. 样本齐备后 **双签**退出（缺一不可）：
 
 ```bash
 python3 scripts/security_authz_pilot_cli.py --approve \
-  --owner "Security Owner Name" \
+  --owner "Security Owner Name" --role security_owner \
   --note "exit pilot; evidence <ticket-url>"
-# 或 POST /platform/builder/security/authz-pilot/approve
+python3 scripts/security_authz_pilot_cli.py --approve \
+  --owner "Product Security Name" --role product_security \
+  --note "exit pilot; evidence <ticket-url>"
 ```
 
-6. `evaluation.status == passed` 且变更单留证据链接后，勾选 Ops 清单项 3。
+6. 每个 crud/report 样本须 `THREAT_MODEL.yaml` 且 `threat_model.pass`（见 [`P0-threat-model-artifact.md`](./P0-threat-model-artifact.md)）。  
+7. `evaluation.status == passed` 且变更单留证据链接后，勾选 Ops 清单项 3。
 
 ---
 

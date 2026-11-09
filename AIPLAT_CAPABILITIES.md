@@ -3648,7 +3648,7 @@ scan_hash: 8f9548ec24f4
 | P0-2 fail-closed 切流手册 | `reports/security/P0-2-fail-closed-cutover.md` | ✅ | 预发→生产灰度步骤+回滚；≠认证；生成物适用：不适用 | 本批 |
 | P0-3b authz pilot Ops CLI/手册 | `scripts/security_authz_pilot_cli.py` + `reports/security/P0-3b-authz-pilot.md` | ✅ | status/dry-run-exit/probe/approve；fixture 干跑≠真人退出≠认证；生成物适用：不适用（仓库级 Ops） | 本批 |
 | 安全质量 25 维覆盖矩阵 | `reports/security/security_quality_dimensions.yaml` + `scripts/security_dimensions_report.py` + crosswalk | ✅ | schema_ok≠coverage_ok；E 须 V/T（仅 D→schema 失败）；`--strict-gaps` 仅发布门；cert=false；生成物适用：不适用 | 本批 |
-| 成果物威胁模型门（PR2） | `security/templates/artifact_threat_model.v1.yaml` + `artifact_security_manifest` threat_model/hash | ✅ | approved+非owner reviewer；canonical JSON hash；默认 off；fail/逃逸阻断；na≠pass；cert=false；生成物适用：**已接线**（灰度） | 本批 |
+| 成果物威胁模型门（PR2/PR3） | `security/templates/artifact_threat_model.v1.yaml` + `artifact_security_manifest` threat_model/hash | ✅ | crud/report 强制 pass；legacy na+30d expires；prodish 禁关；双签退出；`--strict-gaps` 进发布清单；cert=false；生成物适用：**已接线** | 本批 |
 | security_ir_contacts | `scripts/security_ir_contacts.py` + `security/ir/contacts*.yaml` | ✅ | P0-IR 联系人 SoT 校验；example≠filled；local gitignore；生成物适用：不适用 | 本批 |
 | Ops 收口清单 | `reports/security/ops-closeout-checklist-2026-11-09.md` | ✅ | 人/环境待办；≠认证；生成物适用：不适用 | 本批 |
 | 成果物 authz pilot（P0-3b） | platform/builder/artifact_authz_smoke.py + `GET/POST /platform/builder/security/authz-pilot*` | ✅ | CRUD/报表探针模板（authz/IDOR/SSRF）；试点账本；退出=2类×≥3 pass+负向阻断+Owner 批准；60 日未退出→blocked；退出后该类强制 authz 门；生成物适用：**已接线** | 已合入 |

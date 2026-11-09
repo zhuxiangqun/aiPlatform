@@ -229,15 +229,20 @@ def load_or_stub_threat_model(
             found = safe
             break
     if found is None:
+        if not expires_at:
+            from datetime import timedelta
+
+            expires_at = (
+                datetime.now(timezone.utc) + timedelta(days=_TM_NA_DEFAULT_DAYS)
+            ).strftime("%Y-%m-%dT%H:%M:%SZ")
         out: Dict[str, Any] = {
             "status": "na",
             "evidence": na_reason,
             "path": "",
             "hash": "",
             "na_reason": na_reason,
+            "expires_at": expires_at,
         }
-        if expires_at:
-            out["expires_at"] = expires_at
         return out
 
     try:
@@ -274,11 +279,36 @@ def load_or_stub_threat_model(
     }
 
 
-def threat_model_required(*, require_threat_model: Optional[bool] = None) -> bool:
-    if require_threat_model is not None:
-        return bool(require_threat_model)
+_PILOT_TM_APP_TYPES = frozenset({"crud", "report"})
+_TM_NA_DEFAULT_DAYS = 30
+
+
+def threat_model_required(
+    *,
+    require_threat_model: Optional[bool] = None,
+    app_type: Optional[str] = None,
+) -> bool:
+    """Whether publish must have threat_model.status=pass.
+
+    PR3 rules:
+      - crud/report (P0-3b pilot types) always require pass
+      - AIPLAT_REQUIRE_THREAT_MODEL=0 only honored in non-prodish profiles;
+        production/staging still require (cannot disable)
+      - explicit require_threat_model=False same as env off
+    """
+    profile = _runtime_profile()
+    prodish = profile in ("production", "staging")
     raw = (os.getenv("AIPLAT_REQUIRE_THREAT_MODEL") or "").strip().lower()
-    return raw in ("1", "true", "yes", "on")
+    explicit_off = raw in ("0", "false", "no", "off")
+    explicit_on = raw in ("1", "true", "yes", "on")
+
+    if require_threat_model is True or explicit_on:
+        return True
+    if (app_type or "").strip().lower() in _PILOT_TM_APP_TYPES:
+        return True
+    if require_threat_model is False or explicit_off:
+        return bool(prodish)  # off only in development/local/unset
+    return False
 
 
 def build_manifest(
@@ -547,7 +577,11 @@ def evaluate_publish_gate(
             blockers.append("threat_model_not_approved")
         for err in tm.get("errors") or []:
             blockers.append(f"threat_model:{err}")
-    req_tm = threat_model_required(require_threat_model=require_threat_model)
+    app_type = str(data.get("app_type") or "").strip().lower()
+    req_tm = threat_model_required(
+        require_threat_model=require_threat_model,
+        app_type=app_type,
+    )
     if req_tm and tm_st != "pass":
         # na must never count as pass when required
         blockers.append(f"threat_model_required:{tm_st}")
@@ -677,6 +711,10 @@ def build_and_gate_for_dir(
         }
 
     threat_model = load_or_stub_threat_model(root)
+    req_tm = threat_model_required(
+        require_threat_model=require_threat_model,
+        app_type=app_type_detected,
+    )
 
     # P2-1: SBOM + MCP/plugin allowlist attest
     sbom_extra: Dict[str, Any] = {}
@@ -721,7 +759,7 @@ def build_and_gate_for_dir(
     gate = evaluate_publish_gate(
         manifest,
         require_authz=require_authz,
-        require_threat_model=require_threat_model,
+        require_threat_model=req_tm,
     )
     return {
         "manifest_path": str(out_path),
@@ -730,9 +768,7 @@ def build_and_gate_for_dir(
         "publish_allowed": bool(gate.get("ok")),
         "app_type": app_type_detected,
         "require_authz": require_authz,
-        "require_threat_model": threat_model_required(
-            require_threat_model=require_threat_model
-        ),
+        "require_threat_model": req_tm,
         "threat_model": threat_model,
         "p2_1": p21_bundle,
     }
