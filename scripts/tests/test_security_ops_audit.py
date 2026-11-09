@@ -84,3 +84,20 @@ def test_main_strict_fails_when_contacts_missing(audit, monkeypatch, tmp_path, c
     assert code == 1
     err = capsys.readouterr().err
     assert "FAIL --strict" in err
+
+
+def test_profile_matrix_ok(audit, monkeypatch):
+    # Restore clean env so matrix does not inherit developer overrides
+    for k in (
+        "AIPLAT_PROFILE",
+        "AIPLAT_ENV",
+        "AIPLAT_POLICY_FAIL_MODE",
+        "AIPLAT_POLICY_FAIL_OPEN_UNTIL",
+        "AIPLAT_POLICY_FAIL_CRITICAL_MODE",
+    ):
+        monkeypatch.delenv(k, raising=False)
+    out = audit.simulate_profile_matrix()
+    assert out["ok"] is True
+    assert out["security_certification"] is False
+    assert len(out["rows"]) >= 5
+    assert all(r["ok"] for r in out["rows"])

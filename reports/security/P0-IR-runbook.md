@@ -39,7 +39,7 @@ python3 scripts/security_ops_audit.py            # 含联系人 + fail-closed
 2. **停流量**：网关限流 / 下线受影响路由 / 暂停相关 builder 发布。  
 3. **关钥匙**：轮换或吊销 API key、JWT 签发密钥、MCP/插件 token。  
 4. **硬门恢复**：确认 `AIPLAT_HARD_FLOOR_DISABLED` 未在无 UNTIL 窗内开启；必要时强制 unset。  
-5. **fail-closed**：生产/预发设 `AIPLAT_PROFILE=production` 且勿用无期限的 fail-open。  
+5. **fail-closed**：生产/预发设 `AIPLAT_PROFILE=production` 且勿用无期限的 fail-open。切流步骤见 [`P0-2-fail-closed-cutover.md`](./P0-2-fail-closed-cutover.md)；干跑 `python3 scripts/security_ops_audit.py --profile-matrix`。  
 6. **保留证据**：审计日志、attack-sim 报告、`artifact.security.json`、变更单号。
 
 ---

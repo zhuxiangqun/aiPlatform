@@ -168,6 +168,99 @@ def check_engineering_closeout() -> Dict[str, Any]:
     }
 
 
+def simulate_profile_matrix() -> Dict[str, Any]:
+    """Dry-run expected fail-mode defaults per profile (P0-2 cutover aid).
+
+    Does not mutate process env permanently; restores after each row.
+    """
+    saved = {
+        k: os.environ.get(k)
+        for k in (
+            "AIPLAT_PROFILE",
+            "AIPLAT_ENV",
+            "AIPLAT_POLICY_FAIL_MODE",
+            "AIPLAT_POLICY_FAIL_OPEN_UNTIL",
+            "AIPLAT_POLICY_FAIL_CRITICAL_MODE",
+        )
+    }
+    rows: List[Dict[str, Any]] = []
+    scenarios = [
+        {"profile": "production", "explicit": None, "until": None, "expect": "closed"},
+        {"profile": "staging", "explicit": None, "until": None, "expect": "closed"},
+        {"profile": "development", "explicit": None, "until": None, "expect": "ask"},
+        {
+            "profile": "production",
+            "explicit": "open",
+            "until": None,
+            "expect": "closed",  # open not honored without UNTIL
+        },
+        {
+            "profile": "production",
+            "explicit": "open",
+            "until": "2099-01-01T00:00:00Z",
+            "expect": "open",
+        },
+    ]
+    try:
+        sys.path.insert(0, str(ROOT / "aiPlat-core"))
+        from core.harness.infrastructure.gates.policy_gate import (  # type: ignore
+            audit_policy_fail_mode_config,
+            resolve_policy_fail_mode,
+        )
+
+        for sc in scenarios:
+            for k in saved:
+                if saved[k] is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = saved[k]
+            os.environ["AIPLAT_PROFILE"] = sc["profile"]
+            os.environ.pop("AIPLAT_ENV", None)
+            if sc["explicit"]:
+                os.environ["AIPLAT_POLICY_FAIL_MODE"] = sc["explicit"]
+            else:
+                os.environ.pop("AIPLAT_POLICY_FAIL_MODE", None)
+            if sc["until"]:
+                os.environ["AIPLAT_POLICY_FAIL_OPEN_UNTIL"] = sc["until"]
+            else:
+                os.environ.pop("AIPLAT_POLICY_FAIL_OPEN_UNTIL", None)
+            os.environ.pop("AIPLAT_POLICY_FAIL_CRITICAL_MODE", None)
+            effective = resolve_policy_fail_mode(critical=True)
+            snap = audit_policy_fail_mode_config()
+            # Row ok = effective mode matches expect. Drift is informational
+            # (prod open-with-UNTIL is intentional grayscale and still flags drift).
+            rows.append(
+                {
+                    "profile": sc["profile"],
+                    "explicit": sc["explicit"] or "(unset)",
+                    "until": sc["until"] or "(unset)",
+                    "effective_critical": effective,
+                    "expect": sc["expect"],
+                    "ok": effective == sc["expect"],
+                    "drift": bool(snap.get("drift_fail_open_in_prodish")),
+                }
+            )
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": type(e).__name__,
+            "rows": rows,
+            "security_certification": False,
+        }
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    return {
+        "ok": all(r.get("ok") for r in rows),
+        "rows": rows,
+        "security_certification": False,
+        "honesty": "Matrix is local dry-run ≠ production cutover proof.",
+    }
+
+
 def run_ops_audit() -> Dict[str, Any]:
     checks = {
         "ir_contacts": check_ir_contacts(),
@@ -193,6 +286,15 @@ def run_ops_audit() -> Dict[str, Any]:
 
 
 def main() -> int:
+    if "--profile-matrix" in sys.argv:
+        matrix = simulate_profile_matrix()
+        print(json.dumps(matrix, ensure_ascii=False, indent=2))
+        print(
+            f"profile_matrix ok={matrix.get('ok')} cert=false",
+            file=sys.stderr,
+        )
+        return 0 if matrix.get("ok") else 1
+
     report = run_ops_audit()
     print(json.dumps(report, ensure_ascii=False, indent=2))
     strict = "--strict" in sys.argv
