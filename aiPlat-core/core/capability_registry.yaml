@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2332
+total_capabilities: 2348
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6799,12 +6799,12 @@ domains:
         reason: "canonical diagnosis HTTP API"
 
   # ══════════════════════════════════════════════════════════════
-  # 十三、评估系统 (392 caps)
+  # 十三、评估系统 (408 caps)
   # ══════════════════════════════════════════════════════════════
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 392
+    caps_count: 408
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -7329,6 +7329,70 @@ domains:
       - symbol: eval_load_p5_extension_gates
         type: function
         signature: "eval_load_p5_extension_gates()→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: run_per_family_cert_prep
+        type: function
+        signature: "run_per_family_cert_prep(by_case?,…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_cert_prep.py
+      - symbol: build_judge_calib_evidence_pack
+        type: function
+        signature: "build_judge_calib_evidence_pack(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_cert_prep.py
+      - symbol: build_g2b_s_dual_review_workflow
+        type: function
+        signature: "build_g2b_s_dual_review_workflow(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_cert_prep.py
+      - symbol: rehearse_l5_limited_claim
+        type: function
+        signature: "rehearse_l5_limited_claim(…)→Dict cert=false"
+        module: aiPlat-core/core/apps/eval/service/security_cert_prep.py
+      - symbol: security_cert_prep_status
+        type: function
+        signature: "security_cert_prep_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_cert_prep.py
+      - symbol: eval_security_cert_prep_status
+        type: function
+        signature: "eval_security_cert_prep_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_per_family_cert_prep
+        type: function
+        signature: "eval_run_per_family_cert_prep(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_rehearse_l5_limited_claim
+        type: function
+        signature: "eval_rehearse_l5_limited_claim(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: load_oos_deep_packs
+        type: function
+        signature: "load_oos_deep_packs(path?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_oos_deep.py
+      - symbol: evaluate_oos_engineering_pack
+        type: function
+        signature: "evaluate_oos_engineering_pack(oos_id,probe_results?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_oos_deep.py
+      - symbol: build_research_refuse_inventory
+        type: function
+        signature: "build_research_refuse_inventory()→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_oos_deep.py
+      - symbol: evaluate_oos05_t11_fixture_gate
+        type: function
+        signature: "evaluate_oos05_t11_fixture_gate(t11_evidence?)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_oos_deep.py
+      - symbol: security_oos_deep_status
+        type: function
+        signature: "security_oos_deep_status(…)→Dict"
+        module: aiPlat-core/core/apps/eval/service/security_oos_deep.py
+      - symbol: eval_security_oos_deep_status
+        type: function
+        signature: "eval_security_oos_deep_status(…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_evaluate_oos_engineering_pack
+        type: function
+        signature: "eval_evaluate_oos_engineering_pack(oos_id,…)→Dict"
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_build_research_refuse_inventory
+        type: function
+        signature: "eval_build_research_refuse_inventory()→Dict"
         module: aiPlat-core/core/api/core_facade.py
       - symbol: ModeAwareExamError
         type: class

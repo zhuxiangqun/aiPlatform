@@ -526,9 +526,11 @@ status: open | mitigated | accepted_risk | retested_pass
 | **SEC-P4**  | microVM probed 路径（Linux；guest_sim→probed；covered 需人审） | **Done 2026-11-09** |
 | **SEC-P4b** | guest_live 接 eval microVM hooks；deny 需 escape_executor；≠假绿 | **Done 2026-11-09** |
 | **SEC-P5**  | T11 deferred 毕业门 + OOS 扩展卡（深度供应链/模型投毒）           | **Done 2026-11-09** |
+| **CERT-PREP** | 分族候选分类 + judge/G2b-S 工作流 + L5 限定声明演练（cert=false） | **Done 2026-11-09** |
+| **OOS-DEEP** | OOS-07→04→06→05 工程 fixture；01/02/03 研究拒测；08/09 出轨 | **Done 2026-11-09** |
 
 
-**SEC-P0 工程**：本 v1.1 已于 2026-11-09 签字。**SEC-P0a … SEC-P5 Done**（含 **SEC-P4b** guest_live hooks；T11 默认 deferred；OOS-01/05/06 扩展卡仅披露；≠认证）。工程基线切片已全部落地；后续仅按需开新 OOS 专项切片。
+**SEC-P0 工程**：本 v1.1 已于 2026-11-09 签字。**SEC-P0a … SEC-P5 Done**；**CERT-PREP / OOS-DEEP** 为签字后的跟进轨（仍 ≠ `security_certification`）。真人双盲/三方签字/live 分族跑分仍属人工门，不在自动路径翻转。
 
 每切片：pytest + CAPABILITIES/registry + defect-gate；不改诚实锁。
 

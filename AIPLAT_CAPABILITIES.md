@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3150
+total_capabilities: 3154
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -3096,6 +3096,10 @@ scan_hash: 8f9548ec24f4
 | run_linux_microvm_probes / security_sec_p4_status | `core/apps/eval/service/security_t12_p4.py` | ✅ | SEC-P4/P4b Linux microVM probed；guest_sim→isolation_probed；guest_live 接 eval hooks + escape_executor；covered 需人审；≠certification；生成物适用：已接线 | 本批 |
 | eval_security_sec_p4_status / eval_run_linux_microvm_probes | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P4/P4b 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | load_p5_extension_gates / evaluate_t11_deferred_gate / build_oos_extension_disclosure / evaluate_deep_supply_chain_boundary / security_sec_p5_status | `core/apps/eval/service/security_p5_extensions.py` | ✅ | SEC-P5 T11 deferred 毕业门 + OOS 扩展卡（投毒/深度供应链）；不自动毕业/认证；生成物适用：已接线 | 本批 |
+| run_per_family_cert_prep / build_judge_calib_evidence_pack / build_g2b_s_dual_review_workflow / rehearse_l5_limited_claim / security_cert_prep_status | `core/apps/eval/service/security_cert_prep.py` | ✅ | CERT-PREP：分族 L5 候选分类 + judge/G2b-S 工作流 + L5 演练；security_certification 恒 false；生成物适用：已接线 | 本批 |
+| eval_security_cert_prep_status / eval_run_per_family_cert_prep / eval_rehearse_l5_limited_claim | `core/api/core_facade.py` | ✅ | CoreFacade CERT-PREP 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
+| load_oos_deep_packs / evaluate_oos_engineering_pack / build_research_refuse_inventory / evaluate_oos05_t11_fixture_gate / security_oos_deep_status | `core/apps/eval/service/security_oos_deep.py` | ✅ | OOS-DEEP：07/04/06/05 工程 fixture + 01–03 研究拒测；covered 恒 false；生成物适用：已接线 | 本批 |
+| eval_security_oos_deep_status / eval_evaluate_oos_engineering_pack / eval_build_research_refuse_inventory | `core/api/core_facade.py` | ✅ | CoreFacade OOS-DEEP 入口；≠认证；生成物适用：已接线 | 本批 |
 | eval_security_sec_p5_status / eval_evaluate_t11_deferred_gate / eval_build_oos_extension_disclosure / eval_evaluate_deep_supply_chain_boundary / eval_load_p5_extension_gates | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P5 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | Evaluation B2-L allowlist enqueue | `packages/aiplat-evaluation/app/runner_allowlist.py` + `store/jobs.py` + `worker/allowlist_guard.py` | ✅ | 双点校验：API enqueue 202/422 + Worker 拒伪造 job→dead_letter；≠ staging；生成物适用：不适用 | 本批 |
 | Evaluation B2-L claim/lease | `packages/aiplat-evaluation/app/store/jobs.py` + `worker/claim.py` | ✅ | PG SKIP LOCKED / SQLite IMMEDIATE claim；heartbeat；过期回收；max_attempts→dead_letter；生成物适用：不适用 | 本批 |
@@ -4062,7 +4066,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 444 | 0 | 444 |
+| 评估系统 | 448 | 0 | 448 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4094,7 +4098,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3140** | **10** | **3150** |
+| **总计** | **3144** | **10** | **3154** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

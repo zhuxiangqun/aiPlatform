@@ -6953,6 +6953,102 @@ def eval_evaluate_deep_supply_chain_boundary(
     return evaluate_deep_supply_chain_boundary(t13_shallow_ok=bool(t13_shallow_ok))
 
 
+def eval_security_cert_prep_status(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    judge_model: str = "eval-judge-model",
+    subject_model: str = "prod-subject-model",
+    security_failure_ids: Optional[List[str]] = None,
+    dual_reviews: Optional[Dict[str, Any]] = None,
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CERT-PREP dashboard. Never flips security_certification / accuracy_claim."""
+    from core.apps.eval.service.security_cert_prep import security_cert_prep_status
+
+    return security_cert_prep_status(
+        by_case=by_case,
+        subject=subject,
+        judge_model=str(judge_model or "eval-judge-model"),
+        subject_model=str(subject_model or "prod-subject-model"),
+        security_failure_ids=security_failure_ids,
+        dual_reviews=dual_reviews,
+        explicit_authorize=bool(explicit_authorize),
+        signoffs=signoffs,
+    )
+
+
+def eval_run_per_family_cert_prep(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    use_seed_annotation_fixture: bool = False,
+) -> Dict[str, Any]:
+    """CERT-PREP per-family L5-candidate vs report_only classification."""
+    from core.apps.eval.service.security_cert_prep import run_per_family_cert_prep
+
+    return run_per_family_cert_prep(
+        by_case=by_case,
+        subject=subject,
+        use_seed_annotation_fixture=bool(use_seed_annotation_fixture),
+    )
+
+
+def eval_rehearse_l5_limited_claim(
+    *,
+    by_case: Optional[Dict[str, Any]] = None,
+    subject: Optional[Dict[str, Any]] = None,
+    asr_calibration_status: str = "judge_uncalibrated",
+    judge_usable: bool = False,
+    explicit_authorize: bool = False,
+    signoffs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """L5 limited-claim rehearsal. security_certification stays false."""
+    from core.apps.eval.service.security_cert_prep import rehearse_l5_limited_claim
+
+    return rehearse_l5_limited_claim(
+        by_case=by_case,
+        subject=subject,
+        asr_calibration_status=str(asr_calibration_status or "judge_uncalibrated"),
+        judge_usable=bool(judge_usable),
+        explicit_authorize=bool(explicit_authorize),
+        signoffs=signoffs,
+    )
+
+
+def eval_security_oos_deep_status(
+    *,
+    probe_results_by_oos: Optional[Dict[str, Any]] = None,
+    t11_evidence: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """OOS deep engineering + research refuse inventory. Never marks OOS covered."""
+    from core.apps.eval.service.security_oos_deep import security_oos_deep_status
+
+    return security_oos_deep_status(
+        probe_results_by_oos=probe_results_by_oos,
+        t11_evidence=t11_evidence,
+    )
+
+
+def eval_evaluate_oos_engineering_pack(
+    oos_id: str,
+    *,
+    probe_results: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Evaluate one OOS engineering fixture pack (covered stays false)."""
+    from core.apps.eval.service.security_oos_deep import evaluate_oos_engineering_pack
+
+    return evaluate_oos_engineering_pack(str(oos_id), probe_results=probe_results)
+
+
+def eval_build_research_refuse_inventory() -> Dict[str, Any]:
+    """OOS-01/02/03 research refuse-to-test cards (never text-ASR covered)."""
+    from core.apps.eval.service.security_oos_deep import build_research_refuse_inventory
+
+    return build_research_refuse_inventory()
+
+
 def eval_load_p5_extension_gates() -> Dict[str, Any]:
     """Load SEC-P5 extension gates seed."""
     from core.apps.eval.service.security_p5_extensions import load_p5_extension_gates
