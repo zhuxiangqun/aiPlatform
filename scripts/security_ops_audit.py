@@ -168,6 +168,43 @@ def check_engineering_closeout() -> Dict[str, Any]:
     }
 
 
+def check_authz_pilot() -> Dict[str, Any]:
+    """Advisory: ledger present + exit status (Ops P0-3b). Missing ledger ≠ fail."""
+    cli = ROOT / "scripts" / "security_authz_pilot_cli.py"
+    if not cli.is_file():
+        return {
+            "ok": False,
+            "issues": ["authz_pilot_cli_missing"],
+            "security_certification": False,
+        }
+    proc = subprocess.run(
+        [sys.executable, str(cli), "--status"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+    try:
+        payload = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError:
+        return {
+            "ok": False,
+            "issues": ["authz_pilot_status_parse_failed"],
+            "security_certification": False,
+        }
+    ev = payload.get("evaluation") or {}
+    status = str(ev.get("status") or "unknown")
+    # Advisory: engineering tooling present is enough for ok; exit still Ops
+    return {
+        "ok": True,
+        "pilot_status": status,
+        "types_ready": bool(ev.get("types_ready")),
+        "owner_approval": bool(ev.get("owner_approval")),
+        "ops_exit_done": status == "passed",
+        "security_certification": False,
+        "honesty": "Advisory ledger peek. ok=true ≠ pilot exited ≠ certification.",
+    }
+
+
 def _parse_fail_mode(raw: Optional[str], *, default: str = "open") -> str:
     """Mirror policy_gate._parse_policy_fail_mode (stdlib-only for CI)."""
     v = (raw or default or "open").strip().lower()
@@ -295,6 +332,7 @@ def run_ops_audit() -> Dict[str, Any]:
         "fail_closed": check_fail_closed(),
         "hard_floor": check_hard_floor(),
         "p2_1_keys": check_p2_1_keys(),
+        "authz_pilot": check_authz_pilot(),
         "engineering_closeout": check_engineering_closeout(),
     }
     failing = [k for k, v in checks.items() if not v.get("ok")]
