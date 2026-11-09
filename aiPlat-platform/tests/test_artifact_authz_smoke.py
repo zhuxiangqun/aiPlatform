@@ -130,12 +130,21 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
     )
     ev2 = authz.evaluate_pilot_exit(state)
     assert ev2["types_ready"] is True
-    assert ev2["status"] == "in_progress"  # no owner yet
+    assert ev2["status"] == "in_progress"  # no dual sign yet
 
+    # Legacy single owner_approval alone is insufficient
     state.owner_approval = "2026-11-09 Security Owner: exit pilot"
+    ev_legacy = authz.evaluate_pilot_exit(state)
+    assert ev_legacy["status"] == "in_progress"
+
+    state.approvals = {
+        "security_owner": "2026-11-09 SO: exit",
+        "product_security": "2026-11-09 PS: exit",
+    }
     ev3 = authz.evaluate_pilot_exit(state)
     assert ev3["status"] == "passed"
     assert ev3["require_authz_on_publish"] is True
+    assert ev3["require_threat_model_on_publish"] is True
 
 
 def test_pilot_timeout_blocked(authz):

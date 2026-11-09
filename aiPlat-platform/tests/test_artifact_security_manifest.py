@@ -261,3 +261,54 @@ def test_valid_threat_model_file_pass(asm, tmp_path: Path):
     )
     gate = asm.evaluate_publish_gate(m, require_threat_model=True)
     assert gate["ok"] is True, gate["blockers"]
+
+
+def test_crud_pilot_type_requires_threat_model(asm, monkeypatch):
+    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_MODEL", raising=False)
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    m = asm.build_manifest(
+        artifact_id="a@1",
+        artifact_type="app",
+        owner="t",
+        sast={"status": "pass", "tool": "none"},
+        secrets_scan={"status": "pass"},
+        deps_scan={"status": "pass"},
+        extra={"app_type": "crud"},
+    )
+    assert m["threat_model"]["status"] == "na"
+    gate = asm.evaluate_publish_gate(m)
+    assert gate["ok"] is False
+    assert any("threat_model_required:na" in b for b in gate["blockers"])
+
+
+def test_na_expired_blocks(asm, monkeypatch):
+    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_MODEL", raising=False)
+    monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
+    tm = {
+        "status": "na",
+        "evidence": "deferred",
+        "hash": "",
+        "na_reason": "legacy",
+        "expires_at": "2020-01-01T00:00:00Z",
+    }
+    m = asm.build_manifest(
+        artifact_id="a@1",
+        artifact_type="app",
+        owner="t",
+        sast={"status": "pass", "tool": "none"},
+        secrets_scan={"status": "pass"},
+        deps_scan={"status": "pass"},
+        threat_model=tm,
+        extra={"app_type": "unknown"},
+    )
+    gate = asm.evaluate_publish_gate(m, require_threat_model=False)
+    assert gate["ok"] is False
+    assert any("threat_model_na_expired" in b for b in gate["blockers"])
+
+
+def test_env_off_ignored_in_production(asm, monkeypatch):
+    monkeypatch.setenv("AIPLAT_REQUIRE_THREAT_MODEL", "0")
+    monkeypatch.setenv("AIPLAT_PROFILE", "production")
+    assert asm.threat_model_required(app_type="unknown") is True
+    monkeypatch.setenv("AIPLAT_PROFILE", "development")
+    assert asm.threat_model_required(app_type="unknown") is False

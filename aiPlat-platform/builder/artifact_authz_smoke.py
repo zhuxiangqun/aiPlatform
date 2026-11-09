@@ -271,12 +271,17 @@ class PilotSample:
     recorded_at: str = ""
 
 
+_PILOT_EXIT_ROLES = frozenset({"security_owner", "product_security"})
+
+
 @dataclass
 class PilotState:
     started_at: str
     samples: List[PilotSample] = field(default_factory=list)
-    owner_approval: Optional[str] = None  # ISO date or note
+    owner_approval: Optional[str] = None  # legacy single note (not sufficient alone)
     owner_name: str = ""
+    # PR3 dual-sign exit: both roles required
+    approvals: Dict[str, str] = field(default_factory=dict)
     status: str = "in_progress"  # in_progress|passed|blocked
 
 
@@ -305,11 +310,18 @@ def load_pilot_state(path: Optional[Path] = None) -> PilotState:
         for s in (raw.get("samples") or [])
         if isinstance(s, dict)
     ]
+    approvals_raw = raw.get("approvals") if isinstance(raw.get("approvals"), dict) else {}
+    approvals = {
+        str(k): str(v)
+        for k, v in approvals_raw.items()
+        if str(k).strip() and str(v).strip()
+    }
     return PilotState(
         started_at=str(raw.get("started_at") or datetime.now(timezone.utc).date().isoformat()),
         samples=samples,
         owner_approval=raw.get("owner_approval"),
         owner_name=str(raw.get("owner_name") or ""),
+        approvals=approvals,
         status=str(raw.get("status") or "in_progress"),
     )
 
@@ -332,6 +344,7 @@ def save_pilot_state(state: PilotState, path: Optional[Path] = None) -> Path:
         ],
         "owner_approval": state.owner_approval,
         "owner_name": state.owner_name,
+        "approvals": dict(state.approvals or {}),
         "status": state.status,
     }
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -397,10 +410,16 @@ def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> D
         }
 
     types_ready = all(type_ok.values())
-    owner_ok = bool(state.owner_approval and str(state.owner_approval).strip())
-    if timed_out and not (types_ready and owner_ok):
+    approvals = {
+        str(k).strip().lower(): str(v).strip()
+        for k, v in (state.approvals or {}).items()
+        if str(v).strip()
+    }
+    dual_ok = all(r in approvals for r in _PILOT_EXIT_ROLES)
+    # Legacy single owner_approval alone is NOT enough (PR3 dual-sign).
+    if timed_out and not (types_ready and dual_ok):
         status = "blocked"
-    elif types_ready and owner_ok:
+    elif types_ready and dual_ok:
         status = "passed"
     else:
         status = "in_progress"
@@ -411,15 +430,21 @@ def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> D
         "timed_out": timed_out,
         "types": details,
         "types_ready": types_ready,
-        "owner_approval": bool(owner_ok),
+        "owner_approval": dual_ok,
+        "approvals_present": sorted(approvals.keys()),
+        "approvals_required": sorted(_PILOT_EXIT_ROLES),
         "require_authz_on_publish": status == "passed",
+        "require_threat_model_on_publish": True,  # pilot types always (PR3)
         "message": (
-            "pilot passed — authz gate mandatory for crud/report"
+            "pilot passed — authz+threat_model gates mandatory for crud/report"
             if status == "passed"
             else (
                 "pilot blocked — 60d without exit"
                 if status == "blocked"
-                else "pilot in progress — need 2 types × ≥3 pass + negatives + owner approval"
+                else (
+                    "pilot in progress — need 2 types × ≥3 pass + negatives + "
+                    "security_owner + product_security dual sign"
+                )
             )
         ),
     }
@@ -429,17 +454,32 @@ def approve_pilot_exit(
     *,
     owner_name: str,
     note: str = "",
+    role: str = "security_owner",
     path: Optional[Path] = None,
 ) -> Dict[str, Any]:
+    """Record one half of the dual-sign exit. Call twice with both roles."""
+    role_n = (role or "").strip().lower()
+    if role_n not in _PILOT_EXIT_ROLES:
+        return {
+            "status": "error",
+            "ok": False,
+            "error": f"invalid_role:{role_n or 'empty'}",
+            "approvals_required": sorted(_PILOT_EXIT_ROLES),
+            "security_certification": False,
+        }
     state = load_pilot_state(path)
     state.owner_name = owner_name
-    state.owner_approval = (
+    stamp = (
         f"{datetime.now(timezone.utc).date().isoformat()} {owner_name}: {note}".strip()
     )
+    state.approvals[role_n] = stamp
+    # Keep legacy field as last stamp for readability only (not sufficient alone)
+    state.owner_approval = stamp
     result = evaluate_pilot_exit(state)
     state.status = result["status"]
     save_pilot_state(state, path)
     result["owner_name"] = owner_name
+    result["role"] = role_n
     return result
 
 

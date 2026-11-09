@@ -73,21 +73,29 @@ def cmd_dry_run_exit(authz, _args: argparse.Namespace) -> int:
                 authz.record_pilot_sample(smoke, path=path)
         state = authz.load_pilot_state(path)
         before = authz.evaluate_pilot_exit(state)
-        # Approve in temp ledger only
-        after = authz.approve_pilot_exit(
-            owner_name="dry-run-owner",
+        # Dual-sign in temp ledger only (PR3)
+        mid = authz.approve_pilot_exit(
+            owner_name="dry-run-security-owner",
             note="fixture only — not a real exit",
+            role="security_owner",
+            path=path,
+        )
+        after = authz.approve_pilot_exit(
+            owner_name="dry-run-product-security",
+            note="fixture only — not a real exit",
+            role="product_security",
             path=path,
         )
         out = {
             "schema": "eval.security_authz_pilot_dry_run.v1",
             "before_owner": before,
+            "after_first_sign": mid,
             "after_owner": after,
             "ok": after.get("status") == "passed",
             "security_certification": False,
             "honesty": (
                 "Dry-run exit math only. Does not write real ledger. "
-                "≠ live samples ≠ Owner approval ≠ certification."
+                "≠ live samples ≠ dual-sign exit ≠ certification."
             ),
         }
         print(json.dumps(out, ensure_ascii=False, indent=2))
@@ -125,13 +133,17 @@ def cmd_approve(authz, args: argparse.Namespace) -> int:
     result = authz.approve_pilot_exit(
         owner_name=args.owner,
         note=args.note or "",
+        role=args.role or "security_owner",
         path=path,
     )
     out = {
         "schema": "eval.security_authz_pilot_approve.v1",
         "result": result,
         "security_certification": False,
-        "honesty": "Owner note recorded; status=passed only if samples also satisfy §1.2.",
+        "honesty": (
+            "One dual-sign half recorded; status=passed only if samples + "
+            "security_owner + product_security both present."
+        ),
     }
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0 if result.get("status") == "passed" else 1
@@ -151,6 +163,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--record", action="store_true", help="Persist probe into ledger")
     parser.add_argument("--owner", default="")
     parser.add_argument("--note", default="")
+    parser.add_argument(
+        "--role",
+        default="security_owner",
+        choices=["security_owner", "product_security"],
+        help="Dual-sign role for --approve (both required to exit)",
+    )
     args = parser.parse_args(argv)
 
     authz = _load()
