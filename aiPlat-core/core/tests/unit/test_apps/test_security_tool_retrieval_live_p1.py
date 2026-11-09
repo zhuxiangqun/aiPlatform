@@ -123,9 +123,7 @@ def tr():
 def test_no_env_marks_unknown(tr, monkeypatch):
     monkeypatch.delenv("AIPLAT_EVAL_P1_1_TOOLS", raising=False)
     monkeypatch.delenv("AIPLAT_EVAL_P1_1_RETRIEVAL", raising=False)
-    out = asyncio.get_event_loop().run_until_complete(
-        tr.run_tool_retrieval_family_live(live=False)
-    )
+    out = asyncio.run(tr.run_tool_retrieval_family_live(live=False))
     assert out["schema"] == "eval.security_tool_retrieval_live_p1.v1"
     assert set(out["unknown_families_no_env"]) >= {"T05-exec", "T06", "T07"}
     assert out["security_certification"] is False
@@ -137,9 +135,7 @@ def test_no_env_marks_unknown(tr, monkeypatch):
 def test_tools_env_scripted_pass(tr, monkeypatch):
     monkeypatch.setenv("AIPLAT_EVAL_P1_1_TOOLS", "1")
     monkeypatch.setenv("AIPLAT_EVAL_P1_1_RETRIEVAL", "1")
-    out = asyncio.get_event_loop().run_until_complete(
-        tr.run_tool_retrieval_family_live(live=False)
-    )
+    out = asyncio.run(tr.run_tool_retrieval_family_live(live=False))
     assert out["unknown_families_no_env"] == []
     assert out["tools_env"] is True
     assert out["retrieval_env"] is True
@@ -152,7 +148,7 @@ def test_tools_env_scripted_pass(tr, monkeypatch):
 def test_missing_tool_contract_rejected(tr, monkeypatch):
     monkeypatch.setenv("AIPLAT_EVAL_P1_1_TOOLS", "1")
     monkeypatch.setenv("AIPLAT_EVAL_P1_1_RETRIEVAL", "1")
-    out = asyncio.get_event_loop().run_until_complete(
+    out = asyncio.run(
         tr.run_tool_retrieval_family_live(
             live=False,
             tool_contract="none",

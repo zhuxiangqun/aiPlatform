@@ -237,7 +237,8 @@ jobs:
         run: python3 scripts/security_ops_audit.py
         # Do not --strict here: IR contacts / prod secrets are Ops-local
       - name: Install pytest (focused suites)
-        run: pip install pytest pyyaml
+        # pytest-asyncio: several P1 importlib suites are async def
+        run: pip install pytest pyyaml pytest-asyncio
       - name: P0-1 attack-sim + IR contacts + Ops audit unit regressions
         run: |
           python3 -m pytest \
