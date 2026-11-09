@@ -60,6 +60,7 @@ def test_run_ops_audit_schema(audit, monkeypatch):
     assert report["security_certification"] is False
     assert report["accuracy_claim"] is False
     assert "ir_contacts" in report["checks"]
+    assert "authz_pilot" in report["checks"]
     assert "engineering_closeout" in report["checks"]
     # Contacts typically missing in CI/dev → ok may be False; still exit-0 path
     assert isinstance(report["failing_checks"], list)
