@@ -123,6 +123,164 @@ def verify_manifest_signature(manifest_hash: str, signature: str) -> Tuple[bool,
     return True, "ok"
 
 
+_TM_REQUIRED_LISTS = (
+    "top_threats",
+    "mitigations",
+    "out_of_scope",
+)
+_TM_REVIEWER_ROLES = frozenset(
+    {"security_owner", "product_security", "independent_qa"}
+)
+_TM_FILENAMES = ("THREAT_MODEL.yaml", "threat_model.yaml", "THREAT_MODEL.yml")
+
+
+def canonical_threat_model_bytes(doc: Dict[str, Any]) -> bytes:
+    """Canonical JSON for threat-model hashing (sort_keys, compact separators)."""
+    cleaned = {k: v for k, v in doc.items() if not str(k).startswith("_")}
+    return json.dumps(cleaned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+
+
+def compute_threat_model_hash(doc: Dict[str, Any]) -> str:
+    return hashlib.sha256(canonical_threat_model_bytes(doc)).hexdigest()
+
+
+def _nonempty_list(val: Any) -> bool:
+    return isinstance(val, list) and len(val) > 0
+
+
+def validate_threat_model_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Structural + independence rules. Does not claim certification."""
+    errors: List[str] = []
+    if not isinstance(doc, dict):
+        return {"ok": False, "errors": ["threat_model_not_mapping"], "status": "fail"}
+    if not str(doc.get("asset") or "").strip():
+        errors.append("missing_asset")
+    for key in _TM_REQUIRED_LISTS:
+        if not _nonempty_list(doc.get(key)):
+            errors.append(f"empty_{key}")
+    owner = str(doc.get("owner") or "").strip()
+    reviewed_by = str(doc.get("reviewed_by") or "").strip()
+    role = str(doc.get("reviewer_role") or "").strip().lower()
+    approved = bool(doc.get("approved") is True)
+    if not owner:
+        errors.append("missing_owner")
+    if not reviewed_by:
+        errors.append("missing_reviewed_by")
+    if not str(doc.get("reviewed_at") or "").strip():
+        errors.append("missing_reviewed_at")
+    if role not in _TM_REVIEWER_ROLES:
+        errors.append(f"invalid_reviewer_role:{role or 'empty'}")
+    if approved and owner and reviewed_by and owner.lower() == reviewed_by.lower():
+        errors.append("self_approval_forbidden")
+    if not approved:
+        errors.append("not_approved")
+    status = "pass" if not errors else "fail"
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "status": status,
+        "hash": compute_threat_model_hash(doc) if isinstance(doc, dict) else "",
+    }
+
+
+def _safe_tm_path(root: Path, candidate: Path) -> Optional[Path]:
+    """Resolve path; reject escape / symlink out of root."""
+    root_r = root.resolve()
+    try:
+        # Do not follow final symlink out of tree: resolve parent, check name under root
+        if candidate.is_symlink():
+            target = candidate.resolve()
+            if root_r not in target.parents and target != root_r:
+                return None
+            return target if target.is_file() else None
+        resolved = candidate.resolve()
+        if root_r not in resolved.parents and resolved != root_r:
+            return None
+        return resolved if resolved.is_file() else None
+    except OSError:
+        return None
+
+
+def load_or_stub_threat_model(
+    root: Path,
+    *,
+    na_reason: str = "P0-3a: threat model deferred",
+    expires_at: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Load THREAT_MODEL.yaml under root or return na stub.
+
+    Path traversal / symlink escape → fail (not na).
+    """
+    root = Path(root)
+    found: Optional[Path] = None
+    for name in _TM_FILENAMES:
+        cand = root / name
+        if cand.exists() or cand.is_symlink():
+            safe = _safe_tm_path(root, cand)
+            if safe is None:
+                return {
+                    "status": "fail",
+                    "evidence": f"threat_model_path_escape:{name}",
+                    "path": name,
+                    "hash": "",
+                }
+            found = safe
+            break
+    if found is None:
+        out: Dict[str, Any] = {
+            "status": "na",
+            "evidence": na_reason,
+            "path": "",
+            "hash": "",
+            "na_reason": na_reason,
+        }
+        if expires_at:
+            out["expires_at"] = expires_at
+        return out
+
+    try:
+        import yaml  # type: ignore
+
+        doc = yaml.safe_load(found.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {
+            "status": "fail",
+            "evidence": f"threat_model_load_error:{type(e).__name__}",
+            "path": str(found.name),
+            "hash": "",
+        }
+    if not isinstance(doc, dict):
+        return {
+            "status": "fail",
+            "evidence": "threat_model_not_mapping",
+            "path": str(found.name),
+            "hash": "",
+        }
+    checked = validate_threat_model_doc(doc)
+    return {
+        "status": checked["status"],
+        "evidence": (
+            "threat_model_pass"
+            if checked["ok"]
+            else "threat_model_fail:" + ",".join(checked["errors"])
+        ),
+        "path": str(found.name),
+        "hash": checked.get("hash") or "",
+        "errors": checked.get("errors") or [],
+        "doc_owner": str(doc.get("owner") or ""),
+        "approved": bool(doc.get("approved") is True),
+    }
+
+
+def threat_model_required(*, require_threat_model: Optional[bool] = None) -> bool:
+    if require_threat_model is not None:
+        return bool(require_threat_model)
+    raw = (os.getenv("AIPLAT_REQUIRE_THREAT_MODEL") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
 def build_manifest(
     *,
     artifact_id: str,
@@ -131,12 +289,19 @@ def build_manifest(
     platform_controls_inherited: Optional[Sequence[str]] = None,
     platform_controls_lost_on_export: Optional[Sequence[str]] = None,
     authz_smoke: Optional[Dict[str, Any]] = None,
+    threat_model: Optional[Dict[str, Any]] = None,
     sast: Optional[Dict[str, Any]] = None,
     secrets_scan: Optional[Dict[str, Any]] = None,
     deps_scan: Optional[Dict[str, Any]] = None,
     claim_boundary: str = "不得超出本 manifest 与证据卡",
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    tm = threat_model or {
+        "status": "na",
+        "evidence": "P0-3a: threat model deferred",
+        "hash": "",
+        "na_reason": "P0-3a: threat model deferred",
+    }
     data: Dict[str, Any] = {
         "artifact_id": artifact_id,
         "type": artifact_type,
@@ -145,6 +310,8 @@ def build_manifest(
         "platform_controls_lost_on_export": list(platform_controls_lost_on_export or []),
         "authz_smoke": authz_smoke
         or {"status": "na", "evidence": "P0-3a: authz deferred to P0-3b"},
+        "threat_model": tm,
+        "threat_model_hash": str(tm.get("hash") or ""),
         "sast": sast or {"status": "fail", "tool": "unset"},
         "secrets_scan": secrets_scan or {"status": "fail"},
         "deps_scan": deps_scan or {"status": "fail"},
@@ -331,8 +498,13 @@ def evaluate_publish_gate(
     *,
     require_authz: bool = False,
     require_sbom: Optional[bool] = None,
+    require_threat_model: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Block publish on integrity / sast / secrets / deps / P2-1 SBOM failures."""
+    """Block publish on integrity / sast / secrets / deps / P2-1 / threat-model failures.
+
+    Threat model default off (``AIPLAT_REQUIRE_THREAT_MODEL`` unset) — na allowed.
+    When required, status must be pass; na is never treated as pass.
+    """
     blockers: List[str] = []
     integrity = validate_manifest_integrity(data)
     if not integrity["ok"]:
@@ -352,6 +524,47 @@ def evaluate_publish_gate(
 
     if data.get("security_certification") is True:
         blockers.append("security_certification_true_forbidden")
+
+    tm = data.get("threat_model") if isinstance(data.get("threat_model"), dict) else {}
+    tm_st = str(tm.get("status") or "na")
+    tm_hash_field = str(data.get("threat_model_hash") or "")
+    tm_hash_inner = str(tm.get("hash") or "")
+    if tm_st not in ("pass", "fail", "na"):
+        blockers.append(f"threat_model_invalid:{tm_st}")
+    # Broken / rejected threat model always blocks (even when require flag is off).
+    if tm_st == "fail":
+        blockers.append(f"threat_model_fail:{tm.get('evidence') or 'failed'}")
+        for err in tm.get("errors") or []:
+            blockers.append(f"threat_model:{err}")
+    if tm_st == "pass":
+        if not tm_hash_inner:
+            blockers.append("threat_model_pass_missing_hash")
+        elif tm_hash_field and tm_hash_field != tm_hash_inner:
+            blockers.append("threat_model_hash_mismatch")
+        elif not tm_hash_field:
+            blockers.append("threat_model_hash_missing_on_manifest")
+        if tm.get("approved") is False:
+            blockers.append("threat_model_not_approved")
+        for err in tm.get("errors") or []:
+            blockers.append(f"threat_model:{err}")
+    req_tm = threat_model_required(require_threat_model=require_threat_model)
+    if req_tm and tm_st != "pass":
+        # na must never count as pass when required
+        blockers.append(f"threat_model_required:{tm_st}")
+    # Expired na always blocks when require is on; when off, still surface as blocker
+    # so Ops cannot silently keep expired deferrals forever once expires_at is set.
+    exp = str(tm.get("expires_at") or "").strip()
+    if tm_st == "na" and exp:
+        try:
+            from datetime import datetime, timezone
+
+            deadline = datetime.fromisoformat(exp.replace("Z", "+00:00"))
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) >= deadline:
+                blockers.append("threat_model_na_expired")
+        except ValueError:
+            blockers.append("threat_model_na_expires_at_invalid")
 
     # P2-1: SBOM digest + MCP/plugin allowlist (when required)
     p21_gate: Dict[str, Any] = {"ok": True, "blockers": [], "skipped": True}
@@ -386,6 +599,8 @@ def evaluate_publish_gate(
         "blockers": blockers,
         "integrity": integrity,
         "authz_status": authz_st,
+        "threat_model_status": tm_st,
+        "require_threat_model": req_tm,
         "p2_1": p21_gate,
         "security_certification": False,
     }
@@ -398,6 +613,7 @@ def build_and_gate_for_dir(
     artifact_type: str = "app",
     owner: str = "builder",
     require_authz: bool = False,
+    require_threat_model: Optional[bool] = None,
     write: bool = True,
     authz_base_url: Optional[str] = None,
     authz_sample_id: str = "",
@@ -407,6 +623,7 @@ def build_and_gate_for_dir(
 
     P0-3b: when ``authz_base_url`` is set (or ``AIPLAT_AUTHZ_SMOKE_URL``), run live
     authz/IDOR/SSRF smoke and record pilot sample. ``require_authz`` forces pass.
+    Threat model: default off unless ``require_threat_model`` / ``AIPLAT_REQUIRE_THREAT_MODEL``.
     """
     root = Path(root)
     secrets = scan_secrets_in_tree(root)
@@ -459,6 +676,8 @@ def build_and_gate_for_dir(
             "evidence": f"authz_smoke_error:{type(e).__name__}:{e}",
         }
 
+    threat_model = load_or_stub_threat_model(root)
+
     # P2-1: SBOM + MCP/plugin allowlist attest
     sbom_extra: Dict[str, Any] = {}
     p21_bundle: Dict[str, Any] = {}
@@ -493,12 +712,17 @@ def build_and_gate_for_dir(
         secrets_scan={"status": secrets["status"], "tool": secrets.get("tool"), "hits": secrets.get("hits")},
         deps_scan=deps,
         authz_smoke=authz_smoke,
+        threat_model=threat_model,
         extra={"app_type": app_type_detected, **sbom_extra},
     )
     out_path = root / MANIFEST_NAME
     if write:
         write_manifest(out_path, manifest)
-    gate = evaluate_publish_gate(manifest, require_authz=require_authz)
+    gate = evaluate_publish_gate(
+        manifest,
+        require_authz=require_authz,
+        require_threat_model=require_threat_model,
+    )
     return {
         "manifest_path": str(out_path),
         "manifest": manifest,
@@ -506,5 +730,9 @@ def build_and_gate_for_dir(
         "publish_allowed": bool(gate.get("ok")),
         "app_type": app_type_detected,
         "require_authz": require_authz,
+        "require_threat_model": threat_model_required(
+            require_threat_model=require_threat_model
+        ),
+        "threat_model": threat_model,
         "p2_1": p21_bundle,
     }

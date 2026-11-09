@@ -23,6 +23,8 @@ ENGINEERING: List[Tuple[str, str]] = [
     ("P0-3b", "aiPlat-platform/builder/artifact_authz_smoke.py"),
     ("P0-3b", "reports/security/P0-3b-authz-pilot.md"),
     ("P0-3b", "scripts/security_authz_pilot_cli.py"),
+    ("D01-tm", "security/templates/artifact_threat_model.v1.yaml"),
+    ("D01-tm", "reports/security/P0-threat-model-artifact.md"),
     ("P0-4", "aiPlat-platform/builder/pi_bundle_export.py"),
     ("P0-IR", "reports/security/P0-IR-runbook.md"),
     ("P1-1-text", "aiPlat-core/core/apps/eval/service/security_text_live_p1.py"),

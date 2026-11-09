@@ -1,0 +1,23 @@
+# Artifact threat model template v1 — copy to THREAT_MODEL.yaml in artifact root.
+# Hash = SHA-256(canonical JSON of this document). approved requires non-owner reviewer.
+version: "1.0"
+asset: ""
+actors: []
+trust_boundaries: []
+top_threats: []
+mitigations: []
+out_of_scope: []
+data_classes: []
+auth_assumptions: []
+tools: []
+egress: []
+privacy: []
+data_sensitivity: []
+severity: []
+likelihood: []
+residual_risk: []
+owner: ""
+reviewed_at: ""
+reviewed_by: ""
+reviewer_role: ""  # security_owner | product_security | independent_qa
+approved: false
