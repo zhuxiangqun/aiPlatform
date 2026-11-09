@@ -111,12 +111,30 @@ def check_wave1_templates() -> Dict[str, Any]:
         EVIDENCE / "wave1" / "staging-fail-closed-card.md",
         EVIDENCE / "wave1" / "prod-profile-audit-card.md",
         EVIDENCE / "wave1" / "staging-attack-sim-card.md",
+        EVIDENCE / "wave1" / "profile-matrix-dry-run.json",
     ]
     missing = [str(p.relative_to(ROOT)) for p in needed if not p.is_file()]
     return {
         "id": "W1-templates",
         "ok": not missing,
         "missing": missing,
+    }
+
+
+def check_w1_publish_gates_wrapper() -> Dict[str, Any]:
+    script = ROOT / "scripts" / "security_publish_gates.py"
+    if not script.is_file():
+        return {"id": "W1-5-wrapper", "ok": False, "detail": "missing security_publish_gates.py"}
+    ledger = _run([sys.executable, str(script), "--mode", "ledger"])
+    release = _run([sys.executable, str(script), "--mode", "release"])
+    claim = _run([sys.executable, str(script), "--mode", "claim"])
+    return {
+        "id": "W1-5-wrapper",
+        "ok": ledger.returncode == 0 and release.returncode == 1 and claim.returncode == 1,
+        "ledger_exit": ledger.returncode,
+        "release_exit": release.returncode,
+        "claim_exit": claim.returncode,
+        "detail": "ledger must pass; release/claim must fail honestly while gaps block",
     }
 
 
@@ -202,6 +220,7 @@ def run_wave1() -> Dict[str, Any]:
         check_w1_0_attack_sim_unreachable(),
         check_w1_3_ir_gitignore(),
         check_w1_5_gates(),
+        check_w1_publish_gates_wrapper(),
         check_wave1_templates(),
     ]
     return {

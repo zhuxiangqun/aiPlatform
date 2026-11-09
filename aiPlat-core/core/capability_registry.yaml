@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2420
+total_capabilities: 2421
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -9587,7 +9587,7 @@ domains:
   management-and-quality:
     section: "二十五"
     section_name: "管理 & 质量"
-    caps_count: 118
+    caps_count: 119
     provides:
       - symbol: "management_api_token"
         module: aiPlat-management/management/auth.py
@@ -9812,6 +9812,10 @@ domains:
         module: scripts/security_d26_promote_check.py
         type: function
         signature: "Refuse D26→E without pilot dual-sign exit; never edits YAML; cert=false"
+      - symbol: "main"
+        module: scripts/security_publish_gates.py
+        type: function
+        signature: "Publish gates wrapper: ledger|release|claim; cert=false"
       - symbol: "should_skip_dynamic_spawn"
         module: aiPlat-core/core/harness/coordination/spawn_policy.py
         type: function

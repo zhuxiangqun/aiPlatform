@@ -1,0 +1,57 @@
+{
+  "ok": true,
+  "rows": [
+    {
+      "profile": "production",
+      "explicit": "(unset)",
+      "until": "(unset)",
+      "effective_critical": "closed",
+      "expect": "closed",
+      "ok": true,
+      "drift": false,
+      "source": "stdlib_mirror"
+    },
+    {
+      "profile": "staging",
+      "explicit": "(unset)",
+      "until": "(unset)",
+      "effective_critical": "closed",
+      "expect": "closed",
+      "ok": true,
+      "drift": false,
+      "source": "stdlib_mirror"
+    },
+    {
+      "profile": "development",
+      "explicit": "(unset)",
+      "until": "(unset)",
+      "effective_critical": "ask",
+      "expect": "ask",
+      "ok": true,
+      "drift": false,
+      "source": "stdlib_mirror"
+    },
+    {
+      "profile": "production",
+      "explicit": "open",
+      "until": "(unset)",
+      "effective_critical": "closed",
+      "expect": "closed",
+      "ok": true,
+      "drift": true,
+      "source": "stdlib_mirror"
+    },
+    {
+      "profile": "production",
+      "explicit": "open",
+      "until": "2099-01-01T00:00:00Z",
+      "effective_critical": "open",
+      "expect": "open",
+      "ok": true,
+      "drift": true,
+      "source": "stdlib_mirror"
+    }
+  ],
+  "security_certification": false,
+  "honesty": "Matrix is local dry-run ≠ production cutover proof."
+}
