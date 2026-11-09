@@ -1711,6 +1711,27 @@ scan_hash: 8f9548ec24f4
 ## 五、Agent 系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| default_tool_retrieval_cases | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| environment_ready_for_family | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| retrieval_env_available | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| tools_env_available | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| SecurityToolRetrievalLiveError | `core/apps/eval/service/security_tool_retrieval_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| execute_text_case | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| load_text_live_cases | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| default_safety_cases_path | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| environment_for_family | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| SecurityTextLiveError | `core/apps/eval/service/security_text_live_p1.py` | ✅ | 自动同步 | 已合入 |
+| dual_human_completed | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| failure_case_ids | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| save_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| load_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| empty_session | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| default_session_path | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| SecurityP12SessionError | `core/apps/eval/service/security_p1_judge_session.py` | ✅ | 自动同步 | 已合入 |
+| assert_not_http_escape | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| default_p14_probes_path | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| SecurityP14Error | `core/apps/eval/service/security_p1_4_kvm_escape.py` | ✅ | 自动同步 | 已合入 |
+| default_http_transport | `core/apps/eval/service/security_dynamic_p13.py` | ✅ | 自动同步 | 已合入 |
 | load_a1_track_a_evidence | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
 | default_a1_evidence_dir | `core/apps/eval/service/a1_intersection_ops.py` | ✅ | 自动同步 | 已合入 |
 | compat_evaluation_case_pack_judge_calibration_get | `core/api/routers/compat.py` | ✅ | 自动同步 | 已合入 |

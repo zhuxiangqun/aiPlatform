@@ -38,11 +38,13 @@ def _try_yaml_load(text: str) -> Any:
 
 
 def candidate_paths() -> List[Path]:
-    out: List[Path] = []
+    """Lookup order. If AIPLAT_IR_CONTACTS_PATH is set, it is the only candidate."""
     env = (os.getenv("AIPLAT_IR_CONTACTS_PATH") or "").strip()
     if env:
-        out.append(Path(env))
-    out.append(ROOT / "security" / "ir" / "contacts.local.yaml")
+        return [Path(env)]
+    out: List[Path] = [
+        ROOT / "security" / "ir" / "contacts.local.yaml",
+    ]
     home = Path(os.getenv("AIPLAT_HOME") or (Path.home() / ".aiplat"))
     out.append(home / "security" / "ir_contacts.yaml")
     return out
@@ -56,7 +58,25 @@ def resolve_contacts_path() -> Optional[Path]:
 
 
 def load_contacts(*, path: Optional[Path] = None) -> Dict[str, Any]:
-    p = Path(path) if path else resolve_contacts_path()
+    if path is not None:
+        p: Optional[Path] = Path(path)
+    else:
+        env = (os.getenv("AIPLAT_IR_CONTACTS_PATH") or "").strip()
+        if env:
+            # Explicit override is exclusive: missing file → not filled (no fallback)
+            p = Path(env)
+            if not p.is_file():
+                return {
+                    "schema": SCHEMA,
+                    "ok": False,
+                    "filled": False,
+                    "error": "contacts_file_missing",
+                    "path": str(p),
+                    "candidates": [str(p)],
+                    "security_certification": False,
+                }
+        else:
+            p = resolve_contacts_path()
     if p is None:
         return {
             "schema": SCHEMA,

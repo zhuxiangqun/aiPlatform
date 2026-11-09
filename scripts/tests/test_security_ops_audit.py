@@ -77,7 +77,7 @@ def test_main_exit_zero_without_strict(audit, monkeypatch, capsys):
 
 
 def test_main_strict_fails_when_contacts_missing(audit, monkeypatch, tmp_path, capsys):
-    # Point contacts at empty dir → missing
+    # Explicit AIPLAT_IR_CONTACTS_PATH is exclusive — no fallthrough to contacts.local.yaml
     monkeypatch.setenv("AIPLAT_IR_CONTACTS_PATH", str(tmp_path / "nope.yaml"))
     monkeypatch.setattr(audit.sys, "argv", ["security_ops_audit.py", "--strict"])
     code = audit.main()

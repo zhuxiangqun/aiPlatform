@@ -42,3 +42,11 @@ def test_filled_contacts_pass(ir, tmp_path: Path):
     assert out["filled"] is True
     assert out["ok"] is True
     assert out["security_certification"] is False
+
+
+def test_env_path_exclusive_no_fallback(ir, tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_IR_CONTACTS_PATH", str(tmp_path / "missing.yaml"))
+    out = ir.load_contacts()
+    assert out["filled"] is False
+    assert out["error"] == "contacts_file_missing"
+    assert out["candidates"] == [str(tmp_path / "missing.yaml")]

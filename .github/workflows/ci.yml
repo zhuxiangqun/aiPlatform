@@ -252,16 +252,10 @@ jobs:
             aiPlat-platform/tests/test_artifact_sbom_attest.py \
             aiPlat-platform/tests/test_artifact_authz_smoke.py \
             -v --tb=short
-      - name: P1 security eval suites (importlib)
-        run: |
-          python3 -m pytest \
-            aiPlat-core/core/tests/unit/test_apps/test_security_text_live_p1.py \
-            aiPlat-core/core/tests/unit/test_apps/test_security_tool_retrieval_live_p1.py \
-            aiPlat-core/core/tests/unit/test_apps/test_security_p1_judge_session.py \
-            aiPlat-core/core/tests/unit/test_apps/test_security_dynamic_p13.py \
-            aiPlat-core/core/tests/unit/test_apps/test_security_p1_4_kvm_escape.py \
-            -v --tb=short
-        # Honesty: scripted/fixture suites ≠ live / ≠ certification
+      - name: P1 security eval suites (importlib via runner)
+        run: python3 scripts/run_security_p1_units.py
+        # Runner rewrites tests out of aiPlat-core/core/ package tree so minimal
+        # CI venv does not import real core/__init__.py. ≠ live / ≠ certification
 
   dast:
     name: DAST Active Security Scan
