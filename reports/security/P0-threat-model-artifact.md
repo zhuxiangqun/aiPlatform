@@ -39,11 +39,13 @@ python3 scripts/security_authz_pilot_cli.py --approve \
 ## 发布门与覆盖矩阵
 
 ```bash
-# 成果物发布前（发布门）
-python3 scripts/security_dimensions_report.py --strict-gaps
+# 普通发布（可发布门）
+python3 scripts/security_dimensions_report.py --release-gate
+# 对外安全声明（做完门；≠ 普通发布）
+python3 scripts/security_dimensions_report.py --claim-gate
 ```
 
-默认 CI 工程收口只要求 `schema_ok`；**`--strict-gaps` 必须进发布 checklist**。
+默认 CI 只要求 `ledger_ok`（`schema_ok` 为别名）；**禁止**用 `--strict-gaps`/`--claim-gate` 挡所有发版。
 
 ---
 
