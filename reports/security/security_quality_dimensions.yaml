@@ -1,7 +1,8 @@
-# Security quality dimensions — unique machine-readable SoT (25-dim).
+# Security quality dimensions — unique machine-readable SoT (26-dim = 25 + D26).
 # ledger_ok(=schema_ok alias) ≠ accounted_ok ≠ release_ok ≠ coverage_ok ≠ security_certification
+# ID stability: D07–D25 not renumbered; D26 appended for artifact authz.
 schema_version: "1.0"
-dimension_set_version: "1.0"
+dimension_set_version: "1.1"
 superset_of: "v3-20-dim"
 last_reviewed: "2026-11-09"
 owner: "Product Security"
@@ -123,14 +124,14 @@ dimensions:
 
   - id: D06
     v3_id: "6"
-    name: "授权与最小权限"
+    name: "平台授权与最小权限"
     category: identity_data
     status: E
     p0: true
-    scope: both
+    scope: platform
     owner: "Platform Eng"
-    last_reviewed: "2026-11-09"
-    release_blocking: true
+    last_reviewed: "2026-11-10"
+    release_blocking: false
     evidence:
       - path: "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py"
         level: V
@@ -140,12 +141,8 @@ dimensions:
         level: V
         verified_at: "2026-11-09"
         owner: "Platform Eng"
-      - path: "aiPlat-platform/tests/test_artifact_authz_smoke.py"
-        level: T
-        verified_at: "2026-11-09"
-        owner: "Product Security"
-    gap: "成果物 authz 仍 pilot"
-    next: "P0-3b 真人样本 + Owner 退出（A2 拆 D26）"
+    gap: ""
+    next: "审批疲劳/策略漂移运营证据归档"
 
   - id: D07
     v3_id: "7"
@@ -523,3 +520,29 @@ dimensions:
         owner: "Product Security"
     gap: "无 residency 证明作为一等门"
     next: "驻留声明 + 合同附件路径"
+
+  - id: D26
+    v3_id: "6"
+    name: "成果物 authz / IDOR / SSRF"
+    category: identity_data
+    status: I
+    p0: true
+    scope: artifact
+    owner: "Product Security"
+    last_reviewed: "2026-11-10"
+    release_blocking: true
+    evidence:
+      - path: "aiPlat-platform/builder/artifact_authz_smoke.py"
+        level: V
+        verified_at: "2026-11-10"
+        owner: "Product Security"
+      - path: "aiPlat-platform/tests/test_artifact_authz_smoke.py"
+        level: T
+        verified_at: "2026-11-10"
+        owner: "Product Security"
+      - path: "reports/security/P0-3b-authz-pilot.md"
+        level: D
+        verified_at: "2026-11-10"
+        owner: "Product Security"
+    gap: "authz pilot 未双签退出；crud/report 真人样本不足"
+    next: "2类×≥3 样本 + 负向 + security_owner/product_security 双签后升 E"

@@ -327,7 +327,7 @@ def simulate_profile_matrix() -> Dict[str, Any]:
 
 
 def check_dimensions() -> Dict[str, Any]:
-    """Advisory: ledger_ok of 25-dim SoT (release/coverage not required here)."""
+    """Advisory: ledger_ok of 26-dim SoT (release/coverage not required here)."""
     script = ROOT / "scripts" / "security_dimensions_report.py"
     if not script.is_file():
         return {
