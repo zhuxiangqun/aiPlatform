@@ -247,7 +247,13 @@ jobs:
             scripts/tests/test_security_ops_audit.py \
             scripts/tests/test_security_authz_pilot_cli.py \
             scripts/tests/test_security_dimensions_report.py \
+            scripts/tests/test_security_wave_ops.py \
             -v --tb=short
+      - name: Security wave engineering gates (ledger default; ≠ release/claim)
+        run: |
+          python3 scripts/security_dimensions_report.py
+          python3 scripts/security_wave_ops.py --all
+          python3 scripts/security_d26_promote_check.py
       - name: P0-3a / P2-1 artifact security suites
         run: |
           python3 -m pytest \

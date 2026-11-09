@@ -96,7 +96,7 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
     monkeypatch.setenv("AIPLAT_AUTHZ_PILOT_PATH", str(path))
 
     state = authz.PilotState(started_at=date.today().isoformat())
-    # 3 crud pass
+    # 3 crud pass (pinned)
     for i in range(3):
         state.samples.append(
             authz.PilotSample(
@@ -104,6 +104,8 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
                 app_type="crud",
                 authz_status="pass",
                 negatives_blocked=True,
+                git_commit=f"abc{i}",
+                build_id=f"b-c{i}",
             )
         )
     # only 2 report → not ready
@@ -114,6 +116,8 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
                 app_type="report",
                 authz_status="pass",
                 negatives_blocked=True,
+                git_commit=f"def{i}",
+                build_id=f"b-r{i}",
             )
         )
     ev = authz.evaluate_pilot_exit(state)
@@ -126,11 +130,14 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
             app_type="report",
             authz_status="pass",
             negatives_blocked=True,
+            git_commit="def2",
+            build_id="b-r2",
         )
     )
     ev2 = authz.evaluate_pilot_exit(state)
     assert ev2["types_ready"] is True
     assert ev2["status"] == "in_progress"  # no dual sign yet
+    assert ev2["d26_promote_allowed"] is False
 
     # Legacy single owner_approval alone is insufficient
     state.owner_approval = "2026-11-09 Security Owner: exit pilot"
@@ -145,10 +152,46 @@ def test_pilot_exit_requires_two_types_and_owner(authz, tmp_path: Path, monkeypa
     assert ev3["status"] == "passed"
     assert ev3["require_authz_on_publish"] is True
     assert ev3["require_threat_model_on_publish"] is True
+    assert ev3["d26_promote_allowed"] is True
+
+
+def test_pilot_pass_requires_git_commit_and_build_id(authz):
+    state = authz.PilotState(started_at=date.today().isoformat())
+    for i in range(3):
+        state.samples.append(
+            authz.PilotSample(
+                sample_id=f"c{i}",
+                app_type="crud",
+                authz_status="pass",
+                negatives_blocked=True,
+                # missing pin fields
+            )
+        )
+    for i in range(3):
+        state.samples.append(
+            authz.PilotSample(
+                sample_id=f"r{i}",
+                app_type="report",
+                authz_status="pass",
+                negatives_blocked=True,
+                git_commit=f"g{i}",
+                build_id=f"b{i}",
+            )
+        )
+    ev = authz.evaluate_pilot_exit(state)
+    assert ev["types"]["crud"]["ok"] is False
+    assert ev["types"]["crud"]["unpinned_pass_ids"] == ["c0", "c1", "c2"]
+    assert ev["types_ready"] is False
+    assert ev["d26_promote_allowed"] is False
 
 
 def test_pilot_timeout_blocked(authz):
-    started = (date.today() - timedelta(days=61)).isoformat()
+    # evaluate_pilot_exit uses UTC date; stay clear of local/UTC midnight skew
+    from datetime import timezone as _tz
+    from datetime import datetime as _dt
+
+    utc_today = _dt.now(_tz.utc).date()
+    started = (utc_today - timedelta(days=61)).isoformat()
     state = authz.PilotState(started_at=started, samples=[])
     ev = authz.evaluate_pilot_exit(state)
     assert ev["status"] == "blocked"

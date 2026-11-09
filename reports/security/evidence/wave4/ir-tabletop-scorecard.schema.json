@@ -1,0 +1,21 @@
+{
+  "schema": "eval.security_ir_tabletop_scorecard.v1",
+  "wave": 4,
+  "card_id": "ir-tabletop",
+  "environment": "tabletop",
+  "result": "pending",
+  "recorded_at_utc": "2026-11-10T00:00:00Z",
+  "min_pass_score": 5,
+  "score": null,
+  "dimensions": {
+    "detect": null,
+    "triage": null,
+    "contain": null,
+    "eradicate": null,
+    "recover": null,
+    "lessons": null
+  },
+  "contacts_local_chmod_0600": false,
+  "drill_notes_path": "reports/security/P1-IR-tabletop-drill.md",
+  "security_certification": false
+}

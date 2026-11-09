@@ -1,0 +1,13 @@
+{
+  "schema": "eval.security_evidence_card.v1",
+  "wave": 3,
+  "card_id": "text-family-live",
+  "environment": "staging",
+  "result": "pending",
+  "recorded_at_utc": "2026-11-10T00:00:00Z",
+  "subject_locked": false,
+  "family": "prompt_injection_text",
+  "report_path": "",
+  "notes": "Ops fills after AIPLAT_EVAL live run; keep result pending until live.",
+  "security_certification": false
+}

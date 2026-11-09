@@ -69,6 +69,8 @@ def cmd_dry_run_exit(authz, _args: argparse.Namespace) -> int:
                     "status": "pass",
                     "negatives_blocked": True,
                     "evidence": "dry-run fixture",
+                    "git_commit": f"dryrun-{app_type}-{i}",
+                    "build_id": f"build-{app_type}-{i}",
                 }
                 authz.record_pilot_sample(smoke, path=path)
         state = authz.load_pilot_state(path)
@@ -108,14 +110,29 @@ def cmd_probe(authz, args: argparse.Namespace) -> int:
         app_type=args.app_type,
         sample_id=args.sample_id or "",
     )
+    if args.git_commit:
+        smoke["git_commit"] = args.git_commit
+    if args.build_id:
+        smoke["build_id"] = args.build_id
     recorded = None
     if args.record:
+        if smoke.get("status") == "pass" and (
+            not str(smoke.get("git_commit") or "").strip()
+            or not str(smoke.get("build_id") or "").strip()
+        ):
+            print(
+                "FAIL: --record of pass sample requires --git-commit and --build-id",
+                file=sys.stderr,
+            )
+            return 2
         path = Path(args.path) if args.path else None
         state = authz.record_pilot_sample(smoke, path=path)
         recorded = {
             "sample_count": len(state.samples),
             "status": state.status,
             "ledger": str(path or authz._pilot_path()),
+            "git_commit": smoke.get("git_commit") or "",
+            "build_id": smoke.get("build_id") or "",
         }
     out: Dict[str, Any] = {
         "schema": "eval.security_authz_pilot_probe.v1",
@@ -160,6 +177,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--base-url", default="")
     parser.add_argument("--app-type", default="", choices=["", "crud", "report"])
     parser.add_argument("--sample-id", default="")
+    parser.add_argument(
+        "--git-commit",
+        default="",
+        help="Pin sample to git SHA (required with --record for pass)",
+    )
+    parser.add_argument(
+        "--build-id",
+        default="",
+        help="Pin sample to build/artifact id (required with --record for pass)",
+    )
     parser.add_argument("--record", action="store_true", help="Persist probe into ledger")
     parser.add_argument("--owner", default="")
     parser.add_argument("--note", default="")

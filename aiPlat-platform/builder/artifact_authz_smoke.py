@@ -269,6 +269,9 @@ class PilotSample:
     negatives_blocked: bool
     evidence: str = ""
     recorded_at: str = ""
+    # Wave2: pin sample to build so exit cannot be claimed on anonymous artifacts
+    git_commit: str = ""
+    build_id: str = ""
 
 
 _PILOT_EXIT_ROLES = frozenset({"security_owner", "product_security"})
@@ -306,6 +309,8 @@ def load_pilot_state(path: Optional[Path] = None) -> PilotState:
             negatives_blocked=bool(s.get("negatives_blocked")),
             evidence=str(s.get("evidence") or ""),
             recorded_at=str(s.get("recorded_at") or ""),
+            git_commit=str(s.get("git_commit") or ""),
+            build_id=str(s.get("build_id") or ""),
         )
         for s in (raw.get("samples") or [])
         if isinstance(s, dict)
@@ -339,6 +344,8 @@ def save_pilot_state(state: PilotState, path: Optional[Path] = None) -> Path:
                 "negatives_blocked": s.negatives_blocked,
                 "evidence": s.evidence,
                 "recorded_at": s.recorded_at,
+                "git_commit": s.git_commit,
+                "build_id": s.build_id,
             }
             for s in state.samples
         ],
@@ -349,6 +356,11 @@ def save_pilot_state(state: PilotState, path: Optional[Path] = None) -> Path:
     }
     p.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return p
+
+
+def _sample_pinned(sample: PilotSample) -> bool:
+    """Wave2: pass samples must pin git_commit + build_id (or sample fails pinning)."""
+    return bool(str(sample.git_commit or "").strip() and str(sample.build_id or "").strip())
 
 
 def record_pilot_sample(
@@ -368,6 +380,8 @@ def record_pilot_sample(
             negatives_blocked=bool(smoke.get("negatives_blocked")),
             evidence=str(smoke.get("evidence") or ""),
             recorded_at=datetime.now(timezone.utc).isoformat(),
+            git_commit=str(smoke.get("git_commit") or ""),
+            build_id=str(smoke.get("build_id") or ""),
         )
     )
     state.status = evaluate_pilot_exit(state)["status"]
@@ -376,7 +390,7 @@ def record_pilot_sample(
 
 
 def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> Dict[str, Any]:
-    """Hard exit criteria from plan §1.2."""
+    """Hard exit criteria from plan §1.2 + Wave2 pin fields."""
     today = today or datetime.now(timezone.utc).date()
     try:
         started = date.fromisoformat(state.started_at[:10])
@@ -398,14 +412,22 @@ def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> D
         for s in pass_samples:
             if s.sample_id not in unique_pass:
                 unique_pass[s.sample_id] = s
-        n_pass = len(unique_pass)
-        neg_ok = any(s.negatives_blocked for s in pass_samples)
+        # Only pinned pass samples count toward exit (Wave2)
+        pinned_pass = {
+            sid: s for sid, s in unique_pass.items() if _sample_pinned(s)
+        }
+        n_pass = len(pinned_pass)
+        neg_ok = any(s.negatives_blocked for s in pinned_pass.values())
+        unpinned = [
+            sid for sid, s in unique_pass.items() if not _sample_pinned(s)
+        ]
         ok = n_pass >= MIN_SAMPLES_PER_TYPE and neg_ok
         type_ok[t] = ok
         details[t] = {
             "pass_samples": n_pass,
             "required": MIN_SAMPLES_PER_TYPE,
             "negatives_blocked": neg_ok,
+            "unpinned_pass_ids": unpinned,
             "ok": ok,
         }
 
@@ -435,6 +457,7 @@ def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> D
         "approvals_required": sorted(_PILOT_EXIT_ROLES),
         "require_authz_on_publish": status == "passed",
         "require_threat_model_on_publish": True,  # pilot types always (PR3)
+        "d26_promote_allowed": status == "passed",
         "message": (
             "pilot passed — authz+threat_model gates mandatory for crud/report"
             if status == "passed"
@@ -442,7 +465,8 @@ def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> D
                 "pilot blocked — 60d without exit"
                 if status == "blocked"
                 else (
-                    "pilot in progress — need 2 types × ≥3 pass + negatives + "
+                    "pilot in progress — need 2 types × ≥3 pinned pass "
+                    "(sample_id+git_commit+build_id) + negatives + "
                     "security_owner + product_security dual sign"
                 )
             )
