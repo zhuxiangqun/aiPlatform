@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T01:18:42+08:00",
+  "reviewed_at": "2026-11-10T01:22:12+08:00",
   "base_ref": "origin/main",
   "merge_base": "fe35db2c60d95de8527e504b21a73c58b0ea3650",
-  "diff_sha256": "2d779e89a6652cb2b423cdd11fe30bc65cd7cb57445c00ab65d18467fcff6419",
-  "head_sha": "5b38638d5f2dc2f816d55d4296b0de57369bd63e",
+  "diff_sha256": "10bb4e8e4a78093e6fec6c2763cc7da4cc0fb65156be21fd30bdac6c2e7afe70",
+  "head_sha": "c65c737a93a5c361f5f63cc4d2b199c6f0a63482",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Wave1-4 eng gates; unpinned pilot pass ignored; D26 promote requires dual-sign; Ops cards remain pending. ≠ certification."
+  "note": "Wave1-4 eng + whitepaper sync; Ops cards pending; ≠ certification."
 }
