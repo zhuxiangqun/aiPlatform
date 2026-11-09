@@ -246,6 +246,7 @@ jobs:
             scripts/tests/test_security_ir_contacts.py \
             scripts/tests/test_security_ops_audit.py \
             scripts/tests/test_security_authz_pilot_cli.py \
+            scripts/tests/test_security_dimensions_report.py \
             -v --tb=short
       - name: P0-3a / P2-1 artifact security suites
         run: |

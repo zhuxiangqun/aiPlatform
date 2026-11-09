@@ -1,0 +1,520 @@
+# Security quality dimensions — unique machine-readable SoT (25-dim).
+# schema_ok ≠ coverage_ok ≠ security_certification
+schema_version: "1.0"
+superset_of: "v3-20-dim"
+last_reviewed: "2026-11-09"
+owner: "Product Security"
+security_certification: false
+honesty: "Matrix inventory only. schema_ok ≠ coverage_ok ≠ certification."
+
+status_legend:
+  E: "evidence verified (code/test) — requires ≥1 evidence level V or T"
+  I: "implemented, not independently verified"
+  O: "owned but open"
+  G: "gap / unowned"
+
+evidence_levels:
+  V: "verified in code path / design review with locatable artifact"
+  T: "automated test asserts the control"
+  D: "documentation only"
+  U: "unknown / untested"
+  A: "attested by external party"
+
+dimensions:
+  - id: D01
+    v3_id: "1"
+    name: "安全治理与威胁建模"
+    category: governance
+    status: I
+    p0: true
+    scope: both
+    owner: "Product Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/aiplat-security-improvement-plan-2026-11-09.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+      - path: "reports/security/aiplat-security-quality-report-2026-11-09-v3.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "缺逐成果物正式 threat model（PR2/PR3）"
+    next: "artifact THREAT_MODEL.yaml + hash/approved gate"
+
+  - id: D02
+    v3_id: "2"
+    name: "安全需求与验收标准"
+    category: governance
+    status: I
+    p0: false
+    scope: both
+    owner: "Product Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/aiplat-security-improvement-plan-2026-11-09.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+      - path: "AIPLAT_CAPABILITIES.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: ""
+    next: "security AC 可测矩阵扩展"
+
+  - id: D03
+    v3_id: "3"
+    name: "独立验证与红队"
+    category: governance
+    status: G
+    p0: true
+    scope: platform
+    owner: "Security Owner"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/P2-2-external-pentest-rfp.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Security Owner"
+    gap: "无独立第三方报告"
+    next: "发标 P2-2 + 闭环高危"
+
+  - id: D04
+    v3_id: "4"
+    name: "认证与合规映射"
+    category: governance
+    status: G
+    p0: false
+    scope: platform
+    owner: "Exec Sponsor"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/P2-3-formal-ir-disclosure-draft.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Exec Sponsor"
+    gap: "无 ISO 42001/NIST/EU AI Act 控制矩阵审计"
+    next: "控制矩阵草稿 + 认证立项决策"
+
+  - id: D05
+    v3_id: "5"
+    name: "身份认证"
+    category: identity_data
+    status: E
+    p0: true
+    scope: platform
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-platform/auth/mfa.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "aiPlat-platform/api/rest/routes.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: ""
+    next: "OIDC 部署证明按环境归档"
+
+  - id: D06
+    v3_id: "6"
+    name: "授权与最小权限"
+    category: identity_data
+    status: E
+    p0: true
+    scope: both
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "aiPlat-core/core/harness/infrastructure/gates/approval_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "aiPlat-platform/tests/test_artifact_authz_smoke.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "成果物 authz 仍 pilot"
+    next: "P0-3b 真人样本 + Owner 退出"
+
+  - id: D07
+    v3_id: "7"
+    name: "租户/数据隔离"
+    category: identity_data
+    status: O
+    p0: true
+    scope: both
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    due: "2026-12-31"
+    evidence:
+      - path: "aiPlat-core/core/apps/eval/service/security_dynamic_p13.py"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Eval"
+    gap: "跨租户动态实测不足"
+    next: "staging P1-3 黑盒归档"
+
+  - id: D08
+    v3_id: "8"
+    name: "隐私与数据生命周期"
+    category: identity_data
+    status: I
+    p0: false
+    scope: both
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/services/pii_detector.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: "retention/删除/导出弱"
+    next: "retention/delete 证据路径"
+
+  - id: D09
+    v3_id: "9"
+    name: "密钥与凭据"
+    category: identity_data
+    status: E
+    p0: true
+    scope: both
+    owner: "Platform Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-platform/builder/artifact_security_manifest.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+      - path: "aiPlat-platform/tests/test_artifact_security_manifest.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+    gap: "KMS/生产密钥仪式待 Ops"
+    next: "P2-1 公钥入库仪式"
+
+  - id: D10
+    v3_id: "10"
+    name: "审计与不可否认"
+    category: identity_data
+    status: E
+    p0: true
+    scope: platform
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/approval_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "aiPlat-core/core/harness/execution/decision_trace.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: "外部锚/法律级不可否认未证"
+    next: "外部审计锚点评估"
+
+  - id: D11
+    v3_id: "11"
+    name: "输入信任 / Prompt Injection"
+    category: ai_agent
+    status: I
+    p0: true
+    scope: both
+    owner: "Product Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/skills_guard.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "scripts/security-attack-sim.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "对抗深度不足；正则为主"
+    next: "P1-1 文本族真 live + 对抗集扩容"
+
+  - id: D12
+    v3_id: "12"
+    name: "输出处理 / 下游注入"
+    category: ai_agent
+    status: I
+    p0: false
+    scope: artifact
+    owner: "Product Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/aiplat-security-quality-report-2026-11-09-v3.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "成果物输出编码未强制门"
+    next: "输出编码检查清单字段（后续 PR）"
+
+  - id: D13
+    v3_id: "13"
+    name: "模型与系统提示安全"
+    category: ai_agent
+    status: I
+    p0: false
+    scope: platform
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/utils/model_injection.py"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: "提示保护/模型投毒专项证据薄"
+    next: "model_only vs Agent Subject 披露强化"
+
+  - id: D14
+    v3_id: "14"
+    name: "工具 / Agent 过度代理"
+    category: ai_agent
+    status: I
+    p0: true
+    scope: both
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "security/keys/mcp_plugin_allowlist.json"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+    gap: "工具族真环境 live 待 Ops"
+    next: "AIPLAT_EVAL_P1_1_TOOLS 真跑"
+
+  - id: D15
+    v3_id: "15"
+    name: "记忆 / RAG / 上下文投毒"
+    category: ai_agent
+    status: O
+    p0: false
+    scope: both
+    owner: "Eval + Platform"
+    last_reviewed: "2026-11-09"
+    due: "2027-01-31"
+    evidence:
+      - path: "aiPlat-core/workspace_seeds/eval/agent_capability/security/threat_family_catalog.v1.yaml"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Eval"
+    gap: "写入/隔离/删除对抗不足"
+    next: "记忆投毒对抗夹具"
+
+  - id: D16
+    v3_id: "16"
+    name: "多 Agent 信任"
+    category: ai_agent
+    status: I
+    p0: false
+    scope: artifact
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-platform/builder/skill_hop_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: "串谋/越权专项证据不足"
+    next: "handoff 权限负向集"
+
+  - id: D17
+    v3_id: null
+    name: "安全评测与红队（分威胁族）"
+    category: ai_agent
+    status: I
+    p0: true
+    scope: platform
+    owner: "Eval + QA"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/apps/eval/service/security_family_report.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Eval"
+      - path: "aiPlat-core/core/apps/eval/service/security_text_live_p1.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Eval"
+    gap: "真 live + 人判校准大量待 Ops"
+    next: "P1-1/P1-2 Ops 清单"
+    relation_to_v3: "extends instruments under governance; not a 1:1 of v3#3"
+
+  - id: D18
+    v3_id: "17"
+    name: "沙箱 / 隔离 / 网络出口"
+    category: runtime_supply
+    status: I
+    p0: true
+    scope: platform
+    owner: "Infra"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/os_sandbox.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Infra"
+      - path: "aiPlat-core/core/apps/eval/service/security_p1_4_kvm_escape.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+    gap: "microVM/KVM 真逃逸未证；永不自动 covered"
+    next: "P1-4 真 GuestChannel"
+
+  - id: D19
+    v3_id: "18"
+    name: "供应链 / 制品完整性"
+    category: runtime_supply
+    status: I
+    p0: true
+    scope: both
+    owner: "Platform Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-platform/builder/artifact_sbom_attest.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+      - path: "aiPlat-platform/tests/test_artifact_sbom_attest.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+    gap: "syft/cosign 生产加固待"
+    next: "P2-1 Ops 仪式"
+
+  - id: D20
+    v3_id: "19"
+    name: "安全编码 / 成果物质量"
+    category: runtime_supply
+    status: I
+    p0: true
+    scope: artifact
+    owner: "Product Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-platform/builder/artifact_security_manifest.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+      - path: "aiPlat-platform/tests/test_artifact_security_manifest.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "逐应用 DAST/authz 未强制退出"
+    next: "P0-3b exit + DAST 基线"
+
+  - id: D21
+    v3_id: null
+    name: "可用性 / 资源滥用"
+    category: ops_human
+    status: O
+    p0: false
+    scope: both
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    due: "2027-02-28"
+    evidence:
+      - path: "reports/security/aiplat-security-quality-report-2026-11-09-v3.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "成本炸弹/无限循环专项证据弱"
+    next: "限额/超时/预算负向集"
+
+  - id: D22
+    v3_id: null
+    name: "人因 / 审批 UX / 透明度"
+    category: ops_human
+    status: I
+    p0: false
+    scope: platform
+    owner: "Platform Eng"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/approval_inbox.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "aiPlat-core/core/harness/infrastructure/gates/approval_reviewer.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+    gap: "缺用户测试证明"
+    next: "审批疲劳用户测试"
+
+  - id: D23
+    v3_id: "20"
+    name: "事件响应 / 回滚"
+    category: ops_human
+    status: O
+    p0: true
+    scope: platform
+    owner: "IR Lead"
+    last_reviewed: "2026-11-09"
+    due: "2026-12-15"
+    evidence:
+      - path: "reports/security/P0-IR-runbook.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "IR Lead"
+      - path: "scripts/security_ir_contacts.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "IR Lead"
+    gap: "真联系人/桌面演练待"
+    next: "P1-IR 记分演练"
+
+  - id: D24
+    v3_id: null
+    name: "配置安全 / fail-closed"
+    category: ops_human
+    status: E
+    p0: true
+    scope: platform
+    owner: "Platform Security"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py"
+        level: V
+        verified_at: "2026-11-09"
+        owner: "Platform Eng"
+      - path: "scripts/tests/test_security_ops_audit.py"
+        level: T
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+      - path: "reports/security/P0-2-fail-closed-cutover.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Platform Security"
+    gap: "生产切流证据待 Ops"
+    next: "staging 故障拒绝 + 生产 profile 审计"
+
+  - id: D25
+    v3_id: null
+    name: "数据驻留 / 法务"
+    category: ops_human
+    status: G
+    p0: false
+    scope: platform
+    owner: "Exec Sponsor"
+    last_reviewed: "2026-11-09"
+    evidence:
+      - path: "reports/security/aiplat-security-quality-report-2026-11-09-v3.md"
+        level: D
+        verified_at: "2026-11-09"
+        owner: "Product Security"
+    gap: "无 residency 证明作为一等门"
+    next: "驻留声明 + 合同附件路径"
