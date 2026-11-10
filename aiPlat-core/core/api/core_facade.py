@@ -7795,13 +7795,29 @@ def eval_list_model_capability_cases() -> list:
     return build_model_capability_cases()
 
 
-def eval_run_model_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+def eval_run_model_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
     """Fixture execute+judge smoke over model.capability bank (≠ live/accuracy)."""
     from core.apps.eval.service.model_capability_bank import (
         run_model_capability_smoke,
     )
 
     return run_model_capability_smoke(limit=limit)
+
+
+def eval_model_regression_profile() -> Dict[str, Any]:
+    """model.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.model_capability_bank import model_regression_profile
+
+    return model_regression_profile()
+
+
+def eval_model_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Model Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.model_capability_bank import model_regression_status
+
+    return model_regression_status(draft_sample_limit=draft_sample_limit)
 
 
 def eval_kb_capability_catalog() -> list:
