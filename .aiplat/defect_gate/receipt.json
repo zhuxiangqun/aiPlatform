@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T23:45:00+08:00",
+  "reviewed_at": "2026-11-11T00:11:10+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a5304818d0f0d7ed35dccd609c16bdada1cda734",
-  "diff_sha256": "380bfea8f4a092565d11fab8da9939d2aff15551ace5aaa24197639f459251a0",
-  "head_sha": "2ff2d063e6532135da347bd6e81556ae6073a0f7",
+  "merge_base": "588ebd324db22f7bfd6fbd77305c5202c5bdfc8b",
+  "diff_sha256": "614ebc7f993075647e53e84197aaa2d70c3ca90b53655740813b18612c96308e",
+  "head_sha": "f95db372e907246d5fb60b4d911315411f7a8e2e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Multi-Agent rebased onto Code Review #654; Session+KB+CR+MA panels kept. Fixture handoff ≠ live runtime; claim closed. Local lock only; CI needs non-author Approve."
+  "note": "Skill Subject additive; EvalSkillsPanel remains separate live/heuristic surface; claim/cert/profile_complete stay false on draft pack. Local lock only."
 }
