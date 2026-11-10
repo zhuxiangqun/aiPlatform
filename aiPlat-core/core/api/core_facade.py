@@ -7862,6 +7862,22 @@ def eval_run_kb_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_kb_capability_smoke(limit=limit)
 
 
+def eval_kb_regression_profile() -> Dict[str, Any]:
+    """kb.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.kb_capability_bank import kb_regression_profile
+
+    return kb_regression_profile()
+
+
+def eval_kb_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """KB Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.kb_capability_bank import kb_regression_status
+
+    return kb_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_code_review_capability_catalog() -> list:
     """Code Review SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter

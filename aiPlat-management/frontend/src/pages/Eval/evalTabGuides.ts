@@ -114,6 +114,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Model Regression。',
     not: '配额齐 ≠ 长程 Agent 记忆；fixture 多轮 exact ≠ claim；pack draft ≠ Certification。',
   },
+  'kb-regression': {
+    title: 'KB Regression',
+    what: 'kb.regression.v1 题库配额盘点（KB_V1_CAPS×5）与 draft 人审清单。',
+    can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Tool Regression。',
+    not: '配额齐 ≠ live RAG 准确率；fixture hits 通过 ≠ claim；pack draft ≠ Certification。',
+  },
   'p4-status': {
     title: 'P4 Benchmark',
     what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',
