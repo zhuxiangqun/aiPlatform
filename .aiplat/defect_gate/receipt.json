@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T10:05:20+08:00",
+  "reviewed_at": "2026-11-10T11:26:57+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "d2c5e1cd332062950e096a673285de7e58a961e28354506ab1b22b6abe411dfd",
-  "head_sha": "ac7712d631bd6add12724972d40be1b0915d0ee5",
+  "diff_sha256": "d62ca02aaa31396c0b38aae68dc32feef18359462aeb60f46ade51a08e480b44",
+  "head_sha": "bc95031be87cef42baeb17cf410f5d77c0ac0ea1",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "KbSubjectAdapter retrieval fixture (hits/expected_ids) mirrors package kb_rag intentionally; claim_eligible forced false; not OBJECT_TYPES. Local lock only."
+  "note": "Re-lock after AUTO-STATS sync (评估系统 478). KbSubjectAdapter path unchanged; claim_eligible false. Local lock only."
 }
