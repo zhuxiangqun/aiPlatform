@@ -1,9 +1,10 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
-Agent is the reference implementation. Prompt / Workflow / Model / Skill are
-typed lexical Subjects; KB / Code Review / Session / Tool / Multi-Agent are
-fixture Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via
-registry — no ``if object_type ==`` business piles beyond the type→adapter map.
+Agent is the reference implementation. Prompt / Workflow / Model / Skill /
+Generated-App are typed lexical Subjects; KB / Code Review / Session / Tool /
+Multi-Agent are fixture Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must
+dispatch via registry — no ``if object_type ==`` business piles beyond the
+type→adapter map.
 """
 from __future__ import annotations
 
@@ -115,6 +116,16 @@ SKILL_V1_CAPS = frozenset(
         "task_completion",  # skill_invoke / trigger
         "safety",  # refuse unsafe skill misuse
         "robustness",  # noisy / malformed skill args
+    }
+)
+
+# Generated-App v1 measurable subset (maps generated_app/pi_smoke + runs_eval).
+# First-class OBJECT_TYPES; lexical fixture ≠ live Pi host / runs_eval accuracy.
+GENERATED_APP_V1_CAPS = frozenset(
+    {
+        "task_completion",  # pi_export / smoke deliverable
+        "safety",  # refuse unsafe export / deploy asks
+        "robustness",  # noisy project/run ids still fail closed
     }
 )
 
@@ -634,6 +645,19 @@ class SkillSubjectAdapter(_TypedLexicalSubjectAdapter):
     v1_caps = SKILL_V1_CAPS
     live_reason = "skill_live_via_core_skill_execute_deferred"
     runtime_claim_reason = "skill_lexical_fixture_stub"
+
+
+class GeneratedAppSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Generated-App Subject — lexical fixture path; reuses typed_plan oracle.
+
+    Distinct from EvalGeneratedAppsPanel live Pi / runs_eval. claim stays false.
+    """
+
+    subject_kind = "generated_app"
+    object_type = "generated_app"
+    v1_caps = GENERATED_APP_V1_CAPS
+    live_reason = "generated_app_live_pi_host_deferred"
+    runtime_claim_reason = "generated_app_lexical_fixture_stub"
 
 
 def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
@@ -1811,6 +1835,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "workflow": WorkflowSubjectAdapter(),
     "model": ModelSubjectAdapter(),
     "skill": SkillSubjectAdapter(),
+    "generated_app": GeneratedAppSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),

@@ -8190,6 +8190,70 @@ def eval_skill_regression_status(
     return skill_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_generated_app_capability_catalog() -> list:
+    """Generated-App SubjectAdapter capability catalog (OBJECT_TYPES generated_app)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("generated_app").capability_catalog()
+
+
+def eval_validate_generated_app_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """GeneratedAppSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("generated_app").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "generated_app"}
+
+
+def eval_validate_generated_app_capability_bank() -> Dict[str, Any]:
+    """Validate curated generated_app.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.generated_app_capability_bank import (
+        validate_generated_app_capability_bank,
+    )
+
+    return validate_generated_app_capability_bank()
+
+
+def eval_list_generated_app_capability_cases() -> list:
+    """List generated_app.capability curated cases."""
+    from core.apps.eval.service.generated_app_capability_bank import (
+        build_generated_app_capability_cases,
+    )
+
+    return build_generated_app_capability_cases()
+
+
+def eval_run_generated_app_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
+    """Fixture lexical smoke over generated_app.capability (≠ live Pi / runs_eval)."""
+    from core.apps.eval.service.generated_app_capability_bank import (
+        run_generated_app_capability_smoke,
+    )
+
+    return run_generated_app_capability_smoke(limit=limit)
+
+
+def eval_generated_app_regression_profile() -> Dict[str, Any]:
+    """generated_app.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.generated_app_capability_bank import (
+        generated_app_regression_profile,
+    )
+
+    return generated_app_regression_profile()
+
+
+def eval_generated_app_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Generated-App Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.generated_app_capability_bank import (
+        generated_app_regression_status,
+    )
+
+    return generated_app_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
