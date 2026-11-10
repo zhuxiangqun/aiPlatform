@@ -1,0 +1,22 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "code_review.regression.v1",
+  "subject_kinds": ["code_review"],
+  "pack_id": "code_review.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 31,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Code Review Subject regression — CODE_REVIEW_V1_CAPS ×5 fixture findings/gold; claim closed; ≠ live autoreview."
+}

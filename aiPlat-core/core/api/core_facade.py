@@ -7922,6 +7922,26 @@ def eval_run_code_review_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_code_review_capability_smoke(limit=limit)
 
 
+def eval_code_review_regression_profile() -> Dict[str, Any]:
+    """code_review.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        code_review_regression_profile,
+    )
+
+    return code_review_regression_profile()
+
+
+def eval_code_review_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Code Review Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        code_review_regression_status,
+    )
+
+    return code_review_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_session_capability_catalog() -> list:
     """Session SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
