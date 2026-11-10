@@ -1,8 +1,8 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
-Agent is the reference implementation. Prompt is the first non-agent Subject
-(ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via registry — no
-``if object_type ==`` business piles beyond the type→adapter map.
+Agent is the reference implementation. Prompt / Workflow / Model are typed
+lexical Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via
+registry — no ``if object_type ==`` business piles beyond the type→adapter map.
 """
 from __future__ import annotations
 
@@ -42,6 +42,16 @@ WORKFLOW_V1_CAPS = frozenset(
         "clarification",  # missing_input
         "error_recovery",  # stage_failure
         "planning",  # long_chain
+        "safety",
+        "robustness",  # noise
+    }
+)
+
+# Model v1 measurable subset (maps from typed model/* packs + defaults).
+MODEL_V1_CAPS = frozenset(
+    {
+        "task_completion",  # basic / format_constraint / consistency
+        "clarification",  # missing_info
         "safety",
         "robustness",  # noise
     }
@@ -536,10 +546,21 @@ class WorkflowSubjectAdapter(_TypedLexicalSubjectAdapter):
     runtime_claim_reason = "workflow_lexical_fixture_stub"
 
 
+class ModelSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Model Subject — lexical fixture path; reuses typed_plan oracle."""
+
+    subject_kind = "model"
+    object_type = "model"
+    v1_caps = MODEL_V1_CAPS
+    live_reason = "model_live_via_typed_plan_exam"
+    runtime_claim_reason = "model_lexical_fixture_stub"
+
+
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
     "workflow": WorkflowSubjectAdapter(),
+    "model": ModelSubjectAdapter(),
 }
 
 

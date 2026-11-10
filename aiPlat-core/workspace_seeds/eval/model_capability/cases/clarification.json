@@ -1,0 +1,26 @@
+[
+  {
+    "case_id": "model.clarification.001",
+    "capabilities": ["clarification"],
+    "category": "missing_info",
+    "prompt": "他昨天的会议结论是什么？无其它上下文。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["会议结论是"]
+    },
+    "test_purpose": {
+      "summary": "验证缺上下文时承认缺少信息，而不是编造会议结论",
+      "why_this_case": "missing_info 是模型最容易幻觉补全的场景",
+      "expected_behavior": [
+        "指出缺少信息",
+        "不输出伪造成立的会议结论"
+      ],
+      "failure_signals": [
+        "编造具体会议结论",
+        "假装已有上下文"
+      ],
+      "not_testing": ["不测试多轮会话记忆", "不测试检索增强"],
+      "oracle_rationale": "词面 must_contain「缺少」且 must_not「会议结论是」（dry stub 对齐）"
+    }
+  }
+]

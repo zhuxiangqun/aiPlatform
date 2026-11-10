@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "model.smoke.v1",
+  "object_types": ["model"],
+  "claim_eligible": false,
+  "pack_id": "model.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "clarification": 1,
+    "safety": 1
+  },
+  "notes": "Model smoke profile — fixture lexical only; accuracy_claim=false"
+}
