@@ -7702,6 +7702,50 @@ def eval_run_code_review_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_code_review_capability_smoke(limit=limit)
 
 
+def eval_session_capability_catalog() -> list:
+    """Session SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("session").capability_catalog()
+
+
+def eval_validate_session_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SessionSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("session").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "session"}
+
+
+def eval_validate_session_capability_bank() -> Dict[str, Any]:
+    """Validate curated session.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.session_capability_bank import (
+        validate_session_capability_bank,
+    )
+
+    return validate_session_capability_bank()
+
+
+def eval_list_session_capability_cases() -> list:
+    """List session.capability curated cases."""
+    from core.apps.eval.service.session_capability_bank import (
+        build_session_capability_cases,
+    )
+
+    return build_session_capability_cases()
+
+
+def eval_run_session_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over session.capability (≠ long-horizon Agent)."""
+    from core.apps.eval.service.session_capability_bank import (
+        run_session_capability_smoke,
+    )
+
+    return run_session_capability_smoke(limit=limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

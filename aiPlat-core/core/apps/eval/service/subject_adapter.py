@@ -1,7 +1,7 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
 Agent is the reference implementation. Prompt / Workflow / Model are typed
-lexical Subjects; KB / Code Review are fixture Subjects
+lexical Subjects; KB / Code Review / Session are fixture Subjects
 (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via registry — no
 ``if object_type ==`` business piles beyond the type→adapter map.
 """
@@ -77,6 +77,22 @@ CODE_REVIEW_V1_CAPS = frozenset(
         "robustness",  # order-insensitive set equality
     }
 )
+
+# Session v1 measurable subset (multi-turn fixture; mirrors package session_eval).
+# Not a first-class OBJECT_TYPES member yet — SubjectAdapter registry only.
+SESSION_V1_CAPS = frozenset(
+    {
+        "task_completion",  # per-turn exact / non-empty
+        "multi_turn_memory",  # later turn recalls planted token
+        "clarification",  # ask-for-info exact
+    }
+)
+
+# session_eval profile bounds (engineering only; accuracy_claim=false).
+_SESSION_PROFILE_BOUNDS = {
+    "v0": (2, 3),
+    "v1": (5, 8),
+}
 
 
 @runtime_checkable
@@ -991,6 +1007,269 @@ class CodeReviewSubjectAdapter:
         }
 
 
+class SessionSubjectAdapter:
+    """Session Subject — multi-turn fixture (mirrors package session_eval).
+
+    Not in OBJECT_TYPES yet; contract is Subject-local. claim_eligible always false.
+    """
+
+    subject_kind = "session"
+    v1_caps = SESSION_V1_CAPS
+
+    def build_contract(
+        self,
+        *,
+        object_id: str,
+        object_version: str = "",
+        capabilities: Optional[Sequence[str]] = None,
+        tools: Optional[Sequence[str]] = None,
+        permissions: Optional[Sequence[str]] = None,
+        roles: Optional[Sequence[str]] = None,
+        eval_profile: Optional[Mapping[str, Any]] = None,
+        source_refs: Optional[Sequence[str]] = None,
+    ) -> Dict[str, Any]:
+        caps = (
+            resolve_capability_ids(capabilities or (), fail_closed=True)
+            if capabilities
+            else None
+        )
+        profile = dict(eval_profile or {})
+        if caps is None and profile.get("capabilities"):
+            caps = resolve_capability_ids(
+                list(profile.get("capabilities") or []), fail_closed=False
+            )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "subject_kind": self.subject_kind,
+            "object_type_registered": False,
+            "object_id": str(object_id or "").strip(),
+            "object_version": str(object_version or "").strip() or "version_unspecified",
+            "capabilities": list(caps or profile.get("capabilities") or []),
+            "tools": list(tools or profile.get("tools") or []),
+            "permissions": list(permissions or profile.get("permissions") or []),
+            "roles": list(roles or profile.get("roles") or []),
+            "target_runtime": list(
+                profile.get("target_runtime") or ["fixture", "session_eval"]
+            ),
+            "eval_purpose": list(profile.get("eval_purpose") or ["behavior", "regression"]),
+            "source_refs": list(
+                source_refs or profile.get("source_refs") or ["session_eval"]
+            ),
+            "claim_eligible": False,
+            "honesty": (
+                "session SubjectAdapter only — not first-class OBJECT_TYPES; "
+                "fixture multi-turn exact/non-empty ≠ long-horizon Agent memory"
+            ),
+        }
+
+    def capability_catalog(self) -> List[Dict[str, Any]]:
+        rows: List[Dict[str, Any]] = []
+        for cid in sorted(self.v1_caps):
+            rows.append(
+                {
+                    "capability_id": cid,
+                    "object_types": ["session"],
+                    "in_scope": cid in self.v1_caps,
+                    "v1_unknown": False,
+                    "agent_canonical": cid in CANONICAL_IDS,
+                    "agent_v1_in_scope": cid in V1_IN_SCOPE,
+                }
+            )
+        return rows
+
+    def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        errors: List[str] = []
+        if not isinstance(case, Mapping):
+            return ["invalid_case"]
+        case_id = str(case.get("case_id") or "").strip()
+        if not case_id:
+            errors.append("missing_field:case_id")
+        caps_raw = case.get("capabilities")
+        try:
+            caps = resolve_capability_ids(list(caps_raw or []), fail_closed=True)
+        except UnknownCapabilityId as exc:
+            errors.append(f"unknown_capability:{exc}")
+            caps = []
+        if not caps:
+            errors.append("missing_field:capabilities")
+        for c in caps:
+            if c not in self.v1_caps:
+                errors.append(f"session_cap_out_of_scope:{c}")
+        turns = case.get("turns") or case.get("messages")
+        if turns is None:
+            errors.append("missing_field:turns")
+            turns_list: List[Any] = []
+        elif not isinstance(turns, list):
+            errors.append("invalid_field:turns")
+            turns_list = []
+        else:
+            turns_list = list(turns)
+        profile = str(case.get("profile") or case.get("session_version") or "v0").strip().lower()
+        if profile not in _SESSION_PROFILE_BOUNDS:
+            errors.append(f"invalid_field:profile:{profile}")
+            profile = "v0"
+        min_t, max_t = _SESSION_PROFILE_BOUNDS[profile]
+        if turns_list and not (min_t <= len(turns_list) <= max_t):
+            errors.append(f"turns_out_of_profile:{profile}:{len(turns_list)}")
+        prompt = ""
+        for t in turns_list:
+            if not isinstance(t, Mapping):
+                errors.append("invalid_field:turn")
+                continue
+            turn_prompt = str(
+                t.get("prompt") or t.get("user") or t.get("input") or ""
+            ).strip()
+            if not turn_prompt:
+                errors.append("missing_field:turn.prompt")
+            if not prompt:
+                prompt = turn_prompt
+        if not prompt:
+            errors.append("missing_field:prompt")
+        purpose = case.get("test_purpose")
+        errors.extend(
+            validate_test_purpose(
+                purpose if isinstance(purpose, Mapping) else None,
+                prompt=prompt,
+                capabilities=caps,
+            )
+        )
+        return errors
+
+    def execute(
+        self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        env_map = dict(env or {})
+        if bool(env_map.get("live")):
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "session_live_agent_deferred",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "ok": False,
+            }
+        raw_turns = env_map.get("turns")
+        if raw_turns is None:
+            raw_turns = case.get("turns") or case.get("messages") or []
+        turns_list = list(raw_turns) if isinstance(raw_turns, list) else []
+        profile = str(
+            case.get("profile") or case.get("session_version") or "v0"
+        ).strip().lower()
+        if profile not in _SESSION_PROFILE_BOUNDS:
+            profile = "v0"
+        session_id = str(
+            case.get("session_id") or case.get("conversation_id") or case.get("case_id") or ""
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "tool_backend": "none",
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "runtime_claim_reason": "session_eval_fixture",
+            "ok": True,
+            "turns": turns_list,
+            "profile": profile,
+            "session_id": session_id,
+        }
+
+    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        res = result if isinstance(result, Mapping) else {}
+        turns = res.get("turns") if isinstance(res.get("turns"), list) else []
+        if not turns:
+            turns = case.get("turns") if isinstance(case.get("turns"), list) else []
+        profile = str(
+            res.get("profile")
+            or case.get("profile")
+            or case.get("session_version")
+            or "v0"
+        ).strip().lower()
+        if profile not in _SESSION_PROFILE_BOUNDS:
+            profile = "v0"
+        min_t, max_t = _SESSION_PROFILE_BOUNDS[profile]
+        n = len(turns)
+        turn_oks: List[bool] = []
+        turn_details: List[Dict[str, Any]] = []
+        for i, turn in enumerate(turns):
+            if not isinstance(turn, Mapping):
+                turn_oks.append(False)
+                turn_details.append({"i": i, "ok": False, "exact_match": 0.0})
+                continue
+            expected = str(turn.get("expected") or turn.get("expected_text") or "")
+            actual = str(
+                turn.get("actual") or turn.get("output") or turn.get("assistant") or ""
+            )
+            if expected:
+                ok = actual == expected
+                exact = 1.0 if ok else 0.0
+            else:
+                ok = bool(actual.strip())
+                exact = 0.0
+            turn_oks.append(ok)
+            turn_details.append(
+                {
+                    "i": i,
+                    "ok": ok,
+                    "exact_match": exact,
+                    "actual_len": len(actual),
+                }
+            )
+        n_ok = sum(1 for x in turn_oks if x)
+        rate = round(n_ok / float(n), 4) if n else 0.0
+        in_range = min_t <= n <= max_t
+        passed = bool(in_range and n_ok == n and n > 0)
+        errors: List[str] = []
+        if n < min_t:
+            errors.append(f"turns_below_min:{profile}:{n}<{min_t}")
+        elif n > max_t:
+            errors.append(f"turns_above_max:{profile}:{n}>{max_t}")
+        if n and n_ok != n:
+            errors.append("turn_failures")
+        if n == 0:
+            errors.append("missing_turns")
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": passed,
+            "errors": errors,
+            "tool_backend": "none",
+            "session_pass": passed,
+            "turns_n": n,
+            "turns_ok": n_ok,
+            "turn_success_rate": rate,
+            "profile": profile,
+            "turns": turn_details,
+        }
+
+    def normalize(
+        self,
+        case: Mapping[str, Any],
+        result: Mapping[str, Any],
+        judgment: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": bool(judgment.get("passed")),
+            "errors": list(judgment.get("errors") or []),
+            "tool_backend": "none",
+            "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
+            "claim_eligible": False,
+            "certification_eligible": False,
+            "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
+            "capabilities": caps,
+            "session_pass": bool(judgment.get("session_pass")),
+            "turn_success_rate": judgment.get("turn_success_rate"),
+        }
+
+
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
@@ -998,6 +1277,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "model": ModelSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
+    "session": SessionSubjectAdapter(),
 }
 
 
