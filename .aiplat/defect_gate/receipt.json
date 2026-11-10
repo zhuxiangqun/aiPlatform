@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T15:19:45+08:00",
+  "reviewed_at": "2026-11-10T15:21:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "45de7a0013211225e5c4fb40140ae32287d7ef2f",
-  "diff_sha256": "908d78ede9caa36d838ed4ef1f96a01e22b9c7ae39d80e0830165d22cc3b2054",
-  "head_sha": "422f4dd441434e85917dee592a12be91ec46f2da",
+  "diff_sha256": "64ff61ae94ac95365c2a0d15f8b446912725de50285810643abf3297e4cde080",
+  "head_sha": "293ae8aa81f3c90899ad0c70c22112b9e6a13a48",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Method-track HTTP/UI wiring; claim=false; Subject cross-check. Local lock only."
+  "note": "Method-track UI + whitepaper stamp sync. Local lock only."
 }
