@@ -18,7 +18,7 @@
 另：**Tool/MCP** 无独立对象卡；`ToolSubjectAdapter` + `tool.capability` 已注册（mock tool_trace A3–A5；claim=false；≠ live）。  
 另：**Multi-Agent** 无独立对象卡；`MultiAgentSubjectAdapter` + `multi_agent.capability` 已注册（fixture handoff path；claim=false；live 仍 M2 deferred）。
 
-**SubjectAdapter 落地顺序已齐**（Prompt→…→Multi-Agent）。**Arena / G2b / S1 保持方法轨**：`method_track.py` 登记 + `get_subject_adapter` 拒升 Subject（ADR 拒绝 object_type）。
+**SubjectAdapter 落地顺序已齐**（Prompt→…→Multi-Agent）。**Arena / G2b / S1 保持方法轨**：`method_track.py` 登记 + `get_subject_adapter` 拒升 Subject（ADR 拒绝 object_type）；管理端「Method轨」Tab + `GET …/store/method-track-status`。
 
 `accuracy_claim=false` · `process_split_authorized=false` · EET≠发布门禁等级 全程适用。
 

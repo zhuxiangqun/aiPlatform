@@ -7521,6 +7521,36 @@ def eval_assert_subject_kinds_exclude_methods(
     return assert_subject_kinds_exclude_methods(kinds)
 
 
+def eval_method_track_status(
+    subject_kinds: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Method-track honesty snapshot for Eval UI (Arena/G2b/S1 ≠ Subject)."""
+    from core.apps.eval.service.method_track import (
+        METHOD_TRACK_SCHEMA,
+        assert_subject_kinds_exclude_methods,
+        list_method_kinds,
+        method_catalog,
+    )
+    from core.apps.eval.service.subject_adapter import list_subject_kinds
+
+    subjects = list(subject_kinds) if subject_kinds is not None else list_subject_kinds()
+    exclude = assert_subject_kinds_exclude_methods(subjects)
+    return {
+        "schema": METHOD_TRACK_SCHEMA,
+        "ok": bool(exclude.get("ok")),
+        "method_kinds": list_method_kinds(),
+        "methods": method_catalog(),
+        "subject_kinds": subjects,
+        "subject_exclude_methods": exclude,
+        "accuracy_claim": False,
+        "claim_eligible": False,
+        "note": (
+            "Arena/G2b/S1 stay Method track — not SubjectAdapter / OBJECT_TYPES; "
+            "accuracy_claim stays false."
+        ),
+    }
+
+
 def eval_prompt_capability_catalog() -> list:
     """Prompt SubjectAdapter capability catalog (prompt v1 subset)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
