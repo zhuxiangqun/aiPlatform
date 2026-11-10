@@ -1,0 +1,25 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "workflow.regression.v1",
+  "object_type": "workflow",
+  "pack_id": "workflow.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "clarification": 5,
+    "error_recovery": 5,
+    "planning": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 13,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Workflow Subject regression — WORKFLOW_V1_CAPS ×5 fixture lexical; claim closed; ≠ live host accuracy."
+}

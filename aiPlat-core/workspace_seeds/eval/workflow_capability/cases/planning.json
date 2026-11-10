@@ -1,0 +1,84 @@
+[
+  {
+    "case_id": "workflow.planning.001",
+    "capabilities": ["planning"],
+    "category": "long_chain",
+    "prompt": "长链：intake → clarify → plan → implement → review → ship。请列出全部英文阶段 id。",
+    "success_criteria": {
+      "must_contain": ["intake", "clarify", "plan", "implement", "review", "ship"]
+    },
+    "scripted_answer": "intake → clarify → plan → implement → review → ship",
+    "test_purpose": {
+      "summary": "验证长链阶段全量保留，而不是压缩漏项",
+      "why_this_case": "长链漏阶段是 planning 回归核心",
+      "expected_behavior": ["六个阶段 id 均出现", "顺序可识别"],
+      "failure_signals": ["漏 review 或 ship", "合并阶段导致丢 id"],
+      "not_testing": ["不测试真实调度并行", "不测试资源配额"],
+      "oracle_rationale": "词面六阶段 id"
+    }
+  },
+  {
+    "case_id": "workflow.planning.002",
+    "capabilities": ["planning"],
+    "category": "long_chain",
+    "prompt": "依赖：B depends_on A；C depends_on B。请输出拓扑序 A,B,C。",
+    "success_criteria": {"must_contain": ["A", "B", "C"]},
+    "scripted_answer": "拓扑序：A → B → C",
+    "test_purpose": {
+      "summary": "验证依赖拓扑可表述，而不是并列无序",
+      "why_this_case": "depends_on 是规划最小契约",
+      "expected_behavior": ["出现 A/B/C", "体现先后"],
+      "failure_signals": ["只列 C", "乱序且无依赖说明"],
+      "not_testing": ["不测试图算法实现", "不测试死锁检测"],
+      "oracle_rationale": "词面 A B C"
+    }
+  },
+  {
+    "case_id": "workflow.planning.003",
+    "capabilities": ["planning"],
+    "category": "long_chain",
+    "prompt": "里程碑：M1=设计冻结，M2=联调，M3=上线。请输出三个里程碑代号。",
+    "success_criteria": {"must_contain": ["M1", "M2", "M3"]},
+    "scripted_answer": "里程碑：M1 → M2 → M3",
+    "test_purpose": {
+      "summary": "验证里程碑代号保留，而不是只写中文描述",
+      "why_this_case": "计划可追踪依赖稳定代号",
+      "expected_behavior": ["含 M1/M2/M3", "不丢代号"],
+      "failure_signals": ["只写设计冻结无 M1", "漏 M3"],
+      "not_testing": ["不测试甘特图", "不测试日历"],
+      "oracle_rationale": "词面 M1 M2 M3"
+    }
+  },
+  {
+    "case_id": "workflow.planning.004",
+    "capabilities": ["planning"],
+    "category": "long_chain",
+    "prompt": "并行波次：wave1={lint,unit}；wave2={e2e}。请输出 wave1 与 wave2 标签。",
+    "success_criteria": {"must_contain": ["wave1", "wave2"]},
+    "scripted_answer": "先 wave1 再 wave2",
+    "test_purpose": {
+      "summary": "验证并行波次标签保留，而不是压成单列表",
+      "why_this_case": "波次规划丢失会导致门禁错序",
+      "expected_behavior": ["出现 wave1 与 wave2", "体现先后"],
+      "failure_signals": ["只列任务无波次", "漏 wave2"],
+      "not_testing": ["不测试真实并行执行器", "不测试资源锁"],
+      "oracle_rationale": "词面 wave1/wave2"
+    }
+  },
+  {
+    "case_id": "workflow.planning.005",
+    "capabilities": ["planning"],
+    "category": "long_chain",
+    "prompt": "回滚计划：失败时执行 rollback_plan=R1。请回显回滚计划 id。",
+    "success_criteria": {"must_contain": ["R1"]},
+    "scripted_answer": "rollback_plan=R1",
+    "test_purpose": {
+      "summary": "验证回滚计划 id 被纳入规划输出，而不是省略",
+      "why_this_case": "无回滚计划的长链不可上生产",
+      "expected_behavior": ["输出 R1", "标明 rollback"],
+      "failure_signals": ["无回滚 id", "改写成 R2"],
+      "not_testing": ["不测试真实回滚脚本", "不测试蓝绿切换"],
+      "oracle_rationale": "词面 R1"
+    }
+  }
+]

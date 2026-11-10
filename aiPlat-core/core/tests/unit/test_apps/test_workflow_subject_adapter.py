@@ -7,9 +7,12 @@ from core.apps.eval.service.subject_adapter import (
     list_subject_kinds,
 )
 from core.apps.eval.service.workflow_capability_bank import (
+    PROFILE_ID_REGRESSION,
     build_workflow_capability_cases,
     run_workflow_capability_smoke,
     validate_workflow_capability_bank,
+    workflow_regression_profile,
+    workflow_regression_status,
 )
 
 _PURPOSE = {
@@ -71,8 +74,37 @@ def test_workflow_rejects_prompt_only_cap():
 def test_workflow_seed_bank_smokes():
     report = validate_workflow_capability_bank()
     assert report["ok"] is True, report.get("errors")
-    assert report["case_count"] >= 3
+    assert report["case_count"] >= 15
     assert build_workflow_capability_cases()
     smoke = run_workflow_capability_smoke()
     assert smoke["ok"] is True, smoke
     assert smoke["claim_eligible"] is False
+
+
+def test_workflow_regression_profile_and_status():
+    prof = workflow_regression_profile()
+    assert prof["profile_id"] == PROFILE_ID_REGRESSION
+    assert prof["claim_eligible"] is False
+    assert set(prof["quotas"]) == set(WORKFLOW_V1_CAPS)
+    assert all(int(v) >= 5 for v in prof["quotas"].values())
+
+    st = workflow_regression_status()
+    assert st["schema"] == "eval.workflow_regression_status.v1"
+    assert st["quota_inventory_ok"] is True
+    assert st["profile_complete"] is False
+    assert st["case_count"] >= 30
+    assert st["claim_eligible"] is False
+    assert st["accuracy_claim"] is False
+    assert st["draft_pending"] == st["case_count"]
+
+
+def test_eval_workflow_regression_status_facade():
+    from core.api.core_facade import (
+        eval_workflow_regression_profile,
+        eval_workflow_regression_status,
+    )
+
+    assert eval_workflow_regression_profile()["profile_id"] == PROFILE_ID_REGRESSION
+    st = eval_workflow_regression_status()
+    assert st["quota_inventory_ok"] is True
+    assert st["certification_eligible"] is False
