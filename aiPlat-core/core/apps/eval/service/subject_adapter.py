@@ -1796,7 +1796,10 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
 
 
 def get_subject_adapter(subject_kind: str) -> EvalSubjectAdapter:
+    from core.apps.eval.service.method_track import assert_not_subject_method
+
     kind = (subject_kind or "").strip().lower()
+    assert_not_subject_method(kind)
     adapter = _REGISTRY.get(kind)
     if adapter is None:
         raise ValueError(f"no_subject_adapter:{kind or '(empty)'}")

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2486
+total_capabilities: 2494
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 502
+    caps_count: 510
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8138,6 +8138,26 @@ domains:
         type: function
         signature: 'list_subject_kinds()'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: MethodTrackError
+        type: class
+        signature: 'Method kind misused as Subject (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: list_method_kinds
+        type: function
+        signature: 'list_method_kinds()→List[str]'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: method_catalog
+        type: function
+        signature: 'method_catalog()→List[Dict]; Arena/G2b/S1 honesty'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: assert_not_subject_method
+        type: function
+        signature: 'assert_not_subject_method(kind)→None; raises MethodTrackError'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: assert_subject_kinds_exclude_methods
+        type: function
+        signature: 'assert_subject_kinds_exclude_methods(kinds)→Dict'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
       - symbol: validate_prompt_capability_bank
         type: function
         signature: 'validate_prompt_capability_bank(seed_dir?)→Dict; claim=false'
@@ -8221,6 +8241,18 @@ domains:
       - symbol: eval_list_subject_kinds
         type: function
         signature: 'eval_list_subject_kinds()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_list_method_kinds
+        type: function
+        signature: 'eval_list_method_kinds()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_method_catalog
+        type: function
+        signature: 'eval_method_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_assert_subject_kinds_exclude_methods
+        type: function
+        signature: 'eval_assert_subject_kinds_exclude_methods(subject_kinds?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_prompt_capability_catalog
         type: function

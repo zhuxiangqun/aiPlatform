@@ -7494,6 +7494,33 @@ def eval_list_subject_kinds() -> list:
     return list_subject_kinds()
 
 
+def eval_list_method_kinds() -> list:
+    """Method-track kinds (Arena/G2b/S1) — not Subjects / not OBJECT_TYPES."""
+    from core.apps.eval.service.method_track import list_method_kinds
+
+    return list_method_kinds()
+
+
+def eval_method_catalog() -> list:
+    """Method-track catalog with honesty (ADR refuse Subject promotion)."""
+    from core.apps.eval.service.method_track import method_catalog
+
+    return method_catalog()
+
+
+def eval_assert_subject_kinds_exclude_methods(
+    subject_kinds: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Fail-closed check: Subject list must not contain Method kinds."""
+    from core.apps.eval.service.method_track import (
+        assert_subject_kinds_exclude_methods,
+    )
+    from core.apps.eval.service.subject_adapter import list_subject_kinds
+
+    kinds = list(subject_kinds) if subject_kinds is not None else list_subject_kinds()
+    return assert_subject_kinds_exclude_methods(kinds)
+
+
 def eval_prompt_capability_catalog() -> list:
     """Prompt SubjectAdapter capability catalog (prompt v1 subset)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
