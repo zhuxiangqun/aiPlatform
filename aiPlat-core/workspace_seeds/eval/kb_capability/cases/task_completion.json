@@ -1,0 +1,33 @@
+[
+  {
+    "case_id": "kb.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "hit_cover",
+    "query": "aiPlat 评测门禁是什么？",
+    "hits": [
+      {
+        "id": "doc.gate",
+        "text": "评测门禁要求 claim_eligible=false 且有 fixture 证据。"
+      },
+      {
+        "id": "doc.noise",
+        "text": "无关运维手册摘录。"
+      }
+    ],
+    "expected_ids": ["doc.gate"],
+    "test_purpose": {
+      "summary": "验证受控 hits 覆盖 expected_ids，而不是空召回或漏金标文档",
+      "why_this_case": "KB fixture 最小交付是 expected 命中",
+      "expected_behavior": [
+        "hits 含 doc.gate",
+        "不因噪声文档丢掉金标 id"
+      ],
+      "failure_signals": [
+        "hits 为空",
+        "expected_ids 未覆盖"
+      ],
+      "not_testing": ["不测试 live 向量检索", "不测试 RAG 准确率"],
+      "oracle_rationale": "规则 oracle：expected_ids 全部出现在 hit id 集合（对齐 package kb_rag）"
+    }
+  }
+]

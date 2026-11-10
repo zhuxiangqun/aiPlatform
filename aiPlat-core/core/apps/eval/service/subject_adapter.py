@@ -1,8 +1,9 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
 Agent is the reference implementation. Prompt / Workflow / Model are typed
-lexical Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via
-registry — no ``if object_type ==`` business piles beyond the type→adapter map.
+lexical Subjects; KB is a retrieval-fixture Subject (ADR-EVAL-CAPABILITY-CASE-PACK-V1).
+Core must dispatch via registry — no ``if object_type ==`` business piles
+beyond the type→adapter map.
 """
 from __future__ import annotations
 
@@ -54,6 +55,16 @@ MODEL_V1_CAPS = frozenset(
         "clarification",  # missing_info
         "safety",
         "robustness",  # noise
+    }
+)
+
+# KB/RAG v1 measurable subset (fixture hits / expected_ids; mirrors package kb_rag).
+# Not a first-class OBJECT_TYPES member yet — SubjectAdapter registry only.
+KB_V1_CAPS = frozenset(
+    {
+        "task_completion",  # hit cover / expected_ids
+        "safety",  # policy/source gate via expected_ids
+        "robustness",  # noise hits still cover expected
     }
 )
 
@@ -556,11 +567,226 @@ class ModelSubjectAdapter(_TypedLexicalSubjectAdapter):
     runtime_claim_reason = "model_lexical_fixture_stub"
 
 
+def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
+    env_map = dict(env or {})
+    hits = env_map.get("hits")
+    if hits is None:
+        hits = case.get("hits")
+    if hits is None:
+        hits = case.get("docs")
+    return list(hits) if isinstance(hits, list) else []
+
+
+def _kb_hit_ids(hits: Sequence[Any]) -> List[Any]:
+    got: List[Any] = []
+    for h in hits:
+        if isinstance(h, Mapping) and h.get("id") is not None:
+            got.append(h.get("id"))
+        elif isinstance(h, str):
+            got.append(h)
+    return got
+
+
+class KbSubjectAdapter:
+    """KB/RAG Subject — readonly retrieval fixture (mirrors package kb_rag oracle).
+
+    Not in OBJECT_TYPES yet; contract is Subject-local. claim_eligible always false.
+    """
+
+    subject_kind = "kb"
+    v1_caps = KB_V1_CAPS
+
+    def build_contract(
+        self,
+        *,
+        object_id: str,
+        object_version: str = "",
+        capabilities: Optional[Sequence[str]] = None,
+        tools: Optional[Sequence[str]] = None,
+        permissions: Optional[Sequence[str]] = None,
+        roles: Optional[Sequence[str]] = None,
+        eval_profile: Optional[Mapping[str, Any]] = None,
+        source_refs: Optional[Sequence[str]] = None,
+    ) -> Dict[str, Any]:
+        caps = (
+            resolve_capability_ids(capabilities or (), fail_closed=True)
+            if capabilities
+            else None
+        )
+        profile = dict(eval_profile or {})
+        if caps is None and profile.get("capabilities"):
+            caps = resolve_capability_ids(
+                list(profile.get("capabilities") or []), fail_closed=False
+            )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "subject_kind": self.subject_kind,
+            "object_type_registered": False,
+            "object_id": str(object_id or "").strip(),
+            "object_version": str(object_version or "").strip() or "version_unspecified",
+            "capabilities": list(caps or profile.get("capabilities") or []),
+            "tools": list(tools or profile.get("tools") or []),
+            "permissions": list(permissions or profile.get("permissions") or []),
+            "roles": list(roles or profile.get("roles") or []),
+            "target_runtime": list(profile.get("target_runtime") or ["fixture", "kb_rag"]),
+            "eval_purpose": list(profile.get("eval_purpose") or ["behavior", "regression"]),
+            "source_refs": list(source_refs or profile.get("source_refs") or ["kb_rag"]),
+            "claim_eligible": False,
+            "honesty": (
+                "kb SubjectAdapter only — not first-class OBJECT_TYPES; "
+                "fixture hits/expected_ids ≠ live RAG accuracy"
+            ),
+        }
+
+    def capability_catalog(self) -> List[Dict[str, Any]]:
+        rows: List[Dict[str, Any]] = []
+        for cid in sorted(self.v1_caps):
+            rows.append(
+                {
+                    "capability_id": cid,
+                    "object_types": ["kb"],
+                    "in_scope": cid in self.v1_caps,
+                    "v1_unknown": False,
+                    "agent_canonical": cid in CANONICAL_IDS,
+                    "agent_v1_in_scope": cid in V1_IN_SCOPE,
+                }
+            )
+        return rows
+
+    def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        errors: List[str] = []
+        if not isinstance(case, Mapping):
+            return ["invalid_case"]
+        case_id = str(case.get("case_id") or "").strip()
+        if not case_id:
+            errors.append("missing_field:case_id")
+        caps_raw = case.get("capabilities")
+        try:
+            caps = resolve_capability_ids(list(caps_raw or []), fail_closed=True)
+        except UnknownCapabilityId as exc:
+            errors.append(f"unknown_capability:{exc}")
+            caps = []
+        if not caps:
+            errors.append("missing_field:capabilities")
+        for c in caps:
+            if c not in self.v1_caps:
+                errors.append(f"kb_cap_out_of_scope:{c}")
+        query = str(case.get("query") or case.get("prompt") or "").strip()
+        if not query:
+            errors.append("missing_field:query")
+        hits = case.get("hits")
+        if hits is None:
+            hits = case.get("docs")
+        if hits is not None and not isinstance(hits, list):
+            errors.append("invalid_field:hits")
+        expected = case.get("expected_ids")
+        if expected is not None and not isinstance(expected, list):
+            errors.append("invalid_field:expected_ids")
+        purpose = case.get("test_purpose")
+        errors.extend(
+            validate_test_purpose(
+                purpose if isinstance(purpose, Mapping) else None,
+                prompt=query,
+                capabilities=caps,
+            )
+        )
+        return errors
+
+    def execute(
+        self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        env_map = dict(env or {})
+        if bool(env_map.get("live")):
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "kb_live_retrieve_deferred",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "ok": False,
+            }
+        hits = _kb_fixture_hits(case, env_map)
+        query = str(case.get("query") or case.get("prompt") or "")
+        expected = case.get("expected_ids") if isinstance(case.get("expected_ids"), list) else []
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "tool_backend": "none",
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "runtime_claim_reason": "kb_retrieval_fixture",
+            "ok": True,
+            "query": query,
+            "hits": hits,
+            "expected_ids": list(expected),
+            "readonly": True,
+        }
+
+    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        res = result if isinstance(result, Mapping) else {}
+        hits = res.get("hits") if isinstance(res.get("hits"), list) else []
+        errors: List[str] = []
+        if not hits:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "ok",
+                "subject_kind": self.subject_kind,
+                "passed": False,
+                "errors": ["missing_hits"],
+                "tool_backend": "none",
+                "hit_count": 0,
+            }
+        expected = case.get("expected_ids")
+        if isinstance(expected, list) and expected:
+            got = _kb_hit_ids(hits)
+            passed = all(eid in got for eid in expected)
+            if not passed:
+                errors.append("expected_ids_not_covered")
+        else:
+            passed = len(hits) > 0
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": passed,
+            "errors": errors,
+            "tool_backend": "none",
+            "hit_count": len(hits),
+        }
+
+    def normalize(
+        self,
+        case: Mapping[str, Any],
+        result: Mapping[str, Any],
+        judgment: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": bool(judgment.get("passed")),
+            "errors": list(judgment.get("errors") or []),
+            "tool_backend": "none",
+            "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
+            "claim_eligible": False,
+            "certification_eligible": False,
+            "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
+            "capabilities": caps,
+            "hit_count": int(judgment.get("hit_count") or 0),
+        }
+
+
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
     "workflow": WorkflowSubjectAdapter(),
     "model": ModelSubjectAdapter(),
+    "kb": KbSubjectAdapter(),
 }
 
 

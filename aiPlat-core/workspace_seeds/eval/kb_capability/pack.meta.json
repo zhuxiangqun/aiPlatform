@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "kb.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["kb"],
+  "object_types": [],
+  "notes": "KB Subject capability bank (ADR after Model). Not first-class OBJECT_TYPES. Fixture hits/expected_ids via KbSubjectAdapter (mirrors package kb_rag); ≠ RAG accuracy."
+}

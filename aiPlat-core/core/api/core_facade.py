@@ -7616,6 +7616,48 @@ def eval_run_model_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_model_capability_smoke(limit=limit)
 
 
+def eval_kb_capability_catalog() -> list:
+    """KB SubjectAdapter capability catalog (kb v1 subset; ≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("kb").capability_catalog()
+
+
+def eval_validate_kb_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """KbSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("kb").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "kb"}
+
+
+def eval_validate_kb_capability_bank() -> Dict[str, Any]:
+    """Validate curated kb.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.kb_capability_bank import (
+        validate_kb_capability_bank,
+    )
+
+    return validate_kb_capability_bank()
+
+
+def eval_list_kb_capability_cases() -> list:
+    """List kb.capability curated cases."""
+    from core.apps.eval.service.kb_capability_bank import (
+        build_kb_capability_cases,
+    )
+
+    return build_kb_capability_cases()
+
+
+def eval_run_kb_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over kb.capability bank (≠ live RAG accuracy)."""
+    from core.apps.eval.service.kb_capability_bank import (
+        run_kb_capability_smoke,
+    )
+
+    return run_kb_capability_smoke(limit=limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

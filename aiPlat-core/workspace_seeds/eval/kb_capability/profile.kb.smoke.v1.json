@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "kb.smoke.v1",
+  "subject_kinds": ["kb"],
+  "claim_eligible": false,
+  "pack_id": "kb.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "safety": 1,
+    "robustness": 1
+  },
+  "notes": "KB smoke profile — fixture retrieval only; accuracy_claim=false"
+}
