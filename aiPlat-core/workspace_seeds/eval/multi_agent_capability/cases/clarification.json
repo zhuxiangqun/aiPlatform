@@ -1,0 +1,29 @@
+[
+  {
+    "case_id": "multi_agent.clarification.001",
+    "capabilities": ["clarification"],
+    "prompt": "用户说「部署一下」——先转澄清官再继续。",
+    "clarify_agent": "clarifier",
+    "handoffs": [
+      {"from": "coordinator", "to": "clarifier", "message": "缺环境信息"},
+      {"from": "clarifier", "to": "coordinator", "message": "已确认 staging"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "clarifier"],
+      ["clarifier", "coordinator"]
+    ],
+    "final_answer": "将按 staging 准备部署。",
+    "expected_final": "将按 staging 准备部署。",
+    "test_purpose": {
+      "summary": "验证信息不足时必须 handoff 到 clarifier",
+      "why_this_case": "Multi-Agent 澄清能力体现为强制澄清角色边",
+      "expected_behavior": [
+        "存在到 clarifier 的 handoff",
+        "路径与终稿 exact"
+      ],
+      "failure_signals": ["跳过澄清直接部署"],
+      "not_testing": ["不测 live HITL", "不测真实部署"],
+      "oracle_rationale": "规则 oracle：clarify handoff + path/final exact"
+    }
+  }
+]
