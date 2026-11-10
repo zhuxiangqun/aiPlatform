@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T19:06:48+08:00",
+  "reviewed_at": "2026-11-10T19:35:32+08:00",
   "base_ref": "origin/main",
-  "merge_base": "679b08110ee5b7509a5fcb6483e5752bec87342e",
-  "diff_sha256": "1cb815871a862112ab11abc6d0a51fe7256f4f2d7cbb7b1e85b800abee1addc5",
-  "head_sha": "d9eb47b5d22dabd8ed9eca68c42ecdfd97f44c60",
+  "merge_base": "a77ee9990a248474aeb1a73304d986778a61077f",
+  "diff_sha256": "d0cbecab3582c9c0ea0fda3db3d976c4b1a04f8881b3e2fab8a87ad0bc868067",
+  "head_sha": "7b5c6c1530cfccd40295f44567f4b2c6170be600",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P4 status UI; benchmark quotas + judge bar report-only. Local lock only."
+  "note": "Prompt regression bank×25 + honesty status/panel; claim closed; profile_complete still requires human purpose_ok/freeze."
 }
