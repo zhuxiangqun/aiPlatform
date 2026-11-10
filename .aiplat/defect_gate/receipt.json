@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T14:29:42+08:00",
+  "reviewed_at": "2026-11-10T14:39:19+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "a1a2daba78f898ac1f9b2df22a33c0ac5da536562dd131496c95632292334965",
-  "head_sha": "e57c1cf7e34508b04c34168b11002622373a254a",
+  "diff_sha256": "c02b30f5cfe62c5ce7c33d77efbab5fa5ea5cadacd9d06b8208491c95b5583f0",
+  "head_sha": "af1a365362f7f9efd245870709cd6c99a6b0a298",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "MultiAgentSubjectAdapter fixture handoff-path only; live multi_agent runtime remains M2 deferred; claim_eligible forced false; not OBJECT_TYPES. Local lock only."
+  "note": "Method-track catalog for Arena/G2b/S1; get_subject_adapter refuses method kinds; no SubjectAdapter/OBJECT_TYPES promotion. Local lock only."
 }
