@@ -84,6 +84,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看 review 分布、按能力 draft 清单、checklist/blockers；深链到 Case Pack / 题目维护。',
     not: '配额齐 ≠ 已冻结；清单样本 ≠ 全量审完；Promote/freeze ≠ accuracy / Certification。',
   },
+  'p4-status': {
+    title: 'P4 Benchmark',
+    what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',
+    can: '看 benchmark 配额是否齐、holdout 规模、judge bar；深链 Case Pack / P1。',
+    not: '配额齐 ≠ accuracy；工程条达标 ≠ claim；ADR §6.2 阈值仍待业主拍板。',
+  },
   g2b: {
     title: 'G2b',
     what: '双人盲标一致性（κ）收口面板——看标注员是否彼此一致。',

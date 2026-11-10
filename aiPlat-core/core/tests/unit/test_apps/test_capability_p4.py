@@ -89,6 +89,25 @@ def test_benchmark_readiness_meets_quotas(tmp_path, monkeypatch):
     assert out["claim_eligible"] is False
 
 
+def test_eval_p4_status_facade(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    from core.api.core_facade import eval_p4_status
+
+    st = eval_p4_status()
+    assert st["ok"] is True
+    assert st["profile_id"] == PROFILE_ID_BENCHMARK
+    assert st["ready_for_benchmark_quotas"] is True
+    assert st["n_gaps"] == 0
+    assert st["holdout"]["enabled"] is True
+    assert st["manifest_case_count"] >= 1
+    assert st["judge_gate"]["meets_engineering_bar"] is False
+    assert st["judge_gate"]["report_only"] is True
+    assert st["accuracy_claim"] is False
+    assert st["claim_eligible"] is False
+    assert st["report_only"] is True
+    assert st["review_links"]["case_packs_tab"] == "/eval?tab=case-packs"
+
+
 def test_open_capability_judge_calibration(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
     out = open_capability_judge_calibration(workspace_id="ws-p4", sample_n=4)

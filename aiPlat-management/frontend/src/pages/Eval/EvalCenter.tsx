@@ -17,6 +17,7 @@ import EvalGatesPanel from './EvalGatesPanel';
 import EvalG2bPanel from './EvalG2bPanel';
 import EvalMethodTrackPanel from './EvalMethodTrackPanel';
 import EvalP1RegressionPanel from './EvalP1RegressionPanel';
+import EvalP4StatusPanel from './EvalP4StatusPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
@@ -107,6 +108,7 @@ const ADVANCED_TABS = [
   { id: 'case-editor', label: '题目维护' },
   { id: 'method-track', label: 'Method轨' },
   { id: 'p1-regression', label: 'P1 Regression' },
+  { id: 'p4-status', label: 'P4 Benchmark' },
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
   { id: 'scorecard', label: 'Scorecard' },
@@ -473,6 +475,8 @@ const EvalCenter: React.FC = () => {
       {tab === 'method-track' && <EvalMethodTrackPanel tenantId={TENANT} />}
 
       {tab === 'p1-regression' && <EvalP1RegressionPanel tenantId={TENANT} />}
+
+      {tab === 'p4-status' && <EvalP4StatusPanel tenantId={TENANT} />}
 
       {tab === 'g2b' && <EvalG2bPanel tenantId={TENANT} />}
 

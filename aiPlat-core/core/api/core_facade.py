@@ -8041,6 +8041,66 @@ def eval_benchmark_readiness(
     )
 
 
+def eval_p4_status(
+    *,
+    min_per_capability: Optional[int] = None,
+    compile_plan: bool = True,
+    threshold: float = 0.8,
+) -> Dict[str, Any]:
+    """P4 honesty snapshot: benchmark quotas/holdout + judge engineering bar."""
+    from core.apps.eval.service.capability_p4_gate import (
+        benchmark_readiness_report,
+        evaluate_judge_calibration_gate,
+    )
+
+    bench = benchmark_readiness_report(
+        min_per_capability=min_per_capability,
+        compile_plan=compile_plan,
+    )
+    judge = evaluate_judge_calibration_gate(threshold=threshold)
+    plan = bench.get("plan") if isinstance(bench.get("plan"), dict) else {}
+    selection = plan.get("selection") if isinstance(plan.get("selection"), dict) else {}
+    hold = selection.get("holdout") if isinstance(selection.get("holdout"), dict) else {}
+    coverage = bench.get("coverage") if isinstance(bench.get("coverage"), dict) else {}
+    return {
+        "schema": "eval.p4_status.v1",
+        "ok": bool(bench.get("ok")) and bool(judge.get("ok")),
+        "profile_id": bench.get("profile_id"),
+        "ready_for_benchmark_quotas": bool(bench.get("ready_for_benchmark_quotas")),
+        "n_gaps": int(coverage.get("n_gaps") or 0),
+        "case_count": int(coverage.get("case_count") or 0),
+        "holdout": {
+            "enabled": bool(hold.get("enabled")),
+            "n_holdout": int(hold.get("n_holdout") or 0),
+            "n_eval": int(hold.get("n_eval") or 0),
+        },
+        "manifest_case_count": len(plan.get("sample_manifest") or []),
+        "manifest_hash": plan.get("manifest_hash"),
+        "judge_gate": {
+            "meets_engineering_bar": bool(judge.get("meets_engineering_bar")),
+            "agreement": judge.get("agreement"),
+            "threshold": judge.get("threshold"),
+            "report_only": True,
+        },
+        "next_action": (
+            "Eval → Case Pack → Open judge calibration / holdout; "
+            "benchmark quotas may be ready while judge bar stays unmet"
+        ),
+        "review_links": {
+            "case_packs_tab": "/eval?tab=case-packs",
+            "p1_regression_tab": "/eval?tab=p1-regression",
+        },
+        "accuracy_claim": False,
+        "claim_eligible": False,
+        "report_only": True,
+        "honesty": (
+            "P4 is coverage/holdout + engineering judge bar only; "
+            "ready_for_benchmark_quotas≠accuracy; meets_engineering_bar≠claim; "
+            "ADR §6.2 threshold remains owner-open; Certification closed."
+        ),
+    }
+
+
 def eval_judge_calibration_gate(
     *,
     workspace_id: str = "",
