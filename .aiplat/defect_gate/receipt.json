@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T00:11:10+08:00",
+  "reviewed_at": "2026-11-11T00:16:50+08:00",
   "base_ref": "origin/main",
   "merge_base": "588ebd324db22f7bfd6fbd77305c5202c5bdfc8b",
-  "diff_sha256": "614ebc7f993075647e53e84197aaa2d70c3ca90b53655740813b18612c96308e",
-  "head_sha": "f95db372e907246d5fb60b4d911315411f7a8e2e",
+  "diff_sha256": "6ae66ecb64377e2d7cc0e23181e32cbbc4fea4c16a7d8207a4f4b6ca67853eec",
+  "head_sha": "8322996e3d718281a5e92f43954c29d3b6e48145",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Skill Subject additive; EvalSkillsPanel remains separate live/heuristic surface; claim/cert/profile_complete stay false on draft pack. Local lock only."
+  "note": "Skill Subject additive; whitepaper freshness refreshed; claim stays false. Local lock only."
 }
