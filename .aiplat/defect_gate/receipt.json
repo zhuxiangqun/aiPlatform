@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T16:14:04+08:00",
+  "reviewed_at": "2026-11-10T16:45:36+08:00",
   "base_ref": "origin/main",
-  "merge_base": "45de7a0013211225e5c4fb40140ae32287d7ef2f",
-  "diff_sha256": "f70ba63f26b047e9d4ec748354979faec5823fe8868fdc41b5f751d8234598e7",
-  "head_sha": "4dbee0fefb79aa1bc29f00c6ba48610d9013bff2",
+  "merge_base": "0343eb4f34e797eaca15fee2a8e395e6b3c71764",
+  "diff_sha256": "aa7ee0994312b10287b12cc08a8bb3ae31f99ce9f2bb05360bf7adccc013a8e5",
+  "head_sha": "0c3c4872cad171d7045e04d0dd1a2ed945a611cc",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "AUTO-STATS 3275→3276 for method-track. Local lock only."
+  "note": "P1 regression readiness UI; quotas ok; human review blocker honest. Local lock only."
 }
