@@ -98,3 +98,11 @@ app 负责把 session_id 传给 platform（再转发给 core），用于：
 - **会话语义**：导入会话是**只读外部会话**（Claude Code 历史对话），非 aiPlat 本平台会话——`claude:` 前缀显式区分来源域，不与平台原生 session_id 冲突（run_id ↔ session_id 关联语义不变）；
 - **记忆隔离**：导入记忆走 `MemoryManager.save_interaction(session_id="claude:...")`，四层记忆按 session 隔离正常生效；`provenance` 记录源文件路径可溯源；
 - **契约不变**：per-session lane 串行化、conversation_key 语义、audit 回放（run_id ↔ session_id）均未改变——导入是新增只读通道，不触碰平台会话生命周期。
+
+## 8. 变更记录（2026-11-10）— Eval Session Subject 回归题库 ≠ 会话契约
+
+Eval 中心 `session.capability` / `session.regression.v1`（`session_capability_bank.py` + `GET …/store/session-regression-status` + EvalSessionRegressionPanel）是 **Subject 评测配额诚实快照**（fixture transcript / claim=false）：
+
+- **不是** aiPlat-app 的 `session_id` / `conversation_key` 运行时契约；
+- **不改变** conversation_key 优先级、tenant 维度复合键、per-session lane、run_id ↔ session_id 关联语义；
+- pack `draft` 时 `claim_eligible` / `certification_eligible` / `profile_complete` 保持 false；配额齐 ≠ 多轮对话准确率宣称。
