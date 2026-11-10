@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T06:47:10+08:00",
+  "reviewed_at": "2026-11-11T07:11:22+08:00",
   "base_ref": "origin/main",
-  "merge_base": "24fa5edc3589576c8750a1b117835892dcd41091",
-  "diff_sha256": "f78a5aa214a931152bb33a456f56b3df05c1d8e5ba743e68be3470aff11db595",
-  "head_sha": "d65feced058f28117f917eb421582e92b7346152",
+  "merge_base": "7d21b17c34c060c05673ea2ccddfe4e2aaacdaa4",
+  "diff_sha256": "4b0aa762ca9ba1a2a613913a330f240a0b921b5b1a89506523c811ed37fed725",
+  "head_sha": "fc1ba908583a53e12148f86e216158052bb7f610",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Generated-App Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
+  "note": "API Subject additive; draft pack keeps profile_complete false; claim/cert stay false. Local lock only."
 }
