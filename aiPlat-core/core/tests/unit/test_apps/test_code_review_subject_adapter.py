@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from core.apps.eval.service.code_review_capability_bank import (
+    PROFILE_ID_REGRESSION,
     build_code_review_capability_cases,
+    code_review_regression_profile,
+    code_review_regression_status,
     run_code_review_capability_smoke,
     validate_code_review_capability_bank,
 )
@@ -97,8 +100,37 @@ def test_code_review_rejects_kb_only_cap():
 def test_code_review_seed_bank_smokes():
     report = validate_code_review_capability_bank()
     assert report["ok"] is True, report.get("errors")
-    assert report["case_count"] >= 3
+    assert report["case_count"] >= 15
     assert build_code_review_capability_cases()
     smoke = run_code_review_capability_smoke()
     assert smoke["ok"] is True, smoke
     assert smoke["claim_eligible"] is False
+
+
+def test_code_review_regression_profile_and_status():
+    prof = code_review_regression_profile()
+    assert prof["profile_id"] == PROFILE_ID_REGRESSION
+    assert prof["claim_eligible"] is False
+    assert set(prof["quotas"]) == set(CODE_REVIEW_V1_CAPS)
+    assert all(int(v) >= 5 for v in prof["quotas"].values())
+
+    st = code_review_regression_status()
+    assert st["schema"] == "eval.code_review_regression_status.v1"
+    assert st["quota_inventory_ok"] is True
+    assert st["profile_complete"] is False
+    assert st["case_count"] >= 15
+    assert st["claim_eligible"] is False
+    assert st["accuracy_claim"] is False
+    assert st["draft_pending"] == st["case_count"]
+
+
+def test_eval_code_review_regression_status_facade():
+    from core.api.core_facade import (
+        eval_code_review_regression_profile,
+        eval_code_review_regression_status,
+    )
+
+    assert eval_code_review_regression_profile()["profile_id"] == PROFILE_ID_REGRESSION
+    st = eval_code_review_regression_status()
+    assert st["quota_inventory_ok"] is True
+    assert st["certification_eligible"] is False

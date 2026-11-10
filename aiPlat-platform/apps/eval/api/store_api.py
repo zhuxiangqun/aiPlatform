@@ -480,6 +480,21 @@ async def get_kb_regression_status(
     }
 
 
+@router.get("/code-review-regression-status", response_model=ItemResponse)
+async def get_code_review_regression_status(
+    draft_sample_limit: int = 5,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Code Review Subject regression quotas vs bank — claim stays false."""
+    from core.api.core_facade import eval_code_review_regression_status
+
+    return {
+        "data": eval_code_review_regression_status(
+            draft_sample_limit=draft_sample_limit,
+        )
+    }
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),
