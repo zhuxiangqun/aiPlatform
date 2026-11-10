@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T21:14:38+08:00",
+  "reviewed_at": "2026-11-10T21:27:22+08:00",
   "base_ref": "origin/main",
   "merge_base": "e235cf2a6ee49337b0b6dc1230f176c7aa74cd4c",
-  "diff_sha256": "fc035a7d3baef6bdd077a06c03845cac19c8822cfb5a35f51256f01d3697fc81",
-  "head_sha": "146539ea8d9bd2a19e4333645964cfb83a88d859",
+  "diff_sha256": "ff858be3d26b3e43665154acfe41b4ec2e7ead2c6b81415f3cc240ed82245aab",
+  "head_sha": "2b1e18fb8eab3e8c1d324e08bae4376b1477d0ee",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Model regression bank×20 + honesty status/panel; claim closed; profile_complete needs human purpose_ok/freeze."
+  "note": "Model regression + AUTO-STATS/whitepaper sync; claim closed."
 }
