@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T14:39:19+08:00",
+  "reviewed_at": "2026-11-10T14:50:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "c02b30f5cfe62c5ce7c33d77efbab5fa5ea5cadacd9d06b8208491c95b5583f0",
-  "head_sha": "af1a365362f7f9efd245870709cd6c99a6b0a298",
+  "merge_base": "7d3a8596142435891737acc6e04dabdfb3467711",
+  "diff_sha256": "93d29aa191c7394faa846266cbaca6d9fcf8a2fdabee1c7a8401384e909dac15",
+  "head_sha": "0c2352db542fe52ac18d4ce8862112984dd0e8df",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Method-track catalog for Arena/G2b/S1; get_subject_adapter refuses method kinds; no SubjectAdapter/OBJECT_TYPES promotion. Local lock only."
+  "note": "Stack closeout Model→method-track after #635. claim_eligible=false banks; get_subject_adapter refuses Arena/G2b/S1 via MethodTrackError. Local lock only."
 }
