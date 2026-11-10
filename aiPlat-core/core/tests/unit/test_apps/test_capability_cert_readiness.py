@@ -67,6 +67,11 @@ def test_eval_p1_regression_status_facade():
     assert st["certification_eligible"] is False
     assert st["case_count"] >= 57
     assert st["review_status_counts"].get("draft", 0) >= 1
+    assert st["draft_pending"] == st["review_status_counts"].get("draft", 0)
+    assert st["draft_by_capability"]
+    assert all("capability_id" in r and "draft_count" in r for r in st["draft_by_capability"])
+    assert st["review_links"]["case_packs_tab"] == "/eval?tab=case-packs"
+    assert st["review_links"]["case_editor_tab"] == "/eval?tab=case-editor"
     assert "cases_not_fully_reviewed_or_pack_not_frozen" in st["blockers"]
     assert "Promote" in st["next_action"]
 

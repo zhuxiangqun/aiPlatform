@@ -81,8 +81,8 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
   'p1-regression': {
     title: 'P1 Regression',
     what: 'agent.regression.v1 就绪盘点：配额是否齐、人审 purpose_ok/freeze 是否挡住 profile_complete。',
-    can: '看 review 分布、checklist/blockers，以及 Case Pack Promote 下一步。',
-    not: '配额齐 ≠ 已冻结；Promote/freeze ≠ accuracy / Certification。',
+    can: '看 review 分布、按能力 draft 清单、checklist/blockers；深链到 Case Pack / 题目维护。',
+    not: '配额齐 ≠ 已冻结；清单样本 ≠ 全量审完；Promote/freeze ≠ accuracy / Certification。',
   },
   g2b: {
     title: 'G2b',

@@ -672,7 +672,7 @@ scan_hash: 8f9548ec24f4
 | Method track (Arena/G2b/S1) catalog + Subject refuse | `core/apps/eval/service/method_track.py` + `subject_adapter.get_subject_adapter` | ✅ | ADR 落地顺序 step 6：方法轨强制；禁止升 Subject/OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
 | eval_list_method_kinds / eval_method_catalog / eval_assert_subject_kinds_exclude_methods | `core/api/core_facade.py` | ✅ | Method 目录/诚实声明/Subject 交叉校验门面；生成物适用：已接线 | 本批 |
 | eval_method_track_status + GET …/store/method-track-status + EvalMethodTrackPanel | `core_facade.py` + `store_api.py` + `EvalMethodTrackPanel.tsx` | ✅ | Method 轨诚实快照（catalog + Subject 对照）；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
-| eval_p1_regression_status + GET …/store/p1-regression-status + EvalP1RegressionPanel | `core_facade.py` + `store_api.py` + `EvalP1RegressionPanel.tsx` | ✅ | P1 Regression 配额盘点 + 人审 blocker 诚实快照；claim/cert=false；生成物适用：不适用（管理端 UI） | 本批 |
+| eval_p1_regression_status + GET …/store/p1-regression-status + EvalP1RegressionPanel | `core_facade.py` + `store_api.py` + `EvalP1RegressionPanel.tsx` | ✅ | P1 Regression 配额盘点 + draft-by-capability 人审清单 + Case Pack 深链；claim/cert=false；生成物适用：不适用（管理端 UI） | 本批 |
 | GET …/store/subject-kinds | `store_api.py` + `eval_list_subject_kinds` | ✅ | 已注册 SubjectAdapter 种类只读；生成物适用：不适用（管理端 API） | 本批 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
