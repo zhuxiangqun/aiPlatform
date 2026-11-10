@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T22:32:07+08:00",
+  "reviewed_at": "2026-11-10T22:50:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "3210d759ade6ab5b15fb853a5d311512191ffa99",
-  "diff_sha256": "2f5f4a3b9a3b43c9e47e2435b02b0abf49e427885d09919f27728c562a6e2b18",
-  "head_sha": "8d5012c79dca2e02a7ce889c29580975412d0efd",
+  "diff_sha256": "3a16fcf52ff2f8babf2e054f2f9c52aa5347ba5a52606e41e4ba0bd1df49363c",
+  "head_sha": "044a8b2dd29c33ec77e0e923d7198bb41e83ddb2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Session regression honesty after rebase onto Tool #651; profile_complete stays false while pack draft. Local lock only."
+  "note": "Session regression honesty + contracts note: eval session.capability ≠ app conversation_key. Claim stays closed. Local lock only; CI needs non-author Approve."
 }
