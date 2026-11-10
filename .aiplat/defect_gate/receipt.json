@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T06:27:19+08:00",
+  "reviewed_at": "2026-11-11T06:47:10+08:00",
   "base_ref": "origin/main",
   "merge_base": "24fa5edc3589576c8750a1b117835892dcd41091",
-  "diff_sha256": "9813feacc1e96906d412aba0be240f0de3220e57b9a95b507f6394d37a5f5731",
-  "head_sha": "e7a95193130bef9a9ff645bb54d310036fa60a43",
+  "diff_sha256": "f78a5aa214a931152bb33a456f56b3df05c1d8e5ba743e68be3470aff11db595",
+  "head_sha": "d65feced058f28117f917eb421582e92b7346152",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Generated-App Subject additive; EvalGeneratedAppsPanel remains separate live/runs_eval surface; claim/cert/profile_complete stay false on draft pack. Local lock only."
+  "note": "Generated-App Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
 }
