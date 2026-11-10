@@ -48,3 +48,16 @@ def test_registered_subjects_exclude_methods():
     report = assert_subject_kinds_exclude_methods(kinds)
     assert report["ok"] is True, report.get("errors")
     assert not (set(kinds) & METHOD_KINDS)
+
+
+def test_eval_method_track_status_facade():
+    from core.api.core_facade import eval_method_track_status
+
+    st = eval_method_track_status()
+    assert st["ok"] is True
+    assert st["accuracy_claim"] is False
+    assert st["claim_eligible"] is False
+    assert st["method_kinds"] == ["arena", "g2b", "s1"]
+    assert len(st["methods"]) == 3
+    assert "agent" in st["subject_kinds"]
+    assert st["subject_exclude_methods"]["ok"] is True

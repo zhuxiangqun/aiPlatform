@@ -353,6 +353,32 @@ async def get_g2b_status(
     return {"data": eval_g2b_pack_status(tenant_id=tenant_id)}
 
 
+@router.get("/method-track-status", response_model=ItemResponse)
+async def get_method_track_status(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Method-track catalog + Subject cross-check — claim stays false."""
+    from core.api.core_facade import eval_method_track_status
+
+    return {"data": eval_method_track_status()}
+
+
+@router.get("/subject-kinds", response_model=ItemResponse)
+async def get_subject_kinds(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Registered EvalSubjectAdapter kinds (Agent/Prompt/…); not Methods."""
+    from core.api.core_facade import eval_list_subject_kinds
+
+    return {
+        "data": {
+            "subject_kinds": eval_list_subject_kinds(),
+            "accuracy_claim": False,
+            "claim_eligible": False,
+        }
+    }
+
+
 @router.get("/g2b-l5-gap", response_model=ItemResponse)
 async def get_g2b_l5_gap(
     tenant_id: str = "eval-v1",

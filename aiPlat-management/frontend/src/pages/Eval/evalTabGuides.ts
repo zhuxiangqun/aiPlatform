@@ -72,6 +72,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '对照同版本报告、查证据摘要。',
     not: '报告分数默认不能写成 accuracy；跨版本分数不可直接比。',
   },
+  'method-track': {
+    title: 'Method轨',
+    what: 'Arena / G2b / S1 方法目录——强制与 SubjectAdapter 分离（ADR）。',
+    can: '查看方法轨种类、诚实声明，以及已注册 Subject 对照。',
+    not: '方法不等于对象类型；不可升 Subject / OBJECT_TYPES，也不宣称 accuracy。',
+  },
   g2b: {
     title: 'G2b',
     what: '双人盲标一致性（κ）收口面板——看标注员是否彼此一致。',
