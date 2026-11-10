@@ -9,10 +9,10 @@
 |---|---|---|---|---|
 | 1 | Agent | [01-agent.md](./01-agent.md) | 不可单独作 accuracy/发布质量 gate | fixture（`replay_trace`） |
 | 2 | Skill | [02-skill.md](./02-skill.md) | fixture smoke；不可作 live skill 认证 | fixture |
-| 3 | Prompt | [03-prompt.md](./03-prompt.md) | engineering / gold 对照可入本地回归；≠ accuracy；**SubjectAdapter 已注册**（`prompt.capability`；同轨还有 `workflow`/`model`/`kb`） | gold（有 exact/expected）/ fixture |
+| 3 | Prompt | [03-prompt.md](./03-prompt.md) | engineering / gold 对照可入本地回归；≠ accuracy；**SubjectAdapter 已注册**（`prompt.capability`；同轨还有 `workflow`/`model`/`kb`/`code_review`） | gold（有 exact/expected）/ fixture |
 | 4 | KB/RAG | [04-kb-rag.md](./04-kb-rag.md) | fixture 检索检查；≠ RAG 准确率；**SubjectAdapter 已注册**（`kb.capability`） | fixture |
 | 5 | Arena | [05-arena.md](./05-arena.md) | **smoke only**（长度 winner） | **smoke** |
-| 6 | Code Review | [06-code-review.md](./06-code-review.md) | gold match 回归；≠ 真实仓库 E2E | gold |
+| 6 | Code Review | [06-code-review.md](./06-code-review.md) | gold match 回归；≠ 真实仓库 E2E；**SubjectAdapter 已注册**（`code_review.capability`） | gold |
 | 7 | Session | [07-session.md](./07-session.md) | fixture 多轮；≠ 长程 Agent | fixture / gold（有 expected） |
 
 `accuracy_claim=false` · `process_split_authorized=false` · EET≠发布门禁等级 全程适用。

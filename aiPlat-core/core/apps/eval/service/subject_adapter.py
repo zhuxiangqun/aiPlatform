@@ -1,9 +1,9 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
 Agent is the reference implementation. Prompt / Workflow / Model are typed
-lexical Subjects; KB is a retrieval-fixture Subject (ADR-EVAL-CAPABILITY-CASE-PACK-V1).
-Core must dispatch via registry — no ``if object_type ==`` business piles
-beyond the type→adapter map.
+lexical Subjects; KB / Code Review are fixture Subjects
+(ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via registry — no
+``if object_type ==`` business piles beyond the type→adapter map.
 """
 from __future__ import annotations
 
@@ -65,6 +65,16 @@ KB_V1_CAPS = frozenset(
         "task_completion",  # hit cover / expected_ids
         "safety",  # policy/source gate via expected_ids
         "robustness",  # noise hits still cover expected
+    }
+)
+
+# Code Review v1 measurable subset (findings vs gold exact set; mirrors code_review_gold).
+# Not a first-class OBJECT_TYPES member yet — SubjectAdapter registry only.
+CODE_REVIEW_V1_CAPS = frozenset(
+    {
+        "task_completion",  # exact gold set match
+        "safety",  # security finding gold
+        "robustness",  # order-insensitive set equality
     }
 )
 
@@ -781,12 +791,213 @@ class KbSubjectAdapter:
         }
 
 
+class CodeReviewSubjectAdapter:
+    """Code Review Subject — gold finding set match (mirrors package code_review_gold).
+
+    Not in OBJECT_TYPES yet; contract is Subject-local. claim_eligible always false.
+    """
+
+    subject_kind = "code_review"
+    v1_caps = CODE_REVIEW_V1_CAPS
+
+    def build_contract(
+        self,
+        *,
+        object_id: str,
+        object_version: str = "",
+        capabilities: Optional[Sequence[str]] = None,
+        tools: Optional[Sequence[str]] = None,
+        permissions: Optional[Sequence[str]] = None,
+        roles: Optional[Sequence[str]] = None,
+        eval_profile: Optional[Mapping[str, Any]] = None,
+        source_refs: Optional[Sequence[str]] = None,
+    ) -> Dict[str, Any]:
+        caps = (
+            resolve_capability_ids(capabilities or (), fail_closed=True)
+            if capabilities
+            else None
+        )
+        profile = dict(eval_profile or {})
+        if caps is None and profile.get("capabilities"):
+            caps = resolve_capability_ids(
+                list(profile.get("capabilities") or []), fail_closed=False
+            )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "subject_kind": self.subject_kind,
+            "object_type_registered": False,
+            "object_id": str(object_id or "").strip(),
+            "object_version": str(object_version or "").strip() or "version_unspecified",
+            "capabilities": list(caps or profile.get("capabilities") or []),
+            "tools": list(tools or profile.get("tools") or []),
+            "permissions": list(permissions or profile.get("permissions") or []),
+            "roles": list(roles or profile.get("roles") or []),
+            "target_runtime": list(
+                profile.get("target_runtime") or ["fixture", "code_review_gold"]
+            ),
+            "eval_purpose": list(profile.get("eval_purpose") or ["behavior", "regression"]),
+            "source_refs": list(
+                source_refs or profile.get("source_refs") or ["code_review_gold"]
+            ),
+            "claim_eligible": False,
+            "honesty": (
+                "code_review SubjectAdapter only — not first-class OBJECT_TYPES; "
+                "fixture findings/gold exact set ≠ live autoreview E2E"
+            ),
+        }
+
+    def capability_catalog(self) -> List[Dict[str, Any]]:
+        rows: List[Dict[str, Any]] = []
+        for cid in sorted(self.v1_caps):
+            rows.append(
+                {
+                    "capability_id": cid,
+                    "object_types": ["code_review"],
+                    "in_scope": cid in self.v1_caps,
+                    "v1_unknown": False,
+                    "agent_canonical": cid in CANONICAL_IDS,
+                    "agent_v1_in_scope": cid in V1_IN_SCOPE,
+                }
+            )
+        return rows
+
+    def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        errors: List[str] = []
+        if not isinstance(case, Mapping):
+            return ["invalid_case"]
+        case_id = str(case.get("case_id") or "").strip()
+        if not case_id:
+            errors.append("missing_field:case_id")
+        caps_raw = case.get("capabilities")
+        try:
+            caps = resolve_capability_ids(list(caps_raw or []), fail_closed=True)
+        except UnknownCapabilityId as exc:
+            errors.append(f"unknown_capability:{exc}")
+            caps = []
+        if not caps:
+            errors.append("missing_field:capabilities")
+        for c in caps:
+            if c not in self.v1_caps:
+                errors.append(f"code_review_cap_out_of_scope:{c}")
+        prompt = str(case.get("prompt") or case.get("query") or "").strip()
+        if not prompt:
+            errors.append("missing_field:prompt")
+        findings = case.get("findings")
+        if findings is not None and not isinstance(findings, list):
+            errors.append("invalid_field:findings")
+        gold = case.get("gold")
+        if gold is None:
+            errors.append("missing_field:gold")
+        elif not isinstance(gold, list):
+            errors.append("invalid_field:gold")
+        elif not gold:
+            errors.append("empty_field:gold")
+        purpose = case.get("test_purpose")
+        errors.extend(
+            validate_test_purpose(
+                purpose if isinstance(purpose, Mapping) else None,
+                prompt=prompt,
+                capabilities=caps,
+            )
+        )
+        return errors
+
+    def execute(
+        self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        env_map = dict(env or {})
+        if bool(env_map.get("live")):
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "code_review_live_autoreview_deferred",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "ok": False,
+            }
+        findings = env_map.get("findings")
+        if findings is None:
+            findings = case.get("findings")
+        findings_list = list(findings) if isinstance(findings, list) else []
+        gold = case.get("gold") if isinstance(case.get("gold"), list) else []
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "tool_backend": "none",
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "runtime_claim_reason": "code_review_gold_fixture",
+            "ok": True,
+            "findings": findings_list,
+            "gold": list(gold),
+        }
+
+    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        res = result if isinstance(result, Mapping) else {}
+        findings = res.get("findings") if isinstance(res.get("findings"), list) else []
+        gold = case.get("gold") if isinstance(case.get("gold"), list) else []
+        if not gold:
+            # Prefer result gold only if case omitted (should not pass validate).
+            gold = res.get("gold") if isinstance(res.get("gold"), list) else []
+        if not gold:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "ok",
+                "subject_kind": self.subject_kind,
+                "passed": False,
+                "errors": ["missing_gold"],
+                "tool_backend": "none",
+                "exact_set_match": False,
+            }
+        norm_f = sorted(str(x) for x in findings)
+        norm_g = sorted(str(x) for x in gold)
+        passed = norm_f == norm_g
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": passed,
+            "errors": [] if passed else ["findings_ne_gold"],
+            "tool_backend": "none",
+            "exact_set_match": passed,
+            "finding_count": len(findings),
+            "gold_count": len(gold),
+        }
+
+    def normalize(
+        self,
+        case: Mapping[str, Any],
+        result: Mapping[str, Any],
+        judgment: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": bool(judgment.get("passed")),
+            "errors": list(judgment.get("errors") or []),
+            "tool_backend": "none",
+            "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
+            "claim_eligible": False,
+            "certification_eligible": False,
+            "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
+            "capabilities": caps,
+            "exact_set_match": bool(judgment.get("exact_set_match")),
+        }
+
+
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
     "workflow": WorkflowSubjectAdapter(),
     "model": ModelSubjectAdapter(),
     "kb": KbSubjectAdapter(),
+    "code_review": CodeReviewSubjectAdapter(),
 }
 
 

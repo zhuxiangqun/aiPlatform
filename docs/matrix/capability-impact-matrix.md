@@ -1,7 +1,7 @@
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2454 capabilities (caps_count) | 2454 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2462 capabilities (caps_count) | 2462 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -93,7 +93,7 @@
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 470 | FDE 质量摘要 |
+| evaluation-system | §十三 评估系统 | 478 | FDE 质量摘要 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -239,7 +239,7 @@
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | skill-system | §六 Skill 系统 | 191 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
-| evaluation-system | §十三 评估系统 | 470 | Pipeline 质量评分 |
+| evaluation-system | §十三 评估系统 | 478 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
 | knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
@@ -472,7 +472,7 @@
 - **core/harness/ontology_engine/engine.py** — OntologyEngine 文档输入
 - **core/api/routers/wiki.py** — Upload/ingest 端点
 
-### §十三 评估系统 (470 caps)
+### §十三 评估系统 (478 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要

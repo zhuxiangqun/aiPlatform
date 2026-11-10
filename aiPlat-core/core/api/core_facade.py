@@ -7658,6 +7658,50 @@ def eval_run_kb_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_kb_capability_smoke(limit=limit)
 
 
+def eval_code_review_capability_catalog() -> list:
+    """Code Review SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("code_review").capability_catalog()
+
+
+def eval_validate_code_review_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CodeReviewSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("code_review").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "code_review"}
+
+
+def eval_validate_code_review_capability_bank() -> Dict[str, Any]:
+    """Validate curated code_review.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        validate_code_review_capability_bank,
+    )
+
+    return validate_code_review_capability_bank()
+
+
+def eval_list_code_review_capability_cases() -> list:
+    """List code_review.capability curated cases."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        build_code_review_capability_cases,
+    )
+
+    return build_code_review_capability_cases()
+
+
+def eval_run_code_review_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over code_review.capability (≠ live E2E)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        run_code_review_capability_smoke,
+    )
+
+    return run_code_review_capability_smoke(limit=limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
