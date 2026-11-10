@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from core.apps.eval.service.session_capability_bank import (
+    PROFILE_ID_REGRESSION,
     build_session_capability_cases,
     run_session_capability_smoke,
+    session_regression_profile,
+    session_regression_status,
     validate_session_capability_bank,
 )
 from core.apps.eval.service.subject_adapter import (
@@ -92,8 +95,37 @@ def test_session_rejects_out_of_scope_cap():
 def test_session_seed_bank_smokes():
     report = validate_session_capability_bank()
     assert report["ok"] is True, report.get("errors")
-    assert report["case_count"] >= 3
+    assert report["case_count"] >= 15
     assert build_session_capability_cases()
     smoke = run_session_capability_smoke()
     assert smoke["ok"] is True, smoke
     assert smoke["claim_eligible"] is False
+
+
+def test_session_regression_profile_and_status():
+    prof = session_regression_profile()
+    assert prof["profile_id"] == PROFILE_ID_REGRESSION
+    assert prof["claim_eligible"] is False
+    assert set(prof["quotas"]) == set(SESSION_V1_CAPS)
+    assert all(int(v) >= 5 for v in prof["quotas"].values())
+
+    st = session_regression_status()
+    assert st["schema"] == "eval.session_regression_status.v1"
+    assert st["quota_inventory_ok"] is True
+    assert st["profile_complete"] is False
+    assert st["case_count"] >= 15
+    assert st["claim_eligible"] is False
+    assert st["accuracy_claim"] is False
+    assert st["draft_pending"] == st["case_count"]
+
+
+def test_eval_session_regression_status_facade():
+    from core.api.core_facade import (
+        eval_session_regression_profile,
+        eval_session_regression_status,
+    )
+
+    assert eval_session_regression_profile()["profile_id"] == PROFILE_ID_REGRESSION
+    st = eval_session_regression_status()
+    assert st["quota_inventory_ok"] is True
+    assert st["certification_eligible"] is False
