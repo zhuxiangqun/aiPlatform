@@ -7,16 +7,22 @@ Validation / smoke go through KbSubjectAdapter; oracle mirrors package kb_rag
 from __future__ import annotations
 
 import json
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
 
-from core.apps.eval.service.capability_id_map import resolve_capability_ids
-from core.apps.eval.service.subject_adapter import get_subject_adapter
+from core.apps.eval.service.capability_id_map import (
+    resolve_capability_id,
+    resolve_capability_ids,
+)
+from core.apps.eval.service.subject_adapter import KB_V1_CAPS, get_subject_adapter
 
 PACK_SCHEMA = "eval.case_pack.v1"
 PACK_ID = "kb.capability"
-PACK_VERSION = "0.1.0"
+PACK_VERSION = "0.2.0"
 PROFILE_ID_SMOKE = "kb.smoke.v1"
+PROFILE_ID_REGRESSION = "kb.regression.v1"
+_PURPOSE_OK = frozenset({"purpose_ok", "reviewed", "approved", "frozen"})
 
 
 class KbCapabilityBankError(ValueError):
@@ -112,6 +118,124 @@ def kb_smoke_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
     out = dict(raw)
     out["claim_eligible"] = False
     return out
+
+
+def kb_regression_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    path = root / "profile.kb.regression.v1.json"
+    raw = _read_json(path)
+    if not isinstance(raw, Mapping):
+        raise KbCapabilityBankError("regression profile must be an object")
+    out = dict(raw)
+    out["claim_eligible"] = False
+    if str(out.get("profile_id") or "") != PROFILE_ID_REGRESSION:
+        raise KbCapabilityBankError(
+            f"profile_id_mismatch:{out.get('profile_id')}"
+        )
+    quotas = out.get("quotas") if isinstance(out.get("quotas"), Mapping) else {}
+    if not quotas:
+        raise KbCapabilityBankError("regression profile.quotas required")
+    return out
+
+
+def kb_regression_status(
+    *,
+    seed_dir: Optional[Path] = None,
+    draft_sample_limit: int = 5,
+) -> Dict[str, Any]:
+    """Honesty snapshot: regression quotas vs bank counts (claim stays false)."""
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    meta = load_pack_meta(seed_dir=root)
+    profile = kb_regression_profile(seed_dir=root)
+    cases = build_kb_capability_cases(seed_dir=root)
+    quotas_raw = profile.get("quotas") if isinstance(profile.get("quotas"), Mapping) else {}
+    quotas: Dict[str, int] = {}
+    for k, v in quotas_raw.items():
+        cid = resolve_capability_id(str(k), fail_closed=True)
+        quotas[cid] = int(v)
+
+    counts: Counter = Counter()
+    review_counts: Counter = Counter()
+    draft_by_cap: Dict[str, List[str]] = defaultdict(list)
+    draft_counts: Counter = Counter()
+    sample_lim = max(0, int(draft_sample_limit or 0))
+    for c in cases:
+        caps = list(c.get("capabilities") or [])
+        try:
+            cap = resolve_capability_id(str(caps[0]), fail_closed=True) if caps else ""
+        except Exception:
+            cap = str(caps[0]).strip() if caps else ""
+        if not cap:
+            cap = "(unknown)"
+        counts[cap] += 1
+        rev = c.get("review") if isinstance(c.get("review"), dict) else {}
+        st = str((rev or {}).get("status") or "draft").strip().lower() or "draft"
+        review_counts[st] += 1
+        if st not in _PURPOSE_OK:
+            draft_counts[cap] += 1
+            cid = str(c.get("case_id") or "")
+            if cid and len(draft_by_cap[cap]) < sample_lim:
+                draft_by_cap[cap].append(cid)
+
+    gaps: List[Dict[str, Any]] = []
+    for cap, need in sorted(quotas.items()):
+        have = int(counts.get(cap, 0))
+        if have < need:
+            gaps.append({"capability_id": cap, "quota": need, "have": have})
+    missing_caps = sorted(set(KB_V1_CAPS) - set(quotas.keys()))
+    purpose_ok_n = (
+        int(review_counts.get("purpose_ok", 0))
+        + int(review_counts.get("reviewed", 0))
+        + int(review_counts.get("approved", 0))
+        + int(review_counts.get("frozen", 0))
+    )
+    draft_checklist = [
+        {
+            "capability_id": cap,
+            "draft_count": int(draft_counts[cap]),
+            "sample_case_ids": list(draft_by_cap.get(cap) or []),
+        }
+        for cap in sorted(draft_counts.keys())
+    ]
+    quota_ok = not gaps and not missing_caps
+    pack_frozen = str(meta.get("status") or "").strip().lower() == "frozen"
+    profile_complete = bool(quota_ok and purpose_ok_n == len(cases) and pack_frozen)
+    return {
+        "schema": "eval.kb_regression_status.v1",
+        "ok": True,
+        "profile_id": PROFILE_ID_REGRESSION,
+        "pack_id": PACK_ID,
+        "pack_version": str(meta.get("version") or PACK_VERSION),
+        "pack_status": str(meta.get("status") or "draft"),
+        "quota_inventory_ok": quota_ok,
+        "profile_complete": profile_complete,
+        "case_count": len(cases),
+        "quotas": quotas,
+        "counts_by_capability": dict(sorted(counts.items())),
+        "gaps": gaps,
+        "missing_profile_capabilities": missing_caps,
+        "review_status_counts": dict(sorted(review_counts.items())),
+        "purpose_ok_or_better": purpose_ok_n,
+        "draft_pending": int(sum(draft_counts.values())),
+        "draft_by_capability": draft_checklist,
+        "next_action": (
+            "Expand/review kb.capability cases → human purpose_ok/freeze; "
+            "fixture hits ≠ live RAG accuracy"
+        ),
+        "review_links": {
+            "case_packs_tab": "/eval?tab=case-packs",
+            "typed_plan_tab": "/eval?tab=typed-plan",
+            "tool_regression_tab": "/eval?tab=tool-regression",
+        },
+        "accuracy_claim": False,
+        "claim_eligible": False,
+        "certification_eligible": False,
+        "honesty": (
+            "KB regression quotas are inventory-only; "
+            "human purpose_ok/freeze still required for profile_complete; "
+            "fixture hits/expected_ids ≠ live RAG; claim/cert stay false."
+        ),
+    }
 
 
 def run_kb_capability_smoke(

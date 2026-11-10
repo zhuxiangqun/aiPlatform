@@ -1,0 +1,22 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "kb.regression.v1",
+  "subject_kinds": ["kb"],
+  "pack_id": "kb.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 29,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "KB Subject regression — KB_V1_CAPS ×5 fixture hits/expected_ids; claim closed; ≠ live RAG accuracy."
+}
