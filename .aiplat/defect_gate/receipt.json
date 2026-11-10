@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T15:21:45+08:00",
+  "reviewed_at": "2026-11-10T16:14:04+08:00",
   "base_ref": "origin/main",
   "merge_base": "45de7a0013211225e5c4fb40140ae32287d7ef2f",
-  "diff_sha256": "64ff61ae94ac95365c2a0d15f8b446912725de50285810643abf3297e4cde080",
-  "head_sha": "293ae8aa81f3c90899ad0c70c22112b9e6a13a48",
+  "diff_sha256": "f70ba63f26b047e9d4ec748354979faec5823fe8868fdc41b5f751d8234598e7",
+  "head_sha": "4dbee0fefb79aa1bc29f00c6ba48610d9013bff2",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Method-track UI + whitepaper stamp sync. Local lock only."
+  "note": "AUTO-STATS 3275→3276 for method-track. Local lock only."
 }
