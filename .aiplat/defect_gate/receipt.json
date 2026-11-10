@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T14:50:00+08:00",
+  "reviewed_at": "2026-11-10T14:53:29+08:00",
   "base_ref": "origin/main",
   "merge_base": "7d3a8596142435891737acc6e04dabdfb3467711",
-  "diff_sha256": "93d29aa191c7394faa846266cbaca6d9fcf8a2fdabee1c7a8401384e909dac15",
-  "head_sha": "0c2352db542fe52ac18d4ce8862112984dd0e8df",
+  "diff_sha256": "7d59182540ab6355d2a47f15148090cb4be77080daeec72f91fda5b9acdbb104",
+  "head_sha": "3898d450e128a0eca9b2d7c4a5ef4db868bd8d7d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Stack closeout Model→method-track after #635. claim_eligible=false banks; get_subject_adapter refuses Arena/G2b/S1 via MethodTrackError. Local lock only."
+  "note": "Stack closeout after whitepaper sync. claim_eligible=false; method-track refuse Arena/G2b/S1."
 }
