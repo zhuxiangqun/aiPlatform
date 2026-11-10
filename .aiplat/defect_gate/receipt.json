@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T13:36:45+08:00",
+  "reviewed_at": "2026-11-10T13:40:45+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "d4fcf94c830c61c1d6da116ad5f105a00a958590e454ad0f9ad8356c676ceb87",
-  "head_sha": "8284d1ad44871b4d8f73cc3052e80a70f697824d",
+  "diff_sha256": "7b4b3dd13ec45d656e0f63c8a2aa25747854ea43157cd9554133b13d4b60d467",
+  "head_sha": "087324c38358172f8bf6b870fc1aa5c84e1a4b0f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Re-lock after AUTO-STATS sync (评估系统 488). SessionSubjectAdapter path unchanged; claim_eligible false. Local lock only."
+  "note": "ToolSubjectAdapter mock tool_trace reuses Agent A3–A5 harness/judge intentionally; claim_eligible forced false; live/MCP deferred; not OBJECT_TYPES. Local lock only."
 }
