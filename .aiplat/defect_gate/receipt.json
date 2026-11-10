@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T23:45:00+08:00",
+  "reviewed_at": "2026-11-11T00:27:07+08:00",
   "base_ref": "origin/main",
-  "merge_base": "a5304818d0f0d7ed35dccd609c16bdada1cda734",
-  "diff_sha256": "380bfea8f4a092565d11fab8da9939d2aff15551ace5aaa24197639f459251a0",
-  "head_sha": "2ff2d063e6532135da347bd6e81556ae6073a0f7",
+  "merge_base": "588ebd324db22f7bfd6fbd77305c5202c5bdfc8b",
+  "diff_sha256": "85214180e4492b45f610555a258a5052d825f269d0e6c3e37f98a0d5f9ef2495",
+  "head_sha": "85b3bbbc8936fae6f22a8c4ff6a8bdd791acb495",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Multi-Agent rebased onto Code Review #654; Session+KB+CR+MA panels kept. Fixture handoff ≠ live runtime; claim closed. Local lock only; CI needs non-author Approve."
+  "note": "Skill Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
 }
