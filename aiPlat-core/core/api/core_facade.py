@@ -7676,12 +7676,28 @@ def eval_list_prompt_capability_cases() -> list:
 
 
 def eval_run_prompt_capability_smoke(
-    *, limit: int = 20
+    *, limit: int = 50
 ) -> Dict[str, Any]:
     """Fixture execute+judge smoke over prompt.capability bank (≠ live/accuracy)."""
     from core.apps.eval.service.prompt_capability_bank import run_prompt_capability_smoke
 
     return run_prompt_capability_smoke(limit=limit)
+
+
+def eval_prompt_regression_profile() -> Dict[str, Any]:
+    """prompt.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.prompt_capability_bank import prompt_regression_profile
+
+    return prompt_regression_profile()
+
+
+def eval_prompt_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Prompt Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.prompt_capability_bank import prompt_regression_status
+
+    return prompt_regression_status(draft_sample_limit=draft_sample_limit)
 
 
 def eval_workflow_capability_catalog() -> list:
