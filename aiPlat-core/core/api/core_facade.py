@@ -7531,6 +7531,48 @@ def eval_run_prompt_capability_smoke(
 
     return run_prompt_capability_smoke(limit=limit)
 
+
+def eval_workflow_capability_catalog() -> list:
+    """Workflow SubjectAdapter capability catalog (workflow v1 subset)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("workflow").capability_catalog()
+
+
+def eval_validate_workflow_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """WorkflowSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("workflow").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "workflow"}
+
+
+def eval_validate_workflow_capability_bank() -> Dict[str, Any]:
+    """Validate curated workflow.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.workflow_capability_bank import (
+        validate_workflow_capability_bank,
+    )
+
+    return validate_workflow_capability_bank()
+
+
+def eval_list_workflow_capability_cases() -> list:
+    """List workflow.capability curated cases."""
+    from core.apps.eval.service.workflow_capability_bank import (
+        build_workflow_capability_cases,
+    )
+
+    return build_workflow_capability_cases()
+
+
+def eval_run_workflow_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over workflow.capability bank (≠ live/accuracy)."""
+    from core.apps.eval.service.workflow_capability_bank import (
+        run_workflow_capability_smoke,
+    )
+
+    return run_workflow_capability_smoke(limit=limit)
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T07:09:02+08:00",
+  "reviewed_at": "2026-11-10T09:15:37+08:00",
   "base_ref": "origin/main",
-  "merge_base": "31c869edefb17febd57fdb0efd27b051a57c8243",
-  "diff_sha256": "c8d60c8aea32d4a99ac2c9a047b5589b35b28b94d11c368863ffba26441c7ce9",
-  "head_sha": "33b835472527fe88c7f8b17c0a9400c6f57c3743",
+  "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
+  "diff_sha256": "bbef80810a1c3a4ca8e37b968bb0224845a9e5f4ea97457252624c93dcfe6cc8",
+  "head_sha": "12eeb932b611db7c1209a0a824aa7ff6442b2628",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "PromptSubjectAdapter + seed bank; fixture lexical only; claim=false; ≠ accuracy."
+  "note": "WorkflowSubjectAdapter + shared lexical base; fixture only; claim=false."
 }
