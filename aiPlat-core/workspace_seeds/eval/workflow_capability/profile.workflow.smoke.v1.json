@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "workflow.smoke.v1",
+  "object_types": ["workflow"],
+  "claim_eligible": false,
+  "pack_id": "workflow.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "clarification": 1,
+    "error_recovery": 1
+  },
+  "notes": "Workflow smoke profile — fixture lexical only; accuracy_claim=false"
+}

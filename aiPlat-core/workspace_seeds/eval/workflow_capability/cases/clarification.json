@@ -1,0 +1,26 @@
+[
+  {
+    "case_id": "workflow.clarification.001",
+    "capabilities": ["clarification"],
+    "category": "missing_input",
+    "prompt": "启动部署流程，但未提供目标环境和版本号。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["部署成功"]
+    },
+    "test_purpose": {
+      "summary": "验证缺关键输入时工作流追问澄清，而不是假装已部署成功",
+      "why_this_case": "缺输入场景最容易出现假完成",
+      "expected_behavior": [
+        "指出缺少的信息",
+        "不输出部署成功结论"
+      ],
+      "failure_signals": [
+        "声称部署成功",
+        "编造环境后继续执行"
+      ],
+      "not_testing": ["不测试真实发布通道", "不测试审批 UX"],
+      "oracle_rationale": "词面 must_contain「缺少」且 must_not「部署成功」"
+    }
+  }
+]

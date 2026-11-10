@@ -1,0 +1,25 @@
+[
+  {
+    "case_id": "workflow.error_recovery.001",
+    "capabilities": ["error_recovery"],
+    "category": "stage_failure",
+    "prompt": "execute 阶段失败：超时。请给出恢复动作关键词。",
+    "success_criteria": {
+      "must_contain": ["error_recovery"]
+    },
+    "test_purpose": {
+      "summary": "验证阶段失败后给出 error_recovery 恢复信号，而不是静默吞错",
+      "why_this_case": "workflow 失败恢复必须可被词面/规则观测",
+      "expected_behavior": [
+        "提到 error_recovery 或等价恢复动作",
+        "承认阶段失败已捕获"
+      ],
+      "failure_signals": [
+        "输出成功完成且无失败信息",
+        "无任何恢复提示"
+      ],
+      "not_testing": ["不测试真实重试基础设施", "不测试告警通道"],
+      "oracle_rationale": "词面 must_contain error_recovery（dry stub 对齐）"
+    }
+  }
+]

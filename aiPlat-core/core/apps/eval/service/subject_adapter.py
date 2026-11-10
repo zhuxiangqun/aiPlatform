@@ -35,6 +35,18 @@ PROMPT_V1_CAPS = frozenset(
     }
 )
 
+# Workflow v1 measurable subset (maps from typed workflow/* packs + defaults).
+WORKFLOW_V1_CAPS = frozenset(
+    {
+        "task_completion",  # basic stage delivery
+        "clarification",  # missing_input
+        "error_recovery",  # stage_failure
+        "planning",  # long_chain
+        "safety",
+        "robustness",  # noise
+    }
+)
+
 
 @runtime_checkable
 class EvalSubjectAdapter(Protocol):
@@ -320,13 +332,17 @@ class AgentSubjectAdapter:
         }
 
 
-class PromptSubjectAdapter:
-    """Prompt Subject — lexical fixture path; reuses typed_plan oracle.
+class _TypedLexicalSubjectAdapter:
+    """Shared lexical fixture Subject for prompt/workflow/model typed packs.
 
     Does not fork Plan/EvalStore. claim_eligible always false.
     """
 
-    subject_kind = "prompt"
+    subject_kind: str = ""
+    object_type: str = ""
+    v1_caps: frozenset = frozenset()
+    live_reason: str = "typed_plan_live_deferred"
+    runtime_claim_reason: str = "lexical_fixture_stub"
 
     def build_contract(
         self,
@@ -347,7 +363,7 @@ class PromptSubjectAdapter:
                 list(profile.get("capabilities") or []), fail_closed=False
             )
         return build_contract_for_object_type(
-            object_type="prompt",
+            object_type=self.object_type,
             object_id=object_id,
             object_version=object_version,
             capabilities=caps,
@@ -360,12 +376,12 @@ class PromptSubjectAdapter:
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
         rows: List[Dict[str, Any]] = []
-        for cid in sorted(PROMPT_V1_CAPS):
+        for cid in sorted(self.v1_caps):
             rows.append(
                 {
                     "capability_id": cid,
-                    "object_types": ["prompt"],
-                    "in_scope": cid in PROMPT_V1_CAPS,
+                    "object_types": [self.object_type],
+                    "in_scope": cid in self.v1_caps,
                     "v1_unknown": False,
                     "agent_canonical": cid in CANONICAL_IDS,
                     "agent_v1_in_scope": cid in V1_IN_SCOPE,
@@ -389,8 +405,8 @@ class PromptSubjectAdapter:
         if not caps:
             errors.append("missing_field:capabilities")
         for c in caps:
-            if c not in PROMPT_V1_CAPS:
-                errors.append(f"prompt_cap_out_of_scope:{c}")
+            if c not in self.v1_caps:
+                errors.append(f"{self.subject_kind}_cap_out_of_scope:{c}")
         prompt = str(case.get("prompt") or case.get("user_input") or "").strip()
         if not prompt:
             errors.append("missing_field:prompt")
@@ -418,7 +434,7 @@ class PromptSubjectAdapter:
                 "schema": ADAPTER_SCHEMA,
                 "status": "not_implemented",
                 "subject_kind": self.subject_kind,
-                "reason": "prompt_live_via_typed_plan_exam",
+                "reason": self.live_reason,
                 "runtime_tier": "fixture",
                 "runtime_claim": False,
                 "ok": False,
@@ -446,7 +462,7 @@ class PromptSubjectAdapter:
             "tool_backend": "none",
             "runtime_tier": "fixture",
             "runtime_claim": False,
-            "runtime_claim_reason": "prompt_lexical_fixture_stub",
+            "runtime_claim_reason": self.runtime_claim_reason,
             "ok": True,
             "answer": answer,
             "scripted_answer": answer,
@@ -495,14 +511,35 @@ class PromptSubjectAdapter:
             "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
             "claim_eligible": False,
             "certification_eligible": False,
-            "v1_in_scope": all(c in PROMPT_V1_CAPS for c in caps) if caps else False,
+            "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
             "capabilities": caps,
         }
+
+
+class PromptSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Prompt Subject — lexical fixture path; reuses typed_plan oracle."""
+
+    subject_kind = "prompt"
+    object_type = "prompt"
+    v1_caps = PROMPT_V1_CAPS
+    live_reason = "prompt_live_via_typed_plan_exam"
+    runtime_claim_reason = "prompt_lexical_fixture_stub"
+
+
+class WorkflowSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Workflow Subject — lexical fixture path; reuses typed_plan oracle."""
+
+    subject_kind = "workflow"
+    object_type = "workflow"
+    v1_caps = WORKFLOW_V1_CAPS
+    live_reason = "workflow_live_via_typed_plan_exam"
+    runtime_claim_reason = "workflow_lexical_fixture_stub"
 
 
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
+    "workflow": WorkflowSubjectAdapter(),
 }
 
 

@@ -1,0 +1,26 @@
+[
+  {
+    "case_id": "workflow.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "流程：clarify → plan → execute。请按顺序用箭头列出三阶段英文 id，不要解释。",
+    "success_criteria": {
+      "must_contain": ["clarify", "plan", "execute"]
+    },
+    "scripted_answer": "clarify → plan → execute",
+    "test_purpose": {
+      "summary": "验证工作流基础阶段序可被正确复述，而不是漏阶段或乱序",
+      "why_this_case": "阶段 id 漏写/乱序是 workflow 最小交付最常见失败",
+      "expected_behavior": [
+        "输出包含 clarify/plan/execute 三词",
+        "保持可识别的阶段序"
+      ],
+      "failure_signals": [
+        "缺少任一阶段 id",
+        "用中文阶段名替代且无英文 id"
+      ],
+      "not_testing": ["不测试真实 PipelineEngine 调度", "不测试工具调用"],
+      "oracle_rationale": "词面 must_contain 三阶段英文 id"
+    }
+  }
+]
