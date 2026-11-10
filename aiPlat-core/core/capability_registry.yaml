@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2437
+total_capabilities: 2438
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 453
+    caps_count: 454
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8149,6 +8149,10 @@ domains:
       - symbol: build_workflow_capability_cases
         type: function
         signature: 'build_workflow_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/workflow_capability_bank.py
+      - symbol: workflow_smoke_profile
+        type: function
+        signature: 'workflow_smoke_profile(seed_dir?)→Dict'
         module: aiPlat-core/core/apps/eval/service/workflow_capability_bank.py
       - symbol: eval_list_subject_kinds
         type: function
