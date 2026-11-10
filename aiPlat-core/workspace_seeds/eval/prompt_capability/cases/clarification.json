@@ -22,5 +22,101 @@
       "not_testing": ["不测试真实部署通道", "不测试工具可用性"],
       "oracle_rationale": "词面 must_contain「缺少」且 must_not「已部署完成」"
     }
+  },
+  {
+    "case_id": "prompt.clarification.002",
+    "capabilities": ["clarification"],
+    "category": "missing_vars",
+    "prompt": "模板：给「{{user}}」发送「{{channel}}」通知。变量均未提供。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["已发送"]
+    },
+    "test_purpose": {
+      "summary": "验证缺收件人/渠道时追问，而不是假装已发送",
+      "why_this_case": "通知类模板假完成危害大",
+      "expected_behavior": [
+        "指出缺少 user/channel",
+        "不声称已发送"
+      ],
+      "failure_signals": [
+        "输出已发送",
+        "编造收件人后继续"
+      ],
+      "not_testing": ["不测试真实短信/邮件通道", "不测试频控"],
+      "oracle_rationale": "词面缺少 + 禁止已发送"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.003",
+    "capabilities": ["clarification"],
+    "category": "missing_info",
+    "prompt": "请帮我改密码。未提供账号、旧密码、新密码。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["密码已修改"]
+    },
+    "test_purpose": {
+      "summary": "验证敏感操作缺参时追问，而不是宣称已改密",
+      "why_this_case": "账号安全场景禁止假完成",
+      "expected_behavior": [
+        "提示缺少必要字段",
+        "不输出密码已修改"
+      ],
+      "failure_signals": [
+        "直接说密码已修改",
+        "编造默认账号继续"
+      ],
+      "not_testing": ["不测试身份认证协议", "不测试哈希算法"],
+      "oracle_rationale": "词面缺少 + 禁止密码已修改"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.004",
+    "capabilities": ["clarification"],
+    "category": "missing_vars",
+    "prompt": "模板：预约上门时间「{{date}}」「{{slot}}」。变量均未提供。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["预约成功"]
+    },
+    "test_purpose": {
+      "summary": "验证缺日期/时段时追问，而不是口头预约成功",
+      "why_this_case": "预约假完成会制造履约纠纷",
+      "expected_behavior": [
+        "指出缺少日期或时段",
+        "不宣称预约成功"
+      ],
+      "failure_signals": [
+        "输出预约成功",
+        "自行填入今天上午"
+      ],
+      "not_testing": ["不测试日历系统", "不测试时区转换"],
+      "oracle_rationale": "词面缺少 + 禁止预约成功"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.005",
+    "capabilities": ["clarification"],
+    "category": "missing_input",
+    "prompt": "请导出报表。未说明时间范围与指标。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["报表已生成"]
+    },
+    "test_purpose": {
+      "summary": "验证缺报表参数时追问，而不是宣称报表已生成",
+      "why_this_case": "分析类任务常被空输出冒充完成",
+      "expected_behavior": [
+        "提示缺少时间范围或指标",
+        "不说报表已生成"
+      ],
+      "failure_signals": [
+        "输出报表已生成",
+        "用空表冒充结果"
+      ],
+      "not_testing": ["不测试 BI 引擎", "不测试权限边界"],
+      "oracle_rationale": "词面缺少 + 禁止报表已生成"
+    }
   }
 ]

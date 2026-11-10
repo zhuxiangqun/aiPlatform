@@ -1,0 +1,122 @@
+[
+  {
+    "case_id": "prompt.long_context.001",
+    "capabilities": ["long_context"],
+    "category": "multi_slot",
+    "prompt": "上下文含三段：A=北京仓、B=上海仓、C=紧急单优先。问：紧急单应优先从哪调度？请点名仓名。",
+    "success_criteria": {
+      "must_contain": ["上海仓", "紧急"]
+    },
+    "scripted_answer": "按规则 C，紧急单优先；结合题面调度到上海仓处理。",
+    "test_purpose": {
+      "summary": "验证多槽上下文仍能同时命中规则与仓名，而不是只答一句空话",
+      "why_this_case": "多槽丢失是 long_context 常见失败",
+      "expected_behavior": [
+        "提到紧急优先级",
+        "点名上海仓"
+      ],
+      "failure_signals": [
+        "只答北京仓",
+        "忽略紧急规则"
+      ],
+      "not_testing": ["不测试真实 WMS", "不测试向量检索"],
+      "oracle_rationale": "词面双锚点：上海仓 + 紧急"
+    }
+  },
+  {
+    "case_id": "prompt.long_context.002",
+    "capabilities": ["long_context"],
+    "category": "multi_slot",
+    "prompt": "前文约定：货币=CNY，税率=13%，折扣=无。请报价：单价 100。输出含税总价与货币。",
+    "success_criteria": {
+      "must_contain": ["113", "CNY"]
+    },
+    "scripted_answer": "含税总价 113 CNY。",
+    "test_purpose": {
+      "summary": "验证跨段参数仍用于计算，而不是丢掉税率或货币",
+      "why_this_case": "长上下文算术槽位易丢",
+      "expected_behavior": [
+        "含税价 113",
+        "货币 CNY"
+      ],
+      "failure_signals": [
+        "输出 100 未税",
+        "货币写成 USD"
+      ],
+      "not_testing": ["不测试发票系统", "不测试四舍五入政策表"],
+      "oracle_rationale": "词面 113 + CNY"
+    }
+  },
+  {
+    "case_id": "prompt.long_context.003",
+    "capabilities": ["long_context"],
+    "category": "multi_slot",
+    "prompt": "角色设定：你是值班 SRE。约束：变更窗口仅 02:00-04:00。用户：现在 10:00 能上线吗？",
+    "success_criteria": {
+      "must_contain": ["02:00", "不能"]
+    },
+    "scripted_answer": "不能。变更窗口仅 02:00-04:00，当前 10:00 不在窗口内。",
+    "test_purpose": {
+      "summary": "验证角色约束跨句仍生效，而不是迎合用户立刻上线",
+      "why_this_case": "长上下文约束遗忘会导致违规变更",
+      "expected_behavior": [
+        "明确不能立即上线",
+        "引用 02:00 窗口"
+      ],
+      "failure_signals": [
+        "同意现在上线",
+        "不提窗口约束"
+      ],
+      "not_testing": ["不测试变更工单系统", "不测试日历集成"],
+      "oracle_rationale": "词面 02:00 + 不能"
+    }
+  },
+  {
+    "case_id": "prompt.long_context.004",
+    "capabilities": ["long_context"],
+    "category": "multi_slot",
+    "prompt": "文档片段1：SKU=L-900。片段2：库存=3。片段3：起订量=5。问：能否下单 5 件？",
+    "success_criteria": {
+      "must_contain": ["不能", "库存"]
+    },
+    "scripted_answer": "不能。SKU L-900 库存=3，低于起订量 5。",
+    "test_purpose": {
+      "summary": "验证跨片段库存与起订量同时约束，而不是只看其一",
+      "why_this_case": "多文档槽位合并错误常见",
+      "expected_behavior": [
+        "结论不能下单",
+        "提到库存不足"
+      ],
+      "failure_signals": [
+        "同意下单 5 件",
+        "忽略库存=3"
+      ],
+      "not_testing": ["不测试真实库存服务", "不测试锁库"],
+      "oracle_rationale": "词面不能 + 库存"
+    }
+  },
+  {
+    "case_id": "prompt.long_context.005",
+    "capabilities": ["long_context"],
+    "category": "multi_slot",
+    "prompt": "对话史：用户先说只要中文，后又给英文标题 Title=Door Lock。请用中文解释该标题含义并保留 Title 原文。",
+    "success_criteria": {
+      "must_contain": ["门锁", "Door Lock"]
+    },
+    "scripted_answer": "Title「Door Lock」指门锁产品。",
+    "test_purpose": {
+      "summary": "验证语言偏好与专有名词同时保留，而不是丢掉英文 Title",
+      "why_this_case": "多轮约束+专名保留是 long_context 回归点",
+      "expected_behavior": [
+        "中文解释含门锁",
+        "保留 Door Lock 原文"
+      ],
+      "failure_signals": [
+        "全英文回答",
+        "丢掉 Door Lock"
+      ],
+      "not_testing": ["不测试翻译质量分", "不测试术语库"],
+      "oracle_rationale": "词面门锁 + Door Lock"
+    }
+  }
+]

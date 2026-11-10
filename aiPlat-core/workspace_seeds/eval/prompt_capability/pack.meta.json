@@ -1,7 +1,7 @@
 {
   "schema": "eval.case_pack.v1",
   "pack_id": "prompt.capability",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "kind": "curated",
   "status": "draft",
   "claim_eligible": false,
@@ -9,5 +9,5 @@
   "object_types": [
     "prompt"
   ],
-  "notes": "Prompt Subject capability bank (ADR order after Agent). Content authority: cases/*.json + pack.meta.json. Reuses typed_plan lexical oracle; ≠ accuracy."
+  "notes": "Prompt Subject capability bank (ADR). Smoke + Regression profiles; content authority: cases/*.json. Reuses typed_plan lexical oracle; ≠ accuracy."
 }

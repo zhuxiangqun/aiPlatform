@@ -22,5 +22,101 @@
       "not_testing": ["不测试工具调用", "不测试多轮记忆"],
       "oracle_rationale": "词面 must_contain 检查产品名锚点"
     }
+  },
+  {
+    "case_id": "prompt.task_completion.002",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "模板：把下面原文改成三条要点。原文：设备支持远程开锁与临时密码。只输出要点。",
+    "success_criteria": {
+      "must_contain": ["远程开锁", "临时密码"]
+    },
+    "scripted_answer": "1. 支持远程开锁。2. 支持临时密码。3. 面向联网门禁。",
+    "test_purpose": {
+      "summary": "验证改写任务保留关键事实锚点，而不是空泛改写",
+      "why_this_case": "摘要/改写常丢关键能力词",
+      "expected_behavior": [
+        "保留远程开锁与临时密码",
+        "输出可读要点"
+      ],
+      "failure_signals": [
+        "丢掉远程开锁或临时密码",
+        "输出与原文无关的营销话术"
+      ],
+      "not_testing": ["不测试排版美观", "不测试多语言"],
+      "oracle_rationale": "词面 must_contain 双锚点"
+    }
+  },
+  {
+    "case_id": "prompt.task_completion.003",
+    "capabilities": ["task_completion"],
+    "category": "format",
+    "prompt": "只输出 JSON：{\"status\":\"ok\",\"code\":200}。不要解释。",
+    "success_criteria": {
+      "must_contain": ["\"status\"", "\"ok\"", "200"]
+    },
+    "scripted_answer": "{\"status\":\"ok\",\"code\":200}",
+    "test_purpose": {
+      "summary": "验证格式约束任务输出可解析 JSON 锚点，而不是散文解释",
+      "why_this_case": "format_constraint 是 prompt 最常见回归点",
+      "expected_behavior": [
+        "包含 status/ok/200 锚点",
+        "不附加长篇解释淹没结构"
+      ],
+      "failure_signals": [
+        "只输出自然语言说明",
+        "缺少 status 或 code"
+      ],
+      "not_testing": ["不测试严格 JSON Schema 校验器", "不测试 HTTP 真请求"],
+      "oracle_rationale": "词面 must_contain 检查 JSON 关键字段"
+    }
+  },
+  {
+    "case_id": "prompt.task_completion.004",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "模板：生成欢迎语，客户名={{name}}。变量 name=张三。",
+    "success_criteria": {
+      "must_contain": ["张三"]
+    },
+    "scripted_answer": "你好，张三，欢迎使用智能门锁服务。",
+    "test_purpose": {
+      "summary": "验证人名槽位被正确填入，而不是使用通用称呼覆盖",
+      "why_this_case": "个性化槽位丢失会直接伤害体验",
+      "expected_behavior": [
+        "输出包含「张三」",
+        "不把名字改成别人"
+      ],
+      "failure_signals": [
+        "输出缺少人名",
+        "用「用户」替换具体名字且无锚点"
+      ],
+      "not_testing": ["不测试 CRM 真数据", "不测试语气风格评分"],
+      "oracle_rationale": "词面 must_contain 人名锚点"
+    }
+  },
+  {
+    "case_id": "prompt.task_completion.005",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "把错误码 E42 转成用户可读说明：E42=固件校验失败。只输出说明句。",
+    "success_criteria": {
+      "must_contain": ["固件校验失败"]
+    },
+    "scripted_answer": "错误 E42：固件校验失败，请重新刷写后再试。",
+    "test_purpose": {
+      "summary": "验证错误码映射保留官方语义，而不是编造无关故障",
+      "why_this_case": "客服/运维文案常把码义改写错",
+      "expected_behavior": [
+        "说明中出现「固件校验失败」",
+        "不换成其它错误语义"
+      ],
+      "failure_signals": [
+        "输出与固件无关的网络故障",
+        "忽略错误码含义"
+      ],
+      "not_testing": ["不测试真实设备遥测", "不测试工单系统"],
+      "oracle_rationale": "词面 must_contain 官方语义锚点"
+    }
   }
 ]

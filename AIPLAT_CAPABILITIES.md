@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3278
+total_capabilities: 3281
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -654,6 +654,7 @@ scan_hash: 8f9548ec24f4
 | m2_deferred_estimate.v1 | `workspace_seeds/eval/agent_capability/` | ✅ | multi_agent/pipeline/operator 工期与 parts 契约；生成物适用：已接线 | 本批 |
 | get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考 + Prompt/Workflow/Model）；生成物适用：已接线 | 已合入 |
 | PromptSubjectAdapter / prompt.capability bank | `core/apps/eval/service/subject_adapter.py` + `prompt_capability_bank.py` + `workspace_seeds/eval/prompt_capability/` | ✅ | ADR 扩展首个非 Agent Subject；lexical fixture；claim=false；生成物适用：已接线 | 本批 |
+| prompt.regression.v1 + prompt_regression_status | `prompt_capability_bank.py` + `eval_prompt_regression_status` + GET …/store/prompt-regression-status + EvalPromptRegressionPanel | ✅ | Prompt Subject 回归配额（PROMPT_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_list_subject_kinds / eval_prompt_capability_* / eval_run_prompt_capability_smoke | `core/api/core_facade.py` | ✅ | Prompt 目录/校验/种子库/fixture smoke 门面；≠ live accuracy；生成物适用：已接线 | 本批 |
 | WorkflowSubjectAdapter / workflow.capability bank | `core/apps/eval/service/subject_adapter.py` + `workflow_capability_bank.py` + `workspace_seeds/eval/workflow_capability/` | ✅ | ADR Prompt 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2832,6 +2833,8 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_prompt_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| prompt_regression_profile | `core/apps/eval/service/prompt_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | is_method_kind | `core/apps/eval/service/method_track.py` | ✅ | 自动同步 | 已合入 |
 | assert_not_subject_method | `core/apps/eval/service/method_track.py` | ✅ | 自动同步 | 已合入 |
 | MethodTrackError | `core/apps/eval/service/method_track.py` | ✅ | 自动同步 | 已合入 |
@@ -4177,7 +4180,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 544 | 1 | 545 |
+| Harness 执行引擎 | 545 | 1 | 546 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4190,7 +4193,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 501 | 0 | 501 |
+| 评估系统 | 503 | 0 | 503 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4222,7 +4225,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3268** | **10** | **3278** |
+| **总计** | **3271** | **10** | **3281** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

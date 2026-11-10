@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2498
+total_capabilities: 2502
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 514
+    caps_count: 518
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8182,6 +8182,14 @@ domains:
         type: function
         signature: 'prompt_smoke_profile(seed_dir?)→Dict'
         module: aiPlat-core/core/apps/eval/service/prompt_capability_bank.py
+      - symbol: prompt_regression_profile
+        type: function
+        signature: 'prompt_regression_profile(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/prompt_capability_bank.py
+      - symbol: prompt_regression_status
+        type: function
+        signature: 'prompt_regression_status(seed_dir?,draft_sample_limit?)→Dict honesty'
+        module: aiPlat-core/core/apps/eval/service/prompt_capability_bank.py
       - symbol: validate_workflow_capability_bank
         type: function
         signature: 'validate_workflow_capability_bank(seed_dir?)→Dict; claim=false'
@@ -8276,7 +8284,15 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_run_prompt_capability_smoke
         type: function
-        signature: 'eval_run_prompt_capability_smoke(limit=20)→Dict'
+        signature: 'eval_run_prompt_capability_smoke(limit=50)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_prompt_regression_profile
+        type: function
+        signature: 'eval_prompt_regression_profile()→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_prompt_regression_status
+        type: function
+        signature: 'eval_prompt_regression_status(draft_sample_limit?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_workflow_capability_catalog
         type: function

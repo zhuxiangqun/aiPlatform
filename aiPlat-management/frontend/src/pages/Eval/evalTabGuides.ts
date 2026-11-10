@@ -84,6 +84,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看 review 分布、按能力 draft 清单、checklist/blockers；深链到 Case Pack / 题目维护。',
     not: '配额齐 ≠ 已冻结；清单样本 ≠ 全量审完；Promote/freeze ≠ accuracy / Certification。',
   },
+  'prompt-regression': {
+    title: 'Prompt Regression',
+    what: 'prompt.regression.v1 题库配额盘点（PROMPT_V1_CAPS×5）与 draft 人审清单。',
+    can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / Prompts / Agent P1。',
+    not: '配额齐 ≠ live Prompt 准确率；fixture 词面通过 ≠ claim；pack draft ≠ Certification。',
+  },
   'p4-status': {
     title: 'P4 Benchmark',
     what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',
