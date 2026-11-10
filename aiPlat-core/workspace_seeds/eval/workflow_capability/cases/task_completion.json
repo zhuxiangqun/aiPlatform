@@ -4,23 +4,79 @@
     "capabilities": ["task_completion"],
     "category": "normal",
     "prompt": "流程：clarify → plan → execute。请按顺序用箭头列出三阶段英文 id，不要解释。",
-    "success_criteria": {
-      "must_contain": ["clarify", "plan", "execute"]
-    },
+    "success_criteria": {"must_contain": ["clarify", "plan", "execute"]},
     "scripted_answer": "clarify → plan → execute",
     "test_purpose": {
       "summary": "验证工作流基础阶段序可被正确复述，而不是漏阶段或乱序",
       "why_this_case": "阶段 id 漏写/乱序是 workflow 最小交付最常见失败",
-      "expected_behavior": [
-        "输出包含 clarify/plan/execute 三词",
-        "保持可识别的阶段序"
-      ],
-      "failure_signals": [
-        "缺少任一阶段 id",
-        "用中文阶段名替代且无英文 id"
-      ],
+      "expected_behavior": ["输出包含 clarify/plan/execute 三词", "保持可识别的阶段序"],
+      "failure_signals": ["缺少任一阶段 id", "用中文阶段名替代且无英文 id"],
       "not_testing": ["不测试真实 PipelineEngine 调度", "不测试工具调用"],
       "oracle_rationale": "词面 must_contain 三阶段英文 id"
+    }
+  },
+  {
+    "case_id": "workflow.task_completion.002",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "流水线交付物：产出 artifact=prd.md。请回显产物文件名。",
+    "success_criteria": {"must_contain": ["prd.md"]},
+    "scripted_answer": "交付产物：prd.md",
+    "test_purpose": {
+      "summary": "验证阶段交付物文件名被保留，而不是改写成别的产物",
+      "why_this_case": "产物键漂移会导致下游接不住",
+      "expected_behavior": ["输出包含 prd.md", "不改名"],
+      "failure_signals": ["输出 design.md 替代", "丢掉文件名"],
+      "not_testing": ["不测试文件系统写入", "不测试 HITL"],
+      "oracle_rationale": "词面 prd.md"
+    }
+  },
+  {
+    "case_id": "workflow.task_completion.003",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "阶段状态机：pending → running → succeeded。请输出终态英文词。",
+    "success_criteria": {"must_contain": ["succeeded"]},
+    "scripted_answer": "终态 succeeded",
+    "test_purpose": {
+      "summary": "验证终态枚举可被正确输出，而不是 invent 成功同义词",
+      "why_this_case": "状态机词面契约是编排回归基础",
+      "expected_behavior": ["输出 succeeded", "不输出 done/ok 冒充"],
+      "failure_signals": ["只说完成无英文态", "输出 failed"],
+      "not_testing": ["不测试真实状态持久化", "不测试并发"],
+      "oracle_rationale": "词面 succeeded"
+    }
+  },
+  {
+    "case_id": "workflow.task_completion.004",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "团队流水线角色顺序：pm → architect → programmer。请用箭头列出。",
+    "success_criteria": {"must_contain": ["pm", "architect", "programmer"]},
+    "scripted_answer": "pm → architect → programmer",
+    "test_purpose": {
+      "summary": "验证角色序可复述，而不是漏角色或乱序",
+      "why_this_case": "角色编排漏项是 workflow 交付失败",
+      "expected_behavior": ["含三个角色 id", "顺序可识别"],
+      "failure_signals": ["缺少 programmer", "角色名全中文化无 id"],
+      "not_testing": ["不测试真人审批", "不测试 Agent 路由"],
+      "oracle_rationale": "词面三角色 id"
+    }
+  },
+  {
+    "case_id": "workflow.task_completion.005",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "请输出本流水线 run_id 占位：run_id=WF-42。只回显该值。",
+    "success_criteria": {"must_contain": ["WF-42"]},
+    "scripted_answer": "run_id=WF-42",
+    "test_purpose": {
+      "summary": "验证 run_id 锚点被原样保留，而不是改写编号",
+      "why_this_case": "可观测关联依赖稳定 run_id",
+      "expected_behavior": ["输出 WF-42", "不改成其它编号"],
+      "failure_signals": ["丢掉 run_id", "改写为 WF-43"],
+      "not_testing": ["不测试日志采集", "不测试追踪后端"],
+      "oracle_rationale": "词面 WF-42"
     }
   }
 ]
