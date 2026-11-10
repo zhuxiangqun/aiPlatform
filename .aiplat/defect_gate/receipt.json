@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T13:40:45+08:00",
+  "reviewed_at": "2026-11-10T14:29:42+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "7b4b3dd13ec45d656e0f63c8a2aa25747854ea43157cd9554133b13d4b60d467",
-  "head_sha": "087324c38358172f8bf6b870fc1aa5c84e1a4b0f",
+  "diff_sha256": "a1a2daba78f898ac1f9b2df22a33c0ac5da536562dd131496c95632292334965",
+  "head_sha": "e57c1cf7e34508b04c34168b11002622373a254a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "ToolSubjectAdapter mock tool_trace reuses Agent A3–A5 harness/judge intentionally; claim_eligible forced false; live/MCP deferred; not OBJECT_TYPES. Local lock only."
+  "note": "MultiAgentSubjectAdapter fixture handoff-path only; live multi_agent runtime remains M2 deferred; claim_eligible forced false; not OBJECT_TYPES. Local lock only."
 }
