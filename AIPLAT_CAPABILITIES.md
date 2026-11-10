@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3299
+total_capabilities: 3302
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -663,6 +663,7 @@ scan_hash: 8f9548ec24f4
 | session.regression.v1 + session_regression_status | `session_capability_bank.py` + `eval_session_regression_status` + GET …/store/session-regression-status + EvalSessionRegressionPanel | ✅ | Session Subject 回归配额（SESSION_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | kb.regression.v1 + kb_regression_status | `kb_capability_bank.py` + `eval_kb_regression_status` + GET …/store/kb-regression-status + EvalKbRegressionPanel | ✅ | KB Subject 回归配额（KB_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | code_review.regression.v1 + code_review_regression_status | `code_review_capability_bank.py` + `eval_code_review_regression_status` + GET …/store/code-review-regression-status + EvalCodeReviewRegressionPanel | ✅ | Code Review Subject 回归配额（CODE_REVIEW_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| multi_agent.regression.v1 + multi_agent_regression_status | `multi_agent_capability_bank.py` + `eval_multi_agent_regression_status` + GET …/store/multi-agent-regression-status + EvalMultiAgentRegressionPanel | ✅ | Multi-Agent Subject 回归配额（MULTI_AGENT_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2845,6 +2846,8 @@ scan_hash: 8f9548ec24f4
 | code_review_regression_profile | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_tool_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | tool_regression_profile | `core/apps/eval/service/tool_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_multi_agent_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| multi_agent_regression_profile | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_session_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | session_regression_profile | `core/apps/eval/service/session_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_model_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |

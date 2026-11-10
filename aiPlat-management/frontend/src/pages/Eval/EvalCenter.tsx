@@ -25,6 +25,7 @@ import EvalToolRegressionPanel from './EvalToolRegressionPanel';
 import EvalSessionRegressionPanel from './EvalSessionRegressionPanel';
 import EvalKbRegressionPanel from './EvalKbRegressionPanel';
 import EvalCodeReviewRegressionPanel from './EvalCodeReviewRegressionPanel';
+import EvalMultiAgentRegressionPanel from './EvalMultiAgentRegressionPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
@@ -122,6 +123,7 @@ const ADVANCED_TABS = [
   { id: 'session-regression', label: 'Session Regression' },
   { id: 'kb-regression', label: 'KB Regression' },
   { id: 'code-review-regression', label: 'Code Review Regression' },
+  { id: 'multi-agent-regression', label: 'Multi-Agent Regression' },
   { id: 'p4-status', label: 'P4 Benchmark' },
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
@@ -505,8 +507,13 @@ const EvalCenter: React.FC = () => {
       )}
 
       {tab === 'kb-regression' && <EvalKbRegressionPanel tenantId={TENANT} />}
+
       {tab === 'code-review-regression' && (
         <EvalCodeReviewRegressionPanel tenantId={TENANT} />
+      )}
+
+      {tab === 'multi-agent-regression' && (
+        <EvalMultiAgentRegressionPanel tenantId={TENANT} />
       )}
 
       {tab === 'p4-status' && <EvalP4StatusPanel tenantId={TENANT} />}

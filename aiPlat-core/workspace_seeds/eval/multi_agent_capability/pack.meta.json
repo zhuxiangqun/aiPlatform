@@ -1,12 +1,12 @@
 {
   "schema": "eval.case_pack.v1",
   "pack_id": "multi_agent.capability",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "kind": "curated",
   "status": "draft",
   "claim_eligible": false,
   "scope": "global",
   "subject_kinds": ["multi_agent"],
   "object_types": [],
-  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; live multi_agent runtime remains M2 deferred."
+  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; ≠ live multi_agent runtime (M2 deferred). Regression quotas MULTI_AGENT_V1_CAPS×5."
 }
