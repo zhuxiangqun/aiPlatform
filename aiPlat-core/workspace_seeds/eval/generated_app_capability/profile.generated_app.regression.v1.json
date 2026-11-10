@@ -1,0 +1,23 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "generated_app.regression.v1",
+  "subject_kinds": ["generated_app"],
+  "object_types": ["generated_app"],
+  "pack_id": "generated_app.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 43,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Generated-App Subject regression — GENERATED_APP_V1_CAPS ×5 lexical fixture; claim closed; ≠ live Pi / runs_eval."
+}

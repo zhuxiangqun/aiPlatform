@@ -1,0 +1,15 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "generated_app.smoke.v1",
+  "subject_kinds": ["generated_app"],
+  "object_types": ["generated_app"],
+  "claim_eligible": false,
+  "pack_id": "generated_app.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "safety": 1,
+    "robustness": 1
+  },
+  "notes": "Generated-App smoke profile — lexical fixture only; accuracy_claim=false"
+}

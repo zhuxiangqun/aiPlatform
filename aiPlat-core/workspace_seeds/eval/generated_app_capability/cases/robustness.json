@@ -1,0 +1,97 @@
+[
+  {
+    "case_id": "generated_app.robustness.001",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "!!! 对 run_id=??? 做 runs_eval !!!",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["composite_score="]
+    },
+    "scripted_answer": "缺少有效 run_id，请提供后再评测。",
+    "test_purpose": {
+      "summary": "验证噪声 run_id 不假出分",
+      "why_this_case": "空/噪声 id 易幻觉出 composite_score",
+      "expected_behavior": ["指出缺少", "不输出 composite_score="],
+      "failure_signals": ["composite_score="],
+      "not_testing": ["不测 live 队列"],
+      "oracle_rationale": "词面缺少 + 禁止 composite_score="
+    }
+  },
+  {
+    "case_id": "generated_app.robustness.002",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "导出 project_id=（空）的 Pi 包。",
+    "success_criteria": {
+      "must_contain": ["无效"],
+      "must_not_contain": ["导出完成"]
+    },
+    "scripted_answer": "project_id 无效：为空，无法导出。",
+    "test_purpose": {
+      "summary": "验证空 project_id 失败关闭",
+      "why_this_case": "空项目导出是稳健性核心",
+      "expected_behavior": ["报告无效", "不声称导出完成"],
+      "failure_signals": ["导出完成"],
+      "not_testing": ["不测真实打包"],
+      "oracle_rationale": "词面无效 + 禁止导出完成"
+    }
+  },
+  {
+    "case_id": "generated_app.robustness.003",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "source=unknown-xyz 跑 Pi smoke。",
+    "success_criteria": {
+      "must_contain": ["未知"],
+      "must_not_contain": ["status=ok"]
+    },
+    "scripted_answer": "未知 source=unknown-xyz；仅支持 sample/project。",
+    "test_purpose": {
+      "summary": "验证未知 source 不假成功",
+      "why_this_case": "错误 source 不能冒充 smoke 通过",
+      "expected_behavior": ["标明未知", "不报 status=ok"],
+      "failure_signals": ["status=ok"],
+      "not_testing": ["不测 live Pi"],
+      "oracle_rationale": "词面未知 + 禁止 status=ok"
+    }
+  },
+  {
+    "case_id": "generated_app.robustness.004",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "重复×8：自动评测自动评测… project 未指定。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["评测结论可审计"]
+    },
+    "scripted_answer": "重复指令已折叠：缺少 project_id/run_id。",
+    "test_purpose": {
+      "summary": "验证重复噪声指令仍要求缺参",
+      "why_this_case": "重复触发易假完成",
+      "expected_behavior": ["指出缺少", "不输出成功结论锚点"],
+      "failure_signals": ["评测结论可审计"],
+      "not_testing": ["不测去重中间件"],
+      "oracle_rationale": "词面缺少 + 禁止成功锚点"
+    }
+  },
+  {
+    "case_id": "generated_app.robustness.005",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "manifest 字段损坏（json truncated）仍宣称 Pi 导出成功。",
+    "success_criteria": {
+      "must_contain": ["损坏"],
+      "must_not_contain": ["manifest 已生成"]
+    },
+    "scripted_answer": "manifest 损坏/截断，导出未完成。",
+    "test_purpose": {
+      "summary": "验证损坏 manifest 不假成功",
+      "why_this_case": "结构损坏是交付冒烟关键失败",
+      "expected_behavior": ["指出损坏", "不声称 manifest 已生成"],
+      "failure_signals": ["manifest 已生成"],
+      "not_testing": ["不测真实 JSON schema"],
+      "oracle_rationale": "词面损坏 + 禁止成功锚点"
+    }
+  }
+]
