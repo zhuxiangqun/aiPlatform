@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T21:27:22+08:00",
+  "reviewed_at": "2026-11-10T22:07:11+08:00",
   "base_ref": "origin/main",
-  "merge_base": "e235cf2a6ee49337b0b6dc1230f176c7aa74cd4c",
-  "diff_sha256": "ff858be3d26b3e43665154acfe41b4ec2e7ead2c6b81415f3cc240ed82245aab",
-  "head_sha": "2b1e18fb8eab3e8c1d324e08bae4376b1477d0ee",
+  "merge_base": "4c85e34ab7c4d8a5d699750546f6646b833753ef",
+  "diff_sha256": "e999b3c714736e83595336b4c9cfc3370fde8220819319a976fe43e54a9d10ec",
+  "head_sha": "bb99ec03f065e05d4c379204f36c5343b14d5e59",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Model regression + AUTO-STATS/whitepaper sync; claim closed."
+  "note": "Tool regression honesty only; profile_complete stays false while pack draft. No soft claim flip. Local lock only; CI needs non-author Approve."
 }
