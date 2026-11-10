@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3226
+total_capabilities: 3273
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -652,11 +652,25 @@ scan_hash: 8f9548ec24f4
 | estimate_m2_deferred_modes / validate_runtime_parts / assert_m2_not_live | `core/apps/eval/service/mode_deferred_estimate.py` | ✅ | M2 另估；deferred≠unknown；runtime_parts 门；禁 live；生成物适用：已接线 | 本批 |
 | eval_estimate_m2_deferred_modes / eval_validate_m2_runtime_parts | `core/api/core_facade.py` | ✅ | CoreFacade M2 入口；生成物适用：已接线 | 本批 |
 | m2_deferred_estimate.v1 | `workspace_seeds/eval/agent_capability/` | ✅ | multi_agent/pipeline/operator 工期与 parts 契约；生成物适用：已接线 | 本批 |
-| get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考 + Prompt）；生成物适用：已接线 | 已合入 |
+| get_subject_adapter | `core/apps/eval/service/subject_adapter.py` | ✅ | EvalSubjectAdapter registry（Agent 参考 + Prompt/Workflow/Model）；生成物适用：已接线 | 已合入 |
 | PromptSubjectAdapter / prompt.capability bank | `core/apps/eval/service/subject_adapter.py` + `prompt_capability_bank.py` + `workspace_seeds/eval/prompt_capability/` | ✅ | ADR 扩展首个非 Agent Subject；lexical fixture；claim=false；生成物适用：已接线 | 本批 |
 | eval_list_subject_kinds / eval_prompt_capability_* / eval_run_prompt_capability_smoke | `core/api/core_facade.py` | ✅ | Prompt 目录/校验/种子库/fixture smoke 门面；≠ live accuracy；生成物适用：已接线 | 本批 |
 | WorkflowSubjectAdapter / workflow.capability bank | `core/apps/eval/service/subject_adapter.py` + `workflow_capability_bank.py` + `workspace_seeds/eval/workflow_capability/` | ✅ | ADR Prompt 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
+| ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
+| eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
+| KbSubjectAdapter / kb.capability bank | `core/apps/eval/service/subject_adapter.py` + `kb_capability_bank.py` + `workspace_seeds/eval/kb_capability/` | ✅ | ADR Model 之后；retrieval fixture（对齐 package kb_rag）；非 OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
+| eval_kb_capability_* / eval_run_kb_capability_smoke | `core/api/core_facade.py` | ✅ | KB 目录/校验/种子库/fixture smoke；≠ live RAG accuracy；生成物适用：已接线 | 本批 |
+| CodeReviewSubjectAdapter / code_review.capability bank | `core/apps/eval/service/subject_adapter.py` + `code_review_capability_bank.py` + `workspace_seeds/eval/code_review_capability/` | ✅ | ADR KB 之后；gold set match（对齐 package code_review_gold）；非 OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
+| eval_code_review_capability_* / eval_run_code_review_capability_smoke | `core/api/core_facade.py` | ✅ | Code Review 目录/校验/种子库/fixture smoke；≠ live autoreview E2E；生成物适用：已接线 | 本批 |
+| SessionSubjectAdapter / session.capability bank | `core/apps/eval/service/subject_adapter.py` + `session_capability_bank.py` + `workspace_seeds/eval/session_capability/` | ✅ | ADR Code Review 之后；多轮 fixture（对齐 package session_eval）；非 OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
+| eval_session_capability_* / eval_run_session_capability_smoke | `core/api/core_facade.py` | ✅ | Session 目录/校验/种子库/fixture smoke；≠ 长程 Agent；生成物适用：已接线 | 本批 |
+| ToolSubjectAdapter / tool.capability bank | `core/apps/eval/service/subject_adapter.py` + `tool_capability_bank.py` + `workspace_seeds/eval/tool_capability/` | ✅ | ADR Session 之后；mock tool_trace（复用 harness+judge_tool_trace A3–A5）；非 OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
+| eval_tool_capability_* / eval_run_tool_capability_smoke | `core/api/core_facade.py` | ✅ | Tool/MCP 目录/校验/种子库/fixture smoke；≠ live tools/MCP；生成物适用：已接线 | 本批 |
+| MultiAgentSubjectAdapter / multi_agent.capability bank | `core/apps/eval/service/subject_adapter.py` + `multi_agent_capability_bank.py` + `workspace_seeds/eval/multi_agent_capability/` | ✅ | ADR Tool 之后；fixture handoff path；非 OBJECT_TYPES；claim=false；live 仍 M2 deferred；生成物适用：已接线 | 本批 |
+| eval_multi_agent_capability_* / eval_run_multi_agent_capability_smoke | `core/api/core_facade.py` | ✅ | Multi-Agent 目录/校验/种子库/fixture smoke；≠ live runtime；生成物适用：已接线 | 本批 |
+| Method track (Arena/G2b/S1) catalog + Subject refuse | `core/apps/eval/service/method_track.py` + `subject_adapter.get_subject_adapter` | ✅ | ADR 落地顺序 step 6：方法轨强制；禁止升 Subject/OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
+| eval_list_method_kinds / eval_method_catalog / eval_assert_subject_kinds_exclude_methods | `core/api/core_facade.py` | ✅ | Method 目录/诚实声明/Subject 交叉校验门面；生成物适用：已接线 | 本批 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_agent_capability_catalog | `core/api/core_facade.py` | ✅ | Agent 能力目录（in_scope/unknown）；生成物适用：已接线 | 已合入 |
@@ -2814,6 +2828,39 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| assert_not_subject_method | `core/apps/eval/service/method_track.py` | ✅ | 自动同步 | 已合入 |
+| MethodTrackError | `core/apps/eval/service/method_track.py` | ✅ | 自动同步 | 已合入 |
+| eval_multi_agent_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| multi_agent_smoke_profile | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_multi_agent_capability_cases | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| MultiAgentCapabilityBankError | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_multi_agent_capability_bank | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_tool_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| tool_smoke_profile | `core/apps/eval/service/tool_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_tool_capability_cases | `core/apps/eval/service/tool_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| ToolCapabilityBankError | `core/apps/eval/service/tool_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_tool_capability_bank | `core/apps/eval/service/tool_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_session_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| session_smoke_profile | `core/apps/eval/service/session_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_session_capability_cases | `core/apps/eval/service/session_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| SessionCapabilityBankError | `core/apps/eval/service/session_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_session_capability_bank | `core/apps/eval/service/session_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_code_review_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| code_review_smoke_profile | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_code_review_capability_cases | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| CodeReviewCapabilityBankError | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_code_review_capability_bank | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_kb_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| kb_smoke_profile | `core/apps/eval/service/kb_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_kb_capability_cases | `core/apps/eval/service/kb_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| KbCapabilityBankError | `core/apps/eval/service/kb_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_kb_capability_bank | `core/apps/eval/service/kb_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| eval_model_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| model_smoke_profile | `core/apps/eval/service/model_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_model_capability_cases | `core/apps/eval/service/model_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| ModelCapabilityBankError | `core/apps/eval/service/model_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_model_capability_bank | `core/apps/eval/service/model_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| workflow_smoke_profile | `core/apps/eval/service/workflow_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_workflow_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | build_workflow_capability_cases | `core/apps/eval/service/workflow_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | WorkflowCapabilityBankError | `core/apps/eval/service/workflow_capability_bank.py` | ✅ | 自动同步 | 已合入 |
@@ -4125,7 +4172,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 526 | 1 | 527 |
+| Harness 执行引擎 | 540 | 1 | 541 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4138,7 +4185,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 467 | 0 | 467 |
+| 评估系统 | 500 | 0 | 500 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4170,7 +4217,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3216** | **10** | **3226** |
+| **总计** | **3263** | **10** | **3273** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

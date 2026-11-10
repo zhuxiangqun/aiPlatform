@@ -4,7 +4,7 @@
 |---|---|
 | 对象/场景 | 受控检索 fixture：hit 覆盖、expected IDs、groundedness/文本质量线索 |
 | Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
-| 当前 runner/judge 及版本 | **Canonical**：package `kb_rag`（`ADR_CANONICAL_RUNNERS_V1.md`）。**Legacy 只读**：core `kb_eval_ops` / `rag_evaluator`（另一套维度，不可混称同一准确率）。UI Knowledge → `/eval?tab=knowledge`。 |
+| 当前 runner/judge 及版本 | **Canonical**：package `kb_rag`（`ADR_CANONICAL_RUNNERS_V1.md`）。**SubjectAdapter**：`KbSubjectAdapter` + `kb.capability` 种子库（fixture hits/expected_ids，claim=false；**尚未**升一等 `OBJECT_TYPES`）。**Legacy 只读**：core `kb_eval_ops` / `rag_evaluator`（另一套维度，不可混称同一准确率）。UI Knowledge → `/eval?tab=knowledge`。 |
 | 任务集、来源及现有样本量 | `payload.query` + `hits`/`docs` + 可选 `expected_ids`；无 hits → fail-closed。G2b 配额建议 KB/RAG=20。 |
 | 当前实际测量维度 | hit_count、expected_ids 覆盖、groundedness（token-overlap）、text_quality/safety（P1 metrics）。core 路径另有 faithfulness 等。 |
 | 判定方法（exact/rule/gold/human/LLM judge 等） | rule：有 `expected_ids` 则全部命中；否则 hits 非空即 ok。只读，不写 KB。 |

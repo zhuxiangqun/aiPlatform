@@ -1,0 +1,31 @@
+[
+  {
+    "case_id": "multi_agent.error_recovery.001",
+    "capabilities": ["error_recovery"],
+    "prompt": "写作者失败后转恢复官重试。",
+    "recovery_agent": "recovery",
+    "handoffs": [
+      {"from": "coordinator", "to": "writer", "message": "写报告"},
+      {"from": "writer", "to": "recovery", "message": "写失败，转恢复"},
+      {"from": "recovery", "to": "coordinator", "message": "已用备份模板完成"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "writer"],
+      ["writer", "recovery"],
+      ["recovery", "coordinator"]
+    ],
+    "final_answer": "报告已用备份模板生成。",
+    "expected_final": "报告已用备份模板生成。",
+    "test_purpose": {
+      "summary": "验证失败后必须 handoff 到 recovery 角色",
+      "why_this_case": "Multi-Agent 恢复能力体现为 recovery 边出现",
+      "expected_behavior": [
+        "存在到 recovery 的 handoff",
+        "路径与终稿 exact"
+      ],
+      "failure_signals": ["失败后静默结束", "未转恢复官"],
+      "not_testing": ["不测真实故障注入", "不测 live runtime"],
+      "oracle_rationale": "规则 oracle：recovery handoff + path/final exact"
+    }
+  }
+]

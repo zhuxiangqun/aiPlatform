@@ -1,0 +1,13 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "model.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "object_types": [
+    "model"
+  ],
+  "notes": "Model Subject capability bank (ADR after Workflow). Content authority: cases/*.json + pack.meta.json. Lexical fixture via ModelSubjectAdapter; ≠ accuracy."
+}

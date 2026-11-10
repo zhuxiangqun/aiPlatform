@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2438
+total_capabilities: 2495
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 454
+    caps_count: 511
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8110,10 +8110,58 @@ domains:
         type: class
         signature: 'Workflow Subject adapter — lexical fixture; claim_eligible=false.'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: ModelSubjectAdapter
+        type: class
+        signature: 'Model Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: KbSubjectAdapter
+        type: class
+        signature: 'KB Subject adapter — retrieval fixture (kb_rag oracle); claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: CodeReviewSubjectAdapter
+        type: class
+        signature: 'Code Review Subject adapter — gold set match; claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: SessionSubjectAdapter
+        type: class
+        signature: 'Session Subject adapter — multi-turn fixture (session_eval oracle); claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: ToolSubjectAdapter
+        type: class
+        signature: 'Tool/MCP Subject adapter — mock tool_trace; claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: MultiAgentSubjectAdapter
+        type: class
+        signature: 'Multi-Agent Subject adapter — fixture handoff path; claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
       - symbol: list_subject_kinds
         type: function
         signature: 'list_subject_kinds()'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: MethodTrackError
+        type: class
+        signature: 'Method kind misused as Subject (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: list_method_kinds
+        type: function
+        signature: 'list_method_kinds()→List[str]'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: method_catalog
+        type: function
+        signature: 'method_catalog()→List[Dict]; Arena/G2b/S1 honesty'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: assert_not_subject_method
+        type: function
+        signature: 'assert_not_subject_method(kind)→None; raises MethodTrackError'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: assert_subject_kinds_exclude_methods
+        type: function
+        signature: 'assert_subject_kinds_exclude_methods(kinds)→Dict'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: is_method_kind
+        type: function
+        signature: 'is_method_kind(kind)→bool'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
       - symbol: validate_prompt_capability_bank
         type: function
         signature: 'validate_prompt_capability_bank(seed_dir?)→Dict; claim=false'
@@ -8154,9 +8202,61 @@ domains:
         type: function
         signature: 'workflow_smoke_profile(seed_dir?)→Dict'
         module: aiPlat-core/core/apps/eval/service/workflow_capability_bank.py
+      - symbol: validate_model_capability_bank
+        type: function
+        signature: 'validate_model_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/model_capability_bank.py
+      - symbol: run_model_capability_smoke
+        type: function
+        signature: 'run_model_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/model_capability_bank.py
+      - symbol: ModelCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/model_capability_bank.py
+      - symbol: build_model_capability_cases
+        type: function
+        signature: 'build_model_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/model_capability_bank.py
+      - symbol: model_smoke_profile
+        type: function
+        signature: 'model_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/model_capability_bank.py
+      - symbol: validate_kb_capability_bank
+        type: function
+        signature: 'validate_kb_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/kb_capability_bank.py
+      - symbol: run_kb_capability_smoke
+        type: function
+        signature: 'run_kb_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/kb_capability_bank.py
+      - symbol: KbCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/kb_capability_bank.py
+      - symbol: build_kb_capability_cases
+        type: function
+        signature: 'build_kb_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/kb_capability_bank.py
+      - symbol: kb_smoke_profile
+        type: function
+        signature: 'kb_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/kb_capability_bank.py
       - symbol: eval_list_subject_kinds
         type: function
         signature: 'eval_list_subject_kinds()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_list_method_kinds
+        type: function
+        signature: 'eval_list_method_kinds()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_method_catalog
+        type: function
+        signature: 'eval_method_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_assert_subject_kinds_exclude_methods
+        type: function
+        signature: 'eval_assert_subject_kinds_exclude_methods(subject_kinds?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: eval_prompt_capability_catalog
         type: function
@@ -8173,6 +8273,134 @@ domains:
       - symbol: eval_run_workflow_capability_smoke
         type: function
         signature: 'eval_run_workflow_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_model_capability_catalog
+        type: function
+        signature: 'eval_model_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_model_capability_smoke
+        type: function
+        signature: 'eval_run_model_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_kb_capability_catalog
+        type: function
+        signature: 'eval_kb_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_kb_capability_smoke
+        type: function
+        signature: 'eval_run_kb_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: validate_code_review_capability_bank
+        type: function
+        signature: 'validate_code_review_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/code_review_capability_bank.py
+      - symbol: run_code_review_capability_smoke
+        type: function
+        signature: 'run_code_review_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/code_review_capability_bank.py
+      - symbol: CodeReviewCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/code_review_capability_bank.py
+      - symbol: build_code_review_capability_cases
+        type: function
+        signature: 'build_code_review_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/code_review_capability_bank.py
+      - symbol: code_review_smoke_profile
+        type: function
+        signature: 'code_review_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/code_review_capability_bank.py
+      - symbol: eval_code_review_capability_catalog
+        type: function
+        signature: 'eval_code_review_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_code_review_capability_smoke
+        type: function
+        signature: 'eval_run_code_review_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: validate_session_capability_bank
+        type: function
+        signature: 'validate_session_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/session_capability_bank.py
+      - symbol: run_session_capability_smoke
+        type: function
+        signature: 'run_session_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/session_capability_bank.py
+      - symbol: SessionCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/session_capability_bank.py
+      - symbol: build_session_capability_cases
+        type: function
+        signature: 'build_session_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/session_capability_bank.py
+      - symbol: session_smoke_profile
+        type: function
+        signature: 'session_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/session_capability_bank.py
+      - symbol: eval_session_capability_catalog
+        type: function
+        signature: 'eval_session_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_session_capability_smoke
+        type: function
+        signature: 'eval_run_session_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: validate_tool_capability_bank
+        type: function
+        signature: 'validate_tool_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_bank.py
+      - symbol: run_tool_capability_smoke
+        type: function
+        signature: 'run_tool_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_bank.py
+      - symbol: ToolCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_bank.py
+      - symbol: build_tool_capability_cases
+        type: function
+        signature: 'build_tool_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_bank.py
+      - symbol: tool_smoke_profile
+        type: function
+        signature: 'tool_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/tool_capability_bank.py
+      - symbol: eval_tool_capability_catalog
+        type: function
+        signature: 'eval_tool_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_tool_capability_smoke
+        type: function
+        signature: 'eval_run_tool_capability_smoke(limit=20)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: validate_multi_agent_capability_bank
+        type: function
+        signature: 'validate_multi_agent_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py
+      - symbol: run_multi_agent_capability_smoke
+        type: function
+        signature: 'run_multi_agent_capability_smoke(seed_dir?,limit=20)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py
+      - symbol: MultiAgentCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py
+      - symbol: build_multi_agent_capability_cases
+        type: function
+        signature: 'build_multi_agent_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py
+      - symbol: multi_agent_smoke_profile
+        type: function
+        signature: 'multi_agent_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py
+      - symbol: eval_multi_agent_capability_catalog
+        type: function
+        signature: 'eval_multi_agent_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_multi_agent_capability_smoke
+        type: function
+        signature: 'eval_run_multi_agent_capability_smoke(limit=20)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: "load_agent_capability_cases"
         type: "function"

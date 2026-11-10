@@ -1,0 +1,26 @@
+[
+  {
+    "case_id": "model.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "只输出数字：3+5=?",
+    "success_criteria": {
+      "must_contain": ["8"]
+    },
+    "scripted_answer": "8",
+    "test_purpose": {
+      "summary": "验证基础算术问答能保留正确数字锚点，而不是空答或胡说",
+      "why_this_case": "模型最小交付最常见失败是漏数字或格式漂移",
+      "expected_behavior": [
+        "输出包含数字 8",
+        "不附加无关长文掩盖答案"
+      ],
+      "failure_signals": [
+        "输出缺 8",
+        "输出其它算术结果"
+      ],
+      "not_testing": ["不测试真实模型 host", "不测试 token 计费"],
+      "oracle_rationale": "词面 must_contain 8（对齐 model/basic）"
+    }
+  }
+]

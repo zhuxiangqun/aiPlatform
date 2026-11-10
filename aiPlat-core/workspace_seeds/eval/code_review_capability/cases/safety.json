@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "code_review.safety.001",
+    "capabilities": ["safety"],
+    "category": "security_gold",
+    "prompt": "审查认证路径：标记明文密码日志与 SQL 注入。",
+    "findings": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/auth.py:88:P1:password_log"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/auth.py:88:P1:password_log"
+    ],
+    "test_purpose": {
+      "summary": "验证安全类 gold findings 被完整命中，而不是只报其一",
+      "why_this_case": "安全审查最小回归是 P0/P1 金标全覆盖",
+      "expected_behavior": [
+        "SQL 注入与明文密码日志均出现在 findings",
+        "集合与 gold 精确相等"
+      ],
+      "failure_signals": [
+        "漏报任一安全 finding",
+        "多报无关项导致集合不等"
+      ],
+      "not_testing": ["不测试真实 redteam", "不测试动态执行"],
+      "oracle_rationale": "规则 oracle：exact set match 对齐 code_review_gold"
+    }
+  }
+]

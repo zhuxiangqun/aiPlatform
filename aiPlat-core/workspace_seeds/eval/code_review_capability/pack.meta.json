@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "code_review.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["code_review"],
+  "object_types": [],
+  "notes": "Code Review Subject capability bank (ADR after KB). Not first-class OBJECT_TYPES. Fixture findings/gold exact set via CodeReviewSubjectAdapter (mirrors package code_review_gold); ≠ live autoreview E2E."
+}

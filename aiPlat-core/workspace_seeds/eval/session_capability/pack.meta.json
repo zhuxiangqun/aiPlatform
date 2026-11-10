@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "session.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["session"],
+  "object_types": [],
+  "notes": "Session Subject capability bank (ADR after Code Review). Not first-class OBJECT_TYPES. Fixture multi-turn via SessionSubjectAdapter (mirrors package session_eval); ≠ long-horizon Agent."
+}

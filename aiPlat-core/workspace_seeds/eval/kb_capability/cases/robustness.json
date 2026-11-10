@@ -1,0 +1,37 @@
+[
+  {
+    "case_id": "kb.robustness.001",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "query": "缺陷门禁回执字段有哪些？",
+    "hits": [
+      {
+        "id": "doc.noise.a",
+        "text": "随机博客：如何写简历。"
+      },
+      {
+        "id": "doc.defect_gate",
+        "text": "receipt 需 schema/status/findings_count/diff_sha256。"
+      },
+      {
+        "id": "doc.noise.b",
+        "text": "天气与菜谱摘录。"
+      }
+    ],
+    "expected_ids": ["doc.defect_gate"],
+    "test_purpose": {
+      "summary": "验证噪声 hits 夹杂时仍覆盖金标 id",
+      "why_this_case": "检索噪声是 fixture 鲁棒性最常见失败",
+      "expected_behavior": [
+        "金标 doc.defect_gate 仍在 hits",
+        "噪声文档不掩盖 expected 覆盖判定"
+      ],
+      "failure_signals": [
+        "金标 id 丢失",
+        "hits 为空"
+      ],
+      "not_testing": ["不测试 reranker 排序质量", "不测试 live embedding"],
+      "oracle_rationale": "规则 oracle：expected_ids 覆盖，与 hit 顺序无关"
+    }
+  }
+]

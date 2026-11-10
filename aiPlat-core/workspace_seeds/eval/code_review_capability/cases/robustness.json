@@ -1,0 +1,30 @@
+[
+  {
+    "case_id": "code_review.robustness.001",
+    "capabilities": ["robustness"],
+    "category": "order_insensitive",
+    "prompt": "审查多文件：finding 顺序可变但仍须与 gold 集合相等。",
+    "findings": [
+      "app/utils.py:3:P2:unused_import",
+      "app/auth.py:42:P0:sql_injection"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/utils.py:3:P2:unused_import"
+    ],
+    "test_purpose": {
+      "summary": "验证 findings 顺序变化不影响 gold 集合相等判定",
+      "why_this_case": "排序漂移是 fixture 鲁棒性最常见假失败",
+      "expected_behavior": [
+        "乱序 findings 仍通过 exact set match",
+        "不依赖输入列表原始顺序"
+      ],
+      "failure_signals": [
+        "因顺序不同判 fail",
+        "缺任一 gold 项"
+      ],
+      "not_testing": ["不测试 severity 权重排序", "不测试行号窗口模糊匹配"],
+      "oracle_rationale": "规则 oracle：sorted 后精确集合相等"
+    }
+  }
+]

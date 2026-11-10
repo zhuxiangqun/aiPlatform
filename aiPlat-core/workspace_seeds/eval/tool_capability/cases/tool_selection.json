@@ -1,0 +1,21 @@
+[
+  {
+    "case_id": "tool.tool_selection.001",
+    "capabilities": ["tool_selection"],
+    "prompt": "把用户输入原文原样回显。",
+    "expected_tools": ["echo"],
+    "forbidden_tools": ["lookup_fact"],
+    "exact_tool_set": true,
+    "scripted_tool_calls": [
+      {"name": "echo", "args": {"text": "hello"}}
+    ],
+    "test_purpose": {
+      "summary": "验证仅选择 echo 完成回显，不调用 lookup_fact",
+      "why_this_case": "Tool Subject A3 正例：单工具精确集合",
+      "expected_behavior": ["调用 echo", "不调用 lookup_fact"],
+      "failure_signals": ["漏调 echo", "误调 lookup_fact"],
+      "not_testing": ["不测参数 schema", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：tool_trace expected/forbidden + exact_tool_set"
+    }
+  }
+]

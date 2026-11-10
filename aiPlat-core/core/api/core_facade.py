@@ -7494,6 +7494,33 @@ def eval_list_subject_kinds() -> list:
     return list_subject_kinds()
 
 
+def eval_list_method_kinds() -> list:
+    """Method-track kinds (Arena/G2b/S1) — not Subjects / not OBJECT_TYPES."""
+    from core.apps.eval.service.method_track import list_method_kinds
+
+    return list_method_kinds()
+
+
+def eval_method_catalog() -> list:
+    """Method-track catalog with honesty (ADR refuse Subject promotion)."""
+    from core.apps.eval.service.method_track import method_catalog
+
+    return method_catalog()
+
+
+def eval_assert_subject_kinds_exclude_methods(
+    subject_kinds: Optional[list] = None,
+) -> Dict[str, Any]:
+    """Fail-closed check: Subject list must not contain Method kinds."""
+    from core.apps.eval.service.method_track import (
+        assert_subject_kinds_exclude_methods,
+    )
+    from core.apps.eval.service.subject_adapter import list_subject_kinds
+
+    kinds = list(subject_kinds) if subject_kinds is not None else list_subject_kinds()
+    return assert_subject_kinds_exclude_methods(kinds)
+
+
 def eval_prompt_capability_catalog() -> list:
     """Prompt SubjectAdapter capability catalog (prompt v1 subset)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
@@ -7572,6 +7599,267 @@ def eval_run_workflow_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     )
 
     return run_workflow_capability_smoke(limit=limit)
+
+
+def eval_model_capability_catalog() -> list:
+    """Model SubjectAdapter capability catalog (model v1 subset)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("model").capability_catalog()
+
+
+def eval_validate_model_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """ModelSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("model").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "model"}
+
+
+def eval_validate_model_capability_bank() -> Dict[str, Any]:
+    """Validate curated model.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.model_capability_bank import (
+        validate_model_capability_bank,
+    )
+
+    return validate_model_capability_bank()
+
+
+def eval_list_model_capability_cases() -> list:
+    """List model.capability curated cases."""
+    from core.apps.eval.service.model_capability_bank import (
+        build_model_capability_cases,
+    )
+
+    return build_model_capability_cases()
+
+
+def eval_run_model_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over model.capability bank (≠ live/accuracy)."""
+    from core.apps.eval.service.model_capability_bank import (
+        run_model_capability_smoke,
+    )
+
+    return run_model_capability_smoke(limit=limit)
+
+
+def eval_kb_capability_catalog() -> list:
+    """KB SubjectAdapter capability catalog (kb v1 subset; ≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("kb").capability_catalog()
+
+
+def eval_validate_kb_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """KbSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("kb").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "kb"}
+
+
+def eval_validate_kb_capability_bank() -> Dict[str, Any]:
+    """Validate curated kb.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.kb_capability_bank import (
+        validate_kb_capability_bank,
+    )
+
+    return validate_kb_capability_bank()
+
+
+def eval_list_kb_capability_cases() -> list:
+    """List kb.capability curated cases."""
+    from core.apps.eval.service.kb_capability_bank import (
+        build_kb_capability_cases,
+    )
+
+    return build_kb_capability_cases()
+
+
+def eval_run_kb_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over kb.capability bank (≠ live RAG accuracy)."""
+    from core.apps.eval.service.kb_capability_bank import (
+        run_kb_capability_smoke,
+    )
+
+    return run_kb_capability_smoke(limit=limit)
+
+
+def eval_code_review_capability_catalog() -> list:
+    """Code Review SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("code_review").capability_catalog()
+
+
+def eval_validate_code_review_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CodeReviewSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("code_review").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "code_review"}
+
+
+def eval_validate_code_review_capability_bank() -> Dict[str, Any]:
+    """Validate curated code_review.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        validate_code_review_capability_bank,
+    )
+
+    return validate_code_review_capability_bank()
+
+
+def eval_list_code_review_capability_cases() -> list:
+    """List code_review.capability curated cases."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        build_code_review_capability_cases,
+    )
+
+    return build_code_review_capability_cases()
+
+
+def eval_run_code_review_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over code_review.capability (≠ live E2E)."""
+    from core.apps.eval.service.code_review_capability_bank import (
+        run_code_review_capability_smoke,
+    )
+
+    return run_code_review_capability_smoke(limit=limit)
+
+
+def eval_session_capability_catalog() -> list:
+    """Session SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("session").capability_catalog()
+
+
+def eval_validate_session_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SessionSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("session").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "session"}
+
+
+def eval_validate_session_capability_bank() -> Dict[str, Any]:
+    """Validate curated session.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.session_capability_bank import (
+        validate_session_capability_bank,
+    )
+
+    return validate_session_capability_bank()
+
+
+def eval_list_session_capability_cases() -> list:
+    """List session.capability curated cases."""
+    from core.apps.eval.service.session_capability_bank import (
+        build_session_capability_cases,
+    )
+
+    return build_session_capability_cases()
+
+
+def eval_run_session_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over session.capability (≠ long-horizon Agent)."""
+    from core.apps.eval.service.session_capability_bank import (
+        run_session_capability_smoke,
+    )
+
+    return run_session_capability_smoke(limit=limit)
+
+
+def eval_tool_capability_catalog() -> list:
+    """Tool/MCP SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("tool").capability_catalog()
+
+
+def eval_validate_tool_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """ToolSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("tool").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "tool"}
+
+
+def eval_validate_tool_capability_bank() -> Dict[str, Any]:
+    """Validate curated tool.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.tool_capability_bank import (
+        validate_tool_capability_bank,
+    )
+
+    return validate_tool_capability_bank()
+
+
+def eval_list_tool_capability_cases() -> list:
+    """List tool.capability curated cases."""
+    from core.apps.eval.service.tool_capability_bank import (
+        build_tool_capability_cases,
+    )
+
+    return build_tool_capability_cases()
+
+
+def eval_run_tool_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over tool.capability (≠ live tools/MCP)."""
+    from core.apps.eval.service.tool_capability_bank import (
+        run_tool_capability_smoke,
+    )
+
+    return run_tool_capability_smoke(limit=limit)
+
+
+def eval_multi_agent_capability_catalog() -> list:
+    """Multi-Agent SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("multi_agent").capability_catalog()
+
+
+def eval_validate_multi_agent_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """MultiAgentSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("multi_agent").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "multi_agent"}
+
+
+def eval_validate_multi_agent_capability_bank() -> Dict[str, Any]:
+    """Validate curated multi_agent.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.multi_agent_capability_bank import (
+        validate_multi_agent_capability_bank,
+    )
+
+    return validate_multi_agent_capability_bank()
+
+
+def eval_list_multi_agent_capability_cases() -> list:
+    """List multi_agent.capability curated cases."""
+    from core.apps.eval.service.multi_agent_capability_bank import (
+        build_multi_agent_capability_cases,
+    )
+
+    return build_multi_agent_capability_cases()
+
+
+def eval_run_multi_agent_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture handoff-path smoke over multi_agent.capability (≠ live M2 runtime)."""
+    from core.apps.eval.service.multi_agent_capability_bank import (
+        run_multi_agent_capability_smoke,
+    )
+
+    return run_multi_agent_capability_smoke(limit=limit)
+
 
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""

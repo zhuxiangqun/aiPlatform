@@ -1,0 +1,28 @@
+[
+  {
+    "case_id": "multi_agent.task_completion.001",
+    "capabilities": ["task_completion"],
+    "prompt": "协调员把摘要任务交给写作者，再收回终稿。",
+    "handoffs": [
+      {"from": "coordinator", "to": "writer", "message": "请写摘要"},
+      {"from": "writer", "to": "coordinator", "message": "摘要已完成"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "writer"],
+      ["writer", "coordinator"]
+    ],
+    "final_answer": "摘要：缺陷门禁要求零发现回执。",
+    "expected_final": "摘要：缺陷门禁要求零发现回执。",
+    "test_purpose": {
+      "summary": "验证协作路径与终稿精确匹配 fixture handoff 轨迹",
+      "why_this_case": "Multi-Agent fixture 最小交付是路径+终稿 exact",
+      "expected_behavior": [
+        "handoff 边序列完全等于 expected_handoff_path",
+        "final_answer 等于 expected_final"
+      ],
+      "failure_signals": ["路径漂移", "终稿不符"],
+      "not_testing": ["不测 live multi_agent runtime", "不测跨进程消息总线"],
+      "oracle_rationale": "规则 oracle：handoff_path exact + final exact"
+    }
+  }
+]

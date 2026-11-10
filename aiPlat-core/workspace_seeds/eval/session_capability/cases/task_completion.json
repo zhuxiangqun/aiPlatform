@@ -1,0 +1,35 @@
+[
+  {
+    "case_id": "session.task_completion.001",
+    "capabilities": ["task_completion"],
+    "profile": "v0",
+    "category": "exact_match",
+    "turns": [
+      {
+        "prompt": "把「缺陷门禁」缩写记为 DG。",
+        "expected": "已记下：DG=缺陷门禁。",
+        "actual": "已记下：DG=缺陷门禁。"
+      },
+      {
+        "prompt": "复述刚才的缩写定义。",
+        "expected": "DG=缺陷门禁。",
+        "actual": "DG=缺陷门禁。"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证两轮 fixture 均按 expected 精确匹配，满足 v0 轮次下界",
+      "why_this_case": "Session fixture 最小交付是多轮 exact 全过",
+      "expected_behavior": [
+        "每轮 actual == expected",
+        "轮次数落在 v0 的 2–3"
+      ],
+      "failure_signals": [
+        "缺 turns",
+        "任一轮不等",
+        "轮次不足"
+      ],
+      "not_testing": ["不测试长程记忆压缩", "不测试 live Agent 工具循环"],
+      "oracle_rationale": "规则 oracle：profile 内全轮 exact（对齐 package session_eval）"
+    }
+  }
+]

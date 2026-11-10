@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "multi_agent.smoke.v1",
+  "subject_kinds": ["multi_agent"],
+  "claim_eligible": false,
+  "pack_id": "multi_agent.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "clarification": 1,
+    "error_recovery": 1
+  },
+  "notes": "Multi-Agent smoke profile — fixture handoff path only; accuracy_claim=false"
+}

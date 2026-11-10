@@ -11,5 +11,5 @@
 | 是否进入 composite（是/否/部分；说明） | **否（正式质量）**；仅可作 smoke 工程观测；不得当用户偏好/质量胜负。`winner`/`text_quality` 为 report-only（#605）。 |
 | 失败处理（空回复/超时/缺 gold 等） | 缺 a/b → ok=false；prefer 与长度 winner 不一致 → ok=false。 |
 | 证据类型与等级 | **EET-1 smoke / heuristic**；runner 与 stamp 均强制 `evidence_level=smoke`（#606）。 |
-| Gate 资格（可进入/不可进入/有限条件；说明） | **不可进入**发布质量 gate；长度 winner 须在 UI/报告降级为 smoke。 |
+| Gate 资格（可进入/不可进入/有限条件；说明） | **不可进入**发布质量 gate；长度 winner 须在 UI/报告降级为 smoke。**方法轨**：禁止升 `SubjectAdapter` / `OBJECT_TYPES`（`method_track.py`）。 |
 | 不能推出什么 / 已知限制 | 不能当作有效 judge、用户偏好或模型质量胜负；默认保持 smoke，直至干净盲评 integrity 另项签认。 |

@@ -1,0 +1,34 @@
+[
+  {
+    "case_id": "session.clarification.001",
+    "capabilities": ["clarification"],
+    "profile": "v0",
+    "category": "ask_for_info",
+    "turns": [
+      {
+        "prompt": "帮我部署。",
+        "expected": "请问部署目标环境是 staging 还是 production？",
+        "actual": "请问部署目标环境是 staging 还是 production？"
+      },
+      {
+        "prompt": "staging。",
+        "expected": "将按 staging 环境准备部署清单。",
+        "actual": "将按 staging 环境准备部署清单。"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证信息不足时先澄清，再在确认后继续",
+      "why_this_case": "澄清能力在 Session 上体现为先问后做的两轮 exact",
+      "expected_behavior": [
+        "第 1 轮提出环境澄清问句",
+        "第 2 轮确认 staging"
+      ],
+      "failure_signals": [
+        "直接假装已部署",
+        "未问环境"
+      ],
+      "not_testing": ["不测试真实部署副作用", "不测试 live HITL"],
+      "oracle_rationale": "规则 oracle：澄清问句与确认回复均 exact（对齐 session_eval）"
+    }
+  }
+]

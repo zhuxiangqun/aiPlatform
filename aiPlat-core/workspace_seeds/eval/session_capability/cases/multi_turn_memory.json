@@ -1,0 +1,34 @@
+[
+  {
+    "case_id": "session.multi_turn_memory.001",
+    "capabilities": ["multi_turn_memory"],
+    "profile": "v0",
+    "category": "memory_probe",
+    "turns": [
+      {
+        "prompt": "我的项目代号是 ORION-7，请记住。",
+        "expected": "已记住项目代号 ORION-7。",
+        "actual": "已记住项目代号 ORION-7。"
+      },
+      {
+        "prompt": "我刚才说的项目代号是什么？",
+        "expected": "ORION-7",
+        "actual": "ORION-7"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证后轮回答精确复述前轮植入的代号 token",
+      "why_this_case": "多轮记忆探针的最小规则交付是 exact recall",
+      "expected_behavior": [
+        "第 2 轮 actual 精确等于植入代号",
+        "两轮均过"
+      ],
+      "failure_signals": [
+        "漏记代号",
+        "轮次失败"
+      ],
+      "not_testing": ["不测试摘要压缩后的召回", "不测试跨会话持久化"],
+      "oracle_rationale": "规则 oracle：后轮 expected exact 召回前轮植入词（对齐 session_eval）"
+    }
+  }
+]

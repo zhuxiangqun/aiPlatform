@@ -4,7 +4,7 @@
 |---|---|
 | 对象/场景 | Gold finding 集合匹配（静态/半静态；无 sandbox 工具跑审查） |
 | Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
-| 当前 runner/judge 及版本 | package `code_review_gold`（`app/worker/runners/code_review_gold.py`）。另有平台 Code Review Gold API / match-only 脚本（`scripts/eval_code_review_gold.py` 等）— 报告须标路径。 |
+| 当前 runner/judge 及版本 | package `code_review_gold`（`app/worker/runners/code_review_gold.py`）。**SubjectAdapter**：`CodeReviewSubjectAdapter` + `code_review.capability` 种子库（findings/gold exact set，claim=false；**尚未**升一等 `OBJECT_TYPES`）。另有平台 Code Review Gold API / match-only 脚本（`scripts/eval_code_review_gold.py` 等）— 报告须标路径。 |
 | 任务集、来源及现有样本量 | `payload.findings` vs `payload.gold`；缺 gold → fail。workspace seeds / gold 目录可提供固定集。G2b 配额建议 Code Review=15；P0 切片需最小 n。 |
 | 当前实际测量维度 | exact set match、coverage、P1 metrics（precision/recall/F1 等在 semantics 层按实现）；P0 recall 在更完整 gold 路径中。 |
 | 判定方法（exact/rule/gold/human/LLM judge 等） | gold：`sorted(str(findings)) == sorted(str(gold))` 精确集合相等。 |

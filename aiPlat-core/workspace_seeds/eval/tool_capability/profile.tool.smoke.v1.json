@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "tool.smoke.v1",
+  "subject_kinds": ["tool"],
+  "claim_eligible": false,
+  "pack_id": "tool.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "tool_selection": 1,
+    "tool_args": 1,
+    "tool_result_use": 1
+  },
+  "notes": "Tool smoke profile — mock tool_trace only; accuracy_claim=false"
+}

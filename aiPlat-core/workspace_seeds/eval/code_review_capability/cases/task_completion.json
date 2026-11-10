@@ -1,0 +1,24 @@
+[
+  {
+    "case_id": "code_review.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "exact_match",
+    "prompt": "审查 app/auth.py：标记 f-string SQL 注入风险。",
+    "findings": ["app/auth.py:42:P0:sql_injection"],
+    "gold": ["app/auth.py:42:P0:sql_injection"],
+    "test_purpose": {
+      "summary": "验证 findings 与 gold 精确集合相等，而不是漏报或多余项",
+      "why_this_case": "Code Review fixture 最小交付是 exact set match",
+      "expected_behavior": [
+        "findings 字符串化集合等于 gold",
+        "不多报无关 finding"
+      ],
+      "failure_signals": [
+        "缺 gold",
+        "集合不相等"
+      ],
+      "not_testing": ["不测试真实仓库 autoreview", "不测试 LLM 审查质量"],
+      "oracle_rationale": "规则 oracle：sorted(str(findings)) == sorted(str(gold))（对齐 package code_review_gold）"
+    }
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "session.smoke.v1",
+  "subject_kinds": ["session"],
+  "claim_eligible": false,
+  "pack_id": "session.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "multi_turn_memory": 1,
+    "clarification": 1
+  },
+  "notes": "Session smoke profile — fixture multi-turn only; accuracy_claim=false"
+}

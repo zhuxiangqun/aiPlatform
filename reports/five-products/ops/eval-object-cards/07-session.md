@@ -4,7 +4,7 @@
 |---|---|
 | 对象/场景 | 有限多轮对话：v0=2–3 轮、v1=5–8 轮；先验轮次纯文本拼进下一轮 prompt |
 | Owner / 日期 | 朱向群（已核实） / 2026-11-05 |
-| 当前 runner/judge 及版本 | package `session_eval`（`app/worker/runners/session_eval.py` + `app/scoring/session.py`）；可选独立 LLM per turn。文档：`SESSION_V0.md` / `SESSION_V1.md`。 |
+| 当前 runner/judge 及版本 | package `session_eval`（`app/worker/runners/session_eval.py` + `app/scoring/session.py`）；可选独立 LLM per turn。文档：`SESSION_V0.md` / `SESSION_V1.md`。**另**：Core `SessionSubjectAdapter` + `session.capability` 种子库（fixture multi-turn；claim=false；非 OBJECT_TYPES）。 |
 | 任务集、来源及现有样本量 | `payload.turns`/`messages` + profile；轮次不足 profile 下界 → fail。G2b 配额建议 Session=15。 |
 | 当前实际测量维度 | turn_success_rate、session_pass、turns_n；每轮可附 prompt_eval 维度 / groundedness / efficiency。 |
 | 判定方法（exact/rule/gold/human/LLM judge 等） | 每轮：有 expected → exact；无 expected → 非空 actual；整 session 聚合。无工具循环。 |
