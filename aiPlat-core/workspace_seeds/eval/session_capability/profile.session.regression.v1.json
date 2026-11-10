@@ -1,0 +1,22 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "session.regression.v1",
+  "subject_kinds": ["session"],
+  "pack_id": "session.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "multi_turn_memory": 5,
+    "clarification": 5
+  },
+  "strategy": "stratified",
+  "seed": 23,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Session Subject regression — SESSION_V1_CAPS ×5 fixture multi-turn; claim closed; ≠ long-horizon Agent memory."
+}

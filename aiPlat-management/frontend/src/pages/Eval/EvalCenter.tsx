@@ -22,6 +22,7 @@ import EvalPromptRegressionPanel from './EvalPromptRegressionPanel';
 import EvalWorkflowRegressionPanel from './EvalWorkflowRegressionPanel';
 import EvalModelRegressionPanel from './EvalModelRegressionPanel';
 import EvalToolRegressionPanel from './EvalToolRegressionPanel';
+import EvalSessionRegressionPanel from './EvalSessionRegressionPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
@@ -116,6 +117,7 @@ const ADVANCED_TABS = [
   { id: 'workflow-regression', label: 'Workflow Regression' },
   { id: 'model-regression', label: 'Model Regression' },
   { id: 'tool-regression', label: 'Tool Regression' },
+  { id: 'session-regression', label: 'Session Regression' },
   { id: 'p4-status', label: 'P4 Benchmark' },
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
@@ -493,6 +495,10 @@ const EvalCenter: React.FC = () => {
       {tab === 'model-regression' && <EvalModelRegressionPanel tenantId={TENANT} />}
 
       {tab === 'tool-regression' && <EvalToolRegressionPanel tenantId={TENANT} />}
+
+      {tab === 'session-regression' && (
+        <EvalSessionRegressionPanel tenantId={TENANT} />
+      )}
 
       {tab === 'p4-status' && <EvalP4StatusPanel tenantId={TENANT} />}
 

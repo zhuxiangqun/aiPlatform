@@ -7950,6 +7950,26 @@ def eval_run_session_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_session_capability_smoke(limit=limit)
 
 
+def eval_session_regression_profile() -> Dict[str, Any]:
+    """session.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.session_capability_bank import (
+        session_regression_profile,
+    )
+
+    return session_regression_profile()
+
+
+def eval_session_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Session Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.session_capability_bank import (
+        session_regression_status,
+    )
+
+    return session_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_tool_capability_catalog() -> list:
     """Tool/MCP SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
