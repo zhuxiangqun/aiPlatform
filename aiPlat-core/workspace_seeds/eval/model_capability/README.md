@@ -1,8 +1,15 @@
 # Model capability Case Pack (draft)
 
 > Subject=`model` · `claim_eligible=false` · lexical fixture via `ModelSubjectAdapter`  
-> Reuses engine `eval_sets/model/*` oracle patterns — **does not** fork Plan/EvalStore.
+> **does not** fork Plan/EvalStore.
+
+| Path | Role |
+|---|---|
+| `pack.meta.json` | Pack header |
+| `cases/*.json` | Curated capability cases |
+| `profile.model.smoke.v1.json` | Smoke Suite Profile |
+| `profile.model.regression.v1.json` | Regression Suite Profile (`MODEL_V1_CAPS` ×5) |
 
 ```bash
-python3 -c "from core.api.core_facade import eval_validate_model_capability_bank, eval_run_model_capability_smoke; print(eval_validate_model_capability_bank()); print(eval_run_model_capability_smoke())"
+python3 -c "from core.api.core_facade import eval_validate_model_capability_bank, eval_model_regression_status; print(eval_validate_model_capability_bank()); print(eval_model_regression_status()['quota_inventory_ok'])"
 ```

@@ -1,0 +1,23 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "model.regression.v1",
+  "object_type": "model",
+  "pack_id": "model.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "clarification": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 17,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Model Subject regression — MODEL_V1_CAPS ×5 fixture lexical; claim closed; ≠ live host accuracy."
+}
