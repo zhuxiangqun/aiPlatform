@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2494
+total_capabilities: 2495
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 510
+    caps_count: 511
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8157,6 +8157,10 @@ domains:
       - symbol: assert_subject_kinds_exclude_methods
         type: function
         signature: 'assert_subject_kinds_exclude_methods(kinds)→Dict'
+        module: aiPlat-core/core/apps/eval/service/method_track.py
+      - symbol: is_method_kind
+        type: function
+        signature: 'is_method_kind(kind)→bool'
         module: aiPlat-core/core/apps/eval/service/method_track.py
       - symbol: validate_prompt_capability_bank
         type: function
