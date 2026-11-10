@@ -15,5 +15,77 @@
       "not_testing": ["不测工具选择策略", "不测 live MCP"],
       "oracle_rationale": "规则 oracle：JSON schema / catalog args_schema（tool_trace）"
     }
+  },
+  {
+    "case_id": "tool.tool_args.002",
+    "capabilities": ["tool_args"],
+    "prompt": "lookup_fact 合法 key。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [
+      {"name": "lookup_fact", "args": {"key": "alpha"}}
+    ],
+    "expected_tool_args": {"lookup_fact": {"key": "alpha"}},
+    "test_purpose": {
+      "summary": "验证 lookup_fact 参数 schema 与 expected key=alpha",
+      "why_this_case": "A4 expected_tool_args 精确值分支",
+      "expected_behavior": ["args.key=alpha", "通过 schema"],
+      "failure_signals": ["缺 key", "key 值漂移"],
+      "not_testing": ["不测答案引用", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：schema + expected_tool_args"
+    }
+  },
+  {
+    "case_id": "tool.tool_args.003",
+    "capabilities": ["tool_args"],
+    "prompt": "echo 长文本参数。",
+    "expected_tools": ["echo"],
+    "scripted_tool_calls": [
+      {"name": "echo", "args": {"text": "long-token-xyz"}}
+    ],
+    "expected_tool_args": {"echo": {"text": "long-token-xyz"}},
+    "test_purpose": {
+      "summary": "验证 echo 长字符串参数原样保留",
+      "why_this_case": "参数截断/改写是 A4 回归点",
+      "expected_behavior": ["text=long-token-xyz"],
+      "failure_signals": ["参数被缩短", "字段改名"],
+      "not_testing": ["不测选择集", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：expected_tool_args 精确匹配"
+    }
+  },
+  {
+    "case_id": "tool.tool_args.004",
+    "capabilities": ["tool_args"],
+    "prompt": "双调用各自参数合法。",
+    "expected_tools": ["echo", "lookup_fact"],
+    "scripted_tool_calls": [
+      {"name": "echo", "args": {"text": "pair"}},
+      {"name": "lookup_fact", "args": {"key": "alpha"}}
+    ],
+    "test_purpose": {
+      "summary": "验证多工具调用各自 args 均过 schema",
+      "why_this_case": "多调用 args 校验常漏检第二刀",
+      "expected_behavior": ["echo/text 合法", "lookup/key 合法"],
+      "failure_signals": ["任一调用 args 非法"],
+      "not_testing": ["不测顺序", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：逐 call schema 校验"
+    }
+  },
+  {
+    "case_id": "tool.tool_args.005",
+    "capabilities": ["tool_args"],
+    "prompt": "lookup key 精确 beta（仍走 mock schema）。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [
+      {"name": "lookup_fact", "args": {"key": "beta"}}
+    ],
+    "expected_tool_args": {"lookup_fact": {"key": "beta"}},
+    "test_purpose": {
+      "summary": "验证 lookup key=beta 过 schema 且 expected 值锁定",
+      "why_this_case": "非默认 key 防 hardcode alpha",
+      "expected_behavior": ["args.key=beta"],
+      "failure_signals": ["写成 alpha", "缺 key"],
+      "not_testing": ["不测 catalog 结果内容", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：expected_tool_args key=beta"
+    }
   }
 ]

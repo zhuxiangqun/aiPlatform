@@ -7994,6 +7994,22 @@ def eval_run_tool_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_tool_capability_smoke(limit=limit)
 
 
+def eval_tool_regression_profile() -> Dict[str, Any]:
+    """tool.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.tool_capability_bank import tool_regression_profile
+
+    return tool_regression_profile()
+
+
+def eval_tool_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Tool Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.tool_capability_bank import tool_regression_status
+
+    return tool_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_multi_agent_capability_catalog() -> list:
     """Multi-Agent SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter
