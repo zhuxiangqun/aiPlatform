@@ -8254,6 +8254,60 @@ def eval_generated_app_regression_status(
     return generated_app_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_api_capability_catalog() -> list:
+    """API SubjectAdapter capability catalog (OBJECT_TYPES api)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("api").capability_catalog()
+
+
+def eval_validate_api_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """ApiSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("api").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "api"}
+
+
+def eval_validate_api_capability_bank() -> Dict[str, Any]:
+    """Validate curated api.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.api_capability_bank import validate_api_capability_bank
+
+    return validate_api_capability_bank()
+
+
+def eval_list_api_capability_cases() -> list:
+    """List api.capability curated cases."""
+    from core.apps.eval.service.api_capability_bank import build_api_capability_cases
+
+    return build_api_capability_cases()
+
+
+def eval_run_api_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
+    """Fixture lexical smoke over api.capability (≠ live external_pull)."""
+    from core.apps.eval.service.api_capability_bank import run_api_capability_smoke
+
+    return run_api_capability_smoke(limit=limit)
+
+
+def eval_api_regression_profile() -> Dict[str, Any]:
+    """api.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.api_capability_bank import api_regression_profile
+
+    return api_regression_profile()
+
+
+def eval_api_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """API Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.api_capability_bank import api_regression_status
+
+    return api_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2552
+total_capabilities: 2563
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 568
+    caps_count: 579
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8629,6 +8629,50 @@ domains:
       - symbol: eval_generated_app_regression_status
         type: function
         signature: 'eval_generated_app_regression_status(draft_sample_limit?)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: validate_api_capability_bank
+        type: function
+        signature: 'validate_api_capability_bank(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: run_api_capability_smoke
+        type: function
+        signature: 'run_api_capability_smoke(seed_dir?,limit=50)→Dict fixture smoke'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: ApiCapabilityBankError
+        type: class
+        signature: 'Seed bank load / validate failure (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: build_api_capability_cases
+        type: function
+        signature: 'build_api_capability_cases(seed_dir?)→List[Dict]'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: api_smoke_profile
+        type: function
+        signature: 'api_smoke_profile(seed_dir?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: api_regression_profile
+        type: function
+        signature: 'api_regression_profile(seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: api_regression_status
+        type: function
+        signature: 'api_regression_status(seed_dir?,draft_sample_limit?)→Dict honesty'
+        module: aiPlat-core/core/apps/eval/service/api_capability_bank.py
+      - symbol: eval_api_capability_catalog
+        type: function
+        signature: 'eval_api_capability_catalog()→list'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_run_api_capability_smoke
+        type: function
+        signature: 'eval_run_api_capability_smoke(limit=50)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_api_regression_profile
+        type: function
+        signature: 'eval_api_regression_profile()→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_api_regression_status
+        type: function
+        signature: 'eval_api_regression_status(draft_sample_limit?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: "load_agent_capability_cases"
         type: "function"
