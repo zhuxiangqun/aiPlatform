@@ -1,0 +1,19 @@
+[
+  {
+    "case_id": "tool.tool_args.001",
+    "capabilities": ["tool_args"],
+    "prompt": "echo 合法参数。",
+    "expected_tools": ["echo"],
+    "scripted_tool_calls": [
+      {"name": "echo", "args": {"text": "ok"}}
+    ],
+    "test_purpose": {
+      "summary": "验证 echo 参数符合 catalog args_schema",
+      "why_this_case": "Tool Subject A4 正例",
+      "expected_behavior": ["args 含 text 字符串"],
+      "failure_signals": ["缺 text", "类型错误"],
+      "not_testing": ["不测工具选择策略", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：JSON schema / catalog args_schema（tool_trace）"
+    }
+  }
+]

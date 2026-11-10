@@ -1,7 +1,7 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
 Agent is the reference implementation. Prompt / Workflow / Model are typed
-lexical Subjects; KB / Code Review / Session are fixture Subjects
+lexical Subjects; KB / Code Review / Session / Tool are fixture Subjects
 (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via registry — no
 ``if object_type ==`` business piles beyond the type→adapter map.
 """
@@ -85,6 +85,16 @@ SESSION_V1_CAPS = frozenset(
         "task_completion",  # per-turn exact / non-empty
         "multi_turn_memory",  # later turn recalls planted token
         "clarification",  # ask-for-info exact
+    }
+)
+
+# Tool/MCP v1 measurable subset (mock tool_trace; reuses Agent A3–A5 harness/judge).
+# Not a first-class OBJECT_TYPES member yet — SubjectAdapter registry only.
+TOOL_V1_CAPS = frozenset(
+    {
+        "tool_selection",  # A3 expected/forbidden tools
+        "tool_args",  # A4 schema / expected args
+        "tool_result_use",  # A5 answer uses tool result
     }
 )
 
@@ -1270,6 +1280,231 @@ class SessionSubjectAdapter:
         }
 
 
+class ToolSubjectAdapter:
+    """Tool/MCP Subject — mock tool_trace (reuses harness + judge_tool_trace).
+
+    Not in OBJECT_TYPES yet; contract is Subject-local. claim_eligible always false.
+    Live tools / real MCP deferred (runtime_tier=fixture only).
+    """
+
+    subject_kind = "tool"
+    v1_caps = TOOL_V1_CAPS
+
+    def build_contract(
+        self,
+        *,
+        object_id: str,
+        object_version: str = "",
+        capabilities: Optional[Sequence[str]] = None,
+        tools: Optional[Sequence[str]] = None,
+        permissions: Optional[Sequence[str]] = None,
+        roles: Optional[Sequence[str]] = None,
+        eval_profile: Optional[Mapping[str, Any]] = None,
+        source_refs: Optional[Sequence[str]] = None,
+    ) -> Dict[str, Any]:
+        caps = (
+            resolve_capability_ids(capabilities or (), fail_closed=True)
+            if capabilities
+            else None
+        )
+        profile = dict(eval_profile or {})
+        if caps is None and profile.get("capabilities"):
+            caps = resolve_capability_ids(
+                list(profile.get("capabilities") or []), fail_closed=False
+            )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "subject_kind": self.subject_kind,
+            "object_type_registered": False,
+            "object_id": str(object_id or "").strip(),
+            "object_version": str(object_version or "").strip() or "version_unspecified",
+            "capabilities": list(caps or profile.get("capabilities") or []),
+            "tools": list(tools or profile.get("tools") or []),
+            "permissions": list(permissions or profile.get("permissions") or []),
+            "roles": list(roles or profile.get("roles") or []),
+            "target_runtime": list(
+                profile.get("target_runtime") or ["fixture", "mock_tools"]
+            ),
+            "eval_purpose": list(profile.get("eval_purpose") or ["behavior", "regression"]),
+            "source_refs": list(
+                source_refs or profile.get("source_refs") or ["tool_trace_judge", "mock_tools"]
+            ),
+            "claim_eligible": False,
+            "honesty": (
+                "tool SubjectAdapter only — not first-class OBJECT_TYPES; "
+                "mock tool_trace ≠ live tools / real MCP"
+            ),
+        }
+
+    def capability_catalog(self) -> List[Dict[str, Any]]:
+        rows: List[Dict[str, Any]] = []
+        for cid in sorted(self.v1_caps):
+            rows.append(
+                {
+                    "capability_id": cid,
+                    "object_types": ["tool"],
+                    "in_scope": cid in self.v1_caps,
+                    "v1_unknown": False,
+                    "agent_canonical": cid in CANONICAL_IDS,
+                    "agent_v1_in_scope": cid in V1_IN_SCOPE,
+                }
+            )
+        return rows
+
+    def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        errors: List[str] = []
+        if not isinstance(case, Mapping):
+            return ["invalid_case"]
+        case_id = str(case.get("case_id") or "").strip()
+        if not case_id:
+            errors.append("missing_field:case_id")
+        caps_raw = case.get("capabilities")
+        try:
+            caps = resolve_capability_ids(list(caps_raw or []), fail_closed=True)
+        except UnknownCapabilityId as exc:
+            errors.append(f"unknown_capability:{exc}")
+            caps = []
+        if not caps:
+            errors.append("missing_field:capabilities")
+        for c in caps:
+            if c not in self.v1_caps:
+                errors.append(f"tool_cap_out_of_scope:{c}")
+        prompt = str(case.get("prompt") or case.get("query") or "").strip()
+        if not prompt:
+            errors.append("missing_field:prompt")
+        calls = case.get("scripted_tool_calls")
+        if calls is None:
+            errors.append("missing_field:scripted_tool_calls")
+        elif not isinstance(calls, list):
+            errors.append("invalid_field:scripted_tool_calls")
+        elif not calls:
+            errors.append("empty_field:scripted_tool_calls")
+        purpose = case.get("test_purpose")
+        errors.extend(
+            validate_test_purpose(
+                purpose if isinstance(purpose, Mapping) else None,
+                prompt=prompt,
+                capabilities=caps,
+            )
+        )
+        return errors
+
+    def execute(
+        self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
+    ) -> Dict[str, Any]:
+        from core.apps.eval.service.mock_tools.harness import (
+            MockToolHarnessError,
+            invoke_mock_tools,
+            resolve_scripted_tool_calls,
+        )
+        from core.apps.eval.service.tool_eval_runtime_map import (
+            assert_mock_not_claimed_as_live,
+            validate_tool_backend_runtime,
+        )
+
+        env_map = dict(env or {})
+        if bool(env_map.get("live")):
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "not_implemented",
+                "subject_kind": self.subject_kind,
+                "reason": "tool_live_mcp_deferred",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "ok": False,
+            }
+        answer = str(
+            env_map.get("answer")
+            or env_map.get("scripted_answer")
+            or case.get("scripted_answer")
+            or ""
+        )
+        try:
+            calls = resolve_scripted_tool_calls(case, env_map)
+            harness = invoke_mock_tools(
+                calls,
+                case=case,
+                fail_mode=str(env_map.get("fail_mode") or "") or None,
+            )
+        except MockToolHarnessError as exc:
+            return {
+                "schema": ADAPTER_SCHEMA,
+                "status": "error",
+                "subject_kind": self.subject_kind,
+                "tool_backend": "mock",
+                "runtime_tier": "fixture",
+                "runtime_claim": False,
+                "runtime_claim_reason": "mock_harness_error",
+                "error": str(exc),
+                "ok": False,
+            }
+        claim_errs = assert_mock_not_claimed_as_live(
+            tool_backend="mock",
+            runtime_claim_reason=str(env_map.get("runtime_claim_reason") or ""),
+        )
+        tier_errs = validate_tool_backend_runtime(
+            tool_backend="mock", runtime_tier="fixture"
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok"
+            if harness.get("ok") and not claim_errs and not tier_errs
+            else "error",
+            "subject_kind": self.subject_kind,
+            "tool_backend": "mock",
+            "runtime_tier": "fixture",
+            "runtime_claim": False,
+            "runtime_claim_reason": "mock_tool_trace_only",
+            "ok": bool(harness.get("ok")) and not claim_errs and not tier_errs,
+            "tool_calls": harness.get("tool_calls") or [],
+            "tool_results": harness.get("tool_results") or [],
+            "allowed_tools": harness.get("allowed_tools") or [],
+            "answer": answer,
+            "scripted_answer": answer,
+            "harness": harness,
+            "gate_errors": claim_errs + tier_errs,
+        }
+
+    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        from core.apps.eval.service.tool_trace_judge import judge_tool_trace
+
+        res = result if isinstance(result, Mapping) else {}
+        judgment = judge_tool_trace(case, res)
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": judgment.get("status") or "ok",
+            "subject_kind": self.subject_kind,
+            **judgment,
+        }
+
+    def normalize(
+        self,
+        case: Mapping[str, Any],
+        result: Mapping[str, Any],
+        judgment: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        caps = resolve_capability_ids(
+            list((case or {}).get("capabilities") or []), fail_closed=False
+        )
+        return {
+            "schema": ADAPTER_SCHEMA,
+            "status": "ok",
+            "subject_kind": self.subject_kind,
+            "passed": bool(judgment.get("passed")),
+            "errors": list(judgment.get("errors") or []),
+            "tool_backend": str(
+                (result or {}).get("tool_backend")
+                or judgment.get("tool_backend")
+                or "mock"
+            ),
+            "runtime_tier": str((result or {}).get("runtime_tier") or "fixture"),
+            "claim_eligible": False,
+            "certification_eligible": False,
+            "v1_in_scope": all(c in self.v1_caps for c in caps) if caps else False,
+            "capabilities": caps,
+        }
+
+
 _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "agent": AgentSubjectAdapter(),
     "prompt": PromptSubjectAdapter(),
@@ -1278,6 +1513,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),
+    "tool": ToolSubjectAdapter(),
 }
 
 

@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "tool.capability",
+  "version": "0.1.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["tool"],
+  "object_types": [],
+  "notes": "Tool/MCP Subject capability bank (ADR after Session). Not first-class OBJECT_TYPES. Mock tool_trace via ToolSubjectAdapter (reuses mock_tools + tool_trace_judge); ≠ live tools / real MCP."
+}

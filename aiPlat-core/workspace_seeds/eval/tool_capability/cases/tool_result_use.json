@@ -1,0 +1,22 @@
+[
+  {
+    "case_id": "tool.tool_result_use.001",
+    "capabilities": ["tool_result_use"],
+    "prompt": "查 key=alpha 并用结果回答。",
+    "expected_tools": ["lookup_fact"],
+    "scripted_tool_calls": [
+      {"name": "lookup_fact", "args": {"key": "alpha"}}
+    ],
+    "scripted_answer": "查到的值为 42。",
+    "must_contain_from_tools": ["42"],
+    "use_tool_result_values": false,
+    "test_purpose": {
+      "summary": "验证回答引用 lookup_fact 返回值 42",
+      "why_this_case": "Tool Subject A5 正例",
+      "expected_behavior": ["回答含 42"],
+      "failure_signals": ["忽略工具结果"],
+      "not_testing": ["不测工具选择顺序", "不测 live MCP"],
+      "oracle_rationale": "规则 oracle：must_contain_from_tools / answer（tool_trace）"
+    }
+  }
+]

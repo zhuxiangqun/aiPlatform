@@ -7746,6 +7746,50 @@ def eval_run_session_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_session_capability_smoke(limit=limit)
 
 
+def eval_tool_capability_catalog() -> list:
+    """Tool/MCP SubjectAdapter capability catalog (≠ OBJECT_TYPES)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("tool").capability_catalog()
+
+
+def eval_validate_tool_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """ToolSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("tool").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "tool"}
+
+
+def eval_validate_tool_capability_bank() -> Dict[str, Any]:
+    """Validate curated tool.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.tool_capability_bank import (
+        validate_tool_capability_bank,
+    )
+
+    return validate_tool_capability_bank()
+
+
+def eval_list_tool_capability_cases() -> list:
+    """List tool.capability curated cases."""
+    from core.apps.eval.service.tool_capability_bank import (
+        build_tool_capability_cases,
+    )
+
+    return build_tool_capability_cases()
+
+
+def eval_run_tool_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
+    """Fixture execute+judge smoke over tool.capability (≠ live tools/MCP)."""
+    from core.apps.eval.service.tool_capability_bank import (
+        run_tool_capability_smoke,
+    )
+
+    return run_tool_capability_smoke(limit=limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

@@ -1,0 +1,100 @@
+"""ToolSubjectAdapter + tool.capability seed bank."""
+from __future__ import annotations
+
+from core.apps.eval.service.subject_adapter import (
+    TOOL_V1_CAPS,
+    get_subject_adapter,
+    list_subject_kinds,
+)
+from core.apps.eval.service.tool_capability_bank import (
+    build_tool_capability_cases,
+    run_tool_capability_smoke,
+    validate_tool_capability_bank,
+)
+
+_PURPOSE = {
+    "summary": "验证仅选择 echo 完成回显",
+    "why_this_case": "Tool Subject A3 正例",
+    "expected_behavior": ["调用 echo"],
+    "failure_signals": ["漏调 echo"],
+    "not_testing": ["不测 live MCP"],
+    "oracle_rationale": "规则 oracle：tool_trace expected/forbidden",
+}
+
+
+def test_tool_registered():
+    kinds = list_subject_kinds()
+    assert "tool" in kinds
+    assert "session" in kinds
+    assert "agent" in kinds
+
+
+def test_tool_catalog_and_roundtrip():
+    adapter = get_subject_adapter("tool")
+    ids = {r["capability_id"] for r in adapter.capability_catalog()}
+    assert ids == set(TOOL_V1_CAPS)
+    case = {
+        "case_id": "tool.tool_selection.ut",
+        "capabilities": ["tool_selection"],
+        "prompt": "echo hi",
+        "expected_tools": ["echo"],
+        "forbidden_tools": ["lookup_fact"],
+        "exact_tool_set": True,
+        "scripted_tool_calls": [{"name": "echo", "args": {"text": "hi"}}],
+        "test_purpose": _PURPOSE,
+    }
+    assert adapter.validate_case(case) == []
+    result = adapter.execute(case)
+    judgment = adapter.judge(case, result)
+    normalized = adapter.normalize(case, result, judgment)
+    assert result["status"] == "ok"
+    assert judgment["passed"] is True
+    assert normalized["claim_eligible"] is False
+    contract = adapter.build_contract(object_id="tool.fixture")
+    assert contract["object_type_registered"] is False
+    assert contract["claim_eligible"] is False
+
+
+def test_tool_forbidden_fail_closed():
+    adapter = get_subject_adapter("tool")
+    case = {
+        "case_id": "tool.forbidden",
+        "capabilities": ["tool_selection"],
+        "prompt": "should not lookup",
+        "expected_tools": ["echo"],
+        "forbidden_tools": ["lookup_fact"],
+        "exact_tool_set": True,
+        "scripted_tool_calls": [
+            {"name": "echo", "args": {"text": "x"}},
+            {"name": "lookup_fact", "args": {"key": "alpha"}},
+        ],
+        "test_purpose": _PURPOSE,
+    }
+    result = adapter.execute(case)
+    judgment = adapter.judge(case, result)
+    assert judgment["passed"] is False
+    assert any(str(e).startswith("forbidden_tool_used:") for e in judgment["errors"])
+
+
+def test_tool_rejects_session_only_cap():
+    adapter = get_subject_adapter("tool")
+    errs = adapter.validate_case(
+        {
+            "case_id": "x",
+            "capabilities": ["multi_turn_memory"],
+            "prompt": "remember",
+            "scripted_tool_calls": [{"name": "echo", "args": {"text": "x"}}],
+            "test_purpose": _PURPOSE,
+        }
+    )
+    assert any(e.startswith("tool_cap_out_of_scope:") for e in errs)
+
+
+def test_tool_seed_bank_smokes():
+    report = validate_tool_capability_bank()
+    assert report["ok"] is True, report.get("errors")
+    assert report["case_count"] >= 3
+    assert build_tool_capability_cases()
+    smoke = run_tool_capability_smoke()
+    assert smoke["ok"] is True, smoke
+    assert smoke["claim_eligible"] is False
