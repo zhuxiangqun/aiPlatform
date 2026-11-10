@@ -1,0 +1,23 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "skill.regression.v1",
+  "subject_kinds": ["skill"],
+  "object_types": ["skill"],
+  "pack_id": "skill.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 41,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Skill Subject regression — SKILL_V1_CAPS ×5 lexical fixture; claim closed; ≠ live core_skill_execute."
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "skill.capability",
+  "version": "0.2.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["skill"],
+  "object_types": ["skill"],
+  "notes": "Skill Subject capability bank (ADR after Multi-Agent). First-class OBJECT_TYPES. Lexical fixture via SkillSubjectAdapter; ≠ live core_skill_execute / EvalSkillsPanel skill_evals. Regression quotas SKILL_V1_CAPS×5."
+}

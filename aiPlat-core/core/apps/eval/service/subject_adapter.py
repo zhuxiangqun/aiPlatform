@@ -1,9 +1,9 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
-Agent is the reference implementation. Prompt / Workflow / Model are typed
-lexical Subjects; KB / Code Review / Session / Tool / Multi-Agent are fixture
-Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via registry —
-no ``if object_type ==`` business piles beyond the type→adapter map.
+Agent is the reference implementation. Prompt / Workflow / Model / Skill are
+typed lexical Subjects; KB / Code Review / Session / Tool / Multi-Agent are
+fixture Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must dispatch via
+registry — no ``if object_type ==`` business piles beyond the type→adapter map.
 """
 from __future__ import annotations
 
@@ -105,6 +105,16 @@ MULTI_AGENT_V1_CAPS = frozenset(
         "task_completion",  # expected handoff path + final
         "clarification",  # clarify handoff before proceed
         "error_recovery",  # handoff to recovery role
+    }
+)
+
+# Skill v1 measurable subset (maps skill/trigger + skill/quality packs).
+# First-class OBJECT_TYPES member; lexical fixture ≠ live core_skill_execute.
+SKILL_V1_CAPS = frozenset(
+    {
+        "task_completion",  # skill_invoke / trigger
+        "safety",  # refuse unsafe skill misuse
+        "robustness",  # noisy / malformed skill args
     }
 )
 
@@ -611,6 +621,19 @@ class ModelSubjectAdapter(_TypedLexicalSubjectAdapter):
     v1_caps = MODEL_V1_CAPS
     live_reason = "model_live_via_typed_plan_exam"
     runtime_claim_reason = "model_lexical_fixture_stub"
+
+
+class SkillSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Skill Subject — lexical fixture path; reuses typed_plan oracle.
+
+    Distinct from EvalSkillsPanel live/heuristic skill_evals. claim stays false.
+    """
+
+    subject_kind = "skill"
+    object_type = "skill"
+    v1_caps = SKILL_V1_CAPS
+    live_reason = "skill_live_via_core_skill_execute_deferred"
+    runtime_claim_reason = "skill_lexical_fixture_stub"
 
 
 def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
@@ -1787,6 +1810,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "prompt": PromptSubjectAdapter(),
     "workflow": WorkflowSubjectAdapter(),
     "model": ModelSubjectAdapter(),
+    "skill": SkillSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),

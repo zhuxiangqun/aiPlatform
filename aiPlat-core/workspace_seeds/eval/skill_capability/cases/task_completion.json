@@ -1,0 +1,97 @@
+[
+  {
+    "case_id": "skill.task_completion.001",
+    "capabilities": ["skill_invoke"],
+    "category": "trigger",
+    "prompt": "调用 skill「summarize_doc」对文档做摘要，输出含技能名。",
+    "success_criteria": {
+      "must_contain": ["summarize_doc", "摘要"],
+      "must_not_contain": ["未找到技能"]
+    },
+    "scripted_answer": "已调用 summarize_doc，摘要：缺陷门禁要求零发现回执。",
+    "test_purpose": {
+      "summary": "验证触发已知 skill 时输出含技能名与摘要锚点",
+      "why_this_case": "skill/trigger 最小交付是 invoke 可观测",
+      "expected_behavior": ["点名 summarize_doc", "产出摘要关键词"],
+      "failure_signals": ["声称未找到技能", "空回复"],
+      "not_testing": ["不测 live handler", "不测真实文档解析"],
+      "oracle_rationale": "词面 must_contain 技能名+摘要"
+    }
+  },
+  {
+    "case_id": "skill.task_completion.002",
+    "capabilities": ["task_completion"],
+    "category": "trigger",
+    "prompt": "执行 skill「format_table」把三行 CSV 排成 Markdown 表。",
+    "success_criteria": {
+      "must_contain": ["format_table", "|"],
+      "must_not_contain": ["无法执行"]
+    },
+    "scripted_answer": "已执行 format_table：\n| a | b |\n|---|---|\n| 1 | 2 |",
+    "test_purpose": {
+      "summary": "验证表格类 skill 触发后输出含技能名与表分隔符",
+      "why_this_case": "格式化 skill 假完成常丢技能名",
+      "expected_behavior": ["点名 format_table", "含 Markdown 表分隔符"],
+      "failure_signals": ["无法执行", "无 |"],
+      "not_testing": ["不测真实 CSV 解析器"],
+      "oracle_rationale": "词面技能名 + |"
+    }
+  },
+  {
+    "case_id": "skill.task_completion.003",
+    "capabilities": ["task_completion"],
+    "category": "trigger",
+    "prompt": "运行 skill「lint_yaml」检查配置是否合法，报告结果。",
+    "success_criteria": {
+      "must_contain": ["lint_yaml", "通过"],
+      "must_not_contain": ["崩溃"]
+    },
+    "scripted_answer": "已运行 lint_yaml：语法检查通过。",
+    "test_purpose": {
+      "summary": "验证 lint skill 触发后报告通过结果",
+      "why_this_case": "质量 skill 需可观测完成态",
+      "expected_behavior": ["点名 lint_yaml", "报告通过"],
+      "failure_signals": ["崩溃无结果"],
+      "not_testing": ["不测真实 YAML 解析"],
+      "oracle_rationale": "词面技能名+通过"
+    }
+  },
+  {
+    "case_id": "skill.task_completion.004",
+    "capabilities": ["task_completion"],
+    "category": "trigger",
+    "prompt": "调用 skill「extract_entities」抽出人名，列出实体。",
+    "success_criteria": {
+      "must_contain": ["extract_entities", "实体"],
+      "must_not_contain": ["未调用"]
+    },
+    "scripted_answer": "已调用 extract_entities，实体：张三、李四。",
+    "test_purpose": {
+      "summary": "验证抽取 skill 触发后输出实体列表锚点",
+      "why_this_case": "抽取类假完成常只回空列表",
+      "expected_behavior": ["点名技能", "含实体关键词"],
+      "failure_signals": ["未调用"],
+      "not_testing": ["不测 NER 模型"],
+      "oracle_rationale": "词面技能名+实体"
+    }
+  },
+  {
+    "case_id": "skill.task_completion.005",
+    "capabilities": ["task_completion"],
+    "category": "trigger",
+    "prompt": "执行 skill「diff_summary」对比两份补丁并给出变更摘要。",
+    "success_criteria": {
+      "must_contain": ["diff_summary", "变更"],
+      "must_not_contain": ["跳过"]
+    },
+    "scripted_answer": "已执行 diff_summary：变更 3 文件，无破坏性删除。",
+    "test_purpose": {
+      "summary": "验证 diff skill 触发后给出变更摘要",
+      "why_this_case": "diff 摘要是常见 skill 交付",
+      "expected_behavior": ["点名 diff_summary", "含变更"],
+      "failure_signals": ["跳过执行"],
+      "not_testing": ["不测 git diff 进程"],
+      "oracle_rationale": "词面技能名+变更"
+    }
+  }
+]

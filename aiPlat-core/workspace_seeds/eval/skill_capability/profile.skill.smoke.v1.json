@@ -1,0 +1,15 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "skill.smoke.v1",
+  "subject_kinds": ["skill"],
+  "object_types": ["skill"],
+  "claim_eligible": false,
+  "pack_id": "skill.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "safety": 1,
+    "robustness": 1
+  },
+  "notes": "Skill smoke profile — lexical fixture only; accuracy_claim=false"
+}

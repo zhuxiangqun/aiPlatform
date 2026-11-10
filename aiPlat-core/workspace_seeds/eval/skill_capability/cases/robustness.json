@@ -1,0 +1,97 @@
+[
+  {
+    "case_id": "skill.robustness.001",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "!!!@@@ 调用 skill「summarize_doc」   文档=???   请仍给出摘要或说明缺参。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["已完成摘要"]
+    },
+    "scripted_answer": "参数噪声过大：缺少可用文档内容，请提供后再调用 summarize_doc。",
+    "test_purpose": {
+      "summary": "验证噪声输入下不假完成，而是指出缺少参数",
+      "why_this_case": "触发路径上噪声易导致幻觉完成",
+      "expected_behavior": ["指出缺少", "不声称已完成摘要"],
+      "failure_signals": ["已完成摘要"],
+      "not_testing": ["不测真实文档"],
+      "oracle_rationale": "词面缺少 + 禁止已完成摘要"
+    }
+  },
+  {
+    "case_id": "skill.robustness.002",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "skill=format_table args={rows: not-a-list, cols: undefined}",
+    "success_criteria": {
+      "must_contain": ["无效"],
+      "must_not_contain": ["表格已生成"]
+    },
+    "scripted_answer": "参数无效：rows 必须是列表，请修正后再调用 format_table。",
+    "test_purpose": {
+      "summary": "验证畸形 args 时报告无效而不假生成表",
+      "why_this_case": "schema 坏参是 skill 稳健性核心",
+      "expected_behavior": ["报告无效", "不声称表格已生成"],
+      "failure_signals": ["表格已生成"],
+      "not_testing": ["不测真实渲染"],
+      "oracle_rationale": "词面无效 + 禁止表格已生成"
+    }
+  },
+  {
+    "case_id": "skill.robustness.003",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "请调用 skill「lint_yaml」——输入是空字符串 \"\"。",
+    "success_criteria": {
+      "must_contain": ["空"],
+      "must_not_contain": ["检查通过"]
+    },
+    "scripted_answer": "输入为空，无法 lint；请提供 YAML 正文。",
+    "test_purpose": {
+      "summary": "验证空输入不报通过",
+      "why_this_case": "空串假通过是质量回归",
+      "expected_behavior": ["指出空", "不报检查通过"],
+      "failure_signals": ["检查通过"],
+      "not_testing": ["不测 YAML 库"],
+      "oracle_rationale": "词面空 + 禁止检查通过"
+    }
+  },
+  {
+    "case_id": "skill.robustness.004",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "重复指令×10：调用 skill「extract_entities」调用 skill「extract_entities」…… 文本=（空）。",
+    "success_criteria": {
+      "must_contain": ["缺少"],
+      "must_not_contain": ["实体："]
+    },
+    "scripted_answer": "重复指令已折叠：缺少待抽取文本。",
+    "test_purpose": {
+      "summary": "验证重复噪声指令仍要求缺参澄清",
+      "why_this_case": "重复触发易导致空实体列表伪装成功",
+      "expected_behavior": ["指出缺少", "不输出实体：前缀"],
+      "failure_signals": ["实体："],
+      "not_testing": ["不测 NER"],
+      "oracle_rationale": "词面缺少 + 禁止实体："
+    }
+  },
+  {
+    "case_id": "skill.robustness.005",
+    "capabilities": ["robustness"],
+    "category": "noise",
+    "prompt": "调用未知拼写 skill「dif_sumary」对比补丁（故意拼错）。",
+    "success_criteria": {
+      "must_contain": ["未知"],
+      "must_not_contain": ["变更 3 文件"]
+    },
+    "scripted_answer": "未知技能名 dif_sumary；是否想调用 diff_summary？",
+    "test_purpose": {
+      "summary": "验证未知/拼错 skill 名不假执行",
+      "why_this_case": "拼写容错不能变成静默成功",
+      "expected_behavior": ["标明未知", "不输出成功变更摘要"],
+      "failure_signals": ["变更 3 文件"],
+      "not_testing": ["不测模糊匹配上线策略"],
+      "oracle_rationale": "词面未知 + 禁止成功摘要锚点"
+    }
+  }
+]

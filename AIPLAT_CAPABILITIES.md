@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3302
+total_capabilities: 3305
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -664,6 +664,9 @@ scan_hash: 8f9548ec24f4
 | kb.regression.v1 + kb_regression_status | `kb_capability_bank.py` + `eval_kb_regression_status` + GET …/store/kb-regression-status + EvalKbRegressionPanel | ✅ | KB Subject 回归配额（KB_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | code_review.regression.v1 + code_review_regression_status | `code_review_capability_bank.py` + `eval_code_review_regression_status` + GET …/store/code-review-regression-status + EvalCodeReviewRegressionPanel | ✅ | Code Review Subject 回归配额（CODE_REVIEW_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | multi_agent.regression.v1 + multi_agent_regression_status | `multi_agent_capability_bank.py` + `eval_multi_agent_regression_status` + GET …/store/multi-agent-regression-status + EvalMultiAgentRegressionPanel | ✅ | Multi-Agent Subject 回归配额（MULTI_AGENT_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| SkillSubjectAdapter / skill.capability bank | `core/apps/eval/service/subject_adapter.py` + `skill_capability_bank.py` + `workspace_seeds/eval/skill_capability/` | ✅ | ADR Multi-Agent 之后；共享 `_TypedLexicalSubjectAdapter`；OBJECT_TYPES skill；claim=false；≠ live core_skill_execute；生成物适用：已接线 | 本批 |
+| skill.regression.v1 + skill_regression_status | `skill_capability_bank.py` + `eval_skill_regression_status` + GET …/store/skill-regression-status + EvalSkillRegressionPanel | ✅ | Skill Subject 回归配额（SKILL_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| eval_skill_capability_* / eval_run_skill_capability_smoke | `core/api/core_facade.py` | ✅ | Skill 目录/校验/种子库/fixture smoke；≠ live skill_evals；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2840,6 +2843,13 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_skill_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_skill_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| skill_regression_profile | `core/apps/eval/service/skill_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| skill_smoke_profile | `core/apps/eval/service/skill_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_skill_capability_cases | `core/apps/eval/service/skill_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| SkillCapabilityBankError | `core/apps/eval/service/skill_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_skill_capability_bank | `core/apps/eval/service/skill_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_kb_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | kb_regression_profile | `core/apps/eval/service/kb_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_code_review_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
@@ -4201,7 +4211,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 552 | 1 | 553 |
+| Harness 执行引擎 | 555 | 1 | 556 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4246,7 +4256,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3292** | **10** | **3302** |
+| **总计** | **3295** | **10** | **3305** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -8130,6 +8130,66 @@ def eval_multi_agent_regression_status(
     return multi_agent_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_skill_capability_catalog() -> list:
+    """Skill SubjectAdapter capability catalog (OBJECT_TYPES skill)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("skill").capability_catalog()
+
+
+def eval_validate_skill_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SkillSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("skill").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "skill"}
+
+
+def eval_validate_skill_capability_bank() -> Dict[str, Any]:
+    """Validate curated skill.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.skill_capability_bank import (
+        validate_skill_capability_bank,
+    )
+
+    return validate_skill_capability_bank()
+
+
+def eval_list_skill_capability_cases() -> list:
+    """List skill.capability curated cases."""
+    from core.apps.eval.service.skill_capability_bank import (
+        build_skill_capability_cases,
+    )
+
+    return build_skill_capability_cases()
+
+
+def eval_run_skill_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
+    """Fixture lexical smoke over skill.capability (≠ live core_skill_execute)."""
+    from core.apps.eval.service.skill_capability_bank import (
+        run_skill_capability_smoke,
+    )
+
+    return run_skill_capability_smoke(limit=limit)
+
+
+def eval_skill_regression_profile() -> Dict[str, Any]:
+    """skill.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.skill_capability_bank import skill_regression_profile
+
+    return skill_regression_profile()
+
+
+def eval_skill_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Skill Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.skill_capability_bank import skill_regression_status
+
+    return skill_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
