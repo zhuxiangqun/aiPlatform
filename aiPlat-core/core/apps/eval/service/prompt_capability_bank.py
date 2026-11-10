@@ -1,0 +1,144 @@
+"""Prompt capability Case Bank — curated seeds (draft, claim=false).
+
+Mirrors agent_capability layout under workspace_seeds/eval/prompt_capability/.
+Does not fork Plan/EvalStore; validation goes through PromptSubjectAdapter.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional
+
+from core.apps.eval.service.capability_id_map import resolve_capability_ids
+from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+PACK_SCHEMA = "eval.case_pack.v1"
+PACK_ID = "prompt.capability"
+PACK_VERSION = "0.1.0"
+PROFILE_ID_SMOKE = "prompt.smoke.v1"
+
+
+class PromptCapabilityBankError(ValueError):
+    """Seed bank load / validate failure (fail closed)."""
+
+
+def default_seed_dir() -> Path:
+    return (
+        Path(__file__).resolve().parents[4]
+        / "workspace_seeds"
+        / "eval"
+        / "prompt_capability"
+    )
+
+
+def _read_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise PromptCapabilityBankError(f"seed missing: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise PromptCapabilityBankError(f"seed JSON invalid: {path}: {exc}") from exc
+
+
+def load_pack_meta(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    meta = _read_json(root / "pack.meta.json")
+    if not isinstance(meta, Mapping):
+        raise PromptCapabilityBankError("pack.meta.json must be an object")
+    return dict(meta)
+
+
+def build_prompt_capability_cases(*, seed_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    cases_dir = root / "cases"
+    if not cases_dir.is_dir():
+        raise PromptCapabilityBankError(f"cases dir missing: {cases_dir}")
+    out: List[Dict[str, Any]] = []
+    for path in sorted(cases_dir.glob("*.json")):
+        raw = _read_json(path)
+        if not isinstance(raw, list):
+            raise PromptCapabilityBankError(f"cases file must be a list: {path}")
+        for row in raw:
+            if not isinstance(row, Mapping):
+                raise PromptCapabilityBankError(f"case must be object in {path}")
+            case = dict(row)
+            case["capabilities"] = resolve_capability_ids(
+                list(case.get("capabilities") or []), fail_closed=True
+            )
+            case.setdefault("applies_to", {"object_types": ["prompt"]})
+            case.setdefault("pack", PACK_ID)
+            out.append(case)
+    return out
+
+
+def validate_prompt_capability_bank(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    meta = load_pack_meta(seed_dir=root)
+    adapter = get_subject_adapter("prompt")
+    cases = build_prompt_capability_cases(seed_dir=root)
+    errors: List[str] = []
+    if str(meta.get("pack_id") or "") != PACK_ID:
+        errors.append(f"pack_id_mismatch:{meta.get('pack_id')}")
+    if meta.get("claim_eligible") is not False:
+        errors.append("claim_eligible_must_be_false")
+    if "prompt" not in list(meta.get("object_types") or []):
+        errors.append("object_types_missing_prompt")
+    for case in cases:
+        case_errs = adapter.validate_case(case)
+        for e in case_errs:
+            errors.append(f"{case.get('case_id')}:{e}")
+    return {
+        "ok": not errors,
+        "pack_id": PACK_ID,
+        "version": str(meta.get("version") or PACK_VERSION),
+        "case_count": len(cases),
+        "errors": errors,
+        "claim_eligible": False,
+        "security_certification": False,
+        "seed_dir": str(root),
+    }
+
+
+def prompt_smoke_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    root = Path(seed_dir) if seed_dir else default_seed_dir()
+    path = root / "profile.prompt.smoke.v1.json"
+    raw = _read_json(path)
+    if not isinstance(raw, Mapping):
+        raise PromptCapabilityBankError("smoke profile must be an object")
+    out = dict(raw)
+    out["claim_eligible"] = False
+    return out
+
+
+def run_prompt_capability_smoke(
+    *, seed_dir: Optional[Path] = None, limit: int = 20
+) -> Dict[str, Any]:
+    """Execute+judge+normalize curated cases via PromptSubjectAdapter (fixture)."""
+    adapter = get_subject_adapter("prompt")
+    cases = build_prompt_capability_cases(seed_dir=seed_dir)[: max(0, int(limit))]
+    rows: List[Dict[str, Any]] = []
+    passed = 0
+    for case in cases:
+        result = adapter.execute(case)
+        judgment = adapter.judge(case, result)
+        normalized = adapter.normalize(case, result, judgment)
+        ok = bool(normalized.get("passed"))
+        if ok:
+            passed += 1
+        rows.append(
+            {
+                "case_id": case.get("case_id"),
+                "passed": ok,
+                "errors": normalized.get("errors") or [],
+                "claim_eligible": False,
+            }
+        )
+    return {
+        "ok": passed == len(cases) and len(cases) > 0,
+        "passed": passed,
+        "total": len(cases),
+        "rows": rows,
+        "claim_eligible": False,
+        "security_certification": False,
+        "honesty": "Fixture lexical smoke ≠ live prompt host ≠ accuracy.",
+    }

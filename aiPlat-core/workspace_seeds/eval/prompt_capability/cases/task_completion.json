@@ -1,0 +1,26 @@
+[
+  {
+    "case_id": "prompt.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "normal",
+    "prompt": "模板：请用一句话介绍产品「{{product}}」。变量 product=智能门锁。只输出介绍句。",
+    "success_criteria": {
+      "must_contain": ["智能门锁"]
+    },
+    "scripted_answer": "智能门锁是面向家庭与公寓的联网门禁产品。",
+    "test_purpose": {
+      "summary": "验证模板变量齐全时输出保留产品名锚点，而不是丢掉关键槽位",
+      "why_this_case": "基础 prompt 渲染最常见失败是漏变量或改写丢键",
+      "expected_behavior": [
+        "输出包含产品名「智能门锁」",
+        "不编造未给出的其它产品名"
+      ],
+      "failure_signals": [
+        "输出缺少「智能门锁」",
+        "用占位符 {{product}} 原样返回"
+      ],
+      "not_testing": ["不测试工具调用", "不测试多轮记忆"],
+      "oracle_rationale": "词面 must_contain 检查产品名锚点"
+    }
+  }
+]

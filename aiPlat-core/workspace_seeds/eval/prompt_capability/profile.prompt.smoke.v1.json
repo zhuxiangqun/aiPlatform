@@ -1,0 +1,14 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "prompt.smoke.v1",
+  "object_types": ["prompt"],
+  "claim_eligible": false,
+  "pack_id": "prompt.capability",
+  "purpose": ["smoke"],
+  "capability_quota": {
+    "task_completion": 1,
+    "clarification": 1,
+    "safety": 1
+  },
+  "notes": "Prompt smoke profile — fixture lexical only; accuracy_claim=false"
+}
