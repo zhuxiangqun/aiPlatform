@@ -1,0 +1,22 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "multi_agent.regression.v1",
+  "subject_kinds": ["multi_agent"],
+  "pack_id": "multi_agent.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "clarification": 5,
+    "error_recovery": 5
+  },
+  "strategy": "stratified",
+  "seed": 37,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Multi-Agent Subject regression — MULTI_AGENT_V1_CAPS ×5 fixture handoff; claim closed; ≠ live multi_agent runtime (M2 deferred)."
+}

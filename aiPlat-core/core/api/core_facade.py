@@ -8110,6 +8110,26 @@ def eval_run_multi_agent_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
     return run_multi_agent_capability_smoke(limit=limit)
 
 
+def eval_multi_agent_regression_profile() -> Dict[str, Any]:
+    """multi_agent.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.multi_agent_capability_bank import (
+        multi_agent_regression_profile,
+    )
+
+    return multi_agent_regression_profile()
+
+
+def eval_multi_agent_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Multi-Agent Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.multi_agent_capability_bank import (
+        multi_agent_regression_status,
+    )
+
+    return multi_agent_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T23:30:00+08:00",
+  "reviewed_at": "2026-11-10T23:45:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b86dd35a8bb9393dddbaeb2b649daacb612f53a0",
-  "diff_sha256": "d9994e21944281f89fbfe5504d044d05f51f34f451305f0c2bb5df387219e283",
-  "head_sha": "23ca48b263b7e58968f8dcd844f8624f3a7a5089",
+  "merge_base": "a5304818d0f0d7ed35dccd609c16bdada1cda734",
+  "diff_sha256": "380bfea8f4a092565d11fab8da9939d2aff15551ace5aaa24197639f459251a0",
+  "head_sha": "2ff2d063e6532135da347bd6e81556ae6073a0f7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Code Review rebased onto KB #653; Session+KB+Code Review panels kept. Claim closed. Local lock only; CI needs non-author Approve."
+  "note": "Multi-Agent rebased onto Code Review #654; Session+KB+CR+MA panels kept. Fixture handoff ≠ live runtime; claim closed. Local lock only; CI needs non-author Approve."
 }

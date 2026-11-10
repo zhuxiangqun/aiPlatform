@@ -126,6 +126,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Tool Regression。',
     not: '配额齐 ≠ live autoreview 准确率；fixture findings/gold 通过 ≠ claim；pack draft ≠ Certification。',
   },
+  'multi-agent-regression': {
+    title: 'Multi-Agent Regression',
+    what: 'multi_agent.regression.v1 题库配额盘点（MULTI_AGENT_V1_CAPS×5）与 draft 人审清单。',
+    can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Session Regression。',
+    not: '配额齐 ≠ live multi_agent runtime；fixture handoff 通过 ≠ claim；pack draft ≠ Certification。',
+  },
   'p4-status': {
     title: 'P4 Benchmark',
     what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',

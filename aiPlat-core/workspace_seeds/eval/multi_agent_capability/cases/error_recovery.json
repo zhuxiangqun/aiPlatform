@@ -27,5 +27,109 @@
       "not_testing": ["不测真实故障注入", "不测 live runtime"],
       "oracle_rationale": "规则 oracle：recovery handoff + path/final exact"
     }
+  },
+  {
+    "case_id": "multi_agent.error_recovery.002",
+    "capabilities": ["error_recovery"],
+    "prompt": "执行器超时后转恢复官降级。",
+    "recovery_agent": "recovery",
+    "handoffs": [
+      {"from": "coordinator", "to": "executor", "message": "跑批"},
+      {"from": "executor", "to": "recovery", "message": "超时"},
+      {"from": "recovery", "to": "coordinator", "message": "已切小批量"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "executor"],
+      ["executor", "recovery"],
+      ["recovery", "coordinator"]
+    ],
+    "final_answer": "已用小批量完成跑批。",
+    "expected_final": "已用小批量完成跑批。",
+    "test_purpose": {
+      "summary": "验证超时路径必经 recovery",
+      "why_this_case": "恢复能力超时变体",
+      "expected_behavior": ["recovery 边存在"],
+      "failure_signals": ["超时即终态失败无恢复"],
+      "not_testing": ["不测真实超时注入"],
+      "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.error_recovery.003",
+    "capabilities": ["error_recovery"],
+    "prompt": "工具调用失败后转恢复官。",
+    "recovery_agent": "recovery",
+    "handoffs": [
+      {"from": "coordinator", "to": "tool_agent", "message": "调 MCP"},
+      {"from": "tool_agent", "to": "recovery", "message": "工具不可用"},
+      {"from": "recovery", "to": "coordinator", "message": "已改 mock 路径"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "tool_agent"],
+      ["tool_agent", "recovery"],
+      ["recovery", "coordinator"]
+    ],
+    "final_answer": "已用 mock 工具路径完成。",
+    "expected_final": "已用 mock 工具路径完成。",
+    "test_purpose": {
+      "summary": "验证工具失败必经 recovery",
+      "why_this_case": "恢复能力工具变体",
+      "expected_behavior": ["recovery 边 exact"],
+      "failure_signals": ["工具失败直接中止"],
+      "not_testing": ["不测 live MCP"],
+      "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.error_recovery.004",
+    "capabilities": ["error_recovery"],
+    "prompt": "校验失败后转恢复官修正。",
+    "recovery_agent": "recovery",
+    "handoffs": [
+      {"from": "coordinator", "to": "validator", "message": "校验产物"},
+      {"from": "validator", "to": "recovery", "message": "schema 失败"},
+      {"from": "recovery", "to": "coordinator", "message": "已补字段重验通过"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "validator"],
+      ["validator", "recovery"],
+      ["recovery", "coordinator"]
+    ],
+    "final_answer": "产物已修正并通过校验。",
+    "expected_final": "产物已修正并通过校验。",
+    "test_purpose": {
+      "summary": "验证校验失败必经 recovery",
+      "why_this_case": "恢复能力校验变体",
+      "expected_behavior": ["三边 exact"],
+      "failure_signals": ["校验失败无恢复"],
+      "not_testing": ["不测真实 schema 引擎"],
+      "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.error_recovery.005",
+    "capabilities": ["error_recovery"],
+    "prompt": "审稿拒绝后转恢复官改写。",
+    "recovery_agent": "recovery",
+    "handoffs": [
+      {"from": "coordinator", "to": "reviewer", "message": "审稿"},
+      {"from": "reviewer", "to": "recovery", "message": "拒绝：缺证据"},
+      {"from": "recovery", "to": "coordinator", "message": "已补证据再提交"}
+    ],
+    "expected_handoff_path": [
+      ["coordinator", "reviewer"],
+      ["reviewer", "recovery"],
+      ["recovery", "coordinator"]
+    ],
+    "final_answer": "已补证据并通过复审。",
+    "expected_final": "已补证据并通过复审。",
+    "test_purpose": {
+      "summary": "验证审稿拒绝必经 recovery",
+      "why_this_case": "恢复能力第五基线",
+      "expected_behavior": ["recovery 边存在", "终稿 exact"],
+      "failure_signals": ["拒绝后无恢复"],
+      "not_testing": ["不测真人审稿"],
+      "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    }
   }
 ]
