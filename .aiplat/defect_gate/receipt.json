@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T00:27:07+08:00",
+  "reviewed_at": "2026-11-11T06:27:19+08:00",
   "base_ref": "origin/main",
-  "merge_base": "588ebd324db22f7bfd6fbd77305c5202c5bdfc8b",
-  "diff_sha256": "85214180e4492b45f610555a258a5052d825f269d0e6c3e37f98a0d5f9ef2495",
-  "head_sha": "85b3bbbc8936fae6f22a8c4ff6a8bdd791acb495",
+  "merge_base": "24fa5edc3589576c8750a1b117835892dcd41091",
+  "diff_sha256": "9813feacc1e96906d412aba0be240f0de3220e57b9a95b507f6394d37a5f5731",
+  "head_sha": "e7a95193130bef9a9ff645bb54d310036fa60a43",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Skill Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
+  "note": "Generated-App Subject additive; EvalGeneratedAppsPanel remains separate live/runs_eval surface; claim/cert/profile_complete stay false on draft pack. Local lock only."
 }
