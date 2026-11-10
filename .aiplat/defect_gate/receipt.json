@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T10:01:15+08:00",
+  "reviewed_at": "2026-11-10T14:46:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "294c597307534b55e50ba4bcb1c067522fa810e590e1a0fe379625225eda29cd",
-  "head_sha": "9657ad23c898c2dcc4d2ebc9bf101e764dcb3ed3",
+  "merge_base": "7d3a8596142435891737acc6e04dabdfb3467711",
+  "diff_sha256": "80b5d48c5cdf294d32cc2dda071b512dbf744ffd00844c0494b17bc3645e440b",
+  "head_sha": "56e52fc17646d9fd20801223e56bace40b999c7f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Re-lock after AUTO-STATS sync (评估系统 473). ModelSubjectAdapter path unchanged; claim_eligible false. Local lock only."
+  "note": "ModelSubjectAdapter stack closeout after #635; local lock only. CI unlock is solo-maintainer / non-author Approve."
 }
