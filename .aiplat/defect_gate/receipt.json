@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T09:15:37+08:00",
+  "reviewed_at": "2026-11-10T09:36:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "bbef80810a1c3a4ca8e37b968bb0224845a9e5f4ea97457252624c93dcfe6cc8",
-  "head_sha": "12eeb932b611db7c1209a0a824aa7ff6442b2628",
+  "diff_sha256": "7f1d1ce75d69aab043e947750603adc8ea8090f6e4b96e2abe4fcd75797f7958",
+  "head_sha": "42850358f06b3a6788c3a1f60ca0b630f2224e54",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "WorkflowSubjectAdapter + shared lexical base; fixture only; claim=false."
+  "note": "ModelSubjectAdapter mirrors Workflow/Prompt lexical path; claim_eligible forced false; typed_plan_exam model path remains intentional parallel (ADR). Local lock only."
 }
