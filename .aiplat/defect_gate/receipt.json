@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T13:21:39+08:00",
+  "reviewed_at": "2026-11-10T13:30:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "90b94fe11d66d3c96d19d30b4ffbbe25763e4330",
-  "diff_sha256": "425f771b5c9203d27d71ddd3a34a2e4d23c20cb28af467aeb3d0ed8d442e4638",
-  "head_sha": "95e465495a0f82bac501a7957a73f8f4c3af6810",
+  "diff_sha256": "10bb5bcf7f1503b6b65a979f4dfab57ea02521755bae9c2de1073421b28098ac",
+  "head_sha": "e3c93ef0f948d4e6c8371ea7fa101dc6a35c34ab",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CodeReviewSubjectAdapter gold exact-set mirrors package code_review_gold intentionally; claim_eligible forced false; empty gold fail-closed; smoke requires all pass; not OBJECT_TYPES. Local lock only."
+  "note": "SessionSubjectAdapter multi-turn fixture mirrors package session_eval intentionally; claim_eligible forced false; turns without actual fail exact; smoke requires all pass; not OBJECT_TYPES. Local lock only."
 }
