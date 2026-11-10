@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T18:44:21+08:00",
+  "reviewed_at": "2026-11-10T19:06:48+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4ec3503280c1ac10fa725819bce1912a7c9c848e",
-  "diff_sha256": "de3566a520ec8ae0e159f78ee7b42f4cf788df00b698d65dceb06e530f0793b6",
-  "head_sha": "e2431255180b40d9ff32bd00ccfd0e980a412a12",
+  "merge_base": "679b08110ee5b7509a5fcb6483e5752bec87342e",
+  "diff_sha256": "1cb815871a862112ab11abc6d0a51fe7256f4f2d7cbb7b1e85b800abee1addc5",
+  "head_sha": "d9eb47b5d22dabd8ed9eca68c42ecdfd97f44c60",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 draft-by-capability checklist + deep links; claim closed. Local lock only."
+  "note": "P4 status UI; benchmark quotas + judge bar report-only. Local lock only."
 }

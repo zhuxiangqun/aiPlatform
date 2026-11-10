@@ -380,6 +380,16 @@ async def get_p1_regression_status(
     }
 
 
+@router.get("/p4-status", response_model=ItemResponse)
+async def get_p4_status(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """P4 benchmark/holdout + judge engineering bar — claim stays false."""
+    from core.api.core_facade import eval_p4_status
+
+    return {"data": eval_p4_status()}
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),
