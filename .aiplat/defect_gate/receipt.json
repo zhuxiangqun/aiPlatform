@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T16:45:36+08:00",
+  "reviewed_at": "2026-11-10T18:44:21+08:00",
   "base_ref": "origin/main",
-  "merge_base": "0343eb4f34e797eaca15fee2a8e395e6b3c71764",
-  "diff_sha256": "aa7ee0994312b10287b12cc08a8bb3ae31f99ce9f2bb05360bf7adccc013a8e5",
-  "head_sha": "0c3c4872cad171d7045e04d0dd1a2ed945a611cc",
+  "merge_base": "4ec3503280c1ac10fa725819bce1912a7c9c848e",
+  "diff_sha256": "de3566a520ec8ae0e159f78ee7b42f4cf788df00b698d65dceb06e530f0793b6",
+  "head_sha": "e2431255180b40d9ff32bd00ccfd0e980a412a12",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "P1 regression readiness UI; quotas ok; human review blocker honest. Local lock only."
+  "note": "P1 draft-by-capability checklist + deep links; claim closed. Local lock only."
 }

@@ -2,6 +2,7 @@
  * P1 Regression readiness — quotas may be complete; human purpose_ok/freeze is the gate.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '../../services';
 
@@ -18,6 +19,12 @@ type CheckRow = {
   required_for_profile_complete?: boolean;
 };
 
+type DraftCapRow = {
+  capability_id?: string;
+  draft_count?: number;
+  sample_case_ids?: string[];
+};
+
 type P1Status = {
   ok?: boolean;
   profile_id?: string;
@@ -25,12 +32,15 @@ type P1Status = {
   profile_complete?: boolean;
   case_count?: number;
   purpose_ok_or_better?: number;
+  draft_pending?: number;
+  draft_by_capability?: DraftCapRow[];
   review_status_counts?: Record<string, number>;
   checks?: CheckRow[];
   blockers?: string[];
   coverage?: { n_gaps?: number; covered_capabilities?: number; total_in_scope?: number };
   snapshot?: { manifest_hash?: string; case_count?: number };
   next_action?: string;
+  review_links?: { case_packs_tab?: string; case_editor_tab?: string };
   accuracy_claim?: boolean;
   claim_eligible?: boolean;
   certification_eligible?: boolean;
@@ -66,6 +76,9 @@ export default function EvalP1RegressionPanel(_props: Props = {}) {
   const reviews = status?.review_status_counts || {};
   const checks = status?.checks || [];
   const blockers = status?.blockers || [];
+  const drafts = status?.draft_by_capability || [];
+  const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
+  const editorHref = status?.review_links?.case_editor_tab || '/eval?tab=case-editor';
 
   return (
     <div className="space-y-4 text-sm" data-testid="eval-p1-regression-panel">
@@ -106,13 +119,22 @@ export default function EvalP1RegressionPanel(_props: Props = {}) {
           <>
             <p className="text-xs text-gray-400">
               cases={status.case_count ?? '—'} · purpose_ok+=
-              {status.purpose_ok_or_better ?? 0} · gaps=
+              {status.purpose_ok_or_better ?? 0} · draft_pending=
+              {status.draft_pending ?? '—'} · gaps=
               {status.coverage?.n_gaps ?? '—'} · manifest=
               {status.snapshot?.manifest_hash
                 ? `${String(status.snapshot.manifest_hash).slice(0, 16)}…`
                 : '—'}
             </p>
             <p className="text-xs text-sky-200/90">下一步：{status.next_action}</p>
+            <div className="flex flex-wrap gap-3 text-xs">
+              <Link className="text-sky-300 hover:underline" to={packsHref}>
+                打开 Case Pack（Promote）
+              </Link>
+              <Link className="text-sky-300 hover:underline" to={editorHref}>
+                打开题目维护
+              </Link>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
@@ -141,6 +163,46 @@ export default function EvalP1RegressionPanel(_props: Props = {}) {
             </div>
           </>
         ) : null}
+      </div>
+
+      <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-2">
+        <h2 className="font-medium">人审清单（draft by capability）</h2>
+        <p className="text-xs text-gray-400">
+          仅列出未达 purpose_ok 的样本 id；完整审阅请走 Case Pack Promote / 题目维护。
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-700">
+                <th className="py-1 pr-2">capability</th>
+                <th className="py-1 pr-2">draft</th>
+                <th className="py-1">sample case_ids</th>
+              </tr>
+            </thead>
+            <tbody>
+              {drafts.length ? (
+                drafts.map((row) => (
+                  <tr
+                    key={row.capability_id}
+                    className="border-b border-gray-800 align-top"
+                  >
+                    <td className="py-2 pr-2 font-mono">{row.capability_id}</td>
+                    <td className="py-2 pr-2">{row.draft_count ?? 0}</td>
+                    <td className="py-2 text-gray-300 font-mono">
+                      {(row.sample_case_ids || []).join(', ') || '—'}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td className="py-2 text-gray-500" colSpan={3}>
+                    无 draft（或已全部 purpose_ok+）
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 space-y-2">

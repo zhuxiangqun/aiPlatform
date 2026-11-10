@@ -7555,9 +7555,10 @@ def eval_p1_regression_status(
     *,
     pack_kind: str = "",
     pack_status: str = "",
+    draft_sample_limit: int = 5,
 ) -> Dict[str, Any]:
     """P1 Regression readiness honesty snapshot (quotas ok; human review is the gate)."""
-    from collections import Counter
+    from collections import Counter, defaultdict
 
     from core.apps.eval.service.capability_case_bank import (
         PROFILE_ID,
@@ -7566,13 +7567,30 @@ def eval_p1_regression_status(
     from core.apps.eval.service.capability_cert_readiness import (
         evaluate_certification_readiness,
     )
+    from core.apps.eval.service.capability_id_map import resolve_capability_id
 
     bank = build_agent_capability_cases()
     review_counts: Counter = Counter()
+    draft_by_cap: Dict[str, List[str]] = defaultdict(list)
+    draft_counts: Counter = Counter()
+    sample_lim = max(0, int(draft_sample_limit or 0))
+    _PURPOSE_OK = frozenset({"purpose_ok", "reviewed", "approved", "frozen"})
     for c in bank:
         rev = c.get("review") if isinstance(c.get("review"), dict) else {}
         st = str((rev or {}).get("status") or "draft").strip().lower() or "draft"
         review_counts[st] += 1
+        caps = list(c.get("capabilities") or [])
+        try:
+            cap = resolve_capability_id(str(caps[0]), fail_closed=True) if caps else ""
+        except Exception:
+            cap = str(caps[0]).strip() if caps else ""
+        if not cap:
+            cap = "(unknown)"
+        if st not in _PURPOSE_OK:
+            draft_counts[cap] += 1
+            cid = str(c.get("case_id") or "")
+            if cid and len(draft_by_cap[cap]) < sample_lim:
+                draft_by_cap[cap].append(cid)
 
     ready = evaluate_certification_readiness(
         profile_id=PROFILE_ID,
@@ -7585,6 +7603,14 @@ def eval_p1_regression_status(
     purpose_ok_n = int(review_counts.get("purpose_ok", 0)) + int(
         review_counts.get("reviewed", 0)
     ) + int(review_counts.get("approved", 0)) + int(review_counts.get("frozen", 0))
+    draft_checklist = [
+        {
+            "capability_id": cap,
+            "draft_count": int(draft_counts[cap]),
+            "sample_case_ids": list(draft_by_cap.get(cap) or []),
+        }
+        for cap in sorted(draft_counts.keys())
+    ]
     return {
         "schema": "eval.p1_regression_status.v1",
         "ok": bool(ready.get("ok")),
@@ -7594,6 +7620,8 @@ def eval_p1_regression_status(
         "case_count": len(bank),
         "review_status_counts": dict(sorted(review_counts.items())),
         "purpose_ok_or_better": purpose_ok_n,
+        "draft_pending": int(sum(draft_counts.values())),
+        "draft_by_capability": draft_checklist,
         "checks": ready.get("checks") or [],
         "blockers": ready.get("blockers") or [],
         "coverage": ready.get("coverage") or {},
@@ -7602,12 +7630,17 @@ def eval_p1_regression_status(
             "Eval → Case Pack → Promote agent.capability "
             "(stamps purpose_ok → freeze; claim stays false)"
         ),
+        "review_links": {
+            "case_packs_tab": "/eval?tab=case-packs",
+            "case_editor_tab": "/eval?tab=case-editor",
+        },
         "accuracy_claim": False,
         "claim_eligible": False,
         "certification_eligible": False,
         "honesty": (
             "P1 content quotas are inventory-complete when quota_inventory_ok; "
             "human purpose_ok/freeze is still required for profile_complete; "
+            "draft_by_capability is a review checklist only; "
             "claim_eligible/accuracy_claim/certification stay false."
         ),
     }
