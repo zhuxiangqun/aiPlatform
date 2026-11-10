@@ -363,6 +363,23 @@ async def get_method_track_status(
     return {"data": eval_method_track_status()}
 
 
+@router.get("/p1-regression-status", response_model=ItemResponse)
+async def get_p1_regression_status(
+    pack_kind: str = "",
+    pack_status: str = "",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """P1 Regression readiness — quotas vs human purpose_ok; claim stays false."""
+    from core.api.core_facade import eval_p1_regression_status
+
+    return {
+        "data": eval_p1_regression_status(
+            pack_kind=pack_kind,
+            pack_status=pack_status,
+        )
+    }
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),

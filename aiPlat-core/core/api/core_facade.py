@@ -7551,6 +7551,68 @@ def eval_method_track_status(
     }
 
 
+def eval_p1_regression_status(
+    *,
+    pack_kind: str = "",
+    pack_status: str = "",
+) -> Dict[str, Any]:
+    """P1 Regression readiness honesty snapshot (quotas ok; human review is the gate)."""
+    from collections import Counter
+
+    from core.apps.eval.service.capability_case_bank import (
+        PROFILE_ID,
+        build_agent_capability_cases,
+    )
+    from core.apps.eval.service.capability_cert_readiness import (
+        evaluate_certification_readiness,
+    )
+
+    bank = build_agent_capability_cases()
+    review_counts: Counter = Counter()
+    for c in bank:
+        rev = c.get("review") if isinstance(c.get("review"), dict) else {}
+        st = str((rev or {}).get("status") or "draft").strip().lower() or "draft"
+        review_counts[st] += 1
+
+    ready = evaluate_certification_readiness(
+        profile_id=PROFILE_ID,
+        cases=bank,
+        pack_kind=pack_kind,
+        pack_status=pack_status,
+        compile_plan=True,
+    )
+    n_gaps = int((ready.get("coverage") or {}).get("n_gaps") or 0)
+    purpose_ok_n = int(review_counts.get("purpose_ok", 0)) + int(
+        review_counts.get("reviewed", 0)
+    ) + int(review_counts.get("approved", 0)) + int(review_counts.get("frozen", 0))
+    return {
+        "schema": "eval.p1_regression_status.v1",
+        "ok": bool(ready.get("ok")),
+        "profile_id": PROFILE_ID,
+        "quota_inventory_ok": n_gaps == 0,
+        "profile_complete": bool(ready.get("profile_complete")),
+        "case_count": len(bank),
+        "review_status_counts": dict(sorted(review_counts.items())),
+        "purpose_ok_or_better": purpose_ok_n,
+        "checks": ready.get("checks") or [],
+        "blockers": ready.get("blockers") or [],
+        "coverage": ready.get("coverage") or {},
+        "snapshot": ready.get("snapshot") or {},
+        "next_action": (
+            "Eval → Case Pack → Promote agent.capability "
+            "(stamps purpose_ok → freeze; claim stays false)"
+        ),
+        "accuracy_claim": False,
+        "claim_eligible": False,
+        "certification_eligible": False,
+        "honesty": (
+            "P1 content quotas are inventory-complete when quota_inventory_ok; "
+            "human purpose_ok/freeze is still required for profile_complete; "
+            "claim_eligible/accuracy_claim/certification stay false."
+        ),
+    }
+
+
 def eval_prompt_capability_catalog() -> list:
     """Prompt SubjectAdapter capability catalog (prompt v1 subset)."""
     from core.apps.eval.service.subject_adapter import get_subject_adapter

@@ -78,6 +78,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '查看方法轨种类、诚实声明，以及已注册 Subject 对照。',
     not: '方法不等于对象类型；不可升 Subject / OBJECT_TYPES，也不宣称 accuracy。',
   },
+  'p1-regression': {
+    title: 'P1 Regression',
+    what: 'agent.regression.v1 就绪盘点：配额是否齐、人审 purpose_ok/freeze 是否挡住 profile_complete。',
+    can: '看 review 分布、checklist/blockers，以及 Case Pack Promote 下一步。',
+    not: '配额齐 ≠ 已冻结；Promote/freeze ≠ accuracy / Certification。',
+  },
   g2b: {
     title: 'G2b',
     what: '双人盲标一致性（κ）收口面板——看标注员是否彼此一致。',
