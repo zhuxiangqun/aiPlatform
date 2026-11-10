@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-10T22:50:00+08:00",
+  "reviewed_at": "2026-11-10T23:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "3210d759ade6ab5b15fb853a5d311512191ffa99",
-  "diff_sha256": "3a16fcf52ff2f8babf2e054f2f9c52aa5347ba5a52606e41e4ba0bd1df49363c",
-  "head_sha": "044a8b2dd29c33ec77e0e923d7198bb41e83ddb2",
+  "merge_base": "29ce2745836c91013a7719a91565f76643674461",
+  "diff_sha256": "10c55433cbd2fdb678746d9456440d7104204431e55ee6f0eba007a4595e4e89",
+  "head_sha": "4699058dea2b71366683c7c8a7fd84f8df8fd9b0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Session regression honesty + contracts note: eval session.capability ≠ app conversation_key. Claim stays closed. Local lock only; CI needs non-author Approve."
+  "note": "KB regression rebased onto Session #652; Session+KB panels both kept. Claim closed. Local lock only; CI needs non-author Approve."
 }
