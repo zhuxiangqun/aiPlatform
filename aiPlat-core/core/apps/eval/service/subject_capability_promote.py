@@ -136,7 +136,30 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             "object_type_member": object_type_member,
         }
 
+    from core.apps.eval.service import capability_case_bank as agent_bank
+
+    def _validate_agent(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+        cases = (
+            agent_bank.load_agent_capability_cases(seed_dir=seed_dir)
+            if seed_dir
+            else None
+        )
+        return agent_bank.validate_agent_capability_bank(cases=cases)
+
+    def _build_agent(*, seed_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+        return agent_bank.load_agent_capability_cases(seed_dir=seed_dir)
+
     return {
+        "agent": _row(
+            pack_id=agent_bank.PACK_ID,
+            version=agent_bank.PACK_VERSION,
+            profile_id=agent_bank.PROFILE_ID,
+            object_types=["agent"],
+            validate=_validate_agent,
+            build=_build_agent,
+            seed_dir=agent_bank.default_seed_dir,
+            object_type_member=True,
+        ),
         "prompt": _row(
             pack_id=prompt_bank.PACK_ID,
             version=prompt_bank.PACK_VERSION,
@@ -271,7 +294,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
 
 
 def list_promotable_subject_kinds() -> List[str]:
-    return sorted(["agent", *_bank_specs().keys()])
+    return sorted(_bank_specs().keys())
 
 
 def _stamp_review_purpose_ok_inplace(
@@ -292,16 +315,51 @@ def _stamp_review_purpose_ok_inplace(
     return c
 
 
+def _stamp_seed_case_json_file(path: Path, *, reviewer: str) -> Tuple[int, bool]:
+    """Stamp purpose_ok into a JSON list of cases. Returns (n_rows, changed)."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SubjectCapabilityPromoteError(
+            f"seed JSON invalid: {path}: {exc}"
+        ) from exc
+    if not isinstance(raw, list):
+        raise SubjectCapabilityPromoteError(f"cases file must be a list: {path}")
+    out_rows: List[Dict[str, Any]] = []
+    changed = False
+    stamped = 0
+    for row in raw:
+        if not isinstance(row, Mapping):
+            raise SubjectCapabilityPromoteError(f"case must be object in {path}")
+        # Negatives stay suite-only; do not stamp expect_judge_fail fixtures.
+        if row.get("expect_judge_fail"):
+            out_rows.append(dict(row))
+            continue
+        prev = row.get("review") if isinstance(row.get("review"), Mapping) else {}
+        stamped_row = _stamp_review_purpose_ok_inplace(row, reviewer=reviewer)
+        if dict(prev) != dict(stamped_row.get("review") or {}):
+            changed = True
+        out_rows.append(stamped_row)
+        stamped += 1
+    if changed:
+        path.write_text(
+            json.dumps(out_rows, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return stamped, changed
+
+
 def stamp_subject_seed_purpose_ok(
     *,
     subject_kind: str,
     reviewer: str = "owner",
     seed_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Validate + content_purpose_ok → write purpose_ok into seed cases/*.json.
+    """Validate + content_purpose_ok → write purpose_ok into seed case JSON.
 
-    Does **not** freeze pack.meta / workspace registry. claim_eligible stays
-    false. Agent seeds are out of scope here (use promote_agent path).
+    Writes ``cases/*.json``; for agent also stamps ``fixtures/*/cases.json``
+    (skips expect_judge_fail). Does **not** freeze pack.meta / workspace
+    registry. claim_eligible stays false.
     """
     from core.apps.eval.service.content_purpose_ok import (
         ContentPurposeOkError,
@@ -313,11 +371,6 @@ def stamp_subject_seed_purpose_ok(
     assert_not_subject_method(kind)
     if not kind:
         raise SubjectCapabilityPromoteError("subject_kind required")
-    if kind == "agent":
-        raise SubjectCapabilityPromoteError(
-            "agent seed purpose_ok uses promote_agent_capability_bank / "
-            "write_agent_capability_seeds — not stamp_subject_seed_purpose_ok"
-        )
 
     specs = _bank_specs()
     spec = specs.get(kind)
@@ -350,31 +403,15 @@ def stamp_subject_seed_purpose_ok(
     who = str(reviewer or "owner").strip() or "owner"
     stamped = 0
     files_touched = 0
-    for path in sorted(cases_dir.glob("*.json")):
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise SubjectCapabilityPromoteError(
-                f"seed JSON invalid: {path}: {exc}"
-            ) from exc
-        if not isinstance(raw, list):
-            raise SubjectCapabilityPromoteError(f"cases file must be a list: {path}")
-        out_rows: List[Dict[str, Any]] = []
-        changed = False
-        for row in raw:
-            if not isinstance(row, Mapping):
-                raise SubjectCapabilityPromoteError(f"case must be object in {path}")
-            prev = row.get("review") if isinstance(row.get("review"), Mapping) else {}
-            stamped_row = _stamp_review_purpose_ok_inplace(row, reviewer=who)
-            if dict(prev) != dict(stamped_row.get("review") or {}):
-                changed = True
-            out_rows.append(stamped_row)
-            stamped += 1
+    paths = sorted(cases_dir.glob("*.json"))
+    if kind == "agent":
+        fixtures_root = root / "fixtures"
+        if fixtures_root.is_dir():
+            paths.extend(sorted(fixtures_root.glob("*/cases.json")))
+    for path in paths:
+        n, changed = _stamp_seed_case_json_file(path, reviewer=who)
+        stamped += n
         if changed:
-            path.write_text(
-                json.dumps(out_rows, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8",
-            )
             files_touched += 1
 
     return {
@@ -399,9 +436,9 @@ def stamp_subject_seed_purpose_ok(
         "accuracy_claim": False,
         "certification_eligible": False,
         "honesty": (
-            f"seed cases/*.json stamped purpose_ok for {kind}; "
-            "pack.meta remains draft; workspace freeze still required for "
-            "profile_complete; claim/Certification stay closed"
+            f"seed case JSON stamped purpose_ok for {kind}; "
+            "pack.meta remains draft until freeze_subject_seed_pack_meta; "
+            "claim/Certification stay closed"
         ),
     }
 
@@ -459,11 +496,6 @@ def freeze_subject_seed_pack_meta(
     assert_not_subject_method(kind)
     if not kind:
         raise SubjectCapabilityPromoteError("subject_kind required")
-    if kind == "agent":
-        raise SubjectCapabilityPromoteError(
-            "agent seed pack freeze uses promote_agent_capability_bank / "
-            "workspace Case Pack path — not freeze_subject_seed_pack_meta"
-        )
 
     specs = _bank_specs()
     spec = specs.get(kind)

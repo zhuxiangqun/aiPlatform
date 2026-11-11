@@ -68,8 +68,10 @@
       "seed": 15
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:16eec0e488dd0e9c7e6ee6f3ca047aa4af91033775fe67ed138a9c7bdcfda393"
   },
@@ -137,8 +139,10 @@
       "seed": 16
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:7e18eae91bd89196b88f1c5dc33c5bb1d42b75bf9097e1e487ff7c3a5cb50f21"
   },
@@ -209,8 +213,10 @@
       "seed": 17
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:d550606c861b479ae1498f8590ce9648d4665b4930f10eb9fc58c39c6b898d82"
   },
@@ -282,8 +288,10 @@
       "seed": 18
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:fbc8f14e1cddc4316bba4ca476949496dc6702d9d210c356010d4025a0470afc"
   },
@@ -355,8 +363,10 @@
       "seed": 43
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:09df75b7f879866b9a269a14ac10330918a0116912afadb1ef2f355293ef5bd3"
   },
@@ -428,8 +438,10 @@
       "seed": 44
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:426eeec877b115e057f1a18456f6d6a606b4e11d68aa041effb60bdd83905b5b"
   },
@@ -501,8 +513,10 @@
       "seed": 45
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:ffcbc07a5e3318d4589d1b0f6e052dd099fc8eb69555b5d31b29bc66a27c2165"
   },
@@ -574,8 +588,10 @@
       "seed": 46
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:ff214dac4dc684cd207dbbd3dab6db13daa72648af709f1b05f947580a434f4d"
   }

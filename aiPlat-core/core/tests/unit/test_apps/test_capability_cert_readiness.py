@@ -39,17 +39,31 @@ def test_benchmark_profile_complete_but_not_certifiable_when_frozen():
     assert out["blockers"] == []
 
 
-def test_benchmark_draft_bank_still_blocked_on_review():
+def test_seed_purpose_ok_unlocks_profile_complete_claim_closed():
+    # Real agent.capability seeds are purpose_ok (+ pack.meta frozen) after #675.
     out = evaluate_certification_readiness(profile_id=PROFILE_ID_BENCHMARK)
-    assert out["certification_eligible"] is False
-    assert "cases_not_fully_reviewed_or_pack_not_frozen" in out["blockers"]
-
-
-def test_regression_without_frozen_blocked_on_review():
-    out = evaluate_certification_readiness(profile=agent_regression_profile())
+    assert out["profile_complete"] is True
     assert out["certification_eligible"] is False
     assert out["claim_eligible"] is False
-    # seed bank review=status draft → needs pack frozen or purpose_ok
+    assert "cases_not_fully_reviewed_or_pack_not_frozen" not in out["blockers"]
+
+
+def test_draft_cases_still_blocked_on_review():
+    from core.apps.eval.service.capability_case_bank import build_agent_capability_cases
+
+    draft_cases = []
+    for row in build_agent_capability_cases():
+        c = dict(row)
+        c["review"] = {"status": "draft"}
+        draft_cases.append(c)
+    out = evaluate_certification_readiness(
+        profile=agent_regression_profile(),
+        cases=draft_cases,
+        pack_kind="curated",
+        pack_status="draft",
+    )
+    assert out["certification_eligible"] is False
+    assert out["claim_eligible"] is False
     assert "cases_not_fully_reviewed_or_pack_not_frozen" in out["blockers"]
     assert out["profile_complete"] is False
 
@@ -61,19 +75,18 @@ def test_eval_p1_regression_status_facade():
     assert st["ok"] is True
     assert st["profile_id"] == "agent.regression.v1"
     assert st["quota_inventory_ok"] is True
-    assert st["profile_complete"] is False
+    assert st["profile_complete"] is True
     assert st["accuracy_claim"] is False
     assert st["claim_eligible"] is False
     assert st["certification_eligible"] is False
     assert st["case_count"] >= 57
-    assert st["review_status_counts"].get("draft", 0) >= 1
-    assert st["draft_pending"] == st["review_status_counts"].get("draft", 0)
-    assert st["draft_by_capability"]
-    assert all("capability_id" in r and "draft_count" in r for r in st["draft_by_capability"])
+    assert st["purpose_ok_or_better"] == st["case_count"]
+    assert st["draft_pending"] == 0
+    assert st["review_status_counts"].get("purpose_ok", 0) == st["case_count"]
+    assert st["draft_by_capability"] == []
     assert st["review_links"]["case_packs_tab"] == "/eval?tab=case-packs"
     assert st["review_links"]["case_editor_tab"] == "/eval?tab=case-editor"
-    assert "cases_not_fully_reviewed_or_pack_not_frozen" in st["blockers"]
-    assert "Promote" in st["next_action"]
+    assert st["blockers"] == []
 
 
 def test_judge_bar_optional_does_not_block_profile_complete():

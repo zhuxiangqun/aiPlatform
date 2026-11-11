@@ -36,7 +36,10 @@
       "oracle_rationale": "must_contain_from_tools / answer"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -85,7 +88,10 @@
       "oracle_rationale": "flatten tool_results into must_contain"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -297,7 +303,10 @@
       "oracle_rationale": "must_contain_from_tools"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -346,7 +355,10 @@
       "oracle_rationale": "use_tool_result_values；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -397,7 +409,10 @@
       "oracle_rationale": "must_contain_from_tools"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,

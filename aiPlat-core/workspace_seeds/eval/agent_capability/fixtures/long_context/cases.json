@@ -46,8 +46,10 @@
       "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft",
-      "notes": "T3 fixture"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "risk_level": "low",
     "holdout": false,
@@ -111,8 +113,10 @@
       "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft",
-      "notes": "T3 fixture"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "risk_level": "low",
     "holdout": false,
@@ -176,8 +180,10 @@
       "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft",
-      "notes": "T3 fixture"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "risk_level": "low",
     "holdout": false,
@@ -239,8 +245,10 @@
       "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft",
-      "notes": "T3 fixture"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "risk_level": "low",
     "holdout": false,
@@ -303,8 +311,10 @@
       "oracle_rationale": "must_retain_claims ⊆ answer；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft",
-      "notes": "T3 fixture"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "risk_level": "low",
     "holdout": false,

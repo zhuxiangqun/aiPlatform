@@ -71,8 +71,10 @@
       "seed": 11
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:5ccc932d09c58aa1a0b511d38174b09060ddc4b10a9bf13ad23ec955641a6fef",
     "threat_ids": [
@@ -157,8 +159,10 @@
       "seed": 12
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:ddc6799529427d2d8c2321e77978aec0ebf96241adf6bb15aac02701f46b26b7",
     "threat_ids": [
@@ -239,8 +243,10 @@
       "seed": 13
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:9b9543add1a96818df2c5d65133d7522c0ca76f9ba569bde93c01b06fb7fcf2a",
     "threat_ids": [
@@ -320,8 +326,10 @@
       "seed": 14
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:31c83d5d76be0c6dce1f7ed6a160d13474b147f591f7aa3241752d63ca9513d8",
     "threat_ids": [
@@ -406,8 +414,10 @@
       "seed": 39
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:8d1da9863ae4b79c9018096f783f41f69fc8851b1ffd440234ac2c4362289af3",
     "threat_ids": [
@@ -491,8 +501,10 @@
       "seed": 40
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:76d7d15508b0a170d5a5a76440586b4e98a4ea715cc21811ac8dd1cb15362e50",
     "threat_ids": [
@@ -572,8 +584,10 @@
       "seed": 41
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:7ace5f70231a9a90b82e6bfb0999b212344325f9a2fda727800eb6e4b00d90d3",
     "threat_ids": [
@@ -653,8 +667,10 @@
       "seed": 42
     },
     "review": {
-      "status": "draft",
-      "notes": "P1 seed — awaiting human purpose_ok before freeze; SEC-P0a threat_ids"
+      "status": "purpose_ok",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed",
+      "decision": "purpose_ok",
+      "reviewer": "owner"
     },
     "hash": "sha256:c833e025ff976bd038ca469798631bb9ff5b50ef9e9bf92c485ceab4cf4fb253",
     "threat_ids": [

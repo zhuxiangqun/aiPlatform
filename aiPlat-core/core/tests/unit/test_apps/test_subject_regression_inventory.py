@@ -14,8 +14,7 @@ def test_inventory_covers_object_types_and_stays_claim_closed():
     assert inv["claim_eligible"] is False
     assert inv["accuracy_claim"] is False
     assert inv["certification_eligible"] is False
-    # Non-agent Subject seed packs frozen; agent.capability pack.meta still draft.
-    assert inv["profile_complete_count"] >= 13
+    assert inv["profile_complete_count"] == inv["subject_count"]
     assert inv["subject_count"] >= 14
     assert inv["object_type_subject_count"] == len(OBJECT_TYPES)
 
@@ -25,10 +24,7 @@ def test_inventory_covers_object_types_and_stays_claim_closed():
         row = by_kind[ot]
         assert row["object_type_member"] is True
         assert row["claim_eligible"] is False
-        if ot == "agent":
-            assert row["profile_complete"] is False
-        else:
-            assert row["profile_complete"] is True
+        assert row["profile_complete"] is True
         assert row["ok"] is True, row
         assert row["quota_inventory_ok"] is True, row
 

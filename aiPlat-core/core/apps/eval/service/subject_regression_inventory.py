@@ -87,6 +87,8 @@ def _agent_regression_status(*, draft_sample_limit: int = 5) -> Dict[str, Any]:
         profile_id=PROFILE_ID,
         cases=cases,
         compile_plan=True,
+        pack_kind=str(meta.get("kind") or ""),
+        pack_status=str(meta.get("status") or ""),
     )
     n_gaps = int((ready.get("coverage") or {}).get("n_gaps") or 0)
     purpose_ok_n = (
@@ -95,15 +97,17 @@ def _agent_regression_status(*, draft_sample_limit: int = 5) -> Dict[str, Any]:
         + int(review_counts.get("approved", 0))
         + int(review_counts.get("frozen", 0))
     )
+    pack_status = str(meta.get("status") or "draft")
+    profile_complete = bool(ready.get("profile_complete"))
     return {
         "schema": "eval.p1_regression_status.v1",
         "ok": bool(ready.get("ok")),
         "profile_id": PROFILE_ID,
         "pack_id": str(meta.get("pack_id") or "agent.capability"),
         "pack_version": str(meta.get("version") or ""),
-        "pack_status": str(meta.get("status") or "draft"),
+        "pack_status": pack_status,
         "quota_inventory_ok": n_gaps == 0,
-        "profile_complete": bool(ready.get("profile_complete")),
+        "profile_complete": profile_complete,
         "case_count": len(cases),
         "purpose_ok_or_better": purpose_ok_n,
         "draft_pending": draft_pending,
@@ -111,8 +115,13 @@ def _agent_regression_status(*, draft_sample_limit: int = 5) -> Dict[str, Any]:
         "claim_eligible": False,
         "certification_eligible": False,
         "honesty": (
-            "Agent P1 inventory only; human purpose_ok/freeze still required; "
-            "claim/cert stay false."
+            "Agent P1 inventory only; "
+            + (
+                "seed purpose_ok + pack.meta frozen; "
+                if profile_complete
+                else "human purpose_ok/freeze still required; "
+            )
+            + "claim/cert stay false."
         ),
     }
 
@@ -226,8 +235,8 @@ def subject_regression_inventory(
             "Method track (Arena/G2b/S1) excluded."
         ),
         "next_action": (
-            "Non-agent seed packs may already be purpose_ok+frozen; "
-            "agent.capability / workspace promote / claim gates remain separate; "
+            "Seed packs may already be purpose_ok+frozen for profile_complete; "
+            "workspace promote / claim / Certification gates remain separate; "
             "do not open claim from inventory alone."
         ),
         "review_links": {
