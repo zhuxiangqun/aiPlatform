@@ -4,6 +4,9 @@ doc_type: Reference
 
 # Pi Thin — local performance baseline (D2)
 
+> **包级证据（E2）**：本文件只描述本包本地基线/UAT，不是跨包通用模板；跨包比较需以各包数值和证据为准。
+
+
 > 本地工程基线，**不是**生产 SLA。
 
 | 检查 | 门槛 | 命令 |
