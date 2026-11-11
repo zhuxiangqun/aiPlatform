@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Skill 动态进化设计
 
 ## 概述

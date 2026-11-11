@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Central D2 Thin Local Closeout
 
 - recorded_at: `20261101T030647Z`

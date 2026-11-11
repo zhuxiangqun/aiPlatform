@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat Central — D3 local UAT (Thin dry-run)
 
 > 本地验收清单；**不是** PG/HA cutover 生产授权。

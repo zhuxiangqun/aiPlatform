@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # 人侧 / 发布剩余项 — 终态（2026-11-05 / 终更 2026-11-06）
 
 > 日收口：[EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)

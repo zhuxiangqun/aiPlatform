@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Central PG / HA runbooks（ADR Accepted 有条件）
 
 > ADR: [`ADR-CONTROL-PLANE-PG-HA.md`](../../../../reports/five-products/ADR-CONTROL-PLANE-PG-HA.md)  

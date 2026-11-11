@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Arena 盲评发卷（评审版）
 
 > **judge**：`arena.blind.v1`  

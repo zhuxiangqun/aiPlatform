@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-04 Pi 形态与 Bundle 兼容（草稿）
 
 - **状态**：**Accepted（本切片）** · WP5 2026-10-23 · 含 export `*.mjs` 修复  

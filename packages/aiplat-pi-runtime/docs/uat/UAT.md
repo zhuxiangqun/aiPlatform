@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi Thin — D3 local UAT
 
 > 本地验收；**不是** `d3_production` 授权。详见 `d3_local_closeout.sh`。

@@ -1,4 +1,5 @@
 ---
+doc_type: Index
 last_synced: 2026-07-04
 ---
 

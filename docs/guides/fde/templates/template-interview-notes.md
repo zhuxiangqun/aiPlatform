@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 客户访谈纪要 — {{客户名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

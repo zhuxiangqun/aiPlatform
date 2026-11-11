@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C3.5 closeout — adversarial fixture hardening
 
 - **closed_at**: `2026-11-02`

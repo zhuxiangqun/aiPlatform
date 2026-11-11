@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 04｜安全、审批与审计（Security / Approval / Audit）
 
 状态：草案（审批/审计主链路已对齐实现；脱敏与 CI 仍待补齐后再冻结）  

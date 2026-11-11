@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # FDE Field D2 — ops / security / compat pack
 
 > **Status**：Field D2 工程包（本地可验）· **非** compose 长驻 · **非** PG/HA  

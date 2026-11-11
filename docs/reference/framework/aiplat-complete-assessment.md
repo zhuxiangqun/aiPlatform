@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "aiPlat 综合评估报告 — 三框架评估 V3.1"
 type: evaluation-report
 domain: aiplat-core

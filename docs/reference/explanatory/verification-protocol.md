@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "aiPlat L5 评估验证协议"
 type: audit-protocol
 domain: aiplat-core

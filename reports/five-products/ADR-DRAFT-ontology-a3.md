@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — Ontology A3（对照稿）
 
 > **状态**：Draft · **已由 Accepted（有条件）取代** · 2026-10-30  

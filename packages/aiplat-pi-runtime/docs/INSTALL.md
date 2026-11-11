@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi Thin — D1 install / upgrade / rollback
 
 > Scope: **Gate3 Thin only** (ADR-08). No new update channel; no control-plane install.  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # D7 最终迁移报告（v2.4）
 
 > 日期：2026-11-11  
@@ -32,7 +36,7 @@ archive/
 | `verify_doc_structure.py --strict` | ✅ 10 个目录 |
 | `verify_document_system.py` | ✅ 通过 |
 | `verify_doc_links.py --all --strict` | ✅ 维护区 0 断链 |
-| `verify_doc_metadata.py --strict` | ✅ 2 个标准 canonical（由 manifest/approval 治理） |
+| `verify_doc_metadata.py --strict` | ✅ 961/961 有 `doc_type`；3 个 canonical 元数据完整 |
 | `verify_canonical.py --strict` | ✅ 0 冲突 |
 | 平台白皮书 freshness | ✅ |
 | 五卷 freshness | ✅ |

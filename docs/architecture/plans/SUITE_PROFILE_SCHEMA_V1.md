@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Suite Profile Schema v1（冻结稿）
 
 > **类型**：契约冻结 / P0 阻塞前置  

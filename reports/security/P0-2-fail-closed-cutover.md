@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # P0-2：Policy fail-closed 灰度切流（Ops）
 
 > 配套：改进方案 §1.1 · `scripts/security_ops_audit.py`  

@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 — Phase 0 开工清单
 
 | 字段 | 值 |

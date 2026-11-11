@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # D2 local performance baseline
 
 - recorded_at: `2026-11-01`

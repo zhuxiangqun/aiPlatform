@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 观察系统 (Observability)（设计真值：以代码事实为准）
 
 > **As-Is**：Harness 内存在事件定义与事件总线雏形（EventType/EventBus），并在部分执行链路写入最小观测字段（如 `tool_calls/tool_failures`、`audit_events`）。  

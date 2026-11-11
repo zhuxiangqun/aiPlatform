@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 反馈循环系统 (Feedback Loops)（As-Is 对齐 + To-Be 规划）
 
 > **As-Is**：Harness 已具备 HookPhase 接线与阻断语义（session/contract/approval/stop），并内置最小安全扫描与审批规则。  

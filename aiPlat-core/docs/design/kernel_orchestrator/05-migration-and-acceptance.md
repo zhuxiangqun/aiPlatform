@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 05｜分期迁移与验收（Migration Plan & Acceptance）
 
 状态：草案（已补齐“可执行验收口径”；冻结需 CI/集成测试跑通）  

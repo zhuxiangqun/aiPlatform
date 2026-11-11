@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_G2B_N100_EXPAND_READY_2026-11-05.md
 
 > **历史收口凭证，非现行产品定义。**  

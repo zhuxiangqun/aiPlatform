@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 评测信任边界：实验室仪器 ≠ 认证机构
 
 > **状态**：工程立场锁定（2026-11-08）· **≠** 外部审计 · **≠** staging/prod 认证 · **≠** accuracy_claim  

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # A1 生产部署 — blocked_not_released（2026-11-05）
 
 > **结论**：☐ pass · ☑ **blocked_not_released**（仍有效，直至正式 BASE 验收） · ☐ fail

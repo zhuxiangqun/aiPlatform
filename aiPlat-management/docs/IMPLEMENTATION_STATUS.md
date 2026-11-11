@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat-management 实施状态（As-Is vs To-Be）
 
 日期：2026-07-18 (updated from 2026-04-16 / 2026-07-13)

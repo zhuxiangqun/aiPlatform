@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Workspace Isolation Contract — Local Workspaces and Remote Profiles
 
 > **Status**: Phase 1 local + Phase 2 remote Core proxy are implementable under this contract.  

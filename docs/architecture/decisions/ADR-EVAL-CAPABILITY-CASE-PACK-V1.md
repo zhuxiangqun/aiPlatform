@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # ADR: Eval 能力驱动 Case Pack 与 Suite Profile
 
 - **状态**：**Accepted**（§6.1 #1–#4 已 Frozen · 朱向群 · 2026-11-08；实施另开变更单）

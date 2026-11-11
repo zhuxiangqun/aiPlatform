@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 Pilot Spec — it-ops 告警组织闭环（默认试点）
 
 | 字段 | 值 |

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Evaluation — security (D2 cohost)
 
 - Deploy: **central cohost**；Chart `a3_process_split_authorized=false`  

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Core Services 模块（设计真值：以代码事实为准）
 
 > 说明：Services 为 core 内的基础服务实现（Prompt/Model/Trace/Context/File）。其中“分布式追踪/成本治理”等属于 To-Be 能力，当前以本地内存态实现为主。  

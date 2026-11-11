@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 📖 平台层用户指南
 
 > aiPlat-platform - 平台服务使用指南

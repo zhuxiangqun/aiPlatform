@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # PG/HA 生产类 live 演练证据（运维填写）
 
 > 本地/docker 🟨 **不能**替代本页。填齐并落盘 JSON 后，由运维将 `CUTOVER_CHECKLIST` 对应项改为 ✅，再跑 `pg_ha_cutover_authorize.sh authorize`。

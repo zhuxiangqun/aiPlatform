@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # 本体完整性契约（Ontology Completeness）
 
 | 字段 | 值 |

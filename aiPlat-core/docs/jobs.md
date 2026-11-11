@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 ## Jobs / Cron（Roadmap-3）
 
 ### 开关与参数

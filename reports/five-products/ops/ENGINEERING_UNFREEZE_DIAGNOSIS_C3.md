@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Engineering unfreeze — DIAGNOSIS_V1 C3（D2/D3 本地收口）
 
 - **decided_at**: `2026-11-01`

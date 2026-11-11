@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # Wiki FTS5 CJK 中文分词分析
 
 > 调查日期: 2026-06 | 版本: v2.6

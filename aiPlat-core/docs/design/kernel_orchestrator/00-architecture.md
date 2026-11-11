@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 00｜总体架构设计：Harness Kernel + Orchestrator User-space
 
 > 最后更新: 2026-07-04

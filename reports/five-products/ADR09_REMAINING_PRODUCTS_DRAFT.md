@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 剩余项
 
 - **状态**：**已清空** · 2026-10-27 — compose 长驻已批（见 `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`）  

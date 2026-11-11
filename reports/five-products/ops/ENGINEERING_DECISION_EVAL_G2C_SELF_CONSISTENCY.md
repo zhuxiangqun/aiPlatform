@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Engineering decision — EVAL claim 降级为 G2c（self-consistency）
 
 - **decided_at**: `2026-11-02`

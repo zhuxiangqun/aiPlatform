@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 存储模块（设计真值：以代码事实为准）
 
 > 说明：存储模块的 As-Is 能力以 `infra/storage/*` 代码与测试为准；对象存储/MinIO/S3 等若未实现需标注为 To-Be。

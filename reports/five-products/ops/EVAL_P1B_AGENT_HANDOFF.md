@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_P1B_AGENT_HANDOFF.md
 
 > **盘点 / 交接记录，非现行产品定义。**  

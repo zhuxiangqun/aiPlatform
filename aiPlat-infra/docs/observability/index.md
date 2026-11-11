@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 可观测性模块（设计真值：以代码事实为准）
 
 > 说明：本文档描述 infra 的 observability（Tracing/Metrics/Logging）能力。As-Is 已提供 `provider` 选择：`otel`（OpenTelemetry SDK）与 `simple`（内存桩实现），并支持 OTLP 导出与 in_memory 导出（测试）。

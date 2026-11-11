@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Ontology — local performance baseline (D2)
 
 > 本地工程基线，**不是**生产 SLA。

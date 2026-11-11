@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # aiPlat Production Readiness Checklist
 
 > 从实验级升级到准生产级的逐项检查。每项必须是生产中可验证的，不是"设计中有"。

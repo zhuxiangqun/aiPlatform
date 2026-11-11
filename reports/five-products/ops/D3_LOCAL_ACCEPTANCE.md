@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # D3 Local Acceptance (all five)
 
 - recorded_at: `20261101T015436Z`

@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE Phase 0 开工检查清单
 
 | 字段 | 值 |

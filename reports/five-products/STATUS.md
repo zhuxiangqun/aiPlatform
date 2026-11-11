@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Five-products engineering status (2026-11-01)
 
 > **SSOT autonomy/delivery**：[`capabilities.manifest.yaml`](../../capabilities.manifest.yaml)（本表必须与之一致；禁止写高于 manifest 的 A/D）。  

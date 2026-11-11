@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat vs Hermes vs Claude Code vs OpenClaw：核心实现与使用方式对照（基于代码结构）
 
 > **v2.0 · 2026-06-16 更新**：新增 10 个 aiPlat 独有能力维度（§8），汇总表从 7 维扩展至 17 维。原始版本 2026-04-20。

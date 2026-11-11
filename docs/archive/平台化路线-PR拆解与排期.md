@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: 平台化（多租户/企业）路线：PR 拆解与 2-3 周排期
 date: 2026-04-18
 scope: aiPlat-core + aiPlat-management（并明确需要新增/对接的 platform/app 服务能力）

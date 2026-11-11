@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # FDE Field D2 Local Closeout
 
 - recorded_at: `20261101T010250Z`

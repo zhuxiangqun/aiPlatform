@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # infra LLM 自动选择策略审计报告（2026-08-19 修复后现状）
 
 > **对象**：aiPlat-infra 模型选择策略（`infra/management/model/manager.py` + `llm_profile.yaml`）+ core 消费链（`model_injection.py`）。

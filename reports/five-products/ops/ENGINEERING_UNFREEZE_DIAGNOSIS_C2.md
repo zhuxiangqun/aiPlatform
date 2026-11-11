@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Engineering unfreeze — DIAGNOSIS_V1 C2（深度接入 + 置信度）
 
 - **decided_at**: `2026-11-01`

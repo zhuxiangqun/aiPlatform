@@ -3,8 +3,9 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-11T13:43:47Z"
+generated_at: "2026-11-11T14:28:33Z"
 source: AIPLAT_CAPABILITIES.md
+doc_type: Report
 source_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 3385
@@ -46,7 +47,7 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-11T13:43:47Z` |
+| 生成时间 (UTC) | `2026-11-11T14:28:33Z` |
 | CAPABILITIES SHA-256 | `3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |

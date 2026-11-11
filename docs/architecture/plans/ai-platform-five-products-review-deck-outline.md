@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 五产品域改造 — 评审会一页 PPT 大纲
 
 > 配套：[落地方案 v1.3](./ai-platform-five-products-landing-plan.md) · [Decision Brief](./ai-platform-five-products-decision-brief.md) · [发言稿](./ai-platform-five-products-review-talking-points.md)  

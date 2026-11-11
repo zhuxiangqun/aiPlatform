@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 算力调度
 
 > GPU 资源调度与任务队列管理

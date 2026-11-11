@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume

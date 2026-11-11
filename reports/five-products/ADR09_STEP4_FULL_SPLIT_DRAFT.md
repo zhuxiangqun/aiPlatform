@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 建议顺序第 4 步 — 全拆（单产品立项）
 
 - **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_STEP4_DECISION.md`  

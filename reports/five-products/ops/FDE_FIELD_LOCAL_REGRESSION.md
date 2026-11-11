@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # FDE Field D1 Local Regression Runlog
 
 - recorded_at: `20261101T030645Z`

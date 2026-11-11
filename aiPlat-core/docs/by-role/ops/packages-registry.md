@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Packages Registry（P0 MVP）
 
 本页描述 aiPlat-core 的 **Packages Registry**：将 “Agent + Skill + MCP + Hooks” 统一为可发布/可安装的版本化包，并接入审批与 autosmoke 验证。

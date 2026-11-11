@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # WP4 收口（首切片）
 
 > scene: `fp-internal-bundle-pi-diag-001` · 2026-10-23  

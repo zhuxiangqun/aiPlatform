@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Staging 供给包（远程预发 · 非本机 Option B）
 
 > **用途**：旧笔记本 / 闲置机 / 免费云上搭**独立**预发，供复审填 [`STAGING_READY.md`](./STAGING_READY.md)。  

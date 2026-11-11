@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 — 决策记录
 
 | 字段 | 值 |

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # P1b 人侧轨日收口（2026-11-05）
 
 > 对照：EVAL_P1B_AGENT_HANDOFF.md（历史链接失效） · [EVAL_HUMAN_REMAINING_OPS_2026-11-05.md](./EVAL_HUMAN_REMAINING_OPS_2026-11-05.md)

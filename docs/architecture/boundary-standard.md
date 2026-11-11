@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 层边界判断标准
 
 > 本文档是 aiPlatform 四层架构中 **各层之间** 模块归属的权威判断标准。

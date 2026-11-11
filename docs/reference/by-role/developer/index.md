@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 开发者角色 · 文档导航
 
 > 入口：`docs/manuals/README.md`（手册总目录）

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D2++ — deeper SOC（本地深化 · 非生产授权）
 
 > **冻结 Still open**：允许文档/本地 file-sink 深化；不打开 `d3_production_authorized`。  

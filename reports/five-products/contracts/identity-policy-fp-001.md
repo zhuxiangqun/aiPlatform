@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 契约草案 id-policy-fp-001
 
 | 项 | 内容 |

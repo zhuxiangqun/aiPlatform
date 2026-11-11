@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # E1 复核 — manuals 责任分型（2026-10-23）
 
 > 批准：用户「批准 E0+E1」。方案：`docs-next-round-manuals-links-2026-10.md`。

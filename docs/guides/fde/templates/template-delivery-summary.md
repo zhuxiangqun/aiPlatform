@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # 交付总结报告 — {{项目名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

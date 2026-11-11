@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # tenants 模块（Platform Layer 2：多租户管理）
 
 ## 定位

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Local chaos / backup-restore drills
 
 > Honesty: **`accuracy_claim=false`** · `environment=local` · ≠ staging · ≠ PITR · ≠ `process_split_authorized`

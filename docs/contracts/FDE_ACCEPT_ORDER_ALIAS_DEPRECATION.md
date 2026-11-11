@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE — `accept_order` legacy alias deprecation (D3 close-out)
 
 | 字段 | 值 |

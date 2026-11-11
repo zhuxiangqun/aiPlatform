@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # HYBRID_ENTERPRISE 附录：交付规格与 Citation UX 验收
 
 > 版本：v1.0 | 日期：2026-10-14  

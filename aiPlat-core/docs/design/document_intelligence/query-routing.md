@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Query Routing（Document Intelligence）
 
 > 最后更新: 2026-07-04

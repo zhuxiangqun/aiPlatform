@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # docs/reports/ — 生成报告目录
 
 ## 说明

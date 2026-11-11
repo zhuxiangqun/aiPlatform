@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR — Evaluation A3（评测服务进程/存储独立）
 
 - **状态**：**Accepted（有条件）** · 2026-10-30  

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Reference（参考）索引
 
 > v2.4 参考目录。当前迁移期。

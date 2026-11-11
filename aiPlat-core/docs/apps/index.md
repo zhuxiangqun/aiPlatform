@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 应用层 (Apps)（设计真值：以代码事实为准）
 
 > 应用层包含 Agent、Skill、Tool 的具体实现，基于 Harness 操作系统层构建。

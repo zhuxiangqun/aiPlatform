@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # EVAL_V1 G2a — 单人复核锁 v0（工程校准）
 
 - **目标**：≥30 条金标 + 你一人 adjudicate → `lock-v0` → local `gate_claim`  

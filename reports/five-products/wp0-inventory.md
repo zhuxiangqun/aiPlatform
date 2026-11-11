@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # WP0 切片路径事实清单
 
 > **§3.1 为目标路径；下列为 WP0 核实后的 As-Is / Known Gap / Blocker。**  

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_A3 B0（本地 JWKS / RS256）
 
 - **decided_at**: `2026-11-02`

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 接口定义 (Interfaces)（设计真值：以代码事实为准）
 
 > **As-Is**：`core/harness/interfaces/*` 以 ABC/数据结构定义为主；具体实现位于 `core/apps/*` 与 `core/harness/execution/*`。  

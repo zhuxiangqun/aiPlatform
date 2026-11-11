@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR — FDE 现场部署（Field D1）
 
 - **状态**：**Accepted** · 2026-10-30  

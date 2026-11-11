@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL_A3 Independent Service — 本地独立运行验证（A0 方案）
 
 > **文档类型**：Design / Implementation Plan  

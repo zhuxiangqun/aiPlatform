@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # sysgraph 工具 API 文档
 
 16 个代码图谱 MCP 工具，供 AI Agent 探索代码库结构。

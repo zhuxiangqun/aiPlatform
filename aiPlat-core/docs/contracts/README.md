@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat Contracts（行为约束文档集）
 
 这套文档用于像 Claude Code 一样，用 **“约束性（normative）规范”** 来约束系统行为：当实现与文档冲突时，应优先修正实现或更新契约，并补齐验收用例。

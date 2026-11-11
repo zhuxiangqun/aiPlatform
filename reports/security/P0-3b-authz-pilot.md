@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # P0-3b：Authz / IDOR / SSRF pilot（Ops）
 
 > 配套：改进方案 §1.2 · `aiPlat-platform/builder/artifact_authz_smoke.py`  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat Central — D1 Thin install / upgrade / rollback
 
 > Scope: **Central host packaging only**. No PG/HA multi-process split (needs ADR).  

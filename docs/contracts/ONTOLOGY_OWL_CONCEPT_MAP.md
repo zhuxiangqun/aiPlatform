@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # OWL 概念 ↔ aiPlat 映射
 
 | 字段 | 值 |

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Runtime（Core Layer 1）
 
 > 本文档为**入口索引**：用于统一“Runtime = 核心执行引擎”的归属与导航，避免与 app 层“接入运行时”混淆。

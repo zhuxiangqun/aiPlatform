@@ -65,6 +65,9 @@ def main() -> int:
     canonical = 0
     missing: List[Tuple[Path, List[str]]] = []
     with_meta = 0
+    missing_type: List[Path] = []
+    invalid_type: List[Tuple[Path, str]] = []
+    valid_types = {"Standard", "Architecture", "Contract", "Product", "Guide", "Runbook", "Reference", "Report", "Decision", "Index", "Agent Instruction", "Archive", "Draft"}
 
     for p in files:
         try:
@@ -74,6 +77,11 @@ def main() -> int:
         meta = parse_frontmatter(text)
         if meta:
             with_meta += 1
+        dt = meta.get("doc_type", "").strip()
+        if not dt:
+            missing_type.append(p)
+        elif dt not in valid_types:
+            invalid_type.append((p, dt))
         is_known_standard = (
             p.name in ("technical-whitepaper.md", "normative-appendix.md",
                        "aiplat-knowledge-system-technical-whitepaper-v4.3.1-2026-11-11.md",
@@ -92,14 +100,22 @@ def main() -> int:
             missing.append((p, gaps))
 
     print(f"scanned={total} with_frontmatter={with_meta} canonical={canonical}")
+    if missing_type:
+        print(f"⚠️  缺 doc_type: {len(missing_type)}")
+        for p in missing_type[:20]:
+            print(f"  - {p.relative_to(WORKSPACE)}")
+    if invalid_type:
+        print(f"⚠️  非法 doc_type: {len(invalid_type)}")
+        for p, dt in invalid_type[:20]:
+            print(f"  - {p.relative_to(WORKSPACE)}: {dt}")
     if missing:
         print(f"⚠️  canonical 文档缺字段: {len(missing)}")
         for p, gaps in missing[:20]:
             print(f"  - {p.relative_to(WORKSPACE)}: 缺 {', '.join(gaps)}")
-        if args.strict:
-            return 1
-    else:
-        print("✅ canonical 文档元数据完整或暂无可检查的 canonical 文档")
+    if args.strict and (missing or missing_type or invalid_type):
+        return 1
+    if not (missing or missing_type or invalid_type):
+        print("✅ 全部文档 doc_type 有效，canonical 元数据完整")
     return 0
 
 

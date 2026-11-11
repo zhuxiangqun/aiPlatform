@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 预发就绪 Gate（排在 PG/HA live 之前）
 
 > **目的**：把「工程完成」与「环境未就绪」分开。未满足本 Gate → **正式 defer**，禁止跑 staging live / sign / authorize。  

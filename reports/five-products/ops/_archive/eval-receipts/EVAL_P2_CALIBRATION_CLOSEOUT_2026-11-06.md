@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL P2-0 — Human calibration closeout（2026-11-06）
 
 - **status**: **PASS（工程校准）** · `accuracy_claim=false`

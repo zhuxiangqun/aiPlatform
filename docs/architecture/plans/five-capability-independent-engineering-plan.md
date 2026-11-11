@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 五能力独立化工程方案（V2.2 · 模块自治 + 三类部署）
 
 > **文档类型**：工程规划 / Design Plan  

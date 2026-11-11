@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C0 — API / UI 设计稿（不实现）
 
 - charter: [`diagnosis-v1-charter.md`](../../../docs/architecture/plans/diagnosis-v1-charter.md)  

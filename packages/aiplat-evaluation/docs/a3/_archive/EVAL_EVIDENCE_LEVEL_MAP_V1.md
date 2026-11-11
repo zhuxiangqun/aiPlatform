@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Eval 证据标签映射（E0–E5 ↔ EET · P1a）
 
 > **状态**：✅ **Accepted**（2026-11-05 · 方法 朱向群 · 治理 朱莹）

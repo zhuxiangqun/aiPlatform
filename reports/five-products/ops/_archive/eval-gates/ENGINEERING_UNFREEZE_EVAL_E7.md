@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_V1 E7（D2/D3 本地收口）
 
 - **decided_at**: `2026-11-01`

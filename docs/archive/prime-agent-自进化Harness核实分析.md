@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: prime-agent 自进化 Harness 核实分析（RLM + Continual Harness）
 date: 2026-08-27
 status: 定稿

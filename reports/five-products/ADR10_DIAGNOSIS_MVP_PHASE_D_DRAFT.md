@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-10 Phase D 草案 — 建议顺序第 2 步（改诊断生产默认）
 
 - **状态**：**部分升格** · 2026-10-26 — **D1 已批**（#431 / `ADR10_DIAGNOSIS_MVP_PHASE_D_DECISION.md`）；**D2 仍未批**  

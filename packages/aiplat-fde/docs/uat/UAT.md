@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # FDE Field — D3 local UAT (dry-run)
 
 > 本地验收清单；**不是**客户签字 / 生产 D3。

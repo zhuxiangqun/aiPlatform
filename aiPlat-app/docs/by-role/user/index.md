@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 📖 应用层用户指南
 
 > aiPlat-app - Web UI 和 CLI 使用指南

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Option B last full run
 
 - recorded_at: `20261101T030630Z`

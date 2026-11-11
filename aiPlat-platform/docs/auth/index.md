@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # auth 模块（Platform Layer 2：身份认证与授权）
 
 ## 定位

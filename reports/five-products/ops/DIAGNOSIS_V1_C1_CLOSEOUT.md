@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C1 Local Closeout（D1c MVP）
 
 - recorded_at: `20261101T131134Z`

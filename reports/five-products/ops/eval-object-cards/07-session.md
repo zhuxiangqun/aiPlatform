@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 对象现状卡：Session
 
 | 字段 | 填写内容 |

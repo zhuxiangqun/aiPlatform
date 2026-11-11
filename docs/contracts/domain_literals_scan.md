@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Domain 字面量存量扫描报告
 
 | 字段 | 值 |

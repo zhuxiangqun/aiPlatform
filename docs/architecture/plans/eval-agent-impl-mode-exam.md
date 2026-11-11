@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Eval Agent：按实现模式实评 + 有限跨模式相对比较
 
 > **类型**：立项 Plan（工程 + 评测方法；非 Certification）  

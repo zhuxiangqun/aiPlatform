@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # VERSIONS
 
 Bundle 目录不入库。再生与验收请走 live E2E（禁止合成 smoke_ok）：

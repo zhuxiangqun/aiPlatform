@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-infra 运维指南（To-Be 为主，As-Is 以代码事实为准）
 
 > 说明：运维侧通常需要外部部署工件（compose/k8s/scripts）。本仓库若未提供，请将本文视为 To-Be 指南，并以 `infra/tests/*` 的可运行性作为 As-Is 验收依据。

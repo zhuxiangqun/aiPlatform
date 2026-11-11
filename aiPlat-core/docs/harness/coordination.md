@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 多智能体协调 (Coordination)（设计真值：以代码事实为准）
 
 > ✅ **实现状态提示（As-Is）**：Phase 7 已将 **6 种**协调模式接入（通过 patterns + agent adapter），并已将 `ConvergenceDetector` 接入 LangGraph `MultiAgentGraph` 的收敛评估路径。完整状态参见 [架构实现状态](../ARCHITECTURE_STATUS.md)。

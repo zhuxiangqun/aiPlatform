@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Eval Protocol v0（草案）
 
 > Capability: **evaluation** · Central deploy · A1 契约冻结起步  

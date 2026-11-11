@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 月报 — {{客户名称}} — {{YYYY年MM月}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

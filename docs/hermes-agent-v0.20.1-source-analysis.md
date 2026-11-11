@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # hermes-agent v0.20.1 源码级对标分析
 
 > 源码：/Users/apple/workdata/person/openSource/hermes-agent-main/（NousResearch，MIT，v0.20.1）

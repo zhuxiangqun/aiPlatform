@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 Pi Thin — Rollback Drill Record
 
 | Field | Value |

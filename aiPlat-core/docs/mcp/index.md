@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # MCP 协议集成（设计真值：以代码事实为准）
 
 > 提供 Model Context Protocol (MCP) 支持，实现与外部工具生态的无缝对接

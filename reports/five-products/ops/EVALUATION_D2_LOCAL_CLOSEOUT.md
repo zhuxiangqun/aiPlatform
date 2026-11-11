@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVALUATION_D2_LOCAL_CLOSEOUT.md
 
 > **历史收口凭证，非现行产品定义。**  

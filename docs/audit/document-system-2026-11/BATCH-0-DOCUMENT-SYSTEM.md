@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DOCUMENT_SYSTEM v2.4 — Batch 0：文档宪法自检
 
 > 状态：Completed（2026-11-11），先于 954 份文档迁移。

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 🚀 核心层运维指南（To-Be 为主，As-Is 以代码事实为准）
 
 > 说明：本文档多数内容为平台化部署/运维的 To-Be 示例（PostgreSQL/Redis/K8s 等）。当前仓库是否包含对应部署工件需以实际 ops 仓库为准。  

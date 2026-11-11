@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlat / Pi / 本体 / FDE / 诊断：Decision Brief
 
 > 评审用途：请求批准有限的盘点、契约准备与一条纵向切片；不是全面重构授权。  

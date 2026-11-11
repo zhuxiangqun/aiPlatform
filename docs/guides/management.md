@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # aiPlat 管理画面 操作手册
 
 > 版本 **2.4** | 最后更新 **2026-09-20** | 适用于 aiPlat 管理端现状（以 `pageManifest` 为准）

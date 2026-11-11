@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 前置联签 + 停泊（更新 · 第 4 步窄 Accepted）
 
 - **效力**：架构决策 owner × 业务场景 owner（兼任 · 本仓库维护者）  

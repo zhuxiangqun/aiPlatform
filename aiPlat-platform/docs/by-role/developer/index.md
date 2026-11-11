@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 👨‍💻 平台层开发者指南
 
 > aiPlat-platform - 开发指南与最佳实践

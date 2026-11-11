@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # G0 报告（P0 · 2026-10-29 · honesty refresh 2026-11-01）
 
 > HEAD at refresh: see `git log -1 --oneline`（原基线 `b46e286`；本轮数字 refresh **2026-11-01**）  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Round2 实施变更说明与迁移注意事项
 
 更新时间：2026-04-15  

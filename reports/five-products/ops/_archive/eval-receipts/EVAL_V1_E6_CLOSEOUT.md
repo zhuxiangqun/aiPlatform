@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL_V1 E6 Closeout — 评测中心 UI v1
 
 - **closed_at**: `2026-11-01`

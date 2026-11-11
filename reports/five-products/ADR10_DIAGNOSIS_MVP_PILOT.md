@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-10 试点：诊断 MVP（Phase A–D）
 
 > **批准**：A/B/C 既有决定；D `ADR10_DIAGNOSIS_MVP_PHASE_D_DECISION.md`（**仅 D1**）  

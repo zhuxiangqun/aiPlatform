@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat Automated Penetration Test Report
 
 > 由 `scripts/security-attack-sim.py` 自动生成。覆盖 OWASP Top 10 + AI 特有攻击面。

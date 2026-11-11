@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-10 诊断 MVP — Rollback（Phase A–D2）
 
 | Field | Value |

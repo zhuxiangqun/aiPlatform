@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 四轨正式 defer（Live / Authorize 暂缓）
 
 - decided_at: `2026-10-31`

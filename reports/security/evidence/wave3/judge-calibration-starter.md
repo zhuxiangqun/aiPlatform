@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Wave3 — Judge 标定起步
 
 | 字段 | 值 |

@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # audit_schema.v1 ↔ ActionStore 映射报告
 
 | 字段 | 值 |

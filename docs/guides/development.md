@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # AI Platform 开发规范
 
 > 系统级开发规范 - 各层必须遵循

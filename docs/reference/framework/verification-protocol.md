@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "aiPlat 框架评估验证协议"
 type: verification-protocol
 domain: aiplat-core

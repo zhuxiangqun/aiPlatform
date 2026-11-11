@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # research/ — aiPlat 对标研究与改进规划
 
 本目录集中存放 aiPlat 与 **Hermes Agent / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex** 五家对标的研究与改进文档，供随时查询。

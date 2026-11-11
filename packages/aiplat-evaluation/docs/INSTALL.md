@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Evaluation — D1 Thin (co-hosted)
 
 > Deploy unit: **central** · Hosted by **aiplat** · No A3 process/DB split.

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # FDE 现场范围（A1 · 不拆进程）
 
 > 对齐 V2 §4.2 · `ADR09_FDE_BOUNDARY.md`  

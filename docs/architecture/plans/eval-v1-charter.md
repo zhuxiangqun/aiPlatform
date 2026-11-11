@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL_V1 Charter — 评测准确性、唯一入口与评测中心
 
 > **文档类型**：Product / Design Charter  

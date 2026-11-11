@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # EVAL 产品根 v1（monorepo · ARCH v1.4）
 
 > Honesty: **≠** 拆独立 git 仓 · **≠** `process_split_authorized`  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # MODULE.md — Pi Runtime
 
 > Status: **D1 Thin + D2 admin** · D3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Edge**

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_A3 B1-L / B2-L（本地开发，非 staging 授权）
 
 - **decided_at**: `2026-11-02`

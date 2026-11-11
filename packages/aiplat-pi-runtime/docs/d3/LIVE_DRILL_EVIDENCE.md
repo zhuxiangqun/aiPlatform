@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D3 生产类 live 演练证据（运维填写）
 
 > 本地 checksum / SOC file-sink 🟨 **不能**替代本页。填齐后由运维将 `D3_CHECKLIST` 对应项改为 ✅，再 `d3_authorize.sh authorize`。

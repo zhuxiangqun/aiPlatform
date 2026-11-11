@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 快速入门（5 分钟）
 
 > ← [文档导航](README.md)

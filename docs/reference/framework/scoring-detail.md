@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core

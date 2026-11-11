@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # aiPlat 部署指南
 
 ## 部署方式

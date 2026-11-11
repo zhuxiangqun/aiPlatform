@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # 域评估报告 — {{客户名称}}
 
 > v2.7: maturity levels auto-computed by domain_maturity.py (6-dimension scoring)

@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 能力剖面（Capability Profile）— Agent 等级体系
 
 > 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_engine.py::_apply_capability_profile()`  

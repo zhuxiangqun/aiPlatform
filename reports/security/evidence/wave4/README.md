@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Wave 4 — 外部验证入口
 
 > 工程脚手架 + RFP/IR/SBOM 清单。真人渗透/KVM/仪式仍是 Ops。≠ certification

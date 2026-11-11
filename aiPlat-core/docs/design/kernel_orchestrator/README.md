@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Kernel-Orchestrator 设计文档集
 
 > 最后更新: 2026-07-04

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Ontology D2 Local Closeout (cohost / D1c)
 
 - recorded_at: `20261101T011203Z`

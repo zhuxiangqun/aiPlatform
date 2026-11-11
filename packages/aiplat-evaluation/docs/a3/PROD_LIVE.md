@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Production-model live baseline（local）
 
 > Honesty: **`accuracy_claim=false`** · `environment=local` · ≠ 3B smoke alone · ≠ staging authorize

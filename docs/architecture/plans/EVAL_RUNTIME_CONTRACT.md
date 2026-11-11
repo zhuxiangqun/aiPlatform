@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL Runtime Contract — Worker / Runner（B 轨）
 
 > **类型**：契约（B2 实施前置）

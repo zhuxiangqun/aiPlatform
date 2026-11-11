@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # GAPS（切片收口）
 
 | gap_id | 状态 | 严重度 | 说明 |

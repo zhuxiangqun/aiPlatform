@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # deployment 模块（Platform Layer 2：部署与运维）
 
 ## 定位

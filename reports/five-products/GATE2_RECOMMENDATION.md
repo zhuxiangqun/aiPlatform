@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate 2 建议书（历史）
 
 > **已由 [`GATE2_DECISION.md`](./GATE2_DECISION.md) 取代（2026-10-24 批准进入 Gate 2）。**  

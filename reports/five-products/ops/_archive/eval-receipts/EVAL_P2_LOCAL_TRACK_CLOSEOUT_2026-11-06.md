@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL P2 — 本地研究轨总收口（2026-11-06）
 
 - **status**: **PASS（本地 P2-0..P2-3）** · P2-4 **Parked**

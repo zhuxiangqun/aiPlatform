@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # P1 — scoring semantics + engineering composite (local)
 
 > Plan: [`eval-production-independent-service.md`](../../../../docs/architecture/plans/eval-production-independent-service.md) §7.1  

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # G2B-100 Protocol（已签署）
 
 > **状态**：✅ **SIGNED**（2026-11-05）· Holdout **方案 A**

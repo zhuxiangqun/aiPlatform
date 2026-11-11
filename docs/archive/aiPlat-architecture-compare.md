@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # 现有系统架构对照：aiPlat vs Hermes vs Claude Code vs OpenClaw
 
 > 目标：用同一套维度对照四套系统的“控制平面 / 执行平面 / 治理与可观测性 / 扩展机制”，判断 aiPlat（你当前系统）相较开源标杆是否已形成明显改进。

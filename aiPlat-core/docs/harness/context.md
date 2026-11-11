@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Context 管理与记忆架构（As-Is 对齐 + To-Be 规划）
 
 > **As-Is**：当前核心执行链路的上下文控制以“最小闭环”形式存在（例如 token 高占用时对 messages 进行 best-effort 裁剪）。  

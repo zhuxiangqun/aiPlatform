@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # W1-4 Staging 可达 attack-sim 证据卡
 
 > 必须归档 **pass / fail / unknown** 全量，不只“成功”。

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 向量存储模块（设计真值：以代码事实为准）
 
 > 说明：向量存储模块的 As-Is 能力以 `infra/vector/*` 代码与测试为准；多后端适配（Milvus/Chroma/FAISS 等）若未闭环需标注为 To-Be。

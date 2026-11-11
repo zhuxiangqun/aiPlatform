@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 工具系统增强（As-Is 对齐 + To-Be 规划）
 
 > 扩展工具类型与增强权限控制，构建更强大的 Agent 执行能力

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 #!/bin/false
 # prod 放行 stdio MCP（路线A）策略
 

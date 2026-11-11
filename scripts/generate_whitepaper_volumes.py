@@ -353,6 +353,7 @@ def _build_volume(
         f'title: "aiPlat {name}"',
         f"volume_id: {vid}",
         "type: whitepaper-volume",
+        "doc_type: Report",
         "status: generated",
         f'generated_at: "{generated_at}"',
         f'audience: "{audience}"',
@@ -796,6 +797,10 @@ def generate_all() -> List[Path]:
     # index
     index = OUT_DIR / "README.md"
     lines = [
+        "---",
+        "doc_type: Report",
+        "---",
+        "",
         "# 五维白皮书分卷（生成物）",
         "",
         "> 由 `scripts/generate_whitepaper_volumes.py` 根据 "

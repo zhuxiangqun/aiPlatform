@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE Phase 1 HITL 冒烟清单
 
 | 字段 | 值 |

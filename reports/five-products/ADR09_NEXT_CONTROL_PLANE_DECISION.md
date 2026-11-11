@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 下一单产品决定 — 控制面（aiPlat）
 
 - **状态**：**Accepted（窄）** · 2026-10-27  

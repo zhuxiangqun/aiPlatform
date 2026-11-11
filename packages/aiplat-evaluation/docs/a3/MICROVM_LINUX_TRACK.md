@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # microVM Linux/KVM track v1 (+ guest_boot v2)
 
 > Parent prep: [`MICROVM_PREP.md`](./MICROVM_PREP.md)  

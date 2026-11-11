@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Eval Exam Runtime Tiers — 评测档位 ↔ 运行时契约
 
 > **类型**：短契约（字段语义 + 映射；非长白皮书）  

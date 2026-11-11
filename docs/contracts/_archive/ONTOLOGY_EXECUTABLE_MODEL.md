@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # 可执行本体模型（Palantir 式 OS 内核）
 
 | 字段 | 值 |

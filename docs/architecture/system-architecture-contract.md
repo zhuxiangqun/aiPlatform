@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 系统整体架构规范（System Architecture Contract）
 
 > 适用范围：aiPlatform 全系统（management / app / platform / core / infra）

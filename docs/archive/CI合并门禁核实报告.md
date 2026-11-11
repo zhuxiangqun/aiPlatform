@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # CI 合并门禁核实报告（分支保护配置实测）
 
 > **核实问题**：CI 是否真正 gating 合并？宪法测试 24 failed 是否会阻止合入 main？

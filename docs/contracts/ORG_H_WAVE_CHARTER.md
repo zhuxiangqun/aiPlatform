@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # H 波 Charter — 闸门效率与签收加速（不是放权，不是 M4）
 
 | 字段 | 值 |

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat-core 内核化改造方案（吸收 RANGEN 优点）
 更新时间：2026-04-16  
 适用范围：`aiPlat-core/core`（核心能力层）  

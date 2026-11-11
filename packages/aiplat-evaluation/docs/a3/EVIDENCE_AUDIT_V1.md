@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Scorecard evidence audit v1
 
 > Honesty: **hashes + aggregates ≠ accuracy** · **dual-human attestation required for feature 5** · raw worksheets stay gitignored

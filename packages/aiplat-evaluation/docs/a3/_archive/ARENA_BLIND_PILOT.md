@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Arena 盲评 Pilot 运行手册（P1b）
 
 > **状态**：双标+仲裁+`arena.blind.v1` 已写入 · length smoke **未替换**（收口：EVAL_ARENA_PILOT_CLOSEOUT_2026-11-05.md（历史链接失效））

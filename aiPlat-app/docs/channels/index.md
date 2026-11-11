@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 通道适配器模块
 
 > 通道适配器模块是 AI Platform 应用层的多渠道接入层，提供统一的渠道抽象，支持 Telegram、Slack、WebChat、WhatsApp 等多种消息渠道的接入与管理。

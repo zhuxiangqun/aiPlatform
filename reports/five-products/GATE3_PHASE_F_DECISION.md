@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 Phase F 决定（2026-10-24）
 
 **结论：批准 Gate3 Phase F（生产 HTTP 验收签收 · ⑥b preflight）。**

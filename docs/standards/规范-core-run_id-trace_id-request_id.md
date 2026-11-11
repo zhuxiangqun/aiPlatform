@@ -1,4 +1,5 @@
 ---
+doc_type: Standard
 title: 规范：aiPlat-core Run/Trace/Request 三 ID（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform + aiPlat-core + aiPlat-management（全链路）

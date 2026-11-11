@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # PG/HA 切流硬门清单
 
 > `cutover_authorized` 仅当下列全部为 ✅（🟨 = 部分自动绿，仍须人工 OIDC/生产演练）。  

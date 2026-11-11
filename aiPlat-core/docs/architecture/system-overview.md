@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 知识库本体系统 — 架构总览
 
 > 版本: v2.1 | 更新: 2026-06-15

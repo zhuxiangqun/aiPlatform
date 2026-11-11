@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # B1/B2 contract converge — standalone local
 
 > Parent: [`B1_ROUTE_MATRIX.md`](../../../../docs/architecture/plans/B1_ROUTE_MATRIX.md) · [`EVAL_RUNTIME_CONTRACT.md`](../../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md)  

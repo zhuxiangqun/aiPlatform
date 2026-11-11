@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 🚀 平台层运维指南
 
 > aiPlat-platform - 部署运维与监控配置

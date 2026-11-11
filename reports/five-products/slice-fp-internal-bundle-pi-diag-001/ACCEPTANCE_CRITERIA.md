@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 验收标准（夹具场景）
 
 1. 可从 scenario → bundle_id → run_id → report_id 追溯。  

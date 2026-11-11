@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat（现有系统） vs Hermes vs Claude Code vs OpenClaw ——架构对照图（基于代码/仓库分析）
 
 > 说明：  

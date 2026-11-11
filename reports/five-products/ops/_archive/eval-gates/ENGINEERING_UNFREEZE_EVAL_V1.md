@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_V1（评测准确性 + 唯一入口 + gate）
 
 - **decided_at**: `2026-11-01`

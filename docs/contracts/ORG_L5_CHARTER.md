@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 Charter — 组织级（单线）企业大脑补齐
 
 | 字段 | 值 |

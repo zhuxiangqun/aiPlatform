@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 Phase C 决定（2026-10-24）
 
 **结论：批准 Gate3 Phase C（证据 JSONL → 诊断 MVP 薄 ingest）。**

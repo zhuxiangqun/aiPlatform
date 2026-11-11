@@ -338,6 +338,7 @@ authority: derived-from-capabilities
 status: generated
 generated_at: "{generated_at}"
 source: AIPLAT_CAPABILITIES.md
+doc_type: Report
 source_sha256: "{source_sha}"
 scores_sha256: "{scores_sha}"
 total_capabilities: {total or "unknown"}

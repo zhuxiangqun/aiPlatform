@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities

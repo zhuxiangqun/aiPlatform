@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Ontology API v0（草案）
 
 > Capability: **ontology** · Central · **A1 wired**  

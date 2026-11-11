@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 执行产物质量门禁矩阵（产物类型 → 规则）
 
 > **真相源（代码）**：`aiPlat-core/core/management/execution_quality_review.py`  

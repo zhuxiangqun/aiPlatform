@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D2 — admin / security pack
 
 > **Status**：D2 Thin admin pack（工程）· **非** D3 · **非** 强制企业回连  

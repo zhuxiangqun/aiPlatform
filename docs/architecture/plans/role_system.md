@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 角色体系完整定义
 
 **版本**: 1.0

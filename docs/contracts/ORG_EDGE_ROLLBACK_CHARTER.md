@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # E 波 Charter — 仲裁边回滚（先契约，不是 M4）
 
 | 字段 | 值 |

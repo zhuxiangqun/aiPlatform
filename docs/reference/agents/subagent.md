@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Subagent 架构设计
 
 ## 概述

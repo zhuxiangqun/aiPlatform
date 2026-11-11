@@ -1,4 +1,5 @@
 ---
+doc_type: Architecture
 last_synced: 2026-07-18
 ---
 > **最后更新**: 2026-07-18

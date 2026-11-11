@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EU AI Act 合规自评（初稿）
 
 > **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)

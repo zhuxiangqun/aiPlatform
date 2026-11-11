@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL G2c（single-annotator self-consistency）
 
 - **decided_at**: `2026-11-02`

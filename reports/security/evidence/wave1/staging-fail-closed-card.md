@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # W1-1 Staging fail-closed 故障注入证据卡
 
 > **仅 staging**。禁止生产破坏性注入。

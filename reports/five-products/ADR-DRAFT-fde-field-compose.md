@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — FDE Field compose 长驻（v2）
 
 > **状态**：Draft v2 · **继续 Draft**（2026-11-01 决议）· **非 Accepted / 非 Rejected**  

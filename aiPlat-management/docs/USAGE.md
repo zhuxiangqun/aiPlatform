@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat 流水线与观测功能使用手册
 
 ## 目录

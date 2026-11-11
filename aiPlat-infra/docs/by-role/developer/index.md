@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 👨‍💻 基础设施层开发者指南（As-Is 对齐 + To-Be 示例）
 
 > 说明：本文档中的 make/docker/config 示例可能依赖外部 ops 仓库；As-Is 以当前 infra 代码与 tests 为准。

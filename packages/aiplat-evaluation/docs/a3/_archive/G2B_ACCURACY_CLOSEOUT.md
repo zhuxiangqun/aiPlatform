@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # G2b accuracy closeout（local · κ ≠ accuracy）
 
 > Parent: [`G2B_PREP.md`](./G2B_PREP.md) · κ aggregate: [`evidence/g2b_kappa_aggregate.v1.json`](../evidence/g2b_kappa_aggregate.v1.json)

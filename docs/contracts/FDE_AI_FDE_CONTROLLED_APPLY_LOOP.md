@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # AI FDE 半步：受控应用闭环设计
 
 | 字段 | 值 |

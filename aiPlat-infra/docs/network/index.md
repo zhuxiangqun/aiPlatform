@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 📚 Network 模块文档（设计真值：以代码事实为准）
 
 > 说明：网络相关能力以 `infra/network/*` 代码与测试为准；更高层的网关/ServiceMesh 等通常属于 To-Be 或外部基础设施。

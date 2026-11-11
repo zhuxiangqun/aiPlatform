@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Compliance / PII v0（最小集）
 
 > Honesty: **`accuracy_claim=false`** · **`certified=false`** · ≠ GDPR/SOC 认证 · ≠ G2b accuracy

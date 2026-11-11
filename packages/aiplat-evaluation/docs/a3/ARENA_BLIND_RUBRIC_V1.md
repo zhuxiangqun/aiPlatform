@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Arena 盲评 Rubric v1（冻结稿）
 
 > **状态**：FROZEN for pilot design — 开始双人盲评前不得改维度/标签语义；改则升 `arena.blind.v2`  

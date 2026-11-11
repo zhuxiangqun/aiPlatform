@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Eval 能力驱动 Case Pack 设计
 
 > **类型**：架构设计 / 题库与评测方案  

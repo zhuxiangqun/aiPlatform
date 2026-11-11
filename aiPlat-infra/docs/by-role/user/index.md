@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-infra 用户指南（To-Be 为主，As-Is 以代码事实为准）
 
 > 说明：本文档面向“配置/管理基础设施服务”的用户，包含较多脚本与部署相关示例；As-Is 请以 infra 实际提供的配置加载与 tests 为准。

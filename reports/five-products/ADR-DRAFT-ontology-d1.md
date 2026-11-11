@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — 本体 → D1（图服务独立）
 
 > **状态**：Draft · **非 Accepted** · P0 W2  

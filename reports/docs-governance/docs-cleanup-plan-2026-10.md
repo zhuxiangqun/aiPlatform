@@ -1,5 +1,5 @@
 ---
-doc_type: Design
+doc_type: Report
 authority: plan
 scope: docs-cleanup
 language: zh-CN

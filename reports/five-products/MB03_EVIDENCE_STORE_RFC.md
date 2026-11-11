@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # MB-03 RFC：诊断 MVP 证据持久化选型（草案）
 
 > **效力**：独立 RFC 草案（MODULE_BACKLOG 允许「Gate 2 或独立 RFC」）。  

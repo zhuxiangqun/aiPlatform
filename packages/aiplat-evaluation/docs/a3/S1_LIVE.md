@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # S1 live_llm attack pack (local)
 
 > Parent: [`S1_LOCAL.md`](./S1_LOCAL.md)  

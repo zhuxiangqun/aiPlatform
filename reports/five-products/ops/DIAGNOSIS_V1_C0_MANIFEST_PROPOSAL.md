@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C0 — manifest / apps.yaml 更新提案（不落地）
 
 > C0/C1 出口确认前 **不修改** 真实 `capabilities.manifest.yaml` / `apps.yaml`。  

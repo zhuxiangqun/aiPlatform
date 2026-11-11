@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 📚 Compute 模块文档（设计真值：以代码事实为准）
 
 > 说明：算力/执行资源管理能力以 `infra/compute/*` 代码与测试为准；K8s/Docker 适配若未闭环需标注为 To-Be。

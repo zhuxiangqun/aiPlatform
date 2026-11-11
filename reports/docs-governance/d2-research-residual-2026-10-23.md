@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # D2 复核 — research 规划/审计残留（2026-10-23）
 
 > 批准：用户「继续」（D1 之后下一批）。方案：`docs/research/docs-reasonable-reduction-plan-2026-10.md` §3.2。

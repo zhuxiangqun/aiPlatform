@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # EU AI Act Compliance Self-Assessment
 
 > **Status**: Draft | **Date**: 2026-07-05 | **Regulation**: EU AI Act (Regulation 2024/1689)

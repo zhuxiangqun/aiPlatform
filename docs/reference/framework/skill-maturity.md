@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "aiPlat Skill 构建成熟度框架"
 type: evaluation-framework
 domain: aiplat-core

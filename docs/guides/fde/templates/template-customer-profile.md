@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE客户档案 — {{客户名称}}
 
 > ← [返回实施流程](../05-fde-implementation-process.md)

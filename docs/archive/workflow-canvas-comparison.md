@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat vs Dify vs Coze — Workflow Canvas 对比分析
 
 > 2026-05-16 · 反映当前实现状态

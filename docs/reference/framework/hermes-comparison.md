@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 title: "Hermes Agent vs aiPlat 能力成熟度对照报告"
 type: comparison-report
 domain: aiplat-core

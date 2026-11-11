@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # EVAL 架构收口 v1（相对 [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) §二）
 
 > Gate: `scripts/arch_consolidation_v1_gate.sh`  

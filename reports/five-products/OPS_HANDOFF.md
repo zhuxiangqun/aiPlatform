@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 运维交接卡（Live → Authorize）
 
 > 只读状态：`bash scripts/ops_live_status.sh` · JSON：`bash scripts/ops_live_status.sh --json`  

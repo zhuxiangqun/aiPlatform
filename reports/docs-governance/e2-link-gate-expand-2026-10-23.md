@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # E2 复核 — verify_doc_links 扩面（2026-10-23）
 
 > 随用户「继续」执行（E0+E1 后下一批建议 E2+E3）。

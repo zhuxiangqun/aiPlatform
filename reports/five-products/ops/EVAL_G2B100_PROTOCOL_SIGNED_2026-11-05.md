@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # G2B-100 Protocol — 三方已签（2026-11-05）
 
 > **状态**：✅ **SIGNED** · Holdout **方案 A**  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Staging review — 2026-11-29（**作废 · 不排期**）
 
 > **状态**：superseded · **不执行**  

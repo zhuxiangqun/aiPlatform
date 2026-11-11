@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # PR Architecture Checklist
 
 > **C2 消歧**：本文是 **CI 契约门禁清单**（`.github/workflows/aiplat-contracts-guard.yml` 要求 `test -f` 本路径）。

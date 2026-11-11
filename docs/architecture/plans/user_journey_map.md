@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 用户旅程地图 (User Journey Map)
 
 **版本**: 1.1

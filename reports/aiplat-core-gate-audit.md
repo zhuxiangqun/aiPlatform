@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat-core 绕过路径审计（启发式）
 
 - 扫描文件：`/sessions/69df99acf22671cacf117ebb/workspace/aiPlat-core/core/server.py`

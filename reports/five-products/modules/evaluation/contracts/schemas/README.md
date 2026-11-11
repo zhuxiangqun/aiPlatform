@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Evaluation contract schemas — shim location
 
 **SSOT**: [`packages/aiplat-evaluation/contracts/schemas/`](../../../../../../packages/aiplat-evaluation/contracts/schemas/)

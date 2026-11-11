@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md
 
 > **历史收口凭证，非现行产品定义。**  

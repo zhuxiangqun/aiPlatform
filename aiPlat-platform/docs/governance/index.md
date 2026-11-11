@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # governance 模块（Platform Layer 2：治理与合规）
 
 ## 定位

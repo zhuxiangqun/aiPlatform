@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # 操作手册：管理端创建本体 + Agent（含 FDE 工作台）
 
 | 字段 | 值 |

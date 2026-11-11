@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Ollaya decision_shadow · 一键关闭演练（C6 工程附页）
 
 > **状态**：工程草稿 · **≠ 0.6 正式会签 · ≠ 采样 Go · ≠ 挂 classify**  

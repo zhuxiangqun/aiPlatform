@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 系统架构全景
 
 > 最后更新: 2026-07-04 | 当前能力数见 AIPLAT_CAPABILITIES.md | 从 `AIPLAT_CAPABILITIES.md` 聚合生成

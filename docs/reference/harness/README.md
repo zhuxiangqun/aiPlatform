@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Harness 执行引擎文档
 
 > 详细文档在 `aiPlat-core/docs/harness/`（12 个文件）。

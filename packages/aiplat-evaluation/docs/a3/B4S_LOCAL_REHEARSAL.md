@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # B4-S local rehearsal（≠ staging）
 
 > Parent prep: [`B4S_PREP.md`](./B4S_PREP.md) · Runbook: [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md)

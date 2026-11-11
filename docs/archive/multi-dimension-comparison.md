@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Dify vs Coze vs aiPlat — 三方深度对比分析
 
 > 2026-05-16 · 先深研 Dify/Coze, 再对照 aiPlat, 找出差距与优势

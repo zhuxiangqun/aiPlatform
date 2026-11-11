@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE Phase 5 — 新客户接入清单（配置驱动，不改 harness）
 
 | 字段 | 值 |

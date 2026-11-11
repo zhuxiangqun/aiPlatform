@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 现场运行手册（W7 / Phase 4）
 
 | 字段 | 值 |

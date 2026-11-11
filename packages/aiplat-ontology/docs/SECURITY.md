@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Ontology — security (D2 cohost)
 
 - Deploy: **central cohost**（`hosted_by=aiplat`）；Chart `a3_process_split_authorized=false`  

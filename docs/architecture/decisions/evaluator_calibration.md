@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Decision: Evaluator Self-Calibration (L7) — V3.0
 
 **Date**: 2026-07-01

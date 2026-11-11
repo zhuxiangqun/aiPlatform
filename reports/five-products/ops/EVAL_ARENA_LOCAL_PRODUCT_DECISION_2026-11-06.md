@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Arena 本地产品决策（2026-11-06）
 
 - **默认 runner**：保持 `arena` length smoke（`judge_kind=length_heuristic`，`quality_gate_eligible=false`）。

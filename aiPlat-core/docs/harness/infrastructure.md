@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 基础设施 (Infrastructure)（设计真值：以代码事实为准）
 
 > 本文档描述 Harness 的基础设施与集成层。部分内容为 To-Be 规划（如更完整的 LangChain 适配/持久化/生命周期管理），需以代码事实与测试为准。  

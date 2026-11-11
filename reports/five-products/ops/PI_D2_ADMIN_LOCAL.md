@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Pi D2 Admin Pack — Local Check
 
 - recorded_at: `20261101T002427Z`

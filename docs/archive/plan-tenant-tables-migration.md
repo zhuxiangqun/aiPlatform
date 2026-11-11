@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Tenant 表迁移方案（P0-A3）
 
 > 状态：**✅ 已完成（2026-08-18/19，PR #20）** · 目标：tenant_quotas/tenant_policies/tenant_usage 表 DDL + CRUD 从 core 迁至 platform

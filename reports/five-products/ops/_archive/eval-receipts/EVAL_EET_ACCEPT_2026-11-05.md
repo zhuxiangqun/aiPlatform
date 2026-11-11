@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EET Accept — 已签认（2026-11-05）
 
 > **状态**：✅ **Accepted**

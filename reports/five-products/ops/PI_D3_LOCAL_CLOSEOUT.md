@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Pi D3 Local Closeout
 
 - recorded_at: `20261101T031919Z`

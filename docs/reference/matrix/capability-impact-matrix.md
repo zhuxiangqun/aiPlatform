@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`

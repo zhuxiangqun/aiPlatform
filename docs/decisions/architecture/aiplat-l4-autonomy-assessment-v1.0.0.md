@@ -1,4 +1,5 @@
 ---
+doc_type: Decision
 title: "aiPlat 自主性分级评估：L5 组织者级"
 type: architecture-decision-record
 domain: aiplat-core

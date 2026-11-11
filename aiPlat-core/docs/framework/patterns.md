@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Agent 设计模式（设计真值：以代码事实为准）
 
 > ⚠️ **实现状态提示（As-Is）**：Phase 7 后大部分模式已接线。6 种模式中 ReAct/Planning/Multi-Agent 已通过 Loop 驱动；协调模式已包含 6 种（含 HierarchicalDelegation），并可接入 MultiAgent。  

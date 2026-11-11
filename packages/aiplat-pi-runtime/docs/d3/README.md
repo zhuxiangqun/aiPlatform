@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Pi D3 prep（Accepted 有条件 · 未授权生产宣称）
 
 > ADR: [`ADR-PI-D3.md`](../../../../reports/five-products/ADR-PI-D3.md) — **Accepted（有条件）**  

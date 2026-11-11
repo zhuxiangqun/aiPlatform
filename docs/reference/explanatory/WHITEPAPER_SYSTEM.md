@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat 白皮书体系（五维）
 
 > Living · 2026-10-13

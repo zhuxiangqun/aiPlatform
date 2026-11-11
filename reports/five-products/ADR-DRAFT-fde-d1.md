@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — FDE → D1（进程/DB 独立）
 
 > **状态**：Draft · **非 Accepted** · P0 W2  

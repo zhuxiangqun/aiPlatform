@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 五维白皮书分卷（生成物）
 
 > **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 `reports/whitepapers/volumes/README.md`（历史链接失效）。本文件仅保留迁移期，不再更新。

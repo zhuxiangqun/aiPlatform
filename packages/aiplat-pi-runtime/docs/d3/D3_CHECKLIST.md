@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D3 生产宣称硬门清单
 
 > `d3_production_authorized` 仅当下列全部为 ✅（🟨 = 本地/自动部分绿，≠ 生产宣称）。  

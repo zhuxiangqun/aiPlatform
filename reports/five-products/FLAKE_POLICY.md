@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Flake 隔离策略（P0 W2）
 
 ## 规则

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # A1 部署签认 — 生产（OPEN · 2026-11-06）
 
 > **状态**：⏸ **Parked** — 产品决定本地签认足够（[决策](../../EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)）；未签生产 pass

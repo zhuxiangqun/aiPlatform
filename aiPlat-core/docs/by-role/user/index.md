@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-core 用户指南（To-Be 为主，As-Is 以代码事实为准）
 
 > 说明：本文档假设存在 platform 层的统一 API 网关、鉴权与 WebSocket 流式接口；这些在当前仓库可能属于 To-Be。  

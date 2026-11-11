@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # D26 升 E 人审卡（Wave2）
 
 > 禁止只改 `security_quality_dimensions.yaml`。须先双签 + 本卡。

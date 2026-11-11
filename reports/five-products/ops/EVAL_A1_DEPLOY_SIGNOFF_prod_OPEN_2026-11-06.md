@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_A1_DEPLOY_SIGNOFF_prod_OPEN_2026-11-06.md
 
 > **历史收口凭证，非现行产品定义。**  

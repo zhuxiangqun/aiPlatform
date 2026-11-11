@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 交付操作手册
 
 > ← [文档导航](README.md)
