@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T10:22:23+08:00",
+  "reviewed_at": "2026-11-11T10:58:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "358b08dbe8bf2b1c2ddab56233bcee4e62ffe6d0",
-  "diff_sha256": "5f8fe0ad59fb358a9723323bbed2389137e784272ee161532ebd894d300fe307",
-  "head_sha": "6d06e194714ed6b732303b257c8ac8ebe27ac54b",
+  "merge_base": "9df76cbb840f2330a0c712c29ef6dcfbb8416b1e",
+  "diff_sha256": "e9de9803a269edc2454f8b6ad5f94d2da8e98e079f2be646247e2fc8db9f3ba6",
+  "head_sha": "99bb4b232aa83f232f3e60bf9447d08d3c9854db",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject promote + run_id clause-sync; claim stays false. Local lock only."
+  "note": "content_purpose_ok gates both agent and subject promote before purpose_ok stamp; claim stays closed. Local lock only."
 }

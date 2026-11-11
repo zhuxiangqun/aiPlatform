@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 PROMOTE_SCHEMA = "eval.subject_capability_promote.v1"
 
 _PURPOSE_OK_NOTE = (
-    "Subject ordered promote: mechanical validate + owner sign-off path"
+    "Subject ordered promote: content_purpose_ok gate + owner sign-off path"
 )
 
 
@@ -282,6 +282,7 @@ def promote_subject_capability_bank(
         out["claim_eligible"] = False
         out["accuracy_claim"] = False
         out["certification_eligible"] = False
+        out["content_purpose_ok"] = bool(out.get("content_purpose_ok", True))
         return out
 
     specs = _bank_specs()
@@ -311,7 +312,19 @@ def promote_subject_capability_bank(
         raise SubjectCapabilityPromoteError(
             f"capability bank invalid: subject={kind} errors={report.get('errors')}"
         )
-    cases = _stamp_purpose_ok(spec["build"](), reviewer=who)
+    from core.apps.eval.service.content_purpose_ok import (
+        ContentPurposeOkError,
+        assert_cases_content_purpose_ok,
+    )
+
+    raw_cases = list(spec["build"]())
+    try:
+        content_report = assert_cases_content_purpose_ok(
+            raw_cases, subject_kind=kind
+        )
+    except ContentPurposeOkError as exc:
+        raise SubjectCapabilityPromoteError(str(exc)) from exc
+    cases = _stamp_purpose_ok(raw_cases, reviewer=who)
 
     try:
         cur = get_pack_version(
@@ -400,8 +413,13 @@ def promote_subject_capability_bank(
         "accuracy_claim": False,
         "certification_eligible": False,
         "reviewer": who,
+        "content_purpose_ok": True,
+        "content_purpose_ok_count": int(
+            content_report.get("content_purpose_ok_count") or len(cases)
+        ),
         "honesty": (
             f"frozen curated {kind} bank from seed cases/*.json; "
-            "claim_eligible=false; accuracy_claim closed; purpose_ok stamped before freeze"
+            "claim_eligible=false; accuracy_claim closed; "
+            "content_purpose_ok gated before purpose_ok stamp/freeze"
         ),
     }

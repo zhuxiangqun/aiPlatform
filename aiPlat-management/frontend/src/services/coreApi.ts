@@ -2773,7 +2773,7 @@ export const agentEvalApi = {
       body || {},
     );
   },
-  /** Subject seed bank → purpose_ok → freeze (claim=false). */
+  /** Subject seed bank → content_purpose_ok → freeze (claim=false). */
   casePackPromoteSubjectCapability: async (body: {
     subject_kind: string;
     reviewer?: string;
@@ -2785,6 +2785,15 @@ export const agentEvalApi = {
     return apiClient.post<Record<string, unknown>>(
       '/core/evaluation/case-packs/promote-subject-capability',
       body,
+    );
+  },
+  /** ADR P1: content_purpose_ok audit (optional subject_kind). */
+  contentPurposeOk: async (subjectKind?: string) => {
+    const q = subjectKind?.trim()
+      ? `?subject_kind=${encodeURIComponent(subjectKind.trim())}`
+      : '';
+    return apiClient.get<Record<string, unknown>>(
+      `/platform/apps/eval/store/content-purpose-ok${q}`,
     );
   },
   /** Case Editor: read-only repo seed browse. */

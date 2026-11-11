@@ -8447,6 +8447,20 @@ def eval_subject_regression_inventory(
     return subject_regression_inventory(draft_sample_limit=draft_sample_limit)
 
 
+def eval_content_purpose_ok_inventory() -> Dict[str, Any]:
+    """ADR P1 content_purpose_ok matrix across Subject seed banks (claim closed)."""
+    from core.apps.eval.service.content_purpose_ok import content_purpose_ok_inventory
+
+    return content_purpose_ok_inventory()
+
+
+def eval_content_purpose_ok_for_subject(subject_kind: str) -> Dict[str, Any]:
+    """ADR P1 content_purpose_ok audit for one Subject seed bank (claim closed)."""
+    from core.apps.eval.service.content_purpose_ok import content_purpose_ok_for_subject
+
+    return content_purpose_ok_for_subject(subject_kind)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

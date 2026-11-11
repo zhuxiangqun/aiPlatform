@@ -377,7 +377,7 @@ def write_agent_capability_seeds(*, seed_dir: Optional[Path] = None) -> Dict[str
 
 
 def _stamp_purpose_ok(cases: Sequence[Mapping[str, Any]], *, reviewer: str) -> List[Dict[str, Any]]:
-    """Stamp mechanical+owner review purpose_ok (claim still closed)."""
+    """Stamp purpose_ok after content_purpose_ok gate (claim still closed)."""
     out: List[Dict[str, Any]] = []
     for raw in cases:
         c = dict(raw)
@@ -387,7 +387,9 @@ def _stamp_purpose_ok(cases: Sequence[Mapping[str, Any]], *, reviewer: str) -> L
                 "status": "purpose_ok",
                 "decision": "purpose_ok",
                 "reviewer": str(reviewer or "owner"),
-                "notes": "P1 ordered promote: mechanical validate + owner sign-off path",
+                "notes": (
+                    "P1 ordered promote: content_purpose_ok gate + owner sign-off path"
+                ),
             }
         )
         c["review"] = review
@@ -432,7 +434,19 @@ def promote_agent_capability_bank(
         raise ValueError(
             f"capability bank invalid: invalid_count={report.get('invalid_count')}"
         )
-    cases = _stamp_purpose_ok(build_agent_capability_cases(), reviewer=who)
+    from core.apps.eval.service.content_purpose_ok import (
+        ContentPurposeOkError,
+        assert_cases_content_purpose_ok,
+    )
+
+    raw_cases = build_agent_capability_cases()
+    try:
+        content_report = assert_cases_content_purpose_ok(
+            raw_cases, subject_kind="agent"
+        )
+    except ContentPurposeOkError as exc:
+        raise ValueError(str(exc)) from exc
+    cases = _stamp_purpose_ok(raw_cases, reviewer=who)
 
     # Already frozen? return noop.
     try:
@@ -513,9 +527,13 @@ def promote_agent_capability_bank(
         "profile_id": PROFILE_ID,
         "claim_eligible": False,
         "accuracy_claim": False,
+        "content_purpose_ok": True,
+        "content_purpose_ok_count": int(
+            content_report.get("content_purpose_ok_count") or len(cases)
+        ),
         "reviewer": who,
         "honesty": (
             "frozen curated bank from seed cases/*.json; claim_eligible=false; "
-            "accuracy_claim closed; purpose_ok stamped before freeze"
+            "accuracy_claim closed; content_purpose_ok gated before purpose_ok stamp"
         ),
     }
