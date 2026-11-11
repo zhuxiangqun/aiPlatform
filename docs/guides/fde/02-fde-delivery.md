@@ -6,8 +6,8 @@ doc_type: Guide
 
 > ← [文档导航](README.md)
 
-> **目标角色**：日常 FDE 交付工程师  
-> **前置条件**：已完成[快速入门](./01-fde-quickstart.md)  
+> **目标角色**：日常 FDE 交付工程师
+> **前置条件**：已完成[快速入门](./01-fde-quickstart.md)
 > **访问地址**：`http://localhost:5173/diagnostics` → 点击 "FDE Dashboard"
 > **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **方法论**：[05](./05-fde-implementation-process.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
 
@@ -174,7 +174,7 @@ FDE 工作台提供两种执行方式。**工作流模式即 FDE Builder**：选
 
 **核心原则**：
 
-> 每接到一个需求，连续追问几次"为什么"。  
+> 每接到一个需求，连续追问几次"为什么"。
 > "我要知识库" → "为什么需要知识库？" → "老专家快退休了" → "真正的问题是经验传承"。
 
 **判断标准**：
@@ -467,29 +467,10 @@ AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
 
 ---
 
-## 七、交付手册模板
+## 七、交付手册与阶段模板
 
-交付完成时，系统自动生成标准交付手册。模板结构：
-
-| 章节 | 内容 |
-|------|------|
-| 0. 行前检查 | 离线包、Agent/Skill/Workflow 可用性、样例数据、网络确认 |
-| 1. POC 现场验证 | 1-2 天：环境部署 → 核心流程演示 → 客户数据对接 |
-| 2. 正式部署 | 生产环境安装 → 配置迁移 → 性能调优 |
-| 3. 培训交接 | 管理员培训（1h）+ 终端用户培训（1h） |
-| 4. 售后支持 | 7 天关键期 + 30 天稳定期 + 巡检计划 |
-
-### 行前检查清单
-
-| 检查项 | 不通过时处理 |
-|:---|:---|
-| 离线部署包已打包 | Tab ⑤ → 打包 |
-| Agent 状态为 ready | 检查 AGENT.md frontmatter 语法 |
-| 依赖 Skill/Tool 已注册 | 联系开发团队创建或导入 |
-| Workflow 节点拓扑完整 | 用 打开 /core/workflows（Workflow 管理页面）创建 |
-| 样例数据已准备 | ④ → POC 工具箱 → 注入模拟数据 |
-
-> 完整模板及动态占位符详见 [fde-delivery-manual.md](templates/fde-delivery-manual.md)。
+> **不重复模板正文**：交付手册模板见 [`templates/fde-delivery-manual.md`](templates/fde-delivery-manual.md)。
+> 本文只保留 FDE 操作步骤；模板结构、行前检查清单以模板文件为准。
 
 ### 各阶段输出文档模板
 
