@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T15:39:57+08:00",
+  "reviewed_at": "2026-11-11T15:58:29+08:00",
   "base_ref": "origin/main",
-  "merge_base": "368997376c3d86ff7f6c527efcdaf0ee426d9ffb",
-  "diff_sha256": "5f87b4f774cd89a30509114c25dc9369254ed821da759643a4b6aed8677fab7a",
-  "head_sha": "f4afebcfa0538cb2ebb76e2284912a1c62f1767a",
+  "merge_base": "2e68614ac0712fad4879979e5d9de5ee107ad5fa",
+  "diff_sha256": "9492ed43e4901744857ad9b0a2ae092f25922c5f812b64b9b265b500c700ad9b",
+  "head_sha": "2b3b5917a2047e503ff9a20d16ffcf757aafe0f5",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject *.regression.v1 quotas 5\u21928 aligned with bank\u00d78; manifest size locks updated; claim/cert closed. Local lock only; CI unlock is non-author Approve."
+  "note": "Honesty sync: Subject pack.meta/README/KB fixture \u00d75\u2192\u00d78 after quota floors. No claim/cert change. Local lock only; CI unlock is non-author Approve."
 }

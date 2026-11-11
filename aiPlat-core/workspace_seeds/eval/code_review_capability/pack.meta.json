@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["code_review"],
   "object_types": [],
-  "notes": "Code Review Subject capability bank (ADR after KB). Not first-class OBJECT_TYPES. Fixture findings/gold via CodeReviewSubjectAdapter (mirrors package code_review_gold); ≠ live autoreview. Regression quotas CODE_REVIEW_V1_CAPS×5."
+  "notes": "Code Review Subject capability bank (ADR after KB). Not first-class OBJECT_TYPES. Fixture findings/gold via CodeReviewSubjectAdapter (mirrors package code_review_gold); ≠ live autoreview. Regression quotas CODE_REVIEW_V1_CAPS×8."
 }

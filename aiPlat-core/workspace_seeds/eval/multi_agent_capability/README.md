@@ -7,7 +7,7 @@
 | File | Role |
 |------|------|
 | `profile.multi_agent.smoke.v1.json` | Smoke Suite Profile (1× each MULTI_AGENT_V1_CAPS) |
-| `profile.multi_agent.regression.v1.json` | Regression Suite Profile (`MULTI_AGENT_V1_CAPS` ×5) |
+| `profile.multi_agent.regression.v1.json` | Regression Suite Profile (`MULTI_AGENT_V1_CAPS` ×8) |
 
 ```bash
 python3 -c "from core.api.core_facade import eval_validate_multi_agent_capability_bank, eval_multi_agent_regression_status; print(eval_validate_multi_agent_capability_bank()); print(eval_multi_agent_regression_status()['quota_inventory_ok'])"

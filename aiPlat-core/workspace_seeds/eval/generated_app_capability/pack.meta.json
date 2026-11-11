@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["generated_app"],
   "object_types": ["generated_app"],
-  "notes": "Generated-App Subject capability bank (ADR after Skill). First-class OBJECT_TYPES. Lexical fixture via GeneratedAppSubjectAdapter; ≠ live Pi host / runs_eval E2E / EvalGeneratedAppsPanel. Regression quotas GENERATED_APP_V1_CAPS×5."
+  "notes": "Generated-App Subject capability bank (ADR after Skill). First-class OBJECT_TYPES. Lexical fixture via GeneratedAppSubjectAdapter; ≠ live Pi host / runs_eval E2E / EvalGeneratedAppsPanel. Regression quotas GENERATED_APP_V1_CAPS×8."
 }

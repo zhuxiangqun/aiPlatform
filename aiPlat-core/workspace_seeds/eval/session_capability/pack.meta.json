@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["session"],
   "object_types": [],
-  "notes": "Session Subject capability bank (ADR after Code Review). Not first-class OBJECT_TYPES. Fixture multi-turn via SessionSubjectAdapter (mirrors package session_eval); ≠ long-horizon Agent. Regression quotas SESSION_V1_CAPS×5."
+  "notes": "Session Subject capability bank (ADR after Code Review). Not first-class OBJECT_TYPES. Fixture multi-turn via SessionSubjectAdapter (mirrors package session_eval); ≠ long-horizon Agent. Regression quotas SESSION_V1_CAPS×8."
 }

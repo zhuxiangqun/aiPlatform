@@ -7,7 +7,7 @@
 | File | Role |
 |------|------|
 | `profile.kb.smoke.v1.json` | Smoke Suite Profile (1× each KB_V1_CAPS) |
-| `profile.kb.regression.v1.json` | Regression Suite Profile (`KB_V1_CAPS` ×5) |
+| `profile.kb.regression.v1.json` | Regression Suite Profile (`KB_V1_CAPS` ×8) |
 
 ```bash
 python3 -c "from core.api.core_facade import eval_validate_kb_capability_bank, eval_kb_regression_status; print(eval_validate_kb_capability_bank()); print(eval_kb_regression_status()['quota_inventory_ok'])"
