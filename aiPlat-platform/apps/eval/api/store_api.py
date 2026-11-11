@@ -617,6 +617,16 @@ async def get_content_purpose_ok_inventory(
     return {"data": eval_content_purpose_ok_inventory()}
 
 
+@router.get("/subject-suite-profiles", response_model=ItemResponse)
+async def get_subject_suite_profile_inventory(
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """ADR P2 Subject Suite Profile discovery — claim stays false."""
+    from core.api.core_facade import eval_subject_suite_profile_inventory
+
+    return {"data": eval_subject_suite_profile_inventory()}
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),

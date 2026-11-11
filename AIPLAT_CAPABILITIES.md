@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3363
+total_capabilities: 3371
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -682,6 +682,7 @@ scan_hash: 8f9548ec24f4
 | subject_regression_inventory + EvalSubjectRegressionInventoryPanel | `subject_regression_inventory.py` + `eval_subject_regression_inventory` + GET …/store/subject-regression-inventory + EvalSubjectRegressionInventoryPanel | ✅ | 跨 Subject regression 诚实总览（9 OBJECT_TYPES + Subject-local）；claim=false；Method 轨排除；生成物适用：不适用（管理端 UI） | 本批 |
 | promote_subject_capability_bank + list_promotable_subject_kinds | `subject_capability_promote.py` + `eval_promote_subject_capability_bank` + POST …/case-packs/promote-subject-capability | ✅ | 任意 Subject 种子题库 purpose_ok→freeze（工作区 registry）；归一化 rubric；claim=false；agent 委托既有 promote；生成物适用：已接线 | 本批 |
 | content_purpose_ok audit + promote gate | `content_purpose_ok.py` + `eval_content_purpose_ok_*` + GET …/store/content-purpose-ok | ✅ | ADR P1 内容级 purpose 机审（oracle/prompt/test_purpose）；promote 前 fail-closed；inventory 展示 ready；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| subject_suite_profiles + cross-Subject compile | `subject_suite_profiles.py` + suite_profile_compile + GET …/store/subject-suite-profiles | ✅ | ADR P2：发现/归一化各 Subject smoke|regression Profile；compile 按 subject_kind 选题+契约；content_purpose_ok 门；claim=false；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2858,6 +2859,13 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_subject_suite_profile_inventory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| subject_suite_profile_inventory | `core/apps/eval/service/subject_suite_profiles.py` | ✅ | 自动同步 | 已合入 |
+| get_subject_suite_profile | `core/apps/eval/service/subject_suite_profiles.py` | ✅ | 自动同步 | 已合入 |
+| list_subject_suite_profiles | `core/apps/eval/service/subject_suite_profiles.py` | ✅ | 自动同步 | 已合入 |
+| SubjectSuiteProfileError | `core/apps/eval/service/subject_suite_profiles.py` | ✅ | 自动同步 | 已合入 |
+| assert_cases_content_purpose_ok | `core/apps/eval/service/content_purpose_ok.py` | ✅ | 自动同步 | 已合入 |
+| audit_cases_content_purpose | `core/apps/eval/service/content_purpose_ok.py` | ✅ | 自动同步 | 已合入 |
 | eval_content_purpose_ok_for_subject | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_content_purpose_ok_inventory | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | content_purpose_ok_inventory | `core/apps/eval/service/content_purpose_ok.py` | ✅ | 自动同步 | 已合入 |
@@ -4262,7 +4270,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 570 | 1 | 571 |
+| Harness 执行引擎 | 571 | 1 | 572 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4275,7 +4283,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 560 | 0 | 560 |
+| 评估系统 | 567 | 0 | 567 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4307,7 +4315,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3353** | **10** | **3363** |
+| **总计** | **3361** | **10** | **3371** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

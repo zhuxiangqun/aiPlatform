@@ -246,23 +246,28 @@ def agent_benchmark_profile() -> Dict[str, Any]:
 
 
 def list_suite_profiles() -> List[Dict[str, Any]]:
-    """Built-in Suite Profiles (smoke / regression / benchmark)."""
-    return [
-        agent_smoke_profile(),
-        agent_regression_profile(),
-        agent_benchmark_profile(),
-    ]
+    """Suite Profiles: agent smoke/regression/benchmark + Subject seed profiles."""
+    from core.apps.eval.service.subject_suite_profiles import (
+        list_subject_suite_profiles,
+    )
+
+    return list_subject_suite_profiles(include_agent=True)
 
 
 def get_suite_profile(profile_id: str) -> Dict[str, Any]:
-    """Resolve built-in profile by id (fail closed on unknown)."""
+    """Resolve agent or Subject Suite Profile by id (fail closed on unknown)."""
+    from core.apps.eval.service.subject_suite_profiles import (
+        SubjectSuiteProfileError,
+        get_subject_suite_profile,
+    )
+
     pid = str(profile_id or "").strip()
-    for p in list_suite_profiles():
-        if str(p.get("profile_id") or "") == pid:
-            return dict(p)
     if not pid or pid == PROFILE_ID:
         return agent_regression_profile()
-    raise ValueError(f"unknown suite profile_id={pid!r}")
+    try:
+        return get_subject_suite_profile(pid)
+    except SubjectSuiteProfileError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 def validate_capability_case(case: Mapping[str, Any]) -> List[str]:
