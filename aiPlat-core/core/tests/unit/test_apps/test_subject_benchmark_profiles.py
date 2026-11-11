@@ -1,4 +1,4 @@
-"""Subject *.benchmark.v1 Suite Profiles — holdout + bank×8 quotas=5 (claim closed)."""
+"""Subject *.benchmark.v1 Suite Profiles — holdout + bank×8 quotas=8 ADR floor (claim closed)."""
 from __future__ import annotations
 
 from core.apps.eval.service.capability_case_bank import list_suite_profiles
@@ -9,12 +9,17 @@ from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite
 
 
 def test_all_promotable_subjects_have_benchmark_profile():
-    ids = {p["profile_id"] for p in list_suite_profiles()}
+    profiles = {p["profile_id"]: p for p in list_suite_profiles()}
+    ids = set(profiles)
     for kind in list_promotable_subject_kinds():
         if kind == "agent":
             assert "agent.benchmark.v1" in ids
             continue
-        assert f"{kind}.benchmark.v1" in ids, kind
+        pid = f"{kind}.benchmark.v1"
+        assert pid in ids, kind
+        quotas = (profiles[pid].get("quotas") or {})
+        assert quotas, pid
+        assert min(int(v) for v in quotas.values()) >= 8, (pid, quotas)
 
 
 def test_prompt_benchmark_compile_holdout_and_readiness():
