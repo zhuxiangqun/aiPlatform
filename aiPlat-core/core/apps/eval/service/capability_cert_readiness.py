@@ -3,6 +3,7 @@
 Evaluates Plan §8.5 relative completeness for a Suite Profile.
 Does **not** perform external audit. ``certification_eligible`` stays false.
 ``claim_eligible`` / ``accuracy_claim`` stay false.
+Subject-aware: bank + in-scope + validate follow Profile Subject.
 """
 from __future__ import annotations
 
@@ -11,12 +12,12 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 from core.apps.eval.service.capability_case_bank import (
     PACK_ID,
     PACK_VERSION,
-    build_agent_capability_cases,
-    get_suite_profile,
     validate_capability_case,
 )
-from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
-from core.apps.eval.service.capability_id_map import V1_IN_SCOPE, V1_OUT_OF_SCOPE
+from core.apps.eval.service.capability_coverage_fill import (
+    analyze_capability_coverage,
+    resolve_coverage_context,
+)
 from core.apps.eval.service.capability_p4_gate import (
     DEFAULT_AGREEMENT_THRESHOLD,
     evaluate_judge_calibration_gate,
@@ -32,12 +33,24 @@ class CapabilityCertReadinessError(ValueError):
 def _oracle_ok(case: Mapping[str, Any]) -> bool:
     rubric = case.get("rubric") if isinstance(case.get("rubric"), Mapping) else {}
     oracle = case.get("oracle") if isinstance(case.get("oracle"), Mapping) else {}
-    if rubric.get("type") or oracle.get("type"):
-        must = rubric.get("must_contain") or rubric.get("must_contain_any")
-        if must or rubric.get("paths") or oracle:
+    criteria = (
+        case.get("success_criteria")
+        if isinstance(case.get("success_criteria"), Mapping)
+        else {}
+    )
+    if rubric.get("type") or oracle.get("type") or criteria:
+        must = (
+            rubric.get("must_contain")
+            or rubric.get("must_contain_any")
+            or criteria.get("must_contain")
+            or criteria.get("must_contain_any")
+        )
+        if must or rubric.get("paths") or oracle or criteria.get("must_not_contain"):
             return True
         # typed rubric without must_contain still counts if type present
-        return bool(rubric.get("type"))
+        return bool(rubric.get("type") or oracle.get("type"))
+    if str(case.get("scripted_answer") or "").strip():
+        return True
     return False
 
 
@@ -47,10 +60,23 @@ def _review_ok(case: Mapping[str, Any]) -> bool:
     return st in ("purpose_ok", "reviewed", "approved", "frozen")
 
 
+def _validate_case_for_subject(case: Mapping[str, Any], subject_kind: str) -> List[str]:
+    kind = str(subject_kind or "agent").strip().lower() or "agent"
+    if kind == "agent":
+        return list(validate_capability_case(case) or [])
+    try:
+        from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+        return list(get_subject_adapter(kind).validate_case(case) or [])
+    except Exception as exc:  # noqa: BLE001 — surface as validation error
+        return [f"subject_validate_unavailable:{exc}"]
+
+
 def evaluate_certification_readiness(
     *,
     profile_id: str = "agent.benchmark.v1",
     profile: Optional[Mapping[str, Any]] = None,
+    subject_kind: str = "",
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
     pack_kind: str = "",
     pack_status: str = "",
@@ -64,26 +90,45 @@ def evaluate_certification_readiness(
     ``certification_eligible`` is always false (external audit required — P5 另立项).
     """
     try:
-        prof = dict(profile) if profile is not None else get_suite_profile(profile_id)
-    except ValueError as e:
+        bank, kind, prof = resolve_coverage_context(
+            profile=profile,
+            profile_id=str(profile_id or "").strip(),
+            subject_kind=subject_kind,
+            cases=cases,
+        )
+    except Exception as e:
         raise CapabilityCertReadinessError(str(e)) from e
+    if prof is None:
+        raise CapabilityCertReadinessError(
+            f"profile not resolved: profile_id={profile_id!r}"
+        )
 
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
-    coverage = analyze_capability_coverage(bank, profile=prof)
-    heatmap = build_capability_heatmap(cases=bank, profile=prof)
+    coverage = analyze_capability_coverage(
+        bank,
+        profile=prof,
+        profile_id=str(prof.get("profile_id") or profile_id or ""),
+        subject_kind=kind,
+    )
+    heatmap = build_capability_heatmap(
+        cases=bank,
+        profile=prof,
+        profile_id=str(prof.get("profile_id") or profile_id or ""),
+        subject_kind=kind,
+    )
+    in_scope = list(coverage.get("in_scope") or [])
+    out_of_scope = list(coverage.get("out_of_scope") or [])
 
     checks: List[Dict[str, Any]] = []
     blockers: List[str] = []
 
     # 1. all in-scope capabilities defined (present in map + quotas targeting them)
-    in_scope_defined = sorted(V1_IN_SCOPE) == sorted(
-        {str(g.get("capability_id")) for g in coverage.get("gaps") or []}
-    )
+    gap_ids = {str(g.get("capability_id")) for g in coverage.get("gaps") or []}
+    in_scope_defined = sorted(in_scope) == sorted(gap_ids)
     checks.append(
         {
             "id": "in_scope_defined",
             "ok": in_scope_defined,
-            "detail": f"in_scope={len(V1_IN_SCOPE)}",
+            "detail": f"subject={kind} in_scope={len(in_scope)}",
         }
     )
     if not in_scope_defined:
@@ -101,12 +146,8 @@ def evaluate_certification_readiness(
     if n_gaps:
         blockers.append(f"capability_case_gaps={n_gaps}")
 
-    # 3. every case has decidable oracle
-    oracle_bad = [
-        str(c.get("case_id") or "")
-        for c in bank
-        if not _oracle_ok(c)
-    ]
+    # 3. every case has decidable oracle (rubric / success_criteria / scripted)
+    oracle_bad = [str(c.get("case_id") or "") for c in bank if not _oracle_ok(c)]
     checks.append(
         {
             "id": "oracle_decidable",
@@ -118,10 +159,10 @@ def evaluate_certification_readiness(
     if oracle_bad:
         blockers.append(f"oracle_missing={len(oracle_bad)}")
 
-    # mechanical case validation (purpose + factory)
+    # mechanical case validation (agent factory or Subject adapter)
     invalid = []
     for c in bank:
-        errs = validate_capability_case(c)
+        errs = _validate_case_for_subject(c, kind)
         if errs:
             invalid.append({"case_id": c.get("case_id"), "errors": errs[:5]})
     checks.append(
@@ -137,16 +178,20 @@ def evaluate_certification_readiness(
 
     # 4. selected/bank cases purpose_ok or pack frozen+reviewed
     reviewed_n = sum(1 for c in bank if _review_ok(c))
-    kind = str(pack_kind or "").strip().lower()
+    pack_kind_l = str(pack_kind or "").strip().lower()
     status = str(pack_status or "").strip().lower()
-    pack_frozen_reviewed = kind == "frozen" and status in ("active", "reviewed", "frozen")
-    review_ok = pack_frozen_reviewed or reviewed_n == len(bank)
+    pack_frozen_reviewed = pack_kind_l == "frozen" and status in (
+        "active",
+        "reviewed",
+        "frozen",
+    )
+    review_ok = pack_frozen_reviewed or (len(bank) > 0 and reviewed_n == len(bank))
     checks.append(
         {
             "id": "frozen_or_purpose_ok",
             "ok": review_ok,
             "detail": (
-                f"pack_kind={kind or '—'} pack_status={status or '—'} "
+                f"pack_kind={pack_kind_l or '—'} pack_status={status or '—'} "
                 f"purpose_ok={reviewed_n}/{len(bank)}"
             ),
         }
@@ -187,12 +232,13 @@ def evaluate_certification_readiness(
 
     # 6. unknown listed for out-of-scope
     unknown = list(heatmap.get("unknown_capabilities") or [])
-    unknown_ok = {u.get("capability_id") for u in unknown} == set(V1_OUT_OF_SCOPE)
+    unknown_ids = {u.get("capability_id") for u in unknown}
+    unknown_ok = unknown_ids == set(out_of_scope)
     checks.append(
         {
             "id": "unknown_disclosed",
             "ok": unknown_ok,
-            "detail": f"unknown_n={len(unknown)}",
+            "detail": f"unknown_n={len(unknown)} out_of_scope={len(out_of_scope)}",
         }
     )
     if not unknown_ok:
@@ -244,6 +290,7 @@ def evaluate_certification_readiness(
         "pack_id": str(prof.get("pack_id") or PACK_ID),
         "pack_version": str(prof.get("pack_version") or PACK_VERSION),
         "profile_id": prof.get("profile_id"),
+        "subject_kind": kind,
         "manifest_hash": (plan or {}).get("manifest_hash"),
         "plan_id": (plan or {}).get("plan_id"),
         "execution_fingerprint": (plan or {}).get("execution_fingerprint"),
@@ -254,6 +301,7 @@ def evaluate_certification_readiness(
     return {
         "ok": True,
         "schema": "eval.certification_readiness.v1",
+        "subject_kind": kind,
         "profile_id": prof.get("profile_id"),
         "profile_complete": profile_complete,
         # Always false: P5 external audit is out of band.
@@ -268,11 +316,12 @@ def evaluate_certification_readiness(
             "n_gaps": n_gaps,
             "covered_capabilities": coverage.get("covered_capabilities"),
             "total_in_scope": coverage.get("total_in_scope"),
+            "subject_kind": kind,
         },
-        "unknown_capabilities": sorted(V1_OUT_OF_SCOPE),
+        "unknown_capabilities": sorted(out_of_scope),
         "judge_gate": judge_gate,
         "honesty": (
-            "profile_complete is relative to declared in-scope + quotas (§8.5); "
+            f"profile_complete is relative to declared {kind} in-scope + quotas (§8.5); "
             "certification_eligible=false until external audit (P5 另立项); "
             "claim_eligible/accuracy_claim remain false"
         ),
