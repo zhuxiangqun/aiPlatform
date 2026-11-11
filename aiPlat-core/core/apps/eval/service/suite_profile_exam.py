@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from core.apps.eval.service.capability_case_bank import build_agent_capability_cases
 from core.apps.eval.service.case_pack_hash import (
@@ -76,20 +76,112 @@ def verify_capability_manifest_hashes(
             )
 
 
+def _case_prompt(case: Mapping[str, Any]) -> str:
+    for key in ("prompt", "query", "user_input"):
+        s = str(case.get(key) or "").strip()
+        if s:
+            return s
+    turns = case.get("turns")
+    if isinstance(turns, list):
+        for turn in turns:
+            if not isinstance(turn, Mapping):
+                continue
+            for key in ("user", "content", "prompt", "input", "query"):
+                s = str(turn.get(key) or "").strip()
+                if s:
+                    return s
+    return ""
+
+
+def _case_success_criteria(case: Mapping[str, Any]) -> Dict[str, Any]:
+    crit = case.get("success_criteria")
+    if isinstance(crit, Mapping) and crit:
+        return {
+            "must_contain": list(crit.get("must_contain") or []),
+            "must_not_contain": list(crit.get("must_not_contain") or []),
+        }
+    rubric = case.get("rubric") if isinstance(case.get("rubric"), Mapping) else {}
+    if rubric:
+        return rubric_to_success_criteria(rubric)
+    # KB / code_review / multi_agent fixtures: derive light lexical anchors.
+    must: List[str] = []
+    for key in ("expected_final", "expected_ids", "gold"):
+        val = case.get(key)
+        if isinstance(val, str) and val.strip():
+            must.append(val.strip())
+        elif isinstance(val, (list, tuple)):
+            must.extend(str(x).strip() for x in val if str(x).strip())
+    return {"must_contain": must[:6], "must_not_contain": []}
+
+
 def _case_as_task(case: Mapping[str, Any]) -> Dict[str, Any]:
     """Project capability case into typed-plan task shape for stub/score helpers."""
     rubric = case.get("rubric") if isinstance(case.get("rubric"), Mapping) else {}
-    criteria = rubric_to_success_criteria(rubric)
+    criteria = _case_success_criteria(case)
+    prompt = _case_prompt(case)
     return {
         "task_id": str(case.get("case_id") or ""),
         "case_id": str(case.get("case_id") or ""),
         "category": str(case.get("category") or ""),
-        "user_input": str(case.get("prompt") or case.get("user_input") or ""),
-        "prompt": str(case.get("prompt") or ""),
+        "user_input": prompt,
+        "prompt": prompt,
         "success_criteria": criteria,
         "rubric": dict(rubric),
         "capabilities": list(case.get("capabilities") or []),
+        "scripted_answer": str(case.get("scripted_answer") or "").strip(),
     }
+
+
+def _resolve_exam_bank(
+    *,
+    profile: Optional[Mapping[str, Any]],
+    profile_id: str,
+    cases: Optional[Sequence[Mapping[str, Any]]],
+) -> Tuple[List[Dict[str, Any]], str]:
+    """Load Subject-matched seed bank (never silently substitute agent for others)."""
+    from core.apps.eval.service.capability_case_bank import get_suite_profile
+    from core.apps.eval.service.subject_suite_profiles import (
+        SubjectSuiteProfileError,
+        load_cases_for_suite_profile,
+        normalize_suite_profile,
+        resolve_subject_kind_from_profile,
+    )
+
+    if cases is not None:
+        bank = [dict(c) for c in cases if isinstance(c, Mapping)]
+        kind = "agent"
+        try:
+            if profile is not None:
+                kind = resolve_subject_kind_from_profile(
+                    normalize_suite_profile(profile)
+                )
+            elif profile_id:
+                kind = resolve_subject_kind_from_profile(
+                    normalize_suite_profile(
+                        get_suite_profile(str(profile_id).strip())
+                    )
+                )
+        except (ValueError, SubjectSuiteProfileError) as exc:
+            _log.debug("subject_kind label fallback agent: %s", exc)
+            kind = "agent"
+        return bank, kind or "agent"
+
+    pid = str(profile_id or "").strip()
+    try:
+        if profile is not None:
+            prof = normalize_suite_profile(dict(profile))
+        else:
+            prof = normalize_suite_profile(
+                get_suite_profile(pid or "agent.regression.v1")
+            )
+        kind = resolve_subject_kind_from_profile(prof) or "agent"
+        bank = load_cases_for_suite_profile(prof)
+        return bank, kind
+    except (SubjectSuiteProfileError, ValueError) as exc:
+        if not pid or pid.startswith("agent."):
+            _log.debug("agent bank fallback after resolve failure: %s", exc)
+            return list(build_agent_capability_cases()), "agent"
+        raise SuiteProfileExamError(str(exc)) from exc
 
 
 async def run_suite_profile_exam(
@@ -100,12 +192,14 @@ async def run_suite_profile_exam(
     live: bool = False,
     model: str = "",
     run_key: str = "",
-    object_id: str = "agent.capability.target",
+    object_id: str = "",
     object_version: str = "0.1.0",
     max_cases: int = 0,
 ) -> Dict[str, Any]:
     """Compile Profile Plan → require sample_manifest → execute only those cases."""
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
+    bank, subject_kind = _resolve_exam_bank(
+        profile=profile, profile_id=profile_id, cases=cases
+    )
     by_id = index_cases_by_id(bank)
 
     plan = compile_plan_from_suite_profile(
@@ -115,6 +209,7 @@ async def run_suite_profile_exam(
         object_id=object_id,
         object_version=object_version,
     )
+    subject_kind = str(plan.get("subject_kind") or subject_kind or "agent")
 
     try:
         sample_manifest = require_sample_manifest(plan)
@@ -185,6 +280,8 @@ async def run_suite_profile_exam(
                 output = await live_llm_output(
                     str(task.get("user_input") or ""), model_name=model
                 )
+            elif task.get("scripted_answer"):
+                output = str(task.get("scripted_answer") or "")
             else:
                 output = dry_stub_output(task)
             scored = score_lexical_output(output, criteria)
@@ -223,6 +320,8 @@ async def run_suite_profile_exam(
         "run_id": run_id,
         "run_key": rk,
         "profile_id": plan.get("profile_id"),
+        "subject_kind": subject_kind,
+        "object_type_member": bool(plan.get("object_type_member")),
         "live": bool(live),
         "manifest_hash": plan.get("manifest_hash"),
         "execution_fingerprint": plan.get("execution_fingerprint"),
@@ -235,17 +334,18 @@ async def run_suite_profile_exam(
         "accuracy_claim": False,
         "sufficiency_claim": False,
         "msg": (
-            "Suite Profile exam · sample_manifest sole execution list · "
-            "lexical oracle · accuracy_claim=false · dry≠live subject claim"
+            f"Suite Profile exam ({subject_kind}) · sample_manifest sole execution "
+            "list · lexical/scripted oracle · accuracy_claim=false · dry≠live claim"
             if not live
             else (
-                "Suite Profile exam · sample_manifest sole execution list · "
-                "lexical oracle on live LLM · accuracy_claim=false"
+                f"Suite Profile exam ({subject_kind}) · sample_manifest sole "
+                "execution list · lexical oracle on live LLM · accuracy_claim=false"
             )
         ),
         "honesty": (
-            "Runner executed only sample_manifest rows; selected_cases ignored; "
-            "holdout skipped; claim_eligible=false"
+            f"Runner executed only sample_manifest rows for subject={subject_kind}; "
+            "bank matched profile Subject; selected_cases ignored; holdout skipped; "
+            "claim_eligible=false"
         ),
     }
     out = attach_evaluation_plan(out, plan)
