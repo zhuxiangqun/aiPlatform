@@ -23,4 +23,4 @@
 
 ## 各层开发文档
 
-- [aiPlat-core](../../../aiPlat-core/docs/) · [aiPlat-platform](../../../aiPlat-platform/docs/) · [aiPlat-infra](../../../aiPlat-infra/docs/)
+- [aiPlat-core](../../../../aiPlat-core/docs/) · [aiPlat-platform](../../../../aiPlat-platform/docs/) · [aiPlat-infra](../../../../aiPlat-infra/docs/)

@@ -62,7 +62,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[reference/agents/](reference/agents/) · [reference/articles/](reference/articles/) · [audit/](audit/) · [by-role/](by-role/) · [reference/compliance/](reference/compliance/) · [guides/](guides/) · [reference/harness/](reference/harness/) · [reference/matrix/](reference/matrix/) · [reference/mcp/](reference/mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
+[reference/agents/](reference/agents/) · [reference/articles/](reference/articles/) · [audit/](audit/) · [reference/by-role/](reference/by-role/) · [reference/compliance/](reference/compliance/) · [guides/](guides/) · [reference/harness/](reference/harness/) · [reference/matrix/](reference/matrix/) · [reference/mcp/](reference/mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
 
 ---
 
@@ -85,7 +85,7 @@
 | `reference/framework/` | 成熟度评估框架 | 6 | 评估时更新 |
 | `architecture/plans/design/` | 设计提案（To-Be） | 4 | 过期标注 |
 | `security/` | 安全架构与测试 | 4 | 是 |
-| `by-role/` | 角色索引 | 4 | 是 |
+| `reference/by-role/` | 角色索引 | 4 | 是 |
 | `reports/` | 生成报告快照 | 3 | **否**（重新生成） |
 | `API/` | API 协议 | 2 | 是 |
 | `reference/policy/` | 安全/运维策略 | 2 | 是 |
@@ -127,7 +127,7 @@
 | 查 CI/规约会拦截的规则 | 核心规约 | 根 `CLAUDE.md`、各子仓 `CLAUDE.md`、`AIPLAT_CAPABILITIES.md` |
 | 理解系统怎么设计的 | 架构设计 | `architecture/`、`reference/harness/`、`contracts/`、`reference/agents/` |
 | 查某一层怎么实现 | 层设计 | `aiPlat-core/docs/`、`aiPlat-infra/docs/`、`aiPlat-platform/docs/` 等（不在根 `docs/` 一级目录） |
-| 学怎么操作交付 | 用户手册 | `guides/`、`guides/fde/`、`by-role/` |
+| 学怎么操作交付 | 用户手册 | `guides/`、`guides/fde/`、`reference/by-role/` |
 | 看目标态/规划 | 设计与规划 | `architecture/plans/design/`、`architecture/plans/`（含五产品；**非现状**） |
 | 用 Pi Thin Runtime | Pi 现行交付 | `packages/aiplat-pi-runtime/README.md`、`architecture/plans/pi-thin-runtime.md` |
 | 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`guides/ontology.md`（指向知识系统） |

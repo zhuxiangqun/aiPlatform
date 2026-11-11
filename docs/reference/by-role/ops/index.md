@@ -23,4 +23,4 @@
 
 ## 各层运维
 
-- [aiPlat-infra 运维](../../../aiPlat-infra/docs/by-role/ops/index.md) · [aiPlat-core 运维](../../../aiPlat-core/docs/by-role/ops/index.md)
+- [aiPlat-infra 运维](../../../../aiPlat-infra/docs/by-role/ops/index.md) · [aiPlat-core 运维](../../../../aiPlat-core/docs/by-role/ops/index.md)

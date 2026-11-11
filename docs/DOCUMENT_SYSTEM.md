@@ -81,11 +81,6 @@ workspace-root/
 │   │
 │   ├── standards/                     ← 跨层规范（强制性；`规范-*.md` 多份）
 │   │
-│   ├── reports/                       ← 生成报告（不手动编辑）
-│   │   ├── README.md
-│   │   ├── AIPLAT_ARCHITECTURE_REPORT.md
-│   │   └── AIPLAT_DIAGNOSTIC_REPORT.md
-│   │
 │   ├── audit/                         ← 合规审计
 │   │   └── compliance-matrix.md
 │   │
@@ -93,31 +88,6 @@ workspace-root/
 │   │   ├── README.md                 ← 归档说明 + "仅做历史参考"免责声明
 │   │   └── ...（历史文件）
 │   │
-│   └── by-role/                      ← 角色导航（索引，指向其他文件的链接集合）
-│       ├── architect/
-│       ├── developer/
-│       ├── ops/
-│       └── user/
-│
-├── aiPlat-core/
-│   ├── CLAUDE.md                     ← Core 层 AI 编程规约
-│   └── docs/                         ← Core 层设计文档
-│
-├── aiPlat-infra/
-│   ├── CLAUDE.md                     ← Infra 层 AI 编程规约
-│   └── docs/                         ← Infra 层设计文档
-│
-├── aiPlat-platform/
-│   ├── CLAUDE.md                     ← Platform 层 AI 编程规约
-│   └── docs/                         ← 设计文档（部分为骨架/To-Be）
-│
-├── aiPlat-management/
-│   ├── CLAUDE.md                     ← Management 层 AI 编程规约
-│   └── docs/                         ← Management 层设计文档
-│
-└── aiPlat-app/
-    ├── CLAUDE.md                     ← App 层 AI 编程规约
-    └── docs/                         ← App 层设计文档
 ```
 
 ---
@@ -476,7 +446,7 @@ CI 可执行
 | Guide | 操作步骤/最佳实践 | `docs/guides/` | 随流程更新 |
 | Runbook | 运维/应急/交付流程 | `docs/guides/` | 随流程更新 |
 | Reference | API/术语/模板/索引 | `docs/reference/` | 随接口/术语更新 |
-| Report | 时间点快照 | `reports/`、`docs/reports/` | 不维护，过期归档 |
+| Report | 时间点快照 | `reports/` | 不维护，过期归档 |
 | Decision | ADR/裁决 | `docs/decisions/` | 永久留存 |
 | Index | 导航入口 | 各目录 README | 随目录变化 |
 | Agent Instruction | AI 编程规约 | 根/子仓 `CLAUDE.md` | 随规则变更 |
@@ -707,7 +677,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 12 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 10 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

@@ -5,13 +5,13 @@
 > 架构守卫状态：0 ERROR, 0 WARNING（全已知, 已全量修复）
 > 合规状态：0 违规
 >
-> **四平台深度对标 → [`../architecture/comparison.md`](../architecture/comparison.md)** — 12 维度 × aiPlat/Hermes/ClaudeCode/OpenClaw × 评分矩阵 × 借鉴建议。本文档聚焦 aiPlat 内部架构分析。
+> **四平台深度对标 → [`../../docs/architecture/comparison.md`](../../docs/architecture/comparison.md)** — 12 维度 × aiPlat/Hermes/ClaudeCode/OpenClaw × 评分矩阵 × 借鉴建议。本文档聚焦 aiPlat 内部架构分析。
 
 ---
 
 ## 一、aiPlat 定位概述
 
-> **完整四平台对标（12 维度表 + 综合评分矩阵 + 可借鉴建议）→** [`../architecture/comparison.md`](../architecture/comparison.md)
+> **完整四平台对标（12 维度表 + 综合评分矩阵 + 可借鉴建议）→** [`../../docs/architecture/comparison.md`](../../docs/architecture/comparison.md)
 
 aiPlat 是**企业级 AI 操作系统**，定位为 `企业大脑`——从"工具集合"到"自演进操作系统"的 8 层架构。当前 上市即 v3.0，能力计数见 AIPLAT_CAPABILITIES.md 统计表。
 
@@ -30,7 +30,7 @@ aiPlat 是**企业级 AI 操作系统**，定位为 `企业大脑`——从"工�
 
 ## 二、Harness 执行内核对比
 
-> **完整对标** → [`../architecture/comparison.md`](../architecture/comparison.md) §二·维度1。以下保留 aiPlat 内部 Harness 架构分析。
+> **完整对标** → [`../../docs/architecture/comparison.md`](../../docs/architecture/comparison.md) §二·维度1。以下保留 aiPlat 内部 Harness 架构分析。
 
 ```
 ┌──────────────────┬──────────────────┬──────────────────┬──────────────────┐
@@ -2194,7 +2194,7 @@ aiPlat 的"建域之前怎么选"决策框架：
 
 ## 三十七、三平台借鉴落地（v2.8 新增）
 
-基于 [`comparison.md §四`](../architecture/comparison.md) 的 8 项借鉴建议，5 项 P1 已全部落地：
+基于 [`comparison.md §四`](../../docs/architecture/comparison.md) 的 8 项借鉴建议，5 项 P1 已全部落地：
 
 | 借鉴来源 | 能力 | 实现 | 状态 |
 |:---|------|------|:---:|

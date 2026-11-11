@@ -14,8 +14,8 @@
 
 ## 各层设计文档
 
-- [aiPlat-core](../../../aiPlat-core/docs/) — Engine / Harness / Agent 设计
-- [aiPlat-platform](../../../aiPlat-platform/docs/) — 平台服务设计
-- [aiPlat-infra](../../../aiPlat-infra/docs/) — 基础设施设计
-- [aiPlat-management](../../../aiPlat-management/docs/) — 管理端设计
-- [aiPlat-app](../../../aiPlat-app/docs/) — 应用端设计
+- [aiPlat-core](../../../../aiPlat-core/docs/) — Engine / Harness / Agent 设计
+- [aiPlat-platform](../../../../aiPlat-platform/docs/) — 平台服务设计
+- [aiPlat-infra](../../../../aiPlat-infra/docs/) — 基础设施设计
+- [aiPlat-management](../../../../aiPlat-management/docs/) — 管理端设计
+- [aiPlat-app](../../../../aiPlat-app/docs/) — 应用端设计
