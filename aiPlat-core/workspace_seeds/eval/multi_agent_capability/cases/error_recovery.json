@@ -55,6 +55,12 @@
         "不测 live runtime"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + path/final exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -110,6 +116,12 @@
         "不测真实超时注入"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -165,6 +177,12 @@
         "不测 live MCP"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -220,6 +238,12 @@
         "不测真实 schema 引擎"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -276,6 +300,12 @@
         "不测真人审稿"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -334,6 +364,12 @@
         "不测 live runtime"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + path/final exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -389,6 +425,12 @@
         "不测真实超时注入"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -444,6 +486,12 @@
         "不测 live MCP"
       ],
       "oracle_rationale": "规则 oracle：recovery handoff + exact"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   }
 ]

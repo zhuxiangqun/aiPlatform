@@ -28,6 +28,12 @@
         "不测试 LLM 审查质量"
       ],
       "oracle_rationale": "规则 oracle：sorted(str(findings)) == sorted(str(gold))"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -57,6 +63,12 @@
         "不测试运行时泄漏检测"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -85,6 +97,12 @@
         "不测试 JWT 实现"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -116,6 +134,12 @@
         "不测试 lint 工具本身"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -145,6 +169,12 @@
         "不测试密钥扫描引擎"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -176,6 +206,12 @@
         "不测试 LLM 审查质量"
       ],
       "oracle_rationale": "规则 oracle：sorted(str(findings)) == sorted(str(gold))"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -205,6 +241,12 @@
         "不测试运行时泄漏检测"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -233,6 +275,12 @@
         "不测试 JWT 实现"
       ],
       "oracle_rationale": "规则 oracle：exact set match"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   }
 ]

@@ -28,6 +28,12 @@
         "不测试多轮记忆"
       ],
       "oracle_rationale": "词面 must_contain 检查产品名锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -60,6 +66,12 @@
         "不测试多语言"
       ],
       "oracle_rationale": "词面 must_contain 双锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -93,6 +105,12 @@
         "不测试 HTTP 真请求"
       ],
       "oracle_rationale": "词面 must_contain 检查 JSON 关键字段"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -124,6 +142,12 @@
         "不测试语气风格评分"
       ],
       "oracle_rationale": "词面 must_contain 人名锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -155,6 +179,12 @@
         "不测试工单系统"
       ],
       "oracle_rationale": "词面 must_contain 官方语义锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -186,6 +216,12 @@
         "不测试多轮记忆"
       ],
       "oracle_rationale": "词面 must_contain 检查产品名锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -218,6 +254,12 @@
         "不测试多语言"
       ],
       "oracle_rationale": "词面 must_contain 双锚点"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -251,6 +293,12 @@
         "不测试 HTTP 真请求"
       ],
       "oracle_rationale": "词面 must_contain 检查 JSON 关键字段"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   }
 ]

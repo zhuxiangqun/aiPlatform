@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T15:58:29+08:00",
+  "reviewed_at": "2026-11-11T17:03:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2e68614ac0712fad4879979e5d9de5ee107ad5fa",
-  "diff_sha256": "9492ed43e4901744857ad9b0a2ae092f25922c5f812b64b9b265b500c700ad9b",
-  "head_sha": "2b3b5917a2047e503ff9a20d16ffcf757aafe0f5",
+  "merge_base": "abb9fec4ddff6e46eab4811c39c8db7f40946967",
+  "diff_sha256": "cb703a2830dda10c75b11e4fcf35d1bc5e67b8208ea61af5a7064f19097426cc",
+  "head_sha": "519dcfdec6b15dd3147e529310e73015345fb1f0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Honesty sync: Subject pack.meta/README/KB fixture \u00d75\u2192\u00d78 after quota floors. No claim/cert change. Local lock only; CI unlock is non-author Approve."
+  "note": "Whitepaper resync after CAPABILITIES 3381; stamp CI path fix; claim/freeze still closed."
 }
