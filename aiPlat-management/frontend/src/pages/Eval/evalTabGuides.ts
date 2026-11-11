@@ -56,8 +56,8 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     title: 'Case Pack',
     what: '工作区 Case Pack 工厂：草稿扩题、人审、freeze、version++、coverage、变异/trace/holdout、LLM 候选、校准闭环。',
     why: 'Plan v2 的题库载体；frozen 保可比，L3 generated/trace 保发现，均默认不可 claim。',
-    can: '选档含各 Subject smoke/regression Profile→compile sample_manifest；draft→review→freeze；mutate/trace/LLM；holdout；coverage。',
-    not: 'freeze ≠ 准确率；校准 ≠ accuracy_claim；generated/trace 不可 freeze 入 claim；Profile 编译 ≠ claim。',
+    can: '选档含各 Subject smoke/regression→compile→run exam（匹配 Subject 题库）；draft→review→freeze；holdout；coverage heatmap。',
+    not: 'freeze ≠ 准确率；校准 ≠ accuracy_claim；generated/trace 不可 freeze 入 claim；Profile exam ≠ claim。',
   },
   'case-editor': {
     title: '题目维护',

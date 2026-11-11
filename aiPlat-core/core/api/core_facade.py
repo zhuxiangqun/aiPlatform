@@ -8733,12 +8733,15 @@ async def eval_run_suite_profile_exam(
     live: bool = False,
     model: str = "",
     run_key: str = "",
-    object_id: str = "agent.capability.target",
+    object_id: str = "",
     object_version: str = "0.1.0",
     max_cases: int = 0,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
+    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed).
+
+    Loads the Subject bank matching ``profile_id`` when ``cases`` is omitted.
+    """
     from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
 
     return await run_suite_profile_exam(
@@ -8808,34 +8811,6 @@ def eval_certification_readiness(
         judge_agreement=judge_agreement,
         judge_threshold=judge_threshold,
         compile_plan=compile_plan,
-    )
-
-
-async def eval_run_suite_profile_exam(
-    *,
-    profile_id: str = "agent.regression.v1",
-    profile: Optional[Dict[str, Any]] = None,
-    live: bool = False,
-    model: str = "",
-    run_key: str = "",
-    object_id: str = "agent.capability.target",
-    object_version: str = "0.1.0",
-    max_cases: int = 0,
-    cases: Optional[list] = None,
-) -> Dict[str, Any]:
-    """Post-P4: execute only Profile sample_manifest (claim closed)."""
-    from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
-
-    return await run_suite_profile_exam(
-        profile_id=profile_id,
-        profile=profile,
-        cases=cases,
-        live=bool(live),
-        model=model,
-        run_key=run_key,
-        object_id=object_id,
-        object_version=object_version,
-        max_cases=max_cases,
     )
 
 
