@@ -7,7 +7,7 @@
 | File | Role |
 |------|------|
 | `profile.code_review.smoke.v1.json` | Smoke Suite Profile (1× each CODE_REVIEW_V1_CAPS) |
-| `profile.code_review.regression.v1.json` | Regression Suite Profile (`CODE_REVIEW_V1_CAPS` ×5) |
+| `profile.code_review.regression.v1.json` | Regression Suite Profile (`CODE_REVIEW_V1_CAPS` ×8) |
 
 ```bash
 python3 -c "from core.api.core_facade import eval_validate_code_review_capability_bank, eval_code_review_regression_status; print(eval_validate_code_review_capability_bank()); print(eval_code_review_regression_status()['quota_inventory_ok'])"

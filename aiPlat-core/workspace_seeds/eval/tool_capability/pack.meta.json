@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["tool"],
   "object_types": [],
-  "notes": "Tool/MCP Subject capability bank (ADR after Session). Not first-class OBJECT_TYPES. Mock tool_trace via ToolSubjectAdapter (reuses mock_tools + tool_trace_judge); ≠ live tools / real MCP. Regression quotas TOOL_V1_CAPS×5."
+  "notes": "Tool/MCP Subject capability bank (ADR after Session). Not first-class OBJECT_TYPES. Mock tool_trace via ToolSubjectAdapter (reuses mock_tools + tool_trace_judge); ≠ live tools / real MCP. Regression quotas TOOL_V1_CAPS×8."
 }

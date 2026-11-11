@@ -10,7 +10,7 @@
 | `pack.meta.json` | Pack header |
 | `cases/*.json` | Curated capability cases (`test_purpose` + `success_criteria`) |
 | `profile.prompt.smoke.v1.json` | Smoke Suite Profile |
-| `profile.prompt.regression.v1.json` | Regression Suite Profile (`PROMPT_V1_CAPS` ×5) |
+| `profile.prompt.regression.v1.json` | Regression Suite Profile (`PROMPT_V1_CAPS` ×8) |
 
 ## Run
 

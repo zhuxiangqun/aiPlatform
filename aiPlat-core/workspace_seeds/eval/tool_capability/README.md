@@ -9,7 +9,7 @@ Catalog: default `agent_capability/fixtures/mock_tools/catalog.sample.json` (ech
 | File | Role |
 |------|------|
 | `profile.tool.smoke.v1.json` | Smoke Suite Profile (1× each TOOL_V1_CAPS) |
-| `profile.tool.regression.v1.json` | Regression Suite Profile (`TOOL_V1_CAPS` ×5) |
+| `profile.tool.regression.v1.json` | Regression Suite Profile (`TOOL_V1_CAPS` ×8) |
 
 ```bash
 python3 -c "from core.api.core_facade import eval_validate_tool_capability_bank, eval_tool_regression_status; print(eval_validate_tool_capability_bank()); print(eval_tool_regression_status()['quota_inventory_ok'])"

@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["skill"],
   "object_types": ["skill"],
-  "notes": "Skill Subject capability bank (ADR after Multi-Agent). First-class OBJECT_TYPES. Lexical fixture via SkillSubjectAdapter; ≠ live core_skill_execute / EvalSkillsPanel skill_evals. Regression quotas SKILL_V1_CAPS×5."
+  "notes": "Skill Subject capability bank (ADR after Multi-Agent). First-class OBJECT_TYPES. Lexical fixture via SkillSubjectAdapter; ≠ live core_skill_execute / EvalSkillsPanel skill_evals. Regression quotas SKILL_V1_CAPS×8."
 }

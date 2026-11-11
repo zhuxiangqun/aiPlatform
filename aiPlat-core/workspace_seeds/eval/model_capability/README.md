@@ -8,7 +8,7 @@
 | `pack.meta.json` | Pack header |
 | `cases/*.json` | Curated capability cases |
 | `profile.model.smoke.v1.json` | Smoke Suite Profile |
-| `profile.model.regression.v1.json` | Regression Suite Profile (`MODEL_V1_CAPS` ×5) |
+| `profile.model.regression.v1.json` | Regression Suite Profile (`MODEL_V1_CAPS` ×8) |
 
 ```bash
 python3 -c "from core.api.core_facade import eval_validate_model_capability_bank, eval_model_regression_status; print(eval_validate_model_capability_bank()); print(eval_model_regression_status()['quota_inventory_ok'])"

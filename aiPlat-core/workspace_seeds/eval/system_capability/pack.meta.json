@@ -12,5 +12,5 @@
   "object_types": [
     "system"
   ],
-  "notes": "System Subject capability bank (ADR after Dataset). First-class OBJECT_TYPES. Lexical fixture via SystemSubjectAdapter; ≠ system_plan_ops / mixed runtime_parts. Regression quotas SYSTEM_V1_CAPS×5."
+  "notes": "System Subject capability bank (ADR after Dataset). First-class OBJECT_TYPES. Lexical fixture via SystemSubjectAdapter; ≠ system_plan_ops / mixed runtime_parts. Regression quotas SYSTEM_V1_CAPS×8."
 }

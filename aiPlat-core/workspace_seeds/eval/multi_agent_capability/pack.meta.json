@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["multi_agent"],
   "object_types": [],
-  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; ≠ live multi_agent runtime (M2 deferred). Regression quotas MULTI_AGENT_V1_CAPS×5."
+  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; ≠ live multi_agent runtime (M2 deferred). Regression quotas MULTI_AGENT_V1_CAPS×8."
 }

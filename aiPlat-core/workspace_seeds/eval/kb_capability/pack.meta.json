@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["kb"],
   "object_types": [],
-  "notes": "KB Subject capability bank (ADR after Model). Not first-class OBJECT_TYPES. Fixture hits/expected_ids via KbSubjectAdapter (mirrors package kb_rag); ≠ RAG accuracy. Regression quotas KB_V1_CAPS×5."
+  "notes": "KB Subject capability bank (ADR after Model). Not first-class OBJECT_TYPES. Fixture hits/expected_ids via KbSubjectAdapter (mirrors package kb_rag); ≠ RAG accuracy. Regression quotas KB_V1_CAPS×8."
 }

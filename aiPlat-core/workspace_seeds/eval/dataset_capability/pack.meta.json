@@ -8,5 +8,5 @@
   "scope": "global",
   "subject_kinds": ["dataset"],
   "object_types": ["dataset"],
-  "notes": "Dataset Subject capability bank (ADR after API). First-class OBJECT_TYPES. Lexical fixture via DatasetSubjectAdapter; ≠ typed Plan dataset_assert / fixture_table. Regression quotas DATASET_V1_CAPS×5."
+  "notes": "Dataset Subject capability bank (ADR after API). First-class OBJECT_TYPES. Lexical fixture via DatasetSubjectAdapter; ≠ typed Plan dataset_assert / fixture_table. Regression quotas DATASET_V1_CAPS×8."
 }
