@@ -6,7 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from core.apps.eval.service.api_capability_bank import api_regression_status
+from core.apps.eval.service.api_capability_bank import (
+    api_regression_status,
+    default_seed_dir as api_default_seed_dir,
+)
 from core.apps.eval.service.subject_capability_promote import (
     PROMOTE_SCHEMA,
     SEED_PURPOSE_OK_SCHEMA,
@@ -94,11 +97,11 @@ def test_eval_promote_subject_capability_bank_facade(tmp_path, monkeypatch):
 
 
 def test_stamp_subject_seed_purpose_ok_writes_review(tmp_path):
-    src = Path("aiPlat-core/workspace_seeds/eval/api_capability")
-    dst = tmp_path / "api_capability"
-    # copy minimal bank into tmp
     import shutil
 
+    src = api_default_seed_dir()
+    assert src.is_dir(), f"missing api capability seed dir: {src}"
+    dst = tmp_path / "api_capability"
     shutil.copytree(src, dst)
     out = stamp_subject_seed_purpose_ok(
         subject_kind="api", reviewer="owner", seed_dir=dst
