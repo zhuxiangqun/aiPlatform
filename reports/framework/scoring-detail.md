@@ -1,15 +1,15 @@
 ---
-doc_type: Reference
+doc_type: Report
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail
 domain: aiplat-core
 version: 3.0.0
 date: 2026-07-06
-status: published
+status: historical
 refs:
-  - docs/reference/framework/aiplat-complete-assessment.md
-  - docs/reference/framework/aiplat-autonomy-framework.md
-  - docs/reference/framework/hermes-comparison.md
+  - reports/framework/aiplat-complete-assessment.md
+  - reports/framework/aiplat-autonomy-framework.md
+  - reports/framework/hermes-comparison.md
   - docs/whitepaper/verification-protocol.md
 ---
 

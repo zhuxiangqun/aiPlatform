@@ -4,7 +4,7 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-11T14:28:47Z"
+generated_at: "2026-11-11T22:49:13Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T14:28:47Z` |
+| 生成时间 (UTC) | `2026-11-11T22:49:13Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -228,7 +228,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
 
 - [API Reference](../../../docs/reference/API/api-reference.md) — 完整 API 文档
-- [自主性评估报告](../../../docs/reference/framework/aiplat-complete-assessment.md) — 系统能力评估
+- [自主性评估报告](../../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../../../docs/reference/framework/verification-protocol.md) — 独立复现验证
 
 #### 常见问题

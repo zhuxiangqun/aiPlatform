@@ -179,7 +179,7 @@ def _ratings_and_system_chapter() -> str:
 
 {stamp}
 
-完整评估叙述：[`../../docs/reference/framework/aiplat-complete-assessment.md`](../../docs/reference/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
+完整评估叙述：[`../../reports/framework/aiplat-complete-assessment.md`](../../reports/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 ### 2.5.2 对标与对比入口（勿读 archive 当现行）
 

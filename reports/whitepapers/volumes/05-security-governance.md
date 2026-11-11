@@ -4,7 +4,7 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-11T14:28:47Z"
+generated_at: "2026-11-11T22:49:13Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T14:28:47Z` |
+| 生成时间 (UTC) | `2026-11-11T22:49:13Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -56,10 +56,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../../docs/reference/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/reference/framework/aiplat-complete-assessment.md`](../../../docs/reference/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ❌ |
+| [`docs/reference/framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ❌ |
 | [`docs/reference/framework/assessment-scores.json`](../../../docs/reference/framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/reference/framework/scoring-detail.md`](../../../docs/reference/framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/reference/framework/scoring-detail.md`](../../framework/scoring-detail.md) | 评分细则 | ❌ |
 | [`docs/reference/framework/verification-protocol.md`](../../../docs/reference/framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 

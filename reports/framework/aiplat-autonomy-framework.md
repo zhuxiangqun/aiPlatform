@@ -1,15 +1,15 @@
 ---
-doc_type: Reference
+doc_type: Report
 title: "aiPlat 自主性成熟度框架"
 type: evaluation-framework
 domain: aiplat-core
 version: 2.0.0
 date: 2026-07-06
-status: published
+status: historical
 refs:
-  - docs/reference/framework/hermes-comparison.md
-  - docs/reference/framework/aiplat-complete-assessment.md
-  - docs/reference/framework/scoring-detail.md
+  - reports/framework/hermes-comparison.md
+  - reports/framework/aiplat-complete-assessment.md
+  - reports/framework/scoring-detail.md
 tags: [framework, 8-axis, L1-L5, maturity]
 ---
 

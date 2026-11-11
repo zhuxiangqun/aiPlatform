@@ -15,7 +15,7 @@ doc_type: Report
 | 包级 `PERF_BASELINE.md` | 6 | 模板复制，包级数值可能不同 | 保留，不直接合并 |
 | 包级 `UAT.md` | 6 | 模板复制，验收证据可能不同 | 保留，补模板说明 |
 | `human_pack/G2B_SEND` 时间戳快照 | 7 组 | 生成证据，旧快照可归档 | 已归档 6 组，保留最新 |
-| framework：`scoring-detail` / `complete-assessment` / `autonomy-framework` | 3 | 高相似，叙事重叠 | 待 owner 确认 canonical |
+| framework：`scoring-detail` / `complete-assessment` / `autonomy-framework` | 3 | 中间评估报告，不是 canonical | 已移至 `reports/framework/` |
 | `ADR-DRAFT-evaluation-a3` / `ADR-DRAFT-ontology-a3` | 2 | 同批草案，主题不同 | 保留，补边界 |
 | 旧 `docs/whitepaper` 生成物 | — | 已归档 | 完成 |
 
@@ -41,7 +41,18 @@ packages/aiplat-evaluation/docs/a3/human_pack/20261105T132500Z-n100
 
 ## 3. 待 owner 决策
 
-### A. framework 三文档
+### A. framework 三文档（已决定）
+
+三份按中间报告处理：
+
+```text
+docs/reference/framework/scoring-detail.md
+docs/reference/framework/aiplat-complete-assessment.md
+docs/reference/framework/aiplat-autonomy-framework.md
+→ reports/framework/
+```
+
+doc_type 改为 `Report`，status 改为 `historical`。原“待 owner 决策”关闭。
 
 ```text
 docs/reference/framework/scoring-detail.md
