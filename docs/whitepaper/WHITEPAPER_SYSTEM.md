@@ -1,7 +1,7 @@
 # aiPlat 白皮书体系（五维）
 
-> Living · 2026-10-13  
-> **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。  
+> Living · 2026-10-13
+> **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。
 > 总入口生成物：[`aiplat-platform-status-whitepaper.md`](../../reports/whitepapers/aiplat-platform-status-whitepaper.md)（executive digest，`scripts/generate_platform_whitepaper.py`）
 
 ## ready 定义
@@ -29,7 +29,7 @@
 
 ## 为什么不能只靠「能力清单白皮书」
 
-`aiplat-platform-status-whitepaper.md` 是 CAPABILITIES 的**可读包装（executive digest）**：定位叙事 + 统计表 + 各子系统 ✅/⚠️ 摘要；**不**粘贴完整 `文件:行号` 能力表（完整清单仍以根目录 `AIPLAT_CAPABILITIES.md` 为准）。  
+`aiplat-platform-status-whitepaper.md` 是 CAPABILITIES 的**可读包装（executive digest）**：定位叙事 + 统计表 + 各子系统 ✅/⚠️ 摘要；**不**粘贴完整 `文件:行号` 能力表（完整清单仍以根目录 `AIPLAT_CAPABILITIES.md` 为准）。
 若缺 **对标 / 评级 / 商业 / 生态 / 治理论证**，对外说服链不完整——这些材料仓库里已有，须纳入体系，但**不得**再写成会漂移的手抄本。
 
 ## 五维映射（权威源 → 受众）
@@ -37,7 +37,7 @@
 | 维度 | 白皮书角色 | 核心问题 | 主要受众 | 仓库权威源（勿另起炉灶） | 状态 |
 |------|------------|----------|----------|--------------------------|:----:|
 | **技术** | 技术架构 | 为什么这样设计 | CTO / 架构师 / 工程师 | [`../architecture/overview.md`](../architecture/overview.md) · 决策矩阵 · Pi 薄 Runtime · 分卷 01 | ready |
-| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | 分卷 [`volumes/02-product-capability.md`](./volumes/02-product-capability.md) · [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) · manuals | ready |
+| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | 分卷 [`volumes/02-product-capability.md`](../../reports/whitepapers/volumes/02-product-capability.md) · [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) · manuals | ready |
 | **商业** | 商业价值 | 投资回报如何 | CEO / CFO / 业务线 | 分卷 03 · [`commercial-value-model.md`](./commercial-value-model.md) · [`cases/`](./cases/) | ready |
 | **生态** | 生态与集成 | 如何接入协作 | ISV / 社区 / 渠道 | 分卷 04 · [`ecosystem-partner-tiers.md`](./ecosystem-partner-tiers.md) · 商务模板 | ready |
 | **治理** | 安全与治理 | 如何可信可控 | CISO / 合规 | CAPABILITIES「安全与治理 / Gate」· [`../security/`](../security/) · L 级 ADR | ready |
@@ -127,15 +127,15 @@
 
 ## 推进优先级
 
-1. **P0**：技术架构论证入口 + 安全治理入口 + 对标/评级戳进总白皮书 — ✅  
-2. **P1**：产品能力专章（场景 × CAPABILITIES 切片）— ✅  
-3. **P2**：生态开放边界 + 技术伙伴分层 — ✅（商务条款以盖章模板为准）  
+1. **P0**：技术架构论证入口 + 安全治理入口 + 对标/评级戳进总白皮书 — ✅
+2. **P1**：产品能力专章（场景 × CAPABILITIES 切片）— ✅
+3. **P2**：生态开放边界 + 技术伙伴分层 — ✅（商务条款以盖章模板为准）
 4. **P3**：商业价值模型 + 内部示意 — ✅（真实客户 ROI → [`cases/`](./cases/) 授权后追加）
 
 ## 五维分卷（生成物）
 
-清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml)  
-输出：[`volumes/`](./volumes/)  
+清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml)
+输出：[`volumes/`](../../reports/whitepapers/volumes/)
 
 ```bash
 python3 scripts/generate_whitepaper_volumes.py

@@ -25,7 +25,7 @@
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 | **Pi Thin Runtime（当前交付）** | [../packages/aiplat-pi-runtime/README.md](../packages/aiplat-pi-runtime/README.md) · living 摘要 [architecture/plans/pi-thin-runtime.md](architecture/plans/pi-thin-runtime.md)（≠ 五产品目标 Enterprise Runtime） |
-| **要完整平台现状白皮书** | [whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md) · 五维分卷 [whitepaper/volumes/](whitepaper/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
+| **要完整平台现状白皮书** | [reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md) · 五维分卷 [reports/whitepapers/volumes/](../reports/whitepapers/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
 
 ---
 
@@ -105,7 +105,7 @@
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
 - **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5 / E0–E4；已移出 `docs/research/`）
 - **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：能力声明/接线索引（计数见该文件；不等于行为验收）
-- **[whitepaper/aiplat-platform-status-whitepaper.md](whitepaper/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
+- **[reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
 
 ### 校验脚本覆盖面（勿过度解读）
 

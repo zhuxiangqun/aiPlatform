@@ -24,7 +24,7 @@
 | `docs/whitepaper/README.md` | 索引 | `docs/reference/explanatory/` | 目录入口 |
 | `docs/whitepaper/WHITEPAPER_SYSTEM.md` | 非规范/治理 | `docs/reference/explanatory/` | 白皮书体系说明，不是标准 |
 | `docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md` | 决策记录 | `docs/decisions/architecture/` | frontmatter 为 architecture-decision-record |
-| `docs/whitepaper/aiplat-platform-status-whitepaper.md` | 生成报告 | `reports/whitepapers/` | status: generated，derived-from-capabilities |
+| `docs/archive/whitepaper-generated/aiplat-platform-status-whitepaper.md` | 历史生成物 | `docs/archive/whitepaper-generated/` | status: generated，derived-from-capabilities |
 | `docs/whitepaper/cases/README.md` | 指南 | `docs/guides/` 或 `docs/reference/explanatory/cases/` | 案例授权流程 |
 | `docs/whitepaper/cases/internal-illustrative-fde.md` | 非规范 | `docs/reference/explanatory/cases/` | 内部示意案例，非客户授权 |
 | `docs/whitepaper/commercial-value-model.md` | 非规范 | `docs/reference/explanatory/` | 商业价值模型，非技术规范 |
@@ -33,12 +33,12 @@
 | `docs/whitepaper/knowledge-system/aiplat-knowledge-system-engineering-appendix-v4-2026-11-11.md` | 历史归档 | `docs/archive/knowledge-system-v4.1/` | v4.1，非规范附录 |
 | `docs/whitepaper/knowledge-system/aiplat-knowledge-system-technical-whitepaper-v4.1-2026-11-11.md` | 历史归档 | `docs/archive/knowledge-system-v4.1/` | v4.1 Proposed，已被 v4.3.1 替代 |
 | `docs/whitepaper/verification-protocol.md` | 非规范 | `docs/reference/explanatory/` | 审计验证协议，不是已批准标准 |
-| `docs/whitepaper/volumes/01-tech-architecture.md` | 生成报告 | `reports/whitepapers/` | status: generated |
-| `docs/whitepaper/volumes/02-product-capability.md` | 生成报告 | `reports/whitepapers/` | status: generated |
-| `docs/whitepaper/volumes/03-commercial-value.md` | 生成报告 | `reports/whitepapers/` | status: generated |
-| `docs/whitepaper/volumes/04-ecosystem-integration.md` | 生成报告 | `reports/whitepapers/` | status: generated |
-| `docs/whitepaper/volumes/05-security-governance.md` | 生成报告 | `reports/whitepapers/` | status: generated |
-| `docs/whitepaper/volumes/README.md` | 索引 | `reports/whitepapers/` | 生成卷入口 |
+| `docs/archive/whitepaper-generated/volumes/01-tech-architecture.md` | 生成报告 | `reports/whitepapers/` | status: generated |
+| `docs/archive/whitepaper-generated/volumes/02-product-capability.md` | 生成报告 | `reports/whitepapers/` | status: generated |
+| `docs/archive/whitepaper-generated/volumes/03-commercial-value.md` | 生成报告 | `reports/whitepapers/` | status: generated |
+| `docs/archive/whitepaper-generated/volumes/04-ecosystem-integration.md` | 生成报告 | `reports/whitepapers/` | status: generated |
+| `docs/archive/whitepaper-generated/volumes/05-security-governance.md` | 生成报告 | `reports/whitepapers/` | status: generated |
+| `docs/archive/whitepaper-generated/volumes/README.md` | 索引 | `reports/whitepapers/` | 生成卷入口 |
 
 ## 结论
 

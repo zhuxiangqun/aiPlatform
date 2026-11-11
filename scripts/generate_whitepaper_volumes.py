@@ -843,6 +843,8 @@ def _repair_generated_links(path: Path) -> None:
         if (path.parent / link).resolve().exists():
             return m.group(0)
         special = {
+            "../aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
+            "../../../docs/whitepaper/aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
             "../framework/verification-protocol.md": "docs/framework/verification-protocol.md",
             "./cases/README.md": "docs/whitepaper/cases/README.md",
