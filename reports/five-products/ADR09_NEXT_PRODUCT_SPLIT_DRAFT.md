@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 下一单产品拆分 / compose 长驻
 
 - **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_NEXT_PI_THIN_DECISION.md`  

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 🚀 应用层运维指南
 
 > aiPlat-app - 部署运维与监控配置

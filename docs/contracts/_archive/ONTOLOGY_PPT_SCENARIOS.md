@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # PPT 场景说明：星邺汇捷篇 · aiPlat 篇（分开阅读）
 
 | 字段 | 值 |

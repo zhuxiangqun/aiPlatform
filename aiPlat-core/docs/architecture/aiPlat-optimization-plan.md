@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlatform 全面优化方案（修订版）
 
 > 基于对 Claude Code、HermesSim、Harness、OpenCode 四个开源标杆系统的深入分析

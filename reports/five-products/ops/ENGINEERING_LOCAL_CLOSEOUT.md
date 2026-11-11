@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 工程侧 Local Staging 收口（2026-11-01）
 
 > **选型**：环境方案 B — 本机 VM/Docker 全轨（[`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md)）。  

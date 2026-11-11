@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Human preference / pairwise A/B v0
 
 > Honesty: **`accuracy_claim=false`** · preference agreement ≠ accuracy certification

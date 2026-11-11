@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: 现有系统架构图 vs Hermes vs Claude Code vs OpenClaw（对照）
 date: 2026-04-18
 ---

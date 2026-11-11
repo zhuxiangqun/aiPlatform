@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 Phase D 决定（2026-10-24）
 
 **结论：批准 Gate3 Phase D（FDE 验收绑定 Phase C `report_id`）。**

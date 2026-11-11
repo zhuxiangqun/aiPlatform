@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # HA failover
 
 1. 探测主库不可用  

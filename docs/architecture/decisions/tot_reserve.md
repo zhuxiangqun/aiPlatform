@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Decision: Tree of Thoughts (ToT) — Delayed Indefinitely
 
 **Date**: 2026-07-01

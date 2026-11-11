@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Tools & Skills Contract（工具/技能契约）
 
 本文件约束 Tool/Skill 的“可发现、可治理、可观测、可验收”。

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL P2-1 — Context management v0 closeout（2026-11-06）
 
 - **status**: **PASS（工程 fixture 门）** · `accuracy_claim=false`

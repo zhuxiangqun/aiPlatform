@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 五产品域角色与临时 R
 
 > 与 [L1_AUTHORIZATION.md](./L1_AUTHORIZATION.md) §3、[GATE2_DECISION.md](./GATE2_DECISION.md) 同步。  

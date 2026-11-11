@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlat Disaster Recovery Plan（初稿）
 
 > 框架三 macro.11 灾难恢复 2.5→3.0 baseline。本文件证明 aiPlat 具备基本的灾难恢复规划，而非"完全没有"。

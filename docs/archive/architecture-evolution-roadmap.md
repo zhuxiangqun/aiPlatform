@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat 架构演进路线图（基于 §19 架构对比）
 
 > **依据**：《aiPlat核心能力对标报告.md》§19 架构对比分析（四系统架构面 8 维度对比）+ 本仓库代码现状实测 + 既有架构文档（`docs/architecture/plans/` 的 worker-split-plan 等先例）

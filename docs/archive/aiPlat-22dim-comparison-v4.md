@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat vs Hermes vs Claude Code vs OpenClaw：22 维度代码级对比 v4.0
 
 > **v4.0 · 2026-06-16** — 数据源验证版。全部 aiPlat 数据来自 **代码图谱** (1,258 生产文件 / 20,103 边) 和 **能力图谱** (169 节点 / 44 agents / 49 skills) 的实时导出，两个图谱与文件系统交叉验证通过。  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # EVAL 首版满分范围（Score Scope v1）
 
 > Parent: [`README.md`](./README.md) · 记分卡: [`SCORECARD_V1.md`](./SCORECARD_V1.md) / [`scorecard_v1.json`](./scorecard_v1.json)  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # B4-S runbook — local rehearsal → future staging
 
 > Honesty: steps marked **local** produce `environment=local` evidence only.  

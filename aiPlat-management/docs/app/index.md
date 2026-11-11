@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Layer 3 - 应用层管理
 
 > Management 如何管理应用层

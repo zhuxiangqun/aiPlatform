@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Messaging 模块文档（设计真值：以代码事实为准）
 
 > 说明：消息队列抽象的 As-Is 能力以 `infra/messaging/*` 代码与测试为准；文档中的多中间件支持（Kafka/RabbitMQ/Redis）若未闭环需标注为 To-Be。

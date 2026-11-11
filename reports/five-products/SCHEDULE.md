@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # L1→Gate3 日程
 
 | 阶段 | 状态 |

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Evaluation D2 — cohost ops / security / protocol pack
 
 > **Status**：D2 工程包（本地可验）· **D1c/cohost** · **非**进程拆分  

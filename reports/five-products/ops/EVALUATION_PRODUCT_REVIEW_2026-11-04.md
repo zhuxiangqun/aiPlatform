@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Evaluation 产品评审基线
 
 > **评审日期**：2026-11-04  

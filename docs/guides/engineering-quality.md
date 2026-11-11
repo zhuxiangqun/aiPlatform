@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # aiPlat 工程质量标准
 
 ## PR 审查要求

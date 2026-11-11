@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # microVM guest_boot + authorize (v2)
 
 > Parent track: [`MICROVM_LINUX_TRACK.md`](./MICROVM_LINUX_TRACK.md)  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Diagnosis module（第六能力 · C1–C3）
 
 > **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）  

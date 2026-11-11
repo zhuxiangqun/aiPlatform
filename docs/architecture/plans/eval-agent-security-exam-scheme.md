@@ -1,4 +1,5 @@
 ---
+doc_type: Architecture
 title: Agent 安全评测完整方案（v1.1 · SEC-P0 工程基线）
 status: signed_sec_p0_engineering_baseline
 review_verdict: approve_with_changes_then_signed

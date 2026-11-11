@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # P3-17: Effect-TS Layer DI Research
 
 ## Context

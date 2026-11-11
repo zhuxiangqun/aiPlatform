@@ -1,4 +1,5 @@
 ---
+doc_type: Reference
 authorized: false
 kind: illustrative
 customer: 内部示意

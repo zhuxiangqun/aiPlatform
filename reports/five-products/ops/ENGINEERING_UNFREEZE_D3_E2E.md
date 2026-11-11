@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Explicit unfreeze — D3 local acceptance + cross-capability E2E
 
 - decided_at: `2026-11-01`

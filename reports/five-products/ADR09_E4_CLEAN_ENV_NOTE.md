@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 前置 #5 · E4 干净环境验收（**对外证据引用已批**）
 
 - **状态**：**对外验收证据引用已批（非 SLA）** · 2026-10-26 — 见 `ADR09_E4_STEP3_DECISION.md`；**≠** ADR-09 Accepted  

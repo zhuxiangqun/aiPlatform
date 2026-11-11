@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Ontology A3 prep（Accepted 有条件 · 未授权拆分）
 
 > ADR: [`ADR-ONTOLOGY-A3.md`](../../../../reports/five-products/ADR-ONTOLOGY-A3.md) — **Accepted（有条件）**  

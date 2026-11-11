@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume

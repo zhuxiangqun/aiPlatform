@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # External Agent Eval Contract — Pull Mode (Chat HTTP v1)
 
 > **Status**: Implementable contract (v1 adds ordered tool-name trajectory).  

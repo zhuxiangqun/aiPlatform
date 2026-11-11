@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # PG/HA Live Kickoff Runlog
 
 - recorded_at: `2026-11-01T05:03:00Z`（续 defer 复验）

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # compose 长驻部署边界清单（ADR-09 后续 #1）
 
 - **状态**：**清单已立** · 2026-10-27 — 授权真源 `ADR09_COMPOSE_LONG_RUNNING_DECISION.md`（#463）  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat 设计文档 vs 代码实现：全量复审（含 aiPlat-management）
 
 日期：2026-04-16  

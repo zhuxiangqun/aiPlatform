@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Runtime & Syscall Contract（运行时与系统调用契约）
 
 本文件约束“执行边界”：什么必须在 syscall 内做、什么必须可观测、什么必须可恢复。

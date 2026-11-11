@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Arena 盲评 Pilot closeout（2026-11-05）
 
 > **双标**：✅ 朱莹 × 朱鸿林（n=30）  

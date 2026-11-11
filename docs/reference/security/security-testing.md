@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat 安全测试指南
 
 ## 自检清单

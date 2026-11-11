@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # aiPlat 快速入门指南
 
 > 15 分钟从零启动到运行第一个 Agent。

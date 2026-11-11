@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat 架构对标 — 四方案深度对比
 
 > **已归档（C2 · 2026-10-23）**：原路径 `docs/architecture/plans/comparison.md`。

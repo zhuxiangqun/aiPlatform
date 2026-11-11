@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Arena 盲评发卷（协调人版 · 勿发给评审）
 
 > **模型**（仅协调人可见）：按当次 `arena_blind_pairs*.json` / `meta.json`  

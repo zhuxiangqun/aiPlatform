@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # P1 canonical — dual-path honesty
 
 > Parent: [`P1_LOCAL.md`](./P1_LOCAL.md) · Unfreeze local Closed PASS  

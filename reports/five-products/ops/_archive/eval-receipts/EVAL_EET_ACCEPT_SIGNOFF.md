@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EET 证据标签映射 — 治理 Accept 签认
 
 > **门**：P1a EET 治理批准 — **不阻塞** UI 发布；阻塞「把 EET 写入正式发布 gate 矩阵」

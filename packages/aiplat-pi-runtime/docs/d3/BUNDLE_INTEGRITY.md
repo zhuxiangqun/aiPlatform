@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D3 — Bundle 完整性（本地完备 · 生产待签）
 
 > **本地**：`d3_local_rehearsal.sh` 可重复验证。  

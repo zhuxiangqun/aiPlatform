@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 成果物威胁模型（PR2+PR3）
 
 > 模板：`security/templates/artifact_threat_model.v1.yaml`  

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat：企业AI平台的技术架构与实践
 
 > 当你把 Harness、Memory、Ontology、Orchestration 放进同一个系统

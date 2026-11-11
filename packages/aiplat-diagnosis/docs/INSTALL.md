@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Diagnosis — D1 Thin install (cohost)
 
 ```bash

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # docs/whitepaper/ — 白皮书目录
 
 > **Batch C3**：生成物已迁移到 `reports/whitepapers/`（历史链接失效）。本目录旧生成物标记为 deprecated，仅保留迁移期。

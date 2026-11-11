@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 首切片设计（WP3）· 可执行规格
 
 > `scene_id` = `fp-internal-bundle-pi-diag-001`  

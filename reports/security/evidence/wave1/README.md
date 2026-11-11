@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Wave 1 Ops 证据目录
 
 > 工程可自动归档项 vs Ops 真人项。≠ `security_certification`

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — FDE 现场部署（Field D1）
 
 > **状态**：已被 [`ADR-FDE-FIELD-DEPLOY.md`](./ADR-FDE-FIELD-DEPLOY.md) **Accepted** 取代（2026-10-30）  

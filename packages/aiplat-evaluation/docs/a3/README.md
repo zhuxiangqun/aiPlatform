@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Evaluation A3 prep（Accepted 有条件 · 未授权拆分）
 
 > ADR: [`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) — **Accepted（有条件）**  

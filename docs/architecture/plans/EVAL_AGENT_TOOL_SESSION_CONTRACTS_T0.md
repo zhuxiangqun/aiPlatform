@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Eval Agent 升域契约 T0（Mock Tool / Session / Long-context / Runtime map）
 
 > **类型**：契约冻结 / 升域立项 T0  

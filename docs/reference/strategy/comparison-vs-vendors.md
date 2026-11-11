@@ -1,5 +1,5 @@
 ---
-doc_type: Analysis
+doc_type: Reference
 scope: external
 last_updated: 2026-07-04
 based_on: 2026 年 7 月公开信息，如有错误欢迎指正

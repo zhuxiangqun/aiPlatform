@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # G2b prep — second annotator pack（local）
 
 > Unfreeze: `ENGINEERING_UNFREEZE_EVAL_G2B_PREP.md`（历史链接失效）

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # 设计：运行时扩展缝（Runtime Extension Slot）
 
 > **已归档（C3 · 2026-10-23）**：原路径 `docs/architecture/plans/design-runtime-extension-slot.md`。仅历史/过程参考；现行规划见 `docs/architecture/plans/`（如 pi-thin-runtime、app-module-layout）。

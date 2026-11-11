@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 现场交付实施流程 v1.0
 
 > ← [文档导航](README.md)

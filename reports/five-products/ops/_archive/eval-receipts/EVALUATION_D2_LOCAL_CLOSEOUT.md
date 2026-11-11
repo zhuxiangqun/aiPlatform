@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Evaluation D2 Local Closeout (cohost / D1c)
 
 - recorded_at: `20261101T154507Z`

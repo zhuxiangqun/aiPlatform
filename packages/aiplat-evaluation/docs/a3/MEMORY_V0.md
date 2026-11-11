@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Persistent memory baseline v0（P2-2）
 
 > **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md)  

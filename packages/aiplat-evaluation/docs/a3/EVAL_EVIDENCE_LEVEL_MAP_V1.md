@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Index — EVAL_EVIDENCE_LEVEL_MAP_V1
 
 > **Accepted 映射表，索引-only。** 正文：[`_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md`](./_archive/EVAL_EVIDENCE_LEVEL_MAP_V1.md)  

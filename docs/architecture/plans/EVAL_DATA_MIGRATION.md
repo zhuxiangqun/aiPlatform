@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL Data Migration & Rollback（B3 前置定义）
 
 > **类型**：契约（B1 前写清；B3 执行）  

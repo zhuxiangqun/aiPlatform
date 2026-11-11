@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Report compare v0（P1b）
 
 > **Honesty**：`accuracy_claim=false` · 仅工程分对比 · ≠ G2b  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Local tracks runlog (non-authorize)
 
 - recorded_at: `20261101T030631Z`

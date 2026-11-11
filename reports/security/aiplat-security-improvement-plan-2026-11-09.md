@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat 安全质量改进方案
 
 > **版本**：v2.2 · 2026-11-09（可执行修订：S7 分层 / pilot 退出 / Subject / canonical 签名）  

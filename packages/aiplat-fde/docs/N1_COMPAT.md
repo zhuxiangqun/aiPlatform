@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # FDE Field D1 — N-1 兼容说明
 
 > ADR: Field deploy **Accepted** · Pi Bundle / Diagnosis `report_id`

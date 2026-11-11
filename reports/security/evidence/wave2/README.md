@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Wave 2 — Authz pilot → D26
 
 > 工程约束已接线；真人样本与双签仍是 Ops。≠ `security_certification`

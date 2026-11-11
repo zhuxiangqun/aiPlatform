@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Live LLM 10-task smoke (local)
 
 > Parent: [`LLM_LOCAL.md`](./LLM_LOCAL.md) · P1 canonical [`P1_CANONICAL.md`](./P1_CANONICAL.md)  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Five-products cross-capability E2E (local)
 
 - recorded_at: `20261101T032316Z`

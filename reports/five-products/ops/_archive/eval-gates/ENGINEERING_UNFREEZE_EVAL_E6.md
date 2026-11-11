@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_V1 E6 评测中心 UI v1
 
 - **decided_at**: `2026-11-01`

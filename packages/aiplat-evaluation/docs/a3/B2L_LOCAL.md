@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # B2-L — allowlist enqueue (local, not staging)
 
 > Unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)  

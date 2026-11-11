@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL P2-3 — Self-learning resistance v0 closeout（2026-11-06）
 
 - **status**: **PASS（工程 fixture 门）** · `accuracy_claim=false` · `writeback_authorized=false`

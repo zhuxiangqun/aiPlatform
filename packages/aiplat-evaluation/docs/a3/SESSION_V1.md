@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Multi-turn / session v1 (5–8 turns)
 
 > Parent: [`SESSION_V0.md`](./SESSION_V0.md)  

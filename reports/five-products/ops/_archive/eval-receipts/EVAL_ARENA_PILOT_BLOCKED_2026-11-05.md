@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Arena 盲评 Pilot — 状态（2026-11-05）
 
 > **结论**：双标+仲裁+result+QA 已齐 · QA **`overall_pass=false`**（SEND 泄漏模型名）· length smoke **未替换**  

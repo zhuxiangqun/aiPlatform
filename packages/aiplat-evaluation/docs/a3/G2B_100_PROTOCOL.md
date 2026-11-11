@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Index — G2B_100_PROTOCOL
 
 > **已签署 protocol，索引-only。** 正文：[`_archive/G2B_100_PROTOCOL.md`](./_archive/G2B_100_PROTOCOL.md)  

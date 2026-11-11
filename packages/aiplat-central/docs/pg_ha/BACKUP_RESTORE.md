@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # PG 备份 / 恢复
 
 - 日备：`pg_dump` / 快照（运维选定）  

@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # B1 / B2 Route Matrix — Eval API · UI · Errors
 
 > **类型**：契约（B1 实施前置）

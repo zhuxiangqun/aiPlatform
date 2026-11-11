@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-platform 核心能力概述
 
 > 本文档是 aiPlat-platform (Layer 2) 的核心能力清单，面向需要了解平台层功能的开发者。

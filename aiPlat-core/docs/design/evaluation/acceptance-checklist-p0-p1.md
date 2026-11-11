@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 自动评估/证据/回归/策略：P0/P1 验收清单（最省钱补齐顺序）
 
 > 目的：把当前已落地的 auto-eval（evaluation_report + evidence_pack/diff + gates + policy）从“能跑的雏形”补齐到“团队可依赖、可治理、可持续迭代”的产品级闭环。  

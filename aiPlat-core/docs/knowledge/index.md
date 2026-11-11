@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 知识管理 (Knowledge)
 
 > 说明：本文档描述 Harness 的 Knowledge 子系统（`core/harness/knowledge/*`）。

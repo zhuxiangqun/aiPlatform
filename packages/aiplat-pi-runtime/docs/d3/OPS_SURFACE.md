@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi D3 — 运维面约定（本地完备 · 生产待签）
 
 > **本地**：文档 + healthz 契约 + D1 smoke。  

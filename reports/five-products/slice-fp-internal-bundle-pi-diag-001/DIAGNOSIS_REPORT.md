@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Diagnosis `rep-2551f299acf5`
 
 - status: **ok**

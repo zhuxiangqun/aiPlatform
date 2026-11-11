@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 建议顺序第 3 步 — 对外 E4（草案）
 
 - **状态**：**已升格 Accepted（窄）** · 2026-10-26 — 见 `ADR09_E4_STEP3_DECISION.md`  

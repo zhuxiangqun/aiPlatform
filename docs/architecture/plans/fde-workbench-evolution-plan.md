@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # FDE 工作台演进完整方案（控制台 + 执行核）
 
 | 字段 | 值 |

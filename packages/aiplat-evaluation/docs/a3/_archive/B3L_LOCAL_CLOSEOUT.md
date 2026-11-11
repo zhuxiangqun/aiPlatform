@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL A3 B3-L local closeout
 
 > **status**: closeout evidence via `bash scripts/b3l_local_closeout.sh`

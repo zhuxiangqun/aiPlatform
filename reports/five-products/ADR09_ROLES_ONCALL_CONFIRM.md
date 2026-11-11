@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 前置 #3 · 产品 R / on-call 再确认
 
 - **状态**：**知情接受已签** · 2026-10-26；宣传 E4 **第 3 步已翻签** — 见 `ADR09_E4_STEP3_DECISION.md`  

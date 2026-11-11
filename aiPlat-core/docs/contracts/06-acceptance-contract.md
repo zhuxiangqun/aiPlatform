@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Acceptance Contract（验收/回归契约）
 
 本文件将 Contracts 转成“可自动化验收点”，用于像 Claude Code 一样把系统行为锁死在 CI 里。

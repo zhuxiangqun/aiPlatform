@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Gateway 多入口层（多渠道）方案与现状
 
 本文用于对齐 OpenClaw/Hermes 式“可选 Gateway 入口层”的落地方式：将外部渠道（Slack/Telegram/WhatsApp/Webhook…）统一收敛到 aiPlat 的 Harness 执行入口，并复用既有 **policy / approval / run_events / audit / DLQ** 能力。

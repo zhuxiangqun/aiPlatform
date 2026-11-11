@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # FDE Field D1 — 安全与数据驻留（一页）
 
 > ADR Field deploy **Accepted** · Field D2 ops pack：[`D2_FIELD.md`](./D2_FIELD.md)

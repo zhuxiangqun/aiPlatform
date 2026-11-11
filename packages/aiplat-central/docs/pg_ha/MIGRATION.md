@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # PG 迁移 runbook（草案）
 
 1. 冻结写：宣布维护窗  

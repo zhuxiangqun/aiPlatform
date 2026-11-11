@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Engineering freeze（本地工程轨）
 
 - frozen_at: `2026-11-01`（初冻）

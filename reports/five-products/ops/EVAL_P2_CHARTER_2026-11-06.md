@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # EVAL P2 Charter（2026-11-06）
 
 > **状态**：✅ 本地轨总收口（[EVAL_P2_LOCAL_TRACK_CLOSEOUT](./EVAL_P2_LOCAL_TRACK_CLOSEOUT_2026-11-06.md)）· P2-4 **Parked**  

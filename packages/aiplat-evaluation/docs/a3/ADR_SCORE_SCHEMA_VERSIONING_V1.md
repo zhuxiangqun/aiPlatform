@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # ADR：评测 score schema 版本与历史兼容（P1a）
 
 > **状态**：Accepted（2026-11-05）  

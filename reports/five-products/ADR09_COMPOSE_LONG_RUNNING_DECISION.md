@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 决定 — compose 长驻（可选运维 profile）
 
 - **状态**：**Accepted（窄）** · 2026-10-27  

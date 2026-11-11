@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 架构边界说明
 
 > 重要：aiPlat-management 和 aiPlat-infra 的层级边界

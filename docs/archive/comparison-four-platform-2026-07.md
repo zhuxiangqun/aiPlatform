@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat — 四平台深度对标分析
 
 > 生成时间：2026-07-19 | 对标范围：aiPlat △2026-07-19 × Hermes △v0.18.2 × Claude Code △latest × OpenClaw △latest

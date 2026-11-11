@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Codex Harness 开源借鉴分析报告
 
 > **分析对象**：OpenAI 2026-08-19 开源的 `openai/codex`（Apache-2.0）——`codex-rs`（Rust 单体仓库，137 crate）、App Server（JSON-RPC over stdio 持久会话内核）、Codex SDK（TS/Python）、Thread/Turn/Item 三级抽象、平台原生沙箱、SQLite 状态持久化。

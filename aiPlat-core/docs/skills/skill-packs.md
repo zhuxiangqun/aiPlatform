@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Skill Packs（技能包）
 
 本文档描述 **Skill Pack**（技能包）的最小闭环实现：存储模型、API、manifest 规范、以及安装后如何让技能“立即生效”。

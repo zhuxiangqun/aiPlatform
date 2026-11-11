@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL **P2-1 Context management baseline**
 
 - **decided_at**: `2026-11-06`

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # G2b 31–100 — 出卷 → scoped 收口完成（2026-11-05）
 
 > **工程**：✅ n=100 pack · model 100/100 · κ · 仲裁 · accuracy closeout · freeze

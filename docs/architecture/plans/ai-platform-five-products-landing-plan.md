@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 五产品域落地方案（唯一执行真源）
 
 > **文档类型**：落地方案 / Design Plan

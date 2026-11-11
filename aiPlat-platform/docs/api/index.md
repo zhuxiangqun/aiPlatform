@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # api 模块（Platform Layer 2：REST API 网关）
 
 ## 定位

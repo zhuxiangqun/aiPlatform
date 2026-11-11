@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # RANGEN-main(syu-python) vs aiPlatform：核心能力层（aiPlat-core）实现对比（基于代码）
 更新时间：2026-04-16
 

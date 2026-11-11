@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: 平台化（多租户/企业）路线：四服务版 PR 拆解与排期（platform/app/core/management）
 date: 2026-04-18
 assumptions:

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # G2b n=100 closeout — scoped 确认完成（2026-11-05）
 
 > **人标**：✅ 朱莹 × 朱鸿林（31–100）  

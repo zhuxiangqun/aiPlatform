@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Staging review checklist — 2026-11-15
 
 > 承继 [`STAGING_REVIEW_2026-11-08.md`](./STAGING_REVIEW_2026-11-08.md)（**continue_defer**）。  

@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Architecture Contract（架构契约）
 
 本文件定义 aiPlat 的架构“硬约束”。目标是防止实现随意演进导致：循环依赖、边界失守、治理失效、可观测断裂。

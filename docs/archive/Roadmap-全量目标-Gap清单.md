@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: Roadmap 全量目标 Gap 清单（按 aiPlat_arch_vs_hermes.md）
 date: 2026-04-18
 source_of_truth: /sessions/69df99acf22671cacf117ebb/workspace/aiPlat_arch_vs_hermes.md

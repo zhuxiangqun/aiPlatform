@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Evaluation A3 生产类 live 拆分演练证据
 
 > 本地 SQLite/prefix 🟨 **不能**替代。证据齐后运维将 `SPLIT_CHECKLIST` #4（及 #1 若需）改为 ✅，再 `a3_split_authorize.sh authorize`。

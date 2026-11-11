@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Conformance Harness
 
 This directory contains **reference** conformance assets, not proof of a deployed implementation.

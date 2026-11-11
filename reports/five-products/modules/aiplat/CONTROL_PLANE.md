@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Control Plane v0（草案）
 
 > Capability: **aiplat** · Central host · A1  

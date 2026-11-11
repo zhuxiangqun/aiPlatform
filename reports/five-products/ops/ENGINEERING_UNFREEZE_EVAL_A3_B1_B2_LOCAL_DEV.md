@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md
 
 > **冻结门禁 / 解冻记录，非现行产品定义。**  

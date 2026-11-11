@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # ABox Connector 模板（路径 B 生产入轨）
 
 | 字段 | 值 |

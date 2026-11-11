@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # CLAUDE.md §5.NNN 分类报告（阶段一 P1a — 待人工确认）
 
 > 确定性分类，供逐节 confirm/override（§5.84 draft+confirm）。

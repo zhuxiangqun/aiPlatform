@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C2 Local Closeout（深度接入 + 置信度）
 
 - recorded_at: `20261101T143228Z`

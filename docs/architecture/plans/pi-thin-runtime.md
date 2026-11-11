@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Plan: aiPlat × Pi 薄 Runtime（1C + 2C）
 
 > Living 摘要 · 2026-10-12 · 包：`packages/aiplat-pi-runtime/`  

@@ -1,4 +1,5 @@
 ---
+doc_type: Standard
 title: 规范：aiPlat-platform 鉴权与身份透传（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-platform → aiPlat-app/aiPlat-core/aiPlat-management

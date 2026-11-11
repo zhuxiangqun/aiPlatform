@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 运维 Live 演练总册（五产品硬门）
 
 > 工程本地/docker 🟨 **不能**替代本册。任何 `*_authorize.sh authorize` 仅在对应 checklist **全部 ✅** 后由运维执行。  

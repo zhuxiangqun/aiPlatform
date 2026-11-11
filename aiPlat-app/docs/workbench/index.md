@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Workbench 模块
 
 > Workbench 模块是 AI Platform 应用层的 Web 工作台，提供可视化交互界面，用于调试、测试和监控。

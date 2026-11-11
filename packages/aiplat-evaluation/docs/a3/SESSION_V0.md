@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Multi-turn / session v0 (2–3 turns)
 
 > Parent: [`P1_LOCAL.md`](./P1_LOCAL.md) · [`P1_DIMENSIONS.md`](./P1_DIMENSIONS.md)  

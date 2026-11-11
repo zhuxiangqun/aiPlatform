@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Central admin / security baseline (D2+)
 
 > Thin checklist — not a full SOC2 pack.  

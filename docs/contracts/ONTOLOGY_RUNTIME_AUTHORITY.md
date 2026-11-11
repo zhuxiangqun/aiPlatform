@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # 本体运行时权威契约（Ontology Runtime Authority）
 
 | 字段 | 值 |

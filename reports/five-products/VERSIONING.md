@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # A2 Versioning（五能力）
 
 > Slice: **A2 versioning only** — independent semver per deploy package.  

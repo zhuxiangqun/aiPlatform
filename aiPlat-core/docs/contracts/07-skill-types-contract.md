@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Skill Types & Discovery Contract（Skill 类型与发现/加载契约）
 
 本文件定义 aiPlat 对 “目录化 skills（SKILL.md）” 的生产级落地规范，目标是复刻 OpenCode 的体验：**可发现（find）+ 按需加载（load）**，同时满足企业生产要求：**版本冻结、权限治理、可观测、可回滚、避免 prompt bloat**。

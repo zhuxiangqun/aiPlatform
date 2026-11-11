@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 本切片契约启用矩阵（WP2 草案 v0）
 
 > 场景：`fp-internal-bundle-pi-diag-001` · 2026-10-23  

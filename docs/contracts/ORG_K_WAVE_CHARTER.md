@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # K 波 Charter — 带闸门的本体进化环
 
 | 字段 | 值 |

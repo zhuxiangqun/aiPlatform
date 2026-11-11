@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Engineering unfreeze — DIAGNOSIS C3.5（adversarial / holdout fixture 硬化）
 
 - **decided_at**: `2026-11-02`

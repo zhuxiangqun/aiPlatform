@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 框架基础（设计真值：以代码事实为准）
 
 > 本文档描述 LangGraph/LangChain 在本项目中的“集成口径”。涉及实现状态时，以 [`ARCHITECTURE_STATUS.md`](../ARCHITECTURE_STATUS.md) 为准。

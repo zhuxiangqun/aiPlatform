@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Central / Edge compatibility matrix (D2 Thin)
 
 > Packaging-only D2 slice. Not a full admin/security pack.  

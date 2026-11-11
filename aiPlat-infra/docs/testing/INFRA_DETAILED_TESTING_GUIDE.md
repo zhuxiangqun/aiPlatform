@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # AI Platform 基础设施层 - 完整测试体系指南（设计真值：以代码事实为准）
 
 > 说明：本文档描述 infra 的系统级测试策略。若涉及外部 CI/CD、部署工件或平台层策略，请视为 To-Be 或外部仓库内容；As-Is 以 `infra/tests/*` 与 `docs/testing/reports/*` 的可复现报告为准。

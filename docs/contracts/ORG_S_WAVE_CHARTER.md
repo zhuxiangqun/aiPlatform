@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # S 波 Charter — 商业短板补齐（不是 M4，不是放权）
 
 | 字段 | 值 |

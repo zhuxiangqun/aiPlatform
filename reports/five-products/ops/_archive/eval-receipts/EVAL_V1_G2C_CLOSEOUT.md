@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL_V1 G2c closeout — self-consistency（intra-rater）
 
 - **closed_at**: `2026-11-02`

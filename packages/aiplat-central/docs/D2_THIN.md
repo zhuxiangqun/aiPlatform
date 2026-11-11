@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat Central D2 Thin — packaging / compat / security
 
 > **Status**：D2 Thin 工程收口（本地可验）· **非** PG/HA 生产切流  

@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 > 📦 **本体操作手册**已归并到 [`docs/knowledge-system.md`](../guides/knowledge/knowledge-system.md) **附录 C（v1.3）**。
 > **正确入口**：管理端 → 知识 → **业务本体** → `/knowledge/business`（工厂流水线 `?tab=factory`）。
 > 企业创建合册：[`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。

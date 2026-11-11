@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org L5 Live Unlock — 书面解锁意图（模板）
 
 | 字段 | 值 |

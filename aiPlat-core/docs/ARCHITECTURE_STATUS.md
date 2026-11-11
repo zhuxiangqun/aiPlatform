@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 架构实现状态
 
 > 本文档是 aiPlat-core 各子系统实现状态的**唯一真相来源**。

@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat Remaining Checklist — ✅ MVP 已达成
 
 > 所有条目已于 2026-07-01 完成。Phase 5 (竞品借鉴) 全部 7 项已合入。

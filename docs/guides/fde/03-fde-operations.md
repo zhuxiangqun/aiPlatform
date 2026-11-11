@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 运维与自演进
 
 > ← [文档导航](README.md)

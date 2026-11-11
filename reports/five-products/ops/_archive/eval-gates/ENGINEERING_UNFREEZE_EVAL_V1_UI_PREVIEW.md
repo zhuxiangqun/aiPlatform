@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_V1 `/eval` UI preview（G2a 后）
 
 - **decided_at**: `2026-11-01`

@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # PR 架构规范检查清单（Architecture Boundary Checklist）
 
 > **C2 消歧**：本文是 **手册侧 PR 评审清单**（开发者自检入口，见本目录 README）。  

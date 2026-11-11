@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL 董事会 — 本地范围收口（2026-11-06）
 
 - **status**: **Local-first active** — 对外发布延后；本机评测须持续可测（[优先级](../../EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md)）

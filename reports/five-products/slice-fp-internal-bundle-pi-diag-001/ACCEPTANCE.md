@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Acceptance `fp-internal-bundle-pi-diag-001`
 
 - decision: **accepted** (WP4 evidence with live Pi)

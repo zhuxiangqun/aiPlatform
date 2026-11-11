@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Management Module - 管理模块完整文档（To-Be 为主，As-Is 以代码事实为准）
 
 > 说明：management 通常属于独立管理平面（aiPlat-management）。本仓库若未包含对应实现，请将本文作为 To-Be 参考，并以 `infra/management/*` 代码与测试为准。

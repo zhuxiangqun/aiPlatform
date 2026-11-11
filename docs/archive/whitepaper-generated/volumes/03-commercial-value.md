@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume

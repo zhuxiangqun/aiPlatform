@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Sandbox isolation v0（首版本地 · 不含 microVM）
 
 > Honesty: **`sandbox_real_isolation=false`** · Docker `network=none` ≠ 隔离认证 · ≠ authorize

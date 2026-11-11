@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 模块化 / Gate3 Backlog
 
 > **Gate 2 已落地**；**Gate 3 有条件批准** — Phase A/B/C 已接线；**Phase D 已批**（`GATE3_PHASE_D_DECISION.md`）。  

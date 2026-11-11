@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # A1 部署签认 — 本地联调核实稿（2026-11-05）【已归档】
 
 > **状态**：✅ 已签完并归档 → **[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)**  

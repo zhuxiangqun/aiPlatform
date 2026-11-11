@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL Model Access — Worker → infra（B 轨）
 
 > **类型**：契约（B2 实施前置）  

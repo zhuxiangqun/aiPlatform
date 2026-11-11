@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Wave 3 — live 文本族 / 跨租户 / judge 标定
 
 > 工程：证据卡 schema + 校验器。Ops：真跑 staging / 标定。≠ certification

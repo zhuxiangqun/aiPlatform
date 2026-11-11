@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Skill 文件格式演进设计（As-Is 对齐 + To-Be 演进）
 
 > 本文档包含两部分：  

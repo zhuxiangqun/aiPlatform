@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat Agent 系统 — 完整指南
 
 > 最后更新: 2026-08-11 · 原理优先，细节后置 · 配置/API 见附录

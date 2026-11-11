@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # AI Platform基础设施层 - 测试指南（设计真值：以代码事实为准）
 
 > 说明：本文档描述 infra 测试策略与常见错误。若引用外部 CI/部署工件，请视为 To-Be 或外部仓库内容；As-Is 以 `infra/tests/*` 可运行性为准。

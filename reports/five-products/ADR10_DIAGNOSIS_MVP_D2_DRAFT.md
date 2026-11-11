@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-10 D2 草案 — 平台默认绑定（第 2 步剩余）
 
 - **状态**：**已升格 Accepted** · 2026-10-26 — 见 `ADR10_DIAGNOSIS_MVP_D2_DECISION.md`；落地 PR [#434](https://github.com/zhuxiangqun/aiPlatform/pull/434) → `968f3a7`  

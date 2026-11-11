@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 记忆系统 (Memory)（设计真值：以代码事实为准）
 
 > 说明：本文档描述 Harness 的 Memory 子系统（`core/harness/memory/*`）。

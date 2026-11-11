@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat 改进实施 Checklist
 
 > 生成: 2026-05-16 · 来源: `multi-dimension-comparison.md` §8 + §11 + §4.8

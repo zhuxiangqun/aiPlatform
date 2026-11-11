@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # billing 模块（Platform Layer 2：计费与用量管理）
 
 ## 定位

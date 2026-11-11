@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Eval Case Pack 工厂 — 设计基线 + 实施进度
 
 > **类型**：架构方案 / 实施契约  

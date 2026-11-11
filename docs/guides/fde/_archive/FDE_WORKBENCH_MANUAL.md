@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 > ⚠️ **已归档** — 本文档为历史版本，API 引用可能已过期。最新文档请参见 [FDE 交付手册](../templates/fde-delivery-manual.md)。
 
 # FDE 工作台操作手册 v2.5

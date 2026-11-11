@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # EVAL Production Independent Service — 完整方案（B 轨）
 
 > **文档类型**：Design / Implementation Plan（生产级独立评测服务）  

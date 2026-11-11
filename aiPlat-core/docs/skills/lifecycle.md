@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Skill 生命周期管理（To-Be 规划为主）
 
 > ❌ **实现状态（As-Is）**：本文档描述的进化引擎（CAPTURED/FIX/DERIVED）尚未实现（自动进化、触发检测、退化检测均未形成闭环）。  

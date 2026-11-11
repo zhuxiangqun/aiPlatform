@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL_V1 E3 — Gold set source inventory
 
 - recorded_at: `2026-11-01`

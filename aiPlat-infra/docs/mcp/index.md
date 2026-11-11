@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 📚 MCP 模块文档
 
 > MCP（Model Context Protocol）协议客户端 - 基础设施层

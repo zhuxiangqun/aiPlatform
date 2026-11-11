@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 初始化向导（Onboarding）
 
 目的：在一个页面内完成“系统可用”的最小闭环：

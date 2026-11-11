@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # CLI 模块
 
 > CLI 模块是 AI Platform 应用层的命令行接口，提供终端交互能力，用于本地开发、调试和运维。

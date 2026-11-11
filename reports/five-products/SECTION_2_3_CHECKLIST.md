@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # §2.3 进入 L1 条件清单
 
 对照落地方案 §2.3；与 [L1_AUTHORIZATION.md](./L1_AUTHORIZATION.md) 一并构成开工条件。

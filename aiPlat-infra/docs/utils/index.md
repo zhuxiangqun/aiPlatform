@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 工具模块（设计真值：以代码事实为准）
 
 > 说明：utils 为 infra 内部公共工具；As-Is 以 `infra/utils/*` 代码为准。

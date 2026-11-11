@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-DRAFT — 控制面 → D1（PG/HA/多租户产品化）
 
 > **状态**：已被 [`ADR-CONTROL-PLANE-PG-HA.md`](./ADR-CONTROL-PLANE-PG-HA.md) **Accepted（有条件）** 取代（2026-10-30）  

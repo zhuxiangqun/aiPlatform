@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 技能系统 (Skills)（设计真值：以代码事实为准）
 
 > ⚠️ **实现状态提示（As-Is vs To-Be）**：Phase 7 已修复 `SkillManager ↔ SkillRegistry` 桥接断裂，`SkillExecutor` 可从 Registry 执行 Skill；Skill “进化引擎（CAPTURED/FIX/DERIVED）”仍为 To-Be。  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_P2_LOCAL_TRACK_CLOSEOUT_2026-11-06.md
 
 > **历史收口凭证，非现行产品定义。**  

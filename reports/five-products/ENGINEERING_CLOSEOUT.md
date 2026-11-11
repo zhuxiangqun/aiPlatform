@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Five-products 工程收口（2026-10-30）
 
 ## 工程侧已闭合

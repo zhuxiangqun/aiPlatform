@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # AttributionSchema — Agent 效果归因协议
 
 > 版本: 1.0 · 2026-07-17  

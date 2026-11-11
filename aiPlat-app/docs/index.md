@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-app 文档索引
 
 > 系统级跨层契约请优先参考：

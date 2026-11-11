@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Staging review — 事件驱动（停日历空转）
 
 - decided_at: `2026-11-01`

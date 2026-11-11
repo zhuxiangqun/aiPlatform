@@ -1,4 +1,5 @@
 ---
+doc_type: Standard
 title: 规范：aiPlat-app Session ID 与 Conversation Key（企业平台默认）
 date: 2026-04-18
 scope: aiPlat-app（channels/sessions 权威）

@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 核心能力层管理（Layer 1）
 
 > **派生文档（Batch C1）**：本文是管理端摘要，权威实现/契约见 [`aiPlat-core/docs/index.md`](../../../aiPlat-core/docs/index.md)；冲突时以 core 文档为准。

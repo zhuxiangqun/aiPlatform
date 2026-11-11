@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 业务应用模块目录规范 v1.0
 
 ## 适用范围

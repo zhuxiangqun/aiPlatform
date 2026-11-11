@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # FDE 现场交付体系 — 文档导航
 
 **FDE**（Field Deployment Engineer）是 aiPlat 的核心用户角色——负责到客户现场完成 AI 系统交付。

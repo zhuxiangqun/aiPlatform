@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlat Service Level Objectives
 
 > **Status**: Draft | **Version**: 1.0 | **Owner**: aiPlat Architecture Team

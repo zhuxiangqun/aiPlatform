@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 契约草案 evidence-fp-001（诊断 MVP）
 
 | 项 | 内容 |

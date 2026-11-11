@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Context management baseline v0（P2-1）
 
 > **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md)  

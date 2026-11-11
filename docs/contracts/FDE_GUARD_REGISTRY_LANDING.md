@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE 守卫与 Registry 落地说明
 
 | 字段 | 值 |

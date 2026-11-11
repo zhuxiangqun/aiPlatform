@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # P0-6 Escape scan (production code)
 
 > HEAD `b46e286` · P0 W1 read-only · refined tiers

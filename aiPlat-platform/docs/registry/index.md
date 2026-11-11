@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # registry 模块（Platform Layer 2：服务注册与发现）
 
 ## 定位

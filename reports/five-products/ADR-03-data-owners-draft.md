@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-03 数据 owner（草稿）
 
 - **状态**：**Accepted（本切片）** · WP5 2026-10-23  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Ontology A3 生产类 live 拆分演练证据
 
 > 本地文件/prefix 🟨 **不能**替代。证据齐后运维将 `SPLIT_CHECKLIST` #3/#5（及契约项若需）改为 ✅，再 `a3_split_authorize.sh authorize`。

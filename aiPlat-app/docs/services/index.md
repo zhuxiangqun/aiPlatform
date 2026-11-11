@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Services 应用服务
 
 > workbench 的子模块，提供前端与后端的 API 通信封装

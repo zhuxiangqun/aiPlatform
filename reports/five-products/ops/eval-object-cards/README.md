@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Eval 对象现状卡（P0-A2 → P1b 工程刷新）
 
 > **依据**：[改善执行计划](../EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.1 / 附录 A  

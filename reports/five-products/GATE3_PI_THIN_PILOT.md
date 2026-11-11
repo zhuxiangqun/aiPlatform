@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 试点边界：Pi Thin 独立部署
 
 > **批准**：`GATE3_DECISION.md` G3-1  

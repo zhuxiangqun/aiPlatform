@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # 多 Agent 协作编排：文章框架 → 我们系统能力对照（1 页版）
 
 基于文章《多 Agent 协作编排：怎么做才靠谱？》的“两维度四象限”框架，结合我们当前已实现的能力（runs/approvals/skill&tool 分层审批/tenant policy/RBAC/证据链），输出一个可落地的对照表与下一阶段演进建议。

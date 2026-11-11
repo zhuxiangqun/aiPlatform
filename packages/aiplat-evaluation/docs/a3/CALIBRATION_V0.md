@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Human Evaluator Calibration v0（P2-0）
 
 > **Unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md)  

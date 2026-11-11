@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Reports 生命周期
 
 > v2.4 定义。报告/证据不是文档 canonical，不参与标准评审。

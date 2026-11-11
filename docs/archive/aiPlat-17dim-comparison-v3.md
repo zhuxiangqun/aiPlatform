@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # aiPlat vs Hermes vs Claude Code vs OpenClaw：17 维度代码级对比分析 v3.0
 
 > **v3.0 · 2026-06-16 更新**：维度从 7 扩展到 17，分析数据来源为 aiPlat 自有的代码智能图谱（1,257 文件 / 20,103 边）和能力图谱（172 节点 / 140 边）的实时导出数据，Hermes/Claude Code 侧来自其最新官方技术文档的代码级描述。

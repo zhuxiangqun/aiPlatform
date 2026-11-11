@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Pi Thin 部署边界清单（ADR-09 下一单产品后续 #1）
 
 - **状态**：**清单已立** · 2026-10-26 — 授权真源 `ADR09_NEXT_PI_THIN_DECISION.md`  

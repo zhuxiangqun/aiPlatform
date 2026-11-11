@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 👨‍💻 核心层开发者指南（As-Is 对齐 + To-Be 示例）
 
 > 说明：本文档包含部分 To-Be 的工程化命令/配置示例（make/config/init_registry 等）。涉及实现状态，以代码事实为准，并遵循 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md) 的可追溯规则。

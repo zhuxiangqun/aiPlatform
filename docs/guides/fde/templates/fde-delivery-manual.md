@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 标准交付手册 — {{PROJECT_NAME}}
 
 > ← [文档导航](README.md)

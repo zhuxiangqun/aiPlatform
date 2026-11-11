@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 02｜Syscalls 与 Gates 设计（Kernel Runtime）
 
 状态：草案（Phase 2/3 已部分对齐实现；待补齐 CI 后可冻结“不可绕过”机制）  

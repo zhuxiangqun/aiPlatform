@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Ontology A3 进程拆分硬门清单
 
 > `process_split_authorized` 仅当下列全部为 ✅（🟨 = 本地演练，≠ 授权）。  

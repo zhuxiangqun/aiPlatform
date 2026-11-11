@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 切流回滚
 
 1. 停止写流量  

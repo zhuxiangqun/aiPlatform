@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # Worker 拆分方案（渐进式）
 
 > 状态：proposed · last_synced: 2026-08-14

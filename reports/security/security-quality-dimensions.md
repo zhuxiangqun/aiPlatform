@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 安全质量 26 维覆盖（人读摘要）
 
 > **唯一真相源**：[security_quality_dimensions.yaml](./security_quality_dimensions.yaml)（`dimension_set_version=1.1`）

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # OIDC / 租户最小路径 v0（本地）
 
 > Honesty: **≠ 企业完整 realm** · **≠ staging OIDC** · `process_split_authorized=false`

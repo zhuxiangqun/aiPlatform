@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume

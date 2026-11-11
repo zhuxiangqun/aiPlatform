@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL_A3_LOCAL（独立进程/DB 本地验证）
 
 - **decided_at**: `2026-11-02`

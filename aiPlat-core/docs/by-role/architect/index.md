@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-core 架构师指南（As-Is 对齐 + To-Be 边界）
 
 > 说明：本文档包含平台化边界（CoreFacade/platform 层等）的 To-Be 设定；As-Is 以当前仓库 `core/server.py` 为主要服务入口。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。

@@ -100,7 +100,7 @@ def render_matrix_markdown(data: Dict[str, Any]) -> str:
             lines.append("- (no expected consumers)")
         lines.append("")
 
-    return "\n".join(lines) + "\n"
+    return "---\ndoc_type: Reference\n---\n\n" + "\n".join(lines) + "\n"
 
 
 def write_matrix(out_path: Path, data: Optional[Dict[str, Any]] = None, root: Optional[Path] = None) -> Path:

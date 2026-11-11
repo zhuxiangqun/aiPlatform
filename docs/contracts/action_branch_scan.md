@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Action 分支存量扫描报告
 
 | 字段 | 值 |

@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume

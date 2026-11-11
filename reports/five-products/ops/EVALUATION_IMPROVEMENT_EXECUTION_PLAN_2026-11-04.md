@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Evaluation 改善执行计划
 
 > **日期**：2026-11-04  

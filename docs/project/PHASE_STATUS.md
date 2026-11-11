@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # aiPlat Phase 状态时间线（从 CLAUDE.md 外迁）
 
 > 本文件汇集各 Phase 的实现状态快照，从 `aiPlat-core/CLAUDE.md` 迁出，使 CLAUDE.md 聚焦耐久治理规则。

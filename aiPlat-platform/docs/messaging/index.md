@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # messaging 模块（Platform Layer 2：消息通知）
 
 ## 定位

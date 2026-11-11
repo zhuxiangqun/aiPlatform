@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Packaging base V2.1 (local)
 
 - recorded_at: `2026-11-01`

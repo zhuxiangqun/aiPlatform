@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — EVAL_A1_PROD_BLOCKED_NOT_RELEASED_2026-11-05.md
 
 > **历史收口凭证，非现行产品定义。**  

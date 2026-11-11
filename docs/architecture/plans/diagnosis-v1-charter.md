@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # DIAGNOSIS_V1 Charter — 诊断产品（第六能力）
 
 > **文档类型**：Product / Design Charter  

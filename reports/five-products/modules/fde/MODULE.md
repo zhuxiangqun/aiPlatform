@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # MODULE.md — FDE Workbench
 
 > Status: **A1 + Field D1 Accepted + Field D2 ops pack** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Pi + aiPlat 企业级混合
 
 > 产品锁定：默认 **Pi-only**；企业级 = **Pi 壳 + aiPlat 回连**。  

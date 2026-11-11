@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EET Accept — 拟填稿（2026-11-05）【已归档】
 
 > **状态**：✅ Accepted → **[EVAL_EET_ACCEPT_2026-11-05.md](./EVAL_EET_ACCEPT_2026-11-05.md)**  

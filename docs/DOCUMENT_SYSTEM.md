@@ -1,9 +1,12 @@
 ---
 doc_id: DOCUMENT_SYSTEM
-doc_type: Specification
+doc_type: Standard
 status: active
-authority: primary
+authority: canonical
 scope: workspace
+purpose: 定义 aiPlat 文档系统的类型、目录、权威、元数据、生命周期和 CI 约束
+scope_in: 全平台文档与生成物
+scope_out: 业务实现、代码注释、第三方依赖文档
 language: zh-CN
 version: 2.4
 supersedes: 2.3

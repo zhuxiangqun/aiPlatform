@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # SBA（skill-based-architecture）借鉴分析报告
 
 > 分析对象：https://github.com/WoJiSama/skill-based-architecture（MIT，2026-04 创建，527★/45 fork）

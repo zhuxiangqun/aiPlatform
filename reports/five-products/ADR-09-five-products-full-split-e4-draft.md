@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-09 五产品全拆 / 对外 E4
 
 - **状态**：**Accepted（窄 · 单产品）** · 2026-10-26 — 见 `ADR09_STEP4_DECISION.md`  

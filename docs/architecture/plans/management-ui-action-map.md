@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # 管理画面按钮 → API → 状态/文件变更对照表（Agent / Skill / Tool / MCP）
 
 > 目标：把管理端“点按钮会发生什么”说清楚：**调用哪个 API**、**改了什么状态**、**会不会写盘（哪些文件）**、以及 **engine vs workspace** 的差异。

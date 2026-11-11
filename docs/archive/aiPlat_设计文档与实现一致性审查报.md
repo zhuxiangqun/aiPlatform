@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 aiPlat 设计文档与代码一致性审查报告
 
 范围：aiPlat-core / aiPlat-infra / aiPlat-management / root-docs

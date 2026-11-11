@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # FDE 管理与扩展
 
 > ← [文档导航](README.md)

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Evaluation — D3 local UAT (cohost dry-run)
 
 > 本地验收清单；**不是** process_split 生产授权。

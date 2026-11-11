@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Hermes Agent 核心能力清单（调研报告）
 
 > 调研对象：Nous Research / hermes-agent（GitHub: NousResearch/hermes-agent，"The agent that grows with you"）

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # aiPlat 自进化（Self‑Evolution）闭环：可落地实现级方案（Skills + Prompts + Tool/Policy）
 
 > 面向对象：平台/架构/后端/前端/运维  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # ADR：Prompt / KB 评测 canonical runner（P1a）
 
 > **状态**：Accepted（2026-11-05）· 逾期默认条款按改善执行计划 P1a  

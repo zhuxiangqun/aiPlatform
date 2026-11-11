@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Eval Worker LLM (local optional + dynamic gate)
 
 > Contract: [`EVAL_MODEL_GATEWAY.md`](../../../../docs/architecture/plans/EVAL_MODEL_GATEWAY.md)  

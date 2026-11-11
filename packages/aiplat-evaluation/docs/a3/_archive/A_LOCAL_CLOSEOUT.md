@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # EVAL A3 A-local closeout
 
 > **status**: closeout evidence via `bash scripts/a5_local_closeout.sh`

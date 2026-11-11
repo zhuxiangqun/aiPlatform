@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR — Ontology A3（图服务进程/存储独立）
 
 - **状态**：**Accepted（有条件）** · 2026-10-30  

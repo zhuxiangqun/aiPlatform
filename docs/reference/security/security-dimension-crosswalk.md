@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 安全质量维度 Crosswalk：26 维 ↔ v3 20 维
 
 > 机器可读 SoT：[`reports/security/security_quality_dimensions.yaml`](../../../reports/security/security_quality_dimensions.yaml)

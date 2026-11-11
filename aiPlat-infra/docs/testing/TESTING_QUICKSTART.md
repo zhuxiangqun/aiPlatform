@@ -1,3 +1,7 @@
+---
+doc_type: Guide
+---
+
 # AI Platform 基础设施层 - 测试快速开始指南（As-Is 对齐）
 
 > 说明：本文档提供快速运行测试的 As-Is 命令集合；涉及 docker/compose/CI 的部分若不在本仓库，请视为 To-Be 或外部 ops 仓库内容。

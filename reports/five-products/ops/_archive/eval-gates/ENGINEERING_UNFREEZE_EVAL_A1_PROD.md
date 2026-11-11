@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL **A1 生产部署签核**（独立轨）
 
 - **decided_at**: `2026-11-06`

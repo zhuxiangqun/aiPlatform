@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR-10 接线 Phase B — 诊断 MVP compose 容器试点
 
 - **状态**：**已批（本批）** · 2026-10-24  

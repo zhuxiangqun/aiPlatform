@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Round12 复审变更日志（持续交付｜历史记录）
 
 > **历史报告**：本日志服务于 `reports/audit_findings_round12.json` 与对应 docx 复审报告，用于回溯 Round12 的实现修复与验证命令；当前实现以最新代码与测试为准。

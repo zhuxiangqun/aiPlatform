@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # ADR — Pi D3（Edge 深度运维 / SOC 产品化路径）
 
 - **状态**：**Accepted（有条件）** · 2026-10-30  

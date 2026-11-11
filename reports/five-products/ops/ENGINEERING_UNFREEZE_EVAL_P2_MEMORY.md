@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Archived — ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md
 
 > **冻结门禁 / 解冻记录，非现行产品定义。**  

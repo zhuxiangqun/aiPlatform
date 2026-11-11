@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-core 文档索引（设计真值：以代码事实为准）
 
 > ⚠️ 说明：本文档是“导航 + 架构口径摘要”。涉及实现状态时，以 [`ARCHITECTURE_STATUS.md`](./ARCHITECTURE_STATUS.md) 为准，并遵循其可追溯断言规则（代码入口/测试/命令）。

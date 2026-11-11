@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 安全改进方案 — Ops / 人审收口清单
 
 > 配套：[`aiplat-security-improvement-plan-2026-11-09.md`](./aiplat-security-improvement-plan-2026-11-09.md)  

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 01｜核心契约与数据模型（Contracts & Types）
 
 状态：草案（Phase 1 已对齐实现；Phase 4+ 评审通过后冻结）  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Staging review checklist — 2026-11-08
 
 > 复审日决策：有真实预发 → 方案 A/C；否则 **续 defer** + 继续 Option B。  

@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # DIAGNOSIS_V1 C3 Closeout — D2/D3 本地收口
 
 - **closed_at**: `2026-11-01`

@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: SBA × HarnessEval：AI 工程化的"执行-评测"双闭环
 date: 2026-08-27
 status: 定稿

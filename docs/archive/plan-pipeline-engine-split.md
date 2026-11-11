@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # PipelineEngine 拆分方案（P2-A4）
 
 > 状态：**✅ 已完成（2026-08-19，Phase 1-4 全部实施并合并，PR #16-19）** · 目标：pipeline_engine.py 12281 行 → 主类 + Mixin 拆分

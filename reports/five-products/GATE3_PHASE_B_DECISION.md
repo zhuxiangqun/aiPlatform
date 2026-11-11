@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Gate3 Phase B 决定（2026-10-24）
 
 **结论：批准 Gate3 Phase B（Pi Thin 试点升格）。**

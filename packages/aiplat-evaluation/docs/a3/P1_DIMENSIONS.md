@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # P1 dimensions — groundedness + latency/cost
 
 > Parent: [`P1_LOCAL.md`](./P1_LOCAL.md) · [`P1_CANONICAL.md`](./P1_CANONICAL.md)  

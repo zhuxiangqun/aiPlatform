@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # Harness 开发指南（设计真值：以代码事实为准）
 
 > 说明：本文档的目录结构清单若与代码不一致，以代码事实为准。统一口径参见 [`ARCHITECTURE_STATUS.md`](../../ARCHITECTURE_STATUS.md)。

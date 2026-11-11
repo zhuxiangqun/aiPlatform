@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # 环境方案 B — 本机 VM/Docker 全轨实施（当前唯一工程环境）
 
 - decided_at: `2026-11-01`

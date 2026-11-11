@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Diagnosis A3 prep
 
 - Checklist: [`SPLIT_CHECKLIST.md`](./SPLIT_CHECKLIST.md)  

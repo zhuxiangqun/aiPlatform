@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Org Phase C Charter — 渠道入站 · Interface 一等化 · 岗位治理
 
 | 字段 | 值 |

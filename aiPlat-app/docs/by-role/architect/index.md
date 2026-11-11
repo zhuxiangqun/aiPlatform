@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # aiPlat-app 架构师指南
 
 ## 概述

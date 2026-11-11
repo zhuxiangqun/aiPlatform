@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # MODULE.md — aiPlat Platform
 
 > Status: **A2-versioning + D1 Thin + D2 compat/security** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Central** (host)  

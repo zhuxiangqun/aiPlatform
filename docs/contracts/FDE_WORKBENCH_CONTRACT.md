@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # FDE 工作台契约（FDE Workbench Contract）
 
 版本：v1.12  

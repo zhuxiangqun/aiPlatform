@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # Local staging（零预算 · 工程验证 · 非生产预发）
 
 > **当前选型（2026-11-01）**：**环境方案 B — 本机 VM/Docker 全轨**（[`OPTION_B_LOCAL_VM.md`](./OPTION_B_LOCAL_VM.md)）。  

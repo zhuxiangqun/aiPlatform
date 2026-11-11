@@ -1,3 +1,7 @@
+---
+doc_type: Report
+---
+
 # W4 — KVM GuestChannel 探针卡
 
 > `probed` ≠ `covered`。covered 仅人审后可写。

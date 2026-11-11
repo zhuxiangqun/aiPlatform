@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Decisions（ADR）索引
 
 > v2.4 顶层决策目录。当前迁移期；旧 `docs/architecture/decisions/` 暂时保留。

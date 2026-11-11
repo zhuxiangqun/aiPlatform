@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # M4 现场签收包（Phase C5）· it-ops 签收准备
 
 | 字段 | 值 |

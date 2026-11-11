@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # Layer 2 - 平台层管理
 
 > Management 如何管理平台层

@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # HYBRID_ENTERPRISE 附录：库健康分面板数据源接线
 
 > 版本：v1.0 | 日期：2026-10-14

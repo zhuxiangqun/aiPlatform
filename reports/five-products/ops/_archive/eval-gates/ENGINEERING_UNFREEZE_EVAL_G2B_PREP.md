@@ -1,3 +1,7 @@
+---
+doc_type: Archive
+---
+
 # Engineering unfreeze — EVAL G2b **prep**（第二标注者预备）
 
 - **decided_at**: `2026-11-03`

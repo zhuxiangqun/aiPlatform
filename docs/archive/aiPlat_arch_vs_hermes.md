@@ -1,4 +1,5 @@
 ---
+doc_type: Archive
 title: aiPlat Core 执行链路 vs Hermes Agent 架构对照
 date: 2026-04-18
 audience: 内部研发（平台/后端/前端/架构）

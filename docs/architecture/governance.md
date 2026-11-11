@@ -1,3 +1,7 @@
+---
+doc_type: Architecture
+---
+
 # aiPlat 治理体系
 
 > **PolicyGate 实现参考**：[private-control-plane.md](./private-control-plane.md)

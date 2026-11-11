@@ -1,3 +1,7 @@
+---
+doc_type: Reference
+---
+
 # 03｜执行引擎与路由（Engines & Routing）
 
 状态：草案（Phase 5 设计；当前实现仍为 Loop-first 直连执行）  

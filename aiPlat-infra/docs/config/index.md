@@ -1,3 +1,7 @@
+---
+doc_type: Index
+---
+
 # 配置管理模块（设计真值：以代码事实为准）
 
 > 说明：本文档包含较多 To-Be 的“配置中心/热更新”能力描述。As-Is 以 infra 实际提供的 config loader 与 schema 为准（若未实现，则标注为规划项）。

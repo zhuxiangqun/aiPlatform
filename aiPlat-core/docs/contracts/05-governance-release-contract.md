@@ -1,3 +1,7 @@
+---
+doc_type: Contract
+---
+
 # Governance & Release Contract（治理/发布契约）
 
 本文件约束系统的“可控变更、可回滚、可审计”。
