@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T09:21:31+08:00",
+  "reviewed_at": "2026-11-11T09:44:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "822a5967958977cae07279c52a416684d3b0485f",
-  "diff_sha256": "4144d11b90e4ea232dc93d3c0ba401abee6380bf24f7d38167068688f37f72a4",
-  "head_sha": "96eaf0f80100a4cdbfa54a9eed47607404f202fc",
+  "merge_base": "dfe2c80a726fe41a9e985d8e31636abd4666d65c",
+  "diff_sha256": "ff91d64f08ffa39c991abc278c96b79dbcce173460f0476a2a0da5f34b7af251",
+  "head_sha": "e3499c46462bb576540a7ff02bdc5d8f2e3bf8d6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "System Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
+  "note": "Subject regression inventory additive; claim stays false across matrix. Local lock only."
 }
