@@ -62,7 +62,13 @@ def main() -> int:
             meta = parse_frontmatter(p.read_text(encoding="utf-8", errors="ignore"))
         except OSError:
             continue
-        is_known_standard = "knowledge-system" in str(p) and "v4.3.1" in p.name and "archive" not in p.parts
+        is_known_standard = (
+            p.name in ("technical-whitepaper.md", "normative-appendix.md",
+                       "aiplat-knowledge-system-technical-whitepaper-v4.3.1-2026-11-11.md",
+                       "aiplat-knowledge-system-engineering-appendix-v4.3.1-2026-11-11.md")
+            and "knowledge-system" in str(p)
+            and "archive" not in p.parts
+        )
         if meta.get("authority", "").lower() == "canonical" or is_known_standard:
             canon.append(p)
             if meta.get("doc_id"):
@@ -71,7 +77,7 @@ def main() -> int:
     dup_ids = [k for k, v in Counter(ids).items() if v > 1]
     old_standards = []
     for p in (WORKSPACE / "docs").rglob("*v4.*"):
-        if p.is_file() and p.suffix == ".md":
+        if p.is_file() and p.suffix == ".md" and "archive" not in p.parts and "_archive" not in p.parts:
             name = p.name
             if re.search(r"v4\.(1|2|3)(?!\.1)", name):
                 old_standards.append(p)
