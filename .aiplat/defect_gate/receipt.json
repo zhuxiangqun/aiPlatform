@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T13:52:52+08:00",
+  "reviewed_at": "2026-11-11T14:20:46+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4c86511b7a4b24e187e71f12924c3868e31c5980",
-  "diff_sha256": "a6844d5441972f4e06190c6bf7ec797fb86f468150459bda6e63f3692266faba",
-  "head_sha": "6e000ac412f5e8fc8b63fa8d3eea42077e8ccbf5",
+  "merge_base": "b087678698f6a2102b2278d790e69ac2d1b7cd1e",
+  "diff_sha256": "d53812e422f8ec91d9921c3ca6289db48c52e1789fb526b2aaf8cc8c85c461a2",
+  "head_sha": "50a012cf8366b57e09e09c4c6cd321263efd46da",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject-aware P4/P5 readiness; claims/cert stay false. Local lock only."
+  "note": "Subject *.benchmark.v1 seeds + holdout; claims stay false. Local lock only."
 }

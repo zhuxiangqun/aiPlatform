@@ -1,0 +1,31 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "tool.benchmark.v1",
+  "object_type": "tool",
+  "subject_kinds": [
+    "tool"
+  ],
+  "object_types": [
+    "tool"
+  ],
+  "pack_id": "tool.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "tool_selection": 4,
+    "tool_args": 4,
+    "tool_result_use": 4
+  },
+  "strategy": "stratified",
+  "seed": 19,
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 19,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "tool Subject benchmark — holdout enabled; quotas=4 (thin bank ×5 leaves room after 20% holdout); claim/Certification closed; expand bank before raising quotas.",
+  "object_type_member": false
+}
