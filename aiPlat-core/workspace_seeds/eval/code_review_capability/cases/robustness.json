@@ -1,7 +1,9 @@
 [
   {
     "case_id": "code_review.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "order_insensitive",
     "prompt": "审查多文件：finding 顺序可变但仍须与 gold 集合相等。",
     "findings": [
@@ -19,14 +21,22 @@
         "乱序 findings 仍通过 exact set match",
         "不依赖输入列表原始顺序"
       ],
-      "failure_signals": ["因顺序不同判 fail", "缺任一 gold 项"],
-      "not_testing": ["不测试 severity 权重排序", "不测试行号窗口模糊匹配"],
+      "failure_signals": [
+        "因顺序不同判 fail",
+        "缺任一 gold 项"
+      ],
+      "not_testing": [
+        "不测试 severity 权重排序",
+        "不测试行号窗口模糊匹配"
+      ],
       "oracle_rationale": "规则 oracle：sorted 后精确集合相等"
     }
   },
   {
     "case_id": "code_review.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "order_insensitive",
     "prompt": "三 finding 乱序仍须等于 gold。",
     "findings": [
@@ -42,15 +52,23 @@
     "test_purpose": {
       "summary": "验证三元素乱序集合仍相等",
       "why_this_case": "扩大顺序鲁棒面",
-      "expected_behavior": ["乱序通过"],
-      "failure_signals": ["顺序敏感失败"],
-      "not_testing": ["不测试模糊行号"],
+      "expected_behavior": [
+        "乱序通过"
+      ],
+      "failure_signals": [
+        "顺序敏感失败"
+      ],
+      "not_testing": [
+        "不测试模糊行号"
+      ],
       "oracle_rationale": "规则 oracle：sorted exact set"
     }
   },
   {
     "case_id": "code_review.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "order_insensitive",
     "prompt": "双 finding 反向顺序。",
     "findings": [
@@ -64,15 +82,23 @@
     "test_purpose": {
       "summary": "验证反向顺序仍通过",
       "why_this_case": "二元组对偶顺序",
-      "expected_behavior": ["集合相等"],
-      "failure_signals": ["因顺序失败"],
-      "not_testing": ["不测试文件路径规范化"],
+      "expected_behavior": [
+        "集合相等"
+      ],
+      "failure_signals": [
+        "因顺序失败"
+      ],
+      "not_testing": [
+        "不测试文件路径规范化"
+      ],
       "oracle_rationale": "规则 oracle：sorted exact set"
     }
   },
   {
     "case_id": "code_review.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "order_insensitive",
     "prompt": "重复路径不同行号乱序。",
     "findings": [
@@ -86,15 +112,23 @@
     "test_purpose": {
       "summary": "验证同文件多行 finding 乱序仍相等",
       "why_this_case": "同 path 不同行是常见排序噪声",
-      "expected_behavior": ["乱序通过"],
-      "failure_signals": ["只认输入顺序"],
-      "not_testing": ["不测试行号±1 模糊"],
+      "expected_behavior": [
+        "乱序通过"
+      ],
+      "failure_signals": [
+        "只认输入顺序"
+      ],
+      "not_testing": [
+        "不测试行号±1 模糊"
+      ],
       "oracle_rationale": "规则 oracle：sorted exact set"
     }
   },
   {
     "case_id": "code_review.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "order_insensitive",
     "prompt": "四 finding 任意排列。",
     "findings": [
@@ -112,9 +146,110 @@
     "test_purpose": {
       "summary": "验证四元素乱序仍集合相等",
       "why_this_case": "更大排列空间鲁棒性",
-      "expected_behavior": ["任意排列通过"],
-      "failure_signals": ["顺序敏感"],
-      "not_testing": ["不测试 severity 排序策略"],
+      "expected_behavior": [
+        "任意排列通过"
+      ],
+      "failure_signals": [
+        "顺序敏感"
+      ],
+      "not_testing": [
+        "不测试 severity 排序策略"
+      ],
+      "oracle_rationale": "规则 oracle：sorted exact set"
+    }
+  },
+  {
+    "case_id": "code_review.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "order_insensitive",
+    "prompt": "审查多文件：finding 顺序可变但仍须与 gold 集合相等。 [v6]",
+    "findings": [
+      "app/utils.py:3:P2:unused_import",
+      "app/auth.py:42:P0:sql_injection"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/utils.py:3:P2:unused_import"
+    ],
+    "test_purpose": {
+      "summary": "验证 findings 顺序变化不影响 gold 集合相等判定（扩容变体 6）",
+      "why_this_case": "排序漂移是 fixture 鲁棒性最常见假失败；bank thicken #6",
+      "expected_behavior": [
+        "乱序 findings 仍通过 exact set match",
+        "不依赖输入列表原始顺序"
+      ],
+      "failure_signals": [
+        "因顺序不同判 fail",
+        "缺任一 gold 项"
+      ],
+      "not_testing": [
+        "不测试 severity 权重排序",
+        "不测试行号窗口模糊匹配"
+      ],
+      "oracle_rationale": "规则 oracle：sorted 后精确集合相等"
+    }
+  },
+  {
+    "case_id": "code_review.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "order_insensitive",
+    "prompt": "三 finding 乱序仍须等于 gold。 [v7]",
+    "findings": [
+      "b.py:2:P2:todo",
+      "a.py:1:P0:sql_injection",
+      "c.py:9:P1:password_log"
+    ],
+    "gold": [
+      "a.py:1:P0:sql_injection",
+      "b.py:2:P2:todo",
+      "c.py:9:P1:password_log"
+    ],
+    "test_purpose": {
+      "summary": "验证三元素乱序集合仍相等（扩容变体 7）",
+      "why_this_case": "扩大顺序鲁棒面；bank thicken #7",
+      "expected_behavior": [
+        "乱序通过"
+      ],
+      "failure_signals": [
+        "顺序敏感失败"
+      ],
+      "not_testing": [
+        "不测试模糊行号"
+      ],
+      "oracle_rationale": "规则 oracle：sorted exact set"
+    }
+  },
+  {
+    "case_id": "code_review.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "order_insensitive",
+    "prompt": "双 finding 反向顺序。 [v8]",
+    "findings": [
+      "svc/x.py:4:P1:bare_except",
+      "svc/y.py:1:P0:hardcoded_secret"
+    ],
+    "gold": [
+      "svc/y.py:1:P0:hardcoded_secret",
+      "svc/x.py:4:P1:bare_except"
+    ],
+    "test_purpose": {
+      "summary": "验证反向顺序仍通过（扩容变体 8）",
+      "why_this_case": "二元组对偶顺序；bank thicken #8",
+      "expected_behavior": [
+        "集合相等"
+      ],
+      "failure_signals": [
+        "因顺序失败"
+      ],
+      "not_testing": [
+        "不测试文件路径规范化"
+      ],
       "oracle_rationale": "规则 oracle：sorted exact set"
     }
   }

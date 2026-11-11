@@ -1,98 +1,326 @@
 [
   {
     "case_id": "tool.tool_selection.001",
-    "capabilities": ["tool_selection"],
+    "capabilities": [
+      "tool_selection"
+    ],
     "prompt": "把用户输入原文原样回显。",
-    "expected_tools": ["echo"],
-    "forbidden_tools": ["lookup_fact"],
+    "expected_tools": [
+      "echo"
+    ],
+    "forbidden_tools": [
+      "lookup_fact"
+    ],
     "exact_tool_set": true,
     "scripted_tool_calls": [
-      {"name": "echo", "args": {"text": "hello"}}
+      {
+        "name": "echo",
+        "args": {
+          "text": "hello"
+        }
+      }
     ],
     "test_purpose": {
       "summary": "验证仅选择 echo 完成回显，不调用 lookup_fact",
       "why_this_case": "Tool Subject A3 正例：单工具精确集合",
-      "expected_behavior": ["调用 echo", "不调用 lookup_fact"],
-      "failure_signals": ["漏调 echo", "误调 lookup_fact"],
-      "not_testing": ["不测参数 schema", "不测 live MCP"],
+      "expected_behavior": [
+        "调用 echo",
+        "不调用 lookup_fact"
+      ],
+      "failure_signals": [
+        "漏调 echo",
+        "误调 lookup_fact"
+      ],
+      "not_testing": [
+        "不测参数 schema",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：tool_trace expected/forbidden + exact_tool_set"
     }
   },
   {
     "case_id": "tool.tool_selection.002",
-    "capabilities": ["tool_selection"],
+    "capabilities": [
+      "tool_selection"
+    ],
     "prompt": "查 key=alpha 的事实值。",
-    "expected_tools": ["lookup_fact"],
-    "forbidden_tools": ["echo"],
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "forbidden_tools": [
+      "echo"
+    ],
     "exact_tool_set": true,
     "scripted_tool_calls": [
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "test_purpose": {
       "summary": "验证仅选择 lookup_fact 查事实，不调用 echo",
       "why_this_case": "A3 反向单工具集合，防回显工具误用",
-      "expected_behavior": ["调用 lookup_fact", "不调用 echo"],
-      "failure_signals": ["漏调 lookup_fact", "误调 echo"],
-      "not_testing": ["不测参数值语义", "不测 live MCP"],
+      "expected_behavior": [
+        "调用 lookup_fact",
+        "不调用 echo"
+      ],
+      "failure_signals": [
+        "漏调 lookup_fact",
+        "误调 echo"
+      ],
+      "not_testing": [
+        "不测参数值语义",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：exact_tool_set=[lookup_fact]"
     }
   },
   {
     "case_id": "tool.tool_selection.003",
-    "capabilities": ["tool_selection"],
+    "capabilities": [
+      "tool_selection"
+    ],
     "prompt": "先回显再查 alpha。",
-    "expected_tools": ["echo", "lookup_fact"],
+    "expected_tools": [
+      "echo",
+      "lookup_fact"
+    ],
     "exact_tool_set": true,
-    "expected_tool_order": ["echo", "lookup_fact"],
+    "expected_tool_order": [
+      "echo",
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "echo", "args": {"text": "prep"}},
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "echo",
+        "args": {
+          "text": "prep"
+        }
+      },
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "test_purpose": {
       "summary": "验证双工具精确集合并保持 echo→lookup 顺序",
       "why_this_case": "多工具顺序是常见回归点",
-      "expected_behavior": ["两工具都调用", "顺序 echo 在前"],
-      "failure_signals": ["漏任一工具", "顺序颠倒"],
-      "not_testing": ["不测答案引用", "不测 live MCP"],
+      "expected_behavior": [
+        "两工具都调用",
+        "顺序 echo 在前"
+      ],
+      "failure_signals": [
+        "漏任一工具",
+        "顺序颠倒"
+      ],
+      "not_testing": [
+        "不测答案引用",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：exact_tool_set + expected_tool_order"
     }
   },
   {
     "case_id": "tool.tool_selection.004",
-    "capabilities": ["tool_selection"],
+    "capabilities": [
+      "tool_selection"
+    ],
     "prompt": "需要回显；允许额外工具但不强制。",
-    "expected_tools": ["echo"],
+    "expected_tools": [
+      "echo"
+    ],
     "exact_tool_set": false,
-    "allowed_tools": ["lookup_fact"],
+    "allowed_tools": [
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "echo", "args": {"text": "soft"}}
+      {
+        "name": "echo",
+        "args": {
+          "text": "soft"
+        }
+      }
     ],
     "test_purpose": {
       "summary": "验证非精确集合时至少调用 expected echo",
       "why_this_case": "soft expected 与 exact 分支不同",
-      "expected_behavior": ["调用 echo"],
-      "failure_signals": ["漏调 echo"],
-      "not_testing": ["不强制禁止 lookup", "不测 live MCP"],
+      "expected_behavior": [
+        "调用 echo"
+      ],
+      "failure_signals": [
+        "漏调 echo"
+      ],
+      "not_testing": [
+        "不强制禁止 lookup",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：missing_expected_tool 检查"
     }
   },
   {
     "case_id": "tool.tool_selection.005",
-    "capabilities": ["tool_selection"],
+    "capabilities": [
+      "tool_selection"
+    ],
     "prompt": "查事实后禁止再回显。",
-    "expected_tools": ["lookup_fact"],
-    "forbidden_tools": ["echo"],
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "forbidden_tools": [
+      "echo"
+    ],
     "exact_tool_set": true,
     "scripted_tool_calls": [
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "test_purpose": {
       "summary": "验证查事实路径禁止 echo 旁路",
       "why_this_case": "forbidden 旁路是工具选择失效信号",
-      "expected_behavior": ["只调 lookup_fact"],
-      "failure_signals": ["混入 echo"],
-      "not_testing": ["不测结果写入答案", "不测 live MCP"],
+      "expected_behavior": [
+        "只调 lookup_fact"
+      ],
+      "failure_signals": [
+        "混入 echo"
+      ],
+      "not_testing": [
+        "不测结果写入答案",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：forbidden_tool_used"
+    }
+  },
+  {
+    "case_id": "tool.tool_selection.006",
+    "capabilities": [
+      "tool_selection"
+    ],
+    "prompt": "把用户输入原文原样回显。 [v6]",
+    "expected_tools": [
+      "echo"
+    ],
+    "forbidden_tools": [
+      "lookup_fact"
+    ],
+    "exact_tool_set": true,
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "hello"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证仅选择 echo 完成回显，不调用 lookup_fact（扩容变体 6）",
+      "why_this_case": "Tool Subject A3 正例：单工具精确集合；bank thicken #6",
+      "expected_behavior": [
+        "调用 echo",
+        "不调用 lookup_fact"
+      ],
+      "failure_signals": [
+        "漏调 echo",
+        "误调 lookup_fact"
+      ],
+      "not_testing": [
+        "不测参数 schema",
+        "不测 live MCP"
+      ],
+      "oracle_rationale": "规则 oracle：tool_trace expected/forbidden + exact_tool_set"
+    }
+  },
+  {
+    "case_id": "tool.tool_selection.007",
+    "capabilities": [
+      "tool_selection"
+    ],
+    "prompt": "查 key=alpha 的事实值。 [v7]",
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "forbidden_tools": [
+      "echo"
+    ],
+    "exact_tool_set": true,
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证仅选择 lookup_fact 查事实，不调用 echo（扩容变体 7）",
+      "why_this_case": "A3 反向单工具集合，防回显工具误用；bank thicken #7",
+      "expected_behavior": [
+        "调用 lookup_fact",
+        "不调用 echo"
+      ],
+      "failure_signals": [
+        "漏调 lookup_fact",
+        "误调 echo"
+      ],
+      "not_testing": [
+        "不测参数值语义",
+        "不测 live MCP"
+      ],
+      "oracle_rationale": "规则 oracle：exact_tool_set=[lookup_fact]"
+    }
+  },
+  {
+    "case_id": "tool.tool_selection.008",
+    "capabilities": [
+      "tool_selection"
+    ],
+    "prompt": "先回显再查 alpha。 [v8]",
+    "expected_tools": [
+      "echo",
+      "lookup_fact"
+    ],
+    "exact_tool_set": true,
+    "expected_tool_order": [
+      "echo",
+      "lookup_fact"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "prep"
+        }
+      },
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证双工具精确集合并保持 echo→lookup 顺序（扩容变体 8）",
+      "why_this_case": "多工具顺序是常见回归点；bank thicken #8",
+      "expected_behavior": [
+        "两工具都调用",
+        "顺序 echo 在前"
+      ],
+      "failure_signals": [
+        "漏任一工具",
+        "顺序颠倒"
+      ],
+      "not_testing": [
+        "不测答案引用",
+        "不测 live MCP"
+      ],
+      "oracle_rationale": "规则 oracle：exact_tool_set + expected_tool_order"
     }
   }
 ]

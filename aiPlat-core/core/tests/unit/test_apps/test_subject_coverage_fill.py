@@ -45,7 +45,7 @@ def test_subject_scope_sets_differ_from_agent():
 def test_prompt_template_fill_tags_subject():
     out = generate_coverage_fill_candidates(
         profile_id="prompt.smoke.v1",
-        min_per_capability=8,
+        min_per_capability=9,
         method="template",
         seed="9",
     )

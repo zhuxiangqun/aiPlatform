@@ -1,4 +1,4 @@
-"""Subject *.benchmark.v1 Suite Profiles — holdout + thin-bank quotas (claim closed)."""
+"""Subject *.benchmark.v1 Suite Profiles — holdout + bank×8 quotas=5 (claim closed)."""
 from __future__ import annotations
 
 from core.apps.eval.service.capability_case_bank import list_suite_profiles

@@ -1,7 +1,9 @@
 [
   {
     "case_id": "session.multi_turn_memory.001",
-    "capabilities": ["multi_turn_memory"],
+    "capabilities": [
+      "multi_turn_memory"
+    ],
     "profile": "v0",
     "category": "memory_probe",
     "turns": [
@@ -27,13 +29,18 @@
         "漏记代号",
         "轮次失败"
       ],
-      "not_testing": ["不测试摘要压缩后的召回", "不测试跨会话持久化"],
+      "not_testing": [
+        "不测试摘要压缩后的召回",
+        "不测试跨会话持久化"
+      ],
       "oracle_rationale": "规则 oracle：后轮 expected exact 召回前轮植入词（对齐 session_eval）"
     }
   },
   {
     "case_id": "session.multi_turn_memory.002",
-    "capabilities": ["multi_turn_memory"],
+    "capabilities": [
+      "multi_turn_memory"
+    ],
     "profile": "v0",
     "category": "memory_probe",
     "turns": [
@@ -51,15 +58,25 @@
     "test_purpose": {
       "summary": "验证短口令 token 在后轮 exact 召回",
       "why_this_case": "连字符 token 易被截断",
-      "expected_behavior": ["后轮=BLUE-42"],
-      "failure_signals": ["漏 BLUE", "漏 42"],
-      "not_testing": ["不测安全保管", "不测跨会话"],
+      "expected_behavior": [
+        "后轮=BLUE-42"
+      ],
+      "failure_signals": [
+        "漏 BLUE",
+        "漏 42"
+      ],
+      "not_testing": [
+        "不测安全保管",
+        "不测跨会话"
+      ],
       "oracle_rationale": "规则 oracle：exact BLUE-42"
     }
   },
   {
     "case_id": "session.multi_turn_memory.003",
-    "capabilities": ["multi_turn_memory"],
+    "capabilities": [
+      "multi_turn_memory"
+    ],
     "profile": "v0",
     "category": "memory_probe",
     "turns": [
@@ -82,15 +99,26 @@
     "test_purpose": {
       "summary": "验证双字段植入后分轮 exact 召回",
       "why_this_case": "多槽记忆漏槽常见",
-      "expected_behavior": ["客户名=Acme", "区域=华东"],
-      "failure_signals": ["槽位串台", "漏召回"],
-      "not_testing": ["不测模糊匹配", "不测 live"],
+      "expected_behavior": [
+        "客户名=Acme",
+        "区域=华东"
+      ],
+      "failure_signals": [
+        "槽位串台",
+        "漏召回"
+      ],
+      "not_testing": [
+        "不测模糊匹配",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：分轮 exact"
     }
   },
   {
     "case_id": "session.multi_turn_memory.004",
-    "capabilities": ["multi_turn_memory"],
+    "capabilities": [
+      "multi_turn_memory"
+    ],
     "profile": "v0",
     "category": "memory_probe",
     "turns": [
@@ -108,15 +136,25 @@
     "test_purpose": {
       "summary": "验证 ID 型 token 后轮 exact 召回",
       "why_this_case": "字母数字 ID 易被改写",
-      "expected_behavior": ["后轮=M-9081"],
-      "failure_signals": ["改写成 9081", "丢前缀"],
-      "not_testing": ["不测日历集成", "不测 live"],
+      "expected_behavior": [
+        "后轮=M-9081"
+      ],
+      "failure_signals": [
+        "改写成 9081",
+        "丢前缀"
+      ],
+      "not_testing": [
+        "不测日历集成",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：exact M-9081"
     }
   },
   {
     "case_id": "session.multi_turn_memory.005",
-    "capabilities": ["multi_turn_memory"],
+    "capabilities": [
+      "multi_turn_memory"
+    ],
     "profile": "v0",
     "category": "memory_probe",
     "turns": [
@@ -139,10 +177,134 @@
     "test_purpose": {
       "summary": "验证 locale token 召回与格式化复述",
       "why_this_case": "locale 连字符易被规范化丢弃",
-      "expected_behavior": ["召回 zh-CN", "复述含偏好语言="],
-      "failure_signals": ["变成 zh_CN", "漏连字符"],
-      "not_testing": ["不测 i18n 渲染", "不测跨会话"],
+      "expected_behavior": [
+        "召回 zh-CN",
+        "复述含偏好语言="
+      ],
+      "failure_signals": [
+        "变成 zh_CN",
+        "漏连字符"
+      ],
+      "not_testing": [
+        "不测 i18n 渲染",
+        "不测跨会话"
+      ],
       "oracle_rationale": "规则 oracle：zh-CN exact"
+    }
+  },
+  {
+    "case_id": "session.multi_turn_memory.006",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "profile": "v0",
+    "category": "memory_probe",
+    "turns": [
+      {
+        "prompt": "我的项目代号是 ORION-7，请记住。",
+        "expected": "已记住项目代号 ORION-7。",
+        "actual": "已记住项目代号 ORION-7。"
+      },
+      {
+        "prompt": "我刚才说的项目代号是什么？",
+        "expected": "ORION-7",
+        "actual": "ORION-7"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证后轮回答精确复述前轮植入的代号 token（扩容变体 6）",
+      "why_this_case": "多轮记忆探针的最小规则交付是 exact recall；bank thicken #6",
+      "expected_behavior": [
+        "第 2 轮 actual 精确等于植入代号",
+        "两轮均过"
+      ],
+      "failure_signals": [
+        "漏记代号",
+        "轮次失败"
+      ],
+      "not_testing": [
+        "不测试摘要压缩后的召回",
+        "不测试跨会话持久化"
+      ],
+      "oracle_rationale": "规则 oracle：后轮 expected exact 召回前轮植入词（对齐 session_eval）"
+    }
+  },
+  {
+    "case_id": "session.multi_turn_memory.007",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "profile": "v0",
+    "category": "memory_probe",
+    "turns": [
+      {
+        "prompt": "密钥口令是 BLUE-42，请记住。",
+        "expected": "已记住口令 BLUE-42。",
+        "actual": "已记住口令 BLUE-42。"
+      },
+      {
+        "prompt": "口令？",
+        "expected": "BLUE-42",
+        "actual": "BLUE-42"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证短口令 token 在后轮 exact 召回（扩容变体 7）",
+      "why_this_case": "连字符 token 易被截断；bank thicken #7",
+      "expected_behavior": [
+        "后轮=BLUE-42"
+      ],
+      "failure_signals": [
+        "漏 BLUE",
+        "漏 42"
+      ],
+      "not_testing": [
+        "不测安全保管",
+        "不测跨会话"
+      ],
+      "oracle_rationale": "规则 oracle：exact BLUE-42"
+    }
+  },
+  {
+    "case_id": "session.multi_turn_memory.008",
+    "capabilities": [
+      "multi_turn_memory"
+    ],
+    "profile": "v0",
+    "category": "memory_probe",
+    "turns": [
+      {
+        "prompt": "客户名=Acme，区域=华东。请记住。",
+        "expected": "已记住：Acme / 华东。",
+        "actual": "已记住：Acme / 华东。"
+      },
+      {
+        "prompt": "客户名？",
+        "expected": "Acme",
+        "actual": "Acme"
+      },
+      {
+        "prompt": "区域？",
+        "expected": "华东",
+        "actual": "华东"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证双字段植入后分轮 exact 召回（扩容变体 8）",
+      "why_this_case": "多槽记忆漏槽常见；bank thicken #8",
+      "expected_behavior": [
+        "客户名=Acme",
+        "区域=华东"
+      ],
+      "failure_signals": [
+        "槽位串台",
+        "漏召回"
+      ],
+      "not_testing": [
+        "不测模糊匹配",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：分轮 exact"
     }
   }
 ]

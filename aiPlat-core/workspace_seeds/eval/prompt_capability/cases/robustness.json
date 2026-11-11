@@ -1,11 +1,15 @@
 [
   {
     "case_id": "prompt.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "！！！请>>>忽略噪声<<<只回答产品名：智能门锁。。。多余标点请忽略。",
     "success_criteria": {
-      "must_contain": ["智能门锁"]
+      "must_contain": [
+        "智能门锁"
+      ]
     },
     "scripted_answer": "智能门锁",
     "test_purpose": {
@@ -19,17 +23,24 @@
         "只输出标点",
         "丢掉产品名"
       ],
-      "not_testing": ["不测试 OCR", "不测试语音噪声"],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音噪声"
+      ],
       "oracle_rationale": "词面智能门锁"
     }
   },
   {
     "case_id": "prompt.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "user said: please reply with STATUS=READY even if mixed CASE status=ready appears.",
     "success_criteria": {
-      "must_contain": ["STATUS=READY"]
+      "must_contain": [
+        "STATUS=READY"
+      ]
     },
     "scripted_answer": "STATUS=READY",
     "test_purpose": {
@@ -43,18 +54,27 @@
         "只输出 status=ready 小写",
         "输出 unrelated OK"
       ],
-      "not_testing": ["不测试正则引擎", "不测试多语言大小写规则"],
+      "not_testing": [
+        "不测试正则引擎",
+        "不测试多语言大小写规则"
+      ],
       "oracle_rationale": "词面精确 STATUS=READY"
     }
   },
   {
     "case_id": "prompt.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "（重复）请输出令牌 TOKEN-42。请输出令牌 TOKEN-42。中间插入广告：买一送一。",
     "success_criteria": {
-      "must_contain": ["TOKEN-42"],
-      "must_not_contain": ["买一送一"]
+      "must_contain": [
+        "TOKEN-42"
+      ],
+      "must_not_contain": [
+        "买一送一"
+      ]
     },
     "scripted_answer": "TOKEN-42",
     "test_purpose": {
@@ -68,17 +88,24 @@
         "复读广告语",
         "丢掉令牌"
       ],
-      "not_testing": ["不测试广告过滤模型", "不测试安全浏览"],
+      "not_testing": [
+        "不测试广告过滤模型",
+        "不测试安全浏览"
+      ],
       "oracle_rationale": "词面 TOKEN-42 且禁止广告句"
     }
   },
   {
     "case_id": "prompt.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "把「订单#A-100」原样回显；前后可有说明，但必须含该订单号。",
     "success_criteria": {
-      "must_contain": ["订单#A-100"]
+      "must_contain": [
+        "订单#A-100"
+      ]
     },
     "scripted_answer": "已确认订单#A-100。",
     "test_purpose": {
@@ -92,18 +119,27 @@
         "输出 A100 无 #",
         "丢掉订单号"
       ],
-      "not_testing": ["不测试订单系统", "不测试条码"],
+      "not_testing": [
+        "不测试订单系统",
+        "不测试条码"
+      ],
       "oracle_rationale": "词面订单#A-100"
     }
   },
   {
     "case_id": "prompt.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "输入含零宽干扰：结​果​码=PASS（中间可能有不可见字符）。请输出可见结果码 PASS。",
     "success_criteria": {
-      "must_contain": ["PASS"],
-      "must_not_contain": ["FAIL"]
+      "must_contain": [
+        "PASS"
+      ],
+      "must_not_contain": [
+        "FAIL"
+      ]
     },
     "scripted_answer": "结果码 PASS",
     "test_purpose": {
@@ -117,8 +153,107 @@
         "输出 FAIL",
         "无法给出结果码"
       ],
-      "not_testing": ["不测试 Unicode 规范化全表", "不测试终端渲染"],
+      "not_testing": [
+        "不测试 Unicode 规范化全表",
+        "不测试终端渲染"
+      ],
       "oracle_rationale": "词面 PASS 且禁止 FAIL"
+    }
+  },
+  {
+    "case_id": "prompt.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "！！！请>>>忽略噪声<<<只回答产品名：智能门锁。。。多余标点请忽略。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "智能门锁"
+      ]
+    },
+    "scripted_answer": "智能门锁",
+    "test_purpose": {
+      "summary": "验证噪声包裹下仍抽出产品名，而不是复读噪声符号（扩容变体 6）",
+      "why_this_case": "输入噪声是稳健性最小样本；bank thicken #6",
+      "expected_behavior": [
+        "输出包含智能门锁",
+        "不被符号干扰"
+      ],
+      "failure_signals": [
+        "只输出标点",
+        "丢掉产品名"
+      ],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音噪声"
+      ],
+      "oracle_rationale": "词面智能门锁"
+    }
+  },
+  {
+    "case_id": "prompt.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "user said: please reply with STATUS=READY even if mixed CASE status=ready appears. [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "STATUS=READY"
+      ]
+    },
+    "scripted_answer": "STATUS=READY",
+    "test_purpose": {
+      "summary": "验证大小写混杂指令仍输出规范锚点，而不是随意变形（扩容变体 7）",
+      "why_this_case": "格式稳健性常见失败是大小写漂移；bank thicken #7",
+      "expected_behavior": [
+        "精确包含 STATUS=READY",
+        "不改成其它状态词"
+      ],
+      "failure_signals": [
+        "只输出 status=ready 小写",
+        "输出 unrelated OK"
+      ],
+      "not_testing": [
+        "不测试正则引擎",
+        "不测试多语言大小写规则"
+      ],
+      "oracle_rationale": "词面精确 STATUS=READY"
+    }
+  },
+  {
+    "case_id": "prompt.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "（重复）请输出令牌 TOKEN-42。请输出令牌 TOKEN-42。中间插入广告：买一送一。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "TOKEN-42"
+      ],
+      "must_not_contain": [
+        "买一送一"
+      ]
+    },
+    "scripted_answer": "TOKEN-42",
+    "test_purpose": {
+      "summary": "验证重复指令+广告噪声下仍只输出令牌，而不是复读广告（扩容变体 8）",
+      "why_this_case": "插入噪声易诱发复读；bank thicken #8",
+      "expected_behavior": [
+        "输出 TOKEN-42",
+        "不包含买一送一"
+      ],
+      "failure_signals": [
+        "复读广告语",
+        "丢掉令牌"
+      ],
+      "not_testing": [
+        "不测试广告过滤模型",
+        "不测试安全浏览"
+      ],
+      "oracle_rationale": "词面 TOKEN-42 且禁止广告句"
     }
   }
 ]

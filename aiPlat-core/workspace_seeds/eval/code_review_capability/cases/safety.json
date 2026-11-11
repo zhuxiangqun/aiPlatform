@@ -1,7 +1,9 @@
 [
   {
     "case_id": "code_review.safety.001",
-    "capabilities": ["safety"],
+    "capabilities": [
+      "safety"
+    ],
     "category": "security_gold",
     "prompt": "审查认证路径：标记明文密码日志与 SQL 注入。",
     "findings": [
@@ -19,46 +21,79 @@
         "SQL 注入与明文密码日志均出现在 findings",
         "集合与 gold 精确相等"
       ],
-      "failure_signals": ["漏报任一安全 finding", "多报无关项导致集合不等"],
-      "not_testing": ["不测试真实 redteam", "不测试动态执行"],
+      "failure_signals": [
+        "漏报任一安全 finding",
+        "多报无关项导致集合不等"
+      ],
+      "not_testing": [
+        "不测试真实 redteam",
+        "不测试动态执行"
+      ],
       "oracle_rationale": "规则 oracle：exact set match 对齐 code_review_gold"
     }
   },
   {
     "case_id": "code_review.safety.002",
-    "capabilities": ["safety"],
+    "capabilities": [
+      "safety"
+    ],
     "category": "security_gold",
     "prompt": "审查上传接口：标记路径穿越。",
-    "findings": ["app/upload.py:21:P0:path_traversal"],
-    "gold": ["app/upload.py:21:P0:path_traversal"],
+    "findings": [
+      "app/upload.py:21:P0:path_traversal"
+    ],
+    "gold": [
+      "app/upload.py:21:P0:path_traversal"
+    ],
     "test_purpose": {
       "summary": "验证路径穿越金标被命中",
       "why_this_case": "文件上传安全基线",
-      "expected_behavior": ["findings == gold"],
-      "failure_signals": ["漏报 path_traversal"],
-      "not_testing": ["不测试真实文件系统"],
+      "expected_behavior": [
+        "findings == gold"
+      ],
+      "failure_signals": [
+        "漏报 path_traversal"
+      ],
+      "not_testing": [
+        "不测试真实文件系统"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.safety.003",
-    "capabilities": ["safety"],
+    "capabilities": [
+      "safety"
+    ],
     "category": "security_gold",
     "prompt": "审查反序列化入口：标记 pickle 风险。",
-    "findings": ["app/jobs.py:55:P0:unsafe_deserialize"],
-    "gold": ["app/jobs.py:55:P0:unsafe_deserialize"],
+    "findings": [
+      "app/jobs.py:55:P0:unsafe_deserialize"
+    ],
+    "gold": [
+      "app/jobs.py:55:P0:unsafe_deserialize"
+    ],
     "test_purpose": {
       "summary": "验证不安全反序列化 finding 精确命中",
       "why_this_case": "反序列化是常见 P0",
-      "expected_behavior": ["仅含 unsafe_deserialize"],
-      "failure_signals": ["漏报", "误报其它类型"],
-      "not_testing": ["不测试实际 RCE"],
+      "expected_behavior": [
+        "仅含 unsafe_deserialize"
+      ],
+      "failure_signals": [
+        "漏报",
+        "误报其它类型"
+      ],
+      "not_testing": [
+        "不测试实际 RCE"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.safety.004",
-    "capabilities": ["safety"],
+    "capabilities": [
+      "safety"
+    ],
     "category": "security_gold",
     "prompt": "审查 SSRF 与开放重定向两处。",
     "findings": [
@@ -72,25 +107,133 @@
     "test_purpose": {
       "summary": "验证双安全金标全覆盖",
       "why_this_case": "多安全 finding 防漏半套",
-      "expected_behavior": ["ssrf 与 open_redirect 均命中"],
-      "failure_signals": ["只报其一"],
-      "not_testing": ["不测试网络出站"],
+      "expected_behavior": [
+        "ssrf 与 open_redirect 均命中"
+      ],
+      "failure_signals": [
+        "只报其一"
+      ],
+      "not_testing": [
+        "不测试网络出站"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.safety.005",
-    "capabilities": ["safety"],
+    "capabilities": [
+      "safety"
+    ],
     "category": "security_gold",
     "prompt": "审查 JWT 校验：标记算法混淆。",
-    "findings": ["app/jwt_util.py:8:P0:alg_confusion"],
-    "gold": ["app/jwt_util.py:8:P0:alg_confusion"],
+    "findings": [
+      "app/jwt_util.py:8:P0:alg_confusion"
+    ],
+    "gold": [
+      "app/jwt_util.py:8:P0:alg_confusion"
+    ],
     "test_purpose": {
       "summary": "验证 JWT 算法混淆金标命中",
       "why_this_case": "鉴权安全回归",
-      "expected_behavior": ["findings == gold"],
-      "failure_signals": ["漏报 alg_confusion"],
-      "not_testing": ["不测试密码学正确性证明"],
+      "expected_behavior": [
+        "findings == gold"
+      ],
+      "failure_signals": [
+        "漏报 alg_confusion"
+      ],
+      "not_testing": [
+        "不测试密码学正确性证明"
+      ],
+      "oracle_rationale": "规则 oracle：exact set match"
+    }
+  },
+  {
+    "case_id": "code_review.safety.006",
+    "capabilities": [
+      "safety"
+    ],
+    "category": "security_gold",
+    "prompt": "审查认证路径：标记明文密码日志与 SQL 注入。 [v6]",
+    "findings": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/auth.py:88:P1:password_log"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection",
+      "app/auth.py:88:P1:password_log"
+    ],
+    "test_purpose": {
+      "summary": "验证安全类 gold findings 被完整命中，而不是只报其一（扩容变体 6）",
+      "why_this_case": "安全审查最小回归是 P0/P1 金标全覆盖；bank thicken #6",
+      "expected_behavior": [
+        "SQL 注入与明文密码日志均出现在 findings",
+        "集合与 gold 精确相等"
+      ],
+      "failure_signals": [
+        "漏报任一安全 finding",
+        "多报无关项导致集合不等"
+      ],
+      "not_testing": [
+        "不测试真实 redteam",
+        "不测试动态执行"
+      ],
+      "oracle_rationale": "规则 oracle：exact set match 对齐 code_review_gold"
+    }
+  },
+  {
+    "case_id": "code_review.safety.007",
+    "capabilities": [
+      "safety"
+    ],
+    "category": "security_gold",
+    "prompt": "审查上传接口：标记路径穿越。 [v7]",
+    "findings": [
+      "app/upload.py:21:P0:path_traversal"
+    ],
+    "gold": [
+      "app/upload.py:21:P0:path_traversal"
+    ],
+    "test_purpose": {
+      "summary": "验证路径穿越金标被命中（扩容变体 7）",
+      "why_this_case": "文件上传安全基线；bank thicken #7",
+      "expected_behavior": [
+        "findings == gold"
+      ],
+      "failure_signals": [
+        "漏报 path_traversal"
+      ],
+      "not_testing": [
+        "不测试真实文件系统"
+      ],
+      "oracle_rationale": "规则 oracle：exact set match"
+    }
+  },
+  {
+    "case_id": "code_review.safety.008",
+    "capabilities": [
+      "safety"
+    ],
+    "category": "security_gold",
+    "prompt": "审查反序列化入口：标记 pickle 风险。 [v8]",
+    "findings": [
+      "app/jobs.py:55:P0:unsafe_deserialize"
+    ],
+    "gold": [
+      "app/jobs.py:55:P0:unsafe_deserialize"
+    ],
+    "test_purpose": {
+      "summary": "验证不安全反序列化 finding 精确命中（扩容变体 8）",
+      "why_this_case": "反序列化是常见 P0；bank thicken #8",
+      "expected_behavior": [
+        "仅含 unsafe_deserialize"
+      ],
+      "failure_signals": [
+        "漏报",
+        "误报其它类型"
+      ],
+      "not_testing": [
+        "不测试实际 RCE"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   }

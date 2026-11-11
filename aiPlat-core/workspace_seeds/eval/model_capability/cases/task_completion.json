@@ -1,82 +1,258 @@
 [
   {
     "case_id": "model.task_completion.001",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "normal",
     "prompt": "只输出数字：3+5=?",
-    "success_criteria": {"must_contain": ["8"]},
+    "success_criteria": {
+      "must_contain": [
+        "8"
+      ]
+    },
     "scripted_answer": "8",
     "test_purpose": {
       "summary": "验证基础算术问答能保留正确数字锚点，而不是空答或胡说",
       "why_this_case": "模型最小交付最常见失败是漏数字或格式漂移",
-      "expected_behavior": ["输出包含数字 8", "不附加无关长文掩盖答案"],
-      "failure_signals": ["输出缺 8", "输出其它算术结果"],
-      "not_testing": ["不测试真实模型 host", "不测试 token 计费"],
+      "expected_behavior": [
+        "输出包含数字 8",
+        "不附加无关长文掩盖答案"
+      ],
+      "failure_signals": [
+        "输出缺 8",
+        "输出其它算术结果"
+      ],
+      "not_testing": [
+        "不测试真实模型 host",
+        "不测试 token 计费"
+      ],
       "oracle_rationale": "词面 must_contain 8（对齐 model/basic）"
     }
   },
   {
     "case_id": "model.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "format",
     "prompt": "只输出 JSON：{\"ok\":true,\"n\":2}。不要解释。",
-    "success_criteria": {"must_contain": ["\"ok\"", "true", "2"]},
+    "success_criteria": {
+      "must_contain": [
+        "\"ok\"",
+        "true",
+        "2"
+      ]
+    },
     "scripted_answer": "{\"ok\":true,\"n\":2}",
     "test_purpose": {
       "summary": "验证格式约束任务保留 JSON 锚点，而不是散文解释",
       "why_this_case": "format_constraint 是模型常见回归点",
-      "expected_behavior": ["含 ok/true/2", "不淹没结构"],
-      "failure_signals": ["只输出自然语言", "缺字段"],
-      "not_testing": ["不测试严格 JSON Schema", "不测试 HTTP"],
+      "expected_behavior": [
+        "含 ok/true/2",
+        "不淹没结构"
+      ],
+      "failure_signals": [
+        "只输出自然语言",
+        "缺字段"
+      ],
+      "not_testing": [
+        "不测试严格 JSON Schema",
+        "不测试 HTTP"
+      ],
       "oracle_rationale": "词面 JSON 关键字段"
     }
   },
   {
     "case_id": "model.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "normal",
     "prompt": "把英文 Title=Door Lock 译成中文产品名并保留 Title。",
-    "success_criteria": {"must_contain": ["门锁", "Door Lock"]},
+    "success_criteria": {
+      "must_contain": [
+        "门锁",
+        "Door Lock"
+      ]
+    },
     "scripted_answer": "Title「Door Lock」= 门锁",
     "test_purpose": {
       "summary": "验证专名与译文同时保留，而不是丢掉原文 Title",
       "why_this_case": "术语锚点丢失常见",
-      "expected_behavior": ["含门锁", "保留 Door Lock"],
-      "failure_signals": ["丢掉 Door Lock", "全英无中文"],
-      "not_testing": ["不测试翻译质量分", "不测试术语库"],
+      "expected_behavior": [
+        "含门锁",
+        "保留 Door Lock"
+      ],
+      "failure_signals": [
+        "丢掉 Door Lock",
+        "全英无中文"
+      ],
+      "not_testing": [
+        "不测试翻译质量分",
+        "不测试术语库"
+      ],
       "oracle_rationale": "词面门锁 + Door Lock"
     }
   },
   {
     "case_id": "model.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "normal",
     "prompt": "列出三个质数：2,3,5。只输出这三个数字。",
-    "success_criteria": {"must_contain": ["2", "3", "5"]},
+    "success_criteria": {
+      "must_contain": [
+        "2",
+        "3",
+        "5"
+      ]
+    },
     "scripted_answer": "2,3,5",
     "test_purpose": {
       "summary": "验证枚举任务保留全部锚点，而不是漏项",
       "why_this_case": "短列表漏项是一致性失败",
-      "expected_behavior": ["含 2/3/5", "不换成其它质数集"],
-      "failure_signals": ["漏 5", "输出 4"],
-      "not_testing": ["不测试数论证明", "不测试长列表"],
+      "expected_behavior": [
+        "含 2/3/5",
+        "不换成其它质数集"
+      ],
+      "failure_signals": [
+        "漏 5",
+        "输出 4"
+      ],
+      "not_testing": [
+        "不测试数论证明",
+        "不测试长列表"
+      ],
       "oracle_rationale": "词面 2 3 5"
     }
   },
   {
     "case_id": "model.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "normal",
     "prompt": "错误码 E7 含义=超时。只输出含义词。",
-    "success_criteria": {"must_contain": ["超时"]},
+    "success_criteria": {
+      "must_contain": [
+        "超时"
+      ]
+    },
     "scripted_answer": "超时",
     "test_purpose": {
       "summary": "验证错误码映射保留官方语义，而不是编造",
       "why_this_case": "码义漂移伤害排障",
-      "expected_behavior": ["输出超时", "不换成其它故障"],
-      "failure_signals": ["输出网络断开等无关义", "忽略 E7"],
-      "not_testing": ["不测试真实遥测", "不测试工单"],
+      "expected_behavior": [
+        "输出超时",
+        "不换成其它故障"
+      ],
+      "failure_signals": [
+        "输出网络断开等无关义",
+        "忽略 E7"
+      ],
+      "not_testing": [
+        "不测试真实遥测",
+        "不测试工单"
+      ],
       "oracle_rationale": "词面超时"
+    }
+  },
+  {
+    "case_id": "model.task_completion.006",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "normal",
+    "prompt": "只输出数字：3+5=? [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "8"
+      ]
+    },
+    "scripted_answer": "8",
+    "test_purpose": {
+      "summary": "验证基础算术问答能保留正确数字锚点，而不是空答或胡说（扩容变体 6）",
+      "why_this_case": "模型最小交付最常见失败是漏数字或格式漂移；bank thicken #6",
+      "expected_behavior": [
+        "输出包含数字 8",
+        "不附加无关长文掩盖答案"
+      ],
+      "failure_signals": [
+        "输出缺 8",
+        "输出其它算术结果"
+      ],
+      "not_testing": [
+        "不测试真实模型 host",
+        "不测试 token 计费"
+      ],
+      "oracle_rationale": "词面 must_contain 8（对齐 model/basic）"
+    }
+  },
+  {
+    "case_id": "model.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "format",
+    "prompt": "只输出 JSON：{\"ok\":true,\"n\":2}。不要解释。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "\"ok\"",
+        "true",
+        "2"
+      ]
+    },
+    "scripted_answer": "{\"ok\":true,\"n\":2}",
+    "test_purpose": {
+      "summary": "验证格式约束任务保留 JSON 锚点，而不是散文解释（扩容变体 7）",
+      "why_this_case": "format_constraint 是模型常见回归点；bank thicken #7",
+      "expected_behavior": [
+        "含 ok/true/2",
+        "不淹没结构"
+      ],
+      "failure_signals": [
+        "只输出自然语言",
+        "缺字段"
+      ],
+      "not_testing": [
+        "不测试严格 JSON Schema",
+        "不测试 HTTP"
+      ],
+      "oracle_rationale": "词面 JSON 关键字段"
+    }
+  },
+  {
+    "case_id": "model.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "normal",
+    "prompt": "把英文 Title=Door Lock 译成中文产品名并保留 Title。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "门锁",
+        "Door Lock"
+      ]
+    },
+    "scripted_answer": "Title「Door Lock」= 门锁",
+    "test_purpose": {
+      "summary": "验证专名与译文同时保留，而不是丢掉原文 Title（扩容变体 8）",
+      "why_this_case": "术语锚点丢失常见；bank thicken #8",
+      "expected_behavior": [
+        "含门锁",
+        "保留 Door Lock"
+      ],
+      "failure_signals": [
+        "丢掉 Door Lock",
+        "全英无中文"
+      ],
+      "not_testing": [
+        "不测试翻译质量分",
+        "不测试术语库"
+      ],
+      "oracle_rationale": "词面门锁 + Door Lock"
     }
   }
 ]

@@ -1,7 +1,9 @@
 [
   {
     "case_id": "session.task_completion.001",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "profile": "v0",
     "category": "exact_match",
     "turns": [
@@ -28,13 +30,18 @@
         "任一轮不等",
         "轮次不足"
       ],
-      "not_testing": ["不测试长程记忆压缩", "不测试 live Agent 工具循环"],
+      "not_testing": [
+        "不测试长程记忆压缩",
+        "不测试 live Agent 工具循环"
+      ],
       "oracle_rationale": "规则 oracle：profile 内全轮 exact（对齐 package session_eval）"
     }
   },
   {
     "case_id": "session.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "profile": "v0",
     "category": "exact_match",
     "turns": [
@@ -57,15 +64,26 @@
     "test_purpose": {
       "summary": "验证三轮 exact 落在 v0 上界内完成任务",
       "why_this_case": "v0 允许到 3 轮，边界回归",
-      "expected_behavior": ["三轮全 exact", "轮次=3"],
-      "failure_signals": ["任一轮漂移", "轮次越界"],
-      "not_testing": ["不测 v1 长会话", "不测 live"],
+      "expected_behavior": [
+        "三轮全 exact",
+        "轮次=3"
+      ],
+      "failure_signals": [
+        "任一轮漂移",
+        "轮次越界"
+      ],
+      "not_testing": [
+        "不测 v1 长会话",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：v0 全轮 exact"
     }
   },
   {
     "case_id": "session.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "profile": "v0",
     "category": "format",
     "turns": [
@@ -83,15 +101,25 @@
     "test_purpose": {
       "summary": "验证多轮格式约束任务保留 JSON 锚点",
       "why_this_case": "格式漂移是多轮任务常见失败",
-      "expected_behavior": ["两轮均为指定 JSON"],
-      "failure_signals": ["掺解释文字", "字段改写"],
-      "not_testing": ["不测 Schema 校验器", "不测 live"],
+      "expected_behavior": [
+        "两轮均为指定 JSON"
+      ],
+      "failure_signals": [
+        "掺解释文字",
+        "字段改写"
+      ],
+      "not_testing": [
+        "不测 Schema 校验器",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：JSON 字符串 exact"
     }
   },
   {
     "case_id": "session.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "profile": "v0",
     "category": "exact_match",
     "turns": [
@@ -109,15 +137,26 @@
     "test_purpose": {
       "summary": "验证跨轮状态推进仍保持 exact 数字",
       "why_this_case": "计数一致性是任务完成最小探针",
-      "expected_behavior": ["第1轮=1", "第2轮=2"],
-      "failure_signals": ["跳数", "重置为0"],
-      "not_testing": ["不测并发", "不测持久化"],
+      "expected_behavior": [
+        "第1轮=1",
+        "第2轮=2"
+      ],
+      "failure_signals": [
+        "跳数",
+        "重置为0"
+      ],
+      "not_testing": [
+        "不测并发",
+        "不测持久化"
+      ],
       "oracle_rationale": "规则 oracle：数字 exact"
     }
   },
   {
     "case_id": "session.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "profile": "v0",
     "category": "exact_match",
     "turns": [
@@ -140,10 +179,134 @@
     "test_purpose": {
       "summary": "验证主题设定→查询→格式复述三轮 exact",
       "why_this_case": "短状态机任务完成路径",
-      "expected_behavior": ["三轮均 exact"],
-      "failure_signals": ["主题丢失", "格式漂移"],
-      "not_testing": ["不测多主题切换", "不测 live"],
+      "expected_behavior": [
+        "三轮均 exact"
+      ],
+      "failure_signals": [
+        "主题丢失",
+        "格式漂移"
+      ],
+      "not_testing": [
+        "不测多主题切换",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：三轮 exact"
+    }
+  },
+  {
+    "case_id": "session.task_completion.006",
+    "capabilities": [
+      "task_completion"
+    ],
+    "profile": "v0",
+    "category": "exact_match",
+    "turns": [
+      {
+        "prompt": "把「缺陷门禁」缩写记为 DG。",
+        "expected": "已记下：DG=缺陷门禁。",
+        "actual": "已记下：DG=缺陷门禁。"
+      },
+      {
+        "prompt": "复述刚才的缩写定义。",
+        "expected": "DG=缺陷门禁。",
+        "actual": "DG=缺陷门禁。"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证两轮 fixture 均按 expected 精确匹配，满足 v0 轮次下界（扩容变体 6）",
+      "why_this_case": "Session fixture 最小交付是多轮 exact 全过；bank thicken #6",
+      "expected_behavior": [
+        "每轮 actual == expected",
+        "轮次数落在 v0 的 2–3"
+      ],
+      "failure_signals": [
+        "缺 turns",
+        "任一轮不等",
+        "轮次不足"
+      ],
+      "not_testing": [
+        "不测试长程记忆压缩",
+        "不测试 live Agent 工具循环"
+      ],
+      "oracle_rationale": "规则 oracle：profile 内全轮 exact（对齐 package session_eval）"
+    }
+  },
+  {
+    "case_id": "session.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "profile": "v0",
+    "category": "exact_match",
+    "turns": [
+      {
+        "prompt": "状态码 OK 表示成功。请确认。",
+        "expected": "确认：OK=成功。",
+        "actual": "确认：OK=成功。"
+      },
+      {
+        "prompt": "OK 含义？",
+        "expected": "成功",
+        "actual": "成功"
+      },
+      {
+        "prompt": "用一句话复述定义。",
+        "expected": "OK 表示成功。",
+        "actual": "OK 表示成功。"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证三轮 exact 落在 v0 上界内完成任务（扩容变体 7）",
+      "why_this_case": "v0 允许到 3 轮，边界回归；bank thicken #7",
+      "expected_behavior": [
+        "三轮全 exact",
+        "轮次=3"
+      ],
+      "failure_signals": [
+        "任一轮漂移",
+        "轮次越界"
+      ],
+      "not_testing": [
+        "不测 v1 长会话",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：v0 全轮 exact"
+    }
+  },
+  {
+    "case_id": "session.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "profile": "v0",
+    "category": "format",
+    "turns": [
+      {
+        "prompt": "只输出 JSON：{\"step\":1}",
+        "expected": "{\"step\":1}",
+        "actual": "{\"step\":1}"
+      },
+      {
+        "prompt": "下一步输出 {\"step\":2}",
+        "expected": "{\"step\":2}",
+        "actual": "{\"step\":2}"
+      }
+    ],
+    "test_purpose": {
+      "summary": "验证多轮格式约束任务保留 JSON 锚点（扩容变体 8）",
+      "why_this_case": "格式漂移是多轮任务常见失败；bank thicken #8",
+      "expected_behavior": [
+        "两轮均为指定 JSON"
+      ],
+      "failure_signals": [
+        "掺解释文字",
+        "字段改写"
+      ],
+      "not_testing": [
+        "不测 Schema 校验器",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：JSON 字符串 exact"
     }
   }
 ]

@@ -1,82 +1,259 @@
 [
   {
     "case_id": "model.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "！！噪声！！只输出答案：42。。。忽略符号。",
-    "success_criteria": {"must_contain": ["42"]},
+    "success_criteria": {
+      "must_contain": [
+        "42"
+      ]
+    },
     "scripted_answer": "42",
     "test_purpose": {
       "summary": "验证噪声下仍抽出答案锚点",
       "why_this_case": "输入噪声是稳健性最小样本",
-      "expected_behavior": ["输出 42", "不被符号干扰"],
-      "failure_signals": ["只输出标点", "丢掉 42"],
-      "not_testing": ["不测试 OCR", "不测试语音"],
+      "expected_behavior": [
+        "输出 42",
+        "不被符号干扰"
+      ],
+      "failure_signals": [
+        "只输出标点",
+        "丢掉 42"
+      ],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音"
+      ],
       "oracle_rationale": "词面 42"
     }
   },
   {
     "case_id": "model.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "重复：输出 TOKEN-9。输出 TOKEN-9。中间广告：买一送一。",
-    "success_criteria": {"must_contain": ["TOKEN-9"], "must_not_contain": ["买一送一"]},
+    "success_criteria": {
+      "must_contain": [
+        "TOKEN-9"
+      ],
+      "must_not_contain": [
+        "买一送一"
+      ]
+    },
     "scripted_answer": "TOKEN-9",
     "test_purpose": {
       "summary": "验证重复+广告噪声下只输出令牌",
       "why_this_case": "复读广告是稳健性失败",
-      "expected_behavior": ["输出 TOKEN-9", "不含广告"],
-      "failure_signals": ["复读买一送一", "丢掉令牌"],
-      "not_testing": ["不测试广告过滤", "不测试多语言"],
+      "expected_behavior": [
+        "输出 TOKEN-9",
+        "不含广告"
+      ],
+      "failure_signals": [
+        "复读买一送一",
+        "丢掉令牌"
+      ],
+      "not_testing": [
+        "不测试广告过滤",
+        "不测试多语言"
+      ],
       "oracle_rationale": "词面 TOKEN-9 且禁止广告"
     }
   },
   {
     "case_id": "model.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "把「订单#M-77」原样回显。",
-    "success_criteria": {"must_contain": ["订单#M-77"]},
+    "success_criteria": {
+      "must_contain": [
+        "订单#M-77"
+      ]
+    },
     "scripted_answer": "订单#M-77",
     "test_purpose": {
       "summary": "验证特殊字符订单号不被清洗",
       "why_this_case": "标识符稳健性回归",
-      "expected_behavior": ["完整保留订单#M-77", "不改写分隔符"],
-      "failure_signals": ["输出 M77 无 #", "丢掉订单号"],
-      "not_testing": ["不测试订单系统", "不测试条码"],
+      "expected_behavior": [
+        "完整保留订单#M-77",
+        "不改写分隔符"
+      ],
+      "failure_signals": [
+        "输出 M77 无 #",
+        "丢掉订单号"
+      ],
+      "not_testing": [
+        "不测试订单系统",
+        "不测试条码"
+      ],
       "oracle_rationale": "词面订单#M-77"
     }
   },
   {
     "case_id": "model.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "请精确输出 STATUS=READY（忽略大小写干扰说明）。",
-    "success_criteria": {"must_contain": ["STATUS=READY"]},
+    "success_criteria": {
+      "must_contain": [
+        "STATUS=READY"
+      ]
+    },
     "scripted_answer": "STATUS=READY",
     "test_purpose": {
       "summary": "验证规范状态锚点不被大小写漂移",
       "why_this_case": "状态字面量漂移破坏契约",
-      "expected_behavior": ["精确 STATUS=READY", "不改成其它状态"],
-      "failure_signals": ["只输出 status=ready", "输出 OK"],
-      "not_testing": ["不测试正则引擎", "不测试本地化"],
+      "expected_behavior": [
+        "精确 STATUS=READY",
+        "不改成其它状态"
+      ],
+      "failure_signals": [
+        "只输出 status=ready",
+        "输出 OK"
+      ],
+      "not_testing": [
+        "不测试正则引擎",
+        "不测试本地化"
+      ],
       "oracle_rationale": "词面 STATUS=READY"
     }
   },
   {
     "case_id": "model.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "结果码输出 PASS；禁止 FAIL（忽略不可见字符干扰）。",
-    "success_criteria": {"must_contain": ["PASS"], "must_not_contain": ["FAIL"]},
+    "success_criteria": {
+      "must_contain": [
+        "PASS"
+      ],
+      "must_not_contain": [
+        "FAIL"
+      ]
+    },
     "scripted_answer": "PASS",
     "test_purpose": {
       "summary": "验证干扰下仍输出 PASS 且不含 FAIL",
       "why_this_case": "隐藏字符/噪声交叉点",
-      "expected_behavior": ["输出 PASS", "不输出 FAIL"],
-      "failure_signals": ["输出 FAIL", "无结果码"],
-      "not_testing": ["不测试 Unicode 全表", "不测试终端渲染"],
+      "expected_behavior": [
+        "输出 PASS",
+        "不输出 FAIL"
+      ],
+      "failure_signals": [
+        "输出 FAIL",
+        "无结果码"
+      ],
+      "not_testing": [
+        "不测试 Unicode 全表",
+        "不测试终端渲染"
+      ],
       "oracle_rationale": "词面 PASS 且禁止 FAIL"
+    }
+  },
+  {
+    "case_id": "model.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "！！噪声！！只输出答案：42。。。忽略符号。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "42"
+      ]
+    },
+    "scripted_answer": "42",
+    "test_purpose": {
+      "summary": "验证噪声下仍抽出答案锚点（扩容变体 6）",
+      "why_this_case": "输入噪声是稳健性最小样本；bank thicken #6",
+      "expected_behavior": [
+        "输出 42",
+        "不被符号干扰"
+      ],
+      "failure_signals": [
+        "只输出标点",
+        "丢掉 42"
+      ],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音"
+      ],
+      "oracle_rationale": "词面 42"
+    }
+  },
+  {
+    "case_id": "model.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "重复：输出 TOKEN-9。输出 TOKEN-9。中间广告：买一送一。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "TOKEN-9"
+      ],
+      "must_not_contain": [
+        "买一送一"
+      ]
+    },
+    "scripted_answer": "TOKEN-9",
+    "test_purpose": {
+      "summary": "验证重复+广告噪声下只输出令牌（扩容变体 7）",
+      "why_this_case": "复读广告是稳健性失败；bank thicken #7",
+      "expected_behavior": [
+        "输出 TOKEN-9",
+        "不含广告"
+      ],
+      "failure_signals": [
+        "复读买一送一",
+        "丢掉令牌"
+      ],
+      "not_testing": [
+        "不测试广告过滤",
+        "不测试多语言"
+      ],
+      "oracle_rationale": "词面 TOKEN-9 且禁止广告"
+    }
+  },
+  {
+    "case_id": "model.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "把「订单#M-77」原样回显。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "订单#M-77"
+      ]
+    },
+    "scripted_answer": "订单#M-77",
+    "test_purpose": {
+      "summary": "验证特殊字符订单号不被清洗（扩容变体 8）",
+      "why_this_case": "标识符稳健性回归；bank thicken #8",
+      "expected_behavior": [
+        "完整保留订单#M-77",
+        "不改写分隔符"
+      ],
+      "failure_signals": [
+        "输出 M77 无 #",
+        "丢掉订单号"
+      ],
+      "not_testing": [
+        "不测试订单系统",
+        "不测试条码"
+      ],
+      "oracle_rationale": "词面订单#M-77"
     }
   }
 ]
