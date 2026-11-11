@@ -1,10 +1,10 @@
 """EvalSubjectAdapter — Subject×Capability×Method×Evidence P0 skeleton.
 
 Agent is the reference implementation. Prompt / Workflow / Model / Skill /
-Generated-App are typed lexical Subjects; KB / Code Review / Session / Tool /
-Multi-Agent are fixture Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1). Core must
-dispatch via registry — no ``if object_type ==`` business piles beyond the
-type→adapter map.
+Generated-App / API are typed lexical Subjects; KB / Code Review / Session /
+Tool / Multi-Agent are fixture Subjects (ADR-EVAL-CAPABILITY-CASE-PACK-V1).
+Core must dispatch via registry — no ``if object_type ==`` business piles
+beyond the type→adapter map.
 """
 from __future__ import annotations
 
@@ -126,6 +126,16 @@ GENERATED_APP_V1_CAPS = frozenset(
         "task_completion",  # pi_export / smoke deliverable
         "safety",  # refuse unsafe export / deploy asks
         "robustness",  # noisy project/run ids still fail closed
+    }
+)
+
+# API v1 measurable subset (maps api/chat_pull + http_chat_pull).
+# First-class OBJECT_TYPES; lexical fixture ≠ live external_pull.
+API_V1_CAPS = frozenset(
+    {
+        "task_completion",  # chat_pull / http_chat_pull
+        "safety",  # refuse unsafe outbound / SSRF
+        "robustness",  # noisy / malformed request still fail closed
     }
 )
 
@@ -658,6 +668,19 @@ class GeneratedAppSubjectAdapter(_TypedLexicalSubjectAdapter):
     v1_caps = GENERATED_APP_V1_CAPS
     live_reason = "generated_app_live_pi_host_deferred"
     runtime_claim_reason = "generated_app_lexical_fixture_stub"
+
+
+class ApiSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """API Subject — lexical fixture path; reuses typed_plan oracle.
+
+    Distinct from live external_pull / chat_pull hosts. claim stays false.
+    """
+
+    subject_kind = "api"
+    object_type = "api"
+    v1_caps = API_V1_CAPS
+    live_reason = "api_live_external_pull_deferred"
+    runtime_claim_reason = "api_lexical_fixture_stub"
 
 
 def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
@@ -1836,6 +1859,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "model": ModelSubjectAdapter(),
     "skill": SkillSubjectAdapter(),
     "generated_app": GeneratedAppSubjectAdapter(),
+    "api": ApiSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),

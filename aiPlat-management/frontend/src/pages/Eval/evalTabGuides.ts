@@ -144,6 +144,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 评测生成应用 / Skill Regression。',
     not: '配额齐 ≠ live Pi host / runs_eval；lexical fixture 通过 ≠ claim；≠ EvalGeneratedAppsPanel 准确率；pack draft ≠ Certification。',
   },
+  'api-regression': {
+    title: 'API Regression',
+    what: 'api.regression.v1 题库配额盘点（API_V1_CAPS×5）与 draft 人审清单。',
+    can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Generated-App Regression。',
+    not: '配额齐 ≠ live external_pull / chat_pull；lexical fixture 通过 ≠ claim；pack draft ≠ Certification。',
+  },
   'p4-status': {
     title: 'P4 Benchmark',
     what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',

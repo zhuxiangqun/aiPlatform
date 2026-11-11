@@ -1,0 +1,12 @@
+{
+  "schema": "eval.case_pack.v1",
+  "pack_id": "api.capability",
+  "version": "0.2.0",
+  "kind": "curated",
+  "status": "draft",
+  "claim_eligible": false,
+  "scope": "global",
+  "subject_kinds": ["api"],
+  "object_types": ["api"],
+  "notes": "API Subject capability bank (ADR after Generated-App). First-class OBJECT_TYPES. Lexical fixture via ApiSubjectAdapter; ≠ live external_pull / chat_pull. Regression quotas API_V1_CAPS×5."
+}
