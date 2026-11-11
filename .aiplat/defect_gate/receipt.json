@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T10:13:41+08:00",
+  "reviewed_at": "2026-11-11T10:22:23+08:00",
   "base_ref": "origin/main",
   "merge_base": "358b08dbe8bf2b1c2ddab56233bcee4e62ffe6d0",
-  "diff_sha256": "39831699f154c967a02e816afe2059985015834e4649a32372a8b7e64f9bf801",
-  "head_sha": "9df25184d33736ae996539b244c985778e0e08af",
+  "diff_sha256": "5f8fe0ad59fb358a9723323bbed2389137e784272ee161532ebd894d300fe307",
+  "head_sha": "6d06e194714ed6b732303b257c8ac8ebe27ac54b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject capability promote additive; claim stays false; seeds normalize to Case Pack rubric. Local lock only."
+  "note": "Subject promote + run_id clause-sync; claim stays false. Local lock only."
 }
