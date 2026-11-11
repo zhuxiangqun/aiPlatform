@@ -39,10 +39,32 @@ class SubjectCapabilityPromoteError(ValueError):
     """Promote failed (fail closed)."""
 
 
+def _case_prompt_text(raw: Mapping[str, Any]) -> str:
+    """Derive Case Pack prompt from Subject seed shapes (prompt/query/turns)."""
+    for key in ("prompt", "user_input", "query", "question"):
+        text = str(raw.get(key) or "").strip()
+        if text:
+            return text
+    turns = raw.get("turns")
+    if isinstance(turns, list):
+        for turn in turns:
+            if not isinstance(turn, Mapping):
+                continue
+            text = str(
+                turn.get("prompt")
+                or turn.get("user_input")
+                or turn.get("content")
+                or ""
+            ).strip()
+            if text:
+                return text
+    return ""
+
+
 def _normalize_for_case_pack(raw: Mapping[str, Any]) -> Dict[str, Any]:
     """Map Subject seed case → Case Pack required fields (rubric/category/prompt)."""
     c = dict(raw)
-    prompt = str(c.get("prompt") or c.get("user_input") or "").strip()
+    prompt = _case_prompt_text(c)
     if not prompt:
         raise SubjectCapabilityPromoteError(
             f"case {c.get('case_id')!r} missing prompt"
@@ -810,5 +832,53 @@ def promote_subject_capability_bank(
             f"frozen curated {kind} bank from seed cases/*.json; "
             "claim_eligible=false; accuracy_claim closed; "
             "content_purpose_ok gated before purpose_ok stamp/freeze"
+        ),
+    }
+
+
+def promote_all_subject_capability_banks(
+    *,
+    workspace_id: str,
+    reviewer: str = "owner",
+    frozen_by: str = "",
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Promote every promotable Subject seed bank into one workspace (claim=false)."""
+    wid = str(workspace_id or "").strip()
+    if not wid:
+        raise SubjectCapabilityPromoteError("workspace_id required")
+    who = str(reviewer or frozen_by or "owner").strip() or "owner"
+    caller = str(caller_workspace_id or wid).strip() or wid
+    rows: List[Dict[str, Any]] = []
+    errors: List[Dict[str, str]] = []
+    for kind in list_promotable_subject_kinds():
+        try:
+            rows.append(
+                promote_subject_capability_bank(
+                    subject_kind=kind,
+                    workspace_id=wid,
+                    reviewer=who,
+                    frozen_by=str(frozen_by or who),
+                    caller_workspace_id=caller,
+                    notes=str(notes or f"batch promote {kind}"),
+                )
+            )
+        except SubjectCapabilityPromoteError as exc:
+            errors.append({"subject_kind": kind, "error": str(exc)})
+    return {
+        "schema": PROMOTE_SCHEMA + ".inventory",
+        "ok": not errors,
+        "workspace_id": wid,
+        "n_subjects": len(rows),
+        "n_errors": len(errors),
+        "subjects": rows,
+        "errors": errors,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "certification_eligible": False,
+        "honesty": (
+            "Workspace Case Pack promote inventory only; "
+            "claim/Certification stay closed"
         ),
     }

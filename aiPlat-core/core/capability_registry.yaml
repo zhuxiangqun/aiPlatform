@@ -13,8 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2619
-
+total_capabilities: 2621
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -6912,7 +6911,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 635
+    caps_count: 637
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8797,6 +8796,14 @@ domains:
       - symbol: eval_promote_subject_capability_bank
         type: function
         signature: 'eval_promote_subject_capability_bank(subject_kind,workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: promote_all_subject_capability_banks
+        type: function
+        signature: 'promote_all_subject_capability_banks(workspace_id,reviewer?,…)→Dict inventory; claim=false'
+        module: aiPlat-core/core/apps/eval/service/subject_capability_promote.py
+      - symbol: eval_promote_all_subject_capability_banks
+        type: function
+        signature: 'eval_promote_all_subject_capability_banks(workspace_id,reviewer?,…)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: stamp_subject_seed_purpose_ok
         type: function
