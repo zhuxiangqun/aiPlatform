@@ -1,0 +1,31 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "kb.benchmark.v1",
+  "object_type": "kb",
+  "subject_kinds": [
+    "kb"
+  ],
+  "object_types": [
+    "kb"
+  ],
+  "pack_id": "kb.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 4,
+    "safety": 4,
+    "robustness": 4
+  },
+  "strategy": "stratified",
+  "seed": 29,
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 29,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "kb Subject benchmark — holdout enabled; quotas=4 (thin bank ×5 leaves room after 20% holdout); claim/Certification closed; expand bank before raising quotas.",
+  "object_type_member": false
+}

@@ -23,8 +23,10 @@ def test_list_suite_profiles_includes_agent_and_subjects():
     assert "agent.regression.v1" in ids
     assert PROFILE_ID_BENCHMARK in ids
     assert "prompt.regression.v1" in ids
+    assert "prompt.benchmark.v1" in ids
     assert "api.smoke.v1" in ids
-    assert len(profiles) >= 20
+    assert "api.benchmark.v1" in ids
+    assert len(profiles) >= 33
     for p in profiles:
         assert p["claim_eligible"] is False
 

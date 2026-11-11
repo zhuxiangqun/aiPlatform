@@ -682,7 +682,7 @@ scan_hash: 8f9548ec24f4
 | subject_regression_inventory + EvalSubjectRegressionInventoryPanel | `subject_regression_inventory.py` + `eval_subject_regression_inventory` + GET …/store/subject-regression-inventory + EvalSubjectRegressionInventoryPanel | ✅ | 跨 Subject regression 诚实总览（9 OBJECT_TYPES + Subject-local）；claim=false；Method 轨排除；生成物适用：不适用（管理端 UI） | 本批 |
 | promote_subject_capability_bank + list_promotable_subject_kinds | `subject_capability_promote.py` + `eval_promote_subject_capability_bank` + POST …/case-packs/promote-subject-capability | ✅ | 任意 Subject 种子题库 purpose_ok→freeze（工作区 registry）；归一化 rubric；claim=false；agent 委托既有 promote；生成物适用：已接线 | 本批 |
 | content_purpose_ok audit + promote gate | `content_purpose_ok.py` + `eval_content_purpose_ok_*` + GET …/store/content-purpose-ok | ✅ | ADR P1 内容级 purpose 机审（oracle/prompt/test_purpose）；promote 前 fail-closed；inventory 展示 ready；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
-| subject_suite_profiles + cross-Subject compile | `subject_suite_profiles.py` + suite_profile_compile + GET …/store/subject-suite-profiles | ✅ | ADR P2：发现/归一化各 Subject smoke|regression Profile；compile 按 subject_kind 选题+契约；content_purpose_ok 门；claim=false；生成物适用：已接线 | 本批 |
+| subject_suite_profiles + cross-Subject compile | `subject_suite_profiles.py` + suite_profile_compile + GET …/store/subject-suite-profiles | ✅ | ADR P2/P4：发现/归一化各 Subject smoke|regression|benchmark Profile（含 holdout）；compile 按 subject_kind 选题+契约；content_purpose_ok 门；claim=false；生成物适用：已接线 | 本批 |
 | Subject-aware suite_profile_exam | `suite_profile_exam.py` + `eval_run_suite_profile_exam` | ✅ | ADR P2 闭环：按 Profile 加载匹配 Subject 题库执行 sample_manifest；scripted/dry；披露 subject_kind；claim=false；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
@@ -729,7 +729,7 @@ scan_hash: 8f9548ec24f4
 | eval_fill_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 覆盖补题；生成物适用：已接线 | 已合入 |
 | agent_smoke_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Smoke Profile；生成物适用：已接线 | 已合入 |
 | agent_benchmark_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | P4 Benchmark+holdout Profile；生成物适用：已接线 | 已合入 |
-| list_suite_profiles | `core/apps/eval/service/capability_case_bank.py` | ✅ | smoke/regression/benchmark 列表；生成物适用：已接线 | 已合入 |
+| list_suite_profiles | `core/apps/eval/service/capability_case_bank.py` | ✅ | agent+各 Subject smoke/regression/benchmark 列表；生成物适用：已接线 | 已合入 |
 | get_suite_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | 按 profile_id 解析；生成物适用：已接线 | 已合入 |
 | apply_profile_holdout | `core/apps/eval/service/suite_profile_compile.py` | ✅ | Profile holdout 分割；生成物适用：已接线 | 已合入 |
 | evaluate_judge_calibration_gate | `core/apps/eval/service/capability_p4_gate.py` | ✅ | P4 judge 一致率门（report-only）；生成物适用：已接线 | 已合入 |

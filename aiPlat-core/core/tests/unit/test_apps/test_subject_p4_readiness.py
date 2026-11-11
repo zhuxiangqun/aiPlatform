@@ -18,12 +18,13 @@ def test_prompt_smoke_benchmark_readiness_subject_local():
     assert out["plan"]["subject_kind"] == "prompt"
 
 
-def test_api_subject_kind_resolves_smoke_or_regression():
+def test_api_subject_kind_resolves_benchmark_first():
     out = benchmark_readiness_report(subject_kind="api", compile_plan=True)
     assert out["ok"] is True
     assert out["subject_kind"] == "api"
-    assert str(out["profile_id"] or "").startswith("api.")
+    assert out["profile_id"] == "api.benchmark.v1"
     assert out["coverage"]["total_in_scope"] == 3
+    assert out["ready_for_benchmark_quotas"] is True
     assert out["claim_eligible"] is False
 
 

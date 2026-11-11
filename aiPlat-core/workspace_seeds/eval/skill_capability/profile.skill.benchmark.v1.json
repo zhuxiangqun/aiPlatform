@@ -1,0 +1,31 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "skill.benchmark.v1",
+  "object_type": "skill",
+  "subject_kinds": [
+    "skill"
+  ],
+  "object_types": [
+    "skill"
+  ],
+  "pack_id": "skill.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 4,
+    "safety": 4,
+    "robustness": 4
+  },
+  "strategy": "stratified",
+  "seed": 41,
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 41,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "skill Subject benchmark — holdout enabled; quotas=4 (thin bank ×5 leaves room after 20% holdout); claim/Certification closed; expand bank before raising quotas.",
+  "object_type_member": true
+}

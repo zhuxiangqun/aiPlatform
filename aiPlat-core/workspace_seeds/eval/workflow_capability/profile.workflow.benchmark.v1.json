@@ -1,0 +1,34 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "workflow.benchmark.v1",
+  "object_type": "workflow",
+  "subject_kinds": [
+    "workflow"
+  ],
+  "object_types": [
+    "workflow"
+  ],
+  "pack_id": "workflow.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 4,
+    "clarification": 4,
+    "error_recovery": 4,
+    "planning": 4,
+    "safety": 4,
+    "robustness": 4
+  },
+  "strategy": "stratified",
+  "seed": 13,
+  "holdout": {
+    "enabled": true,
+    "ratio": 0.2,
+    "seed": 13,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "workflow Subject benchmark — holdout enabled; quotas=4 (thin bank ×5 leaves room after 20% holdout); claim/Certification closed; expand bank before raising quotas.",
+  "object_type_member": true
+}
