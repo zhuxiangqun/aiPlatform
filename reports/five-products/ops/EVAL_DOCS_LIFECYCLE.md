@@ -5,7 +5,7 @@ doc_type: Report
 # Evaluation 文档生命周期（收口）
 
 > **生效**：2026-11-06  
-> **导航入口**：[`modules/evaluation/README.md`](../modules/evaluation/README.md)  
+> **导航入口**：[`modules/evaluation/README.md`](../../../docs/products/five-products/modules/evaluation/README.md)  
 > **原则**：现行定义少而稳；收口凭证进 archive；不解冻/过程纸不再当产品说明。
 
 ## 状态标签
@@ -21,9 +21,9 @@ doc_type: Report
 
 | 文档 | 角色 |
 |------|------|
-| [`modules/evaluation/README.md`](../modules/evaluation/README.md) | **唯一导航入口** |
-| [`modules/evaluation/MODULE.md`](../modules/evaluation/MODULE.md) | 模块边界 |
-| [`modules/evaluation/EVAL_PROTOCOL.md`](../modules/evaluation/EVAL_PROTOCOL.md) | 协议 |
+| [`modules/evaluation/README.md`](../../../docs/products/five-products/modules/evaluation/README.md) | **唯一导航入口** |
+| [`modules/evaluation/MODULE.md`](../../../docs/products/five-products/modules/evaluation/MODULE.md) | 模块边界 |
+| [`modules/evaluation/EVAL_PROTOCOL.md`](../../../docs/products/five-products/modules/evaluation/EVAL_PROTOCOL.md) | 协议 |
 | [`EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md) | 产品评审基线 |
 | [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) | 改进轨道计划 |
 | [`EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md`](./EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md) | 本机优先策略 |

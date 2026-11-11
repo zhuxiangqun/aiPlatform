@@ -36,7 +36,7 @@ doc_type: Report
 ## C0 出口条件
 
 - [x] 20–30 个 seed case + 根因标签 → [`DIAGNOSIS_V1_C0_SEED_CASES.md`](./DIAGNOSIS_V1_C0_SEED_CASES.md)（25；**synthetic** + fixture 计划）
-- [x] Evidence schema v0 → [`../modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json`](../modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json)
+- [x] Evidence schema v0 → [`../modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json`](../../../docs/products/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json)
 - [x] API/UI 设计稿 → [`DIAGNOSIS_V1_C0_API_UI_DESIGN.md`](./DIAGNOSIS_V1_C0_API_UI_DESIGN.md)（含 auth/tenant/error/retention/unknown·stale）
 - [x] manifest/module/apps.yaml 更新提案 → [`DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md`](./DIAGNOSIS_V1_C0_MANIFEST_PROPOSAL.md)（**真实 list/map 形状**；现状 A0；目标 A2/D1c）
 - [x] Validator：jsonschema 正/负样例（`accuracy_claim=false` 强制）

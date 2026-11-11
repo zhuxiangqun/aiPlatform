@@ -5,8 +5,8 @@ doc_type: Report
 # Diagnosis module（第六能力 · C1–C3）
 
 > **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）  
-> **Charter**：[`diagnosis-v1-charter.md`](../../../../docs/architecture/plans/diagnosis-v1-charter.md)  
-> **解冻 / 出口**：[`C1`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) · [`C2 closeout`](../../ops/DIAGNOSIS_V1_C2_CLOSEOUT.md) · [`C3`](../../ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md)
+> **Charter**：[`diagnosis-v1-charter.md`](../../../../architecture/plans/diagnosis-v1-charter.md)  
+> **解冻 / 出口**：[`C1`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../../../../reports/five-products/ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) · [`C2 closeout`](../../../../../reports/five-products/ops/DIAGNOSIS_V1_C2_CLOSEOUT.md) · [`C3`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md)
 
 ## 定位
 
@@ -21,7 +21,7 @@ doc_type: Report
 ## 契约 / 代码
 
 - Evidence / Report schema：[`contracts/schemas/diagnosis_evidence.schema.json`](./contracts/schemas/diagnosis_evidence.schema.json)
-- Seed cases：[`../../ops/DIAGNOSIS_V1_C0_SEED_CASES.md`](../../ops/DIAGNOSIS_V1_C0_SEED_CASES.md)
+- Seed cases：[`../../ops/DIAGNOSIS_V1_C0_SEED_CASES.md`](../../../../../reports/five-products/ops/DIAGNOSIS_V1_C0_SEED_CASES.md)
 - Fixtures：`packages/aiplat-diagnosis/fixtures/`（≥10 脱敏真实包）
 - API：`/api/platform/apps/diagnosis`（`aiPlat-platform/apps/diagnosis`）
 - Service：`aiPlat-core/core/apps/diagnosis/service/`

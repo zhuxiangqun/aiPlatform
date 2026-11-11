@@ -85,7 +85,7 @@ See [`ONTOLOGY_API.md`](./ONTOLOGY_API.md).
 | Scope | `docs/D2_COHOST.md` · `SECURITY.md` · `PERF_BASELINE.md` |
 | Baseline | `security/baseline.yaml` · `scripts/d2_admin_check.sh` |
 | Upgrade / rollback | `d1_upgrade.sh` · `d1_rollback.sh --runtime` |
-| Closeout | `scripts/d2_local_closeout.sh` · [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](../../ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) |
+| Closeout | `scripts/d2_local_closeout.sh` · [`ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md`](../../../../../reports/five-products/ops/ONTOLOGY_D2_LOCAL_CLOSEOUT.md) |
 
 `current_delivery` 仍为 **D1**（D1c）；`process_split_authorized=false`。
 

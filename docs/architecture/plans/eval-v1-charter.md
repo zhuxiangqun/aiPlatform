@@ -9,7 +9,7 @@ doc_type: Architecture
 > **范围**：Evaluation 产品 v1（本地工程 + 产品设计）；不含 A3 进程拆分、生产 staging/authorize/SLA  
 > **解冻**：[`ENGINEERING_UNFREEZE_EVAL_V1.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md)  
 > **上游计划**：[`five-capability-independent-engineering-plan.md`](./five-capability-independent-engineering-plan.md) V2.2  
-> **现状**：[`STATUS.md`](../../../reports/five-products/STATUS.md) · [`MODULE.md`](../../../reports/five-products/modules/evaluation/MODULE.md)  
+> **现状**：[`STATUS.md`](../../../reports/five-products/STATUS.md) · [`MODULE.md`](../../../docs/products/five-products/modules/evaluation/MODULE.md)  
 > **本文件不是**：实施记录；不代表 `process_split` / `staging_ready` / `production_signed` 解冻。
 
 ---

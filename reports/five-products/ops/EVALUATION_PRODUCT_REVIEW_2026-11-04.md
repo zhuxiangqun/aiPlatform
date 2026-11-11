@@ -9,7 +9,7 @@ doc_type: Report
 > **用途**：供后续版本复评、发布门禁和产品范围讨论时逐项对照  
 > **总体判断**：工程基础和证据治理较强；评测效度、跨对象可比性、高级能力评测及发布一致性仍需收口。  
 > **强制边界**：`accuracy_claim=false`；`process_split_authorized=false`；评测报告不替代安全认证、FDE 客户签收或生产拆分授权。  
-> **文档入口**：[`../modules/evaluation/README.md`](../modules/evaluation/README.md) · 生命周期 [`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)（CLOSEOUT 等已迁 `_archive/eval-receipts/`）。
+> **文档入口**：[`../modules/evaluation/README.md`](../../../docs/products/five-products/modules/evaluation/README.md) · 生命周期 [`EVAL_DOCS_LIFECYCLE.md`](./EVAL_DOCS_LIFECYCLE.md)（CLOSEOUT 等已迁 `_archive/eval-receipts/`）。
 
 ---
 
@@ -50,7 +50,7 @@ Evaluation 面向 aiPlat 产物提供评测、比较、复核、门禁和证据�
 
 首版包括 Agent/Skill/Prompt/KB/Arena/Code Review、有限多轮 Session、人类 Preference/G2b、最小 PII/合规检查、S1 安全指标、延迟/成本等。首版明确排除或未承诺：任意第三方 HTTP/CLI 程序端到端、完整红队、live skill tools/microVM 执行、企业级全量数据驻留策略、RLHF 生产训练闭环、多区域生产拓扑。
 
-参考：[首版范围](../../../packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md) · [产品根](../../../packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md) · [Evaluation 模块说明](../modules/evaluation/MODULE.md)
+参考：[首版范围](../../../packages/aiplat-evaluation/docs/a3/SCORE_SCOPE_V1.md) · [产品根](../../../packages/aiplat-evaluation/docs/a3/PRODUCT_ROOT_V1.md) · [Evaluation 模块说明](../../../docs/products/five-products/modules/evaluation/MODULE.md)
 
 ## 3. 评分轴与当前成熟度
 
@@ -171,7 +171,7 @@ aiPlat 其他模块有上下文管理、记忆和自学习机制，但不能由�
 - 默认交付仍为 D1c/cohost；生产独立服务、staging、生产 SLO/灾备均不能由本地 closeout 推定。
 - 评测报告不是 FDE 客户签收；FDE 仍是签收真源。
 
-参考：[平台 router](../../../aiPlat-platform/apps/eval/api/router.py) · [standalone store routes](../../../packages/aiplat-evaluation/app/api/store_routes.py) · [模块说明](../modules/evaluation/MODULE.md) · [D2 cohost](../../../packages/aiplat-evaluation/docs/D2_COHOST.md) · [拆分清单](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)
+参考：[平台 router](../../../aiPlat-platform/apps/eval/api/router.py) · [standalone store routes](../../../packages/aiplat-evaluation/app/api/store_routes.py) · [模块说明](../../../docs/products/five-products/modules/evaluation/MODULE.md) · [D2 cohost](../../../packages/aiplat-evaluation/docs/D2_COHOST.md) · [拆分清单](../../../packages/aiplat-evaluation/docs/a3/SPLIT_CHECKLIST.md)
 
 ## 9. 风险排序
 

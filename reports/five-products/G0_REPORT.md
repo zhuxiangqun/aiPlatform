@@ -57,7 +57,7 @@ doc_type: Report
 | P0-12 | `templates/module/runbooks/*` |
 | P0-13 | [`FLAKE_POLICY.md`](./FLAKE_POLICY.md) |
 | P0-14 | `ADR-DRAFT-*`（**非 Accepted**；diagnosis→evaluation 叙事） |
-| P0-15′ | 五 charter：[`modules/*/MODULE.md`](./modules/) + `module.yaml` |
+| P0-15′ | 五 charter：[`modules/*/MODULE.md`](../../docs/products/five-products/modules/) + `module.yaml` |
 
 ---
 

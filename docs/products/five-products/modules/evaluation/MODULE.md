@@ -5,7 +5,7 @@ doc_type: Report
 # MODULE.md — Evaluation Service
 
 > Status: **A2 + D1 Thin (D1c/cohost) + D2 ops pack** · A3 **Accepted（有条件）** · Owner: platform · Deploy unit: **Central**  
-> **文档入口**：先读 [`README.md`](./README.md)（现行权威 vs 历史收口）。生命周期：[`../../ops/EVAL_DOCS_LIFECYCLE.md`](../../ops/EVAL_DOCS_LIFECYCLE.md)。
+> **文档入口**：先读 [`README.md`](./README.md)（现行权威 vs 历史收口）。生命周期：[`../../../../../reports/five-products/ops/EVAL_DOCS_LIFECYCLE.md`](../../../../../reports/five-products/ops/EVAL_DOCS_LIFECYCLE.md)。
 
 ## Scope
 
@@ -89,7 +89,7 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | Scope | `docs/D2_COHOST.md` · `SECURITY.md` · `PERF_BASELINE.md` |
 | Baseline | `security/baseline.yaml` · `scripts/d2_admin_check.sh` |
 | Upgrade / rollback | `d1_upgrade.sh` · `d1_rollback.sh --runtime` |
-| Closeout | `scripts/d2_local_closeout.sh` · [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](../../ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) |
+| Closeout | `scripts/d2_local_closeout.sh` · [`ops/EVALUATION_D2_LOCAL_CLOSEOUT.md`](../../../../../reports/five-products/ops/EVALUATION_D2_LOCAL_CLOSEOUT.md) |
 
 `current_delivery` 仍为 **D1**（D1c）；`process_split_authorized=false`。
 
@@ -106,7 +106,7 @@ A3 process/DB split **forbidden** without ADR Accepted + `process_split_authoriz
 
 ## EVAL_V1 E7
 
-- Charter E7 **PASS** — [`ops/EVAL_V1_E7_CLOSEOUT.md`](../../ops/EVAL_V1_E7_CLOSEOUT.md)
+- Charter E7 **PASS** — [`ops/EVAL_V1_E7_CLOSEOUT.md`](../../../../../reports/five-products/ops/EVAL_V1_E7_CLOSEOUT.md)
 - D3 local UAT：`scripts/d3_local_acceptance.sh`（environment=local；不 authorize）
 
 ## Next

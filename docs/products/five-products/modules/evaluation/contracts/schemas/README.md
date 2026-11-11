@@ -4,7 +4,7 @@ doc_type: Index
 
 # Evaluation contract schemas — shim location
 
-**SSOT**: [`packages/aiplat-evaluation/contracts/schemas/`](../../../../../../packages/aiplat-evaluation/contracts/schemas/)
+**SSOT**: [`packages/aiplat-evaluation/contracts/schemas/`](../../../../../../../packages/aiplat-evaluation/contracts/schemas/)
 
 Do not add or edit JSON schemas here. Validate via:
 

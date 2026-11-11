@@ -5,7 +5,7 @@ doc_type: Report
 # MODULE.md — FDE Workbench
 
 > Status: **A1 + Field D1 Accepted + Field D2 ops pack** · Owner: platform · Target: **A2 / D2** · Deploy unit: **Field**  
-> Version: **0.1.0** · ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../ADR-FDE-FIELD-DEPLOY.md)
+> Version: **0.1.0** · ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../../../../reports/five-products/ADR-FDE-FIELD-DEPLOY.md)
 
 ## Scope
 
@@ -45,7 +45,7 @@ See [`FIELD_SCOPE.md`](./FIELD_SCOPE.md).
 | Scope | `packages/aiplat-fde/docs/D2_FIELD.md` |
 | Upgrade / runtime rollback | `scripts/d1_upgrade.sh` · `d1_rollback.sh --runtime` |
 | Security baseline | `security/baseline.yaml` · `scripts/d2_admin_check.sh` |
-| Local closeout | `scripts/d2_local_closeout.sh` · [`ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](../../ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md) |
+| Local closeout | `scripts/d2_local_closeout.sh` · [`ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md`](../../../../../reports/five-products/ops/FDE_FIELD_D2_LOCAL_CLOSEOUT.md) |
 
 `capabilities.manifest` **current_delivery** 仍为 **D1**（D2 = Field ops pack，与 Pi D2 admin 同级叙事）。
 
