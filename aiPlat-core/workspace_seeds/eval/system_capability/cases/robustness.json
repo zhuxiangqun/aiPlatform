@@ -1,0 +1,157 @@
+[
+  {
+    "case_id": "system.robustness.001",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "!!! system_plan parts=??? !!!",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "status=ok"
+      ]
+    },
+    "scripted_answer": "缺少有效 parts，请提供后再组合。",
+    "test_purpose": {
+      "summary": "验证噪声 parts 不假成功",
+      "why_this_case": "空 parts 易幻觉 status=ok",
+      "expected_behavior": [
+        "缺少"
+      ],
+      "failure_signals": [
+        "status=ok"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面缺少"
+    }
+  },
+  {
+    "case_id": "system.robustness.002",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "object_id=（空）执行 system_plan。",
+    "success_criteria": {
+      "must_contain": [
+        "无效"
+      ],
+      "must_not_contain": [
+        "组合完成"
+      ]
+    },
+    "scripted_answer": "object_id 无效：为空，无法组合。",
+    "test_purpose": {
+      "summary": "验证空 object_id 失败关闭",
+      "why_this_case": "身份缺失不可继续",
+      "expected_behavior": [
+        "无效"
+      ],
+      "failure_signals": [
+        "组合完成"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面无效"
+    }
+  },
+  {
+    "case_id": "system.robustness.003",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "runtime_parts 截断仍宣称组合成功。",
+    "success_criteria": {
+      "must_contain": [
+        "损坏"
+      ],
+      "must_not_contain": [
+        "parts_ok="
+      ]
+    },
+    "scripted_answer": "runtime_parts 损坏/截断，组合未完成。",
+    "test_purpose": {
+      "summary": "验证损坏 parts 不假成功",
+      "why_this_case": "截断是兼容性常见失败",
+      "expected_behavior": [
+        "损坏"
+      ],
+      "failure_signals": [
+        "parts_ok="
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面损坏"
+    }
+  },
+  {
+    "case_id": "system.robustness.004",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "重复×8：组合组合… 部件类型未指定。",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "count=2"
+      ]
+    },
+    "scripted_answer": "重复指令已折叠：缺少部件类型。",
+    "test_purpose": {
+      "summary": "验证重复噪声仍要求缺参",
+      "why_this_case": "重复触发易假完成",
+      "expected_behavior": [
+        "缺少"
+      ],
+      "failure_signals": [
+        "count=2"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面缺少"
+    }
+  },
+  {
+    "case_id": "system.robustness.005",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "未知部件 object_type=arena。",
+    "success_criteria": {
+      "must_contain": [
+        "未知"
+      ],
+      "must_not_contain": [
+        "已并入"
+      ]
+    },
+    "scripted_answer": "未知部件 arena；仅支持 typed prompt/workflow/model/dataset。",
+    "test_purpose": {
+      "summary": "验证未知部件不假并入",
+      "why_this_case": "部件白名单是稳健性边界",
+      "expected_behavior": [
+        "未知"
+      ],
+      "failure_signals": [
+        "已并入"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面未知"
+    }
+  }
+]

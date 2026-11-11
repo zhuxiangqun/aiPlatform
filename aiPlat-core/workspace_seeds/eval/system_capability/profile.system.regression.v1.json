@@ -1,0 +1,27 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "system.regression.v1",
+  "subject_kinds": [
+    "system"
+  ],
+  "object_types": [
+    "system"
+  ],
+  "pack_id": "system.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 49,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "System Subject regression — SYSTEM_V1_CAPS ×5 lexical fixture; claim closed; ≠ system_plan_ops."
+}

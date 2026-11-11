@@ -30,6 +30,7 @@ import EvalSkillRegressionPanel from './EvalSkillRegressionPanel';
 import EvalGeneratedAppRegressionPanel from './EvalGeneratedAppRegressionPanel';
 import EvalApiRegressionPanel from './EvalApiRegressionPanel';
 import EvalDatasetRegressionPanel from './EvalDatasetRegressionPanel';
+import EvalSystemRegressionPanel from './EvalSystemRegressionPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
@@ -132,6 +133,7 @@ const ADVANCED_TABS = [
   { id: 'generated-app-regression', label: 'Generated-App Regression' },
   { id: 'api-regression', label: 'API Regression' },
   { id: 'dataset-regression', label: 'Dataset Regression' },
+  { id: 'system-regression', label: 'System Regression' },
   { id: 'p4-status', label: 'P4 Benchmark' },
   { id: 'g2b', label: 'G2b' },
   { id: 'preference', label: 'Preference' },
@@ -538,6 +540,10 @@ const EvalCenter: React.FC = () => {
 
       {tab === 'dataset-regression' && (
         <EvalDatasetRegressionPanel tenantId={TENANT} />
+      )}
+
+      {tab === 'system-regression' && (
+        <EvalSystemRegressionPanel tenantId={TENANT} />
       )}
 
       {tab === 'p4-status' && <EvalP4StatusPanel tenantId={TENANT} />}

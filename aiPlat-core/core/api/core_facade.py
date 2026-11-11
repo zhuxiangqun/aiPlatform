@@ -8372,6 +8372,70 @@ def eval_dataset_regression_status(
     return dataset_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_system_capability_catalog() -> list:
+    """System SubjectAdapter capability catalog (OBJECT_TYPES system)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("system").capability_catalog()
+
+
+def eval_validate_system_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """SystemSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("system").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "system"}
+
+
+def eval_validate_system_capability_bank() -> Dict[str, Any]:
+    """Validate curated system.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.system_capability_bank import (
+        validate_system_capability_bank,
+    )
+
+    return validate_system_capability_bank()
+
+
+def eval_list_system_capability_cases() -> list:
+    """List system.capability curated cases."""
+    from core.apps.eval.service.system_capability_bank import (
+        build_system_capability_cases,
+    )
+
+    return build_system_capability_cases()
+
+
+def eval_run_system_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
+    """Fixture lexical smoke over system.capability (≠ system_plan_ops)."""
+    from core.apps.eval.service.system_capability_bank import (
+        run_system_capability_smoke,
+    )
+
+    return run_system_capability_smoke(limit=limit)
+
+
+def eval_system_regression_profile() -> Dict[str, Any]:
+    """system.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.system_capability_bank import (
+        system_regression_profile,
+    )
+
+    return system_regression_profile()
+
+
+def eval_system_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """System Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.system_capability_bank import (
+        system_regression_status,
+    )
+
+    return system_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank

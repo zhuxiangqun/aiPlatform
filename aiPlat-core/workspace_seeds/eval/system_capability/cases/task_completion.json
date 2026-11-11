@@ -1,0 +1,167 @@
+[
+  {
+    "case_id": "system.task_completion.001",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "system_plan",
+    "prompt": "对 system_under_test 跑四部件组合 Plan，返回 parts_ok=4 与 status=ok。",
+    "success_criteria": {
+      "must_contain": [
+        "parts_ok=4",
+        "status=ok"
+      ],
+      "must_not_contain": [
+        "组合失败"
+      ]
+    },
+    "scripted_answer": "system_plan 完成：parts_ok=4，status=ok（fixture）。",
+    "test_purpose": {
+      "summary": "验证组合 Plan 输出含 parts_ok 与 status",
+      "why_this_case": "System Subject 最小交付是多部件可观测",
+      "expected_behavior": [
+        "parts_ok=4",
+        "status=ok"
+      ],
+      "failure_signals": [
+        "组合失败"
+      ],
+      "not_testing": [
+        "不测 system_plan_ops 真值"
+      ],
+      "oracle_rationale": "词面 parts_ok=4 + status=ok"
+    }
+  },
+  {
+    "case_id": "system.task_completion.002",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "system_plan",
+    "prompt": "校验 runtime_parts 含 prompt,workflow,model,dataset。",
+    "success_criteria": {
+      "must_contain": [
+        "prompt",
+        "workflow",
+        "model",
+        "dataset"
+      ],
+      "must_not_contain": [
+        "缺部件"
+      ]
+    },
+    "scripted_answer": "runtime_parts 校验通过：含 prompt/workflow/model/dataset。",
+    "test_purpose": {
+      "summary": "验证四类 typed 部件锚点同时出现",
+      "why_this_case": "部件丢失是组合常见失败",
+      "expected_behavior": [
+        "四类部件点名"
+      ],
+      "failure_signals": [
+        "缺部件"
+      ],
+      "not_testing": [
+        "不测真实子 exam"
+      ],
+      "oracle_rationale": "词面四部件名"
+    }
+  },
+  {
+    "case_id": "system.task_completion.003",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "system_plan",
+    "prompt": "兼容探测：返回 runtime_tier=fixture 与 object_type=system。",
+    "success_criteria": {
+      "must_contain": [
+        "runtime_tier=fixture",
+        "object_type=system"
+      ],
+      "must_not_contain": [
+        "runtime_claim=true"
+      ]
+    },
+    "scripted_answer": "兼容探测通过：object_type=system，runtime_tier=fixture。",
+    "test_purpose": {
+      "summary": "验证诚实披露 runtime_tier 与 object_type",
+      "why_this_case": "fixture 不得冒充 live claim",
+      "expected_behavior": [
+        "披露 fixture",
+        "点名 system"
+      ],
+      "failure_signals": [
+        "runtime_claim=true"
+      ],
+      "not_testing": [
+        "不测 live 宿主"
+      ],
+      "oracle_rationale": "词面双锚点 + 禁止 claim"
+    }
+  },
+  {
+    "case_id": "system.task_completion.004",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "system_plan",
+    "prompt": "异构 tier 汇总时报告 mixed=true。",
+    "success_criteria": {
+      "must_contain": [
+        "mixed=true"
+      ],
+      "must_not_contain": [
+        "representative_host"
+      ]
+    },
+    "scripted_answer": "异构汇总：mixed=true；各部件 runtime_tier 独立保留。",
+    "test_purpose": {
+      "summary": "验证异构 tier 不假代表",
+      "why_this_case": "混合部件不得塌缩为单一 host tier",
+      "expected_behavior": [
+        "mixed=true",
+        "禁止假代表档"
+      ],
+      "failure_signals": [
+        "representative_host"
+      ],
+      "not_testing": [
+        "不测真实 summarize_runtime_parts"
+      ],
+      "oracle_rationale": "词面 mixed=true"
+    }
+  },
+  {
+    "case_id": "system.task_completion.005",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "system_plan",
+    "prompt": "对 object_id=system_under_test 返回 schema=eval.subject_adapter.v1。",
+    "success_criteria": {
+      "must_contain": [
+        "system_under_test",
+        "eval.subject_adapter.v1"
+      ],
+      "must_not_contain": [
+        "未注册"
+      ]
+    },
+    "scripted_answer": "system_under_test 归一化完成：schema=eval.subject_adapter.v1。",
+    "test_purpose": {
+      "summary": "验证 object_id 与适配器 schema 锚点",
+      "why_this_case": "系统身份必须以 object_id 可追溯",
+      "expected_behavior": [
+        "点名 system_under_test",
+        "含 schema"
+      ],
+      "failure_signals": [
+        "未注册"
+      ],
+      "not_testing": [
+        "不测真实注册表"
+      ],
+      "oracle_rationale": "词面 object_id + schema"
+    }
+  }
+]
