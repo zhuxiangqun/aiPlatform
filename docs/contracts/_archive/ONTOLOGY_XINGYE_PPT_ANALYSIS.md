@@ -5,7 +5,7 @@
 | 文档 ID | `ONTOLOGY-XINGYE-PPT-ANALYSIS-2026-09` |
 | 版本 | v1.3 |
 | 对标材料 | 《星邺汇捷本体平台介绍 v1.0》（产品愿景说明书，非技术架构文档） |
-| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](../ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md)（**v3.7** 图说详解+口述） · [`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](../ONTOLOGY_DEMO_PLAYBOOK.md) |
+| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](../ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md)（**v3.7** 图说详解+口述） · [`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](ONTOLOGY_DEMO_PLAYBOOK.md) |
 | 用途 | 对标时怎么讲、缺什么、aiPlat 补什么；**禁止**把本文件中的星邺宣传写成 aiPlat 已实现 |
 
 ### 诚实句（强制）
@@ -73,7 +73,7 @@
 | 故障诊断 | 微服务告警根因；调用链走图 + 超级智能体 |
 | 企业运营本体 | 对象/属性/关系/实例规模数字（材料给出） |
 
-场景图解（分章、**图说一句话+详解表**、可指回节点）见 [`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md) v3.7。演示口令另见 [`ONTOLOGY_DEMO_PLAYBOOK.md`](../ONTOLOGY_DEMO_PLAYBOOK.md)。
+场景图解（分章、**图说一句话+详解表**、可指回节点）见 [`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md) v3.7。演示口令另见 [`ONTOLOGY_DEMO_PLAYBOOK.md`](ONTOLOGY_DEMO_PLAYBOOK.md)。
 
 ---
 
@@ -174,5 +174,5 @@ aiPlat 选择：**运行时不以 OWL 推理机为权威**；权威在 YAML TBox
 
 **一句话**：星邺讲清「本体驱动 AI 原生企业」的愿景分层；aiPlat 讲清「本体如何进入可审计、可回滚、可进化的运行闭环」。**愿景叙事 + 工程契约**，才是从对标材料到可售交付的完整路径。
 
-场景级逐步图解（分开读星邺篇 / aiPlat 篇）：[`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md)。
+场景级逐步图解（分开读星邺篇 / aiPlat 篇）：[`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md)。
 对外责任语言：[`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md)。
