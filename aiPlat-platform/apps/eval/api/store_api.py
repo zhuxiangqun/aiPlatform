@@ -570,6 +570,21 @@ async def get_dataset_regression_status(
     }
 
 
+@router.get("/system-regression-status", response_model=ItemResponse)
+async def get_system_regression_status(
+    draft_sample_limit: int = 5,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """System Subject regression quotas vs bank — claim stays false."""
+    from core.api.core_facade import eval_system_regression_status
+
+    return {
+        "data": eval_system_regression_status(
+            draft_sample_limit=draft_sample_limit,
+        )
+    }
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),

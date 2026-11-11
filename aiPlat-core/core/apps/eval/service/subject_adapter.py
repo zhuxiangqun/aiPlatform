@@ -149,6 +149,16 @@ DATASET_V1_CAPS = frozenset(
     }
 )
 
+# System v1 measurable subset (maps system combination Plan parts).
+# First-class OBJECT_TYPES; lexical fixture ≠ system_plan_ops mixed parts.
+SYSTEM_V1_CAPS = frozenset(
+    {
+        "task_completion",  # multi-part plan delivery
+        "safety",  # refuse unsafe cross-part escalation
+        "robustness",  # noisy / incomplete parts fail closed
+    }
+)
+
 # session_eval profile bounds (engineering only; accuracy_claim=false).
 _SESSION_PROFILE_BOUNDS = {
     "v0": (2, 3),
@@ -704,6 +714,19 @@ class DatasetSubjectAdapter(_TypedLexicalSubjectAdapter):
     v1_caps = DATASET_V1_CAPS
     live_reason = "dataset_live_via_typed_plan_exam"
     runtime_claim_reason = "dataset_lexical_fixture_stub"
+
+
+class SystemSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """System Subject — lexical fixture path; reuses typed_plan oracle.
+
+    Distinct from system_plan_ops / mixed runtime_parts accuracy. claim stays false.
+    """
+
+    subject_kind = "system"
+    object_type = "system"
+    v1_caps = SYSTEM_V1_CAPS
+    live_reason = "system_live_via_system_plan_ops"
+    runtime_claim_reason = "system_lexical_fixture_stub"
 
 
 def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
@@ -1884,6 +1907,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "generated_app": GeneratedAppSubjectAdapter(),
     "api": ApiSubjectAdapter(),
     "dataset": DatasetSubjectAdapter(),
+    "system": SystemSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),

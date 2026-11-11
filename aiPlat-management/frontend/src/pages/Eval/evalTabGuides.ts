@@ -156,6 +156,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / API Regression。',
     not: '配额齐 ≠ typed Plan dataset_assert / fixture_table；lexical fixture 通过 ≠ claim；pack draft ≠ Certification。',
   },
+  'system-regression': {
+    title: 'System Regression',
+    what: 'system.regression.v1 题库配额盘点（SYSTEM_V1_CAPS×5）与 draft 人审清单。',
+    can: '看各能力 have/quota、review 分布、draft 样本；深链 Case Pack / 对象 Plan / Dataset Regression。',
+    not: '配额齐 ≠ system_plan_ops / mixed runtime_parts；lexical fixture 通过 ≠ claim；pack draft ≠ Certification。',
+  },
   'p4-status': {
     title: 'P4 Benchmark',
     what: 'agent.benchmark.v1 配额/holdout 与 judge 工程条（agreement）诚实快照。',
