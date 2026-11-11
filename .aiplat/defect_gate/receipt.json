@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T08:52:26+08:00",
+  "reviewed_at": "2026-11-11T08:52:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "f106b316a9d3733b81ca5656f10034e7c9463dfb",
-  "diff_sha256": "be47f86607613d7eece1d0f735ef3813bbc2b24ea44bef57377bfa114725ab5c",
-  "head_sha": "2b6ddf653b87fa84270c79d5ee55d632380a6260",
+  "diff_sha256": "feed7380da487ff1deaff5b638b252ad14a6e99316843f28327b36577a5f520a",
+  "head_sha": "e27599abce614368e353fba5f9e9bbbba850ee75",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Dataset Subject additive; draft pack keeps profile_complete false; claim/cert stay false. Local lock only."
+  "note": "Dataset Subject additive; AUTO-STATS/whitepaper consistency fixed; claim stays false. Local lock only."
 }
