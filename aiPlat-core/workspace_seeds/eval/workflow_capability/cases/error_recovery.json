@@ -1,76 +1,241 @@
 [
   {
     "case_id": "workflow.error_recovery.001",
-    "capabilities": ["error_recovery"],
+    "capabilities": [
+      "error_recovery"
+    ],
     "category": "stage_failure",
     "prompt": "execute 阶段失败：超时。请给出恢复动作关键词。",
-    "success_criteria": {"must_contain": ["error_recovery"]},
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
     "test_purpose": {
       "summary": "验证阶段失败后给出 error_recovery 恢复信号，而不是静默吞错",
       "why_this_case": "workflow 失败恢复必须可被词面/规则观测",
-      "expected_behavior": ["提到 error_recovery 或等价恢复动作", "承认阶段失败已捕获"],
-      "failure_signals": ["输出成功完成且无失败信息", "无任何恢复提示"],
-      "not_testing": ["不测试真实重试基础设施", "不测试告警通道"],
+      "expected_behavior": [
+        "提到 error_recovery 或等价恢复动作",
+        "承认阶段失败已捕获"
+      ],
+      "failure_signals": [
+        "输出成功完成且无失败信息",
+        "无任何恢复提示"
+      ],
+      "not_testing": [
+        "不测试真实重试基础设施",
+        "不测试告警通道"
+      ],
       "oracle_rationale": "词面 must_contain error_recovery（dry stub 对齐）"
     }
   },
   {
     "case_id": "workflow.error_recovery.002",
-    "capabilities": ["error_recovery"],
+    "capabilities": [
+      "error_recovery"
+    ],
     "category": "stage_failure",
     "prompt": "plan 阶段失败：schema 校验错误。请输出恢复关键词。",
-    "success_criteria": {"must_contain": ["error_recovery"]},
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
     "test_purpose": {
       "summary": "验证 plan 失败进入恢复路径，而不是跳过继续 execute",
       "why_this_case": "schema 失败必须可观测恢复",
-      "expected_behavior": ["输出 error_recovery", "不假装 plan 已通过"],
-      "failure_signals": ["直接进入 execute 成功", "无恢复词"],
-      "not_testing": ["不测试 JSON Schema 引擎", "不测试 UI 表单"],
+      "expected_behavior": [
+        "输出 error_recovery",
+        "不假装 plan 已通过"
+      ],
+      "failure_signals": [
+        "直接进入 execute 成功",
+        "无恢复词"
+      ],
+      "not_testing": [
+        "不测试 JSON Schema 引擎",
+        "不测试 UI 表单"
+      ],
       "oracle_rationale": "词面 error_recovery"
     }
   },
   {
     "case_id": "workflow.error_recovery.003",
-    "capabilities": ["error_recovery"],
+    "capabilities": [
+      "error_recovery"
+    ],
     "category": "error",
     "prompt": "下游 handoff 失败：目标 Agent 不可达。请给出恢复动作关键词。",
-    "success_criteria": {"must_contain": ["error_recovery"]},
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
     "test_purpose": {
       "summary": "验证 handoff 失败触发恢复，而不是静默丢消息",
       "why_this_case": "跨 Agent 失败吞没会导致幽灵任务",
-      "expected_behavior": ["输出 error_recovery", "承认 handoff 失败"],
-      "failure_signals": ["声称 handoff 成功", "无恢复提示"],
-      "not_testing": ["不测试消息总线实现", "不测试重试退避参数"],
+      "expected_behavior": [
+        "输出 error_recovery",
+        "承认 handoff 失败"
+      ],
+      "failure_signals": [
+        "声称 handoff 成功",
+        "无恢复提示"
+      ],
+      "not_testing": [
+        "不测试消息总线实现",
+        "不测试重试退避参数"
+      ],
       "oracle_rationale": "词面 error_recovery"
     }
   },
   {
     "case_id": "workflow.error_recovery.004",
-    "capabilities": ["error_recovery"],
+    "capabilities": [
+      "error_recovery"
+    ],
     "category": "stage_failure",
     "prompt": "测试阶段失败：pytest 非零退出。请输出恢复关键词。",
-    "success_criteria": {"must_contain": ["error_recovery"]},
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
     "test_purpose": {
       "summary": "验证测试失败进入恢复，而不是把红测当绿",
       "why_this_case": "假绿是编排最大风险",
-      "expected_behavior": ["输出 error_recovery", "不宣称测试通过"],
-      "failure_signals": ["输出全部通过", "忽略非零退出"],
-      "not_testing": ["不测试真实 pytest", "不测试覆盖率阈值"],
+      "expected_behavior": [
+        "输出 error_recovery",
+        "不宣称测试通过"
+      ],
+      "failure_signals": [
+        "输出全部通过",
+        "忽略非零退出"
+      ],
+      "not_testing": [
+        "不测试真实 pytest",
+        "不测试覆盖率阈值"
+      ],
       "oracle_rationale": "词面 error_recovery"
     }
   },
   {
     "case_id": "workflow.error_recovery.005",
-    "capabilities": ["error_recovery"],
+    "capabilities": [
+      "error_recovery"
+    ],
     "category": "stage_failure",
     "prompt": "部署阶段失败：健康检查超时。请给出恢复动作关键词。",
-    "success_criteria": {"must_contain": ["error_recovery"]},
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
     "test_purpose": {
       "summary": "验证部署健康失败触发恢复，而不是标记已上线",
       "why_this_case": "健康检查失败必须阻断成功态",
-      "expected_behavior": ["输出 error_recovery", "不说已上线"],
-      "failure_signals": ["输出部署成功", "无恢复词"],
-      "not_testing": ["不测试真实探针", "不测试滚动更新"],
+      "expected_behavior": [
+        "输出 error_recovery",
+        "不说已上线"
+      ],
+      "failure_signals": [
+        "输出部署成功",
+        "无恢复词"
+      ],
+      "not_testing": [
+        "不测试真实探针",
+        "不测试滚动更新"
+      ],
+      "oracle_rationale": "词面 error_recovery"
+    }
+  },
+  {
+    "case_id": "workflow.error_recovery.006",
+    "capabilities": [
+      "error_recovery"
+    ],
+    "category": "stage_failure",
+    "prompt": "execute 阶段失败：超时。请给出恢复动作关键词。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证阶段失败后给出 error_recovery 恢复信号，而不是静默吞错（扩容变体 6）",
+      "why_this_case": "workflow 失败恢复必须可被词面/规则观测；bank thicken #6",
+      "expected_behavior": [
+        "提到 error_recovery 或等价恢复动作",
+        "承认阶段失败已捕获"
+      ],
+      "failure_signals": [
+        "输出成功完成且无失败信息",
+        "无任何恢复提示"
+      ],
+      "not_testing": [
+        "不测试真实重试基础设施",
+        "不测试告警通道"
+      ],
+      "oracle_rationale": "词面 must_contain error_recovery（dry stub 对齐）"
+    }
+  },
+  {
+    "case_id": "workflow.error_recovery.007",
+    "capabilities": [
+      "error_recovery"
+    ],
+    "category": "stage_failure",
+    "prompt": "plan 阶段失败：schema 校验错误。请输出恢复关键词。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证 plan 失败进入恢复路径，而不是跳过继续 execute（扩容变体 7）",
+      "why_this_case": "schema 失败必须可观测恢复；bank thicken #7",
+      "expected_behavior": [
+        "输出 error_recovery",
+        "不假装 plan 已通过"
+      ],
+      "failure_signals": [
+        "直接进入 execute 成功",
+        "无恢复词"
+      ],
+      "not_testing": [
+        "不测试 JSON Schema 引擎",
+        "不测试 UI 表单"
+      ],
+      "oracle_rationale": "词面 error_recovery"
+    }
+  },
+  {
+    "case_id": "workflow.error_recovery.008",
+    "capabilities": [
+      "error_recovery"
+    ],
+    "category": "error",
+    "prompt": "下游 handoff 失败：目标 Agent 不可达。请给出恢复动作关键词。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "error_recovery"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证 handoff 失败触发恢复，而不是静默丢消息（扩容变体 8）",
+      "why_this_case": "跨 Agent 失败吞没会导致幽灵任务；bank thicken #8",
+      "expected_behavior": [
+        "输出 error_recovery",
+        "承认 handoff 失败"
+      ],
+      "failure_signals": [
+        "声称 handoff 成功",
+        "无恢复提示"
+      ],
+      "not_testing": [
+        "不测试消息总线实现",
+        "不测试重试退避参数"
+      ],
       "oracle_rationale": "词面 error_recovery"
     }
   }

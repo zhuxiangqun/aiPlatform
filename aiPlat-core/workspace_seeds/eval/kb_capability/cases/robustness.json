@@ -1,7 +1,9 @@
 [
   {
     "case_id": "kb.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "query": "缺陷门禁回执字段有哪些？",
     "hits": [
@@ -18,7 +20,9 @@
         "text": "天气与菜谱摘录。"
       }
     ],
-    "expected_ids": ["doc.defect_gate"],
+    "expected_ids": [
+      "doc.defect_gate"
+    ],
     "test_purpose": {
       "summary": "验证噪声 hits 夹杂时仍覆盖金标 id",
       "why_this_case": "检索噪声是 fixture 鲁棒性最常见失败",
@@ -30,13 +34,18 @@
         "金标 id 丢失",
         "hits 为空"
       ],
-      "not_testing": ["不测试 reranker 排序质量", "不测试 live embedding"],
+      "not_testing": [
+        "不测试 reranker 排序质量",
+        "不测试 live embedding"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids 覆盖，与 hit 顺序无关"
     }
   },
   {
     "case_id": "kb.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "query": "SubjectAdapter 是什么？",
     "hits": [
@@ -53,19 +62,30 @@
         "text": "另一段噪声。"
       }
     ],
-    "expected_ids": ["doc.adapter"],
+    "expected_ids": [
+      "doc.adapter"
+    ],
     "test_purpose": {
       "summary": "验证中位噪声中金标仍可覆盖",
       "why_this_case": "顺序无关覆盖是鲁棒性核心",
-      "expected_behavior": ["含 doc.adapter"],
-      "failure_signals": ["被广告冲掉"],
-      "not_testing": ["不测 BM25", "不测 live"],
+      "expected_behavior": [
+        "含 doc.adapter"
+      ],
+      "failure_signals": [
+        "被广告冲掉"
+      ],
+      "not_testing": [
+        "不测 BM25",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected 覆盖"
     }
   },
   {
     "case_id": "kb.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "query": "Method 轨与 Subject 区别？",
     "hits": [
@@ -86,19 +106,30 @@
         "text": "spam3"
       }
     ],
-    "expected_ids": ["doc.method"],
+    "expected_ids": [
+      "doc.method"
+    ],
     "test_purpose": {
       "summary": "验证高噪声比下金标仍覆盖",
       "why_this_case": "噪声占比升高是鲁棒性压力",
-      "expected_behavior": ["含 doc.method"],
-      "failure_signals": ["金标淹没"],
-      "not_testing": ["不测 top_k 截断策略细节", "不测 live"],
+      "expected_behavior": [
+        "含 doc.method"
+      ],
+      "failure_signals": [
+        "金标淹没"
+      ],
+      "not_testing": [
+        "不测 top_k 截断策略细节",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected 覆盖"
     }
   },
   {
     "case_id": "kb.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "query": "claim_eligible 默认？",
     "hits": [
@@ -111,19 +142,30 @@
         "text": "curated pack claim_eligible 必须为 false。"
       }
     ],
-    "expected_ids": ["doc.claim"],
+    "expected_ids": [
+      "doc.claim"
+    ],
     "test_purpose": {
       "summary": "验证末位金标在噪声后仍覆盖",
       "why_this_case": "位置偏置不应影响 expected 判定",
-      "expected_behavior": ["含 doc.claim"],
-      "failure_signals": ["只看第一篇"],
-      "not_testing": ["不测 UI 展示", "不测 live"],
+      "expected_behavior": [
+        "含 doc.claim"
+      ],
+      "failure_signals": [
+        "只看第一篇"
+      ],
+      "not_testing": [
+        "不测 UI 展示",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：集合覆盖"
     }
   },
   {
     "case_id": "kb.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "query": "session.smoke 与 regression 区别？",
     "hits": [
@@ -140,14 +182,149 @@
         "text": "随机2。"
       }
     ],
-    "expected_ids": ["doc.profile"],
+    "expected_ids": [
+      "doc.profile"
+    ],
     "test_purpose": {
       "summary": "验证配置说明文档在噪声中可召回",
       "why_this_case": "文档型金标易被噪声淹没",
-      "expected_behavior": ["含 doc.profile"],
-      "failure_signals": ["漏配置说明"],
-      "not_testing": ["不测人审流程", "不测 live"],
+      "expected_behavior": [
+        "含 doc.profile"
+      ],
+      "failure_signals": [
+        "漏配置说明"
+      ],
+      "not_testing": [
+        "不测人审流程",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids=[doc.profile]"
+    }
+  },
+  {
+    "case_id": "kb.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "query": "缺陷门禁回执字段有哪些？ [v6]",
+    "hits": [
+      {
+        "id": "doc.noise.a",
+        "text": "随机博客：如何写简历。"
+      },
+      {
+        "id": "doc.defect_gate",
+        "text": "receipt 需 schema/status/findings_count/diff_sha256。"
+      },
+      {
+        "id": "doc.noise.b",
+        "text": "天气与菜谱摘录。"
+      }
+    ],
+    "expected_ids": [
+      "doc.defect_gate"
+    ],
+    "test_purpose": {
+      "summary": "验证噪声 hits 夹杂时仍覆盖金标 id（扩容变体 6）",
+      "why_this_case": "检索噪声是 fixture 鲁棒性最常见失败；bank thicken #6",
+      "expected_behavior": [
+        "金标 doc.defect_gate 仍在 hits",
+        "噪声文档不掩盖 expected 覆盖判定"
+      ],
+      "failure_signals": [
+        "金标 id 丢失",
+        "hits 为空"
+      ],
+      "not_testing": [
+        "不测试 reranker 排序质量",
+        "不测试 live embedding"
+      ],
+      "oracle_rationale": "规则 oracle：expected_ids 覆盖，与 hit 顺序无关"
+    }
+  },
+  {
+    "case_id": "kb.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "query": "SubjectAdapter 是什么？ [v7]",
+    "hits": [
+      {
+        "id": "doc.ad",
+        "text": "广告文案。"
+      },
+      {
+        "id": "doc.adapter",
+        "text": "EvalSubjectAdapter 按 subject_kind 校验/执行/裁判。"
+      },
+      {
+        "id": "doc.ad2",
+        "text": "另一段噪声。"
+      }
+    ],
+    "expected_ids": [
+      "doc.adapter"
+    ],
+    "test_purpose": {
+      "summary": "验证中位噪声中金标仍可覆盖（扩容变体 7）",
+      "why_this_case": "顺序无关覆盖是鲁棒性核心；bank thicken #7",
+      "expected_behavior": [
+        "含 doc.adapter"
+      ],
+      "failure_signals": [
+        "被广告冲掉"
+      ],
+      "not_testing": [
+        "不测 BM25",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：expected 覆盖"
+    }
+  },
+  {
+    "case_id": "kb.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "query": "Method 轨与 Subject 区别？ [v8]",
+    "hits": [
+      {
+        "id": "doc.method",
+        "text": "Method 不是 Subject；subject_kinds 不得混入 method。"
+      },
+      {
+        "id": "doc.spam1",
+        "text": "spam"
+      },
+      {
+        "id": "doc.spam2",
+        "text": "spam2"
+      },
+      {
+        "id": "doc.spam3",
+        "text": "spam3"
+      }
+    ],
+    "expected_ids": [
+      "doc.method"
+    ],
+    "test_purpose": {
+      "summary": "验证高噪声比下金标仍覆盖（扩容变体 8）",
+      "why_this_case": "噪声占比升高是鲁棒性压力；bank thicken #8",
+      "expected_behavior": [
+        "含 doc.method"
+      ],
+      "failure_signals": [
+        "金标淹没"
+      ],
+      "not_testing": [
+        "不测 top_k 截断策略细节",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：expected 覆盖"
     }
   }
 ]

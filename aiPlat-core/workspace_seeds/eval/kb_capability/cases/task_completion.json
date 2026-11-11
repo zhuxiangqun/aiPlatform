@@ -1,7 +1,9 @@
 [
   {
     "case_id": "kb.task_completion.001",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "hit_cover",
     "query": "aiPlat 评测门禁是什么？",
     "hits": [
@@ -14,7 +16,9 @@
         "text": "无关运维手册摘录。"
       }
     ],
-    "expected_ids": ["doc.gate"],
+    "expected_ids": [
+      "doc.gate"
+    ],
     "test_purpose": {
       "summary": "验证受控 hits 覆盖 expected_ids，而不是空召回或漏金标文档",
       "why_this_case": "KB fixture 最小交付是 expected 命中",
@@ -26,13 +30,18 @@
         "hits 为空",
         "expected_ids 未覆盖"
       ],
-      "not_testing": ["不测试 live 向量检索", "不测试 RAG 准确率"],
+      "not_testing": [
+        "不测试 live 向量检索",
+        "不测试 RAG 准确率"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids 全部出现在 hit id 集合（对齐 package kb_rag）"
     }
   },
   {
     "case_id": "kb.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "hit_cover",
     "query": "CoreFacade 是什么？",
     "hits": [
@@ -41,19 +50,30 @@
         "text": "平台访问 core 必须经 CoreFacade。"
       }
     ],
-    "expected_ids": ["doc.facade"],
+    "expected_ids": [
+      "doc.facade"
+    ],
     "test_purpose": {
       "summary": "验证单文档金标命中",
       "why_this_case": "无噪声时仍需 expected 覆盖",
-      "expected_behavior": ["hits 含 doc.facade"],
-      "failure_signals": ["漏金标"],
-      "not_testing": ["不测 live", "不测多跳推理"],
+      "expected_behavior": [
+        "hits 含 doc.facade"
+      ],
+      "failure_signals": [
+        "漏金标"
+      ],
+      "not_testing": [
+        "不测 live",
+        "不测多跳推理"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids 覆盖"
     }
   },
   {
     "case_id": "kb.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "hit_cover",
     "query": "选模入口是什么？",
     "hits": [
@@ -66,19 +86,31 @@
         "text": "任务内锁定后只升不降。"
       }
     ],
-    "expected_ids": ["doc.model_a", "doc.model_b"],
+    "expected_ids": [
+      "doc.model_a",
+      "doc.model_b"
+    ],
     "test_purpose": {
       "summary": "验证多金标 id 同时覆盖",
       "why_this_case": "多 expected 漏一即失败",
-      "expected_behavior": ["两金标均在 hits"],
-      "failure_signals": ["只命中其一"],
-      "not_testing": ["不测排序", "不测 live"],
+      "expected_behavior": [
+        "两金标均在 hits"
+      ],
+      "failure_signals": [
+        "只命中其一"
+      ],
+      "not_testing": [
+        "不测排序",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids 全集覆盖"
     }
   },
   {
     "case_id": "kb.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "hit_cover",
     "query": "缺陷门禁回执字段？",
     "hits": [
@@ -91,19 +123,30 @@
         "text": "补充：findings_count 必须为 0 才能 pass。"
       }
     ],
-    "expected_ids": ["doc.receipt"],
+    "expected_ids": [
+      "doc.receipt"
+    ],
     "test_purpose": {
       "summary": "验证多 hits 中仍覆盖单一金标",
       "why_this_case": "额外相关文档不应冲掉金标判定",
-      "expected_behavior": ["含 doc.receipt"],
-      "failure_signals": ["金标丢失"],
-      "not_testing": ["不测摘要质量", "不测 live"],
+      "expected_behavior": [
+        "含 doc.receipt"
+      ],
+      "failure_signals": [
+        "金标丢失"
+      ],
+      "not_testing": [
+        "不测摘要质量",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected 覆盖"
     }
   },
   {
     "case_id": "kb.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "hit_cover",
     "query": "architecture_guard 做什么？",
     "hits": [
@@ -116,14 +159,130 @@
         "text": "GPU 采购笔记。"
       }
     ],
-    "expected_ids": ["doc.guard"],
+    "expected_ids": [
+      "doc.guard"
+    ],
     "test_purpose": {
       "summary": "验证守卫文档在噪声旁仍可命中",
       "why_this_case": "任务完成路径常见夹杂无关 doc",
-      "expected_behavior": ["含 doc.guard"],
-      "failure_signals": ["只剩噪声"],
-      "not_testing": ["不测 CI 接线", "不测 live"],
+      "expected_behavior": [
+        "含 doc.guard"
+      ],
+      "failure_signals": [
+        "只剩噪声"
+      ],
+      "not_testing": [
+        "不测 CI 接线",
+        "不测 live"
+      ],
       "oracle_rationale": "规则 oracle：expected_ids=[doc.guard]"
+    }
+  },
+  {
+    "case_id": "kb.task_completion.006",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "hit_cover",
+    "query": "aiPlat 评测门禁是什么？ [v6]",
+    "hits": [
+      {
+        "id": "doc.gate",
+        "text": "评测门禁要求 claim_eligible=false 且有 fixture 证据。"
+      },
+      {
+        "id": "doc.noise",
+        "text": "无关运维手册摘录。"
+      }
+    ],
+    "expected_ids": [
+      "doc.gate"
+    ],
+    "test_purpose": {
+      "summary": "验证受控 hits 覆盖 expected_ids，而不是空召回或漏金标文档（扩容变体 6）",
+      "why_this_case": "KB fixture 最小交付是 expected 命中；bank thicken #6",
+      "expected_behavior": [
+        "hits 含 doc.gate",
+        "不因噪声文档丢掉金标 id"
+      ],
+      "failure_signals": [
+        "hits 为空",
+        "expected_ids 未覆盖"
+      ],
+      "not_testing": [
+        "不测试 live 向量检索",
+        "不测试 RAG 准确率"
+      ],
+      "oracle_rationale": "规则 oracle：expected_ids 全部出现在 hit id 集合（对齐 package kb_rag）"
+    }
+  },
+  {
+    "case_id": "kb.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "hit_cover",
+    "query": "CoreFacade 是什么？ [v7]",
+    "hits": [
+      {
+        "id": "doc.facade",
+        "text": "平台访问 core 必须经 CoreFacade。"
+      }
+    ],
+    "expected_ids": [
+      "doc.facade"
+    ],
+    "test_purpose": {
+      "summary": "验证单文档金标命中（扩容变体 7）",
+      "why_this_case": "无噪声时仍需 expected 覆盖；bank thicken #7",
+      "expected_behavior": [
+        "hits 含 doc.facade"
+      ],
+      "failure_signals": [
+        "漏金标"
+      ],
+      "not_testing": [
+        "不测 live",
+        "不测多跳推理"
+      ],
+      "oracle_rationale": "规则 oracle：expected_ids 覆盖"
+    }
+  },
+  {
+    "case_id": "kb.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "hit_cover",
+    "query": "选模入口是什么？ [v8]",
+    "hits": [
+      {
+        "id": "doc.model_a",
+        "text": "best_model_for_purpose → unified_pipeline。"
+      },
+      {
+        "id": "doc.model_b",
+        "text": "任务内锁定后只升不降。"
+      }
+    ],
+    "expected_ids": [
+      "doc.model_a",
+      "doc.model_b"
+    ],
+    "test_purpose": {
+      "summary": "验证多金标 id 同时覆盖（扩容变体 8）",
+      "why_this_case": "多 expected 漏一即失败；bank thicken #8",
+      "expected_behavior": [
+        "两金标均在 hits"
+      ],
+      "failure_signals": [
+        "只命中其一"
+      ],
+      "not_testing": [
+        "不测排序",
+        "不测 live"
+      ],
+      "oracle_rationale": "规则 oracle：expected_ids 全集覆盖"
     }
   }
 ]

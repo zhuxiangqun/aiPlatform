@@ -1,100 +1,317 @@
 [
   {
     "case_id": "tool.tool_result_use.001",
-    "capabilities": ["tool_result_use"],
+    "capabilities": [
+      "tool_result_use"
+    ],
     "prompt": "查 key=alpha 并用结果回答。",
-    "expected_tools": ["lookup_fact"],
+    "expected_tools": [
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "scripted_answer": "查到的值为 42。",
-    "must_contain_from_tools": ["42"],
+    "must_contain_from_tools": [
+      "42"
+    ],
     "use_tool_result_values": false,
     "test_purpose": {
       "summary": "验证回答引用 lookup_fact 返回值 42",
       "why_this_case": "Tool Subject A5 正例",
-      "expected_behavior": ["回答含 42"],
-      "failure_signals": ["忽略工具结果"],
-      "not_testing": ["不测工具选择顺序", "不测 live MCP"],
+      "expected_behavior": [
+        "回答含 42"
+      ],
+      "failure_signals": [
+        "忽略工具结果"
+      ],
+      "not_testing": [
+        "不测工具选择顺序",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：must_contain_from_tools / answer（tool_trace）"
     }
   },
   {
     "case_id": "tool.tool_result_use.002",
-    "capabilities": ["tool_result_use"],
+    "capabilities": [
+      "tool_result_use"
+    ],
     "prompt": "回显 token 并写入答案。",
-    "expected_tools": ["echo"],
+    "expected_tools": [
+      "echo"
+    ],
     "scripted_tool_calls": [
-      {"name": "echo", "args": {"text": "mirror-77"}}
+      {
+        "name": "echo",
+        "args": {
+          "text": "mirror-77"
+        }
+      }
     ],
     "scripted_answer": "工具回显：mirror-77",
     "use_tool_result_values": true,
     "test_purpose": {
       "summary": "验证回答吸收 echo 工具结果字符串",
       "why_this_case": "A5 use_tool_result_values 自动派生锚点",
-      "expected_behavior": ["答案含 mirror-77"],
-      "failure_signals": ["答案丢回显值"],
-      "not_testing": ["不测选择集", "不测 live MCP"],
+      "expected_behavior": [
+        "答案含 mirror-77"
+      ],
+      "failure_signals": [
+        "答案丢回显值"
+      ],
+      "not_testing": [
+        "不测选择集",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：flatten tool_results → must_contain"
     }
   },
   {
     "case_id": "tool.tool_result_use.003",
-    "capabilities": ["tool_result_use"],
+    "capabilities": [
+      "tool_result_use"
+    ],
     "prompt": "查事实并禁止编造其它码。",
-    "expected_tools": ["lookup_fact"],
+    "expected_tools": [
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "scripted_answer": "官方值 42。",
-    "must_contain_from_tools": ["42"],
-    "must_not_contain": ["999"],
+    "must_contain_from_tools": [
+      "42"
+    ],
+    "must_not_contain": [
+      "999"
+    ],
     "test_purpose": {
       "summary": "验证答案含 42 且不含伪造码 999",
       "why_this_case": "A5 正/负锚点同时约束",
-      "expected_behavior": ["含 42", "不含 999"],
-      "failure_signals": ["漏 42", "掺入 999"],
-      "not_testing": ["不测 live MCP", "不测多轮"],
+      "expected_behavior": [
+        "含 42",
+        "不含 999"
+      ],
+      "failure_signals": [
+        "漏 42",
+        "掺入 999"
+      ],
+      "not_testing": [
+        "不测 live MCP",
+        "不测多轮"
+      ],
       "oracle_rationale": "规则 oracle：must_contain + must_not_contain"
     }
   },
   {
     "case_id": "tool.tool_result_use.004",
-    "capabilities": ["tool_result_use"],
+    "capabilities": [
+      "tool_result_use"
+    ],
     "prompt": "先 echo 再 lookup，答案引用查表值。",
-    "expected_tools": ["echo", "lookup_fact"],
+    "expected_tools": [
+      "echo",
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "echo", "args": {"text": "prep"}},
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "echo",
+        "args": {
+          "text": "prep"
+        }
+      },
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "scripted_answer": "prep 后得到 42",
-    "must_contain_from_tools": ["42", "prep"],
+    "must_contain_from_tools": [
+      "42",
+      "prep"
+    ],
     "test_purpose": {
       "summary": "验证多工具结果信号均写入答案",
       "why_this_case": "多结果漏引用是 A5 常见失败",
-      "expected_behavior": ["含 42", "含 prep"],
-      "failure_signals": ["只写其一"],
-      "not_testing": ["不测顺序裁判", "不测 live MCP"],
+      "expected_behavior": [
+        "含 42",
+        "含 prep"
+      ],
+      "failure_signals": [
+        "只写其一"
+      ],
+      "not_testing": [
+        "不测顺序裁判",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：多 must_contain_from_tools"
     }
   },
   {
     "case_id": "tool.tool_result_use.005",
-    "capabilities": ["tool_result_use"],
+    "capabilities": [
+      "tool_result_use"
+    ],
     "prompt": "查 alpha，答案同时带 key 名。",
-    "expected_tools": ["lookup_fact"],
+    "expected_tools": [
+      "lookup_fact"
+    ],
     "scripted_tool_calls": [
-      {"name": "lookup_fact", "args": {"key": "alpha"}}
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
     ],
     "scripted_answer": "key=alpha value=42",
-    "must_contain_from_tools": ["alpha", "42"],
+    "must_contain_from_tools": [
+      "alpha",
+      "42"
+    ],
     "test_purpose": {
       "summary": "验证答案同时保留 key 与 value 锚点",
       "why_this_case": "只抄 value 丢 key 仍算结果使用不全",
-      "expected_behavior": ["含 alpha", "含 42"],
-      "failure_signals": ["只含其一"],
-      "not_testing": ["不测 schema", "不测 live MCP"],
+      "expected_behavior": [
+        "含 alpha",
+        "含 42"
+      ],
+      "failure_signals": [
+        "只含其一"
+      ],
+      "not_testing": [
+        "不测 schema",
+        "不测 live MCP"
+      ],
       "oracle_rationale": "规则 oracle：must_contain alpha+42"
+    }
+  },
+  {
+    "case_id": "tool.tool_result_use.006",
+    "capabilities": [
+      "tool_result_use"
+    ],
+    "prompt": "查 key=alpha 并用结果回答。 [v6]",
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
+    ],
+    "scripted_answer": "查到的值为 42。",
+    "must_contain_from_tools": [
+      "42"
+    ],
+    "use_tool_result_values": false,
+    "test_purpose": {
+      "summary": "验证回答引用 lookup_fact 返回值 42（扩容变体 6）",
+      "why_this_case": "Tool Subject A5 正例；bank thicken #6",
+      "expected_behavior": [
+        "回答含 42"
+      ],
+      "failure_signals": [
+        "忽略工具结果"
+      ],
+      "not_testing": [
+        "不测工具选择顺序",
+        "不测 live MCP"
+      ],
+      "oracle_rationale": "规则 oracle：must_contain_from_tools / answer（tool_trace）"
+    }
+  },
+  {
+    "case_id": "tool.tool_result_use.007",
+    "capabilities": [
+      "tool_result_use"
+    ],
+    "prompt": "回显 token 并写入答案。 [v7]",
+    "expected_tools": [
+      "echo"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "echo",
+        "args": {
+          "text": "mirror-77"
+        }
+      }
+    ],
+    "scripted_answer": "工具回显：mirror-77",
+    "use_tool_result_values": true,
+    "test_purpose": {
+      "summary": "验证回答吸收 echo 工具结果字符串（扩容变体 7）",
+      "why_this_case": "A5 use_tool_result_values 自动派生锚点；bank thicken #7",
+      "expected_behavior": [
+        "答案含 mirror-77"
+      ],
+      "failure_signals": [
+        "答案丢回显值"
+      ],
+      "not_testing": [
+        "不测选择集",
+        "不测 live MCP"
+      ],
+      "oracle_rationale": "规则 oracle：flatten tool_results → must_contain"
+    }
+  },
+  {
+    "case_id": "tool.tool_result_use.008",
+    "capabilities": [
+      "tool_result_use"
+    ],
+    "prompt": "查事实并禁止编造其它码。 [v8]",
+    "expected_tools": [
+      "lookup_fact"
+    ],
+    "scripted_tool_calls": [
+      {
+        "name": "lookup_fact",
+        "args": {
+          "key": "alpha"
+        }
+      }
+    ],
+    "scripted_answer": "官方值 42。",
+    "must_contain_from_tools": [
+      "42"
+    ],
+    "must_not_contain": [
+      "999"
+    ],
+    "test_purpose": {
+      "summary": "验证答案含 42 且不含伪造码 999（扩容变体 8）",
+      "why_this_case": "A5 正/负锚点同时约束；bank thicken #8",
+      "expected_behavior": [
+        "含 42",
+        "不含 999"
+      ],
+      "failure_signals": [
+        "漏 42",
+        "掺入 999"
+      ],
+      "not_testing": [
+        "不测 live MCP",
+        "不测多轮"
+      ],
+      "oracle_rationale": "规则 oracle：must_contain + must_not_contain"
     }
   }
 ]

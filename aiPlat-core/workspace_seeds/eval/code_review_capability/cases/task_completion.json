@@ -1,11 +1,17 @@
 [
   {
     "case_id": "code_review.task_completion.001",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "exact_match",
     "prompt": "审查 app/auth.py：标记 f-string SQL 注入风险。",
-    "findings": ["app/auth.py:42:P0:sql_injection"],
-    "gold": ["app/auth.py:42:P0:sql_injection"],
+    "findings": [
+      "app/auth.py:42:P0:sql_injection"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection"
+    ],
     "test_purpose": {
       "summary": "验证 findings 与 gold 精确集合相等，而不是漏报或多余项",
       "why_this_case": "Code Review fixture 最小交付是 exact set match",
@@ -13,46 +19,79 @@
         "findings 字符串化集合等于 gold",
         "不多报无关 finding"
       ],
-      "failure_signals": ["缺 gold", "集合不相等"],
-      "not_testing": ["不测试真实仓库 autoreview", "不测试 LLM 审查质量"],
+      "failure_signals": [
+        "缺 gold",
+        "集合不相等"
+      ],
+      "not_testing": [
+        "不测试真实仓库 autoreview",
+        "不测试 LLM 审查质量"
+      ],
       "oracle_rationale": "规则 oracle：sorted(str(findings)) == sorted(str(gold))"
     }
   },
   {
     "case_id": "code_review.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "exact_match",
     "prompt": "审查 app/cache.py：标记未关闭连接。",
-    "findings": ["app/cache.py:17:P1:resource_leak"],
-    "gold": ["app/cache.py:17:P1:resource_leak"],
+    "findings": [
+      "app/cache.py:17:P1:resource_leak"
+    ],
+    "gold": [
+      "app/cache.py:17:P1:resource_leak"
+    ],
     "test_purpose": {
       "summary": "验证单条资源泄漏 finding 精确命中 gold",
       "why_this_case": "单 finding 回归防漏报",
-      "expected_behavior": ["集合仅含 resource_leak"],
-      "failure_signals": ["空 findings", "多报"],
-      "not_testing": ["不测试运行时泄漏检测"],
+      "expected_behavior": [
+        "集合仅含 resource_leak"
+      ],
+      "failure_signals": [
+        "空 findings",
+        "多报"
+      ],
+      "not_testing": [
+        "不测试运行时泄漏检测"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "exact_match",
     "prompt": "审查 app/api.py：标记缺失鉴权装饰器。",
-    "findings": ["app/api.py:9:P0:missing_auth"],
-    "gold": ["app/api.py:9:P0:missing_auth"],
+    "findings": [
+      "app/api.py:9:P0:missing_auth"
+    ],
+    "gold": [
+      "app/api.py:9:P0:missing_auth"
+    ],
     "test_purpose": {
       "summary": "验证 missing_auth 金标被精确命中",
       "why_this_case": "鉴权缺口是任务完成度主信号",
-      "expected_behavior": ["findings == gold"],
-      "failure_signals": ["漏报 missing_auth"],
-      "not_testing": ["不测试 JWT 实现"],
+      "expected_behavior": [
+        "findings == gold"
+      ],
+      "failure_signals": [
+        "漏报 missing_auth"
+      ],
+      "not_testing": [
+        "不测试 JWT 实现"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "exact_match",
     "prompt": "审查两处：未使用导入与裸 except。",
     "findings": [
@@ -66,25 +105,133 @@
     "test_purpose": {
       "summary": "验证多 finding 任务完成要求全集相等",
       "why_this_case": "多条金标防只报一半",
-      "expected_behavior": ["两条均命中且无多余"],
-      "failure_signals": ["缺一条", "多一条"],
-      "not_testing": ["不测试 lint 工具本身"],
+      "expected_behavior": [
+        "两条均命中且无多余"
+      ],
+      "failure_signals": [
+        "缺一条",
+        "多一条"
+      ],
+      "not_testing": [
+        "不测试 lint 工具本身"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   },
   {
     "case_id": "code_review.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "exact_match",
     "prompt": "审查 app/config.py：标记硬编码密钥。",
-    "findings": ["app/config.py:5:P0:hardcoded_secret"],
-    "gold": ["app/config.py:5:P0:hardcoded_secret"],
+    "findings": [
+      "app/config.py:5:P0:hardcoded_secret"
+    ],
+    "gold": [
+      "app/config.py:5:P0:hardcoded_secret"
+    ],
     "test_purpose": {
       "summary": "验证硬编码密钥 finding 精确命中",
       "why_this_case": "密钥类任务完成度基线",
-      "expected_behavior": ["仅含 hardcoded_secret"],
-      "failure_signals": ["漏报", "改写 severity 导致不等"],
-      "not_testing": ["不测试密钥扫描引擎"],
+      "expected_behavior": [
+        "仅含 hardcoded_secret"
+      ],
+      "failure_signals": [
+        "漏报",
+        "改写 severity 导致不等"
+      ],
+      "not_testing": [
+        "不测试密钥扫描引擎"
+      ],
+      "oracle_rationale": "规则 oracle：exact set match"
+    }
+  },
+  {
+    "case_id": "code_review.task_completion.006",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "exact_match",
+    "prompt": "审查 app/auth.py：标记 f-string SQL 注入风险。 [v6]",
+    "findings": [
+      "app/auth.py:42:P0:sql_injection"
+    ],
+    "gold": [
+      "app/auth.py:42:P0:sql_injection"
+    ],
+    "test_purpose": {
+      "summary": "验证 findings 与 gold 精确集合相等，而不是漏报或多余项（扩容变体 6）",
+      "why_this_case": "Code Review fixture 最小交付是 exact set match；bank thicken #6",
+      "expected_behavior": [
+        "findings 字符串化集合等于 gold",
+        "不多报无关 finding"
+      ],
+      "failure_signals": [
+        "缺 gold",
+        "集合不相等"
+      ],
+      "not_testing": [
+        "不测试真实仓库 autoreview",
+        "不测试 LLM 审查质量"
+      ],
+      "oracle_rationale": "规则 oracle：sorted(str(findings)) == sorted(str(gold))"
+    }
+  },
+  {
+    "case_id": "code_review.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "exact_match",
+    "prompt": "审查 app/cache.py：标记未关闭连接。 [v7]",
+    "findings": [
+      "app/cache.py:17:P1:resource_leak"
+    ],
+    "gold": [
+      "app/cache.py:17:P1:resource_leak"
+    ],
+    "test_purpose": {
+      "summary": "验证单条资源泄漏 finding 精确命中 gold（扩容变体 7）",
+      "why_this_case": "单 finding 回归防漏报；bank thicken #7",
+      "expected_behavior": [
+        "集合仅含 resource_leak"
+      ],
+      "failure_signals": [
+        "空 findings",
+        "多报"
+      ],
+      "not_testing": [
+        "不测试运行时泄漏检测"
+      ],
+      "oracle_rationale": "规则 oracle：exact set match"
+    }
+  },
+  {
+    "case_id": "code_review.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "exact_match",
+    "prompt": "审查 app/api.py：标记缺失鉴权装饰器。 [v8]",
+    "findings": [
+      "app/api.py:9:P0:missing_auth"
+    ],
+    "gold": [
+      "app/api.py:9:P0:missing_auth"
+    ],
+    "test_purpose": {
+      "summary": "验证 missing_auth 金标被精确命中（扩容变体 8）",
+      "why_this_case": "鉴权缺口是任务完成度主信号；bank thicken #8",
+      "expected_behavior": [
+        "findings == gold"
+      ],
+      "failure_signals": [
+        "漏报 missing_auth"
+      ],
+      "not_testing": [
+        "不测试 JWT 实现"
+      ],
       "oracle_rationale": "规则 oracle：exact set match"
     }
   }

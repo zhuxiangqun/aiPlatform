@@ -1,16 +1,32 @@
 [
   {
     "case_id": "multi_agent.clarification.001",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "prompt": "用户说「部署一下」——先转澄清官再继续。",
     "clarify_agent": "clarifier",
     "handoffs": [
-      {"from": "coordinator", "to": "clarifier", "message": "缺环境信息"},
-      {"from": "clarifier", "to": "coordinator", "message": "已确认 staging"}
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺环境信息"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "已确认 staging"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "clarifier"],
-      ["clarifier", "coordinator"]
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
     ],
     "final_answer": "将按 staging 准备部署。",
     "expected_final": "将按 staging 准备部署。",
@@ -21,104 +37,337 @@
         "存在到 clarifier 的 handoff",
         "路径与终稿 exact"
       ],
-      "failure_signals": ["跳过澄清直接部署"],
-      "not_testing": ["不测 live HITL", "不测真实部署"],
+      "failure_signals": [
+        "跳过澄清直接部署"
+      ],
+      "not_testing": [
+        "不测 live HITL",
+        "不测真实部署"
+      ],
       "oracle_rationale": "规则 oracle：clarify handoff + path/final exact"
     }
   },
   {
     "case_id": "multi_agent.clarification.002",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "prompt": "「删库」——必须澄清目标租户。",
     "clarify_agent": "clarifier",
     "handoffs": [
-      {"from": "coordinator", "to": "clarifier", "message": "缺 tenant"},
-      {"from": "clarifier", "to": "coordinator", "message": "tenant=demo"}
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺 tenant"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "tenant=demo"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "clarifier"],
-      ["clarifier", "coordinator"]
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
     ],
     "final_answer": "仅在 demo 租户执行清理。",
     "expected_final": "仅在 demo 租户执行清理。",
     "test_purpose": {
       "summary": "验证危险操作前澄清 tenant",
       "why_this_case": "澄清防误删",
-      "expected_behavior": ["必经 clarifier"],
-      "failure_signals": ["未澄清即删"],
-      "not_testing": ["不测真实删库"],
+      "expected_behavior": [
+        "必经 clarifier"
+      ],
+      "failure_signals": [
+        "未澄清即删"
+      ],
+      "not_testing": [
+        "不测真实删库"
+      ],
       "oracle_rationale": "规则 oracle：clarify handoff + exact"
     }
   },
   {
     "case_id": "multi_agent.clarification.003",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "prompt": "模糊「优化一下」——澄清优化目标。",
     "clarify_agent": "clarifier",
     "handoffs": [
-      {"from": "coordinator", "to": "clarifier", "message": "缺优化指标"},
-      {"from": "clarifier", "to": "coordinator", "message": "指标=延迟 p95"}
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺优化指标"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "指标=延迟 p95"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "clarifier"],
-      ["clarifier", "coordinator"]
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
     ],
     "final_answer": "以 p95 延迟为目标优化。",
     "expected_final": "以 p95 延迟为目标优化。",
     "test_purpose": {
       "summary": "验证模糊请求必澄清指标",
       "why_this_case": "澄清能力变体三",
-      "expected_behavior": ["clarifier 边存在"],
-      "failure_signals": ["跳过澄清"],
-      "not_testing": ["不测真实性能调优"],
+      "expected_behavior": [
+        "clarifier 边存在"
+      ],
+      "failure_signals": [
+        "跳过澄清"
+      ],
+      "not_testing": [
+        "不测真实性能调优"
+      ],
       "oracle_rationale": "规则 oracle：clarify handoff + exact"
     }
   },
   {
     "case_id": "multi_agent.clarification.004",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "prompt": "「迁移」——澄清源与目标区域。",
     "clarify_agent": "clarifier",
     "handoffs": [
-      {"from": "coordinator", "to": "clarifier", "message": "缺 region"},
-      {"from": "clarifier", "to": "coordinator", "message": "us-east → eu-west"}
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺 region"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "us-east → eu-west"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "clarifier"],
-      ["clarifier", "coordinator"]
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
     ],
     "final_answer": "计划迁移 us-east → eu-west。",
     "expected_final": "计划迁移 us-east → eu-west。",
     "test_purpose": {
       "summary": "验证迁移前澄清区域",
       "why_this_case": "澄清能力变体四",
-      "expected_behavior": ["路径含 clarifier"],
-      "failure_signals": ["未澄清区域"],
-      "not_testing": ["不测真实迁移"],
+      "expected_behavior": [
+        "路径含 clarifier"
+      ],
+      "failure_signals": [
+        "未澄清区域"
+      ],
+      "not_testing": [
+        "不测真实迁移"
+      ],
       "oracle_rationale": "规则 oracle：clarify handoff + exact"
     }
   },
   {
     "case_id": "multi_agent.clarification.005",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "prompt": "「发版」——澄清版本号与窗口。",
     "clarify_agent": "clarifier",
     "handoffs": [
-      {"from": "coordinator", "to": "clarifier", "message": "缺版本与窗口"},
-      {"from": "clarifier", "to": "coordinator", "message": "v1.2 @ 02:00 UTC"}
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺版本与窗口"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "v1.2 @ 02:00 UTC"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "clarifier"],
-      ["clarifier", "coordinator"]
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
     ],
     "final_answer": "将在 02:00 UTC 发布 v1.2。",
     "expected_final": "将在 02:00 UTC 发布 v1.2。",
     "test_purpose": {
       "summary": "验证发版前澄清版本与窗口",
       "why_this_case": "澄清能力第五基线",
-      "expected_behavior": ["clarifier 往返 exact"],
-      "failure_signals": ["直接发版"],
-      "not_testing": ["不测真实发版流水线"],
+      "expected_behavior": [
+        "clarifier 往返 exact"
+      ],
+      "failure_signals": [
+        "直接发版"
+      ],
+      "not_testing": [
+        "不测真实发版流水线"
+      ],
+      "oracle_rationale": "规则 oracle：clarify handoff + exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.clarification.006",
+    "capabilities": [
+      "clarification"
+    ],
+    "prompt": "用户说「部署一下」——先转澄清官再继续。 [v6]",
+    "clarify_agent": "clarifier",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺环境信息"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "已确认 staging"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "将按 staging 准备部署。",
+    "expected_final": "将按 staging 准备部署。",
+    "test_purpose": {
+      "summary": "验证信息不足时必须 handoff 到 clarifier（扩容变体 6）",
+      "why_this_case": "Multi-Agent 澄清能力体现为强制澄清角色边；bank thicken #6",
+      "expected_behavior": [
+        "存在到 clarifier 的 handoff",
+        "路径与终稿 exact"
+      ],
+      "failure_signals": [
+        "跳过澄清直接部署"
+      ],
+      "not_testing": [
+        "不测 live HITL",
+        "不测真实部署"
+      ],
+      "oracle_rationale": "规则 oracle：clarify handoff + path/final exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.clarification.007",
+    "capabilities": [
+      "clarification"
+    ],
+    "prompt": "「删库」——必须澄清目标租户。 [v7]",
+    "clarify_agent": "clarifier",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺 tenant"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "tenant=demo"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "仅在 demo 租户执行清理。",
+    "expected_final": "仅在 demo 租户执行清理。",
+    "test_purpose": {
+      "summary": "验证危险操作前澄清 tenant（扩容变体 7）",
+      "why_this_case": "澄清防误删；bank thicken #7",
+      "expected_behavior": [
+        "必经 clarifier"
+      ],
+      "failure_signals": [
+        "未澄清即删"
+      ],
+      "not_testing": [
+        "不测真实删库"
+      ],
+      "oracle_rationale": "规则 oracle：clarify handoff + exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.clarification.008",
+    "capabilities": [
+      "clarification"
+    ],
+    "prompt": "模糊「优化一下」——澄清优化目标。 [v8]",
+    "clarify_agent": "clarifier",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "clarifier",
+        "message": "缺优化指标"
+      },
+      {
+        "from": "clarifier",
+        "to": "coordinator",
+        "message": "指标=延迟 p95"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "clarifier"
+      ],
+      [
+        "clarifier",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "以 p95 延迟为目标优化。",
+    "expected_final": "以 p95 延迟为目标优化。",
+    "test_purpose": {
+      "summary": "验证模糊请求必澄清指标（扩容变体 8）",
+      "why_this_case": "澄清能力变体三；bank thicken #8",
+      "expected_behavior": [
+        "clarifier 边存在"
+      ],
+      "failure_signals": [
+        "跳过澄清"
+      ],
+      "not_testing": [
+        "不测真实性能调优"
+      ],
       "oracle_rationale": "规则 oracle：clarify handoff + exact"
     }
   }

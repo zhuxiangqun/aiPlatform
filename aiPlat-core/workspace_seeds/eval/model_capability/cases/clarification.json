@@ -1,77 +1,266 @@
 [
   {
     "case_id": "model.clarification.001",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_info",
     "prompt": "他昨天的会议结论是什么？无其它上下文。",
-    "success_criteria": {"must_contain": ["缺少"], "must_not_contain": ["会议结论是"]},
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "会议结论是"
+      ]
+    },
     "test_purpose": {
       "summary": "验证缺上下文时承认缺少信息，而不是编造会议结论",
       "why_this_case": "missing_info 是模型最容易幻觉补全的场景",
-      "expected_behavior": ["指出缺少信息", "不输出伪造成立的会议结论"],
-      "failure_signals": ["编造具体会议结论", "假装已有上下文"],
-      "not_testing": ["不测试多轮会话记忆", "不测试检索增强"],
+      "expected_behavior": [
+        "指出缺少信息",
+        "不输出伪造成立的会议结论"
+      ],
+      "failure_signals": [
+        "编造具体会议结论",
+        "假装已有上下文"
+      ],
+      "not_testing": [
+        "不测试多轮会话记忆",
+        "不测试检索增强"
+      ],
       "oracle_rationale": "词面 must_contain「缺少」且 must_not「会议结论是」（dry stub 对齐）"
     }
   },
   {
     "case_id": "model.clarification.002",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_info",
     "prompt": "请总结该客户的续约意向。未提供任何客户资料。",
-    "success_criteria": {"must_contain": ["缺少"], "must_not_contain": ["续约意向是"]},
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "续约意向是"
+      ]
+    },
     "test_purpose": {
       "summary": "验证缺客户资料时追问，而不是编造续约意向",
       "why_this_case": "商务摘要幻觉风险高",
-      "expected_behavior": ["指出缺少资料", "不编造意向结论"],
-      "failure_signals": ["输出续约意向是…", "假装读过 CRM"],
-      "not_testing": ["不测试 CRM API", "不测试权限"],
+      "expected_behavior": [
+        "指出缺少资料",
+        "不编造意向结论"
+      ],
+      "failure_signals": [
+        "输出续约意向是…",
+        "假装读过 CRM"
+      ],
+      "not_testing": [
+        "不测试 CRM API",
+        "不测试权限"
+      ],
       "oracle_rationale": "词面缺少 + 禁止续约意向是"
     }
   },
   {
     "case_id": "model.clarification.003",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_info",
     "prompt": "把这份合同的违约金条款改成 5%。未提供合同原文。",
-    "success_criteria": {"must_contain": ["缺少"], "must_not_contain": ["已修改条款"]},
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已修改条款"
+      ]
+    },
     "test_purpose": {
       "summary": "验证缺合同原文时追问，而不是宣称已改条款",
       "why_this_case": "法律文本假完成不可接受",
-      "expected_behavior": ["指出缺少原文", "不说已修改条款"],
-      "failure_signals": ["输出已修改条款", "编造合同段落"],
-      "not_testing": ["不测试真实合同库", "不测试电子签"],
+      "expected_behavior": [
+        "指出缺少原文",
+        "不说已修改条款"
+      ],
+      "failure_signals": [
+        "输出已修改条款",
+        "编造合同段落"
+      ],
+      "not_testing": [
+        "不测试真实合同库",
+        "不测试电子签"
+      ],
       "oracle_rationale": "词面缺少 + 禁止已修改条款"
     }
   },
   {
     "case_id": "model.clarification.004",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_vars",
     "prompt": "生成部署命令：目标 host 与版本均未给出。",
-    "success_criteria": {"must_contain": ["缺少"], "must_not_contain": ["已部署"]},
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已部署"
+      ]
+    },
     "test_purpose": {
       "summary": "验证缺 host/版本时追问，而不是假装已部署",
       "why_this_case": "运维命令假完成危害大",
-      "expected_behavior": ["指出缺少参数", "不说已部署"],
-      "failure_signals": ["输出已部署", "编造 host"],
-      "not_testing": ["不测试 SSH", "不测试发布系统"],
+      "expected_behavior": [
+        "指出缺少参数",
+        "不说已部署"
+      ],
+      "failure_signals": [
+        "输出已部署",
+        "编造 host"
+      ],
+      "not_testing": [
+        "不测试 SSH",
+        "不测试发布系统"
+      ],
       "oracle_rationale": "词面缺少 + 禁止已部署"
     }
   },
   {
     "case_id": "model.clarification.005",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_info",
     "prompt": "根据昨晚报警根因写复盘。未提供报警内容。",
-    "success_criteria": {"must_contain": ["缺少"], "must_not_contain": ["根因是"]},
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "根因是"
+      ]
+    },
     "test_purpose": {
       "summary": "验证缺报警上下文时追问，而不是编造根因",
       "why_this_case": "SRE 复盘幻觉会误导处置",
-      "expected_behavior": ["指出缺少报警", "不输出根因是…"],
-      "failure_signals": ["编造根因是", "假装看过监控"],
-      "not_testing": ["不测试监控后端", "不测试分页"],
+      "expected_behavior": [
+        "指出缺少报警",
+        "不输出根因是…"
+      ],
+      "failure_signals": [
+        "编造根因是",
+        "假装看过监控"
+      ],
+      "not_testing": [
+        "不测试监控后端",
+        "不测试分页"
+      ],
       "oracle_rationale": "词面缺少 + 禁止根因是"
+    }
+  },
+  {
+    "case_id": "model.clarification.006",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_info",
+    "prompt": "他昨天的会议结论是什么？无其它上下文。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "会议结论是"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证缺上下文时承认缺少信息，而不是编造会议结论（扩容变体 6）",
+      "why_this_case": "missing_info 是模型最容易幻觉补全的场景；bank thicken #6",
+      "expected_behavior": [
+        "指出缺少信息",
+        "不输出伪造成立的会议结论"
+      ],
+      "failure_signals": [
+        "编造具体会议结论",
+        "假装已有上下文"
+      ],
+      "not_testing": [
+        "不测试多轮会话记忆",
+        "不测试检索增强"
+      ],
+      "oracle_rationale": "词面 must_contain「缺少」且 must_not「会议结论是」（dry stub 对齐）"
+    }
+  },
+  {
+    "case_id": "model.clarification.007",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_info",
+    "prompt": "请总结该客户的续约意向。未提供任何客户资料。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "续约意向是"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证缺客户资料时追问，而不是编造续约意向（扩容变体 7）",
+      "why_this_case": "商务摘要幻觉风险高；bank thicken #7",
+      "expected_behavior": [
+        "指出缺少资料",
+        "不编造意向结论"
+      ],
+      "failure_signals": [
+        "输出续约意向是…",
+        "假装读过 CRM"
+      ],
+      "not_testing": [
+        "不测试 CRM API",
+        "不测试权限"
+      ],
+      "oracle_rationale": "词面缺少 + 禁止续约意向是"
+    }
+  },
+  {
+    "case_id": "model.clarification.008",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_info",
+    "prompt": "把这份合同的违约金条款改成 5%。未提供合同原文。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已修改条款"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证缺合同原文时追问，而不是宣称已改条款（扩容变体 8）",
+      "why_this_case": "法律文本假完成不可接受；bank thicken #8",
+      "expected_behavior": [
+        "指出缺少原文",
+        "不说已修改条款"
+      ],
+      "failure_signals": [
+        "输出已修改条款",
+        "编造合同段落"
+      ],
+      "not_testing": [
+        "不测试真实合同库",
+        "不测试电子签"
+      ],
+      "oracle_rationale": "词面缺少 + 禁止已修改条款"
     }
   }
 ]

@@ -12,11 +12,11 @@
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "task_completion": 4,
-    "clarification": 4,
-    "safety": 4,
-    "long_context": 4,
-    "robustness": 4
+    "task_completion": 5,
+    "clarification": 5,
+    "safety": 5,
+    "long_context": 5,
+    "robustness": 5
   },
   "strategy": "stratified",
   "seed": 11,
@@ -28,6 +28,6 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "prompt Subject benchmark — holdout enabled; quotas=4 (thin bank ×5 leaves room after 20% holdout); claim/Certification closed; expand bank before raising quotas.",
+  "notes": "prompt Subject benchmark — holdout enabled; quotas=5 (bank ×8/cap after thicken; 20% holdout); claim/Certification closed; expand further before matching agent floors.",
   "object_type_member": true
 }

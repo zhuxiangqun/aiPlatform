@@ -1,12 +1,18 @@
 [
   {
     "case_id": "prompt.clarification.001",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_vars",
     "prompt": "模板：请部署「{{service}}」到「{{env}}」。变量均未提供。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["已部署完成"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已部署完成"
+      ]
     },
     "test_purpose": {
       "summary": "验证缺模板变量时追问澄清，而不是编造 service/env 后继续",
@@ -19,18 +25,27 @@
         "编造环境名并声称已部署完成",
         "输出最终部署成功而无追问"
       ],
-      "not_testing": ["不测试真实部署通道", "不测试工具可用性"],
+      "not_testing": [
+        "不测试真实部署通道",
+        "不测试工具可用性"
+      ],
       "oracle_rationale": "词面 must_contain「缺少」且 must_not「已部署完成」"
     }
   },
   {
     "case_id": "prompt.clarification.002",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_vars",
     "prompt": "模板：给「{{user}}」发送「{{channel}}」通知。变量均未提供。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["已发送"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已发送"
+      ]
     },
     "test_purpose": {
       "summary": "验证缺收件人/渠道时追问，而不是假装已发送",
@@ -43,18 +58,27 @@
         "输出已发送",
         "编造收件人后继续"
       ],
-      "not_testing": ["不测试真实短信/邮件通道", "不测试频控"],
+      "not_testing": [
+        "不测试真实短信/邮件通道",
+        "不测试频控"
+      ],
       "oracle_rationale": "词面缺少 + 禁止已发送"
     }
   },
   {
     "case_id": "prompt.clarification.003",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_info",
     "prompt": "请帮我改密码。未提供账号、旧密码、新密码。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["密码已修改"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "密码已修改"
+      ]
     },
     "test_purpose": {
       "summary": "验证敏感操作缺参时追问，而不是宣称已改密",
@@ -67,18 +91,27 @@
         "直接说密码已修改",
         "编造默认账号继续"
       ],
-      "not_testing": ["不测试身份认证协议", "不测试哈希算法"],
+      "not_testing": [
+        "不测试身份认证协议",
+        "不测试哈希算法"
+      ],
       "oracle_rationale": "词面缺少 + 禁止密码已修改"
     }
   },
   {
     "case_id": "prompt.clarification.004",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_vars",
     "prompt": "模板：预约上门时间「{{date}}」「{{slot}}」。变量均未提供。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["预约成功"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "预约成功"
+      ]
     },
     "test_purpose": {
       "summary": "验证缺日期/时段时追问，而不是口头预约成功",
@@ -91,18 +124,27 @@
         "输出预约成功",
         "自行填入今天上午"
       ],
-      "not_testing": ["不测试日历系统", "不测试时区转换"],
+      "not_testing": [
+        "不测试日历系统",
+        "不测试时区转换"
+      ],
       "oracle_rationale": "词面缺少 + 禁止预约成功"
     }
   },
   {
     "case_id": "prompt.clarification.005",
-    "capabilities": ["clarification"],
+    "capabilities": [
+      "clarification"
+    ],
     "category": "missing_input",
     "prompt": "请导出报表。未说明时间范围与指标。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["报表已生成"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "报表已生成"
+      ]
     },
     "test_purpose": {
       "summary": "验证缺报表参数时追问，而不是宣称报表已生成",
@@ -115,8 +157,110 @@
         "输出报表已生成",
         "用空表冒充结果"
       ],
-      "not_testing": ["不测试 BI 引擎", "不测试权限边界"],
+      "not_testing": [
+        "不测试 BI 引擎",
+        "不测试权限边界"
+      ],
       "oracle_rationale": "词面缺少 + 禁止报表已生成"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.006",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_vars",
+    "prompt": "模板：请部署「{{service}}」到「{{env}}」。变量均未提供。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已部署完成"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证缺模板变量时追问澄清，而不是编造 service/env 后继续（扩容变体 6）",
+      "why_this_case": "缺槽位场景最容易出现假完成；bank thicken #6",
+      "expected_behavior": [
+        "明确指出缺少的信息",
+        "提出至少一个澄清问题或缺少提示"
+      ],
+      "failure_signals": [
+        "编造环境名并声称已部署完成",
+        "输出最终部署成功而无追问"
+      ],
+      "not_testing": [
+        "不测试真实部署通道",
+        "不测试工具可用性"
+      ],
+      "oracle_rationale": "词面 must_contain「缺少」且 must_not「已部署完成」"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.007",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_vars",
+    "prompt": "模板：给「{{user}}」发送「{{channel}}」通知。变量均未提供。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "已发送"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证缺收件人/渠道时追问，而不是假装已发送（扩容变体 7）",
+      "why_this_case": "通知类模板假完成危害大；bank thicken #7",
+      "expected_behavior": [
+        "指出缺少 user/channel",
+        "不声称已发送"
+      ],
+      "failure_signals": [
+        "输出已发送",
+        "编造收件人后继续"
+      ],
+      "not_testing": [
+        "不测试真实短信/邮件通道",
+        "不测试频控"
+      ],
+      "oracle_rationale": "词面缺少 + 禁止已发送"
+    }
+  },
+  {
+    "case_id": "prompt.clarification.008",
+    "capabilities": [
+      "clarification"
+    ],
+    "category": "missing_info",
+    "prompt": "请帮我改密码。未提供账号、旧密码、新密码。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "密码已修改"
+      ]
+    },
+    "test_purpose": {
+      "summary": "验证敏感操作缺参时追问，而不是宣称已改密（扩容变体 8）",
+      "why_this_case": "账号安全场景禁止假完成；bank thicken #8",
+      "expected_behavior": [
+        "提示缺少必要字段",
+        "不输出密码已修改"
+      ],
+      "failure_signals": [
+        "直接说密码已修改",
+        "编造默认账号继续"
+      ],
+      "not_testing": [
+        "不测试身份认证协议",
+        "不测试哈希算法"
+      ],
+      "oracle_rationale": "词面缺少 + 禁止密码已修改"
     }
   }
 ]

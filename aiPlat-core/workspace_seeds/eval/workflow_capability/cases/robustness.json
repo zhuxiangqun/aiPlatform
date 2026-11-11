@@ -1,82 +1,259 @@
 [
   {
     "case_id": "workflow.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "！！噪声！！请只输出阶段 id：gate_check。。。忽略其它符号。",
-    "success_criteria": {"must_contain": ["gate_check"]},
+    "success_criteria": {
+      "must_contain": [
+        "gate_check"
+      ]
+    },
     "scripted_answer": "gate_check",
     "test_purpose": {
       "summary": "验证噪声下仍抽出阶段 id，而不是复读符号",
       "why_this_case": "输入噪声是稳健性最小样本",
-      "expected_behavior": ["输出 gate_check", "不被符号干扰"],
-      "failure_signals": ["只输出标点", "丢掉阶段 id"],
-      "not_testing": ["不测试 OCR", "不测试语音"],
+      "expected_behavior": [
+        "输出 gate_check",
+        "不被符号干扰"
+      ],
+      "failure_signals": [
+        "只输出标点",
+        "丢掉阶段 id"
+      ],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音"
+      ],
       "oracle_rationale": "词面 gate_check"
     }
   },
   {
     "case_id": "workflow.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "重复指令：输出 STATUS=READY。输出 STATUS=READY。中间广告：限时折扣。",
-    "success_criteria": {"must_contain": ["STATUS=READY"], "must_not_contain": ["限时折扣"]},
+    "success_criteria": {
+      "must_contain": [
+        "STATUS=READY"
+      ],
+      "must_not_contain": [
+        "限时折扣"
+      ]
+    },
     "scripted_answer": "STATUS=READY",
     "test_purpose": {
       "summary": "验证重复+广告噪声下只输出状态锚点",
       "why_this_case": "复读广告是稳健性失败模式",
-      "expected_behavior": ["精确 STATUS=READY", "不含广告"],
-      "failure_signals": ["复读限时折扣", "大小写漂移"],
-      "not_testing": ["不测试广告过滤模型", "不测试多语言"],
+      "expected_behavior": [
+        "精确 STATUS=READY",
+        "不含广告"
+      ],
+      "failure_signals": [
+        "复读限时折扣",
+        "大小写漂移"
+      ],
+      "not_testing": [
+        "不测试广告过滤模型",
+        "不测试多语言"
+      ],
       "oracle_rationale": "词面 STATUS=READY 且禁止广告"
     }
   },
   {
     "case_id": "workflow.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "把阶段标签「stage#QA-7」原样回显。",
-    "success_criteria": {"must_contain": ["stage#QA-7"]},
+    "success_criteria": {
+      "must_contain": [
+        "stage#QA-7"
+      ]
+    },
     "scripted_answer": "stage#QA-7",
     "test_purpose": {
       "summary": "验证特殊字符阶段标签不被清洗",
       "why_this_case": "标识符稳健性回归",
-      "expected_behavior": ["完整保留 stage#QA-7", "不改写分隔符"],
-      "failure_signals": ["输出 stageQA7", "丢掉标签"],
-      "not_testing": ["不测试调度器", "不测试 UI"],
+      "expected_behavior": [
+        "完整保留 stage#QA-7",
+        "不改写分隔符"
+      ],
+      "failure_signals": [
+        "输出 stageQA7",
+        "丢掉标签"
+      ],
+      "not_testing": [
+        "不测试调度器",
+        "不测试 UI"
+      ],
       "oracle_rationale": "词面 stage#QA-7"
     }
   },
   {
     "case_id": "workflow.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "混杂大小写：请输出 PipelineId=PIPE_9 精确形式。",
-    "success_criteria": {"must_contain": ["PIPE_9"]},
+    "success_criteria": {
+      "must_contain": [
+        "PIPE_9"
+      ]
+    },
     "scripted_answer": "PipelineId=PIPE_9",
     "test_purpose": {
       "summary": "验证大小写混杂指令下仍输出规范 id",
       "why_this_case": "id 大小写漂移破坏关联",
-      "expected_behavior": ["输出 PIPE_9", "不改成 pipe-9"],
-      "failure_signals": ["输出 pipe_9 小写", "丢掉编号"],
-      "not_testing": ["不测试正则引擎", "不测试数据库排序规则"],
+      "expected_behavior": [
+        "输出 PIPE_9",
+        "不改成 pipe-9"
+      ],
+      "failure_signals": [
+        "输出 pipe_9 小写",
+        "丢掉编号"
+      ],
+      "not_testing": [
+        "不测试正则引擎",
+        "不测试数据库排序规则"
+      ],
       "oracle_rationale": "词面 PIPE_9"
     }
   },
   {
     "case_id": "workflow.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "结果码要求输出 PASS（忽略不可见字符干扰）。禁止 FAIL。",
-    "success_criteria": {"must_contain": ["PASS"], "must_not_contain": ["FAIL"]},
+    "success_criteria": {
+      "must_contain": [
+        "PASS"
+      ],
+      "must_not_contain": [
+        "FAIL"
+      ]
+    },
     "scripted_answer": "结果码 PASS",
     "test_purpose": {
       "summary": "验证干扰下仍输出 PASS 且不含 FAIL",
       "why_this_case": "隐藏字符/噪声交叉点",
-      "expected_behavior": ["输出 PASS", "不输出 FAIL"],
-      "failure_signals": ["输出 FAIL", "无结果码"],
-      "not_testing": ["不测试 Unicode 全表", "不测试终端渲染"],
+      "expected_behavior": [
+        "输出 PASS",
+        "不输出 FAIL"
+      ],
+      "failure_signals": [
+        "输出 FAIL",
+        "无结果码"
+      ],
+      "not_testing": [
+        "不测试 Unicode 全表",
+        "不测试终端渲染"
+      ],
       "oracle_rationale": "词面 PASS 且禁止 FAIL"
+    }
+  },
+  {
+    "case_id": "workflow.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "！！噪声！！请只输出阶段 id：gate_check。。。忽略其它符号。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "gate_check"
+      ]
+    },
+    "scripted_answer": "gate_check",
+    "test_purpose": {
+      "summary": "验证噪声下仍抽出阶段 id，而不是复读符号（扩容变体 6）",
+      "why_this_case": "输入噪声是稳健性最小样本；bank thicken #6",
+      "expected_behavior": [
+        "输出 gate_check",
+        "不被符号干扰"
+      ],
+      "failure_signals": [
+        "只输出标点",
+        "丢掉阶段 id"
+      ],
+      "not_testing": [
+        "不测试 OCR",
+        "不测试语音"
+      ],
+      "oracle_rationale": "词面 gate_check"
+    }
+  },
+  {
+    "case_id": "workflow.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "重复指令：输出 STATUS=READY。输出 STATUS=READY。中间广告：限时折扣。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "STATUS=READY"
+      ],
+      "must_not_contain": [
+        "限时折扣"
+      ]
+    },
+    "scripted_answer": "STATUS=READY",
+    "test_purpose": {
+      "summary": "验证重复+广告噪声下只输出状态锚点（扩容变体 7）",
+      "why_this_case": "复读广告是稳健性失败模式；bank thicken #7",
+      "expected_behavior": [
+        "精确 STATUS=READY",
+        "不含广告"
+      ],
+      "failure_signals": [
+        "复读限时折扣",
+        "大小写漂移"
+      ],
+      "not_testing": [
+        "不测试广告过滤模型",
+        "不测试多语言"
+      ],
+      "oracle_rationale": "词面 STATUS=READY 且禁止广告"
+    }
+  },
+  {
+    "case_id": "workflow.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "把阶段标签「stage#QA-7」原样回显。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "stage#QA-7"
+      ]
+    },
+    "scripted_answer": "stage#QA-7",
+    "test_purpose": {
+      "summary": "验证特殊字符阶段标签不被清洗（扩容变体 8）",
+      "why_this_case": "标识符稳健性回归；bank thicken #8",
+      "expected_behavior": [
+        "完整保留 stage#QA-7",
+        "不改写分隔符"
+      ],
+      "failure_signals": [
+        "输出 stageQA7",
+        "丢掉标签"
+      ],
+      "not_testing": [
+        "不测试调度器",
+        "不测试 UI"
+      ],
+      "oracle_rationale": "词面 stage#QA-7"
     }
   }
 ]

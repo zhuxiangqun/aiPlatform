@@ -1,97 +1,268 @@
 [
   {
     "case_id": "generated_app.task_completion.001",
-    "capabilities": ["pi_export"],
+    "capabilities": [
+      "pi_export"
+    ],
     "category": "pi_smoke",
     "prompt": "导出生成应用为 Pi 包，确认包含 manifest 与入口。",
     "success_criteria": {
-      "must_contain": ["manifest", "入口"],
-      "must_not_contain": ["导出失败"]
+      "must_contain": [
+        "manifest",
+        "入口"
+      ],
+      "must_not_contain": [
+        "导出失败"
+      ]
     },
     "scripted_answer": "Pi 导出完成：manifest 已生成，入口 app.main 就绪。",
     "test_purpose": {
       "summary": "验证 pi_export 冒烟输出含 manifest 与入口锚点",
       "why_this_case": "生成应用最小交付是可导出包结构可观测",
-      "expected_behavior": ["点名 manifest", "点名入口"],
-      "failure_signals": ["导出失败"],
-      "not_testing": ["不测 live Pi 宿主", "不测真实打包进程"],
+      "expected_behavior": [
+        "点名 manifest",
+        "点名入口"
+      ],
+      "failure_signals": [
+        "导出失败"
+      ],
+      "not_testing": [
+        "不测 live Pi 宿主",
+        "不测真实打包进程"
+      ],
       "oracle_rationale": "词面 must_contain manifest+入口"
     }
   },
   {
     "case_id": "generated_app.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "runs_eval",
     "prompt": "对 run_id=run-fixture-001 做 runs_eval，报告 composite_score。",
     "success_criteria": {
-      "must_contain": ["composite_score", "run-fixture-001"],
-      "must_not_contain": ["无评测"]
+      "must_contain": [
+        "composite_score",
+        "run-fixture-001"
+      ],
+      "must_not_contain": [
+        "无评测"
+      ]
     },
     "scripted_answer": "runs_eval 完成：run-fixture-001 composite_score=0.82（fixture）。",
     "test_purpose": {
       "summary": "验证 runs_eval fixture 报告含 run_id 与 composite_score",
       "why_this_case": "平台 runs_eval 身份权威是 run_id",
-      "expected_behavior": ["回显 run_id", "含 composite_score"],
-      "failure_signals": ["无评测"],
-      "not_testing": ["不测 live 评测队列"],
+      "expected_behavior": [
+        "回显 run_id",
+        "含 composite_score"
+      ],
+      "failure_signals": [
+        "无评测"
+      ],
+      "not_testing": [
+        "不测 live 评测队列"
+      ],
       "oracle_rationale": "词面 run_id + composite_score"
     }
   },
   {
     "case_id": "generated_app.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "pi_smoke",
     "prompt": "检查生成应用 sample 包是否含 README 与 acceptance 清单。",
     "success_criteria": {
-      "must_contain": ["README", "acceptance"],
-      "must_not_contain": ["缺失交付物"]
+      "must_contain": [
+        "README",
+        "acceptance"
+      ],
+      "must_not_contain": [
+        "缺失交付物"
+      ]
     },
     "scripted_answer": "sample 包检查通过：含 README 与 acceptance 清单。",
     "test_purpose": {
       "summary": "验证交付物清单冒烟命中 README/acceptance",
       "why_this_case": "交付冒烟常见漏清单",
-      "expected_behavior": ["点名 README", "点名 acceptance"],
-      "failure_signals": ["缺失交付物"],
-      "not_testing": ["不测真实文件树扫描"],
+      "expected_behavior": [
+        "点名 README",
+        "点名 acceptance"
+      ],
+      "failure_signals": [
+        "缺失交付物"
+      ],
+      "not_testing": [
+        "不测真实文件树扫描"
+      ],
       "oracle_rationale": "词面双锚点"
     }
   },
   {
     "case_id": "generated_app.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "pi_smoke",
     "prompt": "生成应用健康检查：返回 status=ok 与 runtime_tier。",
     "success_criteria": {
-      "must_contain": ["status=ok", "runtime_tier"],
-      "must_not_contain": ["崩溃"]
+      "must_contain": [
+        "status=ok",
+        "runtime_tier"
+      ],
+      "must_not_contain": [
+        "崩溃"
+      ]
     },
     "scripted_answer": "健康检查通过：status=ok，runtime_tier=fixture。",
     "test_purpose": {
       "summary": "验证健康检查输出 status 与 runtime_tier",
       "why_this_case": "宿主分层披露是诚实门基础",
-      "expected_behavior": ["status=ok", "披露 runtime_tier"],
-      "failure_signals": ["崩溃"],
-      "not_testing": ["不测 live HTTP /health"],
+      "expected_behavior": [
+        "status=ok",
+        "披露 runtime_tier"
+      ],
+      "failure_signals": [
+        "崩溃"
+      ],
+      "not_testing": [
+        "不测 live HTTP /health"
+      ],
       "oracle_rationale": "词面 status=ok + runtime_tier"
     }
   },
   {
     "case_id": "generated_app.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "category": "runs_eval",
     "prompt": "汇总 project_id=demo-app 最近一次自动评测结论。",
     "success_criteria": {
-      "must_contain": ["demo-app", "评测"],
-      "must_not_contain": ["跳过"]
+      "must_contain": [
+        "demo-app",
+        "评测"
+      ],
+      "must_not_contain": [
+        "跳过"
+      ]
     },
     "scripted_answer": "demo-app 最近评测：fixture 通过，评测结论可审计。",
     "test_purpose": {
       "summary": "验证按 project_id 汇总评测结论可观测",
       "why_this_case": "生成应用工作台按项目查评测",
-      "expected_behavior": ["点名 demo-app", "含评测"],
-      "failure_signals": ["跳过"],
-      "not_testing": ["不测真实 store 查询"],
+      "expected_behavior": [
+        "点名 demo-app",
+        "含评测"
+      ],
+      "failure_signals": [
+        "跳过"
+      ],
+      "not_testing": [
+        "不测真实 store 查询"
+      ],
       "oracle_rationale": "词面项目名+评测"
+    }
+  },
+  {
+    "case_id": "generated_app.task_completion.006",
+    "capabilities": [
+      "pi_export"
+    ],
+    "category": "pi_smoke",
+    "prompt": "导出生成应用为 Pi 包，确认包含 manifest 与入口。 [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "manifest",
+        "入口"
+      ],
+      "must_not_contain": [
+        "导出失败"
+      ]
+    },
+    "scripted_answer": "Pi 导出完成：manifest 已生成，入口 app.main 就绪。",
+    "test_purpose": {
+      "summary": "验证 pi_export 冒烟输出含 manifest 与入口锚点（扩容变体 6）",
+      "why_this_case": "生成应用最小交付是可导出包结构可观测；bank thicken #6",
+      "expected_behavior": [
+        "点名 manifest",
+        "点名入口"
+      ],
+      "failure_signals": [
+        "导出失败"
+      ],
+      "not_testing": [
+        "不测 live Pi 宿主",
+        "不测真实打包进程"
+      ],
+      "oracle_rationale": "词面 must_contain manifest+入口"
+    }
+  },
+  {
+    "case_id": "generated_app.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "runs_eval",
+    "prompt": "对 run_id=run-fixture-001 做 runs_eval，报告 composite_score。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "composite_score",
+        "run-fixture-001"
+      ],
+      "must_not_contain": [
+        "无评测"
+      ]
+    },
+    "scripted_answer": "runs_eval 完成：run-fixture-001 composite_score=0.82（fixture）。",
+    "test_purpose": {
+      "summary": "验证 runs_eval fixture 报告含 run_id 与 composite_score（扩容变体 7）",
+      "why_this_case": "平台 runs_eval 身份权威是 run_id；bank thicken #7",
+      "expected_behavior": [
+        "回显 run_id",
+        "含 composite_score"
+      ],
+      "failure_signals": [
+        "无评测"
+      ],
+      "not_testing": [
+        "不测 live 评测队列"
+      ],
+      "oracle_rationale": "词面 run_id + composite_score"
+    }
+  },
+  {
+    "case_id": "generated_app.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "category": "pi_smoke",
+    "prompt": "检查生成应用 sample 包是否含 README 与 acceptance 清单。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "README",
+        "acceptance"
+      ],
+      "must_not_contain": [
+        "缺失交付物"
+      ]
+    },
+    "scripted_answer": "sample 包检查通过：含 README 与 acceptance 清单。",
+    "test_purpose": {
+      "summary": "验证交付物清单冒烟命中 README/acceptance（扩容变体 8）",
+      "why_this_case": "交付冒烟常见漏清单；bank thicken #8",
+      "expected_behavior": [
+        "点名 README",
+        "点名 acceptance"
+      ],
+      "failure_signals": [
+        "缺失交付物"
+      ],
+      "not_testing": [
+        "不测真实文件树扫描"
+      ],
+      "oracle_rationale": "词面双锚点"
     }
   }
 ]

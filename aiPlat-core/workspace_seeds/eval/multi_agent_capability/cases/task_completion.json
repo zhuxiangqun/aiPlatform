@@ -1,15 +1,31 @@
 [
   {
     "case_id": "multi_agent.task_completion.001",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "prompt": "协调员把摘要任务交给写作者，再收回终稿。",
     "handoffs": [
-      {"from": "coordinator", "to": "writer", "message": "请写摘要"},
-      {"from": "writer", "to": "coordinator", "message": "摘要已完成"}
+      {
+        "from": "coordinator",
+        "to": "writer",
+        "message": "请写摘要"
+      },
+      {
+        "from": "writer",
+        "to": "coordinator",
+        "message": "摘要已完成"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "writer"],
-      ["writer", "coordinator"]
+      [
+        "coordinator",
+        "writer"
+      ],
+      [
+        "writer",
+        "coordinator"
+      ]
     ],
     "final_answer": "摘要：缺陷门禁要求零发现回执。",
     "expected_final": "摘要：缺陷门禁要求零发现回执。",
@@ -20,104 +36,361 @@
         "handoff 边序列完全等于 expected_handoff_path",
         "final_answer 等于 expected_final"
       ],
-      "failure_signals": ["路径漂移", "终稿不符"],
-      "not_testing": ["不测 live multi_agent runtime", "不测跨进程消息总线"],
+      "failure_signals": [
+        "路径漂移",
+        "终稿不符"
+      ],
+      "not_testing": [
+        "不测 live multi_agent runtime",
+        "不测跨进程消息总线"
+      ],
       "oracle_rationale": "规则 oracle：handoff_path exact + final exact"
     }
   },
   {
     "case_id": "multi_agent.task_completion.002",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "prompt": "协调员→研究员→协调员：收集证据摘要。",
     "handoffs": [
-      {"from": "coordinator", "to": "researcher", "message": "收集证据"},
-      {"from": "researcher", "to": "coordinator", "message": "证据列表完成"}
+      {
+        "from": "coordinator",
+        "to": "researcher",
+        "message": "收集证据"
+      },
+      {
+        "from": "researcher",
+        "to": "coordinator",
+        "message": "证据列表完成"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "researcher"],
-      ["researcher", "coordinator"]
+      [
+        "coordinator",
+        "researcher"
+      ],
+      [
+        "researcher",
+        "coordinator"
+      ]
     ],
     "final_answer": "证据：3 条 fixture 回执。",
     "expected_final": "证据：3 条 fixture 回执。",
     "test_purpose": {
       "summary": "验证研究员往返路径与终稿 exact",
       "why_this_case": "第二任务完成路径变体",
-      "expected_behavior": ["路径与终稿 exact"],
-      "failure_signals": ["路径漂移"],
-      "not_testing": ["不测 live 检索"],
+      "expected_behavior": [
+        "路径与终稿 exact"
+      ],
+      "failure_signals": [
+        "路径漂移"
+      ],
+      "not_testing": [
+        "不测 live 检索"
+      ],
       "oracle_rationale": "规则 oracle：handoff_path + final exact"
     }
   },
   {
     "case_id": "multi_agent.task_completion.003",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "prompt": "三段路径：协调→写作者→审稿→协调。",
     "handoffs": [
-      {"from": "coordinator", "to": "writer", "message": "起草"},
-      {"from": "writer", "to": "reviewer", "message": "请审"},
-      {"from": "reviewer", "to": "coordinator", "message": "已通过"}
+      {
+        "from": "coordinator",
+        "to": "writer",
+        "message": "起草"
+      },
+      {
+        "from": "writer",
+        "to": "reviewer",
+        "message": "请审"
+      },
+      {
+        "from": "reviewer",
+        "to": "coordinator",
+        "message": "已通过"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "writer"],
-      ["writer", "reviewer"],
-      ["reviewer", "coordinator"]
+      [
+        "coordinator",
+        "writer"
+      ],
+      [
+        "writer",
+        "reviewer"
+      ],
+      [
+        "reviewer",
+        "coordinator"
+      ]
     ],
     "final_answer": "审稿通过：可发布。",
     "expected_final": "审稿通过：可发布。",
     "test_purpose": {
       "summary": "验证三跳任务完成路径 exact",
       "why_this_case": "多跳路径仍要求精确边序列",
-      "expected_behavior": ["三边 exact", "终稿 exact"],
-      "failure_signals": ["跳过审稿"],
-      "not_testing": ["不测真人审稿"],
+      "expected_behavior": [
+        "三边 exact",
+        "终稿 exact"
+      ],
+      "failure_signals": [
+        "跳过审稿"
+      ],
+      "not_testing": [
+        "不测真人审稿"
+      ],
       "oracle_rationale": "规则 oracle：handoff_path + final exact"
     }
   },
   {
     "case_id": "multi_agent.task_completion.004",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "prompt": "协调→规划→执行→协调。",
     "handoffs": [
-      {"from": "coordinator", "to": "planner", "message": "拆步骤"},
-      {"from": "planner", "to": "executor", "message": "执行步骤"},
-      {"from": "executor", "to": "coordinator", "message": "步骤完成"}
+      {
+        "from": "coordinator",
+        "to": "planner",
+        "message": "拆步骤"
+      },
+      {
+        "from": "planner",
+        "to": "executor",
+        "message": "执行步骤"
+      },
+      {
+        "from": "executor",
+        "to": "coordinator",
+        "message": "步骤完成"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "planner"],
-      ["planner", "executor"],
-      ["executor", "coordinator"]
+      [
+        "coordinator",
+        "planner"
+      ],
+      [
+        "planner",
+        "executor"
+      ],
+      [
+        "executor",
+        "coordinator"
+      ]
     ],
     "final_answer": "计划已执行完毕。",
     "expected_final": "计划已执行完毕。",
     "test_purpose": {
       "summary": "验证规划-执行链路路径 exact",
       "why_this_case": "任务完成的计划执行变体",
-      "expected_behavior": ["三边 exact"],
-      "failure_signals": ["缺执行边"],
-      "not_testing": ["不测真实执行器"],
+      "expected_behavior": [
+        "三边 exact"
+      ],
+      "failure_signals": [
+        "缺执行边"
+      ],
+      "not_testing": [
+        "不测真实执行器"
+      ],
       "oracle_rationale": "规则 oracle：handoff_path + final exact"
     }
   },
   {
     "case_id": "multi_agent.task_completion.005",
-    "capabilities": ["task_completion"],
+    "capabilities": [
+      "task_completion"
+    ],
     "prompt": "单往返：协调→分析师→协调。",
     "handoffs": [
-      {"from": "coordinator", "to": "analyst", "message": "出结论"},
-      {"from": "analyst", "to": "coordinator", "message": "结论就绪"}
+      {
+        "from": "coordinator",
+        "to": "analyst",
+        "message": "出结论"
+      },
+      {
+        "from": "analyst",
+        "to": "coordinator",
+        "message": "结论就绪"
+      }
     ],
     "expected_handoff_path": [
-      ["coordinator", "analyst"],
-      ["analyst", "coordinator"]
+      [
+        "coordinator",
+        "analyst"
+      ],
+      [
+        "analyst",
+        "coordinator"
+      ]
     ],
     "final_answer": "结论：配额齐仍不开放 claim。",
     "expected_final": "结论：配额齐仍不开放 claim。",
     "test_purpose": {
       "summary": "验证分析师往返路径与终稿 exact",
       "why_this_case": "第五任务完成基线",
-      "expected_behavior": ["路径与终稿 exact"],
-      "failure_signals": ["终稿不符"],
-      "not_testing": ["不测 live 分析"],
+      "expected_behavior": [
+        "路径与终稿 exact"
+      ],
+      "failure_signals": [
+        "终稿不符"
+      ],
+      "not_testing": [
+        "不测 live 分析"
+      ],
+      "oracle_rationale": "规则 oracle：handoff_path + final exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.task_completion.006",
+    "capabilities": [
+      "task_completion"
+    ],
+    "prompt": "协调员把摘要任务交给写作者，再收回终稿。 [v6]",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "writer",
+        "message": "请写摘要"
+      },
+      {
+        "from": "writer",
+        "to": "coordinator",
+        "message": "摘要已完成"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "writer"
+      ],
+      [
+        "writer",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "摘要：缺陷门禁要求零发现回执。",
+    "expected_final": "摘要：缺陷门禁要求零发现回执。",
+    "test_purpose": {
+      "summary": "验证协作路径与终稿精确匹配 fixture handoff 轨迹（扩容变体 6）",
+      "why_this_case": "Multi-Agent fixture 最小交付是路径+终稿 exact；bank thicken #6",
+      "expected_behavior": [
+        "handoff 边序列完全等于 expected_handoff_path",
+        "final_answer 等于 expected_final"
+      ],
+      "failure_signals": [
+        "路径漂移",
+        "终稿不符"
+      ],
+      "not_testing": [
+        "不测 live multi_agent runtime",
+        "不测跨进程消息总线"
+      ],
+      "oracle_rationale": "规则 oracle：handoff_path exact + final exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.task_completion.007",
+    "capabilities": [
+      "task_completion"
+    ],
+    "prompt": "协调员→研究员→协调员：收集证据摘要。 [v7]",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "researcher",
+        "message": "收集证据"
+      },
+      {
+        "from": "researcher",
+        "to": "coordinator",
+        "message": "证据列表完成"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "researcher"
+      ],
+      [
+        "researcher",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "证据：3 条 fixture 回执。",
+    "expected_final": "证据：3 条 fixture 回执。",
+    "test_purpose": {
+      "summary": "验证研究员往返路径与终稿 exact（扩容变体 7）",
+      "why_this_case": "第二任务完成路径变体；bank thicken #7",
+      "expected_behavior": [
+        "路径与终稿 exact"
+      ],
+      "failure_signals": [
+        "路径漂移"
+      ],
+      "not_testing": [
+        "不测 live 检索"
+      ],
+      "oracle_rationale": "规则 oracle：handoff_path + final exact"
+    }
+  },
+  {
+    "case_id": "multi_agent.task_completion.008",
+    "capabilities": [
+      "task_completion"
+    ],
+    "prompt": "三段路径：协调→写作者→审稿→协调。 [v8]",
+    "handoffs": [
+      {
+        "from": "coordinator",
+        "to": "writer",
+        "message": "起草"
+      },
+      {
+        "from": "writer",
+        "to": "reviewer",
+        "message": "请审"
+      },
+      {
+        "from": "reviewer",
+        "to": "coordinator",
+        "message": "已通过"
+      }
+    ],
+    "expected_handoff_path": [
+      [
+        "coordinator",
+        "writer"
+      ],
+      [
+        "writer",
+        "reviewer"
+      ],
+      [
+        "reviewer",
+        "coordinator"
+      ]
+    ],
+    "final_answer": "审稿通过：可发布。",
+    "expected_final": "审稿通过：可发布。",
+    "test_purpose": {
+      "summary": "验证三跳任务完成路径 exact（扩容变体 8）",
+      "why_this_case": "多跳路径仍要求精确边序列；bank thicken #8",
+      "expected_behavior": [
+        "三边 exact",
+        "终稿 exact"
+      ],
+      "failure_signals": [
+        "跳过审稿"
+      ],
+      "not_testing": [
+        "不测真人审稿"
+      ],
       "oracle_rationale": "规则 oracle：handoff_path + final exact"
     }
   }

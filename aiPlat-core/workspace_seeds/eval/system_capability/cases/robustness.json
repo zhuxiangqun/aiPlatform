@@ -153,5 +153,98 @@
       ],
       "oracle_rationale": "词面未知"
     }
+  },
+  {
+    "case_id": "system.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "!!! system_plan parts=??? !!! [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "status=ok"
+      ]
+    },
+    "scripted_answer": "缺少有效 parts，请提供后再组合。",
+    "test_purpose": {
+      "summary": "验证噪声 parts 不假成功（扩容变体 6）",
+      "why_this_case": "空 parts 易幻觉 status=ok；bank thicken #6",
+      "expected_behavior": [
+        "缺少"
+      ],
+      "failure_signals": [
+        "status=ok"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面缺少"
+    }
+  },
+  {
+    "case_id": "system.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "object_id=（空）执行 system_plan。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "无效"
+      ],
+      "must_not_contain": [
+        "组合完成"
+      ]
+    },
+    "scripted_answer": "object_id 无效：为空，无法组合。",
+    "test_purpose": {
+      "summary": "验证空 object_id 失败关闭（扩容变体 7）",
+      "why_this_case": "身份缺失不可继续；bank thicken #7",
+      "expected_behavior": [
+        "无效"
+      ],
+      "failure_signals": [
+        "组合完成"
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面无效"
+    }
+  },
+  {
+    "case_id": "system.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "runtime_parts 截断仍宣称组合成功。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "损坏"
+      ],
+      "must_not_contain": [
+        "parts_ok="
+      ]
+    },
+    "scripted_answer": "runtime_parts 损坏/截断，组合未完成。",
+    "test_purpose": {
+      "summary": "验证损坏 parts 不假成功（扩容变体 8）",
+      "why_this_case": "截断是兼容性常见失败；bank thicken #8",
+      "expected_behavior": [
+        "损坏"
+      ],
+      "failure_signals": [
+        "parts_ok="
+      ],
+      "not_testing": [
+        "不测真实编排器"
+      ],
+      "oracle_rationale": "词面损坏"
+    }
   }
 ]

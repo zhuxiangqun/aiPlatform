@@ -1,97 +1,258 @@
 [
   {
     "case_id": "api.robustness.001",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "!!! chat_pull url=??? !!!",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["status=ok"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "status=ok"
+      ]
     },
     "scripted_answer": "缺少有效 URL，请提供后再拉取。",
     "test_purpose": {
       "summary": "验证噪声 URL 不假成功",
       "why_this_case": "空 URL 易幻觉 status=ok",
-      "expected_behavior": ["指出缺少", "不报 status=ok"],
-      "failure_signals": ["status=ok"],
-      "not_testing": ["不测真实 DNS"],
+      "expected_behavior": [
+        "指出缺少",
+        "不报 status=ok"
+      ],
+      "failure_signals": [
+        "status=ok"
+      ],
+      "not_testing": [
+        "不测真实 DNS"
+      ],
       "oracle_rationale": "词面缺少 + 禁止 status=ok"
     }
   },
   {
     "case_id": "api.robustness.002",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "object_id=（空）执行 chat_pull。",
     "success_criteria": {
-      "must_contain": ["无效"],
-      "must_not_contain": ["拉取完成"]
+      "must_contain": [
+        "无效"
+      ],
+      "must_not_contain": [
+        "拉取完成"
+      ]
     },
     "scripted_answer": "object_id 无效：为空，无法拉取。",
     "test_purpose": {
       "summary": "验证空 object_id 失败关闭",
       "why_this_case": "身份缺失不可继续",
-      "expected_behavior": ["报告无效", "不声称拉取完成"],
-      "failure_signals": ["拉取完成"],
-      "not_testing": ["不测真实注册表"],
+      "expected_behavior": [
+        "报告无效",
+        "不声称拉取完成"
+      ],
+      "failure_signals": [
+        "拉取完成"
+      ],
+      "not_testing": [
+        "不测真实注册表"
+      ],
       "oracle_rationale": "词面无效 + 禁止拉取完成"
     }
   },
   {
     "case_id": "api.robustness.003",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "响应体截断 JSON 仍宣称 chat_pull 成功。",
     "success_criteria": {
-      "must_contain": ["损坏"],
-      "must_not_contain": ["reply="]
+      "must_contain": [
+        "损坏"
+      ],
+      "must_not_contain": [
+        "reply="
+      ]
     },
     "scripted_answer": "响应体损坏/截断，拉取未完成。",
     "test_purpose": {
       "summary": "验证损坏响应不假成功",
       "why_this_case": "截断 JSON 是兼容性常见失败",
-      "expected_behavior": ["指出损坏", "不输出 reply="],
-      "failure_signals": ["reply="],
-      "not_testing": ["不测真实解析器"],
+      "expected_behavior": [
+        "指出损坏",
+        "不输出 reply="
+      ],
+      "failure_signals": [
+        "reply="
+      ],
+      "not_testing": [
+        "不测真实解析器"
+      ],
       "oracle_rationale": "词面损坏 + 禁止 reply="
     }
   },
   {
     "case_id": "api.robustness.004",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "重复×8：拉取拉取… endpoint 未指定。",
     "success_criteria": {
-      "must_contain": ["缺少"],
-      "must_not_contain": ["count=2"]
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "count=2"
+      ]
     },
     "scripted_answer": "重复指令已折叠：缺少 endpoint。",
     "test_purpose": {
       "summary": "验证重复噪声仍要求缺参",
       "why_this_case": "重复触发易假完成",
-      "expected_behavior": ["指出缺少", "不输出成功计数"],
-      "failure_signals": ["count=2"],
-      "not_testing": ["不测去重中间件"],
+      "expected_behavior": [
+        "指出缺少",
+        "不输出成功计数"
+      ],
+      "failure_signals": [
+        "count=2"
+      ],
+      "not_testing": [
+        "不测去重中间件"
+      ],
       "oracle_rationale": "词面缺少 + 禁止 count=2"
     }
   },
   {
     "case_id": "api.robustness.005",
-    "capabilities": ["robustness"],
+    "capabilities": [
+      "robustness"
+    ],
     "category": "noise",
     "prompt": "未知协议 scheme=ftp://example.com/chat。",
     "success_criteria": {
-      "must_contain": ["未知"],
-      "must_not_contain": ["已连接"]
+      "must_contain": [
+        "未知"
+      ],
+      "must_not_contain": [
+        "已连接"
+      ]
     },
     "scripted_answer": "未知协议 ftp；仅支持 http/https chat_pull。",
     "test_purpose": {
       "summary": "验证未知协议不假连接",
       "why_this_case": "协议白名单是稳健性边界",
-      "expected_behavior": ["标明未知", "不声称已连接"],
-      "failure_signals": ["已连接"],
-      "not_testing": ["不测真实 socket"],
+      "expected_behavior": [
+        "标明未知",
+        "不声称已连接"
+      ],
+      "failure_signals": [
+        "已连接"
+      ],
+      "not_testing": [
+        "不测真实 socket"
+      ],
       "oracle_rationale": "词面未知 + 禁止已连接"
+    }
+  },
+  {
+    "case_id": "api.robustness.006",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "!!! chat_pull url=??? !!! [v6]",
+    "success_criteria": {
+      "must_contain": [
+        "缺少"
+      ],
+      "must_not_contain": [
+        "status=ok"
+      ]
+    },
+    "scripted_answer": "缺少有效 URL，请提供后再拉取。",
+    "test_purpose": {
+      "summary": "验证噪声 URL 不假成功（扩容变体 6）",
+      "why_this_case": "空 URL 易幻觉 status=ok；bank thicken #6",
+      "expected_behavior": [
+        "指出缺少",
+        "不报 status=ok"
+      ],
+      "failure_signals": [
+        "status=ok"
+      ],
+      "not_testing": [
+        "不测真实 DNS"
+      ],
+      "oracle_rationale": "词面缺少 + 禁止 status=ok"
+    }
+  },
+  {
+    "case_id": "api.robustness.007",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "object_id=（空）执行 chat_pull。 [v7]",
+    "success_criteria": {
+      "must_contain": [
+        "无效"
+      ],
+      "must_not_contain": [
+        "拉取完成"
+      ]
+    },
+    "scripted_answer": "object_id 无效：为空，无法拉取。",
+    "test_purpose": {
+      "summary": "验证空 object_id 失败关闭（扩容变体 7）",
+      "why_this_case": "身份缺失不可继续；bank thicken #7",
+      "expected_behavior": [
+        "报告无效",
+        "不声称拉取完成"
+      ],
+      "failure_signals": [
+        "拉取完成"
+      ],
+      "not_testing": [
+        "不测真实注册表"
+      ],
+      "oracle_rationale": "词面无效 + 禁止拉取完成"
+    }
+  },
+  {
+    "case_id": "api.robustness.008",
+    "capabilities": [
+      "robustness"
+    ],
+    "category": "noise",
+    "prompt": "响应体截断 JSON 仍宣称 chat_pull 成功。 [v8]",
+    "success_criteria": {
+      "must_contain": [
+        "损坏"
+      ],
+      "must_not_contain": [
+        "reply="
+      ]
+    },
+    "scripted_answer": "响应体损坏/截断，拉取未完成。",
+    "test_purpose": {
+      "summary": "验证损坏响应不假成功（扩容变体 8）",
+      "why_this_case": "截断 JSON 是兼容性常见失败；bank thicken #8",
+      "expected_behavior": [
+        "指出损坏",
+        "不输出 reply="
+      ],
+      "failure_signals": [
+        "reply="
+      ],
+      "not_testing": [
+        "不测真实解析器"
+      ],
+      "oracle_rationale": "词面损坏 + 禁止 reply="
     }
   }
 ]
