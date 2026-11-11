@@ -4,18 +4,18 @@ doc_type: Report
 
 # Diagnosis module（第六能力 · C1–C3）
 
-> **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）  
-> **Charter**：[`diagnosis-v1-charter.md`](../../../../architecture/plans/diagnosis-v1-charter.md)  
+> **状态**：C1 **PASS** · C2 **PASS** · C3 D2 pack（本地）· `capabilities.manifest`（A0 / D1 cohost）
+> **Charter**：[`diagnosis-v1-charter.md`](../../../../architecture/plans/diagnosis-v1-charter.md)
 > **解冻 / 出口**：[`C1`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C1.md) · [`C1 closeout`](../../../../../reports/five-products/ops/DIAGNOSIS_V1_C1_CLOSEOUT.md) · [`C2`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C2.md) · [`C2 closeout`](../../../../../reports/five-products/ops/DIAGNOSIS_V1_C2_CLOSEOUT.md) · [`C3`](../../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md)
 
 ## 定位
 
-跨平台、证据驱动、可追溯的 AI 运行诊断产品。  
+跨平台、证据驱动、可追溯的 AI 运行诊断产品。
 回答「为什么/哪里/证据/怎么办」；**不**回答「好不好」（Evaluation）；**不**自动修复。
 
 ## 首发场景
 
-1. run 失败诊断（`run_failure`）  
+1. run 失败诊断（`run_failure`）
 2. 版本回归诊断（`version_regression`）
 
 ## 契约 / 代码
