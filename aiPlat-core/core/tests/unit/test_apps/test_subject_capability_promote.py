@@ -119,16 +119,34 @@ def test_stamp_subject_seed_purpose_ok_writes_review(tmp_path):
     assert sample["review"]["reviewer"] == "owner"
 
 
-def test_stamp_subject_seed_purpose_ok_rejects_agent():
-    with pytest.raises(SubjectCapabilityPromoteError):
-        stamp_subject_seed_purpose_ok(subject_kind="agent")
+def test_stamp_and_freeze_agent_seed_unlocks_profile_complete():
+    out = stamp_subject_seed_purpose_ok(subject_kind="agent", reviewer="owner")
+    assert out["ok"] is True
+    assert out["subject_kind"] == "agent"
+    assert out["n_cases"] >= 64
+    assert out["claim_eligible"] is False
+    frozen = freeze_subject_seed_pack_meta(subject_kind="agent", reviewer="owner")
+    assert frozen["ok"] is True
+    assert frozen["pack_status"] == "frozen"
+    assert frozen["claim_eligible"] is False
+    from core.apps.eval.service.subject_regression_inventory import (
+        subject_regression_inventory,
+    )
+
+    inv = subject_regression_inventory()
+    agent = next(r for r in inv["subjects"] if r["subject_kind"] == "agent")
+    assert agent["purpose_ok_or_better"] == agent["case_count"]
+    assert agent["pack_status"] == "frozen"
+    assert agent["profile_complete"] is True
+    assert agent["claim_eligible"] is False
+    assert inv["profile_complete_count"] == inv["subject_count"]
 
 
 def test_stamp_all_and_api_regression_purpose_ok_progress():
     # Uses real workspace seeds (purpose_ok + pack.meta frozen in this PR).
     inv = stamp_all_subject_seed_purpose_ok(reviewer="owner")
     assert inv["ok"] is True
-    assert inv["n_subjects"] >= 13
+    assert inv["n_subjects"] >= 14
     assert inv["claim_eligible"] is False
     st = api_regression_status()
     assert st["purpose_ok_or_better"] == st["case_count"]
@@ -170,15 +188,10 @@ def test_freeze_subject_seed_pack_meta_writes_status(tmp_path):
     assert again.get("noop") is True
 
 
-def test_freeze_subject_seed_pack_meta_rejects_agent():
-    with pytest.raises(SubjectCapabilityPromoteError):
-        freeze_subject_seed_pack_meta(subject_kind="agent")
-
-
 def test_freeze_all_and_api_regression_profile_complete():
     inv = freeze_all_subject_seed_pack_meta(reviewer="owner")
     assert inv["ok"] is True
-    assert inv["n_subjects"] >= 13
+    assert inv["n_subjects"] >= 14
     assert inv["claim_eligible"] is False
     st = api_regression_status()
     assert st["pack_status"] == "frozen"

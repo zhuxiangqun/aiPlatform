@@ -31,7 +31,10 @@
       "oracle_rationale": "session runner memory_probe；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -70,7 +73,10 @@
       "oracle_rationale": "turn filler；probe 在 t+2；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -109,7 +115,10 @@
       "oracle_rationale": "must_recall；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -155,7 +164,10 @@
       "oracle_rationale": "session_group isolation；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -194,7 +206,10 @@
       "oracle_rationale": "must_recall；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
@@ -240,7 +255,10 @@
       "oracle_rationale": "plant for negative recall；oracle: must_contain / tool_trace / rubric"
     },
     "review": {
-      "status": "draft"
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     },
     "risk_level": "low",
     "holdout": false,
