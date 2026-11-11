@@ -4,6 +4,9 @@ doc_type: Report
 
 # ADR-DRAFT — Ontology A3（对照稿）
 
+> **边界（E3）**：本草案只覆盖本主题，不包含另一主题；对照草案见 [`ADR-DRAFT-evaluation-a3.md`](./ADR-DRAFT-evaluation-a3.md)。两份不是重复副本。
+
+
 > **状态**：Draft · **已由 Accepted（有条件）取代** · 2026-10-30  
 > **生效 ADR**：[`ADR-ONTOLOGY-A3.md`](./ADR-ONTOLOGY-A3.md)  
 > **前置**：Ontology D1 Thin 共宿（`packages/aiplat-ontology` · `ontology.api.v0`）
