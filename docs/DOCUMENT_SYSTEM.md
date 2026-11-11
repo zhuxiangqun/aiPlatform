@@ -7,11 +7,12 @@ scope: workspace
 language: zh-CN
 version: 2.4
 supersedes: 2.3
-owner: TBD
+owner: 文档治理组（Documentation Governance）
 approved: 2026-11-11
 effective: 2026-11-11
 last_reviewed: 2026-11-11
 review_cycle: 90d
+frozen: 2026-11-11
 ---
 
 # aiPlat 文档系统治理框架 v2.4（已批准）
@@ -559,6 +560,17 @@ review_cycle:
 - 归档文档不参与 canonical 评审；
 - 归档目录不得成为第二个文档系统。
 
+### 8.3 保留期
+
+| 类型 | 保留期 | 到期处理 |
+|---|---|---|
+| 产品定义/契约 | 长期维护 | 随产品/接口更新 |
+| `reports/products/**/ops` 运行证据 | 180 天 | 归档到 `_archive` |
+| `reports/security/evidence` 安全证据 | 365 天 | 按合规要求归档 |
+| `reports/docs-governance` 文档治理材料 | 365 天 | 归档 |
+| 根 `reports/*.md` 分析快照 | 90 天 | 归档 |
+| `reports/**/_archive` | 永久 | 只读 |
+
 ## 九、生命周期
 
 | 类型 | 复审周期 | 过期处理 |
@@ -703,8 +715,8 @@ docs/doc-paths.yaml
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
 | 2 | 954 份文档尚未迁入目标目录 | open |
-| 3 | canonical 文档 owner 仍为 TBD | open |
-| 4 | 骨架过期没有自动归档脚本 | open（改为人工确认） |
+| 3 | canonical 文档 owner：文档治理组（个人 owner 待补） | 部分关闭 |
+| 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
 
 ## 十七、文档宪法自检
