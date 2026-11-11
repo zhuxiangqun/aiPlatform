@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T09:44:45+08:00",
+  "reviewed_at": "2026-11-11T10:13:41+08:00",
   "base_ref": "origin/main",
-  "merge_base": "dfe2c80a726fe41a9e985d8e31636abd4666d65c",
-  "diff_sha256": "ff91d64f08ffa39c991abc278c96b79dbcce173460f0476a2a0da5f34b7af251",
-  "head_sha": "e3499c46462bb576540a7ff02bdc5d8f2e3bf8d6",
+  "merge_base": "358b08dbe8bf2b1c2ddab56233bcee4e62ffe6d0",
+  "diff_sha256": "39831699f154c967a02e816afe2059985015834e4649a32372a8b7e64f9bf801",
+  "head_sha": "9df25184d33736ae996539b244c985778e0e08af",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject regression inventory additive; claim stays false across matrix. Local lock only."
+  "note": "Subject capability promote additive; claim stays false; seeds normalize to Case Pack rubric. Local lock only."
 }
