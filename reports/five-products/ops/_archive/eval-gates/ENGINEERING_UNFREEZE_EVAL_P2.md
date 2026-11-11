@@ -1,10 +1,10 @@
 # Engineering unfreeze — EVAL **P2** 立项开篇
 
 - **decided_at**: `2026-11-06`
-- **status**: **Local track closed** · P2-0..P2-3 ✅ · P2-4 **Parked**（[`ENGINEERING_UNFREEZE_EVAL_P2_PROD.md`](./ENGINEERING_UNFREEZE_EVAL_P2_PROD.md)）· [总收口](./EVAL_P2_LOCAL_TRACK_CLOSEOUT_2026-11-06.md)
-- **parent plan**: [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
-- **P1b human closeout**: [`EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md`](./EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md)
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
+- **status**: **Local track closed** · P2-0..P2-3 ✅ · P2-4 **Parked**（[`ENGINEERING_UNFREEZE_EVAL_P2_PROD.md`](./ENGINEERING_UNFREEZE_EVAL_P2_PROD.md)）· 总收口（历史链接失效）
+- **parent plan**: [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](../../EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §5
+- **P1b human closeout**: `EVAL_P1B_HUMAN_TRACK_CLOSEOUT_2026-11-05.md`（历史链接失效）
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 
 ## 背景
 
@@ -24,7 +24,7 @@ P0/P1b 人侧与报告轨已收口。A1 **生产**仍 `blocked_not_released`（�
 
 | 允许 | 说明 |
 |---|---|
-| 写 P2 charter、首切片协议、数据清单、owner 表 | 本文 + [`EVAL_P2_CHARTER_2026-11-06.md`](./EVAL_P2_CHARTER_2026-11-06.md) |
+| 写 P2 charter、首切片协议、数据清单、owner 表 | 本文 + [`EVAL_P2_CHARTER_2026-11-06.md`](../../EVAL_P2_CHARTER_2026-11-06.md) |
 | 启动 **P2-0 Evaluator calibration** 工程预备（本地） | 另开 `ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md` 后方可改生产默认 |
 | 保持 `accuracy_claim=false` · `process_split_authorized=false` | 诚实锁 |
 

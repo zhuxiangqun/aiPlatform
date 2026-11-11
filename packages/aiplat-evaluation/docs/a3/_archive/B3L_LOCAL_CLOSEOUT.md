@@ -1,8 +1,8 @@
 # EVAL A3 B3-L local closeout
 
-> **status**: closeout evidence via `bash scripts/b3l_local_closeout.sh`  
-> **Honesty**: `environment=local` · `process_split_authorized=false` · `sandbox_real_isolation=false` · does **not** start B4-S staging or authorize  
-> Unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)
+> **status**: closeout evidence via `bash scripts/b3l_local_closeout.sh`
+> **Honesty**: `environment=local` · `process_split_authorized=false` · `sandbox_real_isolation=false` · does **not** start B4-S staging or authorize
+> Unfreeze: `ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`（历史链接失效）
 
 ## Acceptance (B3-L)
 
@@ -15,7 +15,7 @@
 | 5 | Optional `AIPLAT_EVAL_LLM` stub/http path | ✅ | `test_prompt_eval_llm` |
 | 6 | import guard: no `core.harness` | ✅ | closeout AST scan |
 | 7 | `process_split_authorized` false | ✅ | healthz / authorize status / JSON |
-| 8 | microVM / real skill tools | ❌ | deferred — prep gate: [`MICROVM_PREP.md`](./MICROVM_PREP.md) |
+| 8 | microVM / real skill tools | ❌ | deferred — prep gate: [`MICROVM_PREP.md`](../MICROVM_PREP.md) |
 
 ## Commands
 

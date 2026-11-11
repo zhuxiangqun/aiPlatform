@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-WP="${1:-$ROOT/docs/framework/aiplat-complete-assessment.md}"
+WP="${1:-$ROOT/docs/reference/framework/aiplat-complete-assessment.md}"
 if [ ! -f "$WP" ]; then
     echo "ERROR: whitepaper not found: $WP"
     exit 1

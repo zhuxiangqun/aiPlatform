@@ -1,10 +1,10 @@
 # A1 生产部署 — blocked_not_released（2026-11-05）
 
-> **结论**：☐ pass · ☑ **blocked_not_released**（仍有效，直至正式 BASE 验收） · ☐ fail  
-> **原因**：无正式环境 BASE URL / CDN；本地联调已另签，**不得**复用为生产 pass  
-> **本地已签**：[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)  
-> **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)  
-> **2026-11-06**：曾重开生产轨；同日产品决定**本地签认足够** → [决策](./EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)；生产轨 **Parked**。本单仍表示「生产未签」，不阻塞以本地为准的迭代。
+> **结论**：☐ pass · ☑ **blocked_not_released**（仍有效，直至正式 BASE 验收） · ☐ fail
+> **原因**：无正式环境 BASE URL / CDN；本地联调已另签，**不得**复用为生产 pass
+> **本地已签**：[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md)
+> **母版**：[EVAL_A1_DEPLOY_SIGNOFF.md](./EVAL_A1_DEPLOY_SIGNOFF.md)
+> **2026-11-06**：曾重开生产轨；同日产品决定**本地签认足够** → [决策](../../EVAL_A1_SCOPE_DECISION_LOCAL_SUFFICIENT_2026-11-06.md)；生产轨 **Parked**。本单仍表示「生产未签」，不阻塞以本地为准的迭代。
 
 ## 解除条件
 

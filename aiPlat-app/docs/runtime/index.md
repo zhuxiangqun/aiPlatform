@@ -7,7 +7,7 @@
 > 如需了解真正的执行引擎实现与设计，请优先阅读：
 > - [aiPlat-core Harness 文档](../../../aiPlat-core/docs/harness/index.md)
 > - [aiPlat-core Agents 文档](../../../aiPlat-core/docs/agents/index.md)
-> - [系统架构索引](../../../docs/index.md)
+> - [系统架构索引](../../../docs/README.md)
 
 ---
 
@@ -100,7 +100,7 @@ app 层主要负责：
 
 ## 四、相关文档
 
-- [系统架构索引](../../../docs/index.md)
+- [系统架构索引](../../../docs/README.md)
 - [平台层文档索引（对外契约）](../../../aiPlat-platform/docs/index.md)
 - [核心层：Harness](../../../aiPlat-core/docs/harness/index.md)
 - [核心层：Agents](../../../aiPlat-core/docs/agents/index.md)

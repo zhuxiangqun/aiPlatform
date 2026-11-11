@@ -2,15 +2,15 @@
 
 - **decided_at**: `2026-11-02`
 - **status**: **Closed PASS (local)** — 2026-11-03；待 integration tip→`main`（收口 stacked #535–#560）
-- **plan**: [`eval-production-independent-service.md`](../../../docs/architecture/plans/eval-production-independent-service.md) v1.2+
-- **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](../../../docs/architecture/plans/B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](../../../docs/architecture/plans/EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](../../../docs/architecture/plans/EVAL_DATA_MIGRATION.md)
+- **plan**: [`eval-production-independent-service.md`](../../../../../docs/architecture/plans/eval-production-independent-service.md) v1.2+
+- **P0 契约**：[`EVAL_RUNTIME_CONTRACT.md`](../../../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) · [`B1_ROUTE_MATRIX.md`](../../../../../docs/architecture/plans/B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](../../../../../docs/architecture/plans/EVAL_MODEL_GATEWAY.md) · [`EVAL_DATA_MIGRATION.md`](../../../../../docs/architecture/plans/EVAL_DATA_MIGRATION.md)
 - **parent**：A-local Closed · B0 Closed
-- **freeze**：[`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
+- **freeze**：[`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 - **production**：仍冻结（`process_split_authorized=false` / `staging_ready=false` / authorize 禁止）
 
 ## 一句话
 
-**staging 是验收闸门，不是开工闸门。**  
+**staging 是验收闸门，不是开工闸门。**
 本解冻允许在本机 VM/Docker 上做 B1-L / B2-L（及同轨本地的 P1 / B3-L / S1 工程），证据一律 `environment=local`；**不**签 staging、**不**翻 `process_split_authorized`。
 
 ## 闸门对照
@@ -45,8 +45,8 @@
 
 ## 证据要求
 
-- 所有 drill / closeout JSON：`environment=local`（或 `local-dev`）  
-- **禁止** `environment=staging` 或 `production_signed=true`  
+- 所有 drill / closeout JSON：`environment=local`（或 `local-dev`）
+- **禁止** `environment=staging` 或 `production_signed=true`
 - healthz：`process_split_authorized=false`
 
 ## 退出条件
@@ -60,18 +60,18 @@
 ## Outcome
 
 - **B2-L / B3-L local closed** — allowlist worker + sandbox stub/docker/fixtures + closeout。
-- **S1 local fixture gate** — SECURITY_EVAL_V1 ASR（≠ accuracy）；见 [`S1_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/S1_LOCAL.md).
-- **P1 scoring semantics** — quality/safety/efficiency/security families；`accuracy_claim=false` until G2b；见 [`P1_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/P1_LOCAL.md).
+- **S1 local fixture gate** — SECURITY_EVAL_V1 ASR（≠ accuracy）；见 [`S1_LOCAL.md`](../../../../../packages/aiplat-evaluation/docs/a3/S1_LOCAL.md).
+- **P1 scoring semantics** — quality/safety/efficiency/security families；`accuracy_claim=false` until G2b；见 [`P1_LOCAL.md`](../../../../../packages/aiplat-evaluation/docs/a3/P1_LOCAL.md).
 - **P1.1 / P1.2** — 全部 B2 runners（含 `code_review_gold` / `replay_trace`）接入 family 指标；`local_track_closeout.sh` 收口。
-- **B4-S prep** — 清单见 [`B4S_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/B4S_PREP.md)；**无主机不激活**。
+- **B4-S prep** — 清单见 [`B4S_PREP.md`](../../../../../packages/aiplat-evaluation/docs/a3/B4S_PREP.md)；**无主机不激活**。
 - **B2 wall-clock** — `AIPLAT_EVAL_JOB_TIMEOUT_SEC` → `timed_out`（契约 §5.2）。
 - **B2 cancel** — `POST .../jobs/{id}/cancel` → `cancelled`（协作；Worker 不覆盖）。
 - **B2 cost cap** — `AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap` → `timed_out`/`cost_cap_exceeded`。
 - **P1 composite** — `text_quality`/`content_safety`/`refusal`/`groundedness` **计分**进 engineering composite；`asr` 显式 report-only；仍 ≠ accuracy。
 - **B2 LLM dynamic** — stub Worker e2e + 拒 Central URL；可选独立 provider live（`AIPLAT_EVAL_LLM_LIVE=1`）；仍 ≠ 生产 live 认证。
-- **microVM prep** — 探测 + 拒 live tools（[`MICROVM_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/MICROVM_PREP.md)）；**无**真实隔离；**无** runtime unlock。
-- **B1/B2 contract converge** — standalone 错误体 / 双点拒绝 / temporary_proxy=0（[`CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)）；Central cohost 残留明示。
+- **microVM prep** — 探测 + 拒 live tools（[`MICROVM_PREP.md`](../../../../../packages/aiplat-evaluation/docs/a3/MICROVM_PREP.md)）；**无**真实隔离；**无** runtime unlock。
+- **B1/B2 contract converge** — standalone 错误体 / 双点拒绝 / temporary_proxy=0（[`CONTRACT_LOCAL.md`](../../../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)）；Central cohost 残留明示。
 - **Integration**：`feat/eval-b12-contract-converge` → `main` 一次收口（不再叠第 9 层）；中间 PR #535–#560 由 integration 取代。
-- **P1 canonical** — package `build_composite` = 工程计分真相源；Central `AgentEvalResult` = `legacy_7dim`，text/safety/refusal **report-only**（[`P1_CANONICAL.md`](../../../packages/aiplat-evaluation/docs/a3/P1_CANONICAL.md) · **#562**）；**不**静默改历史权重；main 上禁止双口径解读。
+- **P1 canonical** — package `build_composite` = 工程计分真相源；Central `AgentEvalResult` = `legacy_7dim`，text/safety/refusal **report-only**（[`P1_CANONICAL.md`](../../../../../packages/aiplat-evaluation/docs/a3/P1_CANONICAL.md) · **#562**）；**不**静默改历史权重；main 上禁止双口径解读。
 - Next：B2 live provider 证据；microVM **runtime** / S1 live（需主机）；**独立主机** 开 B4-S；生产回填仍禁（B4 PITR 前）；legacy→P1 权重迁移另开解锁。
 - `process_split_authorized=false`；`sandbox_real_isolation=false`；`security_live_attacks=false`.

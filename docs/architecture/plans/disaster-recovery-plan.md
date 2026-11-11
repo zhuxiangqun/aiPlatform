@@ -16,7 +16,7 @@ owner: infra/ops
 | **知识库 (Wiki/语义记忆)** | <1hour | <5min | SQLite WAL + 文件级备份 | `semantic.py` SQLite FTS5 + WAL |
 | **Agent 配置 (AGENT.md/SKILL.md)** | <24h | 手动 | Git 版本控制 + `hermes-profile-install.sh` | `~/.aiplat/agents/` + `profile_packager.py` |
 | **API 密钥 (Credentials)** | 零丢失 | 自动 | AES-256 加密 at rest + CredentialPool 自动轮换 | `SecretsManager` + `credential_pool.py` |
-| **系统配置 (Env/YAML)** | <24h | 手动 | `env.example` + distribution.yaml | `docs/framework/assessment-spec.yaml` |
+| **系统配置 (Env/YAML)** | <24h | 手动 | `env.example` + distribution.yaml | `docs/reference/framework/assessment-spec.yaml` |
 
 ## 2. 备份策略
 

@@ -1,10 +1,10 @@
 # Engineering unfreeze — EVAL_V1 E7（D2/D3 本地收口）
 
 - **decided_at**: `2026-11-01`
-- **status**: **Closed — E7 PASS**（[`EVAL_V1_E7_CLOSEOUT.md`](./EVAL_V1_E7_CLOSEOUT.md)）
+- **status**: **Closed — E7 PASS**（`EVAL_V1_E7_CLOSEOUT.md`（历史链接失效））
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) · E6 [`ENGINEERING_UNFREEZE_EVAL_E6.md`](./ENGINEERING_UNFREEZE_EVAL_E6.md)
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
-- **charter**: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) §6 E7 / G4
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
+- **charter**: [`eval-v1-charter.md`](../../../../../docs/architecture/plans/eval-v1-charter.md) §6 E7 / G4
 - **trigger**: E6 PASS（#519）；G2a locked；`packages/aiplat-evaluation` D2 pack 已存在
 
 ## 为何选 E7（而非 G2b / Diagnosis C4）

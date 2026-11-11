@@ -1,17 +1,17 @@
 # Eval 证据标签映射（E0–E5 ↔ EET · P1a）
 
-> **状态**：✅ **Accepted**（2026-11-05 · 方法 朱向群 · 治理 朱莹）  
-> **签认留存**：[EVAL_EET_ACCEPT_2026-11-05.md](../../../../reports/five-products/ops/EVAL_EET_ACCEPT_2026-11-05.md)  
-> **日期**：2026-11-05  
-> **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6 · 落地方案 §3.6  
+> **状态**：✅ **Accepted**（2026-11-05 · 方法 朱向群 · 治理 朱莹）
+> **签认留存**：EVAL_EET_ACCEPT_2026-11-05.md（历史链接失效）
+> **日期**：2026-11-05
+> **依据**：[改善执行计划](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6 · 落地方案 §3.6
 > **原则**：不另建与 E0–E5 并行的正式 gate 等级；Eval 侧只用 **EET** 证据类型标签。
 
 ## 1. 三套「E」勿混用
 
 | 符号 | 含义 | 权威 |
 |---|---|---|
-| **落地 E0–E5** | 能力路径证据成熟度：文档→源码→单测→集成→干净部署→生产 | [落地方案 §3.6](../../../../docs/architecture/plans/ai-platform-five-products-landing-plan.md)：「E0 文档 · E1 源码 · E2 单测 · E3 集成 · E4 干净部署 · E5 生产」 |
-| **EVAL_V1 E0–E5** | 评测交付里程碑（charter/API/store/gold/judge/gate） | [`ENGINEERING_UNFREEZE_EVAL_V1.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md) |
+| **落地 E0–E5** | 能力路径证据成熟度：文档→源码→单测→集成→干净部署→生产 | [落地方案 §3.6](../../../../../docs/architecture/plans/ai-platform-five-products-landing-plan.md)：「E0 文档 · E1 源码 · E2 单测 · E3 集成 · E4 干净部署 · E5 生产」 |
+| **EVAL_V1 E0–E5** | 评测交付里程碑（charter/API/store/gold/judge/gate） | `ENGINEERING_UNFREEZE_EVAL_V1.md`（历史链接失效） |
 | **EET-1..4** | 单次评测结果的证据**类型**（非部署成熟度） | 本表 |
 
 禁止：用 EET 替代落地 E* 宣称「已生产」；用 EVAL 里程碑 E5 冒充落地 E5。

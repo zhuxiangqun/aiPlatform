@@ -1,8 +1,8 @@
 # EVAL_V1 E1 — Eval API surface inventory
 
 - recorded_at: `2026-11-01`
-- charter: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md)
-- unfreeze: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md)
+- charter: [`eval-v1-charter.md`](../../../../../docs/architecture/plans/eval-v1-charter.md)
+- unfreeze: `ENGINEERING_UNFREEZE_EVAL_V1.md`（历史链接失效）
 
 ## Finding
 

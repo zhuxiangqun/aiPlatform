@@ -41,7 +41,7 @@ owner: harness/observability + evaluation
 
 ### 1.5 系统成熟度评估框架（层面一 — 用户口径的"三个评估架构"）
 
-三套框架 + 统一验证引擎，源在 `docs/framework/`：
+三套框架 + 统一验证引擎，源在 `docs/reference/framework/`：
 
 | 框架 | 问题 | 规模 | 计算综合(唯一) |
 |------|------|------|------|
@@ -49,7 +49,7 @@ owner: harness/observability + evaluation
 | 框架二 工程落地评估 | 能不能持续 | 59 项二进制 | **86.4%** |
 | 框架三 三层企业评估 | 有多好 | 109 项 | 宏观3.42/微观3.94/架构3.64 |
 
-**统一验证引擎** `scripts/compute_assessment.py`（源: `docs/framework/assessment-spec.yaml` 202项单一事实源 → `assessment-scores.json`）：
+**统一验证引擎** `scripts/compute_assessment.py`（源: `docs/reference/framework/assessment-spec.yaml` 202项单一事实源 → `assessment-scores.json`）：
 
 | 能力 | 命令 | 作用 |
 |------|------|------|
@@ -176,7 +176,7 @@ python3 scripts/compute_assessment.py --drift-only # 漂移检测
 python3 scripts/compute_assessment.py --render      # 回填三文档 AUTO-SCORE 块
 python3 scripts/compute_assessment.py --bridge      # 能 vs 做过
 python3 scripts/compute_assessment.py --goals       # 框架发现→修复提案(10项)
-grep -c "AUTO-SCORE:BEGIN" docs/framework/aiplat-complete-assessment.md docs/framework/scoring-detail.md docs/framework/aiplat-autonomy-framework.md  # 各=1
+grep -c "AUTO-SCORE:BEGIN" docs/reference/framework/aiplat-complete-assessment.md docs/reference/framework/scoring-detail.md docs/reference/framework/aiplat-autonomy-framework.md  # 各=1
 
 # 评估孤岛→诊断/告警/修复 接线 (§7, 28f81bd)
 grep -n "_read_assessment_json\|_check_assessment\|assessment.*:.*成熟度" aiPlat-core/core/api/routers/diagnostics.py

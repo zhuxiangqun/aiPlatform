@@ -1,9 +1,9 @@
 # A1 部署签认检查表（可勾选）
 
-> **门**：P0 A1 发布完整性 — **阻塞正式发 UI**  
-> **依据**：[改善执行计划](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §3 · [产品评审](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md)  
-> **硬切**：旧 URL **须 404**（无 302）；本机 `npm run build` **≠** 本签认  
-> **不阻塞本门**：对象卡、G2B 三方签、Arena/G2b 双标  
+> **门**：P0 A1 发布完整性 — **阻塞正式发 UI**
+> **依据**：[改善执行计划](../../EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §3 · [产品评审](../../EVALUATION_PRODUCT_REVIEW_2026-11-04.md)
+> **硬切**：旧 URL **须 404**（无 302）；本机 `npm run build` **≠** 本签认
+> **不阻塞本门**：对象卡、G2B 三方签、Arena/G2b 双标
 
 ---
 
@@ -20,7 +20,7 @@
 | QA 留证人 |  |
 | 结论 | ☐ **pass** · ☐ **blocked_not_released** · ☐ **fail** |
 
-**blocked_not_released**：环境不可达 / 无法刷 CDN → 不得宣称「已发布」。  
+**blocked_not_released**：环境不可达 / 无法刷 CDN → 不得宣称「已发布」。
 **fail**：可达但验收项未过 → 修后重签，不降级为本机通过。
 
 ---

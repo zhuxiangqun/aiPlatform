@@ -1,15 +1,15 @@
 # Engineering unfreeze — EVAL **P2-1 Context management baseline**
 
 - **decided_at**: `2026-11-06`
-- **status**: **Closed** · [`EVAL_P2_CONTEXT_CLOSEOUT_2026-11-06.md`](./EVAL_P2_CONTEXT_CLOSEOUT_2026-11-06.md)
+- **status**: **Closed** · `EVAL_P2_CONTEXT_CLOSEOUT_2026-11-06.md`（历史链接失效）
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_P2.md`](./ENGINEERING_UNFREEZE_EVAL_P2.md)
-- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](./EVAL_P2_CHARTER_2026-11-06.md)
-- **protocol**: [`packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md)
-- **depends**: P2-0 calibration closed ([`EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md))
+- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](../../EVAL_P2_CHARTER_2026-11-06.md)
+- **protocol**: [`packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md)
+- **depends**: P2-0 calibration closed (`EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`（历史链接失效）)
 
 ## 目标
 
-在本地建立**上下文管理工程基准 v0**：长上下文召回、摘要保真、冲突处理、截断降级。  
+在本地建立**上下文管理工程基准 v0**：长上下文召回、摘要保真、冲突处理、截断降级。
 复用 P2-0 的诚实锁与抽样纪律；**不**冒充生产对话质量，**不**翻 `accuracy_claim`。
 
 ## 允许

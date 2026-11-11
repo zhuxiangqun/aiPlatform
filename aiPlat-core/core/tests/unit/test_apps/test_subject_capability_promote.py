@@ -18,6 +18,7 @@ from core.apps.eval.service.subject_capability_promote import (
     freeze_all_subject_seed_pack_meta,
     freeze_subject_seed_pack_meta,
     list_promotable_subject_kinds,
+    promote_all_subject_capability_banks,
     promote_subject_capability_bank,
     stamp_all_subject_seed_purpose_ok,
     stamp_subject_seed_purpose_ok,
@@ -97,6 +98,27 @@ def test_eval_promote_subject_capability_bank_facade(tmp_path, monkeypatch):
     assert out["ok"] is True
     assert out["pack_id"] == "dataset.capability"
     assert out["claim_eligible"] is False
+
+
+def test_promote_all_subject_capability_banks_claim_closed(tmp_path, monkeypatch):
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    out = promote_all_subject_capability_banks(
+        workspace_id="ws-all",
+        reviewer="owner",
+        frozen_by="owner",
+        notes="unit batch promote",
+    )
+    assert out["schema"] == PROMOTE_SCHEMA + ".inventory"
+    assert out["ok"] is True
+    assert out["n_subjects"] >= 14
+    assert out["n_errors"] == 0
+    assert out["claim_eligible"] is False
+    assert out["accuracy_claim"] is False
+    assert out["certification_eligible"] is False
+    kinds = {r["subject_kind"] for r in out["subjects"]}
+    assert "agent" in kinds
+    assert "api" in kinds
+    assert all(r.get("claim_eligible") is False for r in out["subjects"])
 
 
 def test_stamp_subject_seed_purpose_ok_writes_review(tmp_path):

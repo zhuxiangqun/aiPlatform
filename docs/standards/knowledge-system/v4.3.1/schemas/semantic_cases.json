@@ -1,0 +1,314 @@
+[
+  {
+    "name": "fact review draft->reviewed",
+    "kind": "transition",
+    "machine": "fact_review",
+    "from": "draft",
+    "to": "reviewed",
+    "valid": true
+  },
+  {
+    "name": "fact review draft->published",
+    "kind": "transition",
+    "machine": "fact_review",
+    "from": "draft",
+    "to": "published",
+    "valid": false
+  },
+  {
+    "name": "fact review published->draft",
+    "kind": "transition",
+    "machine": "fact_review",
+    "from": "published",
+    "to": "draft",
+    "valid": false
+  },
+  {
+    "name": "fact lifecycle active->superseded",
+    "kind": "transition",
+    "machine": "fact_lifecycle",
+    "from": "active",
+    "to": "superseded",
+    "valid": true
+  },
+  {
+    "name": "fact lifecycle superseded->active",
+    "kind": "transition",
+    "machine": "fact_lifecycle",
+    "from": "superseded",
+    "to": "active",
+    "valid": false
+  },
+  {
+    "name": "claim accepted->contested",
+    "kind": "transition",
+    "machine": "claim_status",
+    "from": "accepted",
+    "to": "contested",
+    "valid": true
+  },
+  {
+    "name": "claim retracted->accepted",
+    "kind": "transition",
+    "machine": "claim_status",
+    "from": "retracted",
+    "to": "accepted",
+    "valid": false
+  },
+  {
+    "name": "fact review publish sequence",
+    "kind": "sequence",
+    "machine": "fact_review",
+    "steps": [
+      "draft",
+      "reviewed",
+      "published"
+    ],
+    "valid": true
+  },
+  {
+    "name": "fact review skip review",
+    "kind": "sequence",
+    "machine": "fact_review",
+    "steps": [
+      "draft",
+      "published"
+    ],
+    "valid": false
+  },
+  {
+    "name": "fact lifecycle retire sequence",
+    "kind": "sequence",
+    "machine": "fact_lifecycle",
+    "steps": [
+      "active",
+      "superseded",
+      "archived"
+    ],
+    "valid": true
+  },
+  {
+    "name": "fact lifecycle revive",
+    "kind": "sequence",
+    "machine": "fact_lifecycle",
+    "steps": [
+      "active",
+      "superseded",
+      "active"
+    ],
+    "valid": false
+  },
+  {
+    "name": "claim contest then retract",
+    "kind": "sequence",
+    "machine": "claim_status",
+    "steps": [
+      "accepted",
+      "contested",
+      "retracted",
+      "archived"
+    ],
+    "valid": true
+  },
+  {
+    "name": "high risk needs rollback",
+    "kind": "action_contract",
+    "record": {
+      "risk_level": "high"
+    },
+    "valid": false
+  },
+  {
+    "name": "high risk with rollback",
+    "kind": "action_contract",
+    "record": {
+      "risk_level": "high",
+      "rollback_action_id": "ticket.reopen"
+    },
+    "valid": true
+  },
+  {
+    "name": "execution succeeded needs result",
+    "kind": "action_execution",
+    "record": {
+      "status": "succeeded"
+    },
+    "valid": false
+  },
+  {
+    "name": "execution succeeded with result",
+    "kind": "action_execution",
+    "record": {
+      "status": "succeeded",
+      "result": {}
+    },
+    "valid": true
+  },
+  {
+    "name": "abstained no citations",
+    "kind": "query_response",
+    "record": {
+      "abstained": true,
+      "citations": []
+    },
+    "valid": true
+  },
+  {
+    "name": "abstained with citations",
+    "kind": "query_response",
+    "record": {
+      "abstained": true,
+      "citations": [
+        {}
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "primary newer wins",
+    "kind": "conflict",
+    "claims": [
+      {
+        "id": "A",
+        "authority": "primary",
+        "freshness": "newer"
+      },
+      {
+        "id": "B",
+        "authority": "secondary",
+        "freshness": "older"
+      }
+    ],
+    "expected": {
+      "A": "accepted",
+      "B": "contested"
+    },
+    "valid": true
+  },
+  {
+    "name": "unresolved conflict",
+    "kind": "conflict",
+    "claims": [
+      {
+        "id": "A",
+        "authority": "primary",
+        "freshness": "newer"
+      },
+      {
+        "id": "B",
+        "authority": "primary",
+        "freshness": "newer"
+      }
+    ],
+    "expected": {
+      "A": "accepted",
+      "B": "accepted"
+    },
+    "valid": false
+  },
+  {
+    "name": "agent read own tenant",
+    "kind": "permission",
+    "role": "support_agent",
+    "action": "Ticket.read",
+    "actor_tenant": "t1",
+    "target_tenant": "t1",
+    "expected": "allow",
+    "valid": true
+  },
+  {
+    "name": "agent close denied",
+    "kind": "permission",
+    "role": "support_agent",
+    "action": "Ticket.close",
+    "actor_tenant": "t1",
+    "target_tenant": "t1",
+    "expected": "deny",
+    "valid": true
+  },
+  {
+    "name": "lead high risk approval",
+    "kind": "permission",
+    "role": "support_lead",
+    "action": "Ticket.close_high_risk",
+    "actor_tenant": "t1",
+    "target_tenant": "t1",
+    "expected": "approval",
+    "valid": true
+  },
+  {
+    "name": "cross tenant denied",
+    "kind": "permission",
+    "role": "support_agent",
+    "action": "Ticket.read",
+    "actor_tenant": "t1",
+    "target_tenant": "t2",
+    "expected": "deny",
+    "valid": true
+  },
+  {
+    "name": "unknown external success reconciles",
+    "kind": "reconciliation",
+    "execution_status": "unknown",
+    "external_status": "succeeded",
+    "idempotency_key": "k1",
+    "expected": "succeeded",
+    "valid": true
+  },
+  {
+    "name": "unknown external failure reconciles",
+    "kind": "reconciliation",
+    "execution_status": "unknown",
+    "external_status": "failed",
+    "idempotency_key": "k2",
+    "expected": "failed",
+    "valid": true
+  },
+  {
+    "name": "duplicate reconciliation blocked",
+    "kind": "reconciliation",
+    "execution_status": "succeeded",
+    "external_status": "succeeded",
+    "idempotency_key": "k1",
+    "expected": "no_duplicate",
+    "valid": true
+  },
+  {
+    "name": "valid true with skipped checks",
+    "kind": "verification",
+    "record": {
+      "status": "ok",
+      "valid": true,
+      "checks_run": [
+        "c"
+      ],
+      "skipped_checks": [
+        "x"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "valid true with empty checks",
+    "kind": "verification",
+    "record": {
+      "status": "ok",
+      "valid": true,
+      "checks_run": [],
+      "skipped_checks": []
+    },
+    "valid": false
+  },
+  {
+    "name": "partial without reason",
+    "kind": "query_response",
+    "record": {
+      "partial": true,
+      "degraded": false,
+      "abstained": false,
+      "citations": [],
+      "degraded_reason": null
+    },
+    "valid": false
+  }
+]

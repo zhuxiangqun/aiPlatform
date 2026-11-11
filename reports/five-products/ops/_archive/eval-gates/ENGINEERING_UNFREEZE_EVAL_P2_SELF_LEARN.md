@@ -1,15 +1,15 @@
 # Engineering unfreeze — EVAL **P2-3 Self-learning resistance**
 
 - **decided_at**: `2026-11-06`
-- **status**: **Closed** · [`EVAL_P2_SELF_LEARN_CLOSEOUT_2026-11-06.md`](./EVAL_P2_SELF_LEARN_CLOSEOUT_2026-11-06.md)
+- **status**: **Closed** · `EVAL_P2_SELF_LEARN_CLOSEOUT_2026-11-06.md`（历史链接失效）
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_P2.md`](./ENGINEERING_UNFREEZE_EVAL_P2.md)
-- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](./EVAL_P2_CHARTER_2026-11-06.md)
-- **protocol**: [`packages/aiplat-evaluation/docs/a3/SELF_LEARN_V0.md`](../../../packages/aiplat-evaluation/docs/a3/SELF_LEARN_V0.md)
+- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](../../EVAL_P2_CHARTER_2026-11-06.md)
+- **protocol**: [`packages/aiplat-evaluation/docs/a3/SELF_LEARN_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/SELF_LEARN_V0.md)
 - **depends**: P2-0 calibration closed（disagree_rate 作风险输入；**不**授权写回）
 
 ## 目标
 
-本地建立**自学习抗性工程基准 v0**：更新前后、迁移、遗忘/回归、错误反馈抗性、追溯回滚。  
+本地建立**自学习抗性工程基准 v0**：更新前后、迁移、遗忘/回归、错误反馈抗性、追溯回滚。
 默认 `writeback_authorized=false`（P2-0 校准结论）；**不**改生产自学习路径。
 
 ## 允许

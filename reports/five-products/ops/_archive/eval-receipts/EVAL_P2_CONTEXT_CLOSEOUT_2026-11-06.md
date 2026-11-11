@@ -1,9 +1,9 @@
 # EVAL P2-1 — Context management v0 closeout（2026-11-06）
 
 - **status**: **PASS（工程 fixture 门）** · `accuracy_claim=false`
-- **unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md`](./ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md)
-- **protocol**: [`CONTEXT_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md)
-- **pack**: [`context_tasks.v0.json`](../../../packages/aiplat-evaluation/docs/a3/context_tasks.v0.json)
+- **unfreeze**: `ENGINEERING_UNFREEZE_EVAL_P2_CONTEXT.md`（历史链接失效）
+- **protocol**: [`CONTEXT_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/CONTEXT_V0.md)
+- **pack**: [`context_tasks.v0.json`](../../../../../packages/aiplat-evaluation/docs/a3/context_tasks.v0.json)
 - **gate**: `bash packages/aiplat-evaluation/scripts/context_v0_gate.sh`
 
 ## 范围交付

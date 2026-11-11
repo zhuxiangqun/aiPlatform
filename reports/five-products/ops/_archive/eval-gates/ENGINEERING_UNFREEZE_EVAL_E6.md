@@ -1,10 +1,10 @@
 # Engineering unfreeze — EVAL_V1 E6 评测中心 UI v1
 
 - **decided_at**: `2026-11-01`
-- **status**: **Closed — E6 PASS**（[`EVAL_V1_E6_CLOSEOUT.md`](./EVAL_V1_E6_CLOSEOUT.md)）
+- **status**: **Closed — E6 PASS**（`EVAL_V1_E6_CLOSEOUT.md`（历史链接失效））
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md) · preview [`ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md`](./ENGINEERING_UNFREEZE_EVAL_V1_UI_PREVIEW.md)
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
-- **charter**: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) §8 / G3
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
+- **charter**: [`eval-v1-charter.md`](../../../../../docs/architecture/plans/eval-v1-charter.md) §8 / G3
 - **trigger**: G2a locked + `/eval` preview 已落地；DIAGNOSIS C3 PASS（#518）；**G2b 仍阻塞**（第二标注者）
 
 ## 为何选 E6（而非 G2b / Diagnosis C4）

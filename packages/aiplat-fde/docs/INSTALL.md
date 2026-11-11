@@ -1,6 +1,6 @@
 # FDE Field D1 — install（ADR Accepted）
 
-> ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../../../reports/five-products/ADR-FDE-FIELD-DEPLOY.md) · **Accepted** 2026-10-30
+> ADR: [`ADR-FDE-FIELD-DEPLOY.md`](../../../reports/five-products/ADR-FDE-FIELD-DEPLOY.md) · **Accepted** 2026-10-30
 
 ```bash
 export AIPLAT_HOME=/tmp/aiplat-fde-d1

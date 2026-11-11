@@ -208,7 +208,7 @@ with open(registry_path, "w") as f:
 |------|------|:---:|
 | `scripts/profile_packager.py` | 扩展 pack_profile 收集 cron + profiles | 约20行 |
 | `scripts/hermes-profile-install.sh` | 版本解析 + .registry 写入 | 约40行 |
-| `docs/framework/assessment-spec.yaml` | H4.declared_level 从 null→L3 | 1行 |
+| `docs/reference/framework/assessment-spec.yaml` | H4.declared_level 从 null→L3 | 1行 |
 | 不需要新文件 | — | — |
 
 ## 5. 验证
@@ -224,7 +224,7 @@ cat ~/.aiplat/profiles/.registry.yaml  # 应有本条目
 
 # 3. 重新评估 H 轴
 python3 scripts/compute_assessment.py --quiet \
-  && python3 -c "import json; d=json.load(open('docs/framework/assessment-scores.json')); print(d['frameworks']['framework_one']['axes'][8]['declared_level'])"
+  && python3 -c "import json; d=json.load(open('docs/reference/framework/assessment-scores.json')); print(d['frameworks']['framework_one']['axes'][8]['declared_level'])"
 # → expected: L3 (no longer null)
 ```
 

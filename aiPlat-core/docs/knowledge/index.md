@@ -182,8 +182,8 @@ Infra (Layer 0)
 
 ## 6. 相关文档
 
-- [边界判断标准（权威）](../../docs/architecture/boundary-standard.md) — 跨层归属标准
-- [系统整体架构规范](../../docs/architecture/system-architecture-contract.md) — 四层契约
+- [边界判断标准（权威）](../../../docs/architecture/boundary-standard.md) — 跨层归属标准
+- [系统整体架构规范](../../../docs/architecture/system-architecture-contract.md) — 四层契约
 - [Architecture Contract (Core Internal)](../contracts/01-architecture-contract.md) — Core 内部边界
 - [Harness 索引](../harness/index.md)
 - [RAG Agent](../../core/apps/agents/rag.py)

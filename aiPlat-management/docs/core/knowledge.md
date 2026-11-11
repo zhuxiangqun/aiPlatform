@@ -1,5 +1,8 @@
 # 知识库管理
 
+> **派生文档（Batch C1）**：本文是管理端摘要，权威实现/契约见 [`aiPlat-core/docs/knowledge/index.md`](../../../aiPlat-core/docs/knowledge/index.md)；冲突时以 core 文档为准。
+
+
 > 知识库与文档的完整管理
 
 ---

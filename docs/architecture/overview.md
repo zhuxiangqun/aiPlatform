@@ -2,7 +2,7 @@
 
 > 最后更新: 2026-07-04 | 当前能力数见 AIPLAT_CAPABILITIES.md | 从 `AIPLAT_CAPABILITIES.md` 聚合生成
 >
-> 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。  
+> 本文档是 aiPlat 架构的**唯一全景入口**。5 分钟读懂系统长什么样。
 > 零件清单见 CAPABILITIES，详细规约见 CLAUDE.md，对标见 comparison.md。
 
 ---
@@ -173,4 +173,4 @@ A2A 交互路径:
 
 按时间投入分层：参见 [`docs/README.md`](../README.md)。
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](../articles/private-control-plane.md)（长文）· [架构短入口](./private-control-plane.md)。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../reference/articles/private-control-plane.md)（长文）· [架构短入口](./private-control-plane.md)。

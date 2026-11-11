@@ -22,8 +22,8 @@
 
 | 卷 | 路径 | 与评测关系 |
 |----|------|------------|
-| 技术 | [`docs/whitepaper/volumes/01-tech-architecture.md`](../../../../docs/whitepaper/volumes/01-tech-architecture.md) | 平台技术论证；评测为子系统切片 |
-| 产品 | [`docs/whitepaper/volumes/02-product-capability.md`](../../../../docs/whitepaper/volumes/02-product-capability.md) | 场景表含「评测治理」一行 |
+| 技术 | [`docs/whitepaper/volumes/01-tech-architecture.md`](../../../../reports/whitepapers/volumes/01-tech-architecture.md) | 平台技术论证；评测为子系统切片 |
+| 产品 | [`docs/whitepaper/volumes/02-product-capability.md`](../../../../reports/whitepapers/volumes/02-product-capability.md) | 场景表含「评测治理」一行 |
 
 同步：`bash scripts/sync_whitepapers.sh`（跟 CAPABILITIES，不跟每份 ops 收口）。
 

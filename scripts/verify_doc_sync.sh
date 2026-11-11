@@ -191,7 +191,7 @@ check_management_docs
 # ══════════════════════════════════════════════════════════════
 # Rule 6: research docs status-markers vs code reality (doc→code 对账)
 # 调用独立脚本 scripts/check_research_docs_freshness.py
-# 扫描 docs/research/*.md 状态标记与代码符号引用，验证不矛盾/不过时。
+# 扫描 docs/reference/research/*.md 状态标记与代码符号引用，验证不矛盾/不过时。
 # WARNING 级，--ci 时阻断（防止专项审计文档停在旧时点）。
 # ══════════════════════════════════════════════════════════════
 check_research_docs_freshness() {

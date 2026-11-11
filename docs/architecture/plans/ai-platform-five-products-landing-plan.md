@@ -1,11 +1,11 @@
 # 五产品域落地方案（唯一执行真源）
 
-> **文档类型**：落地方案 / Design Plan  
-> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片 + Gate2 落地 + Gate3 有条件批准**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）  
-> **性质**：指导盘点、契约、首切片、模块化与按需拆部署的**完整执行真源**。  
-> **冲突裁决**：本文 > 执行计划摘要 > Decision Brief / PPT / 发言稿。目标边界细节仍引用 [目标架构母稿](./ai-platform-five-products-target-architecture.md)；若与本文路径/门禁冲突，**以本文为准并回写母稿**。  
-> **本文不是**：评审会脚本；也**不**表示全面改造已获批或五产品已对外产品化。  
-> **当前批准范围**：L1 + Gate1 修订（E3）已合入；**Gate 2 已批准并落地**（PR #387–#389）；**D13 已升格**为江苏锁安/`lock-service` 客户场景（`D13_CUSTOMER_ENDORSEMENT.md`）；**Gate 3 有条件批准** — 仅 Pi Thin 独立部署试点（`GATE3_DECISION.md` / ADR-08）。**五产品全拆 / 对外 E4 产品化宣传仍未批**。  
+> **文档类型**：落地方案 / Design Plan
+> **状态**：v1.3 · 2026-10-23 基线 · **2026-10-24 首切片 + Gate2 落地 + Gate3 有条件批准**（见 [`reports/five-products/LANDING_CLOSEOUT.md`](../../../reports/five-products/LANDING_CLOSEOUT.md)）
+> **性质**：指导盘点、契约、首切片、模块化与按需拆部署的**完整执行真源**。
+> **冲突裁决**：本文 > 执行计划摘要 > Decision Brief / PPT / 发言稿。目标边界细节仍引用 [目标架构母稿](./ai-platform-five-products-target-architecture.md)；若与本文路径/门禁冲突，**以本文为准并回写母稿**。
+> **本文不是**：评审会脚本；也**不**表示全面改造已获批或五产品已对外产品化。
+> **当前批准范围**：L1 + Gate1 修订（E3）已合入；**Gate 2 已批准并落地**（PR #387–#389）；**D13 已升格**为江苏锁安/`lock-service` 客户场景（`D13_CUSTOMER_ENDORSEMENT.md`）；**Gate 3 有条件批准** — 仅 Pi Thin 独立部署试点（`GATE3_DECISION.md` / ADR-08）。**五产品全拆 / 对外 E4 产品化宣传仍未批**。
 > **卫星材料**：收口抽查以 `LANDING_CLOSEOUT.md` 为准。
 
 ---
@@ -63,18 +63,18 @@
 
 ### 1.3 非目标（全程禁止当作本方案交付）
 
-- 五仓库 / 五数据库 / 五微服务一次性拆分  
-- 全仓目录搬迁先行  
-- 诊断全功能（全量评测编排、自动根因修复、跨平台自动执行）  
-- FDE 做成甘特/CRM/全能工单  
-- 将 Pi Thin 表述为已完成 Enterprise Runtime  
-- 用 CAPABILITIES / 图谱 / architecture_guard 绿代替行为验收  
-- 跨产品共享 DB 作为正式集成契约  
-- 缺证据时报告 healthy/成功  
+- 五仓库 / 五数据库 / 五微服务一次性拆分
+- 全仓目录搬迁先行
+- 诊断全功能（全量评测编排、自动根因修复、跨平台自动执行）
+- FDE 做成甘特/CRM/全能工单
+- 将 Pi Thin 表述为已完成 Enterprise Runtime
+- 用 CAPABILITIES / 图谱 / architecture_guard 绿代替行为验收
+- 跨产品共享 DB 作为正式集成契约
+- 缺证据时报告 healthy/成功
 
 ### 1.4 四层边界推进顺序
 
-1. 产品边界 → 2. 接口边界 → 3. 代码模块边界 → 4. 部署边界  
+1. 产品边界 → 2. 接口边界 → 3. 代码模块边界 → 4. 部署边界
 未完成前一层，不开下一层的大规模动作。
 
 ---
@@ -109,27 +109,27 @@
 | 模块化（Gate2+） | A | C | R | C | R | C | 架构 |
 | 独立部署（Gate3 工作包） | A′ | A′ | R | R | R | A | 运维 |
 
-\*WP0 在正式产品 owner 到位前的 **临时执行** 见 §2.4。  
+\*WP0 在正式产品 owner 到位前的 **临时执行** 见 §2.4。
 \*\*Gate 3 行**：运维=工作包主 A；架构与业务均为 **A′**（产出联签）。**Gate 3 门禁本身**仍须架构 × 业务联合签署（下款），与运维主 A 并存。
 
 #### 2.2.1 共同签署与争议裁决
 
-1. **主 A**：对该工作包「完成定义 / 是否达标 / 是否可提交下一门禁」负最终责任，并在产出物上主签。  
-2. **A′（共同签署人）**：必须联签；可提出否决异议；**不能**单独宣布工作包完成。  
-3. **主 A 与 A′ 意见不一致**时：  
-   - 涉及业务价值、验收标准、场景是否成立 → **业务场景 owner** 裁决（书面）。  
-   - 涉及边界、契约、依赖方向、安全语义 → **架构决策 owner** 裁决（书面）。  
-   - 仍冲突或涉及安全一票否决 → **安全 reviewer** 可阻塞；最终升级由架构 × 业务按暂停规则联合处理。  
+1. **主 A**：对该工作包「完成定义 / 是否达标 / 是否可提交下一门禁」负最终责任，并在产出物上主签。
+2. **A′（共同签署人）**：必须联签；可提出否决异议；**不能**单独宣布工作包完成。
+3. **主 A 与 A′ 意见不一致**时：
+   - 涉及业务价值、验收标准、场景是否成立 → **业务场景 owner** 裁决（书面）。
+   - 涉及边界、契约、依赖方向、安全语义 → **架构决策 owner** 裁决（书面）。
+   - 仍冲突或涉及安全一票否决 → **安全 reviewer** 可阻塞；最终升级由架构 × 业务按暂停规则联合处理。
 4. **Gate 1 / Gate 2 / Gate 3 / 暂停 / 恢复**（门禁层）：一律由架构决策 owner × 业务场景 owner **联合签署**。此规则**独立于**上表工作包主 A——例如 Gate 3 工作包可由运维主责执行，但「是否批准独立部署」仍须架构×业务联签。
 
 ### 2.3 进入 L1 / 启动 WP0 的最低条件
 
 须**同时**满足，且有书面「获准进入 L1」记录后，才启动 WP0：
 
-1. 架构决策 owner、业务场景 owner 已指定（可同一人兼任，须书面）。  
-2. 场景候选已写明：输入、预期输出、失败条件、是否客户场景；若内部场景须标「**非客户验收**」，并确认知悉 **D13**（Gate 2 前须客户场景替换或书面背书）。  
-3. 业务验收人已指定（可与业务 owner 同一人）。  
-4. 隔离环境可行性结论（能/不能；不能则 WP0 只出缺口，**不得**进入 Gate 1）。  
+1. 架构决策 owner、业务场景 owner 已指定（可同一人兼任，须书面）。
+2. 场景候选已写明：输入、预期输出、失败条件、是否客户场景；若内部场景须标「**非客户验收**」，并确认知悉 **D13**（Gate 2 前须客户场景替换或书面背书）。
+3. 业务验收人已指定（可与业务 owner 同一人）。
+4. 隔离环境可行性结论（能/不能；不能则 WP0 只出缺口，**不得**进入 Gate 1）。
 
 **不满足 §2.3 = 不得启动 WP0。** 方案落盘本身不构成开工授权。
 
@@ -148,7 +148,7 @@
 
 五产品 owner 全名单：争取 **WP0 第一周内**补齐；未到位时按 §2.4 与 `ROLES.md` 临时覆盖。
 
-过程产物目录：`reports/five-products/`（禁止堆回 `docs/research/`）。
+过程产物目录：`reports/five-products/`（禁止堆回 `docs/reference/research/`）。
 
 ### 2.4 WP0 临时责任人（owner 未到位时）
 
@@ -160,7 +160,7 @@
 | FDE | FDE owner | 业务场景 owner 或指定 FDE 工程师 | 须书面点名 |
 | 诊断 | 诊断 owner | 架构决策 owner 或指定诊断/观测工程师 | 须书面点名 |
 
-- 临时 R 的产出与正式 owner 同等效力，正式 owner 到位后须复核签字。  
+- 临时 R 的产出与正式 owner 同等效力，正式 owner 到位后须复核签字。
 - **负责人（正式或临时）均未指定的产品域**：该域相关边记 **Blocker**（§3.6），不得用猜测填平或伪造成 Known Gap。
 
 ---
@@ -171,10 +171,10 @@
 
 §3.1 描述的是**目标切片路径**（Gate 1 后要验证的闭环），**不预设**仓库里已存在贯通的生产链路。
 
-WP0 必须对每一条边确认：现有入口、真实 caller、行为证据等级，并按 §3.6 登记为 **As-Is / Known Gap / Blocker**。  
-- 边存在且可定位 → **As-Is**。  
-- 边缺失但设计与负责人齐全 → **Known Gap**（可进 Gate 1 工作项；不得标「已接线」）。  
-- 安全/权威/授权未知或不可控，或无人负责 → **Blocker**（挡在 Gate 1 外）。  
+WP0 必须对每一条边确认：现有入口、真实 caller、行为证据等级，并按 §3.6 登记为 **As-Is / Known Gap / Blocker**。
+- 边存在且可定位 → **As-Is**。
+- 边缺失但设计与负责人齐全 → **Known Gap**（可进 Gate 1 工作项；不得标「已接线」）。
+- 安全/权威/授权未知或不可控，或无人负责 → **Blocker**（挡在 Gate 1 外）。
 - **禁止**为赶进度：跨库直写、绕过授权、或把新建接口登记为 As-Is。
 
 ### 3.1 主路径（目标 · 必经步骤）
@@ -212,27 +212,27 @@ FDE：建场景 + 验收标准
 
 **正确性**
 
-1. 可从 FDE 需求定位到：Agent 资产版本 → Bundle → Pi 实例 → 诊断报告（及可选 Ontology 版本）。  
-2. Pi 输出符合预定义结果契约。  
-3. 诊断报告可回溯证据与规则/评测版本；缺证据为 `unknown`/`stale`，不得默认 `healthy`。  
+1. 可从 FDE 需求定位到：Agent 资产版本 → Bundle → Pi 实例 → 诊断报告（及可选 Ontology 版本）。
+2. Pi 输出符合预定义结果契约。
+3. 诊断报告可回溯证据与规则/评测版本；缺证据为 `unknown`/`stale`，不得默认 `healthy`。
 4. FDE 接受/拒绝有书面证据。
 
 **安全**
 
-5. 目标服务端校验 tenant/actor/scope/资源。  
-6. 无授权调用被拒；Pi 客户端 gate 不能绕过服务端拒绝。  
-7. 控制面失联时高风险副作用 **fail-closed**（首切片尽量无高风险工具）。  
+5. 目标服务端校验 tenant/actor/scope/资源。
+6. 无授权调用被拒；Pi 客户端 gate 不能绕过服务端拒绝。
+7. 控制面失联时高风险副作用 **fail-closed**（首切片尽量无高风险工具）。
 8. 日志/报告无 token、密钥明文。
 
 **可重复**
 
-9. 干净环境按手册从 Bundle 安装跑到验收可重做。  
-10. 保存代码、配置、Bundle、Runtime、（若有）Ontology、诊断规则版本集合。  
+9. 干净环境按手册从 Bundle 安装跑到验收可重做。
+10. 保存代码、配置、Bundle、Runtime、（若有）Ontology、诊断规则版本集合。
 11. 失败可归因到产品边界。
 
 ### 3.5 Pi Thin 与 aiPlat 的依赖边界（锁定）
 
-整条首切片**发布与诊断**依赖 aiPlat（发 Bundle、出平台侧证据）。  
+整条首切片**发布与诊断**依赖 aiPlat（发 Bundle、出平台侧证据）。
 「Thin 无 aiPlat 完成声明闭环」**仅**指下列执行态：
 
 | 阶段 | 是否依赖 aiPlat 在线 | 说明 |
@@ -246,11 +246,11 @@ FDE：建场景 + 验收标准
 
 **WP2 必须写明的离线策略字段**（写入 `reports/five-products/contracts/pi-thin-offline.md`）：
 
-1. `offline_max_ttl`：自上次成功策略/Bundle 校验起的最长离线执行窗口。  
-2. `allowed_ops_offline`：允许的工具/技能集合（首切片默认 ⊆ 只读/低风险）。  
-3. `denied_ops_offline`：一律拒绝的副作用类。  
-4. `bundle_expiry / policy_expiry`：过期后行为（停止执行 / 仅只读）。  
-5. `revocation`：若曾在线拉取撤销列表，离线期满后必须重新校验；无撤销通道时默认缩短 TTL。  
+1. `offline_max_ttl`：自上次成功策略/Bundle 校验起的最长离线执行窗口。
+2. `allowed_ops_offline`：允许的工具/技能集合（首切片默认 ⊆ 只读/低风险）。
+3. `denied_ops_offline`：一律拒绝的副作用类。
+4. `bundle_expiry / policy_expiry`：过期后行为（停止执行 / 仅只读）。
+5. `revocation`：若曾在线拉取撤销列表，离线期满后必须重新校验；无撤销通道时默认缩短 TTL。
 6. `audit_buffer`：离线审计/事件本地缓冲上限与恢复上送失败时的报告语义。
 
 ### 3.6 阻塞项 · 已知缺口 · E3/E4 阶段归属（防 Gate 1 循环）
@@ -326,12 +326,12 @@ WP0 盘点（≤10 工作日）
 
 #### 范围纪律
 
-- **必盘**：§3.1 **目标路径**上的边——逐边找现状，不是默认已通（§3.0）。  
-- **按需**：若场景启用本体，加盘查询入口与版本字段。  
-- **禁止**：全仓目录考古、全量 CAPABILITIES 证据升级作为 WP0 完成条件。  
-- **禁止**：跨库直写「补洞」、把 WP3 才计划新建的接口写成「现状已接线」。  
-- 未使用产品维度写「切片未使用」。  
-- 执行人：正式产品 owner，或 §2.4 临时 R。  
+- **必盘**：§3.1 **目标路径**上的边——逐边找现状，不是默认已通（§3.0）。
+- **按需**：若场景启用本体，加盘查询入口与版本字段。
+- **禁止**：全仓目录考古、全量 CAPABILITIES 证据升级作为 WP0 完成条件。
+- **禁止**：跨库直写「补洞」、把 WP3 才计划新建的接口写成「现状已接线」。
+- 未使用产品维度写「切片未使用」。
+- 执行人：正式产品 owner，或 §2.4 临时 R。
 
 #### 建议调查锚点（按现状）
 
@@ -358,16 +358,16 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' 
 
 #### DoD
 
-- [ ] 摘要首句写明：「§3.1 为目标路径；下列为 WP0 核实后的 As-Is / Known Gap / Blocker」  
-- [ ] 主路径每条边已分类（§3.6.1）；Known Gap 含 §3.6.3 最低字段；Blocker 单列  
-- [ ] **无**「因整路径尚无 E3 而一律阻塞 Gate 1」——端到端 E3 归属 WP4（§3.6.2）  
-- [ ] 无跨库直写或临时旁路被登记为 As-Is  
-- [ ] 切片数据唯一 owner；缓存单独标版本/新鲜度字段有无  
-- [ ] Pi Thin 已实现 vs Enterprise 缺口表；并区分「执行离线」vs「发布/诊断依赖 aiPlat」  
-- [ ] 诊断现状 vs MVP（Pi+aiPlat 证据+报告）差距表  
-- [ ] 各产品域均有正式或临时 R 署名；无负责人的主路径边 → Blocker  
-- [ ] As-Is 边带证据等级；声称 As-Is 但仅有 E0 → 降为 Known Gap 或 Blocker  
-- [ ] 时间盒到期：未完成标后置；**不**虚构完备性或虚报 E3  
+- [ ] 摘要首句写明：「§3.1 为目标路径；下列为 WP0 核实后的 As-Is / Known Gap / Blocker」
+- [ ] 主路径每条边已分类（§3.6.1）；Known Gap 含 §3.6.3 最低字段；Blocker 单列
+- [ ] **无**「因整路径尚无 E3 而一律阻塞 Gate 1」——端到端 E3 归属 WP4（§3.6.2）
+- [ ] 无跨库直写或临时旁路被登记为 As-Is
+- [ ] 切片数据唯一 owner；缓存单独标版本/新鲜度字段有无
+- [ ] Pi Thin 已实现 vs Enterprise 缺口表；并区分「执行离线」vs「发布/诊断依赖 aiPlat」
+- [ ] 诊断现状 vs MVP（Pi+aiPlat 证据+报告）差距表
+- [ ] 各产品域均有正式或临时 R 署名；无负责人的主路径边 → Blocker
+- [ ] As-Is 边带证据等级；声称 As-Is 但仅有 E0 → 降为 Known Gap 或 Blocker
+- [ ] 时间盒到期：未完成标后置；**不**虚构完备性或虚报 E3
 
 ---
 
@@ -375,9 +375,9 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' 
 
 #### 动作
 
-1. 确认本切片使用的产品步骤（主路径全用；本体用/不用）。  
-2. 冻结 Knowledge 三分（仅切片触及部分）：语义事实→本体；检索编排→aiPlat；跨产品证据索引→诊断。  
-3. 冻结编排表述：**资产发布与治理**∈aiPlat；**厂外执行宿主**∈Pi；Harness=共享执行底座，经公开接口暴露，禁止把 FDE 业务写回 harness。  
+1. 确认本切片使用的产品步骤（主路径全用；本体用/不用）。
+2. 冻结 Knowledge 三分（仅切片触及部分）：语义事实→本体；检索编排→aiPlat；跨产品证据索引→诊断。
+3. 冻结编排表述：**资产发布与治理**∈aiPlat；**厂外执行宿主**∈Pi；Harness=共享执行底座，经公开接口暴露，禁止把 FDE 业务写回 harness。
 4. 确认 D9（shared/identity 仅契约）。
 
 #### 产物
@@ -386,9 +386,9 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' 
 
 #### DoD
 
-- [ ] 无双重权威实体  
-- [ ] 非目标贴在看板  
-- [ ] 五产品 owner 名单齐（最迟本 WP 结束）  
+- [ ] 无双重权威实体
+- [ ] 非目标贴在看板
+- [ ] 五产品 owner 名单齐（最迟本 WP 结束）
 
 ---
 
@@ -404,27 +404,27 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform --glob '*.py' 
 | Semantic 特例 | 首切片默认未启用本体时：Semantic = `本切片未启用`；**一旦** WP1 决定启用本体，Semantic 升入启用集并强制测 |
 | 交付物级别 | WP2 产出的是**可测的最小契约草案 + 矩阵**，不是六套已上线生产 API（D11） |
 
-首切片默认启用集（本体关闭时）：Identity、Bundle、Runtime、Evidence/Diagnosis、Delivery。  
+首切片默认启用集（本体关闭时）：Identity、Bundle、Runtime、Evidence/Diagnosis、Delivery。
 Semantic：默认 `本切片未启用`。
 
 #### 启用契约的最小字段
 
-**Identity / Policy**：`tenant_id, actor_id|service_id, scopes[], audience, request_id, trace_id, product_id, environment_id, authn_source, expires_at`  
+**Identity / Policy**：`tenant_id, actor_id|service_id, scopes[], audience, request_id, trace_id, product_id, environment_id, authn_source, expires_at`
 验收：伪造身份失败；客户端不能放行服务端已拒操作。
 
-**Agent Bundle**：`bundle_id, schema_version, source_asset_ids[], asset_versions[], runtime_compat_range, permission_claims[], model_requirements, build_info, integrity, rollback_hint`  
+**Agent Bundle**：`bundle_id, schema_version, source_asset_ids[], asset_versions[], runtime_compat_range, permission_claims[], model_requirements, build_info, integrity, rollback_hint`
 验收：坏包/不兼容包安装前拒绝；`permission_claims` 不能单独授权。
 
-**Runtime Control**：`instance_id, deploy_version, config_version, health, heartbeat_at, event_types[], offline_until, command_authz`  
+**Runtime Control**：`instance_id, deploy_version, config_version, health, heartbeat_at, event_types[], offline_until, command_authz`
 验收：符合失联表 + §3.5 离线策略文件。
 
-**Semantic**（仅启用时）：`ontology_version, mapping_version, query_id, provenance[], freshness, permission_decision`  
+**Semantic**（仅启用时）：`ontology_version, mapping_version, query_id, provenance[], freshness, permission_decision`
 验收：无版本/来源不得「验收通过」。
 
-**Evidence / Diagnosis**：`event_schema_version, source_product, source_instance, environment, asset_versions{}, run_id, trace_id, severity, status, evidence_refs[], report_rule_version, generated_at`  
+**Evidence / Diagnosis**：`event_schema_version, source_product, source_instance, environment, asset_versions{}, run_id, trace_id, severity, status, evidence_refs[], report_rule_version, generated_at`
 验收：可回溯；缺证据→`unknown`/`stale`。
 
-**Delivery**：`engagement_id, scenario_id, requirement_ids[], refs{agent_bundle,runtime,ontology?,diagnosis_report}, acceptance_status, evidence_ids[], decided_by, decided_at`  
+**Delivery**：`engagement_id, scenario_id, requirement_ids[], refs{agent_bundle,runtime,ontology?,diagnosis_report}, acceptance_status, evidence_ids[], decided_by, decided_at`
 验收：FDE 不写对方权威库；只持稳定引用。
 
 #### 兼容矩阵
@@ -438,7 +438,7 @@ Semantic：默认 `本切片未启用`。
 | Evidence event | 启用 | Pi/aiPlat | 诊断 | | 忽略未知可选字段 | |
 | Delivery | 启用 | FDE | adapters | | 状态幂等 | |
 
-「启用」行：禁止空 owner、空版本/草案号。  
+「启用」行：禁止空 owner、空版本/草案号。
 「本切片未启用」行：不阻塞 Gate 1。
 
 #### 失联语义（锁定默认）+ Pi Thin 离线
@@ -459,54 +459,54 @@ Semantic：默认 `本切片未启用`。
 
 #### DoD
 
-- [ ] 矩阵每行有状态：`启用` 或 `本切片未启用`  
-- [ ] **所有启用行**有生产者/消费者/版本或草案号/错误语义/owner  
-- [ ] Semantic 在未用本体时为 `本切片未启用`（不阻塞）  
-- [ ] `pi-thin-offline.md` 六字段齐全并签字  
-- [ ] 失联表签字  
-- [ ] ≥3 条负向用例（启用集内）：伪造身份、坏 Bundle、过期/缺失证据  
-- [ ] 明确声明：本 WP **未**声称交付六套生产级稳定 API  
+- [ ] 矩阵每行有状态：`启用` 或 `本切片未启用`
+- [ ] **所有启用行**有生产者/消费者/版本或草案号/错误语义/owner
+- [ ] Semantic 在未用本体时为 `本切片未启用`（不阻塞）
+- [ ] `pi-thin-offline.md` 六字段齐全并签字
+- [ ] 失联表签字
+- [ ] ≥3 条负向用例（启用集内）：伪造身份、坏 Bundle、过期/缺失证据
+- [ ] 明确声明：本 WP **未**声称交付六套生产级稳定 API
 
 ---
 
 ### Gate 1 — 切片开工门（单独批准 WP3–WP4）
 
-**审什么**：能否安全、有责地**开工建设并验收**目标路径。  
+**审什么**：能否安全、有责地**开工建设并验收**目标路径。
 **不审什么**：整条路径是否**已经**具备端到端 E3（那是 WP4 的事，§3.6.2）。
 
 **全部满足**才进入 WP3；本门**不是** L1 自动延续：
 
-- [ ] 场景、验收人、失败条件明确  
-- [ ] Pi 形态=Thin 或 Enterprise 子集清单；`pi-thin-offline.md` 已定  
-- [ ] 控制面路径明确（aiPlat 默认或具名外部 IAM）  
-- [ ] WP0 **无未关闭的 Blocker**（§3.6.1）；安全/权威/授权/无负责人等不得带病过门  
-- [ ] 所有 Known Gap 已附 §3.6.3 字段，并纳入 WP3–WP4 工作项清单  
-- [ ] **Known Gap 抽查**：每条确有可执行设计、责任人、测试点、回滚；**无一**把安全边界 / 数据权威 / 授权方式的「仍未知或不可控」包装成普通缺口（此类一律升为 Blocker）  
-- [ ] **未**将「路径尚无端到端 E3」误列为 Blocker  
-- [ ] WP2 **启用集**契约可用于本路径；未启用行已标记  
-- [ ] 隔离环境、密钥、脱敏方案就绪（WP0 已确认「能」）  
-- [ ] Bundle 发布与诊断证据：**As-Is 可指认**，或 **Known Gap 设计可执行**（否则缩场景/驳回）  
-- [ ] 回滚：Bundle 或 Runtime 可回滚（设计层）  
-- [ ] 安全 reviewer：副作用范围 + 触及安全的 Known Gap 预签  
-- [ ] 架构 × 业务联合签署 **「批准进入 WP3–WP4」**（联签独立于工作包主 A）  
+- [ ] 场景、验收人、失败条件明确
+- [ ] Pi 形态=Thin 或 Enterprise 子集清单；`pi-thin-offline.md` 已定
+- [ ] 控制面路径明确（aiPlat 默认或具名外部 IAM）
+- [ ] WP0 **无未关闭的 Blocker**（§3.6.1）；安全/权威/授权/无负责人等不得带病过门
+- [ ] 所有 Known Gap 已附 §3.6.3 字段，并纳入 WP3–WP4 工作项清单
+- [ ] **Known Gap 抽查**：每条确有可执行设计、责任人、测试点、回滚；**无一**把安全边界 / 数据权威 / 授权方式的「仍未知或不可控」包装成普通缺口（此类一律升为 Blocker）
+- [ ] **未**将「路径尚无端到端 E3」误列为 Blocker
+- [ ] WP2 **启用集**契约可用于本路径；未启用行已标记
+- [ ] 隔离环境、密钥、脱敏方案就绪（WP0 已确认「能」）
+- [ ] Bundle 发布与诊断证据：**As-Is 可指认**，或 **Known Gap 设计可执行**（否则缩场景/驳回）
+- [ ] 回滚：Bundle 或 Runtime 可回滚（设计层）
+- [ ] 安全 reviewer：副作用范围 + 触及安全的 Known Gap 预签
+- [ ] 架构 × 业务联合签署 **「批准进入 WP3–WP4」**（联签独立于工作包主 A）
 
-未过 Gate 1：**禁止** WP3–WP4、**禁止**改生产默认路径、禁止对外宣称五产品已产品化。  
-仅有 Blocker、或 Known Gap 无设计/无人负责、或安全/权威/授权被伪装成 Known Gap：**暂停或缩切片**。  
-**禁止**为过 Gate 1 而降低 §3.4 / WP4 的 E3–E4 完成标准。  
+未过 Gate 1：**禁止** WP3–WP4、**禁止**改生产默认路径、禁止对外宣称五产品已产品化。
+仅有 Blocker、或 Known Gap 无设计/无人负责、或安全/权威/授权被伪装成 Known Gap：**暂停或缩切片**。
+**禁止**为过 Gate 1 而降低 §3.4 / WP4 的 E3–E4 完成标准。
 **禁止**将「已获准 L1」解释为「切片已获准开跑」或「全面改造已获批」。
 
 ---
 
 ### WP3 — 切片设计
 
-产物：序列图、环境清单、数据夹具、测试计划（含正确性/安全/失联）、回滚步骤、运维手册草稿。  
+产物：序列图、环境清单、数据夹具、测试计划（含正确性/安全/失联）、回滚步骤、运维手册草稿。
 文件：`reports/five-products/slice-<id>/DESIGN.md`
 
 #### DoD
 
-- [ ] 每步有责任产品与证据文件名约定  
-- [ ] 故障注入用例 ≥3  
-- [ ] 回滚步骤可在 30 分钟内演练（设计层可执行）  
+- [ ] 每步有责任产品与证据文件名约定
+- [ ] 故障注入用例 ≥3
+- [ ] 回滚步骤可在 30 分钟内演练（设计层可执行）
 
 ---
 
@@ -540,17 +540,17 @@ reports/five-products/slice-<id>/
 
 #### DoD
 
-- [ ] §3.4 验收表全部通过，或失败已归因到产品并记入 GAPS  
-- [ ] 测试/验收 owner 签署  
-- [ ] GAPS 每条含严重度与建议（契约/facade/后置）  
+- [ ] §3.4 验收表全部通过，或失败已归因到产品并记入 GAPS
+- [ ] 测试/验收 owner 签署
+- [ ] GAPS 每条含严重度与建议（契约/facade/后置）
 
 ---
 
 ### WP5 — 回顾
 
-1. 更新 ADR-01～03（至少）；其余按需。  
-2. 仅基于 GAPS 生成模块化 backlog（禁「因目录好看而搬迁」）。  
-3. 给出 Gate 2 建议：扩大 / 维持 / 暂停；若场景为「非客户验收」，须在建议中单列 **D13 客户背书缺口**。  
+1. 更新 ADR-01～03（至少）；其余按需。
+2. 仅基于 GAPS 生成模块化 backlog（禁「因目录好看而搬迁」）。
+3. 给出 Gate 2 建议：扩大 / 维持 / 暂停；若场景为「非客户验收」，须在建议中单列 **D13 客户背书缺口**。
 
 ---
 
@@ -560,25 +560,25 @@ reports/five-products/slice-<id>/
 
 **全部满足**方可批准「按 GAPS 扩大模块化 / 产品化」：
 
-- [ ] WP4 端到端行为与安全/失败模式通过（或失败已归因且不依赖降标）  
-- [ ] 失败状态可观察；数据与权限边界成立  
-- [ ] 五产品 owner（或已复核的临时 R 转正）到位  
-- [ ] **D13**：场景为真实客户路径，**或**已取得符合 §6.0.1 的书面客户背书 / 客户场景替换；仅有「非客户验收」→ **不得**过 Gate 2  
-- [ ] 架构 × 业务联合签署「批准进入 Gate 2 模块化」  
+- [ ] WP4 端到端行为与安全/失败模式通过（或失败已归因且不依赖降标）
+- [ ] 失败状态可观察；数据与权限边界成立
+- [ ] 五产品 owner（或已复核的临时 R 转正）到位
+- [ ] **D13**：场景为真实客户路径，**或**已取得符合 §6.0.1 的书面客户背书 / 客户场景替换；仅有「非客户验收」→ **不得**过 Gate 2
+- [ ] 架构 × 业务联合签署「批准进入 Gate 2 模块化」
 
-Gate 2 **不**批准：无证据的全仓搬迁、诊断全功能、拆微服务（仍属 Gate 3）。  
+Gate 2 **不**批准：无证据的全仓搬迁、诊断全功能、拆微服务（仍属 Gate 3）。
 取消 D13 须另立 ADR，纪要默示不算数。
 
 #### 6.0.1 书面客户背书最低内容（D13）
 
 附件须可核验，至少包含：
 
-1. 客户组织名称  
-2. 客户联系人姓名与角色（有权同意扩大依据者）  
-3. 对应场景标识/简述（与切片或后续扩大场景可追溯）  
-4. 验收目标或成功标准摘要  
-5. 明确同意：该场景/结论可作为 **Gate 2 扩大产品化** 的业务依据（范围边界一句话）  
-6. 日期与签字（或等价书面确认）  
+1. 客户组织名称
+2. 客户联系人姓名与角色（有权同意扩大依据者）
+3. 对应场景标识/简述（与切片或后续扩大场景可追溯）
+4. 验收目标或成功标准摘要
+5. 明确同意：该场景/结论可作为 **Gate 2 扩大产品化** 的业务依据（范围边界一句话）
+6. 日期与签字（或等价书面确认）
 
 缺任一项 = 背书不成立。内部场景技术通过 ≠ 客户背书。
 
@@ -590,19 +590,19 @@ Gate 2 **不**批准：无证据的全仓搬迁、诊断全功能、拆微服务
 
 ### 6.2 手法优先级
 
-1. 公开 API/facade + 改 caller  
-2. 版本化 DTO/事件  
-3. 依赖守卫（防回潮）  
-4. DB 直连 → API（双读窗口）  
-5. 目录搬迁（最后；单子域 + 回归 + 回滚）  
+1. 公开 API/facade + 改 caller
+2. 版本化 DTO/事件
+3. 依赖守卫（防回潮）
+4. DB 直连 → API（双读窗口）
+5. 目录搬迁（最后；单子域 + 回归 + 回滚）
 
 ### 6.3 单波次 DoD
 
-- [ ] 范围=批准的边  
-- [ ] 契约或集成测试覆盖  
-- [ ] 无新的跨域私有 import  
-- [ ] 回滚说明  
-- [ ] 能力声明变更不虚抬证据等级  
+- [ ] 范围=批准的边
+- [ ] 契约或集成测试覆盖
+- [ ] 无新的跨域私有 import
+- [ ] 回滚说明
+- [ ] 能力声明变更不虚抬证据等级
 
 ### 6.4 预设波次（示例，以 GAPS 裁剪）
 
@@ -620,10 +620,10 @@ Gate 2 **不**批准：无证据的全仓搬迁、诊断全功能、拆微服务
 
 ### 7.1 aiPlat
 
-- 控制面稳定 API；禁私有身份模块被跨产品 import  
-- 资产生命周期与 Bundle 字段对齐  
-- 编排=治理/发布；执行不在厂外重复造控制面  
-- FDE/诊断业务逻辑迁出 harness  
+- 控制面稳定 API；禁私有身份模块被跨产品 import
+- 资产生命周期与 Bundle 字段对齐
+- 编排=治理/发布；执行不在厂外重复造控制面
+- FDE/诊断业务逻辑迁出 harness
 
 ### 7.2 Pi
 
@@ -637,22 +637,22 @@ Gate 2 **不**批准：无证据的全仓搬迁、诊断全功能、拆微服务
 
 ### 7.3 本体
 
-- Model/Mapping/Query API：版本、来源、新鲜度  
-- RAG/向量=派生视图，非权威  
-- 消除跨产品 DB 直连  
+- Model/Mapping/Query API：版本、来源、新鲜度
+- RAG/向量=派生视图，非权威
+- 消除跨产品 DB 直连
 
 ### 7.4 FDE
 
-- 强制六对象状态机；其余对象按流程需要引入  
-- Adapter：aiPlat/Pi/本体/诊断/客户系统  
-- 客户隔离与串租负向测试  
+- 强制六对象状态机；其余对象按流程需要引入
+- Adapter：aiPlat/Pi/本体/诊断/客户系统
+- 客户隔离与串租负向测试
 
 ### 7.5 诊断
 
-- MVP=证据接入+关联+报告+unknown/stale（本落地方案首切片已定义）  
-- Evaluation/Testing=二期单独批准  
-- Remediation=只建议/建任务；执行走目标产品授权 API  
-- Management=入口，非唯一业务模型  
+- MVP=证据接入+关联+报告+unknown/stale（本落地方案首切片已定义）
+- Evaluation/Testing=二期单独批准
+- Remediation=只建议/建任务；执行走目标产品授权 API
+- Management=入口，非唯一业务模型
 
 ---
 
@@ -699,11 +699,11 @@ shared/{contracts,sdk,identity,observability,security,connectors}/
 
 须至少一项真实驱动 **且** 完成成本/运维评估：
 
-- 客户隔离/数据驻留/独立密钥  
-- 独立扩缩容负载  
-- 独立 SLA 与发布节奏 + 责任团队  
-- ≥2 个真实消费者证明多平台复用  
-- 共享部署已造成可量化故障或升级冲突  
+- 客户隔离/数据驻留/独立密钥
+- 独立扩缩容负载
+- 独立 SLA 与发布节奏 + 责任团队
+- ≥2 个真实消费者证明多平台复用
+- 共享部署已造成可量化故障或升级冲突
 
 另需：迁移回滚、API 兼容、故障隔离、授权审计、SLO、备份恢复。无 owner/on-call 不拆。
 
@@ -785,13 +785,13 @@ Gate 2+ 建议守卫：禁止 `apps/fde` 直 import `harness.knowledge` 内部�
 
 > 下列步骤**仅在**书面「获准进入 L1」之后执行；本文落盘 ≠ 自动开工。
 
-1. 确认架构 owner、业务 owner、验收人、§2.4 临时 R（如需要）已书面点名  
-2. 场景写入 `reports/five-products/SCENE.md`  
-3. 开目录 `reports/five-products/`  
-4. 启动 **WP0**（表 A–F + §3.0 纪律），时间盒 ≤10 工作日  
-5. WP0 尾并行 **WP1**；紧接 **WP2**（启用集契约 + `pi-thin-offline.md`，非六套生产 API）  
-6. 提交 **Gate 1**；**仅通过后**才排 WP3–WP4  
-7. Gate 2 须另批且满足 **D13**；Gate 3 另批；**均不预估完成日**  
+1. 确认架构 owner、业务 owner、验收人、§2.4 临时 R（如需要）已书面点名
+2. 场景写入 `reports/five-products/SCENE.md`
+3. 开目录 `reports/five-products/`
+4. 启动 **WP0**（表 A–F + §3.0 纪律），时间盒 ≤10 工作日
+5. WP0 尾并行 **WP1**；紧接 **WP2**（启用集契约 + `pi-thin-offline.md`，非六套生产 API）
+6. 提交 **Gate 1**；**仅通过后**才排 WP3–WP4
+7. Gate 2 须另批且满足 **D13**；Gate 3 另批；**均不预估完成日**
 
 ---
 
@@ -817,4 +817,4 @@ Gate 2+ 建议守卫：禁止 `apps/fde` 直 import `harness.knowledge` 内部�
 
 ---
 
-**一句话**：书面获准 L1 后只做 WP0–WP2；Gate 1 批准「去建设并验收」（Known Gap 可带，Blocker 不可），端到端 E3 在 WP4 交付且不降标；Gate 2 须客户背书。  
+**一句话**：书面获准 L1 后只做 WP0–WP2；Gate 1 批准「去建设并验收」（Known Gap 可带，Blocker 不可），端到端 E3 在 WP4 交付且不降标；Gate 2 须客户背书。

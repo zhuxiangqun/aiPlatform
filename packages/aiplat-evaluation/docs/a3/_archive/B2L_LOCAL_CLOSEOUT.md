@@ -1,9 +1,9 @@
 # EVAL A3 B2-L local closeout
 
-> **status**: closeout evidence via `bash scripts/b2l_local_closeout.sh`  
-> **Honesty**: `environment=local` · `process_split_authorized=false` · `staging_ready=false` · does **not** start B3 sandbox or B4-S staging  
-> Contract: [`EVAL_RUNTIME_CONTRACT.md`](../../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) §7  
-> Unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)
+> **status**: closeout evidence via `bash scripts/b2l_local_closeout.sh`
+> **Honesty**: `environment=local` · `process_split_authorized=false` · `staging_ready=false` · does **not** start B3 sandbox or B4-S staging
+> Contract: [`EVAL_RUNTIME_CONTRACT.md`](../../../../../docs/architecture/plans/EVAL_RUNTIME_CONTRACT.md) §7
+> Unfreeze: `ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`（历史链接失效）
 
 ## Acceptance (B2-L / contract §7)
 

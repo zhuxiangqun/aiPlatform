@@ -3,8 +3,8 @@
 - **decided_at**: `2026-11-03`
 - **status**: **Open (prep only)**
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md)
-- **prior decision**: [`ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)（G2b 曾 defer；本文件只解冻**预备工程**）
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
+- **prior decision**: [`ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](../../ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)（G2b 曾 defer；本文件只解冻**预备工程**）
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 
 ## 目标
 
@@ -13,7 +13,7 @@
 1. 30 条盲标任务包（`packages/aiplat-evaluation/docs/a3/g2b_tasks.v0.json`）
 2. 标注者 A / B 工作表模板（互不可见）
 3. inter-annotator Cohen’s κ 计算脚本（`scripts/g2b_kappa.py`）
-4. 操作说明 [`G2B_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/G2B_PREP.md)
+4. 操作说明 `G2B_PREP.md`（历史链接失效）
 
 ## 允许
 
@@ -42,5 +42,5 @@
 
 ## 与 G2c 关系
 
-G2c = 同人自洽，已 Closed。  
+G2c = 同人自洽，已 Closed。
 G2b prep = 为**另一人**准备；完成双人盲标前不得宣称 accuracy。

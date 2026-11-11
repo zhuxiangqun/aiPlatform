@@ -2,7 +2,7 @@
 
 - **closed_at**: `2026-11-01`
 - **result**: **PASS**
-- **unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_E7.md`](./ENGINEERING_UNFREEZE_EVAL_E7.md)
+- **unfreeze**: `ENGINEERING_UNFREEZE_EVAL_E7.md`（历史链接失效）
 - **delivery**: 保持 **D1c/cohost**（D2 = 工程包，非生产升档）
 - **process_split_authorized**: **false**（authorize REFUSED）
 - **accuracy_claim**: **false**
@@ -26,5 +26,5 @@ bash packages/aiplat-evaluation/scripts/d3_local_acceptance.sh
 
 ## 非目标（仍冻）
 
-- G2b accuracy / 外部 gate  
-- A3 process_split / staging / production_signed  
+- G2b accuracy / 外部 gate
+- A3 process_split / staging / production_signed

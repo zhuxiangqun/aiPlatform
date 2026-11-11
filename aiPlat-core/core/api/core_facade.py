@@ -8740,6 +8740,28 @@ def eval_promote_subject_capability_bank(
     return promote_subject_capability_bank(**kwargs)
 
 
+def eval_promote_all_subject_capability_banks(
+    *,
+    workspace_id: str,
+    reviewer: str = "",
+    frozen_by: str = "",
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Promote all Subject seed banks into one workspace (claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        promote_all_subject_capability_banks,
+    )
+
+    return promote_all_subject_capability_banks(
+        workspace_id=workspace_id,
+        reviewer=reviewer,
+        frozen_by=frozen_by,
+        caller_workspace_id=caller_workspace_id,
+        notes=notes,
+    )
+
+
 def eval_stamp_subject_seed_purpose_ok(
     *,
     subject_kind: str,

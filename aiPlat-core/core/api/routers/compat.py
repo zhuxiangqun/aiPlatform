@@ -908,29 +908,45 @@ async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], reque
 @router.post("/evaluation/case-packs/promote-subject-capability")
 async def compat_evaluation_promote_subject_capability(body: Dict[str, Any], request: Request):
     """Subject seed bank → purpose_ok → freeze (claim_eligible=false)."""
-    from core.api.core_facade import eval_promote_subject_capability_bank
+    from core.api.core_facade import (
+        eval_promote_all_subject_capability_banks,
+        eval_promote_subject_capability_bank,
+    )
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
     kind = str((body or {}).get("subject_kind") or "").strip()
-    if not kind:
+    all_subjects = bool((body or {}).get("all")) or kind in ("*", "all")
+    if not all_subjects and not kind:
         return {
             "ok": False,
-            "error": "subject_kind required",
+            "error": "subject_kind required (or all=true)",
             "claim_eligible": False,
             "accuracy_claim": False,
         }
     try:
         with named_workspace_scope(request, method="POST", require_local=True) as nw:
-            out = eval_promote_subject_capability_bank(
-                subject_kind=kind,
-                workspace_id=nw.workspace_id,
-                caller_workspace_id=nw.workspace_id,
-                reviewer=str((body or {}).get("reviewer") or ""),
-                frozen_by=str((body or {}).get("frozen_by") or ""),
-                pack_id=str((body or {}).get("pack_id") or "").strip(),
-                version=str((body or {}).get("version") or "").strip(),
-                notes=str((body or {}).get("notes") or ""),
-            )
+            reviewer = str((body or {}).get("reviewer") or "")
+            frozen_by = str((body or {}).get("frozen_by") or "")
+            notes = str((body or {}).get("notes") or "")
+            if all_subjects:
+                out = eval_promote_all_subject_capability_banks(
+                    workspace_id=nw.workspace_id,
+                    caller_workspace_id=nw.workspace_id,
+                    reviewer=reviewer,
+                    frozen_by=frozen_by,
+                    notes=notes,
+                )
+            else:
+                out = eval_promote_subject_capability_bank(
+                    subject_kind=kind,
+                    workspace_id=nw.workspace_id,
+                    caller_workspace_id=nw.workspace_id,
+                    reviewer=reviewer,
+                    frozen_by=frozen_by,
+                    pack_id=str((body or {}).get("pack_id") or "").strip(),
+                    version=str((body or {}).get("version") or "").strip(),
+                    notes=notes,
+                )
             if isinstance(out, dict):
                 out.update(workspace_meta(nw))
             return out

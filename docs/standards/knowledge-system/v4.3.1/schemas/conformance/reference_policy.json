@@ -1,0 +1,21 @@
+{
+  "policy_id": "reference-policy-v4.2",
+  "tenant_rule": "actor.tenant == target.tenant",
+  "roles": {
+    "support_agent": {
+      "Ticket.read": "allow",
+      "Ticket.close": "deny",
+      "Ticket.close_high_risk": "approval"
+    },
+    "support_lead": {
+      "Ticket.read": "allow",
+      "Ticket.close": "allow",
+      "Ticket.close_high_risk": "approval"
+    },
+    "auditor": {
+      "Ticket.read": "allow",
+      "Ticket.close": "deny",
+      "Ticket.close_high_risk": "deny"
+    }
+  }
+}

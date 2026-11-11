@@ -2,17 +2,17 @@
 
 - **decided_at**: `2026-11-02`
 - **status**: **Closed PASS**
-- **decision**: [`ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](./ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)
+- **decision**: [`ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md`](../../ENGINEERING_DECISION_EVAL_G2C_SELF_CONSISTENCY.md)
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md)
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 
 ## 目标
 
 在 **不开 G2b / 不宣称 accuracy** 的前提下，提供同人二次盲测的 **intra-rater** 一致性：
 
-1. `g2c.py`：对照 G2a adjudicated 标签 vs `g2c_retest` 二次标签 → `intra_rater_kappa` / agreement  
-2. API：`GET/POST …/store/g2c-*`（只读状态 + 记录 retest + 计算）  
-3. 报告强制：`accuracy_claim=false`；`claim_kind=self_consistency`；κ 字段为 **intra-rater**，禁止写成 inter-annotator  
+1. `g2c.py`：对照 G2a adjudicated 标签 vs `g2c_retest` 二次标签 → `intra_rater_kappa` / agreement
+2. API：`GET/POST …/store/g2c-*`（只读状态 + 记录 retest + 计算）
+3. 报告强制：`accuracy_claim=false`；`claim_kind=self_consistency`；κ 字段为 **intra-rater**，禁止写成 inter-annotator
 
 ## 禁止
 
@@ -34,4 +34,4 @@
 
 ## Closeout
 
-[`EVAL_V1_G2C_CLOSEOUT.md`](./EVAL_V1_G2C_CLOSEOUT.md)
+`EVAL_V1_G2C_CLOSEOUT.md`（历史链接失效）

@@ -1,8 +1,8 @@
 # EVAL A3 A-local closeout
 
-> **status**: closeout evidence via `bash scripts/a5_local_closeout.sh`  
-> **Honesty**: `process_split_authorized=false` · `staging_ready=false` · does **not** start track B  
-> Plan: [`eval-a3-independent-service.md`](../../../../docs/architecture/plans/eval-a3-independent-service.md)
+> **status**: closeout evidence via `bash scripts/a5_local_closeout.sh`
+> **Honesty**: `process_split_authorized=false` · `staging_ready=false` · does **not** start track B
+> Plan: [`eval-a3-independent-service.md`](../../../../../docs/architecture/plans/eval-a3-independent-service.md)
 
 ## Acceptance (A-local 9)
 

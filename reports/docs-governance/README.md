@@ -1,7 +1,7 @@
 # 文档治理过程材料（唯一索引）
 
-> **性质**：文档减量 / 合理减量的过程轨迹与已收口方案。  
-> **不是**产品研究正文；现行对标与未收官规划仍在 [`docs/research/`](../../docs/research/)。  
+> **性质**：文档减量 / 合理减量的过程轨迹与已收口方案。
+> **不是**产品研究正文；现行对标与未收官规划仍在 [`docs/research/`](../../docs/reference/research/)。
 > **落点规则**：见 [`docs-reasonable-reduction-plan-2026-10.md`](./docs-reasonable-reduction-plan-2026-10.md) §0.6（移动非复制；禁止与 `docs/research` 双份）。
 
 `docs/research/README.md` 仅保留**一条**链到本文件。
@@ -27,12 +27,12 @@
 | [e3-maint-link-fixes-2026-10-23.md](e3-maint-link-fixes-2026-10-23.md) | E3 维护区断链修链 |
 | [e4-closeout-2026-10-23.md](e4-closeout-2026-10-23.md) | E4 收口 |
 
-**research 指针**：[`docs/research/README.md`](../../docs/research/README.md) → 本 README（单链）。
+**research 指针**：[`docs/research/README.md`](../../docs/reference/research/README.md) → 本 README（单链）。
 
 ## 最低校验（§0.7）
 
-1. 上表与 `ls reports/docs-governance/*.md`（除本 README）一致、无孤儿。  
-2. `docs/research/` 无上表文件名残留。  
+1. 上表与 `ls reports/docs-governance/*.md`（除本 README）一致、无孤儿。
+2. `docs/research/` 无上表文件名残留。
 3. `docs/research/README.md` → 本 README 相对链接可解析。
 
 *D1 移动时点：2026-10-23（D0+D1 批准执行）*

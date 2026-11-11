@@ -1,8 +1,8 @@
 # EET 证据标签映射 — 治理 Accept 签认
 
-> **门**：P1a EET 治理批准 — **不阻塞** UI 发布；阻塞「把 EET 写入正式发布 gate 矩阵」  
-> **母版映射**：[EVAL_EVIDENCE_LEVEL_MAP_V1.md](../../../packages/aiplat-evaluation/docs/a3/EVAL_EVIDENCE_LEVEL_MAP_V1.md)  
-> **依据**：[改善执行计划](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6  
+> **门**：P1a EET 治理批准 — **不阻塞** UI 发布；阻塞「把 EET 写入正式发布 gate 矩阵」
+> **母版映射**：EVAL_EVIDENCE_LEVEL_MAP_V1.md（历史链接失效）
+> **依据**：[改善执行计划](../../EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §6
 > **硬锁**：Accept ≠ 新建与落地 E0–E5 并行的正式成熟度等级；≠ 自动打开 `accuracy_claim`
 
 ---
@@ -81,4 +81,4 @@ EET 结论：Accept | Reject | Defer
 
 ---
 
-完成后：副本落到 `reports/five-products/ops/EVAL_EET_ACCEPT_<date>.md`，并把 [`EVAL_EVIDENCE_LEVEL_MAP_V1.md`](../../../packages/aiplat-evaluation/docs/a3/EVAL_EVIDENCE_LEVEL_MAP_V1.md) 文首改为 **Accepted**（含签字日期）。
+完成后：副本落到 `reports/five-products/ops/EVAL_EET_ACCEPT_<date>.md`，并把 `EVAL_EVIDENCE_LEVEL_MAP_V1.md`（历史链接失效） 文首改为 **Accepted**（含签字日期）。

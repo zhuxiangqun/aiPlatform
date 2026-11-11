@@ -1,7 +1,7 @@
 # aiPlat Agent 系统 — 完整指南
 
-> 最后更新: 2026-08-11 · 原理优先，细节后置 · 配置/API 见附录  
-> **执行路径判定（LLM vs 程序、architecture_profile、工厂选型）以** [execution-decision-matrix.md](architecture/execution-decision-matrix.md) **为准**（本文 §4.1 部分措辞已过时）。  
+> 最后更新: 2026-08-11 · 原理优先，细节后置 · 配置/API 见附录
+> **执行路径判定（LLM vs 程序、architecture_profile、工厂选型）以** [execution-decision-matrix.md](architecture/execution-decision-matrix.md) **为准**（本文 §4.1 部分措辞已过时）。
 > 能力等级体系详见 [capability-profile.md](architecture/capability-profile.md)
 
 ---
@@ -154,7 +154,7 @@ Agent 通过 `_calibrate_profile_from_history()` 持续校准自身的能力等�
 | `llm` | `sys_llm_generate` 单次调用 | SOP + Pipeline 上下文 + Domain 路由 |
 | `agent` | `StageRunner.run()` → ReActLoop / PlanExecute | 工具/技能/记忆/Hook/PolicyGate/SECI |
 
-**判定顺序（摘要）**：`architecture_profile`（若设）覆盖 backend → 否则 schema 默认 `llm` → `capability_profile` 注入能力并可在无工具时降级 `agent→llm`。完整矩阵与工厂三选一规则见 [execution-decision-matrix.md](architecture/execution-decision-matrix.md)。  
+**判定顺序（摘要）**：`architecture_profile`（若设）覆盖 backend → 否则 schema 默认 `llm` → `capability_profile` 注入能力并可在无工具时降级 `agent→llm`。完整矩阵与工厂三选一规则见 [execution-decision-matrix.md](architecture/execution-decision-matrix.md)。
 `execution_backend` **不可**由 AGENT.md 擅自绕过引擎；合法钉死方式是团队 YAML / `architecture_profile`。
 
 ### 4.2 ReActLoop 执行流程
@@ -457,6 +457,6 @@ A: 引擎会在 DEBUG 日志中输出 `capability_profile=xxx backend=xxx`。或
 | 文档 | 内容 |
 |------|------|
 | [capability-profile.md](architecture/capability-profile.md) | 7 级能力剖面定义、推断规则、57 Agent 完整分布 |
-| [subagent.md](agents/subagent.md) | Subagent 架构设计详述 |
-| [knowledge-system.md](knowledge-system.md) | 知识系统完整指南（含本体/TripleStore/Agent 在知识图中的角色） |
-| [ai-app-factory.md](design/ai-app-factory.md) | Builder 管线（如何生成应用） |
+| [subagent.md](reference/agents/subagent.md) | Subagent 架构设计详述 |
+| [knowledge-system.md](guides/knowledge/knowledge-system.md) | 知识系统完整指南（含本体/TripleStore/Agent 在知识图中的角色） |
+| [ai-app-factory.md](architecture/plans/design/ai-app-factory.md) | Builder 管线（如何生成应用） |

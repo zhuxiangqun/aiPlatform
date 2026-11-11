@@ -1,8 +1,8 @@
 # EVAL_V1 E3 — Gold set source inventory
 
 - recorded_at: `2026-11-01`
-- charter: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) §9
-- unfreeze: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md)
+- charter: [`eval-v1-charter.md`](../../../../../docs/architecture/plans/eval-v1-charter.md) §9
+- unfreeze: `ENGINEERING_UNFREEZE_EVAL_V1.md`（历史链接失效）
 - store: `EvalStore` / `bootstrap_e3_gold`（tenant `eval-v1`）
 
 ## Gate (E3 start)
@@ -44,5 +44,5 @@ POST /api/platform/apps/eval/store/bootstrap-e3
 
 ## Honesty
 
-E3 完成 = ≥15 可跑 + 本清单 + 复核队列打开。  
+E3 完成 = ≥15 可跑 + 本清单 + 复核队列打开。
 满 30 + 单人 adjudicated → 才可锁 v0 / 谈 G2a（仍不宣称 accuracy）。

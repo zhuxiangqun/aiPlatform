@@ -1,7 +1,7 @@
 # 多层记忆架构设计
 
 > **实现状态更新 (2026-06-24)**：本文档为原始设计稿。实际实现已远超原始设计，
-> 详见 [aiPlat-core 记忆系统文档](../../aiPlat-core/docs/memory/index.md)。
+> 详见 [aiPlat-core 记忆系统文档](../memory/index.md)。
 >
 > 核心增强（设计方案 Phase 1-3 已全部实现，另增 6 项生产级硬化）：
 > - ✅ 四层记忆 (Working → Episodic → Semantic → Task Skills)

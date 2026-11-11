@@ -18,6 +18,8 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -170,7 +172,80 @@ def build_fail_set() -> list[Path]:
     return ordered
 
 
+def collect_all_markdown(include_archive: bool = False) -> list[Path]:
+    roots = [DOCS_DIR, WORKSPACE / "reports"]
+    roots += sorted((WORKSPACE / "packages").glob("*/docs")) if (WORKSPACE / "packages").is_dir() else []
+    for name in ("aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app"):
+        roots.append(WORKSPACE / name / "docs")
+    out = []
+    seen = set()
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for p in sorted(root.rglob("*.md")):
+            if any(x in p.parts for x in (".git", "node_modules", "__pycache__")):
+                continue
+            if not include_archive and ("archive" in p.parts or "_archive" in p.parts):
+                continue
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+    return out
+
+
+BASELINE = WORKSPACE / "scripts" / "doc_link_baseline.json"
+
+
+def collect_broken_links(files: list[Path]) -> list[tuple[str, str]]:
+    """Return stable (relative_path, link) pairs for broken links."""
+    out = []
+    for f in files:
+        if not f.exists():
+            continue
+        content = f.read_text(encoding="utf-8", errors="ignore")
+        rel = str(f.relative_to(WORKSPACE)) if f.is_relative_to(WORKSPACE) else str(f)
+        for _, link in extract_md_links(content):
+            if not link_exists(f, link):
+                out.append((rel, link))
+    return out
+
+
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--all", action="store_true", help="扫描 docs/reports/packages/subrepo docs")
+    ap.add_argument("--strict", action="store_true", help="--all 模式下仅新增断链阻断")
+    ap.add_argument("--write-baseline", action="store_true", help="写入当前断链基线")
+    ap.add_argument("--include-archive", action="store_true", help="连同 archive/_archive 一起检查")
+    args = ap.parse_args()
+
+    if args.all:
+        all_files = collect_all_markdown(include_archive=args.include_archive)
+        broken = collect_broken_links(all_files)
+        keys = sorted({f"{rel}::{link}" for rel, link in broken})
+        if args.write_baseline:
+            BASELINE.write_text(json.dumps(keys, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            print(f"baseline written: {BASELINE.relative_to(WORKSPACE)} ({len(keys)} broken links)")
+            sys.exit(0)
+        print(f"\nChecked all={len(all_files)} | broken={len(keys)}")
+        if args.strict:
+            known = set(json.loads(BASELINE.read_text(encoding="utf-8"))) if BASELINE.exists() else set()
+            new = [k for k in keys if k not in known]
+            fixed = [k for k in known if k not in keys]
+            if fixed:
+                print(f"ℹ️  {len(fixed)} baseline links fixed; regenerate baseline when ready")
+            if new:
+                print(f"❌ {len(new)} new broken links (strict)")
+                for k in new[:20]:
+                    print(f"  - {k}")
+                sys.exit(1)
+            print(f"✅ no new broken links; known baseline={len(known)}")
+            sys.exit(0)
+        if keys:
+            print(f"⚠️  {len(keys)} broken links (warn only)")
+        else:
+            print("✅ All links valid")
+        sys.exit(0)
+
     fail_files = build_fail_set()
     warn_files = collect_archive_readmes()
 

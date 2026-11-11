@@ -1,8 +1,8 @@
 # EET Accept — 已签认（2026-11-05）
 
-> **状态**：✅ **Accepted**  
-> **母版检查表**：[EVAL_EET_ACCEPT_SIGNOFF.md](./EVAL_EET_ACCEPT_SIGNOFF.md)  
-> **映射**：[EVAL_EVIDENCE_LEVEL_MAP_V1.md](../../../packages/aiplat-evaluation/docs/a3/EVAL_EVIDENCE_LEVEL_MAP_V1.md)（文首已改为 Accepted）  
+> **状态**：✅ **Accepted**
+> **母版检查表**：[EVAL_EET_ACCEPT_SIGNOFF.md](./EVAL_EET_ACCEPT_SIGNOFF.md)
+> **映射**：EVAL_EVIDENCE_LEVEL_MAP_V1.md（历史链接失效）（文首已改为 Accepted）
 > **起草稿**：[EVAL_EET_ACCEPT_PARTIAL_2026-11-05.md](./EVAL_EET_ACCEPT_PARTIAL_2026-11-05.md)
 
 ---

@@ -8,6 +8,6 @@
 | 2 | Bundle / SOC / N-1 rehearse | `d3_local_rehearsal` · `d3_soc_local_rehearsal` · `d3_n1_local_rehearsal` |
 | 3 | Prep | `d3_prep_check.sh` |
 | 4 | Authorize REFUSE | `d3_authorize.sh authorize` |
-| 5 | Closeout | [`PI_D3_LOCAL_CLOSEOUT.md`](../../../reports/five-products/ops/PI_D3_LOCAL_CLOSEOUT.md) |
+| 5 | Closeout | [`PI_D3_LOCAL_CLOSEOUT.md`](../../../../reports/five-products/ops/PI_D3_LOCAL_CLOSEOUT.md) |
 
 一键：`bash packages/aiplat-pi-runtime/scripts/d3_local_acceptance.sh`

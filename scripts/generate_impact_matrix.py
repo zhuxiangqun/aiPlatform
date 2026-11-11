@@ -6,7 +6,7 @@ Produces two views:
   2. Capabilities → Consumers (for capability developers)
 
 Usage:
-  python3 scripts/generate_impact_matrix.py              # write docs/matrix/...
+  python3 scripts/generate_impact_matrix.py              # write docs/reference/matrix/...
   python3 scripts/generate_impact_matrix.py --ci         # temp full regenerate + diff vs committed
   python3 scripts/generate_impact_matrix.py --check      # alias of --ci
 
@@ -117,7 +117,7 @@ def check_matrix_fresh(root: Optional[Path] = None) -> int:
     root = root or Path(__file__).resolve().parent.parent
     data = load_registry(root)
     expected = render_matrix_markdown(data)
-    committed = root / "docs" / "matrix" / "capability-impact-matrix.md"
+    committed = root / "docs" / "reference" / "matrix" / "capability-impact-matrix.md"
     if not committed.is_file():
         print(f"ERROR: missing committed matrix {committed}")
         return 1
@@ -129,7 +129,7 @@ def check_matrix_fresh(root: Optional[Path] = None) -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tf:
         tf.write(expected)
         tmp = tf.name
-    print(f"ERROR: docs/matrix/capability-impact-matrix.md is stale vs capability_registry.yaml")
+    print(f"ERROR: docs/reference/matrix/capability-impact-matrix.md is stale vs capability_registry.yaml")
     print(f"  regenerated: {tmp}")
     print(f"  committed:   {committed}")
     print("  Fix: python3 scripts/generate_impact_matrix.py")
@@ -156,7 +156,7 @@ def main(argv=None) -> int:
         return check_matrix_fresh(root)
 
     data = load_registry(root)
-    out = root / "docs" / "matrix" / "capability-impact-matrix.md"
+    out = root / "docs" / "reference" / "matrix" / "capability-impact-matrix.md"
     write_matrix(out, data)
     domains = data.get("domains") or {}
     n_cons = len({

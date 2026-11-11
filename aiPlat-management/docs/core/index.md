@@ -1,5 +1,8 @@
 # 核心能力层管理（Layer 1）
 
+> **派生文档（Batch C1）**：本文是管理端摘要，权威实现/契约见 [`aiPlat-core/docs/index.md`](../../../aiPlat-core/docs/index.md)；冲突时以 core 文档为准。
+
+
 > Agent执行引擎、技能系统、记忆系统、知识库的完整运维能力
 
 ---

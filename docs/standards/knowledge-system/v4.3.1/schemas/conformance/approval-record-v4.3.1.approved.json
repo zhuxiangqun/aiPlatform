@@ -1,0 +1,28 @@
+{
+  "standard_version": "4.3.1",
+  "scope": "aiPlat knowledge system standard package v4.3.1",
+  "status": "approved",
+  "approvers": [
+    "Architecture Review: 朱向群 (author)",
+    "Security: 朱鸿林",
+    "Data Governance: 朱莹",
+    "Product: 朱向群 (author)"
+  ],
+  "approval_date": "2026-11-11",
+  "effective_date": "2027-01-01",
+  "exceptions": [],
+  "conflict_waiver": {
+    "author_is_approver": true,
+    "author_roles": [
+      "Architecture Review",
+      "Product"
+    ],
+    "accepted_by": [
+      "Security: 朱鸿林",
+      "Data Governance: 朱莹"
+    ],
+    "rationale": "朱向群为 v4.3.1 作者，同时担任 Architecture Review 与 Product；Security/Data Governance 由非作者批准，记录职责分离豁免。"
+  },
+  "decision": "approved",
+  "record_id": "ADR-KS-v4.3.1-2026-11-11"
+}

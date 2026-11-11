@@ -34,7 +34,7 @@ code_to_docs:
       - docs/manuals/ontology.md
       - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
       - docs/whitepaper/verification-protocol.md
-      - docs/framework/aiplat-autonomy-framework.md
+      - docs/reference/framework/aiplat-autonomy-framework.md
     hint: "知识子系统变更 → 检查 knowledge-system 与本体操作入口"
 
   harness/infrastructure/:
@@ -60,7 +60,7 @@ code_to_docs:
       - docs/architecture/overview.md
       - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
       - docs/whitepaper/verification-protocol.md
-      - docs/framework/aiplat-autonomy-framework.md
+      - docs/reference/framework/aiplat-autonomy-framework.md
     hint: "记忆系统变更"
 
   harness/ontology_engine/:
@@ -68,7 +68,7 @@ code_to_docs:
       - AIPLAT_CAPABILITIES.md
       - docs/manuals/ontology.md
       - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
-      - docs/framework/aiplat-complete-assessment.md
+      - docs/reference/framework/aiplat-complete-assessment.md
     hint: "本体引擎变更 → 检查本体操作手册"
 
   harness/meta/:
@@ -93,7 +93,7 @@ code_to_docs:
   harness/optimization/:
     docs:
       - AIPLAT_CAPABILITIES.md
-      - docs/framework/aiplat-autonomy-framework.md
+      - docs/reference/framework/aiplat-autonomy-framework.md
       - docs/whitepaper/verification-protocol.md
     hint: "自优化/自演进系统变更"
 
@@ -126,7 +126,7 @@ code_to_docs:
   harness/coordination/:
     docs:
       - AIPLAT_CAPABILITIES.md
-      - docs/framework/aiplat-autonomy-framework.md
+      - docs/reference/framework/aiplat-autonomy-framework.md
     hint: "多 Agent 协调/编排变更"
 
   harness/routing/:
@@ -221,7 +221,7 @@ code_to_docs:
   engine/skills/:
     docs:
       - AIPLAT_CAPABILITIES.md
-      - docs/framework/aiplat-complete-assessment.md
+      - docs/reference/framework/aiplat-complete-assessment.md
       - docs/DOCUMENT_SYSTEM.md
     hint: "内置 Engine Skill 变更 → 检查技能计数"
 
@@ -309,7 +309,7 @@ source_of_truth:
       - docs/project/PHASE_STATUS.md
       - docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
       - docs/whitepaper/verification-protocol.md
-      - docs/matrix/capability-impact-matrix.md
+      - docs/reference/matrix/capability-impact-matrix.md
     sync_script: "bash scripts/auto_sync_docs.sh"
 
 
@@ -318,7 +318,7 @@ source_of_truth:
 # ═══════════════════════════════════════════════════════
 
 auto_generated:
-  - file: docs/matrix/capability-impact-matrix.md
+  - file: docs/reference/matrix/capability-impact-matrix.md
     source: aiPlat-core/core/capability_registry.yaml
     regenerate: "python3 scripts/generate_capability_matrix.py"
     note: "手动编辑会被下次生成覆盖"

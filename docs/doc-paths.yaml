@@ -1,0 +1,17 @@
+# v2.4 文档路径注册表（Batch A2）
+standards: docs/standards
+architecture: docs/architecture
+contracts: docs/contracts
+decisions: docs/decisions
+products: docs/products
+guides: docs/guides
+reference: docs/reference
+explanatory: docs/reference/explanatory
+project: docs/project
+audit: docs/audit
+archive: docs/archive
+reports: reports
+whitepapers: reports/whitepapers
+whitepaper_volumes: reports/whitepapers/volumes
+platform_status_whitepaper: reports/whitepapers/aiplat-platform-status-whitepaper.md
+capabilities: AIPLAT_CAPABILITIES.md
