@@ -2,6 +2,16 @@
 
 **FDE**（Field Deployment Engineer）是 aiPlat 的核心用户角色——负责到客户现场完成 AI 系统交付。
 
+## 文档角色（Batch C2）
+
+| 文档 | 角色 | 不是 |
+|---|---|---|
+| `01`、`02`、`03`、`04` | 任务指南 / 操作手册 | 方法论全文 |
+| `05` | 交付方法论 | 日常操作步骤 |
+| `06` | 标准交付 SOP | 架构设计 |
+| `templates/fde-delivery-manual.md` | 交付手册模板 | 方法论正文 |
+| `docs/contracts/FDE_WORKBENCH_CONTRACT.md` | 工作台规范契约 | 操作教程 |
+
 ### 你是谁？选文档
 
 | 我是… | 看这篇 | 5分钟能上手 | 

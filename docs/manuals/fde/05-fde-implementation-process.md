@@ -6,6 +6,7 @@
 > **受众**：FDE 交付团队、项目经理、客户对接人。  
 > **阅读建议**：先看 §一～三 理解整体框架，再按交付步骤逐段对照执行。  
 > **勿混淆**：文中「验收签收 / `signoff_approval`」指 **FDE 项目签收单**；it-ops **Org M4 签收准备**在管理端 `/org/pilot`（见 [`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)），两套流程独立。
+> **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **操作**：[02](./02-fde-delivery.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
 
 ---
 

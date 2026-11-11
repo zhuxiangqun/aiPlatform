@@ -5,6 +5,7 @@
 > **目标角色**：日常 FDE 交付工程师  
 > **前置条件**：已完成[快速入门](./01-fde-quickstart.md)  
 > **访问地址**：`http://localhost:5173/diagnostics` → 点击 "FDE Dashboard"
+> **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **方法论**：[05](./05-fde-implementation-process.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
 
 ---
 
