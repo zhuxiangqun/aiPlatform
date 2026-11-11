@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-NARRATIVE-2026-09` |
 | 版本 | v1.21 |
-| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](_archive/ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) |
+| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](../ONTOLOGY_CONNECTOR_TEMPLATES.md) |
 | 维护人 | Oliver Zhu |
 
 ---
@@ -23,7 +23,7 @@
 
 ## 一页纸（技术评审）
 
-1. **定位**：我们是 **Palantir 式可执行本体（企业 OS 内核）**——说明书 + 真实层 + Action 硬门；**不是**运行时 OWL 推理机产品。详见 [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md)。OWL 教科书概念如何映射到本平台：[`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md)。
+1. **定位**：我们是 **Palantir 式可执行本体（企业 OS 内核）**——说明书 + 真实层 + Action 硬门；**不是**运行时 OWL 推理机产品。详见 [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md)。OWL 教科书概念如何映射到本平台：[`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md)。
 2. **权威**：业务 Action / 审计快照 / GraphRAG 业务对象 → 域 YAML + GraphIndex；Wiki 仅知识库轨道。
 3. **约束**：L1 Action 硬门 > L2 域公理 prompt 软约束 > L3 审计；无 L1 不得上 customer_action 生产。
 4. **演化二分**：Evolve = 白名单配置键；本体演化 = VersionedOntologyStore tier 门。在线学习 = 案例库 + 奖励/UCB **检索排序**（非 RL）；高回报可入队提案；**默认**不自动 apply；仅 opt-in `AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY` 允许 **edge** 自动 apply 且可回滚（禁升格 logic/core）。
@@ -35,7 +35,7 @@
 
 **禁止表述**：「完整企业本体已建成」「OWL/SPARQL 级推理已上线」「全域统一语义」「HermiT 已融合进运行时」「推理建议已自动确认为业务事实」「建模已内置 OWL 完备推理」。
 
-完整性官方定义与 OCS 见 [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md)（平台能力完整 + 客户纵深完整，非跨企业统一 TBox）。
+完整性官方定义与 OCS 见 [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md)（平台能力完整 + 客户纵深完整，非跨企业统一 TBox）。
 
 **口径统一**：星邺「融合 OWL」在我方表述为「OWL 可作**导出与离线审稿**；规则可作建议；运行时权威仍是 YAML + 图 + Action」——导出 ≠ 推理已上线。
 
@@ -62,15 +62,15 @@
 
 ## 对标星邺 PPT（愿景 vs 工程）
 
-产品愿景分层、Palantir/OWL 关系、亮点缺口与对照表（含诚实句）见 [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md)。
-**场景解题图**仍只读 [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（上下篇分开）。
+产品愿景分层、Palantir/OWL 关系、亮点缺口与对照表（含诚实句）见 [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](ONTOLOGY_XINGYE_PPT_ANALYSIS.md)。
+**场景解题图**仍只读 [`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md)（上下篇分开）。
 对外禁止把星邺宣传能力说成 aiPlat 已上线。
 
 ---
 
 ## 场景说明入口（星邺 / aiPlat 请分开读）
 
-详细图文见 [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（**v3.7**）：
+详细图文见 [`ONTOLOGY_PPT_SCENARIOS.md`](ONTOLOGY_PPT_SCENARIOS.md)（**v3.7**）：
 
 - **应有能力路径 A/B/C**（§0.2）：数据源→说明书 / 数据源→真实层（含 **webhook·表/CSV**） / **已有说明书→模板或手动种真实层**
 - **§0.1.1**：说明书 = 本体模型（不必再夹一层）；入轨+硬门建边

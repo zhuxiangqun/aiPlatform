@@ -5,7 +5,7 @@
 | 文档 ID | `FDE-ONTOLOGY-AGENT-OPS-2026-09` |
 | 版本 | v1.2 |
 | 日期 | 2026-09-20 |
-| 关联 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（v3.7） · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) |
+| 关联 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md)（v3.7） · [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) · [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) |
 | 原则 | **以管理端真实菜单/按钮为准**；FDE 不做「新建域 / 新建 Agent」 |
 | 同步 | v1.2：补 it-ops 组织试点/签收准备入口交叉引用（≠ FDE 交付签收单） |
 
@@ -275,7 +275,7 @@ PYTHONPATH=aiPlat-core:. .venv/bin/python scripts/new_domain_scaffold.py \
 | [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) | 30 分钟故障/治理演示口令 |
 | [`FDE_PHASE5_CUSTOMER_ONBOARDING.md`](./FDE_PHASE5_CUSTOMER_ONBOARDING.md) | 新客户接入原则 |
 | [`ONTOLOGY_PPT_SCENARIOS.md`](_archive/ONTOLOGY_PPT_SCENARIOS.md) | 说明书/真实层/动作概念与图说（v3.7） |
-| [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) | 对外口径与非目标 |
+| [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) | 对外口径与非目标 |
 | [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) | it-ops 组织现场运行（含 `/org/pilot`） |
 | [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md) | it-ops 签收准备包 / 剧本（≠ FDE 交付签收单） |
 

@@ -5,7 +5,7 @@
 | 文档 ID | `ONTOLOGY-COMPLETENESS-2026-09` |
 | 版本 | v1.2 |
 | 状态 | 生效 |
-| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./_archive/ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
+| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_CLOSEOUT.md`](./_archive/ONTOLOGY_RUNTIME_CLOSEOUT.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
 
 ---
@@ -107,7 +107,7 @@ pytest aiPlat-core/core/tests/unit/test_harness/test_knowledge/test_ontology_com
 | **业务本体** | `/knowledge/business` | 工厂流水线 · 域管理 · 编辑器 | 业务轨（域 YAML + GraphIndex） |
 | **知识库** | `/knowledge/library` | 向量 · Wiki · Vault（+ 评估/健康） | 检索轨（非业务权威） |
 
-旧路径（`/knowledge-factory`、`/infra/ontology`、`/ontology-editor`、`/platform/kb/*`）重定向到上表。详见 [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) §UI。
+旧路径（`/knowledge-factory`、`/infra/ontology`、`/ontology-editor`、`/platform/kb/*`）重定向到上表。详见 [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) §UI。
 
 ---
 

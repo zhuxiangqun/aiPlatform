@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-CONNECTOR-TEMPLATES-2026-09` |
 | 版本 | v1.1 |
-| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) |
+| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](_archive/ONTOLOGY_DEMO_PLAYBOOK.md) |
 | 原则 | 域可配置 allowlist；**禁止**在 harness 硬编码 `domain_id` |
 
 ---

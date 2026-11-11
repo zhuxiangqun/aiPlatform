@@ -5,7 +5,7 @@
 | 文档 ID | `ONTOLOGY-EXECUTABLE-MODEL-2026-09` |
 | 版本 | v1.1 |
 | 状态 | **已决议**（Phase 0 决策记录） |
-| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](_archive/ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md) |
+| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md) |
 | 维护人 | Oliver Zhu |
 
 ---
@@ -47,7 +47,7 @@
 | 「OWL 已上线推理」 | 运行时权威在 YAML + 图 + Action |
 | 「我们融合了 HermiT」 | 可选离线校验另开 RFC；当前非目标 |
 
-概念级对照（Class / Property / Individual / Axiom / OWA ↔ YAML·GraphIndex·Action）：见 [`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md)。
+概念级对照（Class / Property / Individual / Axiom / OWA ↔ YAML·GraphIndex·Action）：见 [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md)。
 
 ### 2.1 建议层边界（可验证）
 
@@ -98,4 +98,4 @@
 
 ## 6. 验收目的（G1–G7）
 
-见完整方案 Phase 门禁；工程度量锚定 [`ONTOLOGY_OUTCOME_GOALS.md`](_archive/ONTOLOGY_OUTCOME_GOALS.md) 与本文件 §0 决议。
+见完整方案 Phase 门禁；工程度量锚定 [`ONTOLOGY_OUTCOME_GOALS.md`](ONTOLOGY_OUTCOME_GOALS.md) 与本文件 §0 决议。

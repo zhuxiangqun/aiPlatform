@@ -12,8 +12,8 @@
 | `docs/contracts/ONTOLOGY_XINGYE_PPT_ANALYSIS.md` | `docs/contracts/_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md` | `docs/contracts/ONTOLOGY_RUNTIME_AUTHORITY.md` | archived (B2) |
 | `docs/contracts/ONTOLOGY_PPT_SCENARIOS.md` | `docs/contracts/_archive/ONTOLOGY_PPT_SCENARIOS.md` | `docs/contracts/ONTOLOGY_NARRATIVE.md` | archived (B3) |
 | `docs/contracts/ONTOLOGY_DEMO_PLAYBOOK.md` | `docs/contracts/_archive/ONTOLOGY_DEMO_PLAYBOOK.md` | `docs/contracts/ONTOLOGY_NARRATIVE.md` | archived (B3) |
-| `docs/contracts/ONTOLOGY_NARRATIVE.md` | `docs/contracts/_archive/ONTOLOGY_NARRATIVE.md` | `docs/contracts/ONTOLOGY_RUNTIME_AUTHORITY.md` | pending (B4) |
-| `docs/contracts/ONTOLOGY_EXECUTABLE_MODEL.md` | `docs/contracts/_archive/ONTOLOGY_EXECUTABLE_MODEL.md` | `docs/contracts/ONTOLOGY_RUNTIME_AUTHORITY.md` | pending (B4) |
+| `docs/contracts/ONTOLOGY_NARRATIVE.md` | `docs/contracts/_archive/ONTOLOGY_NARRATIVE.md` | `docs/knowledge-system.md` / v4.3.1 标准 | archived (B4) |
+| `docs/contracts/ONTOLOGY_EXECUTABLE_MODEL.md` | `docs/contracts/_archive/ONTOLOGY_EXECUTABLE_MODEL.md` | `docs/knowledge-system.md` / v4.3.1 标准 | archived (B4) |
 
 ## 规则
 

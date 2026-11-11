@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-OWL-CONCEPT-MAP-2026-09` |
 | 版本 | v1.0 |
-| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) |
+| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) |
 | 用途 | 把教科书级 OWL 概念对齐到本仓库实现；**不**把本文件写成「运行时 OWL 已上线」 |
 | 维护人 | Oliver Zhu |
 
@@ -13,7 +13,7 @@
 ## 一句话
 
 **OWL**（W3C Web Ontology Language）把本体从词表升级为**形式化、可推理**的知识模型。  
-**aiPlat** 运行时权威是 **域 YAML（说明书 TBox）+ GraphIndex（真实层 ABox）+ ActionRegistry L1（可执行写回）**——追求「该做什么、做了怎样、可否决、可审计」，**不以 HermiT/Pellet 等推理机作运行时权威**（决议见 [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md)）。
+**aiPlat** 运行时权威是 **域 YAML（说明书 TBox）+ GraphIndex（真实层 ABox）+ ActionRegistry L1（可执行写回）**——追求「该做什么、做了怎样、可否决、可审计」，**不以 HermiT/Pellet 等推理机作运行时权威**（决议见 [`ONTOLOGY_EXECUTABLE_MODEL.md`](_archive/ONTOLOGY_EXECUTABLE_MODEL.md)）。
 
 ---
 
@@ -71,7 +71,7 @@ aiPlat **不选择任一 profile 作为运行时上线承诺**，避免「我们
 
 ## 5. 禁止表述
 
-与 [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) / EXECUTABLE_MODEL 一致：
+与 [`ONTOLOGY_NARRATIVE.md`](_archive/ONTOLOGY_NARRATIVE.md) / EXECUTABLE_MODEL 一致：
 
 - 「OWL / SPARQL 级推理已上线」「HermiT 已融合进运行时」
 - 「完整企业本体 / 全域统一语义已建成」
