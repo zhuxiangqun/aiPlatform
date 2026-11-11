@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T17:36:37+08:00",
+  "reviewed_at": "2026-11-11T17:46:35+08:00",
   "base_ref": "origin/main",
   "merge_base": "86c04616f36f55a5400f69ce02c20854bc3fe733",
-  "diff_sha256": "8ba21c3549ee57208f532500af9b4bf7ff92c9cd45c7d78d981c9726f269d24e",
-  "head_sha": "5a09fcff7c2dda002fad96e9cf7728658eb2c8f0",
+  "diff_sha256": "bf7a41b8a6820c6ead063dbb4b9b17b61aec393d9eba16b1d319b661b108453a",
+  "head_sha": "6f3418d6c7e2398154f002a3940567f8ee0d9485",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Seed pack.meta freeze unlocks profile_complete; claim/accuracy/cert stay false; agent pack still draft; workspace promote separate."
+  "note": "Whitepaper resync after CAPABILITIES 3384; seed pack.meta freeze; claim closed; agent pack still draft."
 }
