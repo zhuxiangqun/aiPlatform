@@ -7,7 +7,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 REPORTS = REPO / "reports"
-TODAY = dt.date(2026, 11, 11)
+TODAY = dt.date.today()
 DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})")
 
 def rule(rel: str) -> int | None:
