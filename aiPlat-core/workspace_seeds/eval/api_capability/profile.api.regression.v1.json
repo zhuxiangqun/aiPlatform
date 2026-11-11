@@ -1,15 +1,19 @@
 {
   "schema": "eval.suite_profile.v1",
   "profile_id": "api.regression.v1",
-  "subject_kinds": ["api"],
-  "object_types": ["api"],
+  "subject_kinds": [
+    "api"
+  ],
+  "object_types": [
+    "api"
+  ],
   "pack_id": "api.capability",
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "task_completion": 5,
-    "safety": 5,
-    "robustness": 5
+    "task_completion": 8,
+    "safety": 8,
+    "robustness": 8
   },
   "strategy": "stratified",
   "seed": 47,
@@ -19,5 +23,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "API Subject regression — API_V1_CAPS ×5 lexical fixture; claim closed; ≠ live external_pull."
+  "notes": "API Subject regression — API_V1_CAPS ×8 lexical fixture; claim closed; ≠ live external_pull."
 }
