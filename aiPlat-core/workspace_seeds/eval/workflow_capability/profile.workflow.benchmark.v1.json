@@ -12,12 +12,12 @@
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "task_completion": 5,
-    "clarification": 5,
-    "error_recovery": 5,
-    "planning": 5,
-    "safety": 5,
-    "robustness": 5
+    "task_completion": 8,
+    "clarification": 8,
+    "error_recovery": 8,
+    "planning": 8,
+    "safety": 8,
+    "robustness": 8
   },
   "strategy": "stratified",
   "seed": 13,
@@ -29,6 +29,6 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "workflow Subject benchmark — holdout enabled; quotas=5 (bank ×8/cap after thicken; 20% holdout); claim/Certification closed; expand further before matching agent floors.",
+  "notes": "workflow Subject benchmark — holdout enabled; quotas=8 (ADR floor ≥8; bank ×8/cap); claim/Certification closed; cases remain draft until human purpose_ok/freeze.",
   "object_type_member": true
 }
