@@ -1,0 +1,25 @@
+{
+  "schema": "eval.human_worksheet_pack.v0",
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "recorded_at": "20261103T130302Z",
+  "out_dir": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/human_pack/20261103T130302Z",
+  "files": [
+    "g2b_facilitator.json",
+    "g2b_annotator_a.json",
+    "g2b_annotator_b.json",
+    "G2B_SEND.md",
+    "pref_annotator_a.json",
+    "pref_annotator_b.json",
+    "PREFERENCE_SEND.md"
+  ],
+  "next_steps": [
+    "1) Facilitator: fill g2b_facilitator.json model_output (same model for all tasks).",
+    "2) Copy those model_output values into g2b_annotator_a.json and g2b_annotator_b.json.",
+    "3) Send only *_annotator_*.json to two different humans (blind).",
+    "4) After return: run g2b_kappa.py + preference_v0_gate.sh with AIPLAT_EVAL_PREF_A/B."
+  ],
+  "honesty": "Blank pack only — not human κ until two annotators fill and gates run; never claim accuracy_claim=true from κ alone",
+  "g2b_task_n": 30,
+  "preference_pair_n": 32
+}
