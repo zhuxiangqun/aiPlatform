@@ -701,7 +701,7 @@ scan_hash: 8f9548ec24f4
 | eval_list_method_kinds / eval_method_catalog / eval_assert_subject_kinds_exclude_methods | `core/api/core_facade.py` | ✅ | Method 目录/诚实声明/Subject 交叉校验门面；生成物适用：已接线 | 本批 |
 | eval_method_track_status + GET …/store/method-track-status + EvalMethodTrackPanel | `core_facade.py` + `store_api.py` + `EvalMethodTrackPanel.tsx` | ✅ | Method 轨诚实快照（catalog + Subject 对照）；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_p1_regression_status + GET …/store/p1-regression-status + EvalP1RegressionPanel | `core_facade.py` + `store_api.py` + `EvalP1RegressionPanel.tsx` | ✅ | P1 Regression 配额盘点 + draft-by-capability 人审清单 + Case Pack 深链；claim/cert=false；生成物适用：不适用（管理端 UI） | 本批 |
-| eval_p4_status + GET …/store/p4-status + EvalP4StatusPanel | `core_facade.py` + `store_api.py` + `EvalP4StatusPanel.tsx` | ✅ | P4 Benchmark 配额/holdout + judge 工程条诚实快照；report_only；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| eval_p4_status + GET …/store/p4-status + EvalP4StatusPanel | `core_facade.py` + `store_api.py` + `EvalP4StatusPanel.tsx` | ✅ | P4 Benchmark 配额/holdout + judge 工程条诚实快照（可 Subject）；report_only；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | GET …/store/subject-kinds | `store_api.py` + `eval_list_subject_kinds` | ✅ | 已注册 SubjectAdapter 种类只读；生成物适用：不适用（管理端 API） | 本批 |
 | eval_resolve_capability_id | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
 | eval_validate_test_purpose | `core/api/core_facade.py` | ✅ | CoreFacade 入口；生成物适用：已接线 | 已合入 |
@@ -733,9 +733,9 @@ scan_hash: 8f9548ec24f4
 | get_suite_profile | `core/apps/eval/service/capability_case_bank.py` | ✅ | 按 profile_id 解析；生成物适用：已接线 | 已合入 |
 | apply_profile_holdout | `core/apps/eval/service/suite_profile_compile.py` | ✅ | Profile holdout 分割；生成物适用：已接线 | 已合入 |
 | evaluate_judge_calibration_gate | `core/apps/eval/service/capability_p4_gate.py` | ✅ | P4 judge 一致率门（report-only）；生成物适用：已接线 | 已合入 |
-| benchmark_readiness_report | `core/apps/eval/service/capability_p4_gate.py` | ✅ | Benchmark 就绪披露；生成物适用：已接线 | 已合入 |
+| benchmark_readiness_report | `core/apps/eval/service/capability_p4_gate.py` | ✅ | Benchmark 就绪披露（Subject 感知）；生成物适用：已接线 | 已合入 |
 | eval_list_suite_profiles | `core/api/core_facade.py` | ✅ | CoreFacade Profile 列表；生成物适用：已接线 | 已合入 |
-| eval_benchmark_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Benchmark 就绪；生成物适用：已接线 | 已合入 |
+| eval_benchmark_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Benchmark 就绪（Subject 感知）；生成物适用：已接线 | 已合入 |
 | eval_judge_calibration_gate | `core/api/core_facade.py` | ✅ | CoreFacade judge 门；生成物适用：已接线 | 已合入 |
 | eval_open_capability_judge_calibration | `core/api/core_facade.py` | ✅ | CoreFacade 开 judge 工单；生成物适用：已接线 | 已合入 |
 | run_suite_profile_exam | `core/apps/eval/service/suite_profile_exam.py` | ✅ | Profile Plan 只跑 sample_manifest；生成物适用：已接线 | 已合入 |
@@ -745,8 +745,8 @@ scan_hash: 8f9548ec24f4
 | build_suite_profile_report | `core/apps/eval/service/suite_profile_report.py` | ✅ | Profile exam 披露报告；生成物适用：已接线 | 已合入 |
 | eval_capability_heatmap | `core/api/core_facade.py` | ✅ | CoreFacade 热力；生成物适用：已接线 | 已合入 |
 | eval_suite_profile_report | `core/api/core_facade.py` | ✅ | CoreFacade 报告；生成物适用：已接线 | 已合入 |
-| evaluate_certification_readiness | `core/apps/eval/service/capability_cert_readiness.py` | ✅ | P5 前置 §8.5 完整度（cert 恒 false）；生成物适用：已接线 | 已合入 |
-| eval_certification_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Cert 就绪门；生成物适用：已接线 | 已合入 |
+| evaluate_certification_readiness | `core/apps/eval/service/capability_cert_readiness.py` | ✅ | P5 前置 §8.5 完整度（Subject 感知；cert 恒 false）；生成物适用：已接线 | 已合入 |
+| eval_certification_readiness | `core/api/core_facade.py` | ✅ | CoreFacade Cert 就绪门（Subject 感知）；生成物适用：已接线 | 已合入 |
 | case_spec_for_set | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | build_match_report | `core/apps/eval/service/case_match.py` | ✅ | 自动同步 | 已合入 |
 | normalize_target_contract | `core/apps/eval/service/target_contract.py` | ✅ | 自动同步 | 已合入 |

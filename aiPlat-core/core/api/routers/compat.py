@@ -1041,6 +1041,7 @@ async def compat_evaluation_certification_readiness(body: Dict[str, Any]):
         return eval_certification_readiness(
             profile_id=str((body or {}).get("profile_id") or "agent.benchmark.v1"),
             profile=profile if isinstance(profile, dict) else None,
+            subject_kind=str((body or {}).get("subject_kind") or ""),
             pack_kind=str((body or {}).get("pack_kind") or ""),
             pack_status=str((body or {}).get("pack_status") or ""),
             judge_agreement=judge_agreement
@@ -1075,20 +1076,28 @@ async def compat_evaluation_benchmark_readiness(body: Dict[str, Any]):
     """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
     from core.api.core_facade import eval_benchmark_readiness
 
-    min_raw = (body or {}).get("min_per_capability", 8)
-    try:
-        min_n = int(min_raw)
-    except (TypeError, ValueError):
-        return {
-            "ok": False,
-            "error": "min_per_capability must be int",
-            "accuracy_claim": False,
-        }
+    profile = (body or {}).get("profile")
+    if profile is not None and not isinstance(profile, dict):
+        return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    min_raw = (body or {}).get("min_per_capability")
+    min_n = None
+    if min_raw is not None and str(min_raw).strip() != "":
+        try:
+            min_n = int(min_raw)
+        except (TypeError, ValueError):
+            return {
+                "ok": False,
+                "error": "min_per_capability must be int",
+                "accuracy_claim": False,
+            }
     compile_plan = bool((body or {}).get("compile_plan", True))
     try:
         return eval_benchmark_readiness(
             min_per_capability=min_n,
             compile_plan=compile_plan,
+            profile_id=str((body or {}).get("profile_id") or ""),
+            profile=profile if isinstance(profile, dict) else None,
+            subject_kind=str((body or {}).get("subject_kind") or ""),
         )
     except ValueError as e:
         return {"ok": False, "error": str(e), "accuracy_claim": False}
@@ -1142,6 +1151,13 @@ async def compat_evaluation_open_capability_judge_calibration(
 
     try:
         with named_workspace_scope(request, method="POST", require_local=True) as nw:
+            profile = (body or {}).get("profile")
+            if profile is not None and not isinstance(profile, dict):
+                return {
+                    "ok": False,
+                    "error": "profile must be an object",
+                    "accuracy_claim": False,
+                }
             out = eval_open_capability_judge_calibration(
                 workspace_id=nw.workspace_id,
                 caller_workspace_id=nw.workspace_id,
@@ -1149,6 +1165,9 @@ async def compat_evaluation_open_capability_judge_calibration(
                 version=str((body or {}).get("version") or "").strip(),
                 sample_n=int((body or {}).get("sample_n") or 8),
                 notes=str((body or {}).get("notes") or ""),
+                profile_id=str((body or {}).get("profile_id") or "").strip(),
+                profile=profile if isinstance(profile, dict) else None,
+                subject_kind=str((body or {}).get("subject_kind") or "").strip(),
             )
             if isinstance(out, dict):
                 out.update(workspace_meta(nw))

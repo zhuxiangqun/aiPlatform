@@ -8510,16 +8510,23 @@ def eval_benchmark_readiness(
     min_per_capability: Optional[int] = None,
     compile_plan: bool = True,
     cases: Optional[list] = None,
+    profile_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    subject_kind: str = "",
 ) -> Dict[str, Any]:
     """P4: benchmark coverage + holdout compile disclosure (claim closed).
 
     Default uses Profile quotas (v1.1 heterogeneous floors). Pass a flat
-    ``min_per_capability`` only for uniform-floor audits.
+    ``min_per_capability`` only for uniform-floor audits. Subject-aware via
+    ``profile_id`` / ``subject_kind``.
     """
     from core.apps.eval.service.capability_p4_gate import benchmark_readiness_report
 
     return benchmark_readiness_report(
         cases=cases,
+        profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
         min_per_capability=min_per_capability,
         compile_plan=compile_plan,
     )
@@ -8530,6 +8537,9 @@ def eval_p4_status(
     min_per_capability: Optional[int] = None,
     compile_plan: bool = True,
     threshold: float = 0.8,
+    profile_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    subject_kind: str = "",
 ) -> Dict[str, Any]:
     """P4 honesty snapshot: benchmark quotas/holdout + judge engineering bar."""
     from core.apps.eval.service.capability_p4_gate import (
@@ -8540,6 +8550,9 @@ def eval_p4_status(
     bench = benchmark_readiness_report(
         min_per_capability=min_per_capability,
         compile_plan=compile_plan,
+        profile_id=profile_id,
+        profile=profile,
+        subject_kind=subject_kind,
     )
     judge = evaluate_judge_calibration_gate(threshold=threshold)
     plan = bench.get("plan") if isinstance(bench.get("plan"), dict) else {}
@@ -8549,6 +8562,7 @@ def eval_p4_status(
     return {
         "schema": "eval.p4_status.v1",
         "ok": bool(bench.get("ok")) and bool(judge.get("ok")),
+        "subject_kind": bench.get("subject_kind"),
         "profile_id": bench.get("profile_id"),
         "ready_for_benchmark_quotas": bool(bench.get("ready_for_benchmark_quotas")),
         "n_gaps": int(coverage.get("n_gaps") or 0),
@@ -8620,8 +8634,12 @@ def eval_open_capability_judge_calibration(
     sample_n: int = 8,
     notes: str = "",
     caller_workspace_id: str = "",
+    profile_id: str = "",
+    profile: Optional[Dict[str, Any]] = None,
+    subject_kind: str = "",
+    cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P4: open judge calibration ticket against capability bank sample."""
+    """P4: open judge calibration ticket against Subject bank sample."""
     from core.apps.eval.service.capability_p4_gate import open_capability_judge_calibration
 
     kwargs: Dict[str, Any] = {
@@ -8629,6 +8647,10 @@ def eval_open_capability_judge_calibration(
         "sample_n": sample_n,
         "notes": notes,
         "caller_workspace_id": caller_workspace_id or workspace_id,
+        "profile_id": profile_id,
+        "profile": profile,
+        "subject_kind": subject_kind,
+        "cases": cases,
     }
     if pack_id:
         kwargs["pack_id"] = pack_id
@@ -8792,6 +8814,7 @@ def eval_certification_readiness(
     *,
     profile_id: str = "agent.benchmark.v1",
     profile: Optional[Dict[str, Any]] = None,
+    subject_kind: str = "",
     pack_kind: str = "",
     pack_status: str = "",
     judge_agreement: Optional[Dict[str, Any]] = None,
@@ -8807,6 +8830,7 @@ def eval_certification_readiness(
     return evaluate_certification_readiness(
         profile_id=profile_id,
         profile=profile,
+        subject_kind=subject_kind,
         cases=cases,
         pack_kind=pack_kind,
         pack_status=pack_status,
