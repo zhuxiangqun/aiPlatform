@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify_doc_api_refs.sh — 检测 docs/manuals/ 中过期的 API 路径引用
+# verify_doc_api_refs.sh — 检测 docs/guides/ 中过期的 API 路径引用
 #
 # 提取文档中所有 `GET /xxx`、`POST /xxx` 等 API 引用，
 # 与实际 FastAPI 注册的路由交叉验证，发现不匹配。
@@ -141,9 +141,9 @@ PYEOF
 REGISTERED_COUNT=$(wc -l < "$TMPFILE")
 echo "  Registered routes found: $REGISTERED_COUNT"
 
-# Step 2: Scan docs/manuals/ for API path references (Python for correctness)
+# Step 2: Scan docs/guides/ for API path references (Python for correctness)
 echo ""
-echo "━━━ Scanning docs/manuals/ for API references ━━━"
+echo "━━━ Scanning docs/guides/ for API references ━━━"
 
 STALE=0
 TOTAL=0
@@ -201,7 +201,7 @@ def match_route(method, path):
     return False
 
 # Scan docs
-doc_dir = os.path.join(workspace, "docs/manuals")
+doc_dir = os.path.join(workspace, "docs/guides")
 total = 0
 stale = 0
 

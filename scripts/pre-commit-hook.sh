@@ -111,15 +111,15 @@ fi
 
 # ── Step 2.8: Whitepaper auto-sync (CAPABILITIES → status + five volumes) ──
 WP_TRIGGERS=$(git diff --cached --name-only | grep -E \
-  '^(AIPLAT_CAPABILITIES\.md|docs/whitepaper/whitepaper-suite\.yaml|docs/reference/framework/assessment-scores\.json|docs/whitepaper/commercial-value-model\.md|docs/whitepaper/ecosystem-partner-|docs/whitepaper/cases/|scripts/generate_platform_whitepaper\.py|scripts/generate_whitepaper_volumes\.py|scripts/sync_whitepapers\.sh)$' \
+  '^(AIPLAT_CAPABILITIES\.md|docs/reference/explanatory/whitepaper-suite\.yaml|docs/reference/framework/assessment-scores\.json|docs/reference/explanatory/commercial-value-model\.md|docs/reference/explanatory/ecosystem-partner-|docs/reference/explanatory/cases/|scripts/generate_platform_whitepaper\.py|scripts/generate_whitepaper_volumes\.py|scripts/sync_whitepapers\.sh)$' \
   || true)
 if [ -n "$WP_TRIGGERS" ] || git diff --cached --name-only | grep -q '^AIPLAT_CAPABILITIES\.md$'; then
     echo ""
     echo "  Auto-syncing whitepapers (status + five volumes)..."
     if bash "$WORKSPACE/scripts/sync_whitepapers.sh" 2>&1 | tail -20; then
         git add \
-          "$WORKSPACE/docs/whitepaper/aiplat-platform-status-whitepaper.md" \
-          "$WORKSPACE/docs/whitepaper/volumes" \
+          "$WORKSPACE/reports/whitepapers/aiplat-platform-status-whitepaper.md" \
+          "$WORKSPACE/reports/whitepapers/volumes" \
           2>/dev/null || true
         echo "  ✅ Whitepapers regenerated and staged"
     else

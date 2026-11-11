@@ -518,6 +518,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     text = build(raw)
+    text = "\n".join(line.rstrip() for line in text.splitlines()) + "\n"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(text, encoding="utf-8")
     meta, _ = _parse_frontmatter(raw)
