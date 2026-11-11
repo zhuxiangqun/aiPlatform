@@ -600,6 +600,23 @@ async def get_subject_regression_inventory(
     }
 
 
+@router.get("/content-purpose-ok", response_model=ItemResponse)
+async def get_content_purpose_ok_inventory(
+    subject_kind: str = "",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """ADR P1 content_purpose_ok audit — claim stays false."""
+    from core.api.core_facade import (
+        eval_content_purpose_ok_for_subject,
+        eval_content_purpose_ok_inventory,
+    )
+
+    kind = str(subject_kind or "").strip()
+    if kind:
+        return {"data": eval_content_purpose_ok_for_subject(kind)}
+    return {"data": eval_content_purpose_ok_inventory()}
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),

@@ -28,6 +28,8 @@ type SubjectRow = {
   case_count?: number;
   purpose_ok_or_better?: number;
   draft_pending?: number;
+  content_purpose_ok_count?: number;
+  content_purpose_ready?: boolean;
   claim_eligible?: boolean;
   accuracy_claim?: boolean;
   certification_eligible?: boolean;
@@ -40,6 +42,7 @@ type Inventory = {
   quota_inventory_ok_count?: number;
   profile_complete_count?: number;
   draft_pending_total?: number;
+  content_purpose_ready_count?: number;
   subjects?: SubjectRow[];
   next_action?: string;
   honesty?: string;
@@ -50,6 +53,7 @@ type Inventory = {
     method_track_tab?: string;
     case_packs_tab?: string;
     p1_regression_tab?: string;
+    content_purpose_ok_tab?: string;
   };
 };
 
@@ -122,7 +126,8 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
           <li>
             subjects={status?.subject_count ?? '—'} · OBJECT_TYPES=
             {status?.object_type_subject_count ?? '—'} · quota_ok=
-            {status?.quota_inventory_ok_count ?? '—'} · profile_complete=
+            {status?.quota_inventory_ok_count ?? '—'} · content_purpose_ready=
+            {status?.content_purpose_ready_count ?? '—'} · profile_complete=
             {status?.profile_complete_count ?? '—'} · draft_pending=
             {status?.draft_pending_total ?? '—'}
           </li>
@@ -133,7 +138,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
           </li>
           <li>
             {status?.honesty ||
-              '跨 Subject 配额盘点 ≠ claim；人审 purpose_ok/freeze 前不得宣称收口；Method 轨不在此表。'}
+              '跨 Subject 配额盘点 ≠ claim；content_purpose_ok 门禁 promote；人审 purpose_ok/freeze 前不得宣称收口；Method 轨不在此表。'}
           </li>
         </ul>
       </div>
@@ -179,9 +184,11 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                 className="rounded border border-amber-700/60 px-2 py-1 text-amber-100 disabled:opacity-50"
                 data-testid="eval-subject-inventory-promote"
               >
-                {promoting ? 'Promoting…' : 'purpose_ok → freeze'}
+                {promoting ? 'Promoting…' : 'content_purpose_ok → freeze'}
               </button>
-              <span className="text-gray-500">claim 仍关；仅工作区 registry 冻结</span>
+              <span className="text-gray-500">
+                claim 仍关；需 content_purpose_ready；仅工作区 registry 冻结
+              </span>
             </div>
             {promoteMsg ? <p className="text-xs text-emerald-200/90">{promoteMsg}</p> : null}
             <div className="flex flex-wrap gap-3 text-xs">
@@ -204,6 +211,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     <th className="py-1 pr-2">pack</th>
                     <th className="py-1 pr-2">cases</th>
                     <th className="py-1 pr-2">quota</th>
+                    <th className="py-1 pr-2">content</th>
                     <th className="py-1 pr-2">complete</th>
                     <th className="py-1 pr-2">draft</th>
                     <th className="py-1">tab</th>
@@ -226,6 +234,11 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                         <td className="py-2 pr-2">
                           {row.quota_inventory_ok ? '齐' : '缺口'}
                         </td>
+                        <td className="py-2 pr-2">
+                          {row.content_purpose_ready
+                            ? `ok ${row.content_purpose_ok_count ?? 0}`
+                            : `缺 ${row.content_purpose_ok_count ?? 0}`}
+                        </td>
                         <td className="py-2 pr-2">{String(Boolean(row.profile_complete))}</td>
                         <td className="py-2 pr-2">{row.draft_pending ?? 0}</td>
                         <td className="py-2">
@@ -240,7 +253,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     ))
                   ) : (
                     <tr>
-                      <td className="py-2 text-gray-500" colSpan={8}>
+                      <td className="py-2 text-gray-500" colSpan={9}>
                         —
                       </td>
                     </tr>

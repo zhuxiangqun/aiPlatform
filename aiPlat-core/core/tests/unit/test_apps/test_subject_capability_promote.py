@@ -42,6 +42,7 @@ def test_promote_prompt_capability_bank_freezes(tmp_path, monkeypatch):
     assert out["claim_eligible"] is False
     assert out["accuracy_claim"] is False
     assert out["certification_eligible"] is False
+    assert out["content_purpose_ok"] is True
 
     again = promote_subject_capability_bank(
         subject_kind="prompt", workspace_id="ws-prompt", reviewer="owner"

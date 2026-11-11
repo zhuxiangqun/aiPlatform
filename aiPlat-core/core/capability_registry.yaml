@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2592
+total_capabilities: 2598
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 608
+    caps_count: 614
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8789,6 +8789,30 @@ domains:
       - symbol: eval_promote_subject_capability_bank
         type: function
         signature: 'eval_promote_subject_capability_bank(subject_kind,workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: ContentPurposeOkError
+        type: class
+        signature: 'Content purpose_ok gate failed (fail closed).'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: audit_case_content_purpose
+        type: function
+        signature: 'audit_case_content_purpose(case)→List[str] error codes'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: content_purpose_ok_for_subject
+        type: function
+        signature: 'content_purpose_ok_for_subject(subject_kind)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: content_purpose_ok_inventory
+        type: function
+        signature: 'content_purpose_ok_inventory()→Dict honesty matrix'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: eval_content_purpose_ok_inventory
+        type: function
+        signature: 'eval_content_purpose_ok_inventory()→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_content_purpose_ok_for_subject
+        type: function
+        signature: 'eval_content_purpose_ok_for_subject(subject_kind)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: "load_agent_capability_cases"
         type: "function"

@@ -142,6 +142,8 @@ def _row_from_status(
         "case_count": int(st.get("case_count") or 0),
         "purpose_ok_or_better": int(st.get("purpose_ok_or_better") or 0),
         "draft_pending": int(st.get("draft_pending") or 0),
+        "content_purpose_ok_count": int(st.get("content_purpose_ok_count") or 0),
+        "content_purpose_ready": bool(st.get("content_purpose_ready")),
         "accuracy_claim": False,
         "claim_eligible": False,
         "certification_eligible": False,
@@ -177,10 +179,33 @@ def subject_regression_inventory(
             )
         )
 
+    # Enrich rows with ADR P1 content_purpose_ok audit (fail-soft per subject).
+    try:
+        from core.apps.eval.service.content_purpose_ok import (
+            content_purpose_ok_for_subject,
+        )
+
+        for row in rows:
+            kind = str(row.get("subject_kind") or "")
+            try:
+                crep = content_purpose_ok_for_subject(kind)
+                row["content_purpose_ok_count"] = int(
+                    crep.get("content_purpose_ok_count") or 0
+                )
+                row["content_purpose_ready"] = bool(crep.get("content_purpose_ready"))
+            except Exception as exc:  # noqa: BLE001
+                row["content_purpose_ok_count"] = 0
+                row["content_purpose_ready"] = False
+                if not row.get("error"):
+                    row["error"] = f"content_purpose:{type(exc).__name__}:{exc}"
+    except Exception:  # noqa: BLE001 — inventory still useful without content module
+        pass
+
     object_rows = [r for r in rows if r["object_type_member"]]
     quota_ok_n = sum(1 for r in rows if r["quota_inventory_ok"] and not r["error"])
     complete_n = sum(1 for r in rows if r["profile_complete"])
     draft_n = sum(int(r["draft_pending"] or 0) for r in rows)
+    content_ready_n = sum(1 for r in rows if r.get("content_purpose_ready"))
     return {
         "schema": INVENTORY_SCHEMA,
         "ok": all(r["ok"] for r in rows),
@@ -189,22 +214,25 @@ def subject_regression_inventory(
         "quota_inventory_ok_count": quota_ok_n,
         "profile_complete_count": complete_n,
         "draft_pending_total": draft_n,
+        "content_purpose_ready_count": content_ready_n,
         "subjects": rows,
         "accuracy_claim": False,
         "claim_eligible": False,
         "certification_eligible": False,
         "honesty": (
             "Cross-Subject inventory is engineering readiness only; "
-            "quota_ok ≠ claim; profile_complete requires human purpose_ok + pack freeze; "
+            "quota_ok ≠ claim; content_purpose_ok gates promote stamp; "
+            "profile_complete requires purpose_ok + pack freeze; "
             "Method track (Arena/G2b/S1) excluded."
         ),
         "next_action": (
-            "Review draft cases per Subject tab → purpose_ok/freeze; "
+            "Ensure content_purpose_ready → promote purpose_ok/freeze; "
             "do not open claim from inventory alone."
         ),
         "review_links": {
             "method_track_tab": "/eval?tab=method-track",
             "case_packs_tab": "/eval?tab=case-packs",
             "p1_regression_tab": "/eval?tab=p1-regression",
+            "content_purpose_ok_tab": "/eval?tab=subject-regression-inventory",
         },
     }
