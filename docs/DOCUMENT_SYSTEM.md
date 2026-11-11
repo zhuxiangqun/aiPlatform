@@ -697,6 +697,13 @@ scripts/verify_canonical.py       # 新增
 scripts/verify_document_system.py # 新增（Batch 0 自检）
 ```
 
+生成器路径统一从注册表读取，禁止在生成器中硬编码 `docs/whitepaper` 或 `reports/whitepapers`：
+
+```text
+docs/doc-paths.yaml
+```
+```
+
 ## 十一、迁移
 
 ### 11.1 映射

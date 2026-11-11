@@ -86,6 +86,7 @@ def main() -> int:
         "scripts/verify_doc_structure.py",
         "scripts/verify_doc_links.py",
         "docs/archive/README.md",
+        "docs/doc-paths.yaml",
     ]
     for r in refs:
         if not (WORKSPACE / r).exists():

@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
 SUITE = REPO / "docs" / "whitepaper" / "whitepaper-suite.yaml"
-OUT_DIR = REPO / "docs" / "whitepaper" / "volumes"
+OUT_DIR = REPO / "reports" / "whitepapers" / "volumes"
 CAPS = REPO / "AIPLAT_CAPABILITIES.md"
 SCORES = REPO / "docs" / "framework" / "assessment-scores.json"
 
@@ -73,15 +73,12 @@ def _rel(path: str) -> Path:
 def _link(path: str) -> str:
     """Markdown link from volumes/ to repo path."""
     # volumes/ lives under docs/whitepaper/volumes/
-    if path.startswith("docs/whitepaper/"):
-        # sibling under docs/whitepaper/
-        target = "../" + path[len("docs/whitepaper/") :]
-    elif path.startswith("docs/"):
-        target = "../" + path[len("docs/") :]
+    if path.startswith("docs/"):
+        target = "../../../" + path
     elif path.startswith("packages/") or path.startswith("AIPLAT_") or path == "CLAUDE.md":
-        target = "../../" + path
+        target = "../../../" + path
     else:
-        target = "../../" + path
+        target = "../../../" + path
     return f"[`{path}`]({target})"
 
 
@@ -375,8 +372,8 @@ def _build_volume(
         f"# aiPlat {name}",
         "",
         f"> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  ",
-        f"> 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · "
-        f"清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  ",
+        f"> 体系：{_link('docs/whitepaper/WHITEPAPER_SYSTEM.md')} · "
+        f"清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)  ",
         f"> 重生成：`bash scripts/sync_whitepapers.sh` 或 "
         f"`python3 scripts/generate_whitepaper_volumes.py`",
         "",
@@ -793,6 +790,7 @@ def generate_all() -> List[Path]:
             _build_volume(vol, suite_sha, caps_sha, scores_sha, generated_at),
             encoding="utf-8",
         )
+        _repair_generated_links(out)
         written.append(out)
         print(f"PASS: wrote {out.relative_to(REPO)}")
     # index
@@ -801,7 +799,7 @@ def generate_all() -> List[Path]:
         "# 五维白皮书分卷（生成物）",
         "",
         "> 由 `scripts/generate_whitepaper_volumes.py` 根据 "
-        "`../whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。",
+        "`../../../docs/whitepaper/whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。",
         "",
         "| 卷 | 文件 |",
         "|----|------|",
@@ -822,6 +820,44 @@ def generate_all() -> List[Path]:
     written.append(index)
     print(f"PASS: wrote {index.relative_to(REPO)}")
     return written
+
+
+
+def _repair_generated_links(path: Path) -> None:
+    """Repair generated relative links by unique basename under repo root."""
+    import os
+    import re
+    files = []
+    for f in REPO.rglob("*"):
+        if f.is_file() and not any(x in f.parts for x in (".git", "node_modules", "__pycache__")):
+            files.append(f)
+    by: Dict[str, List[Path]] = {}
+    for f in files:
+        by.setdefault(f.name, []).append(f)
+    text = path.read_text(encoding="utf-8")
+    def repl(m: re.Match) -> str:
+        label, raw = m.group(1), m.group(2)
+        link = raw.split("#")[0]
+        if not link or link.startswith(("http", "#", "mailto:")):
+            return m.group(0)
+        if (path.parent / link).resolve().exists():
+            return m.group(0)
+        special = {
+            "../API/api-reference.md": "docs/API/api-reference.md",
+            "../framework/verification-protocol.md": "docs/framework/verification-protocol.md",
+            "./cases/README.md": "docs/whitepaper/cases/README.md",
+        }
+        if link in special:
+            rel = os.path.relpath(REPO / special[link], path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
+        cands = by.get(Path(link).name, [])
+        if len(cands) == 1:
+            rel = os.path.relpath(cands[0], path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
+        return m.group(0)
+    new = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", repl, text)
+    if new != text:
+        path.write_text(new, encoding="utf-8")
 
 
 def check_fresh() -> int:
