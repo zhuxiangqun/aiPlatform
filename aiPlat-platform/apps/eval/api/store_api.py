@@ -585,6 +585,21 @@ async def get_system_regression_status(
     }
 
 
+@router.get("/subject-regression-inventory", response_model=ItemResponse)
+async def get_subject_regression_inventory(
+    draft_sample_limit: int = 5,
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Cross-Subject regression honesty matrix — claim stays false."""
+    from core.api.core_facade import eval_subject_regression_inventory
+
+    return {
+        "data": eval_subject_regression_inventory(
+            draft_sample_limit=draft_sample_limit,
+        )
+    }
+
+
 @router.get("/subject-kinds", response_model=ItemResponse)
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),

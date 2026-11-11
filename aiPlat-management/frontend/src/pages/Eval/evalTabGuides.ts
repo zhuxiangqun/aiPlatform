@@ -78,6 +78,12 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     can: '查看方法轨种类、诚实声明，以及已注册 Subject 对照。',
     not: '方法不等于对象类型；不可升 Subject / OBJECT_TYPES，也不宣称 accuracy。',
   },
+  'subject-regression-inventory': {
+    title: 'Subject Inventory',
+    what: '跨 Subject regression 诚实总览：OBJECT_TYPES + Subject-local 题库配额/draft/profile_complete 矩阵。',
+    can: '一眼看齐/缺口、draft 总量，深链各 Subject Regression / Case Pack / Method 轨。',
+    not: '总览齐 ≠ claim；profile_complete 仍要人审 purpose_ok + pack freeze；Arena/G2b/S1 不在此表。',
+  },
   'p1-regression': {
     title: 'P1 Regression',
     what: 'agent.regression.v1 就绪盘点：配额是否齐、人审 purpose_ok/freeze 是否挡住 profile_complete。',
