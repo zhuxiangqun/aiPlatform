@@ -57,20 +57,6 @@ workspace-root/
 │   ├── project/                       ← 项目管理
 │   │   └── PHASE_STATUS.md           ← Phase 实施状态快照
 │   │
-│   ├── manuals/                      ← 🆕 统一操作手册目录（所有面向角色的手册入口）
-│   │   ├── README.md                  ← 手册目录索引（按角色推荐）
-│   │   ├── getting-started.md         ← 快速入门
-│   │   ├── management.md              ← 管理画面操作手册
-│   │   ├── ontology.md                ← 本体模型管理手册
-│   │   ├── deployment.md              ← 部署指南
-│   │   ├── development.md            ← 开发指南
-│   │   ├── testing.md                ← 测试指南
-│   │   ├── deploy-guide.md           ← 部署速查
-│   │   ├── engineering-quality.md    ← 工程质量
-│   │   ├── production-readiness.md   ← 生产就绪
-│   │   ├── wiki-fts5-analysis.md     ← Wiki 分析
-│   │   └── fde/                       ← FDE 交付体系（4 个手册 + 导航 + 模板 + 实例，旧版归档于 _archive）
-│   │
 │   ├── architecture/                 ← 架构设计
 │   │   ├── overview.md               ← 权威架构全景（唯一出处）
 │   │   ├── boundary-standard.md      ← 层边界判定标准
@@ -771,7 +757,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 29 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 28 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

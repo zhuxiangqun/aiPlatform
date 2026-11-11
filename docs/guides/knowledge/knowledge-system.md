@@ -1006,9 +1006,9 @@ classes:
 | 场景 | 手册 / 入口 |
 |------|-------------|
 | 建域、编辑 TBox、工厂 apply | **本附录** · `/knowledge/business` · [`FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) |
-| FDE ①–⑧ 客户交付（含项目签收单） | [`manuals/fde/`](../../manuals/fde/) · `/diagnostics/fde` |
+| FDE ①–⑧ 客户交付（含项目签收单） | [`manuals/fde/`](../../guides/fde/) · `/diagnostics/fde` |
 | it-ops 组织周闭环与 **签收准备**（八闸门，≠ 已签收） | `/org/pilot` · [`ORG_L5_RUNBOOK.md`](../../contracts/ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](../../contracts/ORG_M4_SIGNOFF_PACK.md) |
-| 一句话生成应用 | `/app/factory` · [`manuals/management-ui-operation-manual.md`](../../manuals/management-ui-operation-manual.md) |
+| 一句话生成应用 | `/app/factory` · [`manuals/management-ui-operation-manual.md`](../../guides/management-ui-operation-manual.md) |
 
 FDE ⑦ 可挂治理面板与 Org L5 取数 shim；**签收准备度 / 剧本 / 证据包以组织试点页为准**，勿在业务本体或 FDE 交付签收单里找八闸门。
 

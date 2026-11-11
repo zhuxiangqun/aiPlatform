@@ -2,15 +2,15 @@
 
 本目录存放 FDE 工作台演进与 **Org L5（组织级单线闭环）** 的跨仓契约与评审产物。Core 运行时契约仍在 `aiPlat-core/docs/contracts/`。
 
-> **本页职责拆分**  
-> - **阅读顺序**（下表）：接手/评审时读哪些契约文件。  
-> - **阶段 / 签收状态**（下文子弹列表）：以各契约正文、签收包与代码行为为准；本 README 的状态句会过期，**不以本页子弹为验收证据**。  
+> **本页职责拆分**
+> - **阅读顺序**（下表）：接手/评审时读哪些契约文件。
+> - **阶段 / 签收状态**（下文子弹列表）：以各契约正文、签收包与代码行为为准；本 README 的状态句会过期，**不以本页子弹为验收证据**。
 > - 操作手册与 UI 真相见 `manuals/` / `pageManifest`，不在本索引重复维护。
 
-**总原则：先方案后改码。**  
-- FDE Phase 0 已于 **2026-09-14** 宣布开工（见 [开工清单 v1](./FDE_PHASE0_KICKOFF_CHECKLIST.md) / [决策记录 v1](./FDE_DECISION_RECORD.md)）。  
-- Org L5 **P0–P4 已接线**（含 Fleet 门禁与 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md)；**未**开生产 live IO）。  
-- **Phase C C0–C5 签收包就绪**，**C1.5 Interface YAML 已落地**（[`ORG_CHANNEL_INTERFACE_CHARTER.md`](./ORG_CHANNEL_INTERFACE_CHARTER.md)、[`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md)）；**未**做 M4 客户签收。  
+**总原则：先方案后改码。**
+- FDE Phase 0 已于 **2026-09-14** 宣布开工（见 [开工清单 v1](./FDE_PHASE0_KICKOFF_CHECKLIST.md) / [决策记录 v1](./FDE_DECISION_RECORD.md)）。
+- Org L5 **P0–P4 已接线**（含 Fleet 门禁与 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md)；**未**开生产 live IO）。
+- **Phase C C0–C5 签收包就绪**，**C1.5 Interface YAML 已落地**（[`ORG_CHANNEL_INTERFACE_CHARTER.md`](./ORG_CHANNEL_INTERFACE_CHARTER.md)、[`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md)）；**未**做 M4 客户签收。
 - **K 波 K0–K5 已落地**，**F2 直写已拒绝**（令牌仅 `apply_proposal` / `rollback_proposal`；[`ORG_K_WAVE_CHARTER.md`](./ORG_K_WAVE_CHARTER.md)）。不称出错已变成规则；不替代 M4。
 - **V 波 V0–V5 已落地**（[`ORG_V_WAVE_CHARTER.md`](./ORG_V_WAVE_CHARTER.md)）。不是 M4，也不是 L5。
 - **E 波 E0–E2 已落地**（[`ORG_EDGE_ROLLBACK_CHARTER.md`](./ORG_EDGE_ROLLBACK_CHARTER.md)）。只撤回带快照的 merge 边。不是 M4。
@@ -37,7 +37,7 @@
 
 **注意**：本文 L5 ≠ 工厂 `release_engine` L5；≠ Action 阶梯 P2-L5 命名。
 
-**操作手册入口（UI 真相）**：侧边栏以 `pageManifest` 为准——组织试点 `/org/pilot`、业务本体 `/knowledge/business`、知识库 `/knowledge/library`、应用工厂 `/app/factory`。合册索引见 [`../manuals/README.md`](../manuals/README.md)；FDE 导航见 [`../manuals/fde/README.md`](../manuals/fde/README.md)。
+**操作手册入口（UI 真相）**：侧边栏以 `pageManifest` 为准——组织试点 `/org/pilot`、业务本体 `/knowledge/business`、知识库 `/knowledge/library`、应用工厂 `/app/factory`。合册索引见 [`../guides/README.md`](../guides/README.md)；FDE 导航见 [`../guides/fde/README.md`](../guides/fde/README.md)。
 
 ---
 
@@ -111,7 +111,7 @@ Org L5（并行）
 
 ### 3.1 过程留存（路径保留 · 阅读降权 · C3+D4）
 
-> 仍在 `docs/contracts/`（**未迁 archive、未删**）：有契约/代码/手册入链或开工证据价值。  
+> 仍在 `docs/contracts/`（**未迁 archive、未删**）：有契约/代码/手册入链或开工证据价值。
 > **不计入** §0–§1 推荐阅读主路径；验收不以本表状态句为准。
 
 | 文件 | 责任分型 | 建议维护人 |
@@ -135,15 +135,15 @@ Org L5（并行）
 
 ### FDE
 
-1. **路径修正**（清单 §B）— 不做则守卫扫空  
-2. **六问 Owner + Deadline**（决策记录）— 不做则决策悬空  
-3. **六件套 + 开工清单 §E** — 缺一不可，否则不开工  
+1. **路径修正**（清单 §B）— 不做则守卫扫空
+2. **六问 Owner + Deadline**（决策记录）— 不做则决策悬空
+3. **六件套 + 开工清单 §E** — 缺一不可，否则不开工
 
 ### Org L5
 
-1. **五问 D1–D5 书面确认** — 不做则 Pilot 漂移  
-2. **Kickoff §E** — 缺一不可，否则不准 Phase 1 改码  
-3. **话术**：未达 M4 不称全域企业大脑 / OpenAI L5 已达成  
+1. **五问 D1–D5 书面确认** — 不做则 Pilot 漂移
+2. **Kickoff §E** — 缺一不可，否则不准 Phase 1 改码
+3. **话术**：未达 M4 不称全域企业大脑 / OpenAI L5 已达成
 
 ---
 
@@ -157,5 +157,5 @@ Org L5（并行）
 | Org（规划） | `aiPlat-platform/apps/org/`（D4 确认后） |
 | 守卫引擎 | `scripts/architecture_guard.py` + `arch_guard_rules*` |
 
-**MUST**：FDE 工作台改动的 PR 勾选 `FDE_WORKBENCH_CONTRACT.md` §4/§7。  
+**MUST**：FDE 工作台改动的 PR 勾选 `FDE_WORKBENCH_CONTRACT.md` §4/§7。
 **MUST**：Org L5 改码 PR 勾选 `ORG_L5_CHARTER.md` §3 否定清单 + Kickoff 已宣布 Phase。

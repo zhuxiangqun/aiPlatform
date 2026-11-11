@@ -853,6 +853,10 @@ def _repair_generated_links(path: Path) -> None:
         if link in special:
             rel = os.path.relpath(REPO / special[link], path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
+        if link.startswith("../../../docs/manuals/"):
+            target = "docs/guides/" + link[len("../../../docs/manuals/"):]
+            rel = os.path.relpath(REPO / target, path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
         cands = by.get(Path(link).name, [])
         if len(cands) == 1:
             rel = os.path.relpath(cands[0], path.parent)

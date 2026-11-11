@@ -1,7 +1,7 @@
 # PR Architecture Checklist
 
-> **C2 消歧**：本文是 **CI 契约门禁清单**（`.github/workflows/aiplat-contracts-guard.yml` 要求 `test -f` 本路径）。  
-> 开发者 PR 评审用的更长清单见 [`docs/manuals/PR_ARCHITECTURE_CHECKLIST.md`](../manuals/PR_ARCHITECTURE_CHECKLIST.md)——**同名异职，勿合并**。
+> **C2 消歧**：本文是 **CI 契约门禁清单**（`.github/workflows/aiplat-contracts-guard.yml` 要求 `test -f` 本路径）。
+> 开发者 PR 评审用的更长清单见 [`docs/guides/development/PR_ARCHITECTURE_CHECKLIST.md`](./development/PR_ARCHITECTURE_CHECKLIST.md)——**同名异职，勿合并**。
 >
 > 架构契约门禁要求：本文件必须存在。每次 PR 合并前，对照以下清单逐项确认架构边界未被破坏。
 

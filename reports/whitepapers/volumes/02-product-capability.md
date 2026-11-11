@@ -3,7 +3,7 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:38:32Z"
+generated_at: "2026-11-11T12:41:47Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:38:32Z` |
+| 生成时间 (UTC) | `2026-11-11T12:41:47Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -55,8 +55,8 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/manuals/getting-started.md`](../../../docs/manuals/getting-started.md) | 上手路径 | ✅ |
-| [`docs/manuals/fde/README.md`](../../../docs/manuals/fde/README.md) | FDE 交付场景入口 | ✅ |
+| [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) | 上手路径 | ❌ |
+| [`docs/manuals/fde/README.md`](../../../docs/guides/fde/README.md) | FDE 交付场景入口 | ❌ |
 | [`docs/architecture/execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) | 执行选型（产品/技术评估共用） | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | 厂外薄交付边界（Pi） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | Pi Package 用户侧说明 | ✅ |
@@ -68,18 +68,18 @@ language: zh-CN
 
 | 场景 | 客户要解决的问题 | 从哪里看能力/怎么做 |
 |------|------------------|---------------------|
-| **FDE 交付** | 把业务问题做成可签收的 AI 交付 | [`docs/manuals/fde/README.md`](../../../docs/manuals/fde/README.md) · CAPABILITIES「平台治理 / FDE」 |
+| **FDE 交付** | 把业务问题做成可签收的 AI 交付 | [`docs/manuals/fde/README.md`](../../../docs/guides/fde/README.md) · CAPABILITIES「平台治理 / FDE」 |
 | **App 工厂 / Builder** | 从需求到 Agent/应用产物 | 管理端 Builder · [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md)（厂外交付边界） |
-| **Workbench** | 开发与调试工作台 | [`docs/manuals/management.md`](../../../docs/manuals/management.md) · CAPABILITIES「Workbench」 |
+| **Workbench** | 开发与调试工作台 | [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) · CAPABILITIES「Workbench」 |
 | **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |
 | **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |
 | **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |
-| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/manuals/ontology.md`](../../../docs/manuals/ontology.md) · CAPABILITIES「知识引擎 / RAG」 |
+| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/manuals/ontology.md`](../../../docs/guides/ontology.md) · CAPABILITIES「知识引擎 / RAG」 |
 | **Agent / Skill 运行** | 多步工具调用与技能执行 | CAPABILITIES「Agent 系统 / Skill 系统」· [`docs/architecture/execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) |
 | **治理下执行** | 权限、审批、审计可证明 | 安全与治理分卷 · CAPABILITIES「Gate / 安全与治理」 |
 | **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) · [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) |
 
-> 上表只指路。**接线以 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) 行为为准**；[`docs/manuals/README.md`](../../../docs/manuals/README.md) 仅提供操作说明，不作为行为契约。
+> 上表只指路。**接线以 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) 行为为准**；[`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) 仅提供操作说明，不作为行为契约。
 
 ### 3.1 能力统计（摘自 CAPABILITIES）
 
@@ -134,124 +134,7 @@ language: zh-CN
 
 ### 3.2 上手路径（节选）
 
-### aiPlat 快速入门指南
-
-> 15 分钟从零启动到运行第一个 Agent。
-
-#### 前置条件
-
-- Python 3.11+
-- pip
-- 至少一个 LLM API Key (DeepSeek/OpenAI/Qwen 等)
-
-#### Step 1: 克隆与安装 (2 分钟)
-
-```bash
-git clone https://github.com/zhuxiangqun/aiPlatform.git
-cd aiPlatform
-python -m venv .venv
-source .venv/bin/activate   # Linux/Mac
-pip install -e aiPlat-core/ aiPlat-infra/ aiPlat-platform/ aiPlat-management/
-```
-
-#### Step 2: 配置 API Key (1 分钟)
-
-```bash
-export DEEPSEEK_API_KEY="sk-your-key-here"
-### 或 OpenAI:
-export OPENAI_API_KEY="sk-your-key-here"
-```
-
-#### Step 3: 启动服务 (2 分钟)
-
-```bash
-./start.sh
-```
-
-服务启动后：
-
-| 端口 | 服务 | 用途 |
-|:---|:---|:---|
-| 8000 | Management | API 网关 + 诊断面板 |
-| 8001 | Infra | 模型管理 + 基础设施 |
-| 8002 | Core | Agent 引擎 + Pipeline |
-| 8003 | Platform | 知识库 + Builder |
-
-#### Step 4: 验证安装 (1 分钟)
-
-```bash
-### 健康检查
-curl http://localhost:8000/api/diagnostics/health/all
-
-### 运行验证脚本
-bash scripts/verify-l4-pyramid.sh
-### → 预期: L5 (元循环工程)
-```
-
-#### Step 5: 运行第一个 Agent (3 分钟)
-
-```bash
-### 列出可用 Agent
-curl http://localhost:8000/api/core/workspace/agents
-
-### 执行一个 Agent 任务
-curl -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/execute \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"用三句话解释 L4 循环工程是什么"}]}'
-```
-
-#### Step 6: 查看诊断面板
-
-浏览器打开 `http://localhost:8000/docs` → 查看全部 API 文档。
-
-```bash
-### 架构守卫检查
-curl -X POST http://localhost:8000/api/diagnostics/guard/run
-
-### 全量诊断
-curl -X POST http://localhost:8000/api/diagnostics/run-all
-```
-
-#### 下一步
-
-管理端 UI（`./start.sh` 后通常为前端端口，如 `http://localhost:5173`）：
-
-| 你要做的事 | 打开 |
-|------------|------|
-| 建域 / 改说明书 / 提案 apply | **知识 → 业务本体** `/knowledge/business` |
-| 文档入库与检索 | **知识 → 知识库** `/knowledge/library` |
-| 一句话生成应用 | **AI 应用工厂** `/app/factory` |
-| FDE 现场八步交付 | **FDE 工作台** `/diagnostics/fde` |
-| it-ops 组织试点 / 签收准备 | **组织试点** `/org/pilot` |
-
-操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
-
-- [API Reference](../../../docs/API/api-reference.md) — 完整 API 文档
-- [自主性评估报告](../../../docs/framework/aiplat-complete-assessment.md) — 系统能力评估
-- [验证协议](../../../docs/framework/verification-protocol.md) — 独立复现验证
-
-#### 常见问题
-
-**Q: 启动失败？**
-```bash
-### 检查端口占用
-lsof -i :8000 -i :8001 -i :8002 -i :8003
-kill <PID>
-```
-
-**Q: Agent 执行返回错误？**
-```bash
-### 检查 API Key
-echo $DEEPSEEK_API_KEY
-### 查看日志
-tail -f ~/.aiplat/logs/core.log
-```
-
-**Q: 如何升级？**
-```bash
-git pull origin main
-./start.sh  # 重启服务
-```
+_(存在性检查失败：文件缺失 `docs/manuals/getting-started.md`)_
 
 
 ### 3.3 交付边界（Pi 薄 Runtime）

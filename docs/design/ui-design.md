@@ -1,13 +1,13 @@
 > 📄 设计阶段文档 · 描述的是设计目标/意图，非当前代码实现状态。
-> 当前实现见 [manuals/](../manuals/) 中的对应手册。存在冲突时以代码为准。
+> 当前实现见 [manuals/](../guides/) 中的对应手册。存在冲突时以代码为准。
 
 # AI Platform UI 设计规范（Design System & UX Patterns）
 
-> 系统级 UI 设计规范（**To‑Be**）：统一整个 aiPlatform 的前端设计语言、交互模式与工程落地标准。  
+> 系统级 UI 设计规范（**To‑Be**）：统一整个 aiPlatform 的前端设计语言、交互模式与工程落地标准。
 > **重要**：本规范不记录“已实现/已修复/Phase X”等进度信息；实现状态请见 `UI_IMPLEMENTATION_STATUS.md`。
 >
-> **主题**：深色主题（Black Background / Light Text）  
-> **风格参考**：GitHub Dark / Tokyo Night  
+> **主题**：深色主题（Black Background / Light Text）
+> **风格参考**：GitHub Dark / Tokyo Night
 
 ---
 
@@ -135,8 +135,8 @@
 
 ### 3.2 组件分层
 
-1) **Primitive**：Button/Input/Badge/Modal/Tabs/Switch/Progress/Tooltip/Dropdown  
-2) **Pattern**：FilterBar、DataTable、DetailDrawer、ConfirmDialog、InlineEditor、KeyValueList  
+1) **Primitive**：Button/Input/Badge/Modal/Tabs/Switch/Progress/Tooltip/Dropdown
+2) **Pattern**：FilterBar、DataTable、DetailDrawer、ConfirmDialog、InlineEditor、KeyValueList
 3) **Domain**：TraceViewer、GraphRunViewer、AlertList、LayerHealthPanel
 
 ### 3.3 状态与变体规范（所有组件必须一致）
@@ -434,14 +434,14 @@ export interface LinksPanelProps {
 #### 6.6.1 Diagnostics Home（/diagnostics）
 
 页面结构（从上到下）：
-1) **Layer Health Row**：infra/core/platform/app 四个状态卡片  
-   - 展示：status badge、last updated、关键指标（可选）  
+1) **Layer Health Row**：infra/core/platform/app 四个状态卡片
+   - 展示：status badge、last updated、关键指标（可选）
    - 操作：点击进入对应 Layer 的详情/Diagnostics（优先跳转到 links 或 graphs）
-2) **Recent Alerts**（若有）：近 24h（或近 N 条）告警摘要列表  
+2) **Recent Alerts**（若有）：近 24h（或近 N 条）告警摘要列表
    - 操作：跳转到 Alerting 列表并带筛选（status=active）
-3) **Observability Shortcuts**：3 个入口卡片  
-   - Traces（最近 traces/搜索）  
-   - Graph Runs（最近 runs/恢复）  
+3) **Observability Shortcuts**：3 个入口卡片
+   - Traces（最近 traces/搜索）
+   - Graph Runs（最近 runs/恢复）
    - Links（输入任意 ID 联动）
 
 空/错误状态：
@@ -474,7 +474,7 @@ Page Header：
 
 内容区（Tabs 推荐）：
 1) **Summary**：name、status、duration、attributes（key-value）
-2) **Spans**：表格 + 过滤（name/status）  
+2) **Spans**：表格 + 过滤（name/status）
    - spans 表格列：span_id（copy）、name、status、duration、parent_span_id（可选）、attributes（折叠）
 
 错误状态：
@@ -628,6 +628,6 @@ children: [
 
 ### 9.1 规范与实现的协作流程（推荐）
 
-1) 任何 UI 改动先改 `UI_DESIGN.md`（To‑Be），明确交互与组件口径  
-2) 进入开发后，在 `UI_IMPLEMENTATION_STATUS.md` 记录 As‑Is 进度与差异  
+1) 任何 UI 改动先改 `UI_DESIGN.md`（To‑Be），明确交互与组件口径
+2) 进入开发后，在 `UI_IMPLEMENTATION_STATUS.md` 记录 As‑Is 进度与差异
 3) 合并后定期收敛差异：实现稳定后把“差异项”从状态文档移除（或标记已完成）

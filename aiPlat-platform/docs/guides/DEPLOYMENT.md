@@ -2,4 +2,4 @@
 
 > 本页仅保留重定向，不包含独立内容。
 
-→ [docs/manuals/deployment.md](../../../docs/manuals/deployment.md)
+→ [docs/manuals/deployment.md](../../../docs/guides/deployment.md)

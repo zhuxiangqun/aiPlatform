@@ -8,9 +8,9 @@
 
 | 顺序 | 文档 | 说明 |
 |:---:|------|------|
-| 1 | [manuals/getting-started.md](manuals/getting-started.md) | 5 分钟体验 |
+| 1 | [guides/getting-started.md](guides/getting-started.md) | 5 分钟体验 |
 | 2 | [knowledge-system.md](guides/knowledge/knowledge-system.md) | 知识管理完整指南（管线/存储/本体/RAG/运维） |
-| 3 | [manuals/deployment.md](manuals/deployment.md) | 部署指南 |
+| 3 | [guides/deployment.md](guides/deployment.md) | 部署指南 |
 
 ---
 
@@ -19,11 +19,11 @@
 | 角色 | 入口文档 |
 |------|------|
 | **架构师** | [architecture/README.md](architecture/README.md) → [architecture/overview.md](architecture/overview.md) |
-| **开发者** | [manuals/development.md](manuals/development.md) → 对应层的 `CLAUDE.md` |
-| **运维** | [manuals/deployment.md](manuals/deployment.md) → [manuals/management.md](manuals/management.md) |
+| **开发者** | [guides/development.md](guides/development.md) → 对应层的 `CLAUDE.md` |
+| **运维** | [guides/deployment.md](guides/deployment.md) → [guides/management.md](guides/management.md) |
 | **知识管理员** | [knowledge-system.md](guides/knowledge/knowledge-system.md) |
-| **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
-| **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
+| **FDE 交付工程师** | [guides/README.md](guides/README.md)（手册总目录）→ 按需选择 |
+| **新用户** | [guides/getting-started.md](guides/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 | **Pi Thin Runtime（当前交付）** | [../packages/aiplat-pi-runtime/README.md](../packages/aiplat-pi-runtime/README.md) · living 摘要 [architecture/plans/pi-thin-runtime.md](architecture/plans/pi-thin-runtime.md)（≠ 五产品目标 Enterprise Runtime） |
 | **要完整平台现状白皮书** | [reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md) · 五维分卷 [reports/whitepapers/volumes/](../reports/whitepapers/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
 
@@ -34,8 +34,8 @@
 ### 架构设计（architecture/）
 [architecture/README.md](architecture/README.md) — 核心参考含 [execution-decision-matrix.md](architecture/execution-decision-matrix.md) 与 [execution-quality-gates.md](architecture/execution-quality-gates.md)；另有 ADR / 规划（非现状）/ 合规
 
-### 操作手册（manuals/）
-[manuals/README.md](manuals/README.md) — 开发/部署/测试/本体/知识/FDE 交付等操作手册
+### 操作手册（guides/）
+[guides/README.md](guides/README.md) — 开发/部署/测试/本体/知识/FDE 交付等操作手册
 
 ### 设计提案（design/）
 [design/](design/) — To-Be 设计文档（非当前实现状态，以代码为准）
@@ -69,7 +69,7 @@
 ## 目录速查
 
 > **统计口径**：`docs/**/*.md`，排除路径含 `node_modules`。
-> **时点**：`2026-10-23`（D0–D5 收口 + E0–E4 manuals/链接轮次后现算）。静态计数会再漂。
+> **时点**：`2026-10-23`（D0–D5 收口 + E0–E4 guides/链接轮次后现算）。静态计数会再漂。
 > **维护区**（C0 公式，同口径）：**178**（≠ 下表合计；合计含 archive / volumes / 生成快照）。
 > 说明：`docs/` 树内总数 **253**（相对 C0–C4 收口 259：−7 移至根 `reports/docs-governance/`；D2 迁 archive 不减树内总数）。E1–E3 **0 迁/删**，计数相对 D5 不变。
 
@@ -77,7 +77,7 @@
 |------|------|:---:|:---:|
 | `archive/` | 历史文档 | 60 | **否**（只读） |
 | `contracts/` | 跨仓契约（FDE / Ontology 等） | 43 | 是（索引见 README；§3 责任分型） |
-| `manuals/` | 操作手册 | 38 | 是 |
+| `guides/` | 操作手册 | 38 | 是 |
 | `architecture/` | 架构设计 + ADR + 规划 | 29 | 核心参考是；plans 非现状 |
 | `research/` | 对标 / 验收钉死规划 | 14 | 主报告 + factory/G6/tier；治理过程见根 reports |
 | `whitepaper/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
@@ -127,10 +127,10 @@
 | 查 CI/规约会拦截的规则 | 核心规约 | 根 `CLAUDE.md`、各子仓 `CLAUDE.md`、`AIPLAT_CAPABILITIES.md` |
 | 理解系统怎么设计的 | 架构设计 | `architecture/`、`harness/`、`contracts/`、`agents/` |
 | 查某一层怎么实现 | 层设计 | `aiPlat-core/docs/`、`aiPlat-infra/docs/`、`aiPlat-platform/docs/` 等（不在根 `docs/` 一级目录） |
-| 学怎么操作交付 | 用户手册 | `manuals/`、`manuals/fde/`、`by-role/` |
+| 学怎么操作交付 | 用户手册 | `guides/`、`guides/fde/`、`by-role/` |
 | 看目标态/规划 | 设计与规划 | `design/`、`architecture/plans/`（含五产品；**非现状**） |
 | 用 Pi Thin Runtime | Pi 现行交付 | `packages/aiplat-pi-runtime/README.md`、`architecture/plans/pi-thin-runtime.md` |
-| 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`manuals/ontology.md`（指向知识系统） |
+| 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`guides/ontology.md`（指向知识系统） |
 | 查安全红线 | 合规与安全 | `compliance/`、`security/`、`policy/` |
-| 查 MCP/测试工具 | 工具与框架 | `mcp/`、`tools/`、`manuals/testing.md` |
+| 查 MCP/测试工具 | 工具与框架 | `mcp/`、`tools/`、`guides/testing.md` |
 | 看系统状态报告 | 报告与审计 | `reports/`、`archive/`、`research/` |
