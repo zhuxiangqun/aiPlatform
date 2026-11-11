@@ -15,7 +15,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 BASE = Path(__file__).resolve().parent.parent
-APPENDIX = BASE / "aiplat-knowledge-system-engineering-appendix-v4.3.1-2026-11-11.md"
+APPENDIX = BASE / "normative-appendix.md"
 SCHEMA = BASE / "schemas" / "knowledge-system.v4.3.1.schema.json"
 PENDING = BASE / "schemas" / "conformance" / "approval-record-v4.3.1.pending.json"
 APPROVED = BASE / "schemas" / "conformance" / "approval-record-v4.3.1.approved.json"

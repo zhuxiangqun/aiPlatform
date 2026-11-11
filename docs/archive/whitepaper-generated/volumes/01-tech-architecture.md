@@ -19,11 +19,11 @@ language: zh-CN
 
 # aiPlat 技术架构白皮书
 
-> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/01-tech-architecture.md`](../../../reports/whitepapers/volumes/01-tech-architecture.md)。本文件仅保留迁移期，不再更新。
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 `reports/whitepapers/volumes/01-tech-architecture.md`（历史链接失效）。本文件仅保留迁移期，不再更新。
 
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../whitepaper/whitepaper-suite.yaml)
+> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -50,10 +50,10 @@ language: zh-CN
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
 | [`docs/whitepaper/aiplat-platform-status-whitepaper.md`](../aiplat-platform-status-whitepaper.md) | 现状总册（能力全收录，由 CAPABILITIES 生成） | ✅ |
-| [`docs/architecture/overview.md`](../../architecture/overview.md) | 架构全景唯一入口 | ✅ |
+| `docs/architecture/overview.md`（历史链接失效） | 架构全景唯一入口 | ✅ |
 | [`docs/architecture/execution-decision-matrix.md`](../../../architecture/execution-decision-matrix.md) | 执行选型矩阵 | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 厂外薄 Runtime 决策边界 | ✅ |
-| [`docs/DOCUMENT_SYSTEM.md`](../../DOCUMENT_SYSTEM.md) | 文档权威模型 | ✅ |
+| [`docs/DOCUMENT_SYSTEM.md`](../../../DOCUMENT_SYSTEM.md) | 文档权威模型 | ✅ |
 
 
 ### 2.2 Supporting
@@ -62,20 +62,20 @@ language: zh-CN
 |------|------|:----:|
 | [`docs/architecture/comparison.md`](../../../architecture/comparison.md) | 架构层对比（现行六平台入口） | ✅ |
 | [`docs/archive/plans-comparison-four-platform-2026-07.md`](../../plans-comparison-four-platform-2026-07.md) | 规划期四方案对比（已归档 · C2） | ✅ |
-| [`CLAUDE.md`](../../../CLAUDE.md) | 执行规约 / 层边界 | ✅ |
-| [`docs/manuals/deployment.md`](../../manuals/deployment.md) | 部署与运维视图 | ✅ |
+| `CLAUDE.md`（历史链接失效） | 执行规约 / 层边界 | ✅ |
+| [`docs/manuals/deployment.md`](../../../guides/deployment.md) | 部署与运维视图 | ✅ |
 | [`docs/architecture/plans/disaster-recovery-plan.md`](../../../architecture/plans/disaster-recovery-plan.md) | 灾备 / RPO·RTO | ✅ |
 | [`docs/standards/规范-性能.md`](../../../standards/规范-性能.md) | 性能预算与扩展约束 | ✅ |
 | [`docs/architecture/slo.md`](../../../architecture/slo.md) | SLI/SLO / 误差预算 | ✅ |
 | [`docs/architecture/plans/observability-eval-repair-architecture.md`](../../../architecture/plans/observability-eval-repair-architecture.md) | 可观测性架构 | ✅ |
 | [`docs/knowledge-system.md`](../../../guides/knowledge/knowledge-system.md) | 数据 / 知识存储路径（含原 knowledge-base-architecture 归并正文） | ✅ |
-| [`docs/security/security-architecture.md`](../../../security/security-architecture.md) | 安全嵌入（技术视角交叉） | ✅ |
-| [`docs/manuals/testing.md`](../../../manuals/testing.md) | 测试金字塔与策略 | ✅ |
+| [`docs/security/security-architecture.md`](../../../reference/security/security-architecture.md) | 安全嵌入（技术视角交叉） | ✅ |
+| [`docs/manuals/testing.md`](../../../guides/testing.md) | 测试金字塔与策略 | ✅ |
 | [`docs/architecture/execution-quality-gates.md`](../../../architecture/execution-quality-gates.md) | 执行质量门禁 | ✅ |
 | [`docs/archive/architecture-evolution-roadmap.md`](../../architecture-evolution-roadmap.md) | 架构演进路线 | ✅ |
-| [`docs/manuals/getting-started.md`](../../manuals/getting-started.md) | 开发上手 | ✅ |
+| [`docs/manuals/getting-started.md`](../../../guides/getting-started.md) | 开发上手 | ✅ |
 | [`docs/architecture/plans/app-module-layout.md`](../../../architecture/plans/app-module-layout.md) | 应用模块目录规范 | ✅ |
-| [`docs/mcp/index.md`](../../mcp/index.md) | 集成 / MCP 入口 | ✅ |
+| `docs/mcp/index.md`（历史链接失效） | 集成 / MCP 入口 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -86,12 +86,12 @@ language: zh-CN
 
 | 决策域 | 权威源 |
 |--------|--------|
-| 平台总览与边界 | [`docs/architecture/overview.md`](../../architecture/overview.md) |
+| 平台总览与边界 | `docs/architecture/overview.md`（历史链接失效） |
 | 执行决策矩阵 | [`docs/architecture/execution-decision-matrix.md`](../../../architecture/execution-decision-matrix.md) |
 | Pi 薄运行时 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) |
-| 文档体系与 ADR 分布 | [`docs/DOCUMENT_SYSTEM.md`](../../DOCUMENT_SYSTEM.md) |
+| 文档体系与 ADR 分布 | [`docs/DOCUMENT_SYSTEM.md`](../../../DOCUMENT_SYSTEM.md) |
 
-索引维护责任与更新触发条件见 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)「ADR 索引维护」节。
+索引维护责任与更新触发条件见 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md)「ADR 索引维护」节。
 
 > 索引只指向权威源，不复制 ADR 正文。修改 overview / execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM 任一文件时，必须同步本索引。
 
@@ -110,7 +110,7 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 
 **十条设计铁律（摘要）**：Harness=OS 且不懂业务名；Syscall 是唯一出口；四层记忆；CRAG 检索回退；模型目录集中在 infra；协作模式由配置驱动；文档/能力统计与 CI 同步；Spec 生命周期；企业多租户与治理门禁。
 
-需要图示、子系统地图或代码入口时，打开 [`docs/architecture/overview.md`](../../architecture/overview.md) （本卷刻意不粘贴路径清单，便于阅读）。
+需要图示、子系统地图或代码入口时，打开 `docs/architecture/overview.md`（历史链接失效） （本卷刻意不粘贴路径清单，便于阅读）。
 
 ### 3.2 多系统对标（摘要）
 
@@ -118,8 +118,8 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 完整 18 维表、证据与可借鉴清单见权威源（勿在卷内手抄第二份）。
 
 - 架构对比入口：[`docs/architecture/comparison.md`](../../../architecture/comparison.md)
-- 深度主报告：[`docs/reference/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md)
-- 证据底稿：[`docs/reference/research/对标底稿-2026-10-五家.md`](../../../research/对标底稿-2026-10-五家.md)
+- 深度主报告：[`docs/reference/research/aiPlat核心能力对标报告.md`](../../../reference/research/aiPlat核心能力对标报告.md)
+- 证据底稿：[`docs/reference/research/对标底稿-2026-10-五家.md`](../../../reference/research/对标底稿-2026-10-五家.md)
 
 #### 六平台一句话定位
 
@@ -147,22 +147,22 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 
 | 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 |
 |----------|------------------|----------------|----------------------|
-| **部署与运维** | 生产怎么布？环境/灾备/灰度？ | [`docs/manuals/deployment.md`](../../manuals/deployment.md) · [`docs/architecture/plans/disaster-recovery-plan.md`](../../../architecture/plans/disaster-recovery-plan.md) · `deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |
+| **部署与运维** | 生产怎么布？环境/灾备/灰度？ | [`docs/manuals/deployment.md`](../../../guides/deployment.md) · [`docs/architecture/plans/disaster-recovery-plan.md`](../../../architecture/plans/disaster-recovery-plan.md) · `deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |
 | **性能与扩展** | QPS/P95/容量/扩展策略？ | [`docs/standards/规范-性能.md`](../../../standards/规范-性能.md) · [`docs/architecture/slo.md`](../../../architecture/slo.md) · `scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 |
 | **可观测性** | 日志/指标/追踪怎么采与告警？ | [`docs/architecture/plans/observability-eval-repair-architecture.md`](../../../architecture/plans/observability-eval-repair-architecture.md) · [`docs/standards/规范-core-run_id-trace_id-request_id.md`](../../../standards/规范-core-run_id-trace_id-request_id.md) | CAPABILITIES「可观测性」· 安全卷可交叉 |
 | **数据架构** | 存什么、隔离、备份？ | [`docs/knowledge-system.md`](../../../guides/knowledge/knowledge-system.md) | CAPABILITIES「知识引擎」· 灾备计划（备份） |
-| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | [`docs/security/security-architecture.md`](../../../security/security-architecture.md) | 分卷 05 · CAPABILITIES「安全与治理 / Gate」 |
-| **测试与验证** | 金字塔 / CI / 质量门？ | [`docs/manuals/testing.md`](../../../manuals/testing.md) · [`docs/architecture/execution-quality-gates.md`](../../../architecture/execution-quality-gates.md) · `.github/workflows/` | CAPABILITIES「管理 & 质量」 |
-| **技术风险与演进** | 技术债、依赖风险、路线？ | [`AIPLAT_ROADMAP.md`](../../../../AIPLAT_ROADMAP.md) · [`docs/archive/architecture-evolution-roadmap.md`](../../architecture-evolution-roadmap.md) · [`CLAUDE.md`](../../../CLAUDE.md) §16 | 商业卷 ROADMAP 节选（非财务） |
-| **开发视图** | 代码组织、模块边界、上手？ | [`CLAUDE.md`](../../../CLAUDE.md) · [`docs/DOCUMENT_SYSTEM.md`](../../DOCUMENT_SYSTEM.md) · [`docs/manuals/getting-started.md`](../../manuals/getting-started.md) · [`docs/architecture/plans/app-module-layout.md`](../../../architecture/plans/app-module-layout.md) | — |
-| **集成架构** | MCP/A2A/外部适配？ | [`docs/mcp/index.md`](../../mcp/index.md) · [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
+| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | [`docs/security/security-architecture.md`](../../../reference/security/security-architecture.md) | 分卷 05 · CAPABILITIES「安全与治理 / Gate」 |
+| **测试与验证** | 金字塔 / CI / 质量门？ | [`docs/manuals/testing.md`](../../../guides/testing.md) · [`docs/architecture/execution-quality-gates.md`](../../../architecture/execution-quality-gates.md) · `.github/workflows/` | CAPABILITIES「管理 & 质量」 |
+| **技术风险与演进** | 技术债、依赖风险、路线？ | [`AIPLAT_ROADMAP.md`](../../../../AIPLAT_ROADMAP.md) · [`docs/archive/architecture-evolution-roadmap.md`](../../architecture-evolution-roadmap.md) · `CLAUDE.md`（历史链接失效） §16 | 商业卷 ROADMAP 节选（非财务） |
+| **开发视图** | 代码组织、模块边界、上手？ | `CLAUDE.md`（历史链接失效） · [`docs/DOCUMENT_SYSTEM.md`](../../../DOCUMENT_SYSTEM.md) · [`docs/manuals/getting-started.md`](../../../guides/getting-started.md) · [`docs/architecture/plans/app-module-layout.md`](../../../architecture/plans/app-module-layout.md) | — |
+| **集成架构** | MCP/A2A/外部适配？ | `docs/mcp/index.md`（历史链接失效） · [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../reference/policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
 | **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | [`docs/architecture/slo.md`](../../../architecture/slo.md) · [`docs/architecture/execution-quality-gates.md`](../../../architecture/execution-quality-gates.md) | CAPABILITIES「管理 & 质量」 |
 
 > **阅读约定**：索引保证「只读本卷也知道去哪尽调」。性能数字以 SLO / `benchmark_all.sh` 为准，勿在卷内编造 QPS。
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

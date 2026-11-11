@@ -1,9 +1,9 @@
 # EVAL P2-0 — Human calibration closeout（2026-11-06）
 
 - **status**: **PASS（工程校准）** · `accuracy_claim=false`
-- **unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`](./ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md)
-- **protocol**: [`CALIBRATION_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)
-- **aggregate**: [`human_calibration_aggregate.v0.json`](../../../packages/aiplat-evaluation/docs/a3/evidence/human_calibration_aggregate.v0.json)
+- **unfreeze**: `ENGINEERING_UNFREEZE_EVAL_P2_CALIBRATION.md`（历史链接失效）
+- **protocol**: [`CALIBRATION_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)
+- **aggregate**: [`human_calibration_aggregate.v0.json`](../../../../../packages/aiplat-evaluation/docs/a3/evidence/human_calibration_aggregate.v0.json)
 - **pack**: `human_pack/calibration/20261105T161330Z`（gitignore；桌面收回）
 
 ## 结果（n=60）

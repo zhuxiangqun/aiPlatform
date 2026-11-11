@@ -19,11 +19,11 @@ language: zh-CN
 
 # aiPlat 生态与集成白皮书
 
-> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/04-ecosystem-integration.md`](../../../reports/whitepapers/volumes/04-ecosystem-integration.md)。本文件仅保留迁移期，不再更新。
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 `reports/whitepapers/volumes/04-ecosystem-integration.md`（历史链接失效）。本文件仅保留迁移期，不再更新。
 
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../whitepaper/whitepaper-suite.yaml)
+> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -54,22 +54,22 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/mcp/index.md`](../../mcp/index.md) | MCP 文档入口 | ✅ |
-| [`docs/API/api-reference.md`](../../API/api-reference.md) | API 参考 | ✅ |
-| [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
-| [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
-| [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../whitepaper/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
-| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../whitepaper/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
+| `docs/mcp/index.md`（历史链接失效） | MCP 文档入口 | ✅ |
+| [`docs/API/api-reference.md`](../../../reference/API/api-reference.md) | API 参考 | ✅ |
+| [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../reference/policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
+| `packages/aiplat-pi-runtime/README.md`（历史链接失效） | 厂外 Pi Package 交付面 | ✅ |
+| [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../reference/explanatory/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
+| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../reference/templates/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
 
 
 ### 2.2 Supporting
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/API/AttributionSchema.md`](../../../API/AttributionSchema.md) | 归因协议 | ✅ |
+| [`docs/API/AttributionSchema.md`](../../../reference/API/AttributionSchema.md) | 归因协议 | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
-| [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
+| [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -78,7 +78,7 @@ language: zh-CN
 
 本卷以技术伙伴分层闭环，不写未确认的分成比例、商标授权或排他条款。
 
-- 技术分层：[`docs/whitepaper/ecosystem-partner-tiers.md`](../../../whitepaper/ecosystem-partner-tiers.md)
+- 技术分层：[`docs/whitepaper/ecosystem-partner-tiers.md`](../../../reference/explanatory/ecosystem-partner-tiers.md)
   - Pi-only 接入
   - KB 混合接入
   - 工具代理接入
@@ -86,7 +86,7 @@ language: zh-CN
   - 私有化厚部署
 - 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节
 - 企业混合部署：[`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)；能力行以 [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) 为准
-- 商务条款模板：[`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../whitepaper/ecosystem-partner-commercial-template.md)
+- 商务条款模板：[`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../reference/templates/ecosystem-partner-commercial-template.md)
 
 ---
 
@@ -103,7 +103,7 @@ language: zh-CN
 ### 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。
-> 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../whitepaper/ecosystem-partner-commercial-template.md)（以盖章版为准）。
+> 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../reference/templates/ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 #### 1. 分层总览
 
@@ -158,10 +158,10 @@ language: zh-CN
 
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
-| **MCP 工具** | 注册/暴露工具供 Agent 调用 | [`docs/mcp/index.md`](../../mcp/index.md) | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../policy/mcp-stdio-prod-allowlist.md) + 成本阶梯 |
-| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../../API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
+| **MCP 工具** | 注册/暴露工具供 Agent 调用 | `docs/mcp/index.md`（历史链接失效） | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../reference/policy/mcp-stdio-prod-allowlist.md) + 成本阶梯 |
+| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../../../reference/API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
 | **A2A** | Agent 间互操作 | CAPABILITIES「A2A 协议」切片 | PolicyGate / 身份透传 |
-| **Pi Package** | 消费工厂导出的薄 Runtime 包 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) · [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
+| **Pi Package** | 消费工厂导出的薄 Runtime 包 | `packages/aiplat-pi-runtime/README.md`（历史链接失效） · [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
 | **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | `execution_type` + lint + 准入 |
 
 ### 3.3 MCP / A2A 能力切片（CAPABILITIES）
@@ -618,7 +618,7 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 
 | 权威源 | 读什么 |
 |--------|--------|
-| [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 包入口与双轴（厂外交付 / 厂内已关闭） |
+| `packages/aiplat-pi-runtime/README.md`（历史链接失效） | 包入口与双轴（厂外交付 / 厂内已关闭） |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 战略边界 living 摘要 |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业回连配置 |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md`](../../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md) | SKU / 验收 |
@@ -698,7 +698,7 @@ Content-Type: application/json
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

@@ -1,9 +1,9 @@
 # G2b 31–100 — 出卷 → scoped 收口完成（2026-11-05）
 
-> **工程**：✅ n=100 pack · model 100/100 · κ · 仲裁 · accuracy closeout · freeze  
-> **人侧**：✅ 朱莹 / 朱鸿林 盲标 · ✅ 朱向群 仲裁 · ✅ freeze 确认 · ✅ scoped attestation  
-> **`accuracy_claim`**：**false**（§4 门槛未达；owner 确认 scoped）  
-> **Protocol**：已 SIGNED · Holdout A · [SIGNED 留存](./EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)  
+> **工程**：✅ n=100 pack · model 100/100 · κ · 仲裁 · accuracy closeout · freeze
+> **人侧**：✅ 朱莹 / 朱鸿林 盲标 · ✅ 朱向群 仲裁 · ✅ freeze 确认 · ✅ scoped attestation
+> **`accuracy_claim`**：**false**（§4 门槛未达；owner 确认 scoped）
+> **Protocol**：已 SIGNED · Holdout A · [SIGNED 留存](../../EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)
 > **收口页**：[EVAL_G2B_N100_CLOSEOUT_2026-11-05.md](./EVAL_G2B_N100_CLOSEOUT_2026-11-05.md)
 
 ## Pack 位置（gitignored）

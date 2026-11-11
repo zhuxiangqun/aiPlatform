@@ -1,9 +1,9 @@
 # G2B-100 Protocol（已签署）
 
-> **状态**：✅ **SIGNED**（2026-11-05）· Holdout **方案 A**  
-> **签认留存**：[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](../../../../reports/five-products/ops/EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)  
-> **日期**：2026-11-04（起草）/ 2026-11-05（签署）  
-> **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.3 · [G2B_N100](./G2B_N100.md) · [G2B_ACCURACY_CLOSEOUT](./G2B_ACCURACY_CLOSEOUT.md)  
+> **状态**：✅ **SIGNED**（2026-11-05）· Holdout **方案 A**
+> **签认留存**：[EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md](../../../../../reports/five-products/ops/EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md)
+> **日期**：2026-11-04（起草）/ 2026-11-05（签署）
+> **依据**：[改善执行计划](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) §2.3 · [G2B_N100](./G2B_N100.md) · [G2B_ACCURACY_CLOSEOUT](./G2B_ACCURACY_CLOSEOUT.md)
 > **诚实锁**：签署与达标后仍只允许 **scoped benchmark pass rate**；默认 `accuracy_claim=false`，通用准确率/安全认证/process_split **禁止**由本 protocol 单独打开。
 
 ---
@@ -29,7 +29,7 @@
 | 已完成 | **n=100** 双标+仲裁+κ+accuracy closeout（2026-11-05）：pass_rate=**0.72**（72/100），Wilson 95% CI=[0.6251,0.7986]，κ=0.7624；另保留 n=30 中间态记录 |
 | 门槛对照 §4 | pass_rate **未达**（0.72&lt;0.80）· CI 下界 **未达**（0.6251&lt;0.70）· κ **达标** → **仅 scoped 披露，不得 accuracy_claim** |
 | Model/prompt freeze owner | **朱向群**（已确认） |
-| Freeze 时间戳 | **CONFIRMED** 20261105T151547Z — [`evidence/g2b_freeze_record.v1.json`](./evidence/g2b_freeze_record.v1.json)；变更 → 新版本 |
+| Freeze 时间戳 | **CONFIRMED** 20261105T151547Z — [`evidence/g2b_freeze_record.v1.json`](../evidence/g2b_freeze_record.v1.json)；变更 → 新版本 |
 | 出卷包（工程） | `docs/a3/human_pack/20261105T132500Z-n100/`（双标已回填；model_outputs 复用 `20261104T064000Z-n100`） |
 | 确认性数据用途 | 不得反馈调参；泄漏即标记为开发运行 |
 
@@ -75,7 +75,7 @@
 | Code Review P0 | 低于预注册最小 n → report-only |
 | 数据完整性 | 无缺项；无同人双填；无 gold 泄漏；freeze 可追溯 |
 
-未同时满足：可发布 scoped observed pass rate + CI，**不得** accuracy claim。  
+未同时满足：可发布 scoped observed pass rate + CI，**不得** accuracy claim。
 κ ≠ 准确率；总体 pass rate ≠ 线上任务分布估计。
 
 ---

@@ -3,8 +3,8 @@
 - **decided_at**: `2026-11-01`
 - **status**: **Active**（仅 local preview）
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_V1.md`](./ENGINEERING_UNFREEZE_EVAL_V1.md)
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
-- **charter**: [`eval-v1-charter.md`](../../../docs/architecture/plans/eval-v1-charter.md) §8 / D8
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
+- **charter**: [`eval-v1-charter.md`](../../../../../docs/architecture/plans/eval-v1-charter.md) §8 / D8
 - **trigger**: G2a human lock（≥30 solo adjudicated → `lock-v0` → local `gate_claim`）
 
 ## 解冻范围

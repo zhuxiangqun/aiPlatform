@@ -1,14 +1,14 @@
 # Engineering unfreeze — EVAL **P2-0 Evaluator calibration**
 
 - **decided_at**: `2026-11-06`
-- **status**: **Closed** · aggregate + [`EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`](./EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md)
+- **status**: **Closed** · aggregate + `EVAL_P2_CALIBRATION_CLOSEOUT_2026-11-06.md`（历史链接失效）
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_P2.md`](./ENGINEERING_UNFREEZE_EVAL_P2.md)
-- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](./EVAL_P2_CHARTER_2026-11-06.md)
-- **protocol**: [`packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md`](../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)
+- **charter**: [`EVAL_P2_CHARTER_2026-11-06.md`](../../EVAL_P2_CHARTER_2026-11-06.md)
+- **protocol**: [`packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/CALIBRATION_V0.md)
 
 ## 目标
 
-在本地对已有评测结果做**人工抽样复核**（误报 / 漏报 / 与弱代理分歧），产出 `eval.human_calibration.v0` 证据。  
+在本地对已有评测结果做**人工抽样复核**（误报 / 漏报 / 与弱代理分歧），产出 `eval.human_calibration.v0` 证据。
 **不**改 composite 权重、**不**翻 `accuracy_claim`、**不**替换 Arena length smoke。
 
 ## 允许

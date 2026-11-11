@@ -1,9 +1,9 @@
 # EVAL P2-2 — Persistent memory v0 closeout（2026-11-06）
 
 - **status**: **PASS（工程 fixture 门）** · `accuracy_claim=false`
-- **unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md`](./ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md)
-- **protocol**: [`MEMORY_V0.md`](../../../packages/aiplat-evaluation/docs/a3/MEMORY_V0.md)
-- **pack**: [`memory_tasks.v0.json`](../../../packages/aiplat-evaluation/docs/a3/memory_tasks.v0.json)
+- **unfreeze**: `ENGINEERING_UNFREEZE_EVAL_P2_MEMORY.md`（历史链接失效）
+- **protocol**: [`MEMORY_V0.md`](../../../../../packages/aiplat-evaluation/docs/a3/MEMORY_V0.md)
+- **pack**: [`memory_tasks.v0.json`](../../../../../packages/aiplat-evaluation/docs/a3/memory_tasks.v0.json)
 - **gate**: `bash packages/aiplat-evaluation/scripts/memory_v0_gate.sh`
 
 ## 范围交付

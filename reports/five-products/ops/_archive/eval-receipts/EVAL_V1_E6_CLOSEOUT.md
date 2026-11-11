@@ -2,7 +2,7 @@
 
 - **closed_at**: `2026-11-01`
 - **result**: **PASS**
-- **unfreeze**: [`ENGINEERING_UNFREEZE_EVAL_E6.md`](./ENGINEERING_UNFREEZE_EVAL_E6.md)
+- **unfreeze**: `ENGINEERING_UNFREEZE_EVAL_E6.md`（历史链接失效）
 - **accuracy_claim**: **false**（不变）
 - **κ**: **null**（G2b 仍未开）
 

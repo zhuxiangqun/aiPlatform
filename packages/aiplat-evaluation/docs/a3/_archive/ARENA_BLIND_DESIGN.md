@@ -1,10 +1,10 @@
 # Arena 盲评设计（P1a · 设计稿）
 
-> **状态**：设计完成 ≠ 新评分上线  
-> **日期**：2026-11-05  
-> **依据**：[改善执行计划](../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) P1a/P1b  
-> **现状 runner**：`arena` = `length_heuristic` · `evidence_level=smoke` · **不可进质量 gate**  
-> **Rubric 冻结**：[ARENA_BLIND_RUBRIC_V1](./ARENA_BLIND_RUBRIC_V1.md) · **Pilot 脚手架**：[ARENA_BLIND_PILOT](./ARENA_BLIND_PILOT.md)
+> **状态**：设计完成 ≠ 新评分上线
+> **日期**：2026-11-05
+> **依据**：[改善执行计划](../../../../../reports/five-products/ops/EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) P1a/P1b
+> **现状 runner**：`arena` = `length_heuristic` · `evidence_level=smoke` · **不可进质量 gate**
+> **Rubric 冻结**：[ARENA_BLIND_RUBRIC_V1](../ARENA_BLIND_RUBRIC_V1.md) · **Pilot 脚手架**：[ARENA_BLIND_PILOT](./ARENA_BLIND_PILOT.md)
 
 ## 1. 问题
 
@@ -24,10 +24,10 @@
 
 ## 3. Pilot 完成定义
 
-- Rubric 冻结文档存在且评审培训完成  
-- ≥30 对、每对 ≥2 盲评  
-- 结果单独 schema/version；不回写覆盖历史长度 winner  
-- 独立 QA 抽查盲评流程记录  
+- Rubric 冻结文档存在且评审培训完成
+- ≥30 对、每对 ≥2 盲评
+- 结果单独 schema/version；不回写覆盖历史长度 winner
+- 独立 QA 抽查盲评流程记录
 - 若无法落实两人/最小样本：本轮只交设计/阻塞记录，Arena 继续 smoke
 
 ## 4. 工时粗算

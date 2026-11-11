@@ -3,10 +3,10 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-11T12:46:49Z"
+generated_at: "2026-11-11T12:57:01Z"
 source: AIPLAT_CAPABILITIES.md
 source_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
-scores_sha256: ""
+scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 3385
 capabilities_version: "30.14"
 capabilities_last_updated: "2026-11-09"
@@ -14,7 +14,7 @@ language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256= total_capabilities=3385 -->
+<!-- whitepaper_stamp source_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3385 -->
 
 # aiPlat 平台现状白皮书
 
@@ -46,9 +46,9 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-11T12:46:49Z` |
+| 生成时间 (UTC) | `2026-11-11T12:57:01Z` |
 | CAPABILITIES SHA-256 | `3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946` |
-| assessment-scores SHA-256 | `—` |
+| assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
 | CAPABILITIES last_updated | `2026-11-09` |
 | frontmatter total_capabilities | `3385` |
@@ -152,7 +152,13 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 ### 2.5.1 权威评分戳（自动摘录）
 
-_(未找到 `docs/reference/framework/assessment-scores.json`)_
+> 评分戳来源：[`assessment-scores.json`](../../docs/reference/framework/assessment-scores.json)（generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。
+
+| 框架 | 综合结果 | 说明 |
+|------|----------|------|
+| 8轴自主性成熟度 | **L5** (5.0) | sum(axis_level*weight)/sum(weight) — normalized |
+| 工程落地评估(58项) | **100.0%** | (yes*1 + partial*0.5)/total * 100 |
+| 三层企业评估(~110项) | _(见 JSON tiers)_ | per-tier mean of manual scores (all source=manual) |
 
 
 完整评估叙述：[`../../docs/reference/framework/aiplat-complete-assessment.md`](../../docs/reference/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)

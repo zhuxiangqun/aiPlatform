@@ -18,7 +18,7 @@ packaging: executive-digest
 
 # aiPlat 平台现状白皮书
 
-> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/aiplat-platform-status-whitepaper.md`](../../reports/whitepapers/aiplat-platform-status-whitepaper.md)。本文件仅保留迁移期，不再更新。
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 `reports/whitepapers/aiplat-platform-status-whitepaper.md`（历史链接失效）。本文件仅保留迁移期，不再更新。
 
 
 > **本文是可再生成的平台现状说明书（可读包装），不是第二真相源。**
@@ -32,10 +32,10 @@ packaging: executive-digest
 | 问题 | 以谁为准 |
 |------|----------|
 | 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（完整路径表）；本文第 3 章仅为**摘要索引** |
-| 架构分层与依赖方向 | [`docs/architecture/overview.md`](../architecture/overview.md) · 技术分卷 |
-| 自主性定级（L5 等） | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) + `assessment-scores.json` |
+| 架构分层与依赖方向 | `docs/architecture/overview.md`（历史链接失效） · 技术分卷 |
+| 自主性定级（L5 等） | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) + `assessment-scores.json` |
 | 对标 / 差异化 | 研究主报告 + [`architecture/comparison.md`](../../architecture/comparison.md) |
-| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](../../whitepaper/WHITEPAPER_SYSTEM.md) |
+| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](../../reference/explanatory/WHITEPAPER_SYSTEM.md) |
 | 设计目标 vs 现状 | 代码与 CAPABILITIES；冲突时以代码为准 |
 
 **怎么读本文**
@@ -86,8 +86,8 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | L1 AI 核心 | core | 流水线、Agent 循环、记忆/知识、统一调用边界 |
 | L0 基础设施 | infra | 模型目录与运行时依赖（无业务知识） |
 
-架构全景：见 [`docs/architecture/overview.md`](../architecture/overview.md)
-自主性评估（L 级定级，**不等于**能力全表）：见 [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md)
+架构全景：见 `docs/architecture/overview.md`（历史链接失效）
+自主性评估（L 级定级，**不等于**能力全表）：见 [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 **交付边界（一句话）**
 
@@ -151,11 +151,11 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 > **完整性要求**：仅有能力清单不足以对外论证。对标报告、自主性/工程成熟度评分、安全合规材料必须进入白皮书**体系目录**；本生成章只做**索引 + 评分戳**，正文仍以各权威源为准（避免第二真相源）。
 
-体系说明：[`WHITEPAPER_SYSTEM.md`](../../whitepaper/WHITEPAPER_SYSTEM.md)
+体系说明：[`WHITEPAPER_SYSTEM.md`](../../reference/explanatory/WHITEPAPER_SYSTEM.md)
 
 ### 2.5.1 权威评分戳（自动摘录）
 
-> 评分戳来源：[`assessment-scores.json`](../../framework/assessment-scores.json)（generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。
+> 评分戳来源：[`assessment-scores.json`](../../reference/framework/assessment-scores.json)（generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。
 
 | 框架 | 综合结果 | 说明 |
 |------|----------|------|
@@ -164,18 +164,18 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 三层企业评估(~110项) | _(见 JSON tiers)_ | per-tier mean of manual scores (all source=manual) |
 
 
-完整评估叙述：[`../framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md)
+完整评估叙述：[`../framework/aiplat-complete-assessment.md`](../../reference/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 ### 2.5.2 对标与对比入口（勿读 archive 当现行）
 
 | 文档 | 用途 |
 |------|------|
-| [`../research/aiPlat核心能力对标报告.md`](../../research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
+| [`../research/aiPlat核心能力对标报告.md`](../../reference/research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
 | [`../architecture/comparison.md`](../../architecture/comparison.md) | 六平台 18 维架构对比入口 |
-| [`../strategy/comparison-vs-vendors.md`](../../strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
-| [`../framework/hermes-comparison.md`](../../framework/hermes-comparison.md) | Hermes 专项 |
+| [`../strategy/comparison-vs-vendors.md`](../../reference/strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
+| [`../framework/hermes-comparison.md`](../../reference/framework/hermes-comparison.md) | Hermes 专项 |
 | [`../archive/对标吸收与架构纯度评估.md`](../对标吸收与架构纯度评估.md) | 吸收核验 |
-| [`../archive/`](../archive/) | 历史对比（只读，已被主报告取代） |
+| `../archive/`（历史链接失效） | 历史对比（只读，已被主报告取代） |
 
 ### 2.5.3 五维白皮书 ↔ 仓库映射（摘要）
 
@@ -187,7 +187,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | 技术伙伴分层 + MCP/A2A/Pi（商务条款以盖章版为准） |
 | 治理 | 如何可信可控 | [`volumes/05-security-governance.md`](./volumes/05-security-governance.md) | security + Gate + L 级评估 |
 
-分卷清单：[`whitepaper-suite.yaml`](../../whitepaper/whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
+分卷清单：[`whitepaper-suite.yaml`](../../reference/explanatory/whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
 
 ## 3. 能力全景摘要（非完整路径表）
 
@@ -319,13 +319,13 @@ python3 scripts/generate_platform_whitepaper.py
 |------|------|
 | [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单（编辑入口） |
 | [`capability_registry.yaml`](../../../aiPlat-core/core/capability_registry.yaml) | 机器可读 provides |
-| [`docs/architecture/overview.md`](../architecture/overview.md) | 架构全景 |
-| [`docs/reference/matrix/capability-impact-matrix.md`](../../matrix/capability-impact-matrix.md) | 变更影响矩阵 |
-| [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) | 文档治理宪法 |
-| [`WHITEPAPER_SYSTEM.md`](../../whitepaper/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
-| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
-| [`../framework/assessment-scores.json`](../../framework/assessment-scores.json) | 评估分数机器源 |
-| [`../research/aiPlat核心能力对标报告.md`](../../research/aiPlat核心能力对标报告.md) | 主对标报告 |
+| `docs/architecture/overview.md`（历史链接失效） | 架构全景 |
+| [`docs/reference/matrix/capability-impact-matrix.md`](../../reference/matrix/capability-impact-matrix.md) | 变更影响矩阵 |
+| [`docs/DOCUMENT_SYSTEM.md`](../../DOCUMENT_SYSTEM.md) | 文档治理宪法 |
+| [`WHITEPAPER_SYSTEM.md`](../../reference/explanatory/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
+| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`../framework/assessment-scores.json`](../../reference/framework/assessment-scores.json) | 评估分数机器源 |
+| [`../research/aiPlat核心能力对标报告.md`](../../reference/research/aiPlat核心能力对标报告.md) | 主对标报告 |
 | [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) | 商业/路线图 |
 | [`docs/archive/AIPLAT_WHITEPAPER.md`](../AIPLAT_WHITEPAPER.md) | 旧叙事稿（归档，非现状权威） |
 

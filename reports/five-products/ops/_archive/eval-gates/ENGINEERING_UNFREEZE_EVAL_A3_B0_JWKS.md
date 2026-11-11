@@ -3,8 +3,8 @@
 - **decided_at**: `2026-11-02`
 - **status**: **Closed PASS** — B0 local JWKS (#531)
 - **parent**: [`ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md`](./ENGINEERING_UNFREEZE_EVAL_A3_LOCAL.md) Closed PASS
-- **plan**: [`eval-a3-independent-service.md`](../../../docs/architecture/plans/eval-a3-independent-service.md) §10
-- **freeze**: [`ENGINEERING_FREEZE.md`](./ENGINEERING_FREEZE.md)
+- **plan**: [`eval-a3-independent-service.md`](../../../../../docs/architecture/plans/eval-a3-independent-service.md) §10
+- **freeze**: [`ENGINEERING_FREEZE.md`](../../ENGINEERING_FREEZE.md)
 - **production**: 仍冻结（`process_split_authorized=false` / `staging_ready=false` / authorize 禁止）
 
 ## 一句话

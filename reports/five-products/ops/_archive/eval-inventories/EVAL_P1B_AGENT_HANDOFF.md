@@ -1,11 +1,11 @@
 # P1b 工程侧交接（agent 已交付 / 人侧待办）
 
-> **日期**：2026-11-05  
-> **对照**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md)
+> **日期**：2026-11-05
+> **对照**：[EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04](../../EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md)
 
 ## 工程 closeout（报告轨）
 
-**状态**：报告侧工程交付完成（#596–#606）。签认已收口项见下表。人侧劳动项工程已出卷/阻塞留档，总清单：[EVAL_HUMAN_REMAINING_OPS_2026-11-05.md](./EVAL_HUMAN_REMAINING_OPS_2026-11-05.md)。
+**状态**：报告侧工程交付完成（#596–#606）。签认已收口项见下表。人侧劳动项工程已出卷/阻塞留档，总清单：EVAL_HUMAN_REMAINING_OPS_2026-11-05.md（历史链接失效）。
 
 计划项「基线对比、维度回归、失败样本与元数据」对应交付：
 
@@ -36,13 +36,13 @@
 
 | 项 | 状态 | 材料 |
 |---|---|---|
-| **A1 本地联调** | ✅ **pass**（2026-11-05） | [EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md) |
-| **A1 生产/正式环境** | ☑ **blocked_not_released**（无正式 BASE） | [阻塞单](./EVAL_A1_PROD_BLOCKED_NOT_RELEASED_2026-11-05.md) · [母版](./EVAL_A1_DEPLOY_SIGNOFF.md) |
-| **EET 治理批准** | ✅ **Accept**（2026-11-05） | [EVAL_EET_ACCEPT_2026-11-05.md](./EVAL_EET_ACCEPT_2026-11-05.md) · 映射 Accepted |
-| **G2B-100 protocol 三方签认** | ✅ **SIGNED** · Holdout A | [SIGNED 留存](./EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md) · [母版](../../../packages/aiplat-evaluation/docs/a3/G2B_100_PROTOCOL.md) |
-| **G2b 31–100 双标/仲裁** | ✅ closeout + freeze 确认 + scoped attestation（n=100 · 0.72；**claim=false**） | [closeout](./EVAL_G2B_N100_CLOSEOUT_2026-11-05.md) · `evidence/g2b_freeze_record.v1.json` · `g2b_accuracy_claim_attestation.v1.json` |
-| **Arena pilot ≥30 对×2 盲评** | ✅ 双标+仲裁+result+QA（κ=0.8459；QA fail 已留档；smoke 未替换） | [closeout](./EVAL_ARENA_PILOT_CLOSEOUT_2026-11-05.md) · `evidence/arena_blind_qa_process.v1.json` |
-| **对象卡 owner 核实** | ✅ **朱向群 ×7**（2026-11-05） | [EVAL_OBJECT_CARDS_OWNER_VERIFY.md](./EVAL_OBJECT_CARDS_OWNER_VERIFY.md) |
+| **A1 本地联调** | ✅ **pass**（2026-11-05） | EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md（历史链接失效） |
+| **A1 生产/正式环境** | ☑ **blocked_not_released**（无正式 BASE） | 阻塞单（历史链接失效） · 母版（历史链接失效） |
+| **EET 治理批准** | ✅ **Accept**（2026-11-05） | EVAL_EET_ACCEPT_2026-11-05.md（历史链接失效） · 映射 Accepted |
+| **G2B-100 protocol 三方签认** | ✅ **SIGNED** · Holdout A | [SIGNED 留存](../../EVAL_G2B100_PROTOCOL_SIGNED_2026-11-05.md) · 母版（历史链接失效） |
+| **G2b 31–100 双标/仲裁** | ✅ closeout + freeze 确认 + scoped attestation（n=100 · 0.72；**claim=false**） | closeout（历史链接失效） · `evidence/g2b_freeze_record.v1.json` · `g2b_accuracy_claim_attestation.v1.json` |
+| **Arena pilot ≥30 对×2 盲评** | ✅ 双标+仲裁+result+QA（κ=0.8459；QA fail 已留档；smoke 未替换） | closeout（历史链接失效） · `evidence/arena_blind_qa_process.v1.json` |
+| **对象卡 owner 核实** | ✅ **朱向群 ×7**（2026-11-05） | [EVAL_OBJECT_CARDS_OWNER_VERIFY.md](../../EVAL_OBJECT_CARDS_OWNER_VERIFY.md) |
 
 ## 诚实锁
 
