@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T12:20:30+08:00",
+  "reviewed_at": "2026-11-11T12:30:36+08:00",
   "base_ref": "origin/main",
   "merge_base": "caf077aa7cc067c9035daaf9bd8f4f5dd0183a74",
-  "diff_sha256": "d0956106b35ffb86637c56f35f53959619ed967700359534fb049f08f35673eb",
-  "head_sha": "acb109222d3af777137a26472fe754b1bc4d39d9",
+  "diff_sha256": "86cf69aa2942225dadee72133eb1dcdf314edc35f2a0d963fcfeefc4ef05a873",
+  "head_sha": "9302bffd870ab68965659e77f7019de9761ae659",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject-aware suite profile exam bank binding; duplicate facade removed; claims stay false. Local lock only."
+  "note": "Subject exam bank binding + AUTO-STATS/whitepaper refresh. Local lock only."
 }
