@@ -3,7 +3,7 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T13:43:47Z"
+generated_at: "2026-11-11T14:05:15Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T13:43:47Z` |
+| 生成时间 (UTC) | `2026-11-11T14:05:15Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -55,8 +55,8 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/manuals/getting-started.md`](../../../docs/manuals/getting-started.md) | 上手路径 | ❌ |
-| [`docs/manuals/fde/README.md`](../../../docs/manuals/fde/README.md) | FDE 交付场景入口 | ❌ |
+| [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) | 上手路径 | ❌ |
+| [`docs/manuals/fde/README.md`](../../../docs/guides/fde/README.md) | FDE 交付场景入口 | ❌ |
 | [`docs/architecture/execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) | 执行选型（产品/技术评估共用） | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | 厂外薄交付边界（Pi） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | Pi Package 用户侧说明 | ✅ |
@@ -226,9 +226,9 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 
 操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
 
-- [API Reference](../reference/API/api-reference.md) — 完整 API 文档
+- [API Reference](../../../docs/reference/API/api-reference.md) — 完整 API 文档
 - [自主性评估报告](../../../docs/reference/framework/aiplat-complete-assessment.md) — 系统能力评估
-- [验证协议](../reference/framework/verification-protocol.md) — 独立复现验证
+- [验证协议](../../../docs/reference/framework/verification-protocol.md) — 独立复现验证
 
 #### 常见问题
 

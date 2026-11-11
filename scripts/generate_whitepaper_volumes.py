@@ -848,6 +848,8 @@ def _repair_generated_links(path: Path) -> None:
             "../../../docs/guides/knowledge/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
             "../framework/verification-protocol.md": "docs/reference/framework/verification-protocol.md",
+            "../reference/API/api-reference.md": "docs/reference/API/api-reference.md",
+            "../reference/framework/verification-protocol.md": "docs/reference/framework/verification-protocol.md",
             "./cases/README.md": "docs/reference/explanatory/cases/README.md",
         }
         if link in special:
@@ -882,6 +884,10 @@ def _repair_generated_links(path: Path) -> None:
                 target = "docs/reference/explanatory/" + rest
             else:
                 target = "docs/reference/explanatory/" + rest
+            rel = os.path.relpath(REPO / target, path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
+        if link.startswith("../../../docs/manuals/"):
+            target = "docs/guides/" + link[len("../../../docs/manuals/"):]
             rel = os.path.relpath(REPO / target, path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
         if link.startswith("../../../docs/guides/"):

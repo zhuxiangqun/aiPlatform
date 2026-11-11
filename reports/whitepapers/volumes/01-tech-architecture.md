@@ -3,7 +3,7 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T13:43:47Z"
+generated_at: "2026-11-11T14:05:15Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T13:43:47Z` |
+| 生成时间 (UTC) | `2026-11-11T14:05:15Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -60,7 +60,7 @@ language: zh-CN
 | [`docs/architecture/comparison.md`](../../../docs/architecture/comparison.md) | 架构层对比（现行六平台入口） | ✅ |
 | [`docs/archive/plans-comparison-four-platform-2026-07.md`](../../../docs/archive/plans-comparison-four-platform-2026-07.md) | 规划期四方案对比（已归档 · C2） | ✅ |
 | [`CLAUDE.md`](../../../CLAUDE.md) | 执行规约 / 层边界 | ✅ |
-| [`docs/manuals/deployment.md`](../../../docs/manuals/deployment.md) | 部署与运维视图 | ❌ |
+| [`docs/manuals/deployment.md`](../../../docs/guides/deployment.md) | 部署与运维视图 | ❌ |
 | [`docs/architecture/plans/disaster-recovery-plan.md`](../../../docs/architecture/plans/disaster-recovery-plan.md) | 灾备 / RPO·RTO | ✅ |
 | [`docs/standards/规范-性能.md`](../../../docs/standards/规范-性能.md) | 性能预算与扩展约束 | ✅ |
 | [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) | SLI/SLO / 误差预算 | ✅ |
@@ -70,7 +70,7 @@ language: zh-CN
 | [`docs/manuals/testing.md`](../../../docs/guides/testing.md) | 测试金字塔与策略 | ❌ |
 | [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) | 执行质量门禁 | ✅ |
 | [`docs/archive/architecture-evolution-roadmap.md`](../../../docs/archive/architecture-evolution-roadmap.md) | 架构演进路线 | ✅ |
-| [`docs/manuals/getting-started.md`](../../../docs/manuals/getting-started.md) | 开发上手 | ❌ |
+| [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) | 开发上手 | ❌ |
 | [`docs/architecture/plans/app-module-layout.md`](../../../docs/architecture/plans/app-module-layout.md) | 应用模块目录规范 | ✅ |
 | [`docs/mcp/index.md`](../../../docs/reference/mcp/index.md) | 集成 / MCP 入口 | ❌ |
 
