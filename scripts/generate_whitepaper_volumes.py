@@ -464,7 +464,7 @@ def _build_volume(
             f"{_link('docs/knowledge-system.md')} | "
             "CAPABILITIES「知识引擎」· 灾备计划（备份） |",
             f"| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | "
-            f"{_link('docs/security/security-architecture.md')} | "
+            f"{_link('docs/reference/security/security-architecture.md')} | "
             f"分卷 05 · CAPABILITIES「安全与治理 / Gate」 |",
             f"| **测试与验证** | 金字塔 / CI / 质量门？ | "
             f"{_link('docs/manuals/testing.md')} · "
@@ -480,7 +480,7 @@ def _build_volume(
             f"{_link('docs/architecture/plans/app-module-layout.md')} | — |",
             f"| **集成架构** | MCP/A2A/外部适配？ | "
             f"{_link('docs/mcp/index.md')} · "
-            f"{_link('docs/policy/mcp-stdio-prod-allowlist.md')} | "
+            f"{_link('docs/reference/policy/mcp-stdio-prod-allowlist.md')} | "
             f"分卷 04 · CAPABILITIES「MCP / A2A」 |",
             f"| **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | "
             f"{_link('docs/architecture/slo.md')} · "
@@ -663,7 +663,7 @@ def _build_volume(
             "|--------|-------------------|----------|------------|",
             "| **MCP 工具** | 注册/暴露工具供 Agent 调用 | "
             f"{_link('docs/mcp/index.md')} | "
-            f"{_link('docs/policy/mcp-stdio-prod-allowlist.md')} + 成本阶梯 |",
+            f"{_link('docs/reference/policy/mcp-stdio-prod-allowlist.md')} + 成本阶梯 |",
             "| **HTTP API** | 调平台/Core 能力 | "
             f"{_link('docs/API/api-reference.md')} | 鉴权 / 租户 / 限流（platform） |",
             "| **A2A** | Agent 间互操作 | CAPABILITIES「A2A 协议」切片 | PolicyGate / 身份透传 |",
@@ -684,7 +684,7 @@ def _build_volume(
         excerpt, _ = _read_excerpt(_rel("docs/mcp/index.md"), 5000)
         parts += [excerpt, "", "### 3.5 MCP 生产准入", ""]
         excerpt, _ = _read_excerpt(
-            _rel("docs/policy/mcp-stdio-prod-allowlist.md"), 6000
+            _rel("docs/reference/policy/mcp-stdio-prod-allowlist.md"), 6000
         )
         parts += [excerpt, "", "### 3.6 API 参考（节选）", ""]
         excerpt, _ = _read_excerpt(_rel("docs/API/api-reference.md"), 8000)
@@ -720,7 +720,7 @@ def _build_volume(
             "治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：",
             "",
             f"- 评分戳：{_link('docs/reference/framework/assessment-scores.json')}",
-            f"- 安全架构：{_link('docs/security/security-architecture.md')}",
+            f"- 安全架构：{_link('docs/reference/security/security-architecture.md')}",
             f"- Gate 与安全能力：{_link('AIPLAT_CAPABILITIES.md')} 中 Gate / 安全节",
             f"- L 级 ADR：{_link('docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md')}",
             "",
@@ -733,7 +733,7 @@ def _build_volume(
             "",
         ]
         excerpt, _ = _read_excerpt(
-            _rel("docs/security/security-architecture.md"), 12000
+            _rel("docs/reference/security/security-architecture.md"), 12000
         )
         parts += [excerpt, "", "### 3.3 CAPABILITIES：安全与治理 / Gate", ""]
         parts += [

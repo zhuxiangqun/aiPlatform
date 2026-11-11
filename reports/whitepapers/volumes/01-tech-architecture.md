@@ -3,7 +3,7 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:57:01Z"
+generated_at: "2026-11-11T13:09:55Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:57:01Z` |
+| 生成时间 (UTC) | `2026-11-11T13:09:55Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -148,11 +148,11 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 | **性能与扩展** | QPS/P95/容量/扩展策略？ | [`docs/standards/规范-性能.md`](../../../docs/standards/规范-性能.md) · [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) · `scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 |
 | **可观测性** | 日志/指标/追踪怎么采与告警？ | [`docs/architecture/plans/observability-eval-repair-architecture.md`](../../../docs/architecture/plans/observability-eval-repair-architecture.md) · [`docs/standards/规范-core-run_id-trace_id-request_id.md`](../../../docs/standards/规范-core-run_id-trace_id-request_id.md) | CAPABILITIES「可观测性」· 安全卷可交叉 |
 | **数据架构** | 存什么、隔离、备份？ | [`docs/knowledge-system.md`](../../../docs/guides/knowledge/knowledge-system.md) | CAPABILITIES「知识引擎」· 灾备计划（备份） |
-| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | [`docs/security/security-architecture.md`](../../../docs/reference/security/security-architecture.md) | 分卷 05 · CAPABILITIES「安全与治理 / Gate」 |
+| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | [`docs/reference/security/security-architecture.md`](../../../docs/reference/security/security-architecture.md) | 分卷 05 · CAPABILITIES「安全与治理 / Gate」 |
 | **测试与验证** | 金字塔 / CI / 质量门？ | [`docs/manuals/testing.md`](../../../docs/guides/testing.md) · [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) · `.github/workflows/` | CAPABILITIES「管理 & 质量」 |
 | **技术风险与演进** | 技术债、依赖风险、路线？ | [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) · [`docs/archive/architecture-evolution-roadmap.md`](../../../docs/archive/architecture-evolution-roadmap.md) · [`CLAUDE.md`](../../../CLAUDE.md) §16 | 商业卷 ROADMAP 节选（非财务） |
 | **开发视图** | 代码组织、模块边界、上手？ | [`CLAUDE.md`](../../../CLAUDE.md) · [`docs/DOCUMENT_SYSTEM.md`](../../../docs/DOCUMENT_SYSTEM.md) · [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) · [`docs/architecture/plans/app-module-layout.md`](../../../docs/architecture/plans/app-module-layout.md) | — |
-| **集成架构** | MCP/A2A/外部适配？ | [`docs/mcp/index.md`](../../../docs/reference/mcp/index.md) · [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/reference/policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
+| **集成架构** | MCP/A2A/外部适配？ | [`docs/mcp/index.md`](../../../docs/reference/mcp/index.md) · [`docs/reference/policy/mcp-stdio-prod-allowlist.md`](../../../docs/reference/policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
 | **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) · [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) | CAPABILITIES「管理 & 质量」 |
 
 > **阅读约定**：索引保证「只读本卷也知道去哪尽调」。性能数字以 SLO / `benchmark_all.sh` 为准，勿在卷内编造 QPS。

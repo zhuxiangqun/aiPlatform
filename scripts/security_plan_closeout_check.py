@@ -45,7 +45,7 @@ ENGINEERING: List[Tuple[str, str]] = [
     ("P0-2", "reports/security/P0-2-fail-closed-cutover.md"),
     ("dims", "reports/security/security_quality_dimensions.yaml"),
     ("dims", "reports/security/security-quality-dimensions.md"),
-    ("dims", "docs/security/security-dimension-crosswalk.md"),
+    ("dims", "docs/reference/security/security-dimension-crosswalk.md"),
     ("dims", "scripts/security_dimensions_report.py"),
     ("P0-IR", "scripts/security_ir_contacts.py"),
     ("P0-IR", "security/ir/contacts.example.yaml"),
