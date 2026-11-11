@@ -1,5 +1,8 @@
 # Learning / Runs / Artifacts（As-Is）
 
+> **派生文档（Batch C1）**：本文是管理端摘要，权威实现/契约见 [`aiPlat-core/docs/index.md`](../../../aiPlat-core/docs/index.md)；冲突时以 core 文档为准。
+
+
 > 本文档用于同步 management 前端的“Runs 评估工作流 + Learning Artifacts 浏览能力”的**当前实现**，避免 To‑Be 文档与真实系统脱节。
 
 ---
