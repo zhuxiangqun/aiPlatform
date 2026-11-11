@@ -34,6 +34,20 @@ def main() -> int:
     if dup:
         errors.append("重复章节: " + ", ".join(dup))
 
+    # 1b. section/subsection numbering
+    cn = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10, "十一": 11, "十二": 12, "十三": 13, "十四": 14, "十五": 15, "十六": 16, "十七": 17}
+    current = None
+    for line in text.splitlines():
+        m = re.match(r"^## ([一二三四五六七八九十]+)、", line)
+        if m:
+            current = cn.get(m.group(1))
+            continue
+        m = re.match(r"^### (\d+(?:\.\d+)*) ", line)
+        if m and current is not None:
+            top = int(m.group(1).split(".")[0])
+            if top != current:
+                errors.append(f"子章节编号错误: {line.strip()}（应为 {current}.x）")
+
     # 2. number table
     sec = section(text, "## 十四、数字声明治理", "## 十五、")
     rows = re.findall(r"^\| (.+?) \| ([\d,]+) \| `(.+)` \|$", sec, re.M)

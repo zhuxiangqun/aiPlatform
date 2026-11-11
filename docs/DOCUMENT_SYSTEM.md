@@ -639,14 +639,14 @@ review_cycle:
 
 ## 八、报告与归档
 
-### 7.1 报告
+### 8.1 报告
 
 - 根 `reports/` 纳入登记，但标记 `report/generated`；
 - 报告禁止手工编辑；更新 = 重新生成；
 - 报告头必须包含生成时间、生成命令、“不手动编辑”声明；
 - 运行证据只追加，不参与 canonical 评审。
 
-### 7.2 归档
+### 8.2 归档
 
 - `docs/archive/` 与 `reports/**/_archive/` 均为 historical；
 - 归档必须带 `supersedes` / `superseded_by`；
@@ -699,7 +699,7 @@ scripts/verify_document_system.py # 新增（Batch 0 自检）
 
 ## 十一、迁移
 
-### 10.1 映射
+### 11.1 映射
 
 | 当前 | 目标 |
 |---|---|
@@ -719,7 +719,7 @@ scripts/verify_document_system.py # 新增（Batch 0 自检）
 | `packages/*/docs/**` | 保留包内；根 docs 只索引 |
 | `docs/archive/**` | `docs/archive/` 下按类型归档 |
 
-### 10.2 顺序
+### 11.2 顺序
 
 1. 批准 v2.4；
 2. 扩展 `verify_doc_structure.py`；
@@ -729,7 +729,7 @@ scripts/verify_document_system.py # 新增（Batch 0 自检）
 6. Batch A：断链/重定向；
 7. Batch B/C：合并/归档。
 
-### 10.3 禁止
+### 11.3 禁止
 
 - 一次性大搬迁；
 - 未建 redirect map 就移动；
