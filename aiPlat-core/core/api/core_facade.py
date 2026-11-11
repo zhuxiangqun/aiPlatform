@@ -8726,6 +8726,32 @@ def eval_promote_subject_capability_bank(
     return promote_subject_capability_bank(**kwargs)
 
 
+def eval_stamp_subject_seed_purpose_ok(
+    *,
+    subject_kind: str,
+    reviewer: str = "owner",
+) -> Dict[str, Any]:
+    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        stamp_subject_seed_purpose_ok,
+    )
+
+    return stamp_subject_seed_purpose_ok(
+        subject_kind=subject_kind, reviewer=reviewer
+    )
+
+
+def eval_stamp_all_subject_seed_purpose_ok(
+    *, reviewer: str = "owner"
+) -> Dict[str, Any]:
+    """Stamp purpose_ok on all non-agent Subject seed banks (claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        stamp_all_subject_seed_purpose_ok,
+    )
+
+    return stamp_all_subject_seed_purpose_ok(reviewer=reviewer)
+
+
 def eval_compile_plan_from_suite_profile(
     *,
     profile: Optional[Dict[str, Any]] = None,

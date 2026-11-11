@@ -30,6 +30,12 @@
         "不测试检索增强"
       ],
       "oracle_rationale": "词面 must_contain「缺少」且 must_not「会议结论是」（dry stub 对齐）"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -63,6 +69,12 @@
         "不测试权限"
       ],
       "oracle_rationale": "词面缺少 + 禁止续约意向是"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -96,6 +108,12 @@
         "不测试电子签"
       ],
       "oracle_rationale": "词面缺少 + 禁止已修改条款"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -129,6 +147,12 @@
         "不测试发布系统"
       ],
       "oracle_rationale": "词面缺少 + 禁止已部署"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -162,6 +186,12 @@
         "不测试分页"
       ],
       "oracle_rationale": "词面缺少 + 禁止根因是"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -195,6 +225,12 @@
         "不测试检索增强"
       ],
       "oracle_rationale": "词面 must_contain「缺少」且 must_not「会议结论是」（dry stub 对齐）"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -228,6 +264,12 @@
         "不测试权限"
       ],
       "oracle_rationale": "词面缺少 + 禁止续约意向是"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -261,6 +303,12 @@
         "不测试电子签"
       ],
       "oracle_rationale": "词面缺少 + 禁止已修改条款"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   }
 ]

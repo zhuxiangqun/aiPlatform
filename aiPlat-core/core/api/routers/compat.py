@@ -939,6 +939,35 @@ async def compat_evaluation_promote_subject_capability(body: Dict[str, Any], req
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/stamp-subject-seed-purpose-ok")
+async def compat_evaluation_stamp_subject_seed_purpose_ok(body: Dict[str, Any]):
+    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim closed)."""
+    from core.api.core_facade import (
+        eval_stamp_all_subject_seed_purpose_ok,
+        eval_stamp_subject_seed_purpose_ok,
+    )
+
+    kind = str((body or {}).get("subject_kind") or "").strip()
+    reviewer = str((body or {}).get("reviewer") or "owner").strip() or "owner"
+    all_subjects = bool((body or {}).get("all"))
+    try:
+        if all_subjects or kind in ("*", "all"):
+            return eval_stamp_all_subject_seed_purpose_ok(reviewer=reviewer)
+        if not kind:
+            return {
+                "ok": False,
+                "error": "subject_kind required (or all=true)",
+                "claim_eligible": False,
+                "accuracy_claim": False,
+            }
+        return eval_stamp_subject_seed_purpose_ok(
+            subject_kind=kind, reviewer=reviewer
+        )
+    except Exception as e:
+        logger.debug("stamp-subject-seed-purpose-ok failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/case-packs/compile-suite-profile")
 async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
     """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""

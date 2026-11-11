@@ -1,10 +1,20 @@
 """Subject capability bank promote (purpose_ok → freeze; claim closed)."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
+from core.apps.eval.service.api_capability_bank import api_regression_status
 from core.apps.eval.service.subject_capability_promote import (
     PROMOTE_SCHEMA,
+    SEED_PURPOSE_OK_SCHEMA,
+    SubjectCapabilityPromoteError,
     list_promotable_subject_kinds,
     promote_subject_capability_bank,
+    stamp_all_subject_seed_purpose_ok,
+    stamp_subject_seed_purpose_ok,
 )
 
 
@@ -81,3 +91,42 @@ def test_eval_promote_subject_capability_bank_facade(tmp_path, monkeypatch):
     assert out["ok"] is True
     assert out["pack_id"] == "dataset.capability"
     assert out["claim_eligible"] is False
+
+
+def test_stamp_subject_seed_purpose_ok_writes_review(tmp_path):
+    src = Path("aiPlat-core/workspace_seeds/eval/api_capability")
+    dst = tmp_path / "api_capability"
+    # copy minimal bank into tmp
+    import shutil
+
+    shutil.copytree(src, dst)
+    out = stamp_subject_seed_purpose_ok(
+        subject_kind="api", reviewer="owner", seed_dir=dst
+    )
+    assert out["schema"] == SEED_PURPOSE_OK_SCHEMA
+    assert out["ok"] is True
+    assert out["n_cases"] >= 15
+    assert out["frozen"] is False
+    assert out["claim_eligible"] is False
+    sample = json.loads((dst / "cases" / "robustness.json").read_text())[0]
+    assert sample["review"]["status"] == "purpose_ok"
+    assert sample["review"]["reviewer"] == "owner"
+
+
+def test_stamp_subject_seed_purpose_ok_rejects_agent():
+    with pytest.raises(SubjectCapabilityPromoteError):
+        stamp_subject_seed_purpose_ok(subject_kind="agent")
+
+
+def test_stamp_all_and_api_regression_purpose_ok_progress():
+    # Uses real workspace seeds (stamped in this PR). Honesty: pack still draft.
+    inv = stamp_all_subject_seed_purpose_ok(reviewer="owner")
+    assert inv["ok"] is True
+    assert inv["n_subjects"] >= 13
+    assert inv["claim_eligible"] is False
+    st = api_regression_status()
+    assert st["purpose_ok_or_better"] == st["case_count"]
+    assert st["draft_pending"] == 0
+    assert st["pack_status"] == "draft"
+    assert st["profile_complete"] is False
+    assert st["claim_eligible"] is False

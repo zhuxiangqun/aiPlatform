@@ -116,7 +116,9 @@ def test_session_regression_profile_and_status():
     assert st["case_count"] >= 15
     assert st["claim_eligible"] is False
     assert st["accuracy_claim"] is False
-    assert st["draft_pending"] == st["case_count"]
+    assert st["purpose_ok_or_better"] == st["case_count"]
+    assert st["draft_pending"] == 0
+    assert st["profile_complete"] is False  # pack.meta still draft; claim closed
 
 
 def test_eval_session_regression_status_facade():

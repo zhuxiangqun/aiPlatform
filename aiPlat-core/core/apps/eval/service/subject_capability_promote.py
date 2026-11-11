@@ -3,15 +3,26 @@
 Generalizes agent-only ``promote_agent_capability_bank`` for OBJECT_TYPES +
 Subject-local banks. Stamps purpose_ok then draft→review→freeze via Case Pack
 factory. Never opens accuracy_claim / certification.
+
+Also provides seed-side ``stamp_subject_seed_purpose_ok`` (writes review into
+``cases/*.json`` after content_purpose_ok; does **not** freeze pack.meta;
+claim stays false).
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 PROMOTE_SCHEMA = "eval.subject_capability_promote.v1"
+SEED_PURPOSE_OK_SCHEMA = "eval.subject_seed_purpose_ok.v1"
 
 _PURPOSE_OK_NOTE = (
     "Subject ordered promote: content_purpose_ok gate + owner sign-off path"
+)
+_SEED_PURPOSE_OK_NOTE = (
+    "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; "
+    "claim/Certification closed until workspace freeze + independent claim gate"
 )
 
 
@@ -102,6 +113,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
         object_types: List[str],
         validate: Callable[..., Dict[str, Any]],
         build: Callable[..., List[Dict[str, Any]]],
+        seed_dir: Callable[..., Path],
         object_type_member: bool,
     ) -> Dict[str, Any]:
         return {
@@ -111,6 +123,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             "object_types": object_types,
             "validate": validate,
             "build": build,
+            "seed_dir": seed_dir,
             "object_type_member": object_type_member,
         }
 
@@ -122,6 +135,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["prompt"],
             validate=prompt_bank.validate_prompt_capability_bank,
             build=prompt_bank.build_prompt_capability_cases,
+            seed_dir=prompt_bank.default_seed_dir,
             object_type_member=True,
         ),
         "workflow": _row(
@@ -131,6 +145,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["workflow"],
             validate=wf_bank.validate_workflow_capability_bank,
             build=wf_bank.build_workflow_capability_cases,
+            seed_dir=wf_bank.default_seed_dir,
             object_type_member=True,
         ),
         "model": _row(
@@ -140,6 +155,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["model"],
             validate=model_bank.validate_model_capability_bank,
             build=model_bank.build_model_capability_cases,
+            seed_dir=model_bank.default_seed_dir,
             object_type_member=True,
         ),
         "skill": _row(
@@ -149,6 +165,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["skill"],
             validate=skill_bank.validate_skill_capability_bank,
             build=skill_bank.build_skill_capability_cases,
+            seed_dir=skill_bank.default_seed_dir,
             object_type_member=True,
         ),
         "api": _row(
@@ -158,6 +175,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["api"],
             validate=api_bank.validate_api_capability_bank,
             build=api_bank.build_api_capability_cases,
+            seed_dir=api_bank.default_seed_dir,
             object_type_member=True,
         ),
         "generated_app": _row(
@@ -167,6 +185,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["generated_app"],
             validate=ga_bank.validate_generated_app_capability_bank,
             build=ga_bank.build_generated_app_capability_cases,
+            seed_dir=ga_bank.default_seed_dir,
             object_type_member=True,
         ),
         "dataset": _row(
@@ -176,6 +195,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["dataset"],
             validate=ds_bank.validate_dataset_capability_bank,
             build=ds_bank.build_dataset_capability_cases,
+            seed_dir=ds_bank.default_seed_dir,
             object_type_member=True,
         ),
         "system": _row(
@@ -185,6 +205,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["system"],
             validate=system_bank.validate_system_capability_bank,
             build=system_bank.build_system_capability_cases,
+            seed_dir=system_bank.default_seed_dir,
             object_type_member=True,
         ),
         "kb": _row(
@@ -194,6 +215,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["kb"],
             validate=kb_bank.validate_kb_capability_bank,
             build=kb_bank.build_kb_capability_cases,
+            seed_dir=kb_bank.default_seed_dir,
             object_type_member=False,
         ),
         "code_review": _row(
@@ -203,6 +225,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["code_review"],
             validate=cr_bank.validate_code_review_capability_bank,
             build=cr_bank.build_code_review_capability_cases,
+            seed_dir=cr_bank.default_seed_dir,
             object_type_member=False,
         ),
         "session": _row(
@@ -212,6 +235,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["session"],
             validate=session_bank.validate_session_capability_bank,
             build=session_bank.build_session_capability_cases,
+            seed_dir=session_bank.default_seed_dir,
             object_type_member=False,
         ),
         "tool": _row(
@@ -221,6 +245,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["tool"],
             validate=tool_bank.validate_tool_capability_bank,
             build=tool_bank.build_tool_capability_cases,
+            seed_dir=tool_bank.default_seed_dir,
             object_type_member=False,
         ),
         "multi_agent": _row(
@@ -230,6 +255,7 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
             object_types=["multi_agent"],
             validate=ma_bank.validate_multi_agent_capability_bank,
             build=ma_bank.build_multi_agent_capability_cases,
+            seed_dir=ma_bank.default_seed_dir,
             object_type_member=False,
         ),
     }
@@ -237,6 +263,170 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
 
 def list_promotable_subject_kinds() -> List[str]:
     return sorted(["agent", *_bank_specs().keys()])
+
+
+def _stamp_review_purpose_ok_inplace(
+    case: Mapping[str, Any], *, reviewer: str
+) -> Dict[str, Any]:
+    """Stamp purpose_ok on a seed case without Case Pack normalization."""
+    c = dict(case)
+    review = dict(c.get("review") or {})
+    review.update(
+        {
+            "status": "purpose_ok",
+            "decision": "purpose_ok",
+            "reviewer": str(reviewer or "owner"),
+            "notes": _SEED_PURPOSE_OK_NOTE,
+        }
+    )
+    c["review"] = review
+    return c
+
+
+def stamp_subject_seed_purpose_ok(
+    *,
+    subject_kind: str,
+    reviewer: str = "owner",
+    seed_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Validate + content_purpose_ok → write purpose_ok into seed cases/*.json.
+
+    Does **not** freeze pack.meta / workspace registry. claim_eligible stays
+    false. Agent seeds are out of scope here (use promote_agent path).
+    """
+    from core.apps.eval.service.content_purpose_ok import (
+        ContentPurposeOkError,
+        assert_cases_content_purpose_ok,
+    )
+    from core.apps.eval.service.method_track import assert_not_subject_method
+
+    kind = str(subject_kind or "").strip().lower()
+    assert_not_subject_method(kind)
+    if not kind:
+        raise SubjectCapabilityPromoteError("subject_kind required")
+    if kind == "agent":
+        raise SubjectCapabilityPromoteError(
+            "agent seed purpose_ok uses promote_agent_capability_bank / "
+            "write_agent_capability_seeds — not stamp_subject_seed_purpose_ok"
+        )
+
+    specs = _bank_specs()
+    spec = specs.get(kind)
+    if spec is None:
+        raise SubjectCapabilityPromoteError(f"no_promotable_subject:{kind}")
+
+    report = spec["validate"](seed_dir=seed_dir) if seed_dir else spec["validate"]()
+    if not report.get("ok"):
+        raise SubjectCapabilityPromoteError(
+            f"capability bank invalid: subject={kind} errors={report.get('errors')}"
+        )
+
+    raw_cases = (
+        list(spec["build"](seed_dir=seed_dir))
+        if seed_dir
+        else list(spec["build"]())
+    )
+    try:
+        content_report = assert_cases_content_purpose_ok(
+            raw_cases, subject_kind=kind
+        )
+    except ContentPurposeOkError as exc:
+        raise SubjectCapabilityPromoteError(str(exc)) from exc
+
+    root = Path(seed_dir) if seed_dir else Path(spec["seed_dir"]())
+    cases_dir = root / "cases"
+    if not cases_dir.is_dir():
+        raise SubjectCapabilityPromoteError(f"cases dir missing: {cases_dir}")
+
+    who = str(reviewer or "owner").strip() or "owner"
+    stamped = 0
+    files_touched = 0
+    for path in sorted(cases_dir.glob("*.json")):
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SubjectCapabilityPromoteError(
+                f"seed JSON invalid: {path}: {exc}"
+            ) from exc
+        if not isinstance(raw, list):
+            raise SubjectCapabilityPromoteError(f"cases file must be a list: {path}")
+        out_rows: List[Dict[str, Any]] = []
+        changed = False
+        for row in raw:
+            if not isinstance(row, Mapping):
+                raise SubjectCapabilityPromoteError(f"case must be object in {path}")
+            prev = row.get("review") if isinstance(row.get("review"), Mapping) else {}
+            stamped_row = _stamp_review_purpose_ok_inplace(row, reviewer=who)
+            if dict(prev) != dict(stamped_row.get("review") or {}):
+                changed = True
+            out_rows.append(stamped_row)
+            stamped += 1
+        if changed:
+            path.write_text(
+                json.dumps(out_rows, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            files_touched += 1
+
+    return {
+        "schema": SEED_PURPOSE_OK_SCHEMA,
+        "ok": True,
+        "subject_kind": kind,
+        "object_type_member": bool(spec["object_type_member"]),
+        "pack_id": spec["pack_id"],
+        "pack_version": spec["version"],
+        "profile_id": spec["profile_id"],
+        "seed_dir": str(root),
+        "n_cases": stamped,
+        "files_touched": files_touched,
+        "reviewer": who,
+        "content_purpose_ok": True,
+        "content_purpose_ok_count": int(
+            content_report.get("content_purpose_ok_count") or stamped
+        ),
+        "pack_status": "draft",
+        "frozen": False,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "certification_eligible": False,
+        "honesty": (
+            f"seed cases/*.json stamped purpose_ok for {kind}; "
+            "pack.meta remains draft; workspace freeze still required for "
+            "profile_complete; claim/Certification stay closed"
+        ),
+    }
+
+
+def stamp_all_subject_seed_purpose_ok(
+    *, reviewer: str = "owner"
+) -> Dict[str, Any]:
+    """Stamp purpose_ok on every non-agent promotable Subject seed bank."""
+    rows: List[Dict[str, Any]] = []
+    errors: List[Dict[str, str]] = []
+    for kind in sorted(_bank_specs().keys()):
+        try:
+            rows.append(
+                stamp_subject_seed_purpose_ok(
+                    subject_kind=kind, reviewer=reviewer
+                )
+            )
+        except SubjectCapabilityPromoteError as exc:
+            errors.append({"subject_kind": kind, "error": str(exc)})
+    return {
+        "schema": SEED_PURPOSE_OK_SCHEMA + ".inventory",
+        "ok": not errors,
+        "n_subjects": len(rows),
+        "n_errors": len(errors),
+        "subjects": rows,
+        "errors": errors,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "certification_eligible": False,
+        "honesty": (
+            "Seed-side purpose_ok inventory only; does not freeze packs or "
+            "open claim/Certification"
+        ),
+    }
 
 
 def promote_subject_capability_bank(

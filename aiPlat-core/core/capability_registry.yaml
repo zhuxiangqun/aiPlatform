@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2611
+total_capabilities: 2615
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 627
+    caps_count: 631
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8797,6 +8797,22 @@ domains:
       - symbol: eval_promote_subject_capability_bank
         type: function
         signature: 'eval_promote_subject_capability_bank(subject_kind,workspace_id,…)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: stamp_subject_seed_purpose_ok
+        type: function
+        signature: 'stamp_subject_seed_purpose_ok(subject_kind,reviewer?,seed_dir?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/subject_capability_promote.py
+      - symbol: stamp_all_subject_seed_purpose_ok
+        type: function
+        signature: 'stamp_all_subject_seed_purpose_ok(reviewer?)→Dict inventory; claim=false'
+        module: aiPlat-core/core/apps/eval/service/subject_capability_promote.py
+      - symbol: eval_stamp_subject_seed_purpose_ok
+        type: function
+        signature: 'eval_stamp_subject_seed_purpose_ok(subject_kind,reviewer?)→Dict'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: eval_stamp_all_subject_seed_purpose_ok
+        type: function
+        signature: 'eval_stamp_all_subject_seed_purpose_ok(reviewer?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: ContentPurposeOkError
         type: class

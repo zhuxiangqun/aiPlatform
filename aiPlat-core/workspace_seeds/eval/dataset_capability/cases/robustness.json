@@ -29,6 +29,12 @@
         "不测真实文件系统"
       ],
       "oracle_rationale": "词面缺少 + 禁止 status=ok"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -61,6 +67,12 @@
         "不测真实注册表"
       ],
       "oracle_rationale": "词面无效 + 禁止断言完成"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -93,6 +105,12 @@
         "不测真实解析器"
       ],
       "oracle_rationale": "词面损坏 + 禁止 rows="
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -125,6 +143,12 @@
         "不测去重中间件"
       ],
       "oracle_rationale": "词面缺少 + 禁止 count=2"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -157,6 +181,12 @@
         "不测真实编解码"
       ],
       "oracle_rationale": "词面未知 + 禁止已加载"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -189,6 +219,12 @@
         "不测真实文件系统"
       ],
       "oracle_rationale": "词面缺少 + 禁止 status=ok"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -221,6 +257,12 @@
         "不测真实注册表"
       ],
       "oracle_rationale": "词面无效 + 禁止断言完成"
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   },
   {
@@ -253,6 +295,12 @@
         "不测真实解析器"
       ],
       "oracle_rationale": "词面损坏 + 禁止 rows="
+    },
+    "review": {
+      "status": "purpose_ok",
+      "decision": "purpose_ok",
+      "reviewer": "owner",
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
     }
   }
 ]
