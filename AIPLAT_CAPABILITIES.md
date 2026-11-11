@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3353
+total_capabilities: 3354
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -680,6 +680,7 @@ scan_hash: 8f9548ec24f4
 | system.regression.v1 + system_regression_status | `system_capability_bank.py` + `eval_system_regression_status` + GET …/store/system-regression-status + EvalSystemRegressionPanel | ✅ | System Subject 回归配额（SYSTEM_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_system_capability_* / eval_run_system_capability_smoke | `core/api/core_facade.py` | ✅ | System 目录/校验/种子库/fixture smoke；≠ system_plan_ops；生成物适用：已接线 | 本批 |
 | subject_regression_inventory + EvalSubjectRegressionInventoryPanel | `subject_regression_inventory.py` + `eval_subject_regression_inventory` + GET …/store/subject-regression-inventory + EvalSubjectRegressionInventoryPanel | ✅ | 跨 Subject regression 诚实总览（9 OBJECT_TYPES + Subject-local）；claim=false；Method 轨排除；生成物适用：不适用（管理端 UI） | 本批 |
+| promote_subject_capability_bank + list_promotable_subject_kinds | `subject_capability_promote.py` + `eval_promote_subject_capability_bank` + POST …/case-packs/promote-subject-capability | ✅ | 任意 Subject 种子题库 purpose_ok→freeze（工作区 registry）；归一化 rubric；claim=false；agent 委托既有 promote；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2856,6 +2857,8 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_list_promotable_subject_kinds | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| SubjectCapabilityPromoteError | `core/apps/eval/service/subject_capability_promote.py` | ✅ | 自动同步 | 已合入 |
 | eval_system_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_system_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | system_regression_profile | `core/apps/eval/service/system_capability_bank.py` | ✅ | 自动同步 | 已合入 |
@@ -4252,7 +4255,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 568 | 1 | 569 |
+| Harness 执行引擎 | 569 | 1 | 570 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4297,7 +4300,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3343** | **10** | **3353** |
+| **总计** | **3344** | **10** | **3354** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

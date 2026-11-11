@@ -81,8 +81,8 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
   'subject-regression-inventory': {
     title: 'Subject Inventory',
     what: '跨 Subject regression 诚实总览：OBJECT_TYPES + Subject-local 题库配额/draft/profile_complete 矩阵。',
-    can: '一眼看齐/缺口、draft 总量，深链各 Subject Regression / Case Pack / Method 轨。',
-    not: '总览齐 ≠ claim；profile_complete 仍要人审 purpose_ok + pack freeze；Arena/G2b/S1 不在此表。',
+    can: '一眼看齐/缺口、draft 总量；按 Subject 一键 purpose_ok→freeze（工作区 registry）；深链 Case Pack / Method 轨。',
+    not: '总览齐 ≠ claim；Promote/freeze ≠ accuracy；Arena/G2b/S1 不在此表。',
   },
   'p1-regression': {
     title: 'P1 Regression',
