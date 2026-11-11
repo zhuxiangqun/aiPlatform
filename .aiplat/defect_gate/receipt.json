@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T16:26:35+08:00",
+  "reviewed_at": "2026-11-11T17:02:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "abb9fec4ddff6e46eab4811c39c8db7f40946967",
-  "diff_sha256": "5795455cbdd7c4b0202409c88f019bf9dedd17e9efb11faea07d3713bea196df",
-  "head_sha": "b78ca610b3722843756617d092b547e5e31f4845",
+  "diff_sha256": "94eae6ac7149cf6a45b0ba18cfa31edc8de7099fcf03a778e81483290f4700bf",
+  "head_sha": "5d5d1c7cec4bda902c1fc3234e65dd31b02e9163",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Seed purpose_ok stamp API + all non-agent Subject cases stamped; pack.meta stays draft; claim/cert closed; profile_complete still needs freeze. Local lock only; CI unlock is non-author Approve."
+  "note": "CI fix: seed copy via default_seed_dir; clause-sync + whitepaper. Stamp does not freeze/claim; profile_complete still false."
 }
