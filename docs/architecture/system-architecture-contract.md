@@ -6,7 +6,8 @@ doc_type: Architecture
 
 > 适用范围：aiPlatform 全系统（management / app / platform / core / infra）
 > 目标：提供**系统级**的分层职责、依赖方向、跨层契约与边界约束。
-> 说明：各层的细化规范请参考各层 `docs/`，本文件只定义跨层“硬约束”和最小必要契约。
+> 说明：各层的细化规范请参考各层 `docs/`，本文件只定义跨层“硬约束”和最小必要契约。  
+> 全景摘要见 [`overview.md`](./overview.md)（非规范）；层边界判定见 [`boundary-standard.md`](./boundary-standard.md)。
 
 ---
 
