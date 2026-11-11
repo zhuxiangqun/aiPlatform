@@ -1,7 +1,7 @@
 # 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
-> 商务条款见 [`ecosystem-partner-commercial-template.md`](./ecosystem-partner-commercial-template.md)（以盖章版为准）。
+> 商务条款见 [`ecosystem-partner-commercial-template.md`](../templates/ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 ## 1. 分层总览
 
@@ -13,7 +13,7 @@
 | **L3 MCP / API ISV** | 注册 MCP 工具或调 HTTP API | `docs/mcp/` · `docs/API/` | MCP 生产准入 · 鉴权/租户/限流 |
 | **L4 私有化厚部署** | 驻场/私有化接近全栈 | 特殊合同 · 非默认交付 | 全量治理面由平台侧强制 |
 
-默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
+默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
 
 ## 2. 各层说明
 

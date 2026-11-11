@@ -2,7 +2,7 @@
 
 > Living · 2026-10-13
 > **原则**：每维有唯一权威源；白皮书**索引 + 摘录评分戳**，禁止手抄第二份能力/评分表。
-> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](../../reports/whitepapers/aiplat-platform-status-whitepaper.md)（executive digest，`scripts/generate_platform_whitepaper.py`）
+> 总入口生成物：[`aiplat-platform-status-whitepaper.md`](../../../reports/whitepapers/aiplat-platform-status-whitepaper.md)（executive digest，`scripts/generate_platform_whitepaper.py`）
 
 ## ready 定义
 
@@ -36,8 +36,8 @@
 
 | 维度 | 白皮书角色 | 核心问题 | 主要受众 | 仓库权威源（勿另起炉灶） | 状态 |
 |------|------------|----------|----------|--------------------------|:----:|
-| **技术** | 技术架构 | 为什么这样设计 | CTO / 架构师 / 工程师 | [`../architecture/overview.md`](../architecture/overview.md) · 决策矩阵 · Pi 薄 Runtime · 分卷 01 | ready |
-| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | 分卷 [`volumes/02-product-capability.md`](../../reports/whitepapers/volumes/02-product-capability.md) · [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) · manuals | ready |
+| **技术** | 技术架构 | 为什么这样设计 | CTO / 架构师 / 工程师 | [`../../architecture/overview.md`](../../architecture/overview.md) · 决策矩阵 · Pi 薄 Runtime · 分卷 01 | ready |
+| **产品** | 产品能力 | 能解决什么问题 | 产品 / 技术评估链 | 分卷 [`volumes/02-product-capability.md`](../../../reports/whitepapers/volumes/02-product-capability.md) · [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) · manuals | ready |
 | **商业** | 商业价值 | 投资回报如何 | CEO / CFO / 业务线 | 分卷 03 · [`commercial-value-model.md`](./commercial-value-model.md) · [`cases/`](./cases/) | ready |
 | **生态** | 生态与集成 | 如何接入协作 | ISV / 社区 / 渠道 | 分卷 04 · [`ecosystem-partner-tiers.md`](./ecosystem-partner-tiers.md) · 商务模板 | ready |
 | **治理** | 安全与治理 | 如何可信可控 | CISO / 合规 | CAPABILITIES「安全与治理 / Gate」· [`../security/`](../security/) · L 级 ADR | ready |
@@ -79,10 +79,10 @@
 
 | 决策域 | 权威源 |
 |--------|--------|
-| 平台总览与边界 | [`../architecture/overview.md`](../architecture/overview.md) |
-| 执行决策矩阵 | [`../architecture/execution-decision-matrix.md`](../architecture/execution-decision-matrix.md) |
-| Pi 薄运行时 | [`../architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) |
-| 文档体系与 ADR 分布 | [`../DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) |
+| 平台总览与边界 | [`../../architecture/overview.md`](../../architecture/overview.md) |
+| 执行决策矩阵 | [`../architecture/execution-decision-matrix.md`](../../architecture/execution-decision-matrix.md) |
+| Pi 薄运行时 | [`../architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) |
+| 文档体系与 ADR 分布 | [`../../DOCUMENT_SYSTEM.md`](../../DOCUMENT_SYSTEM.md) |
 
 ### 维护责任
 
@@ -116,12 +116,12 @@
 
 | 类型 | 权威源 | 说明 |
 |------|--------|------|
-| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | vs Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）；底稿 `research/对标底稿-2026-10-五家.md` |
-| 架构对比入口 | [`../architecture/comparison.md`](../architecture/comparison.md) | 六平台 18 维摘要 + 加权分；旧四平台稿见 archive |
-| 综合评估 / 分数 | [`../framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) · [`../framework/assessment-scores.json`](../framework/assessment-scores.json) | 分数唯一源经 `assessment-spec.yaml` |
-| 自主性 L 级 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](./aiplat-l4-autonomy-assessment-v1.0.0.md) | L5 定级 ADR + `verify_whitepaper_refs.sh` |
-| 厂商策略对比 | [`../strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 商业/厂商视角 |
-| 历史对比 | [`../archive/`](../archive/) | **只读**，不进现行论证 |
+| 核心能力对标（主） | [`../research/aiPlat核心能力对标报告.md`](../../research/aiPlat核心能力对标报告.md) | vs Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10）；底稿 `research/对标底稿-2026-10-五家.md` |
+| 架构对比入口 | [`../architecture/comparison.md`](../../architecture/comparison.md) | 六平台 18 维摘要 + 加权分；旧四平台稿见 archive |
+| 综合评估 / 分数 | [`../framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) · [`../framework/assessment-scores.json`](../../framework/assessment-scores.json) | 分数唯一源经 `assessment-spec.yaml` |
+| 自主性 L 级 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) | L5 定级 ADR + `verify_whitepaper_refs.sh` |
+| 厂商策略对比 | [`../strategy/comparison-vs-vendors.md`](../../strategy/comparison-vs-vendors.md) | 商业/厂商视角 |
+| 历史对比 | [`../../archive/`](../../archive/) | **只读**，不进现行论证 |
 
 生成器在现状白皮书中插入 **「对标、评级与五维体系」** 章：摘录 `assessment-scores.json` 关键综合分 + 上表链接（不复制整份对标报告）。
 
@@ -135,7 +135,7 @@
 ## 五维分卷（生成物）
 
 清单：[`whitepaper-suite.yaml`](./whitepaper-suite.yaml)
-输出：[`volumes/`](../../reports/whitepapers/volumes/)
+输出：[`volumes/`](../../../reports/whitepapers/volumes/)
 
 ```bash
 python3 scripts/generate_whitepaper_volumes.py

@@ -20,10 +20,10 @@ tags: [verification, protocol, reproducibility, three-framework]
 
 # aiPlat 框架评估验证协议
 
-> **C2 消歧**：本文验证 **framework 三框架评估**（autonomy / complete-assessment / scoring-detail）。  
-> L5 运行时评估协议见 [`docs/whitepaper/verification-protocol.md`](../whitepaper/verification-protocol.md)——**同名异职（framework vs L5），勿合并**。
+> **C2 消歧**：本文验证 **framework 三框架评估**（autonomy / complete-assessment / scoring-detail）。
+> L5 运行时评估协议见 [`docs/whitepaper/verification-protocol.md`](../reference/explanatory/verification-protocol.md)——**同名异职（framework vs L5），勿合并**。
 >
-> 用途：供外部审稿人独立验证三框架评估结论。  
+> 用途：供外部审稿人独立验证三框架评估结论。
 > 前提：不要求通读评估报告。本协议自包含所有验证步骤。
 
 ---
@@ -275,7 +275,7 @@ curl -s -X POST http://localhost:8000/api/core/workspace/agents/materials_chat/e
 > 验证 Phase 24：ErrorTranslator 诊断 → Harness 策略路由。
 
 ```bash
-curl -s http://localhost:8000/api/diagnostics/health | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('layers',[])))" 
+curl -s http://localhost:8000/api/diagnostics/health | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('layers',[])))"
 # → 4 (infra/core/platform/app)
 ```
 

@@ -3,12 +3,12 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:41:47Z"
+generated_at: "2026-11-11T12:44:38Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
-suite: docs/whitepaper/whitepaper-suite.yaml
+suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -20,7 +20,7 @@ language: zh-CN
 # aiPlat 生态与集成白皮书
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:41:47Z` |
+| 生成时间 (UTC) | `2026-11-11T12:44:38Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -55,8 +55,8 @@ language: zh-CN
 | [`docs/API/api-reference.md`](../../../docs/API/api-reference.md) | API 参考 | ✅ |
 | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
-| [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../docs/whitepaper/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
-| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../docs/whitepaper/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
+| [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../docs/reference/explanatory/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ❌ |
+| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ❌ |
 
 
 ### 2.2 Supporting
@@ -66,7 +66,7 @@ language: zh-CN
 | [`docs/API/AttributionSchema.md`](../../../docs/API/AttributionSchema.md) | 归因协议 | ✅ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
-| [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
+| [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ❌ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -75,7 +75,7 @@ language: zh-CN
 
 本卷以技术伙伴分层闭环，不写未确认的分成比例、商标授权或排他条款。
 
-- 技术分层：[`docs/whitepaper/ecosystem-partner-tiers.md`](../../../docs/whitepaper/ecosystem-partner-tiers.md)
+- 技术分层：[`docs/reference/explanatory/ecosystem-partner-tiers.md`](../../../docs/reference/explanatory/ecosystem-partner-tiers.md)
   - Pi-only 接入
   - KB 混合接入
   - 工具代理接入
@@ -83,7 +83,7 @@ language: zh-CN
   - 私有化厚部署
 - 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节
 - 企业混合部署：[`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)；能力行以 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) 为准
-- 商务条款模板：[`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../docs/whitepaper/ecosystem-partner-commercial-template.md)
+- 商务条款模板：[`docs/reference/templates/ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md)
 
 ---
 
@@ -100,7 +100,7 @@ language: zh-CN
 ### 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。
-> 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../docs/whitepaper/ecosystem-partner-commercial-template.md)（以盖章版为准）。
+> 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 #### 1. 分层总览
 
@@ -695,7 +695,7 @@ Content-Type: application/json
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

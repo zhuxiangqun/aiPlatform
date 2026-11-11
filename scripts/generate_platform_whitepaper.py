@@ -165,9 +165,9 @@ def _assessment_stamp() -> str:
 def _ratings_and_system_chapter() -> str:
     stamp = _assessment_stamp()
     system_link = (
-        "[`WHITEPAPER_SYSTEM.md`](../../docs/whitepaper/WHITEPAPER_SYSTEM.md)"
+        "[`WHITEPAPER_SYSTEM.md`](../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)"
         if WHITEPAPER_SYSTEM.is_file()
-        else "`docs/whitepaper/WHITEPAPER_SYSTEM.md`"
+        else "`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`"
     )
     return f"""## 2.5 对标、评级与五维白皮书体系
 
@@ -179,7 +179,7 @@ def _ratings_and_system_chapter() -> str:
 
 {stamp}
 
-完整评估叙述：[`../../docs/framework/aiplat-complete-assessment.md`](../../docs/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md)
+完整评估叙述：[`../../docs/framework/aiplat-complete-assessment.md`](../../docs/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 ### 2.5.2 对标与对比入口（勿读 archive 当现行）
 
@@ -202,7 +202,7 @@ def _ratings_and_system_chapter() -> str:
 | 生态 | 如何参与协作 | [`volumes/04-ecosystem-integration.md`](./volumes/04-ecosystem-integration.md) | 技术伙伴分层 + MCP/A2A/Pi（商务条款以盖章版为准） |
 | 治理 | 如何可信可控 | [`volumes/05-security-governance.md`](./volumes/05-security-governance.md) | security + Gate + L 级评估 |
 
-分卷清单：[`whitepaper-suite.yaml`](../../docs/whitepaper/whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
+分卷清单：[`whitepaper-suite.yaml`](../../docs/reference/explanatory/whitepaper-suite.yaml) · 重生成：`python3 scripts/generate_whitepaper_volumes.py`
 
 """
 
@@ -323,7 +323,7 @@ def build(raw_caps: str) -> str:
         else "（架构全景文档缺失）"
     )
     autonomy_note = (
-        f"见 [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md)"
+        f"见 [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)"
         if AUTONOMY.is_file()
         else "（自主性评估文档缺失）"
     )
@@ -363,9 +363,9 @@ packaging: executive-digest
 |------|----------|
 | 平台有哪些能力、是否已接线 | **AIPLAT_CAPABILITIES.md**（完整路径表）；本文第 3 章仅为**摘要索引** |
 | 架构分层与依赖方向 | [`docs/architecture/overview.md`](../../docs/architecture/overview.md) · 技术分卷 |
-| 自主性定级（L5 等） | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) + `assessment-scores.json` |
+| 自主性定级（L5 等） | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) + `assessment-scores.json` |
 | 对标 / 差异化 | 研究主报告 + [`architecture/comparison.md`](../../docs/architecture/comparison.md) |
-| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](../../docs/whitepaper/WHITEPAPER_SYSTEM.md) |
+| 五维白皮书体系 | [`WHITEPAPER_SYSTEM.md`](../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) |
 | 设计目标 vs 现状 | 代码与 CAPABILITIES；冲突时以代码为准 |
 
 **怎么读本文**
@@ -461,8 +461,8 @@ python3 scripts/generate_platform_whitepaper.py
 | [`docs/architecture/overview.md`](../../docs/architecture/overview.md) | 架构全景 |
 | [`docs/matrix/capability-impact-matrix.md`](../../docs/matrix/capability-impact-matrix.md) | 变更影响矩阵 |
 | [`docs/DOCUMENT_SYSTEM.md`](../../docs/DOCUMENT_SYSTEM.md) | 文档治理宪法 |
-| [`WHITEPAPER_SYSTEM.md`](../../docs/whitepaper/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
-| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
+| [`WHITEPAPER_SYSTEM.md`](../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
+| [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
 | [`../../docs/framework/assessment-scores.json`](../../docs/framework/assessment-scores.json) | 评估分数机器源 |
 | [`../../docs/research/aiPlat核心能力对标报告.md`](../../docs/research/aiPlat核心能力对标报告.md) | 主对标报告 |
 | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业/路线图 |

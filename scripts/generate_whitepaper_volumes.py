@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Generate the five dimension-specific whitepaper volumes.
 
-Reads docs/whitepaper/whitepaper-suite.yaml and writes:
+Reads docs/reference/explanatory/whitepaper-suite.yaml and writes:
 
   docs/whitepaper/volumes/01-tech-architecture.md
-  docs/whitepaper/volumes/02-product-capability.md
-  docs/whitepaper/volumes/03-commercial-value.md
-  docs/whitepaper/volumes/04-ecosystem-integration.md
-  docs/whitepaper/volumes/05-security-governance.md
+  reports/whitepapers/volumes/02-product-capability.md
+  reports/whitepapers/volumes/03-commercial-value.md
+  reports/whitepapers/volumes/04-ecosystem-integration.md
+  reports/whitepapers/volumes/05-security-governance.md
 
 Authority model: volumes are *audience packages* over existing canonical docs.
 They do not invent capability counts or ROI numbers. Hand-edit sources, then regenerate.
@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 REPO = Path(__file__).resolve().parents[1]
-SUITE = REPO / "docs" / "whitepaper" / "whitepaper-suite.yaml"
+SUITE = REPO / "docs" / "reference" / "explanatory" / "whitepaper-suite.yaml"
 OUT_DIR = REPO / "reports" / "whitepapers" / "volumes"
 CAPS = REPO / "AIPLAT_CAPABILITIES.md"
 SCORES = REPO / "docs" / "framework" / "assessment-scores.json"
@@ -72,7 +72,7 @@ def _rel(path: str) -> Path:
 
 def _link(path: str) -> str:
     """Markdown link from volumes/ to repo path."""
-    # volumes/ lives under docs/whitepaper/volumes/
+    # volumes/ lives under reports/whitepapers/volumes/
     if path.startswith("docs/"):
         target = "../../../" + path
     elif path.startswith("packages/") or path.startswith("AIPLAT_") or path == "CLAUDE.md":
@@ -359,7 +359,7 @@ def _build_volume(
         f'core_question: "{question}"',
         f"priority: {priority}",
         f"source_status: {status}",
-        f'suite: docs/whitepaper/whitepaper-suite.yaml',
+        f'suite: docs/reference/explanatory/whitepaper-suite.yaml',
         f"suite_sha256: \"{suite_sha}\"",
         f"caps_sha256: \"{caps_sha}\"",
         f"scores_sha256: \"{scores_sha}\"",
@@ -372,8 +372,8 @@ def _build_volume(
         f"# aiPlat {name}",
         "",
         f"> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  ",
-        f"> 体系：{_link('docs/whitepaper/WHITEPAPER_SYSTEM.md')} · "
-        f"清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)  ",
+        f"> 体系：{_link('docs/reference/explanatory/WHITEPAPER_SYSTEM.md')} · "
+        f"清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)  ",
         f"> 重生成：`bash scripts/sync_whitepapers.sh` 或 "
         f"`python3 scripts/generate_whitepaper_volumes.py`",
         "",
@@ -429,7 +429,7 @@ def _build_volume(
             f"| 文档体系与 ADR 分布 | {_link('docs/DOCUMENT_SYSTEM.md')} |",
             "",
             "索引维护责任与更新触发条件见 "
-            f"{_link('docs/whitepaper/WHITEPAPER_SYSTEM.md')}「ADR 索引维护」节。",
+            f"{_link('docs/reference/explanatory/WHITEPAPER_SYSTEM.md')}「ADR 索引维护」节。",
             "",
             "> 索引只指向权威源，不复制 ADR 正文。修改 overview / "
             "execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM "
@@ -575,10 +575,10 @@ def _build_volume(
             "商业论证以平台已接线的价值系统为准：",
             "",
             f"- 价值维度与算法符号：{_link('aiPlat-core/core/harness/finance/value_calculator.py')}",
-            f"- 五维价值映射与 TCO 对照：{_link('docs/whitepaper/commercial-value-model.md')}",
+            f"- 五维价值映射与 TCO 对照：{_link('docs/reference/explanatory/commercial-value-model.md')}",
             "- CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节",
             "- 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节",
-            f"- 示意案例：{_link('docs/whitepaper/cases/internal-illustrative-fde.md')}",
+            f"- 示意案例：{_link('docs/reference/explanatory/cases/internal-illustrative-fde.md')}",
             "",
             "---",
             "",
@@ -587,7 +587,7 @@ def _build_volume(
             "> `cases/internal-illustrative-fde.md` 为内部示意，"
             "`authorized: false`、`kind: illustrative`，仅用于说明算法与口径，"
             "不构成任何客户承诺或收益保证。真实客户案例必须走 "
-            f"{_link('docs/whitepaper/cases/README.md')} 授权流程。",
+            f"{_link('docs/reference/explanatory/cases/README.md')} 授权流程。",
             "",
             "---",
             "",
@@ -599,7 +599,7 @@ def _build_volume(
             "",
         ]
         excerpt, _ = _read_excerpt(
-            _rel("docs/whitepaper/commercial-value-model.md"), 8000
+            _rel("docs/reference/explanatory/commercial-value-model.md"), 8000
         )
         parts += [
             excerpt,
@@ -625,7 +625,7 @@ def _build_volume(
             "",
             "本卷以技术伙伴分层闭环，不写未确认的分成比例、商标授权或排他条款。",
             "",
-            f"- 技术分层：{_link('docs/whitepaper/ecosystem-partner-tiers.md')}",
+            f"- 技术分层：{_link('docs/reference/explanatory/ecosystem-partner-tiers.md')}",
             "  - Pi-only 接入",
             "  - KB 混合接入",
             "  - 工具代理接入",
@@ -634,7 +634,7 @@ def _build_volume(
             "- 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节",
             f"- 企业混合部署：{_link('packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md')}；"
             f"能力行以 {_link('AIPLAT_CAPABILITIES.md')} 为准",
-            f"- 商务条款模板：{_link('docs/whitepaper/ecosystem-partner-commercial-template.md')}",
+            f"- 商务条款模板：{_link('docs/reference/templates/ecosystem-partner-commercial-template.md')}",
             "",
             "---",
             "",
@@ -652,7 +652,7 @@ def _build_volume(
             "",
         ]
         excerpt, _ = _read_excerpt(
-            _rel("docs/whitepaper/ecosystem-partner-tiers.md"), 8000
+            _rel("docs/reference/explanatory/ecosystem-partner-tiers.md"), 8000
         )
         parts += [
             excerpt,
@@ -722,7 +722,7 @@ def _build_volume(
             f"- 评分戳：{_link('docs/framework/assessment-scores.json')}",
             f"- 安全架构：{_link('docs/security/security-architecture.md')}",
             f"- Gate 与安全能力：{_link('AIPLAT_CAPABILITIES.md')} 中 Gate / 安全节",
-            f"- L 级 ADR：{_link('docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md')}",
+            f"- L 级 ADR：{_link('docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md')}",
             "",
             "> 治理卷不新增示意案例，不引用未授权客户数据。",
             "",
@@ -743,7 +743,7 @@ def _build_volume(
             "",
         ]
         excerpt, _ = _read_excerpt(
-            _rel("docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md"),
+            _rel("docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md"),
             8000,
         )
         parts += [excerpt, ""]
@@ -754,7 +754,7 @@ def _build_volume(
         "## 4. 相关横切（对标 / 评级）",
         "",
         "完整对标与评级目录见总白皮书 §2.5 与 "
-        f"{_link('docs/whitepaper/WHITEPAPER_SYSTEM.md')}。",
+        f"{_link('docs/reference/explanatory/WHITEPAPER_SYSTEM.md')}。",
         "",
         "## 5. 验证",
         "",
@@ -799,7 +799,7 @@ def generate_all() -> List[Path]:
         "# 五维白皮书分卷（生成物）",
         "",
         "> 由 `scripts/generate_whitepaper_volumes.py` 根据 "
-        "`../../../docs/whitepaper/whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。",
+        "`../../../docs/reference/explanatory/whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。",
         "",
         "| 卷 | 文件 |",
         "|----|------|",
@@ -848,10 +848,28 @@ def _repair_generated_links(path: Path) -> None:
             "../../../docs/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
             "../framework/verification-protocol.md": "docs/framework/verification-protocol.md",
-            "./cases/README.md": "docs/whitepaper/cases/README.md",
+            "./cases/README.md": "docs/reference/explanatory/cases/README.md",
         }
         if link in special:
             rel = os.path.relpath(REPO / special[link], path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
+        if link.startswith("../../../docs/whitepaper/"):
+            rest = link[len("../../../docs/whitepaper/"):]
+            legacy = {
+                "WHITEPAPER_SYSTEM.md": "docs/reference/explanatory/WHITEPAPER_SYSTEM.md",
+                "whitepaper-suite.yaml": "docs/reference/explanatory/whitepaper-suite.yaml",
+                "commercial-value-model.md": "docs/reference/explanatory/commercial-value-model.md",
+                "ecosystem-partner-tiers.md": "docs/reference/explanatory/ecosystem-partner-tiers.md",
+                "ecosystem-partner-commercial-template.md": "docs/reference/templates/ecosystem-partner-commercial-template.md",
+                "aiplat-l4-autonomy-assessment-v1.0.0.md": "docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md",
+            }
+            if rest in legacy:
+                target = legacy[rest]
+            elif rest.startswith("cases/"):
+                target = "docs/reference/explanatory/" + rest
+            else:
+                target = "docs/reference/explanatory/" + rest
+            rel = os.path.relpath(REPO / target, path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
         if link.startswith("../../../docs/manuals/"):
             target = "docs/guides/" + link[len("../../../docs/manuals/"):]

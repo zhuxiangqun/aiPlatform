@@ -3,12 +3,12 @@ title: "aiPlat 商业价值白皮书"
 volume_id: commercial-value
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:41:47Z"
+generated_at: "2026-11-11T12:44:38Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
 source_status: ready
-suite: docs/whitepaper/whitepaper-suite.yaml
+suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -20,7 +20,7 @@ language: zh-CN
 # aiPlat 商业价值白皮书
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:41:47Z` |
+| 生成时间 (UTC) | `2026-11-11T12:44:38Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -52,9 +52,9 @@ language: zh-CN
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
 | [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
-| [`docs/whitepaper/commercial-value-model.md`](../../../docs/whitepaper/commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ✅ |
-| [`docs/whitepaper/cases/internal-illustrative-fde.md`](../../../docs/whitepaper/cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ✅ |
-| [`docs/whitepaper/cases/README.md`](../../../docs/whitepaper/cases/README.md) | 客户案例授权流程 | ✅ |
+| [`docs/whitepaper/commercial-value-model.md`](../../../docs/reference/explanatory/commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ❌ |
+| [`docs/whitepaper/cases/internal-illustrative-fde.md`](../../../docs/reference/explanatory/cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ❌ |
+| [`docs/whitepaper/cases/README.md`](../../../docs/reference/explanatory/cases/README.md) | 客户案例授权流程 | ❌ |
 
 
 ### 2.2 Supporting
@@ -74,16 +74,16 @@ language: zh-CN
 本卷不引用未授权的客户 ROI、人天单价或伙伴分成比例。商业论证以平台已接线的价值系统为准：
 
 - 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../../aiPlat-core/core/harness/finance/value_calculator.py)
-- 五维价值映射与 TCO 对照：[`docs/whitepaper/commercial-value-model.md`](../../../docs/whitepaper/commercial-value-model.md)
+- 五维价值映射与 TCO 对照：[`docs/reference/explanatory/commercial-value-model.md`](../../../docs/reference/explanatory/commercial-value-model.md)
 - CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节
 - 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节
-- 示意案例：[`docs/whitepaper/cases/internal-illustrative-fde.md`](../../../docs/whitepaper/cases/internal-illustrative-fde.md)
+- 示意案例：[`docs/reference/explanatory/cases/internal-illustrative-fde.md`](../../../docs/reference/explanatory/cases/internal-illustrative-fde.md)
 
 ---
 
 > **非客户授权案例声明**
 >
-> `cases/internal-illustrative-fde.md` 为内部示意，`authorized: false`、`kind: illustrative`，仅用于说明算法与口径，不构成任何客户承诺或收益保证。真实客户案例必须走 [`docs/whitepaper/cases/README.md`](../../../docs/whitepaper/cases/README.md) 授权流程。
+> `cases/internal-illustrative-fde.md` 为内部示意，`authorized: false`、`kind: illustrative`，仅用于说明算法与口径，不构成任何客户承诺或收益保证。真实客户案例必须走 [`docs/reference/explanatory/cases/README.md`](../../../docs/reference/explanatory/cases/README.md) 授权流程。
 
 ---
 
@@ -149,8 +149,8 @@ language: zh-CN
 #### 5. 授权边界
 
 - 未授权客户数字 **不得** 写入 `volumes/03-commercial-value.md` 正文作承诺。
-- 内部示意见 [`cases/internal-illustrative-fde.md`](../../../docs/whitepaper/cases/internal-illustrative-fde.md)（`authorized: false`）。
-- 授权流程见 [`cases/README.md`](../../../docs/whitepaper/cases/README.md)。
+- 内部示意见 [`cases/internal-illustrative-fde.md`](../../../docs/reference/explanatory/cases/internal-illustrative-fde.md)（`authorized: false`）。
+- 授权流程见 [`cases/README.md`](../../../docs/reference/explanatory/cases/README.md)。
 
 
 > generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`
@@ -644,7 +644,7 @@ aiPlat 不是一个图数据库的替代品，而是图数据库之上的 **AI �
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

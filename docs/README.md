@@ -25,7 +25,7 @@
 | **FDE 交付工程师** | [guides/README.md](guides/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [guides/getting-started.md](guides/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 | **Pi Thin Runtime（当前交付）** | [../packages/aiplat-pi-runtime/README.md](../packages/aiplat-pi-runtime/README.md) · living 摘要 [architecture/plans/pi-thin-runtime.md](architecture/plans/pi-thin-runtime.md)（≠ 五产品目标 Enterprise Runtime） |
-| **要完整平台现状白皮书** | [reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md) · 五维分卷 [reports/whitepapers/volumes/](../reports/whitepapers/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](whitepaper/WHITEPAPER_SYSTEM.md) |
+| **要完整平台现状白皮书** | [reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md) · 五维分卷 [reports/whitepapers/volumes/](../reports/whitepapers/volumes/) · 体系 [WHITEPAPER_SYSTEM.md](reference/explanatory/WHITEPAPER_SYSTEM.md) |
 
 ---
 
@@ -62,7 +62,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [harness/](harness/) · [matrix/](matrix/) · [mcp/](mcp/) · [reports/](reports/) · [research/](research/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [whitepaper/](whitepaper/) · [archive/](archive/)
+[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [harness/](harness/) · [matrix/](matrix/) · [mcp/](mcp/) · [reports/](reports/) · [research/](research/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
 
 ---
 
@@ -80,7 +80,7 @@
 | `guides/` | 操作手册 | 38 | 是 |
 | `architecture/` | 架构设计 + ADR + 规划 | 29 | 核心参考是；plans 非现状 |
 | `research/` | 对标 / 验收钉死规划 | 14 | 主报告 + factory/G6/tier；治理过程见根 reports |
-| `whitepaper/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
+| `reference/explanatory/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
 | `standards/` | 跨层强制性规范 | 10 | 是 |
 | `framework/` | 成熟度评估框架 | 6 | 评估时更新 |
 | `design/` | 设计提案（To-Be） | 4 | 过期标注 |

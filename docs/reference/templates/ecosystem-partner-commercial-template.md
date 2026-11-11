@@ -14,7 +14,7 @@
 
 ## 2. 技术分层范围（勾选）
 
-对照 [`ecosystem-partner-tiers.md`](./ecosystem-partner-tiers.md)：
+对照 [`ecosystem-partner-tiers.md`](../explanatory/ecosystem-partner-tiers.md)：
 
 - [ ] L0 Pi-only
 - [ ] L1 KB 混合

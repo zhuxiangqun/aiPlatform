@@ -110,8 +110,6 @@ workspace-root/
 │   ├── tools/                         ← 工具系统增强
 │   │   └── enhancement.md
 │   │
-│   ├── whitepaper/                    ← 白皮书（生成卷 + WHITEPAPER_SYSTEM + suite）
-│   │
 │   ├── strategy/                      ← 战略分析 / 竞品对比
 │   │   └── comparison-vs-vendors.md
 │   │
@@ -757,7 +755,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 28 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 27 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

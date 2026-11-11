@@ -3,12 +3,12 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:41:47Z"
+generated_at: "2026-11-11T12:44:38Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
-suite: docs/whitepaper/whitepaper-suite.yaml
+suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -20,7 +20,7 @@ language: zh-CN
 # aiPlat 产品能力白皮书
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:41:47Z` |
+| 生成时间 (UTC) | `2026-11-11T12:44:38Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -151,7 +151,7 @@ _(存在性检查失败：文件缺失 `docs/manuals/getting-started.md`)_
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

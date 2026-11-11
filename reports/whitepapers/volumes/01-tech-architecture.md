@@ -3,12 +3,12 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:41:47Z"
+generated_at: "2026-11-11T12:44:38Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: ready
-suite: docs/whitepaper/whitepaper-suite.yaml
+suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
@@ -20,7 +20,7 @@ language: zh-CN
 # aiPlat 技术架构白皮书
 
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:41:47Z` |
+| 生成时间 (UTC) | `2026-11-11T12:44:38Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -88,7 +88,7 @@ language: zh-CN
 | Pi 薄运行时 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) |
 | 文档体系与 ADR 分布 | [`docs/DOCUMENT_SYSTEM.md`](../../../docs/DOCUMENT_SYSTEM.md) |
 
-索引维护责任与更新触发条件见 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md)「ADR 索引维护」节。
+索引维护责任与更新触发条件见 [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)「ADR 索引维护」节。
 
 > 索引只指向权威源，不复制 ADR 正文。修改 overview / execution-decision-matrix / pi-thin-runtime / DOCUMENT_SYSTEM 任一文件时，必须同步本索引。
 
@@ -159,7 +159,7 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 
