@@ -220,8 +220,12 @@ def session_regression_status(
         "draft_pending": int(sum(draft_counts.values())),
         "draft_by_capability": draft_checklist,
         "next_action": (
+            "claim/Certification remain closed; workspace promote optional"
+            if profile_complete
+            else (
             "Expand/review session.capability cases → human purpose_ok/freeze; "
             "fixture multi-turn ≠ long-horizon Agent memory"
+            )
         ),
         "review_links": {
             "case_packs_tab": "/eval?tab=case-packs",
@@ -233,7 +237,7 @@ def session_regression_status(
         "certification_eligible": False,
         "honesty": (
             "Session regression quotas are inventory-only; "
-            "human purpose_ok/freeze still required for profile_complete; "
+            + ("seed pack.meta frozen + purpose_ok; " if pack_frozen else "human purpose_ok/freeze still required for profile_complete; ") +
             "fixture multi-turn ≠ long-horizon Agent; claim/cert stay false."
         ),
     }

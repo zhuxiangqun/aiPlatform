@@ -218,8 +218,12 @@ def generated_app_regression_status(
         "draft_pending": int(sum(draft_counts.values())),
         "draft_by_capability": draft_checklist,
         "next_action": (
+            "claim/Certification remain closed; workspace promote optional"
+            if profile_complete
+            else (
             "Expand/review generated_app.capability cases → human purpose_ok/freeze; "
             "lexical fixture ≠ live Pi host / runs_eval E2E"
+            )
         ),
         "review_links": {
             "case_packs_tab": "/eval?tab=case-packs",
@@ -231,7 +235,7 @@ def generated_app_regression_status(
         "certification_eligible": False,
         "honesty": (
             "Generated-App regression quotas are inventory-only; "
-            "human purpose_ok/freeze still required for profile_complete; "
+            + ("seed pack.meta frozen + purpose_ok; " if pack_frozen else "human purpose_ok/freeze still required for profile_complete; ") +
             "lexical fixture ≠ live Pi host / runs_eval; claim/cert stay false."
         ),
     }

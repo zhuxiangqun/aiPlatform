@@ -226,7 +226,8 @@ def subject_regression_inventory(
             "Method track (Arena/G2b/S1) excluded."
         ),
         "next_action": (
-            "Ensure content_purpose_ready → promote purpose_ok/freeze; "
+            "Non-agent seed packs may already be purpose_ok+frozen; "
+            "agent.capability / workspace promote / claim gates remain separate; "
             "do not open claim from inventory alone."
         ),
         "review_links": {

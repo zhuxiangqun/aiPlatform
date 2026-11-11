@@ -3,10 +3,16 @@
   "pack_id": "session.capability",
   "version": "0.2.0",
   "kind": "curated",
-  "status": "draft",
+  "status": "frozen",
   "claim_eligible": false,
   "scope": "global",
-  "subject_kinds": ["session"],
+  "subject_kinds": [
+    "session"
+  ],
   "object_types": [],
-  "notes": "Session Subject capability bank (ADR after Code Review). Not first-class OBJECT_TYPES. Fixture multi-turn via SessionSubjectAdapter (mirrors package session_eval); ≠ long-horizon Agent. Regression quotas SESSION_V1_CAPS×8."
+  "notes": "Session Subject capability bank (ADR after Code Review). Not first-class OBJECT_TYPES. Fixture multi-turn via SessionSubjectAdapter (mirrors package session_eval); ≠ long-horizon Agent. Regression quotas SESSION_V1_CAPS×8.",
+  "frozen_by": "owner",
+  "freeze_notes": "Seed pack.meta frozen after purpose_ok + content_purpose_ok; claim_eligible stays false; Certification closed",
+  "accuracy_claim": false,
+  "certification_eligible": false
 }

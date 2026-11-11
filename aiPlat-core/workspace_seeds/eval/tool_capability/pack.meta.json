@@ -3,10 +3,16 @@
   "pack_id": "tool.capability",
   "version": "0.2.0",
   "kind": "curated",
-  "status": "draft",
+  "status": "frozen",
   "claim_eligible": false,
   "scope": "global",
-  "subject_kinds": ["tool"],
+  "subject_kinds": [
+    "tool"
+  ],
   "object_types": [],
-  "notes": "Tool/MCP Subject capability bank (ADR after Session). Not first-class OBJECT_TYPES. Mock tool_trace via ToolSubjectAdapter (reuses mock_tools + tool_trace_judge); ≠ live tools / real MCP. Regression quotas TOOL_V1_CAPS×8."
+  "notes": "Tool/MCP Subject capability bank (ADR after Session). Not first-class OBJECT_TYPES. Mock tool_trace via ToolSubjectAdapter (reuses mock_tools + tool_trace_judge); ≠ live tools / real MCP. Regression quotas TOOL_V1_CAPS×8.",
+  "frozen_by": "owner",
+  "freeze_notes": "Seed pack.meta frozen after purpose_ok + content_purpose_ok; claim_eligible stays false; Certification closed",
+  "accuracy_claim": false,
+  "certification_eligible": false
 }

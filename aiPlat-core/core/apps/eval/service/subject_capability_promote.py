@@ -5,8 +5,9 @@ Subject-local banks. Stamps purpose_ok then draft→review→freeze via Case Pac
 factory. Never opens accuracy_claim / certification.
 
 Also provides seed-side ``stamp_subject_seed_purpose_ok`` (writes review into
-``cases/*.json`` after content_purpose_ok; does **not** freeze pack.meta;
-claim stays false).
+``cases/*.json`` after content_purpose_ok) and ``freeze_subject_seed_pack_meta``
+(sets seed ``pack.meta.json`` status=frozen after all cases purpose_ok). Neither
+opens claim/Certification; workspace Case Pack promote remains a separate path.
 """
 from __future__ import annotations
 
@@ -16,13 +17,21 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 PROMOTE_SCHEMA = "eval.subject_capability_promote.v1"
 SEED_PURPOSE_OK_SCHEMA = "eval.subject_seed_purpose_ok.v1"
+SEED_PACK_FREEZE_SCHEMA = "eval.subject_seed_pack_freeze.v1"
 
 _PURPOSE_OK_NOTE = (
     "Subject ordered promote: content_purpose_ok gate + owner sign-off path"
 )
 _SEED_PURPOSE_OK_NOTE = (
-    "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; "
-    "claim/Certification closed until workspace freeze + independent claim gate"
+    "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until "
+    "freeze_subject_seed_pack_meta; claim/Certification stay closed"
+)
+_SEED_PACK_FREEZE_NOTE = (
+    "Seed pack.meta frozen after purpose_ok + content_purpose_ok; "
+    "claim_eligible stays false; Certification closed"
+)
+_PURPOSE_OK_STATUSES = frozenset(
+    {"purpose_ok", "reviewed", "approved", "frozen"}
 )
 
 
@@ -425,6 +434,164 @@ def stamp_all_subject_seed_purpose_ok(
         "honesty": (
             "Seed-side purpose_ok inventory only; does not freeze packs or "
             "open claim/Certification"
+        ),
+    }
+
+
+def freeze_subject_seed_pack_meta(
+    *,
+    subject_kind: str,
+    reviewer: str = "owner",
+    seed_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Freeze seed pack.meta.json after all cases are purpose_ok (claim=false).
+
+    Unlocks seed ``profile_complete`` (quota + purpose_ok + pack_frozen). Does
+    **not** write workspace Case Pack registry; claim/Certification stay closed.
+    """
+    from core.apps.eval.service.content_purpose_ok import (
+        ContentPurposeOkError,
+        assert_cases_content_purpose_ok,
+    )
+    from core.apps.eval.service.method_track import assert_not_subject_method
+
+    kind = str(subject_kind or "").strip().lower()
+    assert_not_subject_method(kind)
+    if not kind:
+        raise SubjectCapabilityPromoteError("subject_kind required")
+    if kind == "agent":
+        raise SubjectCapabilityPromoteError(
+            "agent seed pack freeze uses promote_agent_capability_bank / "
+            "workspace Case Pack path — not freeze_subject_seed_pack_meta"
+        )
+
+    specs = _bank_specs()
+    spec = specs.get(kind)
+    if spec is None:
+        raise SubjectCapabilityPromoteError(f"no_promotable_subject:{kind}")
+
+    report = spec["validate"](seed_dir=seed_dir) if seed_dir else spec["validate"]()
+    if not report.get("ok"):
+        raise SubjectCapabilityPromoteError(
+            f"capability bank invalid: subject={kind} errors={report.get('errors')}"
+        )
+
+    raw_cases = (
+        list(spec["build"](seed_dir=seed_dir))
+        if seed_dir
+        else list(spec["build"]())
+    )
+    try:
+        content_report = assert_cases_content_purpose_ok(
+            raw_cases, subject_kind=kind
+        )
+    except ContentPurposeOkError as exc:
+        raise SubjectCapabilityPromoteError(str(exc)) from exc
+
+    not_ok: List[str] = []
+    for row in raw_cases:
+        if not isinstance(row, Mapping):
+            not_ok.append("(non-object-case)")
+            continue
+        rev = row.get("review") if isinstance(row.get("review"), Mapping) else {}
+        st = str((rev or {}).get("status") or "draft").strip().lower() or "draft"
+        if st not in _PURPOSE_OK_STATUSES:
+            cid = str(row.get("case_id") or "?")
+            not_ok.append(f"{cid}:{st}")
+    if not_ok:
+        raise SubjectCapabilityPromoteError(
+            f"seed cases not purpose_ok: subject={kind} sample={not_ok[:8]}"
+        )
+
+    root = Path(seed_dir) if seed_dir else Path(spec["seed_dir"]())
+    meta_path = root / "pack.meta.json"
+    if not meta_path.is_file():
+        raise SubjectCapabilityPromoteError(f"pack.meta.json missing: {meta_path}")
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SubjectCapabilityPromoteError(
+            f"pack.meta.json invalid: {meta_path}: {exc}"
+        ) from exc
+    if not isinstance(meta, dict):
+        raise SubjectCapabilityPromoteError("pack.meta.json must be an object")
+
+    who = str(reviewer or "owner").strip() or "owner"
+    prev_status = str(meta.get("status") or "draft").strip().lower() or "draft"
+    noop = prev_status == "frozen" and meta.get("claim_eligible") is False
+
+    meta["status"] = "frozen"
+    meta["claim_eligible"] = False
+    meta["frozen_by"] = who
+    meta["freeze_notes"] = _SEED_PACK_FREEZE_NOTE
+    # Never open claim from seed freeze path.
+    meta["accuracy_claim"] = False
+    meta["certification_eligible"] = False
+
+    if not noop:
+        meta_path.write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    return {
+        "schema": SEED_PACK_FREEZE_SCHEMA,
+        "ok": True,
+        "noop": noop,
+        "subject_kind": kind,
+        "object_type_member": bool(spec["object_type_member"]),
+        "pack_id": spec["pack_id"],
+        "pack_version": str(meta.get("version") or spec["version"]),
+        "profile_id": spec["profile_id"],
+        "seed_dir": str(root),
+        "pack_status": "frozen",
+        "n_cases": len(raw_cases),
+        "reviewer": who,
+        "content_purpose_ok": True,
+        "content_purpose_ok_count": int(
+            content_report.get("content_purpose_ok_count") or len(raw_cases)
+        ),
+        "profile_complete": True,
+        "frozen": True,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "certification_eligible": False,
+        "honesty": (
+            f"seed pack.meta.json status=frozen for {kind}; "
+            "profile_complete unlocked on seed inventory; "
+            "claim/Certification stay closed; workspace promote optional"
+        ),
+    }
+
+
+def freeze_all_subject_seed_pack_meta(
+    *, reviewer: str = "owner"
+) -> Dict[str, Any]:
+    """Freeze pack.meta on every non-agent promotable Subject seed bank."""
+    rows: List[Dict[str, Any]] = []
+    errors: List[Dict[str, str]] = []
+    for kind in sorted(_bank_specs().keys()):
+        try:
+            rows.append(
+                freeze_subject_seed_pack_meta(
+                    subject_kind=kind, reviewer=reviewer
+                )
+            )
+        except SubjectCapabilityPromoteError as exc:
+            errors.append({"subject_kind": kind, "error": str(exc)})
+    return {
+        "schema": SEED_PACK_FREEZE_SCHEMA + ".inventory",
+        "ok": not errors,
+        "n_subjects": len(rows),
+        "n_errors": len(errors),
+        "subjects": rows,
+        "errors": errors,
+        "claim_eligible": False,
+        "accuracy_claim": False,
+        "certification_eligible": False,
+        "honesty": (
+            "Seed-side pack.meta freeze inventory only; does not open "
+            "claim/Certification"
         ),
     }
 

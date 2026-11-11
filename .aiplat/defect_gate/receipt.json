@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T17:03:57+08:00",
+  "reviewed_at": "2026-11-11T17:49:37+08:00",
   "base_ref": "origin/main",
-  "merge_base": "abb9fec4ddff6e46eab4811c39c8db7f40946967",
-  "diff_sha256": "cb703a2830dda10c75b11e4fcf35d1bc5e67b8208ea61af5a7064f19097426cc",
-  "head_sha": "519dcfdec6b15dd3147e529310e73015345fb1f0",
+  "merge_base": "86c04616f36f55a5400f69ce02c20854bc3fe733",
+  "diff_sha256": "ebb9ec4b03783e0a96d1affa8e3e1dbebba443aef9efb645299710321b025736",
+  "head_sha": "ec7b7c578adb2917ef5e688e725410e40f0eeab6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Whitepaper resync after CAPABILITIES 3381; stamp CI path fix; claim/freeze still closed."
+  "note": "Seed pack.meta freeze + whitepaper 3384 sync; claim closed; agent pack draft; no document-system commits."
 }

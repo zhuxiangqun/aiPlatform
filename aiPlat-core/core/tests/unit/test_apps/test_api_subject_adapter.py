@@ -86,13 +86,13 @@ def test_api_regression_profile_and_status():
     st = api_regression_status()
     assert st["schema"] == "eval.api_regression_status.v1"
     assert st["quota_inventory_ok"] is True
-    assert st["profile_complete"] is False
+    assert st["profile_complete"] is True
     assert st["case_count"] >= 15
     assert st["claim_eligible"] is False
     assert st["accuracy_claim"] is False
     assert st["purpose_ok_or_better"] == st["case_count"]
     assert st["draft_pending"] == 0
-    assert st["profile_complete"] is False  # pack.meta still draft; claim closed
+    assert st["profile_complete"] is True  # pack.meta frozen; claim still closed
 
 
 def test_eval_api_regression_status_facade():
