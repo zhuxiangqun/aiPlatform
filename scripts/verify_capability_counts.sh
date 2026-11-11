@@ -66,7 +66,7 @@ fi
 echo "✅ All documents reference AIPLAT_CAPABILITIES.md — no capability count drift."
 
 # ── Phase 42: FDE doc stale version markers ──
-FDE_DIR="$ROOT/docs/manuals/fde"
+FDE_DIR="$ROOT/docs/guides/fde"
 if [ -d "$FDE_DIR" ]; then
     FDE_STALE=$(grep -rn 'v2\.[0-9]\|v2\.[0-9]+.*\：' "$FDE_DIR" --include='*.md' | grep -v '_archive\|examples/\|templates/' || true)
     if [ -n "$FDE_STALE" ]; then

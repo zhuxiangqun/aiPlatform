@@ -3,7 +3,7 @@
 
 Reads docs/reference/explanatory/whitepaper-suite.yaml and writes:
 
-  docs/whitepaper/volumes/01-tech-architecture.md
+  reports/whitepapers/volumes/01-tech-architecture.md
   reports/whitepapers/volumes/02-product-capability.md
   reports/whitepapers/volumes/03-commercial-value.md
   reports/whitepapers/volumes/04-ecosystem-integration.md
@@ -449,7 +449,7 @@ def _build_volume(
             "| 工程维度 | 读者要回答的问题 | 权威源（优先） | CAPABILITIES / 姊妹卷 |",
             "|----------|------------------|----------------|----------------------|",
             f"| **部署与运维** | 生产怎么布？环境/灾备/灰度？ | "
-            f"{_link('docs/manuals/deployment.md')} · "
+            f"{_link('docs/guides/deployment.md')} · "
             f"{_link('docs/architecture/plans/disaster-recovery-plan.md')} · "
             f"`deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |",
             f"| **性能与扩展** | QPS/P95/容量/扩展策略？ | "
@@ -461,13 +461,13 @@ def _build_volume(
             f"{_link('docs/standards/规范-core-run_id-trace_id-request_id.md') if _rel('docs/standards/规范-core-run_id-trace_id-request_id.md').is_file() else _link('docs/architecture/slo.md')} | "
             "CAPABILITIES「可观测性」· 安全卷可交叉 |",
             f"| **数据架构** | 存什么、隔离、备份？ | "
-            f"{_link('docs/knowledge-system.md')} | "
+            f"{_link('docs/guides/knowledge/knowledge-system.md')} | "
             "CAPABILITIES「知识引擎」· 灾备计划（备份） |",
             f"| **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | "
             f"{_link('docs/reference/security/security-architecture.md')} | "
             f"分卷 05 · CAPABILITIES「安全与治理 / Gate」 |",
             f"| **测试与验证** | 金字塔 / CI / 质量门？ | "
-            f"{_link('docs/manuals/testing.md')} · "
+            f"{_link('docs/guides/testing.md')} · "
             f"{_link('docs/architecture/execution-quality-gates.md')} · "
             "`.github/workflows/` | CAPABILITIES「管理 & 质量」 |",
             f"| **技术风险与演进** | 技术债、依赖风险、路线？ | "
@@ -476,7 +476,7 @@ def _build_volume(
             f"{_link('CLAUDE.md')} §16 | 商业卷 ROADMAP 节选（非财务） |",
             f"| **开发视图** | 代码组织、模块边界、上手？ | "
             f"{_link('CLAUDE.md')} · {_link('docs/DOCUMENT_SYSTEM.md')} · "
-            f"{_link('docs/manuals/getting-started.md')} · "
+            f"{_link('docs/guides/getting-started.md')} · "
             f"{_link('docs/architecture/plans/app-module-layout.md')} | — |",
             f"| **集成架构** | MCP/A2A/外部适配？ | "
             f"{_link('docs/mcp/index.md')} · "
@@ -498,16 +498,16 @@ def _build_volume(
             "| 场景 | 客户要解决的问题 | 从哪里看能力/怎么做 |",
             "|------|------------------|---------------------|",
             "| **FDE 交付** | 把业务问题做成可签收的 AI 交付 | "
-            f"{_link('docs/manuals/fde/README.md')} · CAPABILITIES「平台治理 / FDE」 |",
+            f"{_link('docs/guides/fde/README.md')} · CAPABILITIES「平台治理 / FDE」 |",
             "| **App 工厂 / Builder** | 从需求到 Agent/应用产物 | "
             f"管理端 Builder · {_link('docs/architecture/plans/pi-thin-runtime.md')}（厂外交付边界） |",
             "| **Workbench** | 开发与调试工作台 | "
-            f"{_link('docs/manuals/management.md') if _rel('docs/manuals/management.md').is_file() else _link('docs/manuals/getting-started.md')} · CAPABILITIES「Workbench」 |",
+            f"{_link('docs/guides/management.md') if _rel('docs/guides/management.md').is_file() else _link('docs/guides/getting-started.md')} · CAPABILITIES「Workbench」 |",
             "| **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |",
             "| **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |",
             "| **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |",
             "| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | "
-            f"{_link('docs/knowledge-system.md') if _rel('docs/knowledge-system.md').is_file() else _link('docs/manuals/ontology.md')} · CAPABILITIES「知识引擎 / RAG」 |",
+            f"{_link('docs/guides/knowledge/knowledge-system.md') if _rel('docs/guides/knowledge/knowledge-system.md').is_file() else _link('docs/guides/ontology.md')} · CAPABILITIES「知识引擎 / RAG」 |",
             "| **Agent / Skill 运行** | 多步工具调用与技能执行 | "
             "CAPABILITIES「Agent 系统 / Skill 系统」· "
             f"{_link('docs/architecture/execution-decision-matrix.md')} |",
@@ -519,7 +519,7 @@ def _build_volume(
             "",
             "> 上表只指路。**接线以 "
             f"{_link('AIPLAT_CAPABILITIES.md')} 行为为准**；"
-            f"{_link('docs/manuals/README.md') if _rel('docs/manuals/README.md').is_file() else _link('docs/manuals/getting-started.md')} "
+            f"{_link('docs/guides/README.md') if _rel('docs/guides/README.md').is_file() else _link('docs/guides/getting-started.md')} "
             "仅提供操作说明，不作为行为契约。",
             "",
             "### 3.1 能力统计（摘自 CAPABILITIES）",
@@ -544,7 +544,7 @@ def _build_volume(
                 "",
             ]
             excerpt, _ = _read_excerpt(
-                _rel("docs/manuals/getting-started.md"), 5000
+                _rel("docs/guides/getting-started.md"), 5000
             )
             parts += [
                 excerpt,
@@ -845,7 +845,7 @@ def _repair_generated_links(path: Path) -> None:
         special = {
             "../aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
             "../../../docs/whitepaper/aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
-            "../../../docs/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
+            "../../../docs/guides/knowledge/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
             "../framework/verification-protocol.md": "docs/reference/framework/verification-protocol.md",
             "./cases/README.md": "docs/reference/explanatory/cases/README.md",
@@ -884,8 +884,8 @@ def _repair_generated_links(path: Path) -> None:
                 target = "docs/reference/explanatory/" + rest
             rel = os.path.relpath(REPO / target, path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
-        if link.startswith("../../../docs/manuals/"):
-            target = "docs/guides/" + link[len("../../../docs/manuals/"):]
+        if link.startswith("../../../docs/guides/"):
+            target = "docs/guides/" + link[len("../../../docs/guides/"):]
             rel = os.path.relpath(REPO / target, path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
         cands = by.get(Path(link).name, [])

@@ -451,7 +451,7 @@ python3 - "$WORKSPACE" << 'PYEOF_PIPELINE'
 import sys, os, re, ast
 
 workspace = sys.argv[1]
-target = os.path.join(workspace, "docs/manuals/fde/05-fde-implementation-process.md")
+target = os.path.join(workspace, "docs/guides/fde/05-fde-implementation-process.md")
 
 # Parse FDE_PIPELINE_STEPS from fde.py using AST (avoid import side-effects)
 fde_src = os.path.join(workspace, "aiPlat-core/core/api/routers/fde.py")
