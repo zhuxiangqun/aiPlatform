@@ -3,7 +3,7 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:44:38Z"
+generated_at: "2026-11-11T12:45:40Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -19,8 +19,8 @@ language: zh-CN
 
 # aiPlat 生态与集成白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
-> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)  
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:44:38Z` |
+| 生成时间 (UTC) | `2026-11-11T12:45:40Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -52,7 +52,7 @@ language: zh-CN
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
 | [`docs/mcp/index.md`](../../../docs/mcp/index.md) | MCP 文档入口 | ✅ |
-| [`docs/API/api-reference.md`](../../../docs/API/api-reference.md) | API 参考 | ✅ |
+| [`docs/API/api-reference.md`](../../../docs/reference/API/api-reference.md) | API 参考 | ❌ |
 | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
 | [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../docs/reference/explanatory/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ❌ |
@@ -63,7 +63,7 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/API/AttributionSchema.md`](../../../docs/API/AttributionSchema.md) | 归因协议 | ✅ |
+| [`docs/API/AttributionSchema.md`](../../../docs/reference/API/AttributionSchema.md) | 归因协议 | ❌ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
 | [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ❌ |
@@ -99,7 +99,7 @@ language: zh-CN
 
 ### 生态伙伴技术分层（权威专稿）
 
-> 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。
+> 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
 > 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 #### 1. 分层总览
@@ -156,7 +156,7 @@ language: zh-CN
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
 | **MCP 工具** | 注册/暴露工具供 Agent 调用 | [`docs/mcp/index.md`](../../../docs/mcp/index.md) | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/policy/mcp-stdio-prod-allowlist.md) + 成本阶梯 |
-| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../../../docs/API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
+| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../../../docs/reference/API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
 | **A2A** | Agent 间互操作 | CAPABILITIES「A2A 协议」切片 | PolicyGate / 身份透传 |
 | **Pi Package** | 消费工厂导出的薄 Runtime 包 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) · [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
 | **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | `execution_type` + lint + 准入 |
@@ -317,10 +317,10 @@ await server.start(host="0.0.0.0", port=8080)
 
 MCP server 的“启用/禁用/策略”推荐以文件系统为真值来源，并按 scope 分离：
 
-- **引擎内置（engine，仅核心能力层使用）**
+- **引擎内置（engine，仅核心能力层使用）**  
   `aiPlat-core/core/engine/mcps/<server>/{server.yaml,policy.yaml}`
 
-- **应用库（workspace，对外/用户可用）**
+- **应用库（workspace，对外/用户可用）**  
   `~/.aiplat/mcps/<server>/{server.yaml,policy.yaml}`
 
 管理面对应两套入口（避免混用）：
@@ -371,7 +371,7 @@ MCPClientConfig(
 #!/bin/false
 ### prod 放行 stdio MCP（路线A）策略
 
-> 背景：stdio MCP 等同于在 core 所在机器上启动本机进程（高风险 L3）。
+> 背景：stdio MCP 等同于在 core 所在机器上启动本机进程（高风险 L3）。  
 > 目标：在 **prod 也允许使用** 的前提下，提供可审计、可回滚、默认拒绝的显式放行机制。
 
 #### 1) 放行条件（必须同时满足）
@@ -380,7 +380,7 @@ MCPClientConfig(
 
 1. `~/.aiplat/mcps/<server>/server.yaml` 的 `metadata.prod_allowed: true`
 2. 环境变量 `AIPLAT_PROD_STDIO_MCP_ALLOWLIST` 包含该 `server_name`（逗号分隔）
-3. `server.yaml` 的 `command` 为绝对路径，且命令路径前缀在 `AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES` 允许范围内
+3. `server.yaml` 的 `command` 为绝对路径，且命令路径前缀在 `AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES` 允许范围内  
    - 该变量支持 `:`（os.pathsep）或 `,` 分隔多个前缀
 4. 加固校验（prod 默认启用）：
    - 禁止高风险解释器作为入口命令（默认：`bash,sh,zsh`；可用 `AIPLAT_STDIO_DENY_COMMAND_BASENAMES` 覆盖）
@@ -461,152 +461,7 @@ metadata:
 
 ### 3.6 API 参考（节选）
 
-### aiPlat API Reference
-
-> 完整 API 文档通过 Swagger UI 提供。所有端点支持交互式调用。
-
-#### Swagger UI
-
-启动服务后浏览器打开：
-
-| 层 | URL | 说明 |
-|:---|:---|:---|
-| Management (推荐) | `http://localhost:8000/docs` | API 网关，聚合所有层 |
-| Core | `http://localhost:8002/docs` | Agent 引擎 |
-| Infra | `http://localhost:8001/docs` | 模型管理 |
-| Platform | `http://localhost:8003/docs` | 知识库 |
-
-#### 核心 API 端点
-
-##### Agent 管理
-
-```bash
-### 列出所有 Agent
-GET /api/core/workspace/agents
-
-### 执行 Agent
-POST /api/core/workspace/agents/{agent_id}/execute
-Body: {"messages": [{"role": "user", "content": "..."}]}
-
-### 启动 Agent
-POST /api/core/workspace/agents/{agent_id}/start
-
-### 停止 Agent
-POST /api/core/workspace/agents/{agent_id}/stop
-```
-
-##### Pipeline
-
-```bash
-### 创建 Builder 项目
-POST /api/core/builder/projects
-
-### 运行 Pipeline
-POST /api/core/pipelines/run
-Body: {"pipeline_id": "...", "context": {...}}
-
-### Pipeline 状态
-GET /api/core/pipelines/{id}/status
-
-### HITL 人工审批
-POST /api/core/pipelines/{id}/hitl-resolve
-```
-
-##### 诊断与监控
-
-```bash
-### 架构守卫 (76 条规则)
-POST /api/diagnostics/guard/run
-
-### 全量诊断
-POST /api/diagnostics/run-all
-
-### 4 层健康检查
-GET /api/diagnostics/health/all
-
-### 数据血缘
-GET /api/diagnostics/data-lineage
-
-### 模型层级面板
-GET /api/diagnostics/model-tier
-```
-
-##### 知识库
-
-```bash
-### 检索知识
-POST /api/core/knowledge/retrieve
-Body: {"query": "...", "collection_id": "..."}
-
-### Wiki 页面查询
-GET /api/core/wiki/pages?query=...
-
-### 主动综合
-POST /api/core/wiki/active-synthesis
-```
-
-##### 模型管理
-
-```bash
-### 模型列表
-GET /api/infra/models
-
-### 模型启用/禁用
-POST /api/infra/models/{model_id}/enable
-POST /api/infra/models/{model_id}/disable
-
-### 会话模型覆盖 (/model 命令)
-POST /api/core/model-override
-Body: {"model_name": "deepseek-v4-pro"}
-```
-
-##### Skill 系统
-
-```bash
-### Skill 列表
-GET /api/core/skills
-
-### Skill 执行
-POST /api/core/skills/{skill_id}/execute
-
-### Skill 语料库搜索
-POST /api/core/skills/corpus-search
-Body: {"query": "..."}
-```
-
-##### 安全
-
-```bash
-### 审批列表
-GET /api/core/approvals
-
-### 审批操作
-POST /api/core/approvals/{id}/approve
-POST /api/core/approvals/{id}/reject
-
-### 密钥状态
-GET /api/platform/onboarding/secrets-status
-```
-
-#### 通用约定
-
-| 约定 | 说明 |
-|:---|:---|
-| 认证 | JWT Bearer token (可选, 单用户模式无需) |
-| 分页 | `?limit=100&offset=0` |
-| 错误格式 | `{"detail": "error message", "code": "ERROR_CODE"}` |
-| 多租户 | `X-Tenant-ID` header (可选) |
-| 流式 | `?stream=true` (SSE 响应) |
-
-#### 总端点统计
-
-```bash
-### 统计所有 API 端点
-find aiPlat-core/core/api/routers -name '*.py' | \
-  xargs grep -cEh '@router\.(get|post|put|delete|patch)' | \
-  awk '{sum+=$0} END {print sum}'
-### → ~842 端点
-```
+_(存在性检查失败：文件缺失 `docs/API/api-reference.md`)_
 
 
 ### 3.7 厂外 Pi Package
@@ -621,77 +476,6 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md) | SKU / 验收 |
 
 > 「Hybrid」在此指 **Pi↔aiPlat 企业回连**，与 Skill `execution_type`、Builder 工厂模式中的其它 “hybrid” 用语不是同一概念。
-
-### 3.8 归因协议（节选）
-
-### AttributionSchema — Agent 效果归因协议
-
-> 版本: 1.0 · 2026-07-17
-> 目的: 定义外部业务系统向 aiPlatform 回传 Agent 效果的标准化协议
-> 适用: 所有通过 aiPlatform 部署的 AI Agent 的客户侧集成
-
----
-
-#### 1. 会话追踪标识
-
-客户在调用 Agent API 时，必须在请求中携带 `X-AiPlatform-Session-ID` header：
-
-```http
-POST /api/agent/chat HTTP/1.1
-X-AiPlatform-Session-ID: sess_123abc
-```
-
-aiPlatform 在 Agent 的每次回复中都会返回此标识。客户系统需要将其与自身的业务会话关联存储。
-
----
-
-#### 2. 效果数据回传（后续实现）
-
-> **接口预留，当前版本尚未上线。建议客户侧先做 Session-ID 关联存储，待接口上线后批量回传。**
-
-```
-POST /api/platform/attribution
-Content-Type: application/json
-
-{
-  "session_id": "sess_123abc",          // 必填，aiPlatform 会话标识
-  "external_session_id": "crm_deal_456", // 可选，客户侧业务会话标识
-  "events": [
-    {
-      "timestamp": "2026-07-17T10:30:00Z",
-      "event_type": "deal_won",           // deal_won | deal_lost | deal_pending | page_view | add_to_cart | booking_confirmed
-      "deal_amount": 1299.00,             // 可选，成交金额（元）
-      "deal_currency": "CNY",             // 可选，币种
-      "conversion_stage": "purchase",      // 可选，转化阶段标识
-      "metadata": {}                     // 可选，业务自定义字段
-    }
-  ]
-}
-```
-
----
-
-#### 3. 数据用途
-
-回传的效果数据将用于：
-- **Agent 效果评估**：计算转化率、客单价等业务指标
-- **质量优化**：关联低转化率会话 → 分析 Agent 回复质量 → 自动改进
-- **FDE 周报**：纳入周度复盘报告，供 FDE 与客户共同审查
-
----
-
-#### 4. 数据安全
-
-- 效果数据按 `tenant_id` 严格隔离
-- 不存储客户侧的个人身份信息（PII）
-- 仅 `tenant` 管理员和 aiPlatform FDE 可见
-
----
-
-#### 5. 联系方式
-
-如有技术问题，联系 aiPlatform FDE 团队。
-
 
 ## 4. 相关横切（对标 / 评级）
 

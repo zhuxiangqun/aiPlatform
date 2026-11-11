@@ -90,7 +90,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 
 操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md)。
 
-- [API Reference](../API/api-reference.md) — 完整 API 文档
+- [API Reference](../reference/API/api-reference.md) — 完整 API 文档
 - [自主性评估报告](../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../framework/verification-protocol.md) — 独立复现验证
 

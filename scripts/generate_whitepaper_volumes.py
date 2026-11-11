@@ -853,6 +853,10 @@ def _repair_generated_links(path: Path) -> None:
         if link in special:
             rel = os.path.relpath(REPO / special[link], path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
+        if link.startswith("../../../docs/API/"):
+            target = "docs/reference/API/" + link[len("../../../docs/API/"):]
+            rel = os.path.relpath(REPO / target, path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
         if link.startswith("../../../docs/whitepaper/"):
             rest = link[len("../../../docs/whitepaper/"):]
             legacy = {
