@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T13:06:25+08:00",
+  "reviewed_at": "2026-11-11T13:22:53+08:00",
   "base_ref": "origin/main",
   "merge_base": "424af3975dd957a926479fdd88c505729c7cf48e",
-  "diff_sha256": "f63e79c29fb39b6711f431365769a754f55c32816ef895fd96d77f610c3dc75d",
-  "head_sha": "3ad7e7b4a09ebe3aad4192bea0f04811089fdc45",
+  "diff_sha256": "c5148a8e1bf8c4eeb7c82861d74160342e4683d00fe5c8cdb8dc70b7bd3053cf",
+  "head_sha": "1964f66fcac092c48b73332e5ee333d6649e2454",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject-aware coverage/heatmap/fill; claims stay false. Local lock only."
+  "note": "Subject coverage fill + arch contract \u00a778 clause-sync. Local lock only."
 }
