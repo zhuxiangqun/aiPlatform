@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T15:17:00+08:00",
+  "reviewed_at": "2026-11-11T15:39:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "179919c8dfac847e71c5827910a6828b0a6228ae",
-  "diff_sha256": "fcf34522e20ba33d6f6ac59a443888aa6f572940d9f178bc980eae8253ef7c7f",
-  "head_sha": "49287519ccb01937eeadd556598c3df26b7b1a23",
+  "merge_base": "368997376c3d86ff7f6c527efcdaf0ee426d9ffb",
+  "diff_sha256": "5f87b4f774cd89a30509114c25dc9369254ed821da759643a4b6aed8677fab7a",
+  "head_sha": "f4afebcfa0538cb2ebb76e2284912a1c62f1767a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject *.benchmark.v1 quotas 5\u21928 (ADR floor); bank already \u00d78/cap; holdout on; claim/cert closed; draft cases unchanged. Local lock only; CI unlock is non-author Approve."
+  "note": "Subject *.regression.v1 quotas 5\u21928 aligned with bank\u00d78; manifest size locks updated; claim/cert closed. Local lock only; CI unlock is non-author Approve."
 }

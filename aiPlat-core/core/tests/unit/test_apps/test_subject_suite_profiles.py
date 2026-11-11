@@ -37,7 +37,7 @@ def test_compile_prompt_regression_plan():
     assert plan["ok"] is True
     assert plan["subject_kind"] == "prompt"
     assert plan["object_type_member"] is True
-    assert len(plan["sample_manifest"]) == 25
+    assert len(plan["sample_manifest"]) == 40  # PROMPT_V1_CAPS ×8
     assert plan["claim_eligible"] is False
     assert plan["accuracy_claim"] is False
     assert plan["target_contract"]["object_type"] == "prompt"
@@ -48,7 +48,7 @@ def test_compile_subject_local_kb_plan():
     assert plan["ok"] is True
     assert plan["subject_kind"] == "kb"
     assert plan["object_type_member"] is False
-    assert len(plan["sample_manifest"]) == 15
+    assert len(plan["sample_manifest"]) == 24  # KB_V1_CAPS ×8
     assert plan["claim_eligible"] is False
     tc = plan["target_contract"]
     assert tc.get("subject_kind") == "kb" or tc.get("object_type_registered") is False

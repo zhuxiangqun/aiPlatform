@@ -6,10 +6,10 @@
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "task_completion": 5,
-    "clarification": 5,
-    "safety": 5,
-    "robustness": 5
+    "task_completion": 8,
+    "clarification": 8,
+    "safety": 8,
+    "robustness": 8
   },
   "strategy": "stratified",
   "seed": 17,
@@ -19,5 +19,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "Model Subject regression — MODEL_V1_CAPS ×5 fixture lexical; claim closed; ≠ live host accuracy."
+  "notes": "Model Subject regression — MODEL_V1_CAPS ×8 fixture lexical; claim closed; ≠ live host accuracy."
 }

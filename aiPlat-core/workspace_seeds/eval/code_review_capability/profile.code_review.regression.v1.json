@@ -1,14 +1,16 @@
 {
   "schema": "eval.suite_profile.v1",
   "profile_id": "code_review.regression.v1",
-  "subject_kinds": ["code_review"],
+  "subject_kinds": [
+    "code_review"
+  ],
   "pack_id": "code_review.capability",
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "task_completion": 5,
-    "safety": 5,
-    "robustness": 5
+    "task_completion": 8,
+    "safety": 8,
+    "robustness": 8
   },
   "strategy": "stratified",
   "seed": 31,
@@ -18,5 +20,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "Code Review Subject regression — CODE_REVIEW_V1_CAPS ×5 fixture findings/gold; claim closed; ≠ live autoreview."
+  "notes": "Code Review Subject regression — CODE_REVIEW_V1_CAPS ×8 fixture findings/gold; claim closed; ≠ live autoreview."
 }

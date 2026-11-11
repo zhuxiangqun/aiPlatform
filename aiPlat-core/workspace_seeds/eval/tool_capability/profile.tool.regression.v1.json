@@ -1,14 +1,16 @@
 {
   "schema": "eval.suite_profile.v1",
   "profile_id": "tool.regression.v1",
-  "subject_kinds": ["tool"],
+  "subject_kinds": [
+    "tool"
+  ],
   "pack_id": "tool.capability",
   "pack_version": "0.2.0",
   "pack_scope": "global",
   "quotas": {
-    "tool_selection": 5,
-    "tool_args": 5,
-    "tool_result_use": 5
+    "tool_selection": 8,
+    "tool_args": 8,
+    "tool_result_use": 8
   },
   "strategy": "stratified",
   "seed": 19,
@@ -18,5 +20,5 @@
   },
   "on_insufficient": "error",
   "claim_eligible": false,
-  "notes": "Tool Subject regression — TOOL_V1_CAPS ×5 mock tool_trace; claim closed; ≠ live tools / real MCP."
+  "notes": "Tool Subject regression — TOOL_V1_CAPS ×8 mock tool_trace; claim closed; ≠ live tools / real MCP."
 }
