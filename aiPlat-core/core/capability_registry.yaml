@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2598
+total_capabilities: 2600
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 614
+    caps_count: 616
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8797,6 +8797,14 @@ domains:
       - symbol: audit_case_content_purpose
         type: function
         signature: 'audit_case_content_purpose(case)→List[str] error codes'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: audit_cases_content_purpose
+        type: function
+        signature: 'audit_cases_content_purpose(cases, subject_kind?)→Dict; claim=false'
+        module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
+      - symbol: assert_cases_content_purpose_ok
+        type: function
+        signature: 'assert_cases_content_purpose_ok(cases, subject_kind?)→Dict; fail-closed'
         module: aiPlat-core/core/apps/eval/service/content_purpose_ok.py
       - symbol: content_purpose_ok_for_subject
         type: function
