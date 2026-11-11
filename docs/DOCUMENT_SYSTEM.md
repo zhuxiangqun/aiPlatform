@@ -10,7 +10,8 @@ scope_out: 业务实现、代码注释、第三方依赖文档
 language: zh-CN
 version: 2.4
 supersedes: 2.3
-owner: 文档治理组（Documentation Governance）
+owner: 朱向群
+owner_role: 文档治理组（Documentation Governance）
 approved: 2026-11-11
 effective: 2026-11-11
 last_reviewed: 2026-11-11
@@ -718,7 +719,7 @@ docs/doc-paths.yaml
 |---|---|---|
 | 1 | `docs/index.md` 已合并到 `docs/README.md` | 关闭（2026-11-11） |
 | 2 | 954 份文档尚未迁入目标目录 | open |
-| 3 | canonical 文档 owner：文档治理组（个人 owner 待补） | 部分关闭 |
+| 3 | canonical 文档 owner：朱向群 / 文档治理组 | 关闭 |
 | 4 | 骨架过期没有自动归档脚本 | 已改为人工确认 |
 | 5 | `reports/` 生命周期仍在迁移 | open |
 
