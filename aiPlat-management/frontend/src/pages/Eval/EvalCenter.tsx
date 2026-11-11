@@ -31,6 +31,7 @@ import EvalGeneratedAppRegressionPanel from './EvalGeneratedAppRegressionPanel';
 import EvalApiRegressionPanel from './EvalApiRegressionPanel';
 import EvalDatasetRegressionPanel from './EvalDatasetRegressionPanel';
 import EvalSystemRegressionPanel from './EvalSystemRegressionPanel';
+import EvalSubjectRegressionInventoryPanel from './EvalSubjectRegressionInventoryPanel';
 import EvalOverviewPanel from './EvalOverviewPanel';
 import EvalPreferencePanel from './EvalPreferencePanel';
 import EvalReportsPanel from './EvalReportsPanel';
@@ -121,6 +122,7 @@ const ADVANCED_TABS = [
   { id: 'case-editor', label: '题目维护' },
   { id: 'method-track', label: 'Method轨' },
   { id: 'p1-regression', label: 'P1 Regression' },
+  { id: 'subject-regression-inventory', label: 'Subject Inventory' },
   { id: 'prompt-regression', label: 'Prompt Regression' },
   { id: 'workflow-regression', label: 'Workflow Regression' },
   { id: 'model-regression', label: 'Model Regression' },
@@ -501,6 +503,10 @@ const EvalCenter: React.FC = () => {
       {tab === 'method-track' && <EvalMethodTrackPanel tenantId={TENANT} />}
 
       {tab === 'p1-regression' && <EvalP1RegressionPanel tenantId={TENANT} />}
+
+      {tab === 'subject-regression-inventory' && (
+        <EvalSubjectRegressionInventoryPanel tenantId={TENANT} />
+      )}
 
       {tab === 'prompt-regression' && <EvalPromptRegressionPanel tenantId={TENANT} />}
 

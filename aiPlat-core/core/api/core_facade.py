@@ -8436,6 +8436,17 @@ def eval_system_regression_status(
     return system_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_subject_regression_inventory(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Cross-Subject regression honesty inventory (claim stays false)."""
+    from core.apps.eval.service.subject_regression_inventory import (
+        subject_regression_inventory,
+    )
+
+    return subject_regression_inventory(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
