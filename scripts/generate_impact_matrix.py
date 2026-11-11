@@ -117,7 +117,7 @@ def check_matrix_fresh(root: Optional[Path] = None) -> int:
     root = root or Path(__file__).resolve().parent.parent
     data = load_registry(root)
     expected = render_matrix_markdown(data)
-    committed = root / "docs" / "matrix" / "capability-impact-matrix.md"
+    committed = root / "docs" / "reference" / "matrix" / "capability-impact-matrix.md"
     if not committed.is_file():
         print(f"ERROR: missing committed matrix {committed}")
         return 1
@@ -156,7 +156,7 @@ def main(argv=None) -> int:
         return check_matrix_fresh(root)
 
     data = load_registry(root)
-    out = root / "docs" / "matrix" / "capability-impact-matrix.md"
+    out = root / "docs" / "reference" / "matrix" / "capability-impact-matrix.md"
     write_matrix(out, data)
     domains = data.get("domains") or {}
     n_cons = len({
