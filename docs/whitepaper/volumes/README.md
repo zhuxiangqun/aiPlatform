@@ -1,5 +1,8 @@
 # 五维白皮书分卷（生成物）
 
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/README.md`](../../../reports/whitepapers/volumes/README.md)。本文件仅保留迁移期，不再更新。
+
+
 > 由 `scripts/generate_whitepaper_volumes.py` 根据 `../whitepaper-suite.yaml` + CAPABILITIES + assessment-scores 生成。勿手改正文。
 
 | 卷 | 文件 |

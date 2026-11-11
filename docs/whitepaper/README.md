@@ -1,5 +1,7 @@
 # docs/whitepaper/ — 白皮书目录
 
+> **Batch C3**：生成物已迁移到 [`reports/whitepapers/`](../../reports/whitepapers/)。本目录旧生成物标记为 deprecated，仅保留迁移期。
+
 | 文件 | 角色 |
 |------|------|
 | [WHITEPAPER_SYSTEM.md](./WHITEPAPER_SYSTEM.md) | **五维白皮书体系**与权威源映射 |

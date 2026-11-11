@@ -18,6 +18,9 @@ packaging: executive-digest
 
 # aiPlat 平台现状白皮书
 
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/aiplat-platform-status-whitepaper.md`](../../reports/whitepapers/aiplat-platform-status-whitepaper.md)。本文件仅保留迁移期，不再更新。
+
+
 > **本文是可再生成的平台现状说明书（可读包装），不是第二真相源。**  
 > 能力清单唯一权威：仓库根目录 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md)  
 > 机器登记：[`aiPlat-core/core/capability_registry.yaml`](../../aiPlat-core/core/capability_registry.yaml)  

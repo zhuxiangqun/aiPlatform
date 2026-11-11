@@ -19,6 +19,9 @@ language: zh-CN
 
 # aiPlat 安全与治理白皮书
 
+> **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/05-security-governance.md`](../../../reports/whitepapers/volumes/05-security-governance.md)。本文件仅保留迁移期，不再更新。
+
+
 > **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
 > 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
