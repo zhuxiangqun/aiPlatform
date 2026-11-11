@@ -1,0 +1,32 @@
+{
+  "schema_version": "4.2",
+  "bundle": "knowledge-system.v4.2.schema.json",
+  "defs": [
+    "action_contract",
+    "action_execution",
+    "approval_record",
+    "calibration_report",
+    "claim",
+    "claim_state",
+    "error_response",
+    "evidence",
+    "fact",
+    "function_contract",
+    "interface",
+    "link_type",
+    "object_set_request",
+    "object_set_response",
+    "object_type",
+    "package",
+    "query_request",
+    "query_response",
+    "scenario",
+    "security_policy",
+    "source",
+    "source_policy"
+  ],
+  "status": "approved",
+  "compatible_with": [
+    "4.2"
+  ]
+}
