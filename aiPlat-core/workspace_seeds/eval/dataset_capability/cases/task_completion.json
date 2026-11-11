@@ -1,0 +1,97 @@
+[
+  {
+    "case_id": "dataset.task_completion.001",
+    "capabilities": ["task_completion"],
+    "category": "fixture_table",
+    "prompt": "对 dataset/basic 跑 fixture_table 断言，返回 rows=3 与 status=ok。",
+    "success_criteria": {
+      "must_contain": ["rows=3", "status=ok"],
+      "must_not_contain": ["断言失败"]
+    },
+    "scripted_answer": "fixture_table 完成：rows=3，status=ok（fixture）。",
+    "test_purpose": {
+      "summary": "验证基础表断言输出含 rows 与 status",
+      "why_this_case": "Dataset Subject 最小交付是表行可观测",
+      "expected_behavior": ["rows=3", "status=ok"],
+      "failure_signals": ["断言失败"],
+      "not_testing": ["不测 typed Plan dataset_assert 真值"],
+      "oracle_rationale": "词面 rows=3 + status=ok"
+    }
+  },
+  {
+    "case_id": "dataset.task_completion.002",
+    "capabilities": ["task_completion"],
+    "category": "fixture_table",
+    "prompt": "校验列 schema 含 id,label 两列。",
+    "success_criteria": {
+      "must_contain": ["id", "label"],
+      "must_not_contain": ["缺列"]
+    },
+    "scripted_answer": "schema 校验通过：含 id 与 label。",
+    "test_purpose": {
+      "summary": "验证必选列锚点同时出现",
+      "why_this_case": "列丢失是 fixture 常见失败",
+      "expected_behavior": ["点名 id", "点名 label"],
+      "failure_signals": ["缺列"],
+      "not_testing": ["不测真实 CSV 解析器"],
+      "oracle_rationale": "词面列名"
+    }
+  },
+  {
+    "case_id": "dataset.task_completion.003",
+    "capabilities": ["task_completion"],
+    "category": "fixture_table",
+    "prompt": "兼容探测：返回 runtime_tier=fixture 与 object_type=dataset。",
+    "success_criteria": {
+      "must_contain": ["runtime_tier=fixture", "object_type=dataset"],
+      "must_not_contain": ["runtime_claim=true"]
+    },
+    "scripted_answer": "兼容探测通过：object_type=dataset，runtime_tier=fixture。",
+    "test_purpose": {
+      "summary": "验证诚实披露 runtime_tier 与 object_type",
+      "why_this_case": "fixture 不得冒充 live claim",
+      "expected_behavior": ["披露 fixture", "点名 dataset"],
+      "failure_signals": ["runtime_claim=true"],
+      "not_testing": ["不测 live 宿主"],
+      "oracle_rationale": "词面双锚点 + 禁止 claim"
+    }
+  },
+  {
+    "case_id": "dataset.task_completion.004",
+    "capabilities": ["task_completion"],
+    "category": "fixture_table",
+    "prompt": "批量校验 2 个 split，报告 split_count=2。",
+    "success_criteria": {
+      "must_contain": ["split_count=2"],
+      "must_not_contain": ["split_count=0"]
+    },
+    "scripted_answer": "批量校验完成：split_count=2。",
+    "test_purpose": {
+      "summary": "验证 split 计数可观测",
+      "why_this_case": "空 split 假成功是回归点",
+      "expected_behavior": ["split_count=2"],
+      "failure_signals": ["split_count=0"],
+      "not_testing": ["不测真实分区"],
+      "oracle_rationale": "词面 split_count=2"
+    }
+  },
+  {
+    "case_id": "dataset.task_completion.005",
+    "capabilities": ["task_completion"],
+    "category": "fixture_table",
+    "prompt": "对 set_id=dataset/basic 返回归一化信封 schema=eval.subject_adapter.v1。",
+    "success_criteria": {
+      "must_contain": ["dataset/basic", "eval.subject_adapter.v1"],
+      "must_not_contain": ["未注册"]
+    },
+    "scripted_answer": "dataset/basic 归一化完成：schema=eval.subject_adapter.v1。",
+    "test_purpose": {
+      "summary": "验证 set_id 与适配器 schema 锚点",
+      "why_this_case": "数据集身份必须以 set_id 可追溯",
+      "expected_behavior": ["点名 dataset/basic", "含 schema"],
+      "failure_signals": ["未注册"],
+      "not_testing": ["不测真实仓库"],
+      "oracle_rationale": "词面 set_id + schema"
+    }
+  }
+]

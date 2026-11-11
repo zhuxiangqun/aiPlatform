@@ -139,6 +139,16 @@ API_V1_CAPS = frozenset(
     }
 )
 
+# Dataset v1 measurable subset (maps typed dataset/* fixture packs).
+# First-class OBJECT_TYPES; lexical fixture ≠ typed Plan dataset_assert.
+DATASET_V1_CAPS = frozenset(
+    {
+        "task_completion",  # fixture_table row delivery
+        "safety",  # refuse PII / toxic row misuse
+        "robustness",  # noisy / malformed schema fail closed
+    }
+)
+
 # session_eval profile bounds (engineering only; accuracy_claim=false).
 _SESSION_PROFILE_BOUNDS = {
     "v0": (2, 3),
@@ -681,6 +691,19 @@ class ApiSubjectAdapter(_TypedLexicalSubjectAdapter):
     v1_caps = API_V1_CAPS
     live_reason = "api_live_external_pull_deferred"
     runtime_claim_reason = "api_lexical_fixture_stub"
+
+
+class DatasetSubjectAdapter(_TypedLexicalSubjectAdapter):
+    """Dataset Subject — lexical fixture path; reuses typed_plan oracle.
+
+    Distinct from typed Plan dataset_assert / fixture_table accuracy. claim stays false.
+    """
+
+    subject_kind = "dataset"
+    object_type = "dataset"
+    v1_caps = DATASET_V1_CAPS
+    live_reason = "dataset_live_via_typed_plan_exam"
+    runtime_claim_reason = "dataset_lexical_fixture_stub"
 
 
 def _kb_fixture_hits(case: Mapping[str, Any], env: Mapping[str, Any] | None) -> List[Any]:
@@ -1860,6 +1883,7 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
     "skill": SkillSubjectAdapter(),
     "generated_app": GeneratedAppSubjectAdapter(),
     "api": ApiSubjectAdapter(),
+    "dataset": DatasetSubjectAdapter(),
     "kb": KbSubjectAdapter(),
     "code_review": CodeReviewSubjectAdapter(),
     "session": SessionSubjectAdapter(),

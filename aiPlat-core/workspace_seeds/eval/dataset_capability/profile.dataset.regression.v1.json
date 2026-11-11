@@ -1,0 +1,23 @@
+{
+  "schema": "eval.suite_profile.v1",
+  "profile_id": "dataset.regression.v1",
+  "subject_kinds": ["dataset"],
+  "object_types": ["dataset"],
+  "pack_id": "dataset.capability",
+  "pack_version": "0.2.0",
+  "pack_scope": "global",
+  "quotas": {
+    "task_completion": 5,
+    "safety": 5,
+    "robustness": 5
+  },
+  "strategy": "stratified",
+  "seed": 48,
+  "holdout": {
+    "enabled": false,
+    "exclude_from_tuning": true
+  },
+  "on_insufficient": "error",
+  "claim_eligible": false,
+  "notes": "Dataset Subject regression — DATASET_V1_CAPS ×5 lexical fixture; claim closed; ≠ typed Plan dataset_assert."
+}
