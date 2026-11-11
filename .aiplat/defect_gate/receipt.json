@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T14:20:46+08:00",
+  "reviewed_at": "2026-11-11T14:51:57+08:00",
   "base_ref": "origin/main",
-  "merge_base": "b087678698f6a2102b2278d790e69ac2d1b7cd1e",
-  "diff_sha256": "d53812e422f8ec91d9921c3ca6289db48c52e1789fb526b2aaf8cc8c85c461a2",
-  "head_sha": "50a012cf8366b57e09e09c4c6cd321263efd46da",
+  "merge_base": "1f794a07adc0a643c6ba317c1283768cc05d2cc7",
+  "diff_sha256": "05b3cf781c77c0af7dbd803dbb7681a13d523ec86bfd875d4117227491d54a34",
+  "head_sha": "cc344b7b04c92749323299e300f2017a1b494edb",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject *.benchmark.v1 seeds + holdout; claims stay false. Local lock only."
+  "note": "Subject banks 5\u21928/cap; *.benchmark.v1 quotas 4\u21925; claim/cert closed. Variants are oracle-preserving thickeners, not live accuracy. Local lock only; CI unlock is non-author Approve."
 }
