@@ -90,25 +90,10 @@ workspace-root/
 │   │
 │   ├── standards/                     ← 跨层规范（强制性；`规范-*.md` 多份）
 │   │
-│   ├── agents/                        ← Agent 架构设计
-│   │   └── subagent.md
-│   │
-│   ├── mcp/                           ← MCP 协议集成
-│   │   └── index.md
-│   │
-│   ├── skills/                        ← Skill 动态进化
-│   │   └── evolution.md
-│   │
-│   ├── tools/                         ← 工具系统增强
-│   │   └── enhancement.md
-│   │
 │   ├── reports/                       ← 生成报告（不手动编辑）
 │   │   ├── README.md
 │   │   ├── AIPLAT_ARCHITECTURE_REPORT.md
 │   │   └── AIPLAT_DIAGNOSTIC_REPORT.md
-│   │
-│   ├── harness/                       ← 跨仓库 Harness 索引
-│   │   └── README.md
 │   │
 │   ├── audit/                         ← 合规审计
 │   │   └── compliance-matrix.md
@@ -737,7 +722,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 22 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 17 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

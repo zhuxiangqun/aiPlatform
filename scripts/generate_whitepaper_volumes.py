@@ -853,6 +853,10 @@ def _repair_generated_links(path: Path) -> None:
         if link in special:
             rel = os.path.relpath(REPO / special[link], path.parent)
             return f"[{label}]({rel}{raw[len(link):]})"
+        if link.startswith("../../../docs/mcp/"):
+            target = "docs/reference/mcp/" + link[len("../../../docs/mcp/"):]
+            rel = os.path.relpath(REPO / target, path.parent)
+            return f"[{label}]({rel}{raw[len(link):]})"
         if link.startswith("../../../docs/API/"):
             target = "docs/reference/API/" + link[len("../../../docs/API/"):]
             rel = os.path.relpath(REPO / target, path.parent)
@@ -885,8 +889,8 @@ def _repair_generated_links(path: Path) -> None:
             return f"[{label}]({rel}{raw[len(link):]})"
         return m.group(0)
     new = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", repl, text)
-    if new != text:
-        path.write_text(new, encoding="utf-8")
+    new = "\n".join(line.rstrip() for line in new.splitlines()) + "\n"
+    path.write_text(new, encoding="utf-8")
 
 
 def check_fresh() -> int:

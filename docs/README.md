@@ -62,7 +62,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [harness/](harness/) · [reference/matrix/](reference/matrix/) · [mcp/](mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
+[reference/agents/](reference/agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [reference/harness/](reference/harness/) · [reference/matrix/](reference/matrix/) · [reference/mcp/](reference/mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
 
 ---
 
@@ -125,12 +125,12 @@
 | 我想… | 看这个 | 典型路径 |
 |:---|:---|------|
 | 查 CI/规约会拦截的规则 | 核心规约 | 根 `CLAUDE.md`、各子仓 `CLAUDE.md`、`AIPLAT_CAPABILITIES.md` |
-| 理解系统怎么设计的 | 架构设计 | `architecture/`、`harness/`、`contracts/`、`agents/` |
+| 理解系统怎么设计的 | 架构设计 | `architecture/`、`reference/harness/`、`contracts/`、`reference/agents/` |
 | 查某一层怎么实现 | 层设计 | `aiPlat-core/docs/`、`aiPlat-infra/docs/`、`aiPlat-platform/docs/` 等（不在根 `docs/` 一级目录） |
 | 学怎么操作交付 | 用户手册 | `guides/`、`guides/fde/`、`by-role/` |
 | 看目标态/规划 | 设计与规划 | `design/`、`architecture/plans/`（含五产品；**非现状**） |
 | 用 Pi Thin Runtime | Pi 现行交付 | `packages/aiplat-pi-runtime/README.md`、`architecture/plans/pi-thin-runtime.md` |
 | 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`guides/ontology.md`（指向知识系统） |
 | 查安全红线 | 合规与安全 | `compliance/`、`security/`、`policy/` |
-| 查 MCP/测试工具 | 工具与框架 | `mcp/`、`tools/`、`guides/testing.md` |
+| 查 MCP/测试工具 | 工具与框架 | `reference/mcp/`、`tools/`、`guides/testing.md` |
 | 看系统状态报告 | 报告与审计 | `reports/`、`archive/`、`reference/research/` |

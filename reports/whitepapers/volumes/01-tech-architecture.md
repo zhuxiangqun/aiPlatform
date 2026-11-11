@@ -3,7 +3,7 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:47:13Z"
+generated_at: "2026-11-11T12:48:40Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:47:13Z` |
+| 生成时间 (UTC) | `2026-11-11T12:48:40Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -72,7 +72,7 @@ language: zh-CN
 | [`docs/archive/architecture-evolution-roadmap.md`](../../../docs/archive/architecture-evolution-roadmap.md) | 架构演进路线 | ✅ |
 | [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) | 开发上手 | ❌ |
 | [`docs/architecture/plans/app-module-layout.md`](../../../docs/architecture/plans/app-module-layout.md) | 应用模块目录规范 | ✅ |
-| [`docs/mcp/index.md`](../../../docs/mcp/index.md) | 集成 / MCP 入口 | ✅ |
+| [`docs/mcp/index.md`](../../../docs/reference/mcp/index.md) | 集成 / MCP 入口 | ❌ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -152,7 +152,7 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 | **测试与验证** | 金字塔 / CI / 质量门？ | [`docs/manuals/testing.md`](../../../docs/guides/testing.md) · [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) · `.github/workflows/` | CAPABILITIES「管理 & 质量」 |
 | **技术风险与演进** | 技术债、依赖风险、路线？ | [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) · [`docs/archive/architecture-evolution-roadmap.md`](../../../docs/archive/architecture-evolution-roadmap.md) · [`CLAUDE.md`](../../../CLAUDE.md) §16 | 商业卷 ROADMAP 节选（非财务） |
 | **开发视图** | 代码组织、模块边界、上手？ | [`CLAUDE.md`](../../../CLAUDE.md) · [`docs/DOCUMENT_SYSTEM.md`](../../../docs/DOCUMENT_SYSTEM.md) · [`docs/manuals/getting-started.md`](../../../docs/guides/getting-started.md) · [`docs/architecture/plans/app-module-layout.md`](../../../docs/architecture/plans/app-module-layout.md) | — |
-| **集成架构** | MCP/A2A/外部适配？ | [`docs/mcp/index.md`](../../../docs/mcp/index.md) · [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
+| **集成架构** | MCP/A2A/外部适配？ | [`docs/mcp/index.md`](../../../docs/reference/mcp/index.md) · [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/policy/mcp-stdio-prod-allowlist.md) | 分卷 04 · CAPABILITIES「MCP / A2A」 |
 | **质量属性 / SLA·SLO** | 可用性目标与误差预算？ | [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) · [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) | CAPABILITIES「管理 & 质量」 |
 
 > **阅读约定**：索引保证「只读本卷也知道去哪尽调」。性能数字以 SLO / `benchmark_all.sh` 为准，勿在卷内编造 QPS。
