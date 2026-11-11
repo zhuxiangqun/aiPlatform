@@ -8483,17 +8483,26 @@ def eval_agent_regression_profile() -> Dict[str, Any]:
 
 
 def eval_list_suite_profiles() -> list:
-    """P4: list smoke/regression/benchmark Suite Profiles."""
+    """P2/P4: list agent + Subject Suite Profiles (claim closed)."""
     from core.apps.eval.service.capability_case_bank import list_suite_profiles
 
     return list_suite_profiles()
 
 
 def eval_get_suite_profile(profile_id: str = "") -> Dict[str, Any]:
-    """P4: resolve built-in Suite Profile by id."""
+    """P2/P4: resolve agent or Subject Suite Profile by id."""
     from core.apps.eval.service.capability_case_bank import get_suite_profile
 
     return get_suite_profile(profile_id)
+
+
+def eval_subject_suite_profile_inventory() -> Dict[str, Any]:
+    """ADR P2: discoverable Subject Suite Profiles honesty snapshot."""
+    from core.apps.eval.service.subject_suite_profiles import (
+        subject_suite_profile_inventory,
+    )
+
+    return subject_suite_profile_inventory()
 
 
 def eval_benchmark_readiness(
@@ -8700,8 +8709,9 @@ def eval_compile_plan_from_suite_profile(
     profile: Optional[Dict[str, Any]] = None,
     profile_id: str = "",
     cases: Optional[list] = None,
-    object_id: str = "agent.capability.target",
+    object_id: str = "",
     object_version: str = "0.1.0",
+    require_content_purpose_ok: bool = True,
 ) -> Dict[str, Any]:
     """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
     from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
@@ -8712,6 +8722,7 @@ def eval_compile_plan_from_suite_profile(
         cases=cases,
         object_id=object_id,
         object_version=object_version,
+        require_content_purpose_ok=require_content_purpose_ok,
     )
 
 

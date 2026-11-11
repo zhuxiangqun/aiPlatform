@@ -16,12 +16,15 @@ from core.apps.eval.service.capability_p4_gate import (
 from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
 
 
-def test_list_suite_profiles_has_three():
+def test_list_suite_profiles_includes_agent_and_subjects():
     profiles = list_suite_profiles()
     ids = {p["profile_id"] for p in profiles}
     assert PROFILE_ID_SMOKE in ids
     assert "agent.regression.v1" in ids
     assert PROFILE_ID_BENCHMARK in ids
+    assert "prompt.regression.v1" in ids
+    assert "api.smoke.v1" in ids
+    assert len(profiles) >= 20
     for p in profiles:
         assert p["claim_eligible"] is False
 

@@ -2796,6 +2796,12 @@ export const agentEvalApi = {
       `/platform/apps/eval/store/content-purpose-ok${q}`,
     );
   },
+  /** ADR P2: Subject Suite Profile discovery inventory. */
+  subjectSuiteProfiles: async () => {
+    return apiClient.get<Record<string, unknown>>(
+      '/platform/apps/eval/store/subject-suite-profiles',
+    );
+  },
   /** Case Editor: read-only repo seed browse. */
   caseEditorSeedList: async (capabilityId?: string) => {
     const q = capabilityId?.trim()

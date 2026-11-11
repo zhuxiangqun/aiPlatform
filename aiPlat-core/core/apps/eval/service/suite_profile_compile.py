@@ -33,7 +33,9 @@ from core.apps.eval.service.case_pack_hash import (
 from core.apps.eval.service.claims_gate import claims_policy_stub
 from core.apps.eval.service.eval_plan import PLAN_SCHEMA_V2
 from core.apps.eval.service.target_contract import (
+    OBJECT_TYPES,
     build_agent_target_contract,
+    build_target_contract,
     normalize_target_contract,
 )
 
@@ -222,31 +224,130 @@ def _manifest_rows(
     return rows
 
 
+def _resolve_suite_profile(
+    *,
+    profile: Optional[Mapping[str, Any]],
+    profile_id: str,
+) -> Dict[str, Any]:
+    from core.apps.eval.service.subject_suite_profiles import normalize_suite_profile
+
+    if profile is not None:
+        return normalize_suite_profile(dict(profile))
+    pid = str(profile_id or "").strip()
+    if not pid:
+        return normalize_suite_profile(agent_regression_profile(), subject_kind="agent")
+    try:
+        # get_suite_profile already resolves agent + Subject seed profiles.
+        return normalize_suite_profile(get_suite_profile(pid))
+    except ValueError as e:
+        raise SuiteProfileCompileError(str(e)) from e
+
+
+def _build_profile_target_contract(
+    *,
+    subject_kind: str,
+    object_id: str,
+    object_version: str,
+    capabilities: Sequence[str],
+    purpose: Sequence[str],
+) -> Dict[str, Any]:
+    kind = str(subject_kind or "agent").strip().lower() or "agent"
+    caps = list(capabilities)
+    eval_profile = {
+        "profile_source": "explicit",
+        "capabilities": caps,
+        "eval_purpose": list(purpose),
+    }
+    if kind == "agent":
+        return normalize_target_contract(
+            build_agent_target_contract(
+                object_id=object_id,
+                object_version=object_version,
+                capabilities=caps,
+                eval_profile=eval_profile,
+            )
+        )
+    if kind in OBJECT_TYPES:
+        return build_target_contract(
+            object_type=kind,
+            object_id=object_id,
+            object_version=object_version,
+            capabilities=caps,
+            eval_purpose=list(purpose),
+            target_runtime=["fixture"],
+            boundaries={
+                "claim_eligible": False,
+                "subject_kind": kind,
+                "accuracy_claim": False,
+            },
+        )
+    # Subject-local (kb/session/tool/…): adapter disclosure, not OBJECT_TYPES contract.
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    adapter = get_subject_adapter(kind)
+    raw = adapter.build_contract(
+        object_id=object_id,
+        object_version=object_version,
+        capabilities=caps,
+        eval_profile=eval_profile,
+    )
+    out = dict(raw or {})
+    out["claim_eligible"] = False
+    out.setdefault("subject_kind", kind)
+    out.setdefault("object_type_registered", False)
+    out.setdefault(
+        "honesty",
+        f"{kind} Subject-local contract; not OBJECT_TYPES; claim closed",
+    )
+    return out
+
+
 def compile_plan_from_suite_profile(
     *,
     profile: Optional[Mapping[str, Any]] = None,
     profile_id: str = "",
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
-    object_id: str = "agent.capability.target",
+    object_id: str = "",
     object_version: str = "0.1.0",
+    require_content_purpose_ok: bool = True,
 ) -> Dict[str, Any]:
     """Compile Plan v2 whose sample_manifest is the Profile-selected case list."""
-    if profile is not None:
-        prof = dict(profile)
-    elif str(profile_id or "").strip():
-        try:
-            prof = get_suite_profile(str(profile_id).strip())
-        except ValueError as e:
-            raise SuiteProfileCompileError(str(e)) from e
-    else:
-        prof = agent_regression_profile()
+    from core.apps.eval.service.subject_suite_profiles import (
+        SubjectSuiteProfileError,
+        load_cases_for_suite_profile,
+        resolve_subject_kind_from_profile,
+    )
+
+    prof = _resolve_suite_profile(profile=profile, profile_id=profile_id)
 
     if str(prof.get("schema") or "") != PROFILE_SCHEMA:
         if str(prof.get("profile_id") or "") != PROFILE_ID and not prof.get("quotas"):
             raise SuiteProfileCompileError("invalid suite profile")
         prof.setdefault("schema", PROFILE_SCHEMA)
 
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
+    subject_kind = resolve_subject_kind_from_profile(prof) or "agent"
+    if cases is not None:
+        bank = list(cases)
+    else:
+        try:
+            bank = load_cases_for_suite_profile(prof)
+        except SubjectSuiteProfileError as exc:
+            if subject_kind == "agent":
+                bank = build_agent_capability_cases()
+            else:
+                raise SuiteProfileCompileError(str(exc)) from exc
+
+    if require_content_purpose_ok:
+        from core.apps.eval.service.content_purpose_ok import (
+            ContentPurposeOkError,
+            assert_cases_content_purpose_ok,
+        )
+
+        try:
+            assert_cases_content_purpose_ok(bank, subject_kind=subject_kind)
+        except ContentPurposeOkError as exc:
+            raise SuiteProfileCompileError(str(exc)) from exc
+
     selected, selection_meta = select_cases_for_profile(bank, prof)
     eval_cases, holdout_cases, holdout_meta = apply_profile_holdout(selected, prof)
 
@@ -254,7 +355,11 @@ def compile_plan_from_suite_profile(
     pack_version = str(prof.get("pack_version") or PACK_VERSION)
     pid = str(prof.get("profile_id") or PROFILE_ID)
     purpose = _purpose_for_profile(pid)
-    ots = ["agent"]
+    oid = (
+        str(object_id or "").strip()
+        or f"{subject_kind}.capability.target"
+    )
+    ots = [subject_kind] if subject_kind in OBJECT_TYPES else []
     pack_hash = compute_pack_hash(
         pack_id=pack_id,
         version=pack_version,
@@ -273,17 +378,12 @@ def compile_plan_from_suite_profile(
     )
 
     caps = sorted({_cap_of(c) for c in eval_cases if _cap_of(c)})
-    contract = normalize_target_contract(
-        build_agent_target_contract(
-            object_id=object_id,
-            object_version=object_version,
-            capabilities=caps,
-            eval_profile={
-                "profile_source": "explicit",
-                "capabilities": caps,
-                "eval_purpose": purpose,
-            },
-        )
+    contract = _build_profile_target_contract(
+        subject_kind=subject_kind,
+        object_id=oid,
+        object_version=object_version,
+        capabilities=caps,
+        purpose=purpose,
     )
 
     selection = {
@@ -346,9 +446,13 @@ def compile_plan_from_suite_profile(
         "ok": True,
         "plan_id": plan_id,
         "profile_id": pid,
+        "subject_kind": subject_kind,
+        "object_type_member": subject_kind in OBJECT_TYPES,
+        "content_purpose_ok": bool(require_content_purpose_ok),
         "suite_profile": {
             "schema": prof.get("schema"),
             "profile_id": pid,
+            "subject_kind": subject_kind,
             "pack_id": pack_id,
             "pack_version": pack_version,
             "quotas": prof.get("quotas"),
@@ -396,8 +500,9 @@ def compile_plan_from_suite_profile(
             "total": len(selected),
         },
         "honesty": (
-            "Plan v2 from Suite Profile: sample_manifest is sole execution list; "
-            "holdout disclosed and excluded from tuning when enabled; "
+            f"Plan v2 from Suite Profile ({subject_kind}): sample_manifest is sole "
+            "execution list; holdout disclosed when enabled; "
+            "content_purpose_ok gated when require_content_purpose_ok; "
             "claim_eligible=false; accuracy_claim closed; quotas fixed (v1)."
         ),
     }
