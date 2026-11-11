@@ -27,7 +27,7 @@ CAPS = REPO / "AIPLAT_CAPABILITIES.md"
 OUT = REPO / "reports" / "whitepapers" / "aiplat-platform-status-whitepaper.md"
 OVERVIEW = REPO / "docs" / "architecture" / "overview.md"
 AUTONOMY = REPO / "docs" / "whitepaper" / "aiplat-l4-autonomy-assessment-v1.0.0.md"
-SCORES = REPO / "docs" / "framework" / "assessment-scores.json"
+SCORES = REPO / "docs" / "reference" / "framework" / "assessment-scores.json"
 WHITEPAPER_SYSTEM = REPO / "docs" / "whitepaper" / "WHITEPAPER_SYSTEM.md"
 
 MARKER_BEGIN = "<!-- BEGIN_GENERATED_FROM_AIPLAT_CAPABILITIES -->"

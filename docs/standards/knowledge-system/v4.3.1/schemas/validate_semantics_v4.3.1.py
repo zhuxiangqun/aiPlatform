@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
-APPENDIX = BASE.parent / "aiplat-knowledge-system-engineering-appendix-v4.3.1-2026-11-11.md"
+APPENDIX = BASE.parent / "normative-appendix.md"
 CASES = BASE / "semantic_cases.json"
 POLICY = BASE / "conformance" / "reference_policy.json"
 

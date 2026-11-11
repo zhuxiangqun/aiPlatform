@@ -74,10 +74,19 @@ def main() -> int:
         meta = parse_frontmatter(text)
         if meta:
             with_meta += 1
-        is_known_standard = "knowledge-system" in str(p) and "v4.3.1" in p.name and "archive" not in p.parts
+        is_known_standard = (
+            p.name in ("technical-whitepaper.md", "normative-appendix.md",
+                       "aiplat-knowledge-system-technical-whitepaper-v4.3.1-2026-11-11.md",
+                       "aiplat-knowledge-system-engineering-appendix-v4.3.1-2026-11-11.md")
+            and "knowledge-system" in str(p)
+            and "archive" not in p.parts
+        )
         if meta.get("authority", "").lower() != "canonical" and not is_known_standard:
             continue
         canonical += 1
+        if is_known_standard:
+            # 标准包由 manifest/approval record 治理，正文不重复 frontmatter
+            continue
         gaps = [k for k in REQUIRED_CANONICAL if not meta.get(k)]
         if gaps:
             missing.append((p, gaps))
