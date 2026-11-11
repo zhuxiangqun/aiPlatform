@@ -2,11 +2,13 @@
 
 Never freezes. Never opens claim_eligible / accuracy_claim.
 Candidates stay draft and require human purpose_ok before freeze.
+Subject-aware: in-scope catalog + seed bank follow Suite Profile Subject.
 """
 from __future__ import annotations
 
+import logging
 from collections import Counter, defaultdict
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from core.apps.eval.service.capability_case_bank import (
     PACK_ID,
@@ -30,9 +32,103 @@ from core.apps.eval.service.case_pack_ops import CasePackOpsError, expand_draft_
 DEFAULT_REGRESSION_MIN = 5
 DEFAULT_BENCHMARK_MIN = 8
 
+_log = logging.getLogger(__name__)
+
 
 class CapabilityCoverageFillError(ValueError):
     """Coverage fill fail-closed."""
+
+
+def subject_capability_scope(
+    subject_kind: str = "agent",
+) -> Tuple[Set[str], Set[str]]:
+    """Return (in_scope, out_of_scope) capability ids for a Subject."""
+    kind = str(subject_kind or "agent").strip().lower() or "agent"
+    if kind == "agent":
+        return set(V1_IN_SCOPE), set(V1_OUT_OF_SCOPE)
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    adapter = get_subject_adapter(kind)
+    caps = getattr(adapter, "v1_caps", None)
+    if caps is not None:
+        return set(caps), set()
+    in_scope = {
+        str(r.get("capability_id") or "").strip()
+        for r in adapter.capability_catalog()
+        if r.get("in_scope") and str(r.get("capability_id") or "").strip()
+    }
+    return in_scope, set()
+
+
+def resolve_coverage_context(
+    *,
+    profile: Optional[Mapping[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
+    cases: Optional[Sequence[Mapping[str, Any]]] = None,
+) -> Tuple[List[Dict[str, Any]], str, Optional[Dict[str, Any]]]:
+    """Resolve bank + Subject kind + normalized profile for coverage/fill."""
+    from core.apps.eval.service.capability_case_bank import get_suite_profile
+    from core.apps.eval.service.subject_suite_profiles import (
+        SubjectSuiteProfileError,
+        load_cases_for_suite_profile,
+        normalize_suite_profile,
+        resolve_subject_kind_from_profile,
+    )
+
+    prof: Optional[Dict[str, Any]] = dict(profile) if profile is not None else None
+    pid = str(profile_id or "").strip()
+    if prof is None and pid:
+        try:
+            prof = normalize_suite_profile(get_suite_profile(pid))
+        except (ValueError, SubjectSuiteProfileError) as exc:
+            _log.debug("coverage profile_id resolve failed %s: %s", pid, exc)
+            prof = None
+    elif prof is not None:
+        try:
+            prof = normalize_suite_profile(prof)
+        except (ValueError, SubjectSuiteProfileError) as exc:
+            _log.debug("coverage profile normalize failed: %s", exc)
+
+    kind = str(subject_kind or "").strip().lower()
+    if not kind and prof is not None:
+        try:
+            kind = resolve_subject_kind_from_profile(prof) or ""
+        except Exception as exc:  # noqa: BLE001 — label fallback only
+            _log.debug("subject_kind resolve fallback agent: %s", exc)
+            kind = ""
+    if not kind and pid and "." in pid:
+        kind = pid.split(".", 1)[0].strip().lower()
+    if not kind:
+        kind = "agent"
+
+    if cases is not None:
+        bank = [dict(c) for c in cases if isinstance(c, Mapping)]
+        return bank, kind, prof
+
+    if prof is not None:
+        try:
+            bank = load_cases_for_suite_profile(prof)
+            return bank, kind, prof
+        except SubjectSuiteProfileError as exc:
+            if kind == "agent" or (pid.startswith("agent.") if pid else False):
+                return list(build_agent_capability_cases()), "agent", prof
+            raise CapabilityCoverageFillError(str(exc)) from exc
+
+    if kind == "agent":
+        return list(build_agent_capability_cases()), kind, prof
+
+    try:
+        from core.apps.eval.service.subject_capability_promote import _bank_specs
+
+        spec = _bank_specs().get(kind)
+        if spec is None:
+            raise CapabilityCoverageFillError(f"no_case_bank_for_subject:{kind}")
+        return list(spec["build"]()), kind, prof
+    except CapabilityCoverageFillError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise CapabilityCoverageFillError(str(exc)) from exc
 
 
 def _cap_of(case: Mapping[str, Any]) -> str:
@@ -49,28 +145,31 @@ def _cap_of(case: Mapping[str, Any]) -> str:
 def _targets_from_profile(
     profile: Optional[Mapping[str, Any]],
     *,
+    in_scope: Set[str],
+    out_of_scope: Set[str],
     min_per_capability: Optional[int] = None,
 ) -> Dict[str, int]:
     """Resolve per-capability targets (quotas or flat minimum)."""
+    scope = set(in_scope)
     if min_per_capability is not None:
         n = int(min_per_capability)
         if n < 1:
             raise CapabilityCoverageFillError("min_per_capability must be >= 1")
-        return {cid: n for cid in sorted(V1_IN_SCOPE)}
+        return {cid: n for cid in sorted(scope)}
 
     prof = dict(profile or agent_regression_profile())
     quotas = prof.get("quotas") if isinstance(prof.get("quotas"), Mapping) else {}
     if not quotas:
-        return {cid: DEFAULT_REGRESSION_MIN for cid in sorted(V1_IN_SCOPE)}
+        return {cid: DEFAULT_REGRESSION_MIN for cid in sorted(scope)}
 
-    out: Dict[str, int] = {cid: 0 for cid in V1_IN_SCOPE}
+    out: Dict[str, int] = {cid: 0 for cid in scope}
     for k, v in quotas.items():
         cid = resolve_capability_id(str(k), fail_closed=True)
-        if cid in V1_OUT_OF_SCOPE or cid not in V1_IN_SCOPE:
+        if cid in out_of_scope or cid not in scope:
             continue
         out[cid] = max(int(v), out.get(cid, 0))
     # Ensure every in-scope capability has at least regression floor when quota missing
-    for cid in V1_IN_SCOPE:
+    for cid in scope:
         if out.get(cid, 0) < 1:
             out[cid] = DEFAULT_REGRESSION_MIN
     return out
@@ -80,11 +179,24 @@ def analyze_capability_coverage(
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
     *,
     profile: Optional[Mapping[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Per-capability have/need/gap vs Profile quotas or flat minimum."""
-    rows = list(cases) if cases is not None else build_agent_capability_cases()
-    targets = _targets_from_profile(profile, min_per_capability=min_per_capability)
+    rows, kind, prof = resolve_coverage_context(
+        profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
+        cases=cases,
+    )
+    in_scope, out_of_scope = subject_capability_scope(kind)
+    targets = _targets_from_profile(
+        prof,
+        in_scope=in_scope,
+        out_of_scope=out_of_scope,
+        min_per_capability=min_per_capability,
+    )
     counts: Counter = Counter()
     by_cap: Dict[str, List[str]] = defaultdict(list)
     for c in rows:
@@ -93,16 +205,17 @@ def analyze_capability_coverage(
             continue
         try:
             cap = resolve_capability_id(cap, fail_closed=True)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 — skip unknown cap ids
+            _log.debug("skip unresolved capability id: %s", exc)
             continue
-        if cap not in V1_IN_SCOPE:
+        if cap not in in_scope:
             continue
         counts[cap] += 1
         by_cap[cap].append(str(c.get("case_id") or ""))
 
     gaps: List[Dict[str, Any]] = []
     covered = 0
-    for cid in sorted(V1_IN_SCOPE):
+    for cid in sorted(in_scope):
         have = int(counts.get(cid, 0))
         need = int(targets.get(cid, DEFAULT_REGRESSION_MIN))
         gap = max(0, need - have)
@@ -122,18 +235,20 @@ def analyze_capability_coverage(
     return {
         "ok": True,
         "schema": "eval.capability_coverage.v1",
+        "subject_kind": kind,
         "case_count": len(rows),
-        "in_scope": sorted(V1_IN_SCOPE),
-        "out_of_scope": sorted(V1_OUT_OF_SCOPE),
+        "in_scope": sorted(in_scope),
+        "out_of_scope": sorted(out_of_scope),
         "targets": targets,
         "gaps": gaps,
         "n_gaps": sum(1 for g in gaps if g["gap"] > 0),
         "covered_capabilities": covered,
-        "total_in_scope": len(V1_IN_SCOPE),
+        "total_in_scope": len(in_scope),
         "claim_eligible": False,
         "accuracy_claim": False,
         "honesty": (
-            "coverage inventory / gap only; not sufficiency; not an accuracy claim"
+            f"coverage inventory / gap only (subject={kind}); "
+            "not sufficiency; not an accuracy claim"
         ),
     }
 
@@ -144,8 +259,10 @@ def _stamp_candidate(
     capability: str,
     parent: Optional[Mapping[str, Any]] = None,
     method: str,
+    subject_kind: str = "agent",
 ) -> Dict[str, Any]:
     """Ensure capability + draft review; copy test_purpose from parent when present."""
+    kind = str(subject_kind or "agent").strip().lower() or "agent"
     out = dict(case)
     caps = [capability]
     out["capabilities"] = caps
@@ -154,10 +271,13 @@ def _stamp_candidate(
     req["capabilities"] = caps
     out["requires"] = req
     tags = list(out.get("tags") or [])
-    for t in ("agent", "coverage_fill", capability, method):
+    for t in (kind, "coverage_fill", capability, method):
         if t not in tags:
             tags.append(t)
     out["tags"] = tags
+    applies = dict(out.get("applies_to") or {})
+    applies["object_types"] = [kind]
+    out["applies_to"] = applies
     if parent and isinstance(parent.get("test_purpose"), Mapping):
         purpose = dict(parent["test_purpose"])
         purpose["summary"] = (
@@ -168,7 +288,10 @@ def _stamp_candidate(
     review.update(
         {
             "status": "draft",
-            "notes": f"P3 coverage_fill via {method}; needs purpose_ok before freeze",
+            "notes": (
+                f"P3 coverage_fill via {method} ({kind}); "
+                "needs purpose_ok before freeze"
+            ),
         }
     )
     out["review"] = review
@@ -179,6 +302,8 @@ def generate_coverage_fill_candidates(
     *,
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
     profile: Optional[Mapping[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
     method: str = "mutation",
     seed: str = "7",
@@ -190,14 +315,24 @@ def generate_coverage_fill_candidates(
         raise CapabilityCoverageFillError(
             f"method must be mutation|template, got {method!r}"
         )
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
+    bank, kind, prof = resolve_coverage_context(
+        profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
+        cases=cases,
+    )
+    in_scope, _out = subject_capability_scope(kind)
     report = analyze_capability_coverage(
-        bank, profile=profile, min_per_capability=min_per_capability
+        bank,
+        profile=prof,
+        profile_id=profile_id,
+        subject_kind=kind,
+        min_per_capability=min_per_capability,
     )
     by_cap: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for c in bank:
         cap = _cap_of(c)
-        if cap in V1_IN_SCOPE:
+        if cap in in_scope:
             by_cap[cap].append(dict(c))
 
     candidates: List[Dict[str, Any]] = []
@@ -237,7 +372,11 @@ def generate_coverage_fill_candidates(
                 parent = seed_batch[i % len(seed_batch)]
                 produced.append(
                     _stamp_candidate(
-                        m, capability=cid, parent=parent, method="mutation"
+                        m,
+                        capability=cid,
+                        parent=parent,
+                        method="mutation",
+                        subject_kind=kind,
                     )
                 )
         else:
@@ -257,8 +396,8 @@ def generate_coverage_fill_candidates(
                             ),
                             "capabilities": [cid],
                             "requires": {"capabilities": [cid]},
-                            "applies_to": {"object_types": ["agent"]},
-                            "tags": ["agent", "coverage_fill", "template", cid],
+                            "applies_to": {"object_types": [kind]},
+                            "tags": [kind, "coverage_fill", "template", cid],
                         },
                         variants=[
                             {
@@ -270,7 +409,12 @@ def generate_coverage_fill_candidates(
                 except CaseFactoryError as e:
                     raise CapabilityCoverageFillError(str(e)) from e
                 produced.append(
-                    _stamp_candidate(rows[0], capability=cid, method="template")
+                    _stamp_candidate(
+                        rows[0],
+                        capability=cid,
+                        method="template",
+                        subject_kind=kind,
+                    )
                 )
         candidates.extend(produced)
         plan.append(
@@ -284,6 +428,7 @@ def generate_coverage_fill_candidates(
 
     return {
         "ok": True,
+        "subject_kind": kind,
         "method": method_l,
         "seed": seed,
         "coverage": report,
@@ -293,8 +438,9 @@ def generate_coverage_fill_candidates(
         "claim_eligible": False,
         "accuracy_claim": False,
         "honesty": (
-            "P3 draft candidates only; reuse factory mutation/template; "
-            "not gold; claim_eligible=false; purpose_ok required before freeze"
+            f"P3 draft candidates only (subject={kind}); "
+            "reuse factory mutation/template; not gold; "
+            "claim_eligible=false; purpose_ok required before freeze"
         ),
     }
 
@@ -306,6 +452,8 @@ def fill_capability_coverage(
     version: str = PACK_VERSION,
     caller_workspace_id: str = "",
     profile: Optional[Mapping[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
     method: str = "mutation",
     seed: str = "7",
@@ -326,6 +474,8 @@ def fill_capability_coverage(
     proposal = generate_coverage_fill_candidates(
         cases=cases,
         profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
         min_per_capability=min_per_capability,
         method=method,
         seed=seed,
@@ -334,6 +484,7 @@ def fill_capability_coverage(
     out: Dict[str, Any] = {
         "ok": True,
         "applied": False,
+        "subject_kind": proposal.get("subject_kind"),
         "pack_id": str(pack_id or PACK_ID).strip() or PACK_ID,
         "version": str(version or PACK_VERSION).strip() or PACK_VERSION,
         "workspace_id": wid,

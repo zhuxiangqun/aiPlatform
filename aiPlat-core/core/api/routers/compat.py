@@ -1004,6 +1004,7 @@ async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
             profile_id=str((body or {}).get("profile_id") or ""),
             profile=profile if isinstance(profile, dict) else None,
             exam=exam if isinstance(exam, dict) else None,
+            subject_kind=str((body or {}).get("subject_kind") or ""),
         )
     except ValueError as e:
         return {"ok": False, "error": str(e), "accuracy_claim": False}
@@ -1317,10 +1318,9 @@ async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
     )
 
     profile = (body or {}).get("profile")
-    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
-        "",
-        "agent.regression.v1",
-    ):
+    profile_id = str((body or {}).get("profile_id") or "").strip()
+    subject_kind = str((body or {}).get("subject_kind") or "").strip()
+    if profile is None and profile_id in ("", "agent.regression.v1") and not subject_kind:
         profile = eval_agent_regression_profile()
     min_raw = (body or {}).get("min_per_capability")
     min_n = None
@@ -1336,6 +1336,8 @@ async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
     try:
         return eval_analyze_capability_coverage(
             profile=profile if isinstance(profile, dict) else None,
+            profile_id=profile_id,
+            subject_kind=subject_kind,
             min_per_capability=min_n,
         )
     except ValueError as e:
@@ -1355,10 +1357,9 @@ async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
     profile = (body or {}).get("profile")
-    if profile is None and str((body or {}).get("profile_id") or "").strip() in (
-        "",
-        "agent.regression.v1",
-    ):
+    profile_id = str((body or {}).get("profile_id") or "").strip()
+    subject_kind = str((body or {}).get("subject_kind") or "").strip()
+    if profile is None and profile_id in ("", "agent.regression.v1") and not subject_kind:
         profile = eval_agent_regression_profile()
     min_raw = (body or {}).get("min_per_capability")
     min_n = None
@@ -1380,6 +1381,8 @@ async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request
                 pack_id=str((body or {}).get("pack_id") or "").strip(),
                 version=str((body or {}).get("version") or "").strip(),
                 profile=profile if isinstance(profile, dict) else None,
+                profile_id=profile_id,
+                subject_kind=subject_kind,
                 min_per_capability=min_n,
                 method=str((body or {}).get("method") or "mutation"),
                 seed=str((body or {}).get("seed") or "7"),

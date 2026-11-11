@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T12:30:36+08:00",
+  "reviewed_at": "2026-11-11T13:22:53+08:00",
   "base_ref": "origin/main",
-  "merge_base": "caf077aa7cc067c9035daaf9bd8f4f5dd0183a74",
-  "diff_sha256": "86cf69aa2942225dadee72133eb1dcdf314edc35f2a0d963fcfeefc4ef05a873",
-  "head_sha": "9302bffd870ab68965659e77f7019de9761ae659",
+  "merge_base": "424af3975dd957a926479fdd88c505729c7cf48e",
+  "diff_sha256": "c5148a8e1bf8c4eeb7c82861d74160342e4683d00fe5c8cdb8dc70b7bd3053cf",
+  "head_sha": "1964f66fcac092c48b73332e5ee333d6649e2454",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject exam bank binding + AUTO-STATS/whitepaper refresh. Local lock only."
+  "note": "Subject coverage fill + arch contract \u00a778 clause-sync. Local lock only."
 }
