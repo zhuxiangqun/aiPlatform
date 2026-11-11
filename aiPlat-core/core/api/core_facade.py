@@ -8641,6 +8641,46 @@ def eval_promote_agent_capability_bank(
     return promote_agent_capability_bank(**kwargs)
 
 
+def eval_list_promotable_subject_kinds() -> list:
+    """Subject kinds with seed bank promote path (claim stays false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        list_promotable_subject_kinds,
+    )
+
+    return list_promotable_subject_kinds()
+
+
+def eval_promote_subject_capability_bank(
+    *,
+    subject_kind: str,
+    workspace_id: str,
+    reviewer: str = "",
+    frozen_by: str = "",
+    pack_id: str = "",
+    version: str = "",
+    caller_workspace_id: str = "",
+    notes: str = "",
+) -> Dict[str, Any]:
+    """Promote any Subject seed bank → purpose_ok → freeze (claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        promote_subject_capability_bank,
+    )
+
+    kwargs: Dict[str, Any] = {
+        "subject_kind": subject_kind,
+        "workspace_id": workspace_id,
+        "reviewer": reviewer,
+        "frozen_by": frozen_by,
+        "caller_workspace_id": caller_workspace_id,
+        "notes": notes,
+    }
+    if pack_id:
+        kwargs["pack_id"] = pack_id
+    if version:
+        kwargs["version"] = version
+    return promote_subject_capability_bank(**kwargs)
+
+
 def eval_compile_plan_from_suite_profile(
     *,
     profile: Optional[Dict[str, Any]] = None,

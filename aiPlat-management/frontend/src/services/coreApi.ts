@@ -2773,6 +2773,20 @@ export const agentEvalApi = {
       body || {},
     );
   },
+  /** Subject seed bank → purpose_ok → freeze (claim=false). */
+  casePackPromoteSubjectCapability: async (body: {
+    subject_kind: string;
+    reviewer?: string;
+    frozen_by?: string;
+    pack_id?: string;
+    version?: string;
+    notes?: string;
+  }) => {
+    return apiClient.post<Record<string, unknown>>(
+      '/core/evaluation/case-packs/promote-subject-capability',
+      body,
+    );
+  },
   /** Case Editor: read-only repo seed browse. */
   caseEditorSeedList: async (capabilityId?: string) => {
     const q = capabilityId?.trim()

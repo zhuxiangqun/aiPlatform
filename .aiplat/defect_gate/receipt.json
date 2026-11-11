@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T09:44:45+08:00",
+  "reviewed_at": "2026-11-11T10:22:23+08:00",
   "base_ref": "origin/main",
-  "merge_base": "dfe2c80a726fe41a9e985d8e31636abd4666d65c",
-  "diff_sha256": "ff91d64f08ffa39c991abc278c96b79dbcce173460f0476a2a0da5f34b7af251",
-  "head_sha": "e3499c46462bb576540a7ff02bdc5d8f2e3bf8d6",
+  "merge_base": "358b08dbe8bf2b1c2ddab56233bcee4e62ffe6d0",
+  "diff_sha256": "5f8fe0ad59fb358a9723323bbed2389137e784272ee161532ebd894d300fe307",
+  "head_sha": "6d06e194714ed6b732303b257c8ac8ebe27ac54b",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject regression inventory additive; claim stays false across matrix. Local lock only."
+  "note": "Subject promote + run_id clause-sync; claim stays false. Local lock only."
 }

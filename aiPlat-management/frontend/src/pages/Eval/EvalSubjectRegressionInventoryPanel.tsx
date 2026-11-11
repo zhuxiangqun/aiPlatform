@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
-import { apiClient } from '../../services';
+import { apiClient, agentEvalApi } from '../../services';
 
 type Envelope<T> = { data?: T } & T;
 
@@ -57,8 +57,11 @@ type Props = { tenantId?: string };
 
 export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) {
   const [loading, setLoading] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const [error, setError] = useState('');
+  const [promoteMsg, setPromoteMsg] = useState('');
   const [status, setStatus] = useState<Inventory | null>(null);
+  const [promoteKind, setPromoteKind] = useState('prompt');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +81,33 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const onPromote = useCallback(async () => {
+    setPromoting(true);
+    setPromoteMsg('');
+    setError('');
+    try {
+      const out = await agentEvalApi.casePackPromoteSubjectCapability({
+        subject_kind: promoteKind,
+        reviewer: 'ui',
+        frozen_by: 'ui',
+        notes: `Subject Inventory promote ${promoteKind}`,
+      });
+      const body = unwrap(out as Envelope<Record<string, unknown>>);
+      setPromoteMsg(
+        `promote ${String(body.subject_kind || promoteKind)} → ${String(
+          body.kind || '?',
+        )} / claim=${String(Boolean(body.claim_eligible))} noop=${String(
+          Boolean(body.noop),
+        )}`,
+      );
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPromoting(false);
+    }
+  }, [load, promoteKind]);
 
   const rows = status?.subjects || [];
   const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
@@ -126,6 +156,34 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
         ) : status ? (
           <>
             <p className="text-xs text-sky-200/90">下一步：{status.next_action}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <label className="text-gray-400">
+                Promote subject
+                <select
+                  className="ml-2 rounded border border-gray-600 bg-gray-950 px-2 py-1"
+                  value={promoteKind}
+                  onChange={(e) => setPromoteKind(e.target.value)}
+                  data-testid="eval-subject-inventory-promote-kind"
+                >
+                  {rows.map((r) => (
+                    <option key={r.subject_kind} value={r.subject_kind || ''}>
+                      {r.subject_kind}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                disabled={promoting || !promoteKind}
+                onClick={() => void onPromote()}
+                className="rounded border border-amber-700/60 px-2 py-1 text-amber-100 disabled:opacity-50"
+                data-testid="eval-subject-inventory-promote"
+              >
+                {promoting ? 'Promoting…' : 'purpose_ok → freeze'}
+              </button>
+              <span className="text-gray-500">claim 仍关；仅工作区 registry 冻结</span>
+            </div>
+            {promoteMsg ? <p className="text-xs text-emerald-200/90">{promoteMsg}</p> : null}
             <div className="flex flex-wrap gap-3 text-xs">
               <Link className="text-sky-300 hover:underline" to={packsHref}>
                 打开 Case Pack
