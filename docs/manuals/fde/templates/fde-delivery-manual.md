@@ -262,7 +262,7 @@
 ## 4. Phase 4: 验收移交（1 天）
 
 > **口径**：本章「验收签收」指 **FDE 项目交付签收**（工作台 Tab 8 / 签收单）。  
-> it-ops **组织试点签收准备**（八闸门、证据包、材料齐≠已签收）在管理端 **`/org/pilot`**，见 [`ORG_M4_SIGNOFF_PACK`](../../contracts/ORG_M4_SIGNOFF_PACK.md)；两套流程勿混用，程序也不会因此打开 `m4_claim_allowed`。
+> it-ops **组织试点签收准备**（八闸门、证据包、材料齐≠已签收）在管理端 **`/org/pilot`**，见 [`ORG_M4_SIGNOFF_PACK`](../../../contracts/ORG_M4_SIGNOFF_PACK.md)；两套流程勿混用，程序也不会因此打开 `m4_claim_allowed`。
 
 ### 4.1-4.2 验收签收
 
@@ -357,9 +357,9 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 
 | 操作 | 文件 | 详见 |
 |------|------|------|
-| 新增/调整方案原型 | `~/.aiplat/ontologies/ai-solution.yaml` → `solution_archetypes` | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
-| 新增/调整数字员工 | `~/.aiplat/ontologies/ai-solution.yaml` → `digital_employee_roles` | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
-| 调整收敛阈值 | `~/.aiplat/ontologies/knowledge-atom.yaml` → `convergence` | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
+| 新增/调整方案原型 | `~/.aiplat/ontologies/ai-solution.yaml` → `solution_archetypes` | [FDE 运维手册 §三](../03-fde-operations.md#三自演进系统) |
+| 新增/调整数字员工 | `~/.aiplat/ontologies/ai-solution.yaml` → `digital_employee_roles` | [FDE 运维手册 §三](../03-fde-operations.md#三自演进系统) |
+| 调整收敛阈值 | `~/.aiplat/ontologies/knowledge-atom.yaml` → `convergence` | [FDE 运维手册 §三](../03-fde-operations.md#三自演进系统) |
 
 **关键**：YAML 修改后保存即生效——系统通过 mtime 检测自动热加载，零重启。
 
@@ -376,7 +376,7 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 生成改进建议  → GET /fde/sessions/{id}/improve
 ```
 
-详见 [FDE 运维手册 §二](./03-fde-operations.md#二api-端点速查)。
+详见 [FDE 运维手册 §二](../03-fde-operations.md#二api-端点速查)。
 
 ### 7.4 自演进系统
 
@@ -384,14 +384,14 @@ FDE 返回办公室后，每天花 5 分钟检查系统健康：
 
 | 问题 | 答案 | 详见 |
 |------|------|------|
-| 自演进是什么？ | 观察→诊断→修复→演化→目标分解→自主部署→外部发现七层自动运转 | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
-| 为什么刚上线时诊断返回"数据不足"？ | 正常现象，需 2-4 周数据积累 | [FDE 运维手册 §三](./03-fde-operations.md#32-数据积累预期) |
-| 系统出问题了怎么排查？ | 诊断→管道检查→全局健康→自动修复四步 | [FDE 运维手册 §三](./03-fde-operations.md#三自演进系统) |
-| 怎么主动触发一次自检？ | `POST /system/self-check` | [FDE 运维手册 §三](./03-fde-operations.md#34-手动全周期自检) |
+| 自演进是什么？ | 观察→诊断→修复→演化→目标分解→自主部署→外部发现七层自动运转 | [FDE 运维手册 §三](../03-fde-operations.md#三自演进系统) |
+| 为什么刚上线时诊断返回"数据不足"？ | 正常现象，需 2-4 周数据积累 | [FDE 运维手册 §三](../03-fde-operations.md#32-数据积累预期) |
+| 系统出问题了怎么排查？ | 诊断→管道检查→全局健康→自动修复四步 | [FDE 运维手册 §三](../03-fde-operations.md#三自演进系统) |
+| 怎么主动触发一次自检？ | `POST /system/self-check` | [FDE 运维手册 §三](../03-fde-operations.md#34-手动全周期自检) |
 
 ### 7.5 API 速查
 
-详见 [FDE 运维手册 §二](./03-fde-operations.md#二api-端点速查)。
+详见 [FDE 运维手册 §二](../03-fde-operations.md#二api-端点速查)。
 
 ---
 

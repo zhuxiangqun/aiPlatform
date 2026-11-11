@@ -94,7 +94,7 @@
 | FDE 管理与扩展 | [fde/04-fde-admin.md](fde/04-fde-admin.md) | 合册分册 |
 | FDE 实施流程 | [fde/05-fde-implementation-process.md](fde/05-fde-implementation-process.md) | 合册分册 |
 | 域交付 SOP | [fde/06-sop-domain-delivery.md](fde/06-sop-domain-delivery.md) | 合册分册 |
-| FDE 交付模板正文 | [fde/fde-delivery-manual.md](fde/fde-delivery-manual.md) | 模板合订（可系统生成） |
+| FDE 交付模板正文 | [fde/fde-delivery-manual.md](fde/templates/fde-delivery-manual.md) | 模板合订（可系统生成） |
 | FDE 模板目录 | [fde/templates/](fde/templates/) | 客户 Profile / 签收等模板 |
 | 示例：标书评审交付 | [fde/examples/bid-review/delivery-manual.md](fde/examples/bid-review/delivery-manual.md) | 示例合册 |
 

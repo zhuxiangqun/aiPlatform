@@ -1,4 +1,4 @@
-> ⚠️ **已归档** — 本文档为历史版本，API 引用可能已过期。最新文档请参见 [FDE 交付手册](../fde-delivery-manual.md)。
+> ⚠️ **已归档** — 本文档为历史版本，API 引用可能已过期。最新文档请参见 [FDE 交付手册](../templates/fde-delivery-manual.md)。
 
 # FDE POC 标准化操作手册
 

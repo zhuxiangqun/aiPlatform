@@ -484,7 +484,7 @@ AI 输出摘要 + 阻塞类型 + 根因 + 严重程度
 | Workflow 节点拓扑完整 | 用 打开 /core/workflows（Workflow 管理页面）创建 |
 | 样例数据已准备 | ④ → POC 工具箱 → 注入模拟数据 |
 
-> 完整模板及动态占位符详见 [fde-delivery-manual.md](./fde-delivery-manual.md)。
+> 完整模板及动态占位符详见 [fde-delivery-manual.md](templates/fde-delivery-manual.md)。
 
 ### 各阶段输出文档模板
 
@@ -590,4 +590,4 @@ curl -X POST /api/platform/apps/fde/verify/e2e -d '{}'
 
 ---
 
-> **相关文档**：[01 - 快速入门](./01-fde-quickstart.md) · [03 - 运维与自演进](./03-fde-operations.md) · [04 - 管理与扩展](./04-fde-admin.md) · [交付模板](./fde-delivery-manual.md)
+> **相关文档**：[01 - 快速入门](./01-fde-quickstart.md) · [03 - 运维与自演进](./03-fde-operations.md) · [04 - 管理与扩展](./04-fde-admin.md) · [交付模板](templates/fde-delivery-manual.md)
