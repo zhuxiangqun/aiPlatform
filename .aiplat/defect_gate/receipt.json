@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T18:52:54+08:00",
+  "reviewed_at": "2026-11-11T19:15:28+08:00",
   "base_ref": "origin/main",
-  "merge_base": "6102ba4740fb7aa4a7a3d4290e1330010af2d0aa",
-  "diff_sha256": "c5f76a8bce0321a24284fa45b7d9f45088b542200d0e7582b56382526c400a55",
-  "head_sha": "34e68be8f0b7239994aae4a63fadad34c2f35b62",
+  "merge_base": "335e98d3468f6c7a3ba29dcdd30b918812dd76e0",
+  "diff_sha256": "cfe4c48a6f9451b53d2431f16b8838fdad060cf33d8449056d74a1283c659a50",
+  "head_sha": "c8cc7289034b3c7474cac71b2819a8f93fffad55",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Agent seed purpose_ok+freeze; cert tests aligned; claim closed; inventory 14/14."
+  "note": "promote_all workspace batch; prompt from query/turns; claim closed."
 }
