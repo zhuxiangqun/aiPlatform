@@ -14,7 +14,7 @@
 
 spec_version: "1.0.0"
 generated_at: "2026-07-06"
-source_doc: "docs/framework/scoring-detail.md"
+source_doc: "docs/reference/framework/scoring-detail.md"
 
 weighting:
   framework_one:

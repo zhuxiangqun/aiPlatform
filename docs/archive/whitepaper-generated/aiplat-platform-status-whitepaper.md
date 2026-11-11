@@ -320,7 +320,7 @@ python3 scripts/generate_platform_whitepaper.py
 | [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单（编辑入口） |
 | [`capability_registry.yaml`](../../../aiPlat-core/core/capability_registry.yaml) | 机器可读 provides |
 | [`docs/architecture/overview.md`](../architecture/overview.md) | 架构全景 |
-| [`docs/matrix/capability-impact-matrix.md`](../../matrix/capability-impact-matrix.md) | 变更影响矩阵 |
+| [`docs/reference/matrix/capability-impact-matrix.md`](../../matrix/capability-impact-matrix.md) | 变更影响矩阵 |
 | [`docs/DOCUMENT_SYSTEM.md`](../DOCUMENT_SYSTEM.md) | 文档治理宪法 |
 | [`WHITEPAPER_SYSTEM.md`](../../whitepaper/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |

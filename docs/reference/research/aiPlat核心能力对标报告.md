@@ -2,13 +2,13 @@
 
 > 最后验证 2026-10-18（OpenWorker 收口 + 认知分层旁路 §0.3）
 
-> **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收 · 认知分层旁路）  
-> **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex  
-> **旁路吸收（非列）**：OpenWorker — §0.2；**认知分层**（想·判·行·呈 / Jev·Skill·Knap 理念）— §0.3；**框架层库**（aisuite / LangChain）— 不入列（见 §0.3 末）  
-> **口径**：开源四家以源码/对齐 release 为准；Claude Code 为打包产物级；详见 [`对标底稿-2026-10-五家.md`](./对标底稿-2026-10-五家.md)  
-> **架构摘要入口**：[`docs/architecture/comparison.md`](../architecture/comparison.md)（18 维评分）  
-> **历史稿**：[`docs/archive/aiPlat核心能力对标报告-2026-08-六系统.md`](../archive/aiPlat核心能力对标报告-2026-08-六系统.md)（含 Hermes 双列/Codex-Harness 旧名，只读）  
-> **结论原则**：代码事实优先；阴性标盲区；不编造 QPS/ROI；星级见 comparison 加权表  
+> **调研时点**：2026-10-13（列）· 2026-10-16（OpenWorker 吸收 · 认知分层旁路）
+> **对标列（6）**：aiPlat · Hermes Agent · Claude Code · OpenClaw · DeepSeek Harness · OpenAI Codex
+> **旁路吸收（非列）**：OpenWorker — §0.2；**认知分层**（想·判·行·呈 / Jev·Skill·Knap 理念）— §0.3；**框架层库**（aisuite / LangChain）— 不入列（见 §0.3 末）
+> **口径**：开源四家以源码/对齐 release 为准；Claude Code 为打包产物级；详见 [`对标底稿-2026-10-五家.md`](./对标底稿-2026-10-五家.md)
+> **架构摘要入口**：[`docs/architecture/comparison.md`](../../architecture/comparison.md)（18 维评分）
+> **历史稿**：[`docs/archive/aiPlat核心能力对标报告-2026-08-六系统.md`](../../archive/aiPlat核心能力对标报告-2026-08-六系统.md)（含 Hermes 双列/Codex-Harness 旧名，只读）
+> **结论原则**：代码事实优先；阴性标盲区；不编造 QPS/ROI；星级见 comparison 加权表
 
 ---
 
@@ -25,12 +25,12 @@
 | **OpenWorker**（旁路） | 桌面本地优先「要成品」Agent；治理内生；不并入对标列（产品位不同） |
 | **认知分层**（旁路理念） | 大模型只「想」；判/行/呈交给专用确定性或快决策子系统 — §0.3 |
 
-**aiPlat 强**：治理、知识/本体、交付 HITL、平台质量门。  
+**aiPlat 强**：治理、知识/本体、交付 HITL、平台质量门。
 **aiPlat 相对弱/需追赶**：消费级通道广度（OpenClaw）、会话内学习敏捷度（Hermes）、app-server 协议完备度与 OS 沙箱深度（Codex；bwrap/seatbelt 已有，Windows/landlock 仍浅）。
 
 ### 0.2 OpenWorker 吸收收口（2026-10-16）
 
-> 定位差：OpenWorker = 本机桌面生产力；aiPlat = 企业控制面；Pi = 厂外薄宿主。  
+> 定位差：OpenWorker = 本机桌面生产力；aiPlat = 企业控制面；Pi = 厂外薄宿主。
 > **借语义与闸门，不借 Tauri/25+ SaaS 进 core。**
 
 | 阶梯 | PR | 落地（代码事实） |
@@ -54,7 +54,7 @@ rg -n 'attendanceInjectFields|aiplat_unattended' packages/aiplat-pi-runtime/exte
 
 ### 0.3 认知分层旁路（想·判·行·呈，2026-10-16）
 
-> 社区/业界叙事（含 TypeSafe「System One」、pi-warden 任务语境护栏、MCP 渐进披露、模板呈现）：**单体 LLM 交成本/延迟/脆弱三税**；生产 Agent 收敛为「LLM 只干难语义，判断·执行·呈现交给专用层」。  
+> 社区/业界叙事（含 TypeSafe「System One」、pi-warden 任务语境护栏、MCP 渐进披露、模板呈现）：**单体 LLM 交成本/延迟/脆弱三税**；生产 Agent 收敛为「LLM 只干难语义，判断·执行·呈现交给专用层」。
 > **不入六列评分**（理念层 / 产品品牌，非对位完整系统）。**不绑定**商用 Jev / Knap 品牌进 core 叙事。
 
 | 层 | 文章主张 | aiPlat 已对齐（代码事实） | Pi |
@@ -151,11 +151,11 @@ rg -n 'execution_type' aiPlat-core/core/engine/skills/*/SKILL.md | head
 
 ### 6–7. 工作流与规划
 
-aiPlat：声明式 stage + TeamPlanner/多种 pipeline_mode。  
-Hermes：cron + kanban/goal。  
-Claude Code：dynamic workflows + plan mode。  
-OpenClaw：Gateway 会话/自动化。  
-DSH：workflow/plan 包。  
+aiPlat：声明式 stage + TeamPlanner/多种 pipeline_mode。
+Hermes：cron + kanban/goal。
+Claude Code：dynamic workflows + plan mode。
+OpenClaw：Gateway 会话/自动化。
+DSH：workflow/plan 包。
 Codex：goal/turn，无企业交付 DAG。
 
 ### 8. 沙箱 / 权限 / 审批
@@ -195,7 +195,7 @@ Codex：goal/turn，无企业交付 DAG。
 
 ### 14. 企业治理与可观测性
 
-aiPlat：**唯一**把多租户、计费、审批、审计、架构守卫做成平台默认的系统。  
+aiPlat：**唯一**把多租户、计费、审批、审计、架构守卫做成平台默认的系统。
 他方多为单用户/团队助手或 coding runtime；OpenClaw 文档明确不做敌意多租户边界。
 
 ---
@@ -219,23 +219,23 @@ aiPlat：**唯一**把多租户、计费、审批、审计、架构守卫做成�
 
 ### 17. 执行后端与部署拓扑
 
-**Hermes ★★★★★**：`local/docker/ssh/singularity/modal/daytona/vercel_sandbox`（`terminal_tool_config.py:120-121`）。  
+**Hermes ★★★★★**：`local/docker/ssh/singularity/modal/daytona/vercel_sandbox`（`terminal_tool_config.py:120-121`）。
 aiPlat：Helm/四层服务部署。OpenClaw：Gateway 本机/团队。Codex/CC：本机沙箱为主。
 
 ### 18. 交付 / Spec 生命周期
 
-**aiPlat ★★★★★**：Pipeline HITL 一等公民（`approve_session`/`reject_session`/`resume_from_checkpoint`）。  
+**aiPlat ★★★★★**：Pipeline HITL 一等公民（`approve_session`/`reject_session`/`resume_from_checkpoint`）。
 他方多为会话/turn，无对等「企业交付流水线」。
 
 ### 19. OS 沙箱与工作树
 
-**Codex ★★★★★**：linux-sandbox / windows-sandbox / landlock 路径；git worktree 工具。  
-Claude Code：产品级 sandbox。Hermes：容器后端。OpenClaw：可选 Docker sandbox。  
+**Codex ★★★★★**：linux-sandbox / windows-sandbox / landlock 路径；git worktree 工具。
+Claude Code：产品级 sandbox。Hermes：容器后端。OpenClaw：可选 Docker sandbox。
 aiPlat：**SandboxGate（策略）+ `os_sandbox.py`（bwrap/seatbelt，StageSandbox/exec 已接线）**；生产可 fail-closed。相对 Codex 仍缺 Windows AppContainer / landlock 深度与默认全路径强制。OpenWorker 侧 OpenShell 容器沙箱未搬入（可选后续，非 P0）。
 
 ### 20. 评测 / 质量门 / 可观测拆分
 
-**aiPlat ★★★★★**：Quality Bus、architecture_guard、评测子系统。  
+**aiPlat ★★★★★**：Quality Bus、architecture_guard、评测子系统。
 Codex/DSH/CC：hooks/diagnostics/transcript。Hermes/OpenClaw：偏运行洞察，非企业质量总线。
 
 ---
@@ -244,11 +244,11 @@ Codex/DSH/CC：hooks/diagnostics/transcript。Hermes/OpenClaw：偏运行洞察�
 
 ### 16.1 aiPlat 标志性差异化（仍成立）
 
-1. 交付流水线 + HITL  
-2. Syscall/Gate 治理执法  
-3. 本体/知识引擎  
-4. 平台级质量门与文档/能力同步守卫  
-5. 多 Agent 编排形态丰富  
+1. 交付流水线 + HITL
+2. Syscall/Gate 治理执法
+3. 本体/知识引擎
+4. 平台级质量门与文档/能力同步守卫
+5. 多 Agent 编排形态丰富
 
 ### 16.2 本轮仍成立的追赶项（2026-10 增量）
 
@@ -260,12 +260,12 @@ Codex/DSH/CC：hooks/diagnostics/transcript。Hermes/OpenClaw：偏运行洞察�
 | N4 | app-server 级可嵌入协议完备度 | Codex | 已有 Pi/Facade/hooks，协议面仍可加深 |
 | N5 | 会话内学习闭环产品化完整度 | Hermes | 机制有吸收，体验形态不同 |
 
-> 2026-08 行动纲领 G1–G15 史实不推翻；见 archive 旧报告与 [`对标吸收与架构纯度评估.md`](../archive/对标吸收与架构纯度评估.md)。
+> 2026-08 行动纲领 G1–G15 史实不推翻；见 archive 旧报告与 [`对标吸收与架构纯度评估.md`](../../archive/对标吸收与架构纯度评估.md)。
 
 ### 16.3 可借鉴优先级（建议）
 
-P0 观察：Codex 沙箱语义、OpenClaw 通道插件模型（在多租户边界内）。  
-P1：Hermes 后端矩阵与 agentskills 兼容。  
+P0 观察：Codex 沙箱语义、OpenClaw 通道插件模型（在多租户边界内）。
+P1：Hermes 后端矩阵与 agentskills 兼容。
 P2：DSH continuation 多样性、CC 体验细节。
 
 ---
@@ -287,11 +287,11 @@ P2：DSH continuation 多样性、CC 体验细节。
 
 ## 18. 结论
 
-1. **企业操作系统位**仍由 aiPlat 占据（治理 × 知识 × 交付）。  
-2. **个人助手生态位** OpenClaw（通道/原生端）与 Hermes（学习/多后端）分割领先。  
-3. **编程运行时位** Codex（嵌入+沙箱）与 Claude Code（产品体验）领先。  
-4. **插件 harness 位** DSH 仍是架构纯度参照。  
-5. 综合加权分见 [`comparison.md`](../architecture/comparison.md) §三（aiPlat 92 / Hermes 70 / OpenClaw 60 / DSH 62 / Codex 61 / CC 56）——**论证用，非商务承诺**。
+1. **企业操作系统位**仍由 aiPlat 占据（治理 × 知识 × 交付）。
+2. **个人助手生态位** OpenClaw（通道/原生端）与 Hermes（学习/多后端）分割领先。
+3. **编程运行时位** Codex（嵌入+沙箱）与 Claude Code（产品体验）领先。
+4. **插件 harness 位** DSH 仍是架构纯度参照。
+5. 综合加权分见 [`comparison.md`](../../architecture/comparison.md) §三（aiPlat 92 / Hermes 70 / OpenClaw 60 / DSH 62 / Codex 61 / CC 56）——**论证用，非商务承诺**。
 
 ---
 
@@ -308,16 +308,16 @@ P2：DSH continuation 多样性、CC 体验细节。
 
 ## 20. 缺口矩阵（2026-10 增量节）
 
-历史 G1–G15 闭环状态见 archive 旧报告与吸收评估。  
-**本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。  
-**OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。  
+历史 G1–G15 闭环状态见 archive 旧报告与吸收评估。
+**本轮新增观察项**：N1–N5（§16.2）。不将 N 项自动升级为工程承诺，除非单独立项。
+**OpenWorker 旁路吸收**：§0.2 阶梯 #315–#319 **已收口**（治理 + Pi attendance + 安全专科种子）；不进入 N 矩阵（产品位不同，非「缺列」）。
 **认知分层旁路**：§0.3 — 理念已与 Gate/Skill/schema 对齐；**任务语境闸门 P0 已接线**；专用 System 1 / 呈层全覆盖仍为可选观察，不自动升 N 项。aisuite / LangChain **不入列**。
 
 ---
 
 ## 21. 评分索引
 
-完整 18 维星级与加权算法：**仅以** [`docs/architecture/comparison.md`](../architecture/comparison.md) 为准。  
+完整 18 维星级与加权算法：**仅以** [`docs/architecture/comparison.md`](../../architecture/comparison.md) 为准。
 本报告正文不重复粘贴第二份总分表，避免双源漂移。
 
 ---
@@ -325,7 +325,7 @@ P2：DSH continuation 多样性、CC 体验细节。
 ## 22. 验证
 
 ```bash
-test -f docs/research/对标底稿-2026-10-五家.md
+test -f docs/reference/research/对标底稿-2026-10-五家.md
 rg -n '六平台|18 维度|加权总分' docs/architecture/comparison.md
 # OpenWorker 旁路吸收收口（§0.2 / #315–#319）
 rg -n 'check_hard_floor|session_write_provenance|ApprovalInboxStore' \

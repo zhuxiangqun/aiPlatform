@@ -64,9 +64,9 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/strategy/comparison-vs-vendors.md`](../../../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
-| [`docs/framework/assessment-scores.json`](../../../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
-| [`docs/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
+| [`docs/reference/strategy/comparison-vs-vendors.md`](../../../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
+| [`docs/reference/framework/assessment-scores.json`](../../../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
+| [`docs/reference/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
 | [`aiPlat-core/core/harness/finance/value_calculator.py`](../../../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
 
 

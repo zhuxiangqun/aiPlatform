@@ -40,8 +40,8 @@
 ### 设计提案（design/）
 [design/](design/) — To-Be 设计文档（非当前实现状态，以代码为准）
 
-### 框架评估（framework/）
-[framework/](framework/) — 成熟度评估/对比/评分
+### 框架评估（reference/framework/）
+[reference/framework/](reference/framework/) — 成熟度评估/对比/评分
 
 ### 安全（security/）
 [security/](security/) — 安全架构与测试
@@ -62,7 +62,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [harness/](harness/) · [matrix/](matrix/) · [mcp/](mcp/) · [reports/](reports/) · [research/](research/) · [skills/](skills/) · [strategy/](strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
+[agents/](agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [harness/](harness/) · [reference/matrix/](reference/matrix/) · [mcp/](mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
 
 ---
 
@@ -79,10 +79,10 @@
 | `contracts/` | 跨仓契约（FDE / Ontology 等） | 43 | 是（索引见 README；§3 责任分型） |
 | `guides/` | 操作手册 | 38 | 是 |
 | `architecture/` | 架构设计 + ADR + 规划 | 29 | 核心参考是；plans 非现状 |
-| `research/` | 对标 / 验收钉死规划 | 14 | 主报告 + factory/G6/tier；治理过程见根 reports |
+| `reference/research/` | 对标 / 验收钉死规划 | 14 | 主报告 + factory/G6/tier；治理过程见根 reports |
 | `reference/explanatory/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
 | `standards/` | 跨层强制性规范 | 10 | 是 |
-| `framework/` | 成熟度评估框架 | 6 | 评估时更新 |
+| `reference/framework/` | 成熟度评估框架 | 6 | 评估时更新 |
 | `design/` | 设计提案（To-Be） | 4 | 过期标注 |
 | `security/` | 安全架构与测试 | 4 | 是 |
 | `by-role/` | 角色索引 | 4 | 是 |
@@ -91,7 +91,7 @@
 | `policy/` | 安全/运维策略 | 2 | 是 |
 | `audit/` | 合规审计 | 2 | 按需 |
 | `project/` | 项目管理 | 1 | 是 |
-| `matrix/` | 能力影响矩阵 | 1 | 是 |
+| `reference/matrix/` | 能力影响矩阵 | 1 | 是 |
 | `guides/` | 补充指南（如 PR 架构检查清单） | 1 | 按需 |
 | 根下散文件（5）+ 其余 1 文件专题 | knowledge-system 等 | 5+专题 | 按需 |
 | **合计** | | **253** | |
@@ -103,7 +103,7 @@
 ## 文档治理
 
 - **[DOCUMENT_SYSTEM.md](DOCUMENT_SYSTEM.md)**：文档系统宪法（分类、边界、验证）
-- **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5 / E0–E4；已移出 `docs/research/`）
+- **[reports/docs-governance/](../reports/docs-governance/README.md)**：文档治理过程材料唯一索引（C0–C4 / D0–D5 / E0–E4；已移出 `docs/reference/reference/research/`）
 - **[AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md)**：能力声明/接线索引（计数见该文件；不等于行为验收）
 - **[reports/whitepapers/aiplat-platform-status-whitepaper.md](../reports/whitepapers/aiplat-platform-status-whitepaper.md)**：平台现状白皮书（**从 CAPABILITIES 生成**，`--check` 防过期；非手写第二清单）
 
@@ -133,4 +133,4 @@
 | 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`guides/ontology.md`（指向知识系统） |
 | 查安全红线 | 合规与安全 | `compliance/`、`security/`、`policy/` |
 | 查 MCP/测试工具 | 工具与框架 | `mcp/`、`tools/`、`guides/testing.md` |
-| 看系统状态报告 | 报告与审计 | `reports/`、`archive/`、`research/` |
+| 看系统状态报告 | 报告与审计 | `reports/`、`archive/`、`reference/research/` |

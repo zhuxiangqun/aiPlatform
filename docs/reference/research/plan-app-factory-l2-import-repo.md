@@ -229,7 +229,7 @@ async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing
 | 9 | **意图绑定生效（评审补充）**：modify_files 为 {path, intent}，prompt 注入含 intent，空 intent 被拒绝 | 单测：update-prd 传空 intent → 422；mock 断言 prompt 含 "意图：登录增加验证码校验" |
 | 10 | **测试门禁逃生（评审补充）**：无 tests/ → 导入响应含 has_tests=false + 前端可勾选 skip_pytest_gate → pipeline_eval 走 estimated 不卡死 | 集成：导入无 tests/ 的项目 → skip_pytest_gate=true → 断言 pass_rate_source=estimated + estimate_reason 非空 |
 | 11 | **依赖预检（评审补充）**：import_repo 响应含 missing_deps（不单独做接口） | 单测：构造含 requirements.txt 的 zip → 断言 import_repo 响应含 missing_deps 列表 |
-| 12 | **预期管理手册交付（终审条件）**：手册随 L2 交付且设计文档引用 | `ls docs/research/plan-app-factory-l2-expected-behavior-manual.md` + grep 设计文档 §3.9 引用 |
+| 12 | **预期管理手册交付（终审条件）**：手册随 L2 交付且设计文档引用 | `ls docs/reference/research/plan-app-factory-l2-expected-behavior-manual.md` + grep 设计文档 §3.9 引用 |
 | 13 | **Build Log 刷屏警告（终审条件）**：部署成功后打印 regenerated 警告 | 集成：部署后断言日志含 "has been regenerated, please review diff manually" |
 | 14 | **埋点监控（终审条件）**：skip_pytest_gate 开启计数可查询，>40% 触发 L3 优先级告警 | 单测：开启 3 次 → 计数=3；模拟 5 次中 3 次跳过 → 告警标志触发 |
 

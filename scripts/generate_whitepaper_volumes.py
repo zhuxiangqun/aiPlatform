@@ -31,7 +31,7 @@ REPO = Path(__file__).resolve().parents[1]
 SUITE = REPO / "docs" / "reference" / "explanatory" / "whitepaper-suite.yaml"
 OUT_DIR = REPO / "reports" / "whitepapers" / "volumes"
 CAPS = REPO / "AIPLAT_CAPABILITIES.md"
-SCORES = REPO / "docs" / "framework" / "assessment-scores.json"
+SCORES = REPO / "docs" / "reference" / "framework" / "assessment-scores.json"
 
 VOLUME_FILES = {
     "tech-architecture": "01-tech-architecture.md",
@@ -177,8 +177,8 @@ def _tech_comparison_digest() -> str:
         "完整 18 维表、证据与可借鉴清单见权威源（勿在卷内手抄第二份）。",
         "",
         f"- 架构对比入口：{_link('docs/architecture/comparison.md')}",
-        f"- 深度主报告：{_link('docs/research/aiPlat核心能力对标报告.md')}",
-        f"- 证据底稿：{_link('docs/research/对标底稿-2026-10-五家.md')}",
+        f"- 深度主报告：{_link('docs/reference/research/aiPlat核心能力对标报告.md')}",
+        f"- 证据底稿：{_link('docs/reference/research/对标底稿-2026-10-五家.md')}",
         "",
         "#### 六平台一句话定位",
         "",
@@ -613,10 +613,10 @@ def _build_volume(
         ]
         excerpt, _ = _read_excerpt(_rel("AIPLAT_ROADMAP.md"), 12000)
         parts += [excerpt, ""]
-        if _rel("docs/strategy/comparison-vs-vendors.md").is_file():
+        if _rel("docs/reference/strategy/comparison-vs-vendors.md").is_file():
             parts += ["### 3.3 厂商策略对比（节选）", ""]
             excerpt, _ = _read_excerpt(
-                _rel("docs/strategy/comparison-vs-vendors.md"), 8000
+                _rel("docs/reference/strategy/comparison-vs-vendors.md"), 8000
             )
             parts += [excerpt, ""]
     elif vid == "ecosystem-integration":
@@ -719,7 +719,7 @@ def _build_volume(
             "",
             "治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：",
             "",
-            f"- 评分戳：{_link('docs/framework/assessment-scores.json')}",
+            f"- 评分戳：{_link('docs/reference/framework/assessment-scores.json')}",
             f"- 安全架构：{_link('docs/security/security-architecture.md')}",
             f"- Gate 与安全能力：{_link('AIPLAT_CAPABILITIES.md')} 中 Gate / 安全节",
             f"- L 级 ADR：{_link('docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md')}",
@@ -847,7 +847,7 @@ def _repair_generated_links(path: Path) -> None:
             "../../../docs/whitepaper/aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
             "../../../docs/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
-            "../framework/verification-protocol.md": "docs/framework/verification-protocol.md",
+            "../framework/verification-protocol.md": "docs/reference/framework/verification-protocol.md",
             "./cases/README.md": "docs/reference/explanatory/cases/README.md",
         }
         if link in special:

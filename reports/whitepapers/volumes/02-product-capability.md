@@ -3,24 +3,24 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:45:40Z"
+generated_at: "2026-11-11T12:47:13Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
+suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:45:40Z` |
+| 生成时间 (UTC) | `2026-11-11T12:47:13Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -48,7 +48,7 @@ language: zh-CN
 |------|------|:----:|
 | [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单 | ✅ |
 | [`docs/whitepaper/aiplat-platform-status-whitepaper.md`](../aiplat-platform-status-whitepaper.md) | 可读包装（含完整能力表） | ❌ |
-| [`docs/matrix/capability-impact-matrix.md`](../../../docs/matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
+| [`docs/reference/matrix/capability-impact-matrix.md`](../../../docs/reference/matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
 
 
 ### 2.2 Supporting

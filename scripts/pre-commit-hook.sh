@@ -111,7 +111,7 @@ fi
 
 # ── Step 2.8: Whitepaper auto-sync (CAPABILITIES → status + five volumes) ──
 WP_TRIGGERS=$(git diff --cached --name-only | grep -E \
-  '^(AIPLAT_CAPABILITIES\.md|docs/whitepaper/whitepaper-suite\.yaml|docs/framework/assessment-scores\.json|docs/whitepaper/commercial-value-model\.md|docs/whitepaper/ecosystem-partner-|docs/whitepaper/cases/|scripts/generate_platform_whitepaper\.py|scripts/generate_whitepaper_volumes\.py|scripts/sync_whitepapers\.sh)$' \
+  '^(AIPLAT_CAPABILITIES\.md|docs/whitepaper/whitepaper-suite\.yaml|docs/reference/framework/assessment-scores\.json|docs/whitepaper/commercial-value-model\.md|docs/whitepaper/ecosystem-partner-|docs/whitepaper/cases/|scripts/generate_platform_whitepaper\.py|scripts/generate_whitepaper_volumes\.py|scripts/sync_whitepapers\.sh)$' \
   || true)
 if [ -n "$WP_TRIGGERS" ] || git diff --cached --name-only | grep -q '^AIPLAT_CAPABILITIES\.md$'; then
     echo ""

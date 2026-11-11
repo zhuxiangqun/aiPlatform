@@ -6,7 +6,7 @@ Produces two views:
   2. Capabilities → Consumers (for capability developers)
 
 Usage:
-  python3 scripts/generate_impact_matrix.py              # write docs/matrix/...
+  python3 scripts/generate_impact_matrix.py              # write docs/reference/matrix/...
   python3 scripts/generate_impact_matrix.py --ci         # temp full regenerate + diff vs committed
   python3 scripts/generate_impact_matrix.py --check      # alias of --ci
 
@@ -129,7 +129,7 @@ def check_matrix_fresh(root: Optional[Path] = None) -> int:
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as tf:
         tf.write(expected)
         tmp = tf.name
-    print(f"ERROR: docs/matrix/capability-impact-matrix.md is stale vs capability_registry.yaml")
+    print(f"ERROR: docs/reference/matrix/capability-impact-matrix.md is stale vs capability_registry.yaml")
     print(f"  regenerated: {tmp}")
     print(f"  committed:   {committed}")
     print("  Fix: python3 scripts/generate_impact_matrix.py")

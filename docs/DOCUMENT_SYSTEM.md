@@ -82,10 +82,6 @@ workspace-root/
 │   ├── design/                       ← 设计文档（To-Be / Plan）
 │   │   └── ...（见目录；非现状）
 │   │
-│   ├── framework/                     ← 成熟度评估框架
-│   │   ├── assessment-scores.json     ← 唯一评估分数源
-│   │   └── ...
-│   │
 │   ├── security/                      ← 安全架构与测试
 │   │
 │   ├── policy/                        ← 安全/运维策略
@@ -106,9 +102,6 @@ workspace-root/
 │   ├── tools/                         ← 工具系统增强
 │   │   └── enhancement.md
 │   │
-│   ├── strategy/                      ← 战略分析 / 竞品对比
-│   │   └── comparison-vs-vendors.md
-│   │
 │   ├── reports/                       ← 生成报告（不手动编辑）
 │   │   ├── README.md
 │   │   ├── AIPLAT_ARCHITECTURE_REPORT.md
@@ -125,13 +118,6 @@ workspace-root/
 │   │
 │   ├── articles/                     ← 技术文章（对外发布）
 │   │   └── private-control-plane.md
-│   │
-│   ├── matrix/                        ← 能力影响矩阵
-│   │   └── capability-impact-matrix.md
-│   │
-│   ├── research/                      ← 研究报告（审计/对标/方案；含收官稿与现行主报告）
-│   │   ├── README.md
-│   │   └── ...
 │   │
 │   ├── archive/                      ← 归档（历史版本，只读）
 │   │   ├── README.md                 ← 归档说明 + "仅做历史参考"免责声明
@@ -751,7 +737,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 26 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 22 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

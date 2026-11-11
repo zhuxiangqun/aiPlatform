@@ -6,9 +6,9 @@ version: 1.0.0
 date: 2026-07-06
 status: published
 refs:
-  - docs/framework/aiplat-autonomy-framework.md
-  - docs/framework/aiplat-complete-assessment.md
-  - docs/framework/hermes-comparison.md
+  - docs/reference/framework/aiplat-autonomy-framework.md
+  - docs/reference/framework/aiplat-complete-assessment.md
+  - docs/reference/framework/hermes-comparison.md
 tags: [framework, skill-maturity, L1-L5, 5-level]
 ---
 

@@ -6,9 +6,9 @@ version: 1.0.0
 date: 2026-07-05
 status: published
 applies_to:
-  - docs/framework/aiplat-autonomy-framework.md
-  - docs/framework/aiplat-complete-assessment.md
-  - docs/framework/scoring-detail.md
+  - docs/reference/framework/aiplat-autonomy-framework.md
+  - docs/reference/framework/aiplat-complete-assessment.md
+  - docs/reference/framework/scoring-detail.md
 refs:
   - scripts/verify-l4-pyramid.sh
   - scripts/verify-l4-depth.sh
@@ -21,7 +21,7 @@ tags: [verification, protocol, reproducibility, three-framework]
 # aiPlat 框架评估验证协议
 
 > **C2 消歧**：本文验证 **framework 三框架评估**（autonomy / complete-assessment / scoring-detail）。
-> L5 运行时评估协议见 [`docs/whitepaper/verification-protocol.md`](../reference/explanatory/verification-protocol.md)——**同名异职（framework vs L5），勿合并**。
+> L5 运行时评估协议见 [`docs/whitepaper/verification-protocol.md`](../explanatory/verification-protocol.md)——**同名异职（framework vs L5），勿合并**。
 >
 > 用途：供外部审稿人独立验证三框架评估结论。
 > 前提：不要求通读评估报告。本协议自包含所有验证步骤。

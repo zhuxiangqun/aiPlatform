@@ -1,14 +1,14 @@
 # aiPlat — 六平台深度对标摘要（2026-10）
 
-> **C2 消歧 / SoT**：本文是 **现行架构对比权威入口**（六平台 · 18 维 · 2026-10）。  
+> **C2 消歧 / SoT**：本文是 **现行架构对比权威入口**（六平台 · 18 维 · 2026-10）。
 > 旧四方案规划稿已迁 [`docs/archive/plans-comparison-four-platform-2026-07.md`](../archive/plans-comparison-four-platform-2026-07.md)——勿与本文并行当作现行入口。
 >
-> **生成/调研时点**：2026-10-13（六列）· 2026-10-16（OpenWorker 收口 · 认知分层旁路）  
+> **生成/调研时点**：2026-10-13（六列）· 2026-10-16（OpenWorker 收口 · 认知分层旁路）
 
-> **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex  
-> **旁路吸收（非列）**：OpenWorker — **§0.2**（#315–#319）；认知分层（想·判·行·呈）— **§0.3**；aisuite/LangChain 框架层不入列  
-> **细节与证据权威**：[`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) · 底稿 [`docs/research/对标底稿-2026-10-五家.md`](../research/对标底稿-2026-10-五家.md)  
-> **本文角色**：架构对比权威入口。白皮书技术卷 §3.2 **只摘定位+总分摘要**，不全文粘贴本文。**禁止**把本文当作第二能力清单；星级须能回溯底稿。  
+> **对标范围**：aiPlat × Hermes Agent × Claude Code × OpenClaw × DeepSeek Harness × OpenAI Codex
+> **旁路吸收（非列）**：OpenWorker — **§0.2**（#315–#319）；认知分层（想·判·行·呈）— **§0.3**；aisuite/LangChain 框架层不入列
+> **细节与证据权威**：[`docs/reference/research/aiPlat核心能力对标报告.md`](../reference/research/aiPlat核心能力对标报告.md) · 底稿 [`docs/reference/research/对标底稿-2026-10-五家.md`](../reference/research/对标底稿-2026-10-五家.md)
+> **本文角色**：架构对比权威入口。白皮书技术卷 §3.2 **只摘定位+总分摘要**，不全文粘贴本文。**禁止**把本文当作第二能力清单；星级须能回溯底稿。
 > 旧四平台稿已归档：[`docs/archive/comparison-four-platform-2026-07.md`](../archive/comparison-four-platform-2026-07.md)
 
 ---
@@ -27,7 +27,7 @@
 
 ## 二、18 维度关键能力对标
 
-评分刻度：★★★★★ 该维领先或企业级完备 · ★★★★☆ 强 · ★★★☆☆ 可用 · ★★☆☆☆ 弱/窄 · ★☆☆☆☆ 基本缺失。  
+评分刻度：★★★★★ 该维领先或企业级完备 · ★★★★☆ 强 · ★★★☆☆ 可用 · ★★☆☆☆ 弱/窄 · ★☆☆☆☆ 基本缺失。
 依据见底稿；**非**营销分。
 
 ### A. 执行与编排（维 1–4）
@@ -80,7 +80,7 @@
 
 ## 三、综合评分矩阵（加权）
 
-权重：维 1,2,5,12,16 各 **8%**；维 3,4,6,7,11,13,17,18 各 **5%**；维 8,9,10,14,15 各 **4%**（合计 100%）。  
+权重：维 1,2,5,12,16 各 **8%**；维 3,4,6,7,11,13,17,18 各 **5%**；维 8,9,10,14,15 各 **4%**（合计 100%）。
 星→分：★=20 … ★★★★★=100，再按权加权。
 
 | 维 | aiPlat | Hermes | Claude Code | OpenClaw | DSH | Codex |
@@ -113,10 +113,10 @@
 
 ### aiPlat 领先区
 
-1. 企业治理链（Policy/Approval/Audit + 多租户）  
-2. 本体/知识引擎与 RAG 治理  
-3. 交付流水线 HITL（approve/reject/checkpoint）  
-4. 平台级质量门与架构守卫  
+1. 企业治理链（Policy/Approval/Audit + 多租户）
+2. 本体/知识引擎与 RAG 治理
+3. 交付流水线 HITL（approve/reject/checkpoint）
+4. 平台级质量门与架构守卫
 
 ### 可借鉴（本轮仍成立）
 
@@ -134,8 +134,8 @@
 
 ```bash
 # 底稿与主报告存在
-test -f docs/research/对标底稿-2026-10-五家.md
-test -f docs/research/aiPlat核心能力对标报告.md
+test -f docs/reference/research/对标底稿-2026-10-五家.md
+test -f docs/reference/research/aiPlat核心能力对标报告.md
 # 白皮书节选刷新
 python3 scripts/generate_whitepaper_volumes.py --check
 ```

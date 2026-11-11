@@ -295,7 +295,7 @@ echo "━━━ Step 4.1: Sync downstream capability counts ━━━"
 
 DOWNSTREAM_TARGETS=(
     "docs/README.md|（[0-9]* ✅）|（${SUM} ✅）"
-    "docs/matrix/capability-impact-matrix.md|[0-9]* capabilities|${SUM} capabilities"
+    "docs/reference/matrix/capability-impact-matrix.md|[0-9]* capabilities|${SUM} capabilities"
     "docs/DOCUMENT_SYSTEM.md|能力数 \`[0-9]*\`|能力数 \`${SUM}\`"
     "AIPLAT_CAPABILITIES.md|（202[0-9]-[0-9][0-9]-[0-9][0-9] — [0-9]*✅）|（2026-07-20 — ${SUM}✅）"
 )

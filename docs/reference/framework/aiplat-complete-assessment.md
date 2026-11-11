@@ -6,10 +6,10 @@ version: 3.1.0
 date: 2026-07-06
 status: published
 refs:
-  - docs/framework/aiplat-autonomy-framework.md
-  - docs/framework/scoring-detail.md
-  - docs/framework/hermes-comparison.md
-  - docs/framework/verification-protocol.md
+  - docs/reference/framework/aiplat-autonomy-framework.md
+  - docs/reference/framework/scoring-detail.md
+  - docs/reference/framework/hermes-comparison.md
+  - docs/reference/framework/verification-protocol.md
 frameworks:
   - L1-L5 Autonomy Rating (8 axes, ~24 items)
   - Engineering Maturity (6 dims, 58 items)
@@ -463,7 +463,7 @@ tags: [evaluation, L4, engineering-maturity, enterprise-assessment, 8-axis, resi
 
 ### 4.2 微观技术层 — 4.0/5.0（优秀级，83 项）
 
-> 详细 83 项逐项评分见 `docs/framework/scoring-detail.md` §微观技术层。
+> 详细 83 项逐项评分见 `docs/reference/framework/scoring-detail.md` §微观技术层。
 
 | 组件 | 项数 | 平均分 | 最高 | 最低 |
 |:---|:--:|:--:|:--:|:--:|

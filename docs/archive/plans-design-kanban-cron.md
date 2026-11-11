@@ -176,7 +176,7 @@ async def _execute_and_transition(kb: KanbanEngine, task_id: str, goal: str):
 | `aiPlat-core/core/harness/coordination/kanban_engine.py` | `create_task()` + `get_all_tasks_by_status()` | 约 30 行 |
 | `aiPlat-core/core/api/routers/kanban.py` | **新建** — 4 个 HTTP API 端点 | 约 100 行 |
 | `aiPlat-core/core/server.py` | hook `load_cron_from_profile()` on startup | 约 3 行 |
-| `docs/framework/assessment-spec.yaml` | A2.3.declared_level 从 null→L3 | 1 行 |
+| `docs/reference/framework/assessment-spec.yaml` | A2.3.declared_level 从 null→L3 | 1 行 |
 
 ## 4. 对框架评分的即时影响
 
@@ -206,7 +206,7 @@ curl -s http://localhost:8002/api/core/health/kanban | jq
 
 # 5. 重新评估
 python3 scripts/compute_assessment.py --quiet \
-  && python3 -c "import json; d=json.load(open('docs/framework/assessment-scores.json')); [print(a['id'], a['declared_level']) for a in d['frameworks']['framework_one']['axes'] if a['id']=='A2']"
+  && python3 -c "import json; d=json.load(open('docs/reference/framework/assessment-scores.json')); [print(a['id'], a['declared_level']) for a in d['frameworks']['framework_one']['axes'] if a['id']=='A2']"
 # → A2 expected: L4
 ```
 

@@ -1,9 +1,9 @@
 # 五产品域完整实施方案（已收敛）
 
-> **已由落地方案取代为日常执行真源。**  
-> → 请使用：**[ai-platform-five-products-landing-plan.md](./ai-platform-five-products-landing-plan.md)**  
->  
-> 本文保留作历史草稿索引。路径、门禁、WP/DoD 以**落地方案 v1.3**为准（§3.6 Blocker/Known Gap/E3 归属；L1 ≠ Gate 1；仅有条件批 L1）。  
+> **已由落地方案取代为日常执行真源。**
+> → 请使用：**[ai-platform-five-products-landing-plan.md](./ai-platform-five-products-landing-plan.md)**
+>
+> 本文保留作历史草稿索引。路径、门禁、WP/DoD 以**落地方案 v1.3**为准（§3.6 Blocker/Known Gap/E3 归属；L1 ≠ Gate 1；仅有条件批 L1）。
 
 > 母稿：[target-architecture](./ai-platform-five-products-target-architecture.md) · Pi：[pi-thin-runtime](./pi-thin-runtime.md)
 
@@ -23,9 +23,9 @@
 
 ### 0.2 实施总策略（四句）
 
-1. **产品独立 → 接口独立 → 代码模块化 → 按需部署拆分**；前三步未完成前不做第四步。  
-2. **先契约与一条纵向切片，再模块化切片暴露的边**；禁止五产品同步开工。  
-3. **证据等级 E0–E5**；静态能力清单 / 图谱 / 架构守卫绿 ≠ 行为可用。  
+1. **产品独立 → 接口独立 → 代码模块化 → 按需部署拆分**；前三步未完成前不做第四步。
+2. **先契约与一条纵向切片，再模块化切片暴露的边**；禁止五产品同步开工。
+3. **证据等级 E0–E5**；静态能力清单 / 图谱 / 架构守卫绿 ≠ 行为可用。
 4. **共享控制面默认在 aiPlat**，契约可接外部 IAM；各产品本地仍须鉴权。
 
 ### 0.3 批准范围分层
@@ -53,13 +53,13 @@
 
 ### 1.2 硬禁止（任何阶段）
 
-- 用目录搬迁代替契约。  
-- 用客户端 / Pi native tool gate 代替服务端授权。  
-- 跨产品共享数据库作为正式集成契约。  
-- 缺证据时报告 healthy / 成功。  
-- 将 Pi Thin 表述为已完成 Enterprise Runtime。  
-- 将 Management 页面等同诊断产品或本体产品。  
-- 将能力行数、CAPABILITIES ✅、图谱节点、静态门禁当作生产就绪。  
+- 用目录搬迁代替契约。
+- 用客户端 / Pi native tool gate 代替服务端授权。
+- 跨产品共享数据库作为正式集成契约。
+- 缺证据时报告 healthy / 成功。
+- 将 Pi Thin 表述为已完成 Enterprise Runtime。
+- 将 Management 页面等同诊断产品或本体产品。
+- 将能力行数、CAPABILITIES ✅、图谱节点、静态门禁当作生产就绪。
 - 厂内 Pi 编码实验未单独 RFC + caller + 行为验收前进入主路径。
 
 ### 1.3 证据等级（贯穿全程）
@@ -181,11 +181,11 @@ FDE 建场景/验收标准
 
 业务侧会前 **3 个工作日**提交：
 
-1. 场景名称与业务用户  
-2. 可重复输入 / 预期输出 / 失败条件  
-3. 业务验收签署人  
-4. 失败成本说明（为何值得做）  
-5. 数据敏感级别与是否可用隔离环境  
+1. 场景名称与业务用户
+2. 可重复输入 / 预期输出 / 失败条件
+3. 业务验收签署人
+4. 失败成本说明（为何值得做）
+5. 数据敏感级别与是否可用隔离环境
 
 无真实客户时：允许**内部可复现场景**，必须标注「非客户验收」；Gate 2 扩大前须客户场景替换或背书。
 
@@ -201,8 +201,8 @@ FDE 建场景/验收标准
 
 #### 范围纪律
 
-- **必做**：切片将经过的入口、caller、数据 owner、身份流、副作用、版本字段、运行证据。  
-- **后置**：全仓依赖图、全能力条目证据升级、切片未使用产品的深挖。  
+- **必做**：切片将经过的入口、caller、数据 owner、身份流、副作用、版本字段、运行证据。
+- **后置**：全仓依赖图、全能力条目证据升级、切片未使用产品的深挖。
 - 切片未使用的产品维度标「切片未使用」，**不阻塞 Gate 1**。
 
 #### 建议调查命令与落点（示例，按仓库现状调整）
@@ -222,7 +222,7 @@ rg -n 'export_pi_bundle|aiplat-pi-runtime' scripts packages --glob '*.{py,ts,md,
 rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform/auth aiPlat-platform/api --glob '*.py' | head
 ```
 
-产物写入：`reports/five-products/wp0-slice-inventory-YYYY-MM-DD.md`（过程材料；**不要**堆进 `docs/research/`）。
+产物写入：`reports/five-products/wp0-slice-inventory-YYYY-MM-DD.md`（过程材料；**不要**堆进 `docs/reference/research/`）。
 
 #### 必填表模板
 
@@ -258,12 +258,12 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform/auth aiPlat-pl
 
 #### DoD
 
-- [ ] 切片每条调用边有代码入口 + caller（或明确「缺失 → 阻塞 Gate1」）  
-- [ ] 切片每类数据有唯一 owner；缓存单独标注  
-- [ ] Pi Thin 已实现 vs Enterprise 缺口清单  
-- [ ] 诊断现状 vs MVP 差距清单  
-- [ ] 所有「已接线」声明带证据等级；关键能力 ≥ E3 或降级表述  
-- [ ] 时间盒到期：未完成项标「未知/后置」，附恢复条件  
+- [ ] 切片每条调用边有代码入口 + caller（或明确「缺失 → 阻塞 Gate1」）
+- [ ] 切片每类数据有唯一 owner；缓存单独标注
+- [ ] Pi Thin 已实现 vs Enterprise 缺口清单
+- [ ] 诊断现状 vs MVP 差距清单
+- [ ] 所有「已接线」声明带证据等级；关键能力 ≥ E3 或降级表述
+- [ ] 时间盒到期：未完成项标「未知/后置」，附恢复条件
 
 ---
 
@@ -275,27 +275,27 @@ rg -n 'require_auth|PolicyGate|_resolve_identity' aiPlat-platform/auth aiPlat-pl
 
 #### 活动
 
-1. 对照母稿 §3 产品表，填写「本切片使用 / 不使用 / 后置」。  
-2. 裁决 Knowledge 三分归属（仅切片涉及部分）：  
-   - 语义事实 / 模型版本 → 本体  
-   - Agent 检索编排 / 降级 → aiPlat  
-   - 跨产品证据索引 → 诊断  
-3. 裁决编排引擎归属表述：  
-   - **控制面与资产发布** ∈ aiPlat  
-   - **厂外执行宿主** ∈ Pi  
-   - **Harness 内核** 仍属共享执行底座，产品化时经公开接口暴露，不把 FDE 业务写回 harness  
+1. 对照母稿 §3 产品表，填写「本切片使用 / 不使用 / 后置」。
+2. 裁决 Knowledge 三分归属（仅切片涉及部分）：
+   - 语义事实 / 模型版本 → 本体
+   - Agent 检索编排 / 降级 → aiPlat
+   - 跨产品证据索引 → 诊断
+3. 裁决编排引擎归属表述：
+   - **控制面与资产发布** ∈ aiPlat
+   - **厂外执行宿主** ∈ Pi
+   - **Harness 内核** 仍属共享执行底座，产品化时经公开接口暴露，不把 FDE 业务写回 harness
 4. 确认 `shared/identity` **仅契约/SDK**；默认实现在 aiPlat。
 
 #### 产物
 
-- `reports/five-products/wp1-boundary-signoff-YYYY-MM-DD.md`  
+- `reports/five-products/wp1-boundary-signoff-YYYY-MM-DD.md`
 - ADR-01 草稿（可先一页）
 
 #### DoD
 
-- [ ] 五产品 owner 姓名 + 替补人  
-- [ ] 无「双权威」实体残留在切片路径  
-- [ ] 非目标清单已贴到切片看板（防范围膨胀）  
+- [ ] 五产品 owner 姓名 + 替补人
+- [ ] 无「双权威」实体残留在切片路径
+- [ ] 非目标清单已贴到切片看板（防范围膨胀）
 
 ---
 
@@ -380,15 +380,15 @@ acceptance_status, evidence_ids[], decided_by, decided_at
 
 #### 产物落点
 
-- `shared/contracts/` 逻辑归属（**先文档 + schema 草案**，不强制新建包）  
+- `shared/contracts/` 逻辑归属（**先文档 + schema 草案**，不强制新建包）
 - 建议路径：`docs/architecture/contracts/five-products/`（若创建，须登记 DOCUMENT_SYSTEM；本阶段也可先放 `reports/five-products/contracts/`）
 
 #### DoD
 
-- [ ] 六契约均有生产者、消费者、版本、错误语义  
-- [ ] 兼容矩阵无「待指定」空单元格（切片用到的行）  
-- [ ] 失联语义表签字  
-- [ ] 至少 1 组契约负向用例清单（伪造身份、坏 bundle、过期策略）  
+- [ ] 六契约均有生产者、消费者、版本、错误语义
+- [ ] 兼容矩阵无「待指定」空单元格（切片用到的行）
+- [ ] 失联语义表签字
+- [ ] 至少 1 组契约负向用例清单（伪造身份、坏 bundle、过期策略）
 
 ---
 
@@ -396,14 +396,14 @@ acceptance_status, evidence_ids[], decided_by, decided_at
 
 对照 [Decision Brief](./ai-platform-five-products-decision-brief.md) 五项 + 下列清单：
 
-- [ ] 场景与验收人确认  
-- [ ] Pi 形态（Thin / Enterprise 子集）确认  
-- [ ] 控制面：aiPlat 默认 **或** 外部 IAM（禁止双重授权）  
-- [ ] WP0 切片路径无「阻塞级未知」  
-- [ ] WP2 最小契约可用  
-- [ ] 隔离环境、密钥、数据脱敏方案就绪  
-- [ ] 回滚：可回滚 Agent bundle 版本 **或** Runtime 版本  
-- [ ] 安全 reviewer 对副作用范围签字（首切片应为低风险/只读）  
+- [ ] 场景与验收人确认
+- [ ] Pi 形态（Thin / Enterprise 子集）确认
+- [ ] 控制面：aiPlat 默认 **或** 外部 IAM（禁止双重授权）
+- [ ] WP0 切片路径无「阻塞级未知」
+- [ ] WP2 最小契约可用
+- [ ] 隔离环境、密钥、数据脱敏方案就绪
+- [ ] 回滚：可回滚 Agent bundle 版本 **或** Runtime 版本
+- [ ] 安全 reviewer 对副作用范围签字（首切片应为低风险/只读）
 
 **未过 Gate 1：禁止改生产默认路径、禁止宣称五产品已产品化。**
 
@@ -413,18 +413,18 @@ acceptance_status, evidence_ids[], decided_by, decided_at
 
 #### 交付物
 
-1. **序列图**：身份签发 → 各产品调用 → 证据回流 → 验收  
-2. **环境清单**：模型、密钥、网络、是否允许出网  
-3. **数据夹具**：最小 ontology / 项目 / bundle 样例（可合成）  
-4. **测试计划**：正确性 + 安全负向 + 失联 + 可重复性  
-5. **运维手册草稿**：安装 Pi、导出 bundle、查看报告、回滚  
-6. **风险与暂停触发**：映射执行计划 §5.6  
+1. **序列图**：身份签发 → 各产品调用 → 证据回流 → 验收
+2. **环境清单**：模型、密钥、网络、是否允许出网
+3. **数据夹具**：最小 ontology / 项目 / bundle 样例（可合成）
+4. **测试计划**：正确性 + 安全负向 + 失联 + 可重复性
+5. **运维手册草稿**：安装 Pi、导出 bundle、查看报告、回滚
+6. **风险与暂停触发**：映射执行计划 §5.6
 
 #### DoD
 
-- [ ] 每步有责任产品与证据文件名约定  
-- [ ] 失败注入用例 ≥ 3（断连、拒权、过期/缺失证据）  
-- [ ] 回滚演练步骤可在 30 分钟内执行（设计层）  
+- [ ] 每步有责任产品与证据文件名约定
+- [ ] 失败注入用例 ≥ 3（断连、拒权、过期/缺失证据）
+- [ ] 回滚演练步骤可在 30 分钟内执行（设计层）
 
 ---
 
@@ -460,31 +460,31 @@ reports/five-products/slice-<id>/
 
 **正确性**
 
-- [ ] FDE 需求 → Agent → Bundle → Pi 实例 →（Ontology 版本）→ 诊断报告 可追溯  
-- [ ] Pi 输出符合预定义结果契约  
-- [ ] 本体结果含来源/版本（若路径使用）  
-- [ ] FDE 接受/拒绝有证据  
+- [ ] FDE 需求 → Agent → Bundle → Pi 实例 →（Ontology 版本）→ 诊断报告 可追溯
+- [ ] Pi 输出符合预定义结果契约
+- [ ] 本体结果含来源/版本（若路径使用）
+- [ ] FDE 接受/拒绝有证据
 
 **安全**
 
-- [ ] 服务端校验 tenant/actor/scope/资源  
-- [ ] 无授权工具调用被拒；客户端不能绕过  
-- [ ] 失联时高风险副作用 fail-closed  
-- [ ] 无证据不标 healthy  
-- [ ] 日志/报告无 token/密钥明文  
+- [ ] 服务端校验 tenant/actor/scope/资源
+- [ ] 无授权工具调用被拒；客户端不能绕过
+- [ ] 失联时高风险副作用 fail-closed
+- [ ] 无证据不标 healthy
+- [ ] 日志/报告无 token/密钥明文
 
 **可重复与运维**
 
-- [ ] 干净环境按手册重跑成功  
-- [ ] 版本集合完整保存  
-- [ ] 失败可定位到产品边界  
-- [ ] 可回滚 bundle 或 Runtime  
+- [ ] 干净环境按手册重跑成功
+- [ ] 版本集合完整保存
+- [ ] 失败可定位到产品边界
+- [ ] 可回滚 bundle 或 Runtime
 
 #### DoD
 
-- [ ] 证据包完整  
-- [ ] 测试/验收 owner 签署  
-- [ ] `GAPS.md` 每条有严重度与建议处置（契约 / facade / 后置）  
+- [ ] 证据包完整
+- [ ] 测试/验收 owner 签署
+- [ ] `GAPS.md` 每条有严重度与建议处置（契约 / facade / 后置）
 
 ---
 
@@ -492,15 +492,15 @@ reports/five-products/slice-<id>/
 
 #### 产出
 
-1. 更新 ADR-01～03（至少）；其余 ADR 按需开立  
-2. **仅针对 GAPS** 的模块化 backlog（每项：收益、成本、依赖、证据）  
-3. Gate 2 建议：扩大 / 维持切片运维 / 暂停  
-4. 明确**不做清单**再冻结一轮  
+1. 更新 ADR-01～03（至少）；其余 ADR 按需开立
+2. **仅针对 GAPS** 的模块化 backlog（每项：收益、成本、依赖、证据）
+3. Gate 2 建议：扩大 / 维持切片运维 / 暂停
+4. 明确**不做清单**再冻结一轮
 
 #### DoD
 
-- [ ] 无「因为目录好看而搬迁」项进入 backlog  
-- [ ] 每项后续改造有切片证据链接  
+- [ ] 无「因为目录好看而搬迁」项进入 backlog
+- [ ] 每项后续改造有切片证据链接
 
 ---
 
@@ -520,11 +520,11 @@ reports/five-products/slice-<id>/
 
 ### 6.2 单波次 DoD
 
-- [ ] 变更限定在批准的边  
-- [ ] 契约测试或集成测试覆盖该边  
-- [ ] 无新的跨域私有 import（守卫或评审证明）  
-- [ ] 回滚说明  
-- [ ] 能力声明若变更：同步 CAPABILITIES **且**不升证据等级至超过实测  
+- [ ] 变更限定在批准的边
+- [ ] 契约测试或集成测试覆盖该边
+- [ ] 无新的跨域私有 import（守卫或评审证明）
+- [ ] 回滚说明
+- [ ] 能力声明若变更：同步 CAPABILITIES **且**不升证据等级至超过实测
 
 ### 6.3 建议模块化波次（示例，以 GAPS 为准裁剪）
 
@@ -677,7 +677,7 @@ shared/{contracts,sdk,identity,observability,security,connectors}/
 |------|------|
 | 目标架构 / ADR / 本实施方案 | `docs/architecture/plans/`（及后续 ADR 目录） |
 | WP0–WP5 过程清单、证据包 | `reports/five-products/` |
-| 禁止 | 把过程盘点堆回 `docs/research/` |
+| 禁止 | 把过程盘点堆回 `docs/reference/research/` |
 | 对外承诺 | 仅 E4+ 且文案经产品 owner |
 
 ---
@@ -686,21 +686,21 @@ shared/{contracts,sdk,identity,observability,security,connectors}/
 
 **会前（业务，≥3 个工作日）**
 
-- [ ] 候选场景 + 验收人 + 失败成本  
+- [ ] 候选场景 + 验收人 + 失败成本
 
 **会上拍板（Brief 五项）**
 
-- [ ] 场景  
-- [ ] 业务验收人  
-- [ ] Pi 形态  
-- [ ] 控制面/IAM  
-- [ ] Gate1/暂停签署人  
+- [ ] 场景
+- [ ] 业务验收人
+- [ ] Pi 形态
+- [ ] 控制面/IAM
+- [ ] Gate1/暂停签署人
 
 **会后立即**
 
-- [ ] 指定五产品 owner + 替补  
-- [ ] 开 `reports/five-products/` 目录与 WP0 时间盒截止日期  
-- [ ] 架构 owner 发布本实施方案的「L1 已批准」变更记录（日期/范围）  
+- [ ] 指定五产品 owner + 替补
+- [ ] 开 `reports/five-products/` 目录与 WP0 时间盒截止日期
+- [ ] 架构 owner 发布本实施方案的「L1 已批准」变更记录（日期/范围）
 
 ---
 
@@ -726,13 +726,13 @@ WP0 在时间盒内交付切片路径事实；WP2 契约可测；Gate 1 可开�
 
 ## 15. 明确不实施清单（再次冻结）
 
-- 不一次性拆五个仓库 / 五个数据库 / 五个微服务。  
-- 不把所有身份与业务数据集中进 aiPlat DB。  
-- 不把 Pi Thin 写成完整企业 Runtime。  
-- 不把本体等同图库或 RAG。  
-- 不把 FDE 做成通用项目管理套件。  
-- 不把诊断做成超级权限或默认自动修复。  
-- 不在 Gate 1 前做全仓目录搬迁。  
+- 不一次性拆五个仓库 / 五个数据库 / 五个微服务。
+- 不把所有身份与业务数据集中进 aiPlat DB。
+- 不把 Pi Thin 写成完整企业 Runtime。
+- 不把本体等同图库或 RAG。
+- 不把 FDE 做成通用项目管理套件。
+- 不把诊断做成超级权限或默认自动修复。
+- 不在 Gate 1 前做全仓目录搬迁。
 - **不在本文件批准前实施产品代码改造**（除非另有明确工程任务授权）。
 
 ---
@@ -758,5 +758,5 @@ WP0 在时间盒内交付切片路径事实；WP2 契约可测；Gate 1 可开�
 
 ---
 
-**批准含义**：批准进入 **L1 切片准备（WP0–WP2）** 的操作手册与治理方式。  
+**批准含义**：批准进入 **L1 切片准备（WP0–WP2）** 的操作手册与治理方式。
 **下一步**：开评审会完成 Decision Brief 五项拍板 → 启动 WP0 时间盒。

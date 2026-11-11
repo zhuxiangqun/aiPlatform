@@ -2,7 +2,7 @@
 """
 compute_assessment.py — 评估框架"验证 + 聚合 + 漂移检测"引擎 (P0.1)
 
-诚实性底线 (见 docs/framework/assessment-spec.yaml 头部):
+诚实性底线 (见 docs/reference/framework/assessment-spec.yaml 头部):
   - L 级 / 分数是人工判定 (declared_*), 本程序**不推导、不计算** L 级。
   - 本程序只做三件事:
     1. 验证: 跑 source=script/file_check 项的 evidence.command, 判 declared 值是否仍有证据。
@@ -202,9 +202,9 @@ def print_summary(r: dict) -> None:
 _MARK_BEGIN = "<!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->"
 _MARK_END = "<!-- AUTO-SCORE:END -->"
 _RENDER_TARGETS = [
-    "docs/framework/aiplat-complete-assessment.md",
-    "docs/framework/scoring-detail.md",
-    "docs/framework/aiplat-autonomy-framework.md",
+    "docs/reference/framework/aiplat-complete-assessment.md",
+    "docs/reference/framework/scoring-detail.md",
+    "docs/reference/framework/aiplat-autonomy-framework.md",
 ]
 
 

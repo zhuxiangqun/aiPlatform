@@ -3,24 +3,24 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:45:40Z"
+generated_at: "2026-11-11T12:47:13Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
+suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=tech-architecture suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=tech-architecture suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 技术架构白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:45:40Z` |
+| 生成时间 (UTC) | `2026-11-11T12:47:13Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -115,8 +115,8 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 完整 18 维表、证据与可借鉴清单见权威源（勿在卷内手抄第二份）。
 
 - 架构对比入口：[`docs/architecture/comparison.md`](../../../docs/architecture/comparison.md)
-- 深度主报告：[`docs/research/aiPlat核心能力对标报告.md`](../../../docs/research/aiPlat核心能力对标报告.md)
-- 证据底稿：[`docs/research/对标底稿-2026-10-五家.md`](../../../docs/research/对标底稿-2026-10-五家.md)
+- 深度主报告：[`docs/reference/research/aiPlat核心能力对标报告.md`](../../../docs/reference/research/aiPlat核心能力对标报告.md)
+- 证据底稿：[`docs/reference/research/对标底稿-2026-10-五家.md`](../../../docs/reference/research/对标底稿-2026-10-五家.md)
 
 #### 六平台一句话定位
 

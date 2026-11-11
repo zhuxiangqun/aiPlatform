@@ -74,7 +74,7 @@ volumes:
         role: 唯一能力清单
       - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
         role: 可读包装（含完整能力表）
-      - path: docs/matrix/capability-impact-matrix.md
+      - path: docs/reference/matrix/capability-impact-matrix.md
         role: 变更影响
     supporting:
       - path: docs/manuals/getting-started.md
@@ -104,11 +104,11 @@ volumes:
       - path: docs/whitepaper/cases/README.md
         role: 客户案例授权流程
     supporting:
-      - path: docs/strategy/comparison-vs-vendors.md
+      - path: docs/reference/strategy/comparison-vs-vendors.md
         role: 厂商策略对比（非客户 ROI）
-      - path: docs/framework/assessment-scores.json
+      - path: docs/reference/framework/assessment-scores.json
         role: 成熟度评分戳（辅助投资论证，非财务 ROI）
-      - path: docs/research/aiPlat核心能力对标报告.md
+      - path: docs/reference/research/aiPlat核心能力对标报告.md
         role: 能力差异（技术侧，非财务）
       - path: aiPlat-core/core/harness/finance/value_calculator.py
         role: 五维价值计量实现
@@ -162,15 +162,15 @@ volumes:
       - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
         role: 自主性定级（L 级，可验证）
     supporting:
-      - path: docs/framework/aiplat-autonomy-framework.md
+      - path: docs/reference/framework/aiplat-autonomy-framework.md
         role: 自主性框架
-      - path: docs/framework/aiplat-complete-assessment.md
+      - path: docs/reference/framework/aiplat-complete-assessment.md
         role: 完整评估叙述
-      - path: docs/framework/assessment-scores.json
+      - path: docs/reference/framework/assessment-scores.json
         role: 评分机器源
-      - path: docs/framework/scoring-detail.md
+      - path: docs/reference/framework/scoring-detail.md
         role: 评分细则
-      - path: docs/framework/verification-protocol.md
+      - path: docs/reference/framework/verification-protocol.md
         role: 外部验证协议
 
 # 对标 / 评级 — 必须出现在现状白皮书目录章（不整篇粘贴，防双源）
@@ -179,35 +179,35 @@ benchmarks_and_ratings:
     - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
       title: 自主性分级评估（L5）
       kind: rating
-    - path: docs/framework/assessment-scores.json
+    - path: docs/reference/framework/assessment-scores.json
       title: 评估分数机器源
       kind: rating-data
-    - path: docs/framework/aiplat-complete-assessment.md
+    - path: docs/reference/framework/aiplat-complete-assessment.md
       title: 完整评估文档
       kind: rating
-    - path: docs/framework/aiplat-autonomy-framework.md
+    - path: docs/reference/framework/aiplat-autonomy-framework.md
       title: 自主性成熟度框架
       kind: framework
-    - path: docs/framework/scoring-detail.md
+    - path: docs/reference/framework/scoring-detail.md
       title: 评分细则
       kind: rating
-    - path: docs/framework/skill-maturity.md
+    - path: docs/reference/framework/skill-maturity.md
       title: Skill 成熟度
       kind: rating
   comparisons:
-    - path: docs/research/aiPlat核心能力对标报告.md
+    - path: docs/reference/research/aiPlat核心能力对标报告.md
       title: 核心能力对标报告（主·2026-10 五家）
       kind: comparison
-    - path: docs/research/对标底稿-2026-10-五家.md
+    - path: docs/reference/research/对标底稿-2026-10-五家.md
       title: 2026-10 五家对标证据底稿
       kind: comparison
     - path: docs/archive/对标吸收与架构纯度评估.md
       title: 对标吸收与架构纯度
       kind: comparison
-    - path: docs/framework/hermes-comparison.md
+    - path: docs/reference/framework/hermes-comparison.md
       title: Hermes 对比
       kind: comparison
-    - path: docs/strategy/comparison-vs-vendors.md
+    - path: docs/reference/strategy/comparison-vs-vendors.md
       title: 厂商对比策略
       kind: comparison
     - path: docs/architecture/comparison.md
@@ -219,7 +219,7 @@ benchmarks_and_ratings:
     - path: docs/archive/plans-comprehensive-comparison-2026-07.md
       title: 综合对比（已归档 · C3）
       kind: comparison
-    - path: docs/research/企业级AI可信落地全景图-aiPlat对照.md
+    - path: docs/reference/research/企业级AI可信落地全景图-aiPlat对照.md
       title: 企业级可信落地对照
       kind: comparison
   archive_only:

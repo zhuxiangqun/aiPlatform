@@ -3,24 +3,24 @@ title: "aiPlat 安全与治理白皮书"
 volume_id: security-governance
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:45:40Z"
+generated_at: "2026-11-11T12:47:13Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
+suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
 caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/reference/explanatory/whitepaper-suite.yaml`](../../../docs/reference/explanatory/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:45:40Z` |
+| 生成时间 (UTC) | `2026-11-11T12:47:13Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -55,11 +55,11 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/framework/aiplat-autonomy-framework.md`](../../../docs/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/framework/aiplat-complete-assessment.md`](../../../docs/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
-| [`docs/framework/assessment-scores.json`](../../../docs/framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/framework/scoring-detail.md`](../../../docs/framework/scoring-detail.md) | 评分细则 | ✅ |
-| [`docs/framework/verification-protocol.md`](../../../docs/framework/verification-protocol.md) | 外部验证协议 | ✅ |
+| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../../docs/reference/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
+| [`docs/reference/framework/aiplat-complete-assessment.md`](../../../docs/reference/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/reference/framework/assessment-scores.json`](../../../docs/reference/framework/assessment-scores.json) | 评分机器源 | ✅ |
+| [`docs/reference/framework/scoring-detail.md`](../../../docs/reference/framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/reference/framework/verification-protocol.md`](../../../docs/reference/framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -68,7 +68,7 @@ language: zh-CN
 
 治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：
 
-- 评分戳：[`docs/framework/assessment-scores.json`](../../../docs/framework/assessment-scores.json)
+- 评分戳：[`docs/reference/framework/assessment-scores.json`](../../../docs/reference/framework/assessment-scores.json)
 - 安全架构：[`docs/security/security-architecture.md`](../../../docs/security/security-architecture.md)
 - Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
 - L 级 ADR：[`docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md`](../../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)

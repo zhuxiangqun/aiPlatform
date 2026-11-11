@@ -6,9 +6,9 @@ version: 3.0.0
 date: 2026-07-06
 status: published
 refs:
-  - docs/framework/aiplat-complete-assessment.md
-  - docs/framework/aiplat-autonomy-framework.md
-  - docs/framework/hermes-comparison.md
+  - docs/reference/framework/aiplat-complete-assessment.md
+  - docs/reference/framework/aiplat-autonomy-framework.md
+  - docs/reference/framework/hermes-comparison.md
   - docs/whitepaper/verification-protocol.md
 ---
 

@@ -51,7 +51,7 @@ language: zh-CN
 |------|------|:----:|
 | [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单 | ✅ |
 | [`docs/whitepaper/aiplat-platform-status-whitepaper.md`](../aiplat-platform-status-whitepaper.md) | 可读包装（含完整能力表） | ✅ |
-| [`docs/matrix/capability-impact-matrix.md`](../../../matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
+| [`docs/reference/matrix/capability-impact-matrix.md`](../../../matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
 
 
 ### 2.2 Supporting

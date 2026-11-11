@@ -6,9 +6,9 @@ version: 2.0.0
 date: 2026-07-06
 status: published
 refs:
-  - docs/framework/hermes-comparison.md
-  - docs/framework/aiplat-complete-assessment.md
-  - docs/framework/scoring-detail.md
+  - docs/reference/framework/hermes-comparison.md
+  - docs/reference/framework/aiplat-complete-assessment.md
+  - docs/reference/framework/scoring-detail.md
 tags: [framework, 8-axis, L1-L5, maturity]
 ---
 

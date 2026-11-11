@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rule 6: research docs freshness guard (doc→code 对账).
 
-扫描 docs/research/*.md 中的状态标记（已修复/已实施/待修/空壳/🟠🟡🔴）与
+扫描 docs/reference/research/*.md 中的状态标记（已修复/已实施/待修/空壳/🟠🟡🔴）与
 反引号代码符号引用，验证符号在代码中真实存在、状态标记不矛盾。
 
 目的：防"专项审计文档"停在旧时点（如知识管理审计报告 v2 停在 P0-3，
@@ -142,7 +142,7 @@ def symbol_exists(base: str, basenames: set, contents: dict, workspace: str, fil
 
 def main() -> int:
     workspace = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
-    research_dir = os.path.join(workspace, "docs/research")
+    research_dir = os.path.join(workspace, "docs/reference/research")
     if not os.path.isdir(research_dir):
         print("  No research dir")
         return 0

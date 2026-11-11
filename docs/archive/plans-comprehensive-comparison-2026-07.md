@@ -238,6 +238,6 @@ verification: `python3 scripts/compute_assessment.py`
 ## 附录：数据来源与可复现性
 
 - **aiPlat 9 轴评分**：`python3 scripts/compute_assessment.py` 真实运行，0 drift，所有 declared 值有可运行证据命令
-- **aiPlat 工程 100%**：`docs/framework/assessment-spec.yaml` 59 项全 yes/partial，可逐项 `grep` 验证
+- **aiPlat 工程 100%**：`docs/reference/framework/assessment-spec.yaml` 59 项全 yes/partial，可逐项 `grep` 验证
 - **Hermes 估算**：基于公开 `hermes-agent` 仓库的 15 级模型映射到 9 轴，标注"估算"
 - **Dify/Coze/ChatGPT/Claude/DeepSeek/360**：基于公开产品文档/论文/GitHub/行业报告，标注"估算"

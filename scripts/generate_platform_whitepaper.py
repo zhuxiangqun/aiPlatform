@@ -91,7 +91,7 @@ def _assessment_stamp() -> str:
     import json
 
     if not SCORES.is_file():
-        return "_(未找到 `docs/framework/assessment-scores.json`)_\n"
+        return "_(未找到 `docs/reference/framework/assessment-scores.json`)_\n"
     try:
         data = json.loads(SCORES.read_text(encoding="utf-8"))
     except Exception as e:
@@ -100,7 +100,7 @@ def _assessment_stamp() -> str:
     generated = data.get("generated_at") or "—"
     spec_ver = data.get("spec_version") or "—"
     lines = [
-        f"> 评分戳来源：[`assessment-scores.json`](../../docs/framework/assessment-scores.json)"
+        f"> 评分戳来源：[`assessment-scores.json`](../../docs/reference/framework/assessment-scores.json)"
         f"（generated_at=`{generated}` · spec=`{spec_ver}`）。改分请改 `assessment-spec.yaml` 后重算，勿手改本表。",
         "",
         "| 框架 | 综合结果 | 说明 |",
@@ -179,16 +179,16 @@ def _ratings_and_system_chapter() -> str:
 
 {stamp}
 
-完整评估叙述：[`../../docs/framework/aiplat-complete-assessment.md`](../../docs/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
+完整评估叙述：[`../../docs/reference/framework/aiplat-complete-assessment.md`](../../docs/reference/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 ### 2.5.2 对标与对比入口（勿读 archive 当现行）
 
 | 文档 | 用途 |
 |------|------|
-| [`../../docs/research/aiPlat核心能力对标报告.md`](../../docs/research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
+| [`../../docs/reference/research/aiPlat核心能力对标报告.md`](../../docs/reference/research/aiPlat核心能力对标报告.md) | **主对标**：Hermes / Claude Code / OpenClaw / DeepSeek Harness / OpenAI Codex（2026-10；见 `research/README.md`） |
 | [`../../docs/architecture/comparison.md`](../../docs/architecture/comparison.md) | 六平台 18 维架构对比入口 |
-| [`../../docs/strategy/comparison-vs-vendors.md`](../../docs/strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
-| [`../../docs/framework/hermes-comparison.md`](../../docs/framework/hermes-comparison.md) | Hermes 专项 |
+| [`../../docs/reference/strategy/comparison-vs-vendors.md`](../../docs/reference/strategy/comparison-vs-vendors.md) | 厂商/策略对比 |
+| [`../../docs/reference/framework/hermes-comparison.md`](../../docs/reference/framework/hermes-comparison.md) | Hermes 专项 |
 | [`../../docs/archive/对标吸收与架构纯度评估.md`](../../docs/archive/对标吸收与架构纯度评估.md) | 吸收核验 |
 | [`../../docs/archive/`](../../docs/archive/) | 历史对比（只读，已被主报告取代） |
 
@@ -459,12 +459,12 @@ python3 scripts/generate_platform_whitepaper.py
 | [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) | 唯一能力清单（编辑入口） |
 | [`capability_registry.yaml`](../../aiPlat-core/core/capability_registry.yaml) | 机器可读 provides |
 | [`docs/architecture/overview.md`](../../docs/architecture/overview.md) | 架构全景 |
-| [`docs/matrix/capability-impact-matrix.md`](../../docs/matrix/capability-impact-matrix.md) | 变更影响矩阵 |
+| [`docs/reference/matrix/capability-impact-matrix.md`](../../docs/reference/matrix/capability-impact-matrix.md) | 变更影响矩阵 |
 | [`docs/DOCUMENT_SYSTEM.md`](../../docs/DOCUMENT_SYSTEM.md) | 文档治理宪法 |
 | [`WHITEPAPER_SYSTEM.md`](../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 五维白皮书体系 |
 | [`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级评估 |
-| [`../../docs/framework/assessment-scores.json`](../../docs/framework/assessment-scores.json) | 评估分数机器源 |
-| [`../../docs/research/aiPlat核心能力对标报告.md`](../../docs/research/aiPlat核心能力对标报告.md) | 主对标报告 |
+| [`../../docs/reference/framework/assessment-scores.json`](../../docs/reference/framework/assessment-scores.json) | 评估分数机器源 |
+| [`../../docs/reference/research/aiPlat核心能力对标报告.md`](../../docs/reference/research/aiPlat核心能力对标报告.md) | 主对标报告 |
 | [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业/路线图 |
 | [`docs/archive/AIPLAT_WHITEPAPER.md`](../../docs/archive/AIPLAT_WHITEPAPER.md) | 旧叙事稿（归档，非现状权威） |
 

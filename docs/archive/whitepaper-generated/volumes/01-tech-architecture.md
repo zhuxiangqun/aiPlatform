@@ -118,8 +118,8 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 完整 18 维表、证据与可借鉴清单见权威源（勿在卷内手抄第二份）。
 
 - 架构对比入口：[`docs/architecture/comparison.md`](../../../architecture/comparison.md)
-- 深度主报告：[`docs/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md)
-- 证据底稿：[`docs/research/对标底稿-2026-10-五家.md`](../../../research/对标底稿-2026-10-五家.md)
+- 深度主报告：[`docs/reference/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md)
+- 证据底稿：[`docs/reference/research/对标底稿-2026-10-五家.md`](../../../research/对标底稿-2026-10-五家.md)
 
 #### 六平台一句话定位
 
