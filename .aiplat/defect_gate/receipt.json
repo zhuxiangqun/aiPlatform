@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T11:35:00+08:00",
+  "reviewed_at": "2026-11-11T12:20:30+08:00",
   "base_ref": "origin/main",
-  "merge_base": "da12e54eb0b7fc8a339ed7b41b85b9544f03c434",
-  "diff_sha256": "716eeee0b8ee44d2ab78777f813211c01c82a3514b58a7e2e7f33dc66035f00e",
-  "head_sha": "f995710625c23a8e409fa09bfffeec9c8d838dca",
+  "merge_base": "caf077aa7cc067c9035daaf9bd8f4f5dd0183a74",
+  "diff_sha256": "d0956106b35ffb86637c56f35f53959619ed967700359534fb049f08f35673eb",
+  "head_sha": "acb109222d3af777137a26472fe754b1bc4d39d9",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject suite profiles discover+compile; content_purpose_ok gate; claim closed. Local lock only."
+  "note": "Subject-aware suite profile exam bank binding; duplicate facade removed; claims stay false. Local lock only."
 }
