@@ -5,13 +5,13 @@
 | 文档 ID | `ONTOLOGY-XINGYE-PPT-ANALYSIS-2026-09` |
 | 版本 | v1.3 |
 | 对标材料 | 《星邺汇捷本体平台介绍 v1.0》（产品愿景说明书，非技术架构文档） |
-| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md)（**v3.7** 图说详解+口述） · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md) |
+| 关联 | [`ONTOLOGY_EXECUTABLE_MODEL.md`](../ONTOLOGY_EXECUTABLE_MODEL.md) · [`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md) · [`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md)（**v3.7** 图说详解+口述） · [`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](../ONTOLOGY_DEMO_PLAYBOOK.md) |
 | 用途 | 对标时怎么讲、缺什么、aiPlat 补什么；**禁止**把本文件中的星邺宣传写成 aiPlat 已实现 |
 
 ### 诚实句（强制）
 
-- 星邺效果数字（如补齐率、8000 人天→5 天）视为**宣传声称**，本仓库未验证。  
-- aiPlat **非目标**：运行时 OWL 全家桶 / SPARQL 级推理上线（见 NARRATIVE 禁止表述）。  
+- 星邺效果数字（如补齐率、8000 人天→5 天）视为**宣传声称**，本仓库未验证。
+- aiPlat **非目标**：运行时 OWL 全家桶 / SPARQL 级推理上线（见 NARRATIVE 禁止表述）。
 - 下表「aiPlat」列以契约与代码为准，不以本分析抬高成熟度。
 
 ---
@@ -73,7 +73,7 @@
 | 故障诊断 | 微服务告警根因；调用链走图 + 超级智能体 |
 | 企业运营本体 | 对象/属性/关系/实例规模数字（材料给出） |
 
-场景图解（分章、**图说一句话+详解表**、可指回节点）见 [`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md) v3.7。演示口令另见 [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md)。
+场景图解（分章、**图说一句话+详解表**、可指回节点）见 [`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md) v3.7。演示口令另见 [`ONTOLOGY_DEMO_PLAYBOOK.md`](../ONTOLOGY_DEMO_PLAYBOOK.md)。
 
 ---
 
@@ -101,9 +101,9 @@
 | OWL 本体 | 形式化语义 + 推理机；重一致性；轻业务动作 |
 | 星邺定位 | 用 OWL 做语义层、用 Palantir 模式做动力/行动，试图兼得 |
 
-**关键未决（材料未钉死）**：OWL 推理在**运行时**是否真跑，还是仅建模/校验？  
-→ 决定是「OWL + Palantir 融合」还是「Palantir 模式 + OWL 装饰」。  
-aiPlat 选择：**运行时不以 OWL 推理机为权威**；权威在 YAML TBox + GraphIndex + Action 硬门（见 [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md)）。
+**关键未决（材料未钉死）**：OWL 推理在**运行时**是否真跑，还是仅建模/校验？
+→ 决定是「OWL + Palantir 融合」还是「Palantir 模式 + OWL 装饰」。
+aiPlat 选择：**运行时不以 OWL 推理机为权威**；权威在 YAML TBox + GraphIndex + Action 硬门（见 [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](../ONTOLOGY_EXECUTABLE_MODEL.md)）。
 
 ### 3.1 OWL vs Palantir 纠偏（防过冲）
 
@@ -114,7 +114,7 @@ aiPlat 选择：**运行时不以 OWL 推理机为权威**；权威在 YAML TBox
 | 「OWL 只版本化、Palantir 只实时」 | 常见形态非定律；aiPlat 混合：说明书提案版本化 + GraphIndex 实时写回 |
 | 「OWL 纯静态废纸」 | ABox 变了也可重跑分类；缺的是「改现实」的一等公民 Action 链 |
 
-教科书概念（类/属性/个体/公理/推理/OWA）与 aiPlat 字段级对照：[`ONTOLOGY_OWL_CONCEPT_MAP.md`](./ONTOLOGY_OWL_CONCEPT_MAP.md)（避免在本分析文中复述 OWL 教材）。
+教科书概念（类/属性/个体/公理/推理/OWA）与 aiPlat 字段级对照：[`ONTOLOGY_OWL_CONCEPT_MAP.md`](../ONTOLOGY_OWL_CONCEPT_MAP.md)（避免在本分析文中复述 OWL 教材）。
 
 ---
 
@@ -174,5 +174,5 @@ aiPlat 选择：**运行时不以 OWL 推理机为权威**；权威在 YAML TBox
 
 **一句话**：星邺讲清「本体驱动 AI 原生企业」的愿景分层；aiPlat 讲清「本体如何进入可审计、可回滚、可进化的运行闭环」。**愿景叙事 + 工程契约**，才是从对标材料到可售交付的完整路径。
 
-场景级逐步图解（分开读星邺篇 / aiPlat 篇）：[`ONTOLOGY_PPT_SCENARIOS.md`](./ONTOLOGY_PPT_SCENARIOS.md)。  
-对外责任语言：[`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md)。
+场景级逐步图解（分开读星邺篇 / aiPlat 篇）：[`ONTOLOGY_PPT_SCENARIOS.md`](../ONTOLOGY_PPT_SCENARIOS.md)。
+对外责任语言：[`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md)。

@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-PPT-SCENARIOS-2026-09` |
 | 版本 | v3.8 |
-| 关联 | [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](./ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](./ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) |
+| 关联 | [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) · [`ONTOLOGY_OUTCOME_GOALS.md`](_archive/ONTOLOGY_OUTCOME_GOALS.md) · [`ONTOLOGY_DEMO_PLAYBOOK.md`](./ONTOLOGY_DEMO_PLAYBOOK.md) · [`ONTOLOGY_CONNECTOR_TEMPLATES.md`](./ONTOLOGY_CONNECTOR_TEMPLATES.md) · [`ONTOLOGY_EXECUTABLE_MODEL.md`](./ONTOLOGY_EXECUTABLE_MODEL.md) |
 | 对标材料 | 《星邺汇捷本体平台介绍 v1.0》约第 17–21 页（场景）；产品分层约第 7 页；实施约第 14–15 页 |
 | 同步 | 2026-09：…；**v3.8 B4.4a 治理8步↔aiPlat 对照；⑥ OCS/闸2 + ⑦ GraphIndex 定位已竖切（禁抄材料 KPI）** |
 
@@ -25,7 +25,7 @@
 
 | 你想了解 | 读 |
 |----------|-----|
-| 星邺产品愿景 / Palantir·OWL / 与 aiPlat 对照 | [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](./ONTOLOGY_XINGYE_PPT_ANALYSIS.md) |
+| 星邺产品愿景 / Palantir·OWL / 与 aiPlat 对照 | [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) |
 | PPT 页码 → 本文哪一节 | **§0.4** |
 | 「Redis 主为何是根因、库为何是伴随」 | **A3.3 镜4 / B3 镜4「结论如何得到」** |
 | 「说明书与真实层中间还要本体模型层吗」 | **§0.1.1**（说明书=本体模型；入轨+硬门建边） |
@@ -159,7 +159,7 @@ flowchart TB
 
 ### 0.4 PPT 原页对照（备课索引）
 
-材料页码据 [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](./ONTOLOGY_XINGYE_PPT_ANALYSIS.md) §2；页码为约数。读本文件时用下表定位「讲到哪一页该翻本文哪一节」。
+材料页码据 [`ONTOLOGY_XINGYE_PPT_ANALYSIS.md`](_archive/ONTOLOGY_XINGYE_PPT_ANALYSIS.md) §2；页码为约数。读本文件时用下表定位「讲到哪一页该翻本文哪一节」。
 
 | 材料约页 | 材料在讲什么 | 本文对应 | 口述入口 |
 |----------|--------------|----------|----------|

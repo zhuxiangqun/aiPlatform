@@ -4,7 +4,7 @@
 |------|-----|
 | 文档 ID | `ONTOLOGY-RUNTIME-CLOSEOUT-2026-09` |
 | 版本 | v1.0 |
-| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](./ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](./FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
+| 关联 | [`ONTOLOGY_RUNTIME_AUTHORITY.md`](../ONTOLOGY_RUNTIME_AUTHORITY.md) · [`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md) · [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md) · [`FDE_WORKBENCH_CAPABILITY_LEDGER.md`](../FDE_WORKBENCH_CAPABILITY_LEDGER.md) |
 | 维护人 | Oliver Zhu |
 | 状态 | 本阶段结项 |
 
@@ -65,6 +65,6 @@ PYTHONPATH=aiPlat-core python3 -m pytest \
 
 ## 6. 结论文案（对外）
 
-采用 [`ONTOLOGY_NARRATIVE.md`](./ONTOLOGY_NARRATIVE.md) 一句话版本：可配置业务世界 + 可执行边界；不卖「完整企业本体已建成」。
+采用 [`ONTOLOGY_NARRATIVE.md`](../ONTOLOGY_NARRATIVE.md) 一句话版本：可配置业务世界 + 可执行边界；不卖「完整企业本体已建成」。
 
-完整性度量见 [`ONTOLOGY_COMPLETENESS.md`](./ONTOLOGY_COMPLETENESS.md)（OCS；Phase A lock-service ≥80 为纵深标杆；CI ratchet `--min-ocs 80`）。
+完整性度量见 [`ONTOLOGY_COMPLETENESS.md`](../ONTOLOGY_COMPLETENESS.md)（OCS；Phase A lock-service ≥80 为纵深标杆；CI ratchet `--min-ocs 80`）。
