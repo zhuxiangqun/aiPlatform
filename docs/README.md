@@ -56,7 +56,7 @@
 [reference/policy/](reference/policy/) — 安全/运维策略
 
 ### API 协议（API/）
-[API/](API/) — API 参考与归因协议
+[API/](reference/API/) — API 参考与归因协议
 
 ### 项目（project/）
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
