@@ -74,5 +74,5 @@
 ## 三、相关文档
 
 - [平台层规约 (CLAUDE.md)](../../CLAUDE.md)
-- [系统级架构契约](../../../docs/architecture/system-architecture-contract.md)
-- [文档系统治理框架](../../../docs/DOCUMENT_SYSTEM.md)
+- [系统级架构契约](../../docs/architecture/system-architecture-contract.md)
+- [文档系统治理框架](../../docs/DOCUMENT_SYSTEM.md)

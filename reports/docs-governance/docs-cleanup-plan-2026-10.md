@@ -518,4 +518,4 @@ README / by-role `index.md` 同名：**不在** C2 队列。
 
 *方案版本: 2026-10-23-r3+C0b · C0 已冻结 · **C1–C4 已执行并收口**（C4：路径 A 删 4 stub；无路径 B；无 C5）*  
 
-**后续**：责任导向合理减量见 [`docs/research/docs-reasonable-reduction-plan-2026-10.md`](../../docs/research/docs-reasonable-reduction-plan-2026-10.md)（D0+D1 已执行；过程材料落点为本目录）。
+**后续**：责任导向合理减量见 [`docs/research/docs-reasonable-reduction-plan-2026-10.md`](docs-reasonable-reduction-plan-2026-10.md)（D0+D1 已执行；过程材料落点为本目录）。

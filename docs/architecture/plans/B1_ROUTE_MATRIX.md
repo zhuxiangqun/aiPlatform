@@ -1,11 +1,11 @@
 # B1 / B2 Route Matrix — Eval API · UI · Errors
 
-> **类型**：契约（B1 实施前置）  
-> **版本**：v1.1 · 2026-11-03  
-> **状态**：Standalone local **已收敛**（`:8010`）· Central cohost D1 仍为产品默认  
-> **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)  
-> **关联**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · 本地门禁 [`CONTRACT_LOCAL.md`](../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)  
-> **对照路由**：standalone `packages/aiplat-evaluation/app/api/`；Central `aiPlat-platform/apps/eval/api/`（D1 residual）  
+> **类型**：契约（B1 实施前置）
+> **版本**：v1.1 · 2026-11-03
+> **状态**：Standalone local **已收敛**（`:8010`）· Central cohost D1 仍为产品默认
+> **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)
+> **关联**：[`EVAL_RUNTIME_CONTRACT.md`](./EVAL_RUNTIME_CONTRACT.md) · 本地门禁 [`CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)
+> **对照路由**：standalone `packages/aiplat-evaluation/app/api/`；Central `aiPlat-platform/apps/eval/api/`（D1 residual）
 > **诚实性**：standalone 动态执行走 Worker allowlist；**禁止** `temporary_proxy`；`process_split_authorized=false`。
 
 ---
@@ -78,11 +78,11 @@
 
 > Standalone 证据：`bash packages/aiplat-evaluation/scripts/b12_contract_gate.sh`
 
-- [x] 动态执行统一错误体（字段级）— sandbox/forbidden → **422**；`execution_not_migrated` helper 仍保留 **503**。  
-- [x] `/eval` UI 对已知错误码有降级文案（`evalExecutionErrors.ts` 单测）。  
-- [x] store/health 在独立 API 上绿（A1–A5）。  
-- [x] B1 closeout：`temporary_proxy` 在 standalone `app/` 计数 = 0。  
-- [x] B2：enqueue + Worker 双点拒绝 `skill_suite`（见 Runtime Contract / B2-L）。  
+- [x] 动态执行统一错误体（字段级）— sandbox/forbidden → **422**；`execution_not_migrated` helper 仍保留 **503**。
+- [x] `/eval` UI 对已知错误码有降级文案（`evalExecutionErrors.ts` 单测）。
+- [x] store/health 在独立 API 上绿（A1–A5）。
+- [x] B1 closeout：`temporary_proxy` 在 standalone `app/` 计数 = 0。
+- [x] B2：enqueue + Worker 双点拒绝 `skill_suite`（见 Runtime Contract / B2-L）。
 
 **Residual**：Central cohost 仍有历史 in-process eval 路由（D1 产品路径，≠ temporary_proxy；authorize 前不假装已拆）。
 

@@ -9,6 +9,7 @@ Usage:
   python scripts/verify_doc_structure.py --fix    # 自动更新 DOCUMENT_SYSTEM.md（需确认）
 """
 
+import argparse
 import os
 import re
 import sys
@@ -17,6 +18,13 @@ from pathlib import Path
 WORKSPACE = Path(__file__).resolve().parents[1]
 DOCS_DIR = WORKSPACE / "docs"
 DOC_SYSTEM = DOCS_DIR / "DOCUMENT_SYSTEM.md"
+SCOPE_ROOTS = [
+    WORKSPACE / "reports",
+    WORKSPACE / "packages",
+] + [
+    WORKSPACE / name / "docs"
+    for name in ("aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app")
+]
 
 
 def get_actual_dirs() -> set:
@@ -49,12 +57,35 @@ def get_registered_dirs() -> set:
         m = re.match(r"^│   (?:├──|└──)\s+(\w[\w-]*)/", line)
         if m:
             name = m.group(1)
-            if name not in ("docs", "decisions", "architect", "developer", "ops", "user"):
+            if name not in ("docs", "architect", "developer", "ops", "user"):
                 dirs.add(name + "/")
     return dirs
 
 
+def check_scope_roots(strict: bool) -> int:
+    """v2.4: root reports/packages/subrepo docs must be registered in DOCUMENT_SYSTEM."""
+    content = DOC_SYSTEM.read_text(encoding="utf-8") if DOC_SYSTEM.exists() else ""
+    missing = []
+    for p in SCOPE_ROOTS:
+        if not p.exists():
+            continue
+        rel = str(p.relative_to(WORKSPACE))
+        needle = rel.rstrip("/") + "/"
+        if needle not in content and rel not in content:
+            missing.append(rel)
+    if missing:
+        print("⚠️  v2.4 scope 目录未在 DOCUMENT_SYSTEM 登记:")
+        for d in missing:
+            print(f"   - {d}")
+        if strict:
+            return 1
+    return 0
+
+
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--strict", action="store_true", help="v2.4 scope 未登记时阻断")
+    args = ap.parse_args()
     actual = get_actual_dirs()
     registered = get_registered_dirs()
 
@@ -73,11 +104,13 @@ def main():
         for d in sorted(missing):
             print(f"   - {d}")
 
+    scope_rc = check_scope_roots(args.strict)
     if unregistered:
         sys.exit(1)
-    else:
-        print(f"✅ 全部 {len(actual)} 个目录已在 DOCUMENT_SYSTEM.md 中登记")
-        sys.exit(0)
+    if scope_rc:
+        sys.exit(scope_rc)
+    print(f"✅ 全部 {len(actual)} 个目录已在 DOCUMENT_SYSTEM.md 中登记")
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -401,7 +401,7 @@ jobs:
 
 ### Layer 0: aiPlat-infra 测试指南
 
-详见：[aiPlat-infra 测试指南](../aiPlat-infra/docs/testing/TESTING_GUIDE.md)
+详见：[aiPlat-infra 测试指南](../../aiPlat-infra/docs/testing/TESTING_GUIDE.md)
 
 **测试重点**：
 - 数据库连接测试（PostgreSQL、MySQL、MongoDB、SQLite）
@@ -421,7 +421,7 @@ jobs:
 
 ### Layer 1: aiPlat-core 测试指南
 
-详见：[aiPlat-core 测试指南](../aiPlat-core/docs/testing/TESTING_GUIDE.md)
+详见：[aiPlat-core 测试指南](../../aiPlat-core/docs/testing/TESTING_GUIDE.md)
 
 **架构概览**：
 ```

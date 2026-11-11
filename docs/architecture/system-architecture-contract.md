@@ -69,7 +69,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 - `X-AIPLAT-ACTOR-ROLE`：可选（以 scopes 为准）
 - `X-AIPLAT-IDENTITY-SECRET`：当配置了 `AIPLAT_PLATFORM_IDENTITY_SECRET` 时，platform→core **MUST** 附带服务端密钥（`service_to_core_identity_headers` / `_core_request` / conversations→gateway）；**禁止**把客户端提交的 secret 原样转发
 
-详见：[`规范-platform-鉴权与身份透传.md`](../../规范-platform-鉴权与身份透传.md)
+详见：[`规范-platform-鉴权与身份透传.md`](../standards/规范-platform-鉴权与身份透传.md)
 
 ---
 
@@ -85,7 +85,7 @@ platform 在调用下游服务时 **MUST** 注入/透传：
 - AI 执行（agent/skill/tool）由 `aiPlat-core` 运行时生成 `run_id`，并可输出 `trace_id`。
 - management/UI 展示与排障时应以 `run_id/trace_id` 作为核心定位信息。
 
-详见：[`规范-core-run_id-trace_id-request_id.md`](../../规范-core-run_id-trace_id-request_id.md)
+详见：[`规范-core-run_id-trace_id-request_id.md`](../standards/规范-core-run_id-trace_id-request_id.md)
 
 ---
 

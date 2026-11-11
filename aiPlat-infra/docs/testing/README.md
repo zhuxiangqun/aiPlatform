@@ -24,7 +24,7 @@
 
 ## 📊 测试状态
 
-查看最新测试结果：[测试报告目录](reports/)
+查看最新测试结果：[测试报告目录](../../../docs/archive/)
 
 ---
 
@@ -38,7 +38,7 @@ docs/testing/
 ├── TESTING_GUIDE.md                  ← 最佳实践
 ├── TESTING_CHECKLIST.md              ← 检查清单
 │
-└── reports/                           ← 测试报告
+└── ../../../docs/archive/                           ← 测试报告
     ├── DATABASE_INTEGRATION_REPORT.md
     ├── MESSAGING_INTEGRATION_REPORT.md
     ├── INTEGRATION_TESTS_SUMMARY.md

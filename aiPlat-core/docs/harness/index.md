@@ -9,7 +9,7 @@
 > - ✅ Coordination 模式接入 MultiAgent（Pipeline/FanOut/ExpertPool/ProducerReviewer/Supervisor/Hierarchical）
 > - ✅ 三种状态类型统一（AgentState→TypedDict、AgentLifecycleState）
 >
-> **Phase 9 新增模块**（详细设计见 [design/kernel_orchestrator/](./design/kernel_orchestrator/)）：
+> **Phase 9 新增模块**（详细设计见 [design/kernel_orchestrator/](../design/kernel_orchestrator/)）：
 > - `kernel/` — 核心执行契约（ExecutionRequest/ExecutionResult）
 > - `syscalls/` — 系统调用层（LLM/Tool/Skill 调用）
 > - `engines/` — 执行引擎抽象（LoopEngine 等）

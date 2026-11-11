@@ -6,11 +6,11 @@
 
 ### 0.1 架构图
 
-![核心能力层架构图](assets/core-layer1-architecture.png)
+![核心能力层架构图](../assets/core-layer1-architecture.png)
 
 ### 0.2 执行流程图（Agent → Skill/Tool → MCP）
 
-![核心能力层执行流程图](assets/core-layer1-execution.png)
+![核心能力层执行流程图](../assets/core-layer1-execution.png)
 
 ## 1. 总览：组件与职责
 
@@ -195,4 +195,4 @@ sequenceDiagram
 - L2/L3：prod 默认禁止或强审批（尤其 browser/MCP、api_calling、tool_agent/react_agent）
 
 相关策略文档：
-- [对外能力白名单](../policy/external-allowlist.md)
+- [对外能力白名单](../../policy/external-allowlist.md)

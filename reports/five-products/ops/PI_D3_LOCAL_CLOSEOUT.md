@@ -32,4 +32,4 @@ bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
 | #5 file-sink SOC | real SOC outbound |
 | #6 N-1 under hermetic prefix | staging/prod-canary N-1 live |
 
-See [`LIVE_DRILL_EVIDENCE.md`](../../packages/aiplat-pi-runtime/docs/d3/LIVE_DRILL_EVIDENCE.md) · [`LOCAL_DEFER.md`](./LOCAL_DEFER.md).
+See [`LIVE_DRILL_EVIDENCE.md`](../../../packages/aiplat-pi-runtime/docs/d3/LIVE_DRILL_EVIDENCE.md) · [`LOCAL_DEFER.md`](./LOCAL_DEFER.md).

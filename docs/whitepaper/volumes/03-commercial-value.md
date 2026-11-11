@@ -51,7 +51,7 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`AIPLAT_ROADMAP.md`](../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
+| [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
 | [`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ✅ |
 | [`docs/whitepaper/cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ✅ |
 | [`docs/whitepaper/cases/README.md`](../cases/README.md) | 客户案例授权流程 | ✅ |
@@ -61,10 +61,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/strategy/comparison-vs-vendors.md`](../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
-| [`docs/framework/assessment-scores.json`](../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
-| [`docs/research/aiPlat核心能力对标报告.md`](../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
-| [`aiPlat-core/core/harness/finance/value_calculator.py`](../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
+| [`docs/strategy/comparison-vs-vendors.md`](../../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
+| [`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
+| [`docs/research/aiPlat核心能力对标报告.md`](../../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
+| [`aiPlat-core/core/harness/finance/value_calculator.py`](../../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -73,7 +73,7 @@ language: zh-CN
 
 本卷不引用未授权的客户 ROI、人天单价或伙伴分成比例。商业论证以平台已接线的价值系统为准：
 
-- 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../aiPlat-core/core/harness/finance/value_calculator.py)
+- 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../../aiPlat-core/core/harness/finance/value_calculator.py)
 - 五维价值映射与 TCO 对照：[`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md)
 - CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节
 - 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节
@@ -149,8 +149,8 @@ language: zh-CN
 #### 5. 授权边界
 
 - 未授权客户数字 **不得** 写入 `volumes/03-commercial-value.md` 正文作承诺。
-- 内部示意见 [`cases/internal-illustrative-fde.md`](./cases/internal-illustrative-fde.md)（`authorized: false`）。
-- 授权流程见 [`cases/README.md`](./cases/README.md)。
+- 内部示意见 [`cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md)（`authorized: false`）。
+- 授权流程见 [`cases/README.md`](../cases/README.md)。
 
 
 > generated_at=`2026-07-08T09:51:09` · spec=`1.0.0`
@@ -171,7 +171,7 @@ language: zh-CN
 > 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
 > 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](./AIPLAT_CAPABILITIES.md)（当前计数见该文件）
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md)（当前计数见该文件）
 > 
 > **最新更新 (2026-07-19)**：P0-P3 hermès-agent 全量吸收 + L6升级三步 + MoA多模型推理。当前计数见 AIPLAT_CAPABILITIES.md。
 

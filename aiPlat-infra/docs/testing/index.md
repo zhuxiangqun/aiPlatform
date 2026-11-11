@@ -21,10 +21,10 @@
 
 | 报告 | 内容 | 日期 |
 |------|------|------|
-| [DATABASE_INTEGRATION_REPORT.md](reports/DATABASE_INTEGRATION_REPORT.md) | 数据库集成测试完整报告 | 2026-04-11 |
-| [MESSAGING_INTEGRATION_REPORT.md](reports/MESSAGING_INTEGRATION_REPORT.md) | 消息系统集成测试报告 | 2026-04-11 |
-| [INTEGRATION_TESTS_SUMMARY.md](reports/INTEGRATION_TESTS_SUMMARY.md) | 集成测试总结 | 2026-04-11 |
-| [TESTCONTAINERS_FINAL_REPORT.md](reports/TESTCONTAINERS_FINAL_REPORT.md) | Testcontainers实施总结 | 2026-04-11 |
+| [DATABASE_INTEGRATION_REPORT.md](../../../docs/archive/DATABASE_INTEGRATION_REPORT.md) | 数据库集成测试完整报告 | 2026-04-11 |
+| [MESSAGING_INTEGRATION_REPORT.md](../../../docs/archive/MESSAGING_INTEGRATION_REPORT.md) | 消息系统集成测试报告 | 2026-04-11 |
+| [INTEGRATION_TESTS_SUMMARY.md](../../../docs/archive/INTEGRATION_TESTS_SUMMARY.md) | 集成测试总结 | 2026-04-11 |
+| [TESTCONTAINERS_FINAL_REPORT.md](../../../docs/archive/TESTCONTAINERS_FINAL_REPORT.md) | Testcontainers实施总结 | 2026-04-11 |
 
 ---
 
@@ -52,8 +52,8 @@ python infra/tests/test_database/run_all_integration_tests.py
 **目标**：完整测试覆盖和质量保证
 
 1. 阅读 [INFRA_DETAILED_TESTING_GUIDE.md](INFRA_DETAILED_TESTING_GUIDE.md) - infra 层完整测试策略
-2. 查看 [测试覆盖率报告](reports/DATABASE_INTEGRATION_REPORT.md) - 当前测试状态
-3. 参考 [测试报告](reports/) - 了解测试结果
+2. 查看 [测试覆盖率报告](../../../docs/archive/DATABASE_INTEGRATION_REPORT.md) - 当前测试状态
+3. 参考 [测试报告](../../../docs/archive/) - 了解测试结果
 
 **完整测试**：
 ```bash
@@ -67,15 +67,15 @@ python infra/tests/test_messaging/run_all_messaging_tests.py
 
 **目标**：理解测试架构和质量标准
 
-1. 阅读 [项目级测试指南](../../../docs/TESTING_GUIDE.md) - 系统级测试策略
+1. 阅读 [项目级测试指南](TESTING_GUIDE.md) - 系统级测试策略
 2. 阅读 [infra 层详细测试指南](INFRA_DETAILED_TESTING_GUIDE.md#系统架构概览) - infra 层测试架构
-3. 参考 [测试报告](reports/TESTCONTAINERS_FINAL_REPORT.md) - 实施总结
+3. 参考 [测试报告](../../../docs/archive/TESTCONTAINERS_FINAL_REPORT.md) - 实施总结
 
 ### 我是运维（CI/CD配置）
 
 **目标**：配置自动化测试
 
-1. 阅读 [项目级测试指南 - CI/CD集成](../../../docs/TESTING_GUIDE.md#cicd-集成) - GitHub Actions配置
+1. 阅读 [项目级测试指南 - CI/CD集成](TESTING_GUIDE.md#cicd-集成) - GitHub Actions配置
 2. 查看 [性能基准](TESTING_QUICKSTART.md#性能基准) - 测试性能
 3. 参考 [故障排查](INFRA_DETAILED_TESTING_GUIDE.md#故障排查) - 常见问题
 
@@ -124,7 +124,7 @@ aiPlat-infra/docs/testing/
 ├── INFRA_DETAILED_TESTING_GUIDE.md   # infra 层详细测试指南
 ├── TESTING_CHECKLIST.md              # 测试检查清单
 │
-└── reports/                          # 测试报告
+└── ../../../docs/archive/                          # 测试报告
     ├── DATABASE_INTEGRATION_REPORT.md     # 数据库集成测试报告
     ├── MESSAGING_INTEGRATION_REPORT.md    # 消息系统集成测试报告
     ├── INTEGRATION_TESTS_SUMMARY.md        # 集成测试总结
@@ -137,8 +137,8 @@ aiPlat-infra/docs/testing/
 
 ### 项目级文档
 
-- [项目测试指南](../../../docs/TESTING_GUIDE.md) - 系统级测试策略（必读）
-- [项目总索引](../../../docs/index.md) - AI Platform总文档
+- [项目测试指南](TESTING_GUIDE.md) - 系统级测试策略（必读）
+- [项目总索引](../index.md) - AI Platform总文档
 - [基础设施层索引](../index.md) - aiPlat-infra文档
 
 ### 模块文档

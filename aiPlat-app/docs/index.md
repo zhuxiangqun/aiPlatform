@@ -246,7 +246,7 @@ aiPlat-app 位于四层架构的第四层（Layer 3），是架构的最顶层�
 
 ## 相关链接
 
-- [主文档索引](../../docs/index.md) - 返回主文档
+- [主文档索引](../../docs/README.md) - 返回主文档
 - [基础设施层文档](../../aiPlat-infra/docs/index.md) - aiPlat-infra 文档
 - [核心层文档](../../aiPlat-core/docs/index.md) - aiPlat-core 文档
 - [平台服务层文档](../../aiPlat-platform/docs/index.md) - aiPlat-platform 文档

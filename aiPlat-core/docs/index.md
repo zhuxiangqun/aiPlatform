@@ -740,7 +740,7 @@ Agent 通过三层机制实现自我进化：性能追踪 → 阈值触发 → �
 
 ## 相关链接
 
-- [主文档索引](../../docs/index.md) - 返回主文档
+- [主文档索引](../../docs/README.md) - 返回主文档
 - [基础设施层文档](../../aiPlat-infra/docs/index.md) - aiPlat-infra 文档
 - [平台服务层文档](../../aiPlat-platform/docs/index.md) - aiPlat-platform 文档
 - [应用层文档](../../aiPlat-app/docs/index.md) - aiPlat-app 文档

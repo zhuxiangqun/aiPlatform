@@ -1014,7 +1014,7 @@ SchedulerManager({
 
 ### 11.1 设计文档
 
-- [设计文档](../../../../aiPlat-app/docs/management/layer0_infra/index.md) - 应用层管理文档
+- [设计文档](../../../aiPlat-app/docs/index.md) - 应用层管理文档
 
 ### 11.2 测试文档
 
@@ -1023,7 +1023,7 @@ SchedulerManager({
 
 ### 11.3 其他资源
 
-- [AI Platform主文档](../../../../docs/index.md)
+- [AI Platform主文档](../index.md)
 - [基础设施层文档](../index.md)
 - [使用示例](../../infra/management/examples/usage_example.py)
 

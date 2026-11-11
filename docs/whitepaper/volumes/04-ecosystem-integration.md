@@ -51,10 +51,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/mcp/index.md`](../mcp/index.md) | MCP 文档入口 | ✅ |
-| [`docs/API/api-reference.md`](../API/api-reference.md) | API 参考 | ✅ |
-| [`docs/policy/mcp-stdio-prod-allowlist.md`](../policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
-| [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
+| [`docs/mcp/index.md`](../../mcp/index.md) | MCP 文档入口 | ✅ |
+| [`docs/API/api-reference.md`](../../API/api-reference.md) | API 参考 | ✅ |
+| [`docs/policy/mcp-stdio-prod-allowlist.md`](../../policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ✅ |
+| [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
 | [`docs/whitepaper/ecosystem-partner-tiers.md`](../ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
 | [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
 
@@ -63,9 +63,9 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/API/AttributionSchema.md`](../API/AttributionSchema.md) | 归因协议 | ✅ |
-| [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
-| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
+| [`docs/API/AttributionSchema.md`](../../API/AttributionSchema.md) | 归因协议 | ✅ |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
 | [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
 
 
@@ -82,7 +82,7 @@ language: zh-CN
   - MCP / API ISV 接入
   - 私有化厚部署
 - 开放边界矩阵：见 `ecosystem-partner-tiers.md` 第 3 节
-- 企业混合部署：[`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)；能力行以 [`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 为准
+- 企业混合部署：[`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)；能力行以 [`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) 为准
 - 商务条款模板：[`docs/whitepaper/ecosystem-partner-commercial-template.md`](../ecosystem-partner-commercial-template.md)
 
 ---
@@ -100,7 +100,7 @@ language: zh-CN
 ### 生态伙伴技术分层（权威专稿）
 
 > 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
-> 商务条款见 [`ecosystem-partner-commercial-template.md`](./ecosystem-partner-commercial-template.md)（以盖章版为准）。
+> 商务条款见 [`ecosystem-partner-commercial-template.md`](../ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 #### 1. 分层总览
 
@@ -112,7 +112,7 @@ language: zh-CN
 | **L3 MCP / API ISV** | 注册 MCP 工具或调 HTTP API | `docs/mcp/` · `docs/API/` | MCP 生产准入 · 鉴权/租户/限流 |
 | **L4 私有化厚部署** | 驻场/私有化接近全栈 | 特殊合同 · 非默认交付 | 全量治理面由平台侧强制 |
 
-默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
+默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
 
 #### 2. 各层说明
 
@@ -155,10 +155,10 @@ language: zh-CN
 
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
-| **MCP 工具** | 注册/暴露工具供 Agent 调用 | [`docs/mcp/index.md`](../mcp/index.md) | [`docs/policy/mcp-stdio-prod-allowlist.md`](../policy/mcp-stdio-prod-allowlist.md) + 成本阶梯 |
-| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
+| **MCP 工具** | 注册/暴露工具供 Agent 调用 | [`docs/mcp/index.md`](../../mcp/index.md) | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../policy/mcp-stdio-prod-allowlist.md) + 成本阶梯 |
+| **HTTP API** | 调平台/Core 能力 | [`docs/API/api-reference.md`](../../API/api-reference.md) | 鉴权 / 租户 / 限流（platform） |
 | **A2A** | Agent 间互操作 | CAPABILITIES「A2A 协议」切片 | PolicyGate / 身份透传 |
-| **Pi Package** | 消费工厂导出的薄 Runtime 包 | [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) · [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
+| **Pi Package** | 消费工厂导出的薄 Runtime 包 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) · [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) | 能力边界写进交付说明（无平台 Memory/SECI） |
 | **Skill / Handler** | 贡献可执行技能 | CAPABILITIES「Skill 系统」· engine skills | `execution_type` + lint + 准入 |
 
 ### 3.3 MCP / A2A 能力切片（CAPABILITIES）
@@ -615,10 +615,10 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 
 | 权威源 | 读什么 |
 |--------|--------|
-| [`packages/aiplat-pi-runtime/README.md`](../../packages/aiplat-pi-runtime/README.md) | 包入口与双轴（厂外交付 / 厂内已关闭） |
-| [`docs/architecture/plans/pi-thin-runtime.md`](../architecture/plans/pi-thin-runtime.md) | 战略边界 living 摘要 |
-| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业回连配置 |
-| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md) | SKU / 验收 |
+| [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 包入口与双轴（厂外交付 / 厂内已关闭） |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) | 战略边界 living 摘要 |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业回连配置 |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE_DELIVERY.md) | SKU / 验收 |
 
 > 「Hybrid」在此指 **Pi↔aiPlat 企业回连**，与 Skill `execution_type`、Builder 工厂模式中的其它 “hybrid” 用语不是同一概念。
 

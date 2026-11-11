@@ -346,8 +346,8 @@ sudo pytest infra/tests/ -v
 - 📖 **详细指南**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 - ✅ **最佳实践**: [TESTING_GUIDE.md](./TESTING_GUIDE.md)
 - 📋 **检查清单**: [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md)
-- 📊 **集成测试摘要**: [INTEGRATION_TESTS_SUMMARY.md](./reports/INTEGRATION_TESTS_SUMMARY.md)
-- 🎉 **完成总结**: [TESTCONTAINERS_FINAL_REPORT.md](./reports/TESTCONTAINERS_FINAL_REPORT.md)
+- 📊 **集成测试摘要**: [INTEGRATION_TESTS_SUMMARY.md](../../../docs/archive/INTEGRATION_TESTS_SUMMARY.md)
+- 🎉 **完成总结**: [TESTCONTAINERS_FINAL_REPORT.md](../../../docs/archive/TESTCONTAINERS_FINAL_REPORT.md)
 
 ### 文档结构
 

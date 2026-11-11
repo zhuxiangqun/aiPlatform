@@ -1,10 +1,10 @@
 # EVAL Runtime Contract — Worker / Runner（B 轨）
 
-> **类型**：契约（B2 实施前置）  
-> **版本**：v1.1 · 2026-11-03  
-> **状态**：Standalone local **已实施**（B2-L + contract gate）· ≠ staging authorize  
-> **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)  
-> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`CONTRACT_LOCAL.md`](../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)  
+> **类型**：契约（B2 实施前置）
+> **版本**：v1.1 · 2026-11-03
+> **状态**：Standalone local **已实施**（B2-L + contract gate）· ≠ staging authorize
+> **父方案**：[`eval-production-independent-service.md`](./eval-production-independent-service.md)
+> **关联**：[`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) · [`EVAL_MODEL_GATEWAY.md`](./EVAL_MODEL_GATEWAY.md) · [`CONTRACT_LOCAL.md`](../../../packages/aiplat-evaluation/docs/a3/CONTRACT_LOCAL.md)
 > **诚实性**：不设 `process_split_authorized=true`；B2 仅 allowlist runner；工具执行等 B3 沙箱 / microVM prep。
 
 ---
@@ -13,8 +13,8 @@
 
 定义 Eval Worker 如何执行评测任务，保证：
 
-1. **不**变成「分布式单体」（禁止 `core.harness` 私有 import）。  
-2. **不**在执行路径依赖 Central HTTP 存活。  
+1. **不**变成「分布式单体」（禁止 `core.harness` 私有 import）。
+2. **不**在执行路径依赖 Central HTTP 存活。
 3. B2 在无沙箱前 **fail-closed**：工具/代码/终端类 runner 不得跑。
 
 ---
@@ -34,9 +34,9 @@
 
 **错误码（与 Route Matrix 统一 shape）**：见 [`B1_ROUTE_MATRIX.md`](./B1_ROUTE_MATRIX.md) §错误体。Runner 侧拒绝使用：
 
-- `execution_not_migrated` — 阶段未迁移  
-- `sandbox_required` — 需要沙箱但未就绪  
-- `runner_forbidden` — allowlist 拒绝  
+- `execution_not_migrated` — 阶段未迁移
+- `sandbox_required` — 需要沙箱但未就绪
+- `runner_forbidden` — allowlist 拒绝
 
 ---
 
@@ -78,10 +78,10 @@
 
 ### 4.1 禁止清单
 
-- `from core.harness...` 私有模块（非 facade 公开出口）  
-- 执行路径 `http://central/...` 回调跑 skill/LLM  
-- 直读 Central / FDE / Ontology 业务表  
-- 无校验信任伪造的内部 header 充当租户  
+- `from core.harness...` 私有模块（非 facade 公开出口）
+- 执行路径 `http://central/...` 回调跑 skill/LLM
+- 直读 Central / FDE / Ontology 业务表
+- 无校验信任伪造的内部 header 充当租户
 
 允许：`core.api.core_facade`（或等价公开 client）、`aiPlat-infra` ModelManager、本包 `packages/aiplat-evaluation` 内公开模块。
 
@@ -108,9 +108,9 @@
 
 ### 5.2 规则
 
-- Worker 领取 job → `running` + 设置 `lease_expires_at`。  
-- 执行中周期性 `heartbeat`；租约过期且无心跳 → 可重新入队（`attempts++`）。  
-- `attempts >= max_attempts` → `dead_letter`（人工/工具处理）。  
+- Worker 领取 job → `running` + 设置 `lease_expires_at`。
+- 执行中周期性 `heartbeat`；租约过期且无心跳 → 可重新入队（`attempts++`）。
+- `attempts >= max_attempts` → `dead_letter`（人工/工具处理）。
 - 成本/墙钟硬顶 → `timed_out`；**不得**标 `succeeded`。
 
 ---
@@ -131,17 +131,17 @@
 
 ## 7. B2 验收清单（契约）
 
-> **B2-L local**（工程证明，≠ staging）：见 `packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md` + `scripts/b2l_local_closeout.sh`。  
+> **B2-L local**（工程证明，≠ staging）：见 `packages/aiplat-evaluation/docs/a3/B2L_LOCAL_CLOSEOUT.md` + `scripts/b2l_local_closeout.sh`。
 > Live infra LLM / staging Central-down provider 仍属后续；本地确定性 fixture 不计 accuracy。
 
-- [x] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）— **B2-L local**。  
-- [x] Worker 对伪造 job 行二次拒绝（fail-closed）— **B2-L local**。  
-- [x] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 本地确定性路径跑通（Central 不依赖）；live provider 待接线。  
-- [x] lease 过期可被另一 Worker 接管或 dead_letter — **B2-L local**。  
-- [x] 墙钟硬顶 → `timed_out`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_TIMEOUT_SEC`）。  
-- [x] `cancel` → `cancelled`（queued|running；Worker 不覆盖）— **B2-L local**（`POST .../jobs/{id}/cancel`）。  
-- [x] 成本硬顶 → `timed_out`/`cost_cap_exceeded`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap`）。  
-- [x] import guard：Worker 包无 `core.harness` 私有 import — **B2-L local**。  
+- [x] enqueue 拒绝 `skill_suite` / `http_probe`（统一错误体）— **B2-L local**。
+- [x] Worker 对伪造 job 行二次拒绝（fail-closed）— **B2-L local**。
+- [x] `replay_trace` / `prompt_eval` / `kb_rag`(只读) 本地确定性路径跑通（Central 不依赖）；live provider 待接线。
+- [x] lease 过期可被另一 Worker 接管或 dead_letter — **B2-L local**。
+- [x] 墙钟硬顶 → `timed_out`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_TIMEOUT_SEC`）。
+- [x] `cancel` → `cancelled`（queued|running；Worker 不覆盖）— **B2-L local**（`POST .../jobs/{id}/cancel`）。
+- [x] 成本硬顶 → `timed_out`/`cost_cap_exceeded`（不得 `succeeded`）— **B2-L local**（`AIPLAT_EVAL_JOB_COST_CAP` / payload `cost_cap`）。
+- [x] import guard：Worker 包无 `core.harness` 私有 import — **B2-L local**。
 
 ---
 

@@ -1,6 +1,8 @@
 # 测试检查清单（设计真值：以代码事实为准）
 
 > 说明：本清单为测试质量基线，适用于 core 与 infra 的测试贡献。
+> **范围**：core 通用测试基线。
+> **infra 专用清单**：[aiPlat-infra/docs/testing/TESTING_CHECKLIST.md](../../../aiPlat-infra/docs/testing/TESTING_CHECKLIST.md)
 
 > 快速检查测试是否合格
 

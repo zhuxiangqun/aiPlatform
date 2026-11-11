@@ -158,7 +158,7 @@ aiPlat-infra 不依赖任何内部包
 
 ### 测试体系
 
-**项目级测试指南**：[系统测试指南](../../docs/TESTING_GUIDE.md) - 测试策略、分层测试方法、跨层测试规范
+**项目级测试指南**：[系统测试指南](testing/TESTING_GUIDE.md) - 测试策略、分层测试方法、跨层测试规范
 
 **infra层测试文档**：
 
@@ -173,9 +173,9 @@ aiPlat-infra 不依赖任何内部包
 
 | 报告 | 内容 | 状态 |
 |------|------|------|
-| [数据库集成测试报告](testing/reports/DATABASE_INTEGRATION_REPORT.md) | PostgreSQL/MySQL/MongoDB测试结果 | ✅ 完成 |
-| [消息系统集成测试报告](testing/reports/MESSAGING_INTEGRATION_REPORT.md) | Redis Streams测试结果 | ✅ 完成 |
-| [测试总结](testing/reports/TESTCONTAINERS_FINAL_REPORT.md) | Testcontainers实施总结 | ✅ 完成 |
+| [数据库集成测试报告](../../docs/archive/DATABASE_INTEGRATION_REPORT.md) | PostgreSQL/MySQL/MongoDB测试结果 | ✅ 完成 |
+| [消息系统集成测试报告](../../docs/archive/MESSAGING_INTEGRATION_REPORT.md) | Redis Streams测试结果 | ✅ 完成 |
+| [测试总结](../../docs/archive/TESTCONTAINERS_FINAL_REPORT.md) | Testcontainers实施总结 | ✅ 完成 |
 
 ### 测试状态
 
@@ -1170,9 +1170,9 @@ ids = await vector_store.add([Vector(values=[0.1, ...])])
 
 | 文档 | 说明 |
 |------|------|
-| [系统级开发规范](../../docs/guides/DEVELOPMENT.md) | 提交规范、分支策略、PR流程、代码审查 |
-| [系统级部署指南](../../docs/guides/DEPLOYMENT.md) | 环境管理、CI/CD、监控告警、故障排查 |
-| [系统级测试指南](../../docs/TESTING_GUIDE.md) | 测试策略、测试类型、覆盖率要求 |
+| [系统级开发规范](guides/DEVELOPMENT.md) | 提交规范、分支策略、PR流程、代码审查 |
+| [系统级部署指南](guides/DEPLOYMENT.md) | 环境管理、CI/CD、监控告警、故障排查 |
+| [系统级测试指南](testing/TESTING_GUIDE.md) | 测试策略、测试类型、覆盖率要求 |
 
 ---
 
@@ -1238,7 +1238,7 @@ diagnosis = await manager.diagnose()
 ## 🔗 相关链接
 
 ### 上下层文档
-- **上级**：[← 返回主文档](../../docs/index.md)
+- **上级**：[← 返回主文档](../README.md)
 - **下级模块**：[database](database/index.md) | [llm](llm/index.md) | [vector](vector/index.md)
 
 ### 同级文档

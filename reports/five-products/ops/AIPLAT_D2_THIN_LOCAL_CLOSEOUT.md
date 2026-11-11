@@ -28,4 +28,4 @@ bash packages/aiplat-central/scripts/d2_local_closeout.sh
 
 - Not staging_ready / production_signed  
 - Not multi-tenant production HA  
-- See [`D2_THIN.md`](../../packages/aiplat-central/docs/D2_THIN.md) · [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)
+- See [`D2_THIN.md`](../../../packages/aiplat-central/docs/D2_THIN.md) · [`LOCAL_DEFER.md`](./LOCAL_DEFER.md)

@@ -46,8 +46,8 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/security/security-architecture.md`](../security/security-architecture.md) | 安全架构 | ✅ |
-| [`docs/compliance/eu-ai-act-assessment.md`](../compliance/eu-ai-act-assessment.md) | 合规评估 | ✅ |
+| [`docs/security/security-architecture.md`](../../security/security-architecture.md) | 安全架构 | ✅ |
+| [`docs/compliance/eu-ai-act-assessment.md`](../../compliance/eu-ai-act-assessment.md) | 合规评估 | ✅ |
 | [`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级（L 级，可验证） | ✅ |
 
 
@@ -55,11 +55,11 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/framework/aiplat-autonomy-framework.md`](../framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/framework/aiplat-complete-assessment.md`](../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
-| [`docs/framework/assessment-scores.json`](../framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/framework/scoring-detail.md`](../framework/scoring-detail.md) | 评分细则 | ✅ |
-| [`docs/framework/verification-protocol.md`](../framework/verification-protocol.md) | 外部验证协议 | ✅ |
+| [`docs/framework/aiplat-autonomy-framework.md`](../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
+| [`docs/framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json) | 评分机器源 | ✅ |
+| [`docs/framework/scoring-detail.md`](../../framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/framework/verification-protocol.md`](../../framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -68,9 +68,9 @@ language: zh-CN
 
 治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：
 
-- 评分戳：[`docs/framework/assessment-scores.json`](../framework/assessment-scores.json)
-- 安全架构：[`docs/security/security-architecture.md`](../security/security-architecture.md)
-- Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
+- 评分戳：[`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json)
+- 安全架构：[`docs/security/security-architecture.md`](../../security/security-architecture.md)
+- Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
 - L 级 ADR：[`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 > 治理卷不新增示意案例，不引用未授权客户数据。

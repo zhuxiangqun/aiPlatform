@@ -8,7 +8,7 @@
 
 ## 建议评审结论
 
-**有条件批准 L1 执行基线**（[落地方案 v1.3](./ai-platform-five-products-landing-plan.md)）：书面获准见 [`reports/five-products/L1_AUTHORIZATION.md`](../../reports/five-products/L1_AUTHORIZATION.md)；§2.3 齐备后仅 **WP0–WP2**。**不批准** WP3–WP4，**不**解释为首切片已开跑或全面改造已获批。Gate 1 按 §3.6；Gate 2 须 D13 背书**原件**；Gate 3 不承诺日期。
+**有条件批准 L1 执行基线**（[落地方案 v1.3](./ai-platform-five-products-landing-plan.md)）：书面获准见 [`reports/five-products/L1_AUTHORIZATION.md`](../../../reports/five-products/L1_AUTHORIZATION.md)；§2.3 齐备后仅 **WP0–WP2**。**不批准** WP3–WP4，**不**解释为首切片已开跑或全面改造已获批。Gate 1 按 §3.6；Gate 2 须 D13 背书**原件**；Gate 3 不承诺日期。
 
 ## 本次批准
 

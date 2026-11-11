@@ -8,6 +8,9 @@ on:
       - '*.md'
       - 'scripts/verify_docs.py'
       - 'scripts/verify_doc_structure.py'
+      - 'scripts/verify_doc_links.py'
+      - 'scripts/verify_doc_metadata.py'
+      - 'scripts/verify_canonical.py'
       - '.github/workflows/docs-verify.yml'
   push:
     branches: [ main ]
@@ -52,7 +55,19 @@ jobs:
       - name: Verify docs directory registration
         id: structure_check
         run: |
-          python3 scripts/verify_doc_structure.py
+          python3 scripts/verify_doc_structure.py --strict
+
+      - name: Verify document system self-check
+        run: python3 scripts/verify_document_system.py
+
+      - name: Verify doc metadata
+        run: python3 scripts/verify_doc_metadata.py --strict
+
+      - name: Verify canonical declarations
+        run: python3 scripts/verify_canonical.py --strict
+
+      - name: Verify all documentation links (baseline ratchet)
+        run: python3 scripts/verify_doc_links.py --all --strict
 
       - name: Check stale design docs
         id: stale_check
