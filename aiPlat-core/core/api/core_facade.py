@@ -8763,8 +8763,9 @@ def eval_capability_heatmap(
     profile: Optional[Dict[str, Any]] = None,
     exam: Optional[Dict[str, Any]] = None,
     cases: Optional[list] = None,
+    subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """§8.4 capability coverage heatmap (claim closed)."""
+    """§8.4 capability coverage heatmap (claim closed; Subject-aware)."""
     from core.apps.eval.service.suite_profile_report import build_capability_heatmap
 
     return build_capability_heatmap(
@@ -8772,6 +8773,7 @@ def eval_capability_heatmap(
         exam=exam,
         profile=profile,
         profile_id=profile_id,
+        subject_kind=subject_kind,
     )
 
 
@@ -8817,15 +8819,19 @@ def eval_certification_readiness(
 def eval_analyze_capability_coverage(
     *,
     profile: Optional[Dict[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P3: capability have/need/gap inventory (claim closed)."""
+    """P3: capability have/need/gap inventory (claim closed; Subject-aware)."""
     from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
 
     return analyze_capability_coverage(
         cases,
         profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
         min_per_capability=min_per_capability,
     )
 
@@ -8833,6 +8839,8 @@ def eval_analyze_capability_coverage(
 def eval_generate_coverage_fill_candidates(
     *,
     profile: Optional[Dict[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
     method: str = "mutation",
     seed: str = "7",
@@ -8847,6 +8855,8 @@ def eval_generate_coverage_fill_candidates(
     return generate_coverage_fill_candidates(
         cases=cases,
         profile=profile,
+        profile_id=profile_id,
+        subject_kind=subject_kind,
         min_per_capability=min_per_capability,
         method=method,
         seed=seed,
@@ -8861,6 +8871,8 @@ def eval_fill_capability_coverage(
     version: str = "",
     caller_workspace_id: str = "",
     profile: Optional[Dict[str, Any]] = None,
+    profile_id: str = "",
+    subject_kind: str = "",
     min_per_capability: Optional[int] = None,
     method: str = "mutation",
     seed: str = "7",
@@ -8875,6 +8887,8 @@ def eval_fill_capability_coverage(
         "workspace_id": workspace_id,
         "caller_workspace_id": caller_workspace_id,
         "profile": profile,
+        "profile_id": profile_id,
+        "subject_kind": subject_kind,
         "min_per_capability": min_per_capability,
         "method": method,
         "seed": seed,

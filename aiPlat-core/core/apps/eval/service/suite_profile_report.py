@@ -2,18 +2,18 @@
 
 Builds the §8.4 coverage table and §11 disclosure block from a Profile exam
 result (and optional bank/coverage analysis). Never opens claim_eligible.
+Subject-aware: in-scope rows follow the Profile Subject catalog.
 """
 from __future__ import annotations
 
 from collections import defaultdict
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
-from core.apps.eval.service.capability_case_bank import (
-    build_agent_capability_cases,
-    get_suite_profile,
+from core.apps.eval.service.capability_coverage_fill import (
+    analyze_capability_coverage,
+    resolve_coverage_context,
+    subject_capability_scope,
 )
-from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
-from core.apps.eval.service.capability_id_map import V1_IN_SCOPE, V1_OUT_OF_SCOPE
 
 
 def _cap_of_case(case: Mapping[str, Any]) -> str:
@@ -29,21 +29,43 @@ def build_capability_heatmap(
     exam: Optional[Mapping[str, Any]] = None,
     profile: Optional[Mapping[str, Any]] = None,
     profile_id: str = "",
+    subject_kind: str = "",
 ) -> Dict[str, Any]:
     """§8.4 coverage heatmap: capability → bank/selected/pass/fail/gap/unknown."""
-    bank = list(cases) if cases is not None else build_agent_capability_cases()
-    prof = dict(profile) if profile is not None else None
-    if prof is None and str(profile_id or "").strip():
-        try:
-            prof = get_suite_profile(str(profile_id).strip())
-        except ValueError:
-            prof = None
-    coverage = analyze_capability_coverage(bank, profile=prof)
+    pid = str(profile_id or "").strip()
+    if not pid and exam and isinstance(exam, Mapping):
+        plan = exam.get("evaluation_plan")
+        pid = str(
+            exam.get("profile_id")
+            or (
+                plan.get("profile_id")
+                if isinstance(plan, Mapping)
+                else ""
+            )
+            or ""
+        ).strip()
+    sk = str(subject_kind or "").strip()
+    if not sk and exam and isinstance(exam, Mapping):
+        sk = str(exam.get("subject_kind") or "").strip()
+
+    bank, kind, prof = resolve_coverage_context(
+        profile=profile,
+        profile_id=pid,
+        subject_kind=sk,
+        cases=cases,
+    )
+    in_scope, out_of_scope = subject_capability_scope(kind)
+    coverage = analyze_capability_coverage(
+        bank,
+        profile=prof,
+        profile_id=pid,
+        subject_kind=kind,
+    )
 
     by_cap_bank: Dict[str, int] = defaultdict(int)
     for c in bank:
         cap = _cap_of_case(c)
-        if cap in V1_IN_SCOPE:
+        if cap in in_scope:
             by_cap_bank[cap] += 1
 
     selected: Dict[str, int] = defaultdict(int)
@@ -72,7 +94,11 @@ def build_capability_heatmap(
             error_n[cap] += 1
 
     # Prefer plan quota_trace when attached
-    plan = exam.get("evaluation_plan") if exam and isinstance(exam.get("evaluation_plan"), Mapping) else {}
+    plan = (
+        exam.get("evaluation_plan")
+        if exam and isinstance(exam.get("evaluation_plan"), Mapping)
+        else {}
+    )
     quota_trace = []
     if isinstance(plan, Mapping):
         sel = plan.get("selection") if isinstance(plan.get("selection"), Mapping) else {}
@@ -84,7 +110,7 @@ def build_capability_heatmap(
     }
 
     rows: List[Dict[str, Any]] = []
-    for cid in sorted(V1_IN_SCOPE):
+    for cid in sorted(in_scope):
         gap_row = next(
             (g for g in (coverage.get("gaps") or []) if g.get("capability_id") == cid),
             {},
@@ -104,17 +130,20 @@ def build_capability_heatmap(
                 "error": int(error_n.get(cid, 0)),
                 "skipped_holdout": int(skipped_n.get(cid, 0)),
                 "gap": max(0, need - have),
-                "status": "ok" if have >= need and need > 0 else ("gap" if need > 0 else "empty"),
+                "status": "ok"
+                if have >= need and need > 0
+                else ("gap" if need > 0 else "empty"),
             }
         )
 
-    unknown_caps = sorted(V1_OUT_OF_SCOPE)
+    unknown_caps = sorted(out_of_scope)
     return {
         "ok": True,
         "schema": "eval.capability_heatmap.v1",
+        "subject_kind": kind,
         "profile_id": (prof or {}).get("profile_id")
         or (exam or {}).get("profile_id")
-        or profile_id
+        or pid
         or None,
         "rows": rows,
         "unknown_capabilities": [
@@ -125,7 +154,7 @@ def build_capability_heatmap(
         "claim_eligible": False,
         "accuracy_claim": False,
         "honesty": (
-            "coverage heatmap only; gap≠fail; unknown≠pass; "
+            f"coverage heatmap only (subject={kind}); gap≠fail; unknown≠pass; "
             "not an accuracy/sufficiency claim"
         ),
     }
@@ -137,11 +166,16 @@ def build_suite_profile_report(
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Compose heatmap + §11 disclosure from an exam payload."""
-    plan = exam.get("evaluation_plan") if isinstance(exam.get("evaluation_plan"), Mapping) else {}
+    plan = (
+        exam.get("evaluation_plan")
+        if isinstance(exam.get("evaluation_plan"), Mapping)
+        else {}
+    )
     heatmap = build_capability_heatmap(
         cases=cases,
         exam=exam,
         profile_id=str(exam.get("profile_id") or plan.get("profile_id") or ""),
+        subject_kind=str(exam.get("subject_kind") or plan.get("subject_kind") or ""),
     )
     pack_ref = plan.get("pack_ref") if isinstance(plan.get("pack_ref"), Mapping) else {}
     suite = (
@@ -154,6 +188,9 @@ def build_suite_profile_report(
         "pack_id": pack_ref.get("pack_id") or suite.get("pack_id"),
         "pack_version": pack_ref.get("version") or suite.get("pack_version"),
         "profile_id": exam.get("profile_id") or plan.get("profile_id"),
+        "subject_kind": heatmap.get("subject_kind")
+        or exam.get("subject_kind")
+        or plan.get("subject_kind"),
         "plan_id": exam.get("plan_id") or plan.get("plan_id"),
         "manifest_hash": exam.get("manifest_hash") or plan.get("manifest_hash"),
         "execution_fingerprint": exam.get("execution_fingerprint")
@@ -180,6 +217,7 @@ def build_suite_profile_report(
     return {
         "ok": bool(exam.get("ok", True)),
         "schema": "eval.suite_profile_report.v1",
+        "subject_kind": heatmap.get("subject_kind"),
         "disclosure": disclosure,
         "heatmap": heatmap,
         "counts": counts,

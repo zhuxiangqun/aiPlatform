@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3376
+total_capabilities: 3378
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -719,9 +719,11 @@ scan_hash: 8f9548ec24f4
 | compile_plan_from_suite_profile | `core/apps/eval/service/suite_profile_compile.py` | ✅ | P2 Profile→Plan v2 sample_manifest；生成物适用：已接线 | 已合入 |
 | select_cases_for_profile | `core/apps/eval/service/suite_profile_compile.py` | ✅ | 固定配额分层抽样；生成物适用：已接线 | 已合入 |
 | eval_compile_plan_from_suite_profile | `core/api/core_facade.py` | ✅ | CoreFacade Profile 编译；生成物适用：已接线 | 已合入 |
-| analyze_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 能力缺口 inventory；生成物适用：已接线 | 已合入 |
-| generate_coverage_fill_candidates | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 复用 mutation/template 补题候选；生成物适用：已接线 | 已合入 |
-| fill_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 dry/apply 扩 draft；生成物适用：已接线 | 已合入 |
+| analyze_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 能力缺口 inventory（Subject 感知）；生成物适用：已接线 | 已合入 |
+| subject_capability_scope | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | Subject in/out-of-scope 能力集；生成物适用：已接线 | 已合入 |
+| resolve_coverage_context | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | 按 Profile/Subject 解析题库与 kind；生成物适用：已接线 | 已合入 |
+| generate_coverage_fill_candidates | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 复用 mutation/template 补题候选（Subject 感知）；生成物适用：已接线 | 已合入 |
+| fill_capability_coverage | `core/apps/eval/service/capability_coverage_fill.py` | ✅ | P3 dry/apply 扩 draft（Subject 感知）；生成物适用：已接线 | 已合入 |
 | eval_analyze_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 缺口分析；生成物适用：已接线 | 已合入 |
 | eval_generate_coverage_fill_candidates | `core/api/core_facade.py` | ✅ | CoreFacade 补题候选；生成物适用：已接线 | 已合入 |
 | eval_fill_capability_coverage | `core/api/core_facade.py` | ✅ | CoreFacade 覆盖补题；生成物适用：已接线 | 已合入 |
@@ -4275,7 +4277,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 572 | 1 | 573 |
+| Harness 执行引擎 | 574 | 1 | 575 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4320,7 +4322,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3366** | **10** | **3376** |
+| **总计** | **3368** | **10** | **3378** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

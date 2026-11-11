@@ -3,19 +3,19 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T04:30:14Z"
+generated_at: "2026-11-11T05:05:45Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/whitepaper/whitepaper-suite.yaml
 suite_sha256: "3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324"
-caps_sha256: "52527b4f96ba50f062a76c8313c6ae20dd4019ae8dd12a19b983e763cbd4efb3"
+caps_sha256: "255f8320c4b57c7f209df74cc91ee68dfdd4bd87af3a229607bcdf61057fae20"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=52527b4f96ba50f062a76c8313c6ae20dd4019ae8dd12a19b983e763cbd4efb3 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=3ebca3802acb8e53218a41a04692b36acfdc42fab7414d276233d9e66442f324 caps_sha256=255f8320c4b57c7f209df74cc91ee68dfdd4bd87af3a229607bcdf61057fae20 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -32,8 +32,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T04:30:14Z` |
-| CAPABILITIES sha256 | `52527b4f96ba…` |
+| 生成时间 (UTC) | `2026-11-11T05:05:45Z` |
+| CAPABILITIES sha256 | `255f8320c4b5…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -85,7 +85,7 @@ language: zh-CN
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 572 | 1 | 573 |
+| Harness 执行引擎 | 574 | 1 | 575 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -130,7 +130,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3366** | **10** | **3376** |
+| **总计** | **3368** | **10** | **3378** |
 
 ### 3.2 上手路径（节选）
 

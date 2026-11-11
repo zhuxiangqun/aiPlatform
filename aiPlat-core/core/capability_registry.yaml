@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2609
+total_capabilities: 2611
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 625
+    caps_count: 627
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -7848,7 +7848,15 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
       - symbol: analyze_capability_coverage
         type: function
-        signature: 'analyze_capability_coverage(cases?,profile?,min_per_capability?)→Dict'
+        signature: 'analyze_capability_coverage(cases?,profile?,profile_id?,subject_kind?,min_per_capability?)→Dict'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: subject_capability_scope
+        type: function
+        signature: 'subject_capability_scope(subject_kind)→(in_scope,out_of_scope)'
+        module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
+      - symbol: resolve_coverage_context
+        type: function
+        signature: 'resolve_coverage_context(profile?,profile_id?,subject_kind?,cases?)→(bank,kind,profile)'
         module: aiPlat-core/core/apps/eval/service/capability_coverage_fill.py
       - symbol: generate_coverage_fill_candidates
         type: function
