@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T17:49:37+08:00",
+  "reviewed_at": "2026-11-11T18:31:45+08:00",
   "base_ref": "origin/main",
-  "merge_base": "86c04616f36f55a5400f69ce02c20854bc3fe733",
-  "diff_sha256": "ebb9ec4b03783e0a96d1affa8e3e1dbebba443aef9efb645299710321b025736",
-  "head_sha": "ec7b7c578adb2917ef5e688e725410e40f0eeab6",
+  "merge_base": "6102ba4740fb7aa4a7a3d4290e1330010af2d0aa",
+  "diff_sha256": "1713a531772e3e2061ba8feaae1643f8330c7fdfdc683638f7b64e0ac7a93ba8",
+  "head_sha": "714ced04931e1f0a43acc845d2845537986484cf",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Seed pack.meta freeze + whitepaper 3384 sync; claim closed; agent pack draft; no document-system commits."
+  "note": "Agent seed purpose_ok + pack.meta freeze; inventory 14/14 profile_complete; claim/cert stay false; fixtures stamped."
 }
