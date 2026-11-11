@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3332
+total_capabilities: 3335
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -673,6 +673,9 @@ scan_hash: 8f9548ec24f4
 | ApiSubjectAdapter / api.capability bank | `core/apps/eval/service/subject_adapter.py` + `api_capability_bank.py` + `workspace_seeds/eval/api_capability/` | ✅ | ADR Generated-App 之后；共享 `_TypedLexicalSubjectAdapter`；OBJECT_TYPES api；claim=false；≠ live external_pull；生成物适用：已接线 | 本批 |
 | api.regression.v1 + api_regression_status | `api_capability_bank.py` + `eval_api_regression_status` + GET …/store/api-regression-status + EvalApiRegressionPanel | ✅ | API Subject 回归配额（API_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_api_capability_* / eval_run_api_capability_smoke | `core/api/core_facade.py` | ✅ | API 目录/校验/种子库/fixture smoke；≠ live chat_pull；生成物适用：已接线 | 本批 |
+| DatasetSubjectAdapter / dataset.capability bank | `core/apps/eval/service/subject_adapter.py` + `dataset_capability_bank.py` + `workspace_seeds/eval/dataset_capability/` | ✅ | ADR API 之后；共享 `_TypedLexicalSubjectAdapter`；OBJECT_TYPES dataset；claim=false；≠ typed Plan dataset_assert；生成物适用：已接线 | 本批 |
+| dataset.regression.v1 + dataset_regression_status | `dataset_capability_bank.py` + `eval_dataset_regression_status` + GET …/store/dataset-regression-status + EvalDatasetRegressionPanel | ✅ | Dataset Subject 回归配额（DATASET_V1_CAPS×5）诚实快照；draft 清单；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
+| eval_dataset_capability_* / eval_run_dataset_capability_smoke | `core/api/core_facade.py` | ✅ | Dataset 目录/校验/种子库/fixture smoke；≠ typed Plan dataset_assert；生成物适用：已接线 | 本批 |
 | eval_workflow_capability_* / eval_run_workflow_capability_smoke | `core/api/core_facade.py` | ✅ | Workflow 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
 | ModelSubjectAdapter / model.capability bank | `core/apps/eval/service/subject_adapter.py` + `model_capability_bank.py` + `workspace_seeds/eval/model_capability/` | ✅ | ADR Workflow 之后；共享 `_TypedLexicalSubjectAdapter`；claim=false；生成物适用：已接线 | 本批 |
 | eval_model_capability_* / eval_run_model_capability_smoke | `core/api/core_facade.py` | ✅ | Model 目录/校验/种子库/fixture smoke；≠ live accuracy；生成物适用：已接线 | 本批 |
@@ -2849,6 +2852,13 @@ scan_hash: 8f9548ec24f4
 ## 十三、评估系统
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| eval_dataset_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| eval_dataset_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| dataset_regression_profile | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| dataset_smoke_profile | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| build_dataset_capability_cases | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| DatasetCapabilityBankError | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | 自动同步 | 已合入 |
+| validate_dataset_capability_bank | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | 自动同步 | 已合入 |
 | eval_api_regression_profile | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | eval_api_capability_catalog | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | api_regression_profile | `core/apps/eval/service/api_capability_bank.py` | ✅ | 自动同步 | 已合入 |
@@ -4231,7 +4241,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 561 | 1 | 562 |
+| Harness 执行引擎 | 564 | 1 | 565 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4276,7 +4286,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3322** | **10** | **3332** |
+| **总计** | **3325** | **10** | **3335** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

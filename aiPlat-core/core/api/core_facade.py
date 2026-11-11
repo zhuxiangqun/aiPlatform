@@ -8308,6 +8308,70 @@ def eval_api_regression_status(
     return api_regression_status(draft_sample_limit=draft_sample_limit)
 
 
+def eval_dataset_capability_catalog() -> list:
+    """Dataset SubjectAdapter capability catalog (OBJECT_TYPES dataset)."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    return get_subject_adapter("dataset").capability_catalog()
+
+
+def eval_validate_dataset_case(
+    case: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """DatasetSubjectAdapter.validate_case."""
+    from core.apps.eval.service.subject_adapter import get_subject_adapter
+
+    errors = get_subject_adapter("dataset").validate_case(case or {})
+    return {"ok": not errors, "errors": errors, "subject_kind": "dataset"}
+
+
+def eval_validate_dataset_capability_bank() -> Dict[str, Any]:
+    """Validate curated dataset.capability seed bank (draft; claim=false)."""
+    from core.apps.eval.service.dataset_capability_bank import (
+        validate_dataset_capability_bank,
+    )
+
+    return validate_dataset_capability_bank()
+
+
+def eval_list_dataset_capability_cases() -> list:
+    """List dataset.capability curated cases."""
+    from core.apps.eval.service.dataset_capability_bank import (
+        build_dataset_capability_cases,
+    )
+
+    return build_dataset_capability_cases()
+
+
+def eval_run_dataset_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
+    """Fixture lexical smoke over dataset.capability (≠ typed Plan dataset_assert)."""
+    from core.apps.eval.service.dataset_capability_bank import (
+        run_dataset_capability_smoke,
+    )
+
+    return run_dataset_capability_smoke(limit=limit)
+
+
+def eval_dataset_regression_profile() -> Dict[str, Any]:
+    """dataset.regression.v1 Suite Profile (claim_eligible=false)."""
+    from core.apps.eval.service.dataset_capability_bank import (
+        dataset_regression_profile,
+    )
+
+    return dataset_regression_profile()
+
+
+def eval_dataset_regression_status(
+    *, draft_sample_limit: int = 5
+) -> Dict[str, Any]:
+    """Dataset Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    from core.apps.eval.service.dataset_capability_bank import (
+        dataset_regression_status,
+    )
+
+    return dataset_regression_status(draft_sample_limit=draft_sample_limit)
+
+
 def eval_validate_agent_capability_bank() -> Dict[str, Any]:
     """P1: validate curated agent.capability Regression seed bank (draft)."""
     from core.apps.eval.service.capability_case_bank import validate_agent_capability_bank
