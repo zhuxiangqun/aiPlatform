@@ -459,4 +459,4 @@ A: 引擎会在 DEBUG 日志中输出 `capability_profile=xxx backend=xxx`。或
 | [capability-profile.md](architecture/capability-profile.md) | 7 级能力剖面定义、推断规则、57 Agent 完整分布 |
 | [subagent.md](reference/agents/subagent.md) | Subagent 架构设计详述 |
 | [knowledge-system.md](guides/knowledge/knowledge-system.md) | 知识系统完整指南（含本体/TripleStore/Agent 在知识图中的角色） |
-| [ai-app-factory.md](design/ai-app-factory.md) | Builder 管线（如何生成应用） |
+| [ai-app-factory.md](architecture/plans/design/ai-app-factory.md) | Builder 管线（如何生成应用） |

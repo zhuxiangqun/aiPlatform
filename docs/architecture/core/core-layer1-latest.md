@@ -195,4 +195,4 @@ sequenceDiagram
 - L2/L3：prod 默认禁止或强审批（尤其 browser/MCP、api_calling、tool_agent/react_agent）
 
 相关策略文档：
-- [对外能力白名单](../../policy/external-allowlist.md)
+- [对外能力白名单](../../reference/policy/external-allowlist.md)

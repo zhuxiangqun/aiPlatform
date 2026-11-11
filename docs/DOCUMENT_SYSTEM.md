@@ -79,15 +79,6 @@ workspace-root/
 │   ├── guides/                       ← 补充指南（如 PR 架构检查清单）
 │   │   └── PR_ARCHITECTURE_CHECKLIST.md
 │   │
-│   ├── design/                       ← 设计文档（To-Be / Plan）
-│   │   └── ...（见目录；非现状）
-│   │
-│   ├── security/                      ← 安全架构与测试
-│   │
-│   ├── policy/                        ← 安全/运维策略
-│   │   ├── external-allowlist.md
-│   │   └── mcp-stdio-prod-allowlist.md
-│   │
 │   ├── standards/                     ← 跨层规范（强制性；`规范-*.md` 多份）
 │   │
 │   ├── reports/                       ← 生成报告（不手动编辑）
@@ -97,12 +88,6 @@ workspace-root/
 │   │
 │   ├── audit/                         ← 合规审计
 │   │   └── compliance-matrix.md
-│   │
-│   ├── compliance/                    ← 法规合规评估
-│   │   └── eu-ai-act-assessment.md
-│   │
-│   ├── articles/                     ← 技术文章（对外发布）
-│   │   └── private-control-plane.md
 │   │
 │   ├── archive/                      ← 归档（历史版本，只读）
 │   │   ├── README.md                 ← 归档说明 + "仅做历史参考"免责声明
@@ -722,7 +707,7 @@ docs/doc-paths.yaml
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
 | 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
-| 文档一级目录数 | 17 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
+| 文档一级目录数 | 12 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：
 

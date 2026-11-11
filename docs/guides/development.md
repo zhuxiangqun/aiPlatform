@@ -659,8 +659,8 @@ PATCH: 向后兼容的问题修正
 
 所有层的前端开发应遵循系统级 UI 设计规范：
 
-- [系统级 UI 设计规范](../design/ui-design.md) - 统一的颜色、排版、组件、交互模式
-- [UI 实现状态](../design/ui-implementation-status.md) - 当前实现状态（勿与 To-Be 规范混读）
+- [系统级 UI 设计规范](../architecture/plans/design/ui-design.md) - 统一的颜色、排版、组件、交互模式
+- [UI 实现状态](../architecture/plans/design/ui-implementation-status.md) - 当前实现状态（勿与 To-Be 规范混读）
 
 ---
 

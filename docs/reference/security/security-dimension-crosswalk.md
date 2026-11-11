@@ -1,8 +1,8 @@
 # 安全质量维度 Crosswalk：26 维 ↔ v3 20 维
 
-> 机器可读 SoT：[`reports/security/security_quality_dimensions.yaml`](../../reports/security/security_quality_dimensions.yaml)  
-> v3 证据矩阵：[`reports/security/aiplat-security-quality-report-2026-11-09-v3.md`](../../reports/security/aiplat-security-quality-report-2026-11-09-v3.md) §4  
-> **唯一真相源是 YAML**；本表仅对账。≠ 认证。  
+> 机器可读 SoT：[`reports/security/security_quality_dimensions.yaml`](../../../reports/security/security_quality_dimensions.yaml)
+> v3 证据矩阵：[`reports/security/aiplat-security-quality-report-2026-11-09-v3.md`](../../../reports/security/aiplat-security-quality-report-2026-11-09-v3.md) §4
+> **唯一真相源是 YAML**；本表仅对账。≠ 认证。
 > `dimension_set_version=1.1`：追加 **D26**（成果物 authz）；**未重排** D07–D25。v3#6 拆为 D06（平台）+ D26（成果物）。
 
 | 26 维 ID | 名称 | v3 20 维 ID | 关系 |

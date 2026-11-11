@@ -37,8 +37,8 @@
 ### 操作手册（guides/）
 [guides/README.md](guides/README.md) — 开发/部署/测试/本体/知识/FDE 交付等操作手册
 
-### 设计提案（design/）
-[design/](design/) — To-Be 设计文档（非当前实现状态，以代码为准）
+### 设计提案（architecture/plans/design/）
+[architecture/plans/design/](architecture/plans/design/) — To-Be 设计文档（非当前实现状态，以代码为准）
 
 ### 框架评估（reference/framework/）
 [reference/framework/](reference/framework/) — 成熟度评估/对比/评分
@@ -52,8 +52,8 @@
 ### 契约（contracts/）
 [contracts/README.md](contracts/README.md) — FDE / Ontology 等跨仓契约索引（阅读顺序见该 README）
 
-### 策略配置（policy/）
-[policy/](policy/) — 安全/运维策略
+### 策略配置（reference/policy/）
+[reference/policy/](reference/policy/) — 安全/运维策略
 
 ### API 协议（API/）
 [API/](API/) — API 参考与归因协议
@@ -62,7 +62,7 @@
 [project/PHASE_STATUS.md](project/PHASE_STATUS.md) — Phase 实施状态快照
 
 ### 其他
-[reference/agents/](reference/agents/) · [articles/](articles/) · [audit/](audit/) · [by-role/](by-role/) · [compliance/](compliance/) · [guides/](guides/) · [reference/harness/](reference/harness/) · [reference/matrix/](reference/matrix/) · [reference/mcp/](reference/mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
+[reference/agents/](reference/agents/) · [reference/articles/](reference/articles/) · [audit/](audit/) · [by-role/](by-role/) · [reference/compliance/](reference/compliance/) · [guides/](guides/) · [reference/harness/](reference/harness/) · [reference/matrix/](reference/matrix/) · [reference/mcp/](reference/mcp/) · [reports/](reports/) · [reference/research/](reference/research/) · [skills/](skills/) · [reference/strategy/](reference/strategy/) · [tools/](tools/) · [reference/explanatory/](reference/explanatory/) · [archive/](archive/)
 
 ---
 
@@ -83,12 +83,12 @@
 | `reference/explanatory/` | 白皮书体系与分卷 | 16 | 生成物按 suite；体系文档是 |
 | `standards/` | 跨层强制性规范 | 10 | 是 |
 | `reference/framework/` | 成熟度评估框架 | 6 | 评估时更新 |
-| `design/` | 设计提案（To-Be） | 4 | 过期标注 |
+| `architecture/plans/design/` | 设计提案（To-Be） | 4 | 过期标注 |
 | `security/` | 安全架构与测试 | 4 | 是 |
 | `by-role/` | 角色索引 | 4 | 是 |
 | `reports/` | 生成报告快照 | 3 | **否**（重新生成） |
 | `API/` | API 协议 | 2 | 是 |
-| `policy/` | 安全/运维策略 | 2 | 是 |
+| `reference/policy/` | 安全/运维策略 | 2 | 是 |
 | `audit/` | 合规审计 | 2 | 按需 |
 | `project/` | 项目管理 | 1 | 是 |
 | `reference/matrix/` | 能力影响矩阵 | 1 | 是 |
@@ -128,9 +128,9 @@
 | 理解系统怎么设计的 | 架构设计 | `architecture/`、`reference/harness/`、`contracts/`、`reference/agents/` |
 | 查某一层怎么实现 | 层设计 | `aiPlat-core/docs/`、`aiPlat-infra/docs/`、`aiPlat-platform/docs/` 等（不在根 `docs/` 一级目录） |
 | 学怎么操作交付 | 用户手册 | `guides/`、`guides/fde/`、`by-role/` |
-| 看目标态/规划 | 设计与规划 | `design/`、`architecture/plans/`（含五产品；**非现状**） |
+| 看目标态/规划 | 设计与规划 | `architecture/plans/design/`、`architecture/plans/`（含五产品；**非现状**） |
 | 用 Pi Thin Runtime | Pi 现行交付 | `packages/aiplat-pi-runtime/README.md`、`architecture/plans/pi-thin-runtime.md` |
 | 查本体/Wiki/RAG | 知识引擎 | `knowledge-system.md`、`contracts/ONTOLOGY_*`、`guides/ontology.md`（指向知识系统） |
-| 查安全红线 | 合规与安全 | `compliance/`、`security/`、`policy/` |
+| 查安全红线 | 合规与安全 | `reference/compliance/`、`security/`、`reference/policy/` |
 | 查 MCP/测试工具 | 工具与框架 | `reference/mcp/`、`tools/`、`guides/testing.md` |
 | 看系统状态报告 | 报告与审计 | `reports/`、`archive/`、`reference/research/` |

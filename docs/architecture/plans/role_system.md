@@ -1,7 +1,7 @@
 # aiPlatform 角色体系完整定义
 
-**版本**: 1.0  
-**日期**: 2026-07-01  
+**版本**: 1.0
+**日期**: 2026-07-01
 **原则**: 能做决策 ≠ 应该做决策。战略定方向(人)、Agent 做执行(系统)、半自动做辅助(人+AI)。
 
 ---
@@ -354,4 +354,4 @@ class StrategyAgent:
 | 终端用户 | `UserWorkbench` | 日常 |
 | 新客户 | `OnboardingWizard` | 一次性 |
 
-> 参见：[私有控制平面 — aiPlat 四层防御体系](../../articles/private-control-plane.md)（长文）· [架构短入口](../private-control-plane.md)。
+> 参见：[私有控制平面 — aiPlat 四层防御体系](../../reference/articles/private-control-plane.md)（长文）· [架构短入口](../private-control-plane.md)。
