@@ -3,7 +3,7 @@ title: "aiPlat 产品能力白皮书"
 volume_id: product-capability
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:37:31Z"
+generated_at: "2026-11-11T12:38:32Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
@@ -19,8 +19,8 @@ language: zh-CN
 
 # aiPlat 产品能力白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:37:31Z` |
+| 生成时间 (UTC) | `2026-11-11T12:38:32Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -74,7 +74,7 @@ language: zh-CN
 | **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |
 | **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |
 | **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |
-| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/knowledge-system.md`](../../../docs/knowledge-system.md) · CAPABILITIES「知识引擎 / RAG」 |
+| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/manuals/ontology.md`](../../../docs/manuals/ontology.md) · CAPABILITIES「知识引擎 / RAG」 |
 | **Agent / Skill 运行** | 多步工具调用与技能执行 | CAPABILITIES「Agent 系统 / Skill 系统」· [`docs/architecture/execution-decision-matrix.md`](../../../docs/architecture/execution-decision-matrix.md) |
 | **治理下执行** | 权限、审批、审计可证明 | 安全与治理分卷 · CAPABILITIES「Gate / 安全与治理」 |
 | **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) · [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) |

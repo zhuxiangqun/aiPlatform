@@ -9,7 +9,7 @@
 | 顺序 | 文档 | 说明 |
 |:---:|------|------|
 | 1 | [manuals/getting-started.md](manuals/getting-started.md) | 5 分钟体验 |
-| 2 | [knowledge-system.md](knowledge-system.md) | 知识管理完整指南（管线/存储/本体/RAG/运维） |
+| 2 | [knowledge-system.md](guides/knowledge/knowledge-system.md) | 知识管理完整指南（管线/存储/本体/RAG/运维） |
 | 3 | [manuals/deployment.md](manuals/deployment.md) | 部署指南 |
 
 ---
@@ -21,7 +21,7 @@
 | **架构师** | [architecture/README.md](architecture/README.md) → [architecture/overview.md](architecture/overview.md) |
 | **开发者** | [manuals/development.md](manuals/development.md) → 对应层的 `CLAUDE.md` |
 | **运维** | [manuals/deployment.md](manuals/deployment.md) → [manuals/management.md](manuals/management.md) |
-| **知识管理员** | [knowledge-system.md](knowledge-system.md) |
+| **知识管理员** | [knowledge-system.md](guides/knowledge/knowledge-system.md) |
 | **FDE 交付工程师** | [manuals/README.md](manuals/README.md)（手册总目录）→ 按需选择 |
 | **新用户** | [manuals/getting-started.md](manuals/getting-started.md) → [AIPLAT_CAPABILITIES.md](../AIPLAT_CAPABILITIES.md) |
 | **Pi Thin Runtime（当前交付）** | [../packages/aiplat-pi-runtime/README.md](../packages/aiplat-pi-runtime/README.md) · living 摘要 [architecture/plans/pi-thin-runtime.md](architecture/plans/pi-thin-runtime.md)（≠ 五产品目标 Enterprise Runtime） |
@@ -68,9 +68,9 @@
 
 ## 目录速查
 
-> **统计口径**：`docs/**/*.md`，排除路径含 `node_modules`。  
-> **时点**：`2026-10-23`（D0–D5 收口 + E0–E4 manuals/链接轮次后现算）。静态计数会再漂。  
-> **维护区**（C0 公式，同口径）：**178**（≠ 下表合计；合计含 archive / volumes / 生成快照）。  
+> **统计口径**：`docs/**/*.md`，排除路径含 `node_modules`。
+> **时点**：`2026-10-23`（D0–D5 收口 + E0–E4 manuals/链接轮次后现算）。静态计数会再漂。
+> **维护区**（C0 公式，同口径）：**178**（≠ 下表合计；合计含 archive / volumes / 生成快照）。
 > 说明：`docs/` 树内总数 **253**（相对 C0–C4 收口 259：−7 移至根 `reports/docs-governance/`；D2 迁 archive 不减树内总数）。E1–E3 **0 迁/删**，计数相对 D5 不变。
 
 | 目录 | 内容 | 文件数 | 维护？ |

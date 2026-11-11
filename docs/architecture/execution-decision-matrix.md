@@ -1,17 +1,17 @@
 # 执行决策矩阵
 
-> **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。  
-> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.12** · 2026-10-17  
-> **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
+> **一句话**：帮你选「这件事该用程序、LLM、技能、Agent，还是流水线」——先按场景判断，细节与代码证据在文末附录。
+> **状态**：Living Spec（与实现同步；冲突时以代码为准）· **v1.12** · 2026-10-17
+> **互补文档**：[产物怎么验收](execution-quality-gates.md) · [能力剖面细节](capability-profile.md) · [知识 / Memory / CRAG](../guides/knowledge/knowledge-system.md) · [Agent 总览](../agent-system.md)（后端规则以本文为准）
 
 ---
 
 ## 1. 先记住五条
 
-1. **能写死规则就别用模型**——权限、闸门、算术、已有 handler，都走程序。  
-2. **加能力从便宜到贵**——改现有代码 → Skill/CLI → Tool → 插件 → MCP → 新内核接口。  
-3. **行为靠配置字段，不靠「某个 Agent 名字」**——引擎里禁止按业务角色硬编码分支。  
-4. **想钉死怎么跑，写「执行混合」或显式后端**——二者都不会被能力剖面降级。  
+1. **能写死规则就别用模型**——权限、闸门、算术、已有 handler，都走程序。
+2. **加能力从便宜到贵**——改现有代码 → Skill/CLI → Tool → 插件 → MCP → 新内核接口。
+3. **行为靠配置字段，不靠「某个 Agent 名字」**——引擎里禁止按业务角色硬编码分支。
+4. **想钉死怎么跑，写「执行混合」或显式后端**——二者都不会被能力剖面降级。
 5. **工厂生成物尽量薄，但可声明期望跑法**——选 Agent 类型 + 技能/工具；推荐写 `architecture_profile`（E1）；团队 YAML 仍可覆盖。
 
 ---
@@ -56,21 +56,21 @@
 
 算术、日期差、JSON/CSV 解析、路径规范化等**确定性变换**不得交给模型「心算」。Stage/Agent 可声明：
 
-- `meta_tool.enabled` / `auto_bind` — 优先绑定 code 类元工具  
-- `meta_tool.force` — 强制走 code（逃逸舱口）  
+- `meta_tool.enabled` / `auto_bind` — 优先绑定 code 类元工具
+- `meta_tool.force` — 强制走 code（逃逸舱口）
 
 **意图如何识别（不是模型自判）**：
 
-1. **显式配置**：`meta_tool.force=true` / `enabled` → 直接偏好 code（不依赖文本匹配）。  
-2. **任务文本正则**：`meta_tool.detect_meta_tool_intent(task)` 用 `_INTENT_PATTERNS`（arithmetic / datetime / parse_transform / escape_hatch）匹配用户/stage 任务串。  
-3. **提示注入**：命中后在 tools 描述末追加 `[META TOOL]` hint，并把 `code` 置顶（`build_meta_tool_hint` / `ensure_code_meta_tool`）。  
+1. **显式配置**：`meta_tool.force=true` / `enabled` → 直接偏好 code（不依赖文本匹配）。
+2. **任务文本正则**：`meta_tool.detect_meta_tool_intent(task)` 用 `_INTENT_PATTERNS`（arithmetic / datetime / parse_transform / escape_hatch）匹配用户/stage 任务串。
+3. **提示注入**：命中后在 tools 描述末追加 `[META TOOL]` hint，并把 `code` 置顶（`build_meta_tool_hint` / `ensure_code_meta_tool`）。
 
 落点：`PipelineStageConfig.meta_tool` → `apply_meta_tool_config` → loop 上下文 `_prefer_code_meta_tool` / `_force_code_meta_tool`。
 
 ### 2.4 Workflow 与 Agent（不是二选一）
 
-**Workflow / Pipeline = 编排壳**：决定 stage 顺序、handoff、HITL。  
-**每个 stage 内部**仍按 §3/§4 选 `execution_backend` + Skill：可以是 Agent 环，也可以是 handler / oneshot。  
+**Workflow / Pipeline = 编排壳**：决定 stage 顺序、handoff、HITL。
+**每个 stage 内部**仍按 §3/§4 选 `execution_backend` + Skill：可以是 Agent 环，也可以是 handler / oneshot。
 禁止把「用了 Pipeline」理解成「不许用 Agent」。
 
 ### 2.5 MCP 准入（硬标准）
@@ -105,8 +105,8 @@ blast_radius:     <失败/token/权限影响>
 
 ### 2.6 执行封存（完成语义 · 平台规范）
 
-「完成」不是模型说 DONE。封存是平台横切：DONE 前校验、DONE 后回执与质量复核。  
-**权威在 aiPlat Core**：公共入口 `execution_seal`（`check_done_verify` / `coding_deliverable_veto` / `seal_answer_with_receipts` / `seal_before_finish`）+ `quality_review_blocks_success`。叶实现 `bind_completion_to_receipts` 仅由 seal 调用；完成路径禁止直调。CoreFacade 有同名 re-export。  
+「完成」不是模型说 DONE。封存是平台横切：DONE 前校验、DONE 后回执与质量复核。
+**权威在 aiPlat Core**：公共入口 `execution_seal`（`check_done_verify` / `coding_deliverable_veto` / `seal_answer_with_receipts` / `seal_before_finish`）+ `quality_review_blocks_success`。叶实现 `bind_completion_to_receipts` 仅由 seal 调用；完成路径禁止直调。CoreFacade 有同名 re-export。
 **Pi 壳不执行封存门禁**（见 [`HYBRID_ENTERPRISE.md`](../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) 非目标）。混合企业 ≠ 编码闭环已在 Pi 上跑完。
 
 | 路径 | DONE 前 | 完成回执 | 质量复核可翻失败 | 现状 |
@@ -119,11 +119,11 @@ blast_radius:     <失败/token/权限影响>
 
 规则（配置驱动，禁止按 `agent_id` 分支）：
 
-1. `uses_file_output` / `refactor_sop` / `require_review` 的完成标准走 `PipelineStageConfig.done_verify`（及 `AIPLAT_CODING_STAGE_*`）。  
-2. 「已修好 / 文件路径」没有成功工具回执 → 前缀 `[未核验]` 或 `[失败]`。多个修复候选只封存得分最高的一个（`select_repair_candidate`）；`code` / `code_execution` / `shell`/`bash`（pytest / python 补丁 / 重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 对这组候选只放行一次成功验证（`block_extra_repair_verify`；失败可对同一方案重试）。候选块写入后换轮仍有效（`remember_repair_candidates`）。候选块出现前的 `code` 回执不证明最高分方案已通过。同一次 `code` 若仍包含被跳过方案的正文，则不执行。选型后 `file_operations` / `write` / `edit` 写入被跳过方案正文会被拒绝（ReAct facade 与 compiled react 同门）。选型前新建且正文就是被跳过方案的文件会删掉；覆盖已有文件时按检查点或写入前快照恢复。`code` 脚本中的字面量写入，以及执行后工作区内新建/改动的文件（变量路径；cwd / workdir / `_deploy_files_dir` / `output_dir` / 进程 cwd），也会记入回滚名单。差分写入挂上当次脚本；选型后按正文或脚本归属回滚（含该脚本新建的二进制，以及不超过 8KB 的被覆盖二进制，按基线 `prior_b64` 恢复；更大文件走检查点）。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）先不跑；`pytest` / `python -m pytest` / `ruff` 与同一脚本的小改动仍可跑。预测与实测不符（`_prediction_receipt.actual_pass=false`）不能声明已修好。这不是世界模型。契约向量：Python [`test_completion_receipt.py`](../../aiPlat-core/core/tests/unit/test_harness/test_completion_receipt.py) + 实现 [`completion_receipt.py`](../../aiPlat-core/core/harness/execution/completion_receipt.py)（与 Pi JS 同语义）。Pi 不记预测回执。  
-3. 对话型 orphan 可跳过质量复核（状态预算）；编码 / `skill_delivery=once` / `## FILE:` **不可**。orphan 状态探针读 DB 真实 status；无行或 `force_failed`/`quality_block` 与 completed 冲突时不得发明 completed。第二次 `finalize` 不得把已封 timeout/failed 再标 completed。`run_end` 载荷没有 status 时探针保持 running，不当完成。Agent / run_graph / run_events 探针均经 `_apply_sealed_failure_status`，元数据失败封存优先于 completed。`run_end` 探针若行状态是 completed 但元数据已封失败，仍返回 timeout/failed。  
-4. 校验环异常、QR 异常、StageRunner 编码默认预注入异常、ReAct eager finalize / PlanExecute finalize 异常、`_force_failed_status`（timeout/LLM 耗尽）、autoreview 不可加载：编码/审阅路径 **fail-closed**；StageRunner 失败优先于 skill 正文；CoreFacade 外层收尾不得把已封 timeout/failed 再改回 completed。  
-5. `skip_claude_md` 仅澄清 / prompt-Skill；材料问答与数字人顾问走 **slim**（`coding_policy_profile=off`），禁止整段 skip。  
+1. `uses_file_output` / `refactor_sop` / `require_review` 的完成标准走 `PipelineStageConfig.done_verify`（及 `AIPLAT_CODING_STAGE_*`）。
+2. 「已修好 / 文件路径」没有成功工具回执 → 前缀 `[未核验]` 或 `[失败]`。多个修复候选只封存得分最高的一个（`select_repair_candidate`）；`code` / `code_execution` / `shell`/`bash`（pytest / python 补丁 / 重定向写入）/ `test_executor` / `canary_runner` / `e2e_test` / `acceptance_checker` 对这组候选只放行一次成功验证（`block_extra_repair_verify`；失败可对同一方案重试）。候选块写入后换轮仍有效（`remember_repair_candidates`）。候选块出现前的 `code` 回执不证明最高分方案已通过。同一次 `code` 若仍包含被跳过方案的正文，则不执行。选型后 `file_operations` / `write` / `edit` 写入被跳过方案正文会被拒绝（ReAct facade 与 compiled react 同门）。选型前新建且正文就是被跳过方案的文件会删掉；覆盖已有文件时按检查点或写入前快照恢复。`code` 脚本中的字面量写入，以及执行后工作区内新建/改动的文件（变量路径；cwd / workdir / `_deploy_files_dir` / `output_dir` / 进程 cwd），也会记入回滚名单。差分写入挂上当次脚本；选型后按正文或脚本归属回滚（含该脚本新建的二进制，以及不超过 8KB 的被覆盖二进制，按基线 `prior_b64` 恢复；更大文件走检查点）。候选块出现前，第二段明显不同的补丁脚本（含短脚本、`python -c`）先不跑；`pytest` / `python -m pytest` / `ruff` 与同一脚本的小改动仍可跑。预测与实测不符（`_prediction_receipt.actual_pass=false`）不能声明已修好。这不是世界模型。契约向量：Python [`test_completion_receipt.py`](../../aiPlat-core/core/tests/unit/test_harness/test_completion_receipt.py) + 实现 [`completion_receipt.py`](../../aiPlat-core/core/harness/execution/completion_receipt.py)（与 Pi JS 同语义）。Pi 不记预测回执。
+3. 对话型 orphan 可跳过质量复核（状态预算）；编码 / `skill_delivery=once` / `## FILE:` **不可**。orphan 状态探针读 DB 真实 status；无行或 `force_failed`/`quality_block` 与 completed 冲突时不得发明 completed。第二次 `finalize` 不得把已封 timeout/failed 再标 completed。`run_end` 载荷没有 status 时探针保持 running，不当完成。Agent / run_graph / run_events 探针均经 `_apply_sealed_failure_status`，元数据失败封存优先于 completed。`run_end` 探针若行状态是 completed 但元数据已封失败，仍返回 timeout/failed。
+4. 校验环异常、QR 异常、StageRunner 编码默认预注入异常、ReAct eager finalize / PlanExecute finalize 异常、`_force_failed_status`（timeout/LLM 耗尽）、autoreview 不可加载：编码/审阅路径 **fail-closed**；StageRunner 失败优先于 skill 正文；CoreFacade 外层收尾不得把已封 timeout/failed 再改回 completed。
+5. `skip_claude_md` 仅澄清 / prompt-Skill；材料问答与数字人顾问走 **slim**（`coding_policy_profile=off`），禁止整段 skip。
 6. Workspace/`StageRunner` 尊重 `loop_type` / `architecture_profile=plan_execute`；**file-output 或 `require_review` 强制 ReAct**（PlanExecute 不自动派发 autoreview）。
 
 ---
@@ -160,9 +160,9 @@ blast_radius:     <失败/token/权限影响>
 
 **未来推断降级（预留）**：一旦实现「推断出的 agent」，降级时路径卡**必须**写清：
 
-- `inferred_from` — 推断依据（如 `capability_profile` / 校准信号）  
-- `downgrade_reason` — 为何从 agent→llm  
-- `demote_skipped` — 若因显式钉死跳过，记 `architecture_profile` / `explicit_execution_backend`  
+- `inferred_from` — 推断依据（如 `capability_profile` / 校准信号）
+- `downgrade_reason` — 为何从 agent→llm
+- `demote_skipped` — 若因显式钉死跳过，记 `architecture_profile` / `explicit_execution_backend`
 
 编排级（辩论 / MoA / 多角色团队）是整条流水线组织方式，不是单个 Agent 的执行混合。
 
@@ -178,7 +178,7 @@ blast_radius:     <失败/token/权限影响>
 | **hybrid** | **Syscall `Skill.execute`**：模型出计划再跑 handler。**Pipeline Stage**：与 handler 同支，直接跑 `handler.py`（不先 `sys_llm_generate`） |
 | **prompt** | 模型按 SOP 推理 |
 
-字段空：有 `handler.py` 倾向 handler，否则 prompt。  
+字段空：有 `handler.py` 倾向 handler，否则 prompt。
 **未知/拼写**：**默认硬失败**（fail closed）。开发软降级须显式 `AIPLAT_EXECUTION_TYPE_SOFT_DEV=1` 或 `FAIL_CLOSED=0`。紧急放行见 §7 E5。
 
 ### 组合矩阵（有 `skill_name` 时）
@@ -195,10 +195,10 @@ blast_radius:     <失败/token/权限影响>
 
 要点：
 
-1. **handler / hybrid 永远先于 backend**——写了 `execution_backend=llm` 也不能绕过代码 Skill。  
-2. **Stage hybrid ≠ Syscall hybrid**（务必分清）：Stage 上的 `hybrid` **行为等同直接跑 handler**（无 LLM 规划）；要「模型出计划再跑 handler」必须走 **syscall** `sys_skill_call` → `Skill.execute`，或改用 `agent` 环内再 skill_call。路径卡用 `hybrid_semantics` 区分。  
-3. `prompt` + `llm`：**不**进 `Skill.execute` 的 handler 分支，是引擎 oneshot 读 SOP。  
-4. **`prompt` Skill 在 `agent` 环内**：Stage 绑定的 `skill_name`（prompt）**主要作为 SOP 注入** StageRunner / ReAct 的 system 侧（`_run_stage_skill` 读 SKILL.md body）；**不是**一上来当 Tool 调。环内若再 `sys_skill_call(其它 skill)`，才走 Skill 的 `effects` / PolicyGate / 依赖校验。  
+1. **handler / hybrid 永远先于 backend**——写了 `execution_backend=llm` 也不能绕过代码 Skill。
+2. **Stage hybrid ≠ Syscall hybrid**（务必分清）：Stage 上的 `hybrid` **行为等同直接跑 handler**（无 LLM 规划）；要「模型出计划再跑 handler」必须走 **syscall** `sys_skill_call` → `Skill.execute`，或改用 `agent` 环内再 skill_call。路径卡用 `hybrid_semantics` 区分。
+3. `prompt` + `llm`：**不**进 `Skill.execute` 的 handler 分支，是引擎 oneshot 读 SOP。
+4. **`prompt` Skill 在 `agent` 环内**：Stage 绑定的 `skill_name`（prompt）**主要作为 SOP 注入** StageRunner / ReAct 的 system 侧（`_run_stage_skill` 读 SKILL.md body）；**不是**一上来当 Tool 调。环内若再 `sys_skill_call(其它 skill)`，才走 Skill 的 `effects` / PolicyGate / 依赖校验。
 5. **Stage 绑定 prompt 的 `effects`**：进入 LLM 前会跑 `skill_side_effect_gate`——若 SKILL 声明写盘/网络/exec 等副作用却无 handler，**硬失败**（禁止「LLM 假装已执行」）。这是**拒演**闸门，**不是** PolicyGate 放行后的真实副作用执行；真实副作用仍只在 `sys_skill_call` / `sys_tool_call`（及 handler）路径生效。Stage 级 `effects` **不替代**环内 skill_call 的副作用门禁。
 
 跑完记**路径卡**（不只 `path`）：
@@ -222,12 +222,12 @@ decision = {
 
 ## 5. 工厂与工作区
 
-- 工厂：选 对话 / react / rag + 技能工具；Skill **默认 prompt**。  
-- **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：**生成物 AGENT.md 上**声明的值∈已知集且与 `agent_type` 兼容。  
-- **团队 YAML 覆盖**：YAML 同名字段优先于 AGENT.md（`team_planner` 空才回填）。conformance **不**对「YAML 最终跑法 vs AGENT 期望」做二次意图一致性校验——YAML 是部署钉死，视为运维覆盖；评审时以路径卡 `architecture_profile` / `inferred_from` 为准。  
-- **YAML 漂移 lint（v1.9 可选启用）**：`scripts/lint_team_yaml_profile_drift.py`，读取团队 YAML 与 AGENT.md；若 YAML 的 `architecture_profile` / `execution_backend` 与 AGENT.md 期望冲突，输出 WARNING；若冲突且 YAML 未附 `# drift-ok: <reason>`，可加 `--strict` 硬失败。默认 WARNING，不改变“YAML 优先”的部署语义。  
-- **E2**：仅当 PRD 要求确定性、无 LLM 副作用时，可声明 `execution_type: handler` 并同目录输出 `handler.py`（顶层 `execute`）；媒体目录名禁止自造 handler。注册时复制 sibling。  
-- 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。  
+- 工厂：选 对话 / react / rag + 技能工具；Skill **默认 prompt**。
+- **E1**：推荐在 AGENT.md 写 `architecture_profile`（conversational→oneshot，react→react_tools，rag→react_tools）。conformance 校验：**生成物 AGENT.md 上**声明的值∈已知集且与 `agent_type` 兼容。
+- **团队 YAML 覆盖**：YAML 同名字段优先于 AGENT.md（`team_planner` 空才回填）。conformance **不**对「YAML 最终跑法 vs AGENT 期望」做二次意图一致性校验——YAML 是部署钉死，视为运维覆盖；评审时以路径卡 `architecture_profile` / `inferred_from` 为准。
+- **YAML 漂移 lint（v1.9 可选启用）**：`scripts/lint_team_yaml_profile_drift.py`，读取团队 YAML 与 AGENT.md；若 YAML 的 `architecture_profile` / `execution_backend` 与 AGENT.md 期望冲突，输出 WARNING；若冲突且 YAML 未附 `# drift-ok: <reason>`，可加 `--strict` 硬失败。默认 WARNING，不改变“YAML 优先”的部署语义。
+- **E2**：仅当 PRD 要求确定性、无 LLM 副作用时，可声明 `execution_type: handler` 并同目录输出 `handler.py`（顶层 `execute`）；媒体目录名禁止自造 handler。注册时复制 sibling。
+- 工作区 Execute：写文件类技能会注入编码闭环；`coding_closed_loop: false` 可关。
 - 编码落盘：Pipeline llm 路径有落盘前校验；优先 Agent 环做 peer-review。
 
 | 评审问题 | 建议 |
@@ -254,21 +254,21 @@ decision = {
 | Router | `routing_mode`（llm 路由须 env opt-in） | **原生** |
 | Debate | `debate_participants` | **原生** |
 | MoA | `routing_mode=moa` / `moa_preset` | **原生** |
-| Memory | MemoryManager / Team Brain / CRAG（横切，非 Stage 字段） | **组合** → [knowledge-system.md](../knowledge-system.md)（Memory 四层 / CRAG 回退） |
+| Memory | MemoryManager / Team Brain / CRAG（横切，非 Stage 字段） | **组合** → [knowledge-system.md](../guides/knowledge/knowledge-system.md)（Memory 四层 / CRAG 回退） |
 | Loop Engineering | `done_verify` + `upgrade_policy` + 编码闭环 | **组合** |
 | Tree-of-Thoughts (ToT) | 无一等字段；**近似**：多 stage 并行候选 + `routing_mode=debate` 或 MoA 聚合 | **需扩展**（组合可用） |
 | Graph-of-Thoughts (GoT) | 无一等字段；**近似**：多 Agent + handoff schema 门 + 汇聚 stage 合并子图结果 | **需扩展**（组合可用） |
 
-**ToT 组合示例**：stage A/B/C 各自 `oneshot`/`react_tools` 出候选 → debate/MoA stage 选优 → 下游执行。  
+**ToT 组合示例**：stage A/B/C 各自 `oneshot`/`react_tools` 出候选 → debate/MoA stage 选优 → 下游执行。
 **GoT 组合示例**：多 worker Agent 产出带 `depends_on` / schema 边的中间件 → aggregator stage 按边合并 → 单一交付物。
 
 ### 6.1 与全局闭环的接口（v1.9）
 
-- **Eval Pipeline**：消费路径卡 `decision` 字段，做离线回归、影子流量、金丝雀对比；关注 `actual_path`、`hybrid_semantics`、`downgrade_reason`、`stage_id`、`skill_name`。具体见 Governance 与 `apps/eval`。  
-- **Memory / CRAG**：消费 `execution_type`、`meta_tool`、`capability_profile`，决定检索深度与回退策略；具体见 [knowledge-system.md](../knowledge-system.md)。  
+- **Eval Pipeline**：消费路径卡 `decision` 字段，做离线回归、影子流量、金丝雀对比；关注 `actual_path`、`hybrid_semantics`、`downgrade_reason`、`stage_id`、`skill_name`。具体见 Governance 与 `apps/eval`。
+- **Memory / CRAG**：消费 `execution_type`、`meta_tool`、`capability_profile`，决定检索深度与回退策略；具体见 [knowledge-system.md](../guides/knowledge/knowledge-system.md)。
 - 本文不替代 Eval / Memory 细则，但定义**交互字段契约**：路径卡字段即接口，变更需同 PR 更新本文与其他文档。
 
-Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold）（本文不替代）；知识 / Memory / CRAG 闭环见 [knowledge-system.md](../knowledge-system.md)。
+Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold）（本文不替代）；知识 / Memory / CRAG 闭环见 [knowledge-system.md](../guides/knowledge/knowledge-system.md)。
 
 ---
 
@@ -306,13 +306,13 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 
 ## 9. 实施清单
 
-1. 能规则化 / 权限闸门？→ 程序 / PolicyGate。  
-2. 原子无 SOP？→ Tool；要算数/解析 → meta-tool / code。  
-3. 单次语义、无工具？→ prompt / oneshot。  
-4. 单次「计划→程序」？→ hybrid Skill；多轮纠正？→ Agent 环。  
-5. 多角色？→ Pipeline **编排** stage（stage 内仍是 Agent/Skill）。  
-6. 外部多工具？→ MCP（先证明 Tool/Skill 不够）；合入过 cost ladder。  
-7. 编码落盘？→ 闭环 + §2.6 封存；ReAct 与 PlanExecute 完成前都走交付否决与回执绑定；llm oneshot 不能代替审阅。  
+1. 能规则化 / 权限闸门？→ 程序 / PolicyGate。
+2. 原子无 SOP？→ Tool；要算数/解析 → meta-tool / code。
+3. 单次语义、无工具？→ prompt / oneshot。
+4. 单次「计划→程序」？→ hybrid Skill；多轮纠正？→ Agent 环。
+5. 多角色？→ Pipeline **编排** stage（stage 内仍是 Agent/Skill）。
+6. 外部多工具？→ MCP（先证明 Tool/Skill 不够）；合入过 cost ladder。
+7. 编码落盘？→ 闭环 + §2.6 封存；ReAct 与 PlanExecute 完成前都走交付否决与回执绑定；llm oneshot 不能代替审阅。
 8. 生成物？→ 三类型 + 推荐 `architecture_profile` + 默认 prompt；确定性副作用才用 E2 handler。
 
 ---
@@ -361,9 +361,9 @@ Eval / 金标 / 值班板：见 Governance 与 `apps/eval`（`runs_eval` / gold�
 | 成本阶梯 | 根 `CLAUDE.md` §20 · `check_cost_ladder.py` |
 | YAML 漂移 lint | `scripts/lint_team_yaml_profile_drift.py`（v1.9） |
 | UI E2E 规范 | `engine/skills/e2e_test` handler（单页 recon 或 flow 多步）· `parse_flow`/`scaffold_flow_spec` · `validate_e2e_deliverable` + seal veto · `references/flow-rules.md` · **Pi 不重做** |
-| Memory / CRAG | [knowledge-system.md](../knowledge-system.md) |
+| Memory / CRAG | [knowledge-system.md](../guides/knowledge/knowledge-system.md) |
 
-**维护**：改上表路径时同 PR 更新本文；破坏性语义升 minor。  
+**维护**：改上表路径时同 PR 更新本文；破坏性语义升 minor。
 **非目标**：不替代 PolicyGate 细则、合入物理闸门、CAPABILITIES 全表。
 
 ---

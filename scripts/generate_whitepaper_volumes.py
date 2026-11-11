@@ -845,6 +845,7 @@ def _repair_generated_links(path: Path) -> None:
         special = {
             "../aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
             "../../../docs/whitepaper/aiplat-platform-status-whitepaper.md": "reports/whitepapers/aiplat-platform-status-whitepaper.md",
+            "../../../docs/knowledge-system.md": "docs/guides/knowledge/knowledge-system.md",
             "../API/api-reference.md": "docs/API/api-reference.md",
             "../framework/verification-protocol.md": "docs/framework/verification-protocol.md",
             "./cases/README.md": "docs/whitepaper/cases/README.md",

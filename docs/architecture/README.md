@@ -12,7 +12,7 @@
 | [capability-profile.md](capability-profile.md) | 能力剖面等级与注入表（决策矩阵层 C） |
 | [core/core-layer1-latest.md](core/core-layer1-latest.md) | Core 层最新架构详述 |
 | [governance.md](governance.md) | 治理文档 |
-| [../knowledge-system.md](../knowledge-system.md) | 知识系统完整指南：向量KB/GraphIndex/Wiki/本体/检索/运维 |
+| [../knowledge-system.md](../guides/knowledge/knowledge-system.md) | 知识系统完整指南：向量KB/GraphIndex/Wiki/本体/检索/运维 |
 | [slo.md](slo.md) | SLO 定义 |
 
 ## 当前交付：Pi Thin Runtime

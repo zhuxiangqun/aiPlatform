@@ -14,7 +14,7 @@
 
 ### 你是谁？选文档
 
-| 我是… | 看这篇 | 5分钟能上手 | 
+| 我是… | 看这篇 | 5分钟能上手 |
 |------|------|:---:|
 | **第一天加入，完全不知道怎么用** | [01 - 快速入门](./01-fde-quickstart.md) | ✅ |
 | **我要从零交付一个全新客户域** | [06 - 标准交付 SOP](./06-sop-domain-delivery.md) | ✅ |
@@ -79,5 +79,5 @@
 - [交付手册模板](templates/fde-delivery-manual.md) — 交付后自动生成的客户验收文档
 - [输入输出文档模板](./templates/) — 10 个标准文档模板（客户档案/诊断报告/签收单等）
 - [标书审查实例](./examples/bid-review/delivery-manual.md) — 投标场景实操参考
-- [知识系统完整指南](../../knowledge-system.md) — 知识库反馈闭环
-- [知识系统完整指南](../../knowledge-system.md) — 域本体与 FDE 集成
+- [知识系统完整指南](../../guides/knowledge/knowledge-system.md) — 知识库反馈闭环
+- [知识系统完整指南](../../guides/knowledge/knowledge-system.md) — 域本体与 FDE 集成

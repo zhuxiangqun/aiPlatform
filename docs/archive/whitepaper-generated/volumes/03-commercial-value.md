@@ -22,8 +22,8 @@ language: zh-CN
 > **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/03-commercial-value.md`](../../../reports/whitepapers/volumes/03-commercial-value.md)。本文件仅保留迁移期，不再更新。
 
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -54,9 +54,9 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
-| [`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ✅ |
-| [`docs/whitepaper/cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ✅ |
+| [`AIPLAT_ROADMAP.md`](../../../../AIPLAT_ROADMAP.md) | 商业化路线图 / 评分基线 | ✅ |
+| [`docs/whitepaper/commercial-value-model.md`](../../../whitepaper/commercial-value-model.md) | TCO + 五维价值模型（链 value_calculator） | ✅ |
+| [`docs/whitepaper/cases/internal-illustrative-fde.md`](../../../whitepaper/cases/internal-illustrative-fde.md) | 内部示意案例（authorized: false） | ✅ |
 | [`docs/whitepaper/cases/README.md`](../cases/README.md) | 客户案例授权流程 | ✅ |
 
 
@@ -64,10 +64,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/strategy/comparison-vs-vendors.md`](../../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
-| [`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
-| [`docs/research/aiPlat核心能力对标报告.md`](../../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
-| [`aiPlat-core/core/harness/finance/value_calculator.py`](../../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
+| [`docs/strategy/comparison-vs-vendors.md`](../../../strategy/comparison-vs-vendors.md) | 厂商策略对比（非客户 ROI） | ✅ |
+| [`docs/framework/assessment-scores.json`](../../../framework/assessment-scores.json) | 成熟度评分戳（辅助投资论证，非财务 ROI） | ✅ |
+| [`docs/research/aiPlat核心能力对标报告.md`](../../../research/aiPlat核心能力对标报告.md) | 能力差异（技术侧，非财务） | ✅ |
+| [`aiPlat-core/core/harness/finance/value_calculator.py`](../../../../aiPlat-core/core/harness/finance/value_calculator.py) | 五维价值计量实现 | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -76,11 +76,11 @@ language: zh-CN
 
 本卷不引用未授权的客户 ROI、人天单价或伙伴分成比例。商业论证以平台已接线的价值系统为准：
 
-- 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../../aiPlat-core/core/harness/finance/value_calculator.py)
-- 五维价值映射与 TCO 对照：[`docs/whitepaper/commercial-value-model.md`](../commercial-value-model.md)
+- 价值维度与算法符号：[`aiPlat-core/core/harness/finance/value_calculator.py`](../../../../aiPlat-core/core/harness/finance/value_calculator.py)
+- 五维价值映射与 TCO 对照：[`docs/whitepaper/commercial-value-model.md`](../../../whitepaper/commercial-value-model.md)
 - CEO/CFO/PM 翻译口径：见 `commercial-value-model.md` 第 2 节
 - 分阶段落地闸门：见 `commercial-value-model.md` 第 4 节
-- 示意案例：[`docs/whitepaper/cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md)
+- 示意案例：[`docs/whitepaper/cases/internal-illustrative-fde.md`](../../../whitepaper/cases/internal-illustrative-fde.md)
 
 ---
 
@@ -96,7 +96,7 @@ language: zh-CN
 
 ### 商业价值模型（权威专稿）
 
-> 供商业价值白皮书节选。不编造客户授权 ROI%、人天单价或伙伴分成。  
+> 供商业价值白皮书节选。不编造客户授权 ROI%、人天单价或伙伴分成。
 > 算法符号权威：`aiPlat-core/core/harness/finance/value_calculator.py`
 
 #### 1. TCO 对照项
@@ -152,7 +152,7 @@ language: zh-CN
 #### 5. 授权边界
 
 - 未授权客户数字 **不得** 写入 `volumes/03-commercial-value.md` 正文作承诺。
-- 内部示意见 [`cases/internal-illustrative-fde.md`](../cases/internal-illustrative-fde.md)（`authorized: false`）。
+- 内部示意见 [`cases/internal-illustrative-fde.md`](../../../whitepaper/cases/internal-illustrative-fde.md)（`authorized: false`）。
 - 授权流程见 [`cases/README.md`](../cases/README.md)。
 
 
@@ -171,11 +171,11 @@ language: zh-CN
 ### aiPlat 商业化演进终极作战手册
 
 > 基线：代码交叉验证 | 能力计数见 AIPLAT_CAPABILITIES.md 统计表 | 6/6 syntax,5/5服务健康,架构守卫0违规,全域诊断14项,路径标准化158条
-> 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)  
+> 对标：Hermes Agent · Claude Code · OpenClaw · Octo (明略科技)
 > 定位：**企业级 FDE 操作系统**（Agent 协作网络 + Spec 生命周期管理）
-> 
-> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](../../../AIPLAT_CAPABILITIES.md)（当前计数见该文件）
-> 
+>
+> **当前能力全貌**：参见 [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md)（当前计数见该文件）
+>
 > **最新更新 (2026-07-19)**：P0-P3 hermès-agent 全量吸收 + L6升级三步 + MoA多模型推理。当前计数见 AIPLAT_CAPABILITIES.md。
 
 ---
@@ -214,7 +214,7 @@ Jul Aug Sep | Oct Nov Dec | Jan Feb Mar | Apr May Jun
 
 Phase 0: 紧急止血 (✅ 已完成)
 ├─ 0.1 PII脱敏  ✅
-├─ 0.2 OTel     ✅  
+├─ 0.2 OTel     ✅
 └─ 0.3 语义缓存  ✅
 
 Phase 1: 铸造利刃 (✅ 已完成)
@@ -267,7 +267,7 @@ Phase 5: 竞品借鉴（✅ 已完成 — 本会话）
 
 ##### Phase 0：紧急止血 — 安全合规基线
 
-> **目标**: 通过企业 IT 安全/运维评审，拿到金融/政务采购入场券  
+> **目标**: 通过企业 IT 安全/运维评审，拿到金融/政务采购入场券
 > **周期**: 6 周（Q3 2026） | **人力**: 2 后端 + 1 运维 | **成本增量**: ~$700/月
 
 ---
@@ -288,7 +288,7 @@ Presidio + 自建正则双跑（并行，取并集）:
                           ↓ 取并集 (宁可误标，不可漏标)
   masked_text + mapping = pii_detector.mask(text)
   存储 mapping → request_context (Redis/内存)
-  
+
   LLM 返回后:
   unmasked_text = pii_detector.unmask(response, mapping)
     └─ unmask 前检查 Context.role (仅 admin/data_owner 可见原文)
@@ -392,24 +392,24 @@ async def sys_llm_generate(model, messages, **kwargs):
 ```python
 async def execute(self, context):
     cache_key = md5(query + domain_id)
-    
+
     # L1: 精确匹配
     cached = await redis.get(cache_key)
     if cached:
         return cached  # TTFT < 50ms
-    
+
     # L2: 语义相似
     cached = await semantic_cache.search(query_embedding, domain_id)
     if cached:
         return cached  # TTFT < 200ms
-    
+
     # L3: 正常流程
     result = await self._pipeline(...)
-    
+
     # 写入缓存
     await redis.setex(cache_key, ttl=3600, value=result)
     await semantic_cache.store(query_embedding, result, domain_id)
-    
+
     return result
 ```
 
@@ -423,7 +423,7 @@ async def execute(self, context):
 
 ##### Phase 1：铸造"开发者利刃"
 
-> **目标**: 从"精密重型实验室设备"升级为"开发者友好型工具"  
+> **目标**: 从"精密重型实验室设备"升级为"开发者友好型工具"
 > **周期**: 12 周（Q4 2026） | **人力**: 3 后端 + 1 前端 | **成本增量**: $0
 
 ---
@@ -647,7 +647,7 @@ aiPlat 不是一个图数据库的替代品，而是图数据库之上的 **AI �
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

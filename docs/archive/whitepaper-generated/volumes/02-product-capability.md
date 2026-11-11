@@ -22,8 +22,8 @@ language: zh-CN
 > **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/02-product-capability.md`](../../../reports/whitepapers/volumes/02-product-capability.md)。本文件仅保留迁移期，不再更新。
 
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -49,9 +49,9 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单 | ✅ |
+| [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) | 唯一能力清单 | ✅ |
 | [`docs/whitepaper/aiplat-platform-status-whitepaper.md`](../aiplat-platform-status-whitepaper.md) | 可读包装（含完整能力表） | ✅ |
-| [`docs/matrix/capability-impact-matrix.md`](../../matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
+| [`docs/matrix/capability-impact-matrix.md`](../../../matrix/capability-impact-matrix.md) | 变更影响 | ✅ |
 
 
 ### 2.2 Supporting
@@ -60,8 +60,8 @@ language: zh-CN
 |------|------|:----:|
 | [`docs/manuals/getting-started.md`](../../manuals/getting-started.md) | 上手路径 | ✅ |
 | [`docs/manuals/fde/README.md`](../../manuals/fde/README.md) | FDE 交付场景入口 | ✅ |
-| [`docs/architecture/execution-decision-matrix.md`](../../architecture/execution-decision-matrix.md) | 执行选型（产品/技术评估共用） | ✅ |
-| [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) | 厂外薄交付边界（Pi） | ✅ |
+| [`docs/architecture/execution-decision-matrix.md`](../../../architecture/execution-decision-matrix.md) | 执行选型（产品/技术评估共用） | ✅ |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 厂外薄交付边界（Pi） | ✅ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | Pi Package 用户侧说明 | ✅ |
 
 
@@ -72,17 +72,17 @@ language: zh-CN
 | 场景 | 客户要解决的问题 | 从哪里看能力/怎么做 |
 |------|------------------|---------------------|
 | **FDE 交付** | 把业务问题做成可签收的 AI 交付 | [`docs/manuals/fde/README.md`](../../manuals/fde/README.md) · CAPABILITIES「平台治理 / FDE」 |
-| **App 工厂 / Builder** | 从需求到 Agent/应用产物 | 管理端 Builder · [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md)（厂外交付边界） |
-| **Workbench** | 开发与调试工作台 | [`docs/manuals/management.md`](../../manuals/management.md) · CAPABILITIES「Workbench」 |
+| **App 工厂 / Builder** | 从需求到 Agent/应用产物 | 管理端 Builder · [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md)（厂外交付边界） |
+| **Workbench** | 开发与调试工作台 | [`docs/manuals/management.md`](../../../manuals/management.md) · CAPABILITIES「Workbench」 |
 | **评测治理** | 评测流程与治理规则 | CAPABILITIES「评测 / Governance」 |
 | **ORG 签收** | 组织级签收与现场闭环 | CAPABILITIES「apps/org」· manuals |
 | **渠道接入** | 多渠道消息与集成 | CAPABILITIES「Channel」· 应用端 channels |
-| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/knowledge-system.md`](../../knowledge-system.md) · CAPABILITIES「知识引擎 / RAG」 |
-| **Agent / Skill 运行** | 多步工具调用与技能执行 | CAPABILITIES「Agent 系统 / Skill 系统」· [`docs/architecture/execution-decision-matrix.md`](../../architecture/execution-decision-matrix.md) |
+| **知识 / 本体 / RAG** | 企业知识可检索、可治理 | [`docs/knowledge-system.md`](../../../guides/knowledge/knowledge-system.md) · CAPABILITIES「知识引擎 / RAG」 |
+| **Agent / Skill 运行** | 多步工具调用与技能执行 | CAPABILITIES「Agent 系统 / Skill 系统」· [`docs/architecture/execution-decision-matrix.md`](../../../architecture/execution-decision-matrix.md) |
 | **治理下执行** | 权限、审批、审计可证明 | 安全与治理分卷 · CAPABILITIES「Gate / 安全与治理」 |
-| **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) · [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) |
+| **薄交付（Pi）** | 用户侧轻量跑快照、不装全栈 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) · [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) |
 
-> 上表只指路。**接线以 [`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) 行为为准**；[`docs/manuals/README.md`](../../manuals/README.md) 仅提供操作说明，不作为行为契约。
+> 上表只指路。**接线以 [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) 行为为准**；[`docs/manuals/README.md`](../../manuals/README.md) 仅提供操作说明，不作为行为契约。
 
 ### 3.1 能力统计（摘自 CAPABILITIES）
 
@@ -227,10 +227,10 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 | FDE 现场八步交付 | **FDE 工作台** `/diagnostics/fde` |
 | it-ops 组织试点 / 签收准备 | **组织试点** `/org/pilot` |
 
-操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../contracts/ORG_L5_RUNBOOK.md)。
+操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../contracts/ORG_L5_RUNBOOK.md)。
 
 - [API Reference](../../API/api-reference.md) — 完整 API 文档
-- [自主性评估报告](../../framework/aiplat-complete-assessment.md) — 系统能力评估
+- [自主性评估报告](../../../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../../framework/verification-protocol.md) — 独立复现验证
 
 #### 常见问题
@@ -263,15 +263,15 @@ git pull origin main
 
 | 权威源 | 读什么 |
 |--------|--------|
-| [`docs/architecture/plans/pi-thin-runtime.md`](../../architecture/plans/pi-thin-runtime.md) | 产品定位、轴 A/B、Thin≠Enterprise |
+| [`docs/architecture/plans/pi-thin-runtime.md`](../../../architecture/plans/pi-thin-runtime.md) | 产品定位、轴 A/B、Thin≠Enterprise |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 包入口、Pi-only / 企业回连用法 |
-| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合阶梯（技术） |
+| [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合阶梯（技术） |
 
-> 本卷**不粘贴**上述 living 正文。接线以 [`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) 为准；完整能力表见总白皮书第 3 章。
+> 本卷**不粘贴**上述 living 正文。接线以 [`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) 为准；完整能力表见总白皮书第 3 章。
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

@@ -1,6 +1,6 @@
 # aiPlat 操作手册目录
 
-> 所有操作手册的统一入口。按**责任分型**查找；角色导航仍保留。  
+> 所有操作手册的统一入口。按**责任分型**查找；角色导航仍保留。
 > 分型批次：**E1**（2026-10-23）· 方案见 [`reports/docs-governance/docs-next-round-manuals-links-2026-10.md`](../../reports/docs-governance/docs-next-round-manuals-links-2026-10.md)。
 
 ---
@@ -70,7 +70,7 @@
 | 管理画面操作 | [management.md](management.md) | 管理员 |
 | 管理端 L1 页面手册 | [management-ui-operation-manual.md](management-ui-operation-manual.md) | 用户 / 数字人 |
 | 本体模型管理 | [ontology.md](ontology.md) | 管理员/运维 |
-| 知识管理指南 | [../knowledge-system.md](../knowledge-system.md) | 知识管理员 |
+| 知识管理指南 | [../knowledge-system.md](../guides/knowledge/knowledge-system.md) | 知识管理员 |
 | 部署指南 | [deployment.md](deployment.md) | 运维 |
 | 部署速查 | [deploy-guide.md](deploy-guide.md) | 运维 |
 | 开发指南 | [development.md](development.md) | 开发者 |

@@ -22,8 +22,8 @@ language: zh-CN
 > **DEPRECATED（Batch C3）**：旧位置生成物。新生成物见 [`reports/whitepapers/volumes/05-security-governance.md`](../../../reports/whitepapers/volumes/05-security-governance.md)。本文件仅保留迁移期，不再更新。
 
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`../WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`../WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../whitepaper-suite.yaml`](../../../whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -49,19 +49,19 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/security/security-architecture.md`](../../security/security-architecture.md) | 安全架构 | ✅ |
-| [`docs/compliance/eu-ai-act-assessment.md`](../../compliance/eu-ai-act-assessment.md) | 合规评估 | ✅ |
-| [`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级（L 级，可验证） | ✅ |
+| [`docs/security/security-architecture.md`](../../../security/security-architecture.md) | 安全架构 | ✅ |
+| [`docs/compliance/eu-ai-act-assessment.md`](../../../compliance/eu-ai-act-assessment.md) | 合规评估 | ✅ |
+| [`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md) | 自主性定级（L 级，可验证） | ✅ |
 
 
 ### 2.2 Supporting
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/framework/aiplat-autonomy-framework.md`](../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
-| [`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/framework/scoring-detail.md`](../../framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/framework/aiplat-autonomy-framework.md`](../../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
+| [`docs/framework/aiplat-complete-assessment.md`](../../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/framework/assessment-scores.json`](../../../framework/assessment-scores.json) | 评分机器源 | ✅ |
+| [`docs/framework/scoring-detail.md`](../../../framework/scoring-detail.md) | 评分细则 | ✅ |
 | [`docs/framework/verification-protocol.md`](../../framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 
@@ -71,10 +71,10 @@ language: zh-CN
 
 治理卷材料已厚，本卷 suite 状态为 ready，保留以下权威源：
 
-- 评分戳：[`docs/framework/assessment-scores.json`](../../framework/assessment-scores.json)
-- 安全架构：[`docs/security/security-architecture.md`](../../security/security-architecture.md)
-- Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../.../../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
-- L 级 ADR：[`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../aiplat-l4-autonomy-assessment-v1.0.0.md)
+- 评分戳：[`docs/framework/assessment-scores.json`](../../../framework/assessment-scores.json)
+- 安全架构：[`docs/security/security-architecture.md`](../../../security/security-architecture.md)
+- Gate 与安全能力：[`AIPLAT_CAPABILITIES.md`](../../../../AIPLAT_CAPABILITIES.md) 中 Gate / 安全节
+- L 级 ADR：[`docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md`](../../../whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 > 治理卷不新增示意案例，不引用未授权客户数据。
 
@@ -646,7 +646,7 @@ _(节选；全文见权威源)_
 
 ## 4. 相关横切（对标 / 评级）
 
-完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../WHITEPAPER_SYSTEM.md)。
+完整对标与评级目录见总白皮书 §2.5 与 [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../whitepaper/WHITEPAPER_SYSTEM.md)。
 
 ## 5. 验证
 

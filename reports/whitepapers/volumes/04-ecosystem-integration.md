@@ -3,7 +3,7 @@ title: "aiPlat 生态与集成白皮书"
 volume_id: ecosystem-integration
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:37:31Z"
+generated_at: "2026-11-11T12:38:32Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -19,8 +19,8 @@ language: zh-CN
 
 # aiPlat 生态与集成白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:37:31Z` |
+| 生成时间 (UTC) | `2026-11-11T12:38:32Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -99,7 +99,7 @@ language: zh-CN
 
 ### 生态伙伴技术分层（权威专稿）
 
-> 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。  
+> 供生态与集成白皮书节选。本专稿只定义**接入权限与交付形态**，不定义分成/返佣。
 > 商务条款见 [`ecosystem-partner-commercial-template.md`](../../../docs/whitepaper/ecosystem-partner-commercial-template.md)（以盖章版为准）。
 
 #### 1. 分层总览
@@ -317,10 +317,10 @@ await server.start(host="0.0.0.0", port=8080)
 
 MCP server 的“启用/禁用/策略”推荐以文件系统为真值来源，并按 scope 分离：
 
-- **引擎内置（engine，仅核心能力层使用）**  
+- **引擎内置（engine，仅核心能力层使用）**
   `aiPlat-core/core/engine/mcps/<server>/{server.yaml,policy.yaml}`
 
-- **应用库（workspace，对外/用户可用）**  
+- **应用库（workspace，对外/用户可用）**
   `~/.aiplat/mcps/<server>/{server.yaml,policy.yaml}`
 
 管理面对应两套入口（避免混用）：
@@ -371,7 +371,7 @@ MCPClientConfig(
 #!/bin/false
 ### prod 放行 stdio MCP（路线A）策略
 
-> 背景：stdio MCP 等同于在 core 所在机器上启动本机进程（高风险 L3）。  
+> 背景：stdio MCP 等同于在 core 所在机器上启动本机进程（高风险 L3）。
 > 目标：在 **prod 也允许使用** 的前提下，提供可审计、可回滚、默认拒绝的显式放行机制。
 
 #### 1) 放行条件（必须同时满足）
@@ -380,7 +380,7 @@ MCPClientConfig(
 
 1. `~/.aiplat/mcps/<server>/server.yaml` 的 `metadata.prod_allowed: true`
 2. 环境变量 `AIPLAT_PROD_STDIO_MCP_ALLOWLIST` 包含该 `server_name`（逗号分隔）
-3. `server.yaml` 的 `command` 为绝对路径，且命令路径前缀在 `AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES` 允许范围内  
+3. `server.yaml` 的 `command` 为绝对路径，且命令路径前缀在 `AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES` 允许范围内
    - 该变量支持 `:`（os.pathsep）或 `,` 分隔多个前缀
 4. 加固校验（prod 默认启用）：
    - 禁止高风险解释器作为入口命令（默认：`bash,sh,zsh`；可用 `AIPLAT_STDIO_DENY_COMMAND_BASENAMES` 覆盖）
@@ -626,8 +626,8 @@ find aiPlat-core/core/api/routers -name '*.py' | \
 
 ### AttributionSchema — Agent 效果归因协议
 
-> 版本: 1.0 · 2026-07-17  
-> 目的: 定义外部业务系统向 aiPlatform 回传 Agent 效果的标准化协议  
+> 版本: 1.0 · 2026-07-17
+> 目的: 定义外部业务系统向 aiPlatform 回传 Agent 效果的标准化协议
 > 适用: 所有通过 aiPlatform 部署的 AI Agent 的客户侧集成
 
 ---

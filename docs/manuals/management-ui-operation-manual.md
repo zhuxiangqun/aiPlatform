@@ -64,7 +64,7 @@
   - **编辑器**（`?tab=editor`）：类、属性、关系、状态机编辑与发布。
   - **工厂流水线**（`?tab=factory`）：抽取确认 → 提案 → **人批 apply**；可从 URL 带 `domain` / `proposal`。
   - 组织试点的缺口 Diff 确认后进提案账本，**回到本页工厂 Tab 完成 apply**。
-- **详细步骤**: [`../knowledge-system.md`](../knowledge-system.md) 附录 C；合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
+- **详细步骤**: [`../knowledge-system.md`](../guides/knowledge/knowledge-system.md) 附录 C；合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
 
 ### 知识库
 - **路由**: `/knowledge/library`（及 Vault / 向量 / Wiki 子能力）

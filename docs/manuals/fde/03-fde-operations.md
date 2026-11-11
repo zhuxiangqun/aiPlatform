@@ -2,7 +2,7 @@
 
 > ← [文档导航](README.md)
 
-> **目标角色**：负责已交付客户项目后续维护的 FDE / 运维工程师  
+> **目标角色**：负责已交付客户项目后续维护的 FDE / 运维工程师
 > **前置**：项目已完成⑦ 验收移交
 
 ---
@@ -172,8 +172,8 @@ FDE 在 ③ 问题重构 → 澄清对话中产生的知识缺口会自动入库
 | 查看流程瓶颈 | `GET /api/platform/apps/ontology-editor/domains/{id}/monitor/bottlenecks` |
 | 规则版本管理 | `GET /api/platform/apps/ontology-editor/domains/{id}/rule-versions` |
 
-> **UI 入口**以业务本体为准；上表含 `ontology-editor` 的为 **后端 API 路径**（平台 apps），不是侧边栏菜单名。  
-> 详细操作见 [知识系统完整指南 · 附录 C](../../knowledge-system.md#附录-c本体操作手册) 与 [合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
+> **UI 入口**以业务本体为准；上表含 `ontology-editor` 的为 **后端 API 路径**（平台 apps），不是侧边栏菜单名。
+> 详细操作见 [知识系统完整指南 · 附录 C](../../guides/knowledge/knowledge-system.md#附录-c本体操作手册) 与 [合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
 
 ---
 

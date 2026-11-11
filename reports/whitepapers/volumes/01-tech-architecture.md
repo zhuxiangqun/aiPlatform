@@ -3,7 +3,7 @@ title: "aiPlat 技术架构白皮书"
 volume_id: tech-architecture
 type: whitepaper-volume
 status: generated
-generated_at: "2026-11-11T12:37:31Z"
+generated_at: "2026-11-11T12:38:32Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -19,8 +19,8 @@ language: zh-CN
 
 # aiPlat 技术架构白皮书
 
-> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI  
-> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)  
+> **可再生成分卷** · 权威源见下文清单 · 勿手改能力数/评分/ROI
+> 体系：[`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/whitepaper/WHITEPAPER_SYSTEM.md) · 清单：[`../../../docs/whitepaper/whitepaper-suite.yaml`](../../../docs/whitepaper/whitepaper-suite.yaml)
 > 重生成：`bash scripts/sync_whitepapers.sh` 或 `python3 scripts/generate_whitepaper_volumes.py`
 
 ## 0. 卷册元信息
@@ -32,7 +32,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T12:37:31Z` |
+| 生成时间 (UTC) | `2026-11-11T12:38:32Z` |
 | CAPABILITIES sha256 | `3674a4361be7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -65,7 +65,7 @@ language: zh-CN
 | [`docs/standards/规范-性能.md`](../../../docs/standards/规范-性能.md) | 性能预算与扩展约束 | ✅ |
 | [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) | SLI/SLO / 误差预算 | ✅ |
 | [`docs/architecture/plans/observability-eval-repair-architecture.md`](../../../docs/architecture/plans/observability-eval-repair-architecture.md) | 可观测性架构 | ✅ |
-| [`docs/knowledge-system.md`](../../../docs/knowledge-system.md) | 数据 / 知识存储路径（含原 knowledge-base-architecture 归并正文） | ✅ |
+| [`docs/knowledge-system.md`](../../../docs/guides/knowledge/knowledge-system.md) | 数据 / 知识存储路径（含原 knowledge-base-architecture 归并正文） | ❌ |
 | [`docs/security/security-architecture.md`](../../../docs/security/security-architecture.md) | 安全嵌入（技术视角交叉） | ✅ |
 | [`docs/manuals/testing.md`](../../../docs/manuals/testing.md) | 测试金字塔与策略 | ✅ |
 | [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) | 执行质量门禁 | ✅ |
@@ -147,7 +147,7 @@ aiPlat 按**四层**组织，依赖严格单向 `应用接入 → 平台服务 �
 | **部署与运维** | 生产怎么布？环境/灾备/灰度？ | [`docs/manuals/deployment.md`](../../../docs/manuals/deployment.md) · [`docs/architecture/plans/disaster-recovery-plan.md`](../../../docs/architecture/plans/disaster-recovery-plan.md) · `deploy/helm/aiplat/` | CAPABILITIES「部署与运维 / 部署与灰度」 |
 | **性能与扩展** | QPS/P95/容量/扩展策略？ | [`docs/standards/规范-性能.md`](../../../docs/standards/规范-性能.md) · [`docs/architecture/slo.md`](../../../docs/architecture/slo.md) · `scripts/benchmark_all.sh` | CAPABILITIES「部署与运维」基准条目 |
 | **可观测性** | 日志/指标/追踪怎么采与告警？ | [`docs/architecture/plans/observability-eval-repair-architecture.md`](../../../docs/architecture/plans/observability-eval-repair-architecture.md) · [`docs/standards/规范-core-run_id-trace_id-request_id.md`](../../../docs/standards/规范-core-run_id-trace_id-request_id.md) | CAPABILITIES「可观测性」· 安全卷可交叉 |
-| **数据架构** | 存什么、隔离、备份？ | [`docs/knowledge-system.md`](../../../docs/knowledge-system.md) | CAPABILITIES「知识引擎」· 灾备计划（备份） |
+| **数据架构** | 存什么、隔离、备份？ | [`docs/knowledge-system.md`](../../../docs/guides/knowledge/knowledge-system.md) | CAPABILITIES「知识引擎」· 灾备计划（备份） |
 | **安全嵌入视图** | Gate/信任边界如何嵌进运行时？ | [`docs/security/security-architecture.md`](../../../docs/security/security-architecture.md) | 分卷 05 · CAPABILITIES「安全与治理 / Gate」 |
 | **测试与验证** | 金字塔 / CI / 质量门？ | [`docs/manuals/testing.md`](../../../docs/manuals/testing.md) · [`docs/architecture/execution-quality-gates.md`](../../../docs/architecture/execution-quality-gates.md) · `.github/workflows/` | CAPABILITIES「管理 & 质量」 |
 | **技术风险与演进** | 技术债、依赖风险、路线？ | [`AIPLAT_ROADMAP.md`](../../../AIPLAT_ROADMAP.md) · [`docs/archive/architecture-evolution-roadmap.md`](../../../docs/archive/architecture-evolution-roadmap.md) · [`CLAUDE.md`](../../../CLAUDE.md) §16 | 商业卷 ROADMAP 节选（非财务） |

@@ -1,7 +1,7 @@
 # aiPlat 知识系统 — 完整指南
 
-> 最后更新: 2026-08-11 · 原理优先，细节后置 · API/SQL/操作见附录  
-> **Agent 记忆寿命 / sticky / 任务选模锁**（与 RAG 三大存储并列的运行时记忆）：sticky/archive 租户边界见 [architecture/system-architecture-contract.md](architecture/system-architecture-contract.md)（契约表 Sticky 行）；`task_model_lock` 见根目录 `AIPLAT_CAPABILITIES.md` 与 Core `task_model_lock`。
+> 最后更新: 2026-08-11 · 原理优先，细节后置 · API/SQL/操作见附录
+> **Agent 记忆寿命 / sticky / 任务选模锁**（与 RAG 三大存储并列的运行时记忆）：sticky/archive 租户边界见 [architecture/system-architecture-contract.md](../../architecture/system-architecture-contract.md)（契约表 Sticky 行）；`task_model_lock` 见根目录 `AIPLAT_CAPABILITIES.md` 与 Core `task_model_lock`。
 
 ---
 
@@ -220,7 +220,7 @@ classes:
 | Pipeline→Agent | 运行时绑定 | ✅ |
 | KB文档→Wiki页面 | 文档产出 | ✅ |
 
-> Agent/Skill/Tool 在此作为 TripleStore 知识图的合法节点出现——这是跨域查询的基础。能力实体的详细定义参见[能力剖面文档](architecture/capability-profile.md)。
+> Agent/Skill/Tool 在此作为 TripleStore 知识图的合法节点出现——这是跨域查询的基础。能力实体的详细定义参见[能力剖面文档](../../architecture/capability-profile.md)。
 
 > 详细 API 参见[附录 A](#附录-aapi-端点速查)。完整域管理 CRUD 操作见[附录 C](#附录-c本体操作手册)。
 
@@ -427,14 +427,14 @@ CREATE TABLE triples (
 
 ## 附录 C：本体操作手册
 
-> 版本: **1.3** · 2026-09-20  
-> 适用: aiPlat 管理端现状  
-> **正确入口（以侧边栏为准）**：知识 → **业务本体** → `/knowledge/business`  
-> - 域管理 / 编辑器：`?tab=domains` / `?tab=editor`  
-> - **工厂流水线**（抽取确认 → 提案 → apply）：`?tab=factory`  
-> 旧路径 `/infra/ontology`、`/ontology-editor` 若仍可打开，仅作兼容，**操作请以业务本体为准**。  
-> 企业创建合册：[`contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](./contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)  
-> it-ops 组织试点 / 签收准备（不是本附录职责）：[`contracts/ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) · [`contracts/ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot`
+> 版本: **1.3** · 2026-09-20
+> 适用: aiPlat 管理端现状
+> **正确入口（以侧边栏为准）**：知识 → **业务本体** → `/knowledge/business`
+> - 域管理 / 编辑器：`?tab=domains` / `?tab=editor`
+> - **工厂流水线**（抽取确认 → 提案 → apply）：`?tab=factory`
+> 旧路径 `/infra/ontology`、`/ontology-editor` 若仍可打开，仅作兼容，**操作请以业务本体为准**。
+> 企业创建合册：[`contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)
+> it-ops 组织试点 / 签收准备（不是本附录职责）：[`contracts/ORG_L5_RUNBOOK.md`](../../contracts/ORG_L5_RUNBOOK.md) · [`contracts/ORG_M4_SIGNOFF_PACK.md`](../../contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot`
 
 ---
 
@@ -523,8 +523,8 @@ GraphIndex (SQLite 存储) + Wiki 页面
 
 ### 2.1 用智能生成创建第一个域
 
-1. 打开管理端 → **知识 → 业务本体**（`/knowledge/business`）  
-2. 进入 **域管理**（或编辑器中的新建域）  
+1. 打开管理端 → **知识 → 业务本体**（`/knowledge/business`）
+2. 进入 **域管理**（或编辑器中的新建域）
 3. 若页面提供 **智能生成 / 脚手架**：填写：
 
 | 字段 | 说明 | 示例 |
@@ -945,14 +945,14 @@ FDE 澄清对话 → 检测到缺失概念
 
 it-ops 现场在 **组织试点** `/org/pilot` 可：
 
-1. **预览 Diff**（`GET …/org/ontology/gap-previews`）— 只读，不写活 YAML  
-2. **确认采纳进提案**（`POST …/org/ontology/gap-drafts`）— 进入 **K5 提案账本**，`auto_apply` 关  
-3. 在试点页 **待批 inbox** 打开快照看 Diff；**批准仍走既有审批路由**  
+1. **预览 Diff**（`GET …/org/ontology/gap-previews`）— 只读，不写活 YAML
+2. **确认采纳进提案**（`POST …/org/ontology/gap-drafts`）— 进入 **K5 提案账本**，`auto_apply` 关
+3. 在试点页 **待批 inbox** 打开快照看 Diff；**批准仍走既有审批路由**
 4. **真正写活本体**：仍须在 **业务本体 → 工厂流水线**（`/knowledge/business?tab=factory`）对提案执行人批后的 **apply**（或既有 approve→apply 链路）
 
 **禁止**：把组织试点的「确认采纳进提案」理解成已 apply；禁止在 live 期望 H4 自动写活本体。
 
-权威步骤另见 [`contracts/ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) §3.4–3.5 与 [`contracts/ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md)。
+权威步骤另见 [`contracts/ORG_L5_RUNBOOK.md`](../../contracts/ORG_L5_RUNBOOK.md) §3.4–3.5 与 [`contracts/ORG_M4_SIGNOFF_PACK.md`](../../contracts/ORG_M4_SIGNOFF_PACK.md)。
 
 ---
 
@@ -1005,10 +1005,10 @@ classes:
 
 | 场景 | 手册 / 入口 |
 |------|-------------|
-| 建域、编辑 TBox、工厂 apply | **本附录** · `/knowledge/business` · [`FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](./contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) |
-| FDE ①–⑧ 客户交付（含项目签收单） | [`manuals/fde/`](./manuals/fde/) · `/diagnostics/fde` |
-| it-ops 组织周闭环与 **签收准备**（八闸门，≠ 已签收） | `/org/pilot` · [`ORG_L5_RUNBOOK.md`](./contracts/ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./contracts/ORG_M4_SIGNOFF_PACK.md) |
-| 一句话生成应用 | `/app/factory` · [`manuals/management-ui-operation-manual.md`](./manuals/management-ui-operation-manual.md) |
+| 建域、编辑 TBox、工厂 apply | **本附录** · `/knowledge/business` · [`FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) |
+| FDE ①–⑧ 客户交付（含项目签收单） | [`manuals/fde/`](../../manuals/fde/) · `/diagnostics/fde` |
+| it-ops 组织周闭环与 **签收准备**（八闸门，≠ 已签收） | `/org/pilot` · [`ORG_L5_RUNBOOK.md`](../../contracts/ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](../../contracts/ORG_M4_SIGNOFF_PACK.md) |
+| 一句话生成应用 | `/app/factory` · [`manuals/management-ui-operation-manual.md`](../../manuals/management-ui-operation-manual.md) |
 
 FDE ⑦ 可挂治理面板与 Org L5 取数 shim；**签收准备度 / 剧本 / 证据包以组织试点页为准**，勿在业务本体或 FDE 交付签收单里找八闸门。
 

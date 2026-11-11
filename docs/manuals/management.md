@@ -122,7 +122,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 | Box | **业务本体** | `/knowledge/business` | 域管理 / 编辑器 / **工厂流水线（提案 apply）** |
 | Database | **知识库** | `/knowledge/library` | Vault / 向量 / Wiki（检索轨，不替代拍板） |
 
-> 业务本体详细步骤：[`../knowledge-system.md`](../knowledge-system.md) 附录 C · [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。  
+> 业务本体详细步骤：[`../knowledge-system.md`](../guides/knowledge/knowledge-system.md) 附录 C · [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md)。
 > 旧菜单「本体编辑器 `/ontology-editor`」「本体模型 `/infra/ontology`」已收敛到业务本体，勿再当主入口写进 SOP。
 
 #### 🤖 AI 应用工厂
@@ -243,7 +243,7 @@ aiPlat 管理画面是一个四层架构的 AI 中台管理界面，覆盖基础
 5. 缺口：预览 Diff → 确认进提案；**apply 回业务本体工厂 Tab**
 6. 导出证据包 / 准备度清单 Markdown；看八闸门卡片并跳转补齐
 
-**权威**：[`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md) · [`../contracts/ORG_M4_SIGNOFF_PACK.md`](../contracts/ORG_M4_SIGNOFF_PACK.md)。  
+**权威**：[`../contracts/ORG_L5_RUNBOOK.md`](../contracts/ORG_L5_RUNBOOK.md) · [`../contracts/ORG_M4_SIGNOFF_PACK.md`](../contracts/ORG_M4_SIGNOFF_PACK.md)。
 **勿混淆**：FDE ⑦ 项目签收单 ≠ 本页 Org 送审材料；`m4_claim_allowed` 恒 false。
 
 ### 4.2 系统图谱（`/system-graph`）
