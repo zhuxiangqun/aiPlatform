@@ -7563,6 +7563,7 @@ def eval_p1_regression_status(
     from core.apps.eval.service.capability_case_bank import (
         PROFILE_ID,
         build_agent_capability_cases,
+        load_pack_meta,
     )
     from core.apps.eval.service.capability_cert_readiness import (
         evaluate_certification_readiness,
@@ -7570,6 +7571,9 @@ def eval_p1_regression_status(
     from core.apps.eval.service.capability_id_map import resolve_capability_id
 
     bank = build_agent_capability_cases()
+    meta = load_pack_meta()
+    kind = str(pack_kind or meta.get("kind") or "").strip()
+    status = str(pack_status or meta.get("status") or "").strip()
     review_counts: Counter = Counter()
     draft_by_cap: Dict[str, List[str]] = defaultdict(list)
     draft_counts: Counter = Counter()
@@ -7595,8 +7599,8 @@ def eval_p1_regression_status(
     ready = evaluate_certification_readiness(
         profile_id=PROFILE_ID,
         cases=bank,
-        pack_kind=pack_kind,
-        pack_status=pack_status,
+        pack_kind=kind,
+        pack_status=status,
         compile_plan=True,
     )
     n_gaps = int((ready.get("coverage") or {}).get("n_gaps") or 0)
@@ -7611,12 +7615,14 @@ def eval_p1_regression_status(
         }
         for cap in sorted(draft_counts.keys())
     ]
+    profile_complete = bool(ready.get("profile_complete"))
     return {
         "schema": "eval.p1_regression_status.v1",
         "ok": bool(ready.get("ok")),
         "profile_id": PROFILE_ID,
+        "pack_status": status or str(meta.get("status") or "draft"),
         "quota_inventory_ok": n_gaps == 0,
-        "profile_complete": bool(ready.get("profile_complete")),
+        "profile_complete": profile_complete,
         "case_count": len(bank),
         "review_status_counts": dict(sorted(review_counts.items())),
         "purpose_ok_or_better": purpose_ok_n,
@@ -7627,8 +7633,12 @@ def eval_p1_regression_status(
         "coverage": ready.get("coverage") or {},
         "snapshot": ready.get("snapshot") or {},
         "next_action": (
-            "Eval → Case Pack → Promote agent.capability "
-            "(stamps purpose_ok → freeze; claim stays false)"
+            "claim/Certification remain closed; workspace promote optional"
+            if profile_complete
+            else (
+                "Eval → Case Pack → Promote agent.capability "
+                "(stamps purpose_ok → freeze; claim stays false)"
+            )
         ),
         "review_links": {
             "case_packs_tab": "/eval?tab=case-packs",
@@ -7639,8 +7649,12 @@ def eval_p1_regression_status(
         "certification_eligible": False,
         "honesty": (
             "P1 content quotas are inventory-complete when quota_inventory_ok; "
-            "human purpose_ok/freeze is still required for profile_complete; "
-            "draft_by_capability is a review checklist only; "
+            + (
+                "seed purpose_ok + pack.meta frozen for profile_complete; "
+                if profile_complete
+                else "human purpose_ok/freeze is still required for profile_complete; "
+            )
+            + "draft_by_capability is a review checklist only; "
             "claim_eligible/accuracy_claim/certification stay false."
         ),
     }
