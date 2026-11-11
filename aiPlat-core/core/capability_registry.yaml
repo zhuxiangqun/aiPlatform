@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2605
+total_capabilities: 2609
 
 domains:
   # ══════════════════════════════════════════════════════════════
@@ -6912,7 +6912,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 621
+    caps_count: 625
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8833,6 +8833,22 @@ domains:
       - symbol: get_subject_suite_profile
         type: function
         signature: 'get_subject_suite_profile(profile_id)→Dict'
+        module: aiPlat-core/core/apps/eval/service/subject_suite_profiles.py
+      - symbol: normalize_suite_profile
+        type: function
+        signature: 'normalize_suite_profile(raw, subject_kind?)→Dict; claim closed'
+        module: aiPlat-core/core/apps/eval/service/subject_suite_profiles.py
+      - symbol: load_subject_suite_profile
+        type: function
+        signature: 'load_subject_suite_profile(subject_kind, profile_path)→Dict'
+        module: aiPlat-core/core/apps/eval/service/subject_suite_profiles.py
+      - symbol: resolve_subject_kind_from_profile
+        type: function
+        signature: 'resolve_subject_kind_from_profile(profile)→str'
+        module: aiPlat-core/core/apps/eval/service/subject_suite_profiles.py
+      - symbol: load_cases_for_suite_profile
+        type: function
+        signature: 'load_cases_for_suite_profile(profile)→List[Dict]'
         module: aiPlat-core/core/apps/eval/service/subject_suite_profiles.py
       - symbol: subject_suite_profile_inventory
         type: function
