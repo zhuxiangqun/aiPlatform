@@ -12,8 +12,11 @@ from core.apps.eval.service.api_capability_bank import (
 )
 from core.apps.eval.service.subject_capability_promote import (
     PROMOTE_SCHEMA,
+    SEED_PACK_FREEZE_SCHEMA,
     SEED_PURPOSE_OK_SCHEMA,
     SubjectCapabilityPromoteError,
+    freeze_all_subject_seed_pack_meta,
+    freeze_subject_seed_pack_meta,
     list_promotable_subject_kinds,
     promote_subject_capability_bank,
     stamp_all_subject_seed_purpose_ok,
@@ -122,7 +125,7 @@ def test_stamp_subject_seed_purpose_ok_rejects_agent():
 
 
 def test_stamp_all_and_api_regression_purpose_ok_progress():
-    # Uses real workspace seeds (stamped in this PR). Honesty: pack still draft.
+    # Uses real workspace seeds (purpose_ok + pack.meta frozen in this PR).
     inv = stamp_all_subject_seed_purpose_ok(reviewer="owner")
     assert inv["ok"] is True
     assert inv["n_subjects"] >= 13
@@ -130,6 +133,55 @@ def test_stamp_all_and_api_regression_purpose_ok_progress():
     st = api_regression_status()
     assert st["purpose_ok_or_better"] == st["case_count"]
     assert st["draft_pending"] == 0
-    assert st["pack_status"] == "draft"
-    assert st["profile_complete"] is False
+    assert st["pack_status"] == "frozen"
+    assert st["profile_complete"] is True
     assert st["claim_eligible"] is False
+
+
+def test_freeze_subject_seed_pack_meta_writes_status(tmp_path):
+    import shutil
+
+    src = api_default_seed_dir()
+    dst = tmp_path / "api_capability"
+    shutil.copytree(src, dst)
+    # Ensure draft before freeze (copy may already be frozen from seeds).
+    meta_path = dst / "pack.meta.json"
+    meta = json.loads(meta_path.read_text())
+    meta["status"] = "draft"
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+
+    out = freeze_subject_seed_pack_meta(
+        subject_kind="api", reviewer="owner", seed_dir=dst
+    )
+    assert out["schema"] == SEED_PACK_FREEZE_SCHEMA
+    assert out["ok"] is True
+    assert out["frozen"] is True
+    assert out["profile_complete"] is True
+    assert out["claim_eligible"] is False
+    assert out["accuracy_claim"] is False
+    written = json.loads(meta_path.read_text())
+    assert written["status"] == "frozen"
+    assert written["claim_eligible"] is False
+    assert written["frozen_by"] == "owner"
+
+    again = freeze_subject_seed_pack_meta(
+        subject_kind="api", reviewer="owner", seed_dir=dst
+    )
+    assert again.get("noop") is True
+
+
+def test_freeze_subject_seed_pack_meta_rejects_agent():
+    with pytest.raises(SubjectCapabilityPromoteError):
+        freeze_subject_seed_pack_meta(subject_kind="agent")
+
+
+def test_freeze_all_and_api_regression_profile_complete():
+    inv = freeze_all_subject_seed_pack_meta(reviewer="owner")
+    assert inv["ok"] is True
+    assert inv["n_subjects"] >= 13
+    assert inv["claim_eligible"] is False
+    st = api_regression_status()
+    assert st["pack_status"] == "frozen"
+    assert st["profile_complete"] is True
+    assert st["claim_eligible"] is False
+    assert "workspace promote optional" in st["next_action"]

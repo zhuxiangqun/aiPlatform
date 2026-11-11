@@ -3,10 +3,18 @@
   "pack_id": "generated_app.capability",
   "version": "0.2.0",
   "kind": "curated",
-  "status": "draft",
+  "status": "frozen",
   "claim_eligible": false,
   "scope": "global",
-  "subject_kinds": ["generated_app"],
-  "object_types": ["generated_app"],
-  "notes": "Generated-App Subject capability bank (ADR after Skill). First-class OBJECT_TYPES. Lexical fixture via GeneratedAppSubjectAdapter; ≠ live Pi host / runs_eval E2E / EvalGeneratedAppsPanel. Regression quotas GENERATED_APP_V1_CAPS×8."
+  "subject_kinds": [
+    "generated_app"
+  ],
+  "object_types": [
+    "generated_app"
+  ],
+  "notes": "Generated-App Subject capability bank (ADR after Skill). First-class OBJECT_TYPES. Lexical fixture via GeneratedAppSubjectAdapter; ≠ live Pi host / runs_eval E2E / EvalGeneratedAppsPanel. Regression quotas GENERATED_APP_V1_CAPS×8.",
+  "frozen_by": "owner",
+  "freeze_notes": "Seed pack.meta frozen after purpose_ok + content_purpose_ok; claim_eligible stays false; Certification closed",
+  "accuracy_claim": false,
+  "certification_eligible": false
 }

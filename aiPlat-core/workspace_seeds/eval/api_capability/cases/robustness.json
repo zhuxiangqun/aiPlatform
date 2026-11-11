@@ -34,7 +34,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -72,7 +72,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -110,7 +110,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -148,7 +148,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -186,7 +186,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -224,7 +224,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -262,7 +262,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   },
   {
@@ -300,7 +300,7 @@
       "status": "purpose_ok",
       "decision": "purpose_ok",
       "reviewer": "owner",
-      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft; claim/Certification closed until workspace freeze + independent claim gate"
+      "notes": "Seed purpose_ok after content_purpose_ok; pack.meta stays draft until freeze_subject_seed_pack_meta; claim/Certification stay closed"
     }
   }
 ]

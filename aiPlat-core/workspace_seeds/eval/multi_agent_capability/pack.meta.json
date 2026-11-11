@@ -3,10 +3,16 @@
   "pack_id": "multi_agent.capability",
   "version": "0.2.0",
   "kind": "curated",
-  "status": "draft",
+  "status": "frozen",
   "claim_eligible": false,
   "scope": "global",
-  "subject_kinds": ["multi_agent"],
+  "subject_kinds": [
+    "multi_agent"
+  ],
   "object_types": [],
-  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; ≠ live multi_agent runtime (M2 deferred). Regression quotas MULTI_AGENT_V1_CAPS×8."
+  "notes": "Multi-Agent Subject capability bank (ADR after Tool). Not first-class OBJECT_TYPES. Fixture handoff path via MultiAgentSubjectAdapter; ≠ live multi_agent runtime (M2 deferred). Regression quotas MULTI_AGENT_V1_CAPS×8.",
+  "frozen_by": "owner",
+  "freeze_notes": "Seed pack.meta frozen after purpose_ok + content_purpose_ok; claim_eligible stays false; Certification closed",
+  "accuracy_claim": false,
+  "certification_eligible": false
 }

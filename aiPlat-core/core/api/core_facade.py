@@ -8752,6 +8752,32 @@ def eval_stamp_all_subject_seed_purpose_ok(
     return stamp_all_subject_seed_purpose_ok(reviewer=reviewer)
 
 
+def eval_freeze_subject_seed_pack_meta(
+    *,
+    subject_kind: str,
+    reviewer: str = "owner",
+) -> Dict[str, Any]:
+    """Freeze Subject seed pack.meta.json after purpose_ok (claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        freeze_subject_seed_pack_meta,
+    )
+
+    return freeze_subject_seed_pack_meta(
+        subject_kind=subject_kind, reviewer=reviewer
+    )
+
+
+def eval_freeze_all_subject_seed_pack_meta(
+    *, reviewer: str = "owner"
+) -> Dict[str, Any]:
+    """Freeze all non-agent Subject seed pack.meta.json (claim=false)."""
+    from core.apps.eval.service.subject_capability_promote import (
+        freeze_all_subject_seed_pack_meta,
+    )
+
+    return freeze_all_subject_seed_pack_meta(reviewer=reviewer)
+
+
 def eval_compile_plan_from_suite_profile(
     *,
     profile: Optional[Dict[str, Any]] = None,

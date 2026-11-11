@@ -223,8 +223,12 @@ def multi_agent_regression_status(
         "draft_pending": int(sum(draft_counts.values())),
         "draft_by_capability": draft_checklist,
         "next_action": (
+            "claim/Certification remain closed; workspace promote optional"
+            if profile_complete
+            else (
             "Expand/review multi_agent.capability cases → human purpose_ok/freeze; "
             "fixture handoff path ≠ live multi_agent runtime"
+            )
         ),
         "review_links": {
             "case_packs_tab": "/eval?tab=case-packs",
@@ -236,7 +240,7 @@ def multi_agent_regression_status(
         "certification_eligible": False,
         "honesty": (
             "Multi-Agent regression quotas are inventory-only; "
-            "human purpose_ok/freeze still required for profile_complete; "
+            + ("seed pack.meta frozen + purpose_ok; " if pack_frozen else "human purpose_ok/freeze still required for profile_complete; ") +
             "fixture handoff ≠ live multi_agent runtime (M2 deferred); "
             "claim/cert stay false."
         ),

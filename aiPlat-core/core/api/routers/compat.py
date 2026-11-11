@@ -968,6 +968,35 @@ async def compat_evaluation_stamp_subject_seed_purpose_ok(body: Dict[str, Any]):
         return _case_pack_http_error(e)
 
 
+@router.post("/evaluation/case-packs/freeze-subject-seed-pack-meta")
+async def compat_evaluation_freeze_subject_seed_pack_meta(body: Dict[str, Any]):
+    """Freeze Subject seed pack.meta.json after purpose_ok (claim closed)."""
+    from core.api.core_facade import (
+        eval_freeze_all_subject_seed_pack_meta,
+        eval_freeze_subject_seed_pack_meta,
+    )
+
+    kind = str((body or {}).get("subject_kind") or "").strip()
+    reviewer = str((body or {}).get("reviewer") or "owner").strip() or "owner"
+    all_subjects = bool((body or {}).get("all"))
+    try:
+        if all_subjects or kind in ("*", "all"):
+            return eval_freeze_all_subject_seed_pack_meta(reviewer=reviewer)
+        if not kind:
+            return {
+                "ok": False,
+                "error": "subject_kind required (or all=true)",
+                "claim_eligible": False,
+                "accuracy_claim": False,
+            }
+        return eval_freeze_subject_seed_pack_meta(
+            subject_kind=kind, reviewer=reviewer
+        )
+    except Exception as e:
+        logger.debug("freeze-subject-seed-pack-meta failed", exc_info=True)
+        return _case_pack_http_error(e)
+
+
 @router.post("/evaluation/case-packs/compile-suite-profile")
 async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
     """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
