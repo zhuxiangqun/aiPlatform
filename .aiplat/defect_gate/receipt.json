@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T14:51:57+08:00",
+  "reviewed_at": "2026-11-11T15:17:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "1f794a07adc0a643c6ba317c1283768cc05d2cc7",
-  "diff_sha256": "05b3cf781c77c0af7dbd803dbb7681a13d523ec86bfd875d4117227491d54a34",
-  "head_sha": "cc344b7b04c92749323299e300f2017a1b494edb",
+  "merge_base": "179919c8dfac847e71c5827910a6828b0a6228ae",
+  "diff_sha256": "fcf34522e20ba33d6f6ac59a443888aa6f572940d9f178bc980eae8253ef7c7f",
+  "head_sha": "49287519ccb01937eeadd556598c3df26b7b1a23",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Subject banks 5\u21928/cap; *.benchmark.v1 quotas 4\u21925; claim/cert closed. Variants are oracle-preserving thickeners, not live accuracy. Local lock only; CI unlock is non-author Approve."
+  "note": "Subject *.benchmark.v1 quotas 5\u21928 (ADR floor); bank already \u00d78/cap; holdout on; claim/cert closed; draft cases unchanged. Local lock only; CI unlock is non-author Approve."
 }
