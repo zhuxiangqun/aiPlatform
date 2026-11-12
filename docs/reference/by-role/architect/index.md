@@ -4,7 +4,7 @@ doc_type: Index
 
 # 架构师角色 · 文档导航
 
-> 入口：`docs/manuals/README.md`（手册总目录）
+> 入口：`docs/guides/README.md`（手册总目录）
 
 ## 核心文档
 

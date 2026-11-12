@@ -134,7 +134,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-weekly-report.md`
+> 模板文件：`docs/guides/fde/templates/template-weekly-report.md`
 > 对应步骤：⑧ 运营监控
 
 ---

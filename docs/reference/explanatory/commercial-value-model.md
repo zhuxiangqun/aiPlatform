@@ -15,7 +15,7 @@ doc_type: Reference
 | 模型调用成本 | Token / 本地推理机时 | ModelManager · 配额/限流 |
 | 工具与集成成本 | MCP/API/工具允许列表运维 | PolicyGate · MCP 准入 |
 | 运维与治理成本 | 审计、评测、架构守卫、值班 | CAPABILITIES 治理切片 |
-| 组织与培训成本 | FDE/ORG 签收、手册上手 | `docs/manuals/` |
+| 组织与培训成本 | FDE/ORG 签收、手册上手 | `docs/guides/` |
 
 自建 Harness+RAG+治理时，上表五项通常由客户自行承担；采用平台时对应项转入订阅/私有化运维账单。**具体单价由商务报价填写，本专稿不预设数字。**
 

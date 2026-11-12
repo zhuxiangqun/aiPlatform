@@ -147,7 +147,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-signoff.md`
+> 模板文件：`docs/guides/fde/templates/template-signoff.md`
 > 对应步骤：⑦ 验收移交
 
 ---

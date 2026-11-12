@@ -160,7 +160,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-poc-report.md`
+> 模板文件：`docs/guides/fde/templates/template-poc-report.md`
 > 对应步骤：④ 验证价值 | 对应 Skill：`poc_data_inject`
 
 ---

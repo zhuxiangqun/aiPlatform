@@ -25,7 +25,7 @@ doc_type: Contract
 | 知识工厂 confirm→提案→apply | ✅ | 业务本体 `?tab=factory` |
 | 域脚手架 CLI | ✅ | `scripts/new_domain_scaffold.py` |
 | **域管理「新建域」API** | ✅ 已修 | UI 曾打 `/api/core/domains`（404）；已改为 `/api/core/ontology/domains`（与 `wiki.py` 一致）。编辑器路径仍推荐：`/api/platform/apps/ontology-editor/domains` |
-| FDE 工作台内嵌本手册 | ❌ | ⑦ 无链到本文；⑤ POC 页有「POC 操作手册」→ 已归档的 `docs/manuals/fde/_archive/fde-poc-playbook.md`（**不是**本文） |
+| FDE 工作台内嵌本手册 | ❌ | ⑦ 无链到本文；⑤ POC 页有「POC 操作手册」→ 已归档的 `docs/guides/fde/_archive/fde-poc-playbook.md`（**不是**本文） |
 | 与 PPT / PLAYBOOK 版本引用 | ✅ v1.1 | 链到 PPT v3.7、PLAYBOOK v1.3 |
 | it-ops 组织试点 / 签收准备 | ✅ 交叉引用 | 入口 `/org/pilot`；权威 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md)。**不是** FDE ⑦ 交付签收单 |
 

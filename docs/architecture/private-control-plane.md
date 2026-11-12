@@ -5,7 +5,7 @@ doc_type: Architecture
 # Private Control Plane — 内部治理平面
 
 > **C2 消歧 / SoT**：本文是架构簇内 **PolicyGate / ApprovalGate 权威入口（短索引）**。
-> 对外长文/四层防御叙述见 [`docs/articles/private-control-plane.md`](../reference/articles/private-control-plane.md)——**同名异职：短入口 vs 文章，勿合并正文**。
+> 对外长文/四层防御叙述见 [`docs/reference/articles/private-control-plane.md`](../reference/articles/private-control-plane.md)——**同名异职：短入口 vs 文章，勿合并正文**。
 
 > 相关约束正文：[`governance.md`](./governance.md)、[`eu-ai-act-compliance.md`](./eu-ai-act-compliance.md)。
 

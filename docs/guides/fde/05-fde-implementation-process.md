@@ -796,11 +796,11 @@ FDE 的 HITL 审批点不是均匀分布的——只在 **AI 无法自主判定�
 
 | 文档 | 位置 | 用途 |
 |------|------|------|
-| 快速入门 | `docs/manuals/fde/01-fde-quickstart.md` | 5 分钟上手 |
-| 交付操作手册 | `docs/manuals/fde/02-fde-delivery.md` | 快速入门和日常操作 |
-| 运维与自演进 | `docs/manuals/fde/03-fde-operations.md` | 交付后运维 |
-| 管理与扩展 | `docs/manuals/fde/04-fde-admin.md` | Agent/Workflow 创建 |
+| 快速入门 | `docs/guides/fde/01-fde-quickstart.md` | 5 分钟上手 |
+| 交付操作手册 | `docs/guides/fde/02-fde-delivery.md` | 快速入门和日常操作 |
+| 运维与自演进 | `docs/guides/fde/03-fde-operations.md` | 交付后运维 |
+| 管理与扩展 | `docs/guides/fde/04-fde-admin.md` | Agent/Workflow 创建 |
 | 交付手册模板 | `docs/manuals/fde/fde-delivery-manual.md` | 自动生成的交付手册 |
-| 输入输出文档模板 | `docs/manuals/fde/templates/` | 10 个标准文档模板 |
-| 标书审查实例 | `docs/manuals/fde/examples/bid-review/` | 投标场景参考 |
+| 输入输出文档模板 | `docs/guides/fde/templates/` | 10 个标准文档模板 |
+| 标书审查实例 | `docs/guides/fde/examples/bid-review/` | 投标场景参考 |
 | 冒烟测试 | `scripts/smoke_test.sh` | 快速验证核心流程 |

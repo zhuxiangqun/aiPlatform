@@ -170,7 +170,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-customer-profile.md`
+> 模板文件：`docs/guides/fde/templates/template-customer-profile.md`
 > 对应步骤：① 业务认知 | 对应 Skill：`customer_profile_creator`
 
 ---

@@ -13,16 +13,16 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 # 下一轮：manuals 责任分型 + 维护区链接门禁扩面（2026-10）
 
-> **性质**：已收口方案（E0–E4）。#379 已合入；exemption 拆除见合入后独立提交。  
-> **前提**：责任导向 D0–D5 已收口；过程材料在 `reports/docs-governance/`。  
+> **性质**：已收口方案（E0–E4）。#379 已合入；exemption 拆除见合入后独立提交。
+> **前提**：责任导向 D0–D5 已收口；过程材料在 `reports/docs-governance/`。
 > **仍不追求配额减量**；删除仅当 Q1=无且 R5=无义务。
 
 ---
 
 ## 0. 目标
 
-1. **`docs/manuals/`**：按责任分型整理索引（现行操作 / 专题合册 / 过程或过期），避免与 contracts 过程纸混读。  
-2. **链接门禁**：把 `verify_doc_links.py` 从「仅 3 个入口文件」扩到 **维护区 README + 入口链一层**（仍非全站；archive 可 WARN）。  
+1. **`docs/guides/`**：按责任分型整理索引（现行操作 / 专题合册 / 过程或过期），避免与 contracts 过程纸混读。
+2. **链接门禁**：把 `verify_doc_links.py` 从「仅 3 个入口文件」扩到 **维护区 README + 入口链一层**（仍非全站；archive 可 WARN）。
 3. **运维债**：PR #379 合并后拆除 `ex-2026-10-docs-cleanup-c0-c4`（见 §4）。
 
 非目标：子仓 `*/docs` 搬迁；`verify_docs.py` 菜单假阳性全清；整簇删 manuals。
@@ -62,7 +62,7 @@ predecessor: docs-reasonable-reduction-plan-2026-10（D0–D5 已收口）
 
 ## 3. manuals 分型（E1 · 已执行）
 
-以 `docs/manuals/README.md` 为权威索引（三类分区已落地）。复核表：[`e1-manuals-typing-2026-10-23.md`](./e1-manuals-typing-2026-10-23.md)。
+以 `docs/guides/README.md` 为权威索引（三类分区已落地）。复核表：[`e1-manuals-typing-2026-10-23.md`](./e1-manuals-typing-2026-10-23.md)。
 
 | 标签 | 含义 | 默认 |
 |------|------|------|

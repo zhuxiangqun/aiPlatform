@@ -195,7 +195,7 @@ Week 4:  验收 Checklist + 客户培训 + 签收 + 启动首月护航
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-diagnosis-report.md`
+> 模板文件：`docs/guides/fde/templates/template-diagnosis-report.md`
 > 对应步骤：③ 问题重构 | 对应 Skill：`field_assessment`
 
 ---
