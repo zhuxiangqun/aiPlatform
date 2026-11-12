@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T06:25:21+08:00",
+  "reviewed_at": "2026-11-13T06:45:58+08:00",
   "base_ref": "origin/main",
-  "merge_base": "9aaf8b7020f8110fc46dc600fb312b3a7e99a7e7",
-  "diff_sha256": "5cd5681ec34be191a6c217f1028efb854d93f7421a908e0675a4339c5c3ed73a",
-  "head_sha": "fee1ed408a79e07bbfb6058035fa58ea77bdbf7b",
+  "merge_base": "979d4259363586baa3a2499a3931c3a36a963f43",
+  "diff_sha256": "4a09c8292e07cf405560713627c0714f3a59b61f3bec26e4c7a414a7afc95289",
+  "head_sha": "2d655f5e1a77aad13c3294baab9f0797b66385d6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Inventory suite_profile_href + Case Pack ?profile_id= deeplink; claim closed. Local lock only; CI unlock is non-author Approve."
+  "note": "Inventory/Case Pack Compile+Exam dry CTA only; claim closed. Local lock only."
 }

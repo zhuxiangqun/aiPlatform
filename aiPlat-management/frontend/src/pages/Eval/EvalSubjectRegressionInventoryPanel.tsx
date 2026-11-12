@@ -69,8 +69,10 @@ type Props = { tenantId?: string };
 export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) {
   const [loading, setLoading] = useState(false);
   const [promoting, setPromoting] = useState(false);
+  const [examBusy, setExamBusy] = useState(false);
   const [error, setError] = useState('');
   const [promoteMsg, setPromoteMsg] = useState('');
+  const [examMsg, setExamMsg] = useState('');
   const [status, setStatus] = useState<Inventory | null>(null);
   const [promoteKind, setPromoteKind] = useState('prompt');
 
@@ -147,10 +149,58 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
     }
   }, [load]);
 
+  const onCompileExamDry = useCallback(async () => {
+    setExamBusy(true);
+    setExamMsg('');
+    setError('');
+    try {
+      const row = (status?.subjects || []).find((r) => r.subject_kind === promoteKind);
+      const profileId = String(row?.profile_id || '').trim();
+      if (!profileId) {
+        throw new Error(`no profile_id for subject ${promoteKind}`);
+      }
+      const compiled = unwrap(
+        (await agentEvalApi.casePackCompileSuiteProfile({
+          profile_id: profileId,
+        })) as Envelope<Record<string, unknown>>,
+      );
+      if (compiled && compiled.ok === false) {
+        throw new Error(
+          String(compiled.error || compiled.message || 'compile-suite-profile failed'),
+        );
+      }
+      const exam = unwrap(
+        (await agentEvalApi.casePackRunSuiteProfile({
+          profile_id: profileId,
+          live: false,
+        })) as Envelope<Record<string, unknown>>,
+      );
+      if (exam && exam.ok === false) {
+        throw new Error(String(exam.error || exam.message || 'run-suite-profile failed'));
+      }
+      setExamMsg(
+        `compile+exam(dry) ${profileId} · claim=${String(
+          Boolean(exam?.claim_eligible ?? compiled?.claim_eligible),
+        )} · cases=${String(
+          (exam as { n_cases?: number; case_count?: number })?.n_cases ??
+            (exam as { case_count?: number })?.case_count ??
+            '—',
+        )}`,
+      );
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExamBusy(false);
+    }
+  }, [promoteKind, status?.subjects]);
+
   const rows = status?.subjects || [];
   const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
   const methodHref = status?.review_links?.method_track_tab || '/eval?tab=method-track';
   const p1Href = status?.review_links?.p1_regression_tab || '/eval?tab=p1-regression';
+  const selectedProfileId = String(
+    rows.find((r) => r.subject_kind === promoteKind)?.profile_id || '',
+  ).trim();
 
   return (
     <div className="space-y-4 text-sm" data-testid="eval-subject-regression-inventory-panel">
@@ -232,11 +282,26 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
               >
                 {promoting ? 'Promoting…' : 'Promote 全部'}
               </button>
+              <button
+                type="button"
+                disabled={examBusy || promoting || !selectedProfileId}
+                onClick={() => void onCompileExamDry()}
+                className="rounded border border-violet-700/60 px-2 py-1 text-violet-100 disabled:opacity-50"
+                data-testid="eval-subject-inventory-compile-exam-dry"
+                title="compile-suite-profile → run-suite-profile live=false；claim 仍关闭"
+              >
+                {examBusy
+                  ? 'Exam…'
+                  : selectedProfileId
+                    ? `Compile+Exam dry (${selectedProfileId})`
+                    : 'Compile+Exam dry'}
+              </button>
               <span className="text-gray-500">
-                claim 仍关；需 content_purpose_ready；仅工作区 registry 冻结
+                claim 仍关；需 content_purpose_ready；仅工作区 registry 冻结；exam≠accuracy
               </span>
             </div>
             {promoteMsg ? <p className="text-xs text-emerald-200/90">{promoteMsg}</p> : null}
+            {examMsg ? <p className="text-xs text-violet-200/90">{examMsg}</p> : null}
             <div className="flex flex-wrap gap-3 text-xs">
               <Link className="text-sky-300 hover:underline" to={packsHref}>
                 打开 Case Pack

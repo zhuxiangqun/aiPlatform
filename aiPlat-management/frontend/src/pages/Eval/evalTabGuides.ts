@@ -56,7 +56,7 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
     title: 'Case Pack',
     what: '工作区 Case Pack 工厂：草稿扩题、人审、freeze、version++、coverage、变异/trace/holdout、LLM 候选、校准闭环。',
     why: 'Plan v2 的题库载体；frozen 保可比，L3 generated/trace 保发现，均默认不可 claim。',
-    can: '选档含各 Subject smoke/regression/benchmark→compile→run exam（匹配 Subject 题库）；draft→review→freeze；holdout；Subject 感知 coverage/heatmap/fill 与 P4/P5 readiness。',
+    can: '选档含各 Subject smoke/regression/benchmark；Compile Profile / Run dry / 一键 Compile+Run dry；draft→review→freeze；holdout；coverage/heatmap/fill 与 P4/P5 readiness。',
     not: 'freeze ≠ 准确率；校准 ≠ accuracy_claim；generated/trace 不可 freeze 入 claim；Profile exam ≠ claim。',
   },
   'case-editor': {
@@ -81,8 +81,8 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
   'subject-regression-inventory': {
     title: 'Subject Inventory',
     what: '跨 Subject regression 诚实总览：OBJECT_TYPES + Subject-local 题库配额/draft/profile_complete 矩阵。',
-    can: '一眼看齐/缺口、content_purpose_ready、profile_complete、workspace_promoted；按 Subject 或 Promote 全部（all=true）写入工作区 registry；行内 suite_profile_href 深链 Case Pack（带 profile_id）→ compile/run exam。',
-    not: '总览齐 ≠ claim；seed profile_complete ≠ workspace_promoted；深链 ≠ 已跑 exam；Promote/freeze ≠ accuracy；Arena/G2b/S1 不在此表。',
+    can: '一眼看齐/缺口、content_purpose_ready、profile_complete、workspace_promoted；Promote 当前/全部；行内 suite_profile_href；一键 Compile+Exam dry（选中 Subject 的 profile_id）。',
+    not: '总览齐 ≠ claim；seed profile_complete ≠ workspace_promoted；dry exam ≠ accuracy / Certification；Arena/G2b/S1 不在此表。',
   },
   'p1-regression': {
     title: 'P1 Regression',
