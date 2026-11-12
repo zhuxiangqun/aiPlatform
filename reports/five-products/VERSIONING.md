@@ -11,7 +11,7 @@ doc_type: Report
 
 1. **SSOT**: [`versions.yaml`](./versions.yaml) lists each capability’s expected `version`.
 2. `packages/*/package.json` `version` **must equal** SSOT.
-3. `reports/five-products/modules/*/module.yaml` `version` **must equal** SSOT.
+3. `docs/products/five-products/modules/*/module.yaml` `version` **must equal** SSOT.
 4. Compat matrix `min_version` must be **≤** package version (semver-ish).
 5. Bump: patch for contract/smoke fixes; minor for D1/D2 packaging features; major only with ADR / breaking contract.
 

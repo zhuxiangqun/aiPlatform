@@ -44,6 +44,6 @@ doc_type: Report
 ## 验证
 
 ```bash
-python3 reports/five-products/modules/ontology/contracts/validate_sample.py
+python3 docs/products/five-products/modules/ontology/contracts/validate_sample.py
 python3 -m pytest aiPlat-core/core/tests/unit/test_ontology_api_v0.py -q
 ```

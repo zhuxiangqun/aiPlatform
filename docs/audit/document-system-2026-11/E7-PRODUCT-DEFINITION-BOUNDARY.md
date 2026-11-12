@@ -18,7 +18,7 @@ doc_type: Report
 ## 2. 已移动
 
 ```text
-reports/five-products/modules/
+docs/products/five-products/modules/
 → docs/products/five-products/modules/
 ```
 

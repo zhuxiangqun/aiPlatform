@@ -32,7 +32,7 @@ doc_type: Report
 ```bash
 pytest aiPlat-core/core/tests/unit/test_diagnosis_v1_c1.py aiPlat-core/core/tests/unit/test_diagnosis_v1_c2.py -q
 PYTHONPATH=aiPlat-core python3 -c "from core.apps.diagnosis.service.metrics import fixture_metrics; print(fixture_metrics(limit=10,blind=True)['top1_rate'])"
-python3 reports/five-products/modules/diagnosis/contracts/validate_sample.py
+python3 docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
 python3 scripts/check_five_products_status_sync.py
 bash scripts/ops_engineering_freeze_check.sh
 ```

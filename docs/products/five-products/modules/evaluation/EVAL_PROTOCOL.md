@@ -42,6 +42,6 @@ doc_type: Report
 ## 验证
 
 ```bash
-python3 reports/five-products/modules/evaluation/contracts/validate_sample.py
+python3 docs/products/five-products/modules/evaluation/contracts/validate_sample.py
 python3 -m pytest aiPlat-core/core/tests/unit/test_eval_protocol_v0.py -q
 ```

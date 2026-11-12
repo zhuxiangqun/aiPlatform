@@ -641,7 +641,7 @@ docs/doc-paths.yaml
 | `docs/whitepaper/**` | 规范 → `docs/standards/`；非规范 → `docs/reference/explanatory/`；生成 → `reports/` |
 | `docs/architecture/plans/**` | 保留 `architecture/plans/`（非 canonical） |
 | `docs/reports/**` | 根 `reports/docs-governance/` 或归档 |
-| `reports/five-products/modules/**` | `docs/products/five-products/modules/` |
+| `docs/products/five-products/modules/**` | `docs/products/five-products/modules/` |
 | `reports/five-products/contracts/**` | `docs/contracts/products/five-products/` |
 | `reports/five-products/plans/**` | `docs/products/five-products/plans/` |
 | `reports/five-products/ops/**` | `reports/products/five-products/ops/` |

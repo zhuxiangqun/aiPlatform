@@ -31,7 +31,7 @@ doc_type: Report
 
 ```bash
 PYTHONPATH=aiPlat-core python3 -c "from core.apps.diagnosis.service.metrics import fixture_metrics; import json; print(json.dumps(fixture_metrics(limit=10), indent=2)[:800])"
-python3 reports/five-products/modules/diagnosis/contracts/validate_sample.py
+python3 docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
 python3 scripts/check_five_products_status_sync.py
 pytest aiPlat-core/core/tests/unit/test_diagnosis_v1_c1.py -q
 bash scripts/ops_engineering_freeze_check.sh

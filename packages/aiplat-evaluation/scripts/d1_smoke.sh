@@ -16,7 +16,7 @@ export AIPLAT_EXECUTION_DB_PATH="$AIPLAT_HOME/exec-smoke.sqlite3"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 
-python3 "$ROOT/reports/five-products/modules/evaluation/contracts/validate_sample.py"
+python3 "$ROOT/docs/products/five-products/modules/evaluation/contracts/validate_sample.py"
 
 export AIPLAT_EVAL_HEALTHZ_SCHEMA="$PKG/contracts/schemas/healthz.schema.json"
 "$PY" - <<'PY'

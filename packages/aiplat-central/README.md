@@ -8,4 +8,4 @@ Central host packaging for capability `aiplat` (Thin).
 - D2 Thin local closeout: `scripts/d2_local_closeout.sh` · [`docs/D2_THIN.md`](./docs/D2_THIN.md)
 - PG/HA: `docs/pg_ha/` · cutover stays unauthorized until checklist all green + production_signed live
 
-Module charter: `reports/five-products/modules/aiplat/MODULE.md`
+Module charter: `docs/products/five-products/modules/aiplat/MODULE.md`

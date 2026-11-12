@@ -10,4 +10,4 @@ Ontology Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · A3 Accepted（�
 
 `process_split_authorized` stays **false** until live checklist ✅.
 
-Charter: `reports/five-products/modules/ontology/MODULE.md`
+Charter: `docs/products/five-products/modules/ontology/MODULE.md`

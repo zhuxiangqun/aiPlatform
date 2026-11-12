@@ -13,7 +13,7 @@ checks:
       - "DiagnosisReport"
       - "accuracy_claim"
   - id: diagnosis_module_doc
-    path: reports/five-products/modules/diagnosis/MODULE.md
+    path: docs/products/five-products/modules/diagnosis/MODULE.md
     must_contain:
       - "accuracy_claim=false"
       - "process_split_authorized=false"

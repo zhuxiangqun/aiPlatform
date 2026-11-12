@@ -1,6 +1,6 @@
 """aiPlat control-plane v0 — host exchange envelope + healthz shape.
 
-SSOT: reports/five-products/modules/aiplat/contracts/schemas/
+SSOT: docs/products/five-products/modules/aiplat/contracts/schemas/
 """
 from __future__ import annotations
 

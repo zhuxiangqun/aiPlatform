@@ -11,7 +11,7 @@ doc_type: Reference
 
 | 检查 | 门槛 | 命令 |
 |------|------|------|
-| Contract samples | < 5s wall · exit 0 | `python3 reports/five-products/modules/aiplat/contracts/validate_sample.py` |
+| Contract samples | < 5s wall · exit 0 | `python3 docs/products/five-products/modules/aiplat/contracts/validate_sample.py` |
 | D1 smoke | < 30s · exit 0 | `bash packages/aiplat-central/scripts/d1_smoke.sh` |
 | Compat + security | gate budgets | `d2_compat_check.sh` · `d2_security_check.sh` |
 

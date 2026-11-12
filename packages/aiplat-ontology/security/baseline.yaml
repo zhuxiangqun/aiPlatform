@@ -12,7 +12,7 @@ checks:
     must_contain:
       - "ontology.api.v0"
   - id: ontology_api_doc
-    path: reports/five-products/modules/ontology/ONTOLOGY_API.md
+    path: docs/products/five-products/modules/ontology/ONTOLOGY_API.md
     must_contain:
       - "ontology.api.v0"
       - "CoreFacade"

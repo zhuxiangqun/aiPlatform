@@ -99,7 +99,7 @@ doc_type: Report
 ## 验证
 
 ```bash
-python3 reports/five-products/modules/diagnosis/contracts/validate_sample.py
+python3 docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
 python3 scripts/check_five_products_status_sync.py
 bash scripts/ops_engineering_freeze_check.sh
 ```

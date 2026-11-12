@@ -23,7 +23,7 @@ echo "== Diagnosis D2 local closeout (cohost; does NOT authorize) =="
 bash "$SCRIPT_DIR/d2_admin_check.sh" || fail "d2_admin_check"
 
 t0=$(date +%s)
-python3 "$ROOT/reports/five-products/modules/diagnosis/contracts/validate_sample.py" || fail "validate_sample"
+python3 "$ROOT/docs/products/five-products/modules/diagnosis/contracts/validate_sample.py" || fail "validate_sample"
 t1=$(date +%s)
 PERF=$((t1 - t0))
 [[ "$PERF" -lt 5 ]] || fail "contract sample took ${PERF}s (>=5)"

@@ -23,7 +23,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 echo "== Ontology D3 local acceptance (UAT dry-run; not production) =="
 bash "$SCRIPT_DIR/d2_admin_check.sh" || fail "d2_admin"
-"$PY" "$ROOT/reports/five-products/modules/ontology/contracts/validate_sample.py" || fail "contracts"
+"$PY" "$ROOT/docs/products/five-products/modules/ontology/contracts/validate_sample.py" || fail "contracts"
 bash "$SCRIPT_DIR/d1_install.sh" || fail "install"
 BEFORE="$(readlink "$AIPLAT_ONTOLOGY_PREFIX/current")"
 bash "$SCRIPT_DIR/d1_upgrade.sh" || fail "upgrade"

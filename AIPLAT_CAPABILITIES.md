@@ -1477,7 +1477,7 @@ scan_hash: 8f9548ec24f4
 | compile_ontology_constraints | `` | ✅ | 自动同步 | 已合入 |
 | publish_business_action | `core/harness/ontology_engine/graph_index.py` | ✅ | 自动同步 | 已合入 |
 | WikiEngine | `harness/knowledge/wiki_engine.py` | ✅ | 自动同步 | 已合入 |
-| Ontology API v0 | `harness/knowledge/ontology_api.py` + `CoreFacade.wiki_structured_query_api` / `wiki_search_pages_api` / `get_graph_health_api`；契约 `reports/five-products/modules/ontology/contracts/` | ✅ | 统一 `ontology.api.v0` 交换形；`/wiki/query-structured`、`/wiki/pages`、`/wiki/engine/graph-stats/{id}` 附加 `ontology_api`；生成物适用：已接线（知识检索横切） | 已合入 |
+| Ontology API v0 | `harness/knowledge/ontology_api.py` + `CoreFacade.wiki_structured_query_api` / `wiki_search_pages_api` / `get_graph_health_api`；契约 `docs/products/five-products/modules/ontology/contracts/` | ✅ | 统一 `ontology.api.v0` 交换形；`/wiki/query-structured`、`/wiki/pages`、`/wiki/engine/graph-stats/{id}` 附加 `ontology_api`；生成物适用：已接线（知识检索横切） | 已合入 |
 | Ontology D1 Thin | `packages/aiplat-ontology` + `GET /api/core/ontology/healthz`（`ontology_healthz_payload`） | ✅ | 共宿 Central；`product_id=ontology`；无 A3 拆分；生成物适用：不适用（平台共宿打包） | 已合入 |
 | build_prompt_to_agent_bridge | `` | ✅ | 自动同步 | 已合入 |
 | build_model_usage_bridge | `` | ✅ | 自动同步 | 已合入 |
@@ -2599,7 +2599,7 @@ scan_hash: 8f9548ec24f4
 | Canary 灰度部署 | harness/canary/ | ✅ | Canary/A-B/Shadow/Auto-Rollback 四种灰度模式 + 自动回滚 | 已合入 |
 | FeedbackLoops 反馈闭环 | harness/feedback_loops/ | ✅ | local + prod + push 三通道反馈收集 + drain wired | 已合入 |
 | Health 健康检查 | harness/health/ | ✅ | 子系统健康状态聚合 + Capability Health + Symbol Health | 已合入 |
-| aiPlat Control Plane v0 | `harness/meta/control_plane.py` + `GET /api/core/healthz`（`CoreFacade.aiplat_healthz_payload`）；契约 `reports/five-products/modules/aiplat/contracts/` | ✅ | 宿主 `aiplat.control.v0` + A1 healthz（`product_id=aiplat`）；`/health` 仍为仪表盘 legacy；生成物适用：不适用（平台横切宿主探针） | 已合入 |
+| aiPlat Control Plane v0 | `harness/meta/control_plane.py` + `GET /api/core/healthz`（`CoreFacade.aiplat_healthz_payload`）；契约 `docs/products/five-products/modules/aiplat/contracts/` | ✅ | 宿主 `aiplat.control.v0` + A1 healthz（`product_id=aiplat`）；`/health` 仍为仪表盘 legacy；生成物适用：不适用（平台横切宿主探针） | 已合入 |
 | aiPlat Central D1 Thin | `packages/aiplat-central`（`d1_install/upgrade/rollback/backup/smoke` + healthz schema） | ✅ | Central 宿主 Thin 安装布局 + `/api/core/healthz` smoke；无 PG/HA；生成物适用：不适用（平台宿主打包） | 已合入 |
 | aiPlat Central D2 compat | `packages/aiplat-central/compat/matrix.yaml` + `scripts/d2_compat_check.sh` | ✅ | Central/Pi/Ontology/Eval/FDE-PREP 兼容矩阵；生成物适用：不适用（平台宿主打包） | 已合入 |
 | aiPlat Central D2+ security | `packages/aiplat-central/security/baseline.yaml` + `scripts/d2_security_check.sh` | ✅ | 宿主安全基线（token middleware / admin MFA / Pi enterprise-off / FDE draft gate）；生成物适用：不适用 | 已合入 |

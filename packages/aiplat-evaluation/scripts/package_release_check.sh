@@ -26,7 +26,7 @@ python3 - <<PY
 from pathlib import Path
 repo = Path("$REPO")
 pkg = repo / "packages/aiplat-evaluation/contracts/schemas"
-reports = repo / "reports/five-products/modules/evaluation/contracts/schemas"
+reports = repo / "docs/products/five-products/modules/evaluation/contracts/schemas"
 assert pkg.is_dir()
 # JSON files under reports/schemas are forbidden (README-only shim).
 json_files = sorted(p.name for p in reports.glob("*.json"))

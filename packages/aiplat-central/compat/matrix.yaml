@@ -49,12 +49,12 @@ units:
     notes: "Field D1 Accepted + D2 ops pack; production_field=true; compose long-running excluded"
 contracts:
   - id: ontology.api.v0
-    path: reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
+    path: docs/products/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
   - id: eval.protocol.v0
     # SSOT after ARCH v1.3 / #572 — reports/.../schemas is shim-only (README)
     path: packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json
   - id: aiplat.control.v0
-    path: reports/five-products/modules/aiplat/contracts/schemas/control_plane.schema.json
+    path: docs/products/five-products/modules/aiplat/contracts/schemas/control_plane.schema.json
 forbidden_without_adr:
   - pg_ha_production_cutover_without_checklist_green
   - five_process_full_split_e4

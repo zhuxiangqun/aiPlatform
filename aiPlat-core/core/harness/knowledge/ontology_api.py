@@ -1,6 +1,6 @@
 """Ontology API v0 — public exchange envelope for entity/relation/graph/wiki/asset.
 
-SSOT: reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
+SSOT: docs/products/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json
 """
 from __future__ import annotations
 

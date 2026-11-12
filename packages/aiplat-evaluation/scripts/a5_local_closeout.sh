@@ -57,7 +57,7 @@ print("rollback restore ok", n)
 PY
 
 # 3) contracts sample
-python3 "$REPO/reports/five-products/modules/evaluation/contracts/validate_sample.py"
+python3 "$REPO/docs/products/five-products/modules/evaluation/contracts/validate_sample.py"
 
 # 4) freeze / authorize posture (must stay false)
 if [[ "${AIPLAT_EVAL_A5_SKIP_FREEZE:-0}" != "1" ]]; then
