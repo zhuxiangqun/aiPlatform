@@ -1,19 +1,51 @@
 {
   "_comment": "ruff F821 baseline. Rebuild: bash scripts/ruff_f821_ratchet.sh --rebuild",
-  "_generated": "2026-07-05T03:27:56Z",
-  "_total_files": 8,
-  "_total_violations": 10,
+  "_generated": "2026-11-12T03:11:16Z",
+  "_total_files": 70,
+  "_total_violations": 125,
   "files": {
+    "aiPlat-core/core/acp/server.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
     "aiPlat-core/core/api/routers/agents.py": {
       "count": 1,
       "symbols": [
         "time"
       ]
     },
-    "aiPlat-core/core/api/routers/wiki.py": {
+    "aiPlat-core/core/api/routers/diagnostics.py": {
       "count": 1,
       "symbols": [
-        "_json"
+        "aggregate_repair_history"
+      ]
+    },
+    "aiPlat-core/core/api/routers/engine_skills.py": {
+      "count": 1,
+      "symbols": [
+        "meta_ops"
+      ]
+    },
+    "aiPlat-core/core/api/routers/pipeline_execution.py": {
+      "count": 1,
+      "symbols": [
+        "create_pipeline_engine"
+      ]
+    },
+    "aiPlat-core/core/api/routers/workspace_agents.py": {
+      "count": 3,
+      "symbols": [
+        "_get_aiplat_home",
+        "_wget_aiplat_home",
+        "e"
+      ]
+    },
+    "aiPlat-core/core/api/routers/workspace_skills.py": {
+      "count": 1,
+      "symbols": [
+        "e"
       ]
     },
     "aiPlat-core/core/apps/agents/materials_chat.py": {
@@ -28,10 +60,230 @@
         "user_id"
       ]
     },
-    "aiPlat-core/core/harness/execution/pipeline_engine.py": {
+    "aiPlat-core/core/apps/agents/parallel_executor.py": {
       "count": 1,
       "symbols": [
-        "skill_corpus_context"
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/apps/fde/service/rapid_insight_service.py": {
+      "count": 1,
+      "symbols": [
+        "p"
+      ]
+    },
+    "aiPlat-core/core/apps/quality/scanner.py": {
+      "count": 1,
+      "symbols": [
+        "os"
+      ]
+    },
+    "aiPlat-core/core/apps/tools/base.py": {
+      "count": 1,
+      "symbols": [
+        "kwargs"
+      ]
+    },
+    "aiPlat-core/core/apps/tools/database.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/apps/tools/test_case_executor.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/apps/tools/test_case_generator.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/engine/skills/evidence_chain/handler.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/coordination/dynamic_orchestrator.py": {
+      "count": 1,
+      "symbols": [
+        "json"
+      ]
+    },
+    "aiPlat-core/core/harness/coordination/kanban_engine.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/deployment/canary.py": {
+      "count": 1,
+      "symbols": [
+        "logger"
+      ]
+    },
+    "aiPlat-core/core/harness/document/converters/_pdf.py": {
+      "count": 1,
+      "symbols": [
+        "Dict"
+      ]
+    },
+    "aiPlat-core/core/harness/document/video.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/evaluation/eval_metrics.py": {
+      "count": 8,
+      "symbols": [
+        "CorrectnessResult",
+        "MatchMode",
+        "RefusalResult",
+        "SafetyContentResult",
+        "TextQualityResult",
+        "TrajectoryQuality",
+        "e",
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/evaluation/rag_evaluator.py": {
+      "count": 1,
+      "symbols": [
+        "get_llm_api_key"
+      ]
+    },
+    "aiPlat-core/core/harness/evaluation/self_heal_gate.py": {
+      "count": 1,
+      "symbols": [
+        "signal_type"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/langgraph/graphs/planning.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/loop/_facade.py": {
+      "count": 1,
+      "symbols": [
+        "tool_name"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/loop/base.py": {
+      "count": 1,
+      "symbols": [
+        "stop_reason"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/pipeline_eval.py": {
+      "count": 9,
+      "symbols": [
+        "EvalRunner",
+        "PipelineState",
+        "PostprocessCorrector",
+        "_safe_join",
+        "_write_file",
+        "asyncio",
+        "export_otel_trace",
+        "logger",
+        "timezone"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/pipeline_healing.py": {
+      "count": 2,
+      "symbols": [
+        "PipelineEngine",
+        "PipelineState"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/pipeline_prompt.py": {
+      "count": 7,
+      "symbols": [
+        "AgentConfidence",
+        "AgentDecision",
+        "AgentOutput",
+        "Issue",
+        "IssueSeverity",
+        "PipelineState",
+        "timezone"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/pipeline_stage.py": {
+      "count": 5,
+      "symbols": [
+        "AgentDecision",
+        "FailureClassifier",
+        "PipelinePhase",
+        "PipelineState",
+        "_log"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/pipeline_state.py": {
+      "count": 3,
+      "symbols": [
+        "PipelineStageConfig",
+        "PipelineState",
+        "_safe_join"
+      ]
+    },
+    "aiPlat-core/core/harness/execution/roundtable.py": {
+      "count": 1,
+      "symbols": [
+        "parts"
+      ]
+    },
+    "aiPlat-core/core/harness/infrastructure/gates/policy_gate.py": {
+      "count": 2,
+      "symbols": [
+        "ClassVar",
+        "_OPERATION_RISK_WEIGHTS"
+      ]
+    },
+    "aiPlat-core/core/harness/integration/agent.py": {
+      "count": 6,
+      "symbols": [
+        "ExecutionRequest",
+        "ExecutionResult",
+        "logger",
+        "new_prefixed_id",
+        "os",
+        "time"
+      ]
+    },
+    "aiPlat-core/core/harness/integration/graph.py": {
+      "count": 4,
+      "symbols": [
+        "ExecutionRequest",
+        "ExecutionResult",
+        "logging",
+        "new_prefixed_id"
+      ]
+    },
+    "aiPlat-core/core/harness/integration/skill.py": {
+      "count": 2,
+      "symbols": [
+        "ExecutionRequest",
+        "ExecutionResult"
+      ]
+    },
+    "aiPlat-core/core/harness/integration/tool.py": {
+      "count": 3,
+      "symbols": [
+        "ExecutionRequest",
+        "ExecutionResult",
+        "new_prefixed_id"
+      ]
+    },
+    "aiPlat-core/core/harness/knowledge/conversation_ingestor.py": {
+      "count": 1,
+      "symbols": [
+        "os"
       ]
     },
     "aiPlat-core/core/harness/knowledge/knowledge_writeback.py": {
@@ -42,16 +294,189 @@
         "_timezone"
       ]
     },
+    "aiPlat-core/core/harness/knowledge/skill_marketplace.py": {
+      "count": 2,
+      "symbols": [
+        "get_aiplat_data_dir",
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/knowledge/staleness_monitor.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/knowledge/system_evolver.py": {
+      "count": 1,
+      "symbols": [
+        "os"
+      ]
+    },
+    "aiPlat-core/core/harness/knowledge/test_ontology_e2e.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/knowledge/wiki_indexer.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/learning/agent_refiner.py": {
+      "count": 1,
+      "symbols": [
+        "get_aiplat_data_dir"
+      ]
+    },
+    "aiPlat-core/core/harness/learning/partner_selector.py": {
+      "count": 1,
+      "symbols": [
+        "Tuple"
+      ]
+    },
     "aiPlat-core/core/harness/memory/compression.py": {
       "count": 1,
       "symbols": [
         "json"
       ]
     },
+    "aiPlat-core/core/harness/memory/manager.py": {
+      "count": 1,
+      "symbols": [
+        "total_tokens"
+      ]
+    },
+    "aiPlat-core/core/harness/meta/control_profile.py": {
+      "count": 1,
+      "symbols": [
+        "ProfileRegistry"
+      ]
+    },
+    "aiPlat-core/core/harness/models/spec_lifecycle.py": {
+      "count": 1,
+      "symbols": [
+        "SkillRegistry"
+      ]
+    },
+    "aiPlat-core/core/harness/monitoring/wake_agent.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/multimodal/voice_loop.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/observability/alerts/__init__.py": {
+      "count": 1,
+      "symbols": [
+        "_log"
+      ]
+    },
+    "aiPlat-core/core/harness/ontology_engine/datasource_status.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/ontology_engine/engine.py": {
+      "count": 2,
+      "symbols": [
+        "async_enhance",
+        "enhanced_result"
+      ]
+    },
+    "aiPlat-core/core/harness/ontology_engine/entity_resolver.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
+    "aiPlat-core/core/harness/optimization/goal_executor.py": {
+      "count": 1,
+      "symbols": [
+        "g"
+      ]
+    },
+    "aiPlat-core/core/harness/optimization/goal_generator.py": {
+      "count": 2,
+      "symbols": [
+        "_time",
+        "os"
+      ]
+    },
+    "aiPlat-core/core/harness/optimization/tool_evolution.py": {
+      "count": 1,
+      "symbols": [
+        "logging"
+      ]
+    },
     "aiPlat-core/core/harness/utils/model_injection.py": {
       "count": 1,
       "symbols": [
         "Dict"
+      ]
+    },
+    "aiPlat-core/core/harness/utils/prompt_loader.py": {
+      "count": 1,
+      "symbols": [
+        "yaml"
+      ]
+    },
+    "aiPlat-core/core/server.py": {
+      "count": 2,
+      "symbols": [
+        "logger",
+        "logging"
+      ]
+    },
+    "aiPlat-platform/api/rest/routes.py": {
+      "count": 4,
+      "symbols": [
+        "collection_id",
+        "directory",
+        "files",
+        "kind"
+      ]
+    },
+    "aiPlat-platform/apps/fde/api/fde.py": {
+      "count": 2,
+      "symbols": [
+        "_load_manual_meta",
+        "e"
+      ]
+    },
+    "aiPlat-platform/apps/value/api/value.py": {
+      "count": 2,
+      "symbols": [
+        "get_aiplat_data_dir",
+        "logging"
+      ]
+    },
+    "aiPlat-platform/apps/workbench/api/workbench.py": {
+      "count": 2,
+      "symbols": [
+        "capability",
+        "task"
+      ]
+    },
+    "aiPlat-platform/builder/builder_workflow_service.py": {
+      "count": 1,
+      "symbols": [
+        "summary_parts"
+      ]
+    },
+    "aiPlat-platform/kb/poc/mineru_extract.py": {
+      "count": 2,
+      "symbols": [
+        "_load_mineru_content_list",
+        "_table_text_to_cells"
       ]
     }
   }
