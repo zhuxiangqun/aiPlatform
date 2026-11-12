@@ -109,13 +109,8 @@ allowed_bases:
 # Missing owner/reason/expires → invalid debt (not applied, still blocks posture).
 max_active_exemptions: 3
 # Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
-exemptions:
-  - id: "ex-2026-11-12-f821-baseline"
-    owner: "platform-oncall"
-    reason: "F821 ratchet baseline refresh (64 existing files); remove after baseline is consumed"
-    expires: "2026-11-19"
-    gates: ["inflation"]
-    paths: ["**"]
+exemptions: []
+# Cleared 2026-11-12: ex-2026-11-12-f821-baseline consumed after baseline merged.
 # Cleared 2026-11-12: ex-2026-11-04-eval-evidence-packaging expired 2026-11-11;
 # PR #577/#578/#579 merged, so the exemption is retired.
 # Cleared 2026-11-04: ex-2026-10-27-core-tests-ci-slice-e2e expired 2026-11-03.
