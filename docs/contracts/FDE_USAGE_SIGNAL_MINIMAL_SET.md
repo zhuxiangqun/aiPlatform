@@ -119,7 +119,7 @@ CREATE INDEX IF NOT EXISTS idx_action_audit_domain_actor
 
 ---
 
-## 3. API 契约（待实施）
+## 3. API 契约（已实施）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|

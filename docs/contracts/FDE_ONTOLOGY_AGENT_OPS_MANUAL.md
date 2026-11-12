@@ -24,7 +24,7 @@ doc_type: Contract
 | 应用库 Agent 创建 / 从模板安装 | ✅ | `/workspace/agents` · `Agents.tsx` |
 | 知识工厂 confirm→提案→apply | ✅ | 业务本体 `?tab=factory` |
 | 域脚手架 CLI | ✅ | `scripts/new_domain_scaffold.py` |
-| **域管理「新建域」API** | ✅ 已修 | UI 曾打 `/api/core/domains`（404）；已改为 `/api/core/ontology/domains`（与 `wiki.py` 一致）。编辑器路径仍推荐：`/api/platform/apps/ontology-editor/domains` |
+| **域管理「新建域」API** | ✅ 已修 | UI 曾打 `/api/core/domains`（404）；已改为 `/api/core/wiki/ontology/domains`（与 `wiki.py` 一致）。编辑器路径仍推荐：`/api/platform/apps/ontology-editor/domains` |
 | FDE 工作台内嵌本手册 | ❌ | ⑦ 无链到本文；⑤ POC 页有「POC 操作手册」→ 已归档的 `docs/guides/fde/_archive/fde-poc-playbook.md`（**不是**本文） |
 | 与 PPT / PLAYBOOK 版本引用 | ✅ v1.1 | 链到 PPT v3.7、PLAYBOOK v1.3 |
 | it-ops 组织试点 / 签收准备 | ✅ 交叉引用 | 入口 `/org/pilot`；权威 [`ORG_L5_RUNBOOK.md`](./ORG_L5_RUNBOOK.md) · [`ORG_M4_SIGNOFF_PACK.md`](./ORG_M4_SIGNOFF_PACK.md)。**不是** FDE ⑦ 交付签收单 |
@@ -74,30 +74,30 @@ doc_type: Contract
 
 ### 2.1 路径一：域管理「新建域」
 
-1. 打开 **知识 → 业务本体**。  
-2. 顶部 Tab 选 **域管理**（`?tab=domains`）。  
-3. 点 **新建域**。  
-4. 弹窗 **创建领域本体**：填写  
-   - **标识**（`domain_id`，如 `acme-ops`，建议小写+连字符）  
-   - **名称**、**描述**  
-5. 点 **创建**。  
-6. 预期：提示「创建成功！现在可以添加类和关系」；列表出现新域卡片。  
-7. 在卡片上 **添加类 / 关系**；需要时用 **一键分类+构建** 等（以页面按钮为准）。  
+1. 打开 **知识 → 业务本体**。
+2. 顶部 Tab 选 **域管理**（`?tab=domains`）。
+3. 点 **新建域**。
+4. 弹窗 **创建领域本体**：填写
+   - **标识**（`domain_id`，如 `acme-ops`，建议小写+连字符）
+   - **名称**、**描述**
+5. 点 **创建**。
+6. 预期：提示「创建成功！现在可以添加类和关系」；列表出现新域卡片。
+7. 在卡片上 **添加类 / 关系**；需要时用 **一键分类+构建** 等（以页面按钮为准）。
 
-**API（后台）**：`POST /api/core/ontology/domains`  
-（UI：`OntologyManager.tsx` → `WIKI_API=/api/core/ontology`）
+**API（后台）**：`POST /api/core/wiki/ontology/domains`
+（UI：`OntologyManager.tsx` → `WIKI_API=/api/core/wiki/ontology`）
 
 **落盘**：`~/.aiplat/ontologies/{domain_id}.yaml`，并热注册 `DomainRouter`。
 
 ### 2.2 路径二：本体编辑器（推荐，平台层权威 CRUD）
 
-1. **业务本体 → 编辑器**（`?tab=editor`）。  
-2. 左侧 **业务域本体** 旁点 **+**（Create domain）。  
-3. 输入 `domain_id` 与显示名 → **Create**。  
-4. 选中域 → **New class** 等编辑类/关系。  
-5. 点 **Publish**（保存图标）写回 live YAML。  
+1. **业务本体 → 编辑器**（`?tab=editor`）。
+2. 左侧 **业务域本体** 旁点 **+**（Create domain）。
+3. 输入 `domain_id` 与显示名 → **Create**。
+4. 选中域 → **New class** 等编辑类/关系。
+5. 点 **Publish**（保存图标）写回 live YAML。
 
-**API**：`POST /api/platform/apps/ontology-editor/domains`，以及 classes / publish 等。  
+**API**：`POST /api/platform/apps/ontology-editor/domains`，以及 classes / publish 等。
 
 FDE ① 页横幅也会提示：新客户建域请走 Ontology Editor / 业务本体，而不是在 FDE 里「新建本体」。
 
@@ -105,14 +105,14 @@ FDE ① 页横幅也会提示：新客户建域请走 Ontology Editor / 业务�
 
 用于**已有域**上「文档/代码→提案→改说明书」：
 
-1. **业务本体 → 工厂流水线**（`?tab=factory`；可带 `&domain=` / `&proposal=`）。  
-2. 右上角选 **当前域**（lock-service / it-ops / data-gov / …）。  
-3. **① 知识抽取**：上传/粘贴 → **抽取** → 待审 **确认** / **忽略**。  
-4. **①b 代码/表头建议**：选「表头/CSV」粘贴 CSV → **表头入队提案**；或「代码片段」→ 入队（禁自动 apply）。  
-5. **② 跨域解析**：对候选 **关联**（按需）。  
-6. **③ 本体提案**：**批准** → **应用（apply）**；页面展示**最近 apply 回执**（版本/新增类/快照路径）。  
+1. **业务本体 → 工厂流水线**（`?tab=factory`；可带 `&domain=` / `&proposal=`）。
+2. 右上角选 **当前域**（lock-service / it-ops / data-gov / …）。
+3. **① 知识抽取**：上传/粘贴 → **抽取** → 待审 **确认** / **忽略**。
+4. **①b 代码/表头建议**：选「表头/CSV」粘贴 CSV → **表头入队提案**；或「代码片段」→ 入队（禁自动 apply）。
+5. **② 跨域解析**：对候选 **关联**（按需）。
+6. **③ 本体提案**：**批准** → **应用（apply）**；页面展示**最近 apply 回执**（版本/新增类/快照路径）。
 
-表/CSV 入轨仍在 **FDE⑦**，勿与本页建说明书混淆。  
+表/CSV 入轨仍在 **FDE⑦**，勿与本页建说明书混淆。
 **勿与 FDE ⑧ Evolve（配置白名单）混淆**——那不是说明书提案。
 
 ### 2.4 路径四：CLI 脚手架（无管理端按钮）
@@ -131,8 +131,8 @@ PYTHONPATH=aiPlat-core:. .venv/bin/python scripts/new_domain_scaffold.py \
 
 动作合同不在「新建域」弹窗里一次填完，通常：
 
-1. 准备 `customer_action` 命名空间的 Action YAML（可参考 `aiPlat-core/core/workspace_seeds/actions/`，如 `it_ops_alert_lifecycle.yaml`）。  
-2. FDE 工作台使用 **注册动作**（或 `POST /api/platform/apps/fde/actions/from-yaml`）装入 ActionRegistry。  
+1. 准备 `customer_action` 命名空间的 Action YAML（可参考 `aiPlat-core/core/workspace_seeds/actions/`，如 `it_ops_alert_lifecycle.yaml`）。
+2. FDE 工作台使用 **注册动作**（或 `POST /api/platform/apps/fde/actions/from-yaml`）装入 ActionRegistry。
 3. 验证：AcceptTab / 动作卡片能看到分诊等按钮，且错误状态会 **blocked**。
 
 ---
@@ -162,8 +162,8 @@ PYTHONPATH=aiPlat-core:. .venv/bin/python scripts/new_domain_scaffold.py \
 | 写入演示案例 / 加权检索 / 高分反馈 / 强制入队提案 / 回滚 | 指定域 | P0–P2 在线学习；入队后链到 **业务本体→工厂** `?tab=factory&domain=&proposal=` |
 | ①b 代码/表头建议（工厂） | 指定域 | `code-suggestions` + **`schema-suggestions`**（表头→提案）；禁自动 apply；≠ Path B 写图 |
 
-种图后：在动作卡片上执行 **分诊 / 挂疑似 / 确认根因** 等 → 走 `POST …/actions/execute` → ActionRegistry 硬门 → handler。  
-Action 成功后会 **best-effort** 写回本体学习案例（`ontology_case_learning.record_case_from_action`），不改 live YAML。  
+种图后：在动作卡片上执行 **分诊 / 挂疑似 / 确认根因** 等 → 走 `POST …/actions/execute` → ActionRegistry 硬门 → handler。
+Action 成功后会 **best-effort** 写回本体学习案例（`ontology_case_learning.record_case_from_action`），不改 live YAML。
 这是**正式执行通道**；「演示」仅指场景数据，不是旁路写库。
 
 #### 3.1.1 在线学习 / 受控进化（API）
@@ -206,11 +206,11 @@ FDE ⑤ 一带卡片「POC 操作手册」指向**已归档** POC 注入剧本�
 
 ### 4.1 应用库 Agent（正确入口）
 
-1. **AI 应用工厂 → Agent** → `/workspace/agents`（页标题多为「应用库 Agent」）。  
-2. 点 **创建** → 填表提交。  
-3. 或点 **从模板安装** → 选 seed → 安装。  
+1. **AI 应用工厂 → Agent** → `/workspace/agents`（页标题多为「应用库 Agent」）。
+2. 点 **创建** → 填表提交。
+3. 或点 **从模板安装** → 选 seed → 安装。
 
-**API**：`POST /api/core/workspace/agents`；模板：`GET/POST …/workspace/agents/seeds…`  
+**API**：`POST /api/core/workspace/agents`；模板：`GET/POST …/workspace/agents/seeds…`
 
 **落盘**：`~/.aiplat/agents/` 下出现对应目录 / `AGENT.md`。
 
@@ -228,21 +228,21 @@ FDE ⑤ 一带卡片「POC 操作手册」指向**已归档** POC 注入剧本�
 
 ### 5.1 本体
 
-- [ ] 业务本体 → 域管理 / 编辑器列表可见新 `domain_id`  
-- [ ] `~/.aiplat/ontologies/{domain_id}.yaml` 存在且含类/关系  
-- [ ] （可选）工厂提案状态为「已应用」  
-- [ ] （可选）FDE ② 能选到该域；⑦ 种图或导入后实体可选  
+- [ ] 业务本体 → 域管理 / 编辑器列表可见新 `domain_id`
+- [ ] `~/.aiplat/ontologies/{domain_id}.yaml` 存在且含类/关系
+- [ ] （可选）工厂提案状态为「已应用」
+- [ ] （可选）FDE ② 能选到该域；⑦ 种图或导入后实体可选
 
 ### 5.2 动作
 
-- [ ] ActionRegistry 能 `get` 到 `customer_action:…`  
-- [ ] 合法状态执行成功；错误状态返回 blocked，图未乱改  
+- [ ] ActionRegistry 能 `get` 到 `customer_action:…`
+- [ ] 合法状态执行成功；错误状态返回 blocked，图未乱改
 
 ### 5.3 Agent
 
-- [ ] `/workspace/agents` 列表出现新 Agent  
-- [ ] `~/.aiplat/agents/` 有对应文件  
-- [ ] （可选）在同页执行/启动一次  
+- [ ] `/workspace/agents` 列表出现新 Agent
+- [ ] `~/.aiplat/agents/` 有对应文件
+- [ ] （可选）在同页执行/启动一次
 
 ---
 
@@ -252,7 +252,7 @@ FDE ⑤ 一带卡片「POC 操作手册」指向**已归档** POC 注入剧本�
 |------|------|
 | FDE 找不到「新建本体」 | 预期如此 → 去 **业务本体** |
 | 新建域成功但 FDE ② 没有 | 刷新；确认 DomainRouter / 本体目录已加载；必要时重启 API |
-| 域管理新建 404 | 确认前端已用 `/api/core/ontology/domains`；或改走 **编辑器** Publish 路径 |
+| 域管理新建 404 | 确认前端已用 `/api/core/wiki/ontology/domains`；或改走 **编辑器** Publish 路径 |
 | 种图失败 / 类未知 | 域 YAML 是否故障版词表；it-ops 种图前会对齐 `workspace_seeds/ontologies/it-ops.yaml` |
 | 动作一直 blocked | 查实体 `state` 与动作 `required_state`；查 ACL 角色 Header |
 | Agent 创建无入口 | 确认打开的是 **应用库 Agent** `/workspace/agents`，不是 FDE / 引擎 Agent |
@@ -290,7 +290,7 @@ PYTHONPATH=aiPlat-core:. .venv/bin/python scripts/new_domain_scaffold.py \
 | 入口 | 代码锚点 |
 |------|----------|
 | 菜单 业务本体 / FDE / Agent | `aiPlat-management/frontend/src/pageManifest.ts` |
-| 新建域（域管理） | `…/Infra/Ontology/OntologyManager.tsx`（`WIKI_API=/api/core/ontology`） |
+| 新建域（域管理） | `…/Infra/Ontology/OntologyManager.tsx`（`WIKI_API=/api/core/wiki/ontology`） |
 | 编辑器 Create domain | `…/OntologyEditor/index.tsx` → `/platform/apps/ontology-editor/domains` |
 | 知识工厂 | `…/KnowledgeFactory/KnowledgeFactoryPage.tsx` |
 | FDE 种图/动作/三柱/案例学习 | `…/Diagnostics/FdeDashboard.tsx` AcceptTab（含 `ontology/cases*`） |

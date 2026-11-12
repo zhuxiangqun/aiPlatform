@@ -53,7 +53,7 @@ doc_type: Contract
 
 ```yaml
 # 种子示意 ~/.aiplat/org_goals/it-ops.yaml（实施时落地，本文仅契约）
-goal_id: it-ops.alert_closure.weekly
+goal_id: goal-it-ops-alert-sla
 domain_id: it-ops
 title: 开放告警组织闭环
 schedule: "0 9 * * 1"   # 或 manual
