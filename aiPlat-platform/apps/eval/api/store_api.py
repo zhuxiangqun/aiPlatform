@@ -587,15 +587,27 @@ async def get_system_regression_status(
 
 @router.get("/subject-regression-inventory", response_model=ItemResponse)
 async def get_subject_regression_inventory(
+    request: Request,
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Cross-Subject regression honesty matrix — claim stays false."""
+    """Cross-Subject regression honesty matrix — claim stays false.
+
+    When a named workspace header is present, enrich rows with
+    ``workspace_promoted`` (registry freeze) for Promote ladder honesty.
+    """
     from core.api.core_facade import eval_subject_regression_inventory
+
+    # Fail-soft: read workspace header only (no harness import — platform→CoreFacade).
+    wid = str(request.headers.get("X-Aiplat-Workspace-Id") or "").strip()
+    if not wid:
+        wid = str(request.query_params.get("workspace_id") or "").strip()
 
     return {
         "data": eval_subject_regression_inventory(
             draft_sample_limit=draft_sample_limit,
+            workspace_id=wid,
+            caller_workspace_id=wid,
         )
     }
 

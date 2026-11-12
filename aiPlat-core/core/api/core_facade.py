@@ -8451,14 +8451,21 @@ def eval_system_regression_status(
 
 
 def eval_subject_regression_inventory(
-    *, draft_sample_limit: int = 5
+    *,
+    draft_sample_limit: int = 5,
+    workspace_id: str = "",
+    caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
     """Cross-Subject regression honesty inventory (claim stays false)."""
     from core.apps.eval.service.subject_regression_inventory import (
         subject_regression_inventory,
     )
 
-    return subject_regression_inventory(draft_sample_limit=draft_sample_limit)
+    return subject_regression_inventory(
+        draft_sample_limit=draft_sample_limit,
+        workspace_id=workspace_id,
+        caller_workspace_id=caller_workspace_id,
+    )
 
 
 def eval_content_purpose_ok_inventory() -> Dict[str, Any]:

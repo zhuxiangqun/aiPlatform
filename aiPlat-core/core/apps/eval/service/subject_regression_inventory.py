@@ -160,8 +160,65 @@ def _row_from_status(
     }
 
 
+def _workspace_promote_snapshot(
+    *,
+    subject_kind: str,
+    workspace_id: str,
+    caller_workspace_id: str = "",
+) -> Dict[str, Any]:
+    """Look up workspace Case Pack freeze for one Subject (fail-soft)."""
+    out: Dict[str, Any] = {
+        "workspace_promoted": False,
+        "workspace_pack_kind": "",
+        "workspace_pack_status": "",
+        "workspace_pack_id": "",
+        "workspace_pack_version": "",
+        "workspace_promote_error": "",
+    }
+    wid = str(workspace_id or "").strip()
+    if not wid:
+        return out
+    try:
+        from core.apps.eval.service.case_pack_registry import (
+            PackRegistryError,
+            get_pack_version,
+        )
+        from core.apps.eval.service.subject_capability_promote import _bank_specs
+
+        spec = (_bank_specs() or {}).get(str(subject_kind or "").strip())
+        if not isinstance(spec, dict):
+            out["workspace_promote_error"] = "no_promotable_subject"
+            return out
+        pid = str(spec.get("pack_id") or "").strip()
+        ver = str(spec.get("version") or "").strip()
+        out["workspace_pack_id"] = pid
+        out["workspace_pack_version"] = ver
+        caller = str(caller_workspace_id or wid).strip() or wid
+        cur = get_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            workspace_id=wid,
+            caller_workspace_id=caller,
+        )
+        kind = str(cur.get("kind") or "").strip().lower()
+        status = str(cur.get("status") or "").strip().lower()
+        out["workspace_pack_kind"] = kind
+        out["workspace_pack_status"] = status
+        # promote freeze writes kind=frozen (status often active)
+        out["workspace_promoted"] = kind == "frozen"
+    except PackRegistryError as exc:
+        out["workspace_promote_error"] = str(exc)
+    except Exception as exc:  # noqa: BLE001 — inventory fail-soft
+        out["workspace_promote_error"] = f"{type(exc).__name__}:{exc}"
+    return out
+
+
 def subject_regression_inventory(
-    *, draft_sample_limit: int = 5
+    *,
+    draft_sample_limit: int = 5,
+    workspace_id: str = "",
+    caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
     """Honesty matrix across Subject regression banks (claim stays false)."""
     rows: List[Dict[str, Any]] = []
@@ -210,11 +267,54 @@ def subject_regression_inventory(
     except Exception:  # noqa: BLE001 — inventory still useful without content module
         pass
 
+    wid = str(workspace_id or "").strip()
+    caller = str(caller_workspace_id or wid).strip()
+    if wid:
+        for row in rows:
+            snap = _workspace_promote_snapshot(
+                subject_kind=str(row.get("subject_kind") or ""),
+                workspace_id=wid,
+                caller_workspace_id=caller,
+            )
+            row.update(snap)
+    else:
+        for row in rows:
+            row.setdefault("workspace_promoted", False)
+            row.setdefault("workspace_pack_kind", "")
+            row.setdefault("workspace_pack_status", "")
+            row.setdefault("workspace_pack_id", "")
+            row.setdefault("workspace_pack_version", "")
+            row.setdefault("workspace_promote_error", "")
+
     object_rows = [r for r in rows if r["object_type_member"]]
     quota_ok_n = sum(1 for r in rows if r["quota_inventory_ok"] and not r["error"])
     complete_n = sum(1 for r in rows if r["profile_complete"])
     draft_n = sum(int(r["draft_pending"] or 0) for r in rows)
     content_ready_n = sum(1 for r in rows if r.get("content_purpose_ready"))
+    promoted_n = sum(1 for r in rows if r.get("workspace_promoted"))
+    if not wid:
+        next_action = (
+            "Seed profile_complete may already be 14/14; bind a named workspace "
+            "header to see workspace_promoted; use Inventory Promote / Promote 全部; "
+            "claim/Certification stay closed."
+        )
+    elif promoted_n >= len(rows) and rows:
+        next_action = (
+            "All Subjects workspace-promoted (frozen) in this workspace; "
+            "next: Case Pack compile-suite-profile → run exam; "
+            "do not open claim/Certification from inventory alone."
+        )
+    elif promoted_n > 0:
+        next_action = (
+            f"Workspace promote partial ({promoted_n}/{len(rows)}); "
+            "Promote remaining Subjects or Promote 全部; claim stays closed."
+        )
+    else:
+        next_action = (
+            "Seed packs are purpose_ok+frozen for profile_complete; "
+            "workspace promote still pending — use Promote 当前/全部; "
+            "claim/Certification stay closed."
+        )
     return {
         "schema": INVENTORY_SCHEMA,
         "ok": all(r["ok"] for r in rows),
@@ -224,6 +324,8 @@ def subject_regression_inventory(
         "profile_complete_count": complete_n,
         "draft_pending_total": draft_n,
         "content_purpose_ready_count": content_ready_n,
+        "workspace_id": wid,
+        "workspace_promoted_count": promoted_n,
         "subjects": rows,
         "accuracy_claim": False,
         "claim_eligible": False,
@@ -231,14 +333,10 @@ def subject_regression_inventory(
         "honesty": (
             "Cross-Subject inventory is engineering readiness only; "
             "quota_ok ≠ claim; content_purpose_ok gates promote stamp; "
-            "profile_complete requires purpose_ok + pack freeze; "
+            "profile_complete is seed-side; workspace_promoted is registry freeze; "
             "Method track (Arena/G2b/S1) excluded."
         ),
-        "next_action": (
-            "Seed packs may already be purpose_ok+frozen for profile_complete; "
-            "workspace promote / claim / Certification gates remain separate; "
-            "do not open claim from inventory alone."
-        ),
+        "next_action": next_action,
         "review_links": {
             "method_track_tab": "/eval?tab=method-track",
             "case_packs_tab": "/eval?tab=case-packs",
