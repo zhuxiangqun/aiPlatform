@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-12T23:15:00+08:00",
+  "reviewed_at": "2026-11-13T00:26:03+08:00",
   "base_ref": "origin/main",
-  "merge_base": "f11634bf8d3f96714cde40da5eabb5dbd288aa04",
-  "diff_sha256": "df032196f1000ca3e0041e043512cc048a1552c6d0546a8f9c7d27da10b53f67",
-  "head_sha": "2d537336ee86ff97fd55ad313d9b38541246e8a6",
+  "merge_base": "d9faa738e3fd6b7d570380c4bdeef191cd985ada",
+  "diff_sha256": "10f9a4e9ffeb1c29aab1f4826a352d75993148ad99f0dabbd3dfa28480fa2e93",
+  "head_sha": "72a7aa816e95edc4e72a9ec339faf3592ff53b3d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "promote_all UI only; claim closed; API already on main."
+  "note": "Inventory workspace_promoted enrich fail-soft; header-only platform bind; claim stays closed. §90 worktree hook path + whitepaper neutral. Local lock only; CI unlock is non-author Approve."
 }
