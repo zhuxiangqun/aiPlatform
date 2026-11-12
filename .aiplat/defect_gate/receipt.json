@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T00:26:03+08:00",
+  "reviewed_at": "2026-11-13T00:51:48+08:00",
   "base_ref": "origin/main",
   "merge_base": "d9faa738e3fd6b7d570380c4bdeef191cd985ada",
-  "diff_sha256": "10f9a4e9ffeb1c29aab1f4826a352d75993148ad99f0dabbd3dfa28480fa2e93",
-  "head_sha": "72a7aa816e95edc4e72a9ec339faf3592ff53b3d",
+  "diff_sha256": "0504f28598305884368ba782891a364de19bbce3a8ae1f8e3e33aee3ad71d50f",
+  "head_sha": "3c62aec0ef5263dc09cb03711c85863ed144267f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Inventory workspace_promoted enrich fail-soft; header-only platform bind; claim stays closed. §90 worktree hook path + whitepaper neutral. Local lock only; CI unlock is non-author Approve."
+  "note": "CI fix: quotepath=false for physical merge; inventory workspace_promoted; claim closed. Local lock only."
 }
