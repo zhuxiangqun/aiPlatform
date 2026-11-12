@@ -13,7 +13,7 @@ doc_type: Guide
 | D1 | Helm chart 可部署到 K8s | ✅ | `deploy/helm/aiplat/` |
 | D2 | 多 AZ 支持 | ✅ | `values-multi-az.yaml` |
 | D3 | HPA 自动扩缩容 | ✅ | Core 2-10 副本, 70% CPU 触发 |
-| D4 | CI/CD 自动构建 | ✅ | 3 GitHub Actions workflows |
+| D4 | CI/CD 自动构建 | ✅ | 11 GitHub Actions workflows |
 | D5 | 一键回滚 | ✅ | `scripts/rollback.sh` (kubectl + Helm) |
 | D6 | GitOps (ArgoCD) | ✅ | `deploy/gitops/argocd-app.yaml` |
 
@@ -33,9 +33,9 @@ doc_type: Guide
 |:--:|------|:--:|------|
 | O1 | Metrics (Prometheus) | ✅ | docker-compose + custom exporter |
 | O2 | Tracing (Jaeger + OTel) | ✅ | OTel SDK (260行) + FastAPI instrumentation |
-| O3 | Dashboards (Grafana) | ✅ | `deploy/grafana/dashboards/aiplat-overview.json` |
+| O3 | Dashboards (Grafana) | ✅ | `aiPlat-core/deploy/grafana/dashboards/aiplat-overview.json` |
 | O4 | Alerting | ✅ | Prometheus Alertmanager |
-| O5 | SLO defined | ✅ | `docs/slo.md` (3-tier) |
+| O5 | SLO defined | ✅ | `docs/architecture/slo.md` (3-tier) |
 
 ## Security
 

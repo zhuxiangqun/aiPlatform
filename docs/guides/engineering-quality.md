@@ -41,7 +41,7 @@ rules:
     strict: true
     contexts:
       - "Lint & Type Check"
-      - "Test (aiPlat-core)"
+      - "Test (pytest)"
       - "L5 Depth Tests"
       - "Architecture Compliance > guard"
   

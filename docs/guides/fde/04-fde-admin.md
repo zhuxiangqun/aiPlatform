@@ -195,7 +195,6 @@ curl "http://localhost:8002/api/core/knowledge-graph/stats"
 | `/fde/trends` | GET | 趋势分析 |
 | `/fde/search` | GET | 全文搜索 |
 | `/fde/ask` | POST | 诊断追问 |
-| `/fde/overview` | GET | 系统自描述 |
 
 ### System API (`/api/core/system/`)
 
@@ -216,7 +215,7 @@ for ep in \
   /api/platform/apps/fde/sessions \
   /api/platform/apps/fde/dashboard \
 ; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:8002$ep")
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:8003$ep")
   echo "$ep: $code"
 done
 
@@ -240,7 +239,7 @@ done
 
 - `scoring_engine` 基于累加加权规则自动产生风险/机会告警
 - 查看路径：本体编辑器 → Monitor tab → SLA Violations + Scoring Alerts
-- API: `GET /api/platform/apps/ontology-editor/scoring-models/{name}/alerts`
+- API: `GET /api/platform/apps/ontology-editor/domains/{domain_id}/scoring-models/{name}/alerts`
 
 ### 10.4 推理路径编排
 

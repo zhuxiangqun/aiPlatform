@@ -4,7 +4,7 @@ doc_type: Guide
 
 # FDE 标准交付手册 — {{PROJECT_NAME}}
 
-> ← [文档导航](README.md)
+> ← [文档导航](../README.md)
 
 > **生成时间**: {{GENERATED_AT}} | **FDE**: {{FDE_NAME}} | **Spec ID**: {{SPEC_ID}}
 {{READINESS_BADGE}}

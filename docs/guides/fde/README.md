@@ -29,7 +29,7 @@ doc_type: Index
 | **建域 / 工厂 apply / 应用库 Agent** | [创建本体+Agent 合册](../../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) | ✅ |
 | **it-ops 组织试点与签收准备（八闸门）** | [ORG_L5_RUNBOOK](../../contracts/ORG_L5_RUNBOOK.md) · [ORG_M4_SIGNOFF_PACK](../../contracts/ORG_M4_SIGNOFF_PACK.md) · 管理端 `/org/pilot` | ✅ |
 
-> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台八步里完成。
+> **勿混淆**：本目录「⑦ 验收移交 / 客户签收」指 **FDE 项目交付签收单**；it-ops **Org M4 签收准备**（材料齐可送审，程序不打开 `m4_claim`）在仪表盘 **组织试点**，不在 FDE 工作台九步主流程里完成。
 
 ### FDE 工作台工具箱（v28.0 新增）
 
@@ -74,9 +74,9 @@ doc_type: Index
 
 | 服务 | 地址 |
 |------|------|
-| FDE 工作台（前端） | `http://localhost:5173/diagnostics` → FDE Dashboard |
+| FDE 工作台（前端） | `http://localhost:5173/diagnostics/fde` → FDE Dashboard |
 | 平台 API | `http://localhost:8003/api/platform/apps/fde/` |
-| Core API | `http://localhost:8003/api/platform/apps/fde/` |
+| Core API | `http://localhost:8002/api/core/` |
 
 ### 相关文档
 
