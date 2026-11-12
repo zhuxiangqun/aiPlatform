@@ -59,10 +59,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../../reference/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/reference/framework/aiplat-complete-assessment.md`](../../../reference/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../../../reports/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
+| [`docs/reference/framework/aiplat-complete-assessment.md`](../../../../reports/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
 | [`docs/reference/framework/assessment-scores.json`](../../../reference/framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/reference/framework/scoring-detail.md`](../../../reference/framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/reference/framework/scoring-detail.md`](../../../../reports/framework/scoring-detail.md) | 评分细则 | ✅ |
 | `docs/reference/framework/verification-protocol.md`（历史链接失效） | 外部验证协议 | ✅ |
 
 
