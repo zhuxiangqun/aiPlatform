@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from core.harness.utils.model_injection import get_default_model
 from core.apps.eval.service.eval_plan import (
     attach_evaluation_plan,
     compile_plan_for_object,
@@ -306,7 +307,7 @@ def run_generated_app_pi_smoke(
             object_id=oid,
         )
 
-    mdl = (model or os.getenv("AIPLAT_PI_MODEL") or "ollama/qwen2.5:3b").strip()
+    mdl = (model or get_default_model("pi") or "ollama/qwen2.5:3b").strip()
     cli = _run_pi_cli(
         bundle=Path(str(exported["pi_bundle"])),
         model=mdl,
