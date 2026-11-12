@@ -113,6 +113,33 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
     }
   }, [load, promoteKind]);
 
+  const onPromoteAll = useCallback(async () => {
+    setPromoting(true);
+    setPromoteMsg('');
+    setError('');
+    try {
+      const out = await agentEvalApi.casePackPromoteSubjectCapability({
+        all: true,
+        reviewer: 'ui',
+        frozen_by: 'ui',
+        notes: 'Subject Inventory promote_all',
+      });
+      const body = unwrap(out as Envelope<Record<string, unknown>>);
+      const subjects = Array.isArray(body.subjects) ? body.subjects : [];
+      const nErr = Number(body.n_errors ?? 0);
+      setPromoteMsg(
+        `promote_all n_subjects=${String(body.n_subjects ?? subjects.length)} n_errors=${nErr} / claim=${String(
+          Boolean(body.claim_eligible),
+        )}`,
+      );
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPromoting(false);
+    }
+  }, [load]);
+
   const rows = status?.subjects || [];
   const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
   const methodHref = status?.review_links?.method_track_tab || '/eval?tab=method-track';
@@ -184,7 +211,17 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                 className="rounded border border-amber-700/60 px-2 py-1 text-amber-100 disabled:opacity-50"
                 data-testid="eval-subject-inventory-promote"
               >
-                {promoting ? 'Promoting…' : 'content_purpose_ok → freeze'}
+                {promoting ? 'Promoting…' : 'Promote 当前'}
+              </button>
+              <button
+                type="button"
+                disabled={promoting || !rows.length}
+                onClick={() => void onPromoteAll()}
+                className="rounded border border-sky-700/60 px-2 py-1 text-sky-100 disabled:opacity-50"
+                data-testid="eval-subject-inventory-promote-all"
+                title="POST promote-subject-capability all=true；claim 仍关闭"
+              >
+                {promoting ? 'Promoting…' : 'Promote 全部'}
               </button>
               <span className="text-gray-500">
                 claim 仍关；需 content_purpose_ready；仅工作区 registry 冻结
