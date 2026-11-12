@@ -301,6 +301,30 @@ export default function EvalCasePackPanel() {
         <button
           type="button"
           disabled={busy}
+          className="rounded border border-violet-700/60 px-3 py-1.5 text-violet-100 disabled:opacity-50"
+          data-testid="eval-case-pack-compile-run-dry"
+          title="compile-suite-profile then run-suite-profile live=false; claim stays closed"
+          onClick={() =>
+            run('compile+run-dry', async () => {
+              const pid = profileId.trim() || 'agent.regression.v1';
+              const compiled = await agentEvalApi.casePackCompileSuiteProfile({
+                profile_id: pid,
+              });
+              if (compiled && compiled.ok === false) {
+                return compiled;
+              }
+              return agentEvalApi.casePackRunSuiteProfile({
+                profile_id: pid,
+                live: false,
+              });
+            })
+          }
+        >
+          Compile+Run (dry)
+        </button>
+        <button
+          type="button"
+          disabled={busy}
           className="rounded border border-orange-700/60 px-3 py-1.5 text-orange-100 disabled:opacity-50"
           data-testid="eval-case-pack-run-profile-live"
           onClick={() =>
