@@ -8854,10 +8854,12 @@ async def eval_run_suite_profile_exam(
     object_version: str = "0.1.0",
     max_cases: int = 0,
     cases: Optional[list] = None,
+    workspace_id: str = "",
 ) -> Dict[str, Any]:
     """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed).
 
     Loads the Subject bank matching ``profile_id`` when ``cases`` is omitted.
+    Optional ``workspace_id`` scopes the last-exam honesty ledger for Inventory.
     """
     from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
 
@@ -8871,6 +8873,7 @@ async def eval_run_suite_profile_exam(
         object_id=object_id,
         object_version=object_version,
         max_cases=max_cases,
+        workspace_id=workspace_id,
     )
 
 

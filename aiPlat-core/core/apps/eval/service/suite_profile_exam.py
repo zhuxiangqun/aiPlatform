@@ -184,6 +184,30 @@ def _resolve_exam_bank(
         raise SuiteProfileExamError(str(exc)) from exc
 
 
+def _resolve_exam_workspace_id(explicit: str = "") -> str:
+    wid = str(explicit or "").strip()
+    if wid:
+        return wid
+    try:
+        from core.harness.named_workspace.resolve import get_active_named_workspace
+
+        ctx = get_active_named_workspace()
+        return str(getattr(ctx, "workspace_id", "") or "").strip() if ctx else ""
+    except Exception:
+        return ""
+
+
+def _persist_exam_summary(out: Dict[str, Any], *, workspace_id: str = "") -> None:
+    try:
+        from core.apps.eval.service.suite_exam_summary_store import (
+            record_suite_exam_summary,
+        )
+
+        record_suite_exam_summary(out, workspace_id=workspace_id)
+    except Exception as exc:  # noqa: BLE001 — ledger must not break exam
+        _log.debug("suite exam summary persist skipped: %s", exc)
+
+
 async def run_suite_profile_exam(
     *,
     profile_id: str = "agent.regression.v1",
@@ -195,8 +219,10 @@ async def run_suite_profile_exam(
     object_id: str = "",
     object_version: str = "0.1.0",
     max_cases: int = 0,
+    workspace_id: str = "",
 ) -> Dict[str, Any]:
     """Compile Profile Plan → require sample_manifest → execute only those cases."""
+    wid = _resolve_exam_workspace_id(workspace_id)
     bank, subject_kind = _resolve_exam_bank(
         profile=profile, profile_id=profile_id, cases=cases
     )
@@ -218,6 +244,9 @@ async def run_suite_profile_exam(
         fail: Dict[str, Any] = {
             "ok": False,
             "error": str(e),
+            "profile_id": plan.get("profile_id") or profile_id,
+            "subject_kind": subject_kind,
+            "live": bool(live),
             "accuracy_claim": False,
             "sufficiency_claim": False,
             "claim_eligible": False,
@@ -226,7 +255,9 @@ async def run_suite_profile_exam(
                 "(no full-pack / selected_cases fallback)"
             ),
         }
-        return attach_evaluation_plan(fail, plan)
+        fail = attach_evaluation_plan(fail, plan)
+        _persist_exam_summary(fail, workspace_id=wid)
+        return fail
 
     run_id = f"suite-profile-{uuid.uuid4().hex[:12]}"
     rk = str(run_key or "").strip() or run_id
@@ -352,4 +383,6 @@ async def run_suite_profile_exam(
     from core.apps.eval.service.suite_profile_report import build_suite_profile_report
 
     out["report"] = build_suite_profile_report(out, cases=bank)
+    _persist_exam_summary(out, workspace_id=wid)
+    out["exam_summary_workspace_id"] = wid
     return out

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2621
+total_capabilities: 2623
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -6911,7 +6911,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 637
+    caps_count: 639
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -7771,7 +7771,7 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
       - symbol: run_suite_profile_exam
         type: function
-        signature: 'run_suite_profile_exam(profile_id?,…)→Dict exam'
+        signature: 'run_suite_profile_exam(profile_id?, workspace_id?,…)→Dict exam (+persist last_exam ledger)'
         module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
       - symbol: verify_capability_manifest_hashes
         type: function
@@ -7781,9 +7781,17 @@ domains:
         type: function
         signature: 'index_cases_by_id(cases)→Dict'
         module: aiPlat-core/core/apps/eval/service/suite_profile_exam.py
+      - symbol: record_suite_exam_summary
+        type: function
+        signature: 'record_suite_exam_summary(exam, workspace_id?)→Dict summary'
+        module: aiPlat-core/core/apps/eval/service/suite_exam_summary_store.py
+      - symbol: get_suite_exam_summary
+        type: function
+        signature: 'get_suite_exam_summary(profile_id, workspace_id?)→Optional[Dict]'
+        module: aiPlat-core/core/apps/eval/service/suite_exam_summary_store.py
       - symbol: eval_run_suite_profile_exam
         type: function
-        signature: 'eval_run_suite_profile_exam(…)→Dict'
+        signature: 'eval_run_suite_profile_exam(…, workspace_id?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: agent_smoke_profile
         type: function
