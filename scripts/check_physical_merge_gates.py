@@ -30,8 +30,9 @@ def _ensure_path() -> None:
 
 
 def _git(*args: str) -> str:
+    # Disable quotepath so CJK / non-ASCII paths stay unquoted for neutral globs.
     r = subprocess.run(
-        ["git", *args],
+        ["git", "-c", "core.quotepath=false", *args],
         cwd=str(ROOT),
         capture_output=True,
         text=True,

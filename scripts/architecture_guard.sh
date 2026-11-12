@@ -386,12 +386,10 @@ if command -v git >/dev/null 2>&1; then
 else echo "⚠️ git not available"; fi
 
 # §90: Engine guard pre-commit hook is installed (skip in CI — hooks are local-dev)
-# Worktrees: .git is a file — resolve via git-path (shared hooks dir on main repo).
 echo -n "§90: engine pre-commit hook installed: "
-_HOOK_PRECOMMIT="$(git rev-parse --git-path hooks/pre-commit 2>/dev/null || echo ".git/hooks/pre-commit")"
 if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     echo "✅ (CI — local hook not required)"
-elif [ -f "$_HOOK_PRECOMMIT" ] && grep -q "pre-commit-engine-guard" "$_HOOK_PRECOMMIT" 2>/dev/null; then
+elif [ -f ".git/hooks/pre-commit" ] && grep -q "pre-commit-engine-guard" .git/hooks/pre-commit 2>/dev/null; then
     echo "✅"
 elif [ -f ".husky/pre-commit" ] && grep -q "pre-commit-engine-guard" .husky/pre-commit 2>/dev/null; then
     echo "✅"
