@@ -5,13 +5,13 @@ doc_type: Report
 # E10 全文语义事实审计（自动扫描）
 
 > 日期：2026-11-12  
-> 范围：808 份活跃文档（docs/reports/packages/子仓 docs）  
+> 范围：809 份活跃文档（docs/reports/packages/子仓 docs）  
 > 方法：自动化扫描 + 抽检；不替代逐段人工语义审计。
 
 ## 1. 扫描结果
 
 ```text
-active_docs=808
+active_docs=809
 root_qualified_missing_paths=259
 stale_directory_tokens=77
 stale_numeric_claims=1
