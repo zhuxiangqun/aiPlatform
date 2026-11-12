@@ -12,7 +12,7 @@ doc_type: Index
 |------|------|------|
 | 部署指南 | `docs/guides/deployment.md` | 单机/集群/容器化 |
 | 管理画面 | `docs/guides/management.md` | 管理员操作 |
-| 本体模型 | `docs/knowledge-system.md` | 域/类/关系/状态机 |
+| 本体模型 | `docs/guides/knowledge/knowledge-system.md` | 域/类/关系/状态机 |
 | 测试指南 | `docs/guides/testing.md` | 集成测试、E2E |
 
 ## FDE 手册
