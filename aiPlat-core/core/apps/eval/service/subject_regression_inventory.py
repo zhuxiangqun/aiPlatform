@@ -291,12 +291,42 @@ def subject_regression_inventory(
             row.setdefault("workspace_pack_version", "")
             row.setdefault("workspace_promote_error", "")
 
+    try:
+        from core.apps.eval.service.suite_exam_summary_store import get_suite_exam_summary
+
+        for row in rows:
+            pid = str(row.get("profile_id") or "").strip()
+            summ = get_suite_exam_summary(pid, workspace_id=wid) if pid else None
+            if summ:
+                row["last_exam_ok"] = bool(summ.get("ok"))
+                row["last_exam_live"] = bool(summ.get("live"))
+                row["last_exam_at"] = str(summ.get("recorded_at") or "")
+                row["last_exam_pass"] = int(summ.get("pass") or 0)
+                row["last_exam_fail"] = int(summ.get("fail") or 0)
+                row["last_exam_error"] = int(summ.get("error") or 0)
+                row["last_exam_executed"] = int(summ.get("executed_case_count") or 0)
+                row["last_exam_run_id"] = str(summ.get("run_id") or "")
+            else:
+                row.setdefault("last_exam_ok", None)
+                row.setdefault("last_exam_live", None)
+                row.setdefault("last_exam_at", "")
+                row.setdefault("last_exam_pass", 0)
+                row.setdefault("last_exam_fail", 0)
+                row.setdefault("last_exam_error", 0)
+                row.setdefault("last_exam_executed", 0)
+                row.setdefault("last_exam_run_id", "")
+    except Exception:  # noqa: BLE001 — inventory still useful without ledger
+        for row in rows:
+            row.setdefault("last_exam_ok", None)
+            row.setdefault("last_exam_at", "")
+
     object_rows = [r for r in rows if r["object_type_member"]]
     quota_ok_n = sum(1 for r in rows if r["quota_inventory_ok"] and not r["error"])
     complete_n = sum(1 for r in rows if r["profile_complete"])
     draft_n = sum(int(r["draft_pending"] or 0) for r in rows)
     content_ready_n = sum(1 for r in rows if r.get("content_purpose_ready"))
     promoted_n = sum(1 for r in rows if r.get("workspace_promoted"))
+    last_exam_n = sum(1 for r in rows if str(r.get("last_exam_at") or "").strip())
     if not wid:
         next_action = (
             "Seed profile_complete may already be 14/14; bind a named workspace "
@@ -332,6 +362,7 @@ def subject_regression_inventory(
         "content_purpose_ready_count": content_ready_n,
         "workspace_id": wid,
         "workspace_promoted_count": promoted_n,
+        "last_exam_count": last_exam_n,
         "subjects": rows,
         "accuracy_claim": False,
         "claim_eligible": False,
@@ -340,7 +371,7 @@ def subject_regression_inventory(
             "Cross-Subject inventory is engineering readiness only; "
             "quota_ok ≠ claim; content_purpose_ok gates promote stamp; "
             "profile_complete is seed-side; workspace_promoted is registry freeze; "
-            "Method track (Arena/G2b/S1) excluded."
+            "last_exam_* is ledger honesty only; Method track (Arena/G2b/S1) excluded."
         ),
         "next_action": next_action,
         "review_links": {
@@ -351,7 +382,8 @@ def subject_regression_inventory(
         },
         "ladder": (
             "seed profile_complete → workspace_promoted → "
-            "Case Pack compile-suite-profile(profile_id) → run exam; "
+            "Case Pack compile-suite-profile(profile_id) → run exam → "
+            "last_exam_* honesty on Inventory; "
             "claim/Certification stay closed."
         ),
     }
