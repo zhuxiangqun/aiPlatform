@@ -48,6 +48,11 @@ def test_eval_subject_regression_inventory_facade():
     assert inv["quota_inventory_ok_count"] == inv["subject_count"]
     assert inv.get("workspace_promoted_count") == 0
     assert inv.get("workspace_id") == ""
+    assert "compile-suite-profile" in str(inv.get("ladder") or "")
+    prompt = next(r for r in inv["subjects"] if r["subject_kind"] == "prompt")
+    assert prompt.get("profile_id")
+    assert "profile_id=" in str(prompt.get("suite_profile_href") or "")
+    assert str(prompt["profile_id"]) in str(prompt["suite_profile_href"])
 
 
 def test_inventory_workspace_promote_enrichment(tmp_path, monkeypatch):

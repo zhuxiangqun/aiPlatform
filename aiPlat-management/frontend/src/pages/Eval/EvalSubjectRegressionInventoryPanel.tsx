@@ -20,6 +20,7 @@ type SubjectRow = {
   ok?: boolean;
   error?: string | null;
   profile_id?: string;
+  suite_profile_href?: string;
   pack_id?: string;
   pack_version?: string;
   pack_status?: string;
@@ -260,6 +261,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     <th className="py-1 pr-2">complete</th>
                     <th className="py-1 pr-2">ws promote</th>
                     <th className="py-1 pr-2">draft</th>
+                    <th className="py-1 pr-2">suite</th>
                     <th className="py-1">tab</th>
                   </tr>
                 </thead>
@@ -297,6 +299,22 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                           ) : null}
                         </td>
                         <td className="py-2 pr-2">{row.draft_pending ?? 0}</td>
+                        <td className="py-2 pr-2">
+                          {row.profile_id ? (
+                            <Link
+                              className="text-sky-300 hover:underline font-mono"
+                              to={
+                                row.suite_profile_href ||
+                                `/eval?tab=case-packs&profile_id=${encodeURIComponent(row.profile_id)}`
+                              }
+                              title="Case Pack compile-suite-profile → run exam"
+                            >
+                              {row.profile_id}
+                            </Link>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td className="py-2">
                           <Link
                             className="text-sky-300 hover:underline"
@@ -309,7 +327,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     ))
                   ) : (
                     <tr>
-                      <td className="py-2 text-gray-500" colSpan={10}>
+                      <td className="py-2 text-gray-500" colSpan={11}>
                         —
                       </td>
                     </tr>

@@ -3,20 +3,29 @@
  * Honesty: claim_eligible stays false; frozen≠accuracy.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { agentEvalApi } from '../../services';
 
 export default function EvalCasePackPanel() {
+  const [params] = useSearchParams();
+  const urlProfileId = String(params.get('profile_id') || '').trim();
   const [packId, setPackId] = useState('ws.demo.pack');
   const [version, setVersion] = useState('0.1.0');
   const [prompt, setPrompt] = useState('say ok');
   const [ticketId, setTicketId] = useState('');
-  const [profileId, setProfileId] = useState('agent.regression.v1');
-  const [profileOptions, setProfileOptions] = useState<string[]>(['agent.regression.v1']);
+  const [profileId, setProfileId] = useState(urlProfileId || 'agent.regression.v1');
+  const [profileOptions, setProfileOptions] = useState<string[]>([
+    urlProfileId || 'agent.regression.v1',
+  ]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    if (urlProfileId) setProfileId(urlProfileId);
+  }, [urlProfileId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +42,8 @@ export default function EvalCasePackPanel() {
           .filter(Boolean);
         if (!cancelled && ids.length) {
           setProfileOptions(ids);
-          if (!ids.includes(profileId)) setProfileId(ids[0]);
+          const preferred = urlProfileId && ids.includes(urlProfileId) ? urlProfileId : '';
+          setProfileId((cur) => preferred || (ids.includes(cur) ? cur : ids[0]));
         }
       } catch (e) {
         // keep default profile id when suite-profiles unavailable
@@ -47,8 +57,7 @@ export default function EvalCasePackPanel() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount
-  }, []);
+  }, [urlProfileId]);
 
   const run = useCallback(
     async (label: string, fn: () => Promise<Record<string, unknown>>) => {
