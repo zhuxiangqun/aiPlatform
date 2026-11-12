@@ -135,6 +135,10 @@ def _row_from_status(
     error: Optional[str] = None,
 ) -> Dict[str, Any]:
     st = status if isinstance(status, dict) else {}
+    profile_id = str(st.get("profile_id") or "").strip()
+    packs_href = "/eval?tab=case-packs"
+    if profile_id:
+        packs_href = f"/eval?tab=case-packs&profile_id={profile_id}"
     return {
         "subject_kind": subject_kind,
         "object_type_member": object_type_member,
@@ -142,7 +146,8 @@ def _row_from_status(
         "tab_href": f"/eval?tab={tab_id}",
         "ok": bool(st.get("ok")) and not error,
         "error": error,
-        "profile_id": st.get("profile_id"),
+        "profile_id": profile_id or st.get("profile_id"),
+        "suite_profile_href": packs_href,
         "pack_id": st.get("pack_id"),
         "pack_version": st.get("pack_version"),
         "pack_status": st.get("pack_status"),
@@ -301,7 +306,8 @@ def subject_regression_inventory(
     elif promoted_n >= len(rows) and rows:
         next_action = (
             "All Subjects workspace-promoted (frozen) in this workspace; "
-            "next: Case Pack compile-suite-profile → run exam; "
+            "next: open Case Pack via suite_profile_href (profile_id) → "
+            "compile-suite-profile → run exam; "
             "do not open claim/Certification from inventory alone."
         )
     elif promoted_n > 0:
@@ -343,4 +349,9 @@ def subject_regression_inventory(
             "p1_regression_tab": "/eval?tab=p1-regression",
             "content_purpose_ok_tab": "/eval?tab=subject-regression-inventory",
         },
+        "ladder": (
+            "seed profile_complete → workspace_promoted → "
+            "Case Pack compile-suite-profile(profile_id) → run exam; "
+            "claim/Certification stay closed."
+        ),
     }

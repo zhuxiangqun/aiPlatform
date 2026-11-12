@@ -210,6 +210,7 @@ def subject_suite_profile_inventory() -> Dict[str, Any]:
         ),
         "next_action": (
             "Pick profile_id → compile-suite-profile → run exam; "
-            "content_purpose_ok still required before promote freeze."
+            "workspace promote (Inventory) freezes registry separately; "
+            "claim/Certification stay closed."
         ),
     }
