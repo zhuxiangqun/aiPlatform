@@ -282,15 +282,15 @@ GET /api/alerts?severity=critical&limit=20
 |------|------|
 | `frontend/src/pages/Overview/Overview.tsx` | 平台总览页面 |
 | `frontend/src/pages/Alerts/Alerts.tsx` | 告警中心页面 |
-| `frontend/src/services/overviewApi.ts` | 总览 API 服务 |
-| `frontend/src/services/alertsApi.ts` | 告警 API 服务 |
+| `frontend/src/services/apiClient.ts（dashboardApi）` | 总览 API 服务 |
+| `frontend/src/services/apiClient.ts（alertingApi）` | 告警 API 服务 |
 
 ### 后端
 
 | 文件 | 功能 |
 |------|------|
 | `management/api/dashboard.py` | Dashboard API 路由 |
-| `management/api/alerts.py` | 告警 API 路由 |
+| `management/api/alerting.py` | 告警 API 路由 |
 | `management/dashboard/aggregator.py` | 状态聚合器 |
 | `management/dashboard/infra_adapter.py` | 基础设施层适配器（真实数据） |
 | `management/dashboard/core_adapter.py` | 核心能力层适配器 |

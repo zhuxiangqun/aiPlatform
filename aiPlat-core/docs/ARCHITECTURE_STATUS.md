@@ -77,7 +77,7 @@ doc_type: Reference
 **证据**：
 - 代码入口：
   - `core/apps/agents/base.py: BaseAgent.execute()`
-  - `core/harness/execution/loop.py: create_loop() / ReActLoop / PlanExecuteLoop`
+  - `core/harness/execution/loop/: create_loop() / ReActLoop / PlanExecuteLoop`
   - `core/apps/agents/react.py: ReActAgent.execute()`（委托 `super().execute()`）
   - `core/apps/agents/plan_execute.py: PlanExecuteAgent.execute()`（委托 `super().execute()`）
   - `core/apps/agents/conversational.py: ConversationalAgent.execute()`（保留 override）
@@ -144,7 +144,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 **证据**：
 - 代码入口：
-  - `core/services/execution_store.py: ExecutionStore`
+  - `core/services/execution_store/: ExecutionStore`
   - `core/server.py: lifespan()`（初始化 ExecutionStore）
   - `core/server.py: execute_agent()/execute_skill()`（best-effort 落库）
 - 验证方式：
@@ -169,7 +169,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 **证据**：
 - 代码入口：
-  - `core/services/execution_store.py: ExecutionStore.init()/prune()/start_graph_run()/add_graph_checkpoint()`
+  - `core/services/execution_store/: ExecutionStore.init()/prune()/start_graph_run()/add_graph_checkpoint()`
   - `core/harness/execution/langgraph/core.py: CompiledGraph.execute()`（trigger callbacks + graph_run_id）
   - `core/server.py: lifespan()`（注册 LangGraph 回调落库 handler）
 - 验证方式：
@@ -192,7 +192,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 **证据**：
 - 代码入口：
-  - `core/services/execution_store.py`（v3 migrations + upsert_trace/upsert_span/get_trace/list_traces）
+  - `core/services/execution_store/`（v3 migrations + upsert_trace/upsert_span/get_trace/list_traces）
   - `core/services/trace_service.py`（持久化写入 + TraceServiceTracer）
   - `core/server.py`（新增 trace/graph 查询 API + tracer wiring）
 - 验证方式：
@@ -219,7 +219,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 **证据**：
 - 代码入口：
-  - `core/services/execution_store.py`（v4 migrations + resume_graph_run/get_graph_checkpoint + trace_id 列）
+  - `core/services/execution_store/`（v4 migrations + resume_graph_run/get_graph_checkpoint + trace_id 列）
   - `core/harness/execution/langgraph/core.py: CompiledGraph.execute()`（current_node 恢复）
   - `core/server.py`（graphs resume API + execute_agent/execute_skill 写入 trace_id）
 - 验证方式：
@@ -267,7 +267,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 **证据**：
 - 代码入口：
   - `core/harness/execution/langgraph/graphs/react.py`（ReActGraph.run 使用 CompiledGraph）
-  - `core/services/execution_store.py`（resume 幂等 + execution↔trace 联查）
+  - `core/services/execution_store/`（resume 幂等 + execution↔trace 联查）
   - `core/server.py`（联查 API + resume 权限校验）
 - 验证方式：
   - `pytest -q core/tests/integration/test_execution_trace_link_api.py`
@@ -287,13 +287,13 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
   - `ACTION: tool_name: {json_or_text}`
 
 并接线到：
-- `core/harness/execution/loop.py: ReActLoop._act()`（Loop-first 主路径）
+- `core/harness/execution/loop/: ReActLoop._act()`（Loop-first 主路径）
 - `core/harness/execution/langgraph/nodes/act_node.py` 与 `reason_node.py`（Graph 子系统）
 
 **证据**：
 - 代码入口：
   - `core/harness/execution/tool_calling.py: parse_tool_call()`
-  - `core/harness/execution/loop.py: ReActLoop._act()`（使用 parse_tool_call）
+  - `core/harness/execution/loop/: ReActLoop._act()`（使用 parse_tool_call）
   - `core/harness/execution/langgraph/nodes/act_node.py`（使用 parse_tool_call）
 - 验证方式：
   - `pytest -q core/tests/unit/test_harness/test_execution/test_tool_calling.py`
@@ -312,8 +312,8 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 **证据**：
 - 代码入口：
   - `core/harness/execution/tool_calling.py: parse_action_call()`
-  - `core/harness/execution/loop.py: ReActLoop._act()`（移除 substring skill fallback）
-  - `core/harness/execution/loop.py: PlanExecuteLoop._plan/_execute()`（移除 substring tool/skill dispatch）
+  - `core/harness/execution/loop/: ReActLoop._act()`（移除 substring skill fallback）
+  - `core/harness/execution/loop/: PlanExecuteLoop._plan/_execute()`（移除 substring tool/skill dispatch）
 - 验证方式：
   - `pytest -q core/tests/unit/test_harness/test_execution/test_tool_calling.py`
 

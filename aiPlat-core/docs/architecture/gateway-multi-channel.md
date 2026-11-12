@@ -42,7 +42,7 @@ doc_type: Architecture
 
 ### 1.3 Pairing / Token / DLQ
 
-ExecutionStore 已包含 Gateway 基础表（`core/services/execution_store.py`）：
+ExecutionStore 已包含 Gateway 基础表（`core/services/execution_store/`）：
 - `gateway_pairings`：`(channel, channel_user_id) -> (tenant_id, user_id, session_id)`
 - `gateway_tokens`：用于网关鉴权（token 的 sha256 存储）
 - `connector_delivery_dlq` / `job_delivery_dlq`：用于交付失败的 DLQ（重试/查看/清理）

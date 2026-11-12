@@ -248,8 +248,8 @@ make test-agent-basic
 
 | 任务 | 操作路径 | 参考文件位置 |
 |------|----------|-------------|
-| 创建知识库 | 调用 `KnowledgeIndexer(config)` | `core/harness/knowledge/indexer.py` |
-| 添加文档 | 调用 `indexer.index(doc)` | `core/harness/knowledge/indexer.py` |
+| 创建知识库 | 调用 `KnowledgeIndexer(config)` | `core/harness/knowledge/wiki_indexer.py` |
+| 添加文档 | 调用 `indexer.index(doc)` | `core/harness/knowledge/wiki_indexer.py` |
 | 检索知识 | 调用 `retriever.retrieve(query, top_k)` | `core/harness/knowledge/retriever.py` |
 | 知识进化 | 调用 `evolution.evolve()` | `core/harness/knowledge/evolution.py` |
 
@@ -260,7 +260,7 @@ make test-agent-basic
 4. 存储索引
 
 **相关文件位置**：
-- 知识索引器：`core/harness/knowledge/indexer.py`
+- 知识索引器：`core/harness/knowledge/wiki_indexer.py`
 - 知识检索器：`core/harness/knowledge/retriever.py`
 - 知识进化：`core/harness/knowledge/evolution.py`
 - 知识类型定义：`core/harness/knowledge/types.py`

@@ -131,7 +131,7 @@ doc_type: Reference
 
 ## 证据索引（Evidence Index｜抽样）
 
-- Loop-first 执行主路径（As-Is）：`core/harness/execution/loop.py`
+- Loop-first 执行主路径（As-Is）：`core/harness/execution/loop/`
 - Agent 委托 Loop 执行：`core/apps/agents/base.py: BaseAgent.execute()`
 - LangGraph 子系统（To-Be 主编排方向/部分现用）：`core/harness/execution/langgraph/*`
 | 失败模式 | 单次推理失败 | 第50步偏离指令、第100次工具调用后失去推理连贯性 |

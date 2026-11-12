@@ -42,7 +42,7 @@ last_synced: 2026-07-04
 **实现接线点（参考）**：
 - `core/server.py: auto_run_evaluation()`（baseline 选择逻辑入口）
 - `core/server.py: compute_run_evidence_diff()`（允许显式 base/new）
-- `core/services/execution_store.py: list_learning_artifacts()`（查询候选基线）
+- `core/services/execution_store/: list_learning_artifacts()`（查询候选基线）
 
 **建议新增测试**：
 - baseline 选择的单测（构造多份 artifacts，验证选择顺序与过滤条件）

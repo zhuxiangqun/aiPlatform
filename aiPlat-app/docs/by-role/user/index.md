@@ -2,6 +2,8 @@
 doc_type: Index
 ---
 
+> **历史设计说明（2026-11 审核）**：本文的 `aiplat-cli` 安装方式与 login/config/agent/skill/knowledge/session 命令面不是当前实现。当前 CLI 仅 `agents/execute/run/status/kb`（`aiPlat-app/cli/cli.py`），包名为 `aiplat-app`；配置目录为 `~/.aiplat`。
+
 # 📖 应用层用户指南
 
 > aiPlat-app - Web UI 和 CLI 使用指南

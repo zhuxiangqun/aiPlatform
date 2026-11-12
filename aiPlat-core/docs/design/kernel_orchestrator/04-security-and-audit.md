@@ -100,7 +100,7 @@ To-Be 约束：
 
 As-Is 映射（已落地）：
 - 审批触发：`core/harness/infrastructure/gates/policy_gate.py`
-- 审批持久化：`core/services/execution_store.py`（`approval_requests` 表，schema v8）
+- 审批持久化：`core/services/execution_store/`（`approval_requests` 表，schema v8）
 - 审批 API（运营与集成）：
   - `GET /approvals/pending`（支持排序/分页/priority_score）
   - `GET /approvals/{request_id}`（附带 related 审计信息）

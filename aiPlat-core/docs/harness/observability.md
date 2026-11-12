@@ -288,6 +288,6 @@ doc_type: Reference
 ## 证据索引（Evidence Index｜抽样）
 
 - 事件定义与事件总线：`core/harness/observability/events/__init__.py`
-- Loop 最小观测控制：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- Loop 最小观测控制：`core/harness/execution/loop/: BaseLoop._apply_observability_control()`
 - 审计事件写入（security_scan）：`core/harness/infrastructure/hooks/hook_manager.py`
 - infra OTel 实现：`aiPlat-infra/infra/observability/*`

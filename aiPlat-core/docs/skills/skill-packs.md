@@ -18,7 +18,7 @@ doc_type: Reference
 - `skill_pack_versions`：技能包版本快照（publish 时从 pack 的 manifest 固化一份，`(pack_id, version)` 唯一）
 - `skill_pack_installs`：安装记录（scope=engine|workspace）
 
-> 代码证据：`core/services/execution_store.py`
+> 代码证据：`core/services/execution_store/`
 
 ---
 

@@ -563,7 +563,7 @@ aiPlat-core/tests/
 ## 证据索引（Evidence Index｜抽样）
 
 - 单测目录：`core/tests/unit/*`
-- Harness Loop：`core/harness/execution/loop.py`
+- Harness Loop：`core/harness/execution/loop/`
 - LangGraph：`core/harness/execution/langgraph/*`
 **负责人**: AI Platform Team
 **状态**: 活跃文档

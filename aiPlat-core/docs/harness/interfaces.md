@@ -131,7 +131,7 @@ doc_type: Reference
 ## 证据索引（Evidence Index｜抽样）
 
 - 接口层：`core/harness/interfaces/*`
-- Loop 实现：`core/harness/execution/loop.py`
+- Loop 实现：`core/harness/execution/loop/`
 - Tool/Skill/Agent 实现：`core/apps/tools/*` / `core/apps/skills/*` / `core/apps/agents/*`
 
 ---

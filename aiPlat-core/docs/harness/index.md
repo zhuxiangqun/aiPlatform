@@ -270,7 +270,7 @@ Harness 框架由 8 个核心要素组成：
 
 ## 证据索引（Evidence Index｜抽样）
 
-- Loop 主执行链路：`core/harness/execution/loop.py`（`BaseLoop.run()` / `ReActLoop._act()`）
+- Loop 主执行链路：`core/harness/execution/loop/`（`BaseLoop.run()` / `ReActLoop._act()`）
 - HookPhase 接线与阻断语义：`core/harness/infrastructure/hooks/hook_manager.py`
 - ApprovalManager（最小规则集）：`core/server.py`（lifespan 中注册 approval rules）
 
