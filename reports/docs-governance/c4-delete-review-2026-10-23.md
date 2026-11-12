@@ -20,7 +20,7 @@ doc_type: Report
 
 | 文件 | 理由 |
 |------|------|
-| `docs/manuals/ontology.md` | 仍为 manuals 阅读入口（含 UI 路径）；非纯空 stub；README 仍链入 |
+| `docs/guides/ontology.md` | 仍为 manuals 阅读入口（含 UI 路径）；非纯空 stub；README 仍链入 |
 | `docs/reports/*` 生成快照 | 未满足路径 B 人工「无留存价值」书面确认；§2.1 慎删 |
 | archive 内历史稿 | C4 不清理 archive 正文 |
 

@@ -25,7 +25,7 @@ v2 在代码抽查中发现一个**实质性证据问题**：
 因此：
 
 - v1 中“自动渗透 10 场景”不能作为安全验证证据；
-- `docs/security/security-pen-test-report.md` 的 “Actual” 列大量为空，不能作为通过证据；
+- `docs/reference/security/security-pen-test-report.md` 的 “Actual” 列大量为空，不能作为通过证据；
 - 任何“已通过渗透测试”的表述都应撤回或降级为“脚本存在，但结果不可信”。
 
 ---
@@ -292,8 +292,8 @@ exit=0
 | `aiPlat-platform/governance/audit/logger.py` | SHA-256 链 |
 | `packages/aiplat-evaluation/docs/a3/s1_live_attacks.v0.json` | S1 25 条 |
 | `aiPlat-core/workspace_seeds/eval/agent_capability/cases/safety.json` | A7 8 条 |
-| `docs/security/security-pen-test-report.md` | 自动报告，Actual 空 |
-| `docs/security/security-architecture.md` | 自评 L1–L6 |
+| `docs/reference/security/security-pen-test-report.md` | 自动报告，Actual 空 |
+| `docs/reference/security/security-architecture.md` | 自评 L1–L6 |
 
 ## 附录 B：本次未做
 

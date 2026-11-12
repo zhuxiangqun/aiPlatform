@@ -107,7 +107,7 @@ snapshot_at: 2026-10-23T10:23:41Z
 
 ### 2.7 白皮书生成链路有效，但只保证新鲜度
 
-白皮书体系有 `docs/whitepaper/WHITEPAPER_SYSTEM.md`、docs/whitepaper 下的 suite 配置（文件名 whitepaper-suite.yaml）和生成脚本。本次运行结果（附录 A.3）：
+白皮书体系有 `docs/reference/explanatory/WHITEPAPER_SYSTEM.md`、docs/whitepaper 下的 suite 配置（文件名 whitepaper-suite.yaml）和生成脚本。本次运行结果（附录 A.3）：
 
 - `python3 scripts/generate_platform_whitepaper.py --check` → **PASS**（相对 `AIPLAT_CAPABILITIES.md` 新鲜）。
 - `python3 scripts/generate_whitepaper_volumes.py --check` → **PASS**（五卷相对 suite + CAPABILITIES + assessment-scores 新鲜）。
@@ -137,7 +137,7 @@ Pi 相关资料当前分布在（package 侧 `.md`，排除 `node_modules`，盘
 | 脚本 | 实际覆盖（盘点时） | 本次结果 |
 |------|-------------------|----------|
 | `scripts/verify_doc_structure.py` | 仅检查 `docs/` **一级目录**是否写入 `DOCUMENT_SYSTEM.md` §一；不检查 README 文件数，也不验证全站文件清单 | **失败**（未登记 `contracts/`、`guides/`） |
-| `scripts/verify_doc_links.py` | **仅**检查 3 个文件：`docs/DOCUMENT_SYSTEM.md`、`docs/README.md`、`docs/manuals/README.md` 中的 Markdown 链接 | **指定 3 个文件范围内通过**（exit 0） |
+| `scripts/verify_doc_links.py` | **仅**检查 3 个文件：`docs/DOCUMENT_SYSTEM.md`、`docs/README.md`、`docs/guides/README.md` 中的 Markdown 链接 | **指定 3 个文件范围内通过**（exit 0） |
 | 白皮书 `--check` | 生成物相对指定权威源的新鲜度 | 总白书与五卷均 **PASS** |
 
 因此：
@@ -253,7 +253,7 @@ Pi 相关资料当前分布在（package 侧 `.md`，排除 `node_modules`，盘
 检查文件（脚本 FILES_TO_CHECK，共 3 个）:
   - docs/DOCUMENT_SYSTEM.md
   - docs/README.md
-  - docs/manuals/README.md
+  - docs/guides/README.md
 退出码: 0
 摘要: All links valid across 3 files
 表述约束: 仅能写「指定 3 个文件范围内通过」，不能写「全站文档链接检查通过」。
@@ -294,7 +294,7 @@ docs/README.md「最后更新」行 → 2026-07-18
 | `docs/README` / `architecture/README` | 计数现算 + Pi Thin 入口；五产品仍标非现状 |
 | 白书 vol02/04 Pi 粘贴 | 生成器改为摘要+链接后已再生成；`--check` 绿 |
 | research→archive | 已迁 3 份收官专项（pipeline / tenant / CI 核实） |
-| 根 `README.md` 入门/API 链 | 已改为 `docs/manuals/getting-started.md`、`docs/API/api-reference.md` |
+| 根 `README.md` 入门/API 链 | 已改为 `docs/guides/getting-started.md`、`docs/reference/API/api-reference.md` |
 | by-role / contract 中 `core-layer1` 路径 | 已改为 `architecture/core/core-layer1-latest.md` |
 
 本附录只记录变化，不构成新的改造方案。
