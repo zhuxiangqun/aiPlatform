@@ -4,9 +4,9 @@ doc_type: Reference
 
 # HYBRID_ENTERPRISE 附录：交付规格与 Citation UX 验收
 
-> 版本：v1.0 | 日期：2026-10-14  
-> 适用范围：Pi 混合回连 enterprise 出厂交付 + KB 引用强制展示  
-> 主文档：[`HYBRID_ENTERPRISE.md`](./HYBRID_ENTERPRISE.md)  
+> 版本：v1.0 | 日期：2026-10-14
+> 适用范围：Pi 混合回连 enterprise 出厂交付 + KB 引用强制展示
+> 主文档：[`HYBRID_ENTERPRISE.md`](./HYBRID_ENTERPRISE.md)
 > 边界权威：`docs/architecture/plans/pi-thin-runtime.md`
 
 ## 0. 定位与原则
@@ -54,8 +54,8 @@ doc_type: Reference
 | A. Builder 出厂自动生成 | 构建产物时自动附带清单骨架 + 扫描结果 | ✅ 执行 |
 | B. FDE 签收勾选       | 交付时人工确认并签字           | ✅ 执行 |
 
-**采用 A+B**：Builder/出厂生成骨架与扫描结果 → FDE（或交付负责人）勾选签字 → 纳入交付包。  
-**模板库**：`docs/guides/fde/templates/fde-delivery-manual.md`（及同目录模板）。  
+**采用 A+B**：Builder/出厂生成骨架与扫描结果 → FDE（或交付负责人）勾选签字 → 纳入交付包。
+**模板库**：`docs/guides/fde/templates/fde-delivery-manual.md`（及同目录模板）。
 **Owner**：清单模板 = FDE 手册维护者；扫描脚本 = builder / 出厂门禁。
 
 ### 2.1 去开发化检查清单（出厂门禁）
@@ -88,7 +88,7 @@ doc_type: Reference
 
 ### 2.3 运维托管三级套餐 → SKU 叙事
 
-来源映射：系列 **第 39 篇**（运维托管）+ **第 41 篇**（交付级成品感）。  
+来源映射：系列 **第 39 篇**（运维托管）+ **第 41 篇**（交付级成品感）。
 落地：挂在 governance 值班板 + daemon，讲「月费价值」，不新建托管微服务。
 
 | 套餐      | 定位 | 包含（客户语言）                     | 技术落点（已有）                      |
