@@ -8,7 +8,7 @@ doc_type: Reference
 > Evidence audit: [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) + [`evidence/evidence_manifest.v1.json`](./evidence/evidence_manifest.v1.json)  
 > Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**
 
-**记录日**：2026-11-04  
+**记录日**：2026-11-05  
 
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
@@ -20,7 +20,7 @@ doc_type: Reference
 
 ### 功能 5.0（可审计）
 
-G2b κ≈0.63、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidence/*_aggregate.v1.json`；  
+G2b κ≈0.7624、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidence/*_aggregate.v1.json`；  
 `dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。  
 审计门禁见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
 
