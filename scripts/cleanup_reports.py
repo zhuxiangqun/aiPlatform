@@ -11,7 +11,7 @@ TODAY = dt.date.today()
 DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})")
 
 def rule(rel: str) -> int | None:
-    if rel.startswith("products/") and "/ops/" in rel: return 180
+    if (rel.startswith("products/") or rel.startswith("five-products/")) and "/ops/" in rel: return 180
     if rel.startswith("security/evidence/"): return 365
     if rel.startswith("docs-governance/"): return 365
     if "/" not in rel and rel.endswith(".md"): return 90
