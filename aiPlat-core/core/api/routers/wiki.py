@@ -9,12 +9,13 @@ from pydantic import BaseModel
 try:
     from core.api.routers.wiki_ontology_engine import (
         OntologyDomainCreate, OntologyClassCreate, OntologyPropertyCreate,
-        _write_domain_yaml,
+        _write_domain_yaml, _remove_from_registry,
     )
 except ImportError:
     OntologyDomainCreate = Any  # type: ignore
     OntologyClassCreate = Any  # type: ignore
     OntologyPropertyCreate = Any  # type: ignore
+from core.harness.syscalls.llm import sys_llm_generate
 from core.schemas_common import DeleteResponse, WikiDeleteAllResponse, ListResponse, WikiPageResponse, MessageResponse
 import logging
 
@@ -704,7 +705,7 @@ def _check_skill_available(skill_name: str):
 def _check_session_notes(pipeline_id: str) -> bool:
     u"""Check if SESSION_NOTES.md exists for a pipeline run."""
     import os as _os, glob as _glob
-    home = _os.getenv("AIPLAT_HOME", _get_aiplat_home())
+    home = _os.getenv("AIPLAT_HOME", get_aiplat_home())
     pattern = _os.path.join(home, "output", "*", "SESSION_NOTES.md")
     return len(_glob.glob(pattern)) > 0
 
