@@ -38,11 +38,11 @@ echo "== Pi D3 local closeout (bundle/SOC/N-1; not production) =="
 bash packages/aiplat-pi-runtime/scripts/d3_local_closeout.sh
 
 echo "== Module contract samples =="
-python3 reports/five-products/modules/ontology/contracts/validate_sample.py
-python3 reports/five-products/modules/evaluation/contracts/validate_sample.py
-python3 reports/five-products/modules/diagnosis/contracts/validate_sample.py
-python3 reports/five-products/modules/aiplat/contracts/validate_sample.py
-python3 reports/five-products/modules/fde/contracts/validate_sample.py
+python3 docs/products/five-products/modules/ontology/contracts/validate_sample.py
+python3 docs/products/five-products/modules/evaluation/contracts/validate_sample.py
+python3 docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
+python3 docs/products/five-products/modules/aiplat/contracts/validate_sample.py
+python3 docs/products/five-products/modules/fde/contracts/validate_sample.py
 
 echo "== Unit adapters =="
 "$PY" -m pytest \

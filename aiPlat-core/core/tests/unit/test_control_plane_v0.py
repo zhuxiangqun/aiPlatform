@@ -30,7 +30,7 @@ def test_control_plane_envelope():
 
 def test_matches_repo_schemas():
     repo = Path(__file__).resolve().parents[4]
-    base = repo / "reports/five-products/modules/aiplat/contracts/schemas"
+    base = repo / "docs/products/five-products/modules/aiplat/contracts/schemas"
     hz_schema = json.loads((base / "healthz.schema.json").read_text(encoding="utf-8"))
     cp_schema = json.loads((base / "control_plane.schema.json").read_text(encoding="utf-8"))
     hz = to_aiplat_healthz(status="ok")

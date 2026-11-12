@@ -118,7 +118,7 @@ grep -q "EvalCenter" aiPlat-management/frontend/src/App.tsx \
   || fail "missing diagnosis-v1-charter"
 [[ -f reports/five-products/ops/DIAGNOSIS_V1_C0_SEED_CASES.md ]] \
   || fail "missing DIAGNOSIS_V1 C0 seed cases"
-[[ -f reports/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json ]] \
+[[ -f docs/products/five-products/modules/diagnosis/contracts/schemas/diagnosis_evidence.schema.json ]] \
   || fail "missing diagnosis evidence schema v0"
 [[ -f reports/five-products/ops/ENGINEERING_UNFREEZE_DIAGNOSIS_C3.md ]] \
   || fail "missing DIAGNOSIS_V1 C3 unfreeze"

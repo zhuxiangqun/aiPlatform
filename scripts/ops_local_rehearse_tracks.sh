@@ -22,7 +22,7 @@ echo "== ops local rehearse tracks (environment=local; does not authorize) =="
 # --- Ontology A3 ---
 bash packages/aiplat-ontology/scripts/a3_local_rehearsal.sh || fail "ontology a3_local_rehearsal"
 # contract sample as local healthz proxy
-"$PY" reports/five-products/modules/ontology/contracts/validate_sample.py || fail "ontology validate_sample"
+"$PY" docs/products/five-products/modules/ontology/contracts/validate_sample.py || fail "ontology validate_sample"
 ITEMS="$(mktemp)"
 cat >"$ITEMS" <<JSON
 {
@@ -44,7 +44,7 @@ pass "ontology A3 local_signed (process_split still unauthorized)"
 
 # --- Evaluation A3 ---
 bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh || fail "evaluation a3_local_rehearsal"
-"$PY" reports/five-products/modules/evaluation/contracts/validate_sample.py || fail "evaluation validate_sample"
+"$PY" docs/products/five-products/modules/evaluation/contracts/validate_sample.py || fail "evaluation validate_sample"
 ITEMS="$(mktemp)"
 cat >"$ITEMS" <<JSON
 {

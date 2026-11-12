@@ -53,7 +53,7 @@ def test_matches_repo_schema():
     repo = Path(__file__).resolve().parents[4]
     schema_path = (
         repo
-        / "reports/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json"
+        / "docs/products/five-products/modules/ontology/contracts/schemas/ontology_api.schema.json"
     )
     assert schema_path.is_file(), schema_path
     schema = json.loads(schema_path.read_text(encoding="utf-8"))

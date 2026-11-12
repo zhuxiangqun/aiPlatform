@@ -202,9 +202,9 @@ def print_summary(r: dict) -> None:
 _MARK_BEGIN = "<!-- AUTO-SCORE:BEGIN (由 scripts/compute_assessment.py 生成, 勿手改) -->"
 _MARK_END = "<!-- AUTO-SCORE:END -->"
 _RENDER_TARGETS = [
-    "docs/reference/framework/aiplat-complete-assessment.md",
-    "docs/reference/framework/scoring-detail.md",
-    "docs/reference/framework/aiplat-autonomy-framework.md",
+    "reports/framework/aiplat-complete-assessment.md",
+    "reports/framework/scoring-detail.md",
+    "reports/framework/aiplat-autonomy-framework.md",
 ]
 
 
