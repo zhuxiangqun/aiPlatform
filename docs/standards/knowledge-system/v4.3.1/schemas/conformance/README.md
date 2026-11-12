@@ -17,10 +17,10 @@ This directory contains **reference** conformance assets, not proof of a deploye
 ## Commands
 
 ```bash
-python docs/whitepaper/knowledge-system/schemas/validate_examples.py
-python docs/whitepaper/knowledge-system/schemas/validate_semantics.py
-python docs/whitepaper/knowledge-system/schemas/validate_examples_v4.3.py
-python docs/whitepaper/knowledge-system/schemas/validate_semantics_v4.3.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_examples.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_examples_v4.3.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics_v4.3.py
 ```
 
 ## Real implementation tests (required before claiming conformance)

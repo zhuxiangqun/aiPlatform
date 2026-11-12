@@ -19,7 +19,7 @@ volumes:
     priority: P0
     status: ready
     canonical:
-      - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
+      - path: reports/whitepapers/aiplat-platform-status-whitepaper.md
         role: 现状总册（能力全收录，由 CAPABILITIES 生成）
       - path: docs/architecture/overview.md
         role: 架构全景唯一入口
@@ -72,7 +72,7 @@ volumes:
     canonical:
       - path: AIPLAT_CAPABILITIES.md
         role: 唯一能力清单
-      - path: docs/whitepaper/aiplat-platform-status-whitepaper.md
+      - path: reports/whitepapers/aiplat-platform-status-whitepaper.md
         role: 可读包装（含完整能力表）
       - path: docs/reference/matrix/capability-impact-matrix.md
         role: 变更影响
@@ -97,11 +97,11 @@ volumes:
     canonical:
       - path: AIPLAT_ROADMAP.md
         role: 商业化路线图 / 评分基线
-      - path: docs/whitepaper/commercial-value-model.md
+      - path: docs/reference/explanatory/commercial-value-model.md
         role: TCO + 五维价值模型（链 value_calculator）
-      - path: docs/whitepaper/cases/internal-illustrative-fde.md
+      - path: docs/reference/explanatory/cases/internal-illustrative-fde.md
         role: "内部示意案例（authorized: false）"
-      - path: docs/whitepaper/cases/README.md
+      - path: docs/reference/explanatory/cases/README.md
         role: 客户案例授权流程
     supporting:
       - path: docs/reference/strategy/comparison-vs-vendors.md
@@ -131,9 +131,9 @@ volumes:
         role: MCP 生产准入（治理边界）
       - path: packages/aiplat-pi-runtime/README.md
         role: 厂外 Pi Package 交付面
-      - path: docs/whitepaper/ecosystem-partner-tiers.md
+      - path: docs/reference/explanatory/ecosystem-partner-tiers.md
         role: 技术伙伴分层（Pi/KB/工具/MCP/私有化）
-      - path: docs/whitepaper/ecosystem-partner-commercial-template.md
+      - path: docs/reference/templates/ecosystem-partner-commercial-template.md
         role: 商务条款空白模板（不构成要约）
     supporting:
       - path: docs/API/AttributionSchema.md
@@ -142,7 +142,7 @@ volumes:
         role: Pi 薄 Runtime 战略边界
       - path: packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md
         role: 企业混合回连阶梯
-      - path: docs/whitepaper/WHITEPAPER_SYSTEM.md
+      - path: docs/reference/explanatory/WHITEPAPER_SYSTEM.md
         role: 白皮书体系（生态卷定位）
     notes: >
       开放面：MCP、HTTP API、Pi Package、A2A、Skill。技术分层已闭环。
@@ -159,7 +159,7 @@ volumes:
         role: 安全架构
       - path: docs/compliance/eu-ai-act-assessment.md
         role: 合规评估
-      - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+      - path: docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md
         role: 自主性定级（L 级，可验证）
     supporting:
       - path: docs/reference/framework/aiplat-autonomy-framework.md
@@ -176,7 +176,7 @@ volumes:
 # 对标 / 评级 — 必须出现在现状白皮书目录章（不整篇粘贴，防双源）
 benchmarks_and_ratings:
   ratings:
-    - path: docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md
+    - path: docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md
       title: 自主性分级评估（L5）
       kind: rating
     - path: docs/reference/framework/assessment-scores.json

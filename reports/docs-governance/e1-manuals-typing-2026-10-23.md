@@ -32,4 +32,4 @@ doc_type: Report
 
 ## 验收
 
-`docs/manuals/README.md` 可指认三类；角色导航仍可用。
+`docs/guides/README.md` 可指认三类；角色导航仍可用。

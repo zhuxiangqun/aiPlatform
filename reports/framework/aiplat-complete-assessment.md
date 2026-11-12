@@ -670,5 +670,5 @@ Phase 39:    CI/CD 流水线 (P0 待实施)
 ---
 
 > *评估基于三框架交叉验证。每项结论附带代码证据，可独立复现。*
-> *验证协议：`docs/whitepaper/verification-protocol.md`*
+> *验证协议：`docs/reference/explanatory/verification-protocol.md`*
 > *最新验证：2026-07-06, 31/31 + 30/30 + 31/31 + 7/7 全通过。v2.5.1 修正工程落地评估一致性。*

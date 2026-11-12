@@ -128,7 +128,7 @@ doc_type: Report
 
 **已做：**
 
-- `docs/security/security-architecture.md` 定义 L1–L6 纵深防御；
+- `docs/reference/security/security-architecture.md` 定义 L1–L6 纵深防御；
 - `docs/audit/compliance-matrix.md` 维护架构合规矩阵；
 - `docs/architecture/eu-ai-act-compliance.md` 有 EU AI Act 自评；
 - SOC2/ISO27001 有控制映射与自动检查；
@@ -485,9 +485,9 @@ doc_type: Report
 
 | 证据 | 路径 |
 |---|---|
-| 安全架构 | `docs/security/security-architecture.md` |
-| 安全测试 | `docs/security/security-testing.md` |
-| 自动渗透 | `docs/security/security-pen-test-report.md` |
+| 安全架构 | `docs/reference/security/security-architecture.md` |
+| 安全测试 | `docs/reference/security/security-testing.md` |
+| 自动渗透 | `docs/reference/security/security-pen-test-report.md` |
 | EU AI Act | `docs/architecture/eu-ai-act-compliance.md` |
 | 合规矩阵 | `docs/audit/compliance-matrix.md` |
 | 安全能力 | `AIPLAT_CAPABILITIES.md` 第七节 |

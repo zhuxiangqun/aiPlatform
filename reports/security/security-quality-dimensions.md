@@ -6,7 +6,7 @@ doc_type: Report
 # 安全质量 26 维覆盖（人读摘要）
 
 > **唯一真相源**：[security_quality_dimensions.yaml](./security_quality_dimensions.yaml)（`dimension_set_version=1.1`）
-> Crosswalk：[docs/security/security-dimension-crosswalk.md](../../docs/reference/security/security-dimension-crosswalk.md)
+> Crosswalk：[docs/reference/security/security-dimension-crosswalk.md](../../docs/reference/security/security-dimension-crosswalk.md)
 > 报告：`python3 scripts/security_dimensions_report.py`
 
 ## 字段含义

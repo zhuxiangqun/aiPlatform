@@ -4,19 +4,19 @@ volume_id: ecosystem-integration
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-12T01:07:11Z"
+generated_at: "2026-11-12T09:33:20Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
-suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
+suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
 caps_sha256: "579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-12T01:07:11Z` |
+| 生成时间 (UTC) | `2026-11-12T09:33:20Z` |
 | CAPABILITIES sha256 | `579bd50c9b85…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
@@ -56,8 +56,8 @@ language: zh-CN
 | [`docs/API/api-reference.md`](../../../docs/reference/API/api-reference.md) | API 参考 | ❌ |
 | [`docs/policy/mcp-stdio-prod-allowlist.md`](../../../docs/reference/policy/mcp-stdio-prod-allowlist.md) | MCP 生产准入（治理边界） | ❌ |
 | [`packages/aiplat-pi-runtime/README.md`](../../../packages/aiplat-pi-runtime/README.md) | 厂外 Pi Package 交付面 | ✅ |
-| [`docs/whitepaper/ecosystem-partner-tiers.md`](../../../docs/reference/explanatory/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ❌ |
-| [`docs/whitepaper/ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ❌ |
+| [`docs/reference/explanatory/ecosystem-partner-tiers.md`](../../../docs/reference/explanatory/ecosystem-partner-tiers.md) | 技术伙伴分层（Pi/KB/工具/MCP/私有化） | ✅ |
+| [`docs/reference/templates/ecosystem-partner-commercial-template.md`](../../../docs/reference/templates/ecosystem-partner-commercial-template.md) | 商务条款空白模板（不构成要约） | ✅ |
 
 
 ### 2.2 Supporting
@@ -67,7 +67,7 @@ language: zh-CN
 | [`docs/API/AttributionSchema.md`](../../../docs/reference/API/AttributionSchema.md) | 归因协议 | ❌ |
 | [`docs/architecture/plans/pi-thin-runtime.md`](../../../docs/architecture/plans/pi-thin-runtime.md) | Pi 薄 Runtime 战略边界 | ✅ |
 | [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md) | 企业混合回连阶梯 | ✅ |
-| [`docs/whitepaper/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ❌ |
+| [`docs/reference/explanatory/WHITEPAPER_SYSTEM.md`](../../../docs/reference/explanatory/WHITEPAPER_SYSTEM.md) | 白皮书体系（生态卷定位） | ✅ |
 
 
 ## 3. 正文编排（节选权威源）
@@ -110,7 +110,7 @@ language: zh-CN
 | **L0 Pi-only** | 消费工厂导出的薄 Runtime 包，自备模型 | `packages/aiplat-pi-runtime` · 导出 ZIP | 能力边界写进交付说明；无平台 Memory/SECI |
 | **L1 KB 混合** | Pi 壳 + 只读知识检索回连 | `AIPLAT_ENTERPRISE=1` · `aiplat_kb_retrieve` | 平台 `kb:read` / PolicyGate |
 | **L2 工具代理** | 允许列表内工具 HTTP 执行 | `AIPLAT_ENTERPRISE_TOOLS` · `aiplat_tool_execute` | Core `/api/core/tools/{name}/execute` + RBAC |
-| **L3 MCP / API ISV** | 注册 MCP 工具或调 HTTP API | `docs/mcp/` · `docs/API/` | MCP 生产准入 · 鉴权/租户/限流 |
+| **L3 MCP / API ISV** | 注册 MCP 工具或调 HTTP API | `docs/reference/mcp/` · `docs/reference/API/` | MCP 生产准入 · 鉴权/租户/限流 |
 | **L4 私有化厚部署** | 驻场/私有化接近全栈 | 特殊合同 · 非默认交付 | 全量治理面由平台侧强制 |
 
 默认交付锁定 **L0**。企业加厚按 L1→L2→L3 阶梯开启；L4 非默认。详见 [`packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md`](../../../packages/aiplat-pi-runtime/docs/HYBRID_ENTERPRISE.md)。
@@ -131,7 +131,7 @@ language: zh-CN
 
 ##### 2.4 MCP / API ISV 接入
 
-通过 MCP 或 REST 暴露/消费平台能力。生产 MCP 须符合 `docs/policy/mcp-stdio-prod-allowlist.md` 与成本阶梯。
+通过 MCP 或 REST 暴露/消费平台能力。生产 MCP 须符合 `docs/reference/policy/mcp-stdio-prod-allowlist.md` 与成本阶梯。
 
 ##### 2.5 私有化厚部署
 
@@ -141,15 +141,15 @@ language: zh-CN
 
 | 接入面 | 伙伴/集成商做什么 | 权威入口 | 平台侧治理 |
 |--------|-------------------|----------|------------|
-| MCP 工具 | 注册/暴露工具 | `docs/mcp/index.md` | MCP 准入 + 成本阶梯 |
-| HTTP API | 调平台/Core | `docs/API/api-reference.md` | 鉴权 / 租户 / 限流 |
+| MCP 工具 | 注册/暴露工具 | `docs/reference/mcp/index.md` | MCP 准入 + 成本阶梯 |
+| HTTP API | 调平台/Core | `docs/reference/API/api-reference.md` | 鉴权 / 租户 / 限流 |
 | A2A | Agent 间互操作 | CAPABILITIES「A2A」 | PolicyGate / 身份透传 |
 | Pi Package | 薄 Runtime 包 | `packages/aiplat-pi-runtime/README.md` | 交付边界说明 |
 | Skill / Handler | 贡献可执行技能 | CAPABILITIES「Skill」 | `execution_type` + lint |
 
 #### 4. 治理边界
 
-权限、审计、数据隔离、升级责任以 `docs/security/security-architecture.md` 与 `AIPLAT_CAPABILITIES.md` 安全/治理切片为准。伙伴不得要求在 Pi 进程内重实现 PolicyGate。
+权限、审计、数据隔离、升级责任以 `docs/reference/security/security-architecture.md` 与 `AIPLAT_CAPABILITIES.md` 安全/治理切片为准。伙伴不得要求在 Pi 进程内重实现 PolicyGate。
 
 
 ### 3.2 开放边界矩阵（接入面）

@@ -382,7 +382,7 @@ grep -n 'if.*agent_id.*==\|if.*in.*agent_id\|if.*phase.*==' \
 REPO=/path/to/aiPlatform
 
 # 1. 验证文档存在
-test -f $REPO/docs/whitepaper/aiplat-l4-autonomy-assessment-v1.0.0.md && echo "PASS" || echo "FAIL"
+test -f $REPO/docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md && echo "PASS" || echo "FAIL"
 
 # 2. A.自主性 — 自主循环
 grep -c '_retry_loop' $REPO/aiPlat-core/core/harness/execution/pipeline_engine.py | xargs -I{} test {} -ge 1 && echo "PASS" || echo "FAIL"

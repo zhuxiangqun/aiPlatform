@@ -11,7 +11,7 @@ refs:
   - reports/framework/aiplat-complete-assessment.md
   - reports/framework/aiplat-autonomy-framework.md
   - reports/framework/hermes-comparison.md
-  - docs/whitepaper/verification-protocol.md
+  - docs/reference/explanatory/verification-protocol.md
 ---
 
 # aiPlat 三框架逐项评分明细
