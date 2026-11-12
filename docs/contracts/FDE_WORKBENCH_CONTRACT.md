@@ -205,7 +205,7 @@ Phase 1：
 - [x] Tab⑤ 启动 `fde_delivery_v1` 服务端 session（进度来自服务端；honesty=template_session）
 
 Phase 2：
-- [x] `accept_order` → `customer_action:lock-service:accept_order` + legacy 别名（D3）
+- [x] `accept_order` → `customer_action:lock-service:accept_order`；legacy alias 已于 2026-09-15 移除（D3 关闭）
 - [x] AcceptTab 经 Registry 真执行；`audit.v1` 嵌入完整率 100%（bench sample）
 - [x] UI 区分客户运营 / 平台诊断（`action_kind` badge）
 - [x] GraphIndex `metadata`/`state` 持久化往返（`add_entity_property` UPDATE + load）

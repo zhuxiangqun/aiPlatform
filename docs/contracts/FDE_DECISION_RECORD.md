@@ -259,7 +259,7 @@ doc_type: Contract
 |----|----------|----------|--------|----------|
 | D1 | 无 caller；CAPABILITIES 更新 | **已关闭**（归档 `_archive/builder.py`） | — | 2026-09-14 |
 | D2 | 常量落点；行为分叉清零计划 | **已关闭**（error + AST=0）；见 `domain_literals_scan.md` v1.1 | — | 2026-09-14 |
-| D3 | 别名表 + Phase 3 废弃 | **已执行**：canonical + `accept_order` alias；Phase 3 再废弃 | Phase 3 废弃公告 | 2026-09-14 |
+| D3 | 别名表 + Phase 3 废弃 | **已执行**：canonical only；legacy `accept_order` alias 已移除（2026-09-15） | 废弃公告已发 | 2026-09-15 |
 | D4 | 四项量化达标 | **已关闭**（`bench_accept_order_p95.py --count 200` PASS） | — | 2026-09-14 |
 | D5 | 入口+默认 B | **已关闭**：⑥b PreflightTab；默认 B；C 开关 | — | 2026-09-14 |
 | D6 | 手册 KPI 节 | **工作台已声明**禁止唯一通过率 KPI；手册全文可选补 | 手册全文 | 2026-09-14 |

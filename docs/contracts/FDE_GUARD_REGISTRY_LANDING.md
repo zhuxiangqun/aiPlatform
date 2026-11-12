@@ -45,7 +45,7 @@ doc_type: Contract
 | 规则引擎 | `aiPlat-core/core/management/arch_guard_base.py`（`ArchRegistry` / `ArchYAMLRule` / `ArchRule`） |
 | 声明式规则 | `aiPlat-core/core/management/arch_guard_rules.yaml`（约 **193** 条） |
 | 复杂规则包 | `aiPlat-core/core/management/arch_guard_rules/*.py`（自动发现） |
-| FDE §98 已落地 | YAML：`fde_no_hardcoded_action_branch` / `fde_no_parallel_fde_api` / `fde_no_workbench_direct_harness`；Python：`fde_workbench.py`（`FdeDomainLiteralsAstCheck` warning、`FdeWorkbenchForbiddenFrontendCheck` error） |
+| FDE §98 已落地 | YAML：`fde_no_hardcoded_action_branch` / `fde_no_parallel_fde_api` / `fde_no_workbench_direct_harness`；Python：`fde_workbench.py`（`FdeDomainLiteralsAstCheck` error、`FdeWorkbenchForbiddenFrontendCheck` error） |
 | 检查类型 | `grep_forbidden` / `grep_required` / `grep_graph_import` / `cmd_output` / `file_*` + Python ArchRule（AST 可写在 `*.py`） |
 | CI | `.github/workflows/architecture-guard.yml` → `bash scripts/architecture_guard.sh` |
 | pre-commit | `scripts/pre-commit-hook.sh` 调 `--quick` |
@@ -66,7 +66,7 @@ doc_type: Contract
 | 7 步管线 | mutex → 校验 → 实体 → 约束 → approval/`pending_approvals` → handler → audit → 释放 |
 | 新字段（过渡） | `action_namespace: str = ""`、`eval_gate: str = ""`（空=legacy，跳过强校验） |
 | 校验模块 | `.../infrastructure/action_audit_validate.py`（`validate_action_contract` / `build_audit_record` / `map_audit_to_action_store`） |
-| 内置 handler 例 | `builtin_handlers.accept_order`；注册 id=`customer_action:lock-service:accept_order`，别名 `accept_order`（D3 已执行） |
+| 内置 handler 例 | `builtin_handlers.accept_order`；注册 id=`customer_action:lock-service:accept_order`；legacy alias `accept_order` 已移除（D3 已关闭） |
 | PolicyGate | 执行路径内有约束/审批/throttle；RuntimeGuard 审计形状 soft；产品门继续观察 |
 | HITL（Action） | `pending_approvals` + `require_approval` / stake lock |
 | HITL（Pipeline） | `PipelineEngine` + `pipeline_stage.py`（`stage.hitl`、`_hitl_resolved_*`、`approve_session`）+ `stage_handoff.py` |
