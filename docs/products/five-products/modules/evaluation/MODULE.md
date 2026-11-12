@@ -46,7 +46,7 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 
 | Schema | Path |
 |--------|------|
-| Eval Protocol v0 | `contracts/schemas/eval_protocol.schema.json` |
+| Eval Protocol v0 | `packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json`（模块内为 shim） |
 | validate | `python3 contracts/validate_sample.py` |
 
 ## SLO / disable behavior
@@ -80,7 +80,7 @@ See [`EVAL_PROTOCOL.md`](./EVAL_PROTOCOL.md).
 | Package | `packages/aiplat-evaluation` |
 | Install / smoke | `scripts/d1_install.sh` / `d1_smoke.sh` |
 | Docs | `packages/aiplat-evaluation/docs/INSTALL.md` |
-| healthz schema | `contracts/schemas/healthz.schema.json` |
+| healthz schema | `packages/aiplat-evaluation/contracts/schemas/healthz.schema.json`（模块内为 shim） |
 
 ## D2 cohost ops pack — done (local)
 
