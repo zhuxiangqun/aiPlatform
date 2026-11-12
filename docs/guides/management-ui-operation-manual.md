@@ -401,7 +401,7 @@ doc_type: Guide
 
 #### 认证鉴权
 - **路由**: `/platform/auth`
-- **功能**: 管理平台认证和授权策略，包括 JWT 配置、角色权限映射（admin/developer/operator/business 等 7 种角色）、OAuth 集成。
+- **功能**: 管理平台认证和授权策略，包括 JWT 配置、角色权限映射（admin/developer/operator/business 等 8 种角色）、OAuth 集成。
 
 #### 多租户管理
 - **路由**: `/platform/tenant`

@@ -8,16 +8,16 @@ doc_type: Guide
 
 > **目标角色**：日常 FDE 交付工程师
 > **前置条件**：已完成[快速入门](./01-fde-quickstart.md)
-> **访问地址**：`http://localhost:5173/diagnostics` → 点击 "FDE Dashboard"
+> **访问地址**：`http://localhost:5173/diagnostics/fde` → 点击 "FDE Dashboard"
 > **模板**：[交付手册模板](./templates/fde-delivery-manual.md) · **方法论**：[05](./05-fde-implementation-process.md) · **契约**：[FDE_WORKBENCH_CONTRACT](../../contracts/FDE_WORKBENCH_CONTRACT.md)
 
 ---
 
 ## 一、概述
 
-FDE 工作台按 **八步交付流程** 组织，覆盖从"了解客户"到"运营监控"的完整链路。
+FDE 工作台按 **九步主流程（10 个 Tab）** 组织，覆盖从"了解客户"到"运营监控"的完整链路。
 
-### 八步流程（Append-only Pipeline）
+### 九步主流程（Append-only Pipeline）
 
 ```
 ① 业务认知 → ② 评估域 → ③ 问题重构 → ④ 验证价值 →
@@ -26,7 +26,7 @@ FDE 工作台按 **八步交付流程** 组织，覆盖从"了解客户"到"运�
     传给 ② ⑧          传给 ③ ④            回显到 ①
 ```
 
-**核心机制**：八个 Tab 通过 Append-only Pipeline 串联。每个 Tab 只写入一个 key，读取上游 key 时不可修改。Tab 栏上方有流程进度指示条——各步骤标注 Tab 编号（`客户 ① → 域 ② → … → 监控 ⑧`），已完成显示绿色 ✓，当前所在蓝色高亮，未开始为灰色。
+**核心机制**：10 个 Tab 通过 Append-only Pipeline 串联。每个 Tab 只写入一个 key，读取上游 key 时不可修改。Tab 栏上方有流程进度指示条——各步骤标注 Tab 编号（`客户 ① → 域 ② → … → 监控 ⑧`），已完成显示绿色 ✓，当前所在蓝色高亮，未开始为灰色。
 
 ### Agent 与 Skill 对应表
 

@@ -169,7 +169,7 @@ doc_type: Guide
 
 每个域（Domain）有独立的本体定义文件 `~/.aiplat/ontologies/{domain_id}.yaml`。
 
-### 4.3 引擎管线（13 步）
+### 4.3 引擎管线（3 Phase）
 
 ```
 Phase 1（并行，无 LLM）:  Classify → Table Context
@@ -508,7 +508,7 @@ CREATE TABLE triples (
   ↓
 API 层 (70+ REST endpoints)
   ↓
-OntologyEngine (8 阶段管线)
+OntologyEngine (3 Phase 管线)
   ├── ClassMapper      — 关键词倒排索引 → T-Box 类标签（确定性）
   ├── PropertyExtractor — LLM 并行提取结构化属性（LLM）
   ├── Validator        — Schema 校验必填字段（确定性）
@@ -818,7 +818,7 @@ UI 中的 **🔁 传播模拟** 功能：选择一个类 → 模拟新实例创�
 
 ### 8.2 引擎管线流程
 
-上传文档后，引擎自动跑 8 个阶段：
+上传文档后，引擎自动跑 3 个 Phase：
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
