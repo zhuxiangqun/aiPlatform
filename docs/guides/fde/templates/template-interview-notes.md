@@ -186,5 +186,5 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-interview-notes.md`
+> 模板文件：`docs/guides/fde/templates/template-interview-notes.md`
 > 对应步骤：① 业务认知 | 用途：辅助建立客户 Profile

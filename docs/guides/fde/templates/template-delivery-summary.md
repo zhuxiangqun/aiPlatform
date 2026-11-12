@@ -172,7 +172,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-delivery-summary.md`
+> 模板文件：`docs/guides/fde/templates/template-delivery-summary.md`
 > 对应步骤：⑦ 验收移交 | 对应 Skill：`acceptance_checker`
 
 ---

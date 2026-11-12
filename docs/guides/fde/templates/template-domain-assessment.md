@@ -154,7 +154,7 @@ doc_type: Guide
 
 ---
 
-> 模板文件：`docs/manuals/fde/templates/template-domain-assessment.md`
+> 模板文件：`docs/guides/fde/templates/template-domain-assessment.md`
 > 对应步骤：② 评估域 | 对应 Skill：`domain_assessor`
 
 ---
