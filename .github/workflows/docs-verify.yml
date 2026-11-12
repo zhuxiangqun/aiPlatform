@@ -5,21 +5,29 @@ on:
     paths:
       - 'docs/**'
       - 'reports/docs-governance/**'
+      - 'reports/whitepapers/**'
       - '*.md'
       - 'scripts/verify_docs.py'
       - 'scripts/verify_doc_structure.py'
       - 'scripts/verify_doc_links.py'
       - 'scripts/verify_doc_metadata.py'
       - 'scripts/verify_canonical.py'
+      - 'scripts/generate_platform_whitepaper.py'
+      - 'scripts/generate_whitepaper_volumes.py'
+      - 'scripts/sync_whitepapers.sh'
       - '.github/workflows/docs-verify.yml'
   push:
     branches: [ main ]
     paths:
       - 'docs/**'
       - 'reports/docs-governance/**'
+      - 'reports/whitepapers/**'
       - '*.md'
       - 'scripts/verify_docs.py'
       - 'scripts/verify_doc_structure.py'
+      - 'scripts/generate_platform_whitepaper.py'
+      - 'scripts/generate_whitepaper_volumes.py'
+      - 'scripts/sync_whitepapers.sh'
       - '.github/workflows/docs-verify.yml'
   workflow_dispatch:
 
@@ -68,6 +76,9 @@ jobs:
 
       - name: Verify all documentation links (baseline ratchet)
         run: python3 scripts/verify_doc_links.py --all --strict
+
+      - name: Verify archive links (must stay zero)
+        run: python3 scripts/verify_doc_links.py --all --include-archive --strict
 
       - name: Check stale design docs
         id: stale_check
