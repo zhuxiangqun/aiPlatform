@@ -8771,11 +8771,11 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
       - symbol: subject_regression_inventory
         type: function
-        signature: 'subject_regression_inventory(draft_sample_limit?)→Dict honesty matrix'
+        signature: 'subject_regression_inventory(draft_sample_limit?, workspace_id?, caller_workspace_id?)→Dict honesty matrix (+workspace_promoted)'
         module: aiPlat-core/core/apps/eval/service/subject_regression_inventory.py
       - symbol: eval_subject_regression_inventory
         type: function
-        signature: 'eval_subject_regression_inventory(draft_sample_limit?)→Dict'
+        signature: 'eval_subject_regression_inventory(draft_sample_limit?, workspace_id?, caller_workspace_id?)→Dict'
         module: aiPlat-core/core/api/core_facade.py
       - symbol: SubjectCapabilityPromoteError
         type: class

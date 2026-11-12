@@ -46,3 +46,52 @@ def test_eval_subject_regression_inventory_facade():
     assert inv["schema"] == INVENTORY_SCHEMA
     assert inv["claim_eligible"] is False
     assert inv["quota_inventory_ok_count"] == inv["subject_count"]
+    assert inv.get("workspace_promoted_count") == 0
+    assert inv.get("workspace_id") == ""
+
+
+def test_inventory_workspace_promote_enrichment(tmp_path, monkeypatch):
+    """When workspace_id set, rows expose workspace_promoted (claim stays false)."""
+    from core.apps.eval.service import case_pack_registry as reg
+    from core.apps.eval.service.subject_capability_promote import _bank_specs
+    from core.apps.eval.service.subject_regression_inventory import (
+        subject_regression_inventory,
+    )
+
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    wid = "ws-inv-promote"
+    spec = _bank_specs()["prompt"]
+    pid = str(spec["pack_id"])
+    ver = str(spec["version"])
+    ph = "sha256:" + ("ab" * 32)
+    reg.register_pack_version(
+        pack_id=pid,
+        version=ver,
+        kind="curated",
+        claim_eligible=False,
+        scope="workspace",
+        pack_hash=ph,
+        object_types=["prompt"],
+        workspace_id=wid,
+        caller_workspace_id=wid,
+        status="reviewed",
+    )
+    frozen = reg.freeze_pack_version(
+        pack_id=pid,
+        version=ver,
+        scope="workspace",
+        pack_hash=ph,
+        workspace_id=wid,
+        caller_workspace_id=wid,
+        frozen_by="test",
+    )
+    assert str(frozen.get("kind") or "").lower() == "frozen"
+
+    inv = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    assert inv["claim_eligible"] is False
+    assert inv["workspace_id"] == wid
+    assert inv["workspace_promoted_count"] >= 1
+    prompt = next(r for r in inv["subjects"] if r["subject_kind"] == "prompt")
+    assert prompt["workspace_promoted"] is True
+    na = (inv.get("next_action") or "").lower()
+    assert "promot" in na  # promote / promoted / partial

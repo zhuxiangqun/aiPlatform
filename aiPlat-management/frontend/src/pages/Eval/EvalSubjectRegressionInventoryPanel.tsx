@@ -30,6 +30,10 @@ type SubjectRow = {
   draft_pending?: number;
   content_purpose_ok_count?: number;
   content_purpose_ready?: boolean;
+  workspace_promoted?: boolean;
+  workspace_pack_kind?: string;
+  workspace_pack_status?: string;
+  workspace_promote_error?: string;
   claim_eligible?: boolean;
   accuracy_claim?: boolean;
   certification_eligible?: boolean;
@@ -43,6 +47,8 @@ type Inventory = {
   profile_complete_count?: number;
   draft_pending_total?: number;
   content_purpose_ready_count?: number;
+  workspace_id?: string;
+  workspace_promoted_count?: number;
   subjects?: SubjectRow[];
   next_action?: string;
   honesty?: string;
@@ -155,8 +161,10 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
             {status?.object_type_subject_count ?? '—'} · quota_ok=
             {status?.quota_inventory_ok_count ?? '—'} · content_purpose_ready=
             {status?.content_purpose_ready_count ?? '—'} · profile_complete=
-            {status?.profile_complete_count ?? '—'} · draft_pending=
-            {status?.draft_pending_total ?? '—'}
+            {status?.profile_complete_count ?? '—'} · workspace_promoted=
+            {status?.workspace_promoted_count ?? '—'}
+            {status?.workspace_id ? ` @${status.workspace_id}` : ' (无 workspace)'} ·
+            draft_pending={status?.draft_pending_total ?? '—'}
           </li>
           <li>
             claim_eligible={String(Boolean(status?.claim_eligible))} · accuracy_claim=
@@ -250,6 +258,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     <th className="py-1 pr-2">quota</th>
                     <th className="py-1 pr-2">content</th>
                     <th className="py-1 pr-2">complete</th>
+                    <th className="py-1 pr-2">ws promote</th>
                     <th className="py-1 pr-2">draft</th>
                     <th className="py-1">tab</th>
                   </tr>
@@ -277,6 +286,16 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                             : `缺 ${row.content_purpose_ok_count ?? 0}`}
                         </td>
                         <td className="py-2 pr-2">{String(Boolean(row.profile_complete))}</td>
+                        <td className="py-2 pr-2">
+                          {row.workspace_promoted
+                            ? `Y ${row.workspace_pack_kind || 'frozen'}`
+                            : status?.workspace_id
+                              ? '—'
+                              : 'n/a'}
+                          {row.workspace_promote_error ? (
+                            <div className="text-gray-500">{row.workspace_promote_error}</div>
+                          ) : null}
+                        </td>
                         <td className="py-2 pr-2">{row.draft_pending ?? 0}</td>
                         <td className="py-2">
                           <Link
@@ -290,7 +309,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     ))
                   ) : (
                     <tr>
-                      <td className="py-2 text-gray-500" colSpan={9}>
+                      <td className="py-2 text-gray-500" colSpan={10}>
                         —
                       </td>
                     </tr>
