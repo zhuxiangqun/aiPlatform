@@ -275,5 +275,5 @@ reminder_message = {
 
 ## 证据索引（Evidence Index｜抽样）
 
-- token 高占用 compaction（最小实现）：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- token 高占用 compaction（最小实现）：`core/harness/execution/loop/: BaseLoop._apply_observability_control()`
 - To-Be：记忆/检索/持久化需结合 `core/harness/execution/langgraph/*` 与后续 CheckpointStore/ExecutionStore 方案

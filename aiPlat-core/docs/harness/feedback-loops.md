@@ -227,6 +227,6 @@ fi
 
 ## 证据索引（Evidence Index｜抽样）
 
-- HookPhase 接线：`core/harness/execution/loop.py: BaseLoop.run()`
+- HookPhase 接线：`core/harness/execution/loop/: BaseLoop.run()`
 - HookManager 默认 hooks：`core/harness/infrastructure/hooks/hook_manager.py`
 - 审批前扫描（security_scan）：`core/harness/infrastructure/hooks/builtin.py`

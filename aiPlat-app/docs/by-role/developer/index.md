@@ -2,6 +2,8 @@
 doc_type: Index
 ---
 
+> **历史设计说明（2026-11 审核）**：本文的 `app/`、React/Redux/Vite 与 TypeScript 目录是历史设计。当前 `aiPlat-app` 是 Python 包，入口为 `cli/cli.py`，workbench 为 `workbench/*.py`，channels 为 `channels/adapters/*.py`。
+
 # 👨‍💻 应用层开发者指南
 
 > aiPlat-app - 开发指南与最佳实践

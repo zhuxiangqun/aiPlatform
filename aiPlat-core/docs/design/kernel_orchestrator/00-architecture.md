@@ -37,7 +37,7 @@ doc_type: Reference
 ### 2.1 关键入口与组件（As-Is）
 - `core/server.py`：FastAPI 入口、初始化 registries/managers、trace 与 execution_store 注入
 - `core/apps/agents/*`：Agent 实现（ReAct/PlanExecute/…）
-- `core/harness/execution/loop.py`：ReActLoop/PlanExecuteLoop
+- `core/harness/execution/loop/`：ReActLoop/PlanExecuteLoop
 - `core/harness/execution/langgraph/*`：LangGraph graphs/nodes/callbacks
 - `core/apps/tools/*`：BaseTool、ToolRegistry、PermissionManager、recaller
 - `core/apps/skills/*`：SkillRegistry、SkillExecutor
@@ -109,7 +109,7 @@ sequenceDiagram
   - `core/orchestration/*`
 - 修改：
   - `core/server.py`：执行类路由收敛到 integration.execute
-  - `core/harness/execution/loop.py`：LLM/Tool/Skill 调用改走 syscalls；prompt 拼装改走 PromptAssembler
+  - `core/harness/execution/loop/`：LLM/Tool/Skill 调用改走 syscalls；prompt 拼装改走 PromptAssembler
 
 ### 5.1 当前已落地（As-Is）与缺口（Gap）
 

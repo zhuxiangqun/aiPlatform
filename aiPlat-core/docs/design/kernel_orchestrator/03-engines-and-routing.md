@@ -52,7 +52,7 @@ To-Be（Phase 5 目标）：
 - 路由器：`core/harness/execution/router.py`（新增）
 
 As-Is（当前替代实现/临时结构）：
-- Loop 执行：`core/harness/execution/loop.py`
+- Loop 执行：`core/harness/execution/loop/`
 - LangGraph 执行：`core/harness/integration.py::_execute_graph` + `core/harness/execution/langgraph/*`
 
 ---
@@ -79,7 +79,7 @@ class IExecutionEngine(Protocol):
 ## 4. LoopEngine（主引擎）
 
 ### 4.1 As-Is 依赖
-- `core/harness/execution/loop.py`：ReActLoop/PlanExecuteLoop
+- `core/harness/execution/loop/`：ReActLoop/PlanExecuteLoop
 - `core/apps/agents/*`：agent config/loop_type
 
 ### 4.2 To-Be 适配策略

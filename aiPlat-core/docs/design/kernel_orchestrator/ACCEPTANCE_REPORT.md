@@ -61,7 +61,7 @@ doc_type: Reference
 **验收点 B：ExecutionStore 至少记录 request 元信息与最终状态**
 - 结论：PASS（agent/skill/graph/tool 均 best-effort upsert）
 - 证据：
-  - `core/services/execution_store.py`：`agent_executions`、`skill_executions`、`graph_runs` 表与 upsert 方法存在。
+  - `core/services/execution_store/`：`agent_executions`、`skill_executions`、`graph_runs` 表与 upsert 方法存在。
 
 **回滚：feature flag 保留旧 handler**
 - 结论：PARTIAL（AIPLAT_ENABLE_ENGINE_FALLBACK 存在，但未覆盖全部回退路径）
@@ -106,7 +106,7 @@ doc_type: Reference
 - 结论：PARTIAL
 - 证据：
   - `core/server.py` 注册 `ApprovalRule(rule_id="sensitive-ops", metadata.sensitive_operations=[...])`
-  - `core/services/execution_store.py`：`approval_requests`、`syscall_events`、`approval_request_id` 关联索引、`/approvals/*` 审计聚合接口
+  - `core/services/execution_store/`：`approval_requests`、`syscall_events`、`approval_request_id` 关联索引、`/approvals/*` 审计聚合接口
 - 不足：
   - 默认策略（SAFE/SENSITIVE/DANGEROUS 的默认 allow/approve/deny）未完整实现为“策略必经”（目前更多是标签/队列排序用途）
 

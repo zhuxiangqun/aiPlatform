@@ -22,7 +22,7 @@ doc_type: Reference
 
 | 能力 | 实现位置 | 状态 |
 |------|---------|------|
-| Context 压缩（最小实现） | `core/harness/execution/loop.py` | ⚠️ best-effort 裁剪 messages（非完整 5 级压缩） |
+| Context 压缩（最小实现） | `core/harness/execution/loop/` | ⚠️ best-effort 裁剪 messages（非完整 5 级压缩） |
 | 四层记忆划分 | `docs/harness/context.md` | 📝 文档设计（To-Be） |
 | Skill 发现/加载 | `core/apps/skills/discovery.py` | ⚠️ 发现/加载存在，但未接入统一披露策略 |
 | references/scripts 按需加载 | `core/apps/skills/discovery.py` | ⚠️ loader 存在，但“条件触发/策略化加载”未闭环 |
@@ -400,6 +400,6 @@ progressive_disclosure:
 
 ## 证据索引（Evidence Index｜抽样）
 
-- token 高占用裁剪（最小实现）：`core/harness/execution/loop.py: BaseLoop._apply_observability_control()`
+- token 高占用裁剪（最小实现）：`core/harness/execution/loop/: BaseLoop._apply_observability_control()`
 - skills 发现/加载：`core/apps/skills/discovery.py`
 - To-Be：需补齐 ContextLoader/Policy/Analyzer 的实现与测试

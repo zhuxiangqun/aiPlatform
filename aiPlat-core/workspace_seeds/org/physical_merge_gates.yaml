@@ -110,6 +110,12 @@ allowed_bases:
 max_active_exemptions: 3
 # Cleared 2026-10-24: #381/#385, Gate2 #387/#388, Gate3/D13 #391 exemptions retired.
 exemptions:
+  - id: "ex-2026-11-12-fact-audit-batch05"
+    owner: "platform-oncall"
+    reason: "Fact audit batch 05 root-path sweep across 24 core docs; split would break atomic fixes"
+    expires: "2026-11-19"
+    gates: ["inflation"]
+    paths: ["aiPlat-core/docs/**", "aiPlat-management/docs/**", "aiPlat-app/docs/**", "docs/audit/**"]
   - id: "ex-2026-11-12-fact-audit-batch04"
     owner: "platform-oncall"
     reason: "Fact audit batch 04 touches 12 docs; split would break ledger atomicity"

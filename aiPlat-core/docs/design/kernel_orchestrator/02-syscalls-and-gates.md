@@ -49,7 +49,7 @@ last_synced: 2026-07-04
 
 ### 2.3 接入点（强制）
 - `core/harness/integration.py::HarnessIntegration.execute`
-- `core/harness/execution/loop.py`：LLM/Tool/Skill 调用必须走 syscalls
+- `core/harness/execution/loop/`：LLM/Tool/Skill 调用必须走 syscalls
 - `core/harness/execution/langgraph/nodes/*`：LLM/Tool 调用必须走 syscalls
 - `core/apps/skills/executor.py`：Skill 执行必须走 sys_skill
 - `core/harness/integration.py::_execute_tool`：Tool API 执行必须走 sys_tool
@@ -145,7 +145,7 @@ sequenceDiagram
 ### 5.2 TraceGate（全链路追踪）
 依赖：
 - `core/services/trace_service.py::TraceService`
-- `core/services/execution_store.py::ExecutionStore`
+- `core/services/execution_store/::ExecutionStore`
 
 职责：
 - 生成 root trace_id/run_id

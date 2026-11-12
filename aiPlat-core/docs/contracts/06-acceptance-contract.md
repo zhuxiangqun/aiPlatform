@@ -374,11 +374,11 @@ pytest -q \
   - `ls ~/.aiplat/teams/`（含 default.yaml + code.yaml）
 
 ### 1.35 应用工厂分析报告（2026-08-22）
-- MUST：`docs/research/应用工厂分析报告.md` 存在且含双模式自动路由说明（mode: agent/code）
+- MUST：`docs/reference/research/应用工厂分析报告.md` 存在且含双模式自动路由说明（mode: agent/code）
 - MUST：报告中的代码引用可通过 Rule 6 校验（`python3 scripts/check_research_docs_freshness.py <workspace>` 返回 0）
 - 自动化验收：
-  - `ls docs/research/应用工厂分析报告.md`（存在）
-  - `grep -c "planning_agent" docs/research/应用工厂分析报告.md`（≥1）
+  - `ls docs/reference/research/应用工厂分析报告.md`（存在）
+  - `grep -c "planning_agent" docs/reference/research/应用工厂分析报告.md`（≥1）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.36 SystemGraph 路径修复 + guard 冲突修复（2026-08-22）
@@ -390,10 +390,10 @@ pytest -q \
   - `grep -c "rel_path" scripts/guard_frontend.py`（≥1，完整路径优先逻辑）
 
 ### 1.37 L2 导入既有代码设计 + Rule 6 plan 豁免（2026-08-22）
-- MUST：`docs/research/plan-app-factory-l2-import-repo.md` 存在（L2 设计：import-repo API/prompt 注入/安全/回滚/验收）
+- MUST：`docs/reference/research/plan-app-factory-l2-import-repo.md` 存在（L2 设计：import-repo API/prompt 注入/安全/回滚/验收）
 - MUST：`check_research_docs_freshness.py` 对 `plan-` 前缀设计文档跳过引用对账（`is_plan` 逻辑）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l2-import-repo.md`（存在）
+  - `ls docs/reference/research/plan-app-factory-l2-import-repo.md`（存在）
   - `grep -c "is_plan" scripts/check_research_docs_freshness.py`（≥2：定义 + 使用）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
@@ -402,22 +402,22 @@ pytest -q \
 - MUST：modify_files 升级为 {path, intent} 意图绑定（§3.2/§3.5/§4），空意图不能提交
 - MUST：测试门禁逃生（§3.8）：tests/ 检测 + `skip_pytest_gate` 字段 + pre-check-import 依赖预检
 - 自动化验收：
-  - `grep -c "重写而非合并" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.4 标题 + §3.4 正文）
-  - `grep -c "intent" docs/research/plan-app-factory-l2-import-repo.md`（≥4：API/注入/验收/前端）
-  - `grep -c "skip_pytest_gate" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 + §4）
-  - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.2 + §3.8）
+  - `grep -c "重写而非合并" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥2：§3.4 标题 + §3.4 正文）
+  - `grep -c "intent" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥4：API/注入/验收/前端）
+  - `grep -c "skip_pytest_gate" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 + §4）
+  - `grep -c "pre-check-import" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥2：§3.2 + §3.8）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.39 L2 终审条件并入（手册 + Build Log 警告 + 埋点 + missing_deps）（2026-08-22）
-- MUST：`docs/research/plan-app-factory-l2-expected-behavior-manual.md` 存在（《L2 模式预期管理手册》交付物：重写≠合并/风格玄学/门禁失效三硬边界 + Checklist + 后悔路径）
+- MUST：`docs/reference/research/plan-app-factory-l2-expected-behavior-manual.md` 存在（《L2 模式预期管理手册》交付物：重写≠合并/风格玄学/门禁失效三硬边界 + Checklist + 后悔路径）
 - MUST：设计文档含 §3.9 交付条件（手册引用 + Build Log regenerated 警告 + skip_pytest_gate 埋点 >40% 触发 L3 优先级告警）
 - MUST：依赖预检并入 import_repo 响应（missing_deps 字段，pre-check-import 独立接口降级，保留决策痕迹 ≥2 处）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l2-expected-behavior-manual.md`（存在）
-  - `grep -c "missing_deps" docs/research/plan-app-factory-l2-import-repo.md`（≥3：§3.2 响应 + §3.8 表格 + §6 工作量）
-  - `grep -c "has been regenerated" docs/research/plan-app-factory-l2-import-repo.md`（≥1：§3.9 条件 2）
-  - `grep -c "埋点" docs/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 表格 + §3.9 条件 3）
-  - `grep -c "pre-check-import" docs/research/plan-app-factory-l2-import-repo.md`（≥2：决策痕迹，兼容 1.38）
+  - `ls docs/reference/research/plan-app-factory-l2-expected-behavior-manual.md`（存在）
+  - `grep -c "missing_deps" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥3：§3.2 响应 + §3.8 表格 + §6 工作量）
+  - `grep -c "has been regenerated" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥1：§3.9 条件 2）
+  - `grep -c "埋点" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥2：§3.8 表格 + §3.9 条件 3）
+  - `grep -c "pre-check-import" docs/reference/research/plan-app-factory-l2-import-repo.md`（≥2：决策痕迹，兼容 1.38）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.40 L2 实施（import-repo + prompt 注入 + 门禁逃生 + 警告/埋点）（2026-08-22）
@@ -437,13 +437,13 @@ pytest -q \
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.41 L3 增量合并引擎设计文档（2026-08-22）
-- MUST：`docs/research/plan-app-factory-l3-incremental-engine.md` 存在（L3 设计：ImpactAnalyzer/DiffMerger/incremental_merge 策略/审批门禁/验收 10 项/约 3.25 天）
+- MUST：`docs/reference/research/plan-app-factory-l3-incremental-engine.md` 存在（L3 设计：ImpactAnalyzer/DiffMerger/incremental_merge 策略/审批门禁/验收 10 项/约 3.25 天）
 - MUST：设计文档含 `merge_strategy` 字段设计（full_rewrite 默认 / incremental_merge）+ 与 L2 衔接清单（§9）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l3-incremental-engine.md`（存在）
-  - `grep -c "merge_strategy" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.2 字段 + §5 验收 + §9 衔接）
-  - `grep -c "ImpactAnalyzer" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.3 + §5 + §6）
-  - `grep -c "DiffMerger" docs/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.5 + §5 + §6）
+  - `ls docs/reference/research/plan-app-factory-l3-incremental-engine.md`（存在）
+  - `grep -c "merge_strategy" docs/reference/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.2 字段 + §5 验收 + §9 衔接）
+  - `grep -c "ImpactAnalyzer" docs/reference/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "DiffMerger" docs/reference/research/plan-app-factory-l3-incremental-engine.md`（≥3：§3.5 + §5 + §6）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.42 L3 增量合并引擎实施（2026-08-22）
@@ -478,13 +478,13 @@ pytest -q \
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.44 L4 多模块编排设计文档（2026-08-23）
-- MUST：`docs/research/plan-app-factory-l4-multi-module.md` 存在（L4 设计：modules.json/CrossModuleAnalyzer/ModuleOrchestrator/契约门禁/验收 12 项/约 4.5 天）
+- MUST：`docs/reference/research/plan-app-factory-l4-multi-module.md` 存在（L4 设计：modules.json/CrossModuleAnalyzer/ModuleOrchestrator/契约门禁/验收 12 项/约 4.5 天）
 - MUST：设计文档含模块级项目结构（modules.json 数据模型）+ 单模块隐式兼容（module_id=default）+ 与 L2/L3 衔接清单（§9）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l4-multi-module.md`（存在）
-  - `grep -c "modules.json" docs/research/plan-app-factory-l4-multi-module.md`（≥4：§1/§3.1 结构/§3.2/§5 验收）
-  - `grep -c "CrossModuleAnalyzer" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.3 + §5 + §6）
-  - `grep -c "ModuleOrchestrator" docs/research/plan-app-factory-l4-multi-module.md`（≥3：§3.4 + §5 + §6）
+  - `ls docs/reference/research/plan-app-factory-l4-multi-module.md`（存在）
+  - `grep -c "modules.json" docs/reference/research/plan-app-factory-l4-multi-module.md`（≥4：§1/§3.1 结构/§3.2/§5 验收）
+  - `grep -c "CrossModuleAnalyzer" docs/reference/research/plan-app-factory-l4-multi-module.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "ModuleOrchestrator" docs/reference/research/plan-app-factory-l4-multi-module.md`（≥3：§3.4 + §5 + §6）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.45 L4 多模块后端实施（2026-08-23）
@@ -506,8 +506,8 @@ pytest -q \
 - 自动化验收：
   - `grep -c "多模块编排（L4）" aiPlat-management/frontend/src/pages/App/Factory/index.tsx`（≥1）
   - `grep -c "createModules\|listModules\|importModuleRepo\|crossModuleImpact\|moduleOrchestrate" aiPlat-management/frontend/src/services/builderTeamApi.ts`（≥5）
-  - `grep -c "✅ \*\*已实施\*\*" docs/research/plan-app-factory-l4-multi-module.md`（≥1）
-  - `grep -c "多模块编排（L4" docs/manuals/management-ui-operation-manual.md`（≥1）
+  - `grep -c "✅ \*\*已实施\*\*" docs/reference/research/plan-app-factory-l4-multi-module.md`（≥1）
+  - `grep -c "多模块编排（L4" docs/guides/management-ui-operation-manual.md`（≥1）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.47 L4 v1.5 跨模块 merge 契约门禁（2026-08-23）
@@ -523,14 +523,14 @@ pytest -q \
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.48 L4.5 数据库迁移编排设计文档（2026-08-23）
-- MUST：`docs/research/plan-app-factory-l45-db-migration.md` 存在（L4.5 设计：SchemaExtractor/SchemaDiffAnalyzer/MigrationGenerator/破坏性门禁/验收 12 项/约 4.25 天）
+- MUST：`docs/reference/research/plan-app-factory-l45-db-migration.md` 存在（L4.5 设计：SchemaExtractor/SchemaDiffAnalyzer/MigrationGenerator/破坏性门禁/验收 12 项/约 4.25 天）
 - MUST：设计文档含迁移编排数据流（merge_apply → schema diff → 迁移预览审批）+ 破坏性变更定义（§3.4）+ 与 L2/L3/L4 衔接清单（§9）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l45-db-migration.md`（存在）
-  - `grep -c "SchemaExtractor" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.3 + §5 + §6）
-  - `grep -c "SchemaDiffAnalyzer" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.4 + §5 + §6）
-  - `grep -c "MigrationGenerator" docs/research/plan-app-factory-l45-db-migration.md`（≥3：§3.5 + §5 + §6）
-  - `grep -c "destructive" docs/research/plan-app-factory-l45-db-migration.md`（≥4：§3.4 定义 + §3.5 + §3.8 + §5）
+  - `ls docs/reference/research/plan-app-factory-l45-db-migration.md`（存在）
+  - `grep -c "SchemaExtractor" docs/reference/research/plan-app-factory-l45-db-migration.md`（≥3：§3.3 + §5 + §6）
+  - `grep -c "SchemaDiffAnalyzer" docs/reference/research/plan-app-factory-l45-db-migration.md`（≥3：§3.4 + §5 + §6）
+  - `grep -c "MigrationGenerator" docs/reference/research/plan-app-factory-l45-db-migration.md`（≥3：§3.5 + §5 + §6）
+  - `grep -c "destructive" docs/reference/research/plan-app-factory-l45-db-migration.md`（≥4：§3.4 定义 + §3.5 + §3.8 + §5）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.49 L4.5 数据库迁移编排实施（2026-08-23）
@@ -546,13 +546,13 @@ pytest -q \
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.50 L5 模块级 CI/CD 与灰度发布设计文档（2026-08-23）
-- MUST：`docs/research/plan-app-factory-l5-cicd.md` 存在（L5 设计：版本化产物/发布状态机（building/ready/canary/full/rolled_back）/金丝雀灰度/回滚/验收 8 项/约 3 天）
+- MUST：`docs/reference/research/plan-app-factory-l5-cicd.md` 存在（L5 设计：版本化产物/发布状态机（building/ready/canary/full/rolled_back）/金丝雀灰度/回滚/验收 8 项/约 3 天）
 - MUST：设计文档含发布状态机定义（§3.2）+ 与 infra deploy_service 衔接（§3.6）+ 与 L2/L3/L4/L4.5 衔接清单（§9）
 - 自动化验收：
-  - `ls docs/research/plan-app-factory-l5-cicd.md`（存在）
-  - `grep -c "canary" docs/research/plan-app-factory-l5-cicd.md`（≥5：§3.2 状态机 + §3.5 + §5 + §7 + §9）
-  - `grep -c "rolled_back" docs/research/plan-app-factory-l5-cicd.md`（≥3：§3.2 + §3.5 + §5）
-  - `grep -c "releases/v" docs/research/plan-app-factory-l5-cicd.md`（≥2：§3.1 + §3.4）
+  - `ls docs/reference/research/plan-app-factory-l5-cicd.md`（存在）
+  - `grep -c "canary" docs/reference/research/plan-app-factory-l5-cicd.md`（≥5：§3.2 状态机 + §3.5 + §5 + §7 + §9）
+  - `grep -c "rolled_back" docs/reference/research/plan-app-factory-l5-cicd.md`（≥3：§3.2 + §3.5 + §5）
+  - `grep -c "releases/v" docs/reference/research/plan-app-factory-l5-cicd.md`（≥2：§3.1 + §3.4）
   - `python3 scripts/check_research_docs_freshness.py .`（exit 0）
 
 ### 1.51 L5 发布流水线实施（2026-08-23）

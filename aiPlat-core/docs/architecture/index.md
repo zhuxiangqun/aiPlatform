@@ -299,7 +299,7 @@ harness/
 
 ## 证据索引（Evidence Index｜抽样）
 
-- Harness Loop 主路径：`core/harness/execution/loop.py`（`BaseLoop.run()` / `ReActLoop`）
+- Harness Loop 主路径：`core/harness/execution/loop/`（`BaseLoop.run()` / `ReActLoop`）
 - LangGraph 子系统入口：`core/harness/execution/langgraph/core.py` / `callbacks.py` / `graphs/*`
 - 现状真值与修复决策：`docs/ARCHITECTURE_STATUS.md`（“决策 2/3/4”）
 ```

@@ -54,7 +54,7 @@ doc_type: Reference
 - `release_rollouts` 表：tenant 维度 rollout（candidate_id + 规则）
 - `release_metric_snapshots` 表：candidate 指标快照（用于回归监控/自动回滚）
 
-（对应实现集中在 `core/services/execution_store.py`）
+（对应实现集中在 `core/services/execution_store/`）
 
 ### 1.2 核心模块（core/learning）
 

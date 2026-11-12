@@ -424,5 +424,5 @@ commands:
 
 - ApprovalManager：`core/harness/infrastructure/approval/manager.py`
 - ContractManager：`core/harness/contract/manager.py`
-- Loop 接线（contract/approval）：`core/harness/execution/loop.py`
+- Loop 接线（contract/approval）：`core/harness/execution/loop/`
 - Feedback loops（local/push/prod/evolution）：`core/harness/feedback_loops/*`

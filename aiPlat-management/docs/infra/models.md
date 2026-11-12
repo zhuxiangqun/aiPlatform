@@ -406,7 +406,7 @@ ollama:
 | `aiPlat-infra/infra/management/model/manager.py` | ModelManager 主类 |
 | `aiPlat-infra/infra/management/model/config_loader.py` | YAML 配置加载 |
 | `aiPlat-infra/infra/management/model/ollama_scanner.py` | Ollama 模型扫描 |
-| `aiPlat-infra/infra/management/model/external_storage.py` | JSON 存储 |
+| `aiPlat-infra/infra/management/model/storage.py` | JSON 存储 |
 | `aiPlat-infra/infra/management/model/health_checker.py` | 健康检查 |
 
 ### 前端

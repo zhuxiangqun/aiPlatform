@@ -395,5 +395,5 @@ await evolution.on_error_threshold(error_rate=0.1, threshold=0.05)
 ## 证据索引（Evidence Index｜抽样）
 
 - HarnessIntegration：`core/harness/integration.py`
-- Loop-first：`core/harness/execution/loop.py`
+- Loop-first：`core/harness/execution/loop/`
 - LangGraph：`core/harness/execution/langgraph/*`
