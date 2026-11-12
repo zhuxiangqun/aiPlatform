@@ -433,7 +433,7 @@ POST /prompts/app/templates/{id}/publish   → Prompt App 发布（验签门禁�
 | `aiPlat-core/core/api/routers/tools.py` | Tools CRUD + sign + execute |
 | `aiPlat-platform/api/routers/workflows.py` | Workflows CRUD + sign + publish |
 | `aiPlat-platform/api/routers/builder.py` | Builder CRUD + sign + deploy |
-| `aiPlat-core/core/api/routers/prompt_app.py` | Prompt App CRUD + sign + publish |
+| `aiPlat-platform/apps/prompt/api/prompt_app.py` | Prompt App CRUD + sign + publish |
 
 ### 6.5 前端
 
@@ -460,7 +460,7 @@ POST /prompts/app/templates/{id}/publish   → Prompt App 发布（验签门禁�
 
 | 文件 | 说明 |
 |------|------|
-| `docs/governance.md` | **本文档** |
+| `docs/architecture/governance.md` | **本文档** |
 | `aiPlat-core/docs/contracts/05-governance-release-contract.md` | 治理/发布契约 |
 | `aiPlat-core/docs/contracts/01-architecture-contract.md` | 架构契约 |
 
