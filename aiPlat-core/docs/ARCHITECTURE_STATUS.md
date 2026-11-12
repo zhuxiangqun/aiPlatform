@@ -362,12 +362,12 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 | 组件 | 状态 | 说明 |
 |------|------|------|
-| ToolRegistry | ✅ | 全局单例，启动注册 3 个 tool |
+| ToolRegistry | ✅ | 全局单例；启动注册 4 个内置工具 + 约 20 个模块工具 |
 | CalculatorTool | ✅ | 真实可用 |
 | SearchTool | ✅ | 真实可用（DuckDuckGo） |
-| FileOperationsTool | ❌ | 桩 |
+| FileOperationsTool | ✅ | 真实 Path/os 实现 |
 | CodeExecutionTool | ❌ | 桩（需要沙箱） |
-| DatabaseTool | ❌ | 桩（需要数据库驱动） |
+| DatabaseTool | ✅ | SQLite/PostgreSQL/MySQL 三后端实现 |
 | BrowserTool | ❌ | 桩（需要 Playwright） |
 | WebFetchTool | ✅ | 真实实现（aiohttp），server.py lifespan 注册 |
 | HTTPClientTool | ✅ | 真实实现（aiohttp），server.py lifespan 注册 |
@@ -388,7 +388,7 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 |------|------|------|
 | Policy Engine | ✅ | 策略规则完整可用 |
 | Memory 系统 | ✅ | 短期/工作/情景/语义四层 |
-| Knowledge 检索 | ⚠️ | 可用但使用 hash 伪向量 |
+| Knowledge 检索 | ✅ | 默认 semantic 后端；hash 仅作降级 |
 | Hook 系统 | ✅ | 修复 PRE_SKILL_USE→POST_SKILL_USE Bug |
 | Coordination 模式 | ✅ | 6 种模式（Pipeline/FanOut/Expert/Producer/Supervisor/HierarchicalDelegation）已接入 MultiAgent.execute() 并可被调用 |
 | Convergence 检测 | ✅ | 4 种检测器可用，且已接入 LangGraph MultiAgentGraph 收敛评估路径 |

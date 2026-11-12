@@ -2,6 +2,8 @@
 doc_type: Index
 ---
 
+> **现状更正（2026-11 审核）**：`aiPlat-infra/infra/mcp/` 不存在；MCP 实际实现位于 `aiPlat-core/core/apps/mcp/` 与 `core/mcp/`。本文以下为历史设计。
+
 # 📚 MCP 模块文档
 
 > MCP（Model Context Protocol）协议客户端 - 基础设施层

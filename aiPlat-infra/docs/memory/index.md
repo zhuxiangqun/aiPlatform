@@ -121,7 +121,7 @@ memory = create_memory_manager(config)
 
 ### 配置文件示例
 
-**位置**：`config/infra/memory.yaml`
+**位置**：`config/infra/default.yaml` 的 `memory:` section
 
 ```yaml
 # 内存管理配置

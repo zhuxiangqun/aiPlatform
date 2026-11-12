@@ -122,7 +122,7 @@ compute = create_compute_manager(config)
 
 ### 配置文件示例
 
-**位置**：`config/infra/compute.yaml`
+**位置**：`config/infra/default.yaml` 的 `compute:` section
 
 ```yaml
 # 计算资源管理配置
