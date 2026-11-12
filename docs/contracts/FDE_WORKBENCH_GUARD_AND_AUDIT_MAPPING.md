@@ -77,7 +77,7 @@ doc_type: Contract
 1. Phase 0 后半：假进度 / Agent 拓扑以 **warning** 合入 §98（正确前端路径）；观察误报。  
 2. Phase 1 前半：映射脚本 dry-run 报告入库；RuntimeGuard 骨架已接 execute/dashboard。  
 3. Phase 1 后半：HITL 冒烟；DomainRouter 硬验收。  
-4. Phase 2：RuntimeGuard 挂 accept_order 全链路 + 别名（D3）— **已合入**（canonical + alias；bench 200 PASS）。
+4. Phase 2：RuntimeGuard 挂 accept_order 全链路 + 别名（D3）— **已合入**（canonical only；legacy alias 已移除；bench 200 PASS）。
 
 ---
 

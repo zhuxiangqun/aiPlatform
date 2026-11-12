@@ -9,18 +9,14 @@ This directory contains **reference** conformance assets, not proof of a deploye
 ## Included
 
 - `reference_policy.json` — mock RBAC/ABAC policy used by the semantic validators;
-- `approval-record.pending.json` — v4.2 pending approval record (historical);
-- `approval-record.approved.json` — v4.2 approved record (historical);
-- `approval-record-v4.3.pending.json` — v4.3 pending record (historical);
-- `approval-record-v4.3.approved.json` — v4.3 approved record (effective 2027-01-01).
+- `approval-record-v4.3.1.pending.json` — v4.3.1 pending record (historical);
+- `approval-record-v4.3.1.approved.json` — v4.3.1 approved record (effective 2027-01-01).
 
 ## Commands
 
 ```bash
-python docs/standards/knowledge-system/v4.3.1/schemas/validate_examples.py
-python docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics.py
-python docs/standards/knowledge-system/v4.3.1/schemas/validate_examples_v4.3.py
-python docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics_v4.3.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_examples_v4.3.1.py
+python docs/standards/knowledge-system/v4.3.1/schemas/validate_semantics_v4.3.1.py
 ```
 
 ## Real implementation tests (required before claiming conformance)

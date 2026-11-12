@@ -62,7 +62,9 @@ doc_type: Architecture
 
 ## Measurement
 
-All SLIs are measured via Prometheus metrics:
+> **当前没有 Prometheus SLO 指标实现。** 下表是建议的指标契约，不是已测量事实；落地前不得据此宣称 SLO 达标。
+
+Planned instrumentation:
 
 | SLI | Prometheus Metric |
 |:---|:---|

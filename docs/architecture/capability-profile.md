@@ -4,7 +4,7 @@ doc_type: Architecture
 
 # 能力剖面（Capability Profile）— Agent 等级体系
 
-> 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_engine.py::_apply_capability_profile()`  
+> 版本: v4.0 | 更新: 2026-08 | 实施: `pipeline_stage.py::_apply_capability_profile()`
 > **与执行后端/架构选型的完整关系**见 [execution-decision-matrix.md](execution-decision-matrix.md)（本文描述能力注入；不单独决定 backend）。
 
 ---
@@ -285,19 +285,19 @@ for name in sorted(os.listdir(agents_dir)):
 
 | 文件 | 内容 |
 |------|------|
-| `core/schemas_builder.py:275` | `capability_profile` 字段定义 |
-| `core/harness/execution/pipeline_engine.py:3963` | `_infer_profile_from_stage()` 静态推断 |
-| `core/harness/execution/pipeline_engine.py:3991` | `_apply_capability_profile()` 能力注入 |
-| `core/harness/execution/team_planner.py:331` | 编排期自动推断集成 |
+| `core/schemas_builder.py:1042` | `capability_profile` 字段定义 |
+| `core/harness/execution/pipeline_stage.py:283` | `_infer_profile_from_stage()` 静态推断 |
+| `core/harness/execution/pipeline_stage.py:390` | `_apply_capability_profile()` 能力注入 |
+| `core/harness/execution/team_planner.py` | 编排期自动推断集成 |
 | `core/engine/skills/agent_engineering/SKILL.md:104` | SOP 中 agent_type 生成规则 |
-| `core/harness/infrastructure/gates/policy_gate.py:303` | `_adaptive_mode` + 风险评分 |
+| `core/harness/infrastructure/gates/policy_gate.py:453` | `_adaptive_mode` + 风险评分 |
 | `core/harness/infrastructure/hooks/online_evolution.py` | POST_LOOP 实时进化 hook |
 | `core/harness/interfaces/messaging.py:28` | AgentMessageType DEBATE/VOTE |
 | `scripts/benchmark_memory.py` | 记忆压缩基准测试 |
-| `core/api/routers/pipeline_execution.py:387` | `POST /pipelines/runs/{id}/resume` |
-| `core/services/execution_store/_base.py:354` | `get_recent_syscall_events()` — v5.0 校准数据源 |
-| `core/harness/execution/pipeline_engine.py:4080` | `_calibrate_profile_from_history()` — 运行时校准 |
-| `core/harness/execution/pipeline_engine.py:4215` | 校准挂载点 — `_apply_capability_profile` 尾部 |
+| `core/api/routers/pipeline_execution.py:603` | `POST /pipelines/runs/{id}/resume` |
+| `core/services/execution_store/_base.py:389` | `get_recent_syscall_events()` — v5.0 校准数据源 |
+| `core/harness/execution/pipeline_stage.py:310` | `_calibrate_profile_from_history()` — 运行时校准 |
+| `core/harness/execution/pipeline_stage.py` | 校准挂载点 — `_apply_capability_profile` 尾部 |
 
 ---
 

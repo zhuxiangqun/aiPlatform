@@ -91,8 +91,8 @@ owner: harness/observability + evaluation
 ### 3.2 真实性缺口 → 已补
 | 缺口 | 修复 | 证据 |
 |------|------|------|
-| Agent 真实运行质量非自动评估（Agent评估页常空） | 每次运行 fire-and-forget 6维自动打分 | `base.py:223 _try_auto_score_run`；`eval_runner.py:184 persist_runtime_eval`（保留上限） |
-| 无生产真实任务成功率 | 从 auto-runtime 结果连续汇总 | `evaluation.py:160 production_success`（仅统计 `eval_set_id=="auto-runtime"`） |
+| Agent 真实运行质量非自动评估（Agent评估页常空） | 每次运行 fire-and-forget 6维自动打分 | `base.py:443 _try_auto_score_run`；`eval_runner.py:498 persist_runtime_eval`（保留上限） |
+| 无生产真实任务成功率 | 从 auto-runtime 结果连续汇总 | `base.py:819-829 auto-runtime 评估记录`（当前无 `production_success` 聚合符号） |
 
 ### 3.3 自动修复 → 已可见 + 已闭环
 | 缺口 | 修复 | 证据 |
