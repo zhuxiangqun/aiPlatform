@@ -11,4 +11,4 @@ doc_type: Index
 
 **未迁**（仍需全文）：`ARENA_BLIND_SEND_*`、`ARENA_BLIND_RUBRIC_V1`（pack 复制正文）、OIDC/SANDBOX 等门禁读内容的 prep 稿。
 
-产品入口：[`reports/five-products/modules/evaluation/README.md`](../../../../../reports/five-products/modules/evaluation/README.md)
+产品入口：[`reports/five-products/modules/evaluation/README.md`](../../../../../docs/products/five-products/modules/evaluation/README.md)
