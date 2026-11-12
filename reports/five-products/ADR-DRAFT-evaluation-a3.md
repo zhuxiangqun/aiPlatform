@@ -4,6 +4,9 @@ doc_type: Report
 
 # ADR-DRAFT — Evaluation A3（对照稿）
 
+> **边界（E3）**：本草案只覆盖本主题，不包含另一主题；对照草案见 [`ADR-DRAFT-ontology-a3.md`](./ADR-DRAFT-ontology-a3.md)。两份不是重复副本。
+
+
 > **状态**：Draft · **已由 Accepted（有条件）取代** · 2026-10-30  
 > **生效 ADR**：[`ADR-EVALUATION-A3.md`](./ADR-EVALUATION-A3.md)  
 > **前置**：Evaluation D1 Thin 共宿（`packages/aiplat-evaluation` · `eval.protocol.v0`）

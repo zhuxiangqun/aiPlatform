@@ -4,8 +4,8 @@ doc_type: Report
 
 # Evaluation 文档生命周期（收口）
 
-> **生效**：2026-11-06  
-> **导航入口**：[`modules/evaluation/README.md`](../modules/evaluation/README.md)  
+> **生效**：2026-11-06
+> **导航入口**：[`modules/evaluation/README.md`](../../../docs/products/five-products/modules/evaluation/README.md)
 > **原则**：现行定义少而稳；收口凭证进 archive；不解冻/过程纸不再当产品说明。
 
 ## 状态标签
@@ -21,9 +21,9 @@ doc_type: Report
 
 | 文档 | 角色 |
 |------|------|
-| [`modules/evaluation/README.md`](../modules/evaluation/README.md) | **唯一导航入口** |
-| [`modules/evaluation/MODULE.md`](../modules/evaluation/MODULE.md) | 模块边界 |
-| [`modules/evaluation/EVAL_PROTOCOL.md`](../modules/evaluation/EVAL_PROTOCOL.md) | 协议 |
+| [`modules/evaluation/README.md`](../../../docs/products/five-products/modules/evaluation/README.md) | **唯一导航入口** |
+| [`modules/evaluation/MODULE.md`](../../../docs/products/five-products/modules/evaluation/MODULE.md) | 模块边界 |
+| [`modules/evaluation/EVAL_PROTOCOL.md`](../../../docs/products/five-products/modules/evaluation/EVAL_PROTOCOL.md) | 协议 |
 | [`EVALUATION_PRODUCT_REVIEW_2026-11-04.md`](./EVALUATION_PRODUCT_REVIEW_2026-11-04.md) | 产品评审基线 |
 | [`EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md`](./EVALUATION_IMPROVEMENT_EXECUTION_PLAN_2026-11-04.md) | 改进轨道计划 |
 | [`EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md`](./EVAL_LOCAL_FIRST_PRIORITY_2026-11-06.md) | 本机优先策略 |
@@ -40,19 +40,19 @@ doc_type: Report
 
 ## frozen-gate（本批已迁 archive；勿扩写）
 
-目录：[`_archive/eval-gates/`](./_archive/eval-gates/)  
+目录：[`_archive/eval-gates/`](./_archive/eval-gates/)
 
 含 `ENGINEERING_UNFREEZE_EVAL_*.md`（16 份）。原路径留 **stub**；`ops_engineering_freeze_check.sh` 仍按原路径做存在性检查。
 
 ## inventories（本批已迁 archive）
 
-目录：[`_archive/eval-inventories/`](./_archive/eval-inventories/)  
+目录：[`_archive/eval-inventories/`](./_archive/eval-inventories/)
 
 含 `EVAL_V1_E1_INVENTORY.md`、`EVAL_V1_E3_GOLD_SOURCES.md`、`EVAL_P1B_AGENT_HANDOFF.md`。原路径留 **stub**；E3 正文断言读 archive（`test_eval_v1_e3_gold`）。
 
 ## evidence（已迁 archive）
 
-目录：[`_archive/eval-receipts/`](./_archive/eval-receipts/)  
+目录：[`_archive/eval-receipts/`](./_archive/eval-receipts/)
 
 含 CLOSEOUT / SIGNOFF / PARTIAL / BLOCKED / ACCEPT / EXPAND_READY 等评测收口凭证。原路径留 **stub** 指到 archive，避免断链。
 

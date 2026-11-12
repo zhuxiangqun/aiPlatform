@@ -76,7 +76,7 @@ def test_eval_store_schema_file_exists():
     pkg = root / "packages/aiplat-evaluation/contracts/schemas/eval_store.schema.json"
     # ARCH v1.3: reports/schemas is shim-only (no JSON copies).
     reports_schemas = (
-        root / "reports/five-products/modules/evaluation/contracts/schemas"
+        root / "docs/products/five-products/modules/evaluation/contracts/schemas"
     )
     assert pkg.is_file()
     assert "eval.store.v0" in pkg.read_text(encoding="utf-8")

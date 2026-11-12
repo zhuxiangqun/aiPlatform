@@ -4,7 +4,7 @@ doc_type: Reference
 
 # 执行引擎管理
 
-> **派生文档（Batch C1）**：本文是管理端摘要，权威实现/契约见 [`aiPlat-core/docs/index.md`](../../../aiPlat-core/docs/index.md)；冲突时以 core 文档为准。
+> **管理端视角（E4）**：本文是管理端操作/UI 文档，不是 core 机制的复制；机制权威见 [`aiPlat-core/docs/index.md`](../../../aiPlat-core/docs/index.md)；本文保留管理端流程与界面说明。
 
 
 > Harness 执行系统的完整运维能力

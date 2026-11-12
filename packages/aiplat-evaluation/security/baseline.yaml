@@ -12,7 +12,7 @@ checks:
     must_contain:
       - "eval.protocol.v0"
   - id: evaluation_protocol_doc
-    path: reports/five-products/modules/evaluation/EVAL_PROTOCOL.md
+    path: docs/products/five-products/modules/evaluation/EVAL_PROTOCOL.md
     must_contain:
       - "eval.protocol.v0"
       - "evidence_refs"

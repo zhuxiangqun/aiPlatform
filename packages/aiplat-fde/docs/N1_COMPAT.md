@@ -27,6 +27,6 @@ doc_type: Reference
 ## 验证
 
 ```bash
-python3 reports/five-products/modules/fde/contracts/validate_sample.py
+python3 docs/products/five-products/modules/fde/contracts/validate_sample.py
 # evidence schema 含 report_id + items[].ref
 ```

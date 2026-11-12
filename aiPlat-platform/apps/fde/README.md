@@ -34,8 +34,8 @@ bash scripts/adr09_fde_optional_phase_health.sh
 
 ## V2 现场范围 / A1 契约
 
-- 现场范围：`reports/five-products/modules/fde/FIELD_SCOPE.md`
-- 契约：`reports/five-products/modules/fde/contracts/`（`validate_sample.py`）
+- 现场范围：`docs/products/five-products/modules/fde/FIELD_SCOPE.md`
+- 契约：`docs/products/five-products/modules/fde/contracts/`（`validate_sample.py`）
 - Field D1 ADR（**未 Accepted**）：`reports/five-products/ADR-DRAFT-fde-field-deploy.md`
 
 业务手册（现场交付 SOP）见仓库 `docs/manuals/fde/`，与本部署说明分工不同。

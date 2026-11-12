@@ -12,7 +12,7 @@ ROOT="$(d1_repo_root)"; PKG="$(d1_repo_pkg)"; PREFIX="$(d1_prefix)"
 PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 
-python3 "$ROOT/reports/five-products/modules/fde/contracts/validate_sample.py"
+python3 "$ROOT/docs/products/five-products/modules/fde/contracts/validate_sample.py"
 
 export AIPLAT_FDE_HEALTHZ_SCHEMA="$PKG/contracts/schemas/healthz.schema.json"
 export AIPLAT_FDE_EVIDENCE_SCHEMA="$PKG/contracts/schemas/evidence_export.schema.json"

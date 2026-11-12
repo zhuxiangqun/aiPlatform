@@ -2,7 +2,7 @@
 """Evaluation contracts SSOT — sample validator (ARCH v1.3).
 
 Canonical schemas live beside this file under ``schemas/``.
-Legacy entry: ``reports/five-products/modules/evaluation/contracts/validate_sample.py``
+Legacy entry: ``docs/products/five-products/modules/evaluation/contracts/validate_sample.py``
 (shim only).
 """
 from __future__ import annotations

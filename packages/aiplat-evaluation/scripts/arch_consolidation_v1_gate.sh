@@ -79,7 +79,7 @@ pkg_schemas = repo / "packages/aiplat-evaluation/contracts/schemas"
 assert (pkg_schemas / "eval_protocol.schema.json").is_file()
 assert (repo / "packages/aiplat-evaluation/contracts/validate_sample.py").is_file()
 reports_schemas = (
-    repo / "reports/five-products/modules/evaluation/contracts/schemas"
+    repo / "docs/products/five-products/modules/evaluation/contracts/schemas"
 )
 assert sorted(p.name for p in reports_schemas.glob("*.json")) == []
 codeowners = (repo / ".github/CODEOWNERS").read_text(encoding="utf-8")

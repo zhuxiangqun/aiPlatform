@@ -17,7 +17,7 @@ PY=python3
 [[ -x "$ROOT/.venv/bin/python" ]] && PY="$ROOT/.venv/bin/python"
 
 # Module contract sample
-python3 "$ROOT/reports/five-products/modules/ontology/contracts/validate_sample.py"
+python3 "$ROOT/docs/products/five-products/modules/ontology/contracts/validate_sample.py"
 
 export AIPLAT_ONTOLOGY_HEALTHZ_SCHEMA="$PKG/contracts/schemas/healthz.schema.json"
 "$PY" - <<'PY'

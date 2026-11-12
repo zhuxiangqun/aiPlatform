@@ -77,7 +77,7 @@ docs/archive/whitepaper-generated/
 ## 5. 已知残留
 
 ```text
-archive/_archive 断链：225
+archive/_archive 断链：0（Batch D7a 清理）
 ```
 
 归档区不纳入 strict；这是历史文档内部链接，不影响维护区。

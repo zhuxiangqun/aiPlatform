@@ -23,7 +23,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 echo "== Evaluation D3 local acceptance (UAT dry-run; not production) =="
 bash "$SCRIPT_DIR/d2_admin_check.sh" || fail "d2_admin"
-"$PY" "$ROOT/reports/five-products/modules/evaluation/contracts/validate_sample.py" || fail "contracts"
+"$PY" "$ROOT/docs/products/five-products/modules/evaluation/contracts/validate_sample.py" || fail "contracts"
 bash "$SCRIPT_DIR/d1_install.sh" || fail "install"
 BEFORE="$(readlink "$AIPLAT_EVAL_PREFIX/current")"
 bash "$SCRIPT_DIR/d1_upgrade.sh" || fail "upgrade"

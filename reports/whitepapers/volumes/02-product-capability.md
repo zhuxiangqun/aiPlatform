@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-11T14:28:47Z"
+generated_at: "2026-11-12T01:07:11Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
-caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
+caps_sha256: "579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T14:28:47Z` |
-| CAPABILITIES sha256 | `3674a4361be7…` |
+| 生成时间 (UTC) | `2026-11-12T01:07:11Z` |
+| CAPABILITIES sha256 | `579bd50c9b85…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -228,7 +228,7 @@ curl -X POST http://localhost:8000/api/diagnostics/run-all
 操作手册入口：[`manuals/README.md`](README.md) · 合册 [`../contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md`](../../../docs/contracts/FDE_ONTOLOGY_AGENT_OPS_MANUAL.md) · Org [`../contracts/ORG_L5_RUNBOOK.md`](../../../docs/contracts/ORG_L5_RUNBOOK.md)。
 
 - [API Reference](../../../docs/reference/API/api-reference.md) — 完整 API 文档
-- [自主性评估报告](../../../docs/reference/framework/aiplat-complete-assessment.md) — 系统能力评估
+- [自主性评估报告](../../framework/aiplat-complete-assessment.md) — 系统能力评估
 - [验证协议](../../../docs/reference/framework/verification-protocol.md) — 独立复现验证
 
 #### 常见问题

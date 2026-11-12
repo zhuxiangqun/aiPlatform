@@ -55,7 +55,7 @@ def test_contracts_ssot_package_only():
     assert pkg.is_file()
     reports = (
         REPO
-        / "reports/five-products/modules/evaluation/contracts/schemas"
+        / "docs/products/five-products/modules/evaluation/contracts/schemas"
     )
     assert list(reports.glob("*.json")) == []
     owners = (REPO / ".github/CODEOWNERS").read_text(encoding="utf-8")

@@ -30,17 +30,17 @@ run_budget() {
 echo "== D2 local perf baseline (contract budget=${CONTRACT_BUDGET_S}s; smoke=${INCLUDE_SMOKE}) =="
 
 run_budget "aiplat contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/aiplat/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/aiplat/contracts/validate_sample.py
 run_budget "ontology contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/ontology/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/ontology/contracts/validate_sample.py
 run_budget "evaluation contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/evaluation/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/evaluation/contracts/validate_sample.py
 run_budget "fde contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/fde/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/fde/contracts/validate_sample.py
 run_budget "pi contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/pi/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/pi/contracts/validate_sample.py
 run_budget "diagnosis contracts" "$CONTRACT_BUDGET_S" \
-  "$PY" reports/five-products/modules/diagnosis/contracts/validate_sample.py
+  "$PY" docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
 
 for doc in \
   packages/aiplat-central/docs/PERF_BASELINE.md \

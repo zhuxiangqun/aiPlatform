@@ -4,19 +4,19 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-11T14:28:47Z"
+generated_at: "2026-11-12T01:07:11Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6"
-caps_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
+caps_sha256: "579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=8ef15832e16896a7cc72bb8e2dbbbc6b6753e9727a98e352bd83cb4ed8df25c6 caps_sha256=579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-11T14:28:47Z` |
-| CAPABILITIES sha256 | `3674a4361be7…` |
+| 生成时间 (UTC) | `2026-11-12T01:07:11Z` |
+| CAPABILITIES sha256 | `579bd50c9b85…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -56,10 +56,10 @@ language: zh-CN
 
 | 路径 | 角色 | 存在 |
 |------|------|:----:|
-| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../../docs/reference/framework/aiplat-autonomy-framework.md) | 自主性框架 | ✅ |
-| [`docs/reference/framework/aiplat-complete-assessment.md`](../../../docs/reference/framework/aiplat-complete-assessment.md) | 完整评估叙述 | ✅ |
+| [`docs/reference/framework/aiplat-autonomy-framework.md`](../../framework/aiplat-autonomy-framework.md) | 自主性框架 | ❌ |
+| [`docs/reference/framework/aiplat-complete-assessment.md`](../../framework/aiplat-complete-assessment.md) | 完整评估叙述 | ❌ |
 | [`docs/reference/framework/assessment-scores.json`](../../../docs/reference/framework/assessment-scores.json) | 评分机器源 | ✅ |
-| [`docs/reference/framework/scoring-detail.md`](../../../docs/reference/framework/scoring-detail.md) | 评分细则 | ✅ |
+| [`docs/reference/framework/scoring-detail.md`](../../framework/scoring-detail.md) | 评分细则 | ❌ |
 | [`docs/reference/framework/verification-protocol.md`](../../../docs/reference/framework/verification-protocol.md) | 外部验证协议 | ✅ |
 
 

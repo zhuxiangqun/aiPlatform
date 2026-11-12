@@ -4,12 +4,12 @@ doc_type: Architecture
 
 # EVAL_V1 Charter — 评测准确性、唯一入口与评测中心
 
-> **文档类型**：Product / Design Charter  
-> **状态**：**Accepted · E0–E7 PASS · G2a locked**（local `gate_claim`；accuracy 仍禁；G2b/E8 后置）· 2026-11-01  
-> **范围**：Evaluation 产品 v1（本地工程 + 产品设计）；不含 A3 进程拆分、生产 staging/authorize/SLA  
-> **解冻**：[`ENGINEERING_UNFREEZE_EVAL_V1.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md)  
-> **上游计划**：[`five-capability-independent-engineering-plan.md`](./five-capability-independent-engineering-plan.md) V2.2  
-> **现状**：[`STATUS.md`](../../../reports/five-products/STATUS.md) · [`MODULE.md`](../../../reports/five-products/modules/evaluation/MODULE.md)  
+> **文档类型**：Product / Design Charter
+> **状态**：**Accepted · E0–E7 PASS · G2a locked**（local `gate_claim`；accuracy 仍禁；G2b/E8 后置）· 2026-11-01
+> **范围**：Evaluation 产品 v1（本地工程 + 产品设计）；不含 A3 进程拆分、生产 staging/authorize/SLA
+> **解冻**：[`ENGINEERING_UNFREEZE_EVAL_V1.md`](../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_V1.md)
+> **上游计划**：[`five-capability-independent-engineering-plan.md`](./five-capability-independent-engineering-plan.md) V2.2
+> **现状**：[`STATUS.md`](../../../reports/five-products/STATUS.md) · [`MODULE.md`](../../../docs/products/five-products/modules/evaluation/MODULE.md)
 > **本文件不是**：实施记录；不代表 `process_split` / `staging_ready` / `production_signed` 解冻。
 
 ---
@@ -328,7 +328,7 @@ Eval Store（tasks/runs/judgments/reports/labels/judge_versions）
 - [x] 任务来源计划：≥15 启动，30 锁 v0；来源清单。
 - [x] 仲裁节奏：每周三 19:00–21:00。
 
-**E0 完成 → E1 ready**（唯一 API/入口盘点可开工）。  
+**E0 完成 → E1 ready**（唯一 API/入口盘点可开工）。
 E0 只产出文档，不改业务代码；E1 起才动 API/代码。
 
 ---

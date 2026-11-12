@@ -4,6 +4,9 @@ doc_type: Reference
 
 # Pi Thin — D3 local UAT
 
+> **包级证据（E2）**：本文件只描述本包本地基线/UAT，不是跨包通用模板；跨包比较需以各包数值和证据为准。
+
+
 > 本地验收；**不是** `d3_production` 授权。详见 `d3_local_closeout.sh`。
 
 | # | 步骤 | 本地命令 / 证据 |

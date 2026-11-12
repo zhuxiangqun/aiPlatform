@@ -10,4 +10,4 @@ Diagnosis Service **D1 Thin (D1c/cohost)** · **D2 ops pack** · ADR draft.
 
 `process_split_authorized` stays **false** until live checklist ✅ + ADR Accept.
 
-Charter: `reports/five-products/modules/diagnosis/MODULE.md`
+Charter: `docs/products/five-products/modules/diagnosis/MODULE.md`

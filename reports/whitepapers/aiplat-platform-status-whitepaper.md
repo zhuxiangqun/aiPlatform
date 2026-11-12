@@ -3,10 +3,10 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-11T14:28:33Z"
+generated_at: "2026-11-12T01:07:11Z"
 source: AIPLAT_CAPABILITIES.md
 doc_type: Report
-source_sha256: "3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946"
+source_sha256: "579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 total_capabilities: 3385
 capabilities_version: "30.14"
@@ -15,7 +15,7 @@ language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3385 -->
+<!-- whitepaper_stamp source_sha256=579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3385 -->
 
 # aiPlat 平台现状白皮书
 
@@ -47,8 +47,8 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-11T14:28:33Z` |
-| CAPABILITIES SHA-256 | `3674a4361be7f38185ecb4dae9582c08a189d51ca84954fcd16454c185f71946` |
+| 生成时间 (UTC) | `2026-11-12T01:07:11Z` |
+| CAPABILITIES SHA-256 | `579bd50c9b85b9450451e6713941da787c7ff443ccb732a866cfd89af36a7488` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
 | CAPABILITIES last_updated | `2026-11-09` |
@@ -162,7 +162,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 三层企业评估(~110项) | _(见 JSON tiers)_ | per-tier mean of manual scores (all source=manual) |
 
 
-完整评估叙述：[`../../docs/reference/framework/aiplat-complete-assessment.md`](../../docs/reference/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
+完整评估叙述：[`../../reports/framework/aiplat-complete-assessment.md`](../../reports/framework/aiplat-complete-assessment.md) · 自主性 ADR：[`aiplat-l4-autonomy-assessment-v1.0.0.md`](../../docs/decisions/architecture/aiplat-l4-autonomy-assessment-v1.0.0.md)
 
 ### 2.5.2 对标与对比入口（勿读 archive 当现行）
 

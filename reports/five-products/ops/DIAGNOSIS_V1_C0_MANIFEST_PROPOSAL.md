@@ -29,12 +29,12 @@ doc_type: Report
     target: A2/D2
     package: packages/aiplat-diagnosis
     platform_app: aiPlat-platform/apps/diagnosis
-    charter: reports/five-products/modules/diagnosis/MODULE.md
+    charter: docs/products/five-products/modules/diagnosis/MODULE.md
     a3_adr: reports/five-products/ADR-DRAFT-diagnosis-d1.md
     a3_adr_status: draft
     process_split_authorized: false
     healthz: GET /api/platform/apps/diagnosis/healthz
-    contracts_test: reports/five-products/modules/diagnosis/contracts/validate_sample.py
+    contracts_test: docs/products/five-products/modules/diagnosis/contracts/validate_sample.py
     notes:
       - "C0 design only until C1 unfreeze; no auto-remediation"
       - "D1c/cohost = healthz+API on central host; not independent process deploy"

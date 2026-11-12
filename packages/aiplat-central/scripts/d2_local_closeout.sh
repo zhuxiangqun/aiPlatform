@@ -53,7 +53,7 @@ fi
 pass "cutover authorize REFUSED"
 
 python3 "$ROOT/scripts/check_five_products_status_sync.py" || fail "STATUS sync"
-python3 "$ROOT/reports/five-products/modules/aiplat/contracts/validate_sample.py" || fail "aiplat contracts"
+python3 "$ROOT/docs/products/five-products/modules/aiplat/contracts/validate_sample.py" || fail "aiplat contracts"
 
 OUT="$DRILL/local-aiplat-d2-thin-local-${STAMP}.json"
 python3 - <<PY
