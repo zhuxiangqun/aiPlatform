@@ -125,7 +125,7 @@ def test_secrets_scan_finds_key(asm, tmp_path: Path):
 
 def test_build_and_gate_clean_tree(asm, tmp_path: Path, monkeypatch):
     monkeypatch.setenv("AIPLAT_ARTIFACT_MANIFEST_HMAC_SECRET", "test-secret-p0-3a")
-    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_MODELING", raising=False)
+    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_ASSESSMENT", raising=False)
     (tmp_path / "app.py").write_text("print('hello')\n", encoding="utf-8")
     (tmp_path / "requirements.txt").write_text("flask==3.0.0\n", encoding="utf-8")
     monkeypatch.setattr(
@@ -294,7 +294,7 @@ def test_valid_threat_model_file_pass(asm, tmp_path: Path):
 
 
 def test_crud_pilot_type_requires_threat_model(asm, monkeypatch):
-    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_MODELING", raising=False)
+    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_ASSESSMENT", raising=False)
     monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
     m = asm.build_manifest(
         artifact_id="a@1",
@@ -312,7 +312,7 @@ def test_crud_pilot_type_requires_threat_model(asm, monkeypatch):
 
 
 def test_na_expired_blocks(asm, monkeypatch):
-    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_MODELING", raising=False)
+    monkeypatch.delenv("AIPLAT_REQUIRE_THREAT_ASSESSMENT", raising=False)
     monkeypatch.delenv("AIPLAT_PROFILE", raising=False)
     tm = {
         "status": "na",
@@ -337,7 +337,7 @@ def test_na_expired_blocks(asm, monkeypatch):
 
 
 def test_env_off_ignored_in_production(asm, monkeypatch):
-    monkeypatch.setenv("AIPLAT_REQUIRE_THREAT_MODELING", "0")
+    monkeypatch.setenv("AIPLAT_REQUIRE_THREAT_ASSESSMENT", "0")
     monkeypatch.setenv("AIPLAT_PROFILE", "production")
     assert asm.threat_model_required(app_type="unknown") is True
     monkeypatch.setenv("AIPLAT_PROFILE", "development")
