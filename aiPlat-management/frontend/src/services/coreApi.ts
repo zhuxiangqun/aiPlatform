@@ -2773,9 +2773,10 @@ export const agentEvalApi = {
       body || {},
     );
   },
-  /** Subject seed bank → content_purpose_ok → freeze (claim=false). */
+  /** Subject seed bank → content_purpose_ok → freeze (claim=false). Pass all=true to batch. */
   casePackPromoteSubjectCapability: async (body: {
-    subject_kind: string;
+    subject_kind?: string;
+    all?: boolean;
     reviewer?: string;
     frozen_by?: string;
     pack_id?: string;

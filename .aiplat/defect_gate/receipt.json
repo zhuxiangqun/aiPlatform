@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-11T19:15:28+08:00",
+  "reviewed_at": "2026-11-12T23:15:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "335e98d3468f6c7a3ba29dcdd30b918812dd76e0",
-  "diff_sha256": "cfe4c48a6f9451b53d2431f16b8838fdad060cf33d8449056d74a1283c659a50",
-  "head_sha": "c8cc7289034b3c7474cac71b2819a8f93fffad55",
+  "merge_base": "f11634bf8d3f96714cde40da5eabb5dbd288aa04",
+  "diff_sha256": "df032196f1000ca3e0041e043512cc048a1552c6d0546a8f9c7d27da10b53f67",
+  "head_sha": "2d537336ee86ff97fd55ad313d9b38541246e8a6",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "promote_all workspace batch; prompt from query/turns; claim closed."
+  "note": "promote_all UI only; claim closed; API already on main."
 }
