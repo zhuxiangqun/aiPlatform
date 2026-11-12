@@ -41,8 +41,8 @@ doc_type: Architecture
 │  │   models/       — SpecLifecycle (版本状态机)                  │
 │  ├────────────────────────────────────────────────────┤  │
 │  │ 服务层                                               │  │
-│  │   apps/agents/  — 7种 Agent 实现类                    │  │
-│  │   apps/skills/  — 31 Engine + ~45 Workspace 技能      │  │
+│  │   apps/agents/  — 10 种 Agent 实现类                    │  │
+│  │   apps/skills/  — 58 Engine + ~45 Workspace 技能      │  │
 │  │   apps/tools/   — 19 内置工具 + MCP 适配              │  │
 │  │   apps/mcp/     — MCP 客户端/服务端/运行时             │  │
 │  │   management/   — 管理工具 (compliance/lint/adapter)   │  │
@@ -111,7 +111,7 @@ A2A 交互路径:
 |  #  | 决策                            | 说明                                                            |
 | :-: | ----------------------------- | ------------------------------------------------------------- |
 |  1  | **Harness = OS, Agent = App** | 执行内核不懂业务概念。所有行为分叉来自 `PipelineStageConfig` 字段                  |
-|  2  | **One Harness, Many Agents**  | 7 种 Agent 类型共享一个 ReActLoop 引擎                                 |
+|  2  | **One Harness, Many Agents**  | 10 种 Agent 实现类共享一个 ReActLoop 引擎                                 |
 |  3  | **Syscall 边界**                | `sys_llm_generate`/`sys_tool_call`/`sys_skill_call` 是唯一外部交互通道 |
 |  4  | **4 层记忆 (Hermes 对齐)**         | Working→Episodic→Semantic→TaskSkills + 投毒防御                   |
 |  5  | **CRAG 3 级检索回退**              | 本体优先 → FTS5 → HyDE，不可跳过                                       |
@@ -134,8 +134,8 @@ A2A 交互路径:
 | **知识引擎**          | `harness/ontology_engine/engine.py`                                      | 13步本体管线 + GraphIndex + Palantir 对齐                               |  20 |
 | **RAG 检索**        | `harness/knowledge/retriever.py`                                         | CRAG 3级回退 + RRF融合 + DomainRouter                                 |  26 |
 | **知识基础设施**        | `harness/knowledge/` (embedder/db/graph/repo_map/wiki_fts/cap_health...) | 嵌入/图同步/仓库映射/Wiki FTS5/知识质量/进化                                    |  28 |
-| **Agent 系统**      | `apps/agents/`                                                           | 7种实现类 + DynamicRouter + SubAgent                                 |  11 |
-| **Skill 系统**      | `apps/skills/registry.py`                                                | 31 engine + ~45 workspace + 自进化                                  |  13 |
+| **Agent 系统**      | `apps/agents/`                                                           | 10 种实现类 + DynamicRouter + SubAgent                                 |  11 |
+| **Skill 系统**      | `apps/skills/registry.py`                                                | 58 engine + ~45 workspace + 自进化                                  |  13 |
 | **安全与治理**         | `harness/security/` + `gates/`                                           | ImmuneMemory + PolicyGate(3层) + CircuitBreaker                   |  27 |
 | **可观测性**          | `harness/observability/`                                                 | trace/span + Dashboard(含FDE Dashboard 3项) + Prometheus + 全域诊断14项 |  13 |
 | **模型管理**          | `aiPlat-infra/` + `harness/infrastructure/`                              | ModelManager + 多Provider + PromptCaching                         |  13 |
@@ -155,14 +155,14 @@ A2A 交互路径:
 
 | 路径                    | 参与的子系统                                                                                     | 入口文件                                                                   |
 | --------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| **用户提问→回答**           | API → Agent → ReActLoop → LLM                                                              | `loop.py:672`                                                          |
-| **知识检索**              | DomainRouter → WikiRetriever → CRAG → RRF                                                  | `retrieval.py:576`                                                     |
-| **多 Agent 协作**        | DynamicRouter → PipelineEngine → Reducer                                                   | `pipeline_engine.py:1266`                                              |
+| **用户提问→回答**           | API → Agent → ReActLoop → LLM                                                              | `harness/execution/loop/_facade.py`                                                          |
+| **知识检索**              | DomainRouter → WikiRetriever → CRAG → RRF                                                  | `harness/knowledge/retriever.py`                                                     |
+| **多 Agent 协作**        | DynamicRouter → PipelineEngine → Reducer                                                   | `harness/execution/pipeline_engine.py`                                              |
 | **Spec 迭代**           | Onboarding → Task → SpecLifecycle → REVIEW                                                 | `spec_lifecycle.py`                                                    |
 | **自学习**               | Failure → AutoLearner → SkillDraft → Simulator → Approval                                  | `learning/__init__.py`                                                 |
 | **SFT→RL训练**          | AutoLearner审批→TrajectoryScorer评分→混合采样→ShareGPT→SFT Job→latest.json→RL(RLOO)→Online Rollout | `training/auto_trigger.py` → `rl_trainer.py`                           |
-| **夜间进化**              | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth                                        | `evolution_engine.py:98`                                               |
-| **FDE 仪表板**           | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard                                | `workbench.py:441`                                                     |
+| **夜间进化**              | EvolutionEngine(13步) → ValueCalc → SFT → SpecHealth                                        | `harness/evolution_engine.py`                                               |
+| **FDE 仪表板**           | SpecLifecycle + FeedbackRadar + TraceVisualizer → Dashboard                                | `workbench.py`                                                     |
 | **平台能力提升 (碎石路→高速公路)** | Spec promote → Approval Queue → SkillRegistry                                              | `spec_lifecycle.py:promote_to_platform` → `workbench.py:post /promote` |
 
 ---

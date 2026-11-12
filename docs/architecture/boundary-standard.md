@@ -26,9 +26,9 @@ doc_type: Architecture
 |---------|------|--------------------------|
 | LLM 推理 | `sys_llm_generate` | `harness/syscalls/llm.py` ✅ |
 | Embedding 生成 | SentenceTransformer / OpenAI Embeddings API | `harness/knowledge/embedder.py` ✅ |
-| 语音转写 | Whisper (faster-whisper / openai-whisper) | **需新建** `harness/document/transcriber.py` |
-| 图像 OCR | Tesseract / PaddleOCR | **需新建** `harness/document/ocr.py` |
-| 语义分块 | 基于 Embedding 的 semantic chunking | **需新建** `harness/document/chunker.py` |
+| 语音转写 | Whisper (faster-whisper / openai-whisper) | `harness/document/transcriber.py` ✅ |
+| 图像 OCR | Tesseract / PaddleOCR | `harness/document/ocr.py` ✅ |
+| 语义分块 | 基于 Embedding 的 semantic chunking | `harness/document/chunker.py` ✅ |
 
 **规则**：Platform 只能通过 CoreFacade 或 provider 回调间接使用模型能力，**禁止直接 import 模型库**（如 `import faster_whisper`、`import pytesseract`）。
 
@@ -70,7 +70,7 @@ Platform 禁止直接依赖 Infra。但当 Platform 需要数据库、向量存�
   ❌ Platform 代码中: import faiss
 ```
 
-**当前状态**：`core/harness/infrastructure/infra_bridge.py` 已有 `create_infra_vector_client()`、`get_infra_embedding()` 和 `create_infra_database_client()`。`core/harness/infrastructure/database_port.py` 定义 `DatabasePort` Protocol。Platform 的 `storage/sqlite.py`、`kb/db.py`、`api/rest/routes.py` 均已通过 bridge 获取数据库连接，不再直接 `import sqlite3`。
+**当前状态**：`core/harness/infrastructure/infra_bridge.py` 已有 `create_infra_vector_client()`、`get_infra_embedding()` 和 `create_infra_database_client()`。`infra_bridge.py` 通过 provider 回调获取数据库端口；当前没有独立的 `database_port.py` Protocol 文件。Platform 的 `storage/sqlite.py`、`kb/db.py`、`api/rest/routes.py` 均已通过 bridge 获取数据库连接，不再直接 `import sqlite3`。
 
 **设计原理**：依赖倒置（Dependency Inversion）。Core 定义"我需要什么能力"（端口），Infra 提供"我能怎么实现"（适配器），Platform 通过 Core 的桥接获取端口实例——三方都不形成直接耦合。
 
@@ -470,7 +470,7 @@ Core 通过 Provider 回调模式解耦与 Platform 的反向依赖。回调 **�
   ❌ _ingest_fn: Any = None （Core 不知道回调的输入输出是什么）
 ```
 
-**当前状态**：`core/apps/document_intelligence/kb_provider.py` 使用 `Any` 类型。需改造为 Protocol。
+**当前状态**：`core/apps/document_intelligence/kb_provider.py` 已使用 `KBIngestCallback`/`KBQueryCallback` 等 Protocol 类型。
 
 **设计原理**：Core 定义"我需要 Platform 提供什么签名的函数"，Platform 提供符合签名的实现——这是依赖倒置的另一种形式。和 Infra Bridge 的区别：Bridge 用于 Core→Infra 方向（端口固定），Provider 回调用于 Platform→Core 反向注入（签名可变，但应在 Core 中定义）。
 
@@ -482,7 +482,7 @@ Core 通过 Provider 回调模式解耦与 Platform 的反向依赖。回调 **�
 |------|------|
 | `docs/architecture/system-architecture-contract.md` | 父文档：定义四层职责与依赖方向 |
 | `aiPlat-core/docs/contracts/01-architecture-contract.md` | 子文档：Core 内部 Harness/Policy/Agent/Skill 边界 |
-| `docs/index.md` §设计原则 | 引用本标准的决策树和铁律 |
+| `docs/README.md` §设计原则 | 引用本标准的决策树和铁律 |
 | `CLAUDE.md` §5.29（内核无关应用原则） | 铁律 1 和铁律 2 是 §5.29 的具体化 |
 
 **冲突解决优先级**：本标准 > 各层 CLAUDE.md > 各层 docs/index.md > 代码注释

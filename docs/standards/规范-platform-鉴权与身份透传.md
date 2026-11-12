@@ -329,7 +329,7 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 
 **约束**：
 - 验证路径仅对 `metadata.provenance.signature` 存在的项目生效；无签名项目不受影响（验证是**加固**而非**门槛**）；
-- 实现位于 `aiPlat-platform/api/routers/builder.py:508-532`；错误信息含 `detail` 透传（对齐系统契约 §5 错误透传）；
+- 实现位于 `aiPlat-platform/api/routers/builder.py:944-968`；错误信息含 `detail` 透传（对齐系统契约 §5 错误透传）；
 - 回归测试：`aiPlat-platform/tests/test_builder_p0_fixes.py::TestP0_5DeploySignatureFailClosed`（4 项：异常→403、验证通过→部署、无签名→跳过验证）。
 
 ## 补充：builder 项目删除权限对齐 admin（2026-08-25，审计 P1-3 修复）
