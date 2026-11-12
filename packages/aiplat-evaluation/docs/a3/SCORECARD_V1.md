@@ -4,11 +4,11 @@ doc_type: Reference
 
 # EVAL 记分卡 v1（相对 [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md)）
 
-> Machine: [`scorecard_v1.json`](./scorecard_v1.json) · Gate: `scripts/scorecard_v1_check.sh`  
-> Evidence audit: [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) + [`evidence/evidence_manifest.v1.json`](./evidence/evidence_manifest.v1.json)  
+> Machine: [`scorecard_v1.json`](./scorecard_v1.json) · Gate: `scripts/scorecard_v1_check.sh`
+> Evidence audit: [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) + [`evidence/evidence_manifest.v1.json`](./evidence/evidence_manifest.v1.json)
 > Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**
 
-**记录日**：2026-11-04  
+**记录日**：2026-11-05
 
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
@@ -20,20 +20,20 @@ doc_type: Reference
 
 ### 功能 5.0（可审计）
 
-G2b κ≈0.63、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidence/*_aggregate.v1.json`；  
-`dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。  
+G2b κ≈0.7624、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evidence/*_aggregate.v1.json`；
+`dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。
 审计门禁见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
 
 **仍禁止误读**：功能分 ≠ 准确率；`accuracy_claim=false`；κ/agreement ≠ accuracy。G2b **pass-rate vs adjudicated gold** 见 [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md)（claim 仍 false，待产品 owner 签 attestation）。
 
 ### 架构 5.0（首版范围）
 
-见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + [`PRODUCT_ROOT_V1.md`](./PRODUCT_ROOT_V1.md) + scope §二。  
+见 [`ARCH_CONSOLIDATION_V1.md`](./ARCH_CONSOLIDATION_V1.md) + [`PRODUCT_ROOT_V1.md`](./PRODUCT_ROOT_V1.md) + scope §二。
 Central `legacy_7dim` = 永久诚实终态（`deprecated_for_engineering`），**≠** 未完成迁移。
 
 ### 本地 5.0（不含 microVM）
 
-见 [`SANDBOX_ISOLATION_V0.md`](./SANDBOX_ISOLATION_V0.md) · [`OIDC_MINIMAL_V0.md`](./OIDC_MINIMAL_V0.md) · [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md)。  
+见 [`SANDBOX_ISOLATION_V0.md`](./SANDBOX_ISOLATION_V0.md) · [`OIDC_MINIMAL_V0.md`](./OIDC_MINIMAL_V0.md) · [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md)。
 **≠** `process_split_authorized` · **≠** 隔离认证 · **≠** staging。
 
 ### 禁止误读
