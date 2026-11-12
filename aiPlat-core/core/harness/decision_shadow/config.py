@@ -7,6 +7,8 @@ does not authorize live shadowing or T3 replacement.
 
 from __future__ import annotations
 
+from core.harness.utils.model_injection import get_default_model
+
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -102,7 +104,7 @@ def load_decision_shadow_config(
         timeout_ms=_env_int("AIPLAT_DECISION_SHADOW_TIMEOUT_MS", base.timeout_ms),
         endpoint=os.getenv("AIPLAT_DECISION_SHADOW_ENDPOINT", base.endpoint)
         or base.endpoint,
-        model=os.getenv("AIPLAT_DECISION_SHADOW_MODEL", base.model) or base.model,
+        model=base.model or get_default_model("decision_shadow"),
         audit_ttl_hours=_env_int(
             "AIPLAT_DECISION_SHADOW_AUDIT_TTL_HOURS", base.audit_ttl_hours
         ),

@@ -338,13 +338,13 @@ def threat_model_required(
 
     PR3 rules:
       - crud/report (P0-3b pilot types) always require pass
-      - AIPLAT_REQUIRE_THREAT_MODEL=0 only honored in non-prodish profiles;
+      - AIPLAT_REQUIRE_THREAT_MODELING=0 only honored in non-prodish profiles;
         production/staging still require (cannot disable)
       - explicit require_threat_model=False same as env off
     """
     profile = _runtime_profile()
     prodish = profile in ("production", "staging")
-    raw = (os.getenv("AIPLAT_REQUIRE_THREAT_MODEL") or "").strip().lower()
+    raw = (os.getenv("AIPLAT_REQUIRE_THREAT_MODELING") or "").strip().lower()
     explicit_off = raw in ("0", "false", "no", "off")
     explicit_on = raw in ("1", "true", "yes", "on")
 
@@ -581,7 +581,7 @@ def evaluate_publish_gate(
 ) -> Dict[str, Any]:
     """Block publish on integrity / sast / secrets / deps / P2-1 / threat-model failures.
 
-    Threat model default off (``AIPLAT_REQUIRE_THREAT_MODEL`` unset) — na allowed.
+    Threat model default off (``AIPLAT_REQUIRE_THREAT_MODELING`` unset) — na allowed.
     When required, status must be pass; na is never treated as pass.
     """
     blockers: List[str] = []
@@ -706,7 +706,7 @@ def build_and_gate_for_dir(
 
     P0-3b: when ``authz_base_url`` is set (or ``AIPLAT_AUTHZ_SMOKE_URL``), run live
     authz/IDOR/SSRF smoke and record pilot sample. ``require_authz`` forces pass.
-    Threat model: default off unless ``require_threat_model`` / ``AIPLAT_REQUIRE_THREAT_MODEL``.
+    Threat model: default off unless ``require_threat_model`` / ``AIPLAT_REQUIRE_THREAT_MODELING``.
     """
     root = Path(root)
     secrets = scan_secrets_in_tree(root)
