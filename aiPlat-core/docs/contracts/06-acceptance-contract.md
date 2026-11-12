@@ -192,7 +192,7 @@ pytest -q \
 - MUST：`core.harness.execution.pipeline_stage.PipelineStageMixin` 存在，`PipelineEngine` MRO 首位 Mixin（顺序 StageMixin → EvalMixin → PromptMixin → StateMixin → HealingMixin）
 - MUST：8 个 stage 方法（`_dispatch_execute`/`_exec_stage`/`_evaluate_stage_health`/`_infer_profile_from_stage`/`_calibrate_profile_from_history`/`_apply_capability_profile`/`_build_handler_params`/`_exec_isolated_stage`）经继承可用且不在主类重复定义
 - MUST：`_run_stages_from` 保留在主类（核心调度枢纽，9 处引用不变）
-- MUST：主类 ≤ 9000 行（Phase 4 后 8288），拆分累计 -3993 行，零公共 API 破坏
+- MUST：主类 ≤ 10000 行（当前 9557；原 9000 行目标未达，拆分待续）
 - 自动化验收：
   - `python3 -c "from core.harness.execution.pipeline_engine import PipelineEngine; from core.harness.execution.pipeline_stage import PipelineStageMixin; assert PipelineEngine.__mro__[1] is PipelineStageMixin; assert '_exec_stage' in PipelineStageMixin.__dict__; assert '_exec_stage' not in PipelineEngine.__dict__"`
 

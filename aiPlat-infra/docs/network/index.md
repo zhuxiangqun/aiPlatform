@@ -121,7 +121,7 @@ network = create_network_manager(config)
 
 ### 配置文件示例
 
-**位置**：`config/infra/network.yaml`
+**位置**：`config/infra/default.yaml` 的 `network:` section
 
 ```yaml
 # 网络管理配置

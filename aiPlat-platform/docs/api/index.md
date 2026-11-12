@@ -14,8 +14,8 @@ doc_type: Index
 |------|:--:|
 | REST API 路由注册（4 层全覆盖: core/infra/platform/app） | ✅ |
 | 统一请求/响应格式（`response_model=Dict[str, Any]`） | ✅ |
-| GraphQL 查询端点 | ✅ |
-| WebSocket 实时通信 | ✅ |
+| GraphQL 查询端点 | ❌ | 未实现 |
+| WebSocket 实时通信 | ❌ | 平台未实现（仅 core 有 WebSocket） |
 | 健康检查（`/health`, `/core/health`） | ✅ |
 | 错误透传（下游错误信息保全） | ✅ |
 | API 版本管理 | ✅ |

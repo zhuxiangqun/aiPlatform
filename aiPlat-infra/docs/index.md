@@ -22,7 +22,7 @@ aiPlat-infra 不依赖任何内部包
 可以被所有上层导入（core, platform, app）
 ```
 
-> 注：是否“被 core 直接依赖”属于工程选择。当前仓库存在 `core/apps/mcp` 与 `infra/mcp` 双栈并存（详见 infra 的 MCP 文档），短期以 core 为主实现，infra 作为基础设施实现与参考。
+> 注：是否“被 core 直接依赖”属于工程选择。当前仓库只有 `core/apps/mcp` 实现；`infra/mcp` 包不存在，infra 的 MCP 文档为历史设计，不代表现状。
 
 **设计原则**：
 - ✅ 提供接口和默认实现
