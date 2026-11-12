@@ -35,6 +35,14 @@ type SubjectRow = {
   workspace_pack_kind?: string;
   workspace_pack_status?: string;
   workspace_promote_error?: string;
+  last_exam_ok?: boolean | null;
+  last_exam_live?: boolean | null;
+  last_exam_at?: string;
+  last_exam_pass?: number;
+  last_exam_fail?: number;
+  last_exam_error?: number;
+  last_exam_executed?: number;
+  last_exam_run_id?: string;
   claim_eligible?: boolean;
   accuracy_claim?: boolean;
   certification_eligible?: boolean;
@@ -50,6 +58,7 @@ type Inventory = {
   content_purpose_ready_count?: number;
   workspace_id?: string;
   workspace_promoted_count?: number;
+  last_exam_count?: number;
   subjects?: SubjectRow[];
   next_action?: string;
   honesty?: string;
@@ -178,21 +187,23 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
       if (exam && exam.ok === false) {
         throw new Error(String(exam.error || exam.message || 'run-suite-profile failed'));
       }
+      const executed = String(
+        (exam as { executed_case_count?: number })?.executed_case_count ??
+          (exam as { case_count?: number })?.case_count ??
+          '—',
+      );
       setExamMsg(
         `compile+exam(dry) ${profileId} · claim=${String(
           Boolean(exam?.claim_eligible ?? compiled?.claim_eligible),
-        )} · cases=${String(
-          (exam as { n_cases?: number; case_count?: number })?.n_cases ??
-            (exam as { case_count?: number })?.case_count ??
-            '—',
-        )}`,
+        )} · executed=${executed}`,
       );
+      await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setExamBusy(false);
     }
-  }, [promoteKind, status?.subjects]);
+  }, [load, promoteKind, status?.subjects]);
 
   const rows = status?.subjects || [];
   const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
@@ -215,7 +226,8 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
             {status?.profile_complete_count ?? '—'} · workspace_promoted=
             {status?.workspace_promoted_count ?? '—'}
             {status?.workspace_id ? ` @${status.workspace_id}` : ' (无 workspace)'} ·
-            draft_pending={status?.draft_pending_total ?? '—'}
+            draft_pending={status?.draft_pending_total ?? '—'} · last_exam=
+            {status?.last_exam_count ?? '—'}
           </li>
           <li>
             claim_eligible={String(Boolean(status?.claim_eligible))} · accuracy_claim=
@@ -327,6 +339,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     <th className="py-1 pr-2">ws promote</th>
                     <th className="py-1 pr-2">draft</th>
                     <th className="py-1 pr-2">suite</th>
+                    <th className="py-1 pr-2">last exam</th>
                     <th className="py-1">tab</th>
                   </tr>
                 </thead>
@@ -380,6 +393,19 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                             '—'
                           )}
                         </td>
+                        <td className="py-2 pr-2 font-mono text-[11px]">
+                          {row.last_exam_at ? (
+                            <>
+                              {row.last_exam_ok === false ? 'fail' : 'ok'}
+                              {row.last_exam_live ? '·live' : '·dry'} P
+                              {row.last_exam_pass ?? 0}/F{row.last_exam_fail ?? 0}/E
+                              {row.last_exam_error ?? 0}
+                              <div className="text-gray-500">{row.last_exam_at}</div>
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td className="py-2">
                           <Link
                             className="text-sky-300 hover:underline"
@@ -392,7 +418,7 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     ))
                   ) : (
                     <tr>
-                      <td className="py-2 text-gray-500" colSpan={11}>
+                      <td className="py-2 text-gray-500" colSpan={12}>
                         —
                       </td>
                     </tr>

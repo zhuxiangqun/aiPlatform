@@ -100,3 +100,37 @@ def test_inventory_workspace_promote_enrichment(tmp_path, monkeypatch):
     assert prompt["workspace_promoted"] is True
     na = (inv.get("next_action") or "").lower()
     assert "promot" in na  # promote / promoted / partial
+
+
+def test_inventory_last_exam_enrichment(tmp_path, monkeypatch):
+    from core.apps.eval.service.suite_exam_summary_store import record_suite_exam_summary
+    from core.apps.eval.service.subject_regression_inventory import (
+        subject_regression_inventory,
+    )
+
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    wid = "ws-inv-exam"
+    inv0 = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    prompt = next(r for r in inv0["subjects"] if r["subject_kind"] == "prompt")
+    pid = str(prompt.get("profile_id") or "").strip()
+    assert pid and inv0.get("last_exam_count") == 0
+    record_suite_exam_summary(
+        {
+            "ok": True,
+            "profile_id": pid,
+            "subject_kind": "prompt",
+            "live": False,
+            "run_id": "suite-profile-test01",
+            "executed_case_count": 3,
+            "counts": {"pass": 2, "fail": 1, "error": 0},
+        },
+        workspace_id=wid,
+    )
+    inv = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    assert inv["claim_eligible"] is False and inv["last_exam_count"] >= 1
+    assert "last_exam_" in str(inv.get("ladder") or "")
+    row = next(r for r in inv["subjects"] if r["subject_kind"] == "prompt")
+    assert row["last_exam_ok"] is True and row["last_exam_live"] is False
+    assert row["last_exam_pass"] == 2 and row["last_exam_fail"] == 1
+    assert row["last_exam_run_id"] == "suite-profile-test01"
+    assert str(row.get("last_exam_at") or "").strip()
