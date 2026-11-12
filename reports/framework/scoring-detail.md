@@ -1,4 +1,5 @@
 ---
+generated_at: 2026-07-06
 doc_type: Report
 title: "aiPlat 三框架逐项评分明细"
 type: scoring-detail

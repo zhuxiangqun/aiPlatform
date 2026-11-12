@@ -1,4 +1,5 @@
 ---
+generated_at: 2026-07-06
 doc_type: Report
 title: "aiPlat 自主性成熟度框架"
 type: evaluation-framework

@@ -1,4 +1,5 @@
 ---
+generated_at: 2026-10-23
 doc_type: Report
 authority: snapshot
 scope: workspace-documentation-system
