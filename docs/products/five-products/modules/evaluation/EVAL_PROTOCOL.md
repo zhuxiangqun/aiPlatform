@@ -5,7 +5,7 @@ doc_type: Report
 # Eval Protocol v0（草案）
 
 > Capability: **evaluation** · Central deploy · A1 契约冻结起步  
-> Schema: `contracts/schemas/eval_protocol.schema.json`
+> Schema: `packages/aiplat-evaluation/contracts/schemas/eval_protocol.schema.json`（模块内为 shim）
 
 ## 目标
 
