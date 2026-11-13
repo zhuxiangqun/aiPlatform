@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T18:02:43+08:00",
+  "reviewed_at": "2026-11-13T19:00:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "325ca66aebbb1f20ead0a6d1d497fd1063e14095",
-  "diff_sha256": "cf677bc3e9984d477648c9d77e76d9c293cd1b476447273d020c42d2c2d34f0f",
-  "head_sha": "16751506125e08fcdbb5eb3948c61fe6c2fac4be",
+  "merge_base": "0199c894c800b92ac4999b6fcc4e93af6171dd4a",
+  "diff_sha256": "1dbe99c5c3364d44ba9e133e577e70f287eb13dccfd0ea5beef32dedfbe44a0f",
+  "head_sha": "ed79746ca7a0159343b887619f6f3d587785465a",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase B: chat_lite param fixed into _execute_workspace_agent_background; blocked returns ok=false; missing COMPAT fail-open by design. Residual: engine /agents/{id}/execute is out of Phase B workspace import scope."
+  "note": "Phase C: draft/import gated; ToolDiscovery hot-load intentionally out of scope (Phase D). MCP blocked refuses enable/sync; disconnect marks connectable. Gate exceptions fail-open only when COMPAT missing (same as A/B)."
 }
