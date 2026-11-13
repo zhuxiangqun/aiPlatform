@@ -10874,6 +10874,35 @@ def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=No
 
     return finalize_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
 
+
+def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, connection_status=None):
+    """Write COMPAT.yaml for an MCP server dir (Phase C)."""
+    from core.apps.mcp.asset_compat import finalize_mcp_compat
+
+    return finalize_mcp_compat(
+        mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
+    )
+
+
+def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None, mapped_to=None, mcp_projection=False):
+    """Write COMPAT sidecar for a tool .py path (Phase C)."""
+    from core.apps.tools.asset_compat import finalize_tool_compat
+
+    return finalize_tool_compat(
+        tool_py,
+        source=source,
+        adapt_summary=adapt_summary,
+        mapped_to=mapped_to,
+        mcp_projection=mcp_projection,
+    )
+
+
+def tool_enable_impl_draft(tool_py: str):
+    """Promote {name}.py.draft → {name}.py after human enable (Phase C)."""
+    from core.apps.tools.asset_compat import enable_tool_impl_draft
+
+    return enable_tool_impl_draft(tool_py)
+
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
 from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
 from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary

@@ -511,12 +511,43 @@ TOOL_DEF = {
       ),
     },
     {
+      title: (
+        <span title="外源兼容档位：现在就能用 / 还差几步 / 不能用（≠上架状态；草稿须启用）">可用性</span>
+      ),
+      key: 'compat',
+      width: 100,
+      render: (_: unknown, record: ToolInfo) => {
+        const ui = record.compat?.ui_state;
+        if (!ui) return <span className="text-xs text-gray-500">—</span>;
+        const cls =
+          ui === '现在就能用' ? 'text-green-400' : ui === '不能用' ? 'text-red-400' : 'text-amber-400';
+        return <span className={`text-xs ${cls}`} title={record.compat?.tier || ''}>{ui}</span>;
+      },
+    },
+    {
       title: '治理', key: 'governance', width: 90, render: (_: unknown, record: any) => governanceBadge(record),
     },
     {
       title: '操作', key: 'actions', width: 160, align: 'center' as const,
       render: (_: unknown, record: ToolInfo) => (
         <div className="flex items-center justify-center gap-0.5">
+          {record.compat?.tier === 'needs_impl' && (
+            <button
+              onClick={async () => {
+                try {
+                  await workspaceToolApi.enableImplDraft(record.name);
+                  toast.success(`已启用实现：${record.name}`);
+                  fetchTools();
+                } catch (e: any) {
+                  toastGateError(e, '启用实现失败');
+                }
+              }}
+              className="p-1.5 rounded-lg text-amber-400 hover:bg-amber-400/10 transition-colors"
+              title="启用 .py.draft"
+            >
+              <Plus size={14} />
+            </button>
+          )}
           <button onClick={() => { setExecuteTool(record); setExecuteOpen(true); }}
             className="p-1.5 rounded-lg text-success hover:bg-success-light transition-colors" title="执行">
             <Play size={14} />

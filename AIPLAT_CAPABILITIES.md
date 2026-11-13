@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3405
+total_capabilities: 3411
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -2212,6 +2212,11 @@ scan_hash: 8f9548ec24f4
 | is_agent_chat_ok | `core/harness/maintenance/asset_compat.py` | ✅ | 无 COMPAT fail-open；blocked 拒绝对话 | 本批 |
 | is_agent_fully_usable | `core/harness/maintenance/asset_compat.py` | ✅ | needs_binding → False（chat-lite） | 本批 |
 | agent_asset_compat_finalize | `core/api/core_facade.py` | ✅ | CoreFacade 入口写 Agent COMPAT | 本批 |
+| Tool/MCP asset compat（Phase C） | `harness/maintenance/asset_compat.py` + MCPInstaller/Runtime + `sys_tool_call` gate + Tools/MCP「可用性」列 + enable-impl-draft | ✅ | Tool `mapped`/`schema_only`/`needs_impl`；MCP `connectable`/`connected`/`gated`；断连不假绿；生成物适用：已接线（导入横切） | 本批 |
+| finalize_mcp_compat / mark_mcp_connection | `core/harness/maintenance/asset_compat.py` | ✅ | MCP COMPAT 写出与连接态回写 | 本批 |
+| finalize_tool_compat / enable_tool_impl_draft | `core/harness/maintenance/asset_compat.py` | ✅ | Tool COMPAT + `.py.draft` 启用 | 本批 |
+| is_mcp_schedulable / is_tool_schedulable | `core/harness/maintenance/asset_compat.py` | ✅ | 无 COMPAT fail-open | 本批 |
+| mcp_asset_compat_finalize / tool_asset_compat_finalize / tool_enable_impl_draft | `core/api/core_facade.py` | ✅ | CoreFacade Phase C 入口 | 本批 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | SkillRegistry | apps/skills/registry.py | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
@@ -3469,6 +3474,7 @@ scan_hash: 8f9548ec24f4
 ## 十四、MCP 协议
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| mcp_schedulable_error | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | MCPToolAdapter | `apps/mcp/adapter.py` | ✅ | 自动同步 | 已合入 |
 | MCPClientManager | `apps/mcp/client.py` | ✅ | 自动同步 | 已合入 |
 | MCPRuntime | `apps/mcp/runtime.py` | ✅ | 自动同步 | 已合入 |
@@ -4310,7 +4316,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 188 | 0 | 188 |
+| Skill 系统 | 193 | 0 | 193 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4318,7 +4324,7 @@ scan_hash: 8f9548ec24f4
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 577 | 0 | 577 |
-| MCP 协议 | 10 | 0 | 10 |
+| MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
 | 工具生态 | 74 | 0 | 74 |
@@ -4349,7 +4355,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3395** | **10** | **3405** |
+| **总计** | **3401** | **10** | **3411** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

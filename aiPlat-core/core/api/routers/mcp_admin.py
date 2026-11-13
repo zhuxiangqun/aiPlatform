@@ -294,24 +294,53 @@ async def list_workspace_mcp_servers():
     mgr = _workspace_mcp_manager()
     if not mgr:
         return {"servers": []}
-    return {
-        "servers": [
-            {
-                "name": s.name,
-                "enabled": s.enabled,
-                "status": getattr(s, "status", "draft") or "draft",
-                "transport": s.transport,
-                "url": s.url,
-                "command": s.command,
-                "args": s.args,
-                "auth": s.auth,
-                "allowed_tools": s.allowed_tools,
-                "metadata": s.metadata,
-                "source": getattr(s, "source", "external") or "external",
-            }
-            for s in mgr.list_servers()
-        ]
-    }
+
+    def _row(s: Any) -> Dict[str, Any]:
+        row = {
+            "name": s.name,
+            "enabled": s.enabled,
+            "status": getattr(s, "status", "draft") or "draft",
+            "transport": s.transport,
+            "url": s.url,
+            "command": s.command,
+            "args": s.args,
+            "auth": s.auth,
+            "allowed_tools": s.allowed_tools,
+            "metadata": s.metadata,
+            "source": getattr(s, "source", "external") or "external",
+        }
+        # Phase C: COMPAT honesty (fail-open if missing)
+        try:
+            from pathlib import Path as _Path
+
+            from core.harness.maintenance.asset_compat import read_mcp_compat, resolve_mcp_dir_from_info
+
+            mdir = resolve_mcp_dir_from_info(s)
+            if mdir is None:
+                _fs = (s.metadata or {}).get("filesystem") if isinstance(s.metadata, dict) else None
+                _raw = (_fs or {}).get("server_dir") if isinstance(_fs, dict) else None
+                if _raw and _Path(str(_raw)).is_dir():
+                    mdir = _Path(str(_raw))
+            if mdir is not None:
+                from core.harness.maintenance.asset_compat import is_mcp_schedulable
+
+                compat = read_mcp_compat(mdir)
+                if isinstance(compat, dict):
+                    row["compat"] = {
+                        "tier": compat.get("tier"),
+                        "schedulable": bool(compat.get("schedulable")),
+                        "ui_state": compat.get("ui_state"),
+                        "upgrade": compat.get("upgrade") or {},
+                        "issues": compat.get("issues") or [],
+                        "connection_status": compat.get("connection_status"),
+                    }
+                # Fail-open when COMPAT missing; prefer helper over raw field
+                row["schedulable"] = is_mcp_schedulable(mdir)
+        except Exception:
+            logging.getLogger(__name__).debug("mcp compat attach skipped", exc_info=True)
+        return row
+
+    return {"servers": [_row(s) for s in mgr.list_servers()]}
 
 
 @router.get("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
@@ -602,6 +631,25 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
         if store:
             await audit_event(store=store, kind="mcp_admin", name="workspace.mcp.enable", status="failed", args={"server_name": server_name, "transport": str(s.transport or ""), "command": s.command, "args": s.args}, error=reason)
         raise HTTPException(status_code=403, detail=f"stdio MCP server is blocked by prod policy: {reason}")
+    # Phase C: blocked COMPAT refuses enable (connectable still allowed)
+    try:
+        from core.harness.maintenance.asset_compat import (
+            TIER_BLOCKED,
+            mcp_schedulable_error,
+            read_mcp_compat,
+            resolve_mcp_dir_from_info,
+        )
+
+        mdir = resolve_mcp_dir_from_info(s)
+        if mdir is not None:
+            compat = read_mcp_compat(mdir)
+            if isinstance(compat, dict) and str(compat.get("tier") or "") == TIER_BLOCKED:
+                err = mcp_schedulable_error(mdir, mcp_id=server_name)
+                raise HTTPException(status_code=403, detail=err)
+    except HTTPException:
+        raise
+    except Exception:
+        logging.getLogger(__name__).debug("mcp blocked-compat enable check skipped", exc_info=True)
     ok2 = mgr.set_enabled(server_name, True)
     if not ok2:
         raise HTTPException(status_code=404, detail=f"MCP server {server_name} not found")

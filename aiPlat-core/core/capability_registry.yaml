@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2638
+total_capabilities: 2648
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -9542,8 +9542,28 @@ domains:
   mcp-protocol:
     section: "十四"
     section_name: "MCP 协议"
-    caps_count: 3
+    caps_count: 8
     provides:
+      - symbol: "finalize_mcp_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_mcp_compat(mcp_dir,*,source,adapt_summary,connection_status)→COMPAT.yaml dict"
+      - symbol: "mark_mcp_connection"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "mark_mcp_connection(mcp_dir,status)→COMPAT; disconnect honesty"
+      - symbol: "is_mcp_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_mcp_schedulable(mcp_dir)→bool; missing COMPAT fail-open"
+      - symbol: "mcp_schedulable_error"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "mcp_schedulable_error(mcp_dir,mcp_id)→deny payload for blocked enable/sync"
+      - symbol: "mcp_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "mcp_asset_compat_finalize(mcp_dir,*,source,adapt_summary,connection_status)→dict"
       - symbol: "MCPRuntime"
         type: "class"
         signature: "sync_from_servers, search_and_register"
@@ -9621,8 +9641,28 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 62
+    caps_count: 67
     provides:
+      - symbol: "finalize_tool_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_tool_compat(tool_py,*,source,adapt_summary,mapped_to,mcp_projection)→COMPAT dict"
+      - symbol: "enable_tool_impl_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "enable_tool_impl_draft(tool_py)→{ok,tier}; .py.draft→.py"
+      - symbol: "is_tool_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_tool_schedulable(tool_py)→bool; missing COMPAT fail-open"
+      - symbol: "tool_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_asset_compat_finalize(tool_py,*,source,adapt_summary,...)→dict"
+      - symbol: "tool_enable_impl_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_enable_impl_draft(tool_py)→dict"
       - symbol: "BaseTool"
         module: core/apps/tools/base.py
         type: class
