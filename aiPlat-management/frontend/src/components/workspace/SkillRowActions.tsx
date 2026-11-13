@@ -27,6 +27,8 @@ type Props = {
   onExport: (s: Skill) => void;
   onDeprecate: (s: Skill) => void;
   onRestore: (s: Skill) => void;
+  /** Phase A §5.4: promote handler.py.draft */
+  onEnableHandlerDraft?: (s: Skill) => void | Promise<void>;
 };
 
 const itemCls =
@@ -46,6 +48,7 @@ export const SkillRowActions: React.FC<Props> = ({
   onExport,
   onDeprecate,
   onRestore,
+  onEnableHandlerDraft,
 }) => {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -54,6 +57,9 @@ export const SkillRowActions: React.FC<Props> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const st = (skill.status || '').toLowerCase();
   const canSubmit = st === 'draft' || st === 'enabled';
+  const canEnableHandler =
+    Boolean(onEnableHandlerDraft) &&
+    String(skill.compat?.upgrade?.recommended || '') === 'enable_handler';
 
   const placeMenu = () => {
     const btn = btnRef.current;
@@ -140,6 +146,21 @@ export const SkillRowActions: React.FC<Props> = ({
               <Clock className="w-3.5 h-3.5" /> 历史
             </span>
           </button>
+          {canEnableHandler && (
+            <button
+              type="button"
+              className={itemCls}
+              onClick={() => {
+                void onEnableHandlerDraft?.(skill);
+                close();
+              }}
+            >
+              <span className="text-amber-300 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5" /> 启用 handler 草稿
+              </span>
+              <span className="text-gray-500 pl-5">handler.py.draft → 正式启用</span>
+            </button>
+          )}
           {canSubmit && (
             <button
               type="button"

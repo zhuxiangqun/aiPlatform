@@ -10832,6 +10832,20 @@ from core.management.skill_linter import lint_skill  # noqa: boundary
 from core.management.skill_installer import SkillInstaller  # noqa: boundary
 from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format  # noqa: boundary
 
+
+def skill_asset_compat_finalize(skill_dir: str, *, source=None, adapt_summary=None):
+    """Write COMPAT.yaml for a skill dir (Phase A); never flips accuracy_claim."""
+    from core.apps.skills.asset_compat import finalize_skill_compat
+
+    return finalize_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
+
+
+def skill_enable_handler_draft(skill_dir: str):
+    """Promote handler.py.draft → handler.py after human enable (Phase A)."""
+    from core.apps.skills.asset_compat import enable_handler_draft
+
+    return enable_handler_draft(skill_dir)
+
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
 from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
 from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary
