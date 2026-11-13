@@ -4,7 +4,7 @@ volume_id: tech-architecture
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T06:47:03Z"
+generated_at: "2026-11-13T06:49:20Z"
 audience: "CTO、架构师、平台工程师"
 core_question: "为什么这样设计？边界与权衡是什么？"
 priority: P0
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 为什么这样设计？边界与权衡是什么？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T06:47:03Z` |
+| 生成时间 (UTC) | `2026-11-13T06:49:20Z` |
 | CAPABILITIES sha256 | `98a532d5db67…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
