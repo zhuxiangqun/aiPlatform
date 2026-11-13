@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T23:48:00+08:00",
+  "reviewed_at": "2026-11-13T23:51:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "d61066c5ac24cd5b291ee038bf894c356e493375",
-  "diff_sha256": "185f8dfe0b7347c6590c9ca1e496351d8a755e569aaa356689f1719d8fc193ff",
-  "head_sha": "ad2fe5e800f632621e0b772b4ca430e49ff4d808",
+  "diff_sha256": "0fd06c6ba547b8667c54d9804fabec26862c5073488042270d81dc53a74d68d9",
+  "head_sha": "7f80c768c50e5187e63fe20c4b19032d24a16622",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Scoped G2b claim requires attestation∧aggregate; Arena QA pass does not replace length smoke or flip process_split; A1/P2-4 open awaiting formal BASE. Local lock only; CI needs non-author Approve."
+  "note": "Whitepaper refresh after CAPABILITIES claim sync. Scoped claim / Arena QA / A1 open unchanged. Local lock only; CI needs non-author Approve."
 }
