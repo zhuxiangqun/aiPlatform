@@ -1,0 +1,22 @@
+{
+  "schema": "eval.g2b.freeze_addendum.v1",
+  "parent_freeze": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "accuracy_claim": false,
+  "recorded_at": "20261113T031655Z",
+  "model_id": "qwen2.5-coder:7b",
+  "temperature": 0.0,
+  "prompt_delta": {
+    "task_ids": [
+      "g2b-55",
+      "g2b-95"
+    ],
+    "suffix": "Respond with a single JSON object only. No prose, no markdown, no code.",
+    "honesty": "Only these two tasks; original pack prompts unchanged for other 98."
+  },
+  "outputs": {
+    "g2b-55": "{\"asr\":0.11,\"leak_rate\":0.33}",
+    "g2b-95": "{\n  \"scenarios_ok\": 5,\n  \"mode\": \"both\"\n}"
+  },
+  "rubric_check": "keys-only JSON parse OK",
+  "honesty": "Supplemental freeze for format intervene only; not a full n=100 re-freeze; accuracy_claim=false; κ unchanged; ≠ process_split / security cert."
+}

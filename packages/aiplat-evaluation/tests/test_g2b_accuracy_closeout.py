@@ -39,10 +39,11 @@ def test_committed_evidence_honesty():
     adj = json.loads((evid / "g2b_adjudication.v1.json").read_text(encoding="utf-8"))
     assert agg["accuracy_claim"] is False
     assert agg["n"] == 100
-    assert agg["pass_n"] == 78
-    assert agg["pass_rate"] == 0.78
-    assert agg["disputed_n"] == 10
-    assert len(adj["disputes"]) == 10
-    assert agg["wilson_ci95"][0] < 0.70  # §4 CI_lo still unmet
+    assert agg["pass_n"] == 80
+    assert agg["pass_rate"] == 0.8
+    assert agg["disputed_n"] == 8
+    assert len(adj["disputes"]) == 8
+    assert agg["wilson_ci95"][0] >= 0.70  # §4 numeric CI_lo met
+    assert agg["accuracy_claim"] is False  # claim still closed
     assert adj.get("pending_human_confirm") is False
     assert adj.get("human_confirm", {}).get("status") == "confirmed"

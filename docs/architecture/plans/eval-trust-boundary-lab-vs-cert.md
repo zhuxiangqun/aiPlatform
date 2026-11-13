@@ -52,19 +52,19 @@ doc_type: Architecture
 | Arena SEND 泄漏类缺陷（代码路径） | ✅ leak-guard 绿；**人签 QA 仍未过** | `.aiplat/eval_trust/arena_clean_pack_20261108/` + `next_rung_manifest.json` |
 | G2b 28 失败工程分桶 | ✅ 假设标签（≠ 根因认证） | `.aiplat/eval_trust/g2b_fail_taxonomy_v0.json`（重审前快照） |
 | G2b 失败决策表（重审） | ✅ 6 题 rubric 误标→pass；22 题 hold | `.aiplat/eval_trust/g2b_fail_decision_table_v0.json` |
-| G2b ≥ 80% / CI 下界 ≥ 70% | ❌ 仍 **78%** / [68.9%, 85.0%]（§4 no-go） | `g2b_accuracy_aggregate.v1.json`；`accuracy_claim=false` |
+| G2b ≥ 80% / CI 下界 ≥ 70% | ✅ **80%** / [71.1%, 86.7%]（§4 数值达标） | `g2b_accuracy_aggregate.v1.json`；**claim 仍关** |
 | Arena QA `overall_pass` / 替换 length smoke | ❌ | 需对人发**本干净包**重签；默认 runner 仍 length smoke |
 | staging / 外部审计 | ❌ | — |
 
 G2b 失败分桶摘要（重审前 n=28 假设 → 重审后 hold=22）：
 
 - 决策：`re_label_pass=6` · `hold_fail=22`（详见 decision table）
-- 重审后：`pass_rate=0.78` · Wilson `[0.6893, 0.85]` · §4 **no-go** · claim 仍关
+- 格式干预后：`pass_rate=0.80` · Wilson `[0.7112, 0.8666]` · §4 **数值达标** · **claim 仍关**
 - hold 主因：能力/安全错答与格式非 JSON（55/95 等），**不**用水化 rubric 冲门槛
 
 ## 仍缺（进入「更可信任」之前）
 
-1. G2b 达门槛（需 ≥80% 且 CI_lo≥70%）**或** 继续 scoped 披露（`accuracy_claim=false`）  
+1. G2b §4 数值已达标；开 claim 仍需 owner `accept_accuracy_claim=true`（当前 false）  
 2. 对本干净 Arena pack **独立 QA 重签** `overall_pass=true` 后，再单独立项是否 shadow length smoke  
 3. staging + 生产轴证据；独立第三方审计  
 4. 代表性任务扩样；把假设标签升级为有人复核的错误类型  

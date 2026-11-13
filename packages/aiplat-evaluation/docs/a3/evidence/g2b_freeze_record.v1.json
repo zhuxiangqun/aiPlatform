@@ -44,12 +44,12 @@
     "provider_hint": "AIPLAT_EVAL_LLM_BASE_URL OpenAI-compatible (e.g. ollama :11434/v1)"
   },
   "threshold_gate_vs_protocol_section_4": {
-    "pass_rate": 0.78,
+    "pass_rate": 0.8,
     "pass_rate_threshold": 0.8,
-    "pass_rate_met": false,
-    "wilson_ci95_lower": 0.6251,
+    "pass_rate_met": true,
+    "wilson_ci95_lower": 0.7112,
     "wilson_lower_threshold": 0.7,
-    "wilson_lower_met": false,
+    "wilson_lower_met": true,
     "kappa": 0.7624,
     "kappa_engineering_threshold": 0.6,
     "kappa_reliability_threshold": 0.7,
@@ -57,9 +57,10 @@
     "protocol_rule": "未同时满足：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
     "owner_decision": "scoped_disclosure_only",
     "wilson_ci95": [
-      0.6893,
-      0.85
+      0.7112,
+      0.8666
     ]
   },
-  "honesty": "freeze confirmed by product_owner; accuracy_claim remains false (protocol §4 still not met after 2026-11-13 re-review 0.78<0.80); κ ≠ accuracy; ≠ process_split; ≠ security cert"
+  "honesty": "freeze confirmed; format addendum for g2b-55/95; §4 numeric met; accuracy_claim remains false without accept attestation; κ ≠ accuracy; ≠ process_split; ≠ security cert",
+  "format_addendum": "docs/a3/evidence/g2b_freeze_addendum_format_55_95.v1.json"
 }

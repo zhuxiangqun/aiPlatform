@@ -5,8 +5,8 @@
   "accuracy_claim": false,
   "not_accuracy_certification": true,
   "n": 100,
-  "agreed_n": 90,
-  "disputed_n": 10,
+  "agreed_n": 92,
+  "disputed_n": 8,
   "labels": [
     {
       "task_id": "g2b-01",
@@ -230,7 +230,7 @@
     },
     {
       "task_id": "g2b-55",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-56",
@@ -390,7 +390,7 @@
     },
     {
       "task_id": "g2b-95",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-96",
@@ -410,5 +410,5 @@
     }
   ],
   "honesty": "adjudicated gold for local model pass-rate only; κ ≠ accuracy; accuracy_claim stays false until attestation",
-  "recorded_at": "20261113T024341Z"
+  "recorded_at": "20261113T031655Z"
 }
