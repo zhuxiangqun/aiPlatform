@@ -27,7 +27,7 @@ import zipfile
 logger = logging.getLogger(__name__)
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -386,6 +386,8 @@ def adapt_claude_plugin(root_dir: Path, target_skills_dir: Path, target_agents_d
 class InstallResult:
     installed: List[str]
     skipped: List[Dict[str, Any]]
+    assets: List[Dict[str, Any]] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -595,6 +597,8 @@ class SkillInstaller:
 
         installed: List[str] = []
         skipped: List[Dict[str, Any]] = []
+        assets: List[Dict[str, Any]] = []
+        warnings: List[str] = []
         for sd in skills:
             # select single skill if requested
             if skill_id and sd.name != skill_id:
@@ -636,10 +640,11 @@ class SkillInstaller:
                     raise RuntimeError("failed_to_remove_existing_skill_dir")
 
             shutil.copytree(sd, dst)
-            # Auto-adapt: detect pattern → generate handler.py / enrich frontmatter
+            adapt_summary: Dict[str, Any] = {}
+            # Auto-adapt: detect pattern → draft handler / enrich frontmatter (Phase A)
             try:
                 from core.management.skill_adapter import adapt_skill
-                adapt_skill(dst)
+                adapt_summary = adapt_skill(dst) or {}
             except Exception as exc:
                 logger.warning("adapt_skill failed for %s: %s", sd.name, exc)
             # Apply AI-recommended overrides (tools, execution_type, timeout, etc.)
@@ -657,8 +662,33 @@ class SkillInstaller:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             installed.append(sd.name)
+            compat = (adapt_summary or {}).get("compat") if isinstance(adapt_summary, dict) else None
+            if not isinstance(compat, dict):
+                try:
+                    from core.apps.skills.asset_compat import finalize_skill_compat
+                    compat = finalize_skill_compat(dst, source=dict(source or {}), adapt_summary=adapt_summary)
+                except Exception as exc:
+                    logger.warning("finalize_skill_compat failed for %s: %s", sd.name, exc)
+                    compat = {}
+            assets.append(
+                {
+                    "kind": "skill",
+                    "id": sd.name,
+                    "tier": compat.get("tier"),
+                    "schedulable": bool(compat.get("schedulable")),
+                    "ui_state": compat.get("ui_state"),
+                    "actions_required": (
+                        []
+                        if compat.get("schedulable")
+                        else [str((compat.get("upgrade") or {}).get("recommended") or "review_compat")]
+                    ),
+                    "issues": compat.get("issues") or [],
+                }
+            )
+            if (dst / "handler.py.draft").exists() and not (dst / "handler.py").exists():
+                warnings.append(f"auto_handler_draft_created_but_disabled:{sd.name}")
 
-        return InstallResult(installed=installed, skipped=skipped)
+        return InstallResult(installed=installed, skipped=skipped, assets=assets, warnings=warnings)
 
     def _plan_from_dir(
         self,

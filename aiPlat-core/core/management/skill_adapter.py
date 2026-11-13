@@ -300,201 +300,88 @@ def adapt_skill(dst_dir: str | Path) -> Dict[str, any]:
 
     if profile.pattern == SkillPattern.PRE_ADAPTED:
 
-        return {"adapted": False, "reason": "already_adapted", "pattern": "pre_adapted"}
+        summary = {"adapted": False, "reason": "already_adapted", "pattern": "pre_adapted"}
 
+    elif profile.pattern == SkillPattern.SCRIPT_BASED:
 
+        # Phase A: draft only — never auto-enable handler.py
 
-    if profile.pattern == SkillPattern.SCRIPT_BASED:
+        summary = _adapt_script_based_draft(root, profile)
 
-        return _adapt_script_based(root, profile)
+    elif profile.pattern == SkillPattern.TOOL_COMPOSITION:
 
+        summary = _adapt_tool_composition(root, profile)
 
+    elif profile.pattern == SkillPattern.AGENT_CONFIG:
 
-    if profile.pattern == SkillPattern.TOOL_COMPOSITION:
+        summary = _adapt_agent_config(root, profile)
 
-        return _adapt_tool_composition(root, profile)
+    else:
 
+        # PURE_PROMPT — just enrich frontmatter
 
-
-    if profile.pattern == SkillPattern.AGENT_CONFIG:
-
-        return _adapt_agent_config(root, profile)
-
-
-
-    # PURE_PROMPT — just enrich frontmatter
-
-    return _adapt_pure_prompt(root, profile)
-
-
-
-
-
-def _adapt_script_based(root: Path, profile: SkillProfile) -> dict:
-
-    """Generate handler.py + rewrite SKILL.md for script-based skills."""
-
-    skill_name = root.name
-
-    main_script = profile.main_script or "scripts/main.py"
-
-    script_rel = str(Path(main_script).relative_to(root)) if Path(main_script).is_absolute() else main_script
-
-
-
-    # Generate handler.py
-
-    handler_code = f'''"""Auto-generated handler for {skill_name} — wraps {script_rel}."""
-
-import subprocess, sys, json, time
-
-from pathlib import Path
-
-
-
-async def execute(params: dict) -> dict:
-
-    topic = params.get("query", params.get("topic", ""))
-
-    script = Path(__file__).parent / "{script_rel}"
-
-    if not topic:
-
-        return {{"error": "query or topic parameter required"}}
+        summary = _adapt_pure_prompt(root, profile)
 
     try:
 
-        start = time.time()
+        from core.apps.skills.asset_compat import finalize_skill_compat
 
-        result = subprocess.run(
+        summary = dict(summary or {})
 
-            [sys.executable, str(script), topic, "--emit=compact"],
+        summary["compat"] = finalize_skill_compat(root, adapt_summary=summary)
 
-            capture_output=True, text=True, timeout=300,
+    except Exception as exc:
 
-            cwd=str(Path(__file__).parent),
+        logging.getLogger(__name__).warning("finalize_skill_compat failed: %s", exc)
 
-        )
-
-        elapsed = time.time() - start
-
-        # Emit engine stage events via ActiveTraceContext (set by sys_skill_call)
-
-        try:
-
-            from core.harness.kernel.execution_context import emit_trace_event
-
-            emit_trace_event("skill", "{skill_name}", "completed",
-
-                             args={{"topic": topic}}, duration_ms=elapsed * 1000)
-
-            if result.stderr:
-
-                # Parse engine progress from stderr if available
-
-                for line in result.stderr.split(chr(10))[:20]:
-
-                    if "Processing" in line:
-
-                        emit_trace_event("tool", "process", "completed",
-
-                                         args={{"detail": line[:200]}})
-
-        except Exception:
-
-            logging.getLogger(__name__).debug('execute failed', exc_info=True)
-        return {{"topic": topic, "output": result.stdout, "stderr": result.stderr[:500],
-
-                 "success": result.returncode == 0}}
-
-    except subprocess.TimeoutExpired:
-
-        return {{"topic": topic, "error": "execution timed out after 300s"}}
-
-'''
-
-    (root / "handler.py").write_text(handler_code, encoding="utf-8")
+    return summary
 
 
 
-    # Enrich SKILL.md frontmatter — preserve original body
 
+
+def _adapt_script_based_draft(root: Path, profile: SkillProfile) -> dict:
+    """Write handler.py.draft + keep prompt; never auto-enable handler.py."""
+    from core.apps.skills.asset_compat import write_handler_draft_from_script
+    import yaml
+
+    main_script = profile.main_script or "scripts/main.py"
+    script_rel = (
+        str(Path(main_script).relative_to(root))
+        if Path(main_script).is_absolute()
+        else main_script
+    )
+    write_handler_draft_from_script(root, script_rel)
     skill_md = root / "SKILL.md"
-
-    if not skill_md.exists():
-
-        # No SKILL.md — create minimal one with original body
-
-        body = f"Auto-generated skill for {skill_name}.\nScript: {script_rel}"
-
-        new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)  # noqa: F821
-
+    if skill_md.exists():
+        raw = skill_md.read_text(encoding="utf-8", errors="replace")
+        if raw.startswith("---"):
+            parts = raw.split("---", 2)
+            if len(parts) >= 3:
+                try:
+                    fm = yaml.safe_load(parts[1]) or {}
+                    if isinstance(fm, dict):
+                        fm["execution_type"] = "prompt"
+                        fm["_handler_draft"] = "handler.py.draft"
+                        header = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True).strip()
+                        skill_md.write_text(f"---\n{header}\n---{parts[2]}", encoding="utf-8")
+                except Exception as e:
+                    logging.debug(str(e), exc_info=True)
+    else:
+        new_md = _build_enriched_skill_md(
+            root.name, root.name, f"Draft wrapper for {script_rel}", script_rel, root
+        ).replace("execution_type: handler", "execution_type: prompt", 1)
         skill_md.write_text(new_md, encoding="utf-8")
-
-        return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "created_skill_md"]}
-
-
-
-    existing = skill_md.read_text(encoding="utf-8", errors="replace")
-
-    body = ""
+    return {
+        "adapted": True,
+        "pattern": "script_based",
+        "actions": ["generated_handler_py_draft", "prompt_until_enable"],
+    }
 
 
-
-    # Parse existing frontmatter to extract description + body
-
-    if existing.startswith("---"):
-
-        parts = existing.split("---", 2)
-
-        if len(parts) >= 3:
-
-            try:
-
-                import yaml
-
-                fm = yaml.safe_load(parts[1]) or {}
-
-                desc = str(fm.get("description", fm.get("name", skill_name)))[:200]
-
-                # Preserve upstream version if present
-
-                if fm.get("version"):
-
-                    v = str(fm.get("version", "1.0.0"))
-
-                    version = v
-
-                if fm.get("license"):
-
-                    pass
-
-            except Exception as e:
-
-                logging.debug(str(e), exc_info=True)
-
-            body = parts[2]
-
-
-
-    if not body:
-
-        body = existing  # no frontmatter, use whole file as body
-
-
-
-    # Build enriched frontmatter + preserve body
-
-    new_md = _build_enriched_skill_md(skill_name, desc, body, script_rel, root)
-
-    skill_md.write_text(new_md, encoding="utf-8")
-
-
-
-    return {"adapted": True, "pattern": "script_based", "actions": ["generated_handler_py", "enriched_skill_md"]}
-
-
-
+def _adapt_script_based(root: Path, profile: SkillProfile) -> dict:
+    """Deprecated path: Phase A redirects to draft-only adapter."""
+    return _adapt_script_based_draft(root, profile)
 
 
 def _build_enriched_skill_md(skill_name: str, desc: str, body: str,

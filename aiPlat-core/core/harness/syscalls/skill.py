@@ -110,6 +110,38 @@ async def sys_skill_call(
             metadata={"skipped": True, "reason": _skip, "skill": skill_name},
         )
 
+    # Phase A: COMPAT.yaml gate (unresolved dir / missing COMPAT → fail-open; deny not swallowed)
+    _compat_dir = None
+    try:
+        from core.utils.paths import get_aiplat_home
+
+        cfg = getattr(skill, "_config", None)
+        _meta = getattr(cfg, "metadata", None) if cfg is not None else None
+        if not isinstance(_meta, dict):
+            _meta = getattr(skill, "metadata", None) if isinstance(getattr(skill, "metadata", None), dict) else {}
+        _fs = _meta.get("filesystem") if isinstance(_meta, dict) else None
+        _compat_dir = (
+            getattr(skill, "skill_dir", None)
+            or getattr(skill, "root_dir", None)
+            or (getattr(cfg, "skill_dir", None) if cfg is not None else None)
+            or ((_fs or {}).get("skill_dir") if isinstance(_fs, dict) else None)
+        )
+        if _compat_dir is None and skill_name:
+            cand = get_aiplat_home() / "skills" / skill_name
+            _compat_dir = cand if cand.is_dir() else None
+    except Exception:
+        logging.getLogger(__name__).debug("skill compat dir resolve skipped", exc_info=True)
+        _compat_dir = None
+    if _compat_dir:
+        from core.harness.maintenance.asset_compat import is_skill_schedulable, skill_schedulable_error
+        from core.harness.interfaces import SkillResult as _CompatSkillResult
+
+        if not is_skill_schedulable(_compat_dir):
+            err = skill_schedulable_error(_compat_dir, skill_id=skill_name)
+            return _CompatSkillResult(
+                success=False, output=err.get("error"), error=err.get("error"), metadata=err
+            )
+
     try:
         import asyncio as _aio_span
 

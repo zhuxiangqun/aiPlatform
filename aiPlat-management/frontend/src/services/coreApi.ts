@@ -7,6 +7,16 @@ import { withSkillExecuteDefaults } from '../utils/skillExecute';
 
 // ==================== Agent API ====================
 
+export interface AgentCompat {
+  tier?: string;
+  schedulable?: boolean;
+  chat_ok?: boolean;
+  full_ok?: boolean;
+  ui_state?: string;
+  upgrade?: { recommended?: string; auto_generated_artifacts?: string[] };
+  issues?: Array<{ code?: string; severity?: string; message?: string }>;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -22,6 +32,8 @@ export interface Agent {
   skills?: string[];
   tools?: string[];
   metadata: Record<string, unknown>;
+  /** Phase B: COMPAT.yaml honesty (现在就能用 / 还差几步 / 不能用) */
+  compat?: AgentCompat;
 }
 
 export interface AgentListResponse {
@@ -907,6 +919,14 @@ export const SKILL_CATEGORY_OPTIONS = SKILL_CATEGORIES.map((v) => ({
   label: `${v} — ${SKILL_CATEGORY_HELP[v].split("：")[0] || v}`,
 }));
 
+export interface SkillCompat {
+  tier?: string;
+  schedulable?: boolean;
+  ui_state?: string;
+  upgrade?: { recommended?: string; auto_generated_artifacts?: string[] };
+  issues?: Array<{ code?: string; severity?: string; message?: string }>;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -920,6 +940,8 @@ export interface Skill {
   status?: string;
   metadata?: Record<string, unknown>;
   lint?: { risk_level: string; error_count: number; warning_count: number; blocked: boolean };
+  /** Phase A: COMPAT.yaml honesty (现在就能用 / 还差几步 / 不能用) */
+  compat?: SkillCompat;
 }
 
 export interface SkillDetail {
@@ -1152,6 +1174,14 @@ export const workspaceSkillApi = {
 
   enable: async (skillId: string) => {
     return apiClient.post<{ status: string; lint?: any; lint_summary?: any }>(`/core/workspace/skills/${skillId}/enable`);
+  },
+
+  /** Phase A §5.4: promote handler.py.draft → handler.py */
+  enableHandlerDraft: async (skillId: string) => {
+    return apiClient.post<{ status: string; skill_id: string; tier?: string; schedulable?: boolean; ok?: boolean }>(
+      `/core/workspace/skills/${skillId}/enable-handler-draft`,
+      {},
+    );
   },
 
   disable: async (skillId: string) => {
