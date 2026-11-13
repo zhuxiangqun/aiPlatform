@@ -5,10 +5,12 @@ doc_type: Report
 
 # A1 范围决策 — 本地签认足够（2026-11-06）
 
-- **决定**：产品确认**当前阶段以本地 A1 签认为准**；不要求正式 BASE / 生产 A1 pass。
+> **2026-11-13 范围更新**：生产轨已解冻为 OPEN（[EVAL_A1_PROD_TRACK_OPEN_2026-11-13.md](./EVAL_A1_PROD_TRACK_OPEN_2026-11-13.md)）。下文保留为历史「本地足够」决策；本地联调 pass **仍不可**冒充生产 pass。
+
+- **决定（历史）**：产品确认**当时阶段以本地 A1 签认为准**；不要求正式 BASE / 生产 A1 pass。
 - **本地已签**：[EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md](./EVAL_A1_DEPLOY_SIGNOFF_local_20261105.md) → **pass（仅本地联调）**
-- **生产轨**：[ENGINEERING_UNFREEZE_EVAL_A1_PROD.md](./ENGINEERING_UNFREEZE_EVAL_A1_PROD.md) → **Parked**
-- **阻塞单**：[`blocked_not_released`](./EVAL_A1_PROD_BLOCKED_NOT_RELEASED_2026-11-05.md) 仍表示「未做生产发布验收」——**不是**工程欠账；无对外宣称「生产已发布」。
+- **生产轨**：曾 Parked → **现 OPEN awaiting BASE**（[EVAL_A1_PROD_TRACK_OPEN_2026-11-13.md](./EVAL_A1_PROD_TRACK_OPEN_2026-11-13.md)）
+- **阻塞单**：[`blocked_not_released`](./EVAL_A1_PROD_BLOCKED_NOT_RELEASED_2026-11-05.md) 仍表示「未做生产发布验收」——无正式 BASE 前不得宣称「生产已发布」。
 
 ## 含义
 

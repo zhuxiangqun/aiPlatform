@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3419
+total_capabilities: 3438
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,25 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| write_tool_impl_draft | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| tool_schedulable_error | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| read_tool_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| write_tool_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| compute_tool_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_tool_py_from_obj | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_tool_py_path | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| tool_draft_path | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| tool_compat_path | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| read_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| write_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| compute_mcp_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_mcp_dir_from_info | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_mcp_dir | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_agent_dir_from_info | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| agent_compat_error | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| read_agent_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| write_agent_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
+| resolve_skill_dir | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | get_pack_version | `core/apps/eval/service/case_pack_registry.py` | ✅ | 自动同步 | 已合入 |
 | systemPlanExam | `aiPlat-management/frontend/src/services/coreApi.ts` | ✅ | 自动同步 | 已合入 |
 | resolve_from_http | `core/harness/named_workspace/resolve.py` | ✅ | 自动同步 | 已合入 |
@@ -3278,7 +3297,7 @@ scan_hash: 8f9548ec24f4
 | Eval UI-5 Settings/G2c | `pages/Eval/EvalSettingsPanel.tsx` | ✅ | G2c status + retest queue Pass/Fail + compute report；intra_rater ≠ accuracy/G2b；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval UI-6 Overview/Agents | `pages/Eval/EvalOverviewPanel.tsx` + `EvalAgentsPanel.tsx` | ✅ | Overview 快跳+upstream；Agents suites 只读条+诊断嵌入；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval 成果物三入口 Agent/Skill/生成应用 | `EvalCenter` + `EvalSkillsPanel` + `EvalGeneratedAppsPanel` + `skillEvalApi` | ✅ | 成果物并列：Agent exam、Skill suite(skill_evals)、生成应用 run(runs_eval)；管道 Skill 改名防混；生成物适用：不适用（管理端 UI） | 本批 |
-| Eval G2b ops panel | `pages/Eval/EvalG2bPanel.tsx` + `core/apps/eval/service/g2b.py` + `GET …/store/g2b-status` + `GET …/store/g2b-l5-gap` + `GET …/store/g2b-claim-unlock` + CoreFacade `eval_g2b_*` | ✅ | n=100 pack + L5 gap + claim-unlock AND 门 + Arena SEND/QA 重签路径披露；`accuracy_claim=false`；≠ 伪造双人/QA；生成物适用：不适用（管理端 UI） | 本批 |
+| Eval G2b ops panel | `pages/Eval/EvalG2bPanel.tsx` + `core/apps/eval/service/g2b.py` + `GET …/store/g2b-status` + `GET …/store/g2b-l5-gap` + `GET …/store/g2b-claim-unlock` + CoreFacade `eval_g2b_*` | ✅ | n=100 pack + L5 gap + claim-unlock AND 门；scoped claim 读 attestation+aggregate；Arena QA 重签路径；≠ process_split/staging；生成物适用：不适用（管理端 UI） | 本批 |
 | Eval Preference ops panel | `pages/Eval/EvalPreferencePanel.tsx` + `core/apps/eval/service/preference.py` + `GET …/store/preference-status` + CoreFacade `eval_preference_pack_status` | ✅ | pairs/aggregate facilitation（agreement/κ ≠ accuracy；fixture solo ≠ human）；`accuracy_claim=false`；生成物适用：不适用（管理端 UI） | 本批 |
 | preference_pack_status | `core/apps/eval/service/preference.py` | ✅ | 读 preference pairs + aggregate；facilitation-only | 本批 |
 | eval_preference_pack_status | `core/api/core_facade.py` | ✅ | Preference pack status facade | 本批 |
@@ -3298,9 +3317,9 @@ scan_hash: 8f9548ec24f4
 | generate_human_worksheet_pack | `packages/aiplat-evaluation/scripts/human_worksheet_pack.py` | ✅ | 可调用空白包生成（CLI+API） | 本批 |
 | g2b_pack_status | `core/apps/eval/service/g2b.py` | ✅ | 读 task pack + evidence aggregates；facilitation-only | 本批 |
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
-| g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；accuracy_claim 默认 false；生成物适用：已接线 | 本批 |
+| g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；scoped claim 镜像 attestation+aggregate；broader L5 gate 仍关；生成物适用：已接线 | 本批 |
 | eval_g2b_l5_gap_disclosure | `core/api/core_facade.py` | ✅ | G2b L5 gap facade；生成物适用：已接线 | 本批 |
-| g2b_claim_unlock_checklist | `core/apps/eval/service/g2b.py` | ✅ | G2b claim 解锁 AND 门（§4/双人/owner accept + Arena/staging/审计披露 + QA 重签路径）；永不翻 `accuracy_claim`；生成物适用：已接线 | 本批 |
+| g2b_claim_unlock_checklist | `core/apps/eval/service/g2b.py` | ✅ | G2b claim 解锁 AND 门（§4/双人/owner accept + Arena/staging/审计披露 + QA 重签路径）；scoped claim=attestation∧aggregate；生成物适用：已接线 | 本批 |
 | eval_g2b_claim_unlock_checklist | `core/api/core_facade.py` + `GET …/store/g2b-claim-unlock` | ✅ | claim unlock checklist facade + store 路由；生成物适用：已接线 | 本批 |
 | load_threat_family_catalog / build_security_family_report / security_l1_p0a_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0a 威胁族目录 + L1 threat_ids 校验 + 分族报告 schema；T05-text≠T05-exec；生成物适用：已接线 | 本批 |
 | eval_security_sec_p0a_status / eval_build_security_family_report | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
@@ -4318,7 +4337,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 578 | 1 | 579 |
+| Harness 执行引擎 | 597 | 1 | 598 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4363,7 +4382,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3409** | **10** | **3419** |
+| **总计** | **3428** | **10** | **3438** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

@@ -1,0 +1,60 @@
+{
+  "schema": "eval.arena.blind.qa_process.v1",
+  "accuracy_claim": false,
+  "judge_version": "arena.blind.v1",
+  "pack": "20261108T073806Z",
+  "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
+  "status": "completed_pass",
+  "qa_role": "independent_process_QA_resign",
+  "prior_qa_ref": "docs/a3/evidence/arena_blind_qa_process.v1.json",
+  "prior_finding": "SEND model-name leak on 20261105 pack → overall_pass=false",
+  "signer": {
+    "name": "朱向群",
+    "date": "2026-11-13",
+    "channel": "chat_confirm_items_1_2_3",
+    "overall_pass": true
+  },
+  "signed_at": "2026-11-13T15:26:00Z",
+  "checks": [
+    {
+      "id": "blind_sheets_no_model",
+      "question": "for_annotators/ 不含 model 名与 length winner？",
+      "pass": true,
+      "evidence": "rg model/qwen/deepseek/gpt/claude/ollama → 0 hits; leak_guard_pass=true"
+    },
+    {
+      "id": "dual_annotator_sheets_present",
+      "question": "双人独立标注材料齐全？",
+      "pass": true,
+      "evidence": "for_annotators/annotator_r1.json + annotator_r2.json"
+    },
+    {
+      "id": "facilitator_not_sent",
+      "question": "facilitator_only/ 与根 facilitator.json 未纳入 SEND？",
+      "pass": true,
+      "evidence": "send_ready facilitator_isolated=true + DO_NOT_SEND.md"
+    },
+    {
+      "id": "leak_guard",
+      "question": "arena_blind_pack.py --check send_ready？",
+      "pass": true,
+      "evidence": "send_ready=true · leak_guard_pass=true · gaps=[]"
+    },
+    {
+      "id": "smoke_not_replaced",
+      "question": "replaces_length_smoke 仍为 false？",
+      "pass": true,
+      "evidence": "explicit: length smoke retained until separate decision"
+    },
+    {
+      "id": "spotcheck_no_send_leak",
+      "question": "抽查无 SEND 泄漏复现？",
+      "pass": true,
+      "evidence": "clean pack SEND split + leak-guard; prior spotcheck 5/5 gold agree retained as history"
+    }
+  ],
+  "overall_pass": true,
+  "replaces_length_smoke": false,
+  "gate_eligible": false,
+  "honesty": "QA re-sign on clean pack 20261108T073806Z only; overall_pass=true ≠ accuracy_claim; ≠ replace length smoke; ≠ process_split / staging."
+}

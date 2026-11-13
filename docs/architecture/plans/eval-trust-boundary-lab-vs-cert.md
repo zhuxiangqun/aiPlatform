@@ -52,10 +52,10 @@ doc_type: Architecture
 | Arena SEND 泄漏类缺陷（代码路径） | ✅ leak-guard 绿；**人签 QA 仍未过** | `.aiplat/eval_trust/arena_clean_pack_20261108/` + `next_rung_manifest.json` |
 | G2b 28 失败工程分桶 | ✅ 假设标签（≠ 根因认证） | `.aiplat/eval_trust/g2b_fail_taxonomy_v0.json`（重审前快照） |
 | G2b 失败决策表（重审） | ✅ 6 题 rubric 误标→pass；22 题 hold | `.aiplat/eval_trust/g2b_fail_decision_table_v0.json` |
-| G2b ≥ 80% / CI 下界 ≥ 70% | ✅ **80%** / [71.1%, 86.7%]（§4 数值达标） | `g2b_accuracy_aggregate.v1.json`；**claim 仍关** |
+| G2b ≥ 80% / CI 下界 ≥ 70% | ✅ **80%** / [71.1%, 86.7%]（§4 数值达标） | `g2b_accuracy_aggregate.v1.json`；**scoped claim 已接受**（2026-11-13 attestation） |
 | Arena SEND 就绪（干净包） | ✅ leak-guard + SEND 拆分 + DO_NOT_SEND | `.aiplat/eval_trust/arena_send_ready_v0.json` + `QA_RESIGN_CHECKLIST.md` |
-| Arena QA `overall_pass` / 替换 length smoke | ❌ | 人签仍缺；默认 runner 仍 length smoke |
-| staging / 外部审计 | ❌ | — |
+| Arena QA `overall_pass` | ✅ 干净包重签 | `arena_blind_qa_resign_20261113.v1.json`；**仍不**替换 length smoke |
+| staging / 外部审计 / A1·P2-4 pass | ❌ | 生产轨 OPEN awaiting formal BASE；`process_split` 仍 false |
 
 G2b 失败分桶摘要（重审前 n=28 假设 → 重审后 hold=22）：
 
@@ -65,15 +65,15 @@ G2b 失败分桶摘要（重审前 n=28 假设 → 重审后 hold=22）：
 
 ## 仍缺（进入「更可信任」之前）
 
-1. G2b §4 数值已达标；开 claim 仍需 owner `accept_accuracy_claim=true`（当前 false） — 核对清单：`.aiplat/eval_trust/g2b_claim_unlock_checklist_v0.json` / Eval G2b 面板  
-2. 对本干净 Arena pack **独立 QA 重签** `overall_pass=true` 后，再单独立项是否 shadow length smoke  
-3. staging + 生产轴证据；独立第三方审计  
+1. ~~G2b owner accept~~ ✅ 2026-11-13 scoped `accuracy_claim`（仍 ≠ 生产/安全认证）  
+2. ~~干净 Arena pack QA 重签~~ ✅；**另立**是否 shadow length smoke（默认仍 length smoke）  
+3. staging + 生产轴证据；独立第三方审计；A1/P2-4 正式 BASE 签认  
 4. 代表性任务扩样；把假设标签升级为有人复核的错误类型  
 5. 冻结 commit / 题集 / 判分器 / 执行清单的完整可复现包
 
 ## 诚实约束
 
-- `accuracy_claim=false` 保持默认。  
+- G2b **scoped** `accuracy_claim=true` ≠ 全产品认证 ≠ `process_split` ≠ security cert。  
 - `capability_unconfirmed:*` ≠ 已证明具备该能力。  
-- 失败分桶 / 干净 Arena 包 = **工程就绪证据**，不是准确率或质量认证。  
+- Arena QA pass ≠ 自动替换 length smoke。  
 - 本文件是**信任边界声明**，不是认证证书。

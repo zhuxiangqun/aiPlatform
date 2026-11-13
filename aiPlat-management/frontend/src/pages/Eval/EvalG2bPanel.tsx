@@ -102,11 +102,12 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
             {status?.dual_human_complete ? '已完成' : '未完成'}（scoped observed only）
           </li>
           <li>
-            §4 数值可达时仍默认 claim 关（需 owner accept）· L5 gap 以聚合为准 · 勿把 κ 当准确率
+            scoped claim = owner accept ∧ aggregate --claim-ready · L5 gap 以聚合为准 · 勿把 κ 当准确率
           </li>
           <li>κ / agreement ≠ accuracy · 不可由 agent 伪造标注</li>
           <li>
-            <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} · ≠ process_split / staging
+            <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} ·
+            scoped G2b only · ≠ process_split / staging / security cert
           </li>
         </ul>
       </div>

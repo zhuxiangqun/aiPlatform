@@ -1,25 +1,22 @@
 {
   "schema": "eval.g2b.claim_unlock_checklist.v0",
   "tenant_id": "eval-v1",
-  "accuracy_claim": false,
-  "accept_accuracy_claim": false,
+  "accuracy_claim": true,
+  "accept_accuracy_claim": true,
   "gates": {
     "dual_human_complete": true,
     "section4_pass_rate_met": true,
     "section4_wilson_lo_met": true,
     "sample_n_met": true,
-    "owner_accept_accuracy_claim": false,
+    "owner_accept_accuracy_claim": true,
     "arena_send_ready": true,
-    "arena_qa_overall_pass": false,
+    "arena_qa_overall_pass": true,
     "staging_evidence": false,
     "external_audit": false
   },
-  "g2b_scoped_ready": false,
-  "g2b_scoped_blockers": [
-    "owner_accept_accuracy_claim"
-  ],
+  "g2b_scoped_ready": true,
+  "g2b_scoped_blockers": [],
   "broader_trust_blockers": [
-    "arena_qa_overall_pass",
     "staging_evidence",
     "external_audit"
   ],
@@ -30,5 +27,5 @@
   ],
   "sample_n": 100,
   "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md",
-  "honesty": "Checklist only; never sets accuracy_claim=true. Needs owner accept; Arena QA / staging / audit are separate."
+  "honesty": "Scoped G2b accuracy_claim mirrors attestation accept + aggregate --claim-ready. Arena QA / staging / external audit remain separate; ≠ process_split / security cert / length-smoke replacement."
 }

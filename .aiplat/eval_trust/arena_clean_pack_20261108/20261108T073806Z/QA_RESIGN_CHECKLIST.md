@@ -19,13 +19,13 @@ PYTHONPATH=packages/aiplat-evaluation python3 \
 
 ## QA 签字项（人工）
 
-- [ ] 盲评材料未见模型名（`blind_sheets_no_model`）
-- [ ] 双人独立标注完成
-- [ ] 抽查无 SEND 泄漏复现
-- [ ] 记录 `overall_pass=true|false` + findings（写入独立 QA 证据，勿改本清单冒充已签）
+- [x] 盲评材料未见模型名（`blind_sheets_no_model`）— 2026-11-13 rg + leak-guard
+- [x] 双人独立标注完成 — `for_annotators/annotator_r1.json` + `annotator_r2.json`
+- [x] 抽查无 SEND 泄漏复现 — clean pack SEND 拆分 + leak_guard_pass
+- [x] 记录 `overall_pass=true` — `packages/aiplat-evaluation/docs/a3/evidence/arena_blind_qa_resign_20261113.v1.json`
 
 ## 明确不做
 
-- 不在此包上自动翻 `accuracy_claim`
+- G2b scoped claim 与本 Arena QA **分轨**（claim 不因 Arena 自动翻）
 - 不因本清单绿就替换默认 length smoke runner
-- 不伪造人签 `overall_pass`
+- 人签证据必须独立 JSON；本清单仅勾选索引

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T22:46:10+08:00",
+  "reviewed_at": "2026-11-14T00:10:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "4a95e88fc2a78e088259a47b56bad9ebc0f9f90d",
-  "diff_sha256": "6002583f00ea79412171367142d0020e4cd45433a236878dbb31932d61e5804b",
-  "head_sha": "ae4a6f1f16d73ac3b60db166a29ec07a61e7c32d",
+  "merge_base": "d61066c5ac24cd5b291ee038bf894c356e493375",
+  "diff_sha256": "fd7077d05414c252e837d21172c0996d382b73c9bfe3c20c5913ba4718d8c2e6",
+  "head_sha": "0153eadd998fd15fa2fb86e4c749bd4a6dac18df",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "G2b claim-unlock + main merge; matrix refreshed for registry 2674. accuracy_claim stays false; five checks still pass."
+  "note": "Whitepaper re-sync after pack-status test alignment. Local lock only; CI needs non-author Approve."
 }

@@ -15,8 +15,10 @@
   "facilitator_only": "facilitator_only/",
   "send_annotator": "docs/a3/ARENA_BLIND_SEND_ANNOTATOR.md",
   "send_facilitator": "docs/a3/ARENA_BLIND_SEND_FACILITATOR.md",
-  "note": "Send only for_annotators/ to reviewers. Never send facilitator_only/ or files that name model_a/model_b. accuracy_claim=false; length smoke not replaced.",
+  "note": "Send only for_annotators/ to reviewers. Never send facilitator_only/ or files that name model_a/model_b. Arena QA overall_pass=true (2026-11-13); accuracy_claim=false on Arena axis; length smoke not replaced.",
   "do_not_send": "DO_NOT_SEND.md",
   "qa_resign_checklist": "QA_RESIGN_CHECKLIST.md",
-  "send_ready_note": "Engineering SEND hygiene; qa_overall_pass still false until human re-sign"
+  "qa_overall_pass": true,
+  "qa_resign_evidence": "packages/aiplat-evaluation/docs/a3/evidence/arena_blind_qa_resign_20261113.v1.json",
+  "send_ready_note": "SEND hygiene + QA re-sign overall_pass=true; length smoke retained"
 }
