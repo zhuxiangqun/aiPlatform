@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-14T00:08:00+08:00",
+  "reviewed_at": "2026-11-14T00:10:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "d61066c5ac24cd5b291ee038bf894c356e493375",
-  "diff_sha256": "fc12aae2f25813f9dbe3c7dee12317d900a19d3cbdd0bc7e20c41fee77f11b64",
-  "head_sha": "ffba6c222840024558d8a12ed9c6d43fb9080efd",
+  "diff_sha256": "fd7077d05414c252e837d21172c0996d382b73c9bfe3c20c5913ba4718d8c2e6",
+  "head_sha": "0153eadd998fd15fa2fb86e4c749bd4a6dac18df",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Aligned g2b_pack_status tests with scoped claim. Local lock only; CI needs non-author Approve."
+  "note": "Whitepaper re-sync after pack-status test alignment. Local lock only; CI needs non-author Approve."
 }
