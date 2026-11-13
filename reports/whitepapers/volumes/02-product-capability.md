@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T10:50:46Z"
+generated_at: "2026-11-13T10:55:59Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "06b04e21cbe9381b6eb884353dd64267ad7a041606fe1cba9ff43997c4f44e51"
+caps_sha256: "0e23280dadb7e731912b9ac80d73bff43a84925ffe89f1a6b10e9b3111ee2700"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=06b04e21cbe9381b6eb884353dd64267ad7a041606fe1cba9ff43997c4f44e51 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=0e23280dadb7e731912b9ac80d73bff43a84925ffe89f1a6b10e9b3111ee2700 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T10:50:46Z` |
-| CAPABILITIES sha256 | `06b04e21cbe9…` |
+| 生成时间 (UTC) | `2026-11-13T10:55:59Z` |
+| CAPABILITIES sha256 | `0e23280dadb7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -100,7 +100,7 @@ language: zh-CN
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 577 | 0 | 577 |
-| MCP 协议 | 10 | 0 | 10 |
+| MCP 协议 | 11 | 0 | 11 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
 | 工具生态 | 74 | 0 | 74 |
@@ -131,7 +131,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3400** | **10** | **3410** |
+| **总计** | **3401** | **10** | **3411** |
 
 ### 3.2 上手路径（节选）
 

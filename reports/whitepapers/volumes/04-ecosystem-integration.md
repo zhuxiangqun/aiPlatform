@@ -4,19 +4,19 @@ volume_id: ecosystem-integration
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T10:50:46Z"
+generated_at: "2026-11-13T10:55:59Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "06b04e21cbe9381b6eb884353dd64267ad7a041606fe1cba9ff43997c4f44e51"
+caps_sha256: "0e23280dadb7e731912b9ac80d73bff43a84925ffe89f1a6b10e9b3111ee2700"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=ecosystem-integration suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=06b04e21cbe9381b6eb884353dd64267ad7a041606fe1cba9ff43997c4f44e51 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=ecosystem-integration suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=0e23280dadb7e731912b9ac80d73bff43a84925ffe89f1a6b10e9b3111ee2700 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 生态与集成白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T10:50:46Z` |
-| CAPABILITIES sha256 | `06b04e21cbe9…` |
+| 生成时间 (UTC) | `2026-11-13T10:55:59Z` |
+| CAPABILITIES sha256 | `0e23280dadb7…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 **备注**：
@@ -167,6 +167,7 @@ language: zh-CN
 ## 十四、MCP 协议
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| mcp_schedulable_error | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | MCPToolAdapter | `apps/mcp/adapter.py` | ✅ | 自动同步 | 已合入 |
 | MCPClientManager | `apps/mcp/client.py` | ✅ | 自动同步 | 已合入 |
 | MCPRuntime | `apps/mcp/runtime.py` | ✅ | 自动同步 | 已合入 |
