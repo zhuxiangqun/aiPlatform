@@ -63,6 +63,6 @@ def test_eval_g2b_claim_unlock_checklist_facade():
     assert st["accuracy_claim"] is False
     assert st["g2b_scoped_ready"] is False
     assert "owner_accept_accuracy_claim" in st["g2b_scoped_blockers"]
-    assert st.get("arena_send_ready") is True
-    assert st.get("arena_qa_overall_pass") is False
+    assert st.get("gates", {}).get("arena_send_ready") is True
+    assert st.get("gates", {}).get("arena_qa_overall_pass") is False
     assert "QA_RESIGN_CHECKLIST" in str(st.get("qa_resign_checklist") or "")

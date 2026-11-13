@@ -30,18 +30,12 @@ type G2bStatus = {
 };
 
 type G2bClaimUnlock = {
-  schema?: string;
-  accuracy_claim?: boolean;
   accept_accuracy_claim?: boolean;
   g2b_scoped_ready?: boolean;
   g2b_scoped_blockers?: string[];
   broader_trust_blockers?: string[];
   gates?: Record<string, boolean>;
-  arena_send_ready?: boolean;
-  arena_qa_overall_pass?: boolean;
   qa_resign_checklist?: string;
-  arena_pack_dir?: string;
-  honesty?: string;
 };
 
 type G2bL5Gap = {
@@ -230,51 +224,25 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
             >
               <div className="font-medium text-slate-200">Claim 解锁核对（仍关）</div>
               <p className="text-gray-400">
-                G2b scoped ready={String(Boolean(l5Gap.claim_unlock.g2b_scoped_ready))} ·
-                blockers={(l5Gap.claim_unlock.g2b_scoped_blockers || []).join(', ') || '—'}
+                scoped={String(Boolean(l5Gap.claim_unlock.g2b_scoped_ready))} · blockers=
+                {(l5Gap.claim_unlock.g2b_scoped_blockers || []).join(', ') || '—'} · owner=
+                {String(Boolean(l5Gap.claim_unlock.accept_accuracy_claim))}
               </p>
-              <p className="text-gray-400">
-                owner accept=
-                {String(Boolean(l5Gap.claim_unlock.accept_accuracy_claim))}（仍须人工签 attestation）
-              </p>
-              <p
-                className="text-gray-400"
-                data-testid="eval-g2b-arena-send"
-              >
-                Arena SEND ready=
-                {String(
-                  Boolean(
-                    l5Gap.claim_unlock.arena_send_ready ??
-                      l5Gap.claim_unlock.gates?.arena_send_ready,
-                  ),
-                )}{' '}
-                · QA overall=
-                {String(
-                  Boolean(
-                    l5Gap.claim_unlock.arena_qa_overall_pass ??
-                      l5Gap.claim_unlock.gates?.arena_qa_overall_pass,
-                  ),
-                )}
-                {(l5Gap.claim_unlock.arena_send_ready ??
-                  l5Gap.claim_unlock.gates?.arena_send_ready) &&
-                !(
-                  l5Gap.claim_unlock.arena_qa_overall_pass ??
-                  l5Gap.claim_unlock.gates?.arena_qa_overall_pass
-                )
+              <p className="text-gray-400" data-testid="eval-g2b-arena-send">
+                Arena SEND={String(Boolean(l5Gap.claim_unlock.gates?.arena_send_ready))} · QA=
+                {String(Boolean(l5Gap.claim_unlock.gates?.arena_qa_overall_pass))}
+                {l5Gap.claim_unlock.gates?.arena_send_ready &&
+                !l5Gap.claim_unlock.gates?.arena_qa_overall_pass
                   ? '（工程就绪，人工 QA 仍缺）'
                   : ''}
               </p>
               {l5Gap.claim_unlock.qa_resign_checklist ? (
                 <p className="text-gray-500 break-all" data-testid="eval-g2b-qa-resign">
-                  QA 重签清单: <code>{l5Gap.claim_unlock.qa_resign_checklist}</code>
+                  QA 重签: <code>{l5Gap.claim_unlock.qa_resign_checklist}</code>
                 </p>
               ) : null}
               <p className="text-gray-500">
                 broader: {(l5Gap.claim_unlock.broader_trust_blockers || []).join(', ') || '—'}
-              </p>
-              <p className="text-gray-500">
-                {l5Gap.claim_unlock.honesty ||
-                  '需 owner accept_accuracy_claim=true；Arena QA / staging / 审计另轨'}
               </p>
             </div>
           ) : null}

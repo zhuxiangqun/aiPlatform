@@ -29,9 +29,6 @@
     0.8666
   ],
   "sample_n": 100,
-  "arena_send_ready": true,
-  "arena_qa_overall_pass": false,
   "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md",
-  "arena_pack_dir": "/Users/apple/workdata/person/zy/aiPlatform/.aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
-  "honesty": "Checklist only. Never sets accuracy_claim=true. G2b scoped claim still needs owner accept_accuracy_claim=true; Arena QA / staging / audit remain separate trust rungs."
+  "honesty": "Checklist only; never sets accuracy_claim=true. Needs owner accept; Arena QA / staging / audit are separate."
 }

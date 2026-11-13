@@ -122,12 +122,7 @@ L5_DEFAULT_MIN_SAMPLE_N = 100
 
 
 def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """AND-gates for opening accuracy_claim (disclosure only; never flips claim).
-
-    G2b scoped claim needs §4 numeric + dual-human + owner accept attestation.
-    Arena QA / staging / external audit are broader-trust gates (reported, not
-    silently ignored).
-    """
+    """AND-gates for accuracy_claim unlock (disclosure only; never flips claim)."""
     status = g2b_pack_status(tenant_id=tenant_id)
     acc = _read_json(_evidence_dir() / "g2b_accuracy_aggregate.v1.json") or {}
     att = _read_json(_evidence_dir() / "g2b_accuracy_claim_attestation.v1.json") or {}
@@ -139,15 +134,12 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     wilson = acc.get("wilson_ci95") if isinstance(acc.get("wilson_ci95"), list) else []
     wilson_lo = float(wilson[0]) if len(wilson) >= 1 and wilson[0] is not None else None
     n = int(acc.get("n") or 0)
-
     gates = {
         "dual_human_complete": bool(status.get("dual_human_complete")),
-        "section4_pass_rate_met": (
-            pass_rate is not None and float(pass_rate) >= G2B_PASS_RATE_TARGET
-        ),
-        "section4_wilson_lo_met": (
-            wilson_lo is not None and wilson_lo >= G2B_WILSON_LOWER_THRESHOLD
-        ),
+        "section4_pass_rate_met": pass_rate is not None
+        and float(pass_rate) >= G2B_PASS_RATE_TARGET,
+        "section4_wilson_lo_met": wilson_lo is not None
+        and wilson_lo >= G2B_WILSON_LOWER_THRESHOLD,
         "sample_n_met": n >= L5_DEFAULT_MIN_SAMPLE_N,
         "owner_accept_accuracy_claim": att.get("accept_accuracy_claim") is True,
         "arena_send_ready": bool(arena.get("send_ready") or arena_rung.get("send_ready")),
@@ -155,27 +147,21 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "staging_evidence": False,
         "external_audit": False,
     }
-    g2b_scoped_blockers = [
-        k
-        for k in (
-            "dual_human_complete",
-            "section4_pass_rate_met",
-            "section4_wilson_lo_met",
-            "sample_n_met",
-            "owner_accept_accuracy_claim",
-        )
-        if not gates[k]
-    ]
-    broader_trust_blockers = [
-        k
-        for k in (
-            "arena_send_ready",
-            "arena_qa_overall_pass",
-            "staging_evidence",
-            "external_audit",
-        )
-        if not gates[k]
-    ]
+    scoped_keys = (
+        "dual_human_complete",
+        "section4_pass_rate_met",
+        "section4_wilson_lo_met",
+        "sample_n_met",
+        "owner_accept_accuracy_claim",
+    )
+    broader_keys = (
+        "arena_send_ready",
+        "arena_qa_overall_pass",
+        "staging_evidence",
+        "external_audit",
+    )
+    g2b_scoped_blockers = [k for k in scoped_keys if not gates[k]]
+    broader_trust_blockers = [k for k in broader_keys if not gates[k]]
     return {
         "schema": "eval.g2b.claim_unlock_checklist.v0",
         "tenant_id": tenant_id,
@@ -186,17 +172,13 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "g2b_scoped_blockers": g2b_scoped_blockers,
         "broader_trust_blockers": broader_trust_blockers,
         "pass_rate": pass_rate,
-        "wilson_ci95": wilson if wilson else None,
+        "wilson_ci95": wilson or None,
         "sample_n": n,
-        "arena_send_ready": gates["arena_send_ready"],
-        "arena_qa_overall_pass": gates["arena_qa_overall_pass"],
         "qa_resign_checklist": arena_rung.get("qa_resign_checklist")
         or arena.get("qa_resign_checklist"),
-        "arena_pack_dir": arena.get("pack_dir") or arena_rung.get("pack_dir"),
         "honesty": (
-            "Checklist only. Never sets accuracy_claim=true. "
-            "G2b scoped claim still needs owner accept_accuracy_claim=true; "
-            "Arena QA / staging / audit remain separate trust rungs."
+            "Checklist only; never sets accuracy_claim=true. "
+            "Needs owner accept; Arena QA / staging / audit are separate."
         ),
     }
 
