@@ -122,7 +122,16 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
         const res = await fetch(ep.uploadInstall, { method: 'POST', body: fd });
         if (!res.ok) { const e = await res.json().catch(() => ({})); toast.error(`安装失败：${(e as any).detail || res.statusText}`); return; }
         const d = await res.json();
-        toast.success(`已导入 ${(d.installed || []).length} 个 Skill 到应用库`);
+        const assets = Array.isArray(d.assets) ? d.assets : [];
+        const ready = assets.filter((a: any) => a?.ui_state === '现在就能用').length;
+        const pending = assets.filter((a: any) => a?.ui_state === '还差几步').length;
+        const blocked = assets.filter((a: any) => a?.ui_state === '不能用').length;
+        const base = `已导入 ${(d.installed || []).length} 个 Skill`;
+        const compat =
+          assets.length > 0
+            ? ` · 现在就能用 ${ready} / 还差几步 ${pending} / 不能用 ${blocked}`
+            : '';
+        toast.success(`${base}${compat}`);
         setPlan(null); setZipFile(null); setOpen(false);
         onImported();
       } catch (e: any) { toast.error(`安装失败：${e?.message || e}`); }
@@ -133,6 +142,10 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
     // Git path
     try {
       let count = 0;
+      let ready = 0;
+      let pending = 0;
+      let blocked = 0;
+      let hasAssets = false;
       for (const [type, _] of Object.entries(plan)) {
         const ep = ENDPOINTS[type];
         const res = await fetch(ep.install, {
@@ -141,8 +154,18 @@ const ImportBar: React.FC<ImportBarProps> = ({ onImported, assetType, alsoScan }
         });
         const d = await res.json();
         count += (d.installed || []).length;
+        const assets = Array.isArray(d.assets) ? d.assets : [];
+        if (assets.length) {
+          hasAssets = true;
+          ready += assets.filter((a: any) => a?.ui_state === '现在就能用').length;
+          pending += assets.filter((a: any) => a?.ui_state === '还差几步').length;
+          blocked += assets.filter((a: any) => a?.ui_state === '不能用').length;
+        }
       }
-      toast.success(`已导入 ${count} 个资产到应用库（status=draft，需测试审核后上架）`);
+      const compat = hasAssets
+        ? ` · 现在就能用 ${ready} / 还差几步 ${pending} / 不能用 ${blocked}`
+        : '（status=draft，需测试审核后上架）';
+      toast.success(`已导入 ${count} 个资产到应用库${compat}`);
       setPlan(null); setUrl(''); setOpen(false);
       onImported();
     } catch (e: any) { toast.error(`安装失败：${e?.message || e}`); }

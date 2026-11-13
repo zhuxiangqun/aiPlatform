@@ -1423,6 +1423,66 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
         raise HTTPException(status_code=500, detail=f"installer_uninstall_failed:{e}")
 
 
+@router.post("/workspace/skills/{skill_id}/enable-handler-draft", response_model=Dict[str, Any])
+async def workspace_skills_enable_handler_draft(
+    skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
+):
+    """Phase A §5.4: promote handler.py.draft → handler.py after human confirm."""
+    from pathlib import Path
+
+    from core.api.core_facade import skill_enable_handler_draft
+
+    ws_mgr = _ws_skill_manager(rt)
+    if not ws_mgr:
+        raise HTTPException(status_code=503, detail="Workspace skill manager not available")
+
+    deny = await rbac_guard(
+        http_request=http_request,
+        payload={},
+        action="update",
+        resource_type="skill",
+        resource_id=str(skill_id),
+    )
+    if deny:
+        return deny
+
+    skill = await ws_mgr.get_skill(str(skill_id))
+    if not skill:
+        raise HTTPException(status_code=404, detail=f"skill_not_found:{skill_id}")
+    fs = (getattr(skill, "metadata", None) or {}).get("filesystem") if isinstance(getattr(skill, "metadata", None), dict) else None
+    skill_dir = (fs or {}).get("skill_dir") if isinstance(fs, dict) else None
+    if not skill_dir or not Path(str(skill_dir)).is_dir():
+        raise HTTPException(status_code=404, detail="skill_dir_not_found")
+
+    res = skill_enable_handler_draft(str(skill_dir))
+    if not res.get("ok"):
+        raise HTTPException(status_code=409, detail=res)
+    try:
+        es = _store(rt)
+        if es is not None:
+            actor = actor_from_http(http_request, {})
+            await es.add_audit_log(
+                action="workspace_skill_enable_handler_draft",
+                status="ok",
+                tenant_id=str(actor.get("tenant_id") or "") or None,
+                actor_id=str(actor.get("actor_id") or "") or None,
+                actor_role=str(actor.get("actor_role") or "") or None,
+                resource_type="skill",
+                resource_id=str(skill_id),
+                detail={"tier": res.get("tier"), "schedulable": res.get("schedulable")},
+            )
+    except Exception as e:
+        logging.warning(str(e), exc_info=True)
+    try:
+        if hasattr(ws_mgr, "reload_skill"):
+            await ws_mgr.reload_skill(str(skill_id))
+        elif hasattr(ws_mgr, "_load_directory_skills"):
+            ws_mgr._load_directory_skills()
+    except Exception as e:
+        logging.warning("reload after enable_handler_draft failed: %s", e, exc_info=True)
+    return {"status": "ok", "skill_id": str(skill_id), **res}
+
+
 @router.post("/workspace/skills/installer/upload-plan", response_model=Dict[str, Any])
 async def workspace_skills_installer_upload_plan(
     file: UploadFile = File(...),

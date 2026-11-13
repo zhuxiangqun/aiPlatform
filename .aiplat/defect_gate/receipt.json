@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T11:53:17+08:00",
+  "reviewed_at": "2026-11-13T15:29:16+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2e6c580485038155731c9dbdc3aa6571b7f3dd18",
-  "diff_sha256": "c608ec60f17aede4af80faa3b24909a292740418ea43d1a7e07297bcd89e3b72",
-  "head_sha": "5b4c62b7201b3cc854becc4e84cb809f1b8cd3c0",
+  "merge_base": "62e0a933be3e90f32e0b8ce731d0448cd123feff",
+  "diff_sha256": "4ce731233b85e41cb49be62b12b35f8084c89b6fdc5a13a1916260f3a7cc8b36",
+  "head_sha": "f69d77c04fb6b9e8da04969dfd40823d80a1e623",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Arena SEND ready check; qa_overall_pass still false; accuracy_claim=false; length smoke retained."
+  "note": "AUTO-STATS sync for contracts-guard; boundary+COMPAT review still holds."
 }

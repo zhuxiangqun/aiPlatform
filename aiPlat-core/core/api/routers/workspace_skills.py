@@ -376,6 +376,26 @@ async def list_workspace_skills(
             "output_schema": s.output_schema or {},
             "metadata": s.metadata or {},
         }
+        # Phase A: expose COMPAT.yaml honesty (fail-open if missing)
+        try:
+            from pathlib import Path as _Path
+
+            from core.apps.skills.asset_compat import read_skill_compat
+
+            _fs = (s.metadata or {}).get("filesystem") if isinstance(s.metadata, dict) else None
+            _dir = (_fs or {}).get("skill_dir") if isinstance(_fs, dict) else None
+            if _dir and _Path(str(_dir)).is_dir():
+                _compat = read_skill_compat(_dir)
+                if isinstance(_compat, dict):
+                    item["compat"] = {
+                        "tier": _compat.get("tier"),
+                        "schedulable": bool(_compat.get("schedulable")),
+                        "ui_state": _compat.get("ui_state"),
+                        "upgrade": _compat.get("upgrade") or {},
+                        "issues": _compat.get("issues") or [],
+                    }
+        except Exception:
+            logging.getLogger(__name__).debug("skill compat attach skipped", exc_info=True)
         if include_lint:
             try:
                 from core.management.skill_linter import lint_skill, lint_summary

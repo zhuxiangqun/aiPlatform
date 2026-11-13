@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2623
+total_capabilities: 2633
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -5105,8 +5105,48 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 191
+    caps_count: 201
     provides:
+      - symbol: "finalize_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_skill_compat(skill_dir,*,source,adapt_summary)→COMPAT.yaml dict"
+      - symbol: "enable_handler_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "enable_handler_draft(skill_dir)→{ok,tier,schedulable}; draft→handler.py"
+      - symbol: "is_skill_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_skill_schedulable(skill_dir)→bool; missing COMPAT fail-open"
+      - symbol: "compute_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "compute_skill_compat(skill_dir,*,source,adapt_summary)→dict"
+      - symbol: "write_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "write_skill_compat(skill_dir, compat)→Path"
+      - symbol: "read_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "read_skill_compat(skill_dir)→Optional[dict]"
+      - symbol: "skill_schedulable_error"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "skill_schedulable_error(skill_dir, skill_id)→dict"
+      - symbol: "write_handler_draft_from_script"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "write_handler_draft_from_script(skill_dir, script_rel)→Path; draft only"
+      - symbol: "skill_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_asset_compat_finalize(skill_dir,*,source,adapt_summary)→dict"
+      - symbol: "skill_enable_handler_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_enable_handler_draft(skill_dir)→dict"
       - symbol: "SkillRegistry"
         module: core/apps/skills/registry.py
         type: class
