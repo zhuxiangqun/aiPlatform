@@ -1,7 +1,7 @@
 {
   "schema": "aiplat.eval_trust.next_rung.v1",
-  "captured_at": "2026-11-13T10:44:42+08:00",
-  "honesty": "Engineering readiness. §4 numeric thresholds met after format intervene; accuracy_claim still false until owner accept attestation. Arena QA still open.",
+  "captured_at": "2026-11-13T11:51:22+08:00",
+  "honesty": "§4 numeric met; accuracy_claim=false until owner accept. Arena clean pack SEND hygiene ready; human QA overall_pass still open.",
   "g2b": {
     "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
     "n": 100,
@@ -43,12 +43,15 @@
   "arena": {
     "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
     "leak_guard_pass": true,
-    "for_annotators_has_send_split": false,
-    "facilitator_isolated": false,
+    "for_annotators_has_send_split": true,
+    "facilitator_isolated": true,
     "qa_overall_pass": false,
     "gate_eligible": false,
     "replaces_length_smoke": false,
-    "note": "Code path closed 2026-11-05 leak class; pilot QA still overall_pass=false until human re-sign on THIS clean pack.",
-    "meta": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/meta.json"
+    "note": "SEND hygiene green on clean pack; pilot QA overall_pass=false until human re-sign on THIS pack; length smoke retained.",
+    "meta": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/meta.json",
+    "send_ready": true,
+    "send_ready_report": "arena_send_ready_v0.json",
+    "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md"
   }
 }

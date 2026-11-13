@@ -53,7 +53,8 @@ doc_type: Architecture
 | G2b 28 失败工程分桶 | ✅ 假设标签（≠ 根因认证） | `.aiplat/eval_trust/g2b_fail_taxonomy_v0.json`（重审前快照） |
 | G2b 失败决策表（重审） | ✅ 6 题 rubric 误标→pass；22 题 hold | `.aiplat/eval_trust/g2b_fail_decision_table_v0.json` |
 | G2b ≥ 80% / CI 下界 ≥ 70% | ✅ **80%** / [71.1%, 86.7%]（§4 数值达标） | `g2b_accuracy_aggregate.v1.json`；**claim 仍关** |
-| Arena QA `overall_pass` / 替换 length smoke | ❌ | 需对人发**本干净包**重签；默认 runner 仍 length smoke |
+| Arena SEND 就绪（干净包） | ✅ leak-guard + SEND 拆分 + DO_NOT_SEND | `.aiplat/eval_trust/arena_send_ready_v0.json` + `QA_RESIGN_CHECKLIST.md` |
+| Arena QA `overall_pass` / 替换 length smoke | ❌ | 人签仍缺；默认 runner 仍 length smoke |
 | staging / 外部审计 | ❌ | — |
 
 G2b 失败分桶摘要（重审前 n=28 假设 → 重审后 hold=22）：

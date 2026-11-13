@@ -15,6 +15,7 @@ from arena_blind_pack import (  # noqa: E402
     assert_annotator_bundle_blind,
     build_annotator_sheet,
     build_facilitator_rows,
+    check_send_ready,
     write_pack,
 )
 
@@ -39,8 +40,16 @@ def test_annotator_has_no_model_fields(tmp_path: Path):
     assert ann_dir.is_dir()
     assert (dest / "facilitator_only" / "facilitator.json").is_file()
     assert (ann_dir / "ARENA_BLIND_SEND_ANNOTATOR.md").is_file()
+    assert (dest / "DO_NOT_SEND.md").is_file()
     # annotator bundle must not contain fixture model ids
     assert_annotator_bundle_blind(ann_dir, ["fixture-a", "fixture-b"])
+    ready = check_send_ready(dest)
+    assert ready["accuracy_claim"] is False
+    assert ready["replaces_length_smoke"] is False
+    assert ready["qa_overall_pass"] is False
+    assert ready["leak_guard_pass"] is True
+    assert ready["for_annotators_has_send_split"] is True
+    assert ready["send_ready"] is True
 
 
 def test_annotator_bundle_rejects_model_leak(tmp_path: Path):
