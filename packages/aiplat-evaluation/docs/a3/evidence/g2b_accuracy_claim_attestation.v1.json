@@ -39,7 +39,7 @@
     "pass_rate_met": true,
     "wilson_lower_met": true,
     "kappa_met": true,
-    "protocol_rule": "未同时满足门槛：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
+    "protocol_rule": "§4 numeric thresholds met → may scoped-disclose observed pass rate + CI; accuracy_claim=true still requires accept_accuracy_claim=true attestation",
     "owner_decision": "section4_met_keep_accuracy_claim_false_until_explicit_accept",
     "pass_rate": 0.8,
     "wilson_ci95": [

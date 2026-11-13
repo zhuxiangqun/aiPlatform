@@ -1,0 +1,15 @@
+{
+  "schema": "eval.arena.blind.send_ready.v0",
+  "accuracy_claim": false,
+  "replaces_length_smoke": false,
+  "qa_overall_pass": false,
+  "pack_dir": "/Users/apple/workdata/person/zy/aiPlatform/.aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
+  "leak_guard_pass": true,
+  "for_annotators_has_send_split": true,
+  "facilitator_isolated": true,
+  "do_not_send_marker": true,
+  "annotator_sheet_n": 2,
+  "gaps": [],
+  "send_ready": true,
+  "honesty": "Engineering SEND hygiene only; human QA overall_pass still required; accuracy_claim=false; length smoke not replaced."
+}

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T11:23:22+08:00",
+  "reviewed_at": "2026-11-13T11:53:17+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d9b397711644dc1eed04296a036829f6b2da5d1d",
-  "diff_sha256": "8ddb28d4b781361202ce34a940f66b1ec7794470f591fa47ed485022cc08c69d",
-  "head_sha": "73f3a31170105b262fcb9973f0efeaa7525b6364",
+  "merge_base": "2e6c580485038155731c9dbdc3aa6571b7f3dd18",
+  "diff_sha256": "c608ec60f17aede4af80faa3b24909a292740418ea43d1a7e07297bcd89e3b72",
+  "head_sha": "5b4c62b7201b3cc854becc4e84cb809f1b8cd3c0",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Format intervene g2b-55/95 → pass_rate=0.80 §4 numeric met; accuracy_claim=false; gate asserts claim false without accept attestation. Residual: claim/Certification still closed; Arena QA open."
+  "note": "Arena SEND ready check; qa_overall_pass still false; accuracy_claim=false; length smoke retained."
 }

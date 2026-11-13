@@ -203,7 +203,7 @@
     },
     "g2b_accuracy_claim_attestation": {
       "path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
-      "sha256": "baef6d137d3e18b52b203c2e8d3618fd729a0964db084fd635cefb54162994b5",
+      "sha256": "8a369dfbb1bb4f9ca5b7423caaf628440254068ab8347a1c00d547f86db8fb50",
       "status": "confirmed_scoped_no_claim",
       "accept_accuracy_claim": false,
       "attested_at": "2026-11-05T15:15:47Z"
