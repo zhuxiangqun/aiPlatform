@@ -1037,13 +1037,18 @@ async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
 
 
 @router.post("/evaluation/case-packs/run-suite-profile")
-async def compat_evaluation_run_suite_profile(body: Dict[str, Any]):
+async def compat_evaluation_run_suite_profile(request: Request, body: Dict[str, Any]):
     """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
     from core.api.core_facade import eval_run_suite_profile_exam
 
     profile = (body or {}).get("profile")
     if profile is not None and not isinstance(profile, dict):
         return {"ok": False, "error": "profile must be an object", "accuracy_claim": False}
+    wid = str((body or {}).get("workspace_id") or "").strip()
+    if not wid:
+        wid = str(request.headers.get("X-Aiplat-Workspace-Id") or "").strip()
+    if not wid:
+        wid = str(request.query_params.get("workspace_id") or "").strip()
     try:
         return await eval_run_suite_profile_exam(
             profile_id=str((body or {}).get("profile_id") or "agent.regression.v1"),
@@ -1054,6 +1059,7 @@ async def compat_evaluation_run_suite_profile(body: Dict[str, Any]):
             object_id=str((body or {}).get("object_id") or "agent.capability.target"),
             object_version=str((body or {}).get("object_version") or "0.1.0"),
             max_cases=int((body or {}).get("max_cases") or 0),
+            workspace_id=wid,
         )
     except ValueError as e:
         return {"ok": False, "error": str(e), "accuracy_claim": False}
