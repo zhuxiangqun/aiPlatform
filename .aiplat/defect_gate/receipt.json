@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T22:05:00+08:00",
+  "reviewed_at": "2026-11-13T22:30:06+08:00",
   "base_ref": "origin/main",
-  "merge_base": "05b16b4981d17fc7b32125a6ed6c1c2fb740e24a",
-  "diff_sha256": "bdf42355f40f8a8f0892da26a914d3dafd52af088a0bcdc4af91bd3f749be7ee",
-  "head_sha": "9aad7fae523b9a5735e5d6ee475d029ea4edf828",
+  "merge_base": "4a95e88fc2a78e088259a47b56bad9ebc0f9f90d",
+  "diff_sha256": "7a998eae148c9e2a1ba209d27510dee7d348cd9fc90d1d237dc11748dfaed8d8",
+  "head_sha": "daca4d372191e34f58f05f9689b5b9e0e0df945e",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase D wrap: §98 static gates; startup register_with_report stash; diagnostics/workspace last-report endpoints. No approval-center changes."
+  "note": "G2b claim-unlock checklist + store route + panel; merge main (Phase D). accuracy_claim hard-false; owner accept still required. Five checks: no old path flips claim; facade/store signatures match; fail gates stay blockers; panel+API+facade share same helper; checklist never self-certifies unlock."
 }
