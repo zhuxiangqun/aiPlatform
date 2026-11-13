@@ -45,7 +45,7 @@
       ],
       "disputed_n": 10,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "n=100 closeout; pass_rate=0.80 §4 numeric met; accuracy_claim=false (no accept attestation); freeze+format addendum"
+      "gate_note": "n=100 closeout; pass_rate=0.80 §4 numeric met; scoped G2b accuracy_claim=true (2026-11-13 owner accept + --claim-ready); ≠ process_split / staging / security cert"
     },
     "prod_live": {
       "n_tasks": 25,
@@ -101,14 +101,14 @@
     {
       "id": "g2b_accuracy_aggregate",
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
-      "sha256": "ac27fedf322e41b8cafedc97f1565048f0b27c1bd6b04021bb649b3256235c9d",
+      "sha256": "5c9856b910c5b038a9233ca238a29b8a8aa56fd30deb4782f68f27241f33e575",
       "required_for_feature_5": false,
-      "note": "G2b accuracy closeout n=100; claim stays false"
+      "note": "G2b accuracy closeout n=100; scoped accuracy_claim=true after owner accept"
     },
     {
       "id": "g2b_adjudicated_gold",
       "path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
-      "sha256": "f456aa9bd53f2ad8e371be0741ea88e19da843a3f614c0b427036ec79551bc3d",
+      "sha256": "789b1b2e490b1ec0f28322099296497f0415ec35fa24da339a2e5e2106ff9ebb",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout n=100; claim stays false"
     },
@@ -193,7 +193,7 @@
     "attestation_channel": "chat_confirm_yes",
     "note": "Operator confirmed A/B were two distinct humans, independent blind, not script/AI/same-person. κ/agreement still ≠ accuracy_claim."
   },
-  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ accuracy. G2b n=100 scoped disclosure confirmed; accuracy_claim=false (protocol §4 thresholds not met). Feature 5 requires confirmed dual-human attestation and matching aggregate SHA256.",
+  "honesty": "Hashes + aggregates are auditable in-repo; raw worksheets stay gitignored. κ/agreement ≠ product-wide certification. G2b n=100 scoped accuracy_claim=true (2026-11-13 owner accept); scorecard top-level accuracy_claim stays false; process_split/staging/external_audit still open. Feature 5 dual-human attestation + aggregate SHA256 required.",
   "confirmed_records": {
     "g2b_freeze_record": {
       "path": "docs/a3/evidence/g2b_freeze_record.v1.json",
@@ -203,10 +203,18 @@
     },
     "g2b_accuracy_claim_attestation": {
       "path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
-      "sha256": "8a369dfbb1bb4f9ca5b7423caaf628440254068ab8347a1c00d547f86db8fb50",
-      "status": "confirmed_scoped_no_claim",
-      "accept_accuracy_claim": false,
-      "attested_at": "2026-11-05T15:15:47Z"
+      "sha256": "5492b755833d58509283ce94215a94708178f1db3a30571287cddf2bfbd13c5e",
+      "status": "accepted_scoped_accuracy_claim_section4_met",
+      "accept_accuracy_claim": true,
+      "attested_at": "2026-11-13T15:26:00Z"
+    },
+    "arena_blind_qa_resign_20261113": {
+      "path": "docs/a3/evidence/arena_blind_qa_resign_20261113.v1.json",
+      "sha256": "84cf27e1202c542871ca17381806d329d89a9a9ce6667f377237abe0226806ff",
+      "status": "completed_pass",
+      "overall_pass": true,
+      "pack": "20261108T073806Z",
+      "signed_at": "2026-11-13T15:26:00Z"
     },
     "arena_blind_result": {
       "path": "docs/a3/evidence/arena_blind_result.v1.json",

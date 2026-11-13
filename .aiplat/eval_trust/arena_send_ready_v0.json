@@ -2,8 +2,8 @@
   "schema": "eval.arena.blind.send_ready.v0",
   "accuracy_claim": false,
   "replaces_length_smoke": false,
-  "qa_overall_pass": false,
-  "pack_dir": "/Users/apple/workdata/person/zy/aiPlatform/.aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
+  "qa_overall_pass": true,
+  "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
   "leak_guard_pass": true,
   "for_annotators_has_send_split": true,
   "facilitator_isolated": true,
@@ -11,5 +11,7 @@
   "annotator_sheet_n": 2,
   "gaps": [],
   "send_ready": true,
-  "honesty": "Engineering SEND hygiene only; human QA overall_pass still required; accuracy_claim=false; length smoke not replaced."
+  "qa_resign_evidence": "packages/aiplat-evaluation/docs/a3/evidence/arena_blind_qa_resign_20261113.v1.json",
+  "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md",
+  "honesty": "SEND hygiene green + human QA re-sign overall_pass=true on clean pack; accuracy_claim=false; length smoke not replaced."
 }

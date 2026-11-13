@@ -1,7 +1,7 @@
 {
   "schema": "aiplat.eval_trust.next_rung.v1",
-  "captured_at": "2026-11-13T12:15:53+08:00",
-  "honesty": "§4 numeric met; claim unlock blockers=owner_accept only for G2b scoped; Arena QA / staging / audit still open; accuracy_claim=false.",
+  "captured_at": "2026-11-13T15:26:00+00:00",
+  "honesty": "G2b scoped accuracy_claim accepted (owner attestation); Arena QA overall_pass=true on clean pack; staging/external_audit/process_split still open; length smoke not replaced.",
   "g2b": {
     "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
     "n": 100,
@@ -11,14 +11,14 @@
       0.8666
     ],
     "fail_n": 20,
-    "accuracy_claim": false,
+    "accuracy_claim": true,
     "thresholds_met": true,
     "section4": {
       "pass_rate_threshold": 0.8,
       "wilson_lo_threshold": 0.7,
       "pass_rate_met": true,
       "wilson_lo_met": true,
-      "decision": "awaiting_owner_accept_attestation"
+      "decision": "g2b_scoped_accuracy_claim_accepted"
     },
     "fail_bucket_counts": {
       "agreed_fail": 19,
@@ -39,20 +39,30 @@
     },
     "detail_path": "g2b_fail_decision_table_v0.json",
     "taxonomy_snapshot_path": "g2b_fail_taxonomy_v0.json",
-    "claim_unlock_checklist": "g2b_claim_unlock_checklist_v0.json"
+    "claim_unlock_checklist": "g2b_claim_unlock_checklist_v0.json",
+    "attestation": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json"
   },
   "arena": {
     "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
     "leak_guard_pass": true,
     "for_annotators_has_send_split": true,
     "facilitator_isolated": true,
-    "qa_overall_pass": false,
+    "qa_overall_pass": true,
     "gate_eligible": false,
     "replaces_length_smoke": false,
-    "note": "SEND hygiene green on clean pack; pilot QA overall_pass=false until human re-sign on THIS pack; length smoke retained.",
+    "note": "QA re-sign overall_pass=true on clean pack; length smoke retained; separate decision required to shadow.",
     "meta": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/meta.json",
     "send_ready": true,
     "send_ready_report": "arena_send_ready_v0.json",
-    "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md"
+    "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md",
+    "qa_resign_evidence": "packages/aiplat-evaluation/docs/a3/evidence/arena_blind_qa_resign_20261113.v1.json"
+  },
+  "production": {
+    "a1_prod_track": "open_awaiting_formal_base",
+    "p2_4_track": "open_awaiting_formal_base",
+    "process_split_authorized": false,
+    "staging_evidence": false,
+    "external_audit": false,
+    "note": "Owner authorized unfreeze 2026-11-13; pass requires non-localhost formal BASE + signoff."
   }
 }

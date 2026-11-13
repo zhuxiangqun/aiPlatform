@@ -1,13 +1,13 @@
 {
   "schema": "eval.g2b.accuracy_claim_attestation.v1",
-  "status": "confirmed_scoped_no_claim_section4_met",
+  "status": "accepted_scoped_accuracy_claim_section4_met",
   "product_id": "evaluation",
   "environment": "local",
-  "accept_accuracy_claim": false,
+  "accept_accuracy_claim": true,
   "product_owner": "朱向群",
-  "attested_at": "2026-11-05T15:15:47Z",
-  "attestation_channel": "chat_confirm_scoped",
-  "decision": "scoped_disclosure_only",
+  "attested_at": "2026-11-13T15:26:00Z",
+  "attestation_channel": "chat_confirm_items_1_2_3",
+  "decision": "accept_scoped_g2b_accuracy_claim",
   "closeout_ref": {
     "pack": "20261105T132500Z-n100",
     "annotator_a": "朱莹",
@@ -39,8 +39,8 @@
     "pass_rate_met": true,
     "wilson_lower_met": true,
     "kappa_met": true,
-    "protocol_rule": "§4 numeric thresholds met → may scoped-disclose observed pass rate + CI; accuracy_claim=true still requires accept_accuracy_claim=true attestation",
-    "owner_decision": "section4_met_keep_accuracy_claim_false_until_explicit_accept",
+    "protocol_rule": "§4 numeric thresholds met + accept_accuracy_claim=true → scoped G2b accuracy_claim may be true",
+    "owner_decision": "accept_accuracy_claim_true_scoped_g2b_only",
     "pass_rate": 0.8,
     "wilson_ci95": [
       0.7112,
@@ -57,7 +57,9 @@
     "protocol_thresholds_not_met_for_claim": false,
     "scoped_disclosure_authorized": true,
     "section4_numeric_met": true,
-    "accuracy_claim_still_false": true
+    "accuracy_claim_still_false": false,
+    "scoped_g2b_accuracy_claim_only": true,
+    "staging_and_external_audit_still_open": true
   },
-  "honesty": "product_owner scoped disclosure; accept_accuracy_claim=false; §4 numeric thresholds now met (0.80 / CI_lo 0.7112); claim remains closed until explicit accept_accuracy_claim=true attestation."
+  "honesty": "product_owner accept_accuracy_claim=true for scoped G2b (n=100, pass_rate=0.80, Wilson_lo=0.7112); ≠ security cert; ≠ process_split; ≠ staging/prod certification; ≠ Arena length-smoke replacement."
 }
