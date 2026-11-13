@@ -152,7 +152,11 @@ def get_tool_status(tool_name: str, *, tool_path: Optional[str] = None) -> str:
 
 
 def set_tool_status(tool_name: str, status: str, *, tool_path: Optional[str] = None) -> str:
-    """Persist lifecycle status. Returns normalized status."""
+    """Persist lifecycle status. Returns normalized status.
+
+    Phase D production listing gate: ``published`` / ``listed`` require COMPAT
+    schedulable when a COMPAT file exists (missing COMPAT → fail-open legacy).
+    """
     name = str(tool_name or "").strip()
     if not name:
         raise ValueError("tool_name is required")
@@ -162,11 +166,41 @@ def set_tool_status(tool_name: str, status: str, *, tool_path: Optional[str] = N
     # ``enabled`` is a legacy alias used by some UIs; treat as draft for listing gate.
     if st == "enabled":
         st = "draft"
+    if st in {"published", "listed"}:
+        _assert_tool_compat_schedulable_for_listing(name, tool_path=tool_path)
     store = _read_store()
     store[name] = st
     _write_store(store)
     _write_manifest_status(name, st, tool_path=tool_path)
     return st
+
+
+def _assert_tool_compat_schedulable_for_listing(
+    tool_name: str, *, tool_path: Optional[str] = None
+) -> None:
+    """Raise ValueError when COMPAT exists and tool is not schedulable."""
+    try:
+        from core.harness.maintenance.asset_compat import (
+            is_tool_schedulable,
+            resolve_tool_py_path,
+            tool_schedulable_error,
+        )
+
+        py: Optional[Path] = Path(tool_path) if tool_path else None
+        if py is None or not (py.is_file() or py.parent.is_dir()):
+            py = resolve_tool_py_path(tool_name)
+        if py is None:
+            return
+        if is_tool_schedulable(py):
+            return
+        err = tool_schedulable_error(py, tool_id=tool_name)
+        raise ValueError(
+            f"tool_not_schedulable_for_listing:{tool_name}:{err.get('tier') or 'unknown'}"
+        )
+    except ValueError:
+        raise
+    except Exception:
+        _logger.debug("tool listing COMPAT gate skipped for %s", tool_name, exc_info=True)
 
 
 def list_tool_statuses() -> Dict[str, str]:

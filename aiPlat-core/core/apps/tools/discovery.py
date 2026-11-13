@@ -189,46 +189,98 @@ class ToolDiscovery:
         return results
 
     def register_all(self) -> int:
-        """Scan and register all discovered tools into the global ToolRegistry."""
+        """Scan and register schedulable discovered tools into ToolRegistry.
+
+        Phase D: COMPAT present + not schedulable → skip (no hot-load fake-green).
+        Missing COMPAT → fail-open (legacy workspace tools).
+        """
+        return int(self.register_with_report().get("registered") or 0)
+
+    def register_with_report(self) -> Dict[str, Any]:
+        """Phase D discovery closed-loop: registered count + skipped assets[]."""
+        report: Dict[str, Any] = {"registered": 0, "skipped": [], "assets": []}
         discovered = self.scan()
         if not discovered:
-            return 0
+            return report
 
         try:
             from core.apps.tools.base import get_tool_registry
             registry = get_tool_registry()
         except Exception:
-            return 0
+            return report
 
-        registered = 0
         for d in discovered:
             if d.get("execute") is None:
                 continue
+            module_path = str(d.get("module_path") or "")
+            tool_id = str(d.get("id") or "")
+            # Phase D: do not hot-load non-schedulable COMPAT tools
             try:
-                # Discovered tool dicts can be wrapped as BaseTool-like objects
-                # for ToolRegistry registration. ToolDef is not a real class;
-                # use the dict data directly to construct a minimal tool adapter.
+                from core.harness.maintenance.asset_compat import (
+                    is_tool_schedulable,
+                    read_tool_compat,
+                    tool_schedulable_error,
+                )
+
+                if module_path and not is_tool_schedulable(module_path):
+                    err = tool_schedulable_error(module_path, tool_id=tool_id)
+                    compat = read_tool_compat(module_path) or {}
+                    asset = {
+                        "kind": "tool",
+                        "id": tool_id,
+                        "tier": err.get("tier") or compat.get("tier"),
+                        "schedulable": False,
+                        "ui_state": err.get("ui_state") or compat.get("ui_state"),
+                        "actions_required": err.get("actions_required") or [],
+                        "issues": err.get("issues") or [],
+                        "reason": err.get("error") or "tool_not_schedulable",
+                    }
+                    report["skipped"].append(asset)
+                    report["assets"].append(asset)
+                    logger.info(
+                        "Skipped user tool hot-load (COMPAT): %s tier=%s",
+                        tool_id,
+                        asset.get("tier"),
+                    )
+                    continue
+            except Exception:
+                logger.debug("tool discovery COMPAT gate skipped for %s", tool_id, exc_info=True)
+            try:
                 tool = _make_discovery_tool(d)
-                # Attach provenance and integrity metadata
-                if hasattr(tool, '_config'):
-                    tool._config.metadata = getattr(tool._config, 'metadata', {}) or {}
-                    tool._config.metadata['provenance'] = d.get('provenance', {})
-                    tool._config.metadata['integrity'] = d.get('integrity', {})
+                if hasattr(tool, "_config"):
+                    tool._config.metadata = getattr(tool._config, "metadata", {}) or {}
+                    tool._config.metadata["provenance"] = d.get("provenance", {})
+                    tool._config.metadata["integrity"] = d.get("integrity", {})
                 registry.register(tool)
-                # Best-effort signature verification
                 sig = d.get("provenance", {}).get("signature")
                 if sig:
                     _verify_tool_signature(d["id"], d)
-                registered += 1
-                logger.info(f"Registered user tool: {d['id']} (from {d['module_path']})")
+                report["registered"] = int(report["registered"]) + 1
+                report["assets"].append(
+                    {
+                        "kind": "tool",
+                        "id": tool_id,
+                        "tier": "mapped",
+                        "schedulable": True,
+                        "ui_state": "现在就能用",
+                        "actions_required": [],
+                        "issues": [],
+                    }
+                )
+                logger.info("Registered user tool: %s (from %s)", d["id"], d["module_path"])
             except Exception:
-                logger.debug(f"Failed to register tool: {d['id']}", exc_info=True)
+                logger.debug("Failed to register tool: %s", d.get("id"), exc_info=True)
 
-        return registered
+        return report
 
 
 def get_tool_discovery() -> ToolDiscovery:
     return ToolDiscovery()
+
+
+def register_with_report(tools_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Module-level Phase D entry (also ToolDiscovery.register_with_report)."""
+    return ToolDiscovery(tools_dir).register_with_report()
 
 
 def _make_discovery_tool(d: dict) -> Any:

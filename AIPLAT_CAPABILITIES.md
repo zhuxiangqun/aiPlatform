@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3411
+total_capabilities: 3414
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -2217,6 +2217,9 @@ scan_hash: 8f9548ec24f4
 | finalize_tool_compat / enable_tool_impl_draft | `core/harness/maintenance/asset_compat.py` | ✅ | Tool COMPAT + `.py.draft` 启用 | 本批 |
 | is_mcp_schedulable / is_tool_schedulable | `core/harness/maintenance/asset_compat.py` | ✅ | 无 COMPAT fail-open | 本批 |
 | mcp_asset_compat_finalize / tool_asset_compat_finalize / tool_enable_impl_draft | `core/api/core_facade.py` | ✅ | CoreFacade Phase C 入口 | 本批 |
+| Tool discovery/listing Phase D | `apps/tools/discovery.py` + `lifecycle.py` + CoreFacade report | ✅ | COMPAT 不可调度禁止热加载；published/listed 上架门；`register_with_report` 闭环；生成物适用：已接线 | 本批 |
+| register_with_report | `core/apps/tools/discovery.py` | ✅ | 热加载 + skipped/assets[] | 本批 |
+| tool_discovery_register_with_report | `core/api/core_facade.py` | ✅ | CoreFacade Phase D 入口 | 本批 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | SkillRegistry | apps/skills/registry.py | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
@@ -4316,7 +4319,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 193 | 0 | 193 |
+| Skill 系统 | 196 | 0 | 196 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4355,7 +4358,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3401** | **10** | **3411** |
+| **总计** | **3404** | **10** | **3414** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
