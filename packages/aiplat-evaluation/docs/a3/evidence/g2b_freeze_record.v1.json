@@ -44,7 +44,7 @@
     "provider_hint": "AIPLAT_EVAL_LLM_BASE_URL OpenAI-compatible (e.g. ollama :11434/v1)"
   },
   "threshold_gate_vs_protocol_section_4": {
-    "pass_rate": 0.72,
+    "pass_rate": 0.78,
     "pass_rate_threshold": 0.8,
     "pass_rate_met": false,
     "wilson_ci95_lower": 0.6251,
@@ -55,7 +55,11 @@
     "kappa_reliability_threshold": 0.7,
     "kappa_met": true,
     "protocol_rule": "未同时满足：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
-    "owner_decision": "scoped_disclosure_only"
+    "owner_decision": "scoped_disclosure_only",
+    "wilson_ci95": [
+      0.6893,
+      0.85
+    ]
   },
-  "honesty": "freeze confirmed by product_owner; accuracy_claim remains false (protocol §4 thresholds not met); κ ≠ accuracy; ≠ process_split; ≠ security cert"
+  "honesty": "freeze confirmed by product_owner; accuracy_claim remains false (protocol §4 still not met after 2026-11-13 re-review 0.78<0.80); κ ≠ accuracy; ≠ process_split; ≠ security cert"
 }

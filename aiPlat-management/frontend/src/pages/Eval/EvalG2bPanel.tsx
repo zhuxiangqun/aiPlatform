@@ -91,6 +91,9 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
             pack n=100 · dual-human closeout{' '}
             {status?.dual_human_complete ? '已完成' : '未完成'}（scoped observed only）
           </li>
+          <li>
+            §4 门槛未达（目标 pass_rate≥0.80 且 Wilson lo≥0.70）· L5 gap 以聚合为准 · claim 仍关
+          </li>
           <li>κ / agreement ≠ accuracy · 不可由 agent 伪造标注</li>
           <li>
             <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} · ≠ process_split / staging
