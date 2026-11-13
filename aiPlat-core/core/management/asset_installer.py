@@ -21,7 +21,7 @@ import subprocess
 import tempfile
 import time
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -166,6 +166,8 @@ class InstallResult:
     installed: List[str]
     skipped: List[Dict[str, Any]]
     converted: Optional[Dict[str, Any]] = None
+    assets: List[Dict[str, Any]] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -452,6 +454,8 @@ class AssetInstaller:
 
         installed: List[str] = []
         skipped: List[Dict[str, Any]] = []
+        report_assets: List[Dict[str, Any]] = []
+        warnings: List[str] = []
         for ad in assets:
             if asset_id and ad.name != asset_id:
                 try:
@@ -491,9 +495,73 @@ class AssetInstaller:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             installed.append(ad.name)
+            # Phase B: Agent COMPAT honesty on InstallReport
+            if self.ASSET_TYPE == "agent":
+                try:
+                    from core.harness.maintenance.asset_compat import finalize_agent_compat
 
-        return InstallResult(installed=installed, skipped=skipped,
-                             converted=converted)
+                    compat = finalize_agent_compat(
+                        dst, source=dict(source or {}), adapt_summary={"adapted": True, "pattern": "agent_install"}
+                    )
+                    report_assets.append(
+                        {
+                            "kind": "agent",
+                            "id": ad.name,
+                            "tier": compat.get("tier"),
+                            "schedulable": bool(compat.get("schedulable")),
+                            "chat_ok": bool(compat.get("chat_ok")),
+                            "full_ok": bool(compat.get("full_ok")),
+                            "ui_state": compat.get("ui_state"),
+                            "actions_required": (
+                                []
+                                if compat.get("full_ok")
+                                else [str((compat.get("upgrade") or {}).get("recommended") or "review_compat")]
+                            ),
+                            "issues": compat.get("issues") or [],
+                        }
+                    )
+                    if compat.get("tier") == "needs_binding":
+                        warnings.append(f"agent_needs_binding:{ad.name}")
+                except Exception as exc:
+                    logging.warning("finalize_agent_compat failed for %s: %s", ad.name, exc)
+            # Phase C: MCP COMPAT honesty (connectable until runtime connects)
+            elif self.ASSET_TYPE == "mcp":
+                try:
+                    from core.harness.maintenance.asset_compat import finalize_mcp_compat
+
+                    compat = finalize_mcp_compat(
+                        dst,
+                        source=dict(source or {}),
+                        adapt_summary={"adapted": True, "pattern": "mcp_install"},
+                        connection_status="connectable",
+                    )
+                    report_assets.append(
+                        {
+                            "kind": "mcp",
+                            "id": ad.name,
+                            "tier": compat.get("tier"),
+                            "schedulable": bool(compat.get("schedulable")),
+                            "ui_state": compat.get("ui_state"),
+                            "actions_required": (
+                                []
+                                if compat.get("schedulable")
+                                else [str((compat.get("upgrade") or {}).get("recommended") or "connect")]
+                            ),
+                            "issues": compat.get("issues") or [],
+                        }
+                    )
+                    if not compat.get("schedulable"):
+                        warnings.append(f"mcp_needs_connect:{ad.name}")
+                except Exception as exc:
+                    logging.warning("finalize_mcp_compat failed for %s: %s", ad.name, exc)
+
+        return InstallResult(
+            installed=installed,
+            skipped=skipped,
+            converted=converted,
+            assets=report_assets,
+            warnings=warnings,
+        )
 
     def _enrich_asset_frontmatter(self, dst: Path) -> None:
         """Post-install: enrich frontmatter with defaults + tool crosswalk."""

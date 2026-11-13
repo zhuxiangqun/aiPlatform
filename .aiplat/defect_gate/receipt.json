@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T11:53:17+08:00",
+  "reviewed_at": "2026-11-13T22:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "2e6c580485038155731c9dbdc3aa6571b7f3dd18",
-  "diff_sha256": "c608ec60f17aede4af80faa3b24909a292740418ea43d1a7e07297bcd89e3b72",
-  "head_sha": "5b4c62b7201b3cc854becc4e84cb809f1b8cd3c0",
+  "merge_base": "05b16b4981d17fc7b32125a6ed6c1c2fb740e24a",
+  "diff_sha256": "bdf42355f40f8a8f0892da26a914d3dafd52af088a0bcdc4af91bd3f749be7ee",
+  "head_sha": "9aad7fae523b9a5735e5d6ee475d029ea4edf828",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Arena SEND ready check; qa_overall_pass still false; accuracy_claim=false; length smoke retained."
+  "note": "Phase D wrap: §98 static gates; startup register_with_report stash; diagnostics/workspace last-report endpoints. No approval-center changes."
 }

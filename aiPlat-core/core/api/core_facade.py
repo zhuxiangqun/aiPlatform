@@ -2196,6 +2196,24 @@ async def run_workspace_agent(
     import asyncio as _asyncio, os as _os
 
     agent_id = str(getattr(agent_info, "id", "unknown"))
+    # Phase B: Agent COMPAT gate — blocked denies all; needs_binding → chat-lite
+    _compat_chat_lite = False
+    try:
+        from core.harness.maintenance.asset_compat import (
+            agent_compat_error,
+            is_agent_chat_ok,
+            is_agent_fully_usable,
+            resolve_agent_dir_from_info,
+        )
+
+        _adir = resolve_agent_dir_from_info(agent_info)
+        if _adir is not None:
+            if not is_agent_chat_ok(_adir):
+                return agent_compat_error(_adir, agent_id=agent_id, mode="chat")
+            if not is_agent_fully_usable(_adir):
+                _compat_chat_lite = True
+    except Exception:
+        logging.debug("agent compat gate skipped", exc_info=True)
     cfg = getattr(agent_info, "config", None)
     system_prompt = cfg.get("system_prompt", "") if isinstance(cfg, dict) else ""
     import uuid as _uuid, os as _os_env, time as _time
@@ -2356,6 +2374,7 @@ async def run_workspace_agent(
                         toolset=toolset,
                         session_id=session_id,
                         input_payload=_stored_input,
+                        chat_lite=_compat_chat_lite,
                     )
                 )
             except Exception:
@@ -2377,13 +2396,14 @@ async def run_workspace_agent(
         user_message=user_message, max_steps=max_steps, toolset=toolset,
         session_id=session_id,
         input_payload=_stored_input,
+        chat_lite=_compat_chat_lite,
     )
 
 
 async def _execute_workspace_agent_background(
     agent_info: Any, agent_id: str, run_id: str, *, trace_id: str = "", user_message: str,
     max_steps: int = 10, toolset: str = "", session_id: str = "",
-    input_payload: Any = None,
+    input_payload: Any = None, chat_lite: bool = False,
 ) -> Dict[str, Any]:
     """Core execution logic used by both synchronous and stream paths."""
     import asyncio as _asyncio, os as _os, time as _time, json as _json
@@ -2479,37 +2499,38 @@ async def _execute_workspace_agent_background(
     cfg = getattr(agent_info, "config", None)
     sys_prompt = cfg.get("system_prompt", "") if isinstance(cfg, dict) else ""
 
+    # Phase B needs_binding: keep dialogue; strip tools/skills (full surface limited)
     resolved_tools = []
-    try:
-        from core.harness.integration import _resolve_tool_registry
-        reg = _resolve_tool_registry()
-        for tn in (getattr(agent_info, "tools", []) or []):
-            t = reg.get(str(tn))
-            if t: resolved_tools.append(t)
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
-
-    # Resolve agent's bound skills from registry (parallel to tools resolution)
     resolved_skills = []
-    try:
-        from core.harness.integration import get_skill_registry
-        sk_reg = get_skill_registry()
-        _want = []
-        for sn in (getattr(agent_info, "skills", []) or []):
-            if str(sn).strip():
-                _want.append(str(sn).strip())
-        _m0 = getattr(agent_info, "metadata", None) or {}
-        if isinstance(_m0, dict):
-            for sn in (_m0.get("required_skills") or []):
-                s = str(sn).strip()
-                if s and s not in _want:
-                    _want.append(s)
-        for sn in _want:
-            s = sk_reg.get(str(sn)) if hasattr(sk_reg, "get") else None
-            if s:
-                resolved_skills.append(s)
-    except Exception as e:
-        logging.debug(str(e), exc_info=True)
+    if not chat_lite:
+        try:
+            from core.harness.integration import _resolve_tool_registry
+            reg = _resolve_tool_registry()
+            for tn in (getattr(agent_info, "tools", []) or []):
+                t = reg.get(str(tn))
+                if t:
+                    resolved_tools.append(t)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
+        try:
+            from core.harness.integration import get_skill_registry
+            sk_reg = get_skill_registry()
+            _want = []
+            for sn in (getattr(agent_info, "skills", []) or []):
+                if str(sn).strip():
+                    _want.append(str(sn).strip())
+            _m0 = getattr(agent_info, "metadata", None) or {}
+            if isinstance(_m0, dict):
+                for sn in (_m0.get("required_skills") or []):
+                    s = str(sn).strip()
+                    if s and s not in _want:
+                        _want.append(s)
+            for sn in _want:
+                s = sk_reg.get(str(sn)) if hasattr(sk_reg, "get") else None
+                if s:
+                    resolved_skills.append(s)
+        except Exception as e:
+            logging.debug(str(e), exc_info=True)
 
     # ── Pre-filter tools against toolset policy (② avoid LLM seeing denied tools) ──
     if toolset:
@@ -10838,6 +10859,75 @@ from core.management.skill_manager import SkillManager  # noqa: boundary
 from core.management.skill_linter import lint_skill  # noqa: boundary
 from core.management.skill_installer import SkillInstaller  # noqa: boundary
 from core.management.agentskills_parser import convert_agentskills_to_aiplat, is_agentskills_format  # noqa: boundary
+
+
+def skill_asset_compat_finalize(skill_dir: str, *, source=None, adapt_summary=None):
+    """Write COMPAT.yaml for a skill dir (Phase A); never flips accuracy_claim."""
+    from core.apps.skills.asset_compat import finalize_skill_compat
+
+    return finalize_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
+
+
+def skill_enable_handler_draft(skill_dir: str):
+    """Promote handler.py.draft → handler.py after human enable (Phase A)."""
+    from core.apps.skills.asset_compat import enable_handler_draft
+
+    return enable_handler_draft(skill_dir)
+
+
+def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=None):
+    """Write COMPAT.yaml for an agent dir (Phase B); chat vs full surface honesty."""
+    from core.apps.agents.asset_compat import finalize_agent_compat
+
+    return finalize_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
+
+
+def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, connection_status=None):
+    """Write COMPAT.yaml for an MCP server dir (Phase C)."""
+    from core.apps.mcp.asset_compat import finalize_mcp_compat
+
+    return finalize_mcp_compat(
+        mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
+    )
+
+
+def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None, mapped_to=None, mcp_projection=False):
+    """Write COMPAT sidecar for a tool .py path (Phase C)."""
+    from core.apps.tools.asset_compat import finalize_tool_compat
+
+    return finalize_tool_compat(
+        tool_py,
+        source=source,
+        adapt_summary=adapt_summary,
+        mapped_to=mapped_to,
+        mcp_projection=mcp_projection,
+    )
+
+
+def tool_enable_impl_draft(tool_py: str):
+    """Promote {name}.py.draft → {name}.py after human enable (Phase C)."""
+    from core.apps.tools.asset_compat import enable_tool_impl_draft
+
+    return enable_tool_impl_draft(tool_py)
+
+
+def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
+    """Phase D: hot-load workspace tools with COMPAT gate + skipped assets[]."""
+    from pathlib import Path
+
+    from core.apps.tools.discovery import register_with_report
+
+    return register_with_report(Path(tools_dir) if tools_dir else None)
+
+
+def tool_discovery_last_report(tools_dir: Optional[str] = None):
+    """Phase D wrap: cached discovery report (or refresh once if empty)."""
+    from pathlib import Path
+
+    from core.apps.tools.discovery import last_report_or_refresh
+
+    return last_report_or_refresh(Path(tools_dir) if tools_dir else None)
+
 
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
 from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary

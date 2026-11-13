@@ -4,19 +4,19 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T04:41:25Z"
+generated_at: "2026-11-13T14:26:25Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "ac37466b8feb005a67b68da8bfcc19ad114478a2d3721413d6e0e232756d6b0f"
+caps_sha256: "2adf7dd1f78aa2d7db6c0eb5c124faf31def924eaa79d9518ed83e075aadcb4d"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=ac37466b8feb005a67b68da8bfcc19ad114478a2d3721413d6e0e232756d6b0f scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=2adf7dd1f78aa2d7db6c0eb5c124faf31def924eaa79d9518ed83e075aadcb4d scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T04:41:25Z` |
-| CAPABILITIES sha256 | `ac37466b8feb…` |
+| 生成时间 (UTC) | `2026-11-13T14:26:25Z` |
+| CAPABILITIES sha256 | `2adf7dd1f78a…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标

@@ -1581,7 +1581,13 @@ class AgentManager:
         else:
             raise ValueError("invalid_source_type")
         self._load_directory_agents()
-        return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
+        return {
+            "installed": res.installed,
+            "skipped": res.skipped,
+            "base": str(base),
+            "assets": list(getattr(res, "assets", None) or []),
+            "warnings": list(getattr(res, "warnings", None) or []),
+        }
 
     async def installer_plan(self, *, source_type: str, url: Optional[str] = None,
                              ref: Optional[str] = None, path: Optional[str] = None,

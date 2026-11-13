@@ -74,10 +74,12 @@ export type { Model, ModelConfig, ModelStats, Provider, AddModelRequest, ModelLi
 // Types - Core
 export type {
   Agent,
+  AgentCompat,
   AgentListResponse,
   Skill,
   SkillDetail,
   SkillListResponse,
+  ToolCompat,
   ToolInfo,
   ToolListResponse,
   MemorySession,
@@ -106,6 +108,7 @@ export type {
   RunEvent,
   AuditLogEntry,
   TenantPolicy,
+  McpCompat,
   McpServer,
   WorkspaceSkillInstallerPlan,
 } from './coreApi';

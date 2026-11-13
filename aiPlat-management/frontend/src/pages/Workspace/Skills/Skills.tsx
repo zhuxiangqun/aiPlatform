@@ -246,6 +246,24 @@ const WorkspaceSkills: React.FC = () => {
     },
     {
       title: (
+        <span title="外源兼容档位：现在就能用 / 还差几步 / 不能用（≠上架状态）">可用性</span>
+      ),
+      key: 'compat',
+      width: 96,
+      render: (_: unknown, record: Skill) => {
+        const ui = record.compat?.ui_state;
+        if (!ui) return <span className="text-gray-600 text-xs">—</span>;
+        const cls =
+          ui === '现在就能用'
+            ? 'text-green-400'
+            : ui === '不能用'
+              ? 'text-red-400'
+              : 'text-amber-400';
+        return <span className={`text-xs ${cls}`} title={record.compat?.tier || ''}>{ui}</span>;
+      },
+    },
+    {
+      title: (
         <span title="签名/冒烟校验，与上架审核无关。未签名也可本机执行。">治理</span>
       ),
       key: 'governance',
@@ -272,6 +290,15 @@ const WorkspaceSkills: React.FC = () => {
           onExport={handleExportPlugin}
           onDeprecate={(s) => setDeleteConfirm({ open: true, skill: s, hard: false })}
           onRestore={handleRestore}
+          onEnableHandlerDraft={async (s) => {
+            try {
+              await workspaceSkillApi.enableHandlerDraft(s.id);
+              toast.success(`已启用 handler：${s.name || s.id}`);
+              fetchSkills();
+            } catch (e: any) {
+              toastGateError(e, '启用 handler 失败');
+            }
+          }}
         />
       ),
     },

@@ -1592,7 +1592,13 @@ class SkillManager:
 
         self._load_directory_skills()
 
-        return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
+        return {
+            "installed": res.installed,
+            "skipped": res.skipped,
+            "base": str(base),
+            "assets": list(getattr(res, "assets", None) or []),
+            "warnings": list(getattr(res, "warnings", None) or []),
+        }
 
 
 

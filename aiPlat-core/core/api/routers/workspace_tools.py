@@ -52,6 +52,26 @@ def _write_manifest_provenance(tool_path: str, provenance: Dict[str, Any]) -> No
         logging.warning(str(e), exc_info=True)
 
 
+def _attach_tool_compat(entry: Dict[str, Any], tool_path: str) -> None:
+    """Phase C: attach COMPAT honesty (fail-open if missing)."""
+    if not tool_path:
+        return
+    try:
+        from core.harness.maintenance.asset_compat import read_tool_compat
+
+        compat = read_tool_compat(tool_path)
+        if isinstance(compat, dict):
+            entry["compat"] = {
+                "tier": compat.get("tier"),
+                "schedulable": bool(compat.get("schedulable")),
+                "ui_state": compat.get("ui_state"),
+                "upgrade": compat.get("upgrade") or {},
+                "issues": compat.get("issues") or [],
+            }
+    except Exception:
+        logging.debug("tool compat attach skipped", exc_info=True)
+
+
 def _scan_workspace_tools() -> List[Dict[str, Any]]:
     """Scan ~/.aiplat/tools/ and return workspace tool summaries."""
     try:
@@ -59,6 +79,7 @@ def _scan_workspace_tools() -> List[Dict[str, Any]]:
         registry = get_tool_registry()
         all_tools = registry.list_tools()
         result = []
+        seen: set = set()
         for name in all_tools:
             tool = registry.get(name)
             if tool is None:
@@ -81,7 +102,45 @@ def _scan_workspace_tools() -> List[Dict[str, Any]]:
                 entry["status"] = get_tool_status(name, tool_path=prov.get("tool_path"))
             except Exception:
                 entry["status"] = "draft"
+            _attach_tool_compat(entry, str(prov.get("tool_path") or ""))
             result.append(entry)
+            seen.add(name)
+        # Phase C: surface draft-only tools not yet registered
+        tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
+        if tools_dir.is_dir():
+            for draft in tools_dir.glob("*.py.draft"):
+                stem = draft.name[: -len(".py.draft")]
+                if stem in seen:
+                    continue
+                tool_py = tools_dir / f"{stem}.py"
+                entry = {
+                    "name": stem,
+                    "description": "",
+                    "category": "general",
+                    "parameters": {},
+                    "scope": "workspace",
+                    "available": False,
+                    "status": "draft",
+                    "provenance": {"scope": "workspace", "tool_path": str(tool_py)},
+                }
+                _attach_tool_compat(entry, str(tool_py))
+                if "compat" not in entry:
+                    try:
+                        from core.harness.maintenance.asset_compat import finalize_tool_compat
+
+                        compat = finalize_tool_compat(
+                            tool_py, adapt_summary={"adapted": True, "pattern": "import_draft"}
+                        )
+                        entry["compat"] = {
+                            "tier": compat.get("tier"),
+                            "schedulable": bool(compat.get("schedulable")),
+                            "ui_state": compat.get("ui_state"),
+                            "upgrade": compat.get("upgrade") or {},
+                            "issues": compat.get("issues") or [],
+                        }
+                    except Exception:
+                        logging.debug("draft tool compat finalize skipped", exc_info=True)
+                result.append(entry)
         return result
     except Exception:
         return []
@@ -94,12 +153,27 @@ async def list_workspace_tools():
     return {"tools": tools, "total": len(tools)}
 
 
+@router.get("/workspace/tools/discovery-report", response_model=Dict[str, Any])
+async def workspace_tools_discovery_report():
+    """Phase D wrap: last COMPAT hot-load report (read-only; refresh if unset)."""
+    from core.api.core_facade import tool_discovery_last_report
+
+    report = tool_discovery_last_report()
+    return {"status": "ok", "report": report or {"registered": 0, "skipped": [], "assets": []}}
+
+
 @router.post("/workspace/tools", response_model=Dict[str, Any])
 async def create_workspace_tool(request: dict, http_request: Request):
-    """Create a new workspace tool."""
+    """Create a new workspace tool.
+
+    Phase C: import/generated path (`as_draft` / `import_mode`) writes `.py.draft`
+    only and COMPAT `needs_impl` — does not register. Normal UI create still writes
+    live `.py` + `mapped` (human-authored).
+    """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
     code = str(request.get("code") or "").strip()
+    as_draft = bool(request.get("as_draft") or request.get("import_mode"))
 
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
@@ -111,13 +185,34 @@ async def create_workspace_tool(request: dict, http_request: Request):
     tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
     tools_dir.mkdir(parents=True, exist_ok=True)
     tool_file = tools_dir / f"{name}.py"
-    if tool_file.exists():
+    draft_file = tools_dir / f"{name}.py.draft"
+    if tool_file.exists() or draft_file.exists():
         raise HTTPException(status_code=409, detail=f"Tool '{name}' already exists")
 
     try:
         compile(code, str(tool_file), 'exec')
     except SyntaxError as e:
         raise HTTPException(status_code=400, detail=f"Python syntax error line {e.lineno}: {e.msg}")
+
+    if as_draft:
+        from core.harness.maintenance.asset_compat import finalize_tool_compat, write_tool_impl_draft
+
+        write_tool_impl_draft(tool_file, code)
+        compat = finalize_tool_compat(
+            tool_file,
+            source={"name": name},
+            adapt_summary={"adapted": True, "pattern": "import_draft"},
+        )
+        return {
+            "status": "draft",
+            "name": name,
+            "path": str(draft_file),
+            "compat": {
+                "tier": compat.get("tier"),
+                "schedulable": bool(compat.get("schedulable")),
+                "ui_state": compat.get("ui_state"),
+            },
+        }
 
     tool_file.write_text(code, encoding="utf-8")
 
@@ -148,6 +243,17 @@ async def create_workspace_tool(request: dict, http_request: Request):
             pm.grant_permission(uid, name, Permission.EXECUTE, granted_by="auto_create")
     except Exception as e:
         logging.warning(str(e), exc_info=True)
+
+    try:
+        from core.harness.maintenance.asset_compat import finalize_tool_compat
+
+        finalize_tool_compat(
+            tool_file,
+            source={"name": name},
+            adapt_summary={"adapted": True, "pattern": "workspace_create"},
+        )
+    except Exception as e:
+        logging.warning("finalize_tool_compat failed: %s", e, exc_info=True)
 
     return {"status": "created", "name": name, "path": str(tool_file)}
 
@@ -415,7 +521,71 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to re-register tool: {str(e)}")
 
+    try:
+        from core.harness.maintenance.asset_compat import finalize_tool_compat
+
+        finalize_tool_compat(
+            tool_path,
+            adapt_summary={"adapted": True, "pattern": "workspace_update"},
+        )
+    except Exception as e:
+        logging.warning("finalize_tool_compat on update failed: %s", e, exc_info=True)
+
     return {"status": "updated", "name": tool_name}
+
+
+@router.post("/workspace/tools/{tool_name}/enable-impl-draft", response_model=Dict[str, Any])
+async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Request):
+    """Phase C: promote {name}.py.draft → {name}.py and register."""
+    from core.api.core_facade import tool_enable_impl_draft
+
+    tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
+    tool_file = tools_dir / f"{tool_name}.py"
+    draft_file = tools_dir / f"{tool_name}.py.draft"
+    if not draft_file.is_file():
+        raise HTTPException(status_code=404, detail="no_impl_draft")
+
+    res = tool_enable_impl_draft(str(tool_file))
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=str(res.get("error") or "enable_failed"))
+
+    # Register like create path
+    try:
+        import importlib.util, sys
+        from core.apps.tools.base import BaseTool, ToolConfig, get_tool_registry
+        from core.apps.tools.permission import Permission, get_permission_manager
+
+        mod_name = f"ws_enable_{tool_name.replace('-', '_')}"
+        spec = importlib.util.spec_from_file_location(mod_name, str(tool_file))
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = mod
+            spec.loader.exec_module(mod)
+            td = getattr(mod, "TOOL_DEF", None)
+            if td and isinstance(td, dict):
+                cfg = ToolConfig(
+                    name=td.get("name", tool_name),
+                    description=td.get("description", ""),
+                    parameters=td.get("parameters", {}),
+                )
+                tool = BaseTool(cfg)
+                tool._execute_fn = td.get("execute")
+                setattr(
+                    tool._config,
+                    "metadata",
+                    {"provenance": {"scope": "workspace", "tool_path": str(tool_file)}},
+                )
+                get_tool_registry().register(tool)
+        pm = get_permission_manager()
+        for uid in ("system", "admin"):
+            pm.grant_permission(uid, tool_name, Permission.EXECUTE, granted_by="enable_impl_draft")
+    except Exception as e:
+        logging.warning("register after enable_impl_draft failed: %s", e, exc_info=True)
+
+    logging.getLogger(__name__).info(
+        "workspace_tool_enable_impl_draft name=%s tier=%s", tool_name, res.get("tier")
+    )
+    return {"status": "enabled", "name": tool_name, "compat": res.get("compat") or res, **{k: res.get(k) for k in ("ok", "tier", "schedulable") if k in res}}
 
 
 @router.post("/workspace/tools/{tool_name}/reload", response_model=Dict[str, Any])

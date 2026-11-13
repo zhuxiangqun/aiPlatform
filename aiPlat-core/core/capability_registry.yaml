@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2625
+total_capabilities: 2655
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -3794,8 +3794,28 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 328
+    caps_count: 333
     provides:
+      - symbol: "finalize_agent_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_agent_compat(agent_dir,*,source,adapt_summary)→COMPAT.yaml dict"
+      - symbol: "compute_agent_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "compute_agent_compat(agent_dir,*,source,adapt_summary)→dict"
+      - symbol: "is_agent_chat_ok"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_agent_chat_ok(agent_dir)→bool; missing COMPAT fail-open"
+      - symbol: "is_agent_fully_usable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_agent_fully_usable(agent_dir)→bool; needs_binding→False"
+      - symbol: "agent_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "agent_asset_compat_finalize(agent_dir,*,source,adapt_summary)→dict"
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
         type: function
@@ -5113,8 +5133,48 @@ domains:
   skill-system:
     section: "六"
     section_name: "Skill 系统"
-    caps_count: 191
+    caps_count: 201
     provides:
+      - symbol: "finalize_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_skill_compat(skill_dir,*,source,adapt_summary)→COMPAT.yaml dict"
+      - symbol: "enable_handler_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "enable_handler_draft(skill_dir)→{ok,tier,schedulable}; draft→handler.py"
+      - symbol: "is_skill_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_skill_schedulable(skill_dir)→bool; missing COMPAT fail-open"
+      - symbol: "compute_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "compute_skill_compat(skill_dir,*,source,adapt_summary)→dict"
+      - symbol: "write_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "write_skill_compat(skill_dir, compat)→Path"
+      - symbol: "read_skill_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "read_skill_compat(skill_dir)→Optional[dict]"
+      - symbol: "skill_schedulable_error"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "skill_schedulable_error(skill_dir, skill_id)→dict"
+      - symbol: "write_handler_draft_from_script"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "write_handler_draft_from_script(skill_dir, script_rel)→Path; draft only"
+      - symbol: "skill_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_asset_compat_finalize(skill_dir,*,source,adapt_summary)→dict"
+      - symbol: "skill_enable_handler_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "skill_enable_handler_draft(skill_dir)→dict"
       - symbol: "SkillRegistry"
         module: core/apps/skills/registry.py
         type: class
@@ -9490,8 +9550,28 @@ domains:
   mcp-protocol:
     section: "十四"
     section_name: "MCP 协议"
-    caps_count: 3
+    caps_count: 8
     provides:
+      - symbol: "finalize_mcp_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_mcp_compat(mcp_dir,*,source,adapt_summary,connection_status)→COMPAT.yaml dict"
+      - symbol: "mark_mcp_connection"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "mark_mcp_connection(mcp_dir,status)→COMPAT; disconnect honesty"
+      - symbol: "is_mcp_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_mcp_schedulable(mcp_dir)→bool; missing COMPAT fail-open"
+      - symbol: "mcp_schedulable_error"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "mcp_schedulable_error(mcp_dir,mcp_id)→deny payload for blocked enable/sync"
+      - symbol: "mcp_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "mcp_asset_compat_finalize(mcp_dir,*,source,adapt_summary,connection_status)→dict"
       - symbol: "MCPRuntime"
         type: "class"
         signature: "sync_from_servers, search_and_register"
@@ -9569,8 +9649,48 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 62
+    caps_count: 72
     provides:
+      - symbol: "finalize_tool_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_tool_compat(tool_py,*,source,adapt_summary,mapped_to,mcp_projection)→COMPAT dict"
+      - symbol: "enable_tool_impl_draft"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "enable_tool_impl_draft(tool_py)→{ok,tier}; .py.draft→.py"
+      - symbol: "is_tool_schedulable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_tool_schedulable(tool_py)→bool; missing COMPAT fail-open"
+      - symbol: "tool_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_asset_compat_finalize(tool_py,*,source,adapt_summary,...)→dict"
+      - symbol: "tool_enable_impl_draft"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_enable_impl_draft(tool_py)→dict"
+      - symbol: "register_with_report"
+        module: aiPlat-core/core/apps/tools/discovery.py
+        type: function
+        signature: "ToolDiscovery.register_with_report()→{registered,skipped,assets}"
+      - symbol: "tool_discovery_register_with_report"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_discovery_register_with_report(tools_dir?)→discovery report"
+      - symbol: "get_last_discovery_report"
+        module: aiPlat-core/core/apps/tools/discovery.py
+        type: function
+        signature: "get_last_discovery_report()→Optional[dict] cached report"
+      - symbol: "last_report_or_refresh"
+        module: aiPlat-core/core/apps/tools/discovery.py
+        type: function
+        signature: "last_report_or_refresh(tools_dir?)→dict; cache or refresh"
+      - symbol: "tool_discovery_last_report"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_discovery_last_report(tools_dir?)→dict diagnostics"
       - symbol: "BaseTool"
         module: core/apps/tools/base.py
         type: class
