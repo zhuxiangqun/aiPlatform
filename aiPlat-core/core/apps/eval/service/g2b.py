@@ -188,6 +188,11 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "pass_rate": pass_rate,
         "wilson_ci95": wilson if wilson else None,
         "sample_n": n,
+        "arena_send_ready": gates["arena_send_ready"],
+        "arena_qa_overall_pass": gates["arena_qa_overall_pass"],
+        "qa_resign_checklist": arena_rung.get("qa_resign_checklist")
+        or arena.get("qa_resign_checklist"),
+        "arena_pack_dir": arena.get("pack_dir") or arena_rung.get("pack_dir"),
         "honesty": (
             "Checklist only. Never sets accuracy_claim=true. "
             "G2b scoped claim still needs owner accept_accuracy_claim=true; "
