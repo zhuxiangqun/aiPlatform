@@ -312,6 +312,20 @@ const WorkspaceAgents: React.FC = () => {
     },
     {
       title: (
+        <span title="外源兼容档位：现在就能用 / 还差几步 / 不能用（≠上架状态；还差几步仍可对话）">可用性</span>
+      ),
+      key: 'compat',
+      width: 100,
+      render: (_: unknown, record: Agent) => {
+        const ui = record.compat?.ui_state;
+        if (!ui) return <span className="text-xs text-gray-500">—</span>;
+        const cls =
+          ui === '现在就能用' ? 'text-green-400' : ui === '不能用' ? 'text-red-400' : 'text-amber-400';
+        return <span className={`text-xs ${cls}`} title={record.compat?.tier || ''}>{ui}</span>;
+      },
+    },
+    {
+      title: (
         <span title="签名轨：未签名→已签名→已验签。与上架无关。">治理</span>
       ),
       key: 'governance',

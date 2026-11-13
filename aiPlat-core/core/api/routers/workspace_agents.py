@@ -208,22 +208,47 @@ async def list_workspace_agents(
         agents = await mgr.list_agents(agent_type, status, category, tag_list, limit, offset)
         # Filter out engine agents (reserved IDs) — workspace page should only show workspace agents
         agents = [a for a in agents if a.id not in (mgr._reserved_ids or set())]
+        def _agent_row(a):
+            row = {
+                "id": a.id, "name": a.name,
+                "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
+                "description": a.metadata.get("description", ""),
+                "agent_type": a.type, "status": a.status,
+                "runtime_state": getattr(a, "runtime_state", "stopped"),
+                "is_shell": _detect_shell_agent(a),
+                "category": a.category, "tags": a.tags, "phase": a.phase,
+                "output_artifact": a.metadata.get("output_artifact", ""),
+                "config": a.config,
+                "skills": a.skills, "tools": a.tools,
+                "workflow_ids": a.workflow_ids, "agent_ids": a.agent_ids,
+                "metadata": a.metadata,
+            }
+            # Phase B: expose COMPAT.yaml honesty (fail-open if missing)
+            try:
+                from pathlib import Path as _Path
+
+                from core.apps.agents.asset_compat import read_agent_compat
+
+                _fs = (a.metadata or {}).get("filesystem") if isinstance(a.metadata, dict) else None
+                _dir = (_fs or {}).get("agent_dir") if isinstance(_fs, dict) else None
+                if _dir and _Path(str(_dir)).is_dir():
+                    _compat = read_agent_compat(_dir)
+                    if isinstance(_compat, dict):
+                        row["compat"] = {
+                            "tier": _compat.get("tier"),
+                            "schedulable": bool(_compat.get("schedulable")),
+                            "chat_ok": bool(_compat.get("chat_ok", _compat.get("schedulable"))),
+                            "full_ok": bool(_compat.get("full_ok")),
+                            "ui_state": _compat.get("ui_state"),
+                            "upgrade": _compat.get("upgrade") or {},
+                            "issues": _compat.get("issues") or [],
+                        }
+            except Exception:
+                logging.getLogger(__name__).debug("agent compat attach skipped", exc_info=True)
+            return row
+
         return {
-            "agents": [
-                {"id": a.id, "name": a.name,
-                 "display_name": a.metadata.get("display_name", a.name) if isinstance(a.metadata, dict) else a.name,
-                 "description": a.metadata.get("description", ""),
-                 "agent_type": a.type, "status": a.status,
-                 "runtime_state": getattr(a, "runtime_state", "stopped"),
-                 "is_shell": _detect_shell_agent(a),
-                 "category": a.category, "tags": a.tags, "phase": a.phase,
-                 "output_artifact": a.metadata.get("output_artifact", ""),
-                  "config": a.config,
-                  "skills": a.skills, "tools": a.tools,
-                  "workflow_ids": a.workflow_ids, "agent_ids": a.agent_ids,
-                  "metadata": a.metadata}
-                for a in agents
-            ],
+            "agents": [_agent_row(a) for a in agents],
             "total": mgr.get_agent_count().get("total", 0),
             "limit": limit,
             "offset": offset,
