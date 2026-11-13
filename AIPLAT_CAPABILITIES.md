@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3388
+total_capabilities: 3390
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -3272,6 +3272,8 @@ scan_hash: 8f9548ec24f4
 | eval_g2b_pack_status | `core/api/core_facade.py` | ✅ | G2b pack status facade | 本批 |
 | g2b_l5_gap_disclosure | `core/apps/eval/service/g2b.py` | ✅ | L5/G2b 差距披露（Wilson/pass_rate/dual-human）；accuracy_claim 默认 false；生成物适用：已接线 | 本批 |
 | eval_g2b_l5_gap_disclosure | `core/api/core_facade.py` | ✅ | G2b L5 gap facade；生成物适用：已接线 | 本批 |
+| g2b_claim_unlock_checklist | `core/apps/eval/service/g2b.py` | ✅ | G2b claim 解锁 AND 门（§4/双人/owner accept + Arena/staging/审计披露）；永不翻 `accuracy_claim`；生成物适用：已接线 | 本批 |
+| eval_g2b_claim_unlock_checklist | `core/api/core_facade.py` | ✅ | claim unlock checklist facade；生成物适用：已接线 | 本批 |
 | load_threat_family_catalog / build_security_family_report / security_l1_p0a_status | `core/apps/eval/service/security_family_report.py` | ✅ | SEC-P0a 威胁族目录 + L1 threat_ids 校验 + 分族报告 schema；T05-text≠T05-exec；生成物适用：已接线 | 本批 |
 | eval_security_sec_p0a_status / eval_build_security_family_report | `core/api/core_facade.py` | ✅ | CoreFacade SEC-P0a 入口；accuracy_claim=false；生成物适用：已接线 | 本批 |
 | evaluate_isolation_status / run_escape_probes / security_t12_p0b_status | `core/apps/eval/service/isolation_t12.py` | ✅ | SEC-P0b T12 三级状态机 + 探针接口；admit≠covered；生成物适用：已接线 | 本批 |
@@ -4300,7 +4302,7 @@ scan_hash: 8f9548ec24f4
 | 部署与运维 | 23 | 0 | 23 |
 | 扩展与学习 | 174 | 0 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
-| 评估系统 | 577 | 0 | 577 |
+| 评估系统 | 579 | 0 | 579 |
 | MCP 协议 | 10 | 0 | 10 |
 | A2A 协议 | 9 | 0 | 9 |
 | 文档智能 | 27 | 0 | 27 |
@@ -4332,7 +4334,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3378** | **10** | **3388** |
+| **总计** | **3380** | **10** | **3390** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

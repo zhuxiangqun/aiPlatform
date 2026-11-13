@@ -29,6 +29,16 @@ type G2bStatus = {
   families?: Record<string, number>;
 };
 
+type G2bClaimUnlock = {
+  schema?: string;
+  accuracy_claim?: boolean;
+  g2b_scoped_ready?: boolean;
+  g2b_scoped_blockers?: string[];
+  broader_trust_blockers?: string[];
+  gates?: Record<string, boolean>;
+  honesty?: string;
+};
+
 type G2bL5Gap = {
   ok?: boolean;
   pass_rate?: number | null;
@@ -42,6 +52,7 @@ type G2bL5Gap = {
   accuracy_claim?: boolean;
   explicit_authorize?: boolean;
   claims_gate?: { accuracy_claim?: boolean; ok?: boolean };
+  claim_unlock?: G2bClaimUnlock;
   note?: string;
 };
 
@@ -206,6 +217,25 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
           </dl>
           {l5Gap.gaps?.length ? (
             <p className="text-amber-200/80">gaps: {l5Gap.gaps.join('; ')}</p>
+          ) : null}
+          {l5Gap.claim_unlock ? (
+            <div
+              className="rounded border border-slate-600/60 bg-slate-900/50 p-3 space-y-1"
+              data-testid="eval-g2b-claim-unlock"
+            >
+              <div className="font-medium text-slate-200">Claim 解锁核对（仍关）</div>
+              <p className="text-gray-400">
+                G2b scoped ready={String(Boolean(l5Gap.claim_unlock.g2b_scoped_ready))} ·
+                blockers={(l5Gap.claim_unlock.g2b_scoped_blockers || []).join(', ') || '—'}
+              </p>
+              <p className="text-gray-500">
+                broader: {(l5Gap.claim_unlock.broader_trust_blockers || []).join(', ') || '—'}
+              </p>
+              <p className="text-gray-500">
+                {l5Gap.claim_unlock.honesty ||
+                  '需 owner accept_accuracy_claim=true；Arena QA / staging / 审计另轨'}
+              </p>
+            </div>
           ) : null}
           <p className="text-gray-500">{l5Gap.note}</p>
         </div>

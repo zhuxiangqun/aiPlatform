@@ -121,6 +121,81 @@ G2B_PASS_RATE_TARGET = 0.80
 L5_DEFAULT_MIN_SAMPLE_N = 100
 
 
+def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """AND-gates for opening accuracy_claim (disclosure only; never flips claim).
+
+    G2b scoped claim needs §4 numeric + dual-human + owner accept attestation.
+    Arena QA / staging / external audit are broader-trust gates (reported, not
+    silently ignored).
+    """
+    status = g2b_pack_status(tenant_id=tenant_id)
+    acc = _read_json(_evidence_dir() / "g2b_accuracy_aggregate.v1.json") or {}
+    att = _read_json(_evidence_dir() / "g2b_accuracy_claim_attestation.v1.json") or {}
+    arena = _read_json(_repo_root() / ".aiplat" / "eval_trust" / "arena_send_ready_v0.json") or {}
+    next_rung = _read_json(_repo_root() / ".aiplat" / "eval_trust" / "next_rung_manifest.json") or {}
+    arena_rung = next_rung.get("arena") if isinstance(next_rung.get("arena"), dict) else {}
+
+    pass_rate = acc.get("pass_rate")
+    wilson = acc.get("wilson_ci95") if isinstance(acc.get("wilson_ci95"), list) else []
+    wilson_lo = float(wilson[0]) if len(wilson) >= 1 and wilson[0] is not None else None
+    n = int(acc.get("n") or 0)
+
+    gates = {
+        "dual_human_complete": bool(status.get("dual_human_complete")),
+        "section4_pass_rate_met": (
+            pass_rate is not None and float(pass_rate) >= G2B_PASS_RATE_TARGET
+        ),
+        "section4_wilson_lo_met": (
+            wilson_lo is not None and wilson_lo >= G2B_WILSON_LOWER_THRESHOLD
+        ),
+        "sample_n_met": n >= L5_DEFAULT_MIN_SAMPLE_N,
+        "owner_accept_accuracy_claim": att.get("accept_accuracy_claim") is True,
+        "arena_send_ready": bool(arena.get("send_ready") or arena_rung.get("send_ready")),
+        "arena_qa_overall_pass": bool(arena_rung.get("qa_overall_pass")),
+        "staging_evidence": False,
+        "external_audit": False,
+    }
+    g2b_scoped_blockers = [
+        k
+        for k in (
+            "dual_human_complete",
+            "section4_pass_rate_met",
+            "section4_wilson_lo_met",
+            "sample_n_met",
+            "owner_accept_accuracy_claim",
+        )
+        if not gates[k]
+    ]
+    broader_trust_blockers = [
+        k
+        for k in (
+            "arena_send_ready",
+            "arena_qa_overall_pass",
+            "staging_evidence",
+            "external_audit",
+        )
+        if not gates[k]
+    ]
+    return {
+        "schema": "eval.g2b.claim_unlock_checklist.v0",
+        "tenant_id": tenant_id,
+        "accuracy_claim": False,
+        "accept_accuracy_claim": bool(att.get("accept_accuracy_claim")),
+        "gates": gates,
+        "g2b_scoped_ready": len(g2b_scoped_blockers) == 0,
+        "g2b_scoped_blockers": g2b_scoped_blockers,
+        "broader_trust_blockers": broader_trust_blockers,
+        "pass_rate": pass_rate,
+        "wilson_ci95": wilson if wilson else None,
+        "sample_n": n,
+        "honesty": (
+            "Checklist only. Never sets accuracy_claim=true. "
+            "G2b scoped claim still needs owner accept_accuracy_claim=true; "
+            "Arena QA / staging / audit remain separate trust rungs."
+        ),
+    }
+
+
 def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     """Distance-to-L5 / G2b threshold disclosure. Never sets accuracy_claim=true."""
     status = g2b_pack_status(tenant_id=tenant_id)
@@ -130,6 +205,7 @@ def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     wilson_lo = float(wilson[0]) if len(wilson) >= 1 and wilson[0] is not None else None
     wilson_hi = float(wilson[1]) if len(wilson) >= 2 and wilson[1] is not None else None
     n = int(acc.get("n") or status.get("closeout_n") or 0)
+    unlock = g2b_claim_unlock_checklist(tenant_id=tenant_id)
 
     gaps: List[str] = []
     if not status.get("dual_human_complete"):
@@ -146,6 +222,10 @@ def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         )
     if n < L5_DEFAULT_MIN_SAMPLE_N:
         gaps.append(f"sample_n_below_l5:{n}<{L5_DEFAULT_MIN_SAMPLE_N}")
+    if unlock.get("g2b_scoped_blockers"):
+        gaps.append(
+            "claim_unlock_blockers:" + ",".join(unlock["g2b_scoped_blockers"])
+        )
 
     # Always refuse accuracy in this disclosure helper.
     from core.apps.eval.service.claims_gate import evaluate_l5_claims_gate
@@ -171,6 +251,13 @@ def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         explicit_authorize=False,
     )
 
+    section4_met = (
+        pass_rate is not None
+        and float(pass_rate) >= G2B_PASS_RATE_TARGET
+        and wilson_lo is not None
+        and wilson_lo >= G2B_WILSON_LOWER_THRESHOLD
+        and n >= L5_DEFAULT_MIN_SAMPLE_N
+    )
     return {
         "schema": "eval.g2b_l5_gap.v1",
         "ok": True,
@@ -184,15 +271,21 @@ def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "l5_default_min_sample_n": L5_DEFAULT_MIN_SAMPLE_N,
         "gaps": gaps,
         "distance_summary": (
-            "ready_for_scoped_owner_review"
-            if not gaps
-            else "thresholds_not_met"
+            "awaiting_owner_accept_attestation"
+            if section4_met and unlock.get("g2b_scoped_blockers") == ["owner_accept_accuracy_claim"]
+            else (
+                "ready_for_scoped_owner_review"
+                if not gaps
+                else "thresholds_not_met"
+            )
         ),
+        "claim_unlock": unlock,
         "claims_gate": gate,
         "accuracy_claim": False,
         "explicit_authorize": False,
         "note": (
             "Facilitation disclosure only. accuracy_claim stays false without "
-            "explicit_authorize + all L5 gates + product attestation."
+            "explicit_authorize + all L5 gates + product attestation "
+            "(accept_accuracy_claim=true)."
         ),
     }

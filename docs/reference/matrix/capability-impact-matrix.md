@@ -5,7 +5,7 @@ doc_type: Reference
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2623 capabilities (caps_count) | 2623 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2625 capabilities (caps_count) | 2625 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -91,7 +91,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 609 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 611 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
@@ -128,7 +128,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 609 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 611 | PipelineEngine 调度入口 |
 
 ### core/api/routers/diagnostics.py
 
@@ -231,7 +231,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 609 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 611 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
@@ -263,7 +263,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 609 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 611 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -500,7 +500,7 @@ doc_type: Reference
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (609 caps)
+### §一 Harness 执行引擎 (611 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner
