@@ -327,6 +327,11 @@ def subject_regression_inventory(
     content_ready_n = sum(1 for r in rows if r.get("content_purpose_ready"))
     promoted_n = sum(1 for r in rows if r.get("workspace_promoted"))
     last_exam_n = sum(1 for r in rows if str(r.get("last_exam_at") or "").strip())
+    last_live_n = sum(
+        1
+        for r in rows
+        if str(r.get("last_exam_at") or "").strip() and bool(r.get("last_exam_live"))
+    )
     if not wid:
         next_action = (
             "Seed profile_complete may already be 14/14; bind a named workspace "
@@ -334,12 +339,26 @@ def subject_regression_inventory(
             "claim/Certification stay closed."
         )
     elif promoted_n >= len(rows) and rows:
-        next_action = (
-            "All Subjects workspace-promoted (frozen) in this workspace; "
-            "next: open Case Pack via suite_profile_href (profile_id) → "
-            "compile-suite-profile → run exam; "
-            "do not open claim/Certification from inventory alone."
-        )
+        if last_exam_n > 0 and last_live_n == 0:
+            next_action = (
+                "All Subjects workspace-promoted; dry exam ledger present but no live "
+                "smoke yet — use Inventory Compile+Exam live·smoke·4 (max 4 cases) "
+                "or Case Pack Run Profile (live·smoke·4); live≠accuracy; "
+                "claim/Certification stay closed."
+            )
+        elif last_live_n > 0:
+            next_action = (
+                "Workspace-promoted + live smoke ledger present on Inventory; "
+                "last_exam_* is honesty only — do not open claim/Certification "
+                "from inventory alone."
+            )
+        else:
+            next_action = (
+                "All Subjects workspace-promoted (frozen) in this workspace; "
+                "next: Inventory Compile+Exam dry, then live·smoke·4 "
+                "(or Case Pack via suite_profile_href); "
+                "do not open claim/Certification from inventory alone."
+            )
     elif promoted_n > 0:
         next_action = (
             f"Workspace promote partial ({promoted_n}/{len(rows)}); "
@@ -382,8 +401,9 @@ def subject_regression_inventory(
         },
         "ladder": (
             "seed profile_complete → workspace_promoted → "
-            "Case Pack compile-suite-profile(profile_id) → run exam → "
+            "compile-suite-profile → exam dry → live·smoke·4 → "
             "last_exam_* honesty on Inventory; "
             "claim/Certification stay closed."
         ),
+        "last_exam_live_count": last_live_n,
     }

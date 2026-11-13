@@ -59,6 +59,7 @@ type Inventory = {
   workspace_id?: string;
   workspace_promoted_count?: number;
   last_exam_count?: number;
+  last_exam_live_count?: number;
   subjects?: SubjectRow[];
   next_action?: string;
   honesty?: string;
@@ -158,52 +159,65 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
     }
   }, [load]);
 
-  const onCompileExamDry = useCallback(async () => {
-    setExamBusy(true);
-    setExamMsg('');
-    setError('');
-    try {
-      const row = (status?.subjects || []).find((r) => r.subject_kind === promoteKind);
-      const profileId = String(row?.profile_id || '').trim();
-      if (!profileId) {
-        throw new Error(`no profile_id for subject ${promoteKind}`);
-      }
-      const compiled = unwrap(
-        (await agentEvalApi.casePackCompileSuiteProfile({
-          profile_id: profileId,
-        })) as Envelope<Record<string, unknown>>,
-      );
-      if (compiled && compiled.ok === false) {
-        throw new Error(
-          String(compiled.error || compiled.message || 'compile-suite-profile failed'),
+  const runCompileExam = useCallback(
+    async (live: boolean) => {
+      setExamBusy(true);
+      setExamMsg('');
+      setError('');
+      try {
+        const row = (status?.subjects || []).find((r) => r.subject_kind === promoteKind);
+        const profileId = String(row?.profile_id || '').trim();
+        if (!profileId) {
+          throw new Error(`no profile_id for subject ${promoteKind}`);
+        }
+        const compiled = unwrap(
+          (await agentEvalApi.casePackCompileSuiteProfile({
+            profile_id: profileId,
+          })) as Envelope<Record<string, unknown>>,
         );
+        if (compiled && compiled.ok === false) {
+          throw new Error(
+            String(compiled.error || compiled.message || 'compile-suite-profile failed'),
+          );
+        }
+        const exam = unwrap(
+          (await agentEvalApi.casePackRunSuiteProfile({
+            profile_id: profileId,
+            live,
+            ...(live ? { max_cases: 4 } : {}),
+          })) as Envelope<Record<string, unknown>>,
+        );
+        if (exam && exam.ok === false) {
+          throw new Error(String(exam.error || exam.message || 'run-suite-profile failed'));
+        }
+        const executed = String(
+          (exam as { executed_case_count?: number })?.executed_case_count ??
+            (exam as { case_count?: number })?.case_count ??
+            '—',
+        );
+        const mode = live ? 'live·smoke·4' : 'dry';
+        setExamMsg(
+          `compile+exam(${mode}) ${profileId} · claim=${String(
+            Boolean(exam?.claim_eligible ?? compiled?.claim_eligible),
+          )} · executed=${executed} · ≠accuracy`,
+        );
+        await load();
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setExamBusy(false);
       }
-      const exam = unwrap(
-        (await agentEvalApi.casePackRunSuiteProfile({
-          profile_id: profileId,
-          live: false,
-        })) as Envelope<Record<string, unknown>>,
-      );
-      if (exam && exam.ok === false) {
-        throw new Error(String(exam.error || exam.message || 'run-suite-profile failed'));
-      }
-      const executed = String(
-        (exam as { executed_case_count?: number })?.executed_case_count ??
-          (exam as { case_count?: number })?.case_count ??
-          '—',
-      );
-      setExamMsg(
-        `compile+exam(dry) ${profileId} · claim=${String(
-          Boolean(exam?.claim_eligible ?? compiled?.claim_eligible),
-        )} · executed=${executed}`,
-      );
-      await load();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setExamBusy(false);
-    }
-  }, [load, promoteKind, status?.subjects]);
+    },
+    [load, promoteKind, status?.subjects],
+  );
+
+  const onCompileExamDry = useCallback(() => {
+    void runCompileExam(false);
+  }, [runCompileExam]);
+
+  const onCompileExamLiveSmoke = useCallback(() => {
+    void runCompileExam(true);
+  }, [runCompileExam]);
 
   const rows = status?.subjects || [];
   const packsHref = status?.review_links?.case_packs_tab || '/eval?tab=case-packs';
@@ -227,7 +241,8 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
             {status?.workspace_promoted_count ?? '—'}
             {status?.workspace_id ? ` @${status.workspace_id}` : ' (无 workspace)'} ·
             draft_pending={status?.draft_pending_total ?? '—'} · last_exam=
-            {status?.last_exam_count ?? '—'}
+            {status?.last_exam_count ?? '—'} · last_live=
+            {status?.last_exam_live_count ?? '—'}
           </li>
           <li>
             claim_eligible={String(Boolean(status?.claim_eligible))} · accuracy_claim=
@@ -297,10 +312,10 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
               <button
                 type="button"
                 disabled={examBusy || promoting || !selectedProfileId}
-                onClick={() => void onCompileExamDry()}
+                onClick={() => onCompileExamDry()}
                 className="rounded border border-violet-700/60 px-2 py-1 text-violet-100 disabled:opacity-50"
                 data-testid="eval-subject-inventory-compile-exam-dry"
-                title="compile-suite-profile → run-suite-profile live=false；claim 仍关闭"
+                title="假跑：compile → run live=false；claim 仍关闭；≠准确率"
               >
                 {examBusy
                   ? 'Exam…'
@@ -308,8 +323,22 @@ export default function EvalSubjectRegressionInventoryPanel(_props: Props = {}) 
                     ? `Compile+Exam dry (${selectedProfileId})`
                     : 'Compile+Exam dry'}
               </button>
+              <button
+                type="button"
+                disabled={examBusy || promoting || !selectedProfileId}
+                onClick={() => onCompileExamLiveSmoke()}
+                className="rounded border border-orange-700/60 px-2 py-1 text-orange-100 disabled:opacity-50"
+                data-testid="eval-subject-inventory-compile-exam-live-smoke"
+                title="真模型小冒烟：compile → run live=true max_cases=4；claim 仍关闭；≠准确率/Certification"
+              >
+                {examBusy
+                  ? 'Exam…'
+                  : selectedProfileId
+                    ? `Compile+Exam live·smoke·4 (${selectedProfileId})`
+                    : 'Compile+Exam live·smoke·4'}
+              </button>
               <span className="text-gray-500">
-                claim 仍关；需 content_purpose_ready；仅工作区 registry 冻结；exam≠accuracy
+                claim 仍关；dry=假跑 / live·smoke=真模型抽4题；exam≠accuracy
               </span>
             </div>
             {promoteMsg ? <p className="text-xs text-emerald-200/90">{promoteMsg}</p> : null}
