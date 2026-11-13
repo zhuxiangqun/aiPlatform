@@ -63,12 +63,50 @@ class MCPRuntime:
 
         # Connect / register enabled
         for server_name, s in enabled.items():
+            # Phase C: blocked COMPAT must not connect (connectable still attempts)
+            try:
+                from core.harness.maintenance.asset_compat import (
+                    TIER_BLOCKED,
+                    mcp_schedulable_error,
+                    read_mcp_compat,
+                    resolve_mcp_dir_from_info,
+                )
+
+                mdir = resolve_mcp_dir_from_info(s)
+                if mdir is not None:
+                    compat = read_mcp_compat(mdir)
+                    if isinstance(compat, dict) and str(compat.get("tier") or "") == TIER_BLOCKED:
+                        err = mcp_schedulable_error(mdir, mcp_id=server_name)
+                        summary["skipped"].append(
+                            {"server": server_name, "reason": err.get("error") or "mcp_not_schedulable", "compat": err}
+                        )
+                        continue
+            except Exception as e:
+                logging.debug("mcp blocked-compat precheck skipped: %s", e, exc_info=True)
             try:
                 await self._connect_and_register(s, tool_registry)
                 summary["connected"].append(server_name)
+                self._update_mcp_compat(s, "connected")
             except Exception as e:
                 summary["skipped"].append({"server": server_name, "reason": str(e)})
+                self._update_mcp_compat(s, "connectable")
         return summary
+
+    def _update_mcp_compat(self, server_info: Any, status: str) -> None:
+        """Best-effort COMPAT rewrite after connect/skip (Phase C)."""
+        try:
+            from core.harness.maintenance.asset_compat import mark_mcp_connection, resolve_mcp_dir_from_info
+
+            mdir = resolve_mcp_dir_from_info(server_info)
+            if mdir is None:
+                return
+            mark_mcp_connection(
+                mdir,
+                status,
+                adapt_summary={"adapted": True, "pattern": f"mcp_{status}"},
+            )
+        except Exception as e:
+            logging.debug("mcp compat update skipped: %s", e, exc_info=True)
 
     async def _disconnect_and_unregister(self, server_name: str, tool_registry: Any) -> None:
         state = self._registered.get(server_name)
@@ -83,6 +121,15 @@ class MCPRuntime:
             await self._manager.remove_server(server_name)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
+        # Phase C: disconnect must not leave COMPAT as connected (no fake-ok)
+        try:
+            from core.harness.maintenance.asset_compat import mark_mcp_connection, resolve_mcp_dir
+
+            mdir = resolve_mcp_dir(server_name)
+            if mdir is not None:
+                mark_mcp_connection(mdir, "connectable", adapt_summary={"adapted": True, "pattern": "mcp_disconnect"})
+        except Exception as e:
+            logging.debug("mcp compat disconnect update skipped: %s", e, exc_info=True)
 
     def _policy(self, s: Any) -> Dict[str, Any]:
         meta = getattr(s, "metadata", None)
@@ -202,6 +249,7 @@ class MCPRuntime:
         after = set(tool_registry.list_tools())
         added = sorted(list(after - before))
         self._registered[cfg.name] = MCPRuntimeServerState(server_name=cfg.name, tool_names=added)
+        # Note: COMPAT connection_status written by sync_from_servers after success
 
     def total_tool_descriptions_chars(self) -> int:
         return sum(

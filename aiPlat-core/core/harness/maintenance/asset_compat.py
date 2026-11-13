@@ -1,4 +1,4 @@
-"""Asset compat: Skill Phase A + Agent Phase B (COMPAT.yaml honesty)."""
+"""Asset compat: Skill A + Agent B + Tool/MCP C (COMPAT.yaml honesty)."""
 from __future__ import annotations
 
 import logging
@@ -11,8 +11,11 @@ logger = logging.getLogger(__name__)
 COMPAT_SCHEMA = "aiplat.asset_compat.v1"
 COMPAT_FILENAME = "COMPAT.yaml"
 HANDLER_DRAFT = "handler.py.draft"
+TOOL_IMPL_DRAFT_SUFFIX = ".py.draft"
 SKILL_NOT_SCHEDULABLE = "skill_not_schedulable"
 AGENT_NOT_USABLE = "agent_not_usable"
+TOOL_NOT_SCHEDULABLE = "tool_not_schedulable"
+MCP_NOT_SCHEDULABLE = "mcp_not_schedulable"
 TIER_PROMPT_READY = "prompt_ready"
 TIER_TOOL_MAPPED = "tool_mapped"
 TIER_NEEDS_HANDLER = "needs_handler"
@@ -21,8 +24,18 @@ TIER_BLOCKED = "blocked"
 TIER_PERSONA_READY = "persona_ready"
 TIER_BOUND_READY = "bound_ready"
 TIER_NEEDS_BINDING = "needs_binding"
+# Tool tiers (Phase C)
+TIER_MAPPED = "mapped"
+TIER_SCHEMA_ONLY = "schema_only"
+TIER_NEEDS_IMPL = "needs_impl"
+# MCP tiers (Phase C)
+TIER_CONNECTABLE = "connectable"
+TIER_CONNECTED = "connected"
+TIER_GATED = "gated"
 _SCHEDULABLE = {TIER_PROMPT_READY, TIER_TOOL_MAPPED}
 _AGENT_CHAT_OK = {TIER_PERSONA_READY, TIER_BOUND_READY, TIER_NEEDS_BINDING}
+_TOOL_SCHEDULABLE = {TIER_MAPPED}
+_MCP_SCHEDULABLE = {TIER_CONNECTED, TIER_GATED}
 
 
 def _read_frontmatter(skill_dir: Path) -> Dict[str, Any]:
@@ -474,3 +487,433 @@ def resolve_agent_dir_from_info(agent_info: Any) -> Optional[Path]:
     if raw and Path(str(raw)).is_dir():
         return Path(str(raw))
     return None
+
+
+# ── Shared COMPAT I/O ─────────────────────────────────────────────────────────
+
+
+def _write_compat_file(path: Path, compat: Dict[str, Any]) -> Path:
+    try:
+        import yaml
+
+        path.write_text(yaml.safe_dump(compat, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    except Exception:
+        import json
+
+        path.write_text(json.dumps(compat, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _read_compat_file(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.is_file():
+        return None
+    try:
+        import yaml
+
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _ui_for_tier(tier: str, *, schedulable: bool) -> str:
+    if tier == TIER_BLOCKED or (not schedulable and tier in {TIER_SCHEMA_ONLY, TIER_CONNECTABLE}):
+        if tier == TIER_BLOCKED:
+            return "不能用"
+        if tier in {TIER_SCHEMA_ONLY, TIER_NEEDS_IMPL, TIER_CONNECTABLE, TIER_GATED, TIER_NEEDS_BINDING, TIER_NEEDS_HANDLER}:
+            return "还差几步" if tier != TIER_SCHEMA_ONLY else "不能用"
+    if schedulable:
+        return "现在就能用"
+    return "不能用" if tier == TIER_BLOCKED else "还差几步"
+
+
+# ── MCP Phase C ───────────────────────────────────────────────────────────────
+
+
+def resolve_mcp_dir(mcp_id: str) -> Optional[Path]:
+    sid = str(mcp_id or "").strip()
+    if not sid:
+        return None
+    roots: List[Path] = []
+    try:
+        from core.utils.paths import get_aiplat_data_dir
+
+        roots.append(Path(get_aiplat_data_dir("mcps")))
+    except Exception:
+        logger.debug("mcp search root resolve failed", exc_info=True)
+    for key in ("AIPLAT_WORKSPACE_MCP_PATH", "AIPLAT_ENGINE_MCP_PATH"):
+        raw = (os.environ.get(key) or "").strip()
+        if raw:
+            roots.append(Path(raw).expanduser())
+    for root in roots:
+        cand = root / sid
+        if (cand / "server.yaml").is_file() or (cand / "mcp.json").is_file():
+            return cand
+    return None
+
+
+def resolve_mcp_dir_from_info(server_info: Any) -> Optional[Path]:
+    meta = getattr(server_info, "metadata", None) or {}
+    if isinstance(meta, dict):
+        fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+        raw = fs.get("server_dir") if isinstance(fs, dict) else None
+        if raw and Path(str(raw)).is_dir():
+            return Path(str(raw))
+    name = str(getattr(server_info, "name", "") or "").strip()
+    return resolve_mcp_dir(name) if name else None
+
+
+def compute_mcp_compat(
+    mcp_dir: Path | str,
+    *,
+    source: Optional[Dict[str, Any]] = None,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+    connection_status: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Score MCP COMPAT: connectable / connected / gated / blocked."""
+    root = Path(mcp_dir)
+    issues: List[Dict[str, Any]] = []
+    prev = _read_compat_file(root / COMPAT_FILENAME) or {}
+    status = str(connection_status or prev.get("connection_status") or TIER_CONNECTABLE).strip().lower()
+    block_reason = ""
+    try:
+        import yaml
+
+        sy = root / "server.yaml"
+        if sy.is_file():
+            data = yaml.safe_load(sy.read_text(encoding="utf-8")) or {}
+            if isinstance(data, dict):
+                block_reason = str(data.get("block_reason") or "").strip()
+                meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+                if not block_reason and isinstance(meta, dict):
+                    block_reason = str(meta.get("block_reason") or "").strip()
+    except Exception:
+        logger.debug("mcp server.yaml read skipped", exc_info=True)
+
+    pol: Dict[str, Any] = {}
+    try:
+        import yaml
+
+        py = root / "policy.yaml"
+        if py.is_file():
+            raw = yaml.safe_load(py.read_text(encoding="utf-8")) or {}
+            if isinstance(raw, dict):
+                pol = raw
+    except Exception:
+        logger.debug("mcp policy.yaml read skipped", exc_info=True)
+
+    if block_reason:
+        tier = TIER_BLOCKED
+        issues.append({"code": "blocked", "severity": "error", "message": block_reason})
+    elif status == TIER_BLOCKED:
+        tier = TIER_BLOCKED
+        issues.append({"code": "blocked", "severity": "error", "message": "connection blocked"})
+    elif status == TIER_CONNECTED:
+        if pol.get("approval_required") or str(pol.get("risk_level") or "").lower() == "high":
+            tier = TIER_GATED
+            issues.append({
+                "code": "gated_high_risk",
+                "severity": "warning",
+                "message": "connected; high-risk tools may require individual confirmation",
+            })
+        else:
+            tier = TIER_CONNECTED
+    elif status == TIER_GATED:
+        tier = TIER_GATED
+    else:
+        tier = TIER_CONNECTABLE
+        issues.append({
+            "code": "not_connected",
+            "severity": "warning",
+            "message": "server not connected; auto-connect pending or failed",
+        })
+
+    schedulable = tier in _MCP_SCHEDULABLE
+    ui = _ui_for_tier(tier, schedulable=schedulable)
+    upgrade = "none" if schedulable else ("blocked" if tier == TIER_BLOCKED else "connect")
+    out: Dict[str, Any] = {
+        "schema": COMPAT_SCHEMA,
+        "asset_kind": "mcp",
+        "tier": tier,
+        "schedulable": schedulable,
+        "connection_status": status if status in {TIER_CONNECTED, TIER_CONNECTABLE, TIER_BLOCKED, TIER_GATED} else TIER_CONNECTABLE,
+        "issues": issues,
+        "mappings": [],
+        "dependencies": {},
+        "missing_critical": [],
+        "upgrade": {"recommended": upgrade, "auto_generated_artifacts": []},
+        "ui_state": ui,
+    }
+    if source:
+        out["source"] = source
+    if adapt_summary:
+        out["adapt_summary"] = {
+            k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
+        }
+    return out
+
+
+def write_mcp_compat(mcp_dir: Path | str, compat: Dict[str, Any]) -> Path:
+    return _write_compat_file(Path(mcp_dir) / COMPAT_FILENAME, compat)
+
+
+def read_mcp_compat(mcp_dir: Path | str) -> Optional[Dict[str, Any]]:
+    return _read_compat_file(Path(mcp_dir) / COMPAT_FILENAME)
+
+
+def finalize_mcp_compat(
+    mcp_dir: Path | str,
+    *,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+    source: Optional[Dict[str, Any]] = None,
+    connection_status: Optional[str] = None,
+) -> Dict[str, Any]:
+    compat = compute_mcp_compat(
+        mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
+    )
+    write_mcp_compat(mcp_dir, compat)
+    return compat
+
+
+def mark_mcp_connection(
+    mcp_dir: Path | str,
+    status: str,
+    *,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Rewrite COMPAT after connect/disconnect — never leave fake connected."""
+    st = str(status or TIER_CONNECTABLE).strip().lower()
+    if st not in {TIER_CONNECTED, TIER_CONNECTABLE, TIER_BLOCKED, TIER_GATED}:
+        st = TIER_CONNECTABLE
+    return finalize_mcp_compat(
+        mcp_dir,
+        connection_status=st,
+        adapt_summary=adapt_summary or {"adapted": True, "pattern": f"mcp_{st}"},
+    )
+
+
+def is_mcp_schedulable(mcp_dir: Path | str) -> bool:
+    compat = read_mcp_compat(mcp_dir)
+    return True if compat is None else bool(compat.get("schedulable"))
+
+
+def mcp_schedulable_error(mcp_dir: Path | str, mcp_id: str = "") -> Dict[str, Any]:
+    compat = read_mcp_compat(mcp_dir) or compute_mcp_compat(mcp_dir)
+    return {
+        "ok": False,
+        "error": MCP_NOT_SCHEDULABLE,
+        "mcp_id": mcp_id or Path(mcp_dir).name,
+        "tier": compat.get("tier"),
+        "schedulable": False,
+        "ui_state": compat.get("ui_state"),
+        "actions_required": [compat.get("upgrade", {}).get("recommended") or "connect"],
+        "issues": compat.get("issues") or [],
+    }
+
+
+# ── Tool Phase C ──────────────────────────────────────────────────────────────
+
+
+def tool_compat_path(tool_py: Path | str) -> Path:
+    """COMPAT lives beside tool .py as {stem}.COMPAT.yaml (flat tools dir)."""
+    p = Path(tool_py)
+    stem = p.name[:-3] if p.name.endswith(".py") else p.stem
+    return p.parent / f"{stem}.COMPAT.yaml"
+
+
+def tool_draft_path(tool_py: Path | str) -> Path:
+    p = Path(tool_py)
+    if p.name.endswith(".py"):
+        return p.parent / (p.name + ".draft")  # name.py.draft
+    return Path(str(p) + TOOL_IMPL_DRAFT_SUFFIX)
+
+
+def resolve_tool_py_path(tool_id: str) -> Optional[Path]:
+    tid = str(tool_id or "").strip()
+    if not tid:
+        return None
+    roots: List[Path] = []
+    env = (os.environ.get("AIPLAT_TOOLS_PATH") or "").strip()
+    if env:
+        roots.append(Path(env).expanduser())
+    try:
+        from core.utils.paths import get_aiplat_data_dir
+
+        roots.append(Path(get_aiplat_data_dir("tools")))
+    except Exception:
+        logger.debug("tool search root resolve failed", exc_info=True)
+    for root in roots:
+        cand = root / f"{tid}.py"
+        if cand.is_file():
+            return cand
+        draft = root / f"{tid}.py.draft"
+        if draft.is_file():
+            return cand  # canonical path even if only draft exists
+    return None
+
+
+def resolve_tool_py_from_obj(tool: Any) -> Optional[Path]:
+    cfg = getattr(tool, "_config", None)
+    meta = getattr(cfg, "metadata", None) if cfg is not None else None
+    if not isinstance(meta, dict):
+        meta = getattr(tool, "metadata", None) if isinstance(getattr(tool, "metadata", None), dict) else {}
+    if isinstance(meta, dict):
+        prov = meta.get("provenance") if isinstance(meta.get("provenance"), dict) else {}
+        raw = prov.get("tool_path") if isinstance(prov, dict) else None
+        if raw and Path(str(raw)).is_file():
+            return Path(str(raw))
+        if raw and Path(str(raw)).parent.is_dir():
+            # draft-only: path points to intended .py
+            return Path(str(raw))
+    name = str(getattr(tool, "name", None) or getattr(tool, "get_name", lambda: "")() or "").strip()
+    return resolve_tool_py_path(name) if name else None
+
+
+def compute_tool_compat(
+    tool_py: Path | str,
+    *,
+    source: Optional[Dict[str, Any]] = None,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+    mapped_to: Optional[str] = None,
+    mcp_projection: bool = False,
+) -> Dict[str, Any]:
+    """Score Tool COMPAT: mapped / schema_only / needs_impl / blocked."""
+    path = Path(tool_py)
+    issues: List[Dict[str, Any]] = []
+    has_impl = path.is_file()
+    draft = tool_draft_path(path)
+    has_draft = draft.is_file()
+    schema_sidecar = path.parent / f"{path.stem}.schema.json"
+    has_schema = schema_sidecar.is_file()
+    prev = _read_compat_file(tool_compat_path(path)) or {}
+    block_reason = str(prev.get("block_reason") or "").strip()
+    pattern = ""
+    if isinstance(adapt_summary, dict):
+        pattern = str(adapt_summary.get("pattern") or "")
+    mapped_name = mapped_to or (prev.get("mapped_to") if isinstance(prev.get("mapped_to"), str) else None)
+    is_mcp = bool(mcp_projection or prev.get("mcp_projection") or pattern == "mcp_projection")
+
+    if block_reason:
+        tier = TIER_BLOCKED
+        issues.append({"code": "blocked", "severity": "error", "message": block_reason})
+    elif is_mcp or mapped_name:
+        tier = TIER_MAPPED
+    elif has_draft and not has_impl:
+        tier = TIER_NEEDS_IMPL
+        issues.append({"code": "needs_impl", "severity": "warning", "message": "impl draft present; enable required"})
+    elif has_schema and not has_impl:
+        tier = TIER_SCHEMA_ONLY
+        issues.append({"code": "schema_only", "severity": "error", "message": "schema only; real calls denied"})
+    elif has_impl:
+        # Live .py on disk = mapped (workspace-authored or enabled draft).
+        # New imports must write .py.draft only (see write_tool_impl_draft).
+        if pattern in {"generated_draft", "import_draft", "needs_impl"}:
+            tier = TIER_NEEDS_IMPL
+            issues.append({"code": "needs_impl", "severity": "warning", "message": "generated impl not enabled"})
+        else:
+            tier = TIER_MAPPED
+    else:
+        tier = TIER_NEEDS_IMPL
+        issues.append({"code": "needs_impl", "severity": "warning", "message": "no impl or schema"})
+
+    schedulable = tier in _TOOL_SCHEDULABLE
+    ui = _ui_for_tier(tier, schedulable=schedulable)
+    if tier == TIER_NEEDS_IMPL:
+        upgrade = "enable_impl"
+    elif tier == TIER_SCHEMA_ONLY:
+        upgrade = "provide_impl"
+    elif tier == TIER_BLOCKED:
+        upgrade = "blocked"
+    else:
+        upgrade = "none"
+    out: Dict[str, Any] = {
+        "schema": COMPAT_SCHEMA,
+        "asset_kind": "tool",
+        "tier": tier,
+        "schedulable": schedulable,
+        "issues": issues,
+        "mappings": ([{"to": mapped_name}] if mapped_name else []) + ([{"kind": "mcp_projection"}] if is_mcp else []),
+        "mapped_to": mapped_name,
+        "mcp_projection": is_mcp,
+        "dependencies": {},
+        "missing_critical": [],
+        "upgrade": {
+            "recommended": upgrade,
+            "auto_generated_artifacts": [draft.name] if has_draft else [],
+        },
+        "ui_state": ui,
+    }
+    if source:
+        out["source"] = source
+    if adapt_summary:
+        out["adapt_summary"] = {
+            k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
+        }
+    return out
+
+
+def write_tool_compat(tool_py: Path | str, compat: Dict[str, Any]) -> Path:
+    return _write_compat_file(tool_compat_path(tool_py), compat)
+
+
+def read_tool_compat(tool_py: Path | str) -> Optional[Dict[str, Any]]:
+    return _read_compat_file(tool_compat_path(tool_py))
+
+
+def finalize_tool_compat(
+    tool_py: Path | str,
+    *,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+    source: Optional[Dict[str, Any]] = None,
+    mapped_to: Optional[str] = None,
+    mcp_projection: bool = False,
+) -> Dict[str, Any]:
+    compat = compute_tool_compat(
+        tool_py,
+        source=source,
+        adapt_summary=adapt_summary,
+        mapped_to=mapped_to,
+        mcp_projection=mcp_projection,
+    )
+    write_tool_compat(tool_py, compat)
+    return compat
+
+
+def is_tool_schedulable(tool_py: Path | str) -> bool:
+    compat = read_tool_compat(tool_py)
+    return True if compat is None else bool(compat.get("schedulable"))
+
+
+def tool_schedulable_error(tool_py: Path | str, tool_id: str = "") -> Dict[str, Any]:
+    compat = read_tool_compat(tool_py) or compute_tool_compat(tool_py)
+    return {
+        "ok": False,
+        "error": TOOL_NOT_SCHEDULABLE,
+        "tool_id": tool_id or Path(tool_py).stem,
+        "tier": compat.get("tier"),
+        "schedulable": False,
+        "ui_state": compat.get("ui_state"),
+        "actions_required": [compat.get("upgrade", {}).get("recommended") or "review_compat"],
+        "issues": compat.get("issues") or [],
+    }
+
+
+def write_tool_impl_draft(tool_py: Path | str, code: str) -> Path:
+    """Write {name}.py.draft only — never enable as .py."""
+    draft = tool_draft_path(tool_py)
+    draft.parent.mkdir(parents=True, exist_ok=True)
+    draft.write_text(code, encoding="utf-8")
+    return draft
+
+
+def enable_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
+    """Promote {name}.py.draft → {name}.py after human enable."""
+    target = Path(tool_py)
+    draft = tool_draft_path(target)
+    if not draft.is_file():
+        return {"ok": False, "error": "no_impl_draft"}
+    if target.exists():
+        return {"ok": False, "error": "impl_already_exists"}
+    target.write_text(draft.read_text(encoding="utf-8"), encoding="utf-8")
+    compat = finalize_tool_compat(target, adapt_summary={"adapted": True, "pattern": "impl_enabled"})
+    return {"ok": True, "tier": compat.get("tier"), "schedulable": compat.get("schedulable"), "compat": compat}

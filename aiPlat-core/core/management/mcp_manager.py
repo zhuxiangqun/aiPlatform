@@ -391,7 +391,24 @@ class MCPManager:
         else:
             raise ValueError("invalid_source_type")
         self.reload()
-        return {"installed": res.installed, "skipped": res.skipped, "base": str(base)}
+        # Phase C: auto-connect attempt for newly installed enabled servers
+        try:
+            from core.mcp.runtime_sync import sync_mcp_runtime
+
+            scope = (self._scope or "engine").strip().lower()
+            if scope == "workspace":
+                await sync_mcp_runtime(workspace_mcp_manager=self)
+            else:
+                await sync_mcp_runtime(mcp_manager=self)
+        except Exception as e:
+            logging.getLogger(__name__).warning("mcp installer auto-connect skipped: %s", e)
+        return {
+            "installed": res.installed,
+            "skipped": res.skipped,
+            "base": str(base),
+            "assets": list(getattr(res, "assets", None) or []),
+            "warnings": list(getattr(res, "warnings", None) or []),
+        }
 
     async def installer_plan(self, *, source_type: str, url: Optional[str] = None,
                              ref: Optional[str] = None, path: Optional[str] = None,

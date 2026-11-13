@@ -110,6 +110,25 @@ async def sys_tool_call(
     except Exception:
         logging.getLogger(__name__).debug('sys_tool_call failed', exc_info=True)
 
+    # Phase C: Tool COMPAT gate (unresolved path / missing COMPAT → fail-open)
+    try:
+        from core.harness.maintenance.asset_compat import (
+            is_tool_schedulable,
+            resolve_tool_py_from_obj,
+            tool_schedulable_error,
+        )
+
+        _tool_py = resolve_tool_py_from_obj(tool)
+        if _tool_py is not None and not is_tool_schedulable(_tool_py):
+            err = tool_schedulable_error(_tool_py, tool_id=tool_name)
+            return ToolResult(
+                success=False,
+                error=err.get("error") or "tool_not_schedulable",
+                metadata=err,
+            )
+    except Exception:
+        logging.getLogger(__name__).debug("tool compat gate skipped", exc_info=True)
+
     span = await trace_gate.start(
         "sys.tool.call",
         attributes={

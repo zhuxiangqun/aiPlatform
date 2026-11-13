@@ -524,6 +524,36 @@ class AssetInstaller:
                         warnings.append(f"agent_needs_binding:{ad.name}")
                 except Exception as exc:
                     logging.warning("finalize_agent_compat failed for %s: %s", ad.name, exc)
+            # Phase C: MCP COMPAT honesty (connectable until runtime connects)
+            elif self.ASSET_TYPE == "mcp":
+                try:
+                    from core.harness.maintenance.asset_compat import finalize_mcp_compat
+
+                    compat = finalize_mcp_compat(
+                        dst,
+                        source=dict(source or {}),
+                        adapt_summary={"adapted": True, "pattern": "mcp_install"},
+                        connection_status="connectable",
+                    )
+                    report_assets.append(
+                        {
+                            "kind": "mcp",
+                            "id": ad.name,
+                            "tier": compat.get("tier"),
+                            "schedulable": bool(compat.get("schedulable")),
+                            "ui_state": compat.get("ui_state"),
+                            "actions_required": (
+                                []
+                                if compat.get("schedulable")
+                                else [str((compat.get("upgrade") or {}).get("recommended") or "connect")]
+                            ),
+                            "issues": compat.get("issues") or [],
+                        }
+                    )
+                    if not compat.get("schedulable"):
+                        warnings.append(f"mcp_needs_connect:{ad.name}")
+                except Exception as exc:
+                    logging.warning("finalize_mcp_compat failed for %s: %s", ad.name, exc)
 
         return InstallResult(
             installed=installed,

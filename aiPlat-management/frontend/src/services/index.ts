@@ -79,6 +79,7 @@ export type {
   Skill,
   SkillDetail,
   SkillListResponse,
+  ToolCompat,
   ToolInfo,
   ToolListResponse,
   MemorySession,
@@ -107,6 +108,7 @@ export type {
   RunEvent,
   AuditLogEntry,
   TenantPolicy,
+  McpCompat,
   McpServer,
   WorkspaceSkillInstallerPlan,
 } from './coreApi';

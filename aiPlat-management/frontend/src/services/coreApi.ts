@@ -726,6 +726,15 @@ export const approvalsApi = {
 
 // ==================== MCP API ====================
 
+export interface McpCompat {
+  tier?: string;
+  schedulable?: boolean;
+  ui_state?: string;
+  upgrade?: { recommended?: string; auto_generated_artifacts?: string[] };
+  issues?: Array<{ code?: string; severity?: string; message?: string }>;
+  connection_status?: string;
+}
+
 export interface McpServer {
   name: string;
   enabled: boolean;
@@ -738,6 +747,8 @@ export interface McpServer {
   allowed_tools?: string[];
   metadata?: Record<string, unknown>;
   source?: string;  // "internal" = 本地工作台工具, "external" = 外部 MCP Server
+  /** Phase C: COMPAT.yaml honesty */
+  compat?: McpCompat;
 }
 
 export interface McpServerListResponse {
@@ -2247,6 +2258,14 @@ export const knowledgeApi = {
 
 // ==================== Tool API ====================
 
+export interface ToolCompat {
+  tier?: string;
+  schedulable?: boolean;
+  ui_state?: string;
+  upgrade?: { recommended?: string; auto_generated_artifacts?: string[] };
+  issues?: Array<{ code?: string; severity?: string; message?: string }>;
+}
+
 export interface ToolInfo {
   name: string;
   description?: string;
@@ -2273,6 +2292,8 @@ export interface ToolInfo {
     total_latency: number;
     avg_latency: number;
   };
+  /** Phase C: COMPAT sidecar honesty */
+  compat?: ToolCompat;
 }
 
 export interface ToolListResponse {
@@ -2400,8 +2421,15 @@ export const workspaceToolApi = {
     return apiClient.post<{ status: string }>(`/core/workspace/tools/${encodeURIComponent(toolName)}/sign`, data);
   },
 
-  create: async (data: { name: string; description?: string; code: string }) => {
-    return apiClient.post<{ status: string; name: string; path: string }>('/core/workspace/tools', data);
+  create: async (data: { name: string; description?: string; code: string; as_draft?: boolean; import_mode?: boolean }) => {
+    return apiClient.post<{ status: string; name: string; path: string; compat?: ToolCompat }>('/core/workspace/tools', data);
+  },
+
+  enableImplDraft: async (toolName: string) => {
+    return apiClient.post<{ status: string; name: string; ok?: boolean; tier?: string; schedulable?: boolean; compat?: ToolCompat }>(
+      `/core/workspace/tools/${encodeURIComponent(toolName)}/enable-impl-draft`,
+      {},
+    );
   },
 
   getSource: async (toolName: string) => {
