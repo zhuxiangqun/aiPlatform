@@ -10913,6 +10913,15 @@ def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
     return register_with_report(Path(tools_dir) if tools_dir else None)
 
 
+def tool_discovery_last_report(tools_dir: Optional[str] = None):
+    """Phase D wrap: cached discovery report (or refresh once if empty)."""
+    from pathlib import Path
+
+    from core.apps.tools.discovery import last_report_or_refresh
+
+    return last_report_or_refresh(Path(tools_dir) if tools_dir else None)
+
+
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
 from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
 from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary

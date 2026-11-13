@@ -1361,6 +1361,21 @@ async def diagnostics_production_depth():
     return build_production_depth_report()
 
 
+@router.get("/diagnostics/tool-discovery-report", response_model=Dict[str, Any])
+async def diagnostics_tool_discovery_report():
+    """Phase D wrap: last ToolDiscovery COMPAT hot-load report (registered/skipped/assets)."""
+    from core.api.core_facade import tool_discovery_last_report
+
+    report = tool_discovery_last_report()
+    skipped = report.get("skipped") if isinstance(report, dict) else []
+    return {
+        "status": "ok",
+        "registered": int((report or {}).get("registered") or 0),
+        "skipped_count": len(skipped) if isinstance(skipped, list) else 0,
+        "report": report or {"registered": 0, "skipped": [], "assets": []},
+    }
+
+
 @router.get("/diagnostics/exec/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit: int = 20):
     """Exec backend metrics summary (uses run_events aggregated in ExecutionStore)."""

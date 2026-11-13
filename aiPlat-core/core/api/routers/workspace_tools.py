@@ -153,6 +153,15 @@ async def list_workspace_tools():
     return {"tools": tools, "total": len(tools)}
 
 
+@router.get("/workspace/tools/discovery-report", response_model=Dict[str, Any])
+async def workspace_tools_discovery_report():
+    """Phase D wrap: last COMPAT hot-load report (read-only; refresh if unset)."""
+    from core.api.core_facade import tool_discovery_last_report
+
+    report = tool_discovery_last_report()
+    return {"status": "ok", "report": report or {"registered": 0, "skipped": [], "assets": []}}
+
+
 @router.post("/workspace/tools", response_model=Dict[str, Any])
 async def create_workspace_tool(request: dict, http_request: Request):
     """Create a new workspace tool.

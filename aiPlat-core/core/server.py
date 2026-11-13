@@ -1298,10 +1298,18 @@ async def lifespan(app: FastAPI):
             # Initialize SecretsManager for encrypted credential storage
             from core.harness.infrastructure.secrets_manager import get_secrets_manager
             get_secrets_manager()
-            # Discover user-defined tools from ~/.aiplat/tools/
+            # Discover user-defined tools from ~/.aiplat/tools/ (COMPAT gate + report)
             try:
                 from core.apps.tools.discovery import get_tool_discovery
-                n = get_tool_discovery().register_all()
+
+                _disc_report = get_tool_discovery().register_with_report()
+                n = int(_disc_report.get("registered") or 0)
+                _skipped = _disc_report.get("skipped") or []
+                logging.getLogger(__name__).info(
+                    "tool_discovery registered=%s skipped=%s",
+                    n,
+                    len(_skipped) if isinstance(_skipped, list) else 0,
+                )
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
             # MCP server auto-connect

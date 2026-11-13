@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2650
+total_capabilities: 2653
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -9641,7 +9641,7 @@ domains:
   tool-ecosystem:
     section: "十六"
     section_name: "工具生态"
-    caps_count: 69
+    caps_count: 72
     provides:
       - symbol: "finalize_tool_compat"
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
@@ -9671,6 +9671,18 @@ domains:
         module: aiPlat-core/core/api/core_facade.py
         type: function
         signature: "tool_discovery_register_with_report(tools_dir?)→discovery report"
+      - symbol: "get_last_discovery_report"
+        module: aiPlat-core/core/apps/tools/discovery.py
+        type: function
+        signature: "get_last_discovery_report()→Optional[dict] cached report"
+      - symbol: "last_report_or_refresh"
+        module: aiPlat-core/core/apps/tools/discovery.py
+        type: function
+        signature: "last_report_or_refresh(tools_dir?)→dict; cache or refresh"
+      - symbol: "tool_discovery_last_report"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "tool_discovery_last_report(tools_dir?)→dict diagnostics"
       - symbol: "BaseTool"
         module: core/apps/tools/base.py
         type: class

@@ -20,6 +20,20 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+# Phase D wrap: last discovery closed-loop report (startup / diagnostics)
+_LAST_TOOL_DISCOVERY_REPORT: Optional[Dict[str, Any]] = None
+
+
+def get_last_discovery_report() -> Optional[Dict[str, Any]]:
+    """Return cached register_with_report snapshot (may be None before first run)."""
+    return dict(_LAST_TOOL_DISCOVERY_REPORT) if isinstance(_LAST_TOOL_DISCOVERY_REPORT, dict) else None
+
+
+def _stash_discovery_report(report: Dict[str, Any]) -> Dict[str, Any]:
+    global _LAST_TOOL_DISCOVERY_REPORT
+    _LAST_TOOL_DISCOVERY_REPORT = dict(report) if isinstance(report, dict) else {"registered": 0, "skipped": [], "assets": []}
+    return _LAST_TOOL_DISCOVERY_REPORT
+
 
 def _default_tools_dir() -> Path:
     return Path(os.getenv("AIPLAT_TOOLS_PATH",
@@ -201,13 +215,13 @@ class ToolDiscovery:
         report: Dict[str, Any] = {"registered": 0, "skipped": [], "assets": []}
         discovered = self.scan()
         if not discovered:
-            return report
+            return _stash_discovery_report(report)
 
         try:
             from core.apps.tools.base import get_tool_registry
             registry = get_tool_registry()
         except Exception:
-            return report
+            return _stash_discovery_report(report)
 
         for d in discovered:
             if d.get("execute") is None:
@@ -271,7 +285,7 @@ class ToolDiscovery:
             except Exception:
                 logger.debug("Failed to register tool: %s", d.get("id"), exc_info=True)
 
-        return report
+        return _stash_discovery_report(report)
 
 
 def get_tool_discovery() -> ToolDiscovery:
@@ -281,6 +295,14 @@ def get_tool_discovery() -> ToolDiscovery:
 def register_with_report(tools_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Module-level Phase D entry (also ToolDiscovery.register_with_report)."""
     return ToolDiscovery(tools_dir).register_with_report()
+
+
+def last_report_or_refresh(tools_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Diagnostics: return cached report, or run register_with_report once."""
+    cached = get_last_discovery_report()
+    if cached is not None:
+        return cached
+    return register_with_report(tools_dir)
 
 
 def _make_discovery_tool(d: dict) -> Any:

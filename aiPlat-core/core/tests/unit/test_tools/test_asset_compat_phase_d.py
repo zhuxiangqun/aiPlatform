@@ -116,5 +116,42 @@ def test_facade_wraps_discovery_report(tmp_path: Path):
     facade_path = Path(__file__).resolve().parents[3] / "api" / "core_facade.py"
     facade_src = facade_path.read_text(encoding="utf-8")
     assert "def tool_discovery_register_with_report" in facade_src
+    assert "def tool_discovery_last_report" in facade_src
     assert "register_with_report(" in facade_src
     assert inspect.isfunction(ToolDiscovery.register_with_report)
+
+
+def test_discovery_report_cache_and_refresh(tmp_path: Path):
+    from core.apps.tools.discovery import (
+        get_last_discovery_report,
+        last_report_or_refresh,
+        register_with_report,
+    )
+
+    py = _live_tool(tmp_path, "cache_hot")
+    finalize_tool_compat(py, adapt_summary={"adapted": True, "pattern": "workspace_create"})
+    assert get_last_discovery_report() is None or isinstance(get_last_discovery_report(), dict)
+    report = register_with_report(tmp_path)
+    assert "skipped" in report and "registered" in report
+    cached = get_last_discovery_report()
+    assert cached is not None
+    assert cached.get("registered") == report.get("registered")
+    again = last_report_or_refresh(tmp_path)
+    assert again.get("registered") == cached.get("registered")
+
+
+def test_check_asset_compat_gates_ci():
+    import subprocess
+    import sys
+
+    # .../aiPlat-core/core/tests/unit/test_tools → workspace = parents[5]
+    root = Path(__file__).resolve().parents[5]
+    script = root / "scripts" / "check_asset_compat_gates.py"
+    assert script.is_file(), f"missing {script}"
+    proc = subprocess.run(
+        [sys.executable, str(script), "--ci"],
+        cwd=str(root),
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr

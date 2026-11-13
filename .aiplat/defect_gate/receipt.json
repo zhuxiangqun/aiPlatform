@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T21:20:00+08:00",
+  "reviewed_at": "2026-11-13T22:05:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "ec42f2d340a822f6a68795c0a5139e446771cbb6",
-  "diff_sha256": "c92fe078b6d11a432dc26297d69795f400e95dd6fe92fe2ca7cb0b082814f14f",
-  "head_sha": "35badaae582b01db081f7855a77617b724f18a25",
+  "merge_base": "05b16b4981d17fc7b32125a6ed6c1c2fb740e24a",
+  "diff_sha256": "bdf42355f40f8a8f0892da26a914d3dafd52af088a0bcdc4af91bd3f749be7ee",
+  "head_sha": "9aad7fae523b9a5735e5d6ee475d029ea4edf828",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase D: discovery skips non-schedulable COMPAT; listing published/listed blocked; missing COMPAT fail-open. Fixed facade wrap test assertion after register_with_report(args) change."
+  "note": "Phase D wrap: §98 static gates; startup register_with_report stash; diagnostics/workspace last-report endpoints. No approval-center changes."
 }
