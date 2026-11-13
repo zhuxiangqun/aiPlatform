@@ -228,6 +228,18 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
                 G2b scoped ready={String(Boolean(l5Gap.claim_unlock.g2b_scoped_ready))} ·
                 blockers={(l5Gap.claim_unlock.g2b_scoped_blockers || []).join(', ') || '—'}
               </p>
+              <p
+                className="text-gray-400"
+                data-testid="eval-g2b-arena-send"
+              >
+                Arena SEND ready=
+                {String(Boolean(l5Gap.claim_unlock.gates?.arena_send_ready))} · QA overall=
+                {String(Boolean(l5Gap.claim_unlock.gates?.arena_qa_overall_pass))}
+                {l5Gap.claim_unlock.gates?.arena_send_ready &&
+                !l5Gap.claim_unlock.gates?.arena_qa_overall_pass
+                  ? '（工程就绪，人工 QA 仍缺）'
+                  : ''}
+              </p>
               <p className="text-gray-500">
                 broader: {(l5Gap.claim_unlock.broader_trust_blockers || []).join(', ') || '—'}
               </p>
