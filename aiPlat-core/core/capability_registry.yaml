@@ -5108,35 +5108,35 @@ domains:
     caps_count: 201
     provides:
       - symbol: "finalize_skill_compat"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "finalize_skill_compat(skill_dir,*,source,adapt_summary)→COMPAT.yaml dict"
       - symbol: "enable_handler_draft"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "enable_handler_draft(skill_dir)→{ok,tier,schedulable}; draft→handler.py"
       - symbol: "is_skill_schedulable"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "is_skill_schedulable(skill_dir)→bool; missing COMPAT fail-open"
       - symbol: "compute_skill_compat"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "compute_skill_compat(skill_dir,*,source,adapt_summary)→dict"
       - symbol: "write_skill_compat"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "write_skill_compat(skill_dir, compat)→Path"
       - symbol: "read_skill_compat"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "read_skill_compat(skill_dir)→Optional[dict]"
       - symbol: "skill_schedulable_error"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "skill_schedulable_error(skill_dir, skill_id)→dict"
       - symbol: "write_handler_draft_from_script"
-        module: aiPlat-core/core/apps/skills/asset_compat.py
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
         type: function
         signature: "write_handler_draft_from_script(skill_dir, script_rel)→Path; draft only"
       - symbol: "skill_asset_compat_finalize"

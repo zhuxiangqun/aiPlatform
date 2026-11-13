@@ -133,7 +133,7 @@ async def sys_skill_call(
         logging.getLogger(__name__).debug("skill compat dir resolve skipped", exc_info=True)
         _compat_dir = None
     if _compat_dir:
-        from core.apps.skills.asset_compat import is_skill_schedulable, skill_schedulable_error
+        from core.harness.maintenance.asset_compat import is_skill_schedulable, skill_schedulable_error
         from core.harness.interfaces import SkillResult as _CompatSkillResult
 
         if not is_skill_schedulable(_compat_dir):

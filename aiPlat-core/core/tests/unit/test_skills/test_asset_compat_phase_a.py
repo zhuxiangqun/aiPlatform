@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.apps.skills.asset_compat import (
+from core.harness.maintenance.asset_compat import (
     TIER_BLOCKED,
     TIER_NEEDS_HANDLER,
     TIER_PROMPT_READY,
