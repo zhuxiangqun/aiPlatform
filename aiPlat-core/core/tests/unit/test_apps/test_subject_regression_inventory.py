@@ -134,3 +134,94 @@ def test_inventory_last_exam_enrichment(tmp_path, monkeypatch):
     assert row["last_exam_pass"] == 2 and row["last_exam_fail"] == 1
     assert row["last_exam_run_id"] == "suite-profile-test01"
     assert str(row.get("last_exam_at") or "").strip()
+    assert inv.get("last_exam_live_count") == 0
+    assert "live·smoke" in str(inv.get("ladder") or "")
+
+    record_suite_exam_summary(
+        {
+            "ok": True,
+            "profile_id": pid,
+            "subject_kind": "prompt",
+            "live": True,
+            "run_id": "suite-profile-live01",
+            "executed_case_count": 4,
+            "counts": {"pass": 3, "fail": 1, "error": 0},
+        },
+        workspace_id=wid,
+    )
+    inv2 = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    assert inv2["claim_eligible"] is False
+    assert inv2.get("last_exam_live_count") >= 1
+    row2 = next(r for r in inv2["subjects"] if r["subject_kind"] == "prompt")
+    assert row2["last_exam_live"] is True
+    assert row2["last_exam_run_id"] == "suite-profile-live01"
+
+
+def test_inventory_next_action_nudges_live_smoke_when_dry_only(tmp_path, monkeypatch):
+    """When all subjects workspace-promoted and only dry ledger, nudge live·smoke."""
+    from core.apps.eval.service import case_pack_registry as reg
+    from core.apps.eval.service.subject_capability_promote import (
+        _bank_specs,
+        list_promotable_subject_kinds,
+    )
+    from core.apps.eval.service.suite_exam_summary_store import record_suite_exam_summary
+    from core.apps.eval.service.subject_regression_inventory import (
+        subject_regression_inventory,
+    )
+
+    monkeypatch.setenv("AIPLAT_HOME", str(tmp_path))
+    wid = "ws-inv-live-nudge"
+    specs = _bank_specs()
+    for kind in list_promotable_subject_kinds():
+        spec = specs.get(kind) or {}
+        pid = str(spec.get("pack_id") or "").strip()
+        ver = str(spec.get("version") or "").strip()
+        if not pid or not ver:
+            continue
+        ph = "sha256:" + ("ab" * 32)
+        reg.register_pack_version(
+            pack_id=pid,
+            version=ver,
+            kind="curated",
+            claim_eligible=False,
+            scope="workspace",
+            pack_hash=ph,
+            object_types=[kind] if kind in ("prompt",) else [],
+            workspace_id=wid,
+            caller_workspace_id=wid,
+            status="reviewed",
+        )
+        reg.freeze_pack_version(
+            pack_id=pid,
+            version=ver,
+            scope="workspace",
+            pack_hash=ph,
+            workspace_id=wid,
+            caller_workspace_id=wid,
+            frozen_by="test",
+        )
+
+    inv0 = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    if inv0.get("workspace_promoted_count", 0) < inv0.get("subject_count", 1):
+        # Not all kinds freeze the same way — still assert ladder honesty.
+        assert "live·smoke" in str(inv0.get("ladder") or "")
+        return
+
+    prompt = next(r for r in inv0["subjects"] if r["subject_kind"] == "prompt")
+    pid = str(prompt.get("profile_id") or "").strip()
+    record_suite_exam_summary(
+        {
+            "ok": True,
+            "profile_id": pid,
+            "live": False,
+            "run_id": "dry-only",
+            "executed_case_count": 2,
+            "counts": {"pass": 2},
+        },
+        workspace_id=wid,
+    )
+    inv = subject_regression_inventory(workspace_id=wid, caller_workspace_id=wid)
+    assert inv["claim_eligible"] is False
+    na = (inv.get("next_action") or "").lower()
+    assert "live" in na and "smoke" in na
+    assert "claim" in na

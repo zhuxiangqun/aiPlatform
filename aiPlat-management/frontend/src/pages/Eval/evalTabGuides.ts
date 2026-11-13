@@ -81,8 +81,8 @@ export const EVAL_TAB_GUIDES: Record<string, EvalTabGuide> = {
   'subject-regression-inventory': {
     title: 'Subject Inventory',
     what: '跨 Subject regression 诚实总览：OBJECT_TYPES + Subject-local 题库配额/draft/profile_complete 矩阵。',
-    can: '一眼看齐/缺口、content_purpose_ready、profile_complete、workspace_promoted；Promote 当前/全部；行内 suite_profile_href；一键 Compile+Exam dry（选中 Subject 的 profile_id）。',
-    not: '总览齐 ≠ claim；seed profile_complete ≠ workspace_promoted；dry exam ≠ accuracy / Certification；Arena/G2b/S1 不在此表。',
+    can: '一眼看齐/缺口、content_purpose_ready、profile_complete、workspace_promoted、last_exam；Promote；suite 深链；Compile+Exam dry / live·smoke·4（真模型抽4题）。',
+    not: '总览齐 ≠ claim；dry/live·smoke ≠ accuracy / Certification；last_exam 绿 ≠ 可宣称；Arena/G2b/S1 不在此表。',
   },
   'p1-regression': {
     title: 'P1 Regression',
