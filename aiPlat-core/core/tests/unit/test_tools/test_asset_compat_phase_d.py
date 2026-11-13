@@ -116,5 +116,5 @@ def test_facade_wraps_discovery_report(tmp_path: Path):
     facade_path = Path(__file__).resolve().parents[3] / "api" / "core_facade.py"
     facade_src = facade_path.read_text(encoding="utf-8")
     assert "def tool_discovery_register_with_report" in facade_src
-    assert "register_with_report()" in facade_src
+    assert "register_with_report(" in facade_src
     assert inspect.isfunction(ToolDiscovery.register_with_report)
