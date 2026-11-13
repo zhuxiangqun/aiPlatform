@@ -8,6 +8,7 @@ doc_type: Standard
 > **性质**：规范性附录（Normative Annex）
 > **状态**：Approved Standard Annex（与正文同时批准）
 > **配套**：《aiPlat 知识体系技术白皮书 v4.3.1（已批准）》
+> **勘误**：2026-11-13 修正附录 P 的批准状态；不改变规范要求。
 > **效力**：本附录与正文具有同等效力。字段名、必填规则、类型、错误码、版本兼容和符合性清单为 MUST/SHOULD；示例值仅作说明。
 > **说明**：本附录不是“仅供参考”；实现必须满足本附录的规范性要求。
 
@@ -905,9 +906,7 @@ Function ticket.priority_score -> ticket.priorityScore({ticket_id})
 | decision | enum（approved/rejected/conditional） | approved/rejected 时必填；conditional 仅与 approved 且非空 exceptions 一起使用 |
 | record_id | string | 是 |
 
-**状态：Pending。** 本文件不是已批准记录；批准后作为 ADR 或 ADR 附件签署。
-
-本版不附带 `approved` 记录；只提供可校验的 pending 模板。
+**状态：Approved。** 本版已批准；批准记录见 `schemas/conformance/approval-record-v4.3.1.approved.json`（approval_date 2026-11-11；effective_date 2027-01-01）。
 
 ---
 
