@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2655
+total_capabilities: 2674
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 611
+    caps_count: 630
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2423,6 +2423,82 @@ domains:
         type: function
         signature: 'resolve_from_http()'
         module: aiPlat-core/core/harness/named_workspace/resolve.py
+      - symbol: resolve_skill_dir
+        type: function
+        signature: 'Locate a skill directory by id (workspace then engine paths).'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: write_agent_compat
+        type: function
+        signature: 'write_agent_compat(agent_dir, compat)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: read_agent_compat
+        type: function
+        signature: 'read_agent_compat(agent_dir)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: agent_compat_error
+        type: function
+        signature: 'agent_compat_error(agent_dir, agent_id)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_agent_dir_from_info
+        type: function
+        signature: 'Prefer metadata.filesystem.agent_dir (AgentManager load shape).'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_mcp_dir
+        type: function
+        signature: 'resolve_mcp_dir(mcp_id)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_mcp_dir_from_info
+        type: function
+        signature: 'resolve_mcp_dir_from_info(server_info)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: compute_mcp_compat
+        type: function
+        signature: 'Score MCP COMPAT: connectable / connected / gated / blocked.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: write_mcp_compat
+        type: function
+        signature: 'write_mcp_compat(mcp_dir, compat)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: read_mcp_compat
+        type: function
+        signature: 'read_mcp_compat(mcp_dir)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: tool_compat_path
+        type: function
+        signature: 'COMPAT lives beside tool .py as {stem}.COMPAT.yaml (flat tools dir).'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: tool_draft_path
+        type: function
+        signature: 'tool_draft_path(tool_py)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_tool_py_path
+        type: function
+        signature: 'resolve_tool_py_path(tool_id)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: resolve_tool_py_from_obj
+        type: function
+        signature: 'resolve_tool_py_from_obj(tool)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: compute_tool_compat
+        type: function
+        signature: 'Score Tool COMPAT: mapped / schema_only / needs_impl / blocked.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: write_tool_compat
+        type: function
+        signature: 'write_tool_compat(tool_py, compat)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: read_tool_compat
+        type: function
+        signature: 'read_tool_compat(tool_py)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: tool_schedulable_error
+        type: function
+        signature: 'tool_schedulable_error(tool_py, tool_id)'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: write_tool_impl_draft
+        type: function
+        signature: 'Write {name}.py.draft only — never enable as .py.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
