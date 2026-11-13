@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T19:00:00+08:00",
+  "reviewed_at": "2026-11-13T20:55:00+08:00",
   "base_ref": "origin/main",
-  "merge_base": "0199c894c800b92ac4999b6fcc4e93af6171dd4a",
-  "diff_sha256": "1dbe99c5c3364d44ba9e133e577e70f287eb13dccfd0ea5beef32dedfbe44a0f",
-  "head_sha": "ed79746ca7a0159343b887619f6f3d587785465a",
+  "merge_base": "ec42f2d340a822f6a68795c0a5139e446771cbb6",
+  "diff_sha256": "eae6d48f07a77841cae61ebbb733efc4352c29aee48edc434f54cff1e73efc09",
+  "head_sha": "7b300fb95c42cf7158745c198f766926ceba1117",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase C: draft/import gated; ToolDiscovery hot-load intentionally out of scope (Phase D). MCP blocked refuses enable/sync; disconnect marks connectable. Gate exceptions fail-open only when COMPAT missing (same as A/B)."
+  "note": "Phase D: discovery skips non-schedulable COMPAT; listing published/listed blocked; missing COMPAT fail-open. Slice D production QA review workflow beyond listing status not in this PR."
 }
