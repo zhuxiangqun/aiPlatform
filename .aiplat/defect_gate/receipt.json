@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T15:15:41+08:00",
+  "reviewed_at": "2026-11-13T15:29:16+08:00",
   "base_ref": "origin/main",
   "merge_base": "62e0a933be3e90f32e0b8ce731d0448cd123feff",
-  "diff_sha256": "8697f6fb6e2140efcfbcd4217e52bb663d17d42b57730934af33f91eff6956b8",
-  "head_sha": "04eacdfbc5fa8b342873b870bf21f08063062629",
+  "diff_sha256": "4ce731233b85e41cb49be62b12b35f8084c89b6fdc5a13a1916260f3a7cc8b36",
+  "head_sha": "f69d77c04fb6b9e8da04969dfd40823d80a1e623",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Boundary fix + whitepaper re-sync; COMPAT gate review still holds."
+  "note": "AUTO-STATS sync for contracts-guard; boundary+COMPAT review still holds."
 }
