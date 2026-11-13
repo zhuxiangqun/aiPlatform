@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T15:14:21+08:00",
+  "reviewed_at": "2026-11-13T15:15:41+08:00",
   "base_ref": "origin/main",
   "merge_base": "62e0a933be3e90f32e0b8ce731d0448cd123feff",
-  "diff_sha256": "146de1f4d1f6a65dceebee5f5af676c5b78b4b6398b078f82f81ec05aa97eccc",
-  "head_sha": "047eb33d14da51d933a43e4f39b0f448787445d4",
+  "diff_sha256": "8697f6fb6e2140efcfbcd4217e52bb663d17d42b57730934af33f91eff6956b8",
+  "head_sha": "04eacdfbc5fa8b342873b870bf21f08063062629",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Boundary fix: asset_compat → harness/maintenance; apps re-export. Prior COMPAT gate review still holds."
+  "note": "Boundary fix + whitepaper re-sync; COMPAT gate review still holds."
 }
