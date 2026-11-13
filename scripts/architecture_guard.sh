@@ -566,6 +566,17 @@ else
     FAIL=1
 fi
 
+# ── §98: Asset COMPAT gates（Phase D wrap / clause 85）──
+# discovery hot-load + listing gate + sys_tool/sys_skill schedulable hard gates
+echo -n "§98: asset compat gates: "
+if python3 scripts/check_asset_compat_gates.py --ci >/dev/null 2>&1; then
+    echo "✅"
+else
+    echo "❌ COMPAT discovery/listing/syscall gates missing or regresssed"
+    echo "   Run: python3 scripts/check_asset_compat_gates.py --ci"
+    FAIL=1
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "
