@@ -4,7 +4,7 @@ volume_id: commercial-value
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T09:59:16Z"
+generated_at: "2026-11-13T10:01:12Z"
 audience: "CEO、CFO、业务负责人、投资方"
 core_question: "投资回报与 TCO 如何？"
 priority: P3
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 投资回报与 TCO 如何？ |
 | 优先级 | P3 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T09:59:16Z` |
+| 生成时间 (UTC) | `2026-11-13T10:01:12Z` |
 | CAPABILITIES sha256 | `bdc97b84224c…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
