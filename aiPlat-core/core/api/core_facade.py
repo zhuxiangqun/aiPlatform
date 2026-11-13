@@ -10903,6 +10903,16 @@ def tool_enable_impl_draft(tool_py: str):
 
     return enable_tool_impl_draft(tool_py)
 
+
+def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
+    """Phase D: hot-load workspace tools with COMPAT gate + skipped assets[]."""
+    from pathlib import Path
+
+    from core.apps.tools.discovery import register_with_report
+
+    return register_with_report(Path(tools_dir) if tools_dir else None)
+
+
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)
 from core.harness.ontology_engine.action_registry import get_action_registry  # noqa: boundary
 from core.harness.ontology_engine.ontology_branch import OntologyBranchManager  # noqa: boundary
