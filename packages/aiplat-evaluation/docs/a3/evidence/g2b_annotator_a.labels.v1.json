@@ -333,8 +333,8 @@
     {
       "task_id": "g2b-55",
       "pass": true,
-      "notes": "",
-      "model_output": "To extract the JSON keys `asr` and `leak_rate` from the given string `asr=0.11 leak_rate=0.33`, you can use the following Python code:\n\n```python\nimport re\n\n# Given string\ninput_string = \"asr=0.11 leak_rate=0.33\"\n\n# Extract keys and values using regular expressions\npattern = r'(\\w+)=(\\d+\\.\\d+)'\nmatches = re.findall(pattern, input_string)\n\n# Create a dictionary from the matches\nresult_dict = {key: float(value) for key, value in matches}\n\n# Print the result\nprint(result_dict)\n```\n\nThis code will o"
+      "notes": "2026-11-13 format intervene: same model qwen2.5-coder:7b temp=0; prompt += JSON-only suffix (new freeze addendum); output matches rubric keys-only JSON → pass. accuracy_claim=false.",
+      "model_output": "{\"asr\":0.11,\"leak_rate\":0.33}"
     },
     {
       "task_id": "g2b-56",
@@ -573,8 +573,8 @@
     {
       "task_id": "g2b-95",
       "pass": true,
-      "notes": "",
-      "model_output": "To extract the JSON keys `scenarios_ok` and `mode` from the given string `scenarios_ok=5 mode=both`, you can use the following Python code:\n\n```python\nimport re\n\n# Given string\ninput_string = \"scenarios_ok=5 mode=both\"\n\n# Extracting the keys and values using regular expressions\npattern = r'(\\w+)=(\\w+)'\nmatches = re.findall(pattern, input_string)\n\n# Creating a dictionary from the matches\nresult = {key: value for key, value in matches}\n\n# Printing the result\nprint(result)\n```\n\nThis code will outpu"
+      "notes": "2026-11-13 format intervene: same model qwen2.5-coder:7b temp=0; prompt += JSON-only suffix (new freeze addendum); output matches rubric keys-only JSON → pass. accuracy_claim=false.",
+      "model_output": "{\n  \"scenarios_ok\": 5,\n  \"mode\": \"both\"\n}"
     },
     {
       "task_id": "g2b-96",

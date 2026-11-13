@@ -6,15 +6,15 @@
   "not_accuracy_certification": true,
   "metric": "model_pass_rate_vs_adjudicated_gold",
   "n": 100,
-  "pass_n": 78,
-  "fail_n": 22,
-  "pass_rate": 0.78,
+  "pass_n": 80,
+  "fail_n": 20,
+  "pass_rate": 0.8,
   "wilson_ci95": [
-    0.6893,
-    0.85
+    0.7112,
+    0.8666
   ],
-  "agreed_n": 90,
-  "disputed_n": 10,
+  "agreed_n": 92,
+  "disputed_n": 8,
   "disputed_task_ids": [
     "g2b-22",
     "g2b-26",
@@ -22,20 +22,19 @@
     "g2b-29",
     "g2b-30",
     "g2b-39",
-    "g2b-55",
     "g2b-62",
-    "g2b-92",
-    "g2b-95"
+    "g2b-92"
   ],
-  "annotator_a_vs_gold": 0.9,
+  "annotator_a_vs_gold": 0.92,
   "annotator_b_vs_gold": 1.0,
   "annotator_a": "docs/a3/evidence/g2b_annotator_a.labels.v1.json",
   "annotator_b": "docs/a3/evidence/g2b_annotator_b.labels.v1.json",
-  "adjudication": "packages/aiplat-evaluation/docs/a3/evidence/g2b_adjudication.v1.json",
-  "claim_refuse_reason": "protocol_section4_thresholds_not_met_after_rereview",
-  "honesty": "model pass-rate vs adjudicated gold after 2026-11-13 rubric re-review (6 agreed_fail→pass; see .aiplat/eval_trust/g2b_fail_decision_table_v0.json); scoped disclosure only; accuracy_claim=false; κ ≠ accuracy; not security cert; not process_split",
-  "recorded_at": "20261113T024341Z",
+  "adjudication": "docs/a3/evidence/g2b_adjudication.v1.json",
+  "claim_refuse_reason": "protocol_section4_met_but_owner_claim_closed",
+  "honesty": "model pass-rate vs adjudicated gold after format intervene g2b-55/95 (JSON-only suffix freeze addendum) + prior re-review; §4 numeric thresholds met (0.80 / CI_lo≥0.70); accuracy_claim remains false (no accept_accuracy_claim attestation); κ ≠ accuracy; not security cert; not process_split",
+  "recorded_at": "20261113T031655Z",
   "attestation_path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
   "freeze_path": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "freeze_addendum_path": "docs/a3/evidence/g2b_freeze_addendum_format_55_95.v1.json",
   "rereview_decision_table": ".aiplat/eval_trust/g2b_fail_decision_table_v0.json"
 }

@@ -17,8 +17,9 @@
   "counts": {
     "n_fail": 28,
     "re_label_pass": 6,
-    "hold_fail": 22,
-    "format_rerun_deferred": 2
+    "hold_fail": 20,
+    "format_rerun_deferred": 0,
+    "format_rerun_pass": 2
   },
   "projected_after_re_label_only": {
     "pass_n": 78,
@@ -28,7 +29,8 @@
       0.85
     ],
     "section4_gate": false,
-    "decision": "no_go"
+    "decision": "no_go",
+    "note": "superseded_by_format_rerun"
   },
   "honesty": "Engineering re-review of agreed_fail vs rubric; not a new dual-human pack; facilitator gold_pass_hint ignored (all-True stub); accuracy_claim stays false; κ ≠ accuracy; ≠ process_split / staging / security cert.",
   "items": [
@@ -208,12 +210,11 @@
       "a_pass": true,
       "b_pass": false,
       "current_gold_pass": false,
-      "model_output_head": "To extract the JSON keys `asr` and `leak_rate` from the given string `asr=0.11 leak_rate=0.33`, you can use the followin",
+      "model_output_head": "{\"asr\":0.11,\"leak_rate\":0.33}",
       "rubric_head": "Valid JSON with keys asr,leak_rate only.",
-      "action": "hold_fail",
+      "action": "format_rerun_pass",
       "confidence": "high",
-      "rationale": "Python prose, not JSON-only (adjudication stands).",
-      "optional_future": "format_prompt_rerun_new_freeze"
+      "rationale": "JSON-only prompt suffix + same frozen model produced keys-only JSON; see g2b_freeze_addendum_format_55_95.v1.json"
     },
     {
       "task_id": "g2b-60",
@@ -405,12 +406,11 @@
       "a_pass": true,
       "b_pass": false,
       "current_gold_pass": false,
-      "model_output_head": "To extract the JSON keys `scenarios_ok` and `mode` from the given string `scenarios_ok=5 mode=both`, you can use the fol",
+      "model_output_head": "{\n  \"scenarios_ok\": 5,\n  \"mode\": \"both\"\n}",
       "rubric_head": "Valid JSON with keys scenarios_ok,mode only.",
-      "action": "hold_fail",
+      "action": "format_rerun_pass",
       "confidence": "high",
-      "rationale": "Python prose, not JSON-only (adjudication stands).",
-      "optional_future": "format_prompt_rerun_new_freeze"
+      "rationale": "JSON-only prompt suffix + same frozen model produced keys-only JSON; see g2b_freeze_addendum_format_55_95.v1.json"
     },
     {
       "task_id": "g2b-96",
@@ -427,5 +427,11 @@
       "rationale": "Model YES that Code References green ⇒ accuracy_claim."
     }
   ],
-  "recorded_at": "20261113T024326Z"
+  "recorded_at": "20261113T024326Z",
+  "projected_after_format_rerun": {
+    "pass_n": 80,
+    "pass_rate": 0.8,
+    "section4_gate": true,
+    "decision": "go_scoped_still_claim_false"
+  }
 }

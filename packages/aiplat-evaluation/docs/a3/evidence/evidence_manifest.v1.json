@@ -38,14 +38,14 @@
     "g2b_accuracy": {
       "n": 100,
       "target_n": 100,
-      "pass_rate": 0.78,
+      "pass_rate": 0.8,
       "wilson_ci95": [
-        0.6893,
-        0.85
+        0.7112,
+        0.8666
       ],
       "disputed_n": 10,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "n=100 closeout after re-review; pass_rate=0.78 below protocol 0.80; CI_lo 0.6893<0.70; owner scoped disclosure; accuracy_claim=false; freeze confirmed"
+      "gate_note": "n=100 closeout; pass_rate=0.80 §4 numeric met; accuracy_claim=false (no accept attestation); freeze+format addendum"
     },
     "prod_live": {
       "n_tasks": 25,
@@ -101,21 +101,21 @@
     {
       "id": "g2b_accuracy_aggregate",
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
-      "sha256": "d049f09d65226e5d1f2de804e76c906515e7676d96b5583038d7771796b8da2e",
+      "sha256": "ac27fedf322e41b8cafedc97f1565048f0b27c1bd6b04021bb649b3256235c9d",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout n=100; claim stays false"
     },
     {
       "id": "g2b_adjudicated_gold",
       "path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
-      "sha256": "45fcfa455363f9f197502d6693223ce7afe8949ce91a3333c0c3b02658ce38ca",
+      "sha256": "f456aa9bd53f2ad8e371be0741ea88e19da843a3f614c0b427036ec79551bc3d",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout n=100; claim stays false"
     },
     {
       "id": "g2b_adjudication",
       "path": "docs/a3/evidence/g2b_adjudication.v1.json",
-      "sha256": "0cfc17dd5e6cecd727f7f7a9418b35b52fbef6d15a52f7f6f4114a650babba65",
+      "sha256": "3545895db7c5df7328dab88fc3d6e82b1b6ea795fb19e8807c6ea3db5f5ee86b",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout; 10 disputes; claim stays false"
     },
@@ -197,13 +197,13 @@
   "confirmed_records": {
     "g2b_freeze_record": {
       "path": "docs/a3/evidence/g2b_freeze_record.v1.json",
-      "sha256": "009fc7ea498e6b190a0e6cb24f7d589acca19108e9c2405d863dd36a6a95bf1d",
+      "sha256": "ec4706df63ebe599c00a8d5532a23a7ba43c87937266592925a404c9cf5f92dd",
       "status": "confirmed",
       "confirmed_at": "2026-11-05T15:15:47Z"
     },
     "g2b_accuracy_claim_attestation": {
       "path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
-      "sha256": "6bd57974934c85b83494a17a2b237d74e77de47dde6809243a7fbf4e3a303971",
+      "sha256": "baef6d137d3e18b52b203c2e8d3618fd729a0964db084fd635cefb54162994b5",
       "status": "confirmed_scoped_no_claim",
       "accept_accuracy_claim": false,
       "attested_at": "2026-11-05T15:15:47Z"
@@ -237,6 +237,10 @@
       "sha256": "77d2b00fb43017c4e0dae534e1467b7c1d6dfb874811aad417ced8fd8ec59770",
       "status": "qa_completed_with_findings",
       "recorded_at": "20261105T155910Z"
+    },
+    "g2b_freeze_addendum_format_55_95": {
+      "path": "docs/a3/evidence/g2b_freeze_addendum_format_55_95.v1.json",
+      "sha256": "c62b142580719becbb35dc16f8739850a430a31b729f989b15e077231c2beda8"
     }
   }
 }

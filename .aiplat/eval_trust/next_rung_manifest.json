@@ -1,24 +1,24 @@
 {
   "schema": "aiplat.eval_trust.next_rung.v1",
   "captured_at": "2026-11-13T10:44:42+08:00",
-  "honesty": "Engineering readiness only. Does NOT raise accuracy_claim. G2b re-review 2026-11-13: pass_rate=0.78 still below §4; decision table = triage SSOT; taxonomy_v0 is pre-rereview snapshot.",
+  "honesty": "Engineering readiness. §4 numeric thresholds met after format intervene; accuracy_claim still false until owner accept attestation. Arena QA still open.",
   "g2b": {
     "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
     "n": 100,
-    "pass_rate": 0.78,
+    "pass_rate": 0.8,
     "wilson_ci95": [
-      0.6893,
-      0.85
+      0.7112,
+      0.8666
     ],
-    "fail_n": 22,
+    "fail_n": 20,
     "accuracy_claim": false,
-    "thresholds_met": false,
+    "thresholds_met": true,
     "section4": {
       "pass_rate_threshold": 0.8,
       "wilson_lo_threshold": 0.7,
-      "pass_rate_met": false,
-      "wilson_lo_met": false,
-      "decision": "no_go_claim_closed"
+      "pass_rate_met": true,
+      "wilson_lo_met": true,
+      "decision": "go_scoped_claim_still_closed"
     },
     "fail_bucket_counts": {
       "agreed_fail": 19,

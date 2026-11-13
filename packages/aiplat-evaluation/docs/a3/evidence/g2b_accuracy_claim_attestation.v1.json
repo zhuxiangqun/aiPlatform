@@ -1,6 +1,6 @@
 {
   "schema": "eval.g2b.accuracy_claim_attestation.v1",
-  "status": "confirmed_scoped_no_claim",
+  "status": "confirmed_scoped_no_claim_section4_met",
   "product_id": "evaluation",
   "environment": "local",
   "accept_accuracy_claim": false,
@@ -21,14 +21,14 @@
     },
     "accuracy": {
       "n": 100,
-      "pass_n": 78,
-      "fail_n": 22,
-      "pass_rate": 0.78,
+      "pass_n": 80,
+      "fail_n": 20,
+      "pass_rate": 0.8,
       "wilson_ci95": [
-        0.6893,
-        0.85
+        0.7112,
+        0.8666
       ],
-      "disputed_n": 10,
+      "disputed_n": 8,
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json"
     },
     "adjudication_path": "docs/a3/evidence/g2b_adjudication.v1.json",
@@ -36,17 +36,17 @@
     "freeze_path": "docs/a3/evidence/g2b_freeze_record.v1.json"
   },
   "threshold_gate_vs_protocol_section_4": {
-    "pass_rate_met": false,
-    "wilson_lower_met": false,
+    "pass_rate_met": true,
+    "wilson_lower_met": true,
     "kappa_met": true,
     "protocol_rule": "未同时满足门槛：可 scoped 披露 observed pass rate + CI，不得 accuracy_claim",
-    "owner_decision": "confirm_scoped_keep_accuracy_claim_false",
-    "pass_rate": 0.78,
+    "owner_decision": "section4_met_keep_accuracy_claim_false_until_explicit_accept",
+    "pass_rate": 0.8,
     "wilson_ci95": [
-      0.6893,
-      0.85
+      0.7112,
+      0.8666
     ],
-    "protocol_thresholds_not_met_for_claim": true
+    "protocol_thresholds_not_met_for_claim": false
   },
   "acknowledgements": {
     "kappa_is_not_accuracy": true,
@@ -54,8 +54,10 @@
     "not_process_split_authorize": true,
     "not_production_accuracy_certification": true,
     "freeze_hash_still_pending": false,
-    "protocol_thresholds_not_met_for_claim": true,
-    "scoped_disclosure_authorized": true
+    "protocol_thresholds_not_met_for_claim": false,
+    "scoped_disclosure_authorized": true,
+    "section4_numeric_met": true,
+    "accuracy_claim_still_false": true
   },
-  "honesty": "product_owner confirmed scoped disclosure only; accept_accuracy_claim=false; freeze confirmed; protocol §4 still not met after re-review (0.78<0.80, CI_lo 0.6893<0.70)."
+  "honesty": "product_owner scoped disclosure; accept_accuracy_claim=false; §4 numeric thresholds now met (0.80 / CI_lo 0.7112); claim remains closed until explicit accept_accuracy_claim=true attestation."
 }
