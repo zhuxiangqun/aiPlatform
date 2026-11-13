@@ -38,14 +38,14 @@
     "g2b_accuracy": {
       "n": 100,
       "target_n": 100,
-      "pass_rate": 0.72,
+      "pass_rate": 0.78,
       "wilson_ci95": [
-        0.6251,
-        0.7986
+        0.6893,
+        0.85
       ],
       "disputed_n": 10,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "n=100 closeout; pass_rate=0.72 below protocol 0.80; owner confirmed scoped disclosure; accuracy_claim=false; freeze confirmed"
+      "gate_note": "n=100 closeout after re-review; pass_rate=0.78 below protocol 0.80; CI_lo 0.6893<0.70; owner scoped disclosure; accuracy_claim=false; freeze confirmed"
     },
     "prod_live": {
       "n_tasks": 25,
@@ -101,14 +101,14 @@
     {
       "id": "g2b_accuracy_aggregate",
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
-      "sha256": "ef40b6499daab59363d5cbd57defe3cfed38939d555de3bce409beb7f1a24032",
+      "sha256": "d049f09d65226e5d1f2de804e76c906515e7676d96b5583038d7771796b8da2e",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout n=100; claim stays false"
     },
     {
       "id": "g2b_adjudicated_gold",
       "path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
-      "sha256": "a1151d847f3835ffcf6b29c83489d5b719ba17e33470a57c69d19e7170d7e698",
+      "sha256": "45fcfa455363f9f197502d6693223ce7afe8949ce91a3333c0c3b02658ce38ca",
       "required_for_feature_5": false,
       "note": "G2b accuracy closeout n=100; claim stays false"
     },
@@ -197,13 +197,13 @@
   "confirmed_records": {
     "g2b_freeze_record": {
       "path": "docs/a3/evidence/g2b_freeze_record.v1.json",
-      "sha256": "d80a10ad6a4bf739fef0d8883d6d8b1cb37604d83d9721d394328fc9f838d581",
+      "sha256": "009fc7ea498e6b190a0e6cb24f7d589acca19108e9c2405d863dd36a6a95bf1d",
       "status": "confirmed",
       "confirmed_at": "2026-11-05T15:15:47Z"
     },
     "g2b_accuracy_claim_attestation": {
       "path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
-      "sha256": "51ed9b77ca92659b5e2c537b85f0801ca1fe5300ef64c7ea1a586bb3428b5602",
+      "sha256": "6bd57974934c85b83494a17a2b237d74e77de47dde6809243a7fbf4e3a303971",
       "status": "confirmed_scoped_no_claim",
       "accept_accuracy_claim": false,
       "attested_at": "2026-11-05T15:15:47Z"

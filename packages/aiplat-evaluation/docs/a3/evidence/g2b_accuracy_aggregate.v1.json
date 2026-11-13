@@ -6,12 +6,12 @@
   "not_accuracy_certification": true,
   "metric": "model_pass_rate_vs_adjudicated_gold",
   "n": 100,
-  "pass_n": 72,
-  "fail_n": 28,
-  "pass_rate": 0.72,
+  "pass_n": 78,
+  "fail_n": 22,
+  "pass_rate": 0.78,
   "wilson_ci95": [
-    0.6251,
-    0.7986
+    0.6893,
+    0.85
   ],
   "agreed_n": 90,
   "disputed_n": 10,
@@ -29,12 +29,13 @@
   ],
   "annotator_a_vs_gold": 0.9,
   "annotator_b_vs_gold": 1.0,
-  "annotator_a": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/human_pack/20261105T132500Z-n100/g2b_annotator_a.filled.json",
-  "annotator_b": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/human_pack/20261105T132500Z-n100/g2b_annotator_b.filled.json",
-  "adjudication": "/Users/apple/workdata/person/zy/aiPlatform/packages/aiplat-evaluation/docs/a3/evidence/g2b_adjudication.v1.json",
-  "claim_refuse_reason": "protocol_section4_thresholds_not_met_scoped_confirmed",
-  "honesty": "model pass-rate vs adjudicated gold — scoped disclosure only; accuracy_claim=false (owner confirmed); κ ≠ accuracy; not security cert; not process_split",
-  "recorded_at": "20261105T150019Z",
+  "annotator_a": "docs/a3/evidence/g2b_annotator_a.labels.v1.json",
+  "annotator_b": "docs/a3/evidence/g2b_annotator_b.labels.v1.json",
+  "adjudication": "packages/aiplat-evaluation/docs/a3/evidence/g2b_adjudication.v1.json",
+  "claim_refuse_reason": "protocol_section4_thresholds_not_met_after_rereview",
+  "honesty": "model pass-rate vs adjudicated gold after 2026-11-13 rubric re-review (6 agreed_fail→pass; see .aiplat/eval_trust/g2b_fail_decision_table_v0.json); scoped disclosure only; accuracy_claim=false; κ ≠ accuracy; not security cert; not process_split",
+  "recorded_at": "20261113T024341Z",
   "attestation_path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
-  "freeze_path": "docs/a3/evidence/g2b_freeze_record.v1.json"
+  "freeze_path": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "rereview_decision_table": ".aiplat/eval_trust/g2b_fail_decision_table_v0.json"
 }

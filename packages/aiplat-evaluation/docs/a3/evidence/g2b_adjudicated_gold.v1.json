@@ -14,7 +14,7 @@
     },
     {
       "task_id": "g2b-02",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-03",
@@ -22,7 +22,7 @@
     },
     {
       "task_id": "g2b-04",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-05",
@@ -86,11 +86,11 @@
     },
     {
       "task_id": "g2b-19",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-20",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-21",
@@ -106,11 +106,11 @@
     },
     {
       "task_id": "g2b-24",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-25",
-      "gold_pass": false
+      "gold_pass": true
     },
     {
       "task_id": "g2b-26",
@@ -410,5 +410,5 @@
     }
   ],
   "honesty": "adjudicated gold for local model pass-rate only; κ ≠ accuracy; accuracy_claim stays false until attestation",
-  "recorded_at": "20261105T150019Z"
+  "recorded_at": "20261113T024341Z"
 }

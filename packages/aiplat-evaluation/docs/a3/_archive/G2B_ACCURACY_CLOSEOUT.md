@@ -5,7 +5,7 @@ doc_type: Archive
 # G2b accuracy closeout（local · κ ≠ accuracy）
 
 > Parent: [`G2B_PREP.md`](./G2B_PREP.md) · κ aggregate: [`evidence/g2b_kappa_aggregate.v1.json`](../evidence/g2b_kappa_aggregate.v1.json)
-> Honesty: **inter-annotator κ ≠ accuracy** · **`accuracy_claim=false`**（§4 门槛未达：0.72&lt;0.80 · CI_lo 0.6251&lt;0.70）· ≠ process_split · ≠ security cert
+> Honesty: **inter-annotator κ ≠ accuracy** · **`accuracy_claim=false`**（§4 门槛未达：重审后 0.78&lt;0.80 · CI_lo 0.6893&lt;0.70）· ≠ process_split · ≠ security cert
 
 ## Why
 
@@ -50,9 +50,9 @@ doc_type: Archive
 See [`evidence/g2b_accuracy_aggregate.v1.json`](../evidence/g2b_accuracy_aggregate.v1.json):
 
 - **`n=100`**（2026-11-05 n100 expand closeout；κ agreement=0.90 · κ=0.7624）
-- `pass_rate=0.72`（Wilson 95% CI `[0.6251, 0.7986]`）
+- `pass_rate=0.78`（Wilson 95% CI `[0.6893, 0.85]`；2026-11-13 rubric 重审 6 题 agreed_fail→pass，见 `.aiplat/eval_trust/g2b_fail_decision_table_v0.json`）
 - `accuracy_claim=false`（scoped attestation：[`evidence/g2b_accuracy_claim_attestation.v1.json`](../evidence/g2b_accuracy_claim_attestation.v1.json)；freeze：[`evidence/g2b_freeze_record.v1.json`](../evidence/g2b_freeze_record.v1.json)）
-- 历史 n=30 基线曾为 ≈0.7667；以当前 n=100 聚合为准
+- §4 **no-go**（0.78&lt;0.80 · CI_lo 0.6893&lt;0.70）；历史基线 0.72→重审 0.78，仍未达门槛
 
 ## Commands
 

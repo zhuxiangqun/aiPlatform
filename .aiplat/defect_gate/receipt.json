@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-13T06:45:58+08:00",
+  "reviewed_at": "2026-11-13T10:55:05+08:00",
   "base_ref": "origin/main",
-  "merge_base": "979d4259363586baa3a2499a3931c3a36a963f43",
-  "diff_sha256": "4a09c8292e07cf405560713627c0714f3a59b61f3bec26e4c7a414a7afc95289",
-  "head_sha": "2d655f5e1a77aad13c3294baab9f0797b66385d6",
+  "merge_base": "b28038567e7282d47131f09cab37b88d1b1fc244",
+  "diff_sha256": "23f851d59ed464bd6551de61d36a44e60a47b97c72c846ae43b493376c11074f",
+  "head_sha": "b456eff4f36340170fa240dd4150beab8648bc97",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Inventory/Case Pack Compile+Exam dry CTA only; claim closed. Local lock only."
+  "note": "G2b re-review: 6 agreed_fail→pass; aggregate 0.78; accuracy_claim=false; gate/tests assert §4 unmet (CI_lo<0.70). Residual: 22 hold fails need model/format work for ≥0.80."
 }

@@ -1,65 +1,44 @@
 {
   "schema": "aiplat.eval_trust.next_rung.v1",
-  "captured_at": "2026-11-08T15:38:06+08:00",
-  "honesty": "Engineering readiness only. Does NOT raise accuracy_claim. Arena pack is leak-guard green; human QA re-sign still required. G2b fail taxonomy is hypothesis tags from local artifacts — ≠ root-cause cert.",
+  "captured_at": "2026-11-13T10:44:42+08:00",
+  "honesty": "Engineering readiness only. Does NOT raise accuracy_claim. G2b re-review 2026-11-13: pass_rate=0.78 still below §4; decision table = triage SSOT; taxonomy_v0 is pre-rereview snapshot.",
   "g2b": {
     "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
     "n": 100,
-    "pass_rate": 0.72,
+    "pass_rate": 0.78,
     "wilson_ci95": [
-      0.6251,
-      0.7986
+      0.6893,
+      0.85
     ],
-    "fail_n": 28,
+    "fail_n": 22,
     "accuracy_claim": false,
     "thresholds_met": false,
+    "section4": {
+      "pass_rate_threshold": 0.8,
+      "wilson_lo_threshold": 0.7,
+      "pass_rate_met": false,
+      "wilson_lo_met": false,
+      "decision": "no_go_claim_closed"
+    },
     "fail_bucket_counts": {
-      "agreed_fail": 25,
+      "agreed_fail": 19,
       "disputed_fail": 3
     },
     "fail_by_family": {
-      "prompt": 4,
-      "agent": 8,
       "kb": 9,
-      "skill": 6,
+      "prompt": 2,
+      "agent": 5,
+      "skill": 5,
       "safety": 1
     },
-    "family_base_rates": {
-      "agent": {
-        "fail": 8,
-        "n": 19,
-        "fail_rate": 0.421
-      },
-      "kb": {
-        "fail": 9,
-        "n": 19,
-        "fail_rate": 0.474
-      },
-      "prompt": {
-        "fail": 4,
-        "n": 25,
-        "fail_rate": 0.16
-      },
-      "safety": {
-        "fail": 1,
-        "n": 19,
-        "fail_rate": 0.053
-      },
-      "skill": {
-        "fail": 6,
-        "n": 18,
-        "fail_rate": 0.333
-      }
-    },
     "hypothesis_counts": {
-      "translation_or_phrasing": 1,
-      "format_oververbose": 3,
       "safety_behavior_mismatch": 4,
-      "content_or_rubric_strict": 18,
-      "format_not_json": 1,
-      "format_code_instead_of_json": 1
+      "format_code_instead_of_json": 1,
+      "content_or_rubric_strict": 15,
+      "format_oververbose": 2
     },
-    "detail_path": "g2b_fail_taxonomy_v0.json"
+    "detail_path": "g2b_fail_decision_table_v0.json",
+    "taxonomy_snapshot_path": "g2b_fail_taxonomy_v0.json"
   },
   "arena": {
     "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",
