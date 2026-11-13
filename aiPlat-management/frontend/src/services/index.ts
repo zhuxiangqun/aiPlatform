@@ -74,6 +74,7 @@ export type { Model, ModelConfig, ModelStats, Provider, AddModelRequest, ModelLi
 // Types - Core
 export type {
   Agent,
+  AgentCompat,
   AgentListResponse,
   Skill,
   SkillDetail,

@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2633
+total_capabilities: 2638
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -3786,8 +3786,28 @@ domains:
   agent-system:
     section: "五"
     section_name: "Agent 系统"
-    caps_count: 328
+    caps_count: 333
     provides:
+      - symbol: "finalize_agent_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "finalize_agent_compat(agent_dir,*,source,adapt_summary)→COMPAT.yaml dict"
+      - symbol: "compute_agent_compat"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "compute_agent_compat(agent_dir,*,source,adapt_summary)→dict"
+      - symbol: "is_agent_chat_ok"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_agent_chat_ok(agent_dir)→bool; missing COMPAT fail-open"
+      - symbol: "is_agent_fully_usable"
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+        type: function
+        signature: "is_agent_fully_usable(agent_dir)→bool; needs_binding→False"
+      - symbol: "agent_asset_compat_finalize"
+        module: aiPlat-core/core/api/core_facade.py
+        type: function
+        signature: "agent_asset_compat_finalize(agent_dir,*,source,adapt_summary)→dict"
       - symbol: "generate_agent_eval"
         module: aiPlat-core/core/apps/eval/agent_eval.py
         type: function

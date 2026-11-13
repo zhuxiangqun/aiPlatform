@@ -1,7 +1,8 @@
-"""Skill asset compat (Phase A): COMPAT.yaml tier / schedulable honesty."""
+"""Asset compat: Skill Phase A + Agent Phase B (COMPAT.yaml honesty)."""
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -11,11 +12,17 @@ COMPAT_SCHEMA = "aiplat.asset_compat.v1"
 COMPAT_FILENAME = "COMPAT.yaml"
 HANDLER_DRAFT = "handler.py.draft"
 SKILL_NOT_SCHEDULABLE = "skill_not_schedulable"
+AGENT_NOT_USABLE = "agent_not_usable"
 TIER_PROMPT_READY = "prompt_ready"
 TIER_TOOL_MAPPED = "tool_mapped"
 TIER_NEEDS_HANDLER = "needs_handler"
 TIER_BLOCKED = "blocked"
+# Agent tiers (Phase B)
+TIER_PERSONA_READY = "persona_ready"
+TIER_BOUND_READY = "bound_ready"
+TIER_NEEDS_BINDING = "needs_binding"
 _SCHEDULABLE = {TIER_PROMPT_READY, TIER_TOOL_MAPPED}
+_AGENT_CHAT_OK = {TIER_PERSONA_READY, TIER_BOUND_READY, TIER_NEEDS_BINDING}
 
 
 def _read_frontmatter(skill_dir: Path) -> Dict[str, Any]:
@@ -208,3 +215,262 @@ def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
                     logger.debug("enable_handler frontmatter update failed: %s", exc)
     compat = finalize_skill_compat(root, adapt_summary={"adapted": True, "pattern": "handler_enabled"})
     return {"ok": True, "tier": compat.get("tier"), "schedulable": compat.get("schedulable"), "compat": compat}
+
+
+# ── Agent Phase B ─────────────────────────────────────────────────────────────
+
+
+def _read_agent_frontmatter(agent_dir: Path) -> Dict[str, Any]:
+    md = agent_dir / "AGENT.md"
+    if not md.is_file():
+        return {}
+    raw = md.read_text(encoding="utf-8", errors="replace")
+    if not raw.startswith("---"):
+        return {}
+    parts = raw.split("---", 2)
+    if len(parts) < 3:
+        return {}
+    try:
+        import yaml
+
+        fm = yaml.safe_load(parts[1]) or {}
+        return fm if isinstance(fm, dict) else {}
+    except Exception:
+        return {}
+
+
+def _skill_search_roots() -> List[Path]:
+    roots: List[Path] = []
+    try:
+        from core.utils.paths import get_aiplat_data_dir
+
+        roots.append(Path(get_aiplat_data_dir("skills")))
+    except Exception:
+        logger.debug("skill search root: get_aiplat_data_dir failed", exc_info=True)
+    for key in (
+        "AIPLAT_WORKSPACE_SKILLS_PATH",
+        "AIPLAT_ENGINE_SKILLS_PATH",
+        "AIPLAT_WORKSPACE_SKILLS_PATHS",
+        "AIPLAT_ENGINE_SKILLS_PATHS",
+    ):
+        raw = (os.environ.get(key) or "").strip()
+        if not raw:
+            continue
+        for part in raw.split(os.pathsep):
+            p = Path(part).expanduser()
+            if p.is_dir():
+                roots.append(p)
+    # Packaged engine skills (best-effort)
+    try:
+        engine = Path(__file__).resolve().parents[2] / "engine" / "skills"
+        if engine.is_dir():
+            roots.append(engine)
+    except Exception:
+        logger.debug("skill search root: engine skills path resolve failed", exc_info=True)
+    # Dedup preserve order
+    seen: set[str] = set()
+    out: List[Path] = []
+    for r in roots:
+        key = str(r)
+        if key not in seen:
+            seen.add(key)
+            out.append(r)
+    return out
+
+
+def resolve_skill_dir(skill_id: str) -> Optional[Path]:
+    """Locate a skill directory by id (workspace then engine paths)."""
+    sid = str(skill_id or "").strip()
+    if not sid:
+        return None
+    for root in _skill_search_roots():
+        cand = root / sid
+        if (cand / "SKILL.md").is_file():
+            return cand
+    return None
+
+
+def compute_agent_compat(
+    agent_dir: Path | str,
+    *,
+    source: Optional[Dict[str, Any]] = None,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Score Agent COMPAT: persona_ready / bound_ready / needs_binding / blocked."""
+    root = Path(agent_dir)
+    fm = _read_agent_frontmatter(root)
+    issues: List[Dict[str, Any]] = []
+    block_reason = str(fm.get("block_reason") or "").strip()
+    missing_caps = fm.get("missing_capabilities") if isinstance(fm.get("missing_capabilities"), list) else []
+    required = fm.get("required_skills") if isinstance(fm.get("required_skills"), list) else None
+    if required is None:
+        required = fm.get("skills") if isinstance(fm.get("skills"), list) else []
+    required = [str(x).strip() for x in required if str(x).strip()]
+
+    missing_skills: List[str] = []
+    unschedulable_skills: List[str] = []
+    for sid in required:
+        sdir = resolve_skill_dir(sid)
+        if sdir is None:
+            missing_skills.append(sid)
+            continue
+        if not is_skill_schedulable(sdir):
+            unschedulable_skills.append(sid)
+
+    if block_reason:
+        tier = TIER_BLOCKED
+        issues.append({"code": "blocked", "severity": "error", "message": block_reason})
+    elif missing_caps:
+        tier = TIER_NEEDS_BINDING
+        issues.append({
+            "code": "missing_capabilities",
+            "severity": "error",
+            "message": "unmapped critical tools/capabilities: " + ", ".join(str(x) for x in missing_caps[:8]),
+        })
+    elif missing_skills or unschedulable_skills:
+        tier = TIER_NEEDS_BINDING
+        if missing_skills:
+            issues.append({
+                "code": "missing_skills",
+                "severity": "warning",
+                "message": "required skills not installed: " + ", ".join(missing_skills[:8]),
+            })
+        if unschedulable_skills:
+            issues.append({
+                "code": "unschedulable_skills",
+                "severity": "warning",
+                "message": "required skills not schedulable: " + ", ".join(unschedulable_skills[:8]),
+            })
+    elif required:
+        tier = TIER_BOUND_READY
+    else:
+        tier = TIER_PERSONA_READY
+
+    chat_ok = tier in _AGENT_CHAT_OK
+    # persona_ready (no required deps) and bound_ready: full surface available
+    full_ok = tier in {TIER_PERSONA_READY, TIER_BOUND_READY}
+
+    if tier == TIER_BLOCKED:
+        ui = "不能用"
+        upgrade = "blocked"
+    elif tier == TIER_NEEDS_BINDING:
+        ui = "还差几步"
+        upgrade = "bind_dependencies"
+    else:
+        ui = "现在就能用"
+        upgrade = "none"
+
+    out: Dict[str, Any] = {
+        "schema": COMPAT_SCHEMA,
+        "asset_kind": "agent",
+        "tier": tier,
+        "schedulable": chat_ok,  # can enter chat/trial path
+        "chat_ok": chat_ok,
+        "full_ok": full_ok,
+        "issues": issues,
+        "mappings": [],
+        "dependencies": {
+            "required_skills": required,
+            "missing_skills": missing_skills,
+            "unschedulable_skills": unschedulable_skills,
+        },
+        "missing_critical": [str(x) for x in missing_caps] + list(missing_skills),
+        "upgrade": {"recommended": upgrade, "auto_generated_artifacts": []},
+        "ui_state": ui,
+    }
+    if source:
+        out["source"] = source
+    if adapt_summary:
+        out["adapt_summary"] = {
+            k: adapt_summary.get(k) for k in ("adapted", "pattern", "actions", "reason") if k in adapt_summary
+        }
+    return out
+
+
+def write_agent_compat(agent_dir: Path | str, compat: Dict[str, Any]) -> Path:
+    path = Path(agent_dir) / COMPAT_FILENAME
+    try:
+        import yaml
+
+        path.write_text(yaml.safe_dump(compat, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    except Exception:
+        import json
+
+        path.write_text(json.dumps(compat, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def read_agent_compat(agent_dir: Path | str) -> Optional[Dict[str, Any]]:
+    path = Path(agent_dir) / COMPAT_FILENAME
+    if not path.is_file():
+        return None
+    try:
+        import yaml
+
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def finalize_agent_compat(
+    agent_dir: Path | str,
+    *,
+    adapt_summary: Optional[Dict[str, Any]] = None,
+    source: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    compat = compute_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
+    write_agent_compat(agent_dir, compat)
+    return compat
+
+
+def is_agent_chat_ok(agent_dir: Path | str) -> bool:
+    """Fail-open when COMPAT missing (legacy agents)."""
+    compat = read_agent_compat(agent_dir)
+    if compat is None:
+        return True
+    if "chat_ok" in compat:
+        return bool(compat.get("chat_ok"))
+    return bool(compat.get("schedulable"))
+
+
+def is_agent_fully_usable(agent_dir: Path | str) -> bool:
+    """Fail-open when COMPAT missing (legacy agents)."""
+    compat = read_agent_compat(agent_dir)
+    if compat is None:
+        return True
+    if "full_ok" in compat:
+        return bool(compat.get("full_ok"))
+    return bool(compat.get("tier") in (TIER_BOUND_READY, TIER_PERSONA_READY))
+
+
+def agent_compat_error(agent_dir: Path | str, agent_id: str = "", *, mode: str = "full") -> Dict[str, Any]:
+    compat = read_agent_compat(agent_dir) or compute_agent_compat(agent_dir)
+    return {
+        "ok": False,
+        "status": "error",
+        "output": None,
+        "error": AGENT_NOT_USABLE,
+        "agent_id": agent_id or Path(agent_dir).name,
+        "tier": compat.get("tier"),
+        "schedulable": bool(compat.get("schedulable")),
+        "chat_ok": bool(compat.get("chat_ok")),
+        "full_ok": bool(compat.get("full_ok")),
+        "ui_state": compat.get("ui_state"),
+        "mode": mode,
+        "actions_required": [compat.get("upgrade", {}).get("recommended") or "review_compat"],
+        "issues": compat.get("issues") or [],
+        "dependencies": compat.get("dependencies") or {},
+    }
+
+
+def resolve_agent_dir_from_info(agent_info: Any) -> Optional[Path]:
+    """Prefer metadata.filesystem.agent_dir (AgentManager load shape)."""
+    meta = getattr(agent_info, "metadata", None) or {}
+    if not isinstance(meta, dict):
+        return None
+    fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
+    raw = fs.get("agent_dir") if isinstance(fs, dict) else None
+    if raw and Path(str(raw)).is_dir():
+        return Path(str(raw))
+    return None

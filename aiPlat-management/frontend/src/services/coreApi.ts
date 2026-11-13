@@ -7,6 +7,16 @@ import { withSkillExecuteDefaults } from '../utils/skillExecute';
 
 // ==================== Agent API ====================
 
+export interface AgentCompat {
+  tier?: string;
+  schedulable?: boolean;
+  chat_ok?: boolean;
+  full_ok?: boolean;
+  ui_state?: string;
+  upgrade?: { recommended?: string; auto_generated_artifacts?: string[] };
+  issues?: Array<{ code?: string; severity?: string; message?: string }>;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -22,6 +32,8 @@ export interface Agent {
   skills?: string[];
   tools?: string[];
   metadata: Record<string, unknown>;
+  /** Phase B: COMPAT.yaml honesty (现在就能用 / 还差几步 / 不能用) */
+  compat?: AgentCompat;
 }
 
 export interface AgentListResponse {

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3399
+total_capabilities: 3405
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -2206,6 +2206,12 @@ scan_hash: 8f9548ec24f4
 | BaseSkill | `apps/skills/base.py` | ✅ | 自动同步 | 已合入 |
 | SkillManager | `aiPlat-core/core/management/skill_manager.py` | ✅ | 自动同步 | 已合入 |
 | Skill asset compat（Phase A） | `harness/maintenance/asset_compat.py`（apps re-export）+ InstallReport `assets[]` + `sys_skill_call` gate + `POST …/enable-handler-draft` + Skills「可用性」列 | ✅ | `COMPAT.yaml` tier/schedulable；脚本仅写 `handler.py.draft`；列表/导入三态；生成物适用：已接线（Skill 导入横切） | 本批 |
+| Agent asset compat（Phase B） | `harness/maintenance/asset_compat.py` + `AgentInstaller` InstallReport `assets[]` + `run_workspace_agent` chat-lite gate + Agents「可用性」列 | ✅ | `persona_ready`/`bound_ready`/`needs_binding`/`blocked`；缺依赖仍可对话、全功能受限；生成物适用：已接线（Agent 导入横切） | 本批 |
+| finalize_agent_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 写出 Agent `COMPAT.yaml`（依赖级联） | 本批 |
+| compute_agent_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 评分 Agent tier / chat_ok / full_ok | 本批 |
+| is_agent_chat_ok | `core/harness/maintenance/asset_compat.py` | ✅ | 无 COMPAT fail-open；blocked 拒绝对话 | 本批 |
+| is_agent_fully_usable | `core/harness/maintenance/asset_compat.py` | ✅ | needs_binding → False（chat-lite） | 本批 |
+| agent_asset_compat_finalize | `core/api/core_facade.py` | ✅ | CoreFacade 入口写 Agent COMPAT | 本批 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | SkillRegistry | apps/skills/registry.py | ✅ | 注册/启用/禁用/版本管理/semver回滚 | 已合入 |
@@ -4304,7 +4310,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 182 | 0 | 182 |
+| Skill 系统 | 188 | 0 | 188 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4343,7 +4349,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3389** | **10** | **3399** |
+| **总计** | **3395** | **10** | **3405** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
