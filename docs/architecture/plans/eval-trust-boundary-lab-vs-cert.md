@@ -59,13 +59,13 @@ doc_type: Architecture
 
 G2b 失败分桶摘要（重审前 n=28 假设 → 重审后 hold=22）：
 
-- 决策：`re_label_pass=6` · `hold_fail=22`（详见 decision table）
+- 决策：`re_label_pass=6` · `hold_fail=20`（格式干预后）（详见 decision table）
 - 格式干预后：`pass_rate=0.80` · Wilson `[0.7112, 0.8666]` · §4 **数值达标** · **claim 仍关**
 - hold 主因：能力/安全错答与格式非 JSON（55/95 等），**不**用水化 rubric 冲门槛
 
 ## 仍缺（进入「更可信任」之前）
 
-1. G2b §4 数值已达标；开 claim 仍需 owner `accept_accuracy_claim=true`（当前 false）  
+1. G2b §4 数值已达标；开 claim 仍需 owner `accept_accuracy_claim=true`（当前 false） — 核对清单：`.aiplat/eval_trust/g2b_claim_unlock_checklist_v0.json` / Eval G2b 面板  
 2. 对本干净 Arena pack **独立 QA 重签** `overall_pass=true` 后，再单独立项是否 shadow length smoke  
 3. staging + 生产轴证据；独立第三方审计  
 4. 代表性任务扩样；把假设标签升级为有人复核的错误类型  

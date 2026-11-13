@@ -666,6 +666,17 @@ async def get_g2b_l5_gap(
     return {"data": eval_g2b_l5_gap_disclosure(tenant_id=tenant_id)}
 
 
+@router.get("/g2b-claim-unlock", response_model=ItemResponse)
+async def get_g2b_claim_unlock(
+    tenant_id: str = "eval-v1",
+    _auth: str = Depends(require_auth),
+) -> Dict[str, Any]:
+    """G2b claim unlock AND-gates — never flips accuracy_claim."""
+    from core.api.core_facade import eval_g2b_claim_unlock_checklist
+
+    return {"data": eval_g2b_claim_unlock_checklist(tenant_id=tenant_id)}
+
+
 @router.get("/a1-intersection-status", response_model=ItemResponse)
 async def get_a1_intersection_status(
     _auth: str = Depends(require_auth),

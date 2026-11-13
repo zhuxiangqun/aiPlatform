@@ -1,7 +1,7 @@
 {
   "schema": "aiplat.eval_trust.next_rung.v1",
-  "captured_at": "2026-11-13T11:51:22+08:00",
-  "honesty": "§4 numeric met; accuracy_claim=false until owner accept. Arena clean pack SEND hygiene ready; human QA overall_pass still open.",
+  "captured_at": "2026-11-13T12:15:53+08:00",
+  "honesty": "§4 numeric met; claim unlock blockers=owner_accept only for G2b scoped; Arena QA / staging / audit still open; accuracy_claim=false.",
   "g2b": {
     "source_aggregate": "packages/aiplat-evaluation/docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
     "n": 100,
@@ -18,7 +18,7 @@
       "wilson_lo_threshold": 0.7,
       "pass_rate_met": true,
       "wilson_lo_met": true,
-      "decision": "go_scoped_claim_still_closed"
+      "decision": "awaiting_owner_accept_attestation"
     },
     "fail_bucket_counts": {
       "agreed_fail": 19,
@@ -38,7 +38,8 @@
       "format_oververbose": 2
     },
     "detail_path": "g2b_fail_decision_table_v0.json",
-    "taxonomy_snapshot_path": "g2b_fail_taxonomy_v0.json"
+    "taxonomy_snapshot_path": "g2b_fail_taxonomy_v0.json",
+    "claim_unlock_checklist": "g2b_claim_unlock_checklist_v0.json"
   },
   "arena": {
     "pack_dir": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z",

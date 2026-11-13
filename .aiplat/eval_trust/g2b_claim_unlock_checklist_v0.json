@@ -1,0 +1,34 @@
+{
+  "schema": "eval.g2b.claim_unlock_checklist.v0",
+  "tenant_id": "eval-v1",
+  "accuracy_claim": false,
+  "accept_accuracy_claim": false,
+  "gates": {
+    "dual_human_complete": true,
+    "section4_pass_rate_met": true,
+    "section4_wilson_lo_met": true,
+    "sample_n_met": true,
+    "owner_accept_accuracy_claim": false,
+    "arena_send_ready": true,
+    "arena_qa_overall_pass": false,
+    "staging_evidence": false,
+    "external_audit": false
+  },
+  "g2b_scoped_ready": false,
+  "g2b_scoped_blockers": [
+    "owner_accept_accuracy_claim"
+  ],
+  "broader_trust_blockers": [
+    "arena_qa_overall_pass",
+    "staging_evidence",
+    "external_audit"
+  ],
+  "pass_rate": 0.8,
+  "wilson_ci95": [
+    0.7112,
+    0.8666
+  ],
+  "sample_n": 100,
+  "qa_resign_checklist": ".aiplat/eval_trust/arena_clean_pack_20261108/20261108T073806Z/QA_RESIGN_CHECKLIST.md",
+  "honesty": "Checklist only; never sets accuracy_claim=true. Needs owner accept; Arena QA / staging / audit are separate."
+}
