@@ -145,8 +145,8 @@ Harness 框架由 8 个核心要素组成：
 - 20步任务，单步95%成功率，整体仅36%
 
 **实现（As-Is）**：
-- ReAct 执行循环：Reasoning → Acting → Observing（主路径：`execution/loop.py`）
-- Plan-Execute：规划 + 顺序执行（主路径：`execution/loop.py`）
+- ReAct 执行循环：Reasoning → Acting → Observing（主路径：`execution/loop/`）
+- Plan-Execute：规划 + 顺序执行（主路径：`execution/loop/`）
 - “Ralph Loop/更严格验证模式”若存在，仅作为 To-Be 概念；需以代码实现为准标注状态（避免写成已实现）。
 
 **Hook 拦截点**：

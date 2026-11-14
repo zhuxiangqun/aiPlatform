@@ -193,11 +193,7 @@ pip install -e .
 
 **配置环境**：
 ```bash
-# 复制配置模板
-cp config/app/cli.yaml.example config/app/cli.yaml
-
-# 编辑配置文件
-vi config/app/cli.yaml
+# As-Is：无 config/app/cli.yaml.example；以 aiPlat-app CLI 包内配置 / 环境变量为准
 ```
 
 **验证安装**：

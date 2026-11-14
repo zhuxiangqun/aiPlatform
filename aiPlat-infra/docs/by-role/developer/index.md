@@ -34,43 +34,26 @@ doc_type: Index
 
 **启动依赖服务**：
 ```bash
-# To-Be：启动 PostgreSQL、Redis、Milvus（需提供 compose/make）
-# make docker-up-infra
-
-# 等待服务就绪
-make docker-wait
-
-# 查看服务状态
-make docker-status
+# As-Is：仓库根无统一 Makefile。按实际 docker-compose / 运维剧本启动 PostgreSQL、Redis、向量库等。
 ```
 
 **配置环境变量**：
 ```bash
-# 复制配置模板
-cp config/infra/database.yaml.example config/infra/database.yaml
-cp config/infra/llm.yaml.example config/infra/llm.yaml
-cp config/infra/vector.yaml.example config/infra/vector.yaml
-
-# 编辑配置文件，填入必要的配置
-# - 数据库连接字符串
-# - LLM API 密钥
-# - 向量存储配置
+# As-Is：无 per-module *.yaml.example。编辑现有文件（相对 aiPlat-infra/）：
+#   config/infra/default.yaml      # 各子系统 section
+#   config/infra/development.yaml  # 开发覆盖
+#   config/infra/llm_profile.yaml  # 模型档案
+# 密钥走环境变量，勿把 secret 写入 YAML。
 ```
 
 ### 验证环境
 
 **测试服务连接**：
 ```bash
-# 测试数据库连接
-make test-db
+# As-Is：用 pytest，例如：
+#   cd aiPlat-infra && python -m pytest tests/ -q
 
-# 测试 Redis 连接
-make test-redis
-
-# 测试向量存储（To-Be）
-# make test-vector
-
-# 测试 LLM 连接
+# 测试 LLM 连接（历史 make 入口已移除）
 make test-llm
 ```
 
@@ -88,13 +71,13 @@ pip install -e .
 
 **步骤二：配置服务**
 ```bash
-# 编辑配置文件，设置数据库连接
-vi config/infra/database.yaml
+# 编辑 config/infra/default.yaml 的 database: section（或 development.yaml 覆盖）
 ```
 
 **步骤三：测试连接**
 ```bash
-make test-infra
+# As-Is：仓库根无统一 Makefile；用 pytest 跑 infra 单测，例如：
+#   cd aiPlat-infra && python -m pytest tests/ -q
 ```
 
 ---
@@ -287,8 +270,7 @@ aiPlat-infra/
 
 **配置示例**：
 ```yaml
-# config/infra/database.yaml
-type: postgresql
+# config/infra/default.yaml  → database:type: postgresql
 host: localhost
 port: 5432
 database: aiplatform
@@ -304,13 +286,13 @@ pool:
 1. **创建实现文件**：在 `infra/database/implementations/` 下新建 `mysql_client.py`
 2. **实现接口**：继承 `DatabaseClient` 基类，实现所有抽象方法
 3. **注册工厂**：在 `create_database_client()` 中添加 `mysql` 类型分支
-4. **添加配置**：在 `config/infra/database.yaml.example` 中添加 MySQL 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` 的 `database:` section（或 `development.yaml` 覆盖）补充示例
 5. **编写测试**：在 `tests/unit/infra/database/` 下添加测试文件
 
 **相关文件位置**：
 - 接口定义：`infra/database/base.py`
 - 工厂函数：`infra/factories/database.py`
-- 配置示例：`config/infra/database.yaml.example`
+- 配置：`config/infra/default.yaml`（`database:` section）
 - 测试文件：`tests/unit/infra/database/`
 
 ---
@@ -331,8 +313,7 @@ pool:
 
 **配置示例**：
 ```yaml
-# config/infra/llm.yaml
-provider: openai
+# config/infra/default.yaml / llm_profile.yamlprovider: openai
 model: gpt-4
 api_key: ${LLM_API_KEY}
 temperature: 0.7
@@ -348,7 +329,7 @@ retry:
 1. **创建实现文件**：在 `infra/llm/providers/` 下新建 `anthropic_client.py`
 2. **实现接口**：继承 `LLMClient` 基类，实现 `chat()`, `chat_stream()`, `embed()` 方法
 3. **注册工厂**：在 `create_llm_client()` 中添加 `anthropic` 类型分支
-4. **添加配置**：在 `config/infra/llm.yaml.example` 中添加 Anthropic 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` / `llm_profile.yaml` 补充提供商条目
 5. **编写测试**：在 `tests/unit/infra/llm/` 下添加测试文件
 
 **支持的提供商**：
@@ -364,7 +345,7 @@ retry:
 **相关文件位置**：
 - 接口定义：`infra/llm/base.py`
 - 工厂函数：`infra/factories/llm.py`
-- 配置示例：`config/infra/llm.yaml.example`
+- 配置：`config/infra/default.yaml` + `llm_profile.yaml`
 - 测试文件：`tests/unit/infra/llm/`
 
 ---
@@ -385,8 +366,7 @@ retry:
 
 **配置示例**：
 ```yaml
-# config/infra/vector.yaml
-type: milvus
+# config/infra/default.yaml  → vector:type: milvus
 host: localhost
 port: 19530
 collection: aiplatform_vectors
@@ -400,13 +380,13 @@ metric_type: L2
 1. **创建实现文件**：在 `infra/vector/implementations/` 下新建 `pinecone_client.py`
 2. **实现接口**：继承 `VectorStore` 基类，实现所有抽象方法
 3. **注册工厂**：在 `create_vector_store()` 中添加 `pinecone` 类型分支
-4. **添加配置**：在 `config/infra/vector.yaml.example` 中添加 Pinecone 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` 的 `vector:` section 补充示例
 5. **编写测试**：在 `tests/unit/infra/vector/` 下添加测试文件
 
 **相关文件位置**：
 - 接口定义：`infra/vector/base.py`
 - 工厂函数：`infra/factories/vector.py`
-- 配置示例：`config/infra/vector.yaml.example`
+- 配置：`config/infra/default.yaml`（`vector:` section）
 - 测试文件：`tests/unit/infra/vector/`
 
 ---
@@ -567,36 +547,18 @@ health_check:
 
 ### mcp - MCP 协议
 
-**详细文档**：[mcp 模块文档](../../mcp/index.md)
+> **As-Is**：`infra/mcp/` 已删除。MCP 在 **core**，不在 infra。
 
-**操作路径**：
+**详细文档**：[mcp 占位说明](../../mcp/index.md) · [core 参考](../../../../docs/reference/mcp/index.md)
 
-| 任务 | 操作路径 | 参考文件位置 |
-|------|----------|-------------|
-| 获取 MCP 客户端 | 调用 `create_mcp_client(config)` | `infra/mcp/factory.py` |
-| 连接 | 调用 `await client.connect()` | `infra/mcp/base.py` |
-| 列出工具 | 调用 `await client.list_tools()` | `infra/mcp/base.py` |
-| 调用工具 | 调用 `await client.call_tool(name, args)` | `infra/mcp/base.py` |
+**操作路径**（core）：
 
-**配置示例**：
-```yaml
-# config/infra/mcp.yaml
-mcp:
-  timeout: 30
-  max_retries: 3
-  servers:
-    - name: filesystem
-      type: stdio
-      command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "./data"]
-    - name: brave-search
-      type: http
-      url: http://localhost:3001/mcp
-```
-
-**相关文件位置**：
-- 接口定义：`infra/mcp/base.py`
-- 工厂函数：`infra/mcp/factory.py`
-- 协议实现：`infra/mcp/protocol/`
+| 任务 | 参考位置 |
+|------|----------|
+| MCP Client / Manager | `aiPlat-core/core/apps/mcp/client.py` |
+| Adapter（MCP ↔ ITool） | `aiPlat-core/core/apps/mcp/adapter.py` |
+| Protocol / transport | `aiPlat-core/core/apps/mcp/protocol.py` |
+| Server | `aiPlat-core/core/apps/mcp/server.py` |
 
 ---
 
@@ -630,7 +592,7 @@ infra/factories/
 └── {module_name}.py     # 工厂函数
 
 config/infra/
-└── {module_name}.yaml.example  # 配置示例
+# 配置写入 config/infra/default.yaml 对应 section（无独立 *.yaml.example）
 
 tests/unit/infra/{module_name}/
 ├── __init__.py
@@ -767,7 +729,7 @@ tests/
 
 | 问题 | 可能原因 | 解决步骤 |
 |------|----------|----------|
-| 连接超时 | 服务未启动或配置错误 | 1. 执行 `make docker-up-infra`<br>2. 检查配置文件中的连接字符串 |
+| 连接超时 | 服务未启动或配置错误 | 1. 按仓库 Docker Compose/运维剧本启动依赖<br>2. 检查 `config/infra/default.yaml` 连接串 |
 | 查询慢 | 缺少索引或查询优化 | 1. 检查查询语句<br>2. 添加必要的索引 |
 | 连接池耗尽 | 并发连接过多 | 1. 检查连接池配置<br>2. 增加 `pool.max_size` |
 | 事务死锁 | 并发更新冲突 | 1. 检查事务顺序<br>2. 减少事务持有时间 |
@@ -785,7 +747,7 @@ tests/
 
 | 问题 | 可能原因 | 解决步骤 |
 |------|----------|----------|
-| 连接失败 | 服务未启动 | 1. 执行 `make docker-up-infra`<br>2. 检查 Milvus 端口 |
+| 连接失败 | 服务未启动 | 1. 按仓库 Docker Compose/运维剧本启动依赖<br>2. 检查向量服务端口 |
 | 搜索无结果 | 索引为空或维度不匹配 | 1. 检查索引是否创建<br>2. 检查向量维度是否匹配 |
 | 插入失败 | ID 重复或数据格式错误 | 1. 检查 ID 是否唯一<br>2. 检查向量维度 |
 | 性能差 | 索引类型不合适 | 1. 检查索引类型配置<br>2. 考虑使用更高效的索引类型 |

@@ -2722,7 +2722,7 @@ scan_hash: 8f9548ec24f4
 | Value Center API | ⚠️ deprecated aiPlat-platform/apps/value/api/value.py` + `core/schemas_value.py | ✅ | CRUD endpoints: `/all/goals`, `/all/goals/{id}`, `/all/goals/{id}/trend`, `/all/strategy`; Schemas: `GoalCreateRequest`, `GoalUpdateRequest`, `GoalSourceConfigRequest` | 已合入 |
  `core/api/routers/value.py` | ✅ | `get_all_goals`, `create_goal_all`, `update_goal_all`, `delete_goal_all`, `create_business_goal`, `get_goal_trend_all`, `get_strategy_all` + 4 REST endpoints (`/all/goals`, `/all/strategy`, `/all/goals/{id}`, `/all/goals/{id}/trend`) | 已合入 |
 | Proposal 工作流 | harness/learning/proposal_store.py | ✅ | draft→pending_approval→approved→merged/rejected + branch/merge语义 (Palantir AIP对齐) | 已合入 |
-| FDEBuilderOrchestrator | aiPlat-core/core/apps/fde/service/_archive/builder.py | ✅ | FDE 对话式 Agent 构建：_clarify()→DomainRouter→SkillRegistry→auto_fill→Builder.deploy_app() | 已合入 |
+| FDEBuilderOrchestrator | aiPlat-core/core/apps/fde/service/_archive/builder.py | ⚠️ | **已归档（Phase 0 D1）**：零生产 caller；交付走 factory Pipeline。路径在 `_archive/`，勿当作可用编排入口 | 已归档 |
 | Agent 可发现性 | aiPlat-core/core/api/routers/wiki.py:/ontology/{domain}/discover | ✅ | Agent动态查询 ObjectTypes/Links/Actions/Interfaces，自主发现操作能力 | 已合入 |
 
 ---
@@ -4353,7 +4353,7 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 174 | 0 | 174 |
+| 扩展与学习 | 173 | 1 | 174 |
 | Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 579 | 0 | 579 |
 | MCP 协议 | 11 | 0 | 11 |
@@ -4387,7 +4387,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3433** | **10** | **3443** |
+| **总计** | **3432** | **11** | **3443** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

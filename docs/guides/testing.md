@@ -56,7 +56,7 @@ AI Platform 采用测试金字塔策略，确保测试效率和可靠性：
 |------|----------|----------|
 | **Layer 0 (infra)** | 基础设施正确性 | 数据库连通性、LLM 连接、向量存储、消息队列 |
 | **Layer 1 (core)** | 业务逻辑正确性 | Agent 执行、Skill 调用、编排流程、记忆系统 |
-| **Layer 2 (platform)** | API 正确性 | REST/GraphQL 端点、认证授权、多租户隔离 |
+| **Layer 2 (platform)** | API 正确性 | REST 端点、认证授权、多租户隔离（GraphQL 未实现） |
 | **Layer 3 (app)** | 用户体验正确性 | 消息网关、CLI 命令、Web UI 交互 |
 
 ### 测试依赖规则
@@ -773,7 +773,7 @@ pytest core/tests/unit/test_adapters --cov=adapters --cov-report=term-missing
 
 **测试重点**：
 - REST API 测试
-- GraphQL API 测试
+- GraphQL API 测试（平台未实现；勿当现网门禁）
 - 认证授权测试
 - 多租户隔离测试
 - API 网关测试

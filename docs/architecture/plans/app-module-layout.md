@@ -16,7 +16,7 @@ FDE、Builder、Workbench、Value、Learning、Prompt Management 等所有业务
 
 ```
 {module_name}/
-├── api/                    ← REST/GraphQL 端点定义
+├── api/                    ← REST 端点定义（GraphQL 未实现）
 │   ├── __init__.py
 │   ├── routers.py          ← @router.get / @router.post 等
 │   └── schemas.py          ← Pydantic 请求/响应模型

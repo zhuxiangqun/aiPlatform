@@ -29,12 +29,12 @@ harness/
 │   ├── agent.py                   # IAgent, AgentConfig, AgentResult
 │   ├── tool.py                    # ITool, ToolConfig, ToolResult
 │   ├── skill.py                   # ISkill, SkillConfig, SkillResult
-│   ├── loop.py                    # ILoop, LoopState, LoopResult
+│   ├── loop/                     # ILoop, LoopState, LoopResult
 │   ├── coordinator.py             # ICoordinator
 │   └── (To-Be)                     # IContext/IRouter/IAdapter 如需使用，应补齐实现与接线
 │
 ├── execution/                      # 执行系统
-│   ├── loop.py                     # 执行循环 (ReAct Loop)
+│   ├── loop/                      # 执行循环 (ReAct Loop)
 │   ├── retry.py                    # 重试管理器
 │   ├── policy.py                   # 执行策略
 │   ├── feedback.py                 # 反馈机制

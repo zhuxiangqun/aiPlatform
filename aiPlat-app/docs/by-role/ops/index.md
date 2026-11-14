@@ -6,6 +6,8 @@ doc_type: Index
 
 > aiPlat-app - 部署运维与监控配置
 
+> **As-Is（2026-11）**：下文主机树（`/var/log/aiplatform/`、`/var/www/ai-platform/`）、`deploy/*`、`aiplat-cli`、`pip install aiplat-cli` 等为**历史示意**，仓库无法独立证明对应现网布局。关闭 needs-owner 前勿当运维手册执行；以根仓 README / CI / 实际部署剧本为准。
+
 ---
 
 ## 🎯 运维关注点

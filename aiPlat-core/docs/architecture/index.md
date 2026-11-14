@@ -325,7 +325,7 @@ harness/
                                   │ delegates to
                                   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ harness/execution/loop.py                                       │
+│ harness/execution/loop/                                       │
 │                                                                  │
 │  while should_continue(state):                                  │
 │      │                                                           │

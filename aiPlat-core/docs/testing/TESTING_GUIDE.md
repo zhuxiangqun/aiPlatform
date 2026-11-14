@@ -62,7 +62,7 @@ async def test_memory_store():
 
 - `harness/integration.py` - 统一入口
 - `harness/execution/` - 执行系统
-  - `loop.py` - Loop-first 执行主路径
+  - `loop/` - Loop-first 执行主路径
   - `langgraph/core.py` - LangGraph 编排
   - `langgraph/callbacks.py` - 回调系统
 - `harness/memory/` - 记忆系统
