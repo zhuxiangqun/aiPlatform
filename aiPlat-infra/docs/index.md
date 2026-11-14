@@ -9,6 +9,8 @@ doc_type: Index
 
 > 基础设施层 - Layer 0，管理和抽象所有基础设施资源
 
+> **As-Is（2026-11）配置路径**：真实配置在 `aiPlat-infra/config/infra/`（`default.yaml` / `development.yaml` / `production.yaml` / `test.yaml` / `llm_profile.yaml`）。**不存在** per-module `database.yaml.example` / `llm.yaml.example`；各子系统多为 `default.yaml` 内 section。下文示例若写 `config/infra/...`，默认相对 `aiPlat-infra/`。`infra/mcp/` 已删除，MCP 见 `aiPlat-core/core/apps/mcp/`。
+
 ---
 
 ## 🎯 模块定位
@@ -420,11 +422,13 @@ results = await vector_store.search(
 
 ### 配置文件位置
 
-| 环境 | 配置文件路径 |
+| 环境 | 配置文件路径（相对 `aiPlat-infra/`） |
 |------|-------------|
+| 默认/基线 | `config/infra/default.yaml` |
 | 开发环境 | `config/infra/development.yaml` |
 | 测试环境 | `config/infra/test.yaml` |
 | 生产环境 | `config/infra/production.yaml` |
+| LLM 档案 | `config/infra/llm_profile.yaml` |
 
 ---
 

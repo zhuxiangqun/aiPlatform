@@ -46,15 +46,11 @@ make docker-status
 
 **配置环境变量**：
 ```bash
-# 复制配置模板
-cp config/infra/database.yaml.example config/infra/database.yaml
-cp config/infra/llm.yaml.example config/infra/llm.yaml
-cp config/infra/vector.yaml.example config/infra/vector.yaml
-
-# 编辑配置文件，填入必要的配置
-# - 数据库连接字符串
-# - LLM API 密钥
-# - 向量存储配置
+# As-Is：无 per-module *.yaml.example。编辑现有文件（相对 aiPlat-infra/）：
+#   config/infra/default.yaml      # 各子系统 section
+#   config/infra/development.yaml  # 开发覆盖
+#   config/infra/llm_profile.yaml  # 模型档案
+# 密钥走环境变量，勿把 secret 写入 YAML。
 ```
 
 ### 验证环境
@@ -304,13 +300,13 @@ pool:
 1. **创建实现文件**：在 `infra/database/implementations/` 下新建 `mysql_client.py`
 2. **实现接口**：继承 `DatabaseClient` 基类，实现所有抽象方法
 3. **注册工厂**：在 `create_database_client()` 中添加 `mysql` 类型分支
-4. **添加配置**：在 `config/infra/database.yaml.example` 中添加 MySQL 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` 的 `database:` section（或 `development.yaml` 覆盖）补充示例
 5. **编写测试**：在 `tests/unit/infra/database/` 下添加测试文件
 
 **相关文件位置**：
 - 接口定义：`infra/database/base.py`
 - 工厂函数：`infra/factories/database.py`
-- 配置示例：`config/infra/database.yaml.example`
+- 配置：`config/infra/default.yaml`（`database:` section）
 - 测试文件：`tests/unit/infra/database/`
 
 ---
@@ -348,7 +344,7 @@ retry:
 1. **创建实现文件**：在 `infra/llm/providers/` 下新建 `anthropic_client.py`
 2. **实现接口**：继承 `LLMClient` 基类，实现 `chat()`, `chat_stream()`, `embed()` 方法
 3. **注册工厂**：在 `create_llm_client()` 中添加 `anthropic` 类型分支
-4. **添加配置**：在 `config/infra/llm.yaml.example` 中添加 Anthropic 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` / `llm_profile.yaml` 补充提供商条目
 5. **编写测试**：在 `tests/unit/infra/llm/` 下添加测试文件
 
 **支持的提供商**：
@@ -364,7 +360,7 @@ retry:
 **相关文件位置**：
 - 接口定义：`infra/llm/base.py`
 - 工厂函数：`infra/factories/llm.py`
-- 配置示例：`config/infra/llm.yaml.example`
+- 配置：`config/infra/default.yaml` + `llm_profile.yaml`
 - 测试文件：`tests/unit/infra/llm/`
 
 ---
@@ -400,13 +396,13 @@ metric_type: L2
 1. **创建实现文件**：在 `infra/vector/implementations/` 下新建 `pinecone_client.py`
 2. **实现接口**：继承 `VectorStore` 基类，实现所有抽象方法
 3. **注册工厂**：在 `create_vector_store()` 中添加 `pinecone` 类型分支
-4. **添加配置**：在 `config/infra/vector.yaml.example` 中添加 Pinecone 配置示例
+4. **添加配置**：在 `config/infra/default.yaml` 的 `vector:` section 补充示例
 5. **编写测试**：在 `tests/unit/infra/vector/` 下添加测试文件
 
 **相关文件位置**：
 - 接口定义：`infra/vector/base.py`
 - 工厂函数：`infra/factories/vector.py`
-- 配置示例：`config/infra/vector.yaml.example`
+- 配置：`config/infra/default.yaml`（`vector:` section）
 - 测试文件：`tests/unit/infra/vector/`
 
 ---
@@ -612,7 +608,7 @@ infra/factories/
 └── {module_name}.py     # 工厂函数
 
 config/infra/
-└── {module_name}.yaml.example  # 配置示例
+# 配置写入 config/infra/default.yaml 对应 section（无独立 *.yaml.example）
 
 tests/unit/infra/{module_name}/
 ├── __init__.py

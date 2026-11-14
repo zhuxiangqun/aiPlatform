@@ -5,7 +5,7 @@ doc_type: Reference
 # 架构实现状态
 
 > 本文档是 aiPlat-core 各子系统实现状态的**唯一真相来源**。
-> 最后更新: 2026-07-01（FDE 操作系统建设完毕: SpecLifecycle + FeedbackRadar + TraceVisualizer + 5 routing_modes + Matter 验收）
+> 最后更新: 2026-11-14（Tool 状态对账：CodeExecutionTool/BrowserTool 已实现；非 2026-07 桩）
 
 ## 可追溯断言规则（必须遵守｜适用于全仓 docs）
 
@@ -366,9 +366,9 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 | CalculatorTool | ✅ | 真实可用 |
 | SearchTool | ✅ | 真实可用（DuckDuckGo） |
 | FileOperationsTool | ✅ | 真实 Path/os 实现 |
-| CodeExecutionTool | ❌ | 桩（需要沙箱） |
+| CodeExecutionTool | ✅ | `core/apps/tools/code.py`：经 `exec_drivers` 沙箱执行（python/javascript）；server lifespan 注册 |
 | DatabaseTool | ✅ | SQLite/PostgreSQL/MySQL 三后端实现 |
-| BrowserTool | ❌ | 桩（需要 Playwright） |
+| BrowserTool | ✅ | `core/apps/tools/browser.py`：Playwright 驱动（缺依赖时运行时报错，非空桩） |
 | WebFetchTool | ✅ | 真实实现（aiohttp），server.py lifespan 注册 |
 | HTTPClientTool | ✅ | 真实实现（aiohttp），server.py lifespan 注册 |
 | Agent 版本管理 | ✅ | create_version/rollback_version/get_versions 端点均可用 |

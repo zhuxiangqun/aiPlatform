@@ -41,11 +41,15 @@ indexer.py → wiki_indexer.py
 - infra `docs/mcp` 改为占位重定向；architect/developer 去 `infra/mcp/*` 幻影路径
 - platform ops/developer：标明无 `config/`、`deploy/` 树；deployment 指向真实 `DeploymentManager`
 
+续修（2026-11-14 同 PR）：
+- `ARCHITECTURE_STATUS`：CodeExecutionTool / BrowserTool ❌→✅
+- infra docs index + developer：canonical `aiPlat-infra/config/infra/`；去掉假 `*.yaml.example`
+- app ops：文首降级为历史示意（needs-owner 仍登记，待现网证据）
+
 仍未全量清完（需逐篇）：
 ```text
-core docs 剩余符号/状态/行号问题
-infra docs 其余 config 路径/测试命令
-app ops 部署主机树（needs-owner）
+core docs 其余符号/行号
+infra 各子模块文档内散落的历史示例命令
 reports/ 与 docs/archive/ 历史分析稿（非现网契约）
 ```
 

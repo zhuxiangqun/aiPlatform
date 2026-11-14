@@ -35,7 +35,7 @@ doc_type: Report
 | 文档 | 需要 owner 提供 | 当前状态 |
 |---|---|---|
 | `docs/guides/fde/06-sop-domain-delivery.md` | `~/.aiplat/...service-domain*` 的实际文件或 workspace_seeds 映射 | open |
-| `aiPlat-app/docs/by-role/ops/index.md` | 部署主机树/日志路径/ops CLI 的实际环境 | open |
+| `aiPlat-app/docs/by-role/ops/index.md` | 部署主机树/日志路径/ops CLI 的实际环境 | **降级为示意**（2026-11-14 文首 As-Is 横幅）；正式关闭仍需 owner 现网证据 |
 
 ## 关闭标准
 

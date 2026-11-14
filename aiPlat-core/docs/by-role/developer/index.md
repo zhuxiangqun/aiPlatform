@@ -39,14 +39,7 @@ poetry install
 
 ### 配置环境
 
-```bash
-# 复制配置模板
-cp config/core/agents.yaml.example config/core/agents.yaml
-cp config/core/skills.yaml.example config/core/skills.yaml
-
-# 编辑配置文件
-vi config/core/agents.yaml
-```
+> **As-Is**：仓库无 `config/core/*.yaml.example`。Agent/Skill 以 `~/.aiplat/agents|skills` 与 workspace seeds 为准；密钥走环境变量。
 
 ### 验证环境
 
