@@ -1,0 +1,35 @@
+{
+  "schema": "eval.phase1.auto_check.v0",
+  "checked_at": "2026-11-14T16:11:57+08:00",
+  "accuracy_claim": false,
+  "not_dual_human_signoff": true,
+  "honesty": "Engineering auto-check of PHASE1_AUDIT_WORKSHEET §2 items 1–5. Does NOT replace dual-human sign-off. Does NOT authorize claiming 首版 5/5 已审计通过.",
+  "all_pass": true,
+  "results": [
+    {
+      "check": "P1-A1 sha256_sample",
+      "pass": true,
+      "detail": "matched=['docs/a3/SCORE_SCOPE_V1.md', 'docs/a3/PREFERENCE_V0.md', 'docs/a3/evidence/g2b_accuracy_aggregate.v1.json']; fail=[]"
+    },
+    {
+      "check": "P1-A2 dual_human_attestation",
+      "pass": true,
+      "detail": "status=confirmed; note=Operator confirmed A/B were two distinct humans, independent blind, not script/AI/same-person. κ/agreement still ≠ accuracy_claim."
+    },
+    {
+      "check": "P1-A3 scoped_not_product_claim",
+      "pass": true,
+      "detail": "decision=accept_scoped_g2b_accuracy_claim; product=[False, False, False]; scoped=True"
+    },
+    {
+      "check": "P1-A4 forbidden_claims_scan",
+      "pass": true,
+      "detail": "hits=0 sample=[]"
+    },
+    {
+      "check": "P1-A5 production_unscored",
+      "pass": true,
+      "detail": "score=None; scored_in_v1=False; gaps=['B4-S', 'B5', 'B6', 'SPLIT_CHECKLIST', 'staging']; authorize=False"
+    }
+  ]
+}

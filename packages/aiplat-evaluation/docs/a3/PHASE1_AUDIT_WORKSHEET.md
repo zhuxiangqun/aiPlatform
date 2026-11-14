@@ -44,15 +44,28 @@ doc_type: Reference
 
 ---
 
-## 2. 审计人复核清单（人工）
+## 2. 审计人复核清单
 
-审阅人须能独立完成：
+### 2.1 工程自动核对（可脚本；≠ 签字）
 
-1. 打开 `evidence/evidence_manifest.v1.json`，抽 ≥3 个 `sha256` 条目本地复算一致  
-2. 核对 `dual_human_attestation.status=confirmed` 与 note 语义（κ ≠ accuracy）  
-3. 核对 `g2b_accuracy_claim_attestation.v1.json` 为 **scoped** 接受，未提升产品级 claim  
-4. 确认 UI/对外文档无「生产已独立 / 准确率已认证 / 首版 5/5 已审计通过」（在本签字完成前）  
-5. 确认生产轴仍 unscored，缺口列表仍在
+```bash
+python3 packages/aiplat-evaluation/scripts/phase1_auto_check.py
+# → docs/a3/evidence/phase1_auto_check.v0.json
+```
+
+| # | 项 | 最近自动结果（2026-11-14） |
+|---|---|---|
+| 1 | 抽 ≥3 个 sha256 复算 | **PASS** · SCORE_SCOPE / PREFERENCE_V0 / g2b_accuracy_aggregate |
+| 2 | `dual_human_attestation.status=confirmed` + note（κ ≠ accuracy） | **PASS** |
+| 3 | attestation 为 scoped；产品级 claim 仍 false | **PASS** |
+| 4 | 禁宣扫描（产品向文案） | **PASS** · hits=0 |
+| 5 | 生产轴 unscored + gaps | **PASS** · gaps 含 staging/B4-S/B5/B6/SPLIT_CHECKLIST |
+
+证据：[`evidence/phase1_auto_check.v0.json`](./evidence/phase1_auto_check.v0.json)（`not_dual_human_signoff=true`）。
+
+### 2.2 人工签字（必须真人；不可代理自签）
+
+审阅人可抽查自动结果，或亲手重做 2.1 五项后签字：
 
 | 角色 | 姓名 | 日期 | 结论（pass / fail + 备注） |
 |---|---|---|---|
