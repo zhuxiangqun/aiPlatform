@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T07:35:00+08:00",
+  "reviewed_at": "2026-11-15T07:40:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "a25b1ee3b5a2ce4951bdc0932e005e7ca793db8bd2773f16dafd58fbac267cc7",
-  "head_sha": "14a8af47316e1b1365c14acdb62ad00fce1f565c",
+  "diff_sha256": "c6782792c7ea9e6a47d4ac6f8bd99c22dbea5fc592ac846a439fe42d32e70d1d",
+  "head_sha": "5459329f8975a20ae3af1cc4c109361b2389b900",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "CI residual: B4S relative link + run/trace clause-sync for asset SecureScan surface. CI unlock still needs non-author Approve."
+  "note": "contracts-guard rule #4: core boundary architecture contract clause-sync for asset SecureScan."
 }
