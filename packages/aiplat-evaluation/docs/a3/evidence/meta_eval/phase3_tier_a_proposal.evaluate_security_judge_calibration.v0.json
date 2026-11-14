@@ -4,8 +4,8 @@
   "seq": 10,
   "symbol": "evaluate_security_judge_calibration",
   "meta_family": "F2",
-  "recorded_at": "2026-11-14T21:11:30+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:13:00+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/apps/eval/service/security_judge_calib.py:321",
   "depends_on_accepted": [
     "evaluate_judge_calibration_gate",
@@ -14,6 +14,7 @@
   ],
   "meta_family_status": "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
   "evidence_refs": [
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
     "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
     "docs/a3/evidence/meta_eval/f2_security_judge_pack_pin.v0.json"
   ],
@@ -30,8 +31,9 @@
     "l5_declare",
     "security_certification"
   ],
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. F2 security judge calib scoped gate; ≠ L5 declare / security cert / product accuracy_claim / process_split."
+  "owner_decision": "ACCEPT evaluate_security_judge_calibration scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:13:00+08:00",
+  "honesty": "Owner accepted scoped F2 Tier A gate for evaluate_security_judge_calibration only. ≠ L5 declare / security cert; global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }

@@ -31,7 +31,7 @@ doc_type: Reference
 | `eval_open_capability_judge_calibration` | F1 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:10705` | **false** |
 | `evaluate_judge_calibration_gate` | F1 | impl | `aiPlat-core/core/apps/eval/service/capability_p4_gate.py:33` | **false** |
 | `evaluate_security_family_gates` | F2 | impl | `aiPlat-core/core/apps/eval/service/security_family_report.py:428` | **false** |
-| `evaluate_security_judge_calibration` | F2 | impl | `aiPlat-core/core/apps/eval/service/security_judge_calib.py:321` | **false** |
+| `evaluate_security_judge_calibration` | F2 | impl | `aiPlat-core/core/apps/eval/service/security_judge_calib.py:321` | **scoped true** |
 | `judge_calibration_gate_for_ticket` | F1 | impl | `aiPlat-core/core/apps/eval/service/capability_p4_gate.py:161` | **false** |
 | `load_judge_calib_defaults` | F2 | impl | `aiPlat-core/core/apps/eval/service/security_judge_calib.py:61` | **false** |
 | `open_capability_judge_calibration` | F1 | impl | `aiPlat-core/core/apps/eval/service/capability_p4_gate.py:96` | **false** |
