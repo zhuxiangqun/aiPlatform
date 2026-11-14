@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T00:13:09+08:00",
+  "reviewed_at": "2026-11-15T00:17:59+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "f9c0b563fa782671239cbca18f65552ef5c66e14786b43ddf19eebc081671782",
-  "head_sha": "a620475ac315ac5ada93029a4519af3c672b71da",
+  "diff_sha256": "ccf87e215ddbe19e9c407aad090d574a5d091832b13ffbd3d635cf9d5680a1d4",
+  "head_sha": "cc797eaa88428faab52899ca4bc4ef164ebae179",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase4 G2b→disposition ingest. 4 open tickets human-close. closed_loop/Chart false. Local lock."
+  "note": "Phase4 G2b provisional closes. ≠ product fix. closed_loop/Chart false. Local lock."
 }
