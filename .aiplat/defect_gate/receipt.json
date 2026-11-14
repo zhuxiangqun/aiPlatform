@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-14T23:34:56+08:00",
+  "reviewed_at": "2026-11-14T23:58:30+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "c580a79e2a7f296a1737d72f239e6231ab99c79c220058ada5fa02ca62d0398c",
-  "head_sha": "d2e42150c2814c6a0c877d5504dfc76fbf2b1f70",
+  "diff_sha256": "bba48796a58786f8a49d4293fd5365c040c2a1a252a96287d30faad578852311",
+  "head_sha": "1fd40884050eb7e045e79f9e0f124d56a81b4ec8",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase4 disposition ledger + fingerprint stub. closed_loop_claim false. Chart false. Local lock only."
+  "note": "AUTHORIZE phase4_routing + demo disposition rehearsal. closed_loop_claim false. Chart false. Local lock only."
 }
