@@ -5,7 +5,8 @@ doc_type: Reference
 # R11 · 元评测初始阈值 + Owner 签字页
 
 > 计划 §4.4 / §15 R11 · 改阈值 = semantic → 走 [`SHA_CHANGE_LOG.md`](./SHA_CHANGE_LOG.md)  
-> **诚实锁**：签字后才可勾 R11「完成」；**≠** Tier A 扩容自动放行（仍须元评测绿灯）
+> **状态**：**已签字（2026-11-14）** → §15 R11 可勾完成  
+> **诚实锁**：**≠** Tier A 扩容自动放行（仍须元评测绿灯）
 
 ---
 
@@ -23,15 +24,17 @@ doc_type: Reference
 
 ---
 
-## Owner 签字栏（填后可勾 §15 R11）
+## Owner 签字栏（已完成）
 
 | 字段 | 值 |
 |---|---|
 | 阈值版本 | meta-eval-thresholds.v0 |
-| Owner | ________________ |
-| 签字日 | ________________ |
-| 结论 | ☐ accept 初值 / ☐ 修订后再签（须 change_id） |
+| Owner | 朱向群 |
+| 签字日 | 2026-11-14 |
+| 结论 | **☑ accept 初值** |
 | 备注 | 可调阈值须走 SHA/semantic 变更控制 |
+
+签字记录：[`evidence/r11_meta_eval_thresholds_signoff.v1.json`](./evidence/r11_meta_eval_thresholds_signoff.v1.json)
 
 ---
 
