@@ -4,12 +4,12 @@ doc_type: Reference
 
 # META_EVAL F2 状态（Security family）
 
-> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T19:39:59+08:00
+> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T19:48:35+08:00
 > **诚实锁**：`family_green` ≠ L5 declare ≠ Tier A · `accuracy_claim=false` · `security_certification=false`
 
 ## 汇总
 
-- green **3/5**
+- green **4/5**
 - `family_green`: **false**
 - `tier_a_claim_authorized`: **false**
 - `l5_declare_authorized`: **false**
@@ -18,7 +18,7 @@ doc_type: Reference
 
 | 检查 | 状态 | green | 说明 |
 |---|---|:---:|---|
-| `judge_calibration` | pending_security_human_judge | ❌ | Pending security-specific human judge ratings (F1 prerequisite=met; F1 ≠ F2 security judge). |
+| `judge_calibration` | green | ✅ | Security human judge metrics meet R11. |
 | `gold_audit` | advisory_present | ✅ | S1 aggregate present with honesty locks (accuracy_claim=false, not_security_certification=true). |
 | `contamination` | advisory_only | ✅ | Inherited F1 advisory; R11 advisory_only. |
 | `holdout_isolation` | declared | ✅ | L5 declare / security certification holdout-from-claim declared. |

@@ -2,16 +2,16 @@
   "schema": "eval.meta_eval.f2_status.v0",
   "family_id": "F2",
   "family": "Security family gates",
-  "recorded_at": "2026-11-14T19:39:59+08:00",
+  "recorded_at": "2026-11-14T19:48:35+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {
       "id": "judge_calibration",
-      "status": "pending_security_human_judge",
-      "green": false,
+      "status": "green",
+      "green": true,
       "f1_prerequisite_met": true,
       "source": "docs/a3/evidence/meta_eval/f2_security_judge_pack_pin.v0.json",
-      "note": "Pending security-specific human judge ratings (F1 prerequisite=met; F1 ≠ F2 security judge)."
+      "note": "Security human judge metrics meet R11."
     },
     {
       "id": "gold_audit",
@@ -44,7 +44,7 @@
     }
   ],
   "counts": {
-    "green": 3,
+    "green": 4,
     "total": 5
   },
   "family_green": false,

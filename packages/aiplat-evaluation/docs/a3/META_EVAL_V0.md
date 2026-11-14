@@ -81,5 +81,5 @@ doc_type: Reference
 | 协议成文 | **done**（本文） |
 | 阈值 owner 签字 | **done**（R11） |
 | 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；F1+F3+F4 绿；F2 partial） |
-| `evidence/meta_eval/` 实测证据 | **F1+F3+F4 green**；F2=3/5（安全裁判/IAA 待人）；仍 ≠ Tier A；F3 绿 ≠ `process_split_authorized` |
+| `evidence/meta_eval/` 实测证据 | **F1+F3+F4 green**；F2=4/5（裁判绿；dual-human 待人）；仍 ≠ Tier A；F3 绿 ≠ `process_split_authorized` |
 | Tier A 扩容 | **blocked**（家族绿 ≠ 扩容授权） |

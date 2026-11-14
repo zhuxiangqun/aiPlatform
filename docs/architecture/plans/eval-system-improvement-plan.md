@@ -756,7 +756,7 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 不可写：生产已独立 / 准确率已认证 / process_split_authorized=true / Tier A 自动扩容
 ```
 
-R11 已签字（朱向群 · accept v0）。执行焦点：F1+F3+F4 已绿；F2=3/5（待安全人裁判+dual-human）；F3 绿 ≠ process_split 翻转；Phase 2 仅 authorize 后推进；禁一次全开 A。
+R11 已签字（朱向群 · accept v0）。执行焦点：F1+F3+F4 已绿；F2=4/5（安全裁判已绿；仅 dual-human 待人）；F3 绿 ≠ process_split 翻转；Phase 2 仅 authorize 后推进；禁一次全开 A。
 
 ---
 
@@ -786,3 +786,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：F1+F3+F4 已绿；F2=
 | v1.1.7+exec11 | 2026-11-14 | META_EVAL F3 G2b/process_split 边界 5/5（≠ 翻转 process_split_authorized） |
 | v1.1.7+exec12 | 2026-11-14 | META_EVAL F2 人填包：安全裁判 worksheet(n=19)+dual-human；仍 3/5 待人 |
 | v1.1.7+exec13 | 2026-11-14 | F2 CSV 人填面（judge/dual）+ import/score；仍待真人，禁 AI 预填 |
+| v1.1.7+exec14 | 2026-11-14 | F2 安全人裁判 19/19 scored（agr=1 κ=1 ECE=0.05）→ 4/5；dual-human 仍开 |
