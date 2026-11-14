@@ -56,6 +56,7 @@ KNOWN_SIGNATURES: Dict[str, Dict[str, Any]] = {
 
 @dataclass
 class ModelIdentity:
+    """ModelIdentity。"""
     model_name: str
     detected_family: str = "unknown"
     detected_variant: str = "unknown"
@@ -67,6 +68,7 @@ class ModelIdentity:
 
 @dataclass
 class AuditReport:
+    """AuditReport。"""
     identity: ModelIdentity
     fingerprint: Dict[str, Any] = field(default_factory=dict)
     recommendations: List[str] = field(default_factory=list)
@@ -74,6 +76,8 @@ class AuditReport:
     generated_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "identity": {
                 "model_name": self.identity.model_name,
@@ -93,6 +97,7 @@ class AuditReport:
 
 @dataclass
 class ComparisonResult:
+    """ComparisonResult。"""
     model_a: str
     model_b: str
     similarity: float
@@ -101,6 +106,8 @@ class ComparisonResult:
     details: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "model_a": self.model_a,
             "model_b": self.model_b,
@@ -112,6 +119,11 @@ class ComparisonResult:
 
 
 async def generate_audit_report(model_name: str) -> AuditReport:
+    """generate_audit_report。
+
+    Args:
+        model_name: model_name 参数。
+    """
     import time as _time
     collector = get_fingerprint_collector()
     fp = await collector.probe(model_name)
@@ -129,6 +141,12 @@ async def generate_audit_report(model_name: str) -> AuditReport:
 
 
 def compare_fingerprints(fp_a: ModelFingerprint, fp_b: ModelFingerprint) -> ComparisonResult:
+    """compare_fingerprints。
+
+    Args:
+        fp_a: fp_a 参数。
+        fp_b: fp_b 参数。
+    """
     dim_scores: Dict[str, float] = {}
     details: List[str] = []
 

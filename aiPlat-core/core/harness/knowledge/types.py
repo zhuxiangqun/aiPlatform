@@ -54,6 +54,8 @@ class KnowledgeMetadata:
     relevance: float = 1.0
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "source": self.source.value,
             "author": self.author,
@@ -80,6 +82,8 @@ class KnowledgeEntry:
     references: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "id": self.id,
             "type": self.type.value,
@@ -106,6 +110,8 @@ class KnowledgeQuery:
     tenant_id: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "query": self.query,
             "types": [t.value for t in self.types] if self.types else None,
@@ -134,6 +140,8 @@ class KnowledgeResult:
         return self.entry.content if self.entry else ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d = {
             "entry": self.entry.to_dict(),
             "score": self.score,

@@ -67,7 +67,13 @@ def _run_git(args: List[str], *, cwd: Path, env: Optional[Dict[str, str]] = None
 
 
 class RepoTool(BaseTool):
+    """RepoTool。"""
     def __init__(self, timeout: int = 20000):
+        """初始化。
+
+        Args:
+            timeout: 超时秒数。
+        """
         config = ToolConfig(
             name="repo",
             description="Git 仓库操作（状态/差异/日志/添加/检出/提交）",
@@ -104,11 +110,18 @@ class RepoTool(BaseTool):
         self._timeout_s = max(1.0, float(timeout) / 1000.0)
 
     def check_available(self) -> tuple[bool, Optional[str]]:
+        """check_available。
+        """
         if shutil.which("git") is None:
             return False, "git_not_found"
         return True, None
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         async def handler() -> ToolResult:
             op = str(params.get("operation") or "").strip()
             if not op:

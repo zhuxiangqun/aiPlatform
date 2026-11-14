@@ -59,7 +59,13 @@ def _class_map(raw: Any) -> Dict[str, Dict[str, Any]]:
 
 
 def json_change_diff(before: Any, after: Any, *, limit: int = 40) -> Dict[str, Any]:
-    """Shallow before/after of an already-approved apply. Does not write YAML."""
+    """Shallow before/after of an already-approved apply. Does not write YAML.
+
+    Args:
+        before: before 参数。
+        after: after 参数。
+        limit: 返回条数上限。
+    """
     left = before if isinstance(before, dict) else {}
     right = after if isinstance(after, dict) else {}
     cap = max(1, min(int(limit or 40), 80))
@@ -99,7 +105,12 @@ def json_change_diff(before: Any, after: Any, *, limit: int = 40) -> Dict[str, A
 
 
 def project_ontology_changes(current: Any, changes: Any) -> Dict[str, Any]:
-    """In-memory apply of a proposal change dict. Does not write YAML."""
+    """In-memory apply of a proposal change dict. Does not write YAML.
+
+    Args:
+        current: current 参数。
+        changes: changes 参数。
+    """
     import copy
 
     data = copy.deepcopy(current if isinstance(current, dict) else {})
@@ -180,6 +191,11 @@ class VersionedOntologyStore:
     """Read, write, and version domain ontology YAML files."""
 
     def __init__(self, domain_id: str):
+        """初始化。
+
+        Args:
+            domain_id: domain 标识。
+        """
         self.domain_id = domain_id
         from core.harness.infrastructure.action_store import ActionStore
         self.store = ActionStore()
@@ -273,7 +289,12 @@ class VersionedOntologyStore:
     # ═══════════════════════════════════════════════════════
 
     async def create_proposal(self, changes: Dict, author: str = "system") -> str:
-        """Create an ontology evolution proposal. Returns proposal_id."""
+        """Create an ontology evolution proposal. Returns proposal_id.
+
+        Args:
+            changes: changes 参数。
+            author: author 参数。
+        """
         current_v = self.get_current_version()
         current = self.load_current()
         impact = self._analyze_impact(current, changes)
@@ -294,7 +315,11 @@ class VersionedOntologyStore:
         return proposal_id
 
     async def list_proposals(self, domain_id: str = "") -> List[Dict[str, Any]]:
-        """List proposals (optionally filtered by domain)."""
+        """List proposals (optionally filtered by domain).
+
+        Args:
+            domain_id: domain 标识。
+        """
         await self.store.initialize()
         return await self.store.list_ontology_proposals(domain_id or self.domain_id)
 
@@ -305,7 +330,13 @@ class VersionedOntologyStore:
         *,
         gate_passed: bool = False,
     ) -> Dict[str, Any]:
-        """Record approval. Role matrix runs only when PolicyGate has not already decided."""
+        """Record approval. Role matrix runs only when PolicyGate has not already decided.
+
+        Args:
+            proposal_id: proposal 标识。
+            approver_role: approver_role 参数。
+            gate_passed: gate_passed 参数。
+        """
         await self.store.initialize()
         proposal = await self.store.get_ontology_proposal(proposal_id)
         if not proposal:
@@ -337,12 +368,8 @@ class VersionedOntologyStore:
     async def apply_proposal(self, proposal_id: str) -> Dict[str, Any]:
         """Apply an approved proposal: generate new version YAML, archive old.
 
-        Returns receipt ``{ok, proposal_id, version_from, version_to, live_path, reason?}``.
-
-        P2-L1 tier gate (plan-tier-ontology-layering.md §3):
-          - max_tier == core  → 必须已通过架构评审（approval_level == architecture_review）
-          - edge→logic 升格    → 必须携带复用证明（promotion_proof.reuse_count ≥ 3）
-          - 任何到 core 的升格  → 必须已通过架构评审
+        Args:
+            proposal_id: proposal 标识。
         """
         await self.store.initialize()
         proposal = await self.store.get_ontology_proposal(proposal_id)
@@ -547,7 +574,11 @@ class VersionedOntologyStore:
         }
 
     async def rollback_proposal(self, proposal_id: str) -> Dict[str, Any]:
-        """Restore live YAML from pre-apply snapshot. Only for status=applied."""
+        """Restore live YAML from pre-apply snapshot. Only for status=applied.
+
+        Args:
+            proposal_id: proposal 标识。
+        """
         await self.store.initialize()
         proposal = await self.store.get_ontology_proposal(proposal_id)
         if not proposal:
@@ -611,7 +642,9 @@ class VersionedOntologyStore:
     ) -> Dict[str, Any]:
         """Opt-in edge-only auto approve→apply. Never for logic/core or promotions upward.
 
-        Gated by caller env check; this method still re-validates max_tier == edge.
+        Args:
+            proposal_id: proposal 标识。
+            actor: 操作者身份。
         """
         await self.store.initialize()
         proposal = await self.store.get_ontology_proposal(proposal_id)

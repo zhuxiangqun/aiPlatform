@@ -305,9 +305,12 @@ async def complete_chapter(
     chapter: ChapterContent,
     answers: List[Any],
 ) -> Dict[str, Any]:
-    u"""Assess all exercises in a chapter and return results + next step.
+    """Assess all exercises in a chapter and return results + next step.
 
-    If all exercises passed, mark chapter as completed and recommend next chapter.
+    Args:
+        learner: learner 参数。
+        chapter: chapter 参数。
+        answers: answers 参数。
     """
     exercises = chapter.exercises
     if not exercises:

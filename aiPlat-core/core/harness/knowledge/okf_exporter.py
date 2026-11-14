@@ -87,6 +87,8 @@ class OKFExporter:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._last_export_file = OKF_EXPORT_DIR / ".last_export.json"
 
     async def export(

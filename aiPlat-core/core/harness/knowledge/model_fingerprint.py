@@ -72,6 +72,7 @@ PROBE_QUESTIONS: List[Dict[str, Any]] = [
 
 @dataclass
 class ProbeResult:
+    """ProbeResult。"""
     probe_id: str
     dimension: str
     latency_ms: float = 0.0
@@ -86,6 +87,7 @@ class ProbeResult:
 
 @dataclass
 class ModelFingerprint:
+    """ModelFingerprint。"""
     model_name: str
     timestamp: float = field(default_factory=time.time)
     probe_results: List[ProbeResult] = field(default_factory=list)
@@ -97,6 +99,8 @@ class ModelFingerprint:
     confidence: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "model_name": self.model_name,
             "timestamp": self.timestamp,
@@ -126,9 +130,17 @@ class FingerprintCollector:
     """Collects behavioral fingerprints from a target model via LLM probing."""
 
     def __init__(self):
+        """初始化。
+        """
         self._cache: Dict[str, ModelFingerprint] = {}
 
     async def probe(self, model_name: str, timeout_s: float = 30.0) -> ModelFingerprint:
+        """probe。
+
+        Args:
+            model_name: model_name 参数。
+            timeout_s: timeout_s 参数。
+        """
         if model_name in self._cache:
             return self._cache[model_name]
 
@@ -233,6 +245,8 @@ _fingerprint_collector: Optional[FingerprintCollector] = None
 
 
 def get_fingerprint_collector() -> FingerprintCollector:
+    """获取 fingerprint_collector。
+    """
     global _fingerprint_collector
     if _fingerprint_collector is None:
         _fingerprint_collector = FingerprintCollector()

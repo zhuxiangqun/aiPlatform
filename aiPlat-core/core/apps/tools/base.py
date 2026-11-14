@@ -1,3 +1,5 @@
+"""base：模块接口。"""
+
 import logging
 """
 Tool Base Module
@@ -41,6 +43,11 @@ class BaseTool(ITool):
 
     def __init__(self, config: Any):
         # Accept ToolConfig or legacy ToolMetadata (+ later input_schema assignment).
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         if isinstance(config, ToolConfig):
             self._config = config
         elif isinstance(config, ToolMetadata):
@@ -84,6 +91,11 @@ class BaseTool(ITool):
 
     @input_schema.setter
     def input_schema(self, value: Any) -> None:
+        """input_schema。
+
+        Args:
+            value: value 参数。
+        """
         if isinstance(value, dict):
             self._config.parameters = value
         elif value is None:
@@ -91,7 +103,11 @@ class BaseTool(ITool):
 
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute tool - to be implemented by subclass"""
+        """Execute tool - to be implemented by subclass。
+
+        Args:
+            params: params 参数。
+        """
         raise NotImplementedError("Subclass must implement execute")
 
     # -----------------------------
@@ -107,15 +123,27 @@ class BaseTool(ITool):
         return True, None
 
     def set_permission_manager(self, permission_manager: Any) -> None:
-        """Inject permission manager (optional)."""
+        """Inject permission manager (optional).
+
+        Args:
+            permission_manager: permission_manager 参数。
+        """
         self._permission_manager = permission_manager
 
     def set_tracer(self, tracer: Any) -> None:
-        """Inject tracer (optional)."""
+        """Inject tracer (optional).
+
+        Args:
+            tracer: tracer 参数。
+        """
         self._tracer = tracer
 
     def validate_params(self, params: Dict[str, Any]) -> bool:
-        """Validate parameters"""
+        """Validate parameters。
+
+        Args:
+            params: params 参数。
+        """
         # Check required parameters
         required = self._config.parameters.get("required", [])
         
@@ -204,10 +232,14 @@ class BaseTool(ITool):
     # without additional wrapper objects.
     @property
     def name(self) -> str:
+        """name。
+        """
         return self.get_name()
 
     @property
     def description(self) -> str:
+        """description。
+        """
         return self.get_description()
 
     def __repr__(self) -> str:
@@ -254,6 +286,8 @@ class CalculatorTool(BaseTool):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="calculator",
             description="执行数学计算",
@@ -271,7 +305,11 @@ class CalculatorTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute calculation (wrapped)."""
+        """Execute calculation (wrapped).
+
+        Args:
+            params: params 参数。
+        """
 
         async def handler() -> ToolResult:
             expression = params.get("expression", "")
@@ -312,6 +350,8 @@ class ToolSearchTool(BaseTool):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="tool_search",
             description="搜索/查看可用工具（用于工具规模较大时按需发现）",
@@ -329,6 +369,11 @@ class ToolSearchTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         async def handler() -> ToolResult:
             from .base import get_tool_registry  # type: ignore
 
@@ -421,6 +466,8 @@ class SearchTool(BaseTool):
     deprecated = True
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="search",
             description="搜索互联网信息",
@@ -443,7 +490,11 @@ class SearchTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute search using DuckDuckGo Lite"""
+        """Execute search using DuckDuckGo Lite。
+
+        Args:
+            params: params 参数。
+        """
         start_time = time.time()
         
         try:
@@ -582,6 +633,8 @@ class FileOperationsTool(BaseTool):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="file_operations",
             description="读写文件（创建/读取/列出/删除/移动/复制）",
@@ -635,7 +688,11 @@ class FileOperationsTool(BaseTool):
         self._read_cache_max = 64
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute file operation"""
+        """Execute file operation。
+
+        Args:
+            params: params 参数。
+        """
         start_time = time.time()
 
         try:
@@ -870,6 +927,8 @@ class ToolRegistry:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._tools: Dict[str, BaseTool] = {}
         self._categories: Dict[str, List[str]] = {}
         self._permission_manager: Any = None
@@ -877,7 +936,11 @@ class ToolRegistry:
         self._lock = threading.RLock()
 
     def set_permission_manager(self, permission_manager: Any) -> None:
-        """Set permission manager and inject into all registered tools."""
+        """Set permission manager and inject into all registered tools.
+
+        Args:
+            permission_manager: permission_manager 参数。
+        """
         with self._lock:
             self._permission_manager = permission_manager
             for tool in self._tools.values():
@@ -885,7 +948,11 @@ class ToolRegistry:
                     tool.set_permission_manager(permission_manager)
 
     def set_tracer(self, tracer: Any) -> None:
-        """Set tracer and inject into all registered tools."""
+        """Set tracer and inject into all registered tools.
+
+        Args:
+            tracer: tracer 参数。
+        """
         with self._lock:
             self._tracer = tracer
             for tool in self._tools.values():
@@ -893,7 +960,11 @@ class ToolRegistry:
                     tool.set_tracer(tracer)
 
     def register(self, tool: BaseTool) -> None:
-        """Register a tool. Raises ValueError if a tool with the same name already exists."""
+        """Register a tool. Raises ValueError if a tool with the same name already exists.
+
+        Args:
+            tool: tool 参数。
+        """
         with self._lock:
             name = tool.get_name()
             if name in self._tools:
@@ -905,17 +976,29 @@ class ToolRegistry:
             self._tools[name] = tool
 
     def get(self, name: str) -> Optional[BaseTool]:
-        """Get tool by name"""
+        """Get tool by name。
+
+        Args:
+            name: name 参数。
+        """
         with self._lock:
             return self._tools.get(name)
 
     def list_tools(self, category: Optional[str] = None) -> List[str]:
-        """List tools"""
+        """List tools。
+
+        Args:
+            category: category 参数。
+        """
         with self._lock:
             return list(self._tools.keys())
 
     def get_availability(self, name: str) -> Dict[str, Any]:
-        """Return availability info (best-effort)."""
+        """Return availability info (best-effort).
+
+        Args:
+            name: name 参数。
+        """
         tool = self.get(name)
         if not tool:
             return {"available": False, "reason": "not_found"}
@@ -928,7 +1011,11 @@ class ToolRegistry:
         return {"available": True, "reason": None}
 
     def unregister(self, name: str) -> None:
-        """Unregister a tool"""
+        """Unregister a tool。
+
+        Args:
+            name: name 参数。
+        """
         with self._lock:
             if name in self._tools:
                 del self._tools[name]

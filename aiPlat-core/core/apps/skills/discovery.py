@@ -79,7 +79,11 @@ class SKILLMD_parser:
     
     @staticmethod
     def parse(skill_dir: Path) -> Optional[DiscoveredSkill]:
-        """Parse SKILL.md file in skill directory"""
+        """Parse SKILL.md file in skill directory。
+
+        Args:
+            skill_dir: skill_dir 参数。
+        """
         skill_md = skill_dir / "SKILL.md"
         if not skill_md.exists():
             return None
@@ -186,15 +190,27 @@ class SkillDiscovery:
         return self._discovered
     
     def get(self, name: str) -> Optional[DiscoveredSkill]:
-        """Get discovered skill by name"""
+        """Get discovered skill by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._discovered.get(name)
     
     def list_by_category(self, category: str) -> List[DiscoveredSkill]:
-        """List skills by category"""
+        """List skills by category。
+
+        Args:
+            category: category 参数。
+        """
         return [s for s in self._discovered.values() if s.category == category]
     
     def load_handler(self, skill_info: DiscoveredSkill):
-        """Load skill handler module"""
+        """Load skill handler module。
+
+        Args:
+            skill_info: skill_info 参数。
+        """
         if not skill_info.handler_path:
             return None
         
@@ -222,6 +238,11 @@ class SkillLoader:
     """
     
     def __init__(self, discovery: SkillDiscovery):
+        """初始化。
+
+        Args:
+            discovery: discovery 参数。
+        """
         self._discovery = discovery
         self._handlers: Dict[str, Any] = {}
         # key -> {"mtime": float, "sha": str, "content": str}
@@ -229,7 +250,11 @@ class SkillLoader:
         self._scripts: Dict[str, Dict[str, Any]] = {}
 
     def invalidate(self, skill_name: Optional[str] = None) -> None:
-        """Invalidate caches (all or a single skill)."""
+        """Invalidate caches (all or a single skill).
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         if not skill_name:
             self._handlers.clear()
             self._references.clear()
@@ -243,7 +268,11 @@ class SkillLoader:
             self._scripts.pop(k, None)
     
     def load_handler(self, skill_name: str):
-        """Load and cache skill handler"""
+        """Load and cache skill handler。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         if skill_name in self._handlers:
             return self._handlers[skill_name]
         
@@ -258,7 +287,12 @@ class SkillLoader:
         return handler
     
     def load_reference(self, skill_name: str, ref_name: str) -> Optional[str]:
-        """Load reference document on-demand"""
+        """Load reference document on-demand。
+
+        Args:
+            skill_name: skill_name 参数。
+            ref_name: ref_name 参数。
+        """
         key = f"{skill_name}:{ref_name}"
         
         skill_info = self._discovery.get(skill_name)
@@ -290,7 +324,11 @@ class SkillLoader:
             return None
     
     def list_references(self, skill_name: str) -> List[str]:
-        """List available references for a skill"""
+        """List available references for a skill。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         skill_info = self._discovery.get(skill_name)
         if not skill_info or not skill_info.references_path:
             return []
@@ -302,7 +340,12 @@ class SkillLoader:
         return [f.name for f in ref_dir.iterdir() if f.is_file()]
     
     def load_script(self, skill_name: str, script_name: str) -> Optional[str]:
-        """Load deterministic script"""
+        """Load deterministic script。
+
+        Args:
+            skill_name: skill_name 参数。
+            script_name: script_name 参数。
+        """
         key = f"{skill_name}:{script_name}"
         
         skill_info = self._discovery.get(skill_name)
@@ -333,7 +376,11 @@ class SkillLoader:
             return None
     
     def list_scripts(self, skill_name: str) -> List[str]:
-        """List available scripts for a skill"""
+        """List available scripts for a skill。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         skill_info = self._discovery.get(skill_name)
         if not skill_info or not skill_info.scripts_path:
             return []
@@ -349,7 +396,12 @@ class SkillMatcher:
     """根据用户输入匹配 Skill"""
     
     def match(self, user_input: str, skills: List[DiscoveredSkill]) -> List[DiscoveredSkill]:
-        """匹配相关 Skill"""
+        """匹配相关 Skill。
+
+        Args:
+            user_input: user_input 参数。
+            skills: skills 参数。
+        """
         if not user_input or not skills:
             return []
         
@@ -376,23 +428,31 @@ class SkillMatcher:
         return results
     
     def match_by_category(self, category: str, skills: List[DiscoveredSkill]) -> List[DiscoveredSkill]:
-        """按 Category 筛选"""
+        """按 Category 筛选。
+
+        Args:
+            category: category 参数。
+            skills: skills 参数。
+        """
         return [s for s in skills if s.category == category]
     
     def get_suggestions(self, user_input: str, skills: List[DiscoveredSkill], limit: int = 5) -> List[DiscoveredSkill]:
-        """获取推荐 Skill"""
+        """获取推荐 Skill。
+
+        Args:
+            user_input: user_input 参数。
+            skills: skills 参数。
+            limit: 返回条数上限。
+        """
         matched = self.match(user_input, skills)
         return matched[:limit]
 
 
 def create_discovery(base_path: str) -> SkillDiscovery:
-    """
-    Factory function to create skill discovery.
+    """Factory function to create skill discovery.
 
-    Supports multi-path by allowing `base_path` to be a pathsep-separated string:
-      - "pathA:pathB" on Linux/macOS
-      - "pathA;pathB" on Windows
-    Later paths override earlier ones when skill names collide.
+    Args:
+        base_path: base_path 参数。
     """
     if isinstance(base_path, str) and (os.pathsep in base_path):
         parts = [p.strip() for p in base_path.split(os.pathsep) if p.strip()]
@@ -405,11 +465,18 @@ class MultiSkillDiscovery(SkillDiscovery):
     """Merge multiple SkillDiscovery instances with override semantics (later wins)."""
 
     def __init__(self, base_paths: List[str]):
+        """初始化。
+
+        Args:
+            base_paths: base_paths 参数。
+        """
         self.base_paths = [Path(p) for p in base_paths]
         self._parser = SKILLMD_parser()
         self._discovered: Dict[str, DiscoveredSkill] = {}
 
     async def discover(self) -> Dict[str, DiscoveredSkill]:
+        """discover。
+        """
         self._discovered = {}
         # earlier loaded first; later overrides
         for bp in self.base_paths:
@@ -420,5 +487,9 @@ class MultiSkillDiscovery(SkillDiscovery):
 
 
 def create_loader(discovery: SkillDiscovery) -> SkillLoader:
-    """Factory function to create skill loader"""
+    """Factory function to create skill loader。
+
+    Args:
+        discovery: discovery 参数。
+    """
     return SkillLoader(discovery)

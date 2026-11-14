@@ -21,6 +21,8 @@ class SystemDiagnostician:
     """Cross-subsystem diagnostic engine with correlation analysis."""
 
     def __init__(self):
+        """初始化。
+        """
         self._kg = None
 
     def _ensure_loaded(self):
@@ -528,8 +530,8 @@ class SystemHealer:
     def auto_heal(self, diagnosis: Dict[str, Any]) -> Dict[str, Any]:
         """Apply auto-fixes for known patterns with safety gate.
 
-        Safety gate: skip if diagnosis confidence < 0.9.
-        All fixes are audited via SystemSnapshot entities.
+        Args:
+            diagnosis: diagnosis 参数。
         """
         # ── Safety gate ──
         confidence = diagnosis.get("overall_confidence", 0)

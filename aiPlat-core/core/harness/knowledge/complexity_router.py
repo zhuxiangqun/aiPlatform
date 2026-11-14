@@ -17,6 +17,7 @@ from typing import List, Dict
 
 @dataclass
 class ComplexityResult:
+    """ComplexityResult。"""
     level: str       # "simple" | "medium" | "complex"
     confidence: float  # 0.0-1.0
 
@@ -28,12 +29,8 @@ class ComplexityRouter:
     def estimate(messages: List[Dict[str, str]]) -> ComplexityResult:
         """Analyze messages and return complexity level.
 
-        Rules (in priority order):
-        1. Multi-step/reasoning keywords → complex
-        2. Code generation keywords → complex
-        3. Short classification task → simple
-        4. JSON/structured output request → medium
-        5. Default → medium
+        Args:
+            messages: messages 参数。
         """
         text = " ".join(m.get("content", "") for m in messages if m.get("content"))
         text_lower = text.lower()
@@ -64,9 +61,9 @@ class ComplexityRouter:
     def local_bias_multiplier(level: str, prefer_local: bool) -> float:
         """Return the local bias score multiplier for a given complexity level.
 
-        Simple tasks: 2x local preference (save money on trivial work)
-        Complex tasks: 0.5x local preference (prioritize capability)
-        Medium tasks: 1x (default)
+        Args:
+            level: level 参数。
+            prefer_local: prefer_local 参数。
         """
         if not prefer_local:
             return 1.0

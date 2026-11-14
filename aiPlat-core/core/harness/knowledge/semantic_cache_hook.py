@@ -18,7 +18,9 @@ logger = logging.getLogger("aiplat.semantic_cache_hook")
 async def try_cache_hit(question: str, domain_id: str) -> Optional[Dict[str, Any]]:
     """Check semantic cache (L1 exact + L2 embedding similarity).
 
-    Returns a dict with answer/citations/level if found, None otherwise.
+    Args:
+        question: question 参数。
+        domain_id: domain 标识。
     """
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache
@@ -48,7 +50,11 @@ async def write_cache_result(
 ) -> bool:
     """Write successful result to semantic cache for future reuse.
 
-    Returns True if write succeeded.
+    Args:
+        question: question 参数。
+        domain_id: domain 标识。
+        answer: answer 参数。
+        citations: citations 参数。
     """
     try:
         from core.harness.knowledge.semantic_cache import get_semantic_cache

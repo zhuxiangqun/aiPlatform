@@ -23,7 +23,11 @@ class SkillCategory(Enum):
     
     @classmethod
     def from_string(cls, value: str) -> "SkillCategory":
-        """从字符串转换"""
+        """从字符串转换。
+
+        Args:
+            value: value 参数。
+        """
         try:
             return cls(value)
         except ValueError:
@@ -42,6 +46,11 @@ class ExecutionMode(Enum):
     
     @classmethod
     def from_string(cls, value: str) -> "ExecutionMode":
+        """from_string。
+
+        Args:
+            value: value 参数。
+        """
         try:
             return cls(value)
         except ValueError:
@@ -68,6 +77,8 @@ class SkillManifest:
     scripts: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "name": self.name,
             "description": self.description,
@@ -102,6 +113,8 @@ class SandboxConfig:
     
     @classmethod
     def get_default(cls) -> "SandboxConfig":
+        """获取 default。
+        """
         return cls()
 
 
@@ -116,6 +129,8 @@ class ScriptResult:
     error: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "success": self.success,
             "stdout": self.stdout,

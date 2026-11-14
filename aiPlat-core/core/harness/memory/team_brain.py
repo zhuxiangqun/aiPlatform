@@ -28,6 +28,7 @@ _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
 
 @dataclass
 class TeamSolution:
+    """TeamSolution。"""
     id: str
     kind: str  # task_skill | shared_learning | experience
     title: str
@@ -39,6 +40,8 @@ class TeamSolution:
     meta: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return asdict(self)
 
 
@@ -73,7 +76,13 @@ def publish_task_skill_solution(
     source_agent: str = "",
     source_session: str = "",
 ) -> Optional[Dict[str, Any]]:
-    """Publish a hot TaskSkill into shared_memory for team Auto-Recall."""
+    """Publish a hot TaskSkill into shared_memory for team Auto-Recall.
+
+    Args:
+        skill: skill 参数。
+        source_agent: source_agent 参数。
+        source_session: source_session 参数。
+    """
     try:
         skill_id = str(getattr(skill, "skill_id", None) or skill.get("skill_id") or "")
         name = str(getattr(skill, "name", None) or (skill.get("name") if isinstance(skill, dict) else "") or skill_id)
@@ -109,7 +118,15 @@ def publish_manual_solution(
     keywords: Optional[Sequence[str]] = None,
     confidence: str = "high",
 ) -> Dict[str, Any]:
-    """Manual team solution (ops / senior engineer tip)."""
+    """Manual team solution (ops / senior engineer tip).
+
+    Args:
+        title: title 参数。
+        summary: summary 参数。
+        source_agent: source_agent 参数。
+        keywords: keywords 参数。
+        confidence: confidence 参数。
+    """
     from core.harness.memory.shared_memory import record_learning
 
     slug = re.sub(r"[^a-zA-Z0-9_\u4e00-\u9fff]+", "_", title)[:80]
@@ -256,7 +273,11 @@ def _load_harness_library_solutions(limit: int = 40) -> List[TeamSolution]:
 
 
 def list_team_solutions(limit: int = 30) -> List[TeamSolution]:
-    """Union of team-visible solutions (no query ranking)."""
+    """Union of team-visible solutions (no query ranking).
+
+    Args:
+        limit: 返回条数上限。
+    """
     items = (
         _load_task_skill_solutions()
         + _load_shared_learning_solutions()
@@ -282,7 +303,13 @@ def recall_team_solutions(
     limit: int = 8,
     min_score: float = 0.15,
 ) -> List[TeamSolution]:
-    """Auto-Recall: rank team solutions by keyword overlap with query."""
+    """Auto-Recall: rank team solutions by keyword overlap with query.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+        min_score: min_score 参数。
+    """
     items = list_team_solutions(limit=80)
     qt = _tokenize(query)
     if not qt:
@@ -323,7 +350,11 @@ def _injectable_recall_text(text: str, *, limit: int = 180) -> str:
 
 
 def format_recall_message(items: Sequence[TeamSolution]) -> Optional[Dict[str, Any]]:
-    """Build a system message for MemoryManager.build_context injection."""
+    """Build a system message for MemoryManager.build_context injection.
+
+    Args:
+        items: items 参数。
+    """
     if not items:
         return None
     lines = [
@@ -355,6 +386,8 @@ def format_recall_message(items: Sequence[TeamSolution]) -> Optional[Dict[str, A
 
 
 def team_brain_status() -> Dict[str, Any]:
+    """team_brain_status。
+    """
     items = list_team_solutions(limit=200)
     by_kind: Dict[str, int] = {}
     for it in items:

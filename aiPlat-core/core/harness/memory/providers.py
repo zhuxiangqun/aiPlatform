@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class ProviderBackend(Enum):
+    """ProviderBackend。"""
     SQLITE = "sqlite"
     REDIS = "redis"
     POSTGRES = "postgres"
@@ -57,43 +58,80 @@ class BaseMemoryProvider(ABC):
 
     @abstractmethod
     async def get(self, key: str) -> Optional[MemoryRecord]:
-        """Retrieve a memory record by key."""
+        """Retrieve a memory record by key.
+
+        Args:
+            key: key 参数。
+        """
         ...
 
     @abstractmethod
     async def set(self, key: str, value: Any, ttl: Optional[float] = None,
                   metadata: Optional[Dict[str, Any]] = None) -> MemoryRecord:
-        """Store or update a memory record."""
+        """Store or update a memory record.
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+            ttl: ttl 参数。
+            metadata: metadata 参数。
+        """
         ...
 
     @abstractmethod
     async def delete(self, key: str) -> bool:
-        """Delete a memory record. Returns True if found and deleted."""
+        """Delete a memory record. Returns True if found and deleted.
+
+        Args:
+            key: key 参数。
+        """
         ...
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
-        """Check if a key exists."""
+        """Check if a key exists.
+
+        Args:
+            key: key 参数。
+        """
         ...
 
     @abstractmethod
     async def search(self, query: str, limit: int = 10) -> List[MemoryRecord]:
-        """Search memory records by query (FTS or regex)."""
+        """Search memory records by query (FTS or regex).
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         ...
 
     @abstractmethod
     async def list_keys(self, prefix: str = "", limit: int = 100) -> List[str]:
-        """List keys matching a prefix."""
+        """List keys matching a prefix.
+
+        Args:
+            prefix: prefix 参数。
+            limit: 返回条数上限。
+        """
         ...
 
     @abstractmethod
     async def batch_get(self, keys: List[str]) -> Dict[str, Optional[MemoryRecord]]:
-        """Retrieve multiple records at once."""
+        """Retrieve multiple records at once.
+
+        Args:
+            keys: keys 参数。
+        """
         ...
 
     @abstractmethod
     async def batch_set(self, records: List[Tuple[str, Any, Optional[float], Optional[Dict[str, Any]]]]) -> List[MemoryRecord]:
-        """Store multiple records at once. Each tuple: (key, value, ttl, metadata)."""
+        """Store multiple records at once. Each tuple: (key, value, ttl, metadata).
+
+        Args:
+            records: records 参数。
+        """
         ...
 
     @abstractmethod
@@ -128,10 +166,17 @@ class MemoryProvider(BaseMemoryProvider):
     """In-memory provider backed by a dict. Suitable for testing."""
 
     def __init__(self):
+        """初始化。
+        """
         self._store: Dict[str, MemoryRecord] = {}
         self._backend = ProviderBackend.MEMORY
 
     async def get(self, key: str) -> Optional[MemoryRecord]:
+        """get。
+
+        Args:
+            key: key 参数。
+        """
         record = self._store.get(key)
         if record and record.ttl and time.time() - record.created_at > record.ttl:
             del self._store[key]
@@ -142,6 +187,14 @@ class MemoryProvider(BaseMemoryProvider):
 
     async def set(self, key: str, value: Any, ttl: Optional[float] = None,
                   metadata: Optional[Dict[str, Any]] = None) -> MemoryRecord:
+        """set。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+            ttl: ttl 参数。
+            metadata: metadata 参数。
+        """
         record = MemoryRecord(
             key=key,
             value=value,
@@ -153,15 +206,31 @@ class MemoryProvider(BaseMemoryProvider):
         return record
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         if key in self._store:
             del self._store[key]
             return True
         return False
 
     async def exists(self, key: str) -> bool:
+        """exists。
+
+        Args:
+            key: key 参数。
+        """
         return key in self._store
 
     async def search(self, query: str, limit: int = 10) -> List[MemoryRecord]:
+        """search。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         query_lower = query.lower()
         results: List[MemoryRecord] = []
         for record in self._store.values():
@@ -170,19 +239,37 @@ class MemoryProvider(BaseMemoryProvider):
         return results[:limit]
 
     async def list_keys(self, prefix: str = "", limit: int = 100) -> List[str]:
+        """列出 keys。
+
+        Args:
+            prefix: prefix 参数。
+            limit: 返回条数上限。
+        """
         keys = [k for k in self._store if k.startswith(prefix)]
         return keys[:limit]
 
     async def batch_get(self, keys: List[str]) -> Dict[str, Optional[MemoryRecord]]:
+        """batch_get。
+
+        Args:
+            keys: keys 参数。
+        """
         return {k: await self.get(k) for k in keys}
 
     async def batch_set(self, records: List[Tuple[str, Any, Optional[float], Optional[Dict[str, Any]]]]) -> List[MemoryRecord]:
+        """batch_set。
+
+        Args:
+            records: records 参数。
+        """
         results: List[MemoryRecord] = []
         for key, value, ttl, metadata in records:
             results.append(await self.set(key, value, ttl, metadata))
         return results
 
     async def cleanup_expired(self) -> int:
+        """cleanup_expired。
+        """
         now = time.time()
         expired = [
             k for k, r in self._store.items()
@@ -193,15 +280,23 @@ class MemoryProvider(BaseMemoryProvider):
         return len(expired)
 
     async def count(self) -> int:
+        """count。
+        """
         return len(self._store)
 
     async def clear(self):
+        """clear。
+        """
         self._store.clear()
 
     def get_backend(self) -> ProviderBackend:
+        """获取 backend。
+        """
         return self._backend
 
     def is_healthy(self) -> bool:
+        """is_healthy。
+        """
         return True
 
 
@@ -213,7 +308,12 @@ _PROVIDER_REGISTRY: Dict[ProviderBackend, type] = {
 
 
 def register_provider(backend: ProviderBackend, provider_class: type):
-    """Register a custom memory provider implementation."""
+    """Register a custom memory provider implementation.
+
+    Args:
+        backend: backend 参数。
+        provider_class: provider_class 参数。
+    """
     if not issubclass(provider_class, BaseMemoryProvider):
         raise TypeError(f"{provider_class.__name__} must subclass BaseMemoryProvider")
     _PROVIDER_REGISTRY[backend] = provider_class
@@ -221,13 +321,10 @@ def register_provider(backend: ProviderBackend, provider_class: type):
 
 
 def create_memory_provider(backend: Optional[ProviderBackend] = None) -> BaseMemoryProvider:
-    """
-    Factory: create a memory provider instance.
+    """Factory: create a memory provider instance.
 
-    Backend selection priority:
-    1. Explicit backend parameter
-    2. AIPLAT_MEMORY_BACKEND env var
-    3. Default: MEMORY (in-process dict)
+    Args:
+        backend: backend 参数。
     """
     if backend is None:
         env_backend = os.getenv("AIPLAT_MEMORY_BACKEND", "memory").lower()

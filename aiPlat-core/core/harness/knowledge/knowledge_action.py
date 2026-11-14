@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class EntityLifecycleState(str, Enum):
+    """EntityLifecycleState。"""
     PROPOSED = "proposed"
     DRAFT = "draft"
     UNDER_REVIEW = "under_review"
@@ -70,6 +71,12 @@ STATE_TRANSITIONS: Dict[EntityLifecycleState, List[EntityLifecycleState]] = {
 
 
 def validate_state_transition(from_state: str, to_state: str) -> Tuple[bool, str]:
+    """validate_state_transition。
+
+    Args:
+        from_state: from_state 参数。
+        to_state: to_state 参数。
+    """
     current = EntityLifecycleState(from_state)
     target = EntityLifecycleState(to_state)
     allowed = STATE_TRANSITIONS.get(current, [])
@@ -82,6 +89,7 @@ def validate_state_transition(from_state: str, to_state: str) -> Tuple[bool, str
 
 
 class ActionVerb(str, Enum):
+    """ActionVerb。"""
     CREATE = "create"
     UPDATE = "update"
     CITE = "cite"
@@ -94,6 +102,7 @@ class ActionVerb(str, Enum):
 
 @dataclass
 class OntologyAction:
+    """OntologyAction。"""
     action_id: str
     verb: ActionVerb
     target_entity_uri: str
@@ -119,6 +128,8 @@ class OntologyAction:
             self.created_at = datetime.now(timezone.utc).isoformat()
 
     def to_triples(self) -> List[Any]:
+        """to_triples。
+        """
         from core.harness.knowledge.knowledge_ontology import OntologyTriple
 
         action_uri = f"{AI}Action_{self.action_id}"
@@ -147,6 +158,7 @@ class OntologyAction:
 
 @dataclass
 class OntologyActionResult:
+    """OntologyActionResult。"""
     action_id: str
     success: bool
     triples_added: int = 0
@@ -162,6 +174,13 @@ def execute_action(
     *,
     collection_id: str = "default",
 ) -> OntologyActionResult:
+    """execute_action。
+
+    Args:
+        action: action 参数。
+        onto: onto 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_ontology import OntologyTriple
 
     triples_added = 0
@@ -497,6 +516,12 @@ def get_entity_lifecycle_summary(
     onto: KnowledgeOntology,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
+    """获取 entity_lifecycle_summary。
+
+    Args:
+        onto: onto 参数。
+        collection_id: collection 标识。
+    """
     state_counts: Dict[str, int] = {}
     contradicted_entities: List[str] = []
 
@@ -520,6 +545,8 @@ def get_entity_lifecycle_summary(
 
 
 def new_action_id() -> str:
+    """new_action_id。
+    """
     return f"action_{uuid.uuid4().hex[:12]}"
 
 

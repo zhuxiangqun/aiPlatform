@@ -70,15 +70,10 @@ def _extract_syscalls_from_sop(body: str) -> List[str]:
 
 
 def build_skill_deps(skills_root: str = None) -> Dict[str, Any]:
-    u"""Scan all SKILL.md files and build a dependency graph.
+    """Scan all SKILL.md files and build a dependency graph.
 
-    Returns:
-      {
-        agents: {agent_id: {required_skills: [...], type: "..."}},
-        skills: {skill_id: {deps: [...], effects: [...], category: "..."}},
-        syscalls: {syscall_name: set of skill_ids that use it},
-        unknown_refs: [refs in AGENT.md that don't resolve to skills],
-      }
+    Args:
+        skills_root: skills_root 参数。
     """
     import re
 
@@ -219,9 +214,10 @@ def _count_syscall_callers(syscall_name: str) -> int:
 
 
 def skill_impact(skill_id: str) -> Dict[str, Any]:
-    u"""Find all agents and downstream skills affected by a given skill.
-    
-    Returns {skill_id, agents_using: [...], skills_depending: [...]}
+    """Find all agents and downstream skills affected by a given skill.
+
+    Args:
+        skill_id: Skill ID。
     """
     deps = build_skill_deps()
     if skill_id not in deps["skills"]:

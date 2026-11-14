@@ -37,6 +37,19 @@ class WikiPageRetriever(IRetriever):
                  # ── Multi-tenant isolation ──
                  tenant_id: str = "",
                  ):
+        """初始化。
+
+        Args:
+            wiki_titles: wiki_titles 参数。
+            link_depth: link_depth 参数。
+            collection_ids: collection_ids 参数。
+            class_uri: class_uri 参数。
+            expand_subclasses: expand_subclasses 参数。
+            relation_filter: relation_filter 参数。
+            relation_boost: relation_boost 参数。
+            inference_expand: inference_expand 参数。
+            tenant_id: 租户 ID。
+        """
         self._wiki_titles = wiki_titles or []
         self._link_depth = link_depth
         self._collection_ids = collection_ids or ["default"]
@@ -306,11 +319,9 @@ class WikiPageRetriever(IRetriever):
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
         """Retrieve wiki pages via embedding semantic search.
-        
-        Multi-tenant isolation: uses self._collection_ids (set by caller via collection routing).
-        query.tenant_id is cross-validated against self._tenant_id for defense-in-depth —
-        mismatch is logged at WARNING but does not block retrieval (collection_ids are the
-        actual filtering boundary).
+
+        Args:
+            query: 查询。
         """
         # ── Defense-in-depth: cross-validate tenant_id ──
         if self._tenant_id and query.tenant_id and self._tenant_id != query.tenant_id:
@@ -538,6 +549,11 @@ class WikiPageRetriever(IRetriever):
         return results[:limit]
 
     async def get_by_id(self, entry_id: str) -> Optional[KnowledgeEntry]:
+        """获取 by_id。
+
+        Args:
+            entry_id: entry 标识。
+        """
         if entry_id in self._entries:
             return self._entries[entry_id]
         # Lazy load single page
@@ -558,6 +574,12 @@ class WikiPageRetriever(IRetriever):
         return entry
 
     async def get_similar(self, entry: KnowledgeEntry, limit: int = 10) -> List[KnowledgeResult]:
+        """获取 similar。
+
+        Args:
+            entry: entry 参数。
+            limit: 返回条数上限。
+        """
         from core.harness.knowledge.embedder import embed_text_semantic, embed_texts_semantic, cosine_similarity
         pages = self._load_pages()
         if not pages or not entry.title:
@@ -584,9 +606,19 @@ class WikiPageRetriever(IRetriever):
         return results[:limit]
 
     async def add(self, entry: KnowledgeEntry) -> None:
+        """add。
+
+        Args:
+            entry: entry 参数。
+        """
         self._entries[entry.id] = entry
 
     async def add_batch(self, entries: List[KnowledgeEntry]) -> None:
+        """add_batch。
+
+        Args:
+            entries: entries 参数。
+        """
         for e in entries:
             self._entries[e.id] = e
 

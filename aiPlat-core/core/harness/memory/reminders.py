@@ -39,6 +39,8 @@ class SystemReminders:
     """System reminders to prevent instruction decay"""
     
     def __init__(self):
+        """初始化。
+        """
         self._rules = []
         self._execution_state: Dict[str, Any] = {}
         self._register_default_rules()
@@ -83,7 +85,11 @@ class SystemReminders:
         ))
     
     def add_rule(self, rule: ReminderRule):
-        """Add a reminder rule"""
+        """Add a reminder rule。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
         self._rules.sort(key=lambda r: r.priority)
     
@@ -92,10 +98,9 @@ class SystemReminders:
         state: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """Phase 42: Check rules and return reminder as structured dict with role.
-        
-        Role defaults to 'system' but can be overridden via AIPLAT_REMINDER_ROLE env var.
-        Returns dict: {"role": "system"|"user", "content": "..."} or None.
-        Backward-compatible: callers that expect str can use .get("content", "").
+
+        Args:
+            state: state 参数。
         """
         for rule in self._rules:
             if not rule.enabled:
@@ -111,7 +116,12 @@ class SystemReminders:
         return None
     
     def update_state(self, key: str, value: Any):
-        """Update execution state for condition checking"""
+        """Update execution state for condition checking。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+        """
         self._execution_state[key] = value
     
     def _check_unfinished_todos(self, state: Dict) -> bool:
@@ -148,13 +158,21 @@ class SystemReminders:
             return template
     
     def enable_rule(self, rule_id: str):
-        """Enable a rule"""
+        """Enable a rule。
+
+        Args:
+            rule_id: rule 标识。
+        """
         for rule in self._rules:
             if rule.rule_id == rule_id:
                 rule.enabled = True
     
     def disable_rule(self, rule_id: str):
-        """Disable a rule"""
+        """Disable a rule。
+
+        Args:
+            rule_id: rule 标识。
+        """
         for rule in self._rules:
             if rule.rule_id == rule_id:
                 rule.enabled = False

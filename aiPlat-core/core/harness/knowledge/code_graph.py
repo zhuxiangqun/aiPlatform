@@ -56,6 +56,7 @@ _COMMON_METHOD_NAMES: Set[str] = {
 
 @dataclass
 class ScanResult:
+    """ScanResult。"""
     created_at: float
     roots_key: str
     stats: Dict[str, Any]
@@ -66,6 +67,8 @@ class ScanResult:
 
 
 def repo_root() -> Path:
+    """repo_root。
+    """
     root = os.getenv("AIPLAT_REPO_ROOT", "")
     if root and Path(root).exists():
         return Path(root).resolve()
@@ -83,6 +86,8 @@ def repo_root() -> Path:
 
 
 def default_roots() -> List[str]:
+    """default_roots。
+    """
     return [
         "aiPlat-core",
         "aiPlat-infra",
@@ -93,6 +98,11 @@ def default_roots() -> List[str]:
 
 
 def strip_py_type_checking(text: str) -> str:
+    """strip_py_type_checking。
+
+    Args:
+        text: text 参数。
+    """
     if "TYPE_CHECKING" not in text:
         return text
     lines = text.splitlines()
@@ -567,6 +577,11 @@ def _route_matches(api_path: str, route_pattern: str) -> bool:
 
 
 def is_code_file(p: Path) -> bool:
+    """is_code_file。
+
+    Args:
+        p: p 参数。
+    """
     if not p.is_file() or p.name.startswith("."):
         return False
     ext = p.suffix.lower()
@@ -574,6 +589,11 @@ def is_code_file(p: Path) -> bool:
 
 
 def should_skip(p: Path) -> bool:
+    """should_skip。
+
+    Args:
+        p: p 参数。
+    """
     parts = set(p.parts)
     if any(x in parts for x in {".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache",
                                   ".ruff_cache", "node_modules", "dist", "build", "tests", "__tests__"}):
@@ -619,6 +639,12 @@ def _repo_root_of(p: Path) -> Optional[Path]:
 
 
 def read_text(p: Path, max_bytes: int = 800_000) -> str:
+    """read_text。
+
+    Args:
+        p: p 参数。
+        max_bytes: max_bytes 参数。
+    """
     try:
         if p.stat().st_size > max_bytes:
             return ""
@@ -628,6 +654,12 @@ def read_text(p: Path, max_bytes: int = 800_000) -> str:
 
 
 def resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
+    """resolve_js_relative。
+
+    Args:
+        from_file: from_file 参数。
+        spec: spec 参数。
+    """
     base = (from_file.parent / spec).resolve()
     candidates = [base] if base.suffix else []
     if not base.suffix:
@@ -641,9 +673,12 @@ def resolve_js_relative(from_file: Path, spec: str) -> Optional[Path]:
 
 
 def resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[Path]:
-    u"""Resolve a Python import module to a file path.
+    """Resolve a Python import module to a file path.
 
-    Handles: absolute (core.harness.X), relative (.Y, ..Z, .a.b)
+    Args:
+        _repo_root: _repo_root 参数。
+        from_file: from_file 参数。
+        mod: mod 参数。
     """
     if not mod:
         return None
@@ -693,6 +728,11 @@ def resolve_py_module(_repo_root: Path, from_file: Path, mod: str) -> Optional[P
 
 
 def detect_issues(text: str) -> List[Dict[str, Any]]:
+    """detect_issues。
+
+    Args:
+        text: text 参数。
+    """
     out: List[Dict[str, Any]] = []
     if not text: return out
     if re.search(r"AKIA[0-9A-Z]{16}", text):
@@ -709,6 +749,12 @@ def detect_issues(text: str) -> List[Dict[str, Any]]:
 
 
 def build_graph(_repo_root: Path, roots: List[Path]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, str]], List[Dict[str, Any]]]:
+    """build_graph。
+
+    Args:
+        _repo_root: _repo_root 参数。
+        roots: roots 参数。
+    """
     global _CACHE, _CACHE_ROOTS, _CACHE_LOCK
     if _CACHE_LOCK is None:
         import threading as _th
@@ -1004,8 +1050,9 @@ def build_symbol_graph(
 ) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
     """Build a symbol-level code graph (each function/class is a node).
 
-    Convenience wrapper that calls build_graph() then converts to symbol-level.
-    Returns (symbol_nodes, symbol_edges).
+    Args:
+        _repo_root: _repo_root 参数。
+        roots: roots 参数。
     """
     if _repo_root is None:
         _repo_root = repo_root()
@@ -1016,6 +1063,11 @@ def build_symbol_graph(
 
 
 def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
+    """count_cycles。
+
+    Args:
+        nodes: nodes 参数。
+    """
     visiting: Set[str] = set()
     visited: Set[str] = set()
     back_edges = 0
@@ -1035,7 +1087,11 @@ def count_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
 
 
 def report_cycles(nodes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return named cycle paths with file short names. Useful for actionable output."""
+    """Return named cycle paths with file short names. Useful for actionable output.
+
+    Args:
+        nodes: nodes 参数。
+    """
     visiting: Set[str] = set()
     visited: Set[str] = set()
     found: List[Dict[str, Any]] = []
@@ -1069,7 +1125,11 @@ def report_cycles(nodes: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def effective_cycles(nodes: Dict[str, Dict[str, Any]]) -> int:
-    """Return cycle count minus known-safe cycles from the whitelist."""
+    """Return cycle count minus known-safe cycles from the whitelist.
+
+    Args:
+        nodes: nodes 参数。
+    """
     total = count_cycles(nodes)
     safe = _load_known_safe_count()
     return max(0, total - safe)
@@ -1089,6 +1149,14 @@ def _load_known_safe_count() -> int:
 
 def health_score(*, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]],
                  issues: List[Dict[str, Any]], cycles_back_edges: int) -> Dict[str, Any]:
+    """health_score。
+
+    Args:
+        nodes: nodes 参数。
+        edges: edges 参数。
+        issues: issues 参数。
+        cycles_back_edges: cycles_back_edges 参数。
+    """
     files = max(1, len(nodes))
     e = len(edges)
     issue_count = len(issues)
@@ -1118,6 +1186,12 @@ def health_score(*, nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]
 
 
 def blast(nodes: Dict[str, Dict[str, Any]], start: str) -> List[str]:
+    """blast。
+
+    Args:
+        nodes: nodes 参数。
+        start: start 参数。
+    """
     if start not in nodes: return []
     q = [start]
     seen = {start}
@@ -1133,7 +1207,12 @@ def blast(nodes: Dict[str, Dict[str, Any]], start: str) -> List[str]:
 
 
 def build_context(task: str, roots: List[str] = None) -> Dict[str, Any]:
-    u"""Hybrid context builder: scan and return relevant code graph for a task."""
+    """Hybrid context builder: scan and return relevant code graph for a task.
+
+    Args:
+        task: task 参数。
+        roots: roots 参数。
+    """
     _repo_root = repo_root()
     if roots is None:
         roots = default_roots()
@@ -1305,10 +1384,10 @@ def convert_file_graph_to_symbols(
 ) -> Tuple[Dict[str, Any], List[Dict[str, str]]]:
     """Convert file-level graph to symbol-level graph.
 
-    Each function/class becomes its own node.
-    Intra-file call edges connect symbols within the same file.
-    Import edges are expanded: if file A imports file B, all symbols in A
-    that reference symbols in B get edges.
+    Args:
+        file_nodes: file_nodes 参数。
+        file_edges: file_edges 参数。
+        repo_root: repo_root 参数。
     """
     from collections import defaultdict
 

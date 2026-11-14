@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VerifyCheck:
+    """VerifyCheck。"""
     name: str
     pass_: bool = False
     detail: str = ""
@@ -30,12 +31,15 @@ class VerifyCheck:
 
 @dataclass
 class VerifyReport:
+    """VerifyReport。"""
     skill_id: str
     checks: List[VerifyCheck] = field(default_factory=list)
     overall: bool = False
     suggestion: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "skill_id": self.skill_id,
             "checks": [{"name": c.name, "pass": c.pass_, "detail": c.detail, "issues": c.issues} for c in self.checks],
@@ -48,7 +52,11 @@ class SkillVerifier:
     """Skill 验收器."""
 
     def verify(self, skill_id: str) -> VerifyReport:
-        """运行 5 项验收检查."""
+        """运行 5 项验收检查.
+
+        Args:
+            skill_id: Skill ID。
+        """
         report = VerifyReport(skill_id=skill_id)
 
         # Check 1: 可识别

@@ -17,6 +17,8 @@ class RoutedRetrieveTool(BaseTool):
     """意图路由统一检索：代码/知识库/Web 三通道按查询意图分发，返回信源标注事实条目。"""
 
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="routed_retrieve",
             description="意图路由统一检索: 先判定查询意图（代码/内部知识/通用事实），"
@@ -49,6 +51,11 @@ class RoutedRetrieveTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         query = str(args.get("query", "")).strip()
         if not query:
             return {"success": False, "error": "query 不能为空", "route": None,

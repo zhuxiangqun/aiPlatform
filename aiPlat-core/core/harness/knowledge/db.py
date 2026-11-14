@@ -22,7 +22,11 @@ _knowledge_db: Any = None
 
 
 def set_knowledge_db(db: Any) -> None:
-    """Called at platform startup to inject the concrete KBSqlite instance."""
+    """Called at platform startup to inject the concrete KBSqlite instance.
+
+    Args:
+        db: db 参数。
+    """
     global _knowledge_db
     _knowledge_db = db
 

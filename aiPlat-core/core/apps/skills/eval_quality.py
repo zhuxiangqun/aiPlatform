@@ -1,3 +1,5 @@
+"""eval_quality：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -18,6 +20,8 @@ class SkillEvalQualitySkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         cfg = SkillConfig(
             name="skill_eval_quality",
             description="运行 Skill 的执行质量评测（Quality Eval 骨架），基于规则生成 checklist 与评分，并写入评测结果。",
@@ -92,6 +96,12 @@ class SkillEvalQualitySkill(BaseSkill):
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
         # Prefer CoreFacade store (same as SkillEvalTriggerSkill) so a stale
         # KernelRuntime.execution_store cannot hide the suite under test.
+        """execute。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         store = None
         try:
             from core.api.core_facade import get_execution_store

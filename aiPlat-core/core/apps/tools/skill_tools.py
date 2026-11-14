@@ -92,11 +92,10 @@ def _load_permission_rules() -> Dict[str, str]:
 
 
 def resolve_skill_permission(skill_name: str) -> str:
-    """
-    Returns: allow | deny | ask
+    """Returns: allow | deny | ask。
 
-    Note: this function is also used by PolicyGate to decide whether `skill_load`
-    requires approval.
+    Args:
+        skill_name: skill_name 参数。
     """
     name = str(skill_name or "").strip()
     if not name:
@@ -147,10 +146,9 @@ def _load_exec_skill_permission_rules() -> Dict[str, str]:
 def is_agent_bound_required_skill(skill_name: str, args: Any = None) -> bool:
     """True when skill is listed on the running Agent's required_skills.
 
-    Starting an Agent execute already authorizes its bound skills; PolicyGate
-    must not demand a second HITL for the same skill mid-loop (e.g. autoreview
-    after code_generation). Driven by ``_bound_skill_ids`` in skill args —
-    not by agent_id string matching.
+    Args:
+        skill_name: skill_name 参数。
+        args: args 参数。
     """
     name = str(skill_name or "").strip()
     if not name or not isinstance(args, dict):
@@ -163,12 +161,10 @@ def is_agent_bound_required_skill(skill_name: str, args: Any = None) -> bool:
 
 
 def resolve_executable_skill_permission(skill_name: str) -> str:
-    """
-    Returns: allow | deny | ask
+    """Returns: allow | deny | ask。
 
-    Read-only executable skills (effects all type=read) default to allow so
-    FDE diagnostics and similar inline tools are not blocked by the global
-    "*":"ask" posture. Explicit env rules still win.
+    Args:
+        skill_name: skill_name 参数。
     """
     name = str(skill_name or "").strip()
     if not name:
@@ -247,6 +243,8 @@ class SkillFindTool(BaseTool):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="skill_find",
             description="搜索/列出可用技能（返回摘要索引，不返回 SOP 正文）",
@@ -266,6 +264,11 @@ class SkillFindTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         async def handler() -> ToolResult:
             from core.apps.skills.registry import get_skill_registry
             reg = get_skill_registry()
@@ -355,6 +358,8 @@ class SkillLoadTool(BaseTool):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="skill_load",
             description="按需加载某个技能的 SOP 正文（SKILL.md body），用于注入/参考",
@@ -371,6 +376,11 @@ class SkillLoadTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         async def handler() -> ToolResult:
             from core.apps.skills.registry import get_skill_registry
             reg = get_skill_registry()

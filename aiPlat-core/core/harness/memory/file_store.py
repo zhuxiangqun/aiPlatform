@@ -81,7 +81,14 @@ def write_memory(
     tenant_id: str = "default",
 ) -> bool:
 
-    """Dual-write: Markdown first, then SQLite. Markdown is the canonical store."""
+    """Dual-write: Markdown first, then SQLite. Markdown is the canonical store.
+
+    Args:
+        content: content 参数。
+        key: key 参数。
+        source: source 参数。
+        tenant_id: 租户 ID。
+    """
 
     base = _ensure_dir(tenant_id)
 
@@ -165,7 +172,12 @@ def write_memory(
 
 def read_memory(key_filter: str = "", limit: int = 20) -> List[Dict[str, Any]]:
 
-    """Read memory entries from Markdown files. Optional key filter."""
+    """Read memory entries from Markdown files. Optional key filter.
+
+    Args:
+        key_filter: key_filter 参数。
+        limit: 返回条数上限。
+    """
 
     _ensure_dir()
 
@@ -259,22 +271,10 @@ def auto_save_learning(
 
     """Auto-save agent self-learnings to file memory.
 
-
-
-    Triggered when:
-
-    - User corrects agent (correction) → save the corrected pattern
-
-    - Agent discovers user preference (preference) → save for future
-
-    - Agent detects recurring pattern (pattern) → crystallize as reusable knowledge
-
-    - Agent makes a mistake it's corrected for (mistake) → save to avoid repeating
-
-
-
-    Controlled by AIPLAT_AUTO_LEARNING_ENABLED (default: true).
-
+    Args:
+        learning_type: learning_type 参数。
+        content: content 参数。
+        source: source 参数。
     """
 
     import os as _os
@@ -315,16 +315,9 @@ def should_auto_learn(interaction_count: int, correction_count: int) -> bool:
 
     """Decide whether the agent should auto-save learnings.
 
-
-
-    Thresholds:
-
-    - correction_count >= 2 in current session → likely preference pattern
-
-    - interaction_count % 10 == 0 → periodic checkpoint
-
-    - More than 3 similar queries detected → recurring pattern
-
+    Args:
+        interaction_count: interaction_count 参数。
+        correction_count: correction_count 参数。
     """
 
     if correction_count >= 2:
@@ -392,7 +385,11 @@ def _line_payloads(line: str) -> List[str]:
 
 
 def memory_content_is_fact(content: str) -> bool:
-    """Pinned memory keeps durable facts. Commands, procedures, and session counters stay out."""
+    """Pinned memory keeps durable facts. Commands, procedures, and session counters stay out.
+
+    Args:
+        content: content 参数。
+    """
     text = (content or "").strip()
     if not text or "```" in text:
         return False
@@ -435,7 +432,12 @@ def durable_wiki_insight(
     user_message: str,
     assistant_message: str,
 ) -> Optional[tuple]:
-    """Title+body for wiki auto-extract. Requires durable assistant text (≥80 chars)."""
+    """Title+body for wiki auto-extract. Requires durable assistant text (≥80 chars).
+
+    Args:
+        user_message: user_message 参数。
+        assistant_message: assistant_message 参数。
+    """
     import re as _re
 
     body = durable_semantic_content(str(assistant_message or "").strip())
@@ -458,7 +460,12 @@ def durable_semantic_content(
     content: str,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
-    """Text safe for semantic store / nudge. Profile JSON is allowed via tag."""
+    """Text safe for semantic store / nudge. Profile JSON is allowed via tag.
+
+    Args:
+        content: content 参数。
+        metadata: metadata 参数。
+    """
     meta = metadata or {}
     text = (content or "").strip()
     if not text:
@@ -498,7 +505,12 @@ def _injectable_entries(tenant_id: str = "default") -> List[str]:
 
 
 def memory_entry_fits(entry: str, *, tenant_id: str = "default") -> bool:
-    """True when appending this entry stays inside the character budget."""
+    """True when appending this entry stays inside the character budget.
+
+    Args:
+        entry: entry 参数。
+        tenant_id: 租户 ID。
+    """
     budget = memory_char_budget()
     used = sum(len(ln) + 1 for ln in _injectable_entries(tenant_id))
     return used + len(entry.strip()) + 1 <= budget
@@ -507,7 +519,12 @@ def memory_entry_fits(entry: str, *, tenant_id: str = "default") -> bool:
 def pinned_memory_text(
     max_chars: Optional[int] = None, *, tenant_id: str = "default"
 ) -> str:
-    """Newest facts that fit the budget. Statements for every session, not a transcript."""
+    """Newest facts that fit the budget. Statements for every session, not a transcript.
+
+    Args:
+        max_chars: max_chars 参数。
+        tenant_id: 租户 ID。
+    """
     budget = memory_char_budget() if max_chars is None else max(0, int(max_chars))
     if budget <= 0:
         return ""
@@ -533,7 +550,15 @@ def replace_memory_entry(
     source: str = "agent",
     tenant_id: str = "default",
 ) -> bool:
-    """Replace the whole entry that contains ``old_text``. ``content`` is the new full fact."""
+    """Replace the whole entry that contains ``old_text``. ``content`` is the new full fact.
+
+    Args:
+        old_text: old_text 参数。
+        content: content 参数。
+        key: key 参数。
+        source: source 参数。
+        tenant_id: 租户 ID。
+    """
     needle = (old_text or "").strip()
     body = (content or "").strip()
     if not needle or not body or not memory_content_is_fact(body):
@@ -607,7 +632,13 @@ def _session_archive_path(session_id: str = "", tenant_id: str = "") -> str:
 def archive_compacted_turns(
     messages: List[Dict[str, Any]], *, session_id: str = "", tenant_id: str = ""
 ) -> int:
-    """Keep pre-compaction turns searchable. The live window may keep only a summary."""
+    """Keep pre-compaction turns searchable. The live window may keep only a summary.
+
+    Args:
+        messages: messages 参数。
+        session_id: 会话 ID。
+        tenant_id: 租户 ID。
+    """
     import json
 
     sid = str(session_id or "").strip()[:80]
@@ -670,7 +701,15 @@ def search_session_archive(
     session_id: str = "",
     tenant_id: str = "",
 ) -> List[Dict[str, Any]]:
-    """Token overlap over archived turns. Scoped to tenant + session when provided."""
+    """Token overlap over archived turns. Scoped to tenant + session when provided.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+        min_overlap: min_overlap 参数。
+        session_id: 会话 ID。
+        tenant_id: 租户 ID。
+    """
     import json
 
     tokens = _archive_query_tokens(query)
@@ -732,7 +771,13 @@ _PAST_CUES = (
 
 
 def text_overlaps_query(query: str, text: str, *, min_overlap: int = 2) -> bool:
-    """True when the text shares enough tokens with the ask to be worth injecting."""
+    """True when the text shares enough tokens with the ask to be worth injecting.
+
+    Args:
+        query: 查询。
+        text: text 参数。
+        min_overlap: min_overlap 参数。
+    """
     tokens = _archive_query_tokens(query)
     if not tokens:
         return False
@@ -742,7 +787,11 @@ def text_overlaps_query(query: str, text: str, *, min_overlap: int = 2) -> bool:
 
 
 def query_asks_about_past(query: str) -> bool:
-    """Auto-inject only when the ask is about a previous process, not every overlapping task."""
+    """Auto-inject only when the ask is about a previous process, not every overlapping task.
+
+    Args:
+        query: 查询。
+    """
     text = (query or "").strip().lower()
     if not text:
         return False
@@ -750,7 +799,12 @@ def query_asks_about_past(query: str) -> bool:
 
 
 def archive_prompt_snippet(text: str, *, limit: int = 280) -> str:
-    """Auto-inject body for one archived turn. Pure commands stay empty; tools keep raw search."""
+    """Auto-inject body for one archived turn. Pure commands stay empty; tools keep raw search.
+
+    Args:
+        text: text 参数。
+        limit: 返回条数上限。
+    """
     cleaned = durable_semantic_content(str(text or ""))
     if not cleaned:
         return ""
@@ -760,7 +814,14 @@ def archive_prompt_snippet(text: str, *, limit: int = 280) -> str:
 def session_archive_query(
     query: str, *, limit: int = 3, session_id: str = "", tenant_id: str = ""
 ) -> Dict[str, Any]:
-    """On-demand archive lookup. Same overlap bar as context inject."""
+    """On-demand archive lookup. Same overlap bar as context inject.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+        session_id: 会话 ID。
+        tenant_id: 租户 ID。
+    """
     q = (query or "").strip()
     cap = max(1, min(int(limit or 3), 8))
     hits = search_session_archive(

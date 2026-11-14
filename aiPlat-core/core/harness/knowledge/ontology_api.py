@@ -18,6 +18,14 @@ def to_ontology_api_v0(
     domain_id: str = "",
     refs: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """to_ontology_api_v0。
+
+    Args:
+        kind: kind 参数。
+        payload: 载荷 dict。
+        domain_id: domain 标识。
+        refs: refs 参数。
+    """
     k = str(kind or "query_result").strip().lower()
     if k not in _KINDS:
         k = "query_result"
@@ -34,7 +42,12 @@ def to_ontology_api_v0(
 
 
 def from_structured_query(result: Mapping[str, Any], *, domain_id: str = "") -> Dict[str, Any]:
-    """Wrap wiki structured_query dict as ontology.api.v0 query_result."""
+    """Wrap wiki structured_query dict as ontology.api.v0 query_result.
+
+    Args:
+        result: result 参数。
+        domain_id: domain 标识。
+    """
     res = dict(result) if isinstance(result, Mapping) else {}
     refs: List[str] = []
     for key in ("page", "title", "source", "wiki_path"):
@@ -59,6 +72,13 @@ def from_wiki_pages(
     query: str = "",
     collection_id: str = "default",
 ) -> Dict[str, Any]:
+    """from_wiki_pages。
+
+    Args:
+        pages: pages 参数。
+        query: 查询。
+        collection_id: collection 标识。
+    """
     items = [dict(p) for p in (pages or []) if isinstance(p, Mapping)]
     refs = []
     for p in items[:20]:
@@ -75,6 +95,12 @@ def from_wiki_pages(
 
 
 def from_graph_health(health: Mapping[str, Any], *, domain_id: str = "") -> Dict[str, Any]:
+    """from_graph_health。
+
+    Args:
+        health: health 参数。
+        domain_id: domain 标识。
+    """
     h = dict(health) if isinstance(health, Mapping) else {}
     did = str(domain_id or h.get("domain") or "")
     return to_ontology_api_v0(
@@ -89,7 +115,12 @@ def attach_ontology_api(
     response: MutableMapping[str, Any],
     envelope: Mapping[str, Any],
 ) -> MutableMapping[str, Any]:
-    """Attach envelope under `ontology_api` without removing legacy fields."""
+    """Attach envelope under `ontology_api` without removing legacy fields.
+
+    Args:
+        response: FastAPI Response。
+        envelope: envelope 参数。
+    """
     response["ontology_api"] = dict(envelope)
     return response
 
@@ -101,7 +132,14 @@ def to_ontology_healthz(
     domains: int = 0,
     mode: str = "read_only",
 ) -> Dict[str, Any]:
-    """Ontology capability healthz (A1/D1 co-hosted on Central)."""
+    """Ontology capability healthz (A1/D1 co-hosted on Central).
+
+    Args:
+        status: status 参数。
+        version: version 参数。
+        domains: domains 参数。
+        mode: mode 参数。
+    """
     st = str(status or "ok").strip().lower()
     if st in {"healthy", "up", "pass", "passed", "success"}:
         st = "ok"

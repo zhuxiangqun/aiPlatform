@@ -55,6 +55,11 @@ class SqlOntologyTranslator:
     """
 
     def __init__(self, domain_id: str = "default"):
+        """初始化。
+
+        Args:
+            domain_id: domain 标识。
+        """
         self._domain_id = domain_id
         self._mappings: Dict[str, SqlMapping] = {}
         self._load_mappings()
@@ -165,10 +170,11 @@ class SqlOntologyTranslator:
         return sql
 
     def query(self, class_name: str, **kwargs) -> dict:
-        """
-        Execute a concept query and return results.
+        """Execute a concept query and return results.
 
-        Returns: {"sql": "...", "concept": "...", "results": [...], "count": N, "error": None}
+        Args:
+            class_name: class_name 参数。
+            kwargs: kwargs 参数。
         """
         mapping = self._mappings.get(class_name)
         if not mapping:
@@ -185,7 +191,12 @@ class SqlOntologyTranslator:
             return {"sql": "", "concept": class_name, "results": [], "count": 0, "error": str(e)}
 
     def to_select_star(self, class_name: str, limit: int = 10) -> str:
-        """Generate a SELECT * query (fallback)."""
+        """Generate a SELECT * query (fallback).
+
+        Args:
+            class_name: class_name 参数。
+            limit: 返回条数上限。
+        """
         mapping = self._mappings.get(class_name)
         if not mapping:
             return f"-- No SQL mapping for '{class_name}'"
@@ -206,6 +217,11 @@ _translators: Dict[str, SqlOntologyTranslator] = {}
 def get_sql_ontology(domain_id: str = "default") -> SqlOntologyTranslator:
     # Validate against registered domains — client-controlled domain_id from
     # HTTP params must not create unbounded translator entries.
+    """获取 sql_ontology。
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.harness.knowledge.domain_router import DomainRouter
         known = set(DomainRouter.list_domains())

@@ -190,7 +190,11 @@ def render_digital_employee_table(roles: List[Dict[str, Any]] = None) -> str:
 
 
 def load_role_skills(role_name: str) -> List[str]:
-    """Return skill names bound to a digital employee role."""
+    """Return skill names bound to a digital employee role.
+
+    Args:
+        role_name: role_name 参数。
+    """
     roles = load_digital_employees()
     for r in roles:
         if r.get("role_name") == role_name:
@@ -199,7 +203,11 @@ def load_role_skills(role_name: str) -> List[str]:
 
 
 def get_role_by_keyword(keyword: str) -> Optional[Dict[str, Any]]:
-    """Find the first role matching a keyword (substring match)."""
+    """Find the first role matching a keyword (substring match).
+
+    Args:
+        keyword: keyword 参数。
+    """
     roles = load_digital_employees()
     for r in roles:
         if keyword in r.get("keywords", ""):
@@ -210,8 +218,8 @@ def get_role_by_keyword(keyword: str) -> Optional[Dict[str, Any]]:
 def load_domain_permissions(domain_file: str) -> Dict[str, List[Dict[str, Any]]]:
     """Load permission rules from a domain YAML file.
 
-    Returns {class_name: [{role, actions, scope}]}.
-    This is the single source of truth — graph_index delegates here.
+    Args:
+        domain_file: domain_file 参数。
     """
     import os as _os_perm
     path = _os_perm.path.join(_ONTOLOGY_DIR, domain_file)

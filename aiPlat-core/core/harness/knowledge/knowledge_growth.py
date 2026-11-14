@@ -37,6 +37,7 @@ AI = "http://aiplat.local/knowledge#"
 
 @dataclass
 class GrowthSnapshot:
+    """GrowthSnapshot。"""
     timestamp: str
     page_count: int = 0
     kb_document_count: int = 0
@@ -48,6 +49,8 @@ class GrowthSnapshot:
     by_state: Dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "timestamp": self.timestamp,
             "page_count": self.page_count,
@@ -86,7 +89,11 @@ def _save_snapshots(snapshots: List[Dict[str, Any]], collection_id: str = "defau
 
 
 def take_growth_snapshot(collection_id: str = "default") -> GrowthSnapshot:
-    u"""Snapshot current ontology state. Call this from write_page / delete_page hooks."""
+    """Snapshot current ontology state. Call this from write_page / delete_page hooks.
+
+    Args:
+        collection_id: collection 标识。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import get_ontology
         onto = get_ontology()
@@ -161,9 +168,11 @@ def get_growth_stats(
     *,
     days: int = 30,
 ) -> Dict[str, Any]:
-    u"""Get growth statistics for the last N days.
+    """Get growth statistics for the last N days.
 
-    Returns timeline of snapshots + computed deltas.
+    Args:
+        collection_id: collection 标识。
+        days: days 参数。
     """
     snapshots = _load_snapshots(collection_id)
     if not snapshots:
@@ -224,10 +233,10 @@ def get_growth_stats(
 
 
 def estimate_compound_value(collection_id: str = "default") -> Dict[str, Any]:
-    u"""Estimate the compound value of the knowledge base.
+    """Estimate the compound value of the knowledge base.
 
-    Each cross-link multiplies the value of the linked entities.
-    High-quality, well-linked knowledge creates network effects.
+    Args:
+        collection_id: collection 标识。
     """
     stats = get_growth_stats(collection_id, days=90)
     current = stats.get("current", {})

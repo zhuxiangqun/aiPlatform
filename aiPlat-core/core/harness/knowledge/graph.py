@@ -53,7 +53,11 @@ async def extract_entities(
     tenant_id: str = "default",
 ) -> List[Dict[str, str]]:
     """Extract entity-relation triples from text via LLM.
-    Returns list of {source_entity, relation, target_entity}.
+
+    Args:
+        text: text 参数。
+        doc_id: doc 标识。
+        tenant_id: 租户 ID。
     """
     if len(text) < 50:
         return []
@@ -125,7 +129,11 @@ def graph_enhance_query(
 ) -> List[Dict[str, Any]]:
     """Expand query via entity linking: find related documents through graph.
 
-    Returns list of {doc_id, source_entity, relation, target_entity}.
+    Args:
+        query: 查询。
+        tenant_id: 租户 ID。
+        doc_ids: doc_ids 参数。
+        max_related: max_related 参数。
     """
     db_path = _graph_db_path(tenant_id)
     if not os.path.exists(db_path):

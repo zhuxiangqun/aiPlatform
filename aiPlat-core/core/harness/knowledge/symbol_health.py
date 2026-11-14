@@ -8,12 +8,10 @@ from typing import Dict, Any, List, Tuple
 
 
 def is_excluded_from_dead_code(nid: str) -> bool:
-    """
-    Check if a code-graph node should be excluded from dead-code detection.
+    """Check if a code-graph node should be excluded from dead-code detection.
 
-    Returns True if the file is legitimately excluded (dynamic dispatch,
-    DI, registry-loaded, entry point, generated, etc.), meaning it should
-    NOT be counted as dead code.
+    Args:
+        nid: nid 参数。
     """
     # 1. Prefix match (frontend app files)
     _EXCLUDED_PREFIXES = ('aiPlat-app/', 'aiplat-app/')

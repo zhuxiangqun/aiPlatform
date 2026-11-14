@@ -18,6 +18,8 @@ class LiveYamlDirectWriteDenied(PermissionError):
     """Raised when code tries to overwrite live ontology YAML outside apply/rollback."""
 
     def __init__(self) -> None:
+        """初始化。
+        """
         super().__init__(
             "live ontology YAML write denied; approve a proposal then "
             "VersionedOntologyStore.apply_proposal. Direct save/import is not a write path."
@@ -25,16 +27,22 @@ class LiveYamlDirectWriteDenied(PermissionError):
 
 
 def live_yaml_write_allowed() -> bool:
+    """live_yaml_write_allowed。
+    """
     return bool(_ALLOW.get())
 
 
 def assert_live_yaml_write() -> None:
+    """assert_live_yaml_write。
+    """
     if not live_yaml_write_allowed():
         raise LiveYamlDirectWriteDenied()
 
 
 @contextmanager
 def allow_live_yaml_write() -> Iterator[None]:
+    """allow_live_yaml_write。
+    """
     token = _ALLOW.set(True)
     try:
         yield

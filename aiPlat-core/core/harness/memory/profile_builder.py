@@ -40,6 +40,7 @@ MEMORY_PROFILE_TAG = "user_profile"
 
 @dataclass
 class UserProfile:
+    """UserProfile。"""
     preferences: List[str] = field(default_factory=list)
     constraints: List[str] = field(default_factory=list)
     decisions: List[str] = field(default_factory=list)
@@ -49,9 +50,13 @@ class UserProfile:
     prior_versions: List[Dict[str, Any]] = field(default_factory=list)
 
     def is_empty(self) -> bool:
+        """is_empty。
+        """
         return not any([self.preferences, self.constraints, self.decisions, self.work_style])
 
     def to_system_message(self) -> str:
+        """to_system_message。
+        """
         if self.is_empty():
             return ""
         parts = ["## User Profile (auto-extracted)"]
@@ -87,6 +92,11 @@ class UserProfile:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "UserProfile":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             preferences=[str(x) for x in data.get("preferences", []) if x],
             constraints=[str(x) for x in data.get("constraints", []) if x],
@@ -100,6 +110,8 @@ class UserProfile:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "preferences": self.preferences,
             "constraints": self.constraints,
@@ -119,7 +131,10 @@ def semantic_context_block(
 ) -> str:
     """Query-matched semantic lines, cut by char budget (not a fixed top-k).
 
-    ``limit`` is an optional safety cap. Profile rows and command lines stay out.
+    Args:
+        memories: memories 参数。
+        limit: 返回条数上限。
+        max_chars: max_chars 参数。
     """
     from core.harness.memory.file_store import durable_semantic_content, memory_char_budget
 
@@ -153,7 +168,11 @@ def semantic_context_block(
 
 
 def sanitize_episodic_summary_text(summary: str) -> str:
-    """Drop command/TODO lines from an episodic summary body (no header)."""
+    """Drop command/TODO lines from an episodic summary body (no header).
+
+    Args:
+        summary: summary 参数。
+    """
     from core.harness.memory.file_store import memory_content_is_fact
 
     text = (summary or "").strip()
@@ -177,7 +196,11 @@ def sanitize_episodic_summary_text(summary: str) -> str:
 
 
 def session_summary_block(summary: str) -> str:
-    """Current-session summary with command lines removed."""
+    """Current-session summary with command lines removed.
+
+    Args:
+        summary: summary 参数。
+    """
     body = sanitize_episodic_summary_text(summary)
     if not body:
         return ""
@@ -185,7 +208,11 @@ def session_summary_block(summary: str) -> str:
 
 
 def critical_episodes_block(episodes) -> str:
-    """High-importance turns, minus commands and step lists."""
+    """High-importance turns, minus commands and step lists.
+
+    Args:
+        episodes: episodes 参数。
+    """
     from core.harness.memory.file_store import memory_content_is_fact
 
     lines = []
@@ -215,12 +242,18 @@ def critical_episodes_block(episodes) -> str:
 
 
 def get_nudge_interval() -> int:
+    """获取 nudge_interval。
+    """
     v = os.getenv("AIPLAT_MEMORY_NUDGE_INTERVAL", "")
     return int(v) if v.isdigit() and int(v) > 0 else _MEMORY_NUDGE_INTERVAL
 
 
 def sanitize_user_profile(profile: UserProfile) -> UserProfile:
-    """Drop commands/TODOs from durable fields. Decisions stay for audit only."""
+    """Drop commands/TODOs from durable fields. Decisions stay for audit only.
+
+    Args:
+        profile: 评测 profile。
+    """
     from core.harness.memory.file_store import memory_content_is_fact
 
     return UserProfile(
@@ -235,7 +268,11 @@ def sanitize_user_profile(profile: UserProfile) -> UserProfile:
 
 
 def profile_evidence_ids(state: Optional[Dict[str, Any]]) -> List[str]:
-    """Ids the caller already has. Empty means the observation must not be stored."""
+    """Ids the caller already has. Empty means the observation must not be stored.
+
+    Args:
+        state: state 参数。
+    """
     if not isinstance(state, dict):
         return []
     found: List[str] = []
@@ -278,8 +315,10 @@ def revise_profile_observation(
 ) -> Optional[Dict[str, Any]]:
     """Rewrite the current belief only when new evidence ids are present.
 
-    The previous belief is appended to ``prior_versions`` (last 5). Same belief
-    keeps the stored document. No ids → refuse, so a rewrite cannot land bare.
+    Args:
+        previous_content: previous_content 参数。
+        profile: 评测 profile。
+        evidence_ids: evidence_ids 参数。
     """
     ids = [str(item).strip() for item in (evidence_ids or []) if str(item).strip()]
     if not ids:
@@ -313,7 +352,11 @@ def revise_profile_observation(
 
 
 def promote_durable_profile_facts(profile: UserProfile) -> Dict[str, Any]:
-    """Session-end split: durable prefs → MEMORY.md (fact gate). Decisions stay out."""
+    """Session-end split: durable prefs → MEMORY.md (fact gate). Decisions stay out.
+
+    Args:
+        profile: 评测 profile。
+    """
     from core.harness.memory.file_store import write_memory
 
     written = 0
@@ -338,7 +381,12 @@ def promote_durable_profile_facts(profile: UserProfile) -> Dict[str, Any]:
 def compose_sticky_memory(
     max_chars: Optional[int] = None, *, tenant_id: str = "default"
 ) -> Dict[str, Any]:
-    """User profile + pinned MEMORY.md under one char budget. Pi sticky payload."""
+    """User profile + pinned MEMORY.md under one char budget. Pi sticky payload.
+
+    Args:
+        max_chars: max_chars 参数。
+        tenant_id: 租户 ID。
+    """
     from core.harness.memory.file_store import memory_char_budget, pinned_memory_text
 
     tid = (tenant_id or "default").strip() or "default"
@@ -370,7 +418,12 @@ def compose_sticky_memory(
 
 
 def user_profile_sticky_text(max_chars: int = 600, *, tenant_id: str = "default") -> str:
-    """Char-budgeted user profile for sticky / Pi session start. Empty when none."""
+    """Char-budgeted user profile for sticky / Pi session start. Empty when none.
+
+    Args:
+        max_chars: max_chars 参数。
+        tenant_id: 租户 ID。
+    """
     budget = max(0, int(max_chars or 0))
     if budget <= 0:
         return ""
@@ -444,6 +497,12 @@ async def _run_profile_extraction(conversation_summary: str) -> Optional[UserPro
 async def extract_and_persist_profile(
     state: Dict[str, Any], memory_manager: Any = None
 ) -> Optional[Dict[str, Any]]:
+    """extract_and_persist_profile。
+
+    Args:
+        state: state 参数。
+        memory_manager: memory_manager 参数。
+    """
     try:
         summary = build_stage_summary(state)
     except Exception:
@@ -507,6 +566,11 @@ async def extract_and_persist_profile(
 #    to fix harness→apps boundary violation per CLAUDE.md §11) ──
 
 def build_stage_summary(state: Dict[str, Any]) -> str:
+    """build_stage_summary。
+
+    Args:
+        state: state 参数。
+    """
     parts = []
     task = state.get("task", "")
     if task: parts.append(f"## Task\n{task[:2000]}")
@@ -526,6 +590,11 @@ def build_stage_summary(state: Dict[str, Any]) -> str:
 
 
 async def run_skill_review(state: Dict[str, Any]) -> Dict[str, Any]:
+    """run_skill_review。
+
+    Args:
+        state: state 参数。
+    """
     try:
         from core.harness.execution.loop import ReActLoop
         from core.harness.interfaces.loop import LoopConfig, LoopState, LoopStateEnum

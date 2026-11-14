@@ -241,7 +241,7 @@ core_guarantees:
         - aiPlat-core/core/harness/knowledge/seci_engine.py::568
         - aiPlat-core/core/harness/knowledge/seci_engine.py::571
         - aiPlat-core/core/harness/knowledge/seci_engine.py::571
-        - aiPlat-core/core/harness/knowledge/seci_engine.py::574
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::573
     - id: skill_crystalization
       description: "Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）"
       paths:

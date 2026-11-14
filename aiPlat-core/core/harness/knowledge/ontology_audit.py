@@ -45,6 +45,7 @@ from pathlib import Path
 
 class OntologyAuditReport:
 
+    """OntologyAuditReport。"""
     domain_id: str = ""
 
     total_entities: int = 0
@@ -74,6 +75,8 @@ class OntologyAuditReport:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "domain_id": self.domain_id,
@@ -114,13 +117,19 @@ class OntologyAuditor:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._ontologies_dir = Path(get_aiplat_home()) / "ontologies"
 
 
 
     def audit_domain(self, domain_id: str) -> OntologyAuditReport:
 
-        """Run full audit on one domain."""
+        """Run full audit on one domain.
+
+        Args:
+            domain_id: domain 标识。
+        """
 
         report = OntologyAuditReport(domain_id=domain_id)
 

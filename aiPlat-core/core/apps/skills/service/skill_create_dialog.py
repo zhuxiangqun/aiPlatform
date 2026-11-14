@@ -47,15 +47,11 @@ async def run_skill_create_dialog_turn(
     text: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
-    """
-    One turn of conversational Skill creation.
+    """One turn of conversational Skill creation.
 
-    Returns:
-      next: "ask" | "draft"
-      reply: assistant message
-      questions: optional list
-      draft: full auto-fill payload when next=draft
-      skill_md_preview: SKILL.md text when next=draft
+    Args:
+        text: text 参数。
+        history: history 参数。
     """
     text = str(text or "").strip()
     if not text:

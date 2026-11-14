@@ -48,6 +48,12 @@ class ReconSubgraph:
     """
 
     def __init__(self, run_id: str, *, data_dir: str = ""):
+        """初始化。
+
+        Args:
+            run_id: 运行 ID。
+            data_dir: data_dir 参数。
+        """
         self.run_id = run_id
         self.domain_id = f"_recon_{run_id}"
         
@@ -68,7 +74,15 @@ class ReconSubgraph:
         self, entity_id: str, entity_name: str, class_name: str,
         *, source_doc_id: str = "", agent_id: str = "",
     ):
-        """Add an entity to the recon graph. Wraps GraphIndex.add_entity()."""
+        """Add an entity to the recon graph. Wraps GraphIndex.add_entity().
+
+        Args:
+            entity_id: entity 标识。
+            entity_name: entity_name 参数。
+            class_name: class_name 参数。
+            source_doc_id: source_doc 标识。
+            agent_id: Agent ID。
+        """
         node = self.graph.add_entity(
             entity_id, entity_name, class_name, source_doc_id=source_doc_id
         )
@@ -87,13 +101,20 @@ class ReconSubgraph:
     ) -> float:
         """Add a relation with auto-computed confidence.
 
-        Confidence formula:
-          source_trust * 0.4 + detection_confidence * 0.3 + (1 - 0.1 * hop_count) * 0.3
-
-        If confidence is explicitly provided (> 0), it's used as detection_confidence.
-        Otherwise defaults to 0.85 (average KB extraction accuracy).
-
-        Returns the computed confidence value.
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
+            relation_name: relation_name 参数。
+            relation_label: relation_label 参数。
+            confidence: confidence 参数。
+            inferred: inferred 参数。
+            rule_name: rule_name 参数。
+            source_type: source_type 参数。
+            agent_id: Agent ID。
+            run_id: 运行 ID。
+            hop_count: hop_count 参数。
+            created_by: created_by 参数。
+            created_in_run: created_in_run 参数。
         """
         import math as _math
 
@@ -136,8 +157,9 @@ class ReconSubgraph:
     def merge_to(self, target_domain: str, *, min_confidence: float = 0.7) -> Dict[str, int]:
         """Merge high-confidence entities/edges into a persistent domain.
 
-        Only entities/edges with confidence >= min_confidence are merged.
-        Returns counts: {entities_merged, relations_merged, skipped}.
+        Args:
+            target_domain: target_domain 参数。
+            min_confidence: min_confidence 参数。
         """
         from core.harness.ontology_engine.graph_index import GraphIndex
         target = GraphIndex.load(target_domain)
@@ -196,7 +218,11 @@ class ReconSubgraph:
         logger.info("ReconSubgraph discarded: %s", self.run_id)
 
     def snapshot(self, label: str = "") -> str:
-        """Create a snapshot of the current recon graph state."""
+        """Create a snapshot of the current recon graph state.
+
+        Args:
+            label: label 参数。
+        """
         return self.graph.snapshot(label or f"recon_{self.run_id}")
 
     def stats(self) -> Dict[str, Any]:

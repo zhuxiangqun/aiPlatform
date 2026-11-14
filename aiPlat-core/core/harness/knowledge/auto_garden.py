@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 class GardenResult:
+    """GardenResult。"""
     def __init__(self):
+        """初始化。
+        """
         self.total_checked = 0
         self.stale_marked = 0
         self.duplicates_found = 0
@@ -39,6 +42,8 @@ class GardenResult:
         self.report_path = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "total_checked": self.total_checked,
             "stale_marked": self.stale_marked,
@@ -59,6 +64,8 @@ class AutoGarden:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._wiki_root = _Path(get_aiplat_data_dir("wiki"))
 
     def run(

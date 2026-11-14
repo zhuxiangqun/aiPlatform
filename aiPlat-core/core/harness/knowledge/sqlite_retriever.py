@@ -95,6 +95,7 @@ def _ensure_kb_schema(conn) -> None:
 
 class SqliteEmbeddingRetriever(IRetriever):
 
+    """SqliteEmbeddingRetriever。"""
     def __init__(
 
         self,
@@ -111,6 +112,14 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     ):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+            tenant_id: 租户 ID。
+            collection_id: collection 标识。
+            domain_id: domain 标识。
+        """
         self._tenant_id = tenant_id
 
         self._collection_id = collection_id
@@ -149,6 +158,11 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
 
+        """retrieve。
+
+        Args:
+            query: 查询。
+        """
         if not query.query:
 
             return []
@@ -189,6 +203,11 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     async def get_by_id(self, entry_id: str) -> Optional[KnowledgeEntry]:
 
+        """获取 by_id。
+
+        Args:
+            entry_id: entry 标识。
+        """
         conn = self._connect()
 
         if not conn:
@@ -223,12 +242,23 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     async def get_similar(self, entry: KnowledgeEntry, limit: int = 10) -> List[KnowledgeResult]:
 
+        """获取 similar。
+
+        Args:
+            entry: entry 参数。
+            limit: 返回条数上限。
+        """
         return await self.retrieve(KnowledgeQuery(query=entry.content, limit=limit))
 
 
 
     async def add(self, entry: KnowledgeEntry) -> None:
 
+        """add。
+
+        Args:
+            entry: entry 参数。
+        """
         conn = self._connect()
 
         if not conn:
@@ -269,6 +299,11 @@ class SqliteEmbeddingRetriever(IRetriever):
 
     async def add_batch(self, entries: List[KnowledgeEntry]) -> None:
 
+        """add_batch。
+
+        Args:
+            entries: entries 参数。
+        """
         for e in entries:
 
             await self.add(e)
@@ -496,7 +531,21 @@ def create_sqlite_retriever(
 
 ) -> Any:
 
-    """Create a KnowledgeRetriever backed by SQLite KB database."""
+    """Create a KnowledgeRetriever backed by SQLite KB database.
+
+    Args:
+        db_path: db_path 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        domain_id: domain 标识。
+        retrieval_strategy: retrieval_strategy 参数。
+        rerank_enabled: rerank_enabled 参数。
+        rerank_method: rerank_method 参数。
+        rerank_top_k: rerank_top_k 参数。
+        quality_gate_enabled: quality_gate_enabled 参数。
+        quality_threshold: quality_threshold 参数。
+        hyde_enabled: hyde_enabled 参数。
+    """
 
     from .retriever import KnowledgeRetriever
 

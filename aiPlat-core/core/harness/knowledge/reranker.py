@@ -24,6 +24,13 @@ def _tokenize(text: str) -> List[str]:
 
 
 def rerank_by_relevance(query: str, chunks: List[str], top_k: int = 5) -> List[Tuple[int, float]]:
+    """rerank_by_relevance。
+
+    Args:
+        query: 查询。
+        chunks: chunks 参数。
+        top_k: top_k 参数。
+    """
     if not chunks:
         return []
     # BM25 scoring
@@ -57,13 +64,10 @@ def rerank_by_relevance(query: str, chunks: List[str], top_k: int = 5) -> List[T
 def rerank_by_multi_factor(query: str, candidates: List[str], top_k: int = 8) -> List[Tuple[int, float]]:
     """Multi-factor re-rank ported from syscalls/retrieval.py:_rerank().
 
-    Scores each candidate by:
-    - Token overlap density (0.6 weight): how many query tokens appear
-    - First-match position bonus (0.1): earlier match → higher score
-    - Exact phrase bonus (0.2): contiguous query substrings in candidate
-    - Length fitness (0.1): prefers concise passages (50-500 chars optimal)
-
-    Zero-model, zero-API, < 1ms for typical top_n.
+    Args:
+        query: 查询。
+        candidates: candidates 参数。
+        top_k: top_k 参数。
     """
     if not candidates:
         return []

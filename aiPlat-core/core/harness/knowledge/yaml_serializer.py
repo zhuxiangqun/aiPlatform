@@ -15,7 +15,11 @@ logger = logging.getLogger("yaml_serializer")
 
 
 def domain_to_dict(domain) -> Dict[str, Any]:
-    u"""OntologyDomain → 完整 JSON dict（供前端编辑和 API 返回）。"""
+    """OntologyDomain → 完整 JSON dict（供前端编辑和 API 返回）。
+
+    Args:
+        domain: domain 参数。
+    """
     result = {
         "id": domain.id,
         "name": domain.name,
@@ -82,7 +86,11 @@ def domain_to_dict(domain) -> Dict[str, Any]:
 
 
 def dict_to_yaml(data: Dict[str, Any]) -> str:
-    u"""JSON dict → YAML string（保持与 hand-authored YAML 兼容的格式）。"""
+    """JSON dict → YAML string（保持与 hand-authored YAML 兼容的格式）。
+
+    Args:
+        data: data 参数。
+    """
     import yaml
 
     clean = _dict_for_yaml(data)
@@ -108,7 +116,12 @@ def dict_to_yaml(data: Dict[str, Any]) -> str:
 
 
 def write_domain_yaml(domain, output_path: str) -> str:
-    u"""OntologyDomain → YAML string → write to file. Returns written path."""
+    """OntologyDomain → YAML string → write to file. Returns written path.
+
+    Args:
+        domain: domain 参数。
+        output_path: output_path 参数。
+    """
     data = domain_to_dict(domain)
     yaml_str = dict_to_yaml(data)
     path = Path(output_path)
@@ -123,7 +136,13 @@ def merge_class_into_domain(
     class_name: str,
     class_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    u"""Merge or add a class definition into a domain dict. Returns modified dict."""
+    """Merge or add a class definition into a domain dict. Returns modified dict.
+
+    Args:
+        domain_dict: domain_dict 参数。
+        class_name: class_name 参数。
+        class_data: class_data 参数。
+    """
     result = copy.deepcopy(domain_dict)
     result.setdefault("classes", {})
     result["classes"][class_name] = class_data
@@ -134,7 +153,12 @@ def remove_class_from_domain(
     domain_dict: Dict[str, Any],
     class_name: str,
 ) -> Dict[str, Any]:
-    u"""Remove a class from a domain dict. Returns modified dict."""
+    """Remove a class from a domain dict. Returns modified dict.
+
+    Args:
+        domain_dict: domain_dict 参数。
+        class_name: class_name 参数。
+    """
     result = copy.deepcopy(domain_dict)
     result.get("classes", {}).pop(class_name, None)
     return result

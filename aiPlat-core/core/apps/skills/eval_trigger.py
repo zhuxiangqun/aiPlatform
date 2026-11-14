@@ -1,3 +1,5 @@
+"""eval_trigger：模块接口。"""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +21,8 @@ class SkillEvalTriggerSkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         cfg = SkillConfig(
             name="skill_eval_trigger",
             description="运行 Skill 的触发评测（Trigger Eval），输出准确率/误触发/漏触发等指标，并写入评测结果。",
@@ -50,6 +54,12 @@ class SkillEvalTriggerSkill(BaseSkill):
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
         # Prefer CoreFacade store so store-direct / tests are not shadowed by a
         # stale KernelRuntime.execution_store left from another suite.
+        """execute。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         store = None
         try:
             from core.api.core_facade import get_execution_store

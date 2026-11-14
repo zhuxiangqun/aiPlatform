@@ -16,7 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class WakeAgentTool(BaseTool):
+    """WakeAgentTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="wake_agent",
             description="零token文件变更监控: 轮询配置路径的checksum, 检测文件/目录变化。"
@@ -49,6 +52,11 @@ class WakeAgentTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         action = str(args.get("action", "status"))
         try:
             from core.api.core_facade import wake_agent_start, wake_agent_status, wake_agent_stop

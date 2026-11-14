@@ -31,6 +31,15 @@ class CodeExecutionTool(BaseTool):
         max_memory_mb: int = MAX_MEMORY_MB,
         network_isolation: bool = True
     ):
+        """初始化。
+
+        Args:
+            allowed_languages: allowed_languages 参数。
+            timeout: 超时秒数。
+            max_cpu_percent: max_cpu_percent 参数。
+            max_memory_mb: max_memory_mb 参数。
+            network_isolation: network_isolation 参数。
+        """
         self._allowed_languages = allowed_languages or self.SUPPORTED_LANGUAGES
         self._timeout = timeout / 1000
         self._max_cpu_percent = max_cpu_percent
@@ -68,7 +77,11 @@ class CodeExecutionTool(BaseTool):
         super().__init__(config)
         
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute code in sandbox"""
+        """Execute code in sandbox。
+
+        Args:
+            params: params 参数。
+        """
         language = params.get("language", "python")
         code = params.get("code", "")
         timeout_ms = params.get("timeout", self._timeout * 1000)

@@ -27,8 +27,9 @@ HYDE_PROMPT = (
 async def hyde_expand(query: str, model) -> Optional[str]:
     """Generate a hypothetical document passage for the query.
 
-    Returns the hypothetical text, or None if generation fails.
-    The caller should use this text for embedding-based retrieval instead of the raw query.
+    Args:
+        query: 查询。
+        model: 模型名。
     """
     if not model or not query:
         return None
@@ -55,7 +56,12 @@ async def hyde_retrieve(
 ) -> tuple:
     """Full HyDE pipeline: generate hypothetical answer → retrieve real docs.
 
-    Returns (retrieved_docs: str, citations: list[dict]) or ("", []) on failure.
+    Args:
+        question: question 参数。
+        wiki_collection_ids: wiki_collection_ids 参数。
+        top_k: top_k 参数。
+        model: 模型名。
+        max_hyde_tokens: max_hyde_tokens 参数。
     """
     try:
         from core.harness.utils.model_injection import best_model_for_purpose

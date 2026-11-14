@@ -70,10 +70,9 @@ def make_fact_id(topic: str, content: str) -> str:
 
     """Phase 36: Content-hash based fact ID for cross-instance dedup.
 
-
-
-    Same (topic, content) → same fact_id on all instances.
-
+    Args:
+        topic: topic 参数。
+        content: content 参数。
     """
 
     raw = f"{topic}:{content}"
@@ -104,6 +103,8 @@ class PeerInfo:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "url": self.url,
@@ -152,6 +153,12 @@ class GossipProtocol:
 
     def __init__(self, pool, instance_id: str = ""):
 
+        """初始化。
+
+        Args:
+            pool: pool 参数。
+            instance_id: instance 标识。
+        """
         self._pool = pool
 
         self._instance_id = instance_id or f"aiplat-{os.getpid()}-{int(time.time())}"
@@ -198,12 +205,19 @@ class GossipProtocol:
 
     def peer_count(self) -> int:
 
+        """peer_count。
+        """
         return len(self._peers)
 
 
 
     def add_seed_peer(self, url: str) -> None:
 
+        """add_seed_peer。
+
+        Args:
+            url: url 参数。
+        """
         if url not in self._peers:
 
             self._peers[url] = PeerInfo(url=url)
@@ -214,13 +228,21 @@ class GossipProtocol:
 
     def get_peers(self) -> List[Dict[str, Any]]:
 
+        """获取 peers。
+        """
         return [p.to_dict() for p in self._peers.values()]
 
 
 
     async def publish(self, topic: str, content: str, **kwargs) -> str:
 
-        """Publish to local pool + broadcast to all peers."""
+        """Publish to local pool + broadcast to all peers.
+
+        Args:
+            topic: topic 参数。
+            content: content 参数。
+            kwargs: kwargs 参数。
+        """
 
         # Use content-hash fact_id for cross-instance dedup
 
@@ -312,7 +334,11 @@ class GossipProtocol:
 
     async def pull(self, peer_url: str) -> int:
 
-        """Pull new facts from a peer since last sync."""
+        """Pull new facts from a peer since last sync.
+
+        Args:
+            peer_url: peer_url 参数。
+        """
 
         since = self._last_sync.get(peer_url, 0.0)
 
@@ -418,7 +444,11 @@ class GossipProtocol:
 
     async def exchange(self, peer_url: str) -> int:
 
-        """One full push-pull exchange round."""
+        """One full push-pull exchange round.
+
+        Args:
+            peer_url: peer_url 参数。
+        """
 
         # Pull first (get new facts from peer)
 
@@ -491,7 +521,11 @@ class GossipProtocol:
 
     async def run_gossip_loop(self, interval: int = 0) -> None:
 
-        """Background Gossip loop: random peer → exchange."""
+        """Background Gossip loop: random peer → exchange.
+
+        Args:
+            interval: interval 参数。
+        """
 
         if self._running:
 
@@ -535,6 +569,8 @@ class GossipProtocol:
 
     def stop(self) -> None:
 
+        """stop。
+        """
         self._running = False
 
         if self._task and not self._task.done():
@@ -556,6 +592,8 @@ class GossipProtocol:
 
     def stats(self) -> Dict[str, Any]:
 
+        """stats。
+        """
         return {
 
             "instance_id": self._instance_id[:12],
@@ -588,6 +626,8 @@ _gossip: Optional[GossipProtocol] = None
 
 def get_gossip_protocol() -> GossipProtocol:
 
+    """获取 gossip_protocol。
+    """
     global _gossip
 
     if _gossip is None:

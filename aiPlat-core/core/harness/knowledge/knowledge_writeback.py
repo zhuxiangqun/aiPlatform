@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 class WriteBackTarget(str, Enum):
+    """写回目标类型枚举。"""
+
     REST_WEBHOOK = "rest_webhook"
     SQL_DATABASE = "sql_database"
     LOCAL_FILE = "local_file"
@@ -47,6 +49,8 @@ class WriteBackTarget(str, Enum):
 
 @dataclass
 class WriteBackConfig:
+    """单条写回配置（目标、触发动作、字段映射与重试策略）。"""
+
     target_type: WriteBackTarget
     target_endpoint: str = ""              # webhook URL, SQL conn string, file path
     trigger_actions: List[str] = field(default_factory=lambda: ["create", "update", "deprecate"])
@@ -57,6 +61,7 @@ class WriteBackConfig:
     idempotency_key_field: str = "action_id"
 
     def to_dict(self) -> Dict[str, Any]:
+        """序列化为可持久化字典（敏感 auth 字段脱敏）。"""
         return {
             "target_type": self.target_type.value,
             "target_endpoint": self.target_endpoint,
@@ -71,6 +76,11 @@ class WriteBackConfig:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WriteBackConfig":
+        """从字典反序列化写回配置。
+
+        Args:
+            data: 持久化配置字典。
+        """
         return cls(
             target_type=WriteBackTarget(data.get("target_type", "rest_webhook")),
             target_endpoint=data.get("target_endpoint", ""),
@@ -84,17 +94,38 @@ class WriteBackConfig:
 
 
 class IWriteBackAdapter(ABC):
+    """写回适配器抽象接口。"""
+
     @abstractmethod
     async def write(self, action: Any, config: WriteBackConfig) -> Dict[str, Any]:
+        """将 ontology action 写回外部系统。
+
+        Args:
+            action: OntologyAction 或兼容对象。
+            config: 写回配置。
+        """
         ...
 
     @abstractmethod
     async def health_check(self, config: WriteBackConfig) -> bool:
+        """检查写回目标是否可达。
+
+        Args:
+            config: 写回配置。
+        """
         ...
 
 
 class WebhookWriteBackAdapter(IWriteBackAdapter):
+    """REST Webhook 写回适配器。"""
+
     async def write(self, action: Any, config: WriteBackConfig) -> Dict[str, Any]:
+        """POST 动作载荷到配置的 webhook URL。
+
+        Args:
+            action: OntologyAction 或兼容对象。
+            config: 写回配置（含 endpoint/auth）。
+        """
         try:
             import httpx
             payload = self._build_payload(action, config)
@@ -133,6 +164,11 @@ class WebhookWriteBackAdapter(IWriteBackAdapter):
         return payload
 
     async def health_check(self, config: WriteBackConfig) -> bool:
+        """对 webhook 端点做 HEAD 探测（405 视为可达）。
+
+        Args:
+            config: 写回配置。
+        """
         try:
             import httpx
             async with httpx.AsyncClient(timeout=5) as client:
@@ -143,7 +179,15 @@ class WebhookWriteBackAdapter(IWriteBackAdapter):
 
 
 class SQLWriteBackAdapter(IWriteBackAdapter):
+    """SQLite SQL 写回适配器。"""
+
     async def write(self, action: Any, config: WriteBackConfig) -> Dict[str, Any]:
+        """将动作 payload INSERT/REPLACE 到目标 SQLite 表。
+
+        Args:
+            action: OntologyAction 或兼容对象。
+            config: 写回配置（endpoint 为 DB 路径）。
+        """
         try:
             import sqlite3
             db_path = config.target_endpoint
@@ -169,6 +213,11 @@ class SQLWriteBackAdapter(IWriteBackAdapter):
             return {"success": False, "error": str(e)[:200]}
 
     async def health_check(self, config: WriteBackConfig) -> bool:
+        """探测 SQLite 文件是否可连接。
+
+        Args:
+            config: 写回配置。
+        """
         try:
             import sqlite3
             conn = sqlite3.connect(config.target_endpoint)
@@ -180,7 +229,15 @@ class SQLWriteBackAdapter(IWriteBackAdapter):
 
 
 class FileWriteBackAdapter(IWriteBackAdapter):
+    """本地文件追加写回适配器。"""
+
     async def write(self, action: Any, config: WriteBackConfig) -> Dict[str, Any]:
+        """将动作摘要以 JSONL 追加写入目标文件。
+
+        Args:
+            action: OntologyAction 或兼容对象。
+            config: 写回配置（endpoint 为文件路径）。
+        """
         try:
             import aiofiles
             path = _os.path.expanduser(config.target_endpoint)
@@ -199,6 +256,11 @@ class FileWriteBackAdapter(IWriteBackAdapter):
             return {"success": False, "error": str(e)[:200]}
 
     async def health_check(self, config: WriteBackConfig) -> bool:
+        """检查目标文件父目录是否存在。
+
+        Args:
+            config: 写回配置。
+        """
         path = _os.path.expanduser(config.target_endpoint)
         return _os.path.exists(_os.path.dirname(path) or ".")
 
@@ -213,6 +275,12 @@ class MQWriteBackAdapter(IWriteBackAdapter):
     """
 
     async def execute(self, config: WriteBackConfig, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """按 AIPLAT_MQ_BACKEND 将载荷发往 Kafka/RabbitMQ（未配置则仅日志）。
+
+        Args:
+            config: 写回配置（endpoint 为 topic/routing key）。
+            payload: 待发送载荷。
+        """
         mq_type = _os.getenv("AIPLAT_MQ_BACKEND", "none")
 
         if mq_type == "none":
@@ -266,6 +334,11 @@ class MQWriteBackAdapter(IWriteBackAdapter):
             return {"success": False, "error": "aio-pika not installed"}
 
     async def health_check(self, config: WriteBackConfig) -> bool:
+        """MQ 后端已配置（非 none）时视为健康。
+
+        Args:
+            config: 写回配置（本实现未使用，保持接口一致）。
+        """
         return _os.getenv("AIPLAT_MQ_BACKEND", "none") != "none"
 
 
@@ -283,7 +356,12 @@ def _writeback_config_path(collection_id: str = "default") -> str:
 
 
 def register_writeback(config: WriteBackConfig, *, collection_id: str = "default") -> WriteBackConfig:
-    u"""Register a writeback configuration."""
+    """注册一条写回配置。
+
+    Args:
+        config: 写回配置对象。
+        collection_id: Wiki collection 标识，默认 default。
+    """
     existing = load_writebacks(collection_id=collection_id)
     existing.append(config)
     _save_writebacks(existing, collection_id=collection_id)
@@ -291,7 +369,12 @@ def register_writeback(config: WriteBackConfig, *, collection_id: str = "default
 
 
 def unregister_writeback(target_endpoint: str, *, collection_id: str = "default") -> bool:
-    u"""Remove a writeback configuration by endpoint."""
+    """按 endpoint 移除写回配置。
+
+    Args:
+        target_endpoint: 要移除的目标地址。
+        collection_id: Wiki collection 标识，默认 default。
+    """
     configs = load_writebacks(collection_id=collection_id)
     new_configs = [c for c in configs if c.target_endpoint != target_endpoint]
     if len(new_configs) == len(configs):
@@ -301,7 +384,11 @@ def unregister_writeback(target_endpoint: str, *, collection_id: str = "default"
 
 
 def load_writebacks(*, collection_id: str = "default") -> List[WriteBackConfig]:
-    u"""Load all registered writeback configurations."""
+    """加载已注册的写回配置列表。
+
+    Args:
+        collection_id: Wiki collection 标识，默认 default。
+    """
     path = _writeback_config_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -325,11 +412,14 @@ def _save_writebacks(configs: List[WriteBackConfig], *, collection_id: str = "de
 
 
 async def trigger_writebacks(action: Any, *, collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""Trigger all registered writeback adapters for an ontology action.
+    """对 ontology action 触发所有已注册写回适配器。
 
-    Called automatically from execute_action on success.
+    Args:
+        action: 已成功执行的 OntologyAction。
+        collection_id: Wiki collection 标识，默认 default。
 
-    Returns list of per-adapter results.
+    Returns:
+        各适配器执行结果列表。
     """
     configs = load_writebacks(collection_id=collection_id)
     if not configs:

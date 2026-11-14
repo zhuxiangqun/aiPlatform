@@ -68,6 +68,12 @@ class SkillCurator:
     """
 
     def __init__(self, skill_dir: Optional[Path] = None, config: Optional[CuratorConfig] = None):
+        """初始化。
+
+        Args:
+            skill_dir: skill_dir 参数。
+            config: config 参数。
+        """
         self._skill_dir = skill_dir or Path(
             get_aiplat_home()
         ) / "skills"
@@ -102,7 +108,11 @@ class SkillCurator:
         return report
 
     def record_call(self, skill_id: str) -> None:
-        """Record a skill invocation for frequency tracking and curator lifecycle."""
+        """Record a skill invocation for frequency tracking and curator lifecycle.
+
+        Args:
+            skill_id: Skill ID。
+        """
         if self._config.dry_run:
             return
         entry = self._skill_dir / skill_id
@@ -331,7 +341,11 @@ class SkillCurator:
         return True
 
     def restore_from_archive(self, skill_id: str) -> bool:
-        """Restore an archived skill back to the active directory."""
+        """Restore an archived skill back to the active directory.
+
+        Args:
+            skill_id: Skill ID。
+        """
         import shutil
         archive_root = self._skill_dir / ".archive"
         archived = archive_root / skill_id
@@ -370,6 +384,10 @@ class SkillCurator:
 
 
 def get_skill_curator(skill_dir: Optional[Path] = None) -> SkillCurator:
-    """Get a curator for the given skill directory."""
+    """Get a curator for the given skill directory.
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     return SkillCurator(skill_dir=skill_dir)
 

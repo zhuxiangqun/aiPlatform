@@ -33,8 +33,13 @@ def write_session_wiki_page(
 ) -> Dict[str, Any]:
     """Write a short draft wiki page for a finished coding / IDE session.
 
-    Production callers: ide_capture.ingest_ide_capture(write_wiki=True),
-    session_wiki_worker_hook (SESSION_END), CoreFacade.write_session_wiki.
+    Args:
+        title: title 参数。
+        summary: summary 参数。
+        session_id: 会话 ID。
+        tags: tags 参数。
+        source: source 参数。
+        collection_id: collection 标识。
     """
     summary = (summary or "").strip()
     if len(summary) < 40:
@@ -90,7 +95,8 @@ def session_wiki_enabled() -> bool:
 async def session_wiki_worker_hook(context: Any) -> Dict[str, Any]:
     """SESSION_END hook: if enabled + success summary present → short wiki page.
 
-    Registered from hook_manager.get_default_hooks().
+    Args:
+        context: context 参数。
     """
     if not session_wiki_enabled():
         return {"continue": True, "session_wiki": "disabled"}

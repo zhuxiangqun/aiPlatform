@@ -43,6 +43,11 @@ class WikiIndexer:
 
     def __init__(self, wiki_path: str = WIKI_PATH):
 
+        """初始化。
+
+        Args:
+            wiki_path: wiki_path 参数。
+        """
         self.wiki_path = os.path.expanduser(wiki_path)
 
         self._lock = threading.Lock()
@@ -119,7 +124,15 @@ class WikiIndexer:
 
                        tags: list[str] | None = None) -> bool:
 
-        """Index a generated artifact into WIKI_PATH."""
+        """Index a generated artifact into WIKI_PATH.
+
+        Args:
+            artifact_path: artifact_path 参数。
+            artifact_type: artifact_type 参数。
+            title: title 参数。
+            source_agent: source_agent 参数。
+            tags: tags 参数。
+        """
 
         if not os.path.isfile(artifact_path):
 
@@ -204,7 +217,11 @@ class WikiIndexer:
 
     def auto_index_skills(self, skills_dir: str = "~/.aiplat/skills") -> list[str]:
 
-        """Auto-scan and index all SKILL.md files."""
+        """Auto-scan and index all SKILL.md files.
+
+        Args:
+            skills_dir: skills_dir 参数。
+        """
 
         skills_dir = os.path.expanduser(skills_dir)
 
@@ -238,10 +255,12 @@ class WikiIndexer:
 
         """Feed execution output into GraphIndex as feedback edge.
 
-
-
-        Bridges the gap between Agent execution traces and the knowledge graph.
-
+        Args:
+            execution_id: execution 标识。
+            node_type: node_type 参数。
+            node_value: node_value 参数。
+            relation: relation 参数。
+            confidence: confidence 参数。
         """
 
         now = datetime.now(timezone.utc).isoformat()
@@ -295,6 +314,8 @@ class WikiIndexer:
 
     def get_indexed_count(self) -> dict:
 
+        """获取 indexed_count。
+        """
         db_path = os.path.join(self.wiki_path, "index.db")
 
         conn = sqlite3.connect(db_path)
@@ -321,6 +342,8 @@ _indexer: Optional[WikiIndexer] = None
 
 def get_wiki_indexer() -> WikiIndexer:
 
+    """获取 wiki_indexer。
+    """
     global _indexer
 
     if _indexer is None:

@@ -119,7 +119,14 @@ def fts_rebuild_on_update() -> None:
 
 
 def fts_upsert_page(title: str, tags: list = None, summary: str = "", body_preview: str = "") -> None:
-    """Insert or update a single page in the FTS index."""
+    """Insert or update a single page in the FTS index.
+
+    Args:
+        title: title 参数。
+        tags: tags 参数。
+        summary: summary 参数。
+        body_preview: body_preview 参数。
+    """
     conn = _get_conn()
     try:
         tags_str = " ".join(tags or [])
@@ -138,7 +145,11 @@ def fts_upsert_page(title: str, tags: list = None, summary: str = "", body_previ
 
 
 def fts_delete_page(title: str) -> None:
-    """Remove a page from the FTS index."""
+    """Remove a page from the FTS index.
+
+    Args:
+        title: title 参数。
+    """
     conn = _get_conn()
     try:
         conn.execute("DELETE FROM wiki_fts WHERE title = ?", (title,))

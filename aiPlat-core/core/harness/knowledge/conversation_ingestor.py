@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 # ── IngestionResult ──────────────────────────────────────────────────────
 
 class IngestionResult:
+    """IngestionResult。"""
     def __init__(self):
+        """初始化。
+        """
         self.total_scanned = 0
         self.worth_writing = 0
         self.skipped = 0
@@ -38,6 +41,8 @@ class IngestionResult:
         self.details: List[Dict[str, Any]] = []
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "total_scanned": self.total_scanned,
             "worth_writing": self.worth_writing,
@@ -59,6 +64,8 @@ class ConversationIngestor:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._processed_file = _Path(get_aiplat_data_dir("data/.conversation_ingested.json"))
         self._db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
 

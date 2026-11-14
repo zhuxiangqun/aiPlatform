@@ -122,7 +122,12 @@ def _init_table():
 
 async def enqueue_reparse(doc_id: str, source_path: str = "") -> Dict[str, Any]:
 
-    """Add a document to the reparse queue. Idempotent per doc_id."""
+    """Add a document to the reparse queue. Idempotent per doc_id.
+
+    Args:
+        doc_id: doc 标识。
+        source_path: source_path 参数。
+    """
 
     _init_table()
 
@@ -176,7 +181,11 @@ async def enqueue_reparse(doc_id: str, source_path: str = "") -> Dict[str, Any]:
 
 async def get_reparse_status(doc_id: str) -> Dict[str, Any]:
 
-    """Get the current reparse status for a document."""
+    """Get the current reparse status for a document.
+
+    Args:
+        doc_id: doc 标识。
+    """
 
     conn = _get_db()
 

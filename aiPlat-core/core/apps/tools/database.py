@@ -87,6 +87,14 @@ class DatabaseTool(BaseTool):
 
     ):
 
+        """初始化。
+
+        Args:
+            connections: connections 参数。
+            timeout: 超时秒数。
+            max_rows: max_rows 参数。
+            allow_writes: allow_writes 参数。
+        """
         self._connections = connections or {}
 
         self._timeout = timeout / 1000
@@ -159,7 +167,11 @@ class DatabaseTool(BaseTool):
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
 
-        """Execute database operation"""
+        """Execute database operation。
+
+        Args:
+            params: params 参数。
+        """
 
         operation = params.get("operation", "query")
 

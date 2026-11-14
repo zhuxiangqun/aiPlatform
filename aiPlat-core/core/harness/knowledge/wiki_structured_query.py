@@ -19,8 +19,9 @@ from core.utils.paths import get_aiplat_data_dir
 
 def structured_query(query: str) -> Dict[str, Any]:
     """Route a natural language query to the best-matching deterministic template.
-    
-    Returns {result, template_used, confidence} or {error, reason} if no match.
+
+    Args:
+        query: 查询。
     """
     ql = query.lower().strip()
     

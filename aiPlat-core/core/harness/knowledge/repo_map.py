@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 @dataclass
 class FileSymbol:
+    """FileSymbol。"""
     name: str
     kind: str  # "class", "function", "module"
     line: int
@@ -30,6 +31,7 @@ class FileSymbol:
 
 @dataclass
 class FileRef:
+    """FileRef。"""
     source: str
     target: str
     kind: str  # "import", "from_import"
@@ -37,6 +39,7 @@ class FileRef:
 
 @dataclass
 class FileEntry:
+    """FileEntry。"""
     path: str          # relative to repo root
     size: int          # bytes
     symbols: List[FileSymbol] = field(default_factory=list)
@@ -45,21 +48,33 @@ class FileEntry:
 
 @dataclass
 class RepoMapResult:
+    """RepoMapResult。"""
     root: str
     files: List[FileEntry] = field(default_factory=list)
     refs: List[FileRef] = field(default_factory=list)
 
     @property
     def total_files(self) -> int:
+        """total_files。
+        """
         return len(self.files)
 
     @property
     def total_symbols(self) -> int:
+        """total_symbols。
+        """
         return sum(len(f.symbols) for f in self.files)
 
 
 class RepositoryMap:
+    """RepositoryMap。"""
     def __init__(self, max_files: int = 200, max_depth: int = 5):
+        """初始化。
+
+        Args:
+            max_files: max_files 参数。
+            max_depth: max_depth 参数。
+        """
         self._max_files = max_files
         self._max_depth = max_depth
         self._skip_patterns = re.compile(
@@ -68,6 +83,11 @@ class RepositoryMap:
         )
 
     def scan(self, repo_root: str) -> RepoMapResult:
+        """scan。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         root = os.path.abspath(repo_root)
         result = RepoMapResult(root=root)
         rpath = Path(root)
@@ -97,7 +117,12 @@ class RepositoryMap:
         return result
 
     def to_prompt(self, result: RepoMapResult, max_tokens: int = 500) -> str:
-        """Compress repo map into a prompt-suitable summary."""
+        """Compress repo map into a prompt-suitable summary.
+
+        Args:
+            result: result 参数。
+            max_tokens: max_tokens 参数。
+        """
         lines = [f"## Repository Map ({result.total_files} files, {result.total_symbols} symbols)"]
         tokens_est = 0
 

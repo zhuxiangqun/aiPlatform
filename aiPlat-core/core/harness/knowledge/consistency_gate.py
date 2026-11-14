@@ -19,8 +19,8 @@ from typing import Any, Dict, List
 def check_cross_stage_consistency(report_text: str) -> List[Dict[str, Any]]:
     """Scan a diagnosis report for cross-section contradictions.
 
-    Returns a list of warnings, each with:
-        rule, section, message, severity (warning/error)
+    Args:
+        report_text: report_text 参数。
     """
     warnings: List[Dict[str, Any]] = []
     if not report_text or not isinstance(report_text, str):

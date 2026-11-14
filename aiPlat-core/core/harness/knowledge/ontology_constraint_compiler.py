@@ -91,8 +91,9 @@ def compile_ontology_constraints(domain_id: str = "default",
                                  max_rules: int = 10) -> str:
     """Compile ontology axioms + class constraints into a prompt hard-rules block.
 
-    Business domains: compile from domain YAML (authority track).
-    Fallback: wiki-global AXIOMS when domain has no file/axioms.
+    Args:
+        domain_id: domain 标识。
+        max_rules: max_rules 参数。
     """
     rules: List[str] = []
     try:
@@ -112,7 +113,11 @@ def compile_ontology_constraints(domain_id: str = "default",
 
 
 def compile_axiom_rules(domain_id: str = "default") -> List[str]:
-    """Return axiom constraints as a plain list (for JSON-Schema-style use)."""
+    """Return axiom constraints as a plain list (for JSON-Schema-style use).
+
+    Args:
+        domain_id: domain 标识。
+    """
     rules: List[str] = []
     try:
         domain = _load_domain_or_none(domain_id)

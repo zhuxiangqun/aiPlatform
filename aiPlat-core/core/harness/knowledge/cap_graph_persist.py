@@ -61,6 +61,8 @@ def _db_path() -> str:
 
 
 def init_db():
+    """init_db。
+    """
     import sqlite3
     path = _db_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -76,6 +78,8 @@ def _get_conn():
 
 
 def has_cache() -> bool:
+    """has_cache。
+    """
     if not os.path.exists(_db_path()):
         return False
     conn = _get_conn()
@@ -87,6 +91,8 @@ def has_cache() -> bool:
 
 
 def load_nodes() -> Dict[str, Dict[str, Any]]:
+    """load_nodes。
+    """
     conn = _get_conn()
     try:
         nodes: Dict[str, Dict[str, Any]] = {}
@@ -104,6 +110,8 @@ def load_nodes() -> Dict[str, Dict[str, Any]]:
 
 
 def load_edges() -> List[Dict[str, str]]:
+    """load_edges。
+    """
     conn = _get_conn()
     try:
         rows = conn.execute("SELECT from_id, to_id, relation FROM cap_edges").fetchall()
@@ -113,7 +121,11 @@ def load_edges() -> List[Dict[str, str]]:
 
 
 def compute_source_fingerprint(nodes: Dict[str, Dict[str, Any]]) -> str:
-    """Stable fingerprint from node ids + paths (not mtime alone). Fail → raise."""
+    """Stable fingerprint from node ids + paths (not mtime alone). Fail → raise.
+
+    Args:
+        nodes: nodes 参数。
+    """
     parts = []
     for nid in sorted(nodes.keys()):
         n = nodes[nid]
@@ -123,6 +135,11 @@ def compute_source_fingerprint(nodes: Dict[str, Dict[str, Any]]) -> str:
 
 
 def get_meta(key: str) -> Optional[str]:
+    """获取 meta。
+
+    Args:
+        key: key 参数。
+    """
     if not os.path.exists(_db_path()):
         return None
     conn = _get_conn()
@@ -134,7 +151,11 @@ def get_meta(key: str) -> Optional[str]:
 
 
 def evaluate_freshness(nodes: Optional[Dict[str, Dict[str, Any]]] = None) -> Dict[str, Any]:
-    """Return freshness verdict. Missing meta / unreadable / calc fail → stale=True."""
+    """Return freshness verdict. Missing meta / unreadable / calc fail → stale=True.
+
+    Args:
+        nodes: nodes 参数。
+    """
     stored = get_meta("source_fingerprint")
     if not stored:
         return {"stale": True, "reason": "missing_fingerprint_meta", "stored": None, "computed": None}
@@ -159,6 +180,12 @@ def evaluate_freshness(nodes: Optional[Dict[str, Dict[str, Any]]] = None) -> Dic
 
 
 def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
+    """save_graph。
+
+    Args:
+        nodes: nodes 参数。
+        edges: edges 参数。
+    """
     import sqlite3
     path = _db_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -195,6 +222,8 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]]):
 
 
 def get_cache_info() -> Dict[str, Any]:
+    """获取 cache_info。
+    """
     conn = _get_conn()
     try:
         row = conn.execute("SELECT value FROM cap_meta WHERE key='last_build'").fetchone()

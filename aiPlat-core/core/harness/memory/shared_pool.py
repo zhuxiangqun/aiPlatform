@@ -101,6 +101,8 @@ class SharedFact:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return asdict(self)
 
 
@@ -109,6 +111,11 @@ class SharedFact:
 
     def from_dict(cls, d: Dict[str, Any]) -> "SharedFact":
 
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
@@ -139,6 +146,8 @@ class SharedKnowledgePool:
 
     def __init__(self):
 
+        """初始化。
+        """
         os.makedirs(POOL_ROOT, exist_ok=True)
 
         self._facts: List[SharedFact] = []
@@ -476,7 +485,12 @@ class SharedKnowledgePool:
 
     def query_since(self, timestamp: float, limit: int = 100) -> List[SharedFact]:
 
-        """Phase 36: Return facts newer than timestamp for Gossip sync."""
+        """Phase 36: Return facts newer than timestamp for Gossip sync.
+
+        Args:
+            timestamp: timestamp 参数。
+            limit: 返回条数上限。
+        """
 
         self._load()
 
@@ -510,7 +524,17 @@ class SharedKnowledgePool:
 
     ) -> Optional[str]:
 
-        """Publish a fact to the shared pool. Returns fact_id or None."""
+        """Publish a fact to the shared pool. Returns fact_id or None.
+
+        Args:
+            topic: topic 参数。
+            content: content 参数。
+            session_id: 会话 ID。
+            agent_id: Agent ID。
+            confidence: confidence 参数。
+            source: source 参数。
+            metadata: metadata 参数。
+        """
 
         import uuid
 
@@ -590,10 +614,11 @@ class SharedKnowledgePool:
 
         """Query shared pool for facts matching a topic.
 
-
-
-        Matching: substring match on topic (case-insensitive).
-
+        Args:
+            topic: topic 参数。
+            limit: 返回条数上限。
+            min_confidence: min_confidence 参数。
+            exclude_session_id: exclude_session 标识。
         """
 
         self._load()
@@ -635,7 +660,11 @@ class SharedKnowledgePool:
 
     def query_all(self, *, limit: int = 20) -> List[SharedFact]:
 
-        """Query all recent facts, highest confidence first."""
+        """Query all recent facts, highest confidence first.
+
+        Args:
+            limit: 返回条数上限。
+        """
 
         self._load()
 
@@ -653,10 +682,9 @@ class SharedKnowledgePool:
 
         """Resolve conflict between two facts using Jaccard similarity (Phase 23).
 
-
-
-        Returns the surviving fact_id, or None if unresolvable.
-
+        Args:
+            fact_a_id: fact_a 标识。
+            fact_b_id: fact_b 标识。
         """
 
         self._load()

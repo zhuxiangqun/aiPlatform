@@ -15,6 +15,11 @@ class ShortTermMemory(MemoryBase):
     """短期记忆 - 工作记忆、快速存取"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self.max_size = self.config.get("max_size", 100)
         self.ttl = self.config.get("ttl", 3600)           # 1小时
@@ -22,7 +27,11 @@ class ShortTermMemory(MemoryBase):
         self._lock = asyncio.Lock()
     
     async def store(self, entry: MemoryEntry) -> str:
-        """存储短期记忆"""
+        """存储短期记忆。
+
+        Args:
+            entry: entry 参数。
+        """
         async with self._lock:
             entry.id = entry.id or str(uuid.uuid4())
             entry.expires_at = datetime.now(timezone.utc).timestamp() + self.ttl
@@ -30,7 +39,12 @@ class ShortTermMemory(MemoryBase):
             return entry.id
     
     async def retrieve(self, query: str, limit: int = 10) -> List[MemoryEntry]:
-        """检索短期记忆（返回最近的记忆）"""
+        """检索短期记忆（返回最近的记忆）。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         async with self._lock:
             valid_entries = [
                 e for e in self._storage 
@@ -39,7 +53,11 @@ class ShortTermMemory(MemoryBase):
             return valid_entries[-limit:]
     
     async def delete(self, entry_id: str) -> bool:
-        """删除记忆"""
+        """删除记忆。
+
+        Args:
+            entry_id: entry 标识。
+        """
         async with self._lock:
             for i, entry in enumerate(self._storage):
                 if entry.id == entry_id:
@@ -48,7 +66,11 @@ class ShortTermMemory(MemoryBase):
             return False
     
     async def clear(self, scope: MemoryScope = MemoryScope.SESSION) -> int:
-        """清除短期记忆"""
+        """清除短期记忆。
+
+        Args:
+            scope: scope 参数。
+        """
         async with self._lock:
             count = len(self._storage)
             self._storage.clear()
@@ -60,7 +82,11 @@ class ShortTermMemory(MemoryBase):
             return list(self._storage)
     
     async def get_recent(self, count: int = 10) -> List[MemoryEntry]:
-        """获取最近的N条记忆"""
+        """获取最近的N条记忆。
+
+        Args:
+            count: count 参数。
+        """
         async with self._lock:
             return list(self._storage)[-count:]
 
@@ -69,6 +95,11 @@ class ConversationMemory(ShortTermMemory):
     """对话记忆 - 管理对话上下文"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         config = config or {}
         config.setdefault("max_size", 50)
         config.setdefault("ttl", 1800)       # 30分钟
@@ -76,7 +107,13 @@ class ConversationMemory(ShortTermMemory):
         self.session_id: Optional[str] = None
     
     async def add_message(self, role: str, content: str, metadata: Dict[str, Any] = None) -> str:
-        """添加对话消息"""
+        """添加对话消息。
+
+        Args:
+            role: role 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+        """
         entry = MemoryEntry(
             id=str(uuid.uuid4()),
             content=content,
@@ -91,7 +128,11 @@ class ConversationMemory(ShortTermMemory):
         return await self.store(entry)
     
     async def get_messages(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """获取对话消息历史"""
+        """获取对话消息历史。
+
+        Args:
+            limit: 返回条数上限。
+        """
         entries = await self.retrieve("", limit=limit)
         return [
             {
@@ -103,7 +144,11 @@ class ConversationMemory(ShortTermMemory):
         ]
     
     async def get_context(self, max_tokens: int = 2000) -> str:
-        """获取对话上下文（限制token数）"""
+        """获取对话上下文（限制token数）。
+
+        Args:
+            max_tokens: max_tokens 参数。
+        """
         messages = await self.get_messages(limit=50)
         context_parts = []
         total_length = 0
@@ -118,7 +163,11 @@ class ConversationMemory(ShortTermMemory):
         return "".join(reversed(context_parts))
     
     def set_session(self, session_id: str):
-        """设置会话ID"""
+        """设置会话ID。
+
+        Args:
+            session_id: 会话 ID。
+        """
         self.session_id = session_id
     
     async def clear_session(self) -> int:

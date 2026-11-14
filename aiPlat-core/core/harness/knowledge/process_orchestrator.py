@@ -52,15 +52,10 @@ def _ensure_schema():
 
 
 def load_processes(domain_yaml_raw: Dict[str, Any]) -> List[Dict[str, Any]]:
-    u"""Load process definitions from domain YAML raw dict.
+    """Load process definitions from domain YAML raw dict.
 
-    Each process has a ``domains`` list declaring which domains the process
-    spans. Each step gets a ``default_domain`` field set to the first domain
-    in the process's ``domains`` list. Steps that specify their own ``domain``
-    field override this default for cross-domain routing.
-
-    Steps without ``domain`` use the first domain in the process's
-    ``domains`` list.
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
     """
     raw_processes = domain_yaml_raw.get("processes", {})
     if not isinstance(raw_processes, dict):
@@ -84,7 +79,14 @@ def start_process(
     starter_entity: str,
     process_def: Dict[str, Any],
 ) -> str:
-    u"""Start a new process instance. Returns instance_id."""
+    """Start a new process instance. Returns instance_id.
+
+    Args:
+        process_name: process_name 参数。
+        domain_id: domain 标识。
+        starter_entity: starter_entity 参数。
+        process_def: process_def 参数。
+    """
     _ensure_schema()
     pid = f"{process_name}:{starter_entity}:{int(_time.time())}"
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
@@ -105,17 +107,13 @@ def check_step_completion(
     entity_name: str,
     new_state: str,
 ) -> List[Dict[str, Any]]:
-    u"""Called after state_machine completes.
+    """Called after state_machine completes.
 
-    Checks if this entity's new state triggers the next step in any running
-    process, including cross-domain processes.
-
-    Cross-domain routing:
-      - Steps with a ``domain`` field matching the current ``domain_id`` are
-        processed.
-      - Steps without ``domain`` fall back to the process's first domain (from
-        its ``domains`` list), providing backward compatibility for
-        single-domain processes.
+    Args:
+        domain_id: domain 标识。
+        entity_class: entity_class 参数。
+        entity_name: entity_name 参数。
+        new_state: new_state 参数。
     """
     base = _os.path.expanduser(_os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
 
@@ -203,7 +201,12 @@ def check_step_completion(
 
 
 def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
-    u"""Get status of all running process instances."""
+    """Get status of all running process instances.
+
+    Args:
+        domain_id: domain 标识。
+        process_name: process_name 参数。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     if process_name:
@@ -233,7 +236,12 @@ def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str,
 
 
 def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-    u"""Find process instances stuck at the same step the longest."""
+    """Find process instances stuck at the same step the longest.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     now = _time.time()
@@ -256,17 +264,10 @@ def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
 
 
 def load_processes_cross_domain(ontologies_dir: str = "") -> Dict[str, Any]:
-    u"""Load all processes across all domains.
+    """Load all processes across all domains.
 
-    Scans all YAML files in the ontologies directory and returns processes
-    keyed by name with their definitions and domain associations.
-
-    Returns ``{process_name: {"definition": ..., "domains": [...], "source_domain": "..."}}``.
-
-    Cross-domain processes are loaded lazily from YAML files — no runtime
-    registration is needed. The ``domains`` field declares which domains the
-    process spans. Individual steps may override with their own ``domain``
-    field.
+    Args:
+        ontologies_dir: ontologies_dir 参数。
     """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
     result: Dict[str, Any] = {}

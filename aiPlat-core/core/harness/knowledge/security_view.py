@@ -41,6 +41,7 @@ _SINK_SCORE = {
 
 @dataclass
 class Entry:
+    """Entry。"""
     id: str
     kind: str
     file: str
@@ -52,6 +53,7 @@ class Entry:
 
 @dataclass
 class Sink:
+    """Sink。"""
     id: str
     kind: str
     file: str
@@ -62,6 +64,7 @@ class Sink:
 
 @dataclass
 class Gate:
+    """Gate。"""
     id: str
     kind: str
     file: str
@@ -70,6 +73,7 @@ class Gate:
 
 @dataclass
 class HotPath:
+    """HotPath。"""
     id: str
     entry_id: str
     sink_id: str
@@ -84,6 +88,7 @@ class HotPath:
 
 @dataclass
 class LayerStats:
+    """LayerStats。"""
     file_count: int = 0
     entry_count: int = 0
     sink_count: int = 0
@@ -93,6 +98,7 @@ class LayerStats:
 
 @dataclass
 class RepoSummary:
+    """RepoSummary。"""
     trust_boundaries: List[str] = field(default_factory=list)
     priority_areas: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=lambda: [
@@ -102,6 +108,7 @@ class RepoSummary:
 
 @dataclass
 class SecurityView:
+    """SecurityView。"""
     schema_version: str
     repo_id: str
     built_at: str
@@ -115,6 +122,8 @@ class SecurityView:
     metrics: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "schema_version": self.schema_version,
             "repo_id": self.repo_id,
@@ -189,6 +198,11 @@ def _rules_search_paths() -> List[Path]:
 
 
 def load_rules(path: Optional[Path] = None) -> Dict[str, Any]:
+    """load_rules。
+
+    Args:
+        path: 路径。
+    """
     base = _default_rules()
     candidates = [path] if path else _rules_search_paths()
     for p in candidates:
@@ -518,7 +532,12 @@ def _build_layers(
 
 
 def compact_security_digest(sv: SecurityView, max_chars: int = DEFAULT_DIGEST_MAX_CHARS) -> Dict[str, Any]:
-    """Token-budgeted digest for Agent plan stage."""
+    """Token-budgeted digest for Agent plan stage.
+
+    Args:
+        sv: sv 参数。
+        max_chars: max_chars 参数。
+    """
     payload = {
         "schema_version": sv.schema_version,
         "repo_summary": asdict(sv.repo_summary),
@@ -560,7 +579,18 @@ def build_security_view(
     cache: bool = True,
     force: bool = False,
 ) -> SecurityView:
-    """Compile secview.v1 from code_graph. Pure-deterministic (no LLM)."""
+    """Compile secview.v1 from code_graph. Pure-deterministic (no LLM).
+
+    Args:
+        repo_id: repo 标识。
+        nodes: nodes 参数。
+        edges: edges 参数。
+        rules: rules 参数。
+        max_depth: max_depth 参数。
+        max_paths: max_paths 参数。
+        cache: cache 参数。
+        force: 是否强制。
+    """
     t0 = time.time()
     from core.harness.knowledge.code_graph import (
         build_graph,
@@ -677,4 +707,9 @@ def _dict_to_view(data: Dict[str, Any]) -> SecurityView:
 
 
 def get_security_view(**kwargs: Any) -> SecurityView:
+    """获取 security_view。
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return build_security_view(**kwargs)

@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class QualitySignal:
+    """QualitySignal。"""
     entity_uri: str
     signal_type: str              # "pipeline_reflection", "schema_validation", "manual_review"
     signal_value: Dict[str, Any]  # quality_assessment, issues_found, etc.
@@ -50,6 +51,8 @@ class QualitySignal:
             self.recorded_at = datetime.now(timezone.utc).isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "entity_uri": self.entity_uri,
             "signal_type": self.signal_type,
@@ -66,10 +69,11 @@ def _quality_path(collection_id: str = "default") -> str:
 
 
 def sync_quality_to_abox(entity_uri: str, collection_id: str = "default") -> None:
-    u"""Sync the latest quality score to the ontology A-Box.
+    """Sync the latest quality score to the ontology A-Box.
 
-    Call this after recording new quality signals to keep the A-Box
-    qualityScore data property in sync with the signal history.
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
     """
     try:
         score_data = get_entity_quality_score(entity_uri, collection_id=collection_id)
@@ -95,15 +99,15 @@ def record_quality_signal(
     severity: str = "info",
     collection_id: str = "default",
 ) -> QualitySignal:
-    u"""Record a quality signal for an ontology entity.
+    """Record a quality signal for an ontology entity.
 
-    Parameters:
-      - signal_type: "pipeline_reflection", "schema_validation", "manual_review"
-      - signal_value: dict with quality_assessment, issues_found, etc.
-      - source: pipeline stage ID, session ID, or reviewer name.
-      - severity: info, warning, error.
-
-    Signals persist to ~/.aiplat/wiki/collections/{id}/quality_signals.json
+    Args:
+        entity_uri: entity_uri 参数。
+        signal_type: signal_type 参数。
+        signal_value: signal_value 参数。
+        source: source 参数。
+        severity: severity 参数。
+        collection_id: collection 标识。
     """
     signal = QualitySignal(
         entity_uri=entity_uri,
@@ -141,9 +145,12 @@ def get_quality_signals(
     limit: int = 50,
     collection_id: str = "default",
 ) -> List[Dict[str, Any]]:
-    u"""Get quality signals, optionally filtered by entity_uri.
+    """Get quality signals, optionally filtered by entity_uri.
 
-    Returns signals sorted newest-first.
+    Args:
+        entity_uri: entity_uri 参数。
+        limit: 返回条数上限。
+        collection_id: collection 标识。
     """
     path = _quality_path(collection_id)
     if not _os.path.exists(path):
@@ -167,7 +174,12 @@ def get_entity_quality_score(
     *,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Compute a 0-100 quality score for an entity based on accumulated signals."""
+    """Compute a 0-100 quality score for an entity based on accumulated signals.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+    """
     signals = get_quality_signals(entity_uri, limit=100, collection_id=collection_id)
     if not signals:
         return {"entity_uri": entity_uri, "score": 70, "signal_count": 0, "assessment": "no_signals"}
@@ -234,13 +246,10 @@ def _score_to_assessment(score: int) -> str:
 
 
 def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""Run health checks and return triggered curation tasks.
+    """Run health checks and return triggered curation tasks.
 
-    Triggers:
-      1. Overall health score < 60 → full_curation
-      2. Entity with 3+ negative quality signals → mark_contradicted
-      3. A1 violations older than 10 days → escalate_violation
-      4. Entity score < 30 → review_required
+    Args:
+        collection_id: collection 标识。
     """
     triggers: List[Dict[str, Any]] = []
 

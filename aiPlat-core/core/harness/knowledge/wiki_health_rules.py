@@ -47,6 +47,7 @@ from typing import Any, Dict, List, Optional, Set
 
 class WikiIssue:
 
+    """WikiIssue。"""
     check_type: str
 
     severity: str  # high | medium | low
@@ -67,6 +68,7 @@ class WikiIssue:
 
 class WikiHealthReport:
 
+    """WikiHealthReport。"""
     health_score: int
 
     total_pages: int
@@ -83,6 +85,8 @@ class WikiHealthReport:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "health_score": self.health_score,
@@ -143,7 +147,11 @@ class WikiRule:
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
-        """Scan all pages and return issues found."""
+        """Scan all pages and return issues found.
+
+        Args:
+            all_pages: all_pages 参数。
+        """
 
         raise NotImplementedError
 
@@ -161,6 +169,7 @@ class WikiRule:
 
 class ContradictionCheck(WikiRule):
 
+    """ContradictionCheck。"""
     code = "contradiction"
 
     severity = "high"
@@ -173,6 +182,11 @@ class ContradictionCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         for title, page in all_pages.items():
@@ -205,6 +219,7 @@ class ContradictionCheck(WikiRule):
 
 class OrphanCheck(WikiRule):
 
+    """OrphanCheck。"""
     code = "orphan"
 
     severity = "medium"
@@ -217,6 +232,11 @@ class OrphanCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         all_linked: Set[str] = set()
 
         for page in all_pages.values():
@@ -255,6 +275,7 @@ class OrphanCheck(WikiRule):
 
 class DeadLinkCheck(WikiRule):
 
+    """DeadLinkCheck。"""
     code = "dead_link"
 
     severity = "high"
@@ -267,6 +288,11 @@ class DeadLinkCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         all_titles = set(all_pages.keys())
 
         issues = []
@@ -301,6 +327,7 @@ class DeadLinkCheck(WikiRule):
 
 class StaleCheck(WikiRule):
 
+    """StaleCheck。"""
     code = "stale"
 
     severity = "low"
@@ -313,6 +340,11 @@ class StaleCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         stale_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
         issues = []
@@ -345,6 +377,7 @@ class StaleCheck(WikiRule):
 
 class ThinContentCheck(WikiRule):
 
+    """ThinContentCheck。"""
     code = "thin_content"
 
     severity = "low"
@@ -357,6 +390,11 @@ class ThinContentCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         collection_id = "default"
@@ -451,6 +489,7 @@ class ThinContentCheck(WikiRule):
 
 class NoTagsCheck(WikiRule):
 
+    """NoTagsCheck。"""
     code = "no_tags"
 
     severity = "low"
@@ -463,6 +502,11 @@ class NoTagsCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         for title, page in all_pages.items():
@@ -491,6 +535,7 @@ class NoTagsCheck(WikiRule):
 
 class NoSummaryCheck(WikiRule):
 
+    """NoSummaryCheck。"""
     code = "no_summary"
 
     severity = "low"
@@ -503,6 +548,11 @@ class NoSummaryCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         for title, page in all_pages.items():
@@ -559,6 +609,11 @@ class SemanticContradictionCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         pages = [(t, p) for t, p in all_pages.items() if p.get("category") != "contradictions"]
@@ -679,6 +734,11 @@ class DuplicateCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         try:
 
             from core.harness.knowledge.wiki_engine import detect_duplicate_pages
@@ -767,6 +827,11 @@ class OntologyValidationRule(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         issues = []
 
         try:
@@ -877,6 +942,11 @@ class OntologyCoverageCheck(WikiRule):
 
     def check(self, all_pages: Dict[str, Dict[str, Any]]) -> List[WikiIssue]:
 
+        """check。
+
+        Args:
+            all_pages: all_pages 参数。
+        """
         from core.harness.knowledge.knowledge_ontology import CLASSES
 
 
@@ -985,18 +1055,27 @@ class WikiHealthRegistry:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._rules: List[WikiRule] = [cls() for cls in _all_rules()]
 
 
 
     def register(self, rule: WikiRule) -> None:
 
+        """register。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
 
 
 
     def run(self) -> WikiHealthReport:
 
+        """run。
+        """
         from core.harness.knowledge.wiki_engine import read_page, _ensure_dirs, _wiki_root
 
 
@@ -1427,6 +1506,8 @@ _registry: Optional[WikiHealthRegistry] = None
 
 def get_wiki_registry() -> WikiHealthRegistry:
 
+    """获取 wiki_registry。
+    """
     global _registry
 
     if _registry is None:

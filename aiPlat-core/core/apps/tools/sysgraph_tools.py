@@ -50,6 +50,8 @@ class SysGraphContextTool(BaseTool):
     """Build relevant code context for a task/question."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_context",
             description="Get relevant code structure for a task or question. Returns matching files, imports, and key symbols.",
@@ -65,6 +67,11 @@ class SysGraphContextTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         task = str(kwargs.get("task") or kwargs.get("question") or "").strip()
         if not task:
             return ToolResult(success=False, error="task or question parameter required")
@@ -87,6 +94,8 @@ class SysGraphSearchTool(BaseTool):
     """Search for files by name in the codebase."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_search",
             description="Search for files by name in the codebase. Returns matching paths with import degree info.",
@@ -103,6 +112,11 @@ class SysGraphSearchTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         query = str(kwargs.get("query") or kwargs.get("q") or "").strip()
         if not query or len(query) < 2:
             return ToolResult(success=False, error="query required (min 2 chars)")
@@ -132,6 +146,8 @@ class SysGraphImpactTool(BaseTool):
     """Blast radius analysis for a file change."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_impact",
             description="Show which files would be affected by changes to a given file. Uses BFS over import graph.",
@@ -147,6 +163,11 @@ class SysGraphImpactTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         filepath = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         if not filepath:
             return ToolResult(success=False, error="file parameter required")
@@ -174,6 +195,8 @@ class SysGraphCallersTool(BaseTool):
     """Find files that depend on a given file."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_callers",
             description="Find which files import or depend on a given file (reverse dependencies).",
@@ -190,6 +213,11 @@ class SysGraphCallersTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         filepath = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         limit = int(kwargs.get("limit") or 15)
         if not filepath:
@@ -224,6 +252,8 @@ class SysGraphNodeTool(BaseTool):
     """Full detail for a file node."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_node",
             description="Get full detail for a file: symbols (functions/classes), imports, dependents, and source code snippet.",
@@ -239,6 +269,11 @@ class SysGraphNodeTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         filepath = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         if not filepath:
             return ToolResult(success=False, error="file parameter required")
@@ -281,6 +316,8 @@ class SysGraphAffectedTestsTool(BaseTool):
     """Find test files affected by changed source files."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_affected_tests",
             description="Find which test files are affected by changes to the given source files. Used for running only relevant tests after code changes.",
@@ -295,6 +332,11 @@ class SysGraphAffectedTestsTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         files_str = str(kwargs.get("files") or "").strip()
         if not files_str:
             return ToolResult(success=False, error="files parameter required (comma-separated paths)")
@@ -332,6 +374,8 @@ class SysGraphReviewTool(BaseTool):
     """Build minimal review context for a set of changed files."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_review",
             description="Build minimal code review context for changed files. Returns: callers, callees, affected tests, and code snippets for each changed file.",
@@ -346,6 +390,11 @@ class SysGraphReviewTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         files_str = str(kwargs.get("files") or "").strip()
         if not files_str:
             return ToolResult(success=False, error="files parameter required")
@@ -403,6 +452,8 @@ class SysGraphDepsTool(BaseTool):
     """Full transitive dependency tree for a file: both imports and dependents, with configurable depth."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_deps",
             description="Return the full dependency tree for a file: what it imports (with transitive closure) and what depends on it (reverse callers). Supports depth limit and direction filtering.",
@@ -420,6 +471,11 @@ class SysGraphDepsTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         path = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         if not path:
             return ToolResult(success=False, error="file parameter required")
@@ -511,6 +567,8 @@ class SysGraphDiffTool(BaseTool):
     """Compare dependency profiles of two files: shared vs unique imports, callers, and cross-file calls."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_diff",
             description="Compare the dependency profiles of two files. Shows shared vs unique imports, shared callers, cross-file call overlap, and symbol overlap.",
@@ -528,6 +586,11 @@ class SysGraphDiffTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         a = str(kwargs.get("file_a") or kwargs.get("a") or "").strip()
         b = str(kwargs.get("file_b") or kwargs.get("b") or "").strip()
         if not a or not b:
@@ -608,6 +671,8 @@ class SysGraphRelatedTool(BaseTool):
     """Find files related to a given file: shared imports, same directory, symbol overlap."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_related",
             description="Find code files related to a given file by shared imports, same directory siblings, and symbol name overlap. Useful for discovering which files work together.",
@@ -624,6 +689,11 @@ class SysGraphRelatedTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         path = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         if not path:
             return ToolResult(success=False, error="file parameter required")
@@ -692,6 +762,8 @@ class SysGraphStatsTool(BaseTool):
     """Global codebase statistics: files, edges, symbols, top modules, health."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_stats",
             description="Return global codebase statistics: total files/edges/symbols, layer breakdown, top imported files, top dependent files, and health score. Use this to get a birds-eye view of the codebase.",
@@ -703,6 +775,11 @@ class SysGraphStatsTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         try:
             from core.harness.knowledge.code_graph import (
                 build_graph, default_roots, repo_root, health_score, count_cycles
@@ -767,6 +844,8 @@ class SysGraphTestsTool(BaseTool):
     """Find test files for source files, identify untested files, and show test coverage gaps."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_tests",
             description="Find test files related to source files. Given a file, finds its test file(s). Given no file, lists untested source files (files with no corresponding test in same layer).",
@@ -783,6 +862,11 @@ class SysGraphTestsTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         path = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         untested = bool(kwargs.get("untested", not path))
         limit = int(kwargs.get("limit", 15))
@@ -876,6 +960,8 @@ class SysGraphHotspotsTool(BaseTool):
     """Identify code hotspots: most-depended-on files, most-complex files, most issues."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_hotspots",
             description="Identify code hotspots: top files by in-degree (most depended on), out-degree (most dependencies), issues, and symbol count. Useful for finding high-risk modules that need attention.",
@@ -891,6 +977,11 @@ class SysGraphHotspotsTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         metric = str(kwargs.get("metric", "indegree")).strip()
         limit = int(kwargs.get("limit", 10))
         layer_filter = str(kwargs.get("layer", "")).strip()
@@ -941,6 +1032,8 @@ class SysGraphFindTool(BaseTool):
     """Find where a function, class, or symbol is defined across the codebase."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_find",
             description="Find where a function, class, or symbol is defined across the entire codebase. Given a name, returns all files that define it with kind (function/class/async_function) and line number.",
@@ -958,6 +1051,11 @@ class SysGraphFindTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         name = str(kwargs.get("name") or kwargs.get("query") or "").strip()
         if not name:
             return ToolResult(success=False, error="name parameter required")
@@ -1010,6 +1108,8 @@ class SysGraphChurnTool(BaseTool):
     """Show recently changed files via git log, with change frequency."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sysgraph_churn",
             description="Show recently changed files via git log. Returns files sorted by recent modification, with change count in the last N commits. Useful for finding actively maintained or unstable code.",
@@ -1024,6 +1124,11 @@ class SysGraphChurnTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         limit = int(kwargs.get("limit", 15))
         num_commits = int(kwargs.get("commits", 30))
         try:
@@ -1080,6 +1185,8 @@ class SysLspFixTool(BaseTool):
     """Agent self-repair: read context around an LSP diagnostic error, enabling the Agent to generate and apply fixes via sys_file_edit. Can also re-verify after fix."""
 
     def __init__(self):
+        """初始化。
+        """
         config = ToolConfig(
             name="sys_lsp_fix",
             description="Prepare context for fixing a pyright LSP diagnostic error. Given a file path and line number, returns the surrounding code so the Agent can generate the correct fix. After applying fixes, call with verify=true to re-run pyright on that file.",
@@ -1098,6 +1205,11 @@ class SysLspFixTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, **kwargs) -> ToolResult:
+        """execute。
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         filepath = str(kwargs.get("file") or kwargs.get("path") or "").strip()
         line = int(kwargs.get("line", 0))
         rule = str(kwargs.get("rule", ""))

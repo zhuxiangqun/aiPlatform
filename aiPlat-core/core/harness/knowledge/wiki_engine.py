@@ -122,6 +122,8 @@ def _init_global_index(root: Path) -> None:
         gidx.write_text(_json.dumps({"collections": {}, "last_updated": ""}, indent=2))
 
 def list_collections() -> List[Dict[str, Any]]:
+    """列出 collections。
+    """
     home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
@@ -146,6 +148,11 @@ def list_collections() -> List[Dict[str, Any]]:
     return result
 
 def create_collection(collection_id: str) -> Dict[str, Any]:
+    """创建 collection。
+
+    Args:
+        collection_id: collection 标识。
+    """
     home = get_aiplat_home()
     root = Path(home) / "wiki"
     _migrate_legacy_wiki(root)
@@ -156,6 +163,11 @@ def create_collection(collection_id: str) -> Dict[str, Any]:
     return {"status": "created", "collection_id": collection_id}
 
 def delete_collection(collection_id: str) -> Dict[str, Any]:
+    """删除 collection。
+
+    Args:
+        collection_id: collection 标识。
+    """
     if collection_id == "default":
         return {"status": "protected", "reason": "cannot delete default collection"}
     import shutil
@@ -168,11 +180,10 @@ def delete_collection(collection_id: str) -> Dict[str, Any]:
 
 
 def parse_title_from_uri(source_uri: str) -> str:
-    u"""Extract a readable title from an upload filename.
+    """Extract a readable title from an upload filename.
 
-    Examples:
-      'req_01KS_1080p_xtdowner.com_放弃RAG吧_LLM知识库新范式_Karpathy新思路.mp4'
-        → '放弃 RAG：LLM 知识库新范式'
+    Args:
+        source_uri: source_uri 参数。
     """
     fname = Path(source_uri).stem
     for prefix in ["preview_", "req_", "src_"]:
@@ -264,7 +275,13 @@ def _parse_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
 
 
 def read_page(title_or_path: str, *, category: str = "entities", collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    """Read a wiki page by title or path. Returns {title, page_id, category, tags, body, fm, path} or None."""
+    """Read a wiki page by title or path. Returns {title, page_id, category, tags, body, fm, path} or None.
+
+    Args:
+        title_or_path: title_or_path 参数。
+        category: category 参数。
+        collection_id: collection 标识。
+    """
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
     name = re.sub(r"[<>:\"/\\|?*]", "_", title_or_path)[:120]
@@ -288,7 +305,12 @@ def read_page(title_or_path: str, *, category: str = "entities", collection_id: 
 
 
 def read_page_by_id(page_id: str, *, collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    """Read a wiki page by its stable page_id (UUID). Survives title renames."""
+    """Read a wiki page by its stable page_id (UUID). Survives title renames.
+
+    Args:
+        page_id: page 标识。
+        collection_id: collection 标识。
+    """
     if not page_id:
         return None
     _ensure_dirs(collection_id)
@@ -1048,7 +1070,11 @@ def _update_index(title: str, category: str, tags: List[str], related: List[str]
 
 
 def generate_index_md(collection_id: str = "default") -> str:
-    """Generate a human-readable Markdown index (index.md) from index.json."""
+    """Generate a human-readable Markdown index (index.md) from index.json.
+
+    Args:
+        collection_id: collection 标识。
+    """
     idx_path = _wiki_root(collection_id) / "index.json"
     try:
         idx = _json.loads(idx_path.read_text(encoding="utf-8"))
@@ -1082,7 +1108,13 @@ def generate_index_md(collection_id: str = "default") -> str:
 
 
 def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool:
-    u"""Update specific frontmatter fields of an existing wiki page, preserving others."""
+    """Update specific frontmatter fields of an existing wiki page, preserving others.
+
+    Args:
+        title: title 参数。
+        collection_id: collection 标识。
+        kwargs: kwargs 参数。
+    """
     existing = None
     for cat_dir in _wiki_root(collection_id).iterdir():
         if not cat_dir.is_dir() or cat_dir.name == "contradictions":
@@ -1136,7 +1168,12 @@ def update_page(title: str, *, collection_id: str = "default", **kwargs) -> bool
 
 
 def delete_page(title: str, collection_id: str = "default") -> bool:
-    u"""Delete a wiki page by title, removing from disk and index."""
+    """Delete a wiki page by title, removing from disk and index.
+
+    Args:
+        title: title 参数。
+        collection_id: collection 标识。
+    """
     found = None
     cat_name = ""
     for cat_dir in _wiki_root(collection_id).iterdir():
@@ -1239,20 +1276,11 @@ def delete_page(title: str, collection_id: str = "default") -> bool:
 
 
 def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False) -> Dict[str, Any]:
-    u"""Batch-clean ghost pages — search index entries with no stored page data.
+    """Batch-clean ghost pages — search index entries with no stored page data.
 
-    Ghost pages are entries that exist in the search_pages() index but:
-    - Have empty body (< 5 chars) in search_pages()
-    - Have no stored page data (read_page() returns None)
-
-    Unlike individual delete_page() calls, this method:
-    - Skips A8 duplicate similarity checks (O(n²) → O(n))
-    - Skips cascade stale-reference updates (ghosts have no real content)
-    - Skips contradiction/synthesis-page sync
-    - Does ONE FTS index rebuild at the end (not per-page)
-    - Does ONE cache invalidation round
-
-    Returns: {deleted: int, skipped: int, errors: list, dry_run: bool}
+    Args:
+        collection_id: collection 标识。
+        dry_run: 是否仅演练。
     """
     logger = logging.getLogger("wiki_engine")
     all_pages = search_pages(limit=2000, collection_id=collection_id)
@@ -1332,7 +1360,11 @@ def cleanup_ghost_pages(*, collection_id: str = "default", dry_run: bool = False
 
 
 def delete_all_pages(*, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Delete ALL wiki pages, reset index, and clear KB document wiki_pages references."""
+    """Delete ALL wiki pages, reset index, and clear KB document wiki_pages references.
+
+    Args:
+        collection_id: collection 标识。
+    """
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
     deleted = 0
@@ -1389,7 +1421,11 @@ def _proposals_path(collection_id: str = "default") -> Path:
 
 
 def load_proposals(*, collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""Load all proposals from disk."""
+    """Load all proposals from disk.
+
+    Args:
+        collection_id: collection 标识。
+    """
     pp = _proposals_path(collection_id)
     if not pp.exists():
         return []
@@ -1401,7 +1437,12 @@ def load_proposals(*, collection_id: str = "default") -> List[Dict[str, Any]]:
 
 
 def save_proposal(proposal: Dict[str, Any], collection_id: str = "default") -> str:
-    u"""Add or update a proposal. Returns the proposal id."""
+    """Add or update a proposal. Returns the proposal id.
+
+    Args:
+        proposal: proposal 参数。
+        collection_id: collection 标识。
+    """
     pp = _proposals_path(collection_id)
     _ensure_dirs(collection_id)
     proposals = load_proposals(collection_id=collection_id)
@@ -1420,7 +1461,13 @@ def save_proposal(proposal: Dict[str, Any], collection_id: str = "default") -> s
 
 
 def update_proposal_status(proposal_id: str, status: str, collection_id: str = "default") -> bool:
-    u"""Update a proposal's status (pending→approved→rejected)."""
+    """Update a proposal's status (pending→approved→rejected).
+
+    Args:
+        proposal_id: proposal 标识。
+        status: status 参数。
+        collection_id: collection 标识。
+    """
     proposals = load_proposals(collection_id=collection_id)
     for p in proposals:
         if p.get("id") == proposal_id:
@@ -1434,9 +1481,11 @@ def update_proposal_status(proposal_id: str, status: str, collection_id: str = "
 
 
 def apply_proposal(proposal_id: str, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Execute an approved proposal: merge, update, supplement, or contrad.
+    """Execute an approved proposal: merge, update, supplement, or contrad.
 
-    Returns: {success: bool, message: str, action: str}
+    Args:
+        proposal_id: proposal 标识。
+        collection_id: collection 标识。
     """
     proposals = load_proposals(collection_id=collection_id)
     prop = next((p for p in proposals if p.get("id") == proposal_id), None)
@@ -1632,10 +1681,15 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
                    expiry_before: str = "") -> List[Dict[str, Any]]:
     """Search wiki pages by title, tags, body, with K4 metadata filters.
 
-    K4 filters:
-      department: filter by owning department
-      effective_after: only pages effective on or after this date (ISO)
-      expiry_before: only pages expiring before this date (ISO)
+    Args:
+        query: 查询。
+        tags: tags 参数。
+        category: category 参数。
+        limit: 返回条数上限。
+        collection_id: collection 标识。
+        department: department 参数。
+        effective_after: effective_after 参数。
+        expiry_before: expiry_before 参数。
     """
     _ensure_dirs(collection_id)
     root = _wiki_root(collection_id)
@@ -1708,7 +1762,13 @@ def search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
 
 
 def traverse_links(start_title: str, depth: int = 2, collection_id: str = "default") -> List[Dict[str, Any]]:
-    """BFS traverse wiki link graph starting from a page."""
+    """BFS traverse wiki link graph starting from a page.
+
+    Args:
+        start_title: start_title 参数。
+        depth: depth 参数。
+        collection_id: collection 标识。
+    """
     _ensure_dirs(collection_id)
     visited: set = set()
     queue: List[Tuple[str, int]] = [(start_title, 0)]
@@ -1747,14 +1807,26 @@ def wiki_health_report() -> Dict[str, Any]:
 
 
 def list_all_pages(*, collection_id: str = "default") -> List[Dict[str, Any]]:
-    """Return summary of all wiki pages for index display."""
+    """Return summary of all wiki pages for index display.
+
+    Args:
+        collection_id: collection 标识。
+    """
     return search_pages(limit=1000, collection_id=collection_id)
 
 
 # ── Graph export (ECharts force-layout) ──────────────────────────
 
 def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_nodes: int = 300, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Build node/edge graph for ECharts force-layout visualization (cached)."""
+    """Build node/edge graph for ECharts force-layout visualization (cached).
+
+    Args:
+        category: category 参数。
+        keyword: keyword 参数。
+        source: source 参数。
+        max_nodes: max_nodes 参数。
+        collection_id: collection 标识。
+    """
     cache_key = f"v2|{category}|{keyword}|{source}|{max_nodes}|{collection_id}"
     cached = _read_graph_cache(cache_key)
     if cached:
@@ -1767,7 +1839,11 @@ def build_graph(*, category: str = "", keyword: str = "", source: str = "", max_
 
 
 def invalidate_graph_cache(collection_id: str = "default") -> None:
-    u"""Invalidate all graph caches (call after write_page/delete_page)."""
+    """Invalidate all graph caches (call after write_page/delete_page).
+
+    Args:
+        collection_id: collection 标识。
+    """
     db_path = _graph_cache_db()
     if os.path.exists(db_path):
         try:
@@ -1933,10 +2009,13 @@ def _build_graph_raw(*, category: str = "", keyword: str = "", source: str = "",
 
 def auto_link_page(title: str, body: str, all_titles: List[str],
                    threshold: float = None) -> List[str]:
-    u"""自动语义关联：嵌入相似度 → top-5 相关页面。
+    """自动语义关联：嵌入相似度 → top-5 相关页面。
 
-    模型路径：embed_texts_semantic → InfraEmbeddingAdapter → infra ModelManager。
-    阈值可通过 AIPLAT_WIKI_LINK_THRESHOLD 环境变量配置。
+    Args:
+        title: title 参数。
+        body: 请求体。
+        all_titles: all_titles 参数。
+        threshold: threshold 参数。
     """
     if threshold is None:
         threshold = float(os.getenv("AIPLAT_WIKI_LINK_THRESHOLD", "0.35"))
@@ -1967,12 +2046,9 @@ def auto_link_page(title: str, body: str, all_titles: List[str],
 def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "default") -> List[Dict[str, Any]]:
     """Multi-dimensional duplicate page detection across all wiki pages.
 
-    L1 (Embedding): cosine similarity >= threshold → content duplicates
-    L2 (Ontology): same T-Box class + same parentOf target + title similarity > 0.6
-    L3 (Structural): same category + shared >= 2 related pages
-    L4 (Evidence): same source_doc_id + overlapping evidence range
-
-    Returns: [{page_a, page_b, similarity, layer, suggestion}]
+    Args:
+        threshold: threshold 参数。
+        collection_id: collection 标识。
     """
     dupes: List[Dict[str, Any]] = []
     seen_pairs: set = set()
@@ -2133,10 +2209,13 @@ def detect_duplicate_pages(threshold: float = 0.90, collection_id: str = "defaul
 
 async def llm_curate_page(title: str, body: str, *, existing_titles: List[str] = None,
                            source_doc_id: str = "") -> Dict[str, Any]:
-    """Use LLM to read a new wiki page, extract entities, detect contradictions,
-    update related pages, and generate a proper summary.
+    """Use LLM to read a new wiki page, extract entities, detect contradictions,。
 
-    Returns: { title, category, summary, tags, related, entities_found, contradictions, merge_candidates }
+    Args:
+        title: title 参数。
+        body: 请求体。
+        existing_titles: existing_titles 参数。
+        source_doc_id: source_doc 标识。
     """
     existing_titles = existing_titles or []
     result: Dict[str, Any] = {
@@ -2271,11 +2350,9 @@ Reply with ONLY a JSON object (no markdown fences, no explanation):
 def write_atom(atom_data: Dict[str, Any], *, collection_id: str = "default") -> str:
     """Write a KnowledgeAtom as a wiki page (category='atoms').
 
-    Atom frontmatter includes evidence tracking fields:
-    source_doc_id, evidence_start, evidence_end, evidence_text, confidence.
-
-    Evidence metadata is stored as HTML comments in body (transparent to readers).
-    Returns the file path.
+    Args:
+        atom_data: atom_data 参数。
+        collection_id: collection 标识。
     """
     title = atom_data.get("title", "unnamed_atom")
     body = atom_data.get("body", "")
@@ -2304,7 +2381,12 @@ def write_atom(atom_data: Dict[str, Any], *, collection_id: str = "default") -> 
 
 
 def write_atoms_batch(atoms: List[Dict[str, Any]], *, collection_id: str = "default") -> Dict[str, int]:
-    """Batch write KnowledgeAtom list. Returns {written, failed} counts."""
+    """Batch write KnowledgeAtom list. Returns {written, failed} counts.
+
+    Args:
+        atoms: atoms 参数。
+        collection_id: collection 标识。
+    """
     written = 0
     failed = 0
     for atom in atoms:
@@ -2319,11 +2401,8 @@ def write_atoms_batch(atoms: List[Dict[str, Any]], *, collection_id: str = "defa
 def detect_contradicting_atoms(atoms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Detect contradiction pairs in a list of extracted atoms.
 
-    Detection logic:
-    1. Explicit: atom.contradicts_atom_index != null
-    2. Semantic: same title prefix (>10 chars overlap), different conclusions
-
-    Returns: [{atom_a_index, atom_b_index, type, reason}]
+    Args:
+        atoms: atoms 参数。
     """
     contradictions = []
 
@@ -2359,7 +2438,13 @@ def detect_contradicting_atoms(atoms: List[Dict[str, Any]]) -> List[Dict[str, An
 
 def build_contradiction_page(atoms: List[Dict[str, Any]], contradiction: Dict,
                               *, collection_id: str = "default") -> Optional[str]:
-    """Create a ContradictionPage from a detected contradiction pair."""
+    """Create a ContradictionPage from a detected contradiction pair.
+
+    Args:
+        atoms: atoms 参数。
+        contradiction: contradiction 参数。
+        collection_id: collection 标识。
+    """
     a = atoms[contradiction["atom_a_index"]]
     b = atoms[contradiction["atom_b_index"]]
 
@@ -2396,14 +2481,12 @@ async def atomize_document(doc_text: str, doc_id: str, *,
                             model_name: str = "") -> Dict[str, Any]:
     """Full pipeline: raw document → KnowledgeAtom extraction → schema validation → write → contradiction detection.
 
-    Uses T-Box schema to guide LLM extraction, ensuring every atom has:
-    - Required fields (title, body, source_doc_id)
-    - Evidence positions (evidence_start, evidence_end, evidence_text)
-    - Confidence score
-
-    Returns:
-        {atoms_extracted, atoms_written, contradictions_found,
-         contradiction_pages_created, atoms: [...], contradictions: [...]}
+    Args:
+        doc_text: doc_text 参数。
+        doc_id: doc 标识。
+        collection_id: collection 标识。
+        max_atoms: max_atoms 参数。
+        model_name: model_name 参数。
     """
     result = {"atoms_extracted": 0, "atoms_written": 0, "contradictions_found": 0,
               "contradiction_pages_created": 0, "atoms": [], "contradictions": [],
@@ -2485,11 +2568,8 @@ async def atomize_document(doc_text: str, doc_id: str, *,
 def clean_stale_references(collection_id: str = "default") -> Dict[str, Any]:
     """Scan all wiki pages, move stale kb: references from source_articles to stale_references.
 
-    A reference is stale when the kb:doc_id prefix maps to a doc_id that
-    does not exist in the KB SQLite documents table.
-
-    Returns:
-        {scanned, affected, stale_refs_moved, details: [{page, removed, added_to_stale}], abox_rebuilt}
+    Args:
+        collection_id: collection 标识。
     """
     import os as _os, sqlite3 as _sq
 
@@ -2694,7 +2774,14 @@ Return ONLY a JSON object:
 def build_contradiction_page_by_data(a_page: Dict, b_page: Dict, *,
                                      reason: str = "",
                                      collection_id: str = "default") -> Optional[str]:
-    """Create a ContradictionPage from two page dicts."""
+    """Create a ContradictionPage from two page dicts.
+
+    Args:
+        a_page: a_page 参数。
+        b_page: b_page 参数。
+        reason: reason 参数。
+        collection_id: collection 标识。
+    """
     a_title = a_page.get("title", "?")
     b_title = b_page.get("title", "?")
     title = f"Contradiction: {a_title[:30]} vs {b_title[:30]}"
@@ -2722,8 +2809,9 @@ async def seed_instances(collection_id: str = "default",
                           model_name: str = "") -> Dict[str, Any]:
     """Create seed instances for empty T-Box categories (atoms, contradictions).
 
-    Uses LLM to extract sub-concepts from TopicPages and detect contradictions
-    between related page pairs. Creates 3-5 atoms and 2-3 contradiction pages.
+    Args:
+        collection_id: collection 标识。
+        model_name: model_name 参数。
     """
     import asyncio as _asyncio
 
@@ -2800,12 +2888,9 @@ async def seed_instances(collection_id: str = "default",
 def backfill_evidence_for_page_sync(title: str, *, collection_id: str = "default") -> Dict[str, Any]:
     """Extract evidence annotations from a wiki page's own content (non-LLM fallback).
 
-    Identifies the first 2-3 sentences as evidence_text and embeds them
-    as HTML comments for the evidence-chain API. This is a lightweight
-    self-referencing backfill for pages where original KB sources are gone.
-
-    Returns:
-        {title, claims_extracted, updated}
+    Args:
+        title: title 参数。
+        collection_id: collection 标识。
     """
     page = read_page(title, collection_id=collection_id)
     if not page:
@@ -2865,11 +2950,9 @@ def backfill_evidence_batch_sync(collection_id: str = "default",
                                   limit: int = 50) -> Dict[str, Any]:
     """Batch backfill evidence for all pages that have kb: source_articles but no evidence.
 
-    Uses the sync (non-LLM) backfill method. Processes all matching pages.
-    Records failures to a tracking file.
-
-    Returns:
-        {total_candidates, succeeded, failed, details: [...]}
+    Args:
+        collection_id: collection 标识。
+        limit: 返回条数上限。
     """
     import os as _os, time as _time
 
@@ -2969,13 +3052,12 @@ def recommend_knowledge(
 ) -> List[Dict[str, Any]]:
     """L5 active knowledge recommendation engine.
 
-    Recommends knowledge based on:
-      a) Recently updated pages in the user's department
-      b) High-velocity entities (most state changes recently)
-      c) Knowledge gaps that match the user's context
-      d) Pending review items
-
-    Returns ranked list of recommendations with reason and priority.
+    Args:
+        department: department 参数。
+        recent_queries: recent_queries 参数。
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+        collection_id: collection 标识。
     """
     recommendations = []
 
@@ -3086,8 +3168,10 @@ _PII_PATTERNS = [
 def classify_page(title: str = "", body: str = "", *, collection_id: str = "default") -> Dict[str, Any]:
     """Phase 53: Auto-classify wiki page based on content patterns.
 
-    Returns {level, classification, pii_detected, reasons}.
-    Tries to read existing marking from page frontmatter first.
+    Args:
+        title: title 参数。
+        body: 请求体。
+        collection_id: collection 标识。
     """
     # Check existing frontmatter
     existing_marking = "public"

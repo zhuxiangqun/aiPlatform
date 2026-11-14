@@ -94,7 +94,11 @@ def _normalize_process_list(raw_proc: Any) -> List[Dict[str, Any]]:
 
 
 def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
-    """Load a domain ontology from a YAML file."""
+    """Load a domain ontology from a YAML file.
+
+    Args:
+        file_path: file_path 参数。
+    """
     import yaml
 
     with open(file_path, "r", encoding="utf-8") as f:
@@ -222,7 +226,11 @@ def load_ontology_from_yaml(file_path: str) -> OntologyDomain:
 
 
 def list_domain_files(base_dir: str = "") -> List[str]:
-    """List available ontology domain files (excludes version sidecars ``*_vN``)."""
+    """List available ontology domain files (excludes version sidecars ``*_vN``).
+
+    Args:
+        base_dir: base_dir 参数。
+    """
     import re as _re
 
     d = _Path(base_dir or get_aiplat_home()) / "ontologies"
@@ -237,7 +245,11 @@ def list_domain_files(base_dir: str = "") -> List[str]:
 
 
 def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
-    """Load all ontology domain files."""
+    """Load all ontology domain files.
+
+    Args:
+        base_dir: base_dir 参数。
+    """
     domains = {}
     for domain_id in list_domain_files(base_dir):
         d = _Path(base_dir or get_aiplat_home()) / "ontologies"
@@ -254,9 +266,10 @@ def load_all_domains(base_dir: str = "") -> Dict[str, OntologyDomain]:
 # ════════════════════════════════════════════════════════════
 
 def validate_ontology_yaml(yaml_text: str) -> dict:
-    """
-    Validate a YAML string against the ontology domain format.
-    Returns: {valid, errors, classes_n, properties_n}
+    """Validate a YAML string against the ontology domain format.
+
+    Args:
+        yaml_text: yaml_text 参数。
     """
     import yaml as _yaml
     errors = []
@@ -297,7 +310,9 @@ def validate_ontology_yaml(yaml_text: str) -> dict:
 def save_domain_yaml(domain_id: str, yaml_text: str) -> str:
     """Write validated YAML to ~/.aiplat/ontologies/{domain_id}.yaml.
 
-    Denied unless called inside allow_live_yaml_write (apply/rollback only).
+    Args:
+        domain_id: domain 标识。
+        yaml_text: yaml_text 参数。
     """
     from core.harness.knowledge.ontology_yaml_gate import assert_live_yaml_write
 
@@ -347,8 +362,12 @@ def get_entities_by_interface(domain_id: str, interface_name: str, *, base_dir: 
 
 
 def get_interface_definition(domain_id: str, interface_name: str, *, base_dir: str = "") -> Optional[dict]:
-    """
-    Return the full Interface definition from a domain.
+    """Return the full Interface definition from a domain.
+
+    Args:
+        domain_id: domain 标识。
+        interface_name: interface_name 参数。
+        base_dir: base_dir 参数。
     """
     d = _Path(base_dir or get_aiplat_home()) / "ontologies"
     file_path = d / f"{domain_id}.yaml"

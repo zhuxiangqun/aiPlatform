@@ -15,6 +15,8 @@ class KBIngestTool(BaseTool):
     """Ingest a document into the knowledge base."""
 
     def __init__(self) -> None:
+        """初始化。
+        """
         super().__init__(
             ToolConfig(
                 name="kb_ingest",
@@ -38,6 +40,11 @@ class KBIngestTool(BaseTool):
         )
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         tenant_id = str(params.get("tenant_id") or "").strip() or "default"
         collection_id = str(params.get("collection_id") or "").strip() or "default"
         file_path = str(params.get("file_path") or "").strip()
@@ -99,6 +106,8 @@ class KBQueryTool(BaseTool):
     """Query the knowledge base for structured answers."""
 
     def __init__(self) -> None:
+        """初始化。
+        """
         super().__init__(
             ToolConfig(
                 name="kb_query",
@@ -118,6 +127,11 @@ class KBQueryTool(BaseTool):
         )
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         tenant_id = str(params.get("tenant_id") or "").strip() or "default"
         collection_id = str(params.get("collection_id") or "").strip() or "default"
         question = str(params.get("question") or "").strip()

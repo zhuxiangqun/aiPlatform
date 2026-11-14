@@ -547,8 +547,9 @@ def _inject_digital_employees(parts: List[str]):
 def assemble_agent_context(params: dict, system_parts: list) -> list:
     """Lightweight context for Agent conversations (3 layers only).
 
-    Agents need domain awareness but not the full diagnosis pipeline.
-    Injects: term dictionary, digital employees, and solution archetypes.
+    Args:
+        params: params 参数。
+        system_parts: system_parts 参数。
     """
     try:
         _inject_term_dictionary(system_parts)
@@ -568,7 +569,9 @@ def assemble_agent_context(params: dict, system_parts: list) -> list:
 def assemble_skill_context(params: dict, system_parts: list) -> list:
     """Lightweight context for Skill execution (2 layers only).
 
-    Skills need terminology awareness and evidence rules.
+    Args:
+        params: params 参数。
+        system_parts: system_parts 参数。
     """
     try:
         _inject_term_dictionary(system_parts)
@@ -584,13 +587,9 @@ def assemble_skill_context(params: dict, system_parts: list) -> list:
 def assemble_pipeline_context(params: dict, system_parts: list) -> list:
     """Lightweight context for Pipeline execution.
 
-    2026-08-28 修复：移除 FDE 诊断专用注入（delivery_history /
-    self_optimization / term_dictionary）。这 3 层引用 FDE 报告章节
-    （§1/§6/§7/§4.6 ROI）与「历史诊断总数」，被注入产品流水线（PRD/
-    架构/代码生成）会污染产物——实测视频解析平台 PRD 混入「诊断自优化
-    (250条历史)」与「业务语义字典 FDE/RAG/本体」，并产出空壳字段
-    （description/acceptance_criteria 全空）。产品流水线不需要 FDE
-    诊断语义，需要领域上下文时由 DomainRouter 域 prompt 承担。
+    Args:
+        params: params 参数。
+        system_parts: system_parts 参数。
     """
     return system_parts
 
@@ -603,6 +602,8 @@ _hook_registered = False
 
 
 def register_context_hook() -> bool:
+    """register_context_hook。
+    """
     global _hook_registered
     if _hook_registered:
         return False

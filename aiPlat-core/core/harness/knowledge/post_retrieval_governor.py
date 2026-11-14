@@ -60,6 +60,7 @@ DEFAULT_CREDIBILITY = {
 
 @dataclass
 class GovernorConfig:
+    """GovernorConfig。"""
     time_decay_days: int = 180       # pages older than this get penalized
     time_boost_days: int = 30        # pages within this get a boost
     min_density_score: float = 0.15  # minimum information density to keep
@@ -80,6 +81,7 @@ class GovernorConfig:
 
 @dataclass
 class GovernanceHints:
+    """GovernanceHints。"""
     has_conflicts: bool = False
     conflict_pairs: List[Tuple[str, str]] = field(default_factory=list)
     oldest_source_age: int = 0
@@ -90,6 +92,7 @@ class GovernanceHints:
 
 @dataclass
 class GovernanceStats:
+    """GovernanceStats。"""
     raw_count: int = 0
     governed_count: int = 0
     time_penalized: int = 0
@@ -246,6 +249,11 @@ class PostRetrievalGovernor:
     """
 
     def __init__(self, config: GovernorConfig = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or GovernorConfig()
 
     def govern(

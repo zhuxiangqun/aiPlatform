@@ -64,6 +64,7 @@ def _sweep_discovered_cache() -> None:
 
 @dataclass
 class ReasoningPath:
+    """ReasoningPath。"""
     name: str
     label: str
     description: str = ""
@@ -79,6 +80,7 @@ class ReasoningPath:
 
 @dataclass
 class PathCandidate:
+    """PathCandidate。"""
     path: ReasoningPath
     cost: float = 0.0  # lower is better
     match_reason: str = ""  # "template_match" | "auto_discovered"
@@ -86,6 +88,7 @@ class PathCandidate:
 
 @dataclass
 class PathResult:
+    """PathResult。"""
     path_name: str
     terminal_entities: List[str] = field(default_factory=list)
     step_results: List[Dict[str, Any]] = field(default_factory=list)
@@ -95,7 +98,11 @@ class PathResult:
 
 
 def load_paths(domain_yaml_raw: Dict[str, Any]) -> Dict[str, ReasoningPath]:
-    u"""Load reasoning paths from domain YAML raw dict."""
+    """Load reasoning paths from domain YAML raw dict.
+
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
+    """
     raw_paths = domain_yaml_raw.get("reasoning_paths", {})
     result = {}
     for name, raw in raw_paths.items():
@@ -119,10 +126,12 @@ def find_candidate_paths(
     domain_id: str,
     ontologies_dir: str = "",
 ) -> List[PathCandidate]:
-    u"""Find candidate reasoning paths for a task context.
+    """Find candidate reasoning paths for a task context.
 
-    TaskContext: { intent, entities, target_class, filters, time_range }
-    Returns paths sorted by cost (lowest first).
+    Args:
+        task_context: task_context 参数。
+        domain_id: domain 标识。
+        ontologies_dir: ontologies_dir 参数。
     """
     import os, yaml
 
@@ -167,7 +176,13 @@ def execute_path(
     start_entities: List[str],
     domain_id: str,
 ) -> PathResult:
-    u"""Execute a reasoning path from start entities, stepping through each relation."""
+    """Execute a reasoning path from start entities, stepping through each relation.
+
+    Args:
+        path: 路径。
+        start_entities: start_entities 参数。
+        domain_id: domain 标识。
+    """
     result = PathResult(path_name=path.name)
     current_ids = list(start_entities)
 

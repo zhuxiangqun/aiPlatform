@@ -48,6 +48,11 @@ class SkillMarketplace:
 
     def __init__(self, db_path: str = "~/.aiplat/marketplace.db"):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = os.path.expanduser(db_path)
 
         self._lock = threading.Lock()
@@ -128,6 +133,16 @@ class SkillMarketplace:
 
                  category: str = "general", source_url: str = "", tags: list[str] | None = None) -> bool:
 
+        """register。
+
+        Args:
+            skill_id: Skill ID。
+            name: name 参数。
+            description: description 参数。
+            category: category 参数。
+            source_url: source_url 参数。
+            tags: tags 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -156,6 +171,12 @@ class SkillMarketplace:
 
     def install(self, skill_id: str, source_url: str = "") -> bool:
 
+        """install。
+
+        Args:
+            skill_id: Skill ID。
+            source_url: source_url 参数。
+        """
         now = datetime.now(timezone.utc).isoformat()
 
         with self._lock:
@@ -199,6 +220,14 @@ class SkillMarketplace:
 
     def rate(self, skill_id: str, rating: int, comment: str = "", profile_id: str = "default"):
 
+        """rate。
+
+        Args:
+            skill_id: Skill ID。
+            rating: rating 参数。
+            comment: comment 参数。
+            profile_id: profile 标识。
+        """
         if not 1 <= rating <= 5:
 
             return False
@@ -241,6 +270,13 @@ class SkillMarketplace:
 
                  limit: int = 20) -> list[dict]:
 
+        """discover。
+
+        Args:
+            category: category 参数。
+            sort_by: sort_by 参数。
+            limit: 返回条数上限。
+        """
         order_map = {"rating": "rating DESC", "downloads": "downloads DESC",
 
                      "newest": "install_date DESC", "name": "name ASC"}
@@ -279,6 +315,11 @@ class SkillMarketplace:
 
     def get_trending(self, limit: int = 10) -> list[dict]:
 
+        """获取 trending。
+
+        Args:
+            limit: 返回条数上限。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -299,6 +340,8 @@ class SkillMarketplace:
 
     def get_stats(self) -> dict:
 
+        """获取 stats。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -322,7 +365,11 @@ class SkillMarketplace:
     }
 
     def supports_external_source(self, source: str) -> bool:
-        """Whether an external skill source is supported (agentskills.io)."""
+        """Whether an external skill source is supported (agentskills.io).
+
+        Args:
+            source: source 参数。
+        """
         return source in self.EXTERNAL_SOURCES
 
     def _frontmatter(self, text: str) -> dict:
@@ -342,8 +389,9 @@ class SkillMarketplace:
     def export_skill(self, skill_id: str, skill_dir: str = "") -> dict:
         """Serialize an aiPlat skill to agentskills.io-compatible format.
 
-        Maps aiPlat SKILL.md frontmatter → agentskills.io metadata.
-        aiPlat extensions (effects/permissions) use safe defaults when absent.
+        Args:
+            skill_id: Skill ID。
+            skill_dir: skill_dir 参数。
         """
         base = skill_dir or get_aiplat_data_dir("skills")
         skill_path = os.path.join(base, skill_id, "SKILL.md")
@@ -369,8 +417,9 @@ class SkillMarketplace:
                           limit: int = 50) -> list[dict]:
         """Discover skills from an external source index (aggregated view).
 
-        Pulls the remote index (network); on failure returns an empty list
-        with the error noted (discover is best-effort, never blocks install).
+        Args:
+            source: source 参数。
+            limit: 返回条数上限。
         """
         if not self.supports_external_source(source):
             return [{"error": f"unsupported source: {source}"}]
@@ -390,7 +439,13 @@ class SkillMarketplace:
 
     def install_external(self, skill_id: str, source: str = "agentskills.io",
                          source_url: str = "") -> bool:
-        """Install a skill from an external source (git clone fallback)."""
+        """Install a skill from an external source (git clone fallback).
+
+        Args:
+            skill_id: Skill ID。
+            source: source 参数。
+            source_url: source_url 参数。
+        """
         if source_url:
             return self.install(skill_id, source_url)
         # No direct URL — fail loud rather than guessing
@@ -411,6 +466,8 @@ _marketplace: Optional[SkillMarketplace] = None
 
 def get_marketplace() -> SkillMarketplace:
 
+    """获取 marketplace。
+    """
     global _marketplace
 
     if _marketplace is None:

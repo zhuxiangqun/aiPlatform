@@ -13,6 +13,7 @@ from enum import Enum
 
 
 class RecallSource(Enum):
+    """RecallSource。"""
     TOKEN = "token"
     RAG = "rag"
     MIXED = "mixed"
@@ -20,6 +21,7 @@ class RecallSource(Enum):
 
 @dataclass
 class RecallResult:
+    """RecallResult。"""
     tool_name: str
     score: float
     source: RecallSource
@@ -36,11 +38,19 @@ class TokenRecaller:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._index: Dict[str, Set[str]] = {}
         self._tool_descriptions: Dict[str, str] = {}
 
     def index_tool(self, tool_name: str, description: str, keywords: Optional[List[str]] = None) -> None:
-        """Index a tool for token-based recall"""
+        """Index a tool for token-based recall。
+
+        Args:
+            tool_name: tool_name 参数。
+            description: description 参数。
+            keywords: keywords 参数。
+        """
         self._tool_descriptions[tool_name] = description.lower()
         tokens = set()
         if keywords:
@@ -50,12 +60,21 @@ class TokenRecaller:
         self._index[tool_name] = tokens
 
     def remove_tool(self, tool_name: str) -> None:
-        """Remove a tool from the index"""
+        """Remove a tool from the index。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         self._index.pop(tool_name, None)
         self._tool_descriptions.pop(tool_name, None)
 
     def recall(self, query: str, top_k: int = 5) -> List[RecallResult]:
-        """Recall tools based on keyword matching"""
+        """Recall tools based on keyword matching。
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+        """
         query_tokens = set(query.lower().split())
         results: List[RecallResult] = []
 
@@ -77,6 +96,8 @@ class TokenRecaller:
 
     @property
     def tool_count(self) -> int:
+        """tool_count。
+        """
         return len(self._index)
 
 
@@ -89,16 +110,27 @@ class RAGRecaller:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._tool_texts: Dict[str, str] = {}
         self._tool_vectors: Dict[str, Dict[str, float]] = {}
 
     def index_tool(self, tool_name: str, description: str) -> None:
-        """Index a tool for RAG-based recall"""
+        """Index a tool for RAG-based recall。
+
+        Args:
+            tool_name: tool_name 参数。
+            description: description 参数。
+        """
         self._tool_texts[tool_name] = description
         self._tool_vectors[tool_name] = self._compute_vector(description)
 
     def remove_tool(self, tool_name: str) -> None:
-        """Remove a tool from the index"""
+        """Remove a tool from the index。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         self._tool_texts.pop(tool_name, None)
         self._tool_vectors.pop(tool_name, None)
 
@@ -127,7 +159,12 @@ class RAGRecaller:
         return dot_product / (norm_a * norm_b)
 
     def recall(self, query: str, top_k: int = 5) -> List[RecallResult]:
-        """Recall tools using semantic similarity"""
+        """Recall tools using semantic similarity。
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+        """
         query_vector = self._compute_vector(query)
         results: List[RecallResult] = []
 
@@ -146,6 +183,8 @@ class RAGRecaller:
 
     @property
     def tool_count(self) -> int:
+        """tool_count。
+        """
         return len(self._tool_texts)
 
 
@@ -158,6 +197,11 @@ class NeuralEnhancer:
     """
 
     def __init__(self, hidden_size: int = 16):
+        """初始化。
+
+        Args:
+            hidden_size: hidden_size 参数。
+        """
         self._hidden_size = hidden_size
         self._weights_initialized = False
 
@@ -168,7 +212,14 @@ class NeuralEnhancer:
         weight_token: float = 0.4,
         weight_rag: float = 0.6
     ) -> float:
-        """Enhance recall scores using feature combination"""
+        """Enhance recall scores using feature combination。
+
+        Args:
+            token_score: token_score 参数。
+            rag_score: rag_score 参数。
+            weight_token: weight_token 参数。
+            weight_rag: weight_rag 参数。
+        """
         product = token_score * rag_score
         total_sum = token_score + rag_score
         difference = abs(token_score - rag_score)
@@ -201,6 +252,13 @@ class ToolRecaller:
         weight_rag: float = 0.6,
         use_neural_enhancer: bool = False
     ):
+        """初始化。
+
+        Args:
+            weight_token: weight_token 参数。
+            weight_rag: weight_rag 参数。
+            use_neural_enhancer: use_neural_enhancer 参数。
+        """
         self.weight_token = weight_token
         self.weight_rag = weight_rag
         self.token_recaller = TokenRecaller()
@@ -213,12 +271,22 @@ class ToolRecaller:
         description: str,
         keywords: Optional[List[str]] = None
     ) -> None:
-        """Index a tool for hybrid recall"""
+        """Index a tool for hybrid recall。
+
+        Args:
+            tool_name: tool_name 参数。
+            description: description 参数。
+            keywords: keywords 参数。
+        """
         self.token_recaller.index_tool(tool_name, description, keywords)
         self.rag_recaller.index_tool(tool_name, description)
 
     def remove_tool(self, tool_name: str) -> None:
-        """Remove a tool from the index"""
+        """Remove a tool from the index。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         self.token_recaller.remove_tool(tool_name)
         self.rag_recaller.remove_tool(tool_name)
 
@@ -271,6 +339,8 @@ class ToolRecaller:
 
     @property
     def tool_count(self) -> int:
+        """tool_count。
+        """
         return self.token_recaller.tool_count
 
 

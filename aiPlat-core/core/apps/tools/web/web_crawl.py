@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class WebCrawlTool(BaseTool):
+    """WebCrawlTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="web_crawl",
             display_name="全站抓取",
@@ -39,6 +42,11 @@ class WebCrawlTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         start_url = str(args.get("url", "")).strip()
         if not start_url:
             return {"success": False, "error": "url required"}
@@ -86,7 +94,10 @@ class WebCrawlTool(BaseTool):
 
 
 class WebMapTool(BaseTool):
+    """WebMapTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="web_map",
             display_name="网站地图",
@@ -105,6 +116,11 @@ class WebMapTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         start_url = str(args.get("url", "")).strip()
         if not start_url:
             return {"success": False, "error": "url required"}

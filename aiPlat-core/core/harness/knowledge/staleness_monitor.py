@@ -44,6 +44,7 @@ from pathlib import Path
 
 class StalenessReport:
 
+    """StalenessReport。"""
     collection_id: str = ""
 
     scanned_pages: int = 0
@@ -58,6 +59,8 @@ class StalenessReport:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "collection_id": self.collection_id,
@@ -94,6 +97,8 @@ class StalenessMonitor:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._kb_db_path = Path(get_aiplat_home()) / "kb" / "tenants" / "default" / "kb.sqlite3"
 
 
@@ -144,7 +149,11 @@ class StalenessMonitor:
 
     def scan_collection(self, collection_id: str) -> StalenessReport:
 
-        """Scan one Wiki collection for drift."""
+        """Scan one Wiki collection for drift.
+
+        Args:
+            collection_id: collection 标识。
+        """
 
         report = StalenessReport(collection_id=collection_id)
 
@@ -328,14 +337,8 @@ class StalenessMonitor:
 
         """Auto-rebuild stale pages when drift exceeds threshold.
 
-
-
-        Only triggers if drift_ratio > 0.3 (30%). Processes up to max_pages
-
-        stale pages by re-running the ontology engine on their drifted sources.
-
-        Safe — each page requires a single pipeline invocation with LLM calls.
-
+        Args:
+            max_pages: max_pages 参数。
         """
 
         summary = self.get_stale_summary()

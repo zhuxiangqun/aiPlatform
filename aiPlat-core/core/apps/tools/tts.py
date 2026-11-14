@@ -21,7 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 class TTSTool(BaseTool):
+    """TTSTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="tts_generate",
             display_name="文本转语音",
@@ -47,6 +50,11 @@ class TTSTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         text = str(args.get("text", "")).strip()
         if not text:
             return {"success": False, "error": "text 不能为空"}

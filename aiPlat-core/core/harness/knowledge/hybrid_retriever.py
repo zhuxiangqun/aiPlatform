@@ -17,10 +17,16 @@ from typing import Any, Dict, List, Tuple
 
 
 class BM25Scorer:
+    """BM25Scorer。"""
     _K1 = 1.5
     _B = 0.75
 
     def __init__(self, corpus: List[str]):
+        """初始化。
+
+        Args:
+            corpus: corpus 参数。
+        """
         self._doc_count = len(corpus)
         self._avgdl = sum(len(d.split()) for d in corpus) / max(self._doc_count, 1)
         self._df: Dict[str, int] = {}
@@ -29,6 +35,12 @@ class BM25Scorer:
                 self._df[token] = self._df.get(token, 0) + 1
 
     def score(self, query: str, doc: str) -> float:
+        """score。
+
+        Args:
+            query: 查询。
+            doc: doc 参数。
+        """
         tokens = self._tokenize(doc)
         dl = len(tokens)
         tf = Counter(tokens)
@@ -56,6 +68,14 @@ def rrf_fusion(
     k: int = 60,
     top_n: int = 10,
 ) -> List[Any]:
+    """rrf_fusion。
+
+    Args:
+        vec_ranked: vec_ranked 参数。
+        kw_ranked: kw_ranked 参数。
+        k: k 参数。
+        top_n: top_n 参数。
+    """
     scores: Dict[int, float] = {}
     items: Dict[int, Any] = {}
     for rank, (idx, item) in enumerate(vec_ranked):
@@ -69,6 +89,13 @@ def rrf_fusion(
 
 
 def keyword_search(query: str, chunks: List[str], top_k: int = 20) -> List[Tuple[int, float]]:
+    """keyword_search。
+
+    Args:
+        query: 查询。
+        chunks: chunks 参数。
+        top_k: top_k 参数。
+    """
     bm25 = BM25Scorer(chunks)
     scored = [(i, bm25.score(query, chunk)) for i, chunk in enumerate(chunks)]
     scored.sort(key=lambda x: x[1], reverse=True)

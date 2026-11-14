@@ -85,51 +85,93 @@ def _ensure() -> bool:
 
 
 def inc_tool_truncated(tool: str) -> None:
+    """inc_tool_truncated。
+
+    Args:
+        tool: tool 参数。
+    """
     if _ensure():
         _metrics["tool_truncated"].labels(tool=tool).inc()
 
 
 def observe_tool_summary(tool: str, seconds: float) -> None:
+    """observe_tool_summary。
+
+    Args:
+        tool: tool 参数。
+        seconds: seconds 参数。
+    """
     if _ensure():
         _metrics["tool_summary_latency"].labels(tool=tool).observe(seconds)
 
 
 def inc_semantic_expired() -> None:
+    """inc_semantic_expired。
+    """
     if _ensure():
         _metrics["semantic_expired"].inc()
 
 
 def inc_semantic_renewed() -> None:
+    """inc_semantic_renewed。
+    """
     if _ensure():
         _metrics["semantic_renewed"].inc()
 
 
 def inc_critical_promoted() -> None:
+    """inc_critical_promoted。
+    """
     if _ensure():
         _metrics["critical_promoted"].inc()
 
 
 def observe_rrf_latency(seconds: float) -> None:
+    """observe_rrf_latency。
+
+    Args:
+        seconds: seconds 参数。
+    """
     if _ensure():
         _metrics["rrf_latency"].observe(seconds)
 
 
 def inc_early_exit(source: str = "graph") -> None:
+    """inc_early_exit。
+
+    Args:
+        source: source 参数。
+    """
     if _ensure():
         _metrics["early_exit"].labels(source=source).inc()
 
 
 def inc_skill_downgraded(skill: str) -> None:
+    """inc_skill_downgraded。
+
+    Args:
+        skill: skill 参数。
+    """
     if _ensure():
         _metrics["skill_downgraded"].labels(skill=skill).inc()
 
 
 def inc_skill_alert(skill: str) -> None:
+    """inc_skill_alert。
+
+    Args:
+        skill: skill 参数。
+    """
     if _ensure():
         _metrics["skill_alert"].labels(skill=skill).inc()
 
 
 def inc_cache_version(collection: str) -> None:
+    """inc_cache_version。
+
+    Args:
+        collection: collection 参数。
+    """
     if _ensure():
         _metrics["cache_version"].labels(collection=collection).inc()
 

@@ -50,6 +50,14 @@ def check_quality(
     threshold: float = 0.3,
     min_chunks: int = 3,
 ) -> Dict[str, Any]:
+    """check_quality。
+
+    Args:
+        chunks: chunks 参数。
+        query: 查询。
+        threshold: threshold 参数。
+        min_chunks: min_chunks 参数。
+    """
     if not chunks or len(chunks) < min_chunks:
         return {"pass": False, "action": "switch_to_web_search", "scores": [],
                 "avg_score": 0.0, "reason": f"Not enough chunks ({len(chunks)} < {min_chunks}). Using web search fallback."}

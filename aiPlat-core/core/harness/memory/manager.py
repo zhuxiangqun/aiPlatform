@@ -137,6 +137,8 @@ class TaskSkill:
 
     def is_hot(self) -> bool:
 
+        """is_hot。
+        """
         return self.pass_rate >= 0.85
 
 
@@ -262,6 +264,14 @@ class MemoryManager:
 
                  *, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+            namespace: namespace 参数。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+        """
         self._config = config or MemoryConfig()
 
         self._current_ontology_version: str = ""
@@ -438,21 +448,12 @@ class MemoryManager:
 
         """Build complete context from all memory layers.
 
-        When session_id is provided, scopes Working memory and semantic retrieval
-        to that session (prevents cross-project contamination in Builder PM chats).
-
-        When skip_system_messages=True, the caller handles system-level injection
-        (CLAUDE.md, project context) separately — only memory-layer context
-        (working/episodic/semantic) is assembled here.
-
-        retrieval_budget: "full" | "minimal" | "working_only"
-
-          - full:       full semantic + episodic + working
-
-          - minimal:    semantic top_k=1 + working (skip episodic)
-
-          - working_only: working memory only (skip all retrieval)
-
+        Args:
+            current_query: current_query 参数。
+            system_prompt: system_prompt 参数。
+            session_id: 会话 ID。
+            skip_system_messages: skip_system_messages 参数。
+            retrieval_budget: retrieval_budget 参数。
         """
 
         # Scope to caller's session if provided
@@ -1178,7 +1179,12 @@ class MemoryManager:
         )
 
     def set_domain_context(self, domain_id: str, collection_id: str = "") -> None:
-        """设置当前域上下文，使 build_context 返回的 version_context 携带正确的版本信息."""
+        """设置当前域上下文，使 build_context 返回的 version_context 携带正确的版本信息.
+
+        Args:
+            domain_id: domain 标识。
+            collection_id: collection 标识。
+        """
         if domain_id:
             self._current_ontology_version = self._resolve_ontology_version_for(domain_id)
         if collection_id:
@@ -1215,12 +1221,12 @@ class MemoryManager:
 
         """Lightweight reminder check without full context assembly.
 
-
-
-        Used by the agent execution loop as a bridge hook.
-
-        Returns a list of reminder strings (empty if no reminders triggered).
-
+        Args:
+            token_usage_ratio: token_usage_ratio 参数。
+            consecutive_reads: consecutive_reads 参数。
+            tool_failed: tool_failed 参数。
+            calling_tool: calling_tool 参数。
+            pending_todos: pending_todos 参数。
         """
 
         if not self._reminders:
@@ -1251,14 +1257,8 @@ class MemoryManager:
 
         """Periodic memory nudge — returns a summary every ~10 turns.
 
-
-
-        Hermes-aligned: memory_manager.py provides periodic reminders to
-
-        the agent so it doesn't forget long-term context.  Returns empty
-
-        string when not due.
-
+        Args:
+            turn_number: turn_number 参数。
         """
 
         if turn_number > 0 and turn_number % 10 == 0:
@@ -1524,7 +1524,11 @@ class MemoryManager:
 
     def import_episodic_state(self, state: Dict[str, Any]) -> None:
 
-        """Restore episodic memory from persisted state."""
+        """Restore episodic memory from persisted state.
+
+        Args:
+            state: state 参数。
+        """
 
         if not state or not isinstance(state, dict):
 
@@ -1601,7 +1605,11 @@ class MemoryManager:
 
     async def forget_semantic(self, key: str) -> bool:
 
-        """Phase 40: Soft-delete a semantic memory entry. Returns True if deleted."""
+        """Phase 40: Soft-delete a semantic memory entry. Returns True if deleted.
+
+        Args:
+            key: key 参数。
+        """
 
         return await self._semantic.delete(key)
 
@@ -1609,7 +1617,11 @@ class MemoryManager:
 
     async def recover_semantic(self, key: str) -> bool:
 
-        """Phase 40: Recover a soft-deleted semantic memory entry."""
+        """Phase 40: Recover a soft-deleted semantic memory entry.
+
+        Args:
+            key: key 参数。
+        """
 
         return self._semantic.recover_deleted(key)
 
@@ -1617,7 +1629,11 @@ class MemoryManager:
 
     async def increment_semantic_access(self, keys: list) -> None:
 
-        """Phase 46: Batch increment access_count for semantic memory keys."""
+        """Phase 46: Batch increment access_count for semantic memory keys.
+
+        Args:
+            keys: keys 参数。
+        """
 
         await self._semantic.increment_access_count(keys)
 
@@ -1625,7 +1641,12 @@ class MemoryManager:
 
     async def search_semantic(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
 
-        """Phase 40: Search semantic memories and return with provenance fields."""
+        """Phase 40: Search semantic memories and return with provenance fields.
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+        """
 
         items = await self._semantic.retrieve(query, top_k=top_k, threshold=0.0)
 
@@ -1706,7 +1727,11 @@ class MemoryManager:
 
     def save_memory_rules(cls, rules: Dict[str, Any]) -> None:
 
-        """Save user memory rules to disk."""
+        """Save user memory rules to disk.
+
+        Args:
+            rules: rules 参数。
+        """
 
         import json as _json
 
@@ -1726,10 +1751,8 @@ class MemoryManager:
 
         """Persist a L3 task skill to disk and index.
 
-
-
-        Returns the skill file path.
-
+        Args:
+            skill: skill 参数。
         """
 
         import json as _json
@@ -1825,7 +1848,11 @@ class MemoryManager:
 
     async def load_task_skill(self, skill_id: str) -> Optional[TaskSkill]:
 
-        """Load a L3 task skill from disk."""
+        """Load a L3 task skill from disk.
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         import json as _json
 
@@ -1879,6 +1906,14 @@ class MemoryManager:
 
     ) -> List[TaskSkill]:
 
+        """find_similar_task_skills。
+
+        Args:
+            keywords: keywords 参数。
+            min_pass_rate: min_pass_rate 参数。
+            limit: 返回条数上限。
+            query_text: query_text 参数。
+        """
         import os as _os
 
         import json as _json
@@ -2147,12 +2182,8 @@ class MemoryManager:
 
         """Serialize all memory layers into a portable JSON structure.
 
-
-
-        Returns a complete snapshot of Working, Episodic, Semantic, and
-
-        TaskSkill memories. Used for instance migration and backup.
-
+        Args:
+            namespace_filter: namespace_filter 参数。
         """
 
         import os as _os
@@ -2227,10 +2258,9 @@ class MemoryManager:
 
         """Restore memory from a JSON export. merge=True: add to existing; merge=False: replace.
 
-
-
-        Returns summary of what was restored.
-
+        Args:
+            data: data 参数。
+            merge: merge 参数。
         """
 
         summary = {"semantic_restored": 0, "task_skills_restored": 0, "errors": []}
@@ -2323,10 +2353,8 @@ class MemoryManager:
 
         """Return human-readable snapshot of all memory layers for diagnostics.
 
-
-
-        When namespace is provided, return only memories tagged with that namespace.
-
+        Args:
+            namespace: namespace 参数。
         """
 
         result = {
@@ -2604,16 +2632,11 @@ def get_memory_manager(config: Optional[MemoryConfig] = None, namespace: str = "
 
     """Get memory manager for a namespace.
 
-
-
-    When namespace='default' (and no tenant/session scope), returns the legacy
-
-    singleton (backward compat). Other namespaces / tenant-scoped managers get their
-
-    own isolated MemoryManager instance, cached by (namespace, tenant_id, session_id)
-
-    so a tenant-scoped manager is never reused across tenants.
-
+    Args:
+        config: config 参数。
+        namespace: namespace 参数。
+        tenant_id: 租户 ID。
+        session_id: 会话 ID。
     """
 
     global _default_manager, _memory_managers

@@ -29,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 def infer_recency_days(query: str) -> Optional[int]:
-    """Parse 「最近 N 天 / 过去一周 / last 30 days」 when the caller omitted recency_days."""
+    """Parse 「最近 N 天 / 过去一周 / last 30 days」 when the caller omitted recency_days.
+
+    Args:
+        query: 查询。
+    """
     import re
 
     text = str(query or "")
@@ -53,7 +57,12 @@ def infer_recency_days(query: str) -> Optional[int]:
 
 
 def apply_recency(query: str, recency_days: Any) -> tuple:
-    """Return (query, df). df is DuckDuckGo's week/month/year filter, or ''."""
+    """Return (query, df). df is DuckDuckGo's week/month/year filter, or ''.
+
+    Args:
+        query: 查询。
+        recency_days: recency_days 参数。
+    """
     text = str(query or "").strip()
     days_arg = recency_days
     if days_arg is None or days_arg == "":
@@ -90,7 +99,10 @@ def _attach_citations(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class WebSearchTool(BaseTool):
+    """WebSearchTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="web_search",
             description="统一 Web 搜索引擎: 支持 DuckDuckGo HTML/JSON/浏览器三种后端。"
@@ -135,6 +147,11 @@ class WebSearchTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         query = str(args.get("query", "")).strip()
         if not query:
             return {"success": False, "error": "query 不能为空", "results": []}
