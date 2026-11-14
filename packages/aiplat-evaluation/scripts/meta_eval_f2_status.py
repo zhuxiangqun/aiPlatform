@@ -24,6 +24,7 @@ S1_AGG = EVID / "s1_prod_model_aggregate.v1.json"
 HOLDOUT = META / "f2_holdout_isolation.v0.json"
 CONTAM = META / "f2_contamination.v0.json"
 SEC_JUDGE = META / "f2_security_judge_pack_pin.v0.json"
+DUAL = META / "f2_security_dual_human.worksheet.v0.json"
 
 
 def _load(path: Path) -> Optional[Dict[str, Any]]:
@@ -117,7 +118,12 @@ def ensure_security_judge_pin() -> Path:
         Pin path.
     """
     existing = _load(SEC_JUDGE)
-    if existing and existing.get("status") == "scored" and existing.get("green"):
+    # Keep scored green, scored-below-threshold, or worksheet-pointing pending pins.
+    if existing and (
+        (existing.get("status") == "scored" and existing.get("green"))
+        or existing.get("ratings_path")
+        or str(existing.get("status") or "").startswith("scored")
+    ):
         return SEC_JUDGE
     out = {
         "schema": "eval.meta_eval.f2_security_judge_pack_pin.v0",
@@ -252,16 +258,44 @@ def main() -> int:
         }
     )
 
-    # 5) IAA — security dual-human still pending (F1 IAA ≠ security failure dual-human)
+    # 5) IAA — security dual-human (F1 G2b κ ≠ this pack)
+    dual = _load(DUAL) or {}
+    dual_reviews = dual.get("reviews") if isinstance(dual.get("reviews"), list) else []
+    dual_complete = bool(dual_reviews) and all(
+        isinstance(r, dict)
+        and str(r.get("reviewer_a") or "").strip()
+        and str(r.get("reviewer_b") or "").strip()
+        and str(r.get("reviewer_a") or "").strip() != str(r.get("reviewer_b") or "").strip()
+        and r.get("independent_blind") is True
+        and (
+            r.get("agree") is True
+            or (
+                r.get("agree") is False
+                and str(r.get("arbiter") or "").strip()
+                and str(r.get("arbiter_decision") or "").strip()
+            )
+        )
+        for r in dual_reviews
+    )
+    dual_ok = bool(
+        dual_complete
+        and dual.get("green") is True
+        and str(dual.get("status") or "") in {"attested", "green", "scored"}
+        and dual.get("security_certification") is not True
+    )
     checks.append(
         {
             "id": "iaa",
-            "status": "pending_security_dual_human",
-            "green": False,
-            "source": None,
+            "status": "green" if dual_ok else str(dual.get("status") or "pending_security_dual_human"),
+            "green": dual_ok,
+            "source": "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
             "note": (
-                "F1 G2b IAA must not substitute security dual_human_on_failures. "
-                "Need security failure dual-human attestation pack."
+                "Security failure dual-human attestation complete."
+                if dual_ok
+                else (
+                    "F1 G2b IAA must not substitute security dual_human_on_failures. "
+                    "Fill f2_security_dual_human.worksheet then set status=attested green=true."
+                )
             ),
         }
     )
@@ -324,9 +358,10 @@ def main() -> int:
             "",
             "## 下一步（仍须人 / 安全专项）",
             "",
-            "1. 填 `f2_security_judge_pack_pin`：安全题人裁判 + confidence → agreement/κ/ECE",
-            "2. 安全失败集 dual-human attestation（≠ F1 G2b IAA）",
-            "3. 复跑：`python3 packages/aiplat-evaluation/scripts/meta_eval_f2_status.py`",
+            "1. 填写说明：[`META_EVAL_F2_HUMAN_FILL.md`](./META_EVAL_F2_HUMAN_FILL.md)",
+            "2. 填安全裁判 worksheet → `meta_eval_f2_prep.py --score`",
+            "3. 填 dual-human worksheet → `status=attested` `green=true`",
+            "4. 复跑：`python3 packages/aiplat-evaluation/scripts/meta_eval_f2_status.py`",
             "",
         ]
     )

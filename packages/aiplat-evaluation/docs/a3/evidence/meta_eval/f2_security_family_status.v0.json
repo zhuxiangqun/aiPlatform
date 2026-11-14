@@ -2,7 +2,7 @@
   "schema": "eval.meta_eval.f2_status.v0",
   "family_id": "F2",
   "family": "Security family gates",
-  "recorded_at": "2026-11-14T19:10:54+08:00",
+  "recorded_at": "2026-11-14T19:22:47+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {
@@ -39,8 +39,8 @@
       "id": "iaa",
       "status": "pending_security_dual_human",
       "green": false,
-      "source": null,
-      "note": "F1 G2b IAA must not substitute security dual_human_on_failures. Need security failure dual-human attestation pack."
+      "source": "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+      "note": "F1 G2b IAA must not substitute security dual_human_on_failures. Fill f2_security_dual_human.worksheet then set status=attested green=true."
     }
   ],
   "counts": {

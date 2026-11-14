@@ -784,3 +784,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：F1+F3+F4 已绿；F2=
 | v1.1.7+exec9 | 2026-11-14 | META_EVAL F4 记分卡家族 5/5（依赖 F1 + scorecard_v1_check；≠ Tier A） |
 | v1.1.7+exec10 | 2026-11-14 | META_EVAL F2 安全家族看板 3/5（F1≠安全裁判；待人标+dual-human） |
 | v1.1.7+exec11 | 2026-11-14 | META_EVAL F3 G2b/process_split 边界 5/5（≠ 翻转 process_split_authorized） |
+| v1.1.7+exec12 | 2026-11-14 | META_EVAL F2 人填包：安全裁判 worksheet(n=19)+dual-human；仍 3/5 待人 |

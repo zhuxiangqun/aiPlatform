@@ -1,7 +1,7 @@
 {
   "schema": "eval.meta_eval.f2_security_judge_pack_pin.v0",
   "family_id": "F2",
-  "recorded_at": "2026-11-14T19:10:54+08:00",
+  "recorded_at": "2026-11-14T19:22:47+08:00",
   "api_hooks": [
     "evaluate_security_judge_calibration",
     "evaluate_security_family_gates",
@@ -9,7 +9,7 @@
     "build_judge_calib_evidence_pack"
   ],
   "f1_prerequisite_note": "F1 META_EVAL green is necessary but not sufficient for F2 judge",
-  "ratings_path": null,
+  "ratings_path": "docs/a3/evidence/meta_eval/f2_security_judge_ratings.worksheet.v0.json",
   "agreement": null,
   "kappa": null,
   "ece": null,
@@ -20,5 +20,5 @@
   "accuracy_claim": false,
   "security_certification": false,
   "tier_a_claim_authorized": false,
-  "honesty": "Security judge calibration pending. Do not reuse F1 G2b human_judge pack as security family green. ≠ L5 declare."
+  "honesty": "Security judge worksheet seeded. Fill judge_pass+confidence then --score. Do not reuse F1 G2b human_judge pack. ≠ L5 declare."
 }
