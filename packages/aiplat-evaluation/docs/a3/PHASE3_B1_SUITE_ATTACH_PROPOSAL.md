@@ -4,25 +4,17 @@ doc_type: Reference
 
 # Phase 3 · B1 suite 挂接提案（Subject adapters）
 
-> 机器：[`evidence/meta_eval/phase3_b1_suite_attach_proposal.v0.json`](./evidence/meta_eval/phase3_b1_suite_attach_proposal.v0.json)  
-> **状态**：`pending_owner_authorize` · **≠** 全局 Tier A 扩容 · **≠** 覆盖完成宣称  
-> 日历：[`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md) · bucket `B1_subject_adapters`（n=15）
+> **状态**：`accepted`（朱向群 · ACCEPT phase3_b_suite_attach B1）  
+> 挂接账本：[`evidence/meta_eval/phase3_b1_suite_attach.v0.json`](./evidence/meta_eval/phase3_b1_suite_attach.v0.json)  
+> **诚实**：≠ 全局 Tier A 扩容 · ≠ 单一覆盖% · `EvalSubjectAdapter` 为 protocol 部分挂接
 
-## 范围
+## 结果
 
-为 B1 15 个 SubjectAdapter 符号挂接可复跑 smoke/suite 钩子（`suite_hook` 从 `pending_suite_attach` → 已挂路径）。  
-不翻转 `global_tier_a_expansion_authorized`；不宣称单一覆盖%。
+| 度量 | 值 |
+|---|---:|
+| n | 15 |
+| full `run_*_capability_smoke` | 13 |
+| `agent_smoke_profile` | 1 |
+| protocol partial（Eval） | 1 |
 
-## 样本符号
-
-`AgentSubjectAdapter` · `ApiSubjectAdapter` · `CodeReviewSubjectAdapter` · `DatasetSubjectAdapter` · `EvalSubjectAdapter` · `GeneratedAppSubjectAdapter` · `KbSubjectAdapter` · `ModelSubjectAdapter` · …
-
-## Owner
-
-```text
-ACCEPT phase3_b_suite_attach B1
-
-REJECT phase3_b_suite_attach B1
-
-AUTHORIZE global_tier_a_expansion
-```
+下一案：[`PHASE3_B2_SUITE_ATTACH_PROPOSAL.md`](./PHASE3_B2_SUITE_ATTACH_PROPOSAL.md)

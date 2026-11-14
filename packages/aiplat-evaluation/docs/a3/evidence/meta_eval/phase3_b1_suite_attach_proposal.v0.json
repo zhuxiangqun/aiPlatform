@@ -2,8 +2,8 @@
   "schema": "eval.phase3.b_suite_attach_proposal.v0",
   "proposal_id": "phase3-b1-suite-attach",
   "bucket_id": "B1_subject_adapters",
-  "recorded_at": "2026-11-14T21:32:00+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:40:00+08:00",
+  "status": "accepted",
   "n": 15,
   "symbols_sample": [
     "AgentSubjectAdapter",
@@ -23,8 +23,9 @@
     "accuracy_claim": false,
     "forbid_single_coverage_percent": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. B1 suite attach only; ≠ global Tier A expansion / accuracy / process_split."
+  "owner_decision": "ACCEPT phase3_b_suite_attach B1",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:40:00+08:00",
+  "honesty": "Owner accepted B1 suite attach. 13/15 full smoke hooks + agent_smoke_profile + Eval protocol partial. ≠ global Tier A expansion / accuracy / process_split.",
+  "suite_hook_attach_authorized_for_bucket": true
 }

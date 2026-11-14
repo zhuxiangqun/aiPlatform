@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_calendar.v0",
-  "recorded_at": "2026-11-14T21:32:00+08:00",
+  "recorded_at": "2026-11-14T21:40:00+08:00",
   "source": "docs/a3/evidence/tier_matrix_v0.json",
   "tier_b_n": 165,
   "waves": [
@@ -19,9 +19,14 @@
         "KbSubjectAdapter",
         "ModelSubjectAdapter"
       ],
-      "suite_hook": "proposal_pending_owner",
-      "next_review": "2026-Q1-proposal",
-      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach_proposal.v0.json"
+      "suite_hook": "attached",
+      "next_review": "2026-Q1",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach_proposal.v0.json",
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json",
+      "attached_n": 15,
+      "gap_symbols": [
+        "EvalSubjectAdapter"
+      ]
     },
     {
       "bucket_id": "B2_smoke",
@@ -38,8 +43,9 @@
         "eval_run_multi_agent_capability_smoke",
         "eval_run_prompt_capability_smoke"
       ],
-      "suite_hook": "pending_suite_attach",
-      "next_review": "TBD"
+      "suite_hook": "proposal_pending_owner",
+      "next_review": "TBD",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach_proposal.v0.json"
     },
     {
       "bucket_id": "B3_regression_profiles",
