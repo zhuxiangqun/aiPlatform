@@ -1,21 +1,18 @@
 {
   "schema": "eval.r12.triage.v0",
-  "recorded_at": "2026-11-14T16:36:44+08:00",
+  "recorded_at": "2026-11-14T17:28:43+08:00",
   "exempt_until_default": "2027-02-14",
   "by_category": {
-    "H1_candidate": 402,
-    "H2": 208,
-    "H4": 1,
-    "H3": 30,
-    "H5": 26
+    "H2": 1,
+    "H5": 212,
+    "H3": 38
   },
   "by_disposition": {
-    "open": 428,
-    "exempt_human_view": 208,
-    "exempt_tooling": 1,
-    "downgrade_non_capability": 30
+    "exempt_human_view": 1,
+    "open": 212,
+    "downgrade_non_capability": 38
   },
-  "h1_candidate_n": 402,
+  "h1_candidate_n": 0,
   "doc": "docs/a3/R12_TRIAGE_V0.md",
   "accuracy_claim": false
 }

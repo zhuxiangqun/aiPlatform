@@ -24,6 +24,44 @@ TRIAGE_JSON = ROOT / "docs/a3/evidence/r12_triage_v0.json"
 EXEMPT_UNTIL = "2027-02-14"
 
 
+def _capabilities_symbols(text: str) -> set[str]:
+    """Extract join keys from AIPLAT_CAPABILITIES.md.
+
+    Args:
+        text: Full markdown contents.
+
+    Returns:
+        Symbol set from backticks **and** table first-column tokens
+        (many capability names are not wrapped in backticks).
+    """
+    ticks = set(re.findall(r"`([A-Za-z_][A-Za-z0-9_\.\-]{2,})`", text))
+    cells: set[str] = set()
+    skip = {
+        "能力",
+        "名称",
+        "模块",
+        "状态",
+        "Status",
+        "#",
+        "符号",
+        "说明",
+        "路径",
+        "生成物",
+        "批次",
+    }
+    for m in re.finditer(r"^\|\s*([^|\n]+?)\s*\|", text, re.M):
+        cell = m.group(1).strip()
+        if not cell or cell.startswith("---") or cell in skip:
+            continue
+        for t in re.findall(
+            r"`([^`]+)`|([A-Za-z_][A-Za-z0-9_\.\-]{2,})", cell
+        ):
+            sym = t[0] or t[1]
+            if sym:
+                cells.add(sym)
+    return ticks | cells
+
+
 def _classify_reg(sym: str, mod: str) -> str:
     """Classify registry-only symbols into triage buckets.
 
@@ -77,9 +115,7 @@ def main() -> int:
     import yaml
 
     reg = yaml.safe_load(REG.read_text(encoding="utf-8"))
-    cap_ticks = set(
-        re.findall(r"`([A-Za-z_][A-Za-z0-9_\.\-]{2,})`", CAP.read_text(encoding="utf-8"))
-    )
+    cap_syms = _capabilities_symbols(CAP.read_text(encoding="utf-8"))
     domain = (reg.get("domains") or {}).get("evaluation-system")
     if not isinstance(domain, dict):
         print("evaluation-system domain missing", file=sys.stderr)
@@ -113,7 +149,7 @@ def main() -> int:
 
     diffs: List[Dict[str, Any]] = []
     for sym, r in sorted(by_sym.items()):
-        if sym in cap_ticks:
+        if sym in cap_syms:
             continue
         cat = _classify_reg(sym, r.get("module") or "")
         if cat == "H2":
@@ -137,7 +173,7 @@ def main() -> int:
 
     eval_cap = sorted(
         s
-        for s in cap_ticks
+        for s in cap_syms
         if re.search(r"(?i)eval|scorecard|g2b|preference_v0|arena", s)
     )
     for sym in eval_cap:
@@ -161,7 +197,7 @@ def main() -> int:
     cat_c = Counter(str(d["category"]) for d in diffs)
     disp_c = Counter(str(d["disposition"]) for d in diffs)
     now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%dT%H:%M:%S+08:00")
-    in_both = sorted(s for s in by_sym if s in cap_ticks)
+    in_both = sorted(s for s in by_sym if s in cap_syms)
 
     summary = {
         "schema": "eval.r12.capability_reconciliation.v0",

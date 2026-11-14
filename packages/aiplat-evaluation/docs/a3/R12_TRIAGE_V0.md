@@ -5,27 +5,19 @@ doc_type: Reference
 # R12 · 对账差异分诊（v0）
 
 > 源：[`R12_CAPABILITY_RECONCILIATION.md`](./R12_CAPABILITY_RECONCILIATION.md) · JSON evidence  
-> 范围：tranche-1 `evaluation-system`（667 条差异，多为 open）  
+> 范围：tranche-1 `evaluation-system`  
 > Honesty：分诊 ≠ 已清零；清零前禁止宣称「全平台覆盖完成」
 
 ---
 
-## 1. 数量快照
+## 1. Join 口径（重要）
 
-| 类型 | 数量 |
-|---|---:|
-| registry 有、CAPABILITIES 无 | 611 |
-| CAPABILITIES eval 样词有、本域 registry 无 | 56 |
-| 合计 | 667 |
+机器主键：`capability_registry.yaml` `provides` 符号。  
+人类视图：`AIPLAT_CAPABILITIES.md` — **反引号 token ∪ 表格首列英文符号**（多数能力名不在反引号内；仅扫反引号会严重漏配）。
 
-registry_only 主要落在：
+复跑：`python3 packages/aiplat-evaluation/scripts/r12_capability_reconciliation.py`
 
-| 桶 | 约数 | 含义 |
-|---|---:|---|
-| `aiPlat-core/core/apps/eval/**` | ~408 | 评测服务实现面（含 Error 类型/内部 helper） |
-| `core/api/core_facade.py` re-export | ~177 | 门面透传符号，非独立能力 |
-| `core/harness/evaluation/**` | ~12 | harness 评测组件 |
-| 其他 | 少数 | 脚本/前端/杂项 |
+数量以最近一次脚本输出为准（见 reconciliation MD / `evidence/r12_*.json`）。
 
 ---
 
@@ -33,38 +25,30 @@ registry_only 主要落在：
 
 | 类别 ID | 判定 | 默认处置 | 阻断 Tier A？ |
 |---|---|---|---|
-| **H1** | 对外宣称 / 发布门禁 / 安全相关 public API | 补 `AIPLAT_CAPABILITIES.md` 行 + 保持 registry | 是（缺则不得升 A） |
-| **H2** | CoreFacade 纯 re-export / `*Error` / 私有 helper | 豁免：`human_view_exempt` + 到期日（默认 +90d） | 否 |
-| **H3** | 文档/ADR/面板文件名误进 join（cap_only） | 降为非能力叙述；从对账分子剔除 | 否 |
-| **H4** | 包内脚本 / 一次性工具 | 豁免或移出 provides | 否 |
-| **H5** | 真实缺口：人类视图有、registry 无的可调用能力 | 补 registry `provides` 或删夸大文档 | 视宣称 |
+| **H1** | 对外宣称 / 发布门禁 / 安全相关 public API | 已在 CAPABILITIES 或须补行 | 是（缺则不得升 A） |
+| **H1_candidate** | 疑似 public、尚未批白名单 | 本批已清零 → [`R12_H1_WHITELIST_V0.md`](./R12_H1_WHITELIST_V0.md) | 已登记 |
+| **H2** | CoreFacade 纯 re-export / `*Error` / 私有 helper | 豁免至 **2027-02-14** | 否 |
+| **H3** | 文档/ADR/面板文件名误进 join | 降为非能力叙述 | 否 |
+| **H4** | 包内脚本 / 一次性工具 | 豁免至 **2027-02-14** | 否 |
+| **H5** | 人类视图有、本域 registry 无的可调用能力 | 补 registry 或删夸大文档 | 视宣称 |
 
 ---
 
-## 3. 本轮建议动作（不改 registry  bulk）
-
-1. **冻结 join 口径**：下一版 r12 脚本对 `*Error`、纯 re-export、`.md`/`.tsx` 文件名默认进 H2/H3，减少噪声。  
-2. **H1 候选白名单**：从 `in_both`（27）+ 显式对外 API 起步建 Tier 矩阵，不从 611 全量开干。  
-3. **cap_only 56**：批量标 H3（ADR/面板/文档），不进 registry。  
-4. **到期**：H2/H4 豁免统一到期 **2027-02-14**；到期未复核 → 重新 open。
-
----
-
-## 4. Owner
+## 3. Owner
 
 | 角色 | 职责 |
 |---|---|
-| 评测 owner | 批 H1 白名单；签豁免到期 |
-| 平台文档 | H3 文档降级措辞 |
-| 工程 | r12 脚本噪声过滤（下一 commit） |
+| 评测 owner | H1 白名单已落（见 [`R12_H1_WHITELIST_V0.md`](./R12_H1_WHITELIST_V0.md)）；签豁免到期 |
+| 平台文档 | H3/H5 噪声降级 |
+| 工程 | 维护 join 口径 + triage 过滤器 |
 
 ---
 
-## 5. 退出标准（tranche-1 清零）
+## 4. 退出标准（tranche-1 清零）
 
 ```text
-H1：0 open
+H1_candidate：0 open（升 H1 已登记，或降 H2 豁免）
 H2/H4：全部有豁免+到期日或已登记人类视图
 H3/H5：已处置
-报表：按 H1–H5 分列，禁止只报一个覆盖%
+报表：按类别分列，禁止只报一个覆盖%
 ```

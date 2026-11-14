@@ -774,3 +774,5 @@ R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 
 | v1.1.6 | 2026-11-14 | Phase2 预备页；R11 阈值签字页；R12 evaluation-system 对账工件；§15→13/14 |
 | v1.1.7 | 2026-11-14 | R11 owner 签字（朱向群 accept v0）；§15 14/14；方案按 §15.3 定稿冻结 |
 | v1.1.7+exec | 2026-11-14 | 执行加料（不改结构）：`META_EVAL_V0`；R12 H1–H5 分诊（exempt/downgrade；H1_candidate 仍 open） |
+| v1.1.7+exec2 | 2026-11-14 | R12 join 修（表格首列）；H1 27 符号补 CAPABILITIES；`H1_candidate=0`；H5 噪声仍 open |
+| v1.1.7+exec2 | 2026-11-14 | R12 join 修（表首列）；H1 27 符号入 CAPABILITIES；`H1_candidate=0`；H5 仍 open |
