@@ -81,5 +81,5 @@ doc_type: Reference
 | 协议成文 | **done**（本文） |
 | 阈值 owner 签字 | **done**（R11） |
 | 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；0/4 绿） |
-| `evidence/meta_eval/` 实测证据 | **partial**（F1 IAA 复用 G2b κ；judge↔human/ECE 仍 open） |
+| `evidence/meta_eval/` 实测证据 | **partial**（F1=3/5：IAA+contamination+holdout；judge/gold 待人标） |
 | Tier A 扩容 | **blocked** 直至对应家族绿灯 |

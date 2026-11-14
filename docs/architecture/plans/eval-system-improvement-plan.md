@@ -756,7 +756,7 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 不可写：生产已独立 / 准确率已认证 / process_split_authorized=true / Tier A 自动扩容
 ```
 
-R11 已签字（朱向群 · accept v0）。执行焦点：补 F1 judge↔human/ECE（IAA 已绿仍 `family_green=false`）；Phase 2 仅 authorize 后推进；禁一次全开 A。
+R11 已签字（朱向群 · accept v0）。执行焦点：人填 F1 judge ratings/ECE + gold 复审（现 3/5）；Phase 2 仅 authorize 后推进；禁一次全开 A。
 
 ---
 
@@ -779,3 +779,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：补 F1 judge↔human/
 | v1.1.7+exec4 | 2026-11-14 | H5 跨域已登记→H6（open 73→9）；[`META_EVAL_FAMILY_CHECKLIST_V0.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_FAMILY_CHECKLIST_V0.md)（F1–F4 pending） |
 | v1.1.7+exec5 | 2026-11-14 | R12 tranche-1 H5 open=0（补 5 SubjectAdapter；`eval_code_generator`/protocol/sets→H3，retrieval→H4）；≠ Tier A |
 | v1.1.7+exec6 | 2026-11-14 | META_EVAL F1 状态工件（IAA 绿；judge/ECE 仍 open；`family_green=false`） |
+| v1.1.7+exec7 | 2026-11-14 | F1 prep：holdout 声明 + contamination 扫描 + gold 抽样夹具 + judge pack pin；F1=3/5 |

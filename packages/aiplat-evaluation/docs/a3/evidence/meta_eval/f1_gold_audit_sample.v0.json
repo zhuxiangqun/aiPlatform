@@ -1,0 +1,138 @@
+{
+  "schema": "eval.meta_eval.f1_gold_audit_sample.v0",
+  "family_id": "F1",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
+  "seed": 20261114,
+  "sample_n": 20,
+  "population_n": 100,
+  "gold_source": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
+  "gold_sha256": "789b1b2e490b1ec0f28322099296497f0415ec35fa24da339a2e5e2106ff9ebb",
+  "threshold_sample_error_rate_max": 0.05,
+  "sample": [
+    {
+      "task_id": "g2b-09",
+      "gold_pass": false,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-30",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-70",
+      "gold_pass": false,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-75",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-61",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-64",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-97",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-16",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-63",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-04",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-56",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-55",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-94",
+      "gold_pass": false,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-19",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-53",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-78",
+      "gold_pass": false,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-83",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-98",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-69",
+      "gold_pass": false,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    },
+    {
+      "task_id": "g2b-48",
+      "gold_pass": true,
+      "reaudit_pass": null,
+      "reaudit_ok": null
+    }
+  ],
+  "status": "pending_human_reaudit",
+  "sample_error_rate": null,
+  "green": false,
+  "accuracy_claim": false,
+  "honesty": "Sample drawn; human re-audit of gold required before green. Do not fill reaudit_* automatically."
+}

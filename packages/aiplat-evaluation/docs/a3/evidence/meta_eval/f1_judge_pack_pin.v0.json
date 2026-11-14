@@ -1,0 +1,24 @@
+{
+  "schema": "eval.meta_eval.f1_judge_pack_pin.v0",
+  "family_id": "F1",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
+  "pack": "g2b_tasks.v0",
+  "pack_sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+  "seed": 20261114,
+  "freeze_ref": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "freeze_status": "confirmed",
+  "api_hooks": [
+    "open_capability_judge_calibration",
+    "evaluate_judge_calibration_gate",
+    "cohen_kappa_binary"
+  ],
+  "ratings_path": null,
+  "agreement": null,
+  "kappa": null,
+  "ece": null,
+  "status": "pending_ratings",
+  "green": false,
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Pack pinned. Fill ratings then compute agreement/κ/ECE; do not reuse G2b IAA as judge calibration."
+}

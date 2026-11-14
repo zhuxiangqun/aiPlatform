@@ -21,6 +21,10 @@ R11 = EVID / "r11_meta_eval_thresholds_signoff.v1.json"
 G2B_KAPPA = EVID / "g2b_kappa_aggregate.v1.json"
 G2B_ADJ = EVID / "g2b_adjudication.v1.json"
 G2B_FREEZE = EVID / "g2b_freeze_record.v1.json"
+JUDGE_PIN = META_DIR / "f1_judge_pack_pin.v0.json"
+GOLD_SAMPLE = META_DIR / "f1_gold_audit_sample.v0.json"
+CONTAM = META_DIR / "f1_contamination.v0.json"
+HOLDOUT = META_DIR / "f1_holdout_isolation.v0.json"
 
 
 def _load(path: Path) -> Optional[Dict[str, Any]]:
@@ -67,7 +71,7 @@ def _check_iaa(thr: Dict[str, Any], kappa_doc: Optional[Dict[str, Any]]) -> Dict
 
 
 def _check_judge(thr: Dict[str, Any]) -> Dict[str, Any]:
-    """Judge↔human calibration — no frozen pack with ECE yet.
+    """Judge↔human calibration — pack pin ≠ green without ratings/ECE.
 
     Args:
         thr: R11 thresholds blob.
@@ -76,35 +80,61 @@ def _check_judge(thr: Dict[str, Any]) -> Dict[str, Any]:
         Check result dict (intentionally not green without evidence).
     """
     jc = thr.get("judge_calibration") or {}
-    return {
+    pin = _load(JUDGE_PIN)
+    base = {
         "id": "judge_calibration",
-        "status": "open",
-        "green": False,
-        "agreement": None,
-        "kappa": None,
-        "ece": None,
         "thresholds": {
             "agreement_min": jc.get("agreement_min"),
             "kappa_min": jc.get("kappa_min"),
             "ece_max": jc.get("ece_max"),
         },
-        "source": None,
-        "note": (
-            "No frozen judge↔human ratings pack with ECE in evidence/meta_eval/. "
-            "G2b IAA must not be reused as judge calibration green. "
-            "Next: open_capability_judge_calibration + dual ratings → "
-            "evaluate_judge_calibration_gate + ECE artifact."
-        ),
         "api_hooks": [
             "evaluate_judge_calibration_gate",
             "open_capability_judge_calibration",
             "cohen_kappa_binary",
         ],
     }
+    if not pin:
+        return {
+            **base,
+            "status": "open",
+            "green": False,
+            "source": None,
+            "note": "Run meta_eval_f1_prep.py to pin pack; then collect ratings+ECE.",
+        }
+    agreement = pin.get("agreement")
+    kappa = pin.get("kappa")
+    ece = pin.get("ece")
+    amin = float(jc.get("agreement_min") or 0.8)
+    kmin = float(jc.get("kappa_min") or 0.6)
+    emax = float(jc.get("ece_max") or 0.1)
+    metrics_ok = (
+        agreement is not None
+        and kappa is not None
+        and ece is not None
+        and float(agreement) >= amin
+        and float(kappa) >= kmin
+        and float(ece) <= emax
+    )
+    return {
+        **base,
+        "status": "green" if metrics_ok else str(pin.get("status") or "pending_ratings"),
+        "green": bool(metrics_ok),
+        "agreement": agreement,
+        "kappa": kappa,
+        "ece": ece,
+        "source": "docs/a3/evidence/meta_eval/f1_judge_pack_pin.v0.json",
+        "note": (
+            "Pack pinned; ratings/ECE missing — not green. "
+            "Do not reuse G2b IAA as judge calibration."
+            if not metrics_ok
+            else "Judge↔human metrics meet R11 thresholds (report-only)."
+        ),
+    }
 
 
 def _check_gold(adj: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Gold audit presence — adjudication exists ≠ error-rate certified.
+    """Gold audit — needs completed human re-audit sample ≤5% error.
 
     Args:
         adj: g2b_adjudication document or None.
@@ -112,41 +142,76 @@ def _check_gold(adj: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     Returns:
         Check result dict.
     """
+    sample = _load(GOLD_SAMPLE)
+    if sample:
+        rate = sample.get("sample_error_rate")
+        pending = sample.get("status") == "pending_human_reaudit" or rate is None
+        if not pending and rate is not None:
+            thr = float(sample.get("threshold_sample_error_rate_max") or 0.05)
+            green = float(rate) <= thr
+            return {
+                "id": "gold_audit",
+                "status": "green" if green else "above_threshold",
+                "green": green,
+                "sample_error_rate": rate,
+                "source": "docs/a3/evidence/meta_eval/f1_gold_audit_sample.v0.json",
+                "note": "Human re-audit sample scored against R11 gold_audit threshold.",
+            }
+        return {
+            "id": "gold_audit",
+            "status": "pending_human_reaudit",
+            "green": False,
+            "source": "docs/a3/evidence/meta_eval/f1_gold_audit_sample.v0.json",
+            "note": (
+                f"Seeded sample_n={sample.get('sample_n')} ready; "
+                "fill reaudit_* then recompute sample_error_rate."
+            ),
+        }
     if not adj:
         return {
             "id": "gold_audit",
             "status": "open",
             "green": False,
-            "note": "missing g2b_adjudication",
+            "note": "missing adjudication and gold sample worksheet",
         }
     return {
         "id": "gold_audit",
         "status": "advisory_present",
         "green": False,
         "source": "docs/a3/evidence/g2b_adjudication.v1.json",
-        "note": (
-            "Adjudication artifact present; sample error-rate ≤5% not yet "
-            "measured for META_EVAL F1 — keep blocked."
-        ),
+        "note": "Adjudication present; run meta_eval_f1_prep.py for re-audit sample.",
     }
 
 
 def _check_contamination() -> Dict[str, Any]:
-    """Contamination — not run for F1 yet.
+    """Contamination — green when scan artifact exists (R11 advisory-only).
 
     Returns:
         Check result dict.
     """
+    doc = _load(CONTAM)
+    if not doc:
+        return {
+            "id": "contamination",
+            "status": "not_run",
+            "green": False,
+            "note": "Run meta_eval_f1_prep.py to emit f1_contamination.v0.json",
+        }
     return {
         "id": "contamination",
-        "status": "not_run",
-        "green": False,
-        "note": "No contamination overlap report for F1 family; R11 over-threshold=advisory_only",
+        "status": str(doc.get("disposition") or "ran"),
+        "green": True,
+        "over_threshold": bool(doc.get("over_threshold")),
+        "source": "docs/a3/evidence/meta_eval/f1_contamination.v0.json",
+        "note": (
+            "Scan ran; over-threshold is advisory_only per R11 "
+            f"(over_threshold={bool(doc.get('over_threshold'))})."
+        ),
     }
 
 
 def _check_holdout(freeze: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Holdout isolation declaration from freeze record if any.
+    """Holdout isolation — green when explicit split declaration is on file.
 
     Args:
         freeze: g2b_freeze_record or None.
@@ -154,23 +219,32 @@ def _check_holdout(freeze: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     Returns:
         Check result dict.
     """
+    decl = _load(HOLDOUT)
+    if decl and decl.get("policy", {}).get("reveal") == "pre_release_once":
+        return {
+            "id": "holdout_isolation",
+            "status": "declared",
+            "green": True,
+            "source": "docs/a3/evidence/meta_eval/f1_holdout_isolation.v0.json",
+            "counts": decl.get("counts"),
+            "note": (
+                "dev/val/holdout declared; tuning forbidden on holdout; "
+                "reveal=pre_release_once. Not a score reveal."
+            ),
+        }
     if not freeze:
         return {
             "id": "holdout_isolation",
             "status": "open",
             "green": False,
-            "note": "missing freeze record",
+            "note": "missing holdout declaration and freeze record",
         }
     return {
         "id": "holdout_isolation",
-        "status": "declared_local",
+        "status": "freeze_only",
         "green": False,
         "source": "docs/a3/evidence/g2b_freeze_record.v1.json",
-        "freeze_status": freeze.get("status"),
-        "note": (
-            "Freeze confirmed for G2b pack; META_EVAL still requires explicit "
-            "dev/val/holdout split declaration for Tier A family — not green."
-        ),
+        "note": "Freeze exists; run meta_eval_f1_prep.py for explicit split declaration.",
     }
 
 
@@ -247,14 +321,13 @@ def main() -> int:
             "",
             *rows,
             "",
-            "## 下一步（开 judge 绿灯）",
+            "## 下一步（仍须人）",
             "",
-            "1. 固定人标 pack 指纹 + seed（禁止边调边改）",
-            "2. `open_capability_judge_calibration` → 双人/人机 ratings",
-            "3. `evaluate_judge_calibration_gate` + κ/ECE 写入 `evidence/meta_eval/`",
-            "4. 补 gold 抽样错误率、contamination 报告、holdout 三分声明",
+            "1. 填 `f1_judge_pack_pin` ratings → agreement/κ/ECE",
+            "2. 填 `f1_gold_audit_sample` 的 `reaudit_*` → `sample_error_rate`",
+            "3. prep（可复跑）：`python3 packages/aiplat-evaluation/scripts/meta_eval_f1_prep.py`",
             "",
-            "复跑：`python3 packages/aiplat-evaluation/scripts/meta_eval_f1_status.py`",
+            "复跑状态：`python3 packages/aiplat-evaluation/scripts/meta_eval_f1_status.py`",
             "",
         ]
     )

@@ -2,49 +2,55 @@
   "schema": "eval.meta_eval.f1_status.v0",
   "family_id": "F1",
   "family": "Judge calibration",
-  "recorded_at": "2026-11-14T17:51:52+08:00",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {
       "id": "judge_calibration",
-      "status": "open",
-      "green": false,
-      "agreement": null,
-      "kappa": null,
-      "ece": null,
       "thresholds": {
         "agreement_min": 0.8,
         "kappa_min": 0.6,
         "ece_max": 0.1
       },
-      "source": null,
-      "note": "No frozen judge↔human ratings pack with ECE in evidence/meta_eval/. G2b IAA must not be reused as judge calibration green. Next: open_capability_judge_calibration + dual ratings → evaluate_judge_calibration_gate + ECE artifact.",
       "api_hooks": [
         "evaluate_judge_calibration_gate",
         "open_capability_judge_calibration",
         "cohen_kappa_binary"
-      ]
+      ],
+      "status": "pending_ratings",
+      "green": false,
+      "agreement": null,
+      "kappa": null,
+      "ece": null,
+      "source": "docs/a3/evidence/meta_eval/f1_judge_pack_pin.v0.json",
+      "note": "Pack pinned; ratings/ECE missing — not green. Do not reuse G2b IAA as judge calibration."
     },
     {
       "id": "gold_audit",
-      "status": "advisory_present",
+      "status": "pending_human_reaudit",
       "green": false,
-      "source": "docs/a3/evidence/g2b_adjudication.v1.json",
-      "note": "Adjudication artifact present; sample error-rate ≤5% not yet measured for META_EVAL F1 — keep blocked."
+      "source": "docs/a3/evidence/meta_eval/f1_gold_audit_sample.v0.json",
+      "note": "Seeded sample_n=20 ready; fill reaudit_* then recompute sample_error_rate."
     },
     {
       "id": "contamination",
-      "status": "not_run",
-      "green": false,
-      "note": "No contamination overlap report for F1 family; R11 over-threshold=advisory_only"
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f1_contamination.v0.json",
+      "note": "Scan ran; over-threshold is advisory_only per R11 (over_threshold=True)."
     },
     {
       "id": "holdout_isolation",
-      "status": "declared_local",
-      "green": false,
-      "source": "docs/a3/evidence/g2b_freeze_record.v1.json",
-      "freeze_status": "confirmed",
-      "note": "Freeze confirmed for G2b pack; META_EVAL still requires explicit dev/val/holdout split declaration for Tier A family — not green."
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f1_holdout_isolation.v0.json",
+      "counts": {
+        "dev": 70,
+        "val": 15,
+        "holdout": 15
+      },
+      "note": "dev/val/holdout declared; tuning forbidden on holdout; reveal=pre_release_once. Not a score reveal."
     },
     {
       "id": "iaa",
@@ -61,7 +67,7 @@
     }
   ],
   "counts": {
-    "green": 1,
+    "green": 3,
     "total": 5
   },
   "family_green": false,
