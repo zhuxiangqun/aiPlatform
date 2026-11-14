@@ -192,7 +192,7 @@ def main() -> int:
                 "## 下一步",
                 "",
                 "1. Phase 3：[`PHASE3_PREP.md`](./PHASE3_PREP.md) · Phase 4：[`PHASE4_PREP.md`](./PHASE4_PREP.md)",
-                "2. B Cycle1 owner_signoff 仍人工",
+                "2. B Cycle1 owner_signoff AUTHORIZE'd（≠ coverage complete）",
                 "3. C 仅登记；禁止挤占 A 名额",
                 "",
                 "## 关联",
