@@ -1,12 +1,14 @@
 {
   "schema": "eval.phase2.staging_prep_board.v0",
-  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "recorded_at": "2026-11-14T22:30:00+08:00",
   "process_split_authorized": true,
   "process_split_authorize_mode": "owner_policy_override",
   "chart_a3_process_split_authorized": false,
   "production_independent_claim": false,
   "gates": {
     "local_b4s_rehearsal": true,
+    "b4s_staging_scaffold": true,
+    "unfreeze_draft_blocked": true,
     "independent_staging_host": false,
     "pitr_live_drill": false,
     "jwks_staging": false,
@@ -14,13 +16,16 @@
   },
   "next_actions": [
     "Confirm independent staging host (B4S_PREP)",
-    "Open ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING after host",
+    "Activate ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING (leave draft_blocked)",
     "Live backup/rollback drill with production_signed evidence",
     "Only then flip Chart aiplat.a3_process_split_authorized=true via a3_split_authorize.sh authorize"
   ],
   "refs": {
     "b4s_prep": "docs/a3/B4S_PREP.md",
+    "b4s_staging_scaffold": "docs/a3/B4S_STAGING_SCAFFOLD.md",
+    "unfreeze": "reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md",
+    "drill_template": "docs/a3/templates/live-scaffold-b4s-staging-template.v0.json",
     "process_split_authorize": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json"
   },
-  "honesty": "Policy process_split authorized; staging host still missing; Chart false; ≠ production independent claim."
+  "honesty": "Scaffold/unfreeze draft opened; staging host still missing; Chart false; ≠ production independent claim."
 }

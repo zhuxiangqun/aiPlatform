@@ -4,15 +4,18 @@ doc_type: Reference
 
 # B4-S prep — blocked until independent staging host
 
-> Parent unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)  
-> Honesty: **local track closed** ≠ staging authorize · **does not** flip `process_split_authorized`
+> Parent local unfreeze: [`ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B1_B2_LOCAL_DEV.md)  
+> Staging unfreeze draft: [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) (`draft_blocked`)  
+> Scaffold page: [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md)  
+> Honesty: **local track closed** · scaffold ≠ staging authorize · Chart still false
 
 ## Status
 
 | Gate | State |
 |---|---|
-| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=30 closeout 已完成、31–100 待双标；`accuracy_claim=false`） |
+| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=30 closeout 已完成、31–100 待双标） |
 | Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
+| B4-S staging scaffold / unfreeze draft | ✅ opened · still `draft_blocked` |
 | Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
 | PITR / backup live drill on staging | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |
@@ -29,12 +32,13 @@ doc_type: Reference
 
 ## Activation
 
-Only after host confirmed, open a **new** unfreeze:
-`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING` (name TBD).  
+Unfreeze draft already opened as **`draft_blocked`**:
+[`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md).  
+Activate (`status=active`) **only** after host confirmed.  
 Do **not** reuse the local-dev unfreeze to claim staging.
 
 ```bash
-# Still refuse on laptop:
+python3 packages/aiplat-evaluation/scripts/b4s_staging_scaffold_emit.py
 bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status
 # ready_to_authorize must remain false without staging live evidence
 ```

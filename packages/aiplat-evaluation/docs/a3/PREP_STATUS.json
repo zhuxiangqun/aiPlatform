@@ -1,8 +1,10 @@
 {
   "schema_version": "aiplat.evaluation.a3.prep.v0",
   "capability_id": "evaluation",
-  "checked_at": "2026-11-14T14:14:00Z",
+  "checked_at": "2026-11-14T14:30:00Z",
   "process_split_authorized": true,
+  "b4s_staging_scaffold": true,
+  "b4s_staging_unfreeze": "draft_blocked",
   "adr_status": "accepted_conditional",
   "items": {
     "2_chart_skeleton": {

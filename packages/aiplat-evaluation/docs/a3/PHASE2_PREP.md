@@ -16,7 +16,8 @@ doc_type: Reference
 |---|---|
 | 政策 `process_split_authorized` | **true**（owner 覆盖；#1/#4 仍 🟨） |
 | Chart runtime split 注解 | **false** |
-| staging 验收（B4-S） | **blocked**（无独立 staging host） |
+| staging 验收（B4-S） | **blocked**（脚手架已开 · 无独立 staging host） |
+| B4-S staging scaffold | ✅ [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked` |
 | 对外「生产已独立」 | **禁止** |
 | 环境标签：local ≠ staging | 遵守中 |
 
@@ -38,10 +39,10 @@ doc_type: Reference
 
 - A1–A6 / B1-L / B2-L 证据刷新  
 - B4-S **本机** Docker PG 预演（≠ staging）  
-- 推进 [`PHASE2_STAGING_PREP.md`](./PHASE2_STAGING_PREP.md) 主机确认清单  
+- 推进 [`PHASE2_STAGING_PREP.md`](./PHASE2_STAGING_PREP.md) / [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) 主机确认清单  
 
 ## 阻塞（须人/环境）
 
-1. 独立 staging host（[`B4S_PREP.md`](./B4S_PREP.md)）  
+1. 独立 staging host（[`B4S_PREP.md`](./B4S_PREP.md)）→ 激活 unfreeze  
 2. #4 live 备份/回滚 + `production_signed`  
 3. 此后才允许 `a3_split_authorize.sh authorize` 翻 Chart  
