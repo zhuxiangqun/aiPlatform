@@ -53,6 +53,11 @@ indexer.py → wiki_indexer.py
 - core/platform ops·developer 去剩余 make 幻影
 - infra 15 个模块 index 加 As-Is 配置 section 横幅
 
+续修 tranche-5（2026-11-14）：
+- infra developer：目录树/表去掉 `mcp/`；`make test-infra-*` → pytest
+
+路径级高信号幻影（loop/indexer/GraphQL/Makefile/infra.mcp）在活跃 docs 已基本清零。
+
 仍未全量清完（需逐篇）：
 ```text
 core docs 其余符号/行号（非路径类）
