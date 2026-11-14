@@ -4,6 +4,9 @@ doc_type: Index
 
 # 工具模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：utils 为 infra 内部公共工具；As-Is 以 `infra/utils/*` 代码为准。
 
 > 提供通用工具函数、错误处理、验证器、加密等能力

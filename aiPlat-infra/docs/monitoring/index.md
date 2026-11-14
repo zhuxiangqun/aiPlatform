@@ -4,6 +4,9 @@ doc_type: Index
 
 # 监控模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：本模块以 Prometheus 风格的“系统监控/告警”为目标。若文档中的接口/工厂与代码不一致，以代码事实为准并在此修订。
 
 ---

@@ -148,7 +148,7 @@ harness/
 │   ├── __init__.py
 │   ├── types.py                        # 知识类型定义
 │   ├── retriever.py                    # 知识检索器
-│   ├── indexer.py                      # 知识索引器
+│   ├── wiki_indexer.py                 # 知识索引器（As-Is；无独立 indexer.py）
 │   └── evolution.py                    # 知识进化
 │
 ├── infrastructure/                      # 基础设施 [已实现]

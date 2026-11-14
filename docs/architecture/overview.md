@@ -27,7 +27,7 @@ doc_type: Architecture
 │  ┌────────────────────────────────────────────────────┐  │
 │  │ Harness (OS 内核)                                   │  │
 │  │   pipeline_engine.py    — 多阶段流水线调度           │  │
-│  │   loop.py               — ReAct 执行循环             │  │
+│  │   loop/                 — ReAct 执行循环             │  │
 │  │   dynamic_router.py     — LLM 动态路由               │  │
 │  │   debate/swarm/roundtable — 5种协作模式              │  │
 │  ├────────────────────────────────────────────────────┤  │
@@ -74,7 +74,7 @@ User Query
 │  MaterialsChatAgent / ReActAgent / MultiAgent        │
 │  1. DomainRouter.classify() → domain_id             │
 │  2. MemoryManager.build_context() → 注入记忆         │
-│  3. ReActLoop (harness/execution/loop.py)           │
+│  3. ReActLoop (harness/execution/loop/)             │
 └──────────────┬──────────────────────────────────────┘
                ▼
 ┌─ ReAct 循环 (Reason → Act → Observe) ───────────────┐

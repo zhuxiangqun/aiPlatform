@@ -48,10 +48,15 @@ indexer.py → wiki_indexer.py
 - core docs：`execution/loop.py` → `execution/loop/`（多篇 harness/architecture/testing）
 - core/platform developer：验证命令改为 pytest（根仓无统一 Makefile）
 
+续修 tranche-4（2026-11-14）：
+- `indexer.py` 树图 → `wiki_indexer.py`；overview/tot_reserve `loop/` 对齐
+- core/platform ops·developer 去剩余 make 幻影
+- infra 15 个模块 index 加 As-Is 配置 section 横幅
+
 仍未全量清完（需逐篇）：
 ```text
-core docs 其余符号/行号
-infra 各子模块文档内散落的历史示例命令
+core docs 其余符号/行号（非路径类）
+infra 模块正文内历史 yaml 示例块（已有横幅兜底）
 reports/ 与 docs/archive/ 历史分析稿（非现网契约）
 ```
 

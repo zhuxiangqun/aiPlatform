@@ -81,7 +81,7 @@ async def test_memory_store():
 - `harness/knowledge/` - 知识系统
   - `types.py` - 类型定义
   - `retriever.py` - 知识检索
-  - `indexer.py` - 知识索引
+  - `wiki_indexer.py` - 知识索引
 
 ### P3 - 辅助模块
 

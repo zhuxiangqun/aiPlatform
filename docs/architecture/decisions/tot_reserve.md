@@ -118,7 +118,7 @@ TOT_HARD_LIMITS = {
 |------|:---:|------|
 | `execution/tot_engine.py` | ~350 | ThoughtTree + Generator + Evaluator + Controller |
 | `schemas_builder.py` | +8 | 5 new fields |
-| `execution/loop.py` | +5 | thinking_mode="tree" switch |
+| `execution/loop/` | +5 | thinking_mode="tree" switch |
 | `tests/unit/test_tot_engine.py` | ~25 | Unit tests |
 | **Total** | ~388 | 1 new file, 3 modified |
 

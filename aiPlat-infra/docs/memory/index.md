@@ -4,6 +4,9 @@ doc_type: Index
 
 # 📚 Memory 模块文档（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：memory（infra）侧是“资源/缓存/显存”等基础设施抽象，与 core/harness 的“对话记忆/语义记忆”概念不同。As-Is 以 `infra/memory/*` 代码与测试为准。
 
 > 内存资源管理 - 基础设施层

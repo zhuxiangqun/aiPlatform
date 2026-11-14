@@ -4,6 +4,9 @@ doc_type: Index
 
 # 依赖注入模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：本文档描述 infra 内置 DI 容器的 As-Is 实现与可配置项。  
 > 关键断言需可追溯（代码入口/测试/命令），并与全仓口径保持一致。
 

@@ -4,6 +4,9 @@ doc_type: Index
 
 # LLM 客户端模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：LLM 客户端的 As-Is 能力以 `infra/llm/*` 代码与测试为准；文档中的网关/降级链/成本统计若未闭环需标注为 To-Be。
 
 > 提供对多种 LLM 提供商的统一封装，支持延迟初始化、限流、重试、流式输出等特性
