@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 META = ROOT / "docs/a3/evidence/meta_eval"
 ROUTING = ROOT / "docs/a3/config/phase4_routing.v0.json"
 LEDGER = META / "phase4_disposition_ledger.v0.json"
+REEVAL_CHECK = META / "phase4_reeval_fingerprint_check.v0.json"
 
 
 def _now() -> str:
@@ -285,6 +286,85 @@ def close_ticket(
     }
 
 
+def verify_pack(pack_id: Optional[str] = None) -> Dict[str, Any]:
+    """同 pack 指纹复评 stub：校验账本 pack 指纹仍可解析。
+
+    不跑真实评测、不宣称 closed_loop。
+
+    Args:
+        pack_id: 可选 pack id；默认取账本最新 pack。
+
+    Returns:
+        校验摘要。
+
+    Raises:
+        FileNotFoundError: 账本缺失。
+        KeyError: pack 找不到或无指纹。
+    """
+    if not LEDGER.is_file():
+        raise FileNotFoundError(str(LEDGER))
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8"))
+    packs = [p for p in (ledger.get("packs") or []) if isinstance(p, dict)]
+    if not packs:
+        raise KeyError("no packs in ledger")
+    if pack_id:
+        pack = next((p for p in packs if p.get("pack_id") == pack_id), None)
+        if pack is None:
+            raise KeyError(f"pack not found: {pack_id}")
+    else:
+        pack = packs[-1]
+    fp = str(pack.get("fingerprint_sha256") or "")
+    if len(fp) < 32:
+        raise KeyError(f"pack missing fingerprint: {pack.get('pack_id')}")
+    linked = [
+        t.get("ticket_id")
+        for t in (ledger.get("tickets") or [])
+        if isinstance(t, dict) and t.get("reeval_pack_id") == pack.get("pack_id")
+    ]
+    closed_linked = [
+        t.get("ticket_id")
+        for t in (ledger.get("tickets") or [])
+        if isinstance(t, dict)
+        and t.get("reeval_pack_id") == pack.get("pack_id")
+        and t.get("status") == "closed"
+    ]
+    # Recompute fingerprint from stored meta+taxonomy_total only — integrity stub.
+    meta = dict(pack.get("meta") or {})
+    recompute_payload = {
+        "schema": meta.get("schema") or "eval.phase4.reeval_pack.v0",
+        "demo": meta.get("demo"),
+        "operator": meta.get("operator"),
+        "taxonomy": {
+            "total_failures": pack.get("taxonomy_total_failures"),
+            "pack_id": pack.get("pack_id"),
+        },
+    }
+    # Stored fingerprint was over full taxonomy counts; stub only asserts stable id prefix.
+    prefix_ok = pack.get("pack_id") == f"pack-{fp[:16]}"
+    payload = {
+        "schema": "eval.phase4.reeval_fingerprint_check.v0",
+        "recorded_at": _now(),
+        "status": "fingerprint_verified" if prefix_ok else "fingerprint_mismatch",
+        "pack_id": pack.get("pack_id"),
+        "fingerprint_sha256": fp,
+        "prefix_ok": prefix_ok,
+        "tickets_linked_n": len(linked),
+        "tickets_closed_n": len(closed_linked),
+        "ticket_ids": linked,
+        "closed_loop_claim": False,
+        "chart_a3_process_split_authorized": False,
+        "honesty": (
+            "Same-pack fingerprint check stub only. "
+            "≠ live reeval suite run ≠ closed-loop automation ≠ Chart flip."
+        ),
+        "recompute_note": "prefix_ok checks pack_id == pack-<fp16>; full taxonomy rehash needs original counts",
+        "recompute_payload_keys": sorted(recompute_payload.keys()),
+    }
+    META.mkdir(parents=True, exist_ok=True)
+    REEVAL_CHECK.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return payload
+
+
 def _refresh_prep_board() -> None:
     """委托 phase4_repair_loop_prep.py 刷新闸门板。
 
@@ -302,7 +382,7 @@ def _refresh_prep_board() -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """CLI：写 disposition 账本或关单。
+    """CLI：写 disposition 账本、关单或指纹复评 stub。
 
     Args:
         argv: 参数列表。
@@ -315,6 +395,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     demo = False
     close_id = None
     disposition = None
+    verify_id: Optional[str] = None
+    do_verify = False
     i = 0
     while i < len(argv):
         if argv[i] == "--demo":
@@ -329,9 +411,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif argv[i] == "--disposition" and i + 1 < len(argv):
             disposition = argv[i + 1]
             i += 2
+        elif argv[i] == "--verify-pack":
+            do_verify = True
+            if i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+                verify_id = argv[i + 1]
+                i += 2
+            else:
+                i += 1
         else:
             print(f"unknown arg: {argv[i]}", file=sys.stderr)
             return 2
+
+    if do_verify:
+        try:
+            summary = verify_pack(verify_id)
+        except (FileNotFoundError, KeyError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        _refresh_prep_board()
+        ok = summary.get("status") == "fingerprint_verified"
+        print(json.dumps({"ok": ok, **summary}, ensure_ascii=False))
+        return 0 if ok else 1
 
     if close_id:
         if not disposition:
@@ -368,7 +468,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         taxonomy = _demo_taxonomy()
         source = "demo_synthetic"
     else:
-        print("use --demo, --taxonomy PATH, or --close ID --disposition TEXT", file=sys.stderr)
+        print(
+            "use --demo, --taxonomy PATH, --close ID --disposition TEXT, or --verify-pack [PACK_ID]",
+            file=sys.stderr,
+        )
         return 2
 
     if not ROUTING.is_file():

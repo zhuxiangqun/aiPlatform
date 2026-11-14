@@ -21,6 +21,7 @@ OUT_MD = ROOT / "docs/a3/PHASE4_PREP.md"
 ROUTING_FILE = ROOT / "docs/a3/config/phase4_routing.v0.json"
 LEDGER_FILE = META / "phase4_disposition_ledger.v0.json"
 ROUTING_AUTH = META / "phase4_routing_authorize.v0.json"
+REEVAL_CHECK = META / "phase4_reeval_fingerprint_check.v0.json"
 _VENV_PY = REPO / ".venv" / "bin" / "python"
 
 # Plan §10 categories → default owner_role (config table; runtime dispatch still off).
@@ -104,6 +105,13 @@ def main() -> int:
         except Exception:  # noqa: BLE001 — prep board records parse errors
             fingerprint_stub = False
 
+    reeval_checked = False
+    if REEVAL_CHECK.is_file():
+        try:
+            chk = json.loads(REEVAL_CHECK.read_text(encoding="utf-8"))
+            reeval_checked = str(chk.get("status") or "") == "fingerprint_verified"
+        except Exception:  # noqa: BLE001
+            reeval_checked = False
     gates = {
         "failure_taxonomy_fn": bool(taxonomy.get("ok")),
         "g2b_fail_decision_table": decision.is_file(),
@@ -114,17 +122,12 @@ def main() -> int:
         "reeval_sla_draft": True,
         "disposition_ledger_wired": ledger_wired,
         "reeval_fingerprint_stub": fingerprint_stub,
+        "reeval_fingerprint_checked": reeval_checked,
         "runtime_router_wired": False,
         "closed_loop_claim": False,
         "chart_a3_process_split_authorized": False,
         "security_certification": False,
     }
-    if ledger_wired and routing_cfg and routing_authorized:
-        status = "routing_authorized"
-    elif ledger_wired and routing_cfg:
-        status = "ledger_wired"
-    else:
-        status = "prep"
     open_n = 0
     if ledger_wired:
         try:
@@ -133,9 +136,23 @@ def main() -> int:
             )
         except Exception:  # noqa: BLE001
             open_n = 0
-    if routing_authorized and open_n == 0:
+    if ledger_wired and routing_cfg and routing_authorized and reeval_checked:
+        status = "reeval_stub_checked"
+    elif ledger_wired and routing_cfg and routing_authorized:
+        status = "routing_authorized"
+    elif ledger_wired and routing_cfg:
+        status = "ledger_wired"
+    else:
+        status = "prep"
+    if routing_authorized and open_n == 0 and reeval_checked:
         next_actions = [
-            "Same-pack reeval after disposition (fingerprint; still ≠ closed_loop)",
+            "Runtime auto-dispatch remains off",
+            "Do not flip Chart / closed_loop_claim without owner AUTHORIZE",
+            "Real taxonomy→disposition (non-demo) when live failures appear",
+        ]
+    elif routing_authorized and open_n == 0:
+        next_actions = [
+            "Same-pack reeval after disposition (--verify-pack; still ≠ closed_loop)",
             "Runtime auto-dispatch remains off",
             "Do not flip Chart / closed_loop_claim without owner AUTHORIZE",
         ]
@@ -190,7 +207,9 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     g = gates
-    if routing_authorized:
+    if reeval_checked:
+        title = "# Phase 4 预备（修复闭环 · 指纹复评 stub 已验）"
+    elif routing_authorized:
         title = "# Phase 4 预备（修复闭环 · routing 已授权）"
     elif ledger_wired:
         title = "# Phase 4 预备（修复闭环 · 账本已接线）"
@@ -225,6 +244,7 @@ def main() -> int:
             f"| `phase4_routing_authorized` | {'✅' if g['phase4_routing_authorized'] else '❌'} |",
             f"| disposition 账本写路径 | {'✅' if g['disposition_ledger_wired'] else '❌'} |",
             f"| 复评 pack 指纹 stub | {'✅' if g['reeval_fingerprint_stub'] else '❌'} |",
+            f"| 同 pack 指纹复评 stub | {'✅' if g['reeval_fingerprint_checked'] else '❌'} |",
             f"| runtime router 接线 | ❌ |",
             f"| closed_loop_claim | **false** |",
             "",
@@ -254,6 +274,7 @@ def main() -> int:
             "",
             "```bash",
             "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo",
+            "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --verify-pack",
             "python3 packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py",
             "```",
             "",

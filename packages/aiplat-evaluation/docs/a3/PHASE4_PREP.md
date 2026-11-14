@@ -2,9 +2,9 @@
 doc_type: Reference
 ---
 
-# Phase 4 预备（修复闭环 · routing 已授权）
+# Phase 4 预备（修复闭环 · 指纹复评 stub 已验）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:54:11+08:00
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-15T00:04:56+08:00
 > 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
 > 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
 > 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false
@@ -20,6 +20,7 @@ doc_type: Reference
 | `phase4_routing_authorized` | ✅ |
 | disposition 账本写路径 | ✅ |
 | 复评 pack 指纹 stub | ✅ |
+| 同 pack 指纹复评 stub | ✅ |
 | runtime router 接线 | ❌ |
 | closed_loop_claim | **false** |
 
@@ -37,13 +38,14 @@ doc_type: Reference
 
 ## 下一步
 
-1. Same-pack reeval after disposition (fingerprint; still ≠ closed_loop)
-2. Runtime auto-dispatch remains off
-3. Do not flip Chart / closed_loop_claim without owner AUTHORIZE
+1. Runtime auto-dispatch remains off
+2. Do not flip Chart / closed_loop_claim without owner AUTHORIZE
+3. Real taxonomy→disposition (non-demo) when live failures appear
 
 ## 复跑
 
 ```bash
 python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo
+python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --verify-pack
 python3 packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py
 ```
