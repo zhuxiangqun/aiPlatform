@@ -1,8 +1,10 @@
 """Architecture consolidation v1 freeze — ratchet mounts + core eval routers."""
 from __future__ import annotations
 
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,12 +65,14 @@ def test_contracts_ssot_package_only():
 
 
 def test_arch_consolidation_gate_script():
+    env = {**os.environ, "PYTHON": sys.executable}
     proc = subprocess.run(
         ["bash", str(SCRIPT)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     assert proc.returncode == 0, proc.stderr + proc.stdout
     assert "PASS" in proc.stdout

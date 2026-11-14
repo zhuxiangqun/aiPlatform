@@ -24,12 +24,17 @@ type G2bStatus = {
   kappa?: number | null;
   kappa_kind?: string;
   accuracy_claim?: boolean;
+  scoped_accuracy_claim?: boolean;
+  not_accuracy_certification?: boolean;
+  claim_refuse_reason?: string | null;
   note?: string;
   runbook?: string;
   families?: Record<string, number>;
 };
 
 type G2bClaimUnlock = {
+  accuracy_claim?: boolean;
+  scoped_accuracy_claim?: boolean;
   accept_accuracy_claim?: boolean;
   g2b_scoped_ready?: boolean;
   g2b_scoped_blockers?: string[];
@@ -49,6 +54,7 @@ type G2bL5Gap = {
   gaps?: string[];
   distance_summary?: string;
   accuracy_claim?: boolean;
+  scoped_accuracy_claim?: boolean;
   explicit_authorize?: boolean;
   claims_gate?: { accuracy_claim?: boolean; ok?: boolean };
   claim_unlock?: G2bClaimUnlock;
@@ -106,8 +112,10 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
           </li>
           <li>κ / agreement ≠ accuracy · 不可由 agent 伪造标注</li>
           <li>
-            <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} ·
-            scoped G2b only · ≠ process_split / staging / security cert
+            产品级 <code>accuracy_claim</code>={String(Boolean(status?.accuracy_claim))} ·
+            <code>scoped_accuracy_claim</code>=
+            {String(Boolean(status?.scoped_accuracy_claim))} · ≠ process_split / staging /
+            security cert
           </li>
         </ul>
       </div>
@@ -207,8 +215,10 @@ export default function EvalG2bPanel({ tenantId = 'eval-v1' }: Props) {
               <dd data-testid="eval-g2b-l5-distance">{l5Gap.distance_summary ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">accuracy_claim</dt>
+              <dt className="text-gray-500">accuracy_claim（产品级）</dt>
               <dd>{String(Boolean(l5Gap.accuracy_claim))}</dd>
+              <dt className="text-gray-500">scoped_accuracy_claim</dt>
+              <dd>{String(Boolean(l5Gap.scoped_accuracy_claim))}</dd>
             </div>
             <div>
               <dt className="text-gray-500">authorize</dt>

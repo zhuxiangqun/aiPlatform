@@ -4,14 +4,18 @@ Reads committed task pack + optional evidence aggregates under
 packages/aiplat-evaluation/docs/a3/. Dual-human labels for 31–100 stay pending
 until humans return sheets; UI/API only report facts.
 
-``accuracy_claim`` is true only when attestation accept_accuracy_claim=true
-AND the accuracy aggregate was closed with --claim-ready (scoped G2b only).
+Scheme A honesty:
+- Product-level ``accuracy_claim`` is always false (not platform certification).
+- ``scoped_accuracy_claim`` is true only when attestation accept_accuracy_claim=true
+  AND the accuracy aggregate was closed with --claim-ready (scoped G2b only).
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+_PRODUCT_CLAIM_REFUSE = "产品级 accuracy 未认证；仅 G2b scoped"
 
 
 def _repo_root() -> Path:
@@ -51,18 +55,38 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
     return data if isinstance(data, dict) else None
 
 
+def _aggregate_scoped_flag(aggregate: Dict[str, Any]) -> bool:
+    """Read scoped claim from aggregate; never treat product accuracy_claim as scoped.
+
+    Args:
+        aggregate: g2b_accuracy_aggregate JSON object.
+
+    Returns:
+        True when ``scoped_accuracy_claim`` is explicitly true.
+    """
+    return aggregate.get("scoped_accuracy_claim") is True
+
+
 def _scoped_accuracy_claim(
     att: Optional[Dict[str, Any]] = None,
     acc: Optional[Dict[str, Any]] = None,
 ) -> Tuple[bool, Dict[str, Any], Dict[str, Any]]:
-    """True only with owner accept + aggregate claim from --claim-ready."""
+    """True only with owner accept + aggregate scoped_accuracy_claim from --claim-ready.
+
+    Args:
+        att: Optional attestation dict override.
+        acc: Optional accuracy aggregate dict override.
+
+    Returns:
+        (scoped_claim, attestation, aggregate).
+    """
     ev = _evidence_dir()
     attestation = att if att is not None else (_read_json(ev / "g2b_accuracy_claim_attestation.v1.json") or {})
     aggregate = acc if acc is not None else (_read_json(ev / "g2b_accuracy_aggregate.v1.json") or {})
     claim = (
         attestation.get("accept_accuracy_claim") is True
         and bool(str(attestation.get("product_owner") or "").strip())
-        and aggregate.get("accuracy_claim") is True
+        and _aggregate_scoped_flag(aggregate)
     )
     return bool(claim), attestation, aggregate
 
@@ -109,26 +133,28 @@ def g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "kappa_kind": kappa.get("kappa_kind") or "inter_annotator",
         # Aggregate uses inter_annotator_kappa; accept legacy "kappa" key too.
         "kappa": kappa.get("inter_annotator_kappa", kappa.get("kappa")),
-        "accuracy_claim": claim,
-        "not_accuracy_certification": not claim,
+        "accuracy_claim": False,
+        "scoped_accuracy_claim": claim,
+        "not_accuracy_certification": True,
+        "claim_refuse_reason": _PRODUCT_CLAIM_REFUSE,
         "note": (
             (
-                "G2b dual-human closeout complete; scoped accuracy_claim=true "
+                "G2b dual-human closeout complete; scoped_accuracy_claim=true "
                 "(owner attestation + aggregate --claim-ready). "
-                "≠ security cert / process_split / staging."
+                "product accuracy_claim=false; ≠ security cert / process_split / staging."
             )
             if dual_human_complete and claim
             else (
                 (
                     "G2b dual-human closeout complete (n=closeout); "
-                    "scoped observed pass_rate only; accuracy_claim stays false "
-                    "until owner accept + --claim-ready aggregate."
+                    "scoped observed pass_rate only; scoped_accuracy_claim stays false "
+                    "until owner accept + --claim-ready aggregate; product accuracy_claim=false."
                 )
                 if dual_human_complete
                 else (
                     "G2b pack status is facilitation-only. Pack n=100 ≠ closeout; "
                     "dual-human labels for unfinished ids still required; "
-                    "accuracy_claim stays false."
+                    "product accuracy_claim=false; scoped_accuracy_claim=false."
                 )
             )
         ),
@@ -202,7 +228,10 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
     return {
         "schema": "eval.g2b.claim_unlock_checklist.v0",
         "tenant_id": tenant_id,
-        "accuracy_claim": claim,
+        "accuracy_claim": False,
+        "scoped_accuracy_claim": claim,
+        "not_accuracy_certification": True,
+        "claim_refuse_reason": _PRODUCT_CLAIM_REFUSE,
         "accept_accuracy_claim": bool(att.get("accept_accuracy_claim")),
         "gates": gates,
         "g2b_scoped_ready": len(g2b_scoped_blockers) == 0,
@@ -214,9 +243,10 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "qa_resign_checklist": arena_rung.get("qa_resign_checklist")
         or arena.get("qa_resign_checklist"),
         "honesty": (
-            "Scoped G2b accuracy_claim mirrors attestation accept + aggregate "
-            "--claim-ready. Arena QA / staging / external audit remain separate; "
-            "≠ process_split / security cert / length-smoke replacement."
+            "scoped_accuracy_claim mirrors attestation accept + aggregate "
+            "--claim-ready; product accuracy_claim stays false. Arena QA / staging / "
+            "external audit remain separate; ≠ process_split / security cert / "
+            "length-smoke replacement."
         ),
     }
 
@@ -312,11 +342,14 @@ def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
         "distance_summary": distance,
         "claim_unlock": unlock,
         "claims_gate": gate,
-        "accuracy_claim": claim,
+        "accuracy_claim": False,
+        "scoped_accuracy_claim": claim,
+        "not_accuracy_certification": True,
+        "claim_refuse_reason": _PRODUCT_CLAIM_REFUSE,
         "explicit_authorize": claim,
         "note": (
-            "Scoped G2b accuracy_claim from attestation + aggregate --claim-ready. "
-            "Broader L5 claims_gate stays unauthorized; ≠ security cert / "
-            "process_split / staging / length-smoke replacement."
+            "scoped_accuracy_claim from attestation + aggregate --claim-ready; "
+            "product accuracy_claim=false. Broader L5 claims_gate stays unauthorized; "
+            "≠ security cert / process_split / staging / length-smoke replacement."
         ),
     }

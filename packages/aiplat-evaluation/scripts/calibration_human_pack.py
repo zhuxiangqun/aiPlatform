@@ -106,7 +106,8 @@ def _sample_arena(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
 
 
 def _sample_preference(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
-    sheet = _load(ROOT / "docs/a3/human_pack/20261103T130302Z/pref_annotator_a.json")
+    # Formal fixture (not _archive / not raw human_pack) — Phase 0 §4.6.
+    sheet = _load(ROOT / "docs/a3/fixtures/calibration/pref_annotator_a.v0.json")
     labels = list(sheet.get("labels") or [])
     rng.shuffle(labels)
     rows: List[Dict[str, Any]] = []
@@ -119,7 +120,7 @@ def _sample_preference(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
                 "option_a": r.get("a") or "",
                 "option_b": r.get("b") or "",
                 "original_conclusion": str(r.get("preferred") or "").lower(),
-                "context": "annotator_a preferred from 20261103T130302Z pack",
+                "context": "fixture_calibration_pref_a (derived from archived 20261103 pack)",
                 "recheck": "",
                 "notes": "",
             }

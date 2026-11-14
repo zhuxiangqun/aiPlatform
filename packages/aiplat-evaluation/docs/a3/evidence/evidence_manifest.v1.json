@@ -2,6 +2,9 @@
   "schema": "eval.scorecard.evidence_manifest.v1",
   "product_id": "evaluation",
   "recorded_at": "2026-11-03",
+  "evidence_version": "ev-2026-11-14.2",
+  "change_id": "EV-2026-11-14-002",
+  "sha_change_log": "docs/a3/SHA_CHANGE_LOG.md",
   "accuracy_claim": false,
   "process_split_authorized": false,
   "not_production_authorization": true,
@@ -9,15 +12,22 @@
   "instruction_versions": {
     "SCORE_SCOPE_V1.md": {
       "path": "docs/a3/SCORE_SCOPE_V1.md",
-      "sha256": "1ca81947ed9a6ce5c17f42bd3cb02f077600cc06f5acfda5b9b9a19b5b7ffd81"
+      "sha256": "6be87c41f3010e847bd7f641f85f4706eb4cf181daa52c7d9381000935908742",
+      "change_class": "editorial",
+      "change_id": "EV-2026-11-14-001"
     },
     "G2B_PREP.md": {
       "path": "docs/a3/G2B_PREP.md",
-      "sha256": "58fbff69d6b7701122a22eb5fd2cb16757ff3c5e106f51afd0f71eee03511b03"
+      "sha256": "db46743ef5879476a1be692c4ed393014338ceee45e498880f1887770fefe071",
+      "change_class": "semantic",
+      "note": "index stub; SOP body at docs/a3/_archive/G2B_PREP.md",
+      "change_id": "EV-2026-11-14-001"
     },
     "PREFERENCE_V0.md": {
       "path": "docs/a3/PREFERENCE_V0.md",
-      "sha256": "6b13594d569985a78732e6c0c544f9bbdc42a671e47a3c34669234fcfecc574d"
+      "sha256": "427a686d910b1e1e4b420ec3fd1e45f95d96bcd5bc444cbb6488982d47d7b17b",
+      "change_class": "editorial",
+      "change_id": "EV-2026-11-14-001"
     }
   },
   "method": {
@@ -45,7 +55,7 @@
       ],
       "disputed_n": 10,
       "script": "scripts/g2b_accuracy_closeout.py",
-      "gate_note": "n=100 closeout; pass_rate=0.80 §4 numeric met; scoped G2b accuracy_claim=true (2026-11-13 owner accept + --claim-ready); ≠ process_split / staging / security cert"
+      "gate_note": "n=100 closeout; pass_rate=0.80 §4 numeric met; product accuracy_claim=false; scoped_accuracy_claim=true (2026-11-13 owner accept + --claim-ready; scheme A 2026-11-14 field split); ≠ process_split / staging / security cert"
     },
     "prod_live": {
       "n_tasks": 25,
@@ -101,9 +111,9 @@
     {
       "id": "g2b_accuracy_aggregate",
       "path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
-      "sha256": "5c9856b910c5b038a9233ca238a29b8a8aa56fd30deb4782f68f27241f33e575",
+      "sha256": "a9559f22ee45a00f070daaddc434c629a86b186d0452b116dabf218b5d1079f4",
       "required_for_feature_5": false,
-      "note": "G2b accuracy closeout n=100; scoped accuracy_claim=true after owner accept"
+      "note": "G2b accuracy closeout n=100; product accuracy_claim=false; scoped_accuracy_claim=true after owner accept (scheme A)"
     },
     {
       "id": "g2b_adjudicated_gold",
@@ -144,39 +154,41 @@
   "local_worksheets": [
     {
       "id": "g2b_annotator_a",
-      "path": "docs/a3/human_pack/20261103T130302Z/g2b_annotator_a.json",
+      "path": "docs/a3/_archive/human_pack/20261103T130302Z/g2b_annotator_a.json",
       "sha256": "40457550d8a46e66447e130adc744ab11db6223b6e127fc15a0ccdacadc7fcab",
-      "gitignored": true,
-      "verify_when_present": true
+      "archived": true,
+      "verify_when_present": true,
+      "note": "historical pack; formal preference fixture is docs/a3/fixtures/calibration/pref_annotator_a.v0.json"
     },
     {
       "id": "g2b_annotator_b",
-      "path": "docs/a3/human_pack/20261103T130302Z/g2b_annotator_b.json",
+      "path": "docs/a3/_archive/human_pack/20261103T130302Z/g2b_annotator_b.json",
       "sha256": "be48588ad2996d1ad8e0f0e47cb094677b3904ec6f782bbc043a468b06de60ee",
-      "gitignored": true,
+      "archived": true,
       "verify_when_present": true
     },
     {
       "id": "pref_annotator_a",
-      "path": "docs/a3/human_pack/20261103T130302Z/pref_annotator_a.json",
+      "path": "docs/a3/_archive/human_pack/20261103T130302Z/pref_annotator_a.json",
       "sha256": "fea7fdd0ebc08d3d3da608846e796709d3acc1e7b23a86d5b847ebf9ca0f71c6",
-      "gitignored": true,
-      "verify_when_present": true
+      "archived": true,
+      "verify_when_present": true,
+      "note": "archived raw; CI uses fixtures/calibration/pref_annotator_a.v0.json"
     },
     {
       "id": "pref_annotator_b",
-      "path": "docs/a3/human_pack/20261103T130302Z/pref_annotator_b.json",
+      "path": "docs/a3/_archive/human_pack/20261103T130302Z/pref_annotator_b.json",
       "sha256": "763a4f6c2f70aca56e34f8cce320a031f76d539a011eea64a04dad4e5609ec00",
-      "gitignored": true,
+      "archived": true,
       "verify_when_present": true
     },
     {
       "id": "model_outputs",
-      "path": "docs/a3/human_pack/20261103T130302Z/model_outputs.json",
+      "path": "docs/a3/_archive/human_pack/20261103T130302Z/model_outputs.json",
       "sha256": "96f4149790f9e77fd3a64345b6cb4b924e0ebb636ea42ff6e75c75d9e006288b",
-      "gitignored": true,
+      "archived": true,
       "verify_when_present": true,
-      "note": "facilitator model answers; not raw PII by design"
+      "note": "historical facilitator outputs; not formal fixture"
     }
   ],
   "dual_human_attestation": {
