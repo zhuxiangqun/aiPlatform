@@ -15,7 +15,8 @@ doc_type: Reference
 | 政策 `phase4_routing_authorized` | **true** |
 | disposition 账本写路径 | ✅ |
 | demo 关单 + 同指纹 stub | ✅（演练） |
-| G2b fail 表 → taxonomy 摄入 | 工程路径（`--from-g2b-fail-table`） |
+| G2b fail 表 → taxonomy 摄入 | ✅（`--from-g2b-fail-table`） |
+| G2b 临时关单 | ✅（`--close-from-g2b-provisional` · ≠ 产品修复） |
 | runtime auto-dispatch | **仍 false** |
 | `closed_loop_claim` | **仍 false** |
 | Chart `a3_process_split_authorized` | **仍 false** |

@@ -1,0 +1,30 @@
+{
+  "schema": "eval.phase4.g2b_provisional_close.v0",
+  "recorded_at": "2026-11-15T00:15:08+08:00",
+  "status": "provisional_closed",
+  "closed_ticket_ids": [
+    "disp-d414cc052799",
+    "disp-1569b8481ad6",
+    "disp-1415ebf43bc8",
+    "disp-7a718c755763"
+  ],
+  "closed_n": 4,
+  "action_breakdown_by_category": {
+    "stale_assertion": {
+      "re_label_pass": 6
+    },
+    "product_defect": {
+      "hold_fail": 4
+    },
+    "data": {
+      "hold_fail": 1,
+      "format_rerun_pass": 2
+    },
+    "eval_defect": {
+      "hold_fail": 15
+    }
+  },
+  "closed_loop_claim": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Provisional closes mirror G2b decision-table actions only. ≠ product fixes applied ≠ closed-loop automation ≠ Chart flip."
+}

@@ -24,6 +24,7 @@ LEDGER = META / "phase4_disposition_ledger.v0.json"
 REEVAL_CHECK = META / "phase4_reeval_fingerprint_check.v0.json"
 G2B_FAIL_TABLE = REPO / ".aiplat/eval_trust/g2b_fail_decision_table_v0.json"
 G2B_INGEST = META / "phase4_g2b_taxonomy_ingest.v0.json"
+G2B_PROVISIONAL = META / "phase4_g2b_provisional_close.v0.json"
 
 
 def _now() -> str:
@@ -365,6 +366,78 @@ def close_ticket(
     }
 
 
+def close_open_from_g2b_provisional(*, closed_by: str) -> Dict[str, Any]:
+    """按 G2b 决策表 action 汇总做临时关单（≠ 产品修复）。
+
+    仅关闭 ``source=g2b_fail_decision_table`` 的 open 单；disposition 标明 provisional。
+
+    Args:
+        closed_by: 关单人。
+
+    Returns:
+        批量关单摘要。
+
+    Raises:
+        FileNotFoundError: 账本或决策表缺失。
+    """
+    if not LEDGER.is_file():
+        raise FileNotFoundError(str(LEDGER))
+    if not G2B_FAIL_TABLE.is_file():
+        raise FileNotFoundError(str(G2B_FAIL_TABLE))
+    routing = _load_routing()
+    table = json.loads(G2B_FAIL_TABLE.read_text(encoding="utf-8"))
+    rows = [r for r in (table.get("items") or []) if isinstance(r, dict)]
+    by_cat: Dict[str, Dict[str, int]] = {}
+    for row in rows:
+        cat = map_g2b_row_to_category(row, routing)
+        action = str(row.get("action") or "unknown")
+        by_cat.setdefault(cat, {})
+        by_cat[cat][action] = by_cat[cat].get(action, 0) + 1
+
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8"))
+    closed_ids: List[str] = []
+    for t in list(ledger.get("tickets") or []):
+        if not isinstance(t, dict):
+            continue
+        if t.get("status") != "open":
+            continue
+        if t.get("source") != "g2b_fail_decision_table":
+            continue
+        cat = str(t.get("failure_category") or "unknown")
+        actions = by_cat.get(cat) or {}
+        action_txt = ", ".join(f"{k}×{v}" for k, v in sorted(actions.items()))
+        disposition = (
+            f"provisional_from_g2b_decision_table category={cat} actions=[{action_txt}] "
+            f"n={t.get('failure_n')}; ≠ product_fix ≠ closed_loop ≠ Chart"
+        )
+        summary = close_ticket(
+            str(t["ticket_id"]),
+            disposition=disposition,
+            closed_by=closed_by,
+        )
+        closed_ids.append(str(summary["ticket_id"]))
+
+    payload = {
+        "schema": "eval.phase4.g2b_provisional_close.v0",
+        "recorded_at": _now(),
+        "status": "provisional_closed",
+        "closed_ticket_ids": closed_ids,
+        "closed_n": len(closed_ids),
+        "action_breakdown_by_category": by_cat,
+        "closed_loop_claim": False,
+        "chart_a3_process_split_authorized": False,
+        "honesty": (
+            "Provisional closes mirror G2b decision-table actions only. "
+            "≠ product fixes applied ≠ closed-loop automation ≠ Chart flip."
+        ),
+    }
+    META.mkdir(parents=True, exist_ok=True)
+    G2B_PROVISIONAL.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return payload
+
+
 def verify_pack(pack_id: Optional[str] = None) -> Dict[str, Any]:
     """同 pack 指纹复评 stub：校验账本 pack 指纹仍可解析。
 
@@ -473,6 +546,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     taxonomy_path = None
     demo = False
     from_g2b = False
+    close_g2b_provisional = False
     close_id = None
     disposition = None
     verify_id: Optional[str] = None
@@ -484,6 +558,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             i += 1
         elif argv[i] == "--from-g2b-fail-table":
             from_g2b = True
+            i += 1
+        elif argv[i] == "--close-from-g2b-provisional":
+            close_g2b_provisional = True
             i += 1
         elif argv[i] == "--taxonomy" and i + 1 < len(argv):
             taxonomy_path = argv[i + 1]
@@ -504,6 +581,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             print(f"unknown arg: {argv[i]}", file=sys.stderr)
             return 2
+
+    if close_g2b_provisional:
+        try:
+            summary = close_open_from_g2b_provisional(
+                closed_by=os.environ.get("USER", "ops"),
+            )
+        except FileNotFoundError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        _refresh_prep_board()
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    **summary,
+                    "note": "Provisional G2b closes ≠ product fix ≠ closed_loop",
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
 
     if do_verify:
         try:
@@ -565,8 +663,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         source = "demo_synthetic"
     else:
         print(
-            "use --demo | --from-g2b-fail-table | --taxonomy PATH | "
-            "--close ID --disposition TEXT | --verify-pack [PACK_ID]",
+            "use --demo | --from-g2b-fail-table | --close-from-g2b-provisional | "
+            "--taxonomy PATH | --close ID --disposition TEXT | --verify-pack [PACK_ID]",
             file=sys.stderr,
         )
         return 2

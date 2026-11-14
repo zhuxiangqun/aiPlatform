@@ -2,9 +2,9 @@
 doc_type: Reference
 ---
 
-# Phase 4 预备（修复闭环 · 4 张 open 处置单）
+# Phase 4 预备（修复闭环 · 指纹复评 stub 已验）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-15T00:10:49+08:00
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-15T00:15:10+08:00
 > 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
 > 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
 > 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false
@@ -38,9 +38,9 @@ doc_type: Reference
 
 ## 下一步
 
-1. Human disposition + close 4 open ticket(s) (--close)
-2. Same-pack reeval after disposition (--verify-pack)
-3. Runtime auto-dispatch remains off; do not flip Chart/closed_loop
+1. Runtime auto-dispatch remains off
+2. Do not flip Chart / closed_loop_claim without owner AUTHORIZE
+3. Optional: re-ingest with --from-g2b-fail-table when table updates
 
 ## 复跑
 
