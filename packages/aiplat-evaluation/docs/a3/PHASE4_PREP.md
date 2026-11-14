@@ -2,10 +2,12 @@
 doc_type: Reference
 ---
 
-# Phase 4 预备（修复闭环 · 未接线）
+# Phase 4 预备（修复闭环 · 账本已接线）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:14:18+08:00
-> 计划 §10 · **诚实锁**：预备 ≠ 「自动改进已闭环」· Chart 仍 false
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:32:02+08:00
+> 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
+> 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
+> 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false
 
 ## 闸门
 
@@ -14,12 +16,13 @@ doc_type: Reference
 | `build_failure_taxonomy` import | ✅ |
 | G2b fail decision table | ✅ |
 | `compare_eval_reports` import | ✅ |
-| routing 表草稿 | ✅ |
-| 复评 SLA 草稿（24h/72h） | ✅ |
+| routing 配置文件 | ✅ |
+| disposition 账本写路径 | ✅ |
+| 复评 pack 指纹 stub | ✅ |
 | runtime router 接线 | ❌ |
 | closed_loop_claim | **false** |
 
-## 路由草稿（配置 · 未强制）
+## 路由（配置 · 未 runtime 强制）
 
 | category | route_to | owner SLA | disposition SLA |
 |---|---|---:|---:|
@@ -29,15 +32,18 @@ doc_type: Reference
 | `stale_assertion` | eval_owner_plus_product | 24h | 72h |
 | `product_defect` | product_owner | 24h | 72h |
 | `eval_defect` | eval_owner_meta | 24h | 72h |
+| `unknown` | eval_owner | 24h | 72h |
 
 ## 下一步
 
-1. Owner 确认 routing_draft 类别
-2. 接线 disposition 账本写路径（taxonomy → 处置单）
-3. 复评同一 pack 指纹 stub
+1. Owner AUTHORIZE phase4_routing (confirm categories)
+2. Human disposition + close tickets
+3. Same-pack reeval after disposition (fingerprint)
+4. Runtime auto-dispatch remains off until owner accept
 
 ## 复跑
 
 ```bash
+python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo
 python3 packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py
 ```

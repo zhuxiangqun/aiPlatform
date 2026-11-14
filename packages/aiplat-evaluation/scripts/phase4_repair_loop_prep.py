@@ -18,9 +18,11 @@ REPO = ROOT.parents[1]
 META = ROOT / "docs/a3/evidence/meta_eval"
 OUT_JSON = META / "phase4_repair_loop_prep_board.v0.json"
 OUT_MD = ROOT / "docs/a3/PHASE4_PREP.md"
+ROUTING_FILE = ROOT / "docs/a3/config/phase4_routing.v0.json"
+LEDGER_FILE = META / "phase4_disposition_ledger.v0.json"
 _VENV_PY = REPO / ".venv" / "bin" / "python"
 
-# Plan §10 categories → default owner_role (config table; not wired runtime).
+# Plan §10 categories → default owner_role (config table; runtime dispatch still off).
 ROUTING_DRAFT = [
     {"category": "environment", "route_to": "infra_ops", "sla_owner_h": 24, "sla_disposition_h": 72},
     {"category": "data", "route_to": "fixture_gold_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
@@ -28,6 +30,7 @@ ROUTING_DRAFT = [
     {"category": "stale_assertion", "route_to": "eval_owner_plus_product", "sla_owner_h": 24, "sla_disposition_h": 72},
     {"category": "product_defect", "route_to": "product_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
     {"category": "eval_defect", "route_to": "eval_owner_meta", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "unknown", "route_to": "eval_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
 ]
 
 
@@ -72,76 +75,122 @@ def main() -> int:
     taxonomy = _import_ok("core.apps.eval.service.gate_v1", "build_failure_taxonomy")
     decision = REPO / ".aiplat/eval_trust/g2b_fail_decision_table_v0.json"
     report_compare = _import_ok("core.apps.eval.service.report_compare", "compare_eval_reports")
+    routing_cfg = ROUTING_FILE.is_file()
+    ledger_wired = LEDGER_FILE.is_file()
+    fingerprint_stub = False
+    if ledger_wired:
+        try:
+            ledger = json.loads(LEDGER_FILE.read_text(encoding="utf-8"))
+            packs = ledger.get("packs") or []
+            fingerprint_stub = bool(packs) and any(
+                isinstance(p, dict) and p.get("fingerprint_sha256") for p in packs
+            )
+        except Exception:  # noqa: BLE001 — prep board records parse errors
+            fingerprint_stub = False
 
     gates = {
         "failure_taxonomy_fn": bool(taxonomy.get("ok")),
         "g2b_fail_decision_table": decision.is_file(),
         "report_compare_fn": bool(report_compare.get("ok")),
         "routing_table_draft": True,
+        "routing_config_file": routing_cfg,
         "reeval_sla_draft": True,
+        "disposition_ledger_wired": ledger_wired,
+        "reeval_fingerprint_stub": fingerprint_stub,
         "runtime_router_wired": False,
         "closed_loop_claim": False,
         "chart_a3_process_split_authorized": False,
         "security_certification": False,
     }
+    status = "ledger_wired" if ledger_wired and routing_cfg else "prep"
+    next_actions: List[str] = (
+        [
+            "Owner AUTHORIZE phase4_routing (confirm categories)",
+            "Human disposition + close tickets",
+            "Same-pack reeval after disposition (fingerprint)",
+            "Runtime auto-dispatch remains off until owner accept",
+        ]
+        if ledger_wired
+        else [
+            "Wire disposition ledger write path after gate_v1 taxonomy",
+            "Add reeval job fingerprint (same pack SHA) stub",
+            "Owner accept routing_draft categories before automation",
+        ]
+    )
     payload: Dict[str, Any] = {
         "schema": "eval.phase4.repair_loop_prep.v0",
         "recorded_at": _now(),
-        "status": "prep",
+        "status": status,
         "gates": gates,
         "imports": {"build_failure_taxonomy": taxonomy, "compare_eval_reports": report_compare},
         "routing_draft": ROUTING_DRAFT,
+        "routing_ref": "docs/a3/config/phase4_routing.v0.json" if routing_cfg else None,
+        "ledger_ref": (
+            "docs/a3/evidence/meta_eval/phase4_disposition_ledger.v0.json" if ledger_wired else None
+        ),
         "sla_draft": {
             "tier_a_red_owner_hours": 24,
             "tier_a_disposition_hours": 72,
-            "note": "from eval-system-improvement-plan §10; not enforced in runtime yet",
+            "note": "from eval-system-improvement-plan §10; SLA not auto-enforced",
         },
         "evidence_refs": [
             "aiPlat-core/core/apps/eval/service/gate_v1.py",
             ".aiplat/eval_trust/g2b_fail_decision_table_v0.json",
             "docs/architecture/plans/eval-system-improvement-plan.md#10",
+            "packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py",
         ],
-        "next_actions": [
-            "Wire disposition ledger write path after gate_v1 taxonomy",
-            "Add reeval job fingerprint (same pack SHA) stub",
-            "Owner accept routing_draft categories before automation",
-        ],
+        "next_actions": next_actions,
         "honesty": (
-            "Prep inventory only. ≠ closed-loop automation claim. "
-            "≠ Chart flip ≠ security cert ≠ production independent."
+            "Disposition ledger + fingerprint stub may be wired; "
+            "≠ closed-loop automation ≠ Chart flip ≠ security cert."
         ),
     }
     META.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     g = gates
+    title = (
+        "# Phase 4 预备（修复闭环 · 账本已接线）"
+        if ledger_wired
+        else "# Phase 4 预备（修复闭环 · 未接线）"
+    )
     lines = [
         "---",
         "doc_type: Reference",
         "---",
         "",
-        "# Phase 4 预备（修复闭环 · 未接线）",
+        title,
         "",
         f"> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · {_now()}",
-        "> 计划 §10 · **诚实锁**：预备 ≠ 「自动改进已闭环」· Chart 仍 false",
-        "",
-        "## 闸门",
-        "",
-        "| 项 | 状态 |",
-        "|---|---|",
-        f"| `build_failure_taxonomy` import | {'✅' if g['failure_taxonomy_fn'] else '❌'} |",
-        f"| G2b fail decision table | {'✅' if g['g2b_fail_decision_table'] else '❌'} |",
-        f"| `compare_eval_reports` import | {'✅' if g['report_compare_fn'] else '❌'} |",
-        f"| routing 表草稿 | ✅ |",
-        f"| 复评 SLA 草稿（24h/72h） | ✅ |",
-        f"| runtime router 接线 | ❌ |",
-        f"| closed_loop_claim | **false** |",
-        "",
-        "## 路由草稿（配置 · 未强制）",
-        "",
-        "| category | route_to | owner SLA | disposition SLA |",
-        "|---|---|---:|---:|",
     ]
+    if ledger_wired:
+        lines.append(
+            "> 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)"
+        )
+        lines.append("> 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)")
+    lines.extend(
+        [
+            "> 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false",
+            "",
+            "## 闸门",
+            "",
+            "| 项 | 状态 |",
+            "|---|---|",
+            f"| `build_failure_taxonomy` import | {'✅' if g['failure_taxonomy_fn'] else '❌'} |",
+            f"| G2b fail decision table | {'✅' if g['g2b_fail_decision_table'] else '❌'} |",
+            f"| `compare_eval_reports` import | {'✅' if g['report_compare_fn'] else '❌'} |",
+            f"| routing 配置文件 | {'✅' if g['routing_config_file'] else '❌'} |",
+            f"| disposition 账本写路径 | {'✅' if g['disposition_ledger_wired'] else '❌'} |",
+            f"| 复评 pack 指纹 stub | {'✅' if g['reeval_fingerprint_stub'] else '❌'} |",
+            f"| runtime router 接线 | ❌ |",
+            f"| closed_loop_claim | **false** |",
+            "",
+            "## 路由（配置 · 未 runtime 强制）",
+            "",
+            "| category | route_to | owner SLA | disposition SLA |",
+            "|---|---|---:|---:|",
+        ]
+    )
     for r in ROUTING_DRAFT:
         lines.append(
             f"| `{r['category']}` | {r['route_to']} | {r['sla_owner_h']}h | {r['sla_disposition_h']}h |"
@@ -151,20 +200,24 @@ def main() -> int:
             "",
             "## 下一步",
             "",
-            "1. Owner 确认 routing_draft 类别",
-            "2. 接线 disposition 账本写路径（taxonomy → 处置单）",
-            "3. 复评同一 pack 指纹 stub",
+        ]
+    )
+    for i, action in enumerate(next_actions, 1):
+        lines.append(f"{i}. {action}")
+    lines.extend(
+        [
             "",
             "## 复跑",
             "",
             "```bash",
+            "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo",
             "python3 packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py",
             "```",
             "",
         ]
     )
     OUT_MD.write_text("\n".join(lines), encoding="utf-8")
-    print(json.dumps({"status": "prep", "gates": gates}, ensure_ascii=False))
+    print(json.dumps({"status": status, "gates": gates}, ensure_ascii=False))
     return 0
 
 

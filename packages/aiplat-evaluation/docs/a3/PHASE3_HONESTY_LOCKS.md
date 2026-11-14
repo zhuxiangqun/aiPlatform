@@ -19,4 +19,4 @@ doc_type: Reference
 | 单一覆盖% | **禁止** | — |
 
 脚手架：[`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked`。  
-无 staging 可继续：[`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md) · [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md) · [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md) · [`PHASE4_PREP.md`](./PHASE4_PREP.md)。
+无 staging 可继续：[`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md) · [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md) · [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md) · [`PHASE4_PREP.md`](./PHASE4_PREP.md)（账本写路径已接线 · `closed_loop_claim` 仍 false）。
