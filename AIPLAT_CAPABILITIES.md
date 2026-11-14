@@ -570,6 +570,8 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| secure_scan_zip | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
+| AssetSecureScanError | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | marketplace_list_listed_skills | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
 | marketplace_decide_submission | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |

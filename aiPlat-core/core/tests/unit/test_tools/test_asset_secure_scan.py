@@ -66,6 +66,24 @@ def test_enforce_secure_scan_raises(tmp_path: Path):
         enforce_secure_scan(root)
 
 
+def test_skill_installer_path_secure_scan_blocks(tmp_path: Path):
+    """SkillInstaller path install must fail closed on blocked suffix."""
+    from core.management.skill_installer import SkillInstaller
+
+    root = tmp_path / "skills_src"
+    skill = root / "demo"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: demo\ndescription: d\n---\n\n## SOP\nok\n",
+        encoding="utf-8",
+    )
+    (skill / "evil.exe").write_bytes(b"MZ")
+    inst = SkillInstaller(target_base_dir=tmp_path / "dest")
+    with pytest.raises(AssetSecureScanError):
+        inst.install_from_path(path=str(root), auto_detect_subdir=False)
+    assert not (tmp_path / "dest" / "demo").exists()
+
+
 def test_majority_blocked_import_gate():
     assets = [
         normalize_asset_report_row({"kind": "skill", "id": "a", "schedulable": False}),

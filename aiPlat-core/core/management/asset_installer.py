@@ -274,6 +274,10 @@ class AssetInstaller:
             # Check for Claude Code plugin layout
             claude = None
             if not skip_claude_plugin and _is_claude_plugin(repo_dir):
+                # Fail closed before any ~/.aiplat copy from plugin adapt
+                from core.harness.maintenance.asset_secure_scan import enforce_secure_scan
+
+                enforce_secure_scan(repo_dir)
                 claude = self._adapt_claude_plugin(repo_dir)
                 if claude.get("converted"):
                     return self._finish_claude_plugin_install(
@@ -320,6 +324,10 @@ class AssetInstaller:
             subdir = _auto_detect_subdir(root, [self._FILE_PATTERN])
         detect = root if not subdir else root / subdir
         if not skip_claude_plugin and _is_claude_plugin(root):
+            # Fail closed before any ~/.aiplat copy from plugin adapt
+            from core.harness.maintenance.asset_secure_scan import enforce_secure_scan
+
+            enforce_secure_scan(root)
             claude = self._adapt_claude_plugin(root)
             if claude.get("converted"):
                 return self._finish_claude_plugin_install(

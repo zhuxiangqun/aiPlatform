@@ -384,6 +384,7 @@ class InstallResult:
     skipped: List[Dict[str, Any]]
     assets: List[Dict[str, Any]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    import_failed: bool = False
 
 
 @dataclass
@@ -520,6 +521,14 @@ class SkillInstaller:
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")
+        from core.harness.maintenance.asset_secure_scan import (
+            AssetSecureScanError,
+            secure_scan_zip,
+        )
+
+        zscan = secure_scan_zip(zp)
+        if not zscan.get("ok"):
+            raise AssetSecureScanError(list(zscan.get("issues") or ["zip_scan_failed"]))
         with tempfile.TemporaryDirectory(prefix="aiplat-skill-install-zip-") as td:
             root = Path(td) / "unzipped"
             root.mkdir(parents=True, exist_ok=True)
@@ -534,6 +543,7 @@ class SkillInstaller:
                 subdir=subdir,
                 allow_overwrite=allow_overwrite,
                 overrides=overrides,
+                zip_path=zp,
             )
 
     def plan_from_git(
@@ -651,7 +661,13 @@ class SkillInstaller:
         subdir: Optional[str],
         allow_overwrite: bool,
         overrides: Optional[Dict[str, Any]] = None,
+        zip_path: Optional[Path] = None,
     ) -> InstallResult:
+        from core.harness.maintenance.asset_secure_scan import enforce_secure_scan
+
+        # Fail closed before any skill copy (align with AssetInstaller)
+        enforce_secure_scan(root, zip_path=zip_path)
+
         skills = _iter_skill_dirs(root, subdir=subdir)
         if not skills and not subdir:
             skills = _find_skill_dirs(root)
@@ -751,7 +767,20 @@ class SkillInstaller:
             if (dst / "handler.py.draft").exists() and not (dst / "handler.py").exists():
                 warnings.append(f"auto_handler_draft_created_but_disabled:{sd.name}")
 
-        return InstallResult(installed=installed, skipped=skipped, assets=assets, warnings=warnings)
+        from core.harness.maintenance.asset_compat import (
+            apply_majority_import_gate,
+            normalize_asset_report_row,
+        )
+
+        assets = [normalize_asset_report_row(a) for a in assets]
+        gate = apply_majority_import_gate(assets=assets, warnings=warnings)
+        return InstallResult(
+            installed=installed,
+            skipped=skipped,
+            assets=list(gate.get("assets") or assets),
+            warnings=list(gate.get("warnings") or warnings),
+            import_failed=bool(gate.get("import_failed")),
+        )
 
     def _plan_from_dir(
         self,

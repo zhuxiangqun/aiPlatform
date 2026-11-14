@@ -1627,6 +1627,7 @@ class SkillManager:
             "base": str(base),
             "assets": list(getattr(res, "assets", None) or []),
             "warnings": list(getattr(res, "warnings", None) or []),
+            "import_failed": bool(getattr(res, "import_failed", False)),
         }
 
 
