@@ -34,14 +34,7 @@ doc_type: Index
 
 **启动依赖服务**：
 ```bash
-# To-Be：启动 PostgreSQL、Redis、Milvus（需提供 compose/make）
-# make docker-up-infra
-
-# 等待服务就绪
-make docker-wait
-
-# 查看服务状态
-make docker-status
+# As-Is：仓库根无统一 Makefile。按实际 docker-compose / 运维剧本启动 PostgreSQL、Redis、向量库等。
 ```
 
 **配置环境变量**：
@@ -57,16 +50,10 @@ make docker-status
 
 **测试服务连接**：
 ```bash
-# 测试数据库连接
-make test-db
+# As-Is：用 pytest，例如：
+#   cd aiPlat-infra && python -m pytest tests/ -q
 
-# 测试 Redis 连接
-make test-redis
-
-# 测试向量存储（To-Be）
-# make test-vector
-
-# 测试 LLM 连接
+# 测试 LLM 连接（历史 make 入口已移除）
 make test-llm
 ```
 
@@ -84,13 +71,13 @@ pip install -e .
 
 **步骤二：配置服务**
 ```bash
-# 编辑配置文件，设置数据库连接
-vi config/infra/database.yaml
+# 编辑 config/infra/default.yaml 的 database: section（或 development.yaml 覆盖）
 ```
 
 **步骤三：测试连接**
 ```bash
-make test-infra
+# As-Is：仓库根无统一 Makefile；用 pytest 跑 infra 单测，例如：
+#   cd aiPlat-infra && python -m pytest tests/ -q
 ```
 
 ---
@@ -283,8 +270,7 @@ aiPlat-infra/
 
 **配置示例**：
 ```yaml
-# config/infra/database.yaml
-type: postgresql
+# config/infra/default.yaml  → database:type: postgresql
 host: localhost
 port: 5432
 database: aiplatform
@@ -327,8 +313,7 @@ pool:
 
 **配置示例**：
 ```yaml
-# config/infra/llm.yaml
-provider: openai
+# config/infra/default.yaml / llm_profile.yamlprovider: openai
 model: gpt-4
 api_key: ${LLM_API_KEY}
 temperature: 0.7
@@ -381,8 +366,7 @@ retry:
 
 **配置示例**：
 ```yaml
-# config/infra/vector.yaml
-type: milvus
+# config/infra/default.yaml  → vector:type: milvus
 host: localhost
 port: 19530
 collection: aiplatform_vectors
@@ -745,7 +729,7 @@ tests/
 
 | 问题 | 可能原因 | 解决步骤 |
 |------|----------|----------|
-| 连接超时 | 服务未启动或配置错误 | 1. 执行 `make docker-up-infra`<br>2. 检查配置文件中的连接字符串 |
+| 连接超时 | 服务未启动或配置错误 | 1. 按仓库 Docker Compose/运维剧本启动依赖<br>2. 检查 `config/infra/default.yaml` 连接串 |
 | 查询慢 | 缺少索引或查询优化 | 1. 检查查询语句<br>2. 添加必要的索引 |
 | 连接池耗尽 | 并发连接过多 | 1. 检查连接池配置<br>2. 增加 `pool.max_size` |
 | 事务死锁 | 并发更新冲突 | 1. 检查事务顺序<br>2. 减少事务持有时间 |
@@ -763,7 +747,7 @@ tests/
 
 | 问题 | 可能原因 | 解决步骤 |
 |------|----------|----------|
-| 连接失败 | 服务未启动 | 1. 执行 `make docker-up-infra`<br>2. 检查 Milvus 端口 |
+| 连接失败 | 服务未启动 | 1. 按仓库 Docker Compose/运维剧本启动依赖<br>2. 检查向量服务端口 |
 | 搜索无结果 | 索引为空或维度不匹配 | 1. 检查索引是否创建<br>2. 检查向量维度是否匹配 |
 | 插入失败 | ID 重复或数据格式错误 | 1. 检查 ID 是否唯一<br>2. 检查向量维度 |
 | 性能差 | 索引类型不合适 | 1. 检查索引类型配置<br>2. 考虑使用更高效的索引类型 |

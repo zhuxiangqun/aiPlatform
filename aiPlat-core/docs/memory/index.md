@@ -181,7 +181,7 @@ harness/memory/
 
 | 模块 | 关系 |
 |------|------|
-| **harness** | 使用 Harness 的记忆接口，loop.py 调用 build_context/save_interaction |
+| **harness** | 使用 Harness 的记忆接口，`execution/loop/` 调用 build_context/save_interaction |
 | **agents** | Agent 使用记忆存储上下文 |
 | **knowledge** | SemanticCache 版本号原子切换（INCR version O(1)） |
 | **skills** | SkillRegistry 滑动窗口追踪 recent_pass_rate |

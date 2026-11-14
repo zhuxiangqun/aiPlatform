@@ -30,8 +30,8 @@ P3 (8-10周): 扩展平台边界 → 制品 Registry + 阶段隔离
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `loop.py` | `_reason()` 中调用 `mm.build_context()` | 替代独立消息构建 |
-| `loop.py` | 删除 `_maybe_compact_messages` | 复用 MemoryManager 内置 5 级压缩 |
+| `loop/` | `_reason()` 中调用 `mm.build_context()` | 替代独立消息构建 |
+| `loop/` | 删除 `_maybe_compact_messages` | 复用 MemoryManager 内置 5 级压缩 |
 | `manager.py` | `build_context()` 透传 `system_prompt` | 确保 system prompt 正确注入 |
 
 **吸收来源**：OpenCode session 管理的完整上下文装配
@@ -114,7 +114,7 @@ P3 (8-10周): 扩展平台边界 → 制品 Registry + 阶段隔离
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `execution/hooks.py` | 新建 — `HookRegistry` | 统一注册与分发 |
-| `loop.py` | 9 个拦截点 → `HookRegistry` 分发 | 替换硬编码 |
+| `loop/` | 9 个拦截点 → `HookRegistry` 分发 | 替换硬编码 |
 | `~/.aiplat/hooks/` | 用户空间 Hook 目录 | `~/.aiplat/hooks/security_check.py` |
 
 ### 3.5 MCP 按需注入
@@ -124,7 +124,7 @@ P3 (8-10周): 扩展平台边界 → 制品 Registry + 阶段隔离
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `mcp/runtime.py` | `_should_lazy_load()` + `_search_mcp_tools()` | tools 描述 > 4K 时启用 |
-| `loop.py` | tool_not_found → MCP search → 注册 → 重试 | |
+| `loop/` | tool_not_found → MCP search → 注册 → 重试 | |
 
 ---
 

@@ -68,13 +68,13 @@ harness/
 │   ├── agent.py                        # IAgent, AgentConfig, AgentResult
 │   ├── tool.py                         # ITool, ToolConfig, ToolResult
 │   ├── skill.py                        # ISkill, SkillConfig, SkillResult
-│   ├── loop.py                         # ILoop, LoopState, LoopResult
+│   ├── loop/                          # ILoop package, LoopState, LoopResult
 │   ├── coordinator.py                  # ICoordinator
 │   └── (To-Be)                         # IContext/IRouter/IAdapter 等若需要，应新增实现并补齐接线与测试
 │
 ├── execution/                          # 执行系统 [已实现]
 │   ├── __init__.py
-│   ├── loop.py                         # 执行循环 (ReAct Loop)
+│   ├── loop/                          # 执行循环 (ReAct Loop)
 │   ├── retry.py                        # 重试管理器
 │   ├── policy.py                       # 执行策略
 │   ├── feedback.py                     # [已实现] 反馈机制

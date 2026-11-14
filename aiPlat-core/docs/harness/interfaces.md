@@ -144,7 +144,7 @@ harness/interfaces/
 ├── agent.py                        # IAgent, AgentConfig, AgentResult
 ├── tool.py                         # ITool, ToolConfig, ToolResult
 ├── skill.py                        # ISkill, SkillConfig, SkillResult
-├── loop.py                         # ILoop, LoopState, LoopResult
+├── loop/                          # ILoop package, LoopState, LoopResult
 ├── coordinator.py                  # ICoordinator, CoordinationResult
 ├── context.py                      # IContext, ContextData
 ├── router.py                       # IRouter, RouteTarget

@@ -44,11 +44,8 @@ poetry install
 ### 验证环境
 
 ```bash
-# 运行单元测试
-make test-core-unit
-
-# 检查类型
-make typecheck-core
+# As-Is：仓库根无统一 Makefile。推荐：
+cd aiPlat-core && python -m pytest core/tests/unit -q
 ```
 
 ---

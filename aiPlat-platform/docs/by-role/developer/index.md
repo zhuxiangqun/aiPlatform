@@ -52,14 +52,8 @@ pip install -e .
 ### 验证环境
 
 ```bash
-# 测试 API 连接
-make test-api
-
-# 测试数据库连接
-make test-db
-
-# 测试认证
-make test-auth
+# As-Is：仓库根无统一 Makefile。推荐：
+cd aiPlat-platform && python -m pytest tests/ -q
 ```
 
 ---
@@ -70,13 +64,12 @@ make test-auth
 
 **步骤一：初始化数据库**
 ```bash
-make db-migrate
-make db-seed
+# As-Is：以实际部署/CI 剧本为准；无根仓 make db-migrate/db-seed 入口
 ```
 
 **步骤二：启动服务**
 ```bash
-make run-platform
+# 见仓库根 README / 管理面启动方式（常见 :8003）
 ```
 
 **步骤三：测试 API**
