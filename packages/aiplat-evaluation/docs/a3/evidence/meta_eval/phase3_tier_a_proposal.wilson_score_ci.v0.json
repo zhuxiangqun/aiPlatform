@@ -4,8 +4,8 @@
   "seq": 5,
   "symbol": "wilson_score_ci",
   "meta_family": "F1",
-  "recorded_at": "2026-11-14T21:03:38+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:05:19+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/apps/eval/service/mode_intersection_rank.py:46",
   "facade_def": null,
   "depends_on_accepted": [
@@ -29,8 +29,9 @@
     "l5_declare_authorized": false,
     "process_split_authorized": false
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. Acceptance authorizes ONLY wilson_score_ci as scoped F1 CI helper; ≠ product accuracy_claim."
+  "owner_decision": "ACCEPT wilson_score_ci scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:05:19+08:00",
+  "honesty": "Owner accepted scoped Tier A CI helper for wilson_score_ci only. global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }

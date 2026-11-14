@@ -7,17 +7,18 @@ doc_type: Reference
 > 机器：[`evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json`](./evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json)  
 > **诚实锁**：`global_tier_a_expansion_authorized=false` · `accuracy_claim=false`
 
-## 已授权（scoped）
+## 已授权（scoped · F1）
 
-| 符号 | 家族 | 范围 |
-|---|---|---|
-| `evaluate_judge_calibration_gate` | F1 | 裁判校准门禁 |
-| `open_capability_judge_calibration` | F1 | 开票/登记 |
-| `judge_calibration_gate_for_ticket` | F1 | 按工单门禁 |
-| `cohen_kappa_binary` | F1 | κ/IAA 度量辅助 |
+| 符号 | 范围 |
+|---|---|
+| `evaluate_judge_calibration_gate` | 裁判校准门禁 |
+| `open_capability_judge_calibration` | 开票/登记 |
+| `judge_calibration_gate_for_ticket` | 按工单门禁 |
+| `cohen_kappa_binary` | κ/IAA 辅助 |
+| `wilson_score_ci` | Wilson CI 辅助 |
 
-owner：朱向群。≠ 产品准确率认证 / L5 / process_split / 其余符号自动开。
+owner：朱向群。F1 impl 度量链已齐；下一步为 facade 包装。≠ 产品准确率认证 / L5 / process_split。
 
 ## 下一步
 
-提案 #5：[`PHASE3_TIER_A_PROPOSAL_wilson_score_ci.md`](./PHASE3_TIER_A_PROPOSAL_wilson_score_ci.md)
+提案 #6：[`PHASE3_TIER_A_PROPOSAL_eval_judge_calibration_gate.md`](./PHASE3_TIER_A_PROPOSAL_eval_judge_calibration_gate.md)（CoreFacade 包装）
