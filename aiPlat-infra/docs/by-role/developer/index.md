@@ -422,7 +422,7 @@ metric_type: L2
 | 获取日志器 | 调用 `get_logger(name)` | `infra/logging/logger.py` |
 | 记录日志 | 调用 `logger.info()`, `logger.error()` 等 | `infra/logging/logger.py` |
 | 结构化日志 | 传入 `extra` 参数 | `infra/logging/logger.py` |
-| 配置日志 | 编辑 `config/infra/logging.yaml` | `config/infra/logging.yaml` |
+| 配置日志 | 编辑 `config/infra/default.yaml` 的 `logging:` section | `config/infra/default.yaml` |
 
 **日志级别**：
 - DEBUG：详细调试信息
@@ -433,7 +433,7 @@ metric_type: L2
 
 **相关文件位置**：
 - 日志器：`infra/logging/logger.py`
-- 配置：`config/infra/logging.yaml`
+- 配置：`config/infra/default.yaml`（`logging:` section）
 
 ---
 
@@ -452,7 +452,7 @@ metric_type: L2
 
 **配置示例**：
 ```yaml
-# config/infra/compute.yaml
+# config/infra/default.yaml → compute:
 backend: kubernetes  # kubernetes, docker, baremetal
 scheduling:
   policy: fair_share
@@ -485,7 +485,7 @@ default_quota:
 
 **配置示例**：
 ```yaml
-# config/infra/memory.yaml
+# config/infra/default.yaml → memory:
 ram:
   enabled: true
   pool_enabled: true
@@ -520,7 +520,7 @@ vram:
 
 **配置示例**：
 ```yaml
-# config/infra/network.yaml
+# config/infra/default.yaml → network:
 discovery:
   backend: consul
   address: localhost:8500

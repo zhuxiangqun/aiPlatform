@@ -9,6 +9,8 @@ doc_type: Index
 
 **重要声明：归档内容仅做历史参考，不构成当前系统的约束。如有冲突，以 `docs/architecture/` 和 `CLAUDE.md` 为准。**
 
+> **As-Is（2026-11）**：本目录及子树中的路径/实现声明（如旧 `infra/mcp`、`/api/core/fde`、GraphQL 等）一律视为历史快照；已由 2026-11 文档诚实对账覆盖的主题以 main 上活跃 docs 为准。
+
 ## 归档文件
 
 | 文件 | 原因 |
