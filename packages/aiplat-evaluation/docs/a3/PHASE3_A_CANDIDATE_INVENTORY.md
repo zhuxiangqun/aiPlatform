@@ -22,7 +22,7 @@ doc_type: Reference
 | `build_judge_calib_evidence_pack` | F4 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:140` | **scoped true** |
 | `build_release_scorecard` | F4 | impl | `aiPlat-core/core/harness/evaluation/release_scorecard.py:42` | **scoped true** |
 | `cohen_kappa_binary` | F1 | impl | `aiPlat-core/core/apps/eval/service/g2c.py:30` | **false** |
-| `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **false** |
+| `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **scoped true**（≠ process_split） |
 | `eval_evaluate_security_family_gates` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8021` | **scoped true** |
 | `eval_evaluate_security_judge_calibration` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8095` | **scoped true** |
 | `eval_evaluate_security_severity_l5_gate` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8255` | **scoped true**（≠ L5 declare） |

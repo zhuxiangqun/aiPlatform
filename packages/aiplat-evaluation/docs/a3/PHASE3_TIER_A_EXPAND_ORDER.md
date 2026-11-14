@@ -36,7 +36,7 @@ doc_type: Reference
 | 16 | `eval_evaluate_security_severity_l5_gate` | F2 | **accepted**（facade；`l5_declare` false） |
 | 17 | `assert_t13_process_split_boundary` | F3 | **accepted**（`process_split` false） |
 | 18 | `build_g2b_s_dual_review_workflow` | F3 | **accepted** |
-| 19 | `eval_assert_t13_process_split_boundary` | F3 | **提案中**（facade · 末）→ [`PHASE3_TIER_A_PROPOSAL_eval_assert_t13_process_split_boundary.md`](./PHASE3_TIER_A_PROPOSAL_eval_assert_t13_process_split_boundary.md) |
+| 19 | `eval_assert_t13_process_split_boundary` | F3 | **accepted**（facade · 末；`process_split`/全局扩容仍 false） |
 
 ## 关联
 

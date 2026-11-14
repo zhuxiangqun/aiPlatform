@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T21:26:30+08:00",
+  "recorded_at": "2026-11-14T21:28:30+08:00",
   "global_tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -317,7 +317,28 @@
       "depends_on": [
         "assert_t13_process_split_boundary"
       ]
+    },
+    {
+      "symbol": "eval_assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f3_eval_assert_t13_process_split_boundary_facade",
+      "accepted_at": "2026-11-14T21:28:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_assert_t13_process_split_boundary.v0.json",
+      "wraps": "assert_t13_process_split_boundary",
+      "report_only_remains": true,
+      "claim_eligible": false,
+      "accuracy_claim": false,
+      "process_split_authorized": false,
+      "note": "Final A_candidate scoped accept; does not flip process_split or global Tier A expansion",
+      "depends_on": [
+        "assert_t13_process_split_boundary"
+      ]
     }
   ],
-  "honesty": "Per-symbol ledger only. global_tier_a_expansion_authorized stays false. Authorized symbols may be cited as scoped Tier A gates for their META family; product accuracy_claim remains false."
+  "honesty": "Per-symbol ledger complete (19/19 A_candidate scoped). global_tier_a_expansion_authorized stays false. Authorized symbols may be cited as scoped Tier A gates for their META family; product accuracy_claim / l5_declare / security_cert / process_split remain false.",
+  "a_candidate_scoped_complete": true,
+  "n_authorized": 19
 }
