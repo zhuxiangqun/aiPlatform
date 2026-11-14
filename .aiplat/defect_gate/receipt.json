@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T00:44:43+08:00",
+  "reviewed_at": "2026-11-15T01:44:26+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "4e4e63aaf350b71d205d258b10a0412afba781b41628d369cbefa95053523fc1",
-  "head_sha": "95b4f79b26865c1cf64299e16e176f4f0053ffa7",
+  "diff_sha256": "c9cb2ddb480c290babc5df72363d1072fcde641d9812cbe6ba6e121626c60868",
+  "head_sha": "f61f9a31b61b4a8139e3f0a292a106f47c105083",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase4 G2b re-ingest idempotent. Local lock."
+  "note": "Asset interop: SecureScan before Claude adapt + SkillInstaller; import_failed sets status!=ok. Residual: zip Claude plugin still uses _install_from_dir (no early MCP adapt) — pre-existing; CI unlock needs non-author Approve."
 }
