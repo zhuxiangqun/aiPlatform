@@ -55,6 +55,87 @@
       "reeval_pack_id": "pack-db80f93c8fe46dc4",
       "source": "demo_synthetic",
       "closed_by": "apple"
+    },
+    {
+      "ticket_id": "disp-d414cc052799",
+      "status": "open",
+      "failure_category": "data",
+      "failure_n": 3,
+      "sample_task_ids": [
+        "g2b-36",
+        "g2b-55",
+        "g2b-95"
+      ],
+      "route_to": "fixture_gold_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72,
+      "opened_at": "2026-11-15T00:10:16+08:00",
+      "closed_at": null,
+      "disposition": null,
+      "reeval_pack_id": "pack-4e47222c4227f3db",
+      "source": "g2b_fail_decision_table"
+    },
+    {
+      "ticket_id": "disp-1569b8481ad6",
+      "status": "open",
+      "failure_category": "eval_defect",
+      "failure_n": 15,
+      "sample_task_ids": [
+        "g2b-44",
+        "g2b-45",
+        "g2b-52",
+        "g2b-60",
+        "g2b-62"
+      ],
+      "route_to": "eval_owner_meta",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72,
+      "opened_at": "2026-11-15T00:10:16+08:00",
+      "closed_at": null,
+      "disposition": null,
+      "reeval_pack_id": "pack-4e47222c4227f3db",
+      "source": "g2b_fail_decision_table"
+    },
+    {
+      "ticket_id": "disp-1415ebf43bc8",
+      "status": "open",
+      "failure_category": "product_defect",
+      "failure_n": 4,
+      "sample_task_ids": [
+        "g2b-09",
+        "g2b-47",
+        "g2b-67",
+        "g2b-96"
+      ],
+      "route_to": "product_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72,
+      "opened_at": "2026-11-15T00:10:16+08:00",
+      "closed_at": null,
+      "disposition": null,
+      "reeval_pack_id": "pack-4e47222c4227f3db",
+      "source": "g2b_fail_decision_table"
+    },
+    {
+      "ticket_id": "disp-7a718c755763",
+      "status": "open",
+      "failure_category": "stale_assertion",
+      "failure_n": 6,
+      "sample_task_ids": [
+        "g2b-02",
+        "g2b-04",
+        "g2b-19",
+        "g2b-20",
+        "g2b-24"
+      ],
+      "route_to": "eval_owner_plus_product",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72,
+      "opened_at": "2026-11-15T00:10:16+08:00",
+      "closed_at": null,
+      "disposition": null,
+      "reeval_pack_id": "pack-4e47222c4227f3db",
+      "source": "g2b_fail_decision_table"
     }
   ],
   "packs": [
@@ -69,11 +150,24 @@
         "schema": "eval.phase4.reeval_pack.v0"
       },
       "taxonomy_total_failures": 4
+    },
+    {
+      "pack_id": "pack-4e47222c4227f3db",
+      "fingerprint_sha256": "4e47222c4227f3dbccd0a2efa27261404a4aafc534926bb4fe1aaa2a219e9806",
+      "recorded_at": "2026-11-15T00:10:16+08:00",
+      "source": "g2b_fail_decision_table",
+      "meta": {
+        "demo": false,
+        "operator": "apple",
+        "ingest": "g2b_fail_decision_table",
+        "schema": "eval.phase4.reeval_pack.v0"
+      },
+      "taxonomy_total_failures": 28
     }
   ],
-  "recorded_at": "2026-11-14T23:53:49+08:00",
+  "recorded_at": "2026-11-15T00:10:16+08:00",
   "routing_ref": "docs/a3/config/phase4_routing.v0.json",
-  "open_n": 0,
+  "open_n": 4,
   "closed_n": 3,
   "closed_loop_claim": false,
   "chart_a3_process_split_authorized": false,

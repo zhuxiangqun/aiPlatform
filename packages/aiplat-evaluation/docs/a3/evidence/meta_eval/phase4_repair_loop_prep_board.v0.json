@@ -1,7 +1,7 @@
 {
   "schema": "eval.phase4.repair_loop_prep.v0",
-  "recorded_at": "2026-11-15T00:04:56+08:00",
-  "status": "reeval_stub_checked",
+  "recorded_at": "2026-11-15T00:10:49+08:00",
+  "status": "disposition_open",
   "gates": {
     "failure_taxonomy_fn": true,
     "g2b_fail_decision_table": true,
@@ -88,9 +88,9 @@
     "packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py"
   ],
   "next_actions": [
-    "Runtime auto-dispatch remains off",
-    "Do not flip Chart / closed_loop_claim without owner AUTHORIZE",
-    "Real taxonomy→disposition (non-demo) when live failures appear"
+    "Human disposition + close 4 open ticket(s) (--close)",
+    "Same-pack reeval after disposition (--verify-pack)",
+    "Runtime auto-dispatch remains off; do not flip Chart/closed_loop"
   ],
   "honesty": "Disposition ledger + fingerprint stub may be wired; ≠ closed-loop automation ≠ Chart flip ≠ security cert."
 }

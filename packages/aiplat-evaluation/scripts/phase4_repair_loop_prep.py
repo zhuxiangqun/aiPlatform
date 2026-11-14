@@ -136,7 +136,9 @@ def main() -> int:
             )
         except Exception:  # noqa: BLE001
             open_n = 0
-    if ledger_wired and routing_cfg and routing_authorized and reeval_checked:
+    if ledger_wired and routing_cfg and routing_authorized and open_n > 0:
+        status = "disposition_open"
+    elif ledger_wired and routing_cfg and routing_authorized and reeval_checked:
         status = "reeval_stub_checked"
     elif ledger_wired and routing_cfg and routing_authorized:
         status = "routing_authorized"
@@ -144,11 +146,17 @@ def main() -> int:
         status = "ledger_wired"
     else:
         status = "prep"
-    if routing_authorized and open_n == 0 and reeval_checked:
+    if routing_authorized and open_n > 0:
+        next_actions = [
+            f"Human disposition + close {open_n} open ticket(s) (--close)",
+            "Same-pack reeval after disposition (--verify-pack)",
+            "Runtime auto-dispatch remains off; do not flip Chart/closed_loop",
+        ]
+    elif routing_authorized and open_n == 0 and reeval_checked:
         next_actions = [
             "Runtime auto-dispatch remains off",
             "Do not flip Chart / closed_loop_claim without owner AUTHORIZE",
-            "Real taxonomy→disposition (non-demo) when live failures appear",
+            "Optional: re-ingest with --from-g2b-fail-table when table updates",
         ]
     elif routing_authorized and open_n == 0:
         next_actions = [
@@ -207,7 +215,9 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     g = gates
-    if reeval_checked:
+    if open_n > 0 and routing_authorized:
+        title = f"# Phase 4 预备（修复闭环 · {open_n} 张 open 处置单）"
+    elif reeval_checked:
         title = "# Phase 4 预备（修复闭环 · 指纹复评 stub 已验）"
     elif routing_authorized:
         title = "# Phase 4 预备（修复闭环 · routing 已授权）"
@@ -273,7 +283,7 @@ def main() -> int:
             "## 复跑",
             "",
             "```bash",
-            "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo",
+            "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --from-g2b-fail-table",
             "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --verify-pack",
             "python3 packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py",
             "```",

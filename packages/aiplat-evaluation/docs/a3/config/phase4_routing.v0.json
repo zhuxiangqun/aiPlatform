@@ -51,5 +51,21 @@
       "sla_disposition_h": 72
     }
   ],
+  "g2b_decision_map": {
+    "by_action": {
+      "re_label_pass": "stale_assertion",
+      "format_rerun_pass": "data"
+    },
+    "by_hypothesis": {
+      "content_or_rubric_strict": "eval_defect",
+      "safety_behavior_mismatch": "product_defect",
+      "format_oververbose": "data",
+      "format_not_json": "data",
+      "format_code_instead_of_json": "data",
+      "translation_or_phrasing": "stale_assertion"
+    },
+    "default_category": "unknown",
+    "note": "Maps G2b fail decision table action/hypothesis → Phase4 categories. Config only; ≠ auto-dispatch."
+  },
   "honesty": "Owner AUTHORIZE phase4_routing accepted. Writing disposition tickets ≠ closed-loop automation ≠ Chart flip."
 }

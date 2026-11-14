@@ -17,10 +17,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = ROOT.parents[1]
 META = ROOT / "docs/a3/evidence/meta_eval"
 ROUTING = ROOT / "docs/a3/config/phase4_routing.v0.json"
 LEDGER = META / "phase4_disposition_ledger.v0.json"
 REEVAL_CHECK = META / "phase4_reeval_fingerprint_check.v0.json"
+G2B_FAIL_TABLE = REPO / ".aiplat/eval_trust/g2b_fail_decision_table_v0.json"
+G2B_INGEST = META / "phase4_g2b_taxonomy_ingest.v0.json"
 
 
 def _now() -> str:
@@ -231,6 +234,82 @@ def _demo_taxonomy() -> Dict[str, Any]:
     }
 
 
+def map_g2b_row_to_category(row: Dict[str, Any], routing: Dict[str, Any]) -> str:
+    """把 G2b fail 决策行映射到 Phase4 failure_category。
+
+    Args:
+        row: g2b decision table 一行。
+        routing: phase4_routing 配置。
+
+    Returns:
+        类别字符串。
+    """
+    gmap = routing.get("g2b_decision_map") if isinstance(routing.get("g2b_decision_map"), dict) else {}
+    by_action = gmap.get("by_action") if isinstance(gmap.get("by_action"), dict) else {}
+    by_hyp = gmap.get("by_hypothesis") if isinstance(gmap.get("by_hypothesis"), dict) else {}
+    default = str(gmap.get("default_category") or "unknown")
+    action = str(row.get("action") or "")
+    if action in by_action:
+        return str(by_action[action])
+    hyp = str(row.get("hypothesis") or "")
+    if hyp in by_hyp:
+        return str(by_hyp[hyp])
+    return default
+
+
+def taxonomy_from_g2b_fail_table(
+    path: Optional[Path] = None,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """从 G2b fail 决策表构建 taxonomy（经 build_failure_taxonomy）。
+
+    Args:
+        path: 决策表路径；默认仓库 `.aiplat/eval_trust/...`。
+
+    Returns:
+        (taxonomy, ingest_meta)
+
+    Raises:
+        FileNotFoundError: 表不存在。
+        ImportError: gate_v1 不可用。
+    """
+    table_path = path or G2B_FAIL_TABLE
+    if not table_path.is_file():
+        raise FileNotFoundError(str(table_path))
+    routing = _load_routing()
+    table = json.loads(table_path.read_text(encoding="utf-8"))
+    rows = [r for r in (table.get("items") or []) if isinstance(r, dict)]
+    items: List[Dict[str, Any]] = []
+    for row in rows:
+        items.append(
+            {
+                "task_id": str(row.get("task_id") or ""),
+                "failure_category": map_g2b_row_to_category(row, routing),
+                "g2b_action": row.get("action"),
+                "g2b_hypothesis": row.get("hypothesis"),
+                "g2b_bucket": row.get("bucket"),
+            }
+        )
+    sys.path.insert(0, str(REPO / "aiPlat-core"))
+    sys.path.insert(0, str(REPO))
+    from core.apps.eval.service.gate_v1 import build_failure_taxonomy  # noqa: WPS433
+
+    taxonomy = build_failure_taxonomy(items)
+    ingest = {
+        "schema": "eval.phase4.g2b_taxonomy_ingest.v0",
+        "recorded_at": _now(),
+        "source_path": str(table_path.relative_to(REPO)) if table_path.is_relative_to(REPO) else str(table_path),
+        "rows_n": len(rows),
+        "taxonomy": taxonomy,
+        "closed_loop_claim": False,
+        "chart_a3_process_split_authorized": False,
+        "honesty": (
+            "G2b fail decision table → taxonomy → disposition tickets. "
+            "≠ live suite re-run ≠ closed-loop ≠ Chart flip."
+        ),
+    }
+    return taxonomy, ingest
+
+
 def close_ticket(
     ticket_id: str,
     *,
@@ -393,6 +472,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
     taxonomy_path = None
     demo = False
+    from_g2b = False
     close_id = None
     disposition = None
     verify_id: Optional[str] = None
@@ -401,6 +481,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     while i < len(argv):
         if argv[i] == "--demo":
             demo = True
+            i += 1
+        elif argv[i] == "--from-g2b-fail-table":
+            from_g2b = True
             i += 1
         elif argv[i] == "--taxonomy" and i + 1 < len(argv):
             taxonomy_path = argv[i + 1]
@@ -460,16 +543,30 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         return 0
 
+    ingest_meta: Optional[Dict[str, Any]] = None
     if taxonomy_path:
         taxonomy = json.loads(Path(taxonomy_path).read_text(encoding="utf-8"))
         source = f"file:{taxonomy_path}"
+    elif from_g2b:
+        try:
+            taxonomy, ingest_meta = taxonomy_from_g2b_fail_table()
+        except (FileNotFoundError, ImportError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        source = "g2b_fail_decision_table"
+        demo = False
+        META.mkdir(parents=True, exist_ok=True)
+        G2B_INGEST.write_text(
+            json.dumps(ingest_meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
     elif demo or not argv:
         demo = True
         taxonomy = _demo_taxonomy()
         source = "demo_synthetic"
     else:
         print(
-            "use --demo, --taxonomy PATH, --close ID --disposition TEXT, or --verify-pack [PACK_ID]",
+            "use --demo | --from-g2b-fail-table | --taxonomy PATH | "
+            "--close ID --disposition TEXT | --verify-pack [PACK_ID]",
             file=sys.stderr,
         )
         return 2
@@ -481,10 +578,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     summary = write_ledger(
         taxonomy=taxonomy,
         source=source,
-        pack_meta={"demo": demo, "operator": os.environ.get("USER", "ops")},
+        pack_meta={
+            "demo": demo,
+            "operator": os.environ.get("USER", "ops"),
+            "ingest": "g2b_fail_decision_table" if from_g2b else source,
+        },
     )
     _refresh_prep_board()
-    print(json.dumps({"ok": True, **summary, "closed_loop_claim": False}, ensure_ascii=False))
+    out = {"ok": True, **summary, "closed_loop_claim": False}
+    if ingest_meta is not None:
+        out["taxonomy_total_failures"] = (ingest_meta.get("taxonomy") or {}).get("total_failures")
+        out["ingest_ref"] = "docs/a3/evidence/meta_eval/phase4_g2b_taxonomy_ingest.v0.json"
+    print(json.dumps(out, ensure_ascii=False))
     return 0
 
 
