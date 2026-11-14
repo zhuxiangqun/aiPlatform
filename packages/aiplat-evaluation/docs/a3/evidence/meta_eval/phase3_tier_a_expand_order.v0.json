@@ -1,0 +1,157 @@
+{
+  "schema": "eval.phase3.tier_a_expand_order.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "tier_a_expansion_authorized": true,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
+  "security_certification": false,
+  "l5_declare_authorized": true,
+  "policy": {
+    "one_at_a_time": true,
+    "impl_before_facade": true,
+    "family_order": [
+      "F1",
+      "F4",
+      "F2",
+      "F3"
+    ]
+  },
+  "order": [
+    {
+      "seq": 1,
+      "symbol": "evaluate_judge_calibration_gate",
+      "family": "F1",
+      "status": "accepted"
+    },
+    {
+      "seq": 2,
+      "symbol": "open_capability_judge_calibration",
+      "family": "F1",
+      "status": "accepted"
+    },
+    {
+      "seq": 3,
+      "symbol": "judge_calibration_gate_for_ticket",
+      "family": "F1",
+      "status": "accepted"
+    },
+    {
+      "seq": 4,
+      "symbol": "cohen_kappa_binary",
+      "family": "F1",
+      "status": "accepted"
+    },
+    {
+      "seq": 5,
+      "symbol": "wilson_score_ci",
+      "family": "F1",
+      "status": "accepted"
+    },
+    {
+      "seq": 6,
+      "symbol": "eval_judge_calibration_gate",
+      "family": "F1",
+      "status": "accepted",
+      "kind": "facade"
+    },
+    {
+      "seq": 7,
+      "symbol": "eval_open_capability_judge_calibration",
+      "family": "F1",
+      "status": "accepted",
+      "kind": "facade"
+    },
+    {
+      "seq": 8,
+      "symbol": "build_release_scorecard",
+      "family": "F4",
+      "status": "accepted"
+    },
+    {
+      "seq": 9,
+      "symbol": "build_judge_calib_evidence_pack",
+      "family": "F4",
+      "status": "accepted"
+    },
+    {
+      "seq": 10,
+      "symbol": "evaluate_security_judge_calibration",
+      "family": "F2",
+      "status": "accepted",
+      "forbid": [
+        "l5_declare"
+      ]
+    },
+    {
+      "seq": 11,
+      "symbol": "load_judge_calib_defaults",
+      "family": "F2",
+      "status": "accepted"
+    },
+    {
+      "seq": 12,
+      "symbol": "evaluate_security_family_gates",
+      "family": "F2",
+      "status": "accepted",
+      "forbid": [
+        "security_certification"
+      ]
+    },
+    {
+      "seq": 13,
+      "symbol": "eval_evaluate_security_judge_calibration",
+      "family": "F2",
+      "status": "accepted",
+      "kind": "facade"
+    },
+    {
+      "seq": 14,
+      "symbol": "eval_load_security_judge_calib_defaults",
+      "family": "F2",
+      "status": "accepted",
+      "kind": "facade"
+    },
+    {
+      "seq": 15,
+      "symbol": "eval_evaluate_security_family_gates",
+      "family": "F2",
+      "status": "accepted",
+      "kind": "facade"
+    },
+    {
+      "seq": 16,
+      "symbol": "eval_evaluate_security_severity_l5_gate",
+      "family": "F2",
+      "status": "accepted",
+      "kind": "facade",
+      "forbid": [
+        "l5_declare"
+      ]
+    },
+    {
+      "seq": 17,
+      "symbol": "assert_t13_process_split_boundary",
+      "family": "F3",
+      "status": "accepted",
+      "forbid": [
+        "process_split_authorized"
+      ]
+    },
+    {
+      "seq": 18,
+      "symbol": "build_g2b_s_dual_review_workflow",
+      "family": "F3",
+      "status": "accepted"
+    },
+    {
+      "seq": 19,
+      "symbol": "eval_assert_t13_process_split_boundary",
+      "family": "F3",
+      "status": "accepted",
+      "kind": "facade"
+    }
+  ],
+  "honesty": "All 19 A_candidate scoped accepted; owner AUTHORIZE flipped global Tier A expansion. accuracy/L5/cert/process_split still false.",
+  "a_candidate_scoped_complete": true,
+  "global_tier_a_expansion_authorized": true
+}

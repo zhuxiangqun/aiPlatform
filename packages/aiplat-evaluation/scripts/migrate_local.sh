@@ -4,14 +4,18 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
 cd "$ROOT"
+
+PY="${AIPLAT_EVAL_PYTHON:-python3}"
+[[ -x "$REPO_ROOT/.venv/bin/python" ]] && PY="$REPO_ROOT/.venv/bin/python"
 
 export AIPLAT_EVAL_DB_URL="${AIPLAT_EVAL_DB_URL:-sqlite:///${ROOT}/data/eval_local.sqlite3}"
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "${ROOT}/data"
 
-python3 - <<'PY'
+"$PY" - <<'PY'
 import json, os
 from app.store.migrate import _cli_migrate
 

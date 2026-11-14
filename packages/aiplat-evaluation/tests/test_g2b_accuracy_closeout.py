@@ -37,13 +37,15 @@ def test_committed_evidence_honesty():
     evid = ROOT / "docs" / "a3" / "evidence"
     agg = json.loads((evid / "g2b_accuracy_aggregate.v1.json").read_text(encoding="utf-8"))
     adj = json.loads((evid / "g2b_adjudication.v1.json").read_text(encoding="utf-8"))
-    assert agg["accuracy_claim"] is False
+    assert agg["accuracy_claim"] is False  # product-level always false (scheme A)
+    assert agg.get("scoped_accuracy_claim") is True  # G2b scoped after owner accept
+    assert agg.get("not_accuracy_certification") is True
+    assert agg.get("claim_refuse_reason")
     assert agg["n"] == 100
     assert agg["pass_n"] == 80
     assert agg["pass_rate"] == 0.8
     assert agg["disputed_n"] == 8
     assert len(adj["disputes"]) == 8
     assert agg["wilson_ci95"][0] >= 0.70  # §4 numeric CI_lo met
-    assert agg["accuracy_claim"] is False  # claim still closed
     assert adj.get("pending_human_confirm") is False
     assert adj.get("human_confirm", {}).get("status") == "confirmed"

@@ -1,0 +1,17 @@
+{
+  "schema": "eval.phase3.process_split_authorize.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE process_split",
+  "decided_at": "2026-11-14T22:14:00+08:00",
+  "process_split_authorized": true,
+  "residual_ops": {
+    "split_checklist_1_protocol_healthz": "local_yellow",
+    "split_checklist_4_backup_rollback": "local_yellow_live_unsigned",
+    "independent_staging_host": false,
+    "chart_a3_process_split_authorized": false,
+    "note": "Owner policy authorize with residual ops debt. Chart runtime annotation stays false until staging live evidence; a3_split_authorize.sh live path still required for Chart flip."
+  },
+  "honesty": "Owner AUTHORIZE process_split despite checklist #1/#4 still 🟨 and no staging host. Policy flag true; Chart remains false; ≠ production-independent marketing until staging closeout."
+}

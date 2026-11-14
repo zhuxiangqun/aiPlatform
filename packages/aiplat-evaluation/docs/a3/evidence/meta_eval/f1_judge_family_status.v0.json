@@ -1,0 +1,82 @@
+{
+  "schema": "eval.meta_eval.f1_status.v0",
+  "family_id": "F1",
+  "family": "Judge calibration",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "thresholds": {
+        "agreement_min": 0.8,
+        "kappa_min": 0.6,
+        "ece_max": 0.1
+      },
+      "api_hooks": [
+        "evaluate_judge_calibration_gate",
+        "open_capability_judge_calibration",
+        "cohen_kappa_binary"
+      ],
+      "status": "green",
+      "green": true,
+      "agreement": 1.0,
+      "kappa": 1.0,
+      "ece": 0.0725,
+      "precheck_green": false,
+      "judge_kind": "human",
+      "ratings_path": "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+      "source": "docs/a3/evidence/meta_eval/f1_judge_pack_pin.v0.json",
+      "note": "Judge↔human metrics meet R11 thresholds (report-only)."
+    },
+    {
+      "id": "gold_audit",
+      "status": "green",
+      "green": true,
+      "sample_error_rate": 0.05,
+      "source": "docs/a3/evidence/meta_eval/f1_gold_audit_sample.v0.json",
+      "note": "Human re-audit sample scored against R11 gold_audit threshold."
+    },
+    {
+      "id": "contamination",
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f1_contamination.v0.json",
+      "note": "Scan ran; over-threshold is advisory_only per R11 (over_threshold=True)."
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f1_holdout_isolation.v0.json",
+      "counts": {
+        "dev": 70,
+        "val": 15,
+        "holdout": 15
+      },
+      "note": "dev/val/holdout declared; tuning forbidden on holdout; reveal=pre_release_once. Not a score reveal."
+    },
+    {
+      "id": "iaa",
+      "status": "green",
+      "green": true,
+      "agreement": 0.9,
+      "kappa": 0.7624,
+      "thresholds": {
+        "agreement_min": 0.8,
+        "kappa_min": 0.6
+      },
+      "source": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
+      "note": "IAA only — not judge↔human calibration"
+    }
+  ],
+  "counts": {
+    "green": 5,
+    "total": 5
+  },
+  "family_green": true,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "honesty": "Partial evidence only. family_green requires all five checks. IAA≠judge calibration. ≠ Tier A expansion."
+}

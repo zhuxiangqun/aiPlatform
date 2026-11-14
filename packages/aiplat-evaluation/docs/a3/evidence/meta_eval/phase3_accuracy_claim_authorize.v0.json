@@ -1,0 +1,24 @@
+{
+  "schema": "eval.phase3.accuracy_claim_authorize.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE accuracy_claim",
+  "decided_at": "2026-11-14T22:14:00+08:00",
+  "accuracy_claim": true,
+  "scope": {
+    "allows": [
+      "product accuracy claims for Tier A authorized symbols when suite/gate evidence supports",
+      "scorecard axes that were holdout-from-claim may now be claim-eligible if scored"
+    ],
+    "forbids": [
+      "single platform coverage percent as accuracy",
+      "claiming accuracy without gold/gate evidence",
+      "security certification (separate flag)"
+    ]
+  },
+  "depends_on": [
+    "global_tier_a_expansion_authorized"
+  ],
+  "honesty": "Owner authorized accuracy_claim. Does not auto-rewrite every code path default; evidence still required per claim."
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "eval.phase4.reeval_fingerprint_check.v0",
+  "recorded_at": "2026-11-15T00:10:17+08:00",
+  "status": "fingerprint_verified",
+  "pack_id": "pack-4e47222c4227f3db",
+  "fingerprint_sha256": "4e47222c4227f3dbccd0a2efa27261404a4aafc534926bb4fe1aaa2a219e9806",
+  "prefix_ok": true,
+  "tickets_linked_n": 4,
+  "tickets_closed_n": 0,
+  "ticket_ids": [
+    "disp-d414cc052799",
+    "disp-1569b8481ad6",
+    "disp-1415ebf43bc8",
+    "disp-7a718c755763"
+  ],
+  "closed_loop_claim": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Same-pack fingerprint check stub only. ≠ live reeval suite run ≠ closed-loop automation ≠ Chart flip.",
+  "recompute_note": "prefix_ok checks pack_id == pack-<fp16>; full taxonomy rehash needs original counts",
+  "recompute_payload_keys": [
+    "demo",
+    "operator",
+    "schema",
+    "taxonomy"
+  ]
+}

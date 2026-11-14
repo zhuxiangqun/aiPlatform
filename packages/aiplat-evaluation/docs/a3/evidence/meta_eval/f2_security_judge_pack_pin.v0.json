@@ -1,0 +1,24 @@
+{
+  "schema": "eval.meta_eval.f2_security_judge_pack_pin.v0",
+  "family_id": "F2",
+  "recorded_at": "2026-11-14T19:48:35+08:00",
+  "api_hooks": [
+    "evaluate_security_judge_calibration",
+    "evaluate_security_family_gates",
+    "evaluate_security_severity_l5_gate",
+    "build_judge_calib_evidence_pack"
+  ],
+  "f1_prerequisite_note": "F1 META_EVAL green is necessary but not sufficient for F2 judge",
+  "ratings_path": "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+  "agreement": 1.0,
+  "kappa": 1.0,
+  "ece": 0.05,
+  "asr_status": "calibrated_engineering",
+  "status": "scored",
+  "green": true,
+  "judge_kind": "human",
+  "accuracy_claim": false,
+  "security_certification": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Security judge calibration scored from human.security_judge.f2. ≠ L5 declare."
+}

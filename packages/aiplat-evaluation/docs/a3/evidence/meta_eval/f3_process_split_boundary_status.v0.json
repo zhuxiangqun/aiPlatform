@@ -1,0 +1,63 @@
+{
+  "schema": "eval.meta_eval.f3_status.v0",
+  "family_id": "F3",
+  "family": "G2b / process_split boundary",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "status": "boundary_hold",
+      "green": true,
+      "f1_prerequisite_met": true,
+      "source": "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+      "note": "a3_split_authorize status: process_split locks hold (doc/status false, chart annotation false, ready_to_authorize=false)."
+    },
+    {
+      "id": "gold_audit",
+      "status": "advisory_present",
+      "green": true,
+      "source": "docs/a3/evidence/g2b_adjudication.v1.json + g2b_accuracy_claim_attestation.v1.json",
+      "note": "G2b adjudication + scoped attestation present; acknowledgements.not_process_split_authorize=true."
+    },
+    {
+      "id": "contamination",
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f3_contamination.v0.json",
+      "note": "Inherited F1 advisory; R11 advisory_only."
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f3_holdout_isolation.v0.json",
+      "note": "process_split_authorized holdout-from-claim declared until checklist+live."
+    },
+    {
+      "id": "iaa",
+      "status": "green",
+      "green": true,
+      "kappa": 0.7624,
+      "agreement": 0.9,
+      "source": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
+      "note": "G2b inter-annotator κ=0.7624 ≥ 0.60; accuracy_claim=false on aggregate."
+    }
+  ],
+  "counts": {
+    "green": 5,
+    "total": 5
+  },
+  "family_green": true,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "security_certification": false,
+  "honesty": "F3 META_EVAL scores the G2b↔process_split boundary. family_green ≠ flip process_split_authorized ≠ Tier A ≠ production independence.",
+  "api_hooks": [
+    "assert_t13_process_split_boundary",
+    "build_g2b_s_dual_review_workflow",
+    "eval_assert_t13_process_split_boundary"
+  ]
+}

@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-14T00:10:00+08:00",
+  "reviewed_at": "2026-11-15T00:13:09+08:00",
   "base_ref": "origin/main",
-  "merge_base": "d61066c5ac24cd5b291ee038bf894c356e493375",
-  "diff_sha256": "fd7077d05414c252e837d21172c0996d382b73c9bfe3c20c5913ba4718d8c2e6",
-  "head_sha": "0153eadd998fd15fa2fb86e4c749bd4a6dac18df",
+  "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
+  "diff_sha256": "f9c0b563fa782671239cbca18f65552ef5c66e14786b43ddf19eebc081671782",
+  "head_sha": "a620475ac315ac5ada93029a4519af3c672b71da",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Whitepaper re-sync after pack-status test alignment. Local lock only; CI needs non-author Approve."
+  "note": "Phase4 G2b→disposition ingest. 4 open tickets human-close. closed_loop/Chart false. Local lock."
 }

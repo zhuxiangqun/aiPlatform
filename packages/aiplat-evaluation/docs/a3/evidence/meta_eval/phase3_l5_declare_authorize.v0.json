@@ -1,0 +1,21 @@
+{
+  "schema": "eval.phase3.l5_declare_authorize.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE l5_declare",
+  "decided_at": "2026-11-14T22:14:00+08:00",
+  "l5_declare_authorized": true,
+  "security_certification": false,
+  "scope": {
+    "allows": [
+      "declare/use L5 severity gate outcomes via evaluate_security_severity_l5_gate / facade",
+      "limited L5 claim templates when evidence pack present"
+    ],
+    "forbids": [
+      "security_certification flip (still false)",
+      "L5 declare without severity-gate evidence"
+    ]
+  },
+  "honesty": "Owner authorized l5_declare. security_certification remains false."
+}

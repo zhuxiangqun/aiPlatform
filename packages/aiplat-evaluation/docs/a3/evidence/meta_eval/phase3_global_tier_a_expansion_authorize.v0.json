@@ -1,0 +1,40 @@
+{
+  "schema": "eval.phase3.global_tier_a_expansion_authorize.v0",
+  "recorded_at": "2026-11-14T22:02:00+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE global_tier_a_expansion",
+  "decided_at": "2026-11-14T22:02:00+08:00",
+  "global_tier_a_expansion_authorized": true,
+  "prerequisites": {
+    "a_candidate_scoped_complete": true,
+    "a_candidate_n": 19,
+    "meta_eval_f1_f4_green": true,
+    "b_suite_hook_attached": 165
+  },
+  "does_not_authorize": {
+    "accuracy_claim": false,
+    "l5_declare_authorized": false,
+    "security_certification": false,
+    "process_split_authorized": false,
+    "tier_b_coverage_complete_claim": false,
+    "single_coverage_percent": false
+  },
+  "scope": {
+    "allows": [
+      "cite A_candidate 19 symbols as Tier A gate-authorized under META family green",
+      "expand Tier A gate use for already-scoped A_candidate set",
+      "proceed Phase 3 coverage work without per-symbol re-authorize for these 19"
+    ],
+    "forbids_without_new_authorize": [
+      "product accuracy_claim",
+      "l5_declare",
+      "security certification",
+      "process_split_authorized flip",
+      "claiming single platform coverage percent",
+      "auto-adding new A_candidate symbols beyond the 19 ledger"
+    ]
+  },
+  "ledger_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
+  "honesty": "Owner explicitly authorized global_tier_a_expansion. This flips only that flag. accuracy/L5/cert/process_split remain false. ≠ production independence."
+}

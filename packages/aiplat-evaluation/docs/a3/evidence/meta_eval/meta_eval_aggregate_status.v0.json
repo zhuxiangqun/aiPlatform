@@ -1,0 +1,54 @@
+{
+  "schema": "eval.meta_eval.aggregate_status.v0",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "families": [
+    {
+      "family_id": "F1",
+      "family": "Judge calibration",
+      "family_green": true,
+      "green": 5,
+      "total": 5,
+      "source": "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+      "status_md": "docs/a3/META_EVAL_F1_STATUS.md"
+    },
+    {
+      "family_id": "F2",
+      "family": "Security family gates",
+      "family_green": true,
+      "green": 5,
+      "total": 5,
+      "source": "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+      "status_md": "docs/a3/META_EVAL_F2_STATUS.md"
+    },
+    {
+      "family_id": "F3",
+      "family": "G2b / process_split boundary",
+      "family_green": true,
+      "green": 5,
+      "total": 5,
+      "source": "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+      "status_md": "docs/a3/META_EVAL_F3_STATUS.md"
+    },
+    {
+      "family_id": "F4",
+      "family": "Release scorecard",
+      "family_green": true,
+      "green": 5,
+      "total": 5,
+      "source": "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
+      "status_md": "docs/a3/META_EVAL_F4_STATUS.md"
+    }
+  ],
+  "counts": {
+    "families_green": 4,
+    "families_total": 4
+  },
+  "meta_eval_families_green": true,
+  "tier_a_expansion_authorized": true,
+  "accuracy_claim": true,
+  "security_certification": false,
+  "process_split_authorized": true,
+  "l5_declare_authorized": true,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only. Policy flags mirrored from phase3_honesty_locks (not invented here). Chart runtime split stays independent."
+}

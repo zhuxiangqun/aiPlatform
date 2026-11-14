@@ -5,8 +5,10 @@ Honesty:
 - Inter-annotator κ is NOT accuracy.
 - This script builds adjudicated gold (agree ∪ adjudicate disputes) and reports
   model pass-rate vs gold with Wilson 95% CI.
-- ``accuracy_claim`` stays **false** unless ``--claim-ready`` AND an explicit
-  product-owner attestation file is present (default: refuse claim).
+- Product-level ``accuracy_claim`` is **always false** (scheme A).
+- ``scoped_accuracy_claim`` may be true only with ``--claim-ready`` AND an
+  explicit product-owner attestation (``accept_accuracy_claim=true``).
+- ``not_accuracy_certification`` stays true; refuse reason non-empty when product claim closed.
 - Does not flip process_split_authorized / staging / security cert.
 """
 from __future__ import annotations
@@ -96,18 +98,18 @@ def main() -> int:
     a_match = sum(1 for tid, g in gold.items() if la[tid] is g)
     b_match = sum(1 for tid, g in gold.items() if lb[tid] is g)
 
-    claim = False
-    claim_refuse = "default_accuracy_claim_false"
+    # Scheme A: product accuracy_claim never opens; scoped is separate.
+    scoped_claim = False
+    claim_refuse = "产品级 accuracy 未认证；仅 G2b scoped"
     if args.claim_ready:
         if args.attestation and args.attestation.is_file():
             att = json.loads(args.attestation.read_text(encoding="utf-8"))
             if att.get("accept_accuracy_claim") is True and att.get("product_owner"):
-                claim = True
-                claim_refuse = None
+                scoped_claim = True
             else:
-                claim_refuse = "attestation_incomplete"
+                claim_refuse = "产品级 accuracy 未认证；attestation_incomplete"
         else:
-            claim_refuse = "attestation_missing"
+            claim_refuse = "产品级 accuracy 未认证；attestation_missing"
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     gold_payload = {
@@ -115,6 +117,7 @@ def main() -> int:
         "product_id": "evaluation",
         "environment": "local",
         "accuracy_claim": False,
+        "scoped_accuracy_claim": False,
         "not_accuracy_certification": True,
         "n": n,
         "agreed_n": len(agreed),
@@ -122,7 +125,7 @@ def main() -> int:
         "labels": [{"task_id": tid, "gold_pass": gold[tid]} for tid in sorted(gold)],
         "honesty": (
             "adjudicated gold for local model pass-rate only; "
-            "κ ≠ accuracy; accuracy_claim stays false until attestation"
+            "κ ≠ accuracy; product accuracy_claim=false; scoped set only on aggregate"
         ),
         "recorded_at": stamp,
     }
@@ -130,8 +133,9 @@ def main() -> int:
         "schema": "eval.g2b.accuracy.v1",
         "product_id": "evaluation",
         "environment": "local",
-        "accuracy_claim": claim,
-        "not_accuracy_certification": not claim,
+        "accuracy_claim": False,
+        "scoped_accuracy_claim": scoped_claim,
+        "not_accuracy_certification": True,
         "metric": "model_pass_rate_vs_adjudicated_gold",
         "n": n,
         "pass_n": successes,
@@ -150,7 +154,8 @@ def main() -> int:
         "honesty": (
             "model pass-rate vs adjudicated gold — not inter-annotator κ; "
             "not security cert; not process_split authorize; "
-            "accuracy_claim=true only with product-owner attestation"
+            "product accuracy_claim=false; scoped_accuracy_claim=true only with "
+            "product-owner attestation (scheme A)"
         ),
         "recorded_at": stamp,
     }
@@ -172,7 +177,8 @@ def main() -> int:
                 "pass_rate": pass_rate,
                 "wilson_ci95": [ci_lo, ci_hi],
                 "disputed_n": len(disputed),
-                "accuracy_claim": claim,
+                "accuracy_claim": False,
+                "scoped_accuracy_claim": scoped_claim,
                 "claim_refuse_reason": claim_refuse,
                 "gold": str(args.out_gold) if args.out_gold else None,
                 "evidence": str(args.out) if args.out else None,

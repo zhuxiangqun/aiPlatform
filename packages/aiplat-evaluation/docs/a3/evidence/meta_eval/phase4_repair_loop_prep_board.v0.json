@@ -1,0 +1,96 @@
+{
+  "schema": "eval.phase4.repair_loop_prep.v0",
+  "recorded_at": "2026-11-15T00:10:49+08:00",
+  "status": "disposition_open",
+  "gates": {
+    "failure_taxonomy_fn": true,
+    "g2b_fail_decision_table": true,
+    "report_compare_fn": true,
+    "routing_table_draft": true,
+    "routing_config_file": true,
+    "phase4_routing_authorized": true,
+    "reeval_sla_draft": true,
+    "disposition_ledger_wired": true,
+    "reeval_fingerprint_stub": true,
+    "reeval_fingerprint_checked": true,
+    "runtime_router_wired": false,
+    "closed_loop_claim": false,
+    "chart_a3_process_split_authorized": false,
+    "security_certification": false
+  },
+  "imports": {
+    "build_failure_taxonomy": {
+      "ok": true,
+      "module": "core.apps.eval.service.gate_v1",
+      "symbol": "build_failure_taxonomy"
+    },
+    "compare_eval_reports": {
+      "ok": true,
+      "module": "core.apps.eval.service.report_compare",
+      "symbol": "compare_eval_reports"
+    }
+  },
+  "routing_draft": [
+    {
+      "category": "environment",
+      "route_to": "infra_ops",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "data",
+      "route_to": "fixture_gold_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "implementation",
+      "route_to": "module_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "stale_assertion",
+      "route_to": "eval_owner_plus_product",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "product_defect",
+      "route_to": "product_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "eval_defect",
+      "route_to": "eval_owner_meta",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "unknown",
+      "route_to": "eval_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    }
+  ],
+  "routing_ref": "docs/a3/config/phase4_routing.v0.json",
+  "ledger_ref": "docs/a3/evidence/meta_eval/phase4_disposition_ledger.v0.json",
+  "sla_draft": {
+    "tier_a_red_owner_hours": 24,
+    "tier_a_disposition_hours": 72,
+    "note": "from eval-system-improvement-plan §10; SLA not auto-enforced"
+  },
+  "evidence_refs": [
+    "aiPlat-core/core/apps/eval/service/gate_v1.py",
+    ".aiplat/eval_trust/g2b_fail_decision_table_v0.json",
+    "docs/architecture/plans/eval-system-improvement-plan.md#10",
+    "packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py"
+  ],
+  "next_actions": [
+    "Human disposition + close 4 open ticket(s) (--close)",
+    "Same-pack reeval after disposition (--verify-pack)",
+    "Runtime auto-dispatch remains off; do not flip Chart/closed_loop"
+  ],
+  "honesty": "Disposition ledger + fingerprint stub may be wired; ≠ closed-loop automation ≠ Chart flip ≠ security cert."
+}

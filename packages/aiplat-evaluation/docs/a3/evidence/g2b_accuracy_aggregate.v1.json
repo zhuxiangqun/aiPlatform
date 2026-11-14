@@ -2,8 +2,9 @@
   "schema": "eval.g2b.accuracy.v1",
   "product_id": "evaluation",
   "environment": "local",
-  "accuracy_claim": true,
-  "not_accuracy_certification": false,
+  "accuracy_claim": false,
+  "scoped_accuracy_claim": true,
+  "not_accuracy_certification": true,
   "metric": "model_pass_rate_vs_adjudicated_gold",
   "n": 100,
   "pass_n": 80,
@@ -30,7 +31,10 @@
   "annotator_a": "packages/aiplat-evaluation/docs/a3/evidence/g2b_annotator_a.labels.v1.json",
   "annotator_b": "packages/aiplat-evaluation/docs/a3/evidence/g2b_annotator_b.labels.v1.json",
   "adjudication": "packages/aiplat-evaluation/docs/a3/evidence/g2b_adjudication.v1.json",
-  "claim_refuse_reason": null,
-  "honesty": "model pass-rate vs adjudicated gold — not inter-annotator κ; not security cert; not process_split authorize; accuracy_claim=true only with product-owner attestation",
-  "recorded_at": "20261113T152628Z"
+  "claim_refuse_reason": "产品级 accuracy 未认证；仅 G2b scoped",
+  "honesty": "model pass-rate vs adjudicated gold — not inter-annotator κ; not security cert; not process_split authorize; product accuracy_claim=false; scoped_accuracy_claim=true only with product-owner attestation (scheme A)",
+  "aggregate_version": "agg-g2b-accuracy-2026-11-14.1",
+  "change_id": "EV-2026-11-14-001",
+  "recorded_at": "20261113T152628Z",
+  "fields_aligned_at": "20261114T000000Z"
 }

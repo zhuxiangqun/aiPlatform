@@ -1,0 +1,51 @@
+{
+  "schema": "eval.phase3.coverage_report_skeleton.v0",
+  "recorded_at": "2026-11-14T23:02:39+08:00",
+  "columns": [
+    "tier",
+    "n",
+    "with_suite",
+    "with_gate",
+    "scoped_authorized",
+    "exempt",
+    "unauthorized_claim"
+  ],
+  "rows": [
+    {
+      "tier": "A_candidate",
+      "n": 19,
+      "with_suite": 19,
+      "with_gate": 19,
+      "scoped_authorized": 19,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "scoped_authorized=19; global_tier_a_expansion_authorized=True; with_suite=evidence_refs-on-disk"
+    },
+    {
+      "tier": "B",
+      "n": 165,
+      "with_suite": 165,
+      "with_gate": 0,
+      "scoped_authorized": 0,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "with_suite=suite_hook attached_total from rollup; with_gate=0 (Tier B has no gate authorize); ≠ coverage complete"
+    },
+    {
+      "tier": "C",
+      "n": 458,
+      "with_suite": 0,
+      "with_gate": 0,
+      "scoped_authorized": 0,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "register-only; with_suite/gate forced 0; must not crowd A slots"
+    }
+  ],
+  "forbid_single_coverage_percent": true,
+  "tier_a_expansion_authorized": true,
+  "accuracy_claim": true,
+  "a_candidate_scoped_complete": true,
+  "tier_b_coverage_complete_claim": false,
+  "honesty": "A/B/C rows measured separately. B with_suite=hook attach count, not runtime coverage. C register-only (suite/gate=0). Never collapse into one coverage%."
+}

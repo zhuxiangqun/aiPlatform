@@ -1,0 +1,47 @@
+{
+  "kind": "evaluation_a3_live_drill_evidence",
+  "schema_version": "aiplat.evaluation.a3.live_drill.v0",
+  "drill_id": "scaffold-b4s-staging-template-v0",
+  "environment": "scaffold",
+  "operator": "scaffold-bot",
+  "recorded_at": "2026-11-14T14:45:51Z",
+  "production_signed": false,
+  "does_not_authorize_process_split": true,
+  "host": {
+    "host_id": "",
+    "confirmed": false,
+    "note": "Fill only after owner names independent staging host; keep environment=scaffold until live."
+  },
+  "endpoints": {
+    "jwks_url": "",
+    "object_store_endpoint": "",
+    "pg_dsn_redacted": ""
+  },
+  "items": {
+    "host_confirmed": {
+      "done": false,
+      "evidence": ""
+    },
+    "jwks_reachable": {
+      "done": false,
+      "evidence": ""
+    },
+    "object_store_reachable": {
+      "done": false,
+      "evidence": ""
+    },
+    "pitr_backup_restore_rollback": {
+      "done": false,
+      "evidence": ""
+    },
+    "healthz_protocol": {
+      "done": false,
+      "evidence": ""
+    },
+    "network_isolated_from_prod_central": {
+      "done": false,
+      "evidence": ""
+    }
+  },
+  "honesty": "Unsigned scaffold template. Not staging. Not production_signed. Does not authorize Chart flip."
+}

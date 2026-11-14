@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3443
+total_capabilities: 3472
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -722,6 +722,33 @@ scan_hash: 8f9548ec24f4
 | eval_multi_agent_capability_* / eval_run_multi_agent_capability_smoke | `core/api/core_facade.py` | ✅ | Multi-Agent 目录/校验/种子库/fixture smoke；≠ live runtime；生成物适用：已接线 | 本批 |
 | Method track (Arena/G2b/S1) catalog + Subject refuse | `core/apps/eval/service/method_track.py` + `subject_adapter.get_subject_adapter` | ✅ | ADR 落地顺序 step 6：方法轨强制；禁止升 Subject/OBJECT_TYPES；claim=false；生成物适用：已接线 | 本批 |
 | eval_list_method_kinds / eval_method_catalog / eval_assert_subject_kinds_exclude_methods | `core/api/core_facade.py` | ✅ | Method 目录/诚实声明/Subject 交叉校验门面；生成物适用：已接线 | 本批 |
+| AgentSubjectAdapter | `core/apps/eval/service/subject_adapter.py` | ✅ | Agent Subject 适配器（服务层符号；门面见 get_subject_adapter）；claim=false；生成物适用：已接线 | R12-H1 |
+| EvalSubjectAdapter | `core/apps/eval/service/subject_adapter.py` | ✅ | Eval Subject 适配器基类/注册表侧符号；claim=false；生成物适用：已接线 | R12-H1 |
+| list_method_kinds | `core/apps/eval/service/method_track.py` | ✅ | Method 轨种类列表（服务层；门面 eval_list_method_kinds）；生成物适用：已接线 | R12-H1 |
+| method_catalog | `core/apps/eval/service/method_track.py` | ✅ | Method 轨目录（服务层；门面 eval_method_catalog）；生成物适用：已接线 | R12-H1 |
+| assert_subject_kinds_exclude_methods | `core/apps/eval/service/method_track.py` | ✅ | Subject×Method 交叉拒绝（服务层）；生成物适用：已接线 | R12-H1 |
+| run_api_capability_smoke | `core/apps/eval/service/api_capability_bank.py` | ✅ | API capability fixture smoke（服务层；门面 eval_run_api_capability_smoke）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_code_review_capability_smoke | `core/apps/eval/service/code_review_capability_bank.py` | ✅ | Code-review capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_dataset_capability_smoke | `core/apps/eval/service/dataset_capability_bank.py` | ✅ | Dataset capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_generated_app_capability_smoke | `core/apps/eval/service/generated_app_capability_bank.py` | ✅ | Generated-app capability smoke（服务层）；≠ live Pi；生成物适用：已接线 | R12-H1 |
+| run_kb_capability_smoke | `core/apps/eval/service/kb_capability_bank.py` | ✅ | KB capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_model_capability_smoke | `core/apps/eval/service/model_capability_bank.py` | ✅ | Model capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_multi_agent_capability_smoke | `core/apps/eval/service/multi_agent_capability_bank.py` | ✅ | Multi-agent capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_prompt_capability_smoke | `core/apps/eval/service/prompt_capability_bank.py` | ✅ | Prompt capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| run_session_capability_smoke | `core/apps/eval/service/session_capability_bank.py` | ✅ | Session capability smoke（服务层）；≠ 长程 Agent；生成物适用：已接线 | R12-H1 |
+| run_skill_capability_smoke | `core/apps/eval/service/skill_capability_bank.py` | ✅ | Skill capability smoke（服务层）；≠ live skill_evals；生成物适用：已接线 | R12-H1 |
+| run_system_capability_smoke | `core/apps/eval/service/system_capability_bank.py` | ✅ | System capability smoke（服务层）；≠ system_plan_ops；生成物适用：已接线 | R12-H1 |
+| run_tool_capability_smoke | `core/apps/eval/service/tool_capability_bank.py` | ✅ | Tool capability smoke（服务层）；≠ live tools；生成物适用：已接线 | R12-H1 |
+| run_workflow_capability_smoke | `core/apps/eval/service/workflow_capability_bank.py` | ✅ | Workflow capability smoke（服务层）；≠ live；生成物适用：已接线 | R12-H1 |
+| annotate_family_asr_calibration | `core/apps/eval/service/security_judge_calib.py` | ✅ | 分族 ASR 校准标注（服务层；门面 eval_annotate_family_asr_calibration）；claim=false；生成物适用：已接线 | R12-H1 |
+| open_capability_judge_calibration | `core/apps/eval/service/capability_p4_gate.py` | ✅ | P4 judge 校准打开（服务层）；report_only；claim=false；生成物适用：已接线 | R12-H1 |
+| evaluate_t13_coverage | `core/apps/eval/service/security_t13_allowlist.py` | ✅ | T13 allowlist 覆盖评估；claim=false；生成物适用：已接线 | R12-H1 |
+| build_release_scorecard | `core/harness/evaluation/release_scorecard.py` | ✅ | 发布记分卡构建（harness）；≠ process_split authorize；生成物适用：已接线 | R12-H1 |
+| held_model_for_task | `core/harness/utils/task_model_lock.py` | ✅ | 任务模型锁定查询；评测可重复性；生成物适用：已接线 | R12-H1 |
+| summarize_library | `core/harness/evaluation/harness_recursion.py` | ✅ | 递归评测库摘要；claim=false；生成物适用：已接线 | R12-H1 |
+| summarize_online_samples | `core/harness/evaluation/online_sample.py` | ✅ | 在线抽样摘要；claim=false；生成物适用：已接线 | R12-H1 |
+| upsert_external_target | `core/apps/eval/service/external_targets.py` | ✅ | 外部评测目标登记/更新；claim=false；生成物适用：已接线 | R12-H1 |
+| validate_mock_tool | `core/apps/eval/service/mock_tools/schema.py` | ✅ | Mock tool 校验；fixture-only；生成物适用：已接线 | R12-H1 |
 | eval_method_track_status + GET …/store/method-track-status + EvalMethodTrackPanel | `core_facade.py` + `store_api.py` + `EvalMethodTrackPanel.tsx` | ✅ | Method 轨诚实快照（catalog + Subject 对照）；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_p1_regression_status + GET …/store/p1-regression-status + EvalP1RegressionPanel | `core_facade.py` + `store_api.py` + `EvalP1RegressionPanel.tsx` | ✅ | P1 Regression 配额盘点 + draft-by-capability 人审清单 + Case Pack 深链；claim/cert=false；生成物适用：不适用（管理端 UI） | 本批 |
 | eval_p4_status + GET …/store/p4-status + EvalP4StatusPanel | `core_facade.py` + `store_api.py` + `EvalP4StatusPanel.tsx` | ✅ | P4 Benchmark 配额/holdout + judge 工程条诚实快照（可 Subject）；report_only；claim=false；生成物适用：不适用（管理端 UI） | 本批 |
@@ -2687,6 +2714,8 @@ scan_hash: 8f9548ec24f4
 | evaluation_a3_prep_check | `packages/aiplat-evaluation/scripts/a3_prep_check.sh` + `chart/` + `docs/a3/` | ✅ | Chart/protocol/零 harness 直导；发现 local rehearsal 标 🟨；`process_split_authorized` 恒 false；生成物适用：不适用 | 已合入 |
 | ontology_a3_local_rehearsal | `packages/aiplat-ontology/scripts/a3_local_rehearsal.sh` | ✅ | 文件树双写+回滚指针演练；checklist #3/#5→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
 | evaluation_a3_local_rehearsal | `packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` | ✅ | SQLite 备份/回滚指针演练；checklist #4→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
+| evaluation_phase4_repair_loop_prep | `packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py` + `docs/a3/PHASE4_PREP.md` | ✅ | Phase4 修复闭环预备闸门；`closed_loop_claim` 恒 false；生成物适用：不适用 | 本批 |
+| evaluation_phase4_disposition_ledger | `packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py` + `docs/a3/config/phase4_routing.v0.json` | ✅ | taxonomy→处置单+指纹 stub+人工 `--close`；≠自动闭环/Chart；生成物适用：不适用 | 本批 |
 | Observation 观测总线 | harness/observation/ | ✅ | EventBus 发布/订阅 + PipelineTrace 每阶段跟踪 | 已合入 |
 | Smoke 全链路冒烟 | harness/smoke/ | ✅ | 生产级全链路冒烟测试 + 自动清理 | 已合入 |
 | A2A 协议 | apps/a2a/ | ✅ | Agent Card + Task Send/Get/Stream/Cancel/Artifacts 全实现 | 已合入 |
@@ -4342,7 +4371,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 597 | 1 | 598 |
+| Harness 执行引擎 | 624 | 1 | 625 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4353,7 +4382,7 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 173 | 1 | 174 |
+| 扩展与学习 | 175 | 1 | 176 |
 | Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 579 | 0 | 579 |
 | MCP 协议 | 11 | 0 | 11 |
@@ -4387,7 +4416,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3432** | **11** | **3443** |
+| **总计** | **3461** | **11** | **3472** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

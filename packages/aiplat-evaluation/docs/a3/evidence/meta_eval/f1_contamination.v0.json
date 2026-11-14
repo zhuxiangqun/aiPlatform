@@ -1,0 +1,352 @@
+{
+  "schema": "eval.meta_eval.f1_contamination.v0",
+  "family_id": "F1",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
+  "method": "token_overlap_vs_preference_fixture",
+  "sources": {
+    "tasks": "docs/a3/g2b_tasks.v0.json",
+    "tasks_sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+    "contrast": "docs/a3/fixtures/calibration/pref_annotator_a.v0.json",
+    "contrast_sha256": "99dfd9da7e69ec6bd58261b19e89261b9d4391260ff16e24f20efe07b4c51c81"
+  },
+  "heavy_overlap_tasks_n": 32,
+  "heavy_overlap_sample": [
+    {
+      "task_id": "g2b-19",
+      "overlap_n": 15,
+      "sample_tokens": [
+        "answer",
+        "authorized",
+        "claim",
+        "does",
+        "enough",
+        "eval",
+        "evidence",
+        "local",
+        "not",
+        "only",
+        "process",
+        "set"
+      ]
+    },
+    {
+      "task_id": "g2b-29",
+      "overlap_n": 14,
+      "sample_tokens": [
+        "7dim",
+        "build",
+        "central",
+        "composite",
+        "context",
+        "engineering",
+        "for",
+        "legacy",
+        "only",
+        "package",
+        "scored",
+        "ssot"
+      ]
+    },
+    {
+      "task_id": "g2b-21",
+      "overlap_n": 13,
+      "sample_tokens": [
+        "accuracy",
+        "annotator",
+        "can",
+        "claim",
+        "context",
+        "false",
+        "g2b",
+        "only",
+        "second",
+        "set",
+        "true",
+        "without"
+      ]
+    },
+    {
+      "task_id": "g2b-45",
+      "overlap_n": 13,
+      "sample_tokens": [
+        "authorized",
+        "claim",
+        "does",
+        "evidence",
+        "local",
+        "not",
+        "only",
+        "pack",
+        "process",
+        "set",
+        "split",
+        "true"
+      ]
+    },
+    {
+      "task_id": "g2b-09",
+      "overlap_n": 12,
+      "sample_tokens": [
+        "8000",
+        "call",
+        "central",
+        "context",
+        "eval",
+        "llm",
+        "may",
+        "must",
+        "not",
+        "only",
+        "worker",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-67",
+      "overlap_n": 12,
+      "sample_tokens": [
+        "8000",
+        "call",
+        "central",
+        "context",
+        "eval",
+        "llm",
+        "may",
+        "must",
+        "not",
+        "only",
+        "worker",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-26",
+      "overlap_n": 11,
+      "sample_tokens": [
+        "annotator",
+        "both",
+        "can",
+        "for",
+        "g2b",
+        "inter",
+        "one",
+        "only",
+        "person",
+        "second",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-70",
+      "overlap_n": 11,
+      "sample_tokens": [
+        "7dim",
+        "build",
+        "central",
+        "composite",
+        "context",
+        "engineering",
+        "legacy",
+        "only",
+        "scored",
+        "ssot",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-71",
+      "overlap_n": 11,
+      "sample_tokens": [
+        "accuracy",
+        "claim",
+        "context",
+        "false",
+        "g2b",
+        "only",
+        "rate",
+        "set",
+        "true",
+        "without",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-100",
+      "overlap_n": 11,
+      "sample_tokens": [
+        "100",
+        "accuracy",
+        "but",
+        "claim",
+        "for",
+        "may",
+        "only",
+        "pack",
+        "set",
+        "true",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-07",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "extract",
+        "from",
+        "json",
+        "keys",
+        "model",
+        "only",
+        "qwen",
+        "seed",
+        "temperature",
+        "with"
+      ]
+    },
+    {
+      "task_id": "g2b-10",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "and",
+        "build",
+        "composite",
+        "context",
+        "engineering",
+        "names",
+        "one",
+        "package",
+        "ssot",
+        "what"
+      ]
+    },
+    {
+      "task_id": "g2b-13",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "and",
+        "api",
+        "both",
+        "does",
+        "echo",
+        "key",
+        "not",
+        "password",
+        "repeat",
+        "supersecret123"
+      ]
+    },
+    {
+      "task_id": "g2b-30",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "can",
+        "deferred",
+        "live",
+        "local",
+        "mac",
+        "microvm",
+        "only",
+        "tools",
+        "track",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-36",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "and",
+        "authorize",
+        "claim",
+        "evidence",
+        "host",
+        "json",
+        "laptop",
+        "staging",
+        "true",
+        "with"
+      ]
+    },
+    {
+      "task_id": "g2b-74",
+      "overlap_n": 10,
+      "sample_tokens": [
+        "api",
+        "baseline",
+        "cert",
+        "certification",
+        "context",
+        "live",
+        "local",
+        "only",
+        "prod",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-06",
+      "overlap_n": 9,
+      "sample_tokens": [
+        "central",
+        "eval",
+        "local",
+        "one",
+        "package",
+        "prompts",
+        "summarize",
+        "the",
+        "without"
+      ]
+    },
+    {
+      "task_id": "g2b-22",
+      "overlap_n": 9,
+      "sample_tokens": [
+        "accuracy",
+        "asr",
+        "context",
+        "metric",
+        "not",
+        "only",
+        "score",
+        "security",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-25",
+      "overlap_n": 9,
+      "sample_tokens": [
+        "evidence",
+        "host",
+        "json",
+        "laptop",
+        "live",
+        "only",
+        "staging",
+        "the",
+        "yes"
+      ]
+    },
+    {
+      "task_id": "g2b-68",
+      "overlap_n": 9,
+      "sample_tokens": [
+        "build",
+        "composite",
+        "context",
+        "engineering",
+        "names",
+        "one",
+        "package",
+        "ssot",
+        "what"
+      ]
+    }
+  ],
+  "over_threshold": true,
+  "disposition": "advisory_only",
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Contamination scan ran (heuristic token overlap). R11: over-threshold → advisory only; not Tier A hard block claim."
+}

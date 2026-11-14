@@ -1,0 +1,37 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-5-wilson_score_ci",
+  "seq": 5,
+  "symbol": "wilson_score_ci",
+  "meta_family": "F1",
+  "recorded_at": "2026-11-14T21:05:19+08:00",
+  "status": "accepted",
+  "impl_def": "aiPlat-core/core/apps/eval/service/mode_intersection_rank.py:46",
+  "facade_def": null,
+  "depends_on_accepted": [
+    "evaluate_judge_calibration_gate",
+    "open_capability_judge_calibration",
+    "judge_calibration_gate_for_ticket",
+    "cohen_kappa_binary"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
+    "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true,
+    "security_certification": false,
+    "l5_declare_authorized": false,
+    "process_split_authorized": false
+  },
+  "owner_decision": "ACCEPT wilson_score_ci scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:05:19+08:00",
+  "honesty": "Owner accepted scoped Tier A CI helper for wilson_score_ci only. global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
+}

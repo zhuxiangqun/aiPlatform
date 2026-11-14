@@ -1,0 +1,277 @@
+{
+  "schema": "eval.phase3.b6_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:57:00+08:00",
+  "bucket_id": "B6_other",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:57:00+08:00",
+  "n": 37,
+  "attached": 37,
+  "gaps": [],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "b_waves_suite_attach_complete": true,
+  "attachments": [
+    {
+      "symbol": "build_suite_profile_report",
+      "suite_hook": "build_suite_profile_report",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_profile_report.py:171",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "compute_exam_fact_support",
+      "suite_hook": "compute_exam_fact_support",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/agent_exam_ops.py:88",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "freeze_all_subject_seed_pack_meta",
+      "suite_hook": "freeze_all_subject_seed_pack_meta",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_capability_promote.py:630",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "freeze_subject_seed_pack_meta",
+      "suite_hook": "freeze_subject_seed_pack_meta",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_capability_promote.py:507",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "get_suite_exam_summary",
+      "suite_hook": "get_suite_exam_summary",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_exam_summary_store.py:102",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "is_method_kind",
+      "suite_hook": "is_method_kind",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/method_track.py:74",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "list_exam_sets",
+      "suite_hook": "list_exam_sets",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/agent_exam_ops.py:34",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "list_method_kinds",
+      "suite_hook": "list_method_kinds",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/method_track.py:68",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "list_subject_suite_profiles",
+      "suite_hook": "list_subject_suite_profiles",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:116",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "list_suite_profiles",
+      "suite_hook": "list_suite_profiles",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:268",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "method_catalog",
+      "suite_hook": "method_catalog",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/method_track.py:83",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "open_capability_bank_editor",
+      "suite_hook": "open_capability_bank_editor",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_editor.py:480",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "promote_agent_capability_bank",
+      "suite_hook": "promote_agent_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:458",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "promote_all_subject_capability_banks",
+      "suite_hook": "promote_all_subject_capability_banks",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_capability_promote.py:859",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "promote_subject_capability_bank",
+      "suite_hook": "promote_subject_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_capability_promote.py:666",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "record_suite_exam_summary",
+      "suite_hook": "record_suite_exam_summary",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_exam_summary_store.py:55",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_agent_exam",
+      "suite_hook": "run_agent_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/agent_exam_ops.py:256",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_external_exam",
+      "suite_hook": "run_external_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/external_exam_ops.py:68",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_m1a_mode_exam",
+      "suite_hook": "run_m1a_mode_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/mode_aware_exam.py:261",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_m1b_mode_exam",
+      "suite_hook": "run_m1b_mode_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/mode_aware_exam.py:624",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_m1c_mode_exam",
+      "suite_hook": "run_m1c_mode_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/mode_aware_exam.py:1037",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_suite_profile_exam",
+      "suite_hook": "run_suite_profile_exam",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_profile_exam.py:221",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "subject_suite_profile_inventory",
+      "suite_hook": "subject_suite_profile_inventory",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:218",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_agent_capability_bank",
+      "suite_hook": "validate_agent_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:325",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_api_capability_bank",
+      "suite_hook": "validate_api_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/api_capability_bank.py:101",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_code_review_capability_bank",
+      "suite_hook": "validate_code_review_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/code_review_capability_bank.py:104",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_dataset_capability_bank",
+      "suite_hook": "validate_dataset_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/dataset_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_generated_app_capability_bank",
+      "suite_hook": "validate_generated_app_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/generated_app_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_kb_capability_bank",
+      "suite_hook": "validate_kb_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/kb_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_model_capability_bank",
+      "suite_hook": "validate_model_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/model_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_multi_agent_capability_bank",
+      "suite_hook": "validate_multi_agent_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py:103",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_prompt_capability_bank",
+      "suite_hook": "validate_prompt_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/prompt_capability_bank.py:98",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_session_capability_bank",
+      "suite_hook": "validate_session_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/session_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_skill_capability_bank",
+      "suite_hook": "validate_skill_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/skill_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_system_capability_bank",
+      "suite_hook": "validate_system_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/system_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_tool_capability_bank",
+      "suite_hook": "validate_tool_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/tool_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "validate_workflow_capability_bank",
+      "suite_hook": "validate_workflow_capability_bank",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/workflow_capability_bank.py:100",
+      "status": "attached",
+      "layer": "impl"
+    }
+  ],
+  "honesty": "B6 other symbols mapped where defs exist. B1–B6 suite-hook attach ≠ platform coverage complete / global Tier A expansion / single coverage%."
+}

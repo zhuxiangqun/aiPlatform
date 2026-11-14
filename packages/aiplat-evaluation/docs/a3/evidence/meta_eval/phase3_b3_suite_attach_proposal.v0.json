@@ -1,0 +1,35 @@
+{
+  "schema": "eval.phase3.b_suite_attach_proposal.v0",
+  "proposal_id": "phase3-b3-suite-attach",
+  "bucket_id": "B3_regression_profiles",
+  "recorded_at": "2026-11-14T21:46:00+08:00",
+  "status": "accepted",
+  "n": 66,
+  "symbols_sample": [
+    "agent_regression_profile",
+    "api_regression_profile",
+    "api_regression_status",
+    "code_review_regression_profile",
+    "code_review_regression_status",
+    "compile_plan_from_suite_profile",
+    "dataset_regression_profile",
+    "dataset_regression_status"
+  ],
+  "cadence": "monthly",
+  "owner_role": "module_owner",
+  "depends_on": [
+    "B1_subject_adapters",
+    "B2_smoke"
+  ],
+  "scope_if_accepted": {
+    "suite_hook_attach_authorized_for_bucket": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "forbid_single_coverage_percent": true
+  },
+  "owner_decision": "ACCEPT phase3_b_suite_attach B3",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:46:00+08:00",
+  "honesty": "Owner accepted B3 regression suite attach (66/66). ≠ global Tier A expansion / accuracy / process_split.",
+  "suite_hook_attach_authorized_for_bucket": true
+}

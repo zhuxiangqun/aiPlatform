@@ -1,0 +1,403 @@
+{
+  "schema": "eval.phase3.tier_a_gold_gate_ledger.v0",
+  "recorded_at": "2026-11-14T22:56:16+08:00",
+  "n": 19,
+  "n_evidence_ok": 19,
+  "n_import_ok": 19,
+  "n_claim_ready": 19,
+  "accuracy_claim_policy": true,
+  "global_tier_a_expansion_authorized": true,
+  "security_certification": false,
+  "chart_a3_process_split_authorized": false,
+  "forbid_single_coverage_percent": true,
+  "symbols": [
+    {
+      "symbol": "evaluate_judge_calibration_gate",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.capability_p4_gate.evaluate_judge_calibration_gate",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "open_capability_judge_calibration",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.capability_p4_gate.open_capability_judge_calibration",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "judge_calibration_gate_for_ticket",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.capability_p4_gate.judge_calibration_gate_for_ticket",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "cohen_kappa_binary",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.g2c.cohen_kappa_binary",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "wilson_score_ci",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.mode_intersection_rank.wilson_score_ci",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_judge_calibration_gate",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_judge_calibration_gate",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_open_capability_judge_calibration",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_open_capability_judge_calibration",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "build_release_scorecard",
+      "meta_family": "F4",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
+        "docs/a3/scorecard_v1.json",
+        "docs/a3/evidence/evidence_manifest.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.harness.evaluation.release_scorecard.build_release_scorecard",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "build_judge_calib_evidence_pack",
+      "meta_family": "F4",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
+        "docs/a3/scorecard_v1.json",
+        "docs/a3/evidence/evidence_manifest.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_cert_prep.build_judge_calib_evidence_pack",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "evaluate_security_judge_calibration",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_cert_prep.evaluate_security_judge_calibration",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "load_judge_calib_defaults",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_cert_prep.load_judge_calib_defaults",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "evaluate_security_family_gates",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_cert_prep.evaluate_security_family_gates",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_evaluate_security_judge_calibration",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_evaluate_security_judge_calibration",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_load_security_judge_calib_defaults",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_load_security_judge_calib_defaults",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_evaluate_security_family_gates",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_evaluate_security_family_gates",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_evaluate_security_severity_l5_gate",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_evaluate_security_severity_l5_gate",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_t13_allowlist.assert_t13_process_split_boundary",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "build_g2b_s_dual_review_workflow",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.apps.eval.service.security_cert_prep.build_g2b_s_dual_review_workflow",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    },
+    {
+      "symbol": "eval_assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "evidence_ok": true,
+      "evidence_missing": [],
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "import_smoke": "ok",
+      "import_detail": "core.api.core_facade.eval_assert_t13_process_split_boundary",
+      "gold_side": "family_evidence",
+      "gate_side": "authorized",
+      "claim_eligible": true,
+      "claim_ready": true,
+      "security_certification": false,
+      "chart_a3_process_split_authorized": false
+    }
+  ],
+  "honesty": "Per-symbol evidence+import smoke ledger. claim_ready ≠ security cert ≠ Chart flip. No single platform coverage percent."
+}

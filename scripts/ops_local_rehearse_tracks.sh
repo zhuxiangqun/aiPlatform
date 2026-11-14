@@ -62,6 +62,16 @@ rm -f "$ITEMS"
 bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status >/dev/null
 pass "evaluation A3 local_signed (process_split still unauthorized)"
 
+# --- Evaluation B4-S Option B sibling (:5434; ≠ staging) ---
+if [[ "${AIPLAT_OPTION_B_INCLUDE_B4S:-1}" == "1" ]] \
+  && command -v docker >/dev/null 2>&1 \
+  && docker info >/dev/null 2>&1; then
+  bash packages/aiplat-evaluation/scripts/b4s_option_b_local.sh || fail "b4s_option_b_local"
+  pass "evaluation B4-S Option B local (Chart/authorize still locked)"
+else
+  echo "SKIP: B4-S Option B local (set AIPLAT_OPTION_B_INCLUDE_B4S=1 with docker up)"
+fi
+
 # --- Pi D3 ---
 bash packages/aiplat-pi-runtime/scripts/d3_local_rehearsal.sh || fail "d3_local_rehearsal"
 bash packages/aiplat-pi-runtime/scripts/d3_soc_local_rehearsal.sh || fail "d3_soc_local_rehearsal"

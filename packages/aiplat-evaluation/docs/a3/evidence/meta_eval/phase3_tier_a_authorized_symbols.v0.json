@@ -1,0 +1,355 @@
+{
+  "schema": "eval.phase3.tier_a_authorized_symbols.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "global_tier_a_expansion_authorized": true,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
+  "security_certification": false,
+  "l5_declare_authorized": true,
+  "symbols": [
+    {
+      "symbol": "evaluate_judge_calibration_gate",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_judge_calibration_gate",
+      "accepted_at": "2026-11-14T20:58:21+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_judge_calibration_gate.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true
+    },
+    {
+      "symbol": "open_capability_judge_calibration",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_open_capability_judge_calibration",
+      "accepted_at": "2026-11-14T21:00:14+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.open_capability_judge_calibration.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate"
+      ]
+    },
+    {
+      "symbol": "judge_calibration_gate_for_ticket",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_judge_calibration_gate_for_ticket",
+      "accepted_at": "2026-11-14T21:01:48+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.judge_calibration_gate_for_ticket.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate",
+        "open_capability_judge_calibration"
+      ]
+    },
+    {
+      "symbol": "cohen_kappa_binary",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_cohen_kappa_binary_metric_helper",
+      "accepted_at": "2026-11-14T21:03:38+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.cohen_kappa_binary.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate",
+        "open_capability_judge_calibration",
+        "judge_calibration_gate_for_ticket"
+      ]
+    },
+    {
+      "symbol": "wilson_score_ci",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_wilson_score_ci_helper",
+      "accepted_at": "2026-11-14T21:05:19+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.wilson_score_ci.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate",
+        "open_capability_judge_calibration",
+        "judge_calibration_gate_for_ticket",
+        "cohen_kappa_binary"
+      ]
+    },
+    {
+      "symbol": "eval_judge_calibration_gate",
+      "meta_family": "F1",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_eval_judge_calibration_gate_facade",
+      "accepted_at": "2026-11-14T21:06:58+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_judge_calibration_gate.v0.json",
+      "wraps": "evaluate_judge_calibration_gate",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate"
+      ]
+    },
+    {
+      "symbol": "eval_open_capability_judge_calibration",
+      "meta_family": "F1",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_eval_open_capability_judge_calibration_facade",
+      "accepted_at": "2026-11-14T21:08:04+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_open_capability_judge_calibration.v0.json",
+      "wraps": "open_capability_judge_calibration",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "depends_on": [
+        "open_capability_judge_calibration"
+      ]
+    },
+    {
+      "symbol": "build_release_scorecard",
+      "meta_family": "F4",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f4_build_release_scorecard",
+      "accepted_at": "2026-11-14T21:09:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_release_scorecard.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "unscored_axes_holdout": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate"
+      ]
+    },
+    {
+      "symbol": "build_judge_calib_evidence_pack",
+      "meta_family": "F4",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f4_build_judge_calib_evidence_pack",
+      "accepted_at": "2026-11-14T21:11:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_judge_calib_evidence_pack.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "unscored_axes_holdout": true,
+      "security_certification": false,
+      "depends_on": [
+        "evaluate_judge_calibration_gate",
+        "build_release_scorecard"
+      ]
+    },
+    {
+      "symbol": "evaluate_security_judge_calibration",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_evaluate_security_judge_calibration",
+      "accepted_at": "2026-11-14T21:13:00+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_security_judge_calibration.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "evaluate_judge_calibration_gate",
+        "build_release_scorecard",
+        "build_judge_calib_evidence_pack"
+      ]
+    },
+    {
+      "symbol": "load_judge_calib_defaults",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_load_judge_calib_defaults",
+      "accepted_at": "2026-11-14T21:15:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.load_judge_calib_defaults.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "evaluate_security_judge_calibration"
+      ]
+    },
+    {
+      "symbol": "evaluate_security_family_gates",
+      "meta_family": "F2",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_evaluate_security_family_gates",
+      "accepted_at": "2026-11-14T21:17:00+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_security_family_gates.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "evaluate_security_judge_calibration",
+        "load_judge_calib_defaults"
+      ]
+    },
+    {
+      "symbol": "eval_evaluate_security_judge_calibration",
+      "meta_family": "F2",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_eval_evaluate_security_judge_calibration_facade",
+      "accepted_at": "2026-11-14T21:18:00+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_judge_calibration.v0.json",
+      "wraps": "evaluate_security_judge_calibration",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "evaluate_security_judge_calibration"
+      ]
+    },
+    {
+      "symbol": "eval_load_security_judge_calib_defaults",
+      "meta_family": "F2",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_eval_load_security_judge_calib_defaults_facade",
+      "accepted_at": "2026-11-14T21:19:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_load_security_judge_calib_defaults.v0.json",
+      "wraps": "load_judge_calib_defaults",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "load_judge_calib_defaults"
+      ]
+    },
+    {
+      "symbol": "eval_evaluate_security_family_gates",
+      "meta_family": "F2",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_eval_evaluate_security_family_gates_facade",
+      "accepted_at": "2026-11-14T21:21:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_family_gates.v0.json",
+      "wraps": "evaluate_security_family_gates",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "depends_on": [
+        "evaluate_security_family_gates"
+      ]
+    },
+    {
+      "symbol": "eval_evaluate_security_severity_l5_gate",
+      "meta_family": "F2",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f2_eval_evaluate_security_severity_l5_gate_facade_api_only",
+      "accepted_at": "2026-11-14T21:23:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_severity_l5_gate.v0.json",
+      "wraps": "evaluate_security_severity_l5_gate",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "security_certification": false,
+      "l5_declare_authorized": true,
+      "note": "Scoped gate API authorization only; does not flip l5_declare_authorized",
+      "depends_on": [
+        "evaluate_security_judge_calibration",
+        "evaluate_security_family_gates"
+      ]
+    },
+    {
+      "symbol": "assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f3_assert_t13_process_split_boundary_assert_only",
+      "accepted_at": "2026-11-14T21:25:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.assert_t13_process_split_boundary.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
+      "note": "Scoped boundary assert only; does not flip process_split_authorized",
+      "depends_on": [
+        "evaluate_security_family_gates"
+      ]
+    },
+    {
+      "symbol": "build_g2b_s_dual_review_workflow",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f3_build_g2b_s_dual_review_workflow",
+      "accepted_at": "2026-11-14T21:26:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_g2b_s_dual_review_workflow.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
+      "depends_on": [
+        "assert_t13_process_split_boundary"
+      ]
+    },
+    {
+      "symbol": "eval_assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f3_eval_assert_t13_process_split_boundary_facade",
+      "accepted_at": "2026-11-14T21:28:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_assert_t13_process_split_boundary.v0.json",
+      "wraps": "assert_t13_process_split_boundary",
+      "report_only_remains": true,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
+      "note": "Final A_candidate scoped accept; does not flip process_split or global Tier A expansion",
+      "depends_on": [
+        "assert_t13_process_split_boundary"
+      ]
+    }
+  ],
+  "honesty": "Owner authorized accuracy_claim + l5_declare + process_split (2026-11-14). security_certification / production_independent_claim / Chart a3_process_split_authorized remain false. process_split policy true with residual 🟨 checklist + no staging host.",
+  "a_candidate_scoped_complete": true,
+  "n_authorized": 19,
+  "global_tier_a_expansion_authorized_at": "2026-11-14T22:02:00+08:00",
+  "global_tier_a_expansion_authorized_by": "朱向群",
+  "global_tier_a_expansion_authorize_ref": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json",
+  "accuracy_claim_authorized_at": "2026-11-14T22:14:00+08:00",
+  "l5_declare_authorized_at": "2026-11-14T22:14:00+08:00",
+  "process_split_authorized_at": "2026-11-14T22:14:00+08:00",
+  "accuracy_claim_authorize_ref": "docs/a3/evidence/meta_eval/phase3_accuracy_claim_authorize.v0.json",
+  "l5_declare_authorize_ref": "docs/a3/evidence/meta_eval/phase3_l5_declare_authorize.v0.json",
+  "process_split_authorize_ref": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json",
+  "chart_a3_process_split_authorized": false,
+  "production_independent_claim": false
+}

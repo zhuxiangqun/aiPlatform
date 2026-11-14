@@ -1,0 +1,42 @@
+name: Eval Phase0 Stable Subset
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/aiplat-evaluation/**"
+      - "aiPlat-core/core/apps/eval/service/g2b.py"
+      - "aiPlat-core/core/tests/unit/test_eval_g2b_*.py"
+      - "aiPlat-platform/tests/test_eval_v1_e1_canonical.py"
+      - ".github/workflows/eval-phase0-stable.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/aiplat-evaluation/**"
+      - "aiPlat-core/core/apps/eval/service/g2b.py"
+      - "aiPlat-core/core/tests/unit/test_eval_g2b_*.py"
+      - "aiPlat-platform/tests/test_eval_v1_e1_canonical.py"
+      - ".github/workflows/eval-phase0-stable.yml"
+
+jobs:
+  phase0-stable:
+    name: Phase0 CI stable subset
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install minimal deps
+        run: |
+          pip install pytest pytest-asyncio pyjwt "numpy>=1.26" pyyaml
+          # Platform E1 + core g2b import path (thin; not full editable install).
+          pip install -e aiPlat-infra -e aiPlat-core -e aiPlat-platform || \
+            pip install -e ./aiPlat-infra -e ./aiPlat-core || true
+      - name: Run Phase0 stable subset
+        env:
+          PYTHON: python3
+        run: |
+          bash packages/aiplat-evaluation/scripts/phase0_ci_stable_subset.sh
