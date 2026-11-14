@@ -24,15 +24,16 @@ doc_type: Reference
 
 ## Owner 下一叉（须显式）
 
-B1–B4 suite 挂接：**accepted**。
+B1–B5 suite 挂接：**accepted**。
 
 ```text
-ACCEPT phase3_b_suite_attach B5
+ACCEPT phase3_b_suite_attach B6
 
 AUTHORIZE global_tier_a_expansion
 
 CONTINUE phase2_staging_prep
 ```
+
 
 
 

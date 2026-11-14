@@ -2,8 +2,8 @@
   "schema": "eval.phase3.b_suite_attach_proposal.v0",
   "proposal_id": "phase3-b5-suite-attach",
   "bucket_id": "B5_types_errors",
-  "recorded_at": "2026-11-14T21:50:00+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:51:30+08:00",
+  "status": "accepted",
   "n": 2,
   "symbols_sample": [
     "ModeAwareExamError",
@@ -27,8 +27,9 @@
     "accuracy_claim": false,
     "forbid_single_coverage_percent": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. B5 types/errors suite attach; ≠ global Tier A expansion."
+  "owner_decision": "ACCEPT phase3_b_suite_attach B5",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:51:30+08:00",
+  "honesty": "Owner accepted B5 types/errors suite attach (2/2). ≠ global Tier A expansion / accuracy / process_split.",
+  "suite_hook_attach_authorized_for_bucket": true
 }

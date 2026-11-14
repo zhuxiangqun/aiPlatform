@@ -817,3 +817,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec41 | 2026-11-14 | owner ACCEPT B2 smoke 挂接 26/26；开 B3 regression 提案 |
 | v1.1.7+exec42 | 2026-11-14 | owner ACCEPT B3 regression 挂接 66/66；开 B4 facade 提案 |
 | v1.1.7+exec43 | 2026-11-14 | owner ACCEPT B4 facade 挂接 19/19（含 async exam）；开 B5 提案 |
+| v1.1.7+exec44 | 2026-11-14 | owner ACCEPT B5 types/errors 2/2；开 B6 末波提案 |
