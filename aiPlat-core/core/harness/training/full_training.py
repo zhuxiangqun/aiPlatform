@@ -49,6 +49,7 @@ _log = logging.getLogger("aiplat.full_training")
 
 class FullTrainingConfig:
 
+    """FullTrainingConfig。"""
     model_architecture: str = "gpt2"                # HuggingFace model ID (config only, no weights)
 
     dataset_id: str = ""
@@ -77,6 +78,7 @@ class FullTrainingConfig:
 
 class FullTrainingJob:
 
+    """FullTrainingJob。"""
     job_id: str
 
     config: FullTrainingConfig = field(default_factory=FullTrainingConfig)
@@ -131,6 +133,8 @@ class FullTrainingEngine:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._jobs: Dict[str, FullTrainingJob] = {}
 
         self._job_dir = get_aiplat_data_dir("full_training")
@@ -141,7 +145,11 @@ class FullTrainingEngine:
 
     async def train_from_scratch(self, config: FullTrainingConfig) -> str:
 
-        """Start a from-scratch training job. Returns job_id."""
+        """Start a from-scratch training job. Returns job_id.
+
+        Args:
+            config: config 参数。
+        """
 
         job_id = f"scratch-{uuid.uuid4().hex[:8]}"
 
@@ -393,6 +401,11 @@ class FullTrainingEngine:
 
     def get_status(self, job_id: str) -> Optional[Dict[str, Any]]:
 
+        """获取 status。
+
+        Args:
+            job_id: job 标识。
+        """
         job = self._jobs.get(job_id)
 
         if not job:
@@ -451,6 +464,8 @@ class FullTrainingEngine:
 
     def list_jobs(self) -> List[Dict[str, Any]]:
 
+        """列出 jobs。
+        """
         return [self.get_status(jid) for jid in self._jobs if self.get_status(jid)]
 
 
@@ -514,6 +529,8 @@ _instance: Optional[FullTrainingEngine] = None
 
 def get_full_training_engine() -> FullTrainingEngine:
 
+    """获取 full_training_engine。
+    """
     global _instance
 
     if _instance is None:

@@ -108,7 +108,20 @@ async def open_node(
     sort_key: Optional[float] = None,
     audit: bool = True,
 ) -> Dict[str, Any]:
-    """Create or reset a node to running."""
+    """Create or reset a node to running.
+
+    Args:
+        run_id: 运行 ID。
+        node_id: node 标识。
+        kind: kind 参数。
+        name: name 参数。
+        parent_id: parent 标识。
+        label: label 参数。
+        role: role 参数。
+        args: args 参数。
+        sort_key: sort_key 参数。
+        audit: audit 参数。
+    """
     store = _store()
     if store is None:
         return {}
@@ -155,7 +168,20 @@ async def close_node(
     cost: float = 0.0,
     audit: bool = True,
 ) -> Dict[str, Any]:
-    """UPDATE node to a terminal status (ok/error/warning)."""
+    """UPDATE node to a terminal status (ok/error/warning).
+
+    Args:
+        run_id: 运行 ID。
+        node_id: node 标识。
+        status: status 参数。
+        result: result 参数。
+        error: error 参数。
+        duration_ms: duration_ms 参数。
+        input_tokens: input_tokens 参数。
+        output_tokens: output_tokens 参数。
+        cost: cost 参数。
+        audit: audit 参数。
+    """
     store = _store()
     if store is None:
         return {}
@@ -225,7 +251,25 @@ async def upsert_node(
     cost: Optional[float] = None,
     audit: bool = False,
 ) -> Dict[str, Any]:
-    """Partial update without forcing open/close semantics."""
+    """Partial update without forcing open/close semantics.
+
+    Args:
+        run_id: 运行 ID。
+        node_id: node 标识。
+        kind: kind 参数。
+        name: name 参数。
+        parent_id: parent 标识。
+        label: label 参数。
+        role: role 参数。
+        status: status 参数。
+        args: args 参数。
+        result: result 参数。
+        error: error 参数。
+        input_tokens: input_tokens 参数。
+        output_tokens: output_tokens 参数。
+        cost: cost 参数。
+        audit: audit 参数。
+    """
     store = _store()
     if store is None:
         return {}
@@ -270,7 +314,12 @@ async def upsert_node(
 
 
 async def mark_run_done(run_id: str, status: str = "completed") -> Dict[str, Any]:
-    """Mark run finished and force-close any still-running nodes."""
+    """Mark run finished and force-close any still-running nodes.
+
+    Args:
+        run_id: 运行 ID。
+        status: status 参数。
+    """
     store = _store()
     if store is None:
         return {"run_id": run_id, "status": status, "closed": []}
@@ -374,7 +423,11 @@ def _build_tree(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 async def get_graph(run_id: str) -> Dict[str, Any]:
-    """Return authoritative graph projection for a run."""
+    """Return authoritative graph projection for a run.
+
+    Args:
+        run_id: 运行 ID。
+    """
     store = _store()
     if store is None:
         return {"run_id": run_id, "status": None, "nodes": [], "roots": [], "has_graph": False}
@@ -398,7 +451,8 @@ async def get_graph(run_id: str) -> Dict[str, Any]:
 async def mirror_syscall_to_graph(event: Dict[str, Any]) -> None:
     """Mirror a syscall_events row into run_graph when the run already has a graph.
 
-    Skips run_graph's own audit rows (id prefix ``rg:``) to avoid loops.
+    Args:
+        event: event 参数。
     """
     if not isinstance(event, dict):
         return

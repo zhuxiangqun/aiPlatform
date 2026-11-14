@@ -55,6 +55,8 @@ class ArchSection:
     items: List[ArchIssue] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "number": self.number,
             "name": self.name,
@@ -86,6 +88,11 @@ class ArchRule:
     section_name: str = ""
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         raise NotImplementedError
 
 
@@ -102,6 +109,11 @@ class ArchYAMLRule(ArchRule):
     """
 
     def __init__(self, rule_def: Dict[str, Any]):
+        """初始化。
+
+        Args:
+            rule_def: rule_def 参数。
+        """
         self._def = rule_def
         self.code = rule_def.get("id", "")
         self.level = rule_def.get("level", "error")
@@ -120,7 +132,10 @@ class ArchYAMLRule(ArchRule):
     def apply_auto_fix(self, filepath: Path, line_number: int, line_content: str) -> Tuple[bool, str]:
         """Attempt to auto-fix a violation at a specific line.
 
-        Returns (success: bool, detail: str).
+        Args:
+            filepath: filepath 参数。
+            line_number: line_number 参数。
+            line_content: line_content 参数。
         """
         if not self.has_auto_fix:
             return False, "auto_fix not enabled"
@@ -172,6 +187,11 @@ class ArchYAMLRule(ArchRule):
             return False, str(e)
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         dispatcher = {
             "grep_forbidden": self._check_grep_forbidden,
             "grep_required": self._check_grep_required,
@@ -384,6 +404,11 @@ class GraphQueryAdapter:
     """
 
     def __init__(self, repo_root: Path):
+        """初始化。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         self._repo_root = repo_root
         self._nodes: Dict[str, Any] = {}
         self._edges: List[Dict[str, str]] = []
@@ -402,9 +427,10 @@ class GraphQueryAdapter:
 
     def has_import(self, from_pattern: str, to_pattern: str) -> List[str]:
         """Find edges where source matches from_pattern and dest matches to_pattern.
-        Returns list of 'source_path → dest_path' strings.
-        Only considers import edges (not call edges), which eliminates false positives
-        from cross-file function name matching.
+
+        Args:
+            from_pattern: from_pattern 参数。
+            to_pattern: to_pattern 参数。
         """
         self._ensure_loaded()
         violations = []
@@ -417,8 +443,9 @@ class GraphQueryAdapter:
 
     def find_imports(self, from_pattern: str) -> List[str]:
         """Find all imports from files matching from_pattern.
-        Returns list of 'source_path → dest_path' strings.
-        Only considers import edges (not call edges).
+
+        Args:
+            from_pattern: from_pattern 参数。
         """
         self._ensure_loaded()
         violations = []
@@ -430,7 +457,11 @@ class GraphQueryAdapter:
         return violations
 
     def get_files_matching(self, path_pattern: str) -> List[Path]:
-        """Get file paths matching the pattern from graph's indexed files."""
+        """Get file paths matching the pattern from graph's indexed files.
+
+        Args:
+            path_pattern: path_pattern 参数。
+        """
         self._ensure_loaded()
         files = []
         pattern = path_pattern.replace("\\", "/")
@@ -565,16 +596,31 @@ class ArchRegistry:
     """Collects all arch guard rules and runs them against a repo."""
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[ArchRule] = []
 
     def register(self, rule: ArchRule) -> None:
+        """register。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
 
     def discover(self) -> None:
+        """discover。
+        """
         self._load_yaml_rules()
         self._load_python_rules()
 
     def run_all(self, repo_root: Path, quick: bool = False) -> ArchReport:
+        """run_all。
+
+        Args:
+            repo_root: repo_root 参数。
+            quick: quick 参数。
+        """
         global _GUARD_REPORT_CACHE, _GUARD_REPORT_TS
         key = str(repo_root.resolve())
         if _GUARD_REPORT_CACHE and key in _GUARD_REPORT_CACHE:
@@ -910,6 +956,8 @@ _registry: Optional[ArchRegistry] = None
 
 
 def get_arch_registry() -> ArchRegistry:
+    """获取 arch_registry。
+    """
     global _registry
     if _registry is None:
         _registry = ArchRegistry()

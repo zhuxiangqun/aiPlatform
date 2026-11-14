@@ -124,11 +124,17 @@ async def enqueue_autosmoke(
     detail: Optional[Dict[str, Any]] = None,
     on_complete: Optional[Callable[[Dict[str, Any]], Awaitable[None]]] = None,
 ) -> Dict[str, Any]:
-    """
-    Enqueue an autosmoke job run for a resource.
+    """Enqueue an autosmoke job run for a resource.
 
-    Returns:
-      {"enqueued": bool, "job_id": str, "reason": str|None}
+    Args:
+        execution_store: execution_store 参数。
+        job_scheduler: job_scheduler 参数。
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        detail: detail 参数。
+        on_complete: on_complete 参数。
     """
     if not await _autosmoke_enabled(execution_store):
         return {"enqueued": False, "reason": "disabled"}

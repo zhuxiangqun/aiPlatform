@@ -70,6 +70,8 @@ class SkillRouter:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._rollouts: Dict[str, RolloutConfig] = {}
         self._ab_tests: Dict[str, ABTestResult] = {}
         self._metrics: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
@@ -108,7 +110,11 @@ class SkillRouter:
         )
 
     def remove_version(self, skill_name: str):
-        """回滚到稳定版 (100% 旧版)。"""
+        """回滚到稳定版 (100% 旧版)。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         self._rollouts.pop(skill_name, None)
 
     # ── Routing ─────────────────────────────────────────────────────────
@@ -142,14 +148,24 @@ class SkillRouter:
         return "stable"
 
     def shadow_enabled(self, skill_name: str) -> bool:
-        """检查是否开启影子模式。"""
+        """检查是否开启影子模式。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         rollout = self._rollouts.get(skill_name)
         return rollout is not None and rollout.shadow_mode
 
     # ── A-B Testing ─────────────────────────────────────────────────────
 
     def start_ab_test(self, skill_name: str, version_a: str, version_b: str):
-        """启动 A-B 测试。"""
+        """启动 A-B 测试。
+
+        Args:
+            skill_name: skill_name 参数。
+            version_a: version_a 参数。
+            version_b: version_b 参数。
+        """
         self._ab_tests[skill_name] = ABTestResult(
             skill_name=skill_name, version_a=version_a, version_b=version_b)
 
@@ -160,7 +176,14 @@ class SkillRouter:
         success: bool,
         latency_ms: float = 0.0,
     ):
-        """记录 A-B 测试的单次结果。"""
+        """记录 A-B 测试的单次结果。
+
+        Args:
+            skill_name: skill_name 参数。
+            version: version 参数。
+            success: success 参数。
+            latency_ms: latency_ms 参数。
+        """
         test = self._ab_tests.get(skill_name)
         if not test:
             return
@@ -176,7 +199,11 @@ class SkillRouter:
             test.b_avg_latency = (test.b_avg_latency * (test.b_total - 1) + latency_ms) / max(test.b_total, 1)
 
     def get_ab_recommendation(self, skill_name: str) -> str:
-        """获取 A-B 测试推荐。"""
+        """获取 A-B 测试推荐。
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         test = self._ab_tests.get(skill_name)
         if not test or test.a_total < 10 or test.b_total < 10:
             return "inconclusive (need more data)"
@@ -197,8 +224,8 @@ class SkillRouter:
     def check_auto_rollback(self, skill_name: str) -> Optional[str]:
         """检查是否需要自动回滚。
 
-        Returns:
-            如果触发回滚, 返回原因字符串; 否则 None
+        Args:
+            skill_name: skill_name 参数。
         """
         rollout = self._rollouts.get(skill_name)
         if not rollout or not rollout.auto_rollback:
@@ -233,7 +260,14 @@ class SkillRouter:
         return None
 
     def record_metric(self, skill_name: str, version: str, *, success: bool, latency_ms: float = 0.0):
-        """记录执行指标。"""
+        """记录执行指标。
+
+        Args:
+            skill_name: skill_name 参数。
+            version: version 参数。
+            success: success 参数。
+            latency_ms: latency_ms 参数。
+        """
         key = f"{skill_name}:{version}"
         if key not in self._metrics:
             self._metrics[key] = []
@@ -332,7 +366,10 @@ class SkillRouter:
     ) -> str:
         """Phase 40: Auto-advance canary from 5% → 25% → 100%.
 
-        Returns: "ok" | "stalled" | "rolled_back"
+        Args:
+            skill_name: skill_name 参数。
+            version: version 参数。
+            observe_seconds: observe_seconds 参数。
         """
         steps = [5, 25, 100]
         current = 0
@@ -366,6 +403,8 @@ class SkillRouter:
 _skill_router: Optional[SkillRouter] = None
 
 def get_skill_router() -> SkillRouter:
+    """获取 skill_router。
+    """
     global _skill_router
     if _skill_router is None:
         _skill_router = SkillRouter()

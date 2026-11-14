@@ -1,3 +1,5 @@
+"""manifest：模块接口。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -29,6 +31,11 @@ class PluginManifest:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "PluginManifest":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         if not isinstance(d, dict):
             raise ValueError("manifest must be object")
         pid = str(d.get("plugin_id") or d.get("id") or "").strip()
@@ -58,6 +65,8 @@ class PluginManifest:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "plugin_id": self.plugin_id,
             "name": self.name,

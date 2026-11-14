@@ -25,11 +25,10 @@ from typing import Any, Dict, List, Optional
 
 
 def risk_level_from_permissions(perms: List[str]) -> str:
-    """
-    Compute a conservative risk label for enforcement policy.
-    - low: llm only / no tool side-effects
-    - medium: read-only tools (webfetch/websearch/knowledge retrieval)
-    - high: any write/exec/network sensitive operations
+    """Compute a conservative risk label for enforcement policy.
+
+    Args:
+        perms: perms 参数。
     """
     pset = {str(p).strip().lower() for p in (perms or []) if str(p).strip()}
     if not pset:
@@ -56,6 +55,7 @@ def risk_level_from_permissions(perms: List[str]) -> str:
 
 @dataclass
 class LintIssue:
+    """LintIssue。"""
     level: str  # error | warning
     code: str
     message: str
@@ -64,6 +64,7 @@ class LintIssue:
 
 @dataclass
 class LintReport:
+    """LintReport。"""
     skill_id: str
     risk_level: str  # low | medium | high
     blocked: bool
@@ -72,6 +73,8 @@ class LintReport:
     summary: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d = asdict(self)
         d["errors"] = [asdict(x) for x in self.errors]
         d["warnings"] = [asdict(x) for x in self.warnings]
@@ -86,6 +89,7 @@ class LintReport:
 
 @dataclass
 class FixProposal:
+    """FixProposal。"""
     fix_id: str
     issue_code: str
     title: str
@@ -111,11 +115,20 @@ class LintRule:
     category: str = "metadata"  # metadata | trigger | schema | governance | sop
 
     def check(self, skill: Any) -> List[LintIssue]:
-        """Run the check and return a list of issues found."""
+        """Run the check and return a list of issues found.
+
+        Args:
+            skill: skill 参数。
+        """
         raise NotImplementedError
 
     def propose_fix(self, skill: Any, issue: LintIssue) -> Optional[FixProposal]:
-        """Optionally propose an auto-fix for a detected issue."""
+        """Optionally propose an auto-fix for a detected issue.
+
+        Args:
+            skill: skill 参数。
+            issue: issue 参数。
+        """
         return None
 
     # ---- helpers for subclasses ----
@@ -172,6 +185,11 @@ class YAMLRule(LintRule):
     """
 
     def __init__(self, rule_def: Dict[str, Any]):
+        """初始化。
+
+        Args:
+            rule_def: rule_def 参数。
+        """
         self._def = rule_def
         self.code = rule_def.get("id", "")
         self.level = rule_def.get("level", "warning")
@@ -185,6 +203,11 @@ class YAMLRule(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         # Conditional gate
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         if self._when and not self._eval_when(skill, self._when):
             return []
 
@@ -204,6 +227,12 @@ class YAMLRule(LintRule):
         return []
 
     def propose_fix(self, skill: Any, issue: LintIssue) -> Optional[FixProposal]:
+        """propose_fix。
+
+        Args:
+            skill: skill 参数。
+            issue: issue 参数。
+        """
         fix_def = self._def.get("fix")
         if not fix_def:
             return None
@@ -298,9 +327,16 @@ class RuleRegistry:
     """Collects all lint rules (YAML + Python) and runs them against a skill."""
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[LintRule] = []
 
     def register(self, rule: LintRule) -> None:
+        """register。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
 
     def discover(self) -> None:
@@ -309,7 +345,11 @@ class RuleRegistry:
         self._load_python_rules()
 
     def run_all(self, skill: Any) -> LintReport:
-        """Run all rules against a skill, return aggregated report."""
+        """Run all rules against a skill, return aggregated report.
+
+        Args:
+            skill: skill 参数。
+        """
 
         sid = ""
         try:
@@ -357,7 +397,12 @@ class RuleRegistry:
         return "skill"
 
     def propose_fixes(self, skill: Any, lint: Dict[str, Any]) -> List[FixProposal]:
-        """Generate fix proposals by asking each rule that reported an issue."""
+        """Generate fix proposals by asking each rule that reported an issue.
+
+        Args:
+            skill: skill 参数。
+            lint: lint 参数。
+        """
         errors = lint.get("errors") if isinstance(lint, dict) else []
         warnings = lint.get("warnings") if isinstance(lint, dict) else []
         codes = {str(x.get("code") or "").strip() for x in (errors or []) if isinstance(x, dict)}
@@ -442,6 +487,8 @@ _registry: Optional[RuleRegistry] = None
 
 
 def get_registry() -> RuleRegistry:
+    """获取 registry。
+    """
     global _registry
     if _registry is None:
         _registry = RuleRegistry()

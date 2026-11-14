@@ -1,3 +1,5 @@
+"""config_registry_store：模块接口。"""
+
 from __future__ import annotations
 
 import json
@@ -26,6 +28,7 @@ def _json_loads(s: Optional[str]) -> Any:
 
 @dataclass(frozen=True)
 class ConfigRegistryKey:
+    """ConfigRegistryKey。"""
     asset_type: str  # e.g. skill_spec_v2_schema, permissions_catalog
     scope: str  # workspace | engine
     tenant_id: str
@@ -43,11 +46,18 @@ class ConfigRegistryStore:
     """
 
     def __init__(self, db_path: str):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = str(db_path)
         self._init_lock = anyio.Lock()
         self._inited = False
 
     async def init(self) -> None:
+        """init。
+        """
         async with self._init_lock:
             if self._inited:
                 return
@@ -97,6 +107,11 @@ class ConfigRegistryStore:
 
     @staticmethod
     def compute_version(payload: Any) -> str:
+        """compute_version。
+
+        Args:
+            payload: 载荷 dict。
+        """
         raw = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()[:12]
 
@@ -111,6 +126,17 @@ class ConfigRegistryStore:
         note: Optional[str] = None,
         version: Optional[str] = None,
     ) -> str:
+        """upsert_asset。
+
+        Args:
+            asset_type: asset_type 参数。
+            scope: scope 参数。
+            tenant_id: 租户 ID。
+            payload: 载荷 dict。
+            created_by: created_by 参数。
+            note: note 参数。
+            version: version 参数。
+        """
         await self.init()
         v = (version or "").strip() or self.compute_version(payload)
         payload_json = _json_dumps(payload)
@@ -145,6 +171,15 @@ class ConfigRegistryStore:
         note: Optional[str] = None,
         version: Optional[str] = None,
     ) -> str:
+        """publish。
+
+        Args:
+            key: key 参数。
+            payload: 载荷 dict。
+            actor: 操作者身份。
+            note: note 参数。
+            version: version 参数。
+        """
         await self.init()
         v = await self.upsert_asset(
             asset_type=key.asset_type,
@@ -186,6 +221,13 @@ class ConfigRegistryStore:
         return v
 
     async def rollback(self, *, key: ConfigRegistryKey, actor: str, note: Optional[str] = None) -> Optional[str]:
+        """rollback。
+
+        Args:
+            key: key 参数。
+            actor: 操作者身份。
+            note: note 参数。
+        """
         await self.init()
         now = time.time()
 
@@ -221,6 +263,11 @@ class ConfigRegistryStore:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_published(self, *, key: ConfigRegistryKey) -> Optional[Tuple[str, Any]]:
+        """获取 published。
+
+        Args:
+            key: key 参数。
+        """
         await self.init()
 
         def _sync() -> Optional[Tuple[str, Any]]:
@@ -246,6 +293,11 @@ class ConfigRegistryStore:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_published_row(self, *, key: ConfigRegistryKey) -> Optional[Dict[str, Any]]:
+        """获取 published_row。
+
+        Args:
+            key: key 参数。
+        """
         await self.init()
 
         def _sync() -> Optional[Dict[str, Any]]:
@@ -277,6 +329,15 @@ class ConfigRegistryStore:
         limit: int = 50,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 versions。
+
+        Args:
+            asset_type: asset_type 参数。
+            scope: scope 参数。
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         limit = max(1, min(int(limit or 50), 200))
         offset = max(0, int(offset or 0))
@@ -311,6 +372,14 @@ class ConfigRegistryStore:
         tenant_id: str,
         version: str,
     ) -> Optional[Dict[str, Any]]:
+        """获取 asset。
+
+        Args:
+            asset_type: asset_type 参数。
+            scope: scope 参数。
+            tenant_id: 租户 ID。
+            version: version 参数。
+        """
         await self.init()
         v = str(version or "").strip()
         if not v:
@@ -346,6 +415,11 @@ _registry_singleton: Optional[ConfigRegistryStore] = None
 
 
 def get_config_registry_store(db_path: Optional[str] = None) -> ConfigRegistryStore:
+    """获取 config_registry_store。
+
+    Args:
+        db_path: db_path 参数。
+    """
     global _registry_singleton
     desired = db_path or os.environ.get("AIPLAT_EXECUTION_DB_PATH",
         os.path.join(os.path.expanduser("~"), ".aiplat", "aiplat_executions.sqlite3"))

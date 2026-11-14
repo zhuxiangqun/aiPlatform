@@ -44,7 +44,11 @@ async def sys_glob(
 ) -> Dict[str, Any]:
     """Find files matching a glob pattern.
 
-    Supports ** for recursive matching. Returns dict with: success, files, count, error.
+    Args:
+        pattern: pattern 参数。
+        root: root 参数。
+        max_results: max_results 参数。
+        trace_context: trace_context 参数。
     """
     gate = TraceGate.start("sys.glob", trace_context)
     try:
@@ -87,12 +91,12 @@ async def sys_code_search(
 ) -> Dict[str, Any]:
     """Grep-style content search across code files.
 
-    pattern: regex pattern to search for
-    path: directory to search in (default: workspace root)
-    include: file glob filter (e.g. "*.py", "*.{ts,tsx}")
-    max_results: maximum matches to return
-
-    Returns dict with: success, matches (list of {file, line, content}), count, error.
+    Args:
+        pattern: pattern 参数。
+        path: 路径。
+        include: include 参数。
+        max_results: max_results 参数。
+        trace_context: trace_context 参数。
     """
     gate = TraceGate.start("sys.code_search", trace_context)
     try:

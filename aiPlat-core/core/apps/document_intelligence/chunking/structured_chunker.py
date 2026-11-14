@@ -73,10 +73,12 @@ def structured_chunk(
     target_size: int = 1000,
     overlap: int = 150,
 ) -> List[Dict[str, Any]]:
-    """
-    Structured chunking with recursive degradation.
+    """Structured chunking with recursive degradation.
 
-    Returns list of {text, page_idx, meta{...}} chunks.
+    Args:
+        elements: elements 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
     """
     if not elements:
         return []

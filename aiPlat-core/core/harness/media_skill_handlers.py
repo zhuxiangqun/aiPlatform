@@ -242,6 +242,11 @@ def _ssrf_block(url: str) -> Optional[str]:
 
 
 def handle_video_downloader(params: Dict[str, Any]) -> Dict[str, Any]:
+    """handle_video_downloader。
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params
 
     # Preserve client vocab (url|upload) before coerce remaps upload→local
@@ -704,6 +709,11 @@ def _enrich_download_result(
 
 
 def handle_frame_analyzer(params: Dict[str, Any]) -> Dict[str, Any]:
+    """handle_frame_analyzer。
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.media_ops import (
         coerce_media_invoke_params,
         enrich_keyframes_with_captions,
@@ -1041,6 +1051,11 @@ def handle_frame_analyzer(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_subtitle_extractor(params: Dict[str, Any]) -> Dict[str, Any]:
+    """handle_subtitle_extractor。
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params
 
     params = coerce_media_invoke_params(params)
@@ -1194,6 +1209,11 @@ def handle_subtitle_extractor(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_speech_analyzer(params: Dict[str, Any]) -> Dict[str, Any]:
+    """handle_speech_analyzer。
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params
 
     params = coerce_media_invoke_params(params)
@@ -1520,6 +1540,11 @@ def _resolve_task_video_path(app: str, task_id: str, params: Dict[str, Any]) -> 
 
 
 def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
+    """handle_report_json_export。
+
+    Args:
+        params: params 参数。
+    """
     import time
 
     t0 = time.perf_counter()
@@ -2016,7 +2041,11 @@ def handle_report_json_export(params: Dict[str, Any]) -> Dict[str, Any]:
 # Canonical handlers + Factory-generated fine-grained skill aliases
 # Explicit call forms keep method_verify caller detection honest (dict values alone don't).
 def handle_video_qa(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Interactive Q&A over an existing analysis report (prompt-style skill)."""
+    """Interactive Q&A over an existing analysis report (prompt-style skill).
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params
 
     params = coerce_media_invoke_params(params or {})
@@ -2211,7 +2240,11 @@ def _stem_variants(name: str) -> List[str]:
 
 
 def resolve_platform_media_skill(skill: str) -> Optional[str]:
-    """Return canonical handler name if ``skill`` is registered (exact, alias, or stem)."""
+    """Return canonical handler name if ``skill`` is registered (exact, alias, or stem).
+
+    Args:
+        skill: skill 参数。
+    """
     name = str(skill or "").strip()
     if not name:
         return None
@@ -2309,8 +2342,8 @@ _CANON_STRONG_TOKENS = {
 def is_prompt_only_skill_name(skill: str) -> bool:
     """True when name is conversational/QA — never bind to media HANDLERS.
 
-    Exception: skills registered in ``_CANONICAL`` (or aliased to them) have a
-    real handler and are not treated as prompt-only soft-pass.
+    Args:
+        skill: skill 参数。
     """
     n = str(skill or "").strip().lower()
     if not n:
@@ -2325,7 +2358,11 @@ def is_prompt_only_skill_name(skill: str) -> bool:
 
 
 def suggest_platform_media_skill(skill: str) -> Optional[str]:
-    """Suggest nearest catalog skill for an invented name (stem + token overlap)."""
+    """Suggest nearest catalog skill for an invented name (stem + token overlap).
+
+    Args:
+        skill: skill 参数。
+    """
     name = str(skill or "").strip()
     if not name:
         return None
@@ -2388,7 +2425,11 @@ def suggest_platform_media_skill(skill: str) -> Optional[str]:
 
 
 def resolve_media_handler_name(skill: str) -> Optional[str]:
-    """Canonical HANDLERS key for ``skill`` (exact → alias/stem → suggest)."""
+    """Canonical HANDLERS key for ``skill`` (exact → alias/stem → suggest).
+
+    Args:
+        skill: skill 参数。
+    """
     name = str(skill or "").strip()
     if not name:
         return None
@@ -2408,6 +2449,12 @@ def resolve_media_handler_name(skill: str) -> Optional[str]:
 
 
 def execute_media_skill(skill: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """execute_media_skill。
+
+    Args:
+        skill: skill 参数。
+        params: params 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params
 
     name = str(skill or "").strip()

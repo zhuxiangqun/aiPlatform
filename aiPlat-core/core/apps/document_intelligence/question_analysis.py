@@ -1,3 +1,5 @@
+"""question_analysis：模块接口。"""
+
 from __future__ import annotations
 
 import re
@@ -102,6 +104,14 @@ async def analyze_question(
     recent_turn_summaries: Optional[List[str]] = None,
     doc_kinds: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """analyze_question。
+
+    Args:
+        question: question 参数。
+        scope: scope 参数。
+        recent_turn_summaries: recent_turn_summaries 参数。
+        doc_kinds: doc_kinds 参数。
+    """
     intent = await _llm_classify_intent(question)  # LLM first, regex fallback
     follow_up = _detect_follow_up(question, recent_turn_summaries)
     entity_sensitive = _detect_entity_sensitive(question)

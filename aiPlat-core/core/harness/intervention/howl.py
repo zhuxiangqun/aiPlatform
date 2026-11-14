@@ -27,7 +27,12 @@ _STATS: Dict[str, Any] = {
 
 
 def record_intervention(reason: str, *, details: Optional[Dict[str, Any]] = None) -> None:
-    """Bump Howl counters when an intervention fires."""
+    """Bump Howl counters when an intervention fires.
+
+    Args:
+        reason: reason 参数。
+        details: details 参数。
+    """
     _STATS["total_interventions"] = int(_STATS.get("total_interventions") or 0) + 1
     by = _STATS.setdefault("by_reason", {})
     key = str(reason or "unknown")
@@ -60,6 +65,7 @@ def _reset_howl_stats_for_tests() -> None:
 
 
 class StallReason(str, Enum):
+    """StallReason。"""
     NONE = "none"
     SEMANTIC_STALL = "semantic_stall"         # same tool call 3+ times, no progress
     PARAMETER_LOOP = "parameter_loop"         # same params → same error repeatedly
@@ -68,6 +74,7 @@ class StallReason(str, Enum):
 
 
 class InterventionStrategy(str, Enum):
+    """InterventionStrategy。"""
     REDIRECT = "redirect"       # suggest alternative approach
     CLARIFY = "clarify"         # restate current state more clearly
     FALLBACK = "fallback"       # suggest switching model or tool
@@ -75,6 +82,7 @@ class InterventionStrategy(str, Enum):
 
 @dataclass
 class InterventionResult:
+    """InterventionResult。"""
     triggered: bool
     stall_reason: StallReason = StallReason.NONE
     strategy: InterventionStrategy = InterventionStrategy.REDIRECT
@@ -170,9 +178,15 @@ class Howl:
         model_error: str = "",
         fallback_model: str = "",
     ) -> InterventionResult:
-        """
-        Check for stall conditions and generate an intervention hint.
-        Returns InterventionResult with trigger and hint.
+        """Check for stall conditions and generate an intervention hint.
+
+        Args:
+            last_actions: last_actions 参数。
+            tool_errors: tool_errors 参数。
+            last_output_time: last_output_time 参数。
+            model_status: model_status 参数。
+            model_error: model_error 参数。
+            fallback_model: fallback_model 参数。
         """
         last_actions = last_actions or []
         tool_errors = tool_errors or []

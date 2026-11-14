@@ -24,6 +24,12 @@ class HealthCollector:
     """Periodic background health data collector with event-driven push."""
 
     def __init__(self, *, interval_s: float = 300.0, registry: Optional[HealthCheckRegistry] = None):
+        """初始化。
+
+        Args:
+            interval_s: interval_s 参数。
+            registry: registry 参数。
+        """
         self._registry = registry or get_registry()
         self._interval = interval_s
         self._task: Optional[asyncio.Task] = None
@@ -31,6 +37,8 @@ class HealthCollector:
         self._last_report: Optional[HealthReport] = None
 
     async def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -38,6 +46,8 @@ class HealthCollector:
         log.info("HealthCollector started (interval=%.0fs)", self._interval)
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task:
             self._task.cancel()
@@ -49,12 +59,16 @@ class HealthCollector:
         log.info("HealthCollector stopped")
 
     async def collect_once(self) -> HealthReport:
+        """collect_once。
+        """
         report = await self._registry.run_all()
         self._last_report = report
         self._on_report(report)
         return report
 
     def get_last_report(self) -> Optional[HealthReport]:
+        """获取 last_report。
+        """
         return self._last_report
 
     async def _loop(self) -> None:

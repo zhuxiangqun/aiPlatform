@@ -85,6 +85,8 @@ class HarnessManager:
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._config = ExecutionConfig()
         self._hooks: Dict[str, HookConfig] = {}
         self._coordinators: Dict[str, CoordinatorInfo] = {}
@@ -122,7 +124,14 @@ class HarnessManager:
         retry_count: Optional[int] = None,
         retry_interval_seconds: Optional[int] = None
     ) -> ExecutionConfig:
-        """Update execution configuration"""
+        """Update execution configuration。
+
+        Args:
+            max_iterations: max_iterations 参数。
+            timeout_seconds: timeout_seconds 参数。
+            retry_count: retry_count 参数。
+            retry_interval_seconds: retry_interval_seconds 参数。
+        """
         if max_iterations is not None:
             self._config.max_iterations = max_iterations
         if timeout_seconds is not None:
@@ -142,7 +151,15 @@ class HarnessManager:
         enabled: bool = True,
         config: Optional[Dict[str, Any]] = None
     ) -> HookConfig:
-        """Add hook"""
+        """Add hook。
+
+        Args:
+            name: name 参数。
+            hook_type: hook_type 参数。
+            priority: priority 参数。
+            enabled: 是否启用。
+            config: config 参数。
+        """
         hook_id = f"hook-{uuid.uuid4().hex[:8]}"
         
         hook = HookConfig(
@@ -171,7 +188,15 @@ class HarnessManager:
         enabled: Optional[bool] = None,
         config: Optional[Dict[str, Any]] = None
     ) -> Optional[HookConfig]:
-        """Update hook"""
+        """Update hook。
+
+        Args:
+            hook_id: hook 标识。
+            name: name 参数。
+            priority: priority 参数。
+            enabled: 是否启用。
+            config: config 参数。
+        """
         hook = self._hooks.get(hook_id)
         if not hook:
             return None
@@ -188,7 +213,11 @@ class HarnessManager:
         return hook
     
     async def delete_hook(self, hook_id: str) -> bool:
-        """Delete hook"""
+        """Delete hook。
+
+        Args:
+            hook_id: hook 标识。
+        """
         if hook_id not in self._hooks:
             return False
         
@@ -203,7 +232,13 @@ class HarnessManager:
         agents: List[str],
         config: Optional[Dict[str, Any]] = None
     ) -> CoordinatorInfo:
-        """Create coordinator"""
+        """Create coordinator。
+
+        Args:
+            pattern: pattern 参数。
+            agents: agents 参数。
+            config: config 参数。
+        """
         coordinator_id = f"coord-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -221,7 +256,11 @@ class HarnessManager:
         return coordinator
     
     async def get_coordinator(self, coordinator_id: str) -> Optional[CoordinatorInfo]:
-        """Get coordinator by ID"""
+        """Get coordinator by ID。
+
+        Args:
+            coordinator_id: coordinator 标识。
+        """
         return self._coordinators.get(coordinator_id)
     
     async def list_coordinators(
@@ -229,7 +268,12 @@ class HarnessManager:
         pattern: Optional[str] = None,
         status: Optional[str] = None
     ) -> List[CoordinatorInfo]:
-        """List coordinators"""
+        """List coordinators。
+
+        Args:
+            pattern: pattern 参数。
+            status: status 参数。
+        """
         coordinators = list(self._coordinators.values())
         
         if pattern:
@@ -240,7 +284,11 @@ class HarnessManager:
         return coordinators
     
     async def delete_coordinator(self, coordinator_id: str) -> bool:
-        """Delete coordinator"""
+        """Delete coordinator。
+
+        Args:
+            coordinator_id: coordinator 标识。
+        """
         if coordinator_id not in self._coordinators:
             return False
         
@@ -257,7 +305,13 @@ class HarnessManager:
         push: Optional[Dict[str, Any]] = None,
         prod: Optional[Dict[str, Any]] = None
     ) -> FeedbackLoopConfig:
-        """Update feedback loop configuration"""
+        """Update feedback loop configuration。
+
+        Args:
+            local: local 参数。
+            push: push 参数。
+            prod: prod 参数。
+        """
         if local:
             self._feedback_config.local.update(local)
         if push:
@@ -275,7 +329,15 @@ class HarnessManager:
         duration_ms: float,
         error: Optional[str] = None
     ) -> str:
-        """Record execution"""
+        """Record execution。
+
+        Args:
+            agent: agent 参数。
+            status: status 参数。
+            steps: steps 参数。
+            duration_ms: duration_ms 参数。
+            error: error 参数。
+        """
         execution_id = f"exec-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -301,7 +363,14 @@ class HarnessManager:
         status: Optional[str] = None,
         agent: Optional[str] = None
     ) -> List[ExecutionLog]:
-        """Get execution logs"""
+        """Get execution logs。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            status: status 参数。
+            agent: agent 参数。
+        """
         logs = self._execution_logs
         
         if status:
@@ -312,7 +381,11 @@ class HarnessManager:
         return logs[offset:offset + limit]
     
     async def get_execution(self, execution_id: str) -> Optional[ExecutionLog]:
-        """Get execution by ID"""
+        """Get execution by ID。
+
+        Args:
+            execution_id: execution 标识。
+        """
         for log in self._execution_logs:
             if log.id == execution_id:
                 return log

@@ -14,6 +14,11 @@ class ApprovalMixin:
     # ==================== Approval Requests ====================
 
     async def upsert_approval_request(self, record: Dict[str, Any]) -> None:
+        """upsert_approval_request。
+
+        Args:
+            record: record 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -89,6 +94,11 @@ class ApprovalMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_approval_request(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """获取 approval_request。
+
+        Args:
+            request_id: request 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -129,8 +139,8 @@ class ApprovalMixin:
     def get_approval_request_sync(self, request_id: str) -> Optional[Dict[str, Any]]:
         """Synchronous helper for ApprovalManager/guards that run in sync contexts.
 
-        NOTE: This assumes `init()` has been called during application startup (normal server flow).
-        It intentionally mirrors `get_approval_request()`'s SQL so semantics stay consistent.
+        Args:
+            request_id: request 标识。
         """
         db_path = self._config.db_path
         conn = self._connect()
@@ -179,6 +189,21 @@ class ApprovalMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 approval_requests。
+
+        Args:
+            status: status 参数。
+            user_id: 用户 ID。
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            run_id: 运行 ID。
+            operation: operation 参数。
+            include_related_counts: include_related_counts 参数。
+            order_by: order_by 参数。
+            order_dir: order_dir 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -336,9 +361,10 @@ class ApprovalMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_change_linkages_for_approval_request_ids(self, request_ids: List[str]) -> Dict[str, Dict[str, Any]]:
-        """
-        Best-effort mapping approval_request_id -> {change_id, run_id, trace_id, created_at}.
-        Source: syscall_events(kind='changeset', target_type='change', approval_request_id in request_ids)
+        """Best-effort mapping approval_request_id -> {change_id, run_id, trace_id, created_at}.
+
+        Args:
+            request_ids: request_ids 参数。
         """
         await self.init()
         ids = [str(x) for x in (request_ids or []) if isinstance(x, str) and x.strip()]

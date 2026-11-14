@@ -13,10 +13,10 @@ logger = logging.getLogger("summarization_handler")
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Execute summarization with structured prompt.
+    """Execute summarization with structured prompt.
 
-    Input: { text, max_length?, format? }
-    Output: { summary, token_count, model_used }
+    Args:
+        params: params 参数。
     """
     text = params.get("text", params.get("content", ""))
     max_length = params.get("max_length", 500)

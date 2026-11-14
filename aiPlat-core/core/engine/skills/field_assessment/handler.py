@@ -21,8 +21,8 @@ logger = logging.getLogger("field_assessment")
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Main handler: run ontology_agent 5-step reasoning pipeline.
 
-    Input: company_name / industry / pain_points / domain_id / ...
-    Output: { markdown, diagnosis, reasoning_trace, quality_indicators }
+    Args:
+        params: params 参数。
     """
     domain_id = str(params.get("domain_id") or "").strip()
     session_id = str(params.get("session_id") or "").strip()

@@ -155,6 +155,11 @@ def _disposition(assert_res: Dict[str, Any]) -> str:
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     if not _phase_c_enabled(params):
         return {
             "phase": "C",
@@ -230,7 +235,12 @@ def merge_evidence_into_report(
     report: Dict[str, Any],
     evidence: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Apply Phase C dispositions onto a Phase B report (non-destructive copy)."""
+    """Apply Phase C dispositions onto a Phase B report (non-destructive copy).
+
+    Args:
+        report: report 参数。
+        evidence: evidence 参数。
+    """
     out = dict(report or {})
     header = dict(out.get("header") or {})
     header["phase"] = "C" if evidence.get("enabled") else header.get("phase", "B")

@@ -22,6 +22,11 @@ def _new_id(prefix: str) -> str:
 
 
 def default_db_path(*, tenant_id: str = "") -> Path:
+    """default_db_path。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.utils.paths import get_aiplat_data_dir
 
     tid = (tenant_id or "").strip() or "default"
@@ -88,7 +93,13 @@ CREATE TABLE IF NOT EXISTS diagnosis_reports (
 
 
 class DiagnosisStore:
+    """DiagnosisStore。"""
     def __init__(self, db_path: Path):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -103,6 +114,11 @@ class DiagnosisStore:
             conn.executescript(_SCHEMA_SQL)
 
     def health(self, *, tenant_id: str = "") -> Dict[str, Any]:
+        """health。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         tid = (tenant_id or "").strip()
         with self._conn() as conn:
             if tid:
@@ -135,6 +151,16 @@ class DiagnosisStore:
         case_id: Optional[str] = None,
         meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """创建 case。
+
+        Args:
+            scenario: scenario 参数。
+            subject_ref: subject_ref 参数。
+            tenant_id: 租户 ID。
+            baseline_ref: baseline_ref 参数。
+            case_id: case 标识。
+            meta: meta 参数。
+        """
         sc = (scenario or "").strip()
         if sc not in SCENARIOS:
             raise ValueError("invalid_scenario")
@@ -173,6 +199,12 @@ class DiagnosisStore:
         return row
 
     def list_cases(self, *, tenant_id: str = "", limit: int = 100) -> List[Dict[str, Any]]:
+        """列出 cases。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         tid = (tenant_id or "").strip()
         lim = max(1, min(int(limit), 1000))
         with self._conn() as conn:
@@ -189,6 +221,12 @@ class DiagnosisStore:
         return [self._case_from_row(r) for r in rows]
 
     def get_case(self, case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+        """获取 case。
+
+        Args:
+            case_id: case 标识。
+            tenant_id: 租户 ID。
+        """
         tid = (tenant_id or "").strip()
         with self._conn() as conn:
             if tid:
@@ -204,6 +242,13 @@ class DiagnosisStore:
         return self._case_from_row(row) if row else None
 
     def set_status(self, case_id: str, status: str, *, tenant_id: str = "") -> None:
+        """set_status。
+
+        Args:
+            case_id: case 标识。
+            status: status 参数。
+            tenant_id: 租户 ID。
+        """
         case = self.get_case(case_id, tenant_id=tenant_id)
         if not case:
             raise KeyError("case_not_found")
@@ -221,6 +266,14 @@ class DiagnosisStore:
         tenant_id: str = "",
         payload: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
+        """replace_evidence。
+
+        Args:
+            case_id: case 标识。
+            evidence: evidence 参数。
+            tenant_id: 租户 ID。
+            payload: 载荷 dict。
+        """
         case = self.get_case(case_id, tenant_id=tenant_id)
         if not case:
             raise KeyError("case_not_found")
@@ -249,6 +302,12 @@ class DiagnosisStore:
     def get_evidence_bundle(
         self, case_id: str, *, tenant_id: str = ""
     ) -> Optional[Dict[str, Any]]:
+        """获取 evidence_bundle。
+
+        Args:
+            case_id: case 标识。
+            tenant_id: 租户 ID。
+        """
         case = self.get_case(case_id, tenant_id=tenant_id)
         if not case:
             return None
@@ -272,6 +331,17 @@ class DiagnosisStore:
         status: str,
         tenant_id: str = "",
     ) -> Dict[str, Any]:
+        """save_report。
+
+        Args:
+            case_id: case 标识。
+            report: report 参数。
+            findings: findings 参数。
+            hypotheses: hypotheses 参数。
+            recommendations: recommendations 参数。
+            status: status 参数。
+            tenant_id: 租户 ID。
+        """
         case = self.get_case(case_id, tenant_id=tenant_id)
         if not case:
             raise KeyError("case_not_found")
@@ -312,6 +382,12 @@ class DiagnosisStore:
     def get_report_bundle(
         self, case_id: str, *, tenant_id: str = ""
     ) -> Optional[Dict[str, Any]]:
+        """获取 report_bundle。
+
+        Args:
+            case_id: case 标识。
+            tenant_id: 租户 ID。
+        """
         case = self.get_case(case_id, tenant_id=tenant_id)
         if not case:
             return None
@@ -348,6 +424,11 @@ _STORE: Optional[DiagnosisStore] = None
 
 
 def get_diagnosis_store(*, tenant_id: str = "") -> DiagnosisStore:
+    """获取 diagnosis_store。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     global _STORE
     # Per-process singleton; path may vary by AIPLAT_DIAGNOSIS_STORE_DB for tests.
     override = (os.getenv("AIPLAT_DIAGNOSIS_STORE_DB") or "").strip()

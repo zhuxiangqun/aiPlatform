@@ -182,6 +182,13 @@ class VerifierReward:
 
                  quality_weight: float = 0.3):
 
+        """初始化。
+
+        Args:
+            success_weight: success_weight 参数。
+            efficiency_weight: efficiency_weight 参数。
+            quality_weight: quality_weight 参数。
+        """
         self.success_weight = success_weight
 
         self.efficiency_weight = efficiency_weight
@@ -194,18 +201,8 @@ class VerifierReward:
 
         """Compute reward for a trajectory.
 
-
-
-        Reward = success * 0.4 + efficiency * 0.3 + quality * 0.3
-
-
-
-        success:   1.0 if task completed, else scaled by partial completion
-
-        efficiency: penalizes excessive tool calls (optimal=1-3 calls)
-
-        quality:    from TrajectoryScorer score (complexity + diversity)
-
+        Args:
+            trajectory: trajectory 参数。
         """
 
         s = self._success_reward(trajectory)
@@ -284,6 +281,13 @@ class CodeTestReward(VerifierReward):
 
                  quality_weight: float = 0.2):
 
+        """初始化。
+
+        Args:
+            success_weight: success_weight 参数。
+            efficiency_weight: efficiency_weight 参数。
+            quality_weight: quality_weight 参数。
+        """
         super().__init__(success_weight=success_weight,
 
                          efficiency_weight=efficiency_weight,
@@ -422,7 +426,12 @@ class RLOOUpdater:
 
     def compute_advantages(self, rewards: List[float], group_size: int = 4) -> List[float]:
 
-        """Compute RLOO advantages for grouped rewards."""
+        """Compute RLOO advantages for grouped rewards.
+
+        Args:
+            rewards: rewards 参数。
+            group_size: group_size 参数。
+        """
 
         advantages = []
 
@@ -454,7 +463,12 @@ class RLOOUpdater:
 
     def compute_policy_loss(self, advantages: List[float], log_probs: List[float]) -> float:
 
-        """Policy gradient loss: -mean(advantage * log_prob)."""
+        """Policy gradient loss: -mean(advantage * log_prob).
+
+        Args:
+            advantages: advantages 参数。
+            log_probs: log_probs 参数。
+        """
 
         if not advantages or not log_probs:
 
@@ -492,6 +506,13 @@ class RLTrainer:
 
                  online_mode: bool = False):
 
+        """初始化。
+
+        Args:
+            base_model: base_model 参数。
+            student_model: student_model 参数。
+            online_mode: online_mode 参数。
+        """
         self.base_model = base_model or self._detect_latest_sft_model()
 
         self.student_model = student_model or self.base_model
@@ -581,7 +602,13 @@ class RLTrainer:
 
     ) -> RLTrainingRun:
 
-        """Main RL training loop: rollout → evaluate → update → repeat."""
+        """Main RL training loop: rollout → evaluate → update → repeat.
+
+        Args:
+            num_iterations: num_iterations 参数。
+            episodes_per_iter: episodes_per_iter 参数。
+            tasks: tasks 参数。
+        """
 
         if not self._enabled:
 
@@ -1051,7 +1078,12 @@ class RLTrainer:
 
     def export_rl_dataset(self, run: RLTrainingRun, output_path: str = "") -> str:
 
-        """Export RL training data for external RL frameworks (SkyRL / Harbor compatible)."""
+        """Export RL training data for external RL frameworks (SkyRL / Harbor compatible).
+
+        Args:
+            run: run 参数。
+            output_path: output_path 参数。
+        """
 
         output = output_path or get_aiplat_data_dir(f"rl_data/{run.run_id}.jsonl")
 
@@ -1103,6 +1135,12 @@ _rl_trainer: Optional[RLTrainer] = None
 
 def get_rl_trainer(base_model: str = "", student_model: str = "") -> RLTrainer:
 
+    """获取 rl_trainer。
+
+    Args:
+        base_model: base_model 参数。
+        student_model: student_model 参数。
+    """
     global _rl_trainer
 
     if _rl_trainer is None:

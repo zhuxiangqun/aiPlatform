@@ -45,9 +45,13 @@ class NamedWorkspaceContext:
 
     @property
     def is_remote(self) -> bool:
+        """is_remote。
+        """
         return str(self.kind or "") == "remote"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "workspace_id": self.workspace_id,
             "kind": self.kind,
@@ -70,14 +74,26 @@ _active: ContextVar[Optional[NamedWorkspaceContext]] = ContextVar(
 
 
 def set_active_named_workspace(ctx: Optional[NamedWorkspaceContext]):
+    """set_active_named_workspace。
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active.set(ctx)
 
 
 def reset_active_named_workspace(token) -> None:
+    """reset_active_named_workspace。
+
+    Args:
+        token: token 参数。
+    """
     _active.reset(token)
 
 
 def get_active_named_workspace() -> Optional[NamedWorkspaceContext]:
+    """获取 active_named_workspace。
+    """
     return _active.get()
 
 
@@ -85,7 +101,12 @@ def extract_workspace_id_from_request(
     headers: Optional[Dict[str, str]] = None,
     query: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
-    """Header wins over query. Returns None if absent."""
+    """Header wins over query. Returns None if absent.
+
+    Args:
+        headers: headers 参数。
+        query: 查询。
+    """
     hid = None
     if headers:
         # case-insensitive
@@ -166,8 +187,12 @@ def resolve_named_workspace(
 ) -> NamedWorkspaceContext:
     """Resolve registry entry + ACL → context.
 
-    Read (GET/HEAD): missing id → default.
-    Write: missing id → WorkspaceRequired (unless compat env).
+    Args:
+        workspace_id: 工作区 ID。
+        method: method 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        require_explicit_write: require_explicit_write 参数。
     """
     ensure_registry()
     m = (method or "GET").upper()
@@ -247,6 +272,15 @@ def resolve_from_http(
     tenant_id: Optional[str] = None,
     actor_id: Optional[str] = None,
 ) -> NamedWorkspaceContext:
+    """resolve_from_http。
+
+    Args:
+        method: method 参数。
+        headers: headers 参数。
+        query: 查询。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+    """
     wid = extract_workspace_id_from_request(headers, query)
     return resolve_named_workspace(
         wid,

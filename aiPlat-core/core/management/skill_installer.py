@@ -84,11 +84,10 @@ def _allowlisted_git_url(url: str) -> bool:
 
 
 def resolve_remote_head_sha(url: str) -> str:
-    """
-    Resolve the current remote HEAD commit SHA for a git URL.
+    """Resolve the current remote HEAD commit SHA for a git URL.
 
-    Security:
-    - url must pass _allowlisted_git_url (https allowlist or file://)
+    Args:
+        url: url 参数。
     """
     if not _allowlisted_git_url(url):
         raise ValueError("git_url_not_allowed")
@@ -312,14 +311,10 @@ def _write_manifest(skill_dir: Path, *, source: Dict[str, Any]) -> None:
 def adapt_claude_plugin(root_dir: Path, target_skills_dir: Path, target_agents_dir: Path) -> Dict[str, Any]:
     """拆解 Claude Code 插件包为 aiPlatform 组件。
 
-    识别目录结构：
-    - skills/*.md → 复制到 target_skills_dir
-    - agents/*.md  → 复制到 target_agents_dir
-    - hooks/*.py   → 复制到 ~/.aiplat/hooks/
-    - commands/*.md → 跳过（aiPlatform 无 slash command）
-    - mcp/*.json   → 记录为 manifest.mcp_hint
-
-    返回：{converted: [...], skipped: [...], mcp_hints: [...]}
+    Args:
+        root_dir: root_dir 参数。
+        target_skills_dir: target_skills_dir 参数。
+        target_agents_dir: target_agents_dir 参数。
     """
     import os
     manifest = {"converted": [], "skipped": [], "mcp_hints": []}
@@ -384,6 +379,7 @@ def adapt_claude_plugin(root_dir: Path, target_skills_dir: Path, target_agents_d
 
 @dataclass
 class InstallResult:
+    """InstallResult。"""
     installed: List[str]
     skipped: List[Dict[str, Any]]
     assets: List[Dict[str, Any]] = field(default_factory=list)
@@ -408,6 +404,11 @@ class SkillInstaller:
     """
 
     def __init__(self, *, target_base_dir: Path):
+        """初始化。
+
+        Args:
+            target_base_dir: target_base_dir 参数。
+        """
         self._target_base_dir = target_base_dir
 
     def install_from_git(
@@ -422,6 +423,18 @@ class SkillInstaller:
         metadata: Optional[Dict[str, Any]] = None,
         overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
+        """install_from_git。
+
+        Args:
+            url: url 参数。
+            ref: ref 参数。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+            overrides: overrides 参数。
+        """
         if not _allowlisted_git_url(url):
             raise ValueError("git_url_not_allowed")
         _validate_ref(ref)
@@ -457,6 +470,17 @@ class SkillInstaller:
         metadata: Optional[Dict[str, Any]] = None,
         overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
+        """install_from_path。
+
+        Args:
+            path: 路径。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+            overrides: overrides 参数。
+        """
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
             raise ValueError("path_not_found")
@@ -482,6 +506,17 @@ class SkillInstaller:
         metadata: Optional[Dict[str, Any]] = None,
         overrides: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
+        """install_from_zip。
+
+        Args:
+            zip_path: zip_path 参数。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+            overrides: overrides 参数。
+        """
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")
@@ -511,6 +546,16 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PlanResult:
+        """plan_from_git。
+
+        Args:
+            url: url 参数。
+            ref: ref 参数。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         if not _allowlisted_git_url(url):
             raise ValueError("git_url_not_allowed")
         _validate_ref(ref)
@@ -541,6 +586,15 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PlanResult:
+        """plan_from_path。
+
+        Args:
+            path: 路径。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
             raise ValueError("path_not_found")
@@ -562,6 +616,15 @@ class SkillInstaller:
         auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PlanResult:
+        """plan_from_zip。
+
+        Args:
+            zip_path: zip_path 参数。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")

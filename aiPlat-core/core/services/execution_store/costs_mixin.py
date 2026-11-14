@@ -9,13 +9,12 @@ from ._base import _json_dumps, _json_loads
 class CostsMixin:
     """Extracted from ExecutionStore."""
     async def get_run_cost_summary(self, *, run_id: str, tenant_id: Optional[str] = None, limit_syscalls: int = 5000) -> Dict[str, Any]:
-        """
-        Aggregate a lightweight cost summary for one run_id.
-        Metrics:
-          - duration_ms (from run record)
-          - llm_calls, llm_total_tokens/prompt_tokens/completion_tokens (from syscall_events kind=llm, result.usage)
-          - tool_calls (kind=tool)
-          - skill_calls (kind=skill)
+        """Aggregate a lightweight cost summary for one run_id.
+
+        Args:
+            run_id: 运行 ID。
+            tenant_id: 租户 ID。
+            limit_syscalls: limit_syscalls 参数。
         """
         run = await self.get_run_summary(run_id=str(run_id))
         if not run:

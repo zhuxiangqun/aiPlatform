@@ -177,6 +177,8 @@ class BusinessGoalTracker:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._goals: Dict[str, BusinessGoal] = {}
 
         self._storage_path = get_aiplat_data_dir("value/goals.json")
@@ -187,6 +189,11 @@ class BusinessGoalTracker:
 
     def register(self, goal: BusinessGoal) -> str:
 
+        """register。
+
+        Args:
+            goal: goal 参数。
+        """
         self._goals[goal.goal_id] = goal
 
         self._save()
@@ -197,6 +204,12 @@ class BusinessGoalTracker:
 
     def update(self, goal_id: str, current_value: float) -> Optional[BusinessGoal]:
 
+        """update。
+
+        Args:
+            goal_id: goal 标识。
+            current_value: current_value 参数。
+        """
         goal = self._goals.get(goal_id)
 
         if not goal:
@@ -227,12 +240,19 @@ class BusinessGoalTracker:
 
     def get(self, goal_id: str) -> Optional[BusinessGoal]:
 
+        """get。
+
+        Args:
+            goal_id: goal 标识。
+        """
         return self._goals.get(goal_id)
 
 
 
     def get_all(self) -> List[BusinessGoal]:
 
+        """获取 all。
+        """
         return list(self._goals.values())
 
 
@@ -333,6 +353,8 @@ class ValueCalculator:
 
     def __init__(self):
 
+        """初始化。
+        """
         self.goal_tracker = BusinessGoalTracker()
 
         self._cost_1M_input = float(os.getenv("AIPLAT_VALUE_COST_1M_INPUT", "1.0"))
@@ -361,7 +383,16 @@ class ValueCalculator:
 
                           satisfaction: float = 0.0, new_task: bool = False) -> ValueEvent:
 
-        """Compute five-dimension value for a single agent run."""
+        """Compute five-dimension value for a single agent run.
+
+        Args:
+            run_id: 运行 ID。
+            events: events 参数。
+            pass_rate: pass_rate 参数。
+            attacks: attacks 参数。
+            satisfaction: satisfaction 参数。
+            new_task: new_task 参数。
+        """
 
         events = events or []
 
@@ -417,7 +448,12 @@ class ValueCalculator:
 
     async def compute_monthly(self, tenant_id: str, month: str) -> MonthlyValueReport:
 
-        """Aggregate monthly value across all runs."""
+        """Aggregate monthly value across all runs.
+
+        Args:
+            tenant_id: 租户 ID。
+            month: month 参数。
+        """
 
         report = MonthlyValueReport(month=month, tenant_id=tenant_id)
 
@@ -525,6 +561,12 @@ class ValueCalculator:
 
     def translate_for(self, report: MonthlyValueReport, audience: str) -> Dict[str, Any]:
 
+        """translate_for。
+
+        Args:
+            report: report 参数。
+            audience: audience 参数。
+        """
         if audience == "ceo":
 
             return self._translate_ceo(report)
@@ -684,20 +726,8 @@ def predict_goal_achievement(goal: BusinessGoal) -> Dict[str, Any]:
 
     """Linear trend extrapolation: predict if goal will be achieved by period end.
 
-
-
-    Uses current progress vs elapsed time ratio:
-
-      - If progress% > elapsed time% → on_track
-
-      - If progress% ≈ elapsed time% → at_risk
-
-      - If progress% < elapsed time% → behind
-
-
-
-    Returns: {status, projected_value, days_to_target, recommendation}
-
+    Args:
+        goal: goal 参数。
     """
 
     span = goal.target_value - goal.baseline_value
@@ -782,6 +812,8 @@ _value_calc: Optional[ValueCalculator] = None
 
 def get_value_calculator() -> ValueCalculator:
 
+    """获取 value_calculator。
+    """
     global _value_calc
 
     if _value_calc is None:

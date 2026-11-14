@@ -1,3 +1,5 @@
+"""exporter：模块接口。"""
+
 from __future__ import annotations
 
 import csv
@@ -25,6 +27,11 @@ class OpsExporter:
     """
 
     def __init__(self, *, execution_store: Any):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._store = execution_store
 
     async def export_audit_logs_csv(
@@ -33,6 +40,12 @@ class OpsExporter:
         tenant_id: Optional[str],
         limit: int = 1000,
     ) -> Tuple[bytes, str]:
+        """export_audit_logs_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_audit_logs(tenant_id=tenant_id, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = [
@@ -52,6 +65,12 @@ class OpsExporter:
         return _csv_bytes(items, fieldnames=fieldnames), "audit_logs.csv"
 
     async def export_run_events_csv(self, *, run_id: str, limit: int = 5000) -> Tuple[bytes, str]:
+        """export_run_events_csv。
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_run_events(run_id=str(run_id), after_seq=0, limit=int(limit))
         items = res.get("items") or []
         fieldnames = ["seq", "event_type", "trace_id", "tenant_id", "payload", "created_at"]
@@ -80,6 +99,15 @@ class OpsExporter:
         status: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_syscall_events_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            kind: kind 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_syscall_events(
             tenant_id=tenant_id,
             run_id=run_id,
@@ -117,6 +145,13 @@ class OpsExporter:
         status: Optional[str] = None,
         limit: int = 1000,
     ) -> Tuple[bytes, str]:
+        """export_approvals_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_approval_requests(tenant_id=tenant_id, status=status, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = [
@@ -145,6 +180,15 @@ class OpsExporter:
         metric_key: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_tenant_usage_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            day_start: day_start 参数。
+            day_end: day_end 参数。
+            metric_key: metric_key 参数。
+            limit: 返回条数上限。
+        """
         from core.services.tenant_store_protocol import get_tenant_store  # P0-A3
 
         store = get_tenant_store() or self._store
@@ -168,6 +212,14 @@ class OpsExporter:
         connector: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_gateway_dlq_csv。
+
+        Args:
+            status: status 参数。
+            tenant_id: 租户 ID。
+            connector: connector 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_connector_delivery_dlq(status=status, tenant_id=tenant_id, connector=connector, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = ["id", "connector", "tenant_id", "run_id", "url", "attempts", "error", "status", "created_at", "resolved_at"]
@@ -182,6 +234,15 @@ class OpsExporter:
         status: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_connector_attempts_csv。
+
+        Args:
+            connector: connector 参数。
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_connector_delivery_attempts(
             connector=connector,
             tenant_id=tenant_id,
@@ -201,6 +262,13 @@ class OpsExporter:
         job_id: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_jobs_dlq_csv。
+
+        Args:
+            status: status 参数。
+            job_id: job 标识。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_job_delivery_dlq(status=status, job_id=job_id, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = ["id", "job_id", "run_id", "url", "attempts", "error", "status", "created_at", "resolved_at"]
@@ -214,6 +282,14 @@ class OpsExporter:
         status: Optional[str] = None,
         limit: int = 2000,
     ) -> Tuple[bytes, str]:
+        """export_job_delivery_attempts_csv。
+
+        Args:
+            job_id: job 标识。
+            run_id: 运行 ID。
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_job_delivery_attempts(job_id=job_id, run_id=run_id, status=status, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = ["id", "job_id", "run_id", "attempt", "url", "status", "response_status", "error", "created_at"]
@@ -226,6 +302,13 @@ class OpsExporter:
         user_id: Optional[str] = None,
         limit: int = 5000,
     ) -> Tuple[bytes, str]:
+        """export_gateway_pairings_csv。
+
+        Args:
+            channel: channel 参数。
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_gateway_pairings(channel=channel, user_id=user_id, limit=int(limit), offset=0)
         items = res.get("items") or []
         fieldnames = ["id", "channel", "channel_user_id", "user_id", "session_id", "tenant_id", "created_at", "updated_at"]
@@ -237,6 +320,12 @@ class OpsExporter:
         enabled: Optional[bool] = None,
         limit: int = 5000,
     ) -> Tuple[bytes, str]:
+        """export_gateway_tokens_csv。
+
+        Args:
+            enabled: 是否启用。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_gateway_tokens(limit=int(limit), offset=0, enabled=enabled)
         items = res.get("items") or []
         # Note: token_sha256 intentionally not present in list_gateway_tokens result.
@@ -251,6 +340,14 @@ class OpsExporter:
         target_id: Optional[str] = None,
         limit: int = 5000,
     ) -> Tuple[bytes, str]:
+        """export_release_rollouts_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_release_rollouts(
             tenant_id=str(tenant_id),
             target_type=target_type,
@@ -296,6 +393,14 @@ class OpsExporter:
         metric_key: Optional[str] = None,
         limit: int = 5000,
     ) -> Tuple[bytes, str]:
+        """export_release_metrics_csv。
+
+        Args:
+            tenant_id: 租户 ID。
+            candidate_id: candidate 标识。
+            metric_key: metric_key 参数。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_release_metric_snapshots(
             tenant_id=str(tenant_id),
             candidate_id=str(candidate_id),
@@ -327,6 +432,17 @@ class OpsExporter:
         run_id: Optional[str] = None,
         limit: int = 5000,
     ) -> Tuple[bytes, str]:
+        """export_learning_artifacts_csv。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            kind: kind 参数。
+            status: status 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+        """
         res = await self._store.list_learning_artifacts(
             target_type=target_type,
             target_id=target_id,

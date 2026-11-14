@@ -27,6 +27,7 @@ _logger = logging.getLogger(__name__)
 
 @dataclass
 class PromptAppTemplate:
+    """PromptAppTemplate。"""
     template_id: str
     name: str
     category: str = ""
@@ -46,6 +47,8 @@ class PromptAppManager:
     """Directory-based prompt app template manager."""
 
     def __init__(self):
+        """初始化。
+        """
         self._templates: Dict[str, PromptAppTemplate] = {}
         self.reload()
 
@@ -55,6 +58,8 @@ class PromptAppManager:
     # ==================== Load & Save ====================
 
     def reload(self) -> None:
+        """reload。
+        """
         self._templates = {}
         base = self._base_dir()
         if not base.exists():
@@ -232,6 +237,12 @@ class PromptAppManager:
         metadata["integrity"] = integ
 
     def compute_signature_verification(self, tpl: PromptAppTemplate, trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        """compute_signature_verification。
+
+        Args:
+            tpl: tpl 参数。
+            trusted_keys: trusted_keys 参数。
+        """
         if not isinstance(getattr(tpl, "metadata", None), dict): return {}
         prov = dict(tpl.metadata.get("provenance", {})) if isinstance(tpl.metadata.get("provenance"), dict) else {}
         integ = tpl.metadata.get("integrity", {}) if isinstance(tpl.metadata, dict) else {}
@@ -253,12 +264,31 @@ class PromptAppManager:
     # ==================== CRUD ====================
 
     def list(self) -> List[PromptAppTemplate]:
+        """list。
+        """
         return list(self._templates.values())
 
     def get(self, template_id: str) -> Optional[PromptAppTemplate]:
+        """get。
+
+        Args:
+            template_id: template 标识。
+        """
         return self._templates.get(template_id)
 
     def upsert(self, template_id: str, name: str, category: str, tags: list, system_prompt: str, user_prompt: str, assistant_prompt: str, variables: list) -> PromptAppTemplate:
+        """upsert。
+
+        Args:
+            template_id: template 标识。
+            name: name 参数。
+            category: category 参数。
+            tags: tags 参数。
+            system_prompt: system_prompt 参数。
+            user_prompt: user_prompt 参数。
+            assistant_prompt: assistant_prompt 参数。
+            variables: variables 参数。
+        """
         existing = self._templates.get(template_id)
         if existing:
             existing.name = name; existing.category = category; existing.tags = tags
@@ -282,6 +312,11 @@ class PromptAppManager:
         return tpl
 
     def delete(self, template_id: str) -> bool:
+        """delete。
+
+        Args:
+            template_id: template 标识。
+        """
         tpl = self._templates.pop(template_id, None)
         if not tpl: return False
         tmpl_dir = Path(tpl.metadata.get("filesystem", {}).get("template_dir") or "")

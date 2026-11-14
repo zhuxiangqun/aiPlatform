@@ -14,6 +14,11 @@ class AgentMixin:
     # ==================== Agent ====================
 
     async def upsert_agent_execution(self, record: Dict[str, Any]) -> None:
+        """upsert_agent_execution。
+
+        Args:
+            record: record 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -135,6 +140,11 @@ class AgentMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_agent_execution(self, execution_id: str) -> Optional[Dict[str, Any]]:
+        """获取 agent_execution。
+
+        Args:
+            execution_id: execution 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -176,7 +186,13 @@ class AgentMixin:
         limit: int = 50,
         offset: int = 0,
     ) -> Dict[str, Any]:
-        """List agent executions associated with an approval_request_id."""
+        """List agent executions associated with an approval_request_id.
+
+        Args:
+            approval_request_id: approval_request 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -229,6 +245,11 @@ class AgentMixin:
     # ---------------------------------------------------------------------
 
     async def upsert_learning_artifact(self, record: Dict[str, Any]) -> None:
+        """upsert_learning_artifact。
+
+        Args:
+            record: record 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -277,6 +298,11 @@ class AgentMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_learning_artifact(self, artifact_id: str) -> Optional[Dict[str, Any]]:
+        """获取 learning_artifact。
+
+        Args:
+            artifact_id: artifact 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -321,6 +347,19 @@ class AgentMixin:
         limit: int = 50,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 learning_artifacts。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            kind: kind 参数。
+            status: status 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            metadata_contains: metadata_contains 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -392,6 +431,13 @@ class AgentMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_agent_history(self, agent_id: str, limit: int, offset: int) -> Tuple[List[Dict[str, Any]], int]:
+        """列出 agent_history。
+
+        Args:
+            agent_id: Agent ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

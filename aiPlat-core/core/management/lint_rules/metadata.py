@@ -9,6 +9,7 @@ from core.management.skill_linter_base import LintIssue, LintRule
 
 
 class GenericNameCheck(LintRule):
+    """GenericNameCheck。"""
     code = "generic_name"
     level = "warning"
     category = "metadata"
@@ -16,6 +17,11 @@ class GenericNameCheck(LintRule):
     _MARKERS = ("tool", "assistant", "helper", "my-", "skill-")
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         name = str(getattr(skill, "name", "") or (skill.get("name") if isinstance(skill, dict) else "") or "").strip().lower()
         if name and any(m in name for m in self._MARKERS):
             return [LintIssue(
@@ -33,6 +39,11 @@ class ExecTypeDirectoryMismatch(LintRule):
     category = "metadata"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         issues: List[LintIssue] = []
         if isinstance(skill, dict):
             exec_type = str(skill.get("execution_type") or "").strip().lower()
@@ -107,6 +118,11 @@ class NestedSkillDirectory(LintRule):
     category = "metadata"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         skill_dir = ExecTypeDirectoryMismatch._resolve_skill_dir(skill)
         if not skill_dir:
             return []

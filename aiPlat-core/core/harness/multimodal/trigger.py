@@ -1,3 +1,5 @@
+"""trigger：模块接口。"""
+
 import logging
 """MultiModalTrigger — multi-modal inputs as Goal loop trigger sources.
 G-axis L4→L5 enabler: full closed-loop multi-modal Agent activation.
@@ -21,6 +23,11 @@ class MultiModalTrigger:
     """
 
     def __init__(self, watch_paths: list[str] | None = None):
+        """初始化。
+
+        Args:
+            watch_paths: watch_paths 参数。
+        """
         self.watch_paths = watch_paths or self._default_paths()
         self._checksums: dict[str, str] = {}
         self._running = False
@@ -37,7 +44,10 @@ class MultiModalTrigger:
 
     def on_trigger(self, callback: Callable[[dict], None]):
         """Register callback: callback(trigger_event) → None.
-        trigger_event: {type, path, content, timestamp}"""
+
+        Args:
+            callback: callback 参数。
+        """
         self._callbacks.append(callback)
 
     def _detect_type(self, path: str) -> str:
@@ -126,15 +136,24 @@ class MultiModalTrigger:
         print(f"  [MultiModalTrigger] Watching {len(self.watch_paths)} paths for audio/video/image inputs")
 
     def stop(self):
+        """stop。
+        """
         self._running = False
         if self._task:
             self._task.cancel()
 
     def get_recent_triggers(self, limit: int = 10) -> list[dict]:
+        """获取 recent_triggers。
+
+        Args:
+            limit: 返回条数上限。
+        """
         return self._triggers[-limit:]
 
     @property
     def trigger_count(self) -> int:
+        """trigger_count。
+        """
         return len(self._triggers)
 
 
@@ -142,12 +161,21 @@ class GoalLoopBridge:
     """Bridges MultiModalTrigger events into Agent Goal loop."""
 
     def __init__(self, trigger: MultiModalTrigger):
+        """初始化。
+
+        Args:
+            trigger: trigger 参数。
+        """
         self.trigger = trigger
         self._goal_executor = None
         self._processed: set = set()
 
     async def handle_multimodal_trigger(self, event: dict):
-        """Handle a multi-modal trigger event: create Goal + inject context."""
+        """Handle a multi-modal trigger event: create Goal + inject context.
+
+        Args:
+            event: event 参数。
+        """
         event_key = f"{event.get('path','')}:{event.get('timestamp','')}"
         if event_key in self._processed:
             return
@@ -185,6 +213,8 @@ _bridge: Optional[GoalLoopBridge] = None
 
 
 async def get_multimodal_trigger() -> MultiModalTrigger:
+    """获取 multimodal_trigger。
+    """
     global _trigger
     if _trigger is None:
         _trigger = MultiModalTrigger()
@@ -192,6 +222,8 @@ async def get_multimodal_trigger() -> MultiModalTrigger:
 
 
 async def get_goal_loop_bridge() -> GoalLoopBridge:
+    """获取 goal_loop_bridge。
+    """
     global _trigger, _bridge
     if _trigger is None:
         _trigger = MultiModalTrigger()

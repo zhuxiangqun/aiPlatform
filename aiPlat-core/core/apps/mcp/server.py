@@ -56,6 +56,12 @@ class MCPServer:
         tools: Dict[str, Any],
         resources: Optional[Dict[str, Any]] = None
     ):
+        """初始化。
+
+        Args:
+            tools: tools 参数。
+            resources: resources 参数。
+        """
         self._tools = tools
         self._resources = resources or {}
         self._protocol = MCPProtocolHandler()
@@ -289,6 +295,10 @@ class MCPServer:
 
 
 def create_mcp_server(tools: Dict[str, Any]) -> FastAPI:
-    """Create MCP server FastAPI app"""
+    """Create MCP server FastAPI app。
+
+    Args:
+        tools: tools 参数。
+    """
     server = MCPServer(tools)
     return server.app

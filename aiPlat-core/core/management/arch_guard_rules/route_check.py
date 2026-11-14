@@ -24,6 +24,11 @@ class RouteDuplicateCheck(ArchRule):
     section_name = "路由重复检测"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         routers_dir = repo_root / "aiPlat-core" / "core" / "api" / "routers"
         if not routers_dir.is_dir():
             return []

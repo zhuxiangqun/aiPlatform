@@ -11,6 +11,14 @@ from ._base import _json_dumps, _json_loads
 class PackageMixin:
     """Extracted from ExecutionStore."""
     async def install_skill_pack(self, *, pack_id: str, version: Optional[str], scope: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """install_skill_pack。
+
+        Args:
+            pack_id: pack 标识。
+            version: version 参数。
+            scope: scope 参数。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -59,6 +67,13 @@ class PackageMixin:
         }
 
     async def list_skill_pack_installs(self, *, scope: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 skill_pack_installs。
+
+        Args:
+            scope: scope 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -110,6 +125,16 @@ class PackageMixin:
         artifact_sha256: Optional[str] = None,
         approval_request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """publish_package_version。
+
+        Args:
+            package_name: package_name 参数。
+            version: version 参数。
+            manifest: manifest 参数。
+            artifact_path: artifact_path 参数。
+            artifact_sha256: artifact_sha256 参数。
+            approval_request_id: approval_request 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -163,6 +188,13 @@ class PackageMixin:
         }
 
     async def list_package_versions(self, *, package_name: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 package_versions。
+
+        Args:
+            package_name: package_name 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -198,6 +230,12 @@ class PackageMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def get_package_version(self, *, package_name: str, version: str) -> Optional[Dict[str, Any]]:
+        """获取 package_version。
+
+        Args:
+            package_name: package_name 参数。
+            version: version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -236,6 +274,15 @@ class PackageMixin:
         metadata: Optional[Dict[str, Any]] = None,
         approval_request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """record_package_install。
+
+        Args:
+            package_name: package_name 参数。
+            version: version 参数。
+            scope: scope 参数。
+            metadata: metadata 参数。
+            approval_request_id: approval_request 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -289,6 +336,13 @@ class PackageMixin:
         }
 
     async def list_package_installs(self, *, scope: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 package_installs。
+
+        Args:
+            scope: scope 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

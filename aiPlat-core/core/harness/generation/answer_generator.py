@@ -27,8 +27,13 @@ async def generate_answer(
 ) -> Tuple[str, Dict[str, Any]]:
     """Non-streaming answer generation via sys_llm_generate.
 
-    Returns (answer_text, trace_info_dict) where trace_info contains
-    model_name, input_tok_est, max_tokens for cost tracking.
+    Args:
+        system_msgs: system_msgs 参数。
+        user_content: user_content 参数。
+        model_name: model_name 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+        session_id: 会话 ID。
     """
     try:
         from core.harness.syscalls.llm import sys_llm_generate
@@ -71,7 +76,14 @@ async def generate_stream_answer(
 ) -> Tuple[str, Dict[str, Any]]:
     """Streaming answer generation via sys_llm_generate_stream.
 
-    Returns (answer_text, trace_info_dict).
+    Args:
+        system_msgs: system_msgs 参数。
+        user_content: user_content 参数。
+        stream_queue: stream_queue 参数。
+        model_name: model_name 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+        session_id: 会话 ID。
     """
     try:
         from core.harness.syscalls.llm import sys_llm_generate_stream
@@ -117,8 +129,11 @@ def build_rag_user_message(
 ) -> str:
     """Build the user message for RAG answer generation.
 
-    Default template uses Chinese format matching MaterialsChatAgent.
-    Other agents can pass a custom template with {docs}, {question}, {graph_context}.
+    Args:
+        docs: docs 参数。
+        question: question 参数。
+        graph_context: graph_context 参数。
+        template: template 参数。
     """
     if template:
         return template.format(docs=docs, question=question, graph_context=graph_context)

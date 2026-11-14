@@ -15,6 +15,8 @@ class VoiceLoop:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._audio = None
         self._browser = None
         self._init_ok = False
@@ -37,7 +39,11 @@ class VoiceLoop:
             self._init_ok = True
 
     async def stt(self, audio_path: str) -> dict:
-        """Speech-to-text: audio file → transcribed text."""
+        """Speech-to-text: audio file → transcribed text.
+
+        Args:
+            audio_path: audio_path 参数。
+        """
         await self._ensure_modules()
         if not self._audio:
             return {"success": False, "text": "", "error": "Audio adapter unavailable"}
@@ -49,7 +55,12 @@ class VoiceLoop:
             return {"success": False, "text": "", "error": str(e)[:300]}
 
     async def tts(self, text: str, output_path: str = "") -> dict:
-        """Text-to-speech: text → audio file."""
+        """Text-to-speech: text → audio file.
+
+        Args:
+            text: text 参数。
+            output_path: output_path 参数。
+        """
         await self._ensure_modules()
         if not self._audio:
             return {"success": False, "path": "", "error": "Audio adapter unavailable"}
@@ -137,6 +148,8 @@ _voice_loop: Optional[VoiceLoop] = None
 
 
 async def get_voice_loop() -> VoiceLoop:
+    """获取 voice_loop。
+    """
     global _voice_loop
     if _voice_loop is None:
         _voice_loop = VoiceLoop()

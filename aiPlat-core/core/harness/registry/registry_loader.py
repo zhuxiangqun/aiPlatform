@@ -108,7 +108,11 @@ class AgentTypeRegistry:
     deprecated: List[str] = field(default_factory=list)
 
     def resolve(self, agent_type: str) -> str:
-        """Resolve an agent_type string to its canonical form."""
+        """Resolve an agent_type string to its canonical form.
+
+        Args:
+            agent_type: agent_type 参数。
+        """
         if not agent_type:
             return "conversational"
         t = agent_type.lower().strip()
@@ -122,19 +126,35 @@ class AgentTypeRegistry:
         return "conversational"
 
     def is_valid(self, agent_type: str) -> bool:
+        """is_valid。
+
+        Args:
+            agent_type: agent_type 参数。
+        """
         t = agent_type.lower().strip()
         return t in self.canonical or t in self.aliases
 
     def is_deprecated(self, agent_type: str) -> bool:
+        """is_deprecated。
+
+        Args:
+            agent_type: agent_type 参数。
+        """
         return agent_type.lower().strip() in self.deprecated
 
     @property
     def all_valid(self) -> Set[str]:
+        """all_valid。
+        """
         return set(self.canonical) | set(self.aliases.keys())
 
 
 def load_agent_types(*, force_reload: bool = False) -> AgentTypeRegistry:
-    """Load agent type definitions from agent_types.yaml (with caching)."""
+    """Load agent type definitions from agent_types.yaml (with caching).
+
+    Args:
+        force_reload: force_reload 参数。
+    """
     if force_reload:
         _cache.pop(str(_registry_home() / "agent_types.yaml"), None)
     data = _load_yaml(_registry_home() / "agent_types.yaml")
@@ -169,6 +189,11 @@ class ExecutionTypeRegistry:
     deprecated: List[str] = field(default_factory=list)
 
     def resolve(self, exec_type: str) -> str:
+        """resolve。
+
+        Args:
+            exec_type: exec_type 参数。
+        """
         if not exec_type:
             return "prompt"
         t = exec_type.lower().strip()
@@ -180,11 +205,21 @@ class ExecutionTypeRegistry:
         return "prompt"
 
     def is_valid(self, exec_type: str) -> bool:
+        """is_valid。
+
+        Args:
+            exec_type: exec_type 参数。
+        """
         t = exec_type.lower().strip()
         return t in self.canonical or t in self.aliases
 
 
 def load_execution_types(*, force_reload: bool = False) -> ExecutionTypeRegistry:
+    """load_execution_types。
+
+    Args:
+        force_reload: force_reload 参数。
+    """
     if force_reload:
         _cache.pop(str(_registry_home() / "execution_types.yaml"), None)
     data = _load_yaml(_registry_home() / "execution_types.yaml")
@@ -207,6 +242,7 @@ def load_execution_types(*, force_reload: bool = False) -> ExecutionTypeRegistry
 
 @dataclass
 class RegistryConsistencyIssue:
+    """RegistryConsistencyIssue。"""
     entity_type: str
     severity: str      # error | warning
     entity_id: str
@@ -244,7 +280,9 @@ def _save_entity_registry(entity_type: str, records: List[Dict[str, Any]]) -> No
 def auto_discover_and_register(entity_type: str, scan_dirs: List[str] = None) -> int:
     """Scan directories for entities and register any not yet in the YAML.
 
-    Returns: number of newly registered entities.
+    Args:
+        entity_type: entity_type 参数。
+        scan_dirs: scan_dirs 参数。
     """
     if entity_type not in _ENTITY_TYPES:
         return 0
@@ -286,7 +324,9 @@ def auto_discover_and_register(entity_type: str, scan_dirs: List[str] = None) ->
 def verify_registry_consistency(entity_type: str, scan_dirs: List[str] = None) -> List[RegistryConsistencyIssue]:
     """Check registry against filesystem for orphans, duplicates, invalid paths.
 
-    Returns list of issues (empty = clean).
+    Args:
+        entity_type: entity_type 参数。
+        scan_dirs: scan_dirs 参数。
     """
     issues = []
     records = load_entity_registry(entity_type, force_reload=True)

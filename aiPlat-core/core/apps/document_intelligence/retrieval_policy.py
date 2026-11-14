@@ -1,3 +1,5 @@
+"""retrieval_policy：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -9,6 +11,13 @@ def choose_retrieval_policy(
     scope: Optional[Dict[str, Any]] = None,
     doc_kinds: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """choose_retrieval_policy。
+
+    Args:
+        analysis: analysis 参数。
+        scope: scope 参数。
+        doc_kinds: doc_kinds 参数。
+    """
     doc_ids = [str(x).strip() for x in ((scope or {}).get("doc_ids") or []) if str(x).strip()]
     doc_count = len(doc_ids)
     intent = str(analysis.get("intent") or "fact_lookup")

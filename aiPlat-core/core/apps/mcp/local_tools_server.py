@@ -101,6 +101,8 @@ def _error(req_id: Any, code: int, message: str) -> None:
 
 def main() -> None:
     # Pre-scan tools at startup so first tools/list is fast
+    """main。
+    """
     tools = _scan_tools()
 
     for line in sys.stdin:

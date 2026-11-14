@@ -110,6 +110,11 @@ def _inject_text(file_path: str) -> dict:
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     files = params.get("file_paths") or []
     results: List[dict] = []
     errors: List[str] = []

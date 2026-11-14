@@ -23,15 +23,26 @@ def _aiplat_home() -> Path:
 
 
 def agent_md_path(agent_id: str = "platform_consultant") -> Path:
+    """agent_md_path。
+
+    Args:
+        agent_id: Agent ID。
+    """
     return _aiplat_home() / "agents" / agent_id / "AGENT.md"
 
 
 def constitution_path() -> Path:
+    """constitution_path。
+    """
     return Path(__file__).resolve().parent / "consultant_constitution.md"
 
 
 def parse_agent_system_prompt(raw: str) -> str:
-    """Extract config.system_prompt (or top-level system_prompt) from AGENT.md."""
+    """Extract config.system_prompt (or top-level system_prompt) from AGENT.md.
+
+    Args:
+        raw: raw 参数。
+    """
     text = (raw or "").strip()
     if not text.startswith("---"):
         return ""
@@ -53,7 +64,11 @@ def parse_agent_system_prompt(raw: str) -> str:
 
 
 def read_agent_system_prompt(agent_id: str = "platform_consultant") -> Tuple[str, float]:
-    """Return (system_prompt, mtime). Empty prompt / 0.0 mtime if missing."""
+    """Return (system_prompt, mtime). Empty prompt / 0.0 mtime if missing.
+
+    Args:
+        agent_id: Agent ID。
+    """
     path = agent_md_path(agent_id)
     try:
         st = path.stat()
@@ -64,7 +79,12 @@ def read_agent_system_prompt(agent_id: str = "platform_consultant") -> Tuple[str
 
 
 def apply_system_prompt(agent: Any, prompt: str) -> bool:
-    """Write prompt into ConversationalAgent conv + config.metadata."""
+    """Write prompt into ConversationalAgent conv + config.metadata.
+
+    Args:
+        agent: agent 参数。
+        prompt: prompt 参数。
+    """
     sp = (prompt or "").strip()
     if not sp or agent is None:
         return False
@@ -97,7 +117,13 @@ def refresh_consultant_prompt(
     agent_id: str = "platform_consultant",
     force: bool = False,
 ) -> bool:
-    """Reload AGENT.md system_prompt when mtime changes. Returns True if applied."""
+    """Reload AGENT.md system_prompt when mtime changes. Returns True if applied.
+
+    Args:
+        agent: agent 参数。
+        agent_id: Agent ID。
+        force: 是否强制。
+    """
     path = agent_md_path(agent_id)
     try:
         mtime = float(path.stat().st_mtime)
@@ -128,7 +154,11 @@ def refresh_consultant_prompt(
 
 
 def load_constitution_fresh(*, max_chars: int = 2200) -> str:
-    """mtime-aware constitution load (replaces forever lru_cache for iteration)."""
+    """mtime-aware constitution load (replaces forever lru_cache for iteration).
+
+    Args:
+        max_chars: max_chars 参数。
+    """
     global _CONST_MTIME, _CONST_TEXT
     path = constitution_path()
     try:

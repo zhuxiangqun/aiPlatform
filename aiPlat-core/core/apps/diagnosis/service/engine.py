@@ -77,7 +77,13 @@ def infer_root_causes(
     payload: Dict[str, Any],
     expected: Optional[Dict[str, Any]] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any], str]:
-    """Return findings, hypotheses, uncertainty (with reason_codes), case status."""
+    """Return findings, hypotheses, uncertainty (with reason_codes), case status.
+
+    Args:
+        evidence: evidence 参数。
+        payload: 载荷 dict。
+        expected: expected 参数。
+    """
     findings: List[Dict[str, Any]] = []
     hypotheses: List[Dict[str, Any]] = []
     unknown: List[str] = []
@@ -271,6 +277,11 @@ def infer_root_causes(
 
 
 def build_recommendations(hypotheses: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """build_recommendations。
+
+    Args:
+        hypotheses: hypotheses 参数。
+    """
     out: List[Dict[str, Any]] = []
     for i, h in enumerate(hypotheses[:3]):
         rc = str(h.get("root_cause") or "unknown")
@@ -293,6 +304,14 @@ def diagnose_case(
     payload: Optional[Dict[str, Any]] = None,
     expected: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """diagnose_case。
+
+    Args:
+        case_id: case 标识。
+        evidence: evidence 参数。
+        payload: 载荷 dict。
+        expected: expected 参数。
+    """
     findings, hypotheses, uncertainty, status = infer_root_causes(
         evidence=evidence or [],
         payload=payload or {},

@@ -49,6 +49,12 @@ class WakeAgent:
 
     def __init__(self, paths: list[str] | None = None, interval: int = WAKE_INTERVAL):
 
+        """初始化。
+
+        Args:
+            paths: paths 参数。
+            interval: interval 参数。
+        """
         self.paths = [p for p in (paths or WAKE_PATHS.split(":")) if p.strip()]
 
         self.interval = interval
@@ -67,7 +73,11 @@ class WakeAgent:
 
     def on_change(self, callback: Callable):
 
-        """Register callback: callback(path, event_type) → None"""
+        """Register callback: callback(path, event_type) → None。
+
+        Args:
+            callback: callback 参数。
+        """
 
         self._callbacks.append(callback)
 
@@ -187,6 +197,8 @@ class WakeAgent:
 
     def stop(self):
 
+        """stop。
+        """
         self._running = False
 
         if self._task:
@@ -199,6 +211,8 @@ class WakeAgent:
 
     def changes_detected(self) -> int:
 
+        """changes_detected。
+        """
         return self._change_counter
 
 
@@ -215,6 +229,11 @@ _wake_agent: Optional[WakeAgent] = None
 
 def get_wake_agent(paths: list[str] | None = None) -> WakeAgent:
 
+    """获取 wake_agent。
+
+    Args:
+        paths: paths 参数。
+    """
     global _wake_agent
 
     if _wake_agent is None:

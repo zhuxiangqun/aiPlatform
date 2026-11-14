@@ -42,6 +42,11 @@ class FdeDomainLiteralsAstCheck(ArchRule):
     section_name = "FDE Workbench Contract"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         harness = repo_root / "aiPlat-core" / "core" / "harness"
         if not harness.is_dir():
             return []
@@ -149,6 +154,11 @@ class FdeWorkbenchForbiddenFrontendCheck(ArchRule):
     _COMPONENT_RE = re.compile(r"<(?:Editor|CodeEditor|FileTree|Terminal)\b")
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         roots = [
             repo_root / "aiPlat-management" / "frontend" / "src" / "pages" / "Diagnostics",
         ]

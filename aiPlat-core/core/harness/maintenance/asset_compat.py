@@ -63,6 +63,13 @@ def compute_skill_compat(
     source: Optional[Dict[str, Any]] = None,
     adapt_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """compute_skill_compat。
+
+    Args:
+        skill_dir: skill_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+    """
     root = Path(skill_dir)
     fm = _read_frontmatter(root)
     has_handler = (root / "handler.py").is_file()
@@ -122,6 +129,12 @@ def compute_skill_compat(
 
 
 def write_skill_compat(skill_dir: Path | str, compat: Dict[str, Any]) -> Path:
+    """write_skill_compat。
+
+    Args:
+        skill_dir: skill_dir 参数。
+        compat: compat 参数。
+    """
     path = Path(skill_dir) / COMPAT_FILENAME
     try:
         import yaml
@@ -135,6 +148,11 @@ def write_skill_compat(skill_dir: Path | str, compat: Dict[str, Any]) -> Path:
 
 
 def read_skill_compat(skill_dir: Path | str) -> Optional[Dict[str, Any]]:
+    """read_skill_compat。
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     path = Path(skill_dir) / COMPAT_FILENAME
     if not path.is_file():
         return None
@@ -153,17 +171,35 @@ def finalize_skill_compat(
     adapt_summary: Optional[Dict[str, Any]] = None,
     source: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """finalize_skill_compat。
+
+    Args:
+        skill_dir: skill_dir 参数。
+        adapt_summary: adapt_summary 参数。
+        source: source 参数。
+    """
     compat = compute_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
     write_skill_compat(skill_dir, compat)
     return compat
 
 
 def is_skill_schedulable(skill_dir: Path | str) -> bool:
+    """is_skill_schedulable。
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     compat = read_skill_compat(skill_dir)
     return True if compat is None else bool(compat.get("schedulable"))
 
 
 def skill_schedulable_error(skill_dir: Path | str, skill_id: str = "") -> Dict[str, Any]:
+    """skill_schedulable_error。
+
+    Args:
+        skill_dir: skill_dir 参数。
+        skill_id: Skill ID。
+    """
     compat = read_skill_compat(skill_dir) or compute_skill_compat(skill_dir)
     return {
         "ok": False,
@@ -178,7 +214,12 @@ def skill_schedulable_error(skill_dir: Path | str, skill_id: str = "") -> Dict[s
 
 
 def write_handler_draft_from_script(skill_dir: Path | str, script_rel: str) -> Path:
-    """Write handler.py.draft only — never enable as handler.py."""
+    """Write handler.py.draft only — never enable as handler.py.
+
+    Args:
+        skill_dir: skill_dir 参数。
+        script_rel: script_rel 参数。
+    """
     root = Path(skill_dir)
     path = root / HANDLER_DRAFT
     path.write_text(
@@ -201,7 +242,11 @@ def write_handler_draft_from_script(skill_dir: Path | str, script_rel: str) -> P
 
 
 def enable_handler_draft(skill_dir: Path | str) -> Dict[str, Any]:
-    """Promote handler.py.draft → handler.py after human enable."""
+    """Promote handler.py.draft → handler.py after human enable.
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     root = Path(skill_dir)
     draft, target = root / HANDLER_DRAFT, root / "handler.py"
     if not draft.is_file():
@@ -292,7 +337,11 @@ def _skill_search_roots() -> List[Path]:
 
 
 def resolve_skill_dir(skill_id: str) -> Optional[Path]:
-    """Locate a skill directory by id (workspace then engine paths)."""
+    """Locate a skill directory by id (workspace then engine paths).
+
+    Args:
+        skill_id: Skill ID。
+    """
     sid = str(skill_id or "").strip()
     if not sid:
         return None
@@ -309,7 +358,13 @@ def compute_agent_compat(
     source: Optional[Dict[str, Any]] = None,
     adapt_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Score Agent COMPAT: persona_ready / bound_ready / needs_binding / blocked."""
+    """Score Agent COMPAT: persona_ready / bound_ready / needs_binding / blocked.
+
+    Args:
+        agent_dir: agent_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+    """
     root = Path(agent_dir)
     fm = _read_agent_frontmatter(root)
     issues: List[Dict[str, Any]] = []
@@ -401,6 +456,12 @@ def compute_agent_compat(
 
 
 def write_agent_compat(agent_dir: Path | str, compat: Dict[str, Any]) -> Path:
+    """write_agent_compat。
+
+    Args:
+        agent_dir: agent_dir 参数。
+        compat: compat 参数。
+    """
     path = Path(agent_dir) / COMPAT_FILENAME
     try:
         import yaml
@@ -414,6 +475,11 @@ def write_agent_compat(agent_dir: Path | str, compat: Dict[str, Any]) -> Path:
 
 
 def read_agent_compat(agent_dir: Path | str) -> Optional[Dict[str, Any]]:
+    """read_agent_compat。
+
+    Args:
+        agent_dir: agent_dir 参数。
+    """
     path = Path(agent_dir) / COMPAT_FILENAME
     if not path.is_file():
         return None
@@ -432,13 +498,24 @@ def finalize_agent_compat(
     adapt_summary: Optional[Dict[str, Any]] = None,
     source: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """finalize_agent_compat。
+
+    Args:
+        agent_dir: agent_dir 参数。
+        adapt_summary: adapt_summary 参数。
+        source: source 参数。
+    """
     compat = compute_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
     write_agent_compat(agent_dir, compat)
     return compat
 
 
 def is_agent_chat_ok(agent_dir: Path | str) -> bool:
-    """Fail-open when COMPAT missing (legacy agents)."""
+    """Fail-open when COMPAT missing (legacy agents).
+
+    Args:
+        agent_dir: agent_dir 参数。
+    """
     compat = read_agent_compat(agent_dir)
     if compat is None:
         return True
@@ -448,7 +525,11 @@ def is_agent_chat_ok(agent_dir: Path | str) -> bool:
 
 
 def is_agent_fully_usable(agent_dir: Path | str) -> bool:
-    """Fail-open when COMPAT missing (legacy agents)."""
+    """Fail-open when COMPAT missing (legacy agents).
+
+    Args:
+        agent_dir: agent_dir 参数。
+    """
     compat = read_agent_compat(agent_dir)
     if compat is None:
         return True
@@ -458,6 +539,13 @@ def is_agent_fully_usable(agent_dir: Path | str) -> bool:
 
 
 def agent_compat_error(agent_dir: Path | str, agent_id: str = "", *, mode: str = "full") -> Dict[str, Any]:
+    """agent_compat_error。
+
+    Args:
+        agent_dir: agent_dir 参数。
+        agent_id: Agent ID。
+        mode: mode 参数。
+    """
     compat = read_agent_compat(agent_dir) or compute_agent_compat(agent_dir)
     return {
         "ok": False,
@@ -478,7 +566,11 @@ def agent_compat_error(agent_dir: Path | str, agent_id: str = "", *, mode: str =
 
 
 def resolve_agent_dir_from_info(agent_info: Any) -> Optional[Path]:
-    """Prefer metadata.filesystem.agent_dir (AgentManager load shape)."""
+    """Prefer metadata.filesystem.agent_dir (AgentManager load shape).
+
+    Args:
+        agent_info: agent_info 参数。
+    """
     meta = getattr(agent_info, "metadata", None) or {}
     if not isinstance(meta, dict):
         return None
@@ -531,6 +623,11 @@ def _ui_for_tier(tier: str, *, schedulable: bool) -> str:
 
 
 def resolve_mcp_dir(mcp_id: str) -> Optional[Path]:
+    """resolve_mcp_dir。
+
+    Args:
+        mcp_id: mcp 标识。
+    """
     sid = str(mcp_id or "").strip()
     if not sid:
         return None
@@ -553,6 +650,11 @@ def resolve_mcp_dir(mcp_id: str) -> Optional[Path]:
 
 
 def resolve_mcp_dir_from_info(server_info: Any) -> Optional[Path]:
+    """resolve_mcp_dir_from_info。
+
+    Args:
+        server_info: server_info 参数。
+    """
     meta = getattr(server_info, "metadata", None) or {}
     if isinstance(meta, dict):
         fs = meta.get("filesystem") if isinstance(meta.get("filesystem"), dict) else {}
@@ -570,7 +672,14 @@ def compute_mcp_compat(
     adapt_summary: Optional[Dict[str, Any]] = None,
     connection_status: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Score MCP COMPAT: connectable / connected / gated / blocked."""
+    """Score MCP COMPAT: connectable / connected / gated / blocked.
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+        connection_status: connection_status 参数。
+    """
     root = Path(mcp_dir)
     issues: List[Dict[str, Any]] = []
     prev = _read_compat_file(root / COMPAT_FILENAME) or {}
@@ -654,10 +763,21 @@ def compute_mcp_compat(
 
 
 def write_mcp_compat(mcp_dir: Path | str, compat: Dict[str, Any]) -> Path:
+    """write_mcp_compat。
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        compat: compat 参数。
+    """
     return _write_compat_file(Path(mcp_dir) / COMPAT_FILENAME, compat)
 
 
 def read_mcp_compat(mcp_dir: Path | str) -> Optional[Dict[str, Any]]:
+    """read_mcp_compat。
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+    """
     return _read_compat_file(Path(mcp_dir) / COMPAT_FILENAME)
 
 
@@ -668,6 +788,14 @@ def finalize_mcp_compat(
     source: Optional[Dict[str, Any]] = None,
     connection_status: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """finalize_mcp_compat。
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        adapt_summary: adapt_summary 参数。
+        source: source 参数。
+        connection_status: connection_status 参数。
+    """
     compat = compute_mcp_compat(
         mcp_dir, source=source, adapt_summary=adapt_summary, connection_status=connection_status
     )
@@ -681,7 +809,13 @@ def mark_mcp_connection(
     *,
     adapt_summary: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Rewrite COMPAT after connect/disconnect — never leave fake connected."""
+    """Rewrite COMPAT after connect/disconnect — never leave fake connected.
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        status: status 参数。
+        adapt_summary: adapt_summary 参数。
+    """
     st = str(status or TIER_CONNECTABLE).strip().lower()
     if st not in {TIER_CONNECTED, TIER_CONNECTABLE, TIER_BLOCKED, TIER_GATED}:
         st = TIER_CONNECTABLE
@@ -693,11 +827,22 @@ def mark_mcp_connection(
 
 
 def is_mcp_schedulable(mcp_dir: Path | str) -> bool:
+    """is_mcp_schedulable。
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+    """
     compat = read_mcp_compat(mcp_dir)
     return True if compat is None else bool(compat.get("schedulable"))
 
 
 def mcp_schedulable_error(mcp_dir: Path | str, mcp_id: str = "") -> Dict[str, Any]:
+    """mcp_schedulable_error。
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        mcp_id: mcp 标识。
+    """
     compat = read_mcp_compat(mcp_dir) or compute_mcp_compat(mcp_dir)
     return {
         "ok": False,
@@ -715,13 +860,22 @@ def mcp_schedulable_error(mcp_dir: Path | str, mcp_id: str = "") -> Dict[str, An
 
 
 def tool_compat_path(tool_py: Path | str) -> Path:
-    """COMPAT lives beside tool .py as {stem}.COMPAT.yaml (flat tools dir)."""
+    """COMPAT lives beside tool .py as {stem}.COMPAT.yaml (flat tools dir).
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     p = Path(tool_py)
     stem = p.name[:-3] if p.name.endswith(".py") else p.stem
     return p.parent / f"{stem}.COMPAT.yaml"
 
 
 def tool_draft_path(tool_py: Path | str) -> Path:
+    """tool_draft_path。
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     p = Path(tool_py)
     if p.name.endswith(".py"):
         return p.parent / (p.name + ".draft")  # name.py.draft
@@ -729,6 +883,11 @@ def tool_draft_path(tool_py: Path | str) -> Path:
 
 
 def resolve_tool_py_path(tool_id: str) -> Optional[Path]:
+    """resolve_tool_py_path。
+
+    Args:
+        tool_id: tool 标识。
+    """
     tid = str(tool_id or "").strip()
     if not tid:
         return None
@@ -753,6 +912,11 @@ def resolve_tool_py_path(tool_id: str) -> Optional[Path]:
 
 
 def resolve_tool_py_from_obj(tool: Any) -> Optional[Path]:
+    """resolve_tool_py_from_obj。
+
+    Args:
+        tool: tool 参数。
+    """
     cfg = getattr(tool, "_config", None)
     meta = getattr(cfg, "metadata", None) if cfg is not None else None
     if not isinstance(meta, dict):
@@ -777,7 +941,15 @@ def compute_tool_compat(
     mapped_to: Optional[str] = None,
     mcp_projection: bool = False,
 ) -> Dict[str, Any]:
-    """Score Tool COMPAT: mapped / schema_only / needs_impl / blocked."""
+    """Score Tool COMPAT: mapped / schema_only / needs_impl / blocked.
+
+    Args:
+        tool_py: tool_py 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+        mapped_to: mapped_to 参数。
+        mcp_projection: mcp_projection 参数。
+    """
     path = Path(tool_py)
     issues: List[Dict[str, Any]] = []
     has_impl = path.is_file()
@@ -853,10 +1025,21 @@ def compute_tool_compat(
 
 
 def write_tool_compat(tool_py: Path | str, compat: Dict[str, Any]) -> Path:
+    """write_tool_compat。
+
+    Args:
+        tool_py: tool_py 参数。
+        compat: compat 参数。
+    """
     return _write_compat_file(tool_compat_path(tool_py), compat)
 
 
 def read_tool_compat(tool_py: Path | str) -> Optional[Dict[str, Any]]:
+    """read_tool_compat。
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     return _read_compat_file(tool_compat_path(tool_py))
 
 
@@ -868,6 +1051,15 @@ def finalize_tool_compat(
     mapped_to: Optional[str] = None,
     mcp_projection: bool = False,
 ) -> Dict[str, Any]:
+    """finalize_tool_compat。
+
+    Args:
+        tool_py: tool_py 参数。
+        adapt_summary: adapt_summary 参数。
+        source: source 参数。
+        mapped_to: mapped_to 参数。
+        mcp_projection: mcp_projection 参数。
+    """
     compat = compute_tool_compat(
         tool_py,
         source=source,
@@ -880,11 +1072,22 @@ def finalize_tool_compat(
 
 
 def is_tool_schedulable(tool_py: Path | str) -> bool:
+    """is_tool_schedulable。
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     compat = read_tool_compat(tool_py)
     return True if compat is None else bool(compat.get("schedulable"))
 
 
 def tool_schedulable_error(tool_py: Path | str, tool_id: str = "") -> Dict[str, Any]:
+    """tool_schedulable_error。
+
+    Args:
+        tool_py: tool_py 参数。
+        tool_id: tool 标识。
+    """
     compat = read_tool_compat(tool_py) or compute_tool_compat(tool_py)
     return {
         "ok": False,
@@ -899,7 +1102,12 @@ def tool_schedulable_error(tool_py: Path | str, tool_id: str = "") -> Dict[str, 
 
 
 def write_tool_impl_draft(tool_py: Path | str, code: str) -> Path:
-    """Write {name}.py.draft only — never enable as .py."""
+    """Write {name}.py.draft only — never enable as .py.
+
+    Args:
+        tool_py: tool_py 参数。
+        code: code 参数。
+    """
     draft = tool_draft_path(tool_py)
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(code, encoding="utf-8")
@@ -907,7 +1115,11 @@ def write_tool_impl_draft(tool_py: Path | str, code: str) -> Path:
 
 
 def enable_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
-    """Promote {name}.py.draft → {name}.py after human enable."""
+    """Promote {name}.py.draft → {name}.py after human enable.
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     target = Path(tool_py)
     draft = tool_draft_path(target)
     if not draft.is_file():

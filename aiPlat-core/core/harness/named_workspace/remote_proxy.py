@@ -44,13 +44,26 @@ STRIP_REQUEST_HEADERS = frozenset(
 
 
 class RemoteProxyError(Exception):
+    """RemoteProxyError。"""
     def __init__(self, message: str, *, code: str = "remote_proxy_error", http_status: int = 400):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            code: code 参数。
+            http_status: http_status 参数。
+        """
         super().__init__(message)
         self.code = code
         self.http_status = http_status
 
 
 def normalize_remote_base_url(base_url: str) -> str:
+    """normalize_remote_base_url。
+
+    Args:
+        base_url: base_url 参数。
+    """
     u = (base_url or "").strip().rstrip("/")
     if not u:
         raise ValueError("base_url required for remote profile")
@@ -64,6 +77,11 @@ def normalize_remote_base_url(base_url: str) -> str:
 
 
 def assert_remote_url_allowed(url: str) -> None:
+    """assert_remote_url_allowed。
+
+    Args:
+        url: url 参数。
+    """
     from core.harness.execution.true_test_runtime import is_blocked_url
 
     allow_private = os.environ.get("AIPLAT_REMOTE_CORE_ALLOW_PRIVATE", "").strip() in (
@@ -99,6 +117,13 @@ def is_route_allowlisted(
     *,
     allowed_routes: Optional[List[str]] = None,
 ) -> bool:
+    """is_route_allowlisted。
+
+    Args:
+        method: method 参数。
+        path: 路径。
+        allowed_routes: allowed_routes 参数。
+    """
     m = (method or "GET").upper()
     p = _path_only(path)
     # Split query for pattern match on path part; keep query for forwarding
@@ -127,13 +152,30 @@ def is_route_allowlisted(
 
 
 class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """NoRedirectHandler。"""
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        """redirect_request。
+
+        Args:
+            req: req 参数。
+            fp: fp 参数。
+            code: code 参数。
+            msg: msg 参数。
+            headers: headers 参数。
+            newurl: newurl 参数。
+        """
         raise urllib.error.HTTPError(
             req.full_url, code, f"redirect_forbidden:{newurl}", headers, fp
         )
 
 
 def build_remote_url(base_url: str, path: str) -> str:
+    """build_remote_url。
+
+    Args:
+        base_url: base_url 参数。
+        path: 路径。
+    """
     base = normalize_remote_base_url(base_url)
     p = _path_only(path)
     path_part, _, query = p.partition("?")
@@ -163,7 +205,21 @@ def proxy_request(
     actor_id: str = "",
     timeout_s: float = DEFAULT_TIMEOUT_S,
 ) -> Dict[str, Any]:
-    """Forward an allowlisted request to remote Core. Never forwards local workspace header."""
+    """Forward an allowlisted request to remote Core. Never forwards local workspace header.
+
+    Args:
+        profile_id: profile 标识。
+        base_url: base_url 参数。
+        method: method 参数。
+        path: 路径。
+        body: 请求体。
+        content_type: content_type 参数。
+        auth_secret_env: auth_secret_env 参数。
+        allowed_routes: allowed_routes 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        timeout_s: timeout_s 参数。
+    """
     m = (method or "GET").upper()
     if m not in ("GET", "POST"):
         raise RemoteProxyError(f"method not allowed: {m}", code="remote_method_denied")

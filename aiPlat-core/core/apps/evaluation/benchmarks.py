@@ -36,10 +36,17 @@ class Benchmark:
     tags: List[str] = field(default_factory=list)
     
     def get_tasks_by_category(self, category: str) -> List[Task]:
+        """获取 tasks_by_category。
+
+        Args:
+            category: category 参数。
+        """
         return [t for t in self.tasks if t.category == category]
     
     @property
     def task_count(self) -> int:
+        """task_count。
+        """
         return len(self.tasks)
 
 
@@ -47,7 +54,11 @@ class AgentExecutor:
     """Protocol for agent execution"""
     
     async def execute(self, prompt: str) -> Dict[str, Any]:
-        """Execute agent with prompt and return result"""
+        """Execute agent with prompt and return result。
+
+        Args:
+            prompt: prompt 参数。
+        """
         raise NotImplementedError
 
 
@@ -58,7 +69,15 @@ async def run_benchmark(
     timeout_ms: int = 60000,
     pass_at_k: int = 3
 ) -> "BenchmarkResult":
-    """Run benchmark against agent executor"""
+    """Run benchmark against agent executor。
+
+    Args:
+        benchmark: benchmark 参数。
+        executor: executor 参数。
+        max_retries: max_retries 参数。
+        timeout_ms: timeout_ms 参数。
+        pass_at_k: pass_at_k 参数。
+    """
     from .types import TaskResult, BenchmarkResult
 
     task_results: List[TaskResult] = []
@@ -178,7 +197,11 @@ def get_builtin_benchmarks() -> Dict[str, Benchmark]:
 
 
 def get_benchmark(name: str) -> Optional[Benchmark]:
-    """Get benchmark by name"""
+    """Get benchmark by name。
+
+    Args:
+        name: name 参数。
+    """
     return BUILTIN_BENCHMARKS.get(name)
 
 

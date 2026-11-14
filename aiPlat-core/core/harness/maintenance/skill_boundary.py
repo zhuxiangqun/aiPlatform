@@ -75,7 +75,9 @@ def _task_blob(params: Any) -> str:
 def skill_skip_reason(skill: Any, params: Any) -> Optional[str]:
     """Return a skip reason when the task already matches skip_when.
 
-    Callers must treat a non-None reason as skip (success=False), not success.
+    Args:
+        skill: skill 参数。
+        params: params 参数。
     """
     config = getattr(skill, "_config", None)
     meta = getattr(config, "metadata", None) if config is not None else None
@@ -170,7 +172,12 @@ def _skill_tree_text(skill_md: Any) -> str:
 
 
 def scan_skill_dir(skill_id: str, skill_md: Any) -> Dict[str, Any]:
-    """Scan the skill directory before enable or install."""
+    """Scan the skill directory before enable or install.
+
+    Args:
+        skill_id: Skill ID。
+        skill_md: skill_md 参数。
+    """
     from pathlib import Path
 
     path = Path(str(skill_md)) if skill_md else None
@@ -184,7 +191,12 @@ def scan_skill_dir(skill_id: str, skill_md: Any) -> Dict[str, Any]:
 
 
 def scan_untrusted_skill_text(name: str, text: str) -> Dict[str, Any]:
-    """Static scan. Blocked when a hostile pattern matches. SARIF-shaped results."""
+    """Static scan. Blocked when a hostile pattern matches. SARIF-shaped results.
+
+    Args:
+        name: name 参数。
+        text: text 参数。
+    """
     body = str(text or "")
     results = []
     for pattern, rule_id in _HOSTILE:

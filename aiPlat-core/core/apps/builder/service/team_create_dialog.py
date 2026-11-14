@@ -99,9 +99,12 @@ async def run_team_create_dialog_turn(
     history: Optional[List[Dict[str, str]]] = None,
     agents: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """
-    Clarify team goal → draft stages from available agents.
-    Does not persist; UI applies draft into canvas then user saves.
+    """Clarify team goal → draft stages from available agents.
+
+    Args:
+        text: text 参数。
+        history: history 参数。
+        agents: agents 参数。
     """
     text = str(text or "").strip()
     agent_list = [a for a in (agents or []) if isinstance(a, dict)]

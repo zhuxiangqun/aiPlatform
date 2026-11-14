@@ -20,7 +20,11 @@ class MCPConfig:
 
 
 def load_mcp_config(config_path: str) -> MCPConfig:
-    """Load MCP configuration from YAML file"""
+    """Load MCP configuration from YAML file。
+
+    Args:
+        config_path: config_path 参数。
+    """
     path = Path(config_path)
     
     if not path.exists():
@@ -56,7 +60,12 @@ def load_mcp_config(config_path: str) -> MCPConfig:
 
 
 def save_mcp_config(config: MCPConfig, config_path: str) -> None:
-    """Save MCP configuration to YAML file"""
+    """Save MCP configuration to YAML file。
+
+    Args:
+        config: config 参数。
+        config_path: config_path 参数。
+    """
     data = {
         "servers": [],
         "clients": []

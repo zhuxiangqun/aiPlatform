@@ -1,3 +1,5 @@
+"""docker：模块接口。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -12,9 +14,12 @@ import logging
 
 
 class DockerExecDriver(ExecDriver):
+    """DockerExecDriver。"""
     driver_id = "docker"
 
     def capabilities(self) -> Dict[str, object]:
+        """capabilities。
+        """
         return {
             "driver_id": self.driver_id,
             "supported_languages": ["python", "javascript"],
@@ -55,6 +60,13 @@ class DockerExecDriver(ExecDriver):
             return False
 
     async def run_code(self, *, language: str, code: str, timeout_s: float) -> ExecResult:
+        """run_code。
+
+        Args:
+            language: language 参数。
+            code: code 参数。
+            timeout_s: timeout_s 参数。
+        """
         t0 = time.time()
         language = (language or "").strip().lower()
         if language not in {"python", "javascript"}:
@@ -123,6 +135,8 @@ class DockerExecDriver(ExecDriver):
                 return ExecResult(ok=False, exit_code=1, error=f"exception:{type(e).__name__}", stderr=str(e), duration_ms=int((time.time() - t0) * 1000))
 
     async def health(self) -> Dict[str, object]:
+        """health。
+        """
         ok = await self._docker_available()
         return {
             "driver_id": self.driver_id,

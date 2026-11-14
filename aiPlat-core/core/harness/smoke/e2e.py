@@ -32,6 +32,7 @@ def _env(name: str, default: str) -> str:
 
 @dataclass
 class SmokeConfig:
+    """SmokeConfig。"""
     platform_url: str = field(default_factory=lambda: _env("AIPLAT_PLATFORM_ENDPOINT", "http://localhost:8003"))
     app_url: str = field(default_factory=lambda: _env("AIPLAT_APP_ENDPOINT", "http://localhost:8004"))
     management_url: str = field(default_factory=lambda: _env("AIPLAT_MANAGEMENT_ENDPOINT", "http://localhost:8000"))
@@ -83,14 +84,11 @@ async def _wait_run_completed(*, store: Any, run_id: str, timeout_s: float, poll
 
 
 async def run_smoke_e2e(*, payload: Dict[str, Any], execution_store: Any = None) -> Dict[str, Any]:
-    """
-    Execute a full-chain smoke and cleanup immediately.
+    """Execute a full-chain smoke and cleanup immediately.
 
-    payload:
-      - actor_id (default: admin)
-      - tenant_id (default: ops_smoke)
-      - agent_model (default: deepseek-reasoner when deepseek provider, else unchanged)
-      - mode: "full" | "minimal" (reserved)
+    Args:
+        payload: 载荷 dict。
+        execution_store: execution_store 参数。
     """
     cfg = SmokeConfig()
     actor_id = str(payload.get("actor_id") or "admin")

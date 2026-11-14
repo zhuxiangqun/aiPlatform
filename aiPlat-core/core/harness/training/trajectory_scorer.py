@@ -60,6 +60,11 @@ class TrajectoryScorer:
 
     def __init__(self, *, seed: int = 42):
 
+        """初始化。
+
+        Args:
+            seed: seed 参数。
+        """
         self._seed = seed
 
         self._seen_hashes: set = set()  # 去重用
@@ -72,7 +77,11 @@ class TrajectoryScorer:
 
     async def score_batch(self, run_ids: List[str]) -> Dict[str, float]:
 
-        """批量评分 — 一次 DB 往返完成所有维度的计算。"""
+        """批量评分 — 一次 DB 往返完成所有维度的计算。
+
+        Args:
+            run_ids: run_ids 参数。
+        """
 
         if not run_ids:
 
@@ -230,12 +239,10 @@ class TrajectoryScorer:
 
         """检查轨迹是否适合学生模型学习（可模仿性过滤）。
 
-
-
-        用学生模型预测前 N 步的 Action，与教师轨迹对比。
-
-        如果前 max_steps 步中有 >= 2 步不一致 → 该轨迹对学生太难，丢弃。
-
+        Args:
+            run_id: 运行 ID。
+            student_model: student_model 参数。
+            max_steps: max_steps 参数。
         """
 
         try:

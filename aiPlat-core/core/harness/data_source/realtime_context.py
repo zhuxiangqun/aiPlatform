@@ -21,26 +21,9 @@ logger = logging.getLogger("aiplat.realtime_context")
 def fetch_realtime_context(entity_name: str, domain_id: str) -> Optional[dict]:
     """Fetch real-time operational data from external DataSource APIs.
 
-    Config format (``~/.aiplat/datasources/equipment-realtime.yaml``)::
-
-        name: equipment-realtime
-        type: api
-        connection:
-          base_url: "http://mes.internal/api/v1"
-          endpoint: "/equipment/{entity}/status"
-          method: GET
-          auth:
-            type: bearer
-            token_env: MES_API_TOKEN
-        mapping:
-          run_context:
-            situation_template: "{status_desc}: {value}{unit}"
-            priority_path: "alert_level"
-            priority_mapping:
-              critical: "critical"
-              warning: "elevated"
-              normal: "normal"
-            constraints_path: "available_resources"
+    Args:
+        entity_name: entity_name 参数。
+        domain_id: domain 标识。
     """
     try:
         from core.harness.ontology_engine.data_source import DataSourceRegistry, DataSourceConfig

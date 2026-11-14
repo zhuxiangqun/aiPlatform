@@ -10,15 +10,11 @@ from ._base import _json_dumps, _json_loads
 class MetricsMixin:
     """Extracted from ExecutionStore."""
     async def exec_backend_metrics_summary(self, *, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
-        """
-        Aggregate per-exec-backend metrics using run_events within a time window.
-        Metrics:
-          - total_runs
-          - done_runs
-          - ok_runs
-          - failed_runs
-          - policy_denied_count (best-effort: any *_end event with payload.status == policy_denied)
-          - avg_latency_ms (run_end.created_at - run_start.created_at)
+        """Aggregate per-exec-backend metrics using run_events within a time window.
+
+        Args:
+            window_hours: window_hours 参数。
+            limit: 返回条数上限。
         """
         await self.init()
         import time
@@ -142,9 +138,13 @@ class MetricsMixin:
         run_id: str,
         ttl_seconds: int = 300,
     ) -> bool:
-        """
-        Best-effort lock to ensure only one active run per (tenant, session).
-        Returns True if acquired (or renewed), False if held by another run.
+        """Best-effort lock to ensure only one active run per (tenant, session).
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            run_id: 运行 ID。
+            ttl_seconds: ttl_seconds 参数。
         """
         await self.init()
         db_path = self._config.db_path
@@ -185,6 +185,13 @@ class MetricsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def release_session_lock(self, *, tenant_id: Optional[str], session_id: str, run_id: str) -> None:
+        """release_session_lock。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
         t = str(tenant_id or "")
@@ -203,7 +210,11 @@ class MetricsMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def release_session_locks_for_run(self, *, run_id: str) -> int:
-        """Drop any session_locks held by ``run_id`` (orphan / timeout recovery)."""
+        """Drop any session_locks held by ``run_id`` (orphan / timeout recovery).
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         rid = str(run_id or "").strip()
         if not rid:
@@ -237,7 +248,11 @@ class MetricsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def has_active_session_lock_for_run(self, *, run_id: str) -> bool:
-        """True if a non-expired session_lock row still holds ``run_id``."""
+        """True if a non-expired session_lock row still holds ``run_id``.
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         rid = str(run_id or "").strip()
         if not rid:
@@ -262,8 +277,8 @@ class MetricsMixin:
     async def has_any_session_lock_for_run(self, *, run_id: str) -> bool:
         """True if any session_lock row (expired or not) is held by ``run_id``.
 
-        Used by orphan_watchdog so agent/stream runs that never acquire a lock
-        are not falsely marked ``lock_expired_stale``.
+        Args:
+            run_id: 运行 ID。
         """
         await self.init()
         rid = str(run_id or "").strip()
@@ -295,6 +310,18 @@ class MetricsMixin:
         payload: Optional[Dict[str, Any]],
         queue_mode: Optional[str] = None,
     ) -> None:
+        """enqueue_session_run。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            run_id: 运行 ID。
+            kind: kind 参数。
+            target_id: target 标识。
+            user_id: 用户 ID。
+            payload: 载荷 dict。
+            queue_mode: queue_mode 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         t = str(tenant_id or "")
@@ -337,7 +364,12 @@ class MetricsMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def dequeue_session_run(self, *, tenant_id: Optional[str], session_id: str) -> Optional[Dict[str, Any]]:
-        """Pop the oldest queued item for session; mark it as dequeued."""
+        """Pop the oldest queued item for session; mark it as dequeued.
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+        """
         await self.init()
         db_path = self._config.db_path
         t = str(tenant_id or "")
@@ -378,9 +410,10 @@ class MetricsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_run_summary(self, *, run_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Best-effort unified run view across agent/skill/tool executions.
-        Assumption: execution_id == run_id (post v2).
+        """Best-effort unified run view across agent/skill/tool executions.
+
+        Args:
+            run_id: 运行 ID。
         """
         await self.init()
         db_path = self._config.db_path

@@ -10,6 +10,13 @@ from ._base import _json_dumps, _json_loads
 class TenantMixin:
     """Extracted from ExecutionStore."""
     async def upsert_tenant(self, *, tenant_id: str, name: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """upsert_tenant。
+
+        Args:
+            tenant_id: 租户 ID。
+            name: name 参数。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -47,6 +54,12 @@ class TenantMixin:
         }
 
     async def list_tenants(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 tenants。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

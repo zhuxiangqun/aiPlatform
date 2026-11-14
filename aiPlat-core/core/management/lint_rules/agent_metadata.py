@@ -18,6 +18,11 @@ class AgentFrontmatterCompleteness(LintRule):
     RECOMMENDED = ["model", "status", "display_name", "description", "category"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         issues: List[LintIssue] = []
         meta = self._get_metadata(skill)
 
@@ -55,6 +60,11 @@ class AgentToolBinding(LintRule):
     scope = ["agent"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_metadata(skill)
         skills = meta.get("skills") if isinstance(meta, dict) else None
         tools = meta.get("tools") if isinstance(meta, dict) else None
@@ -87,6 +97,11 @@ class AgentSystemPromptCheck(LintRule):
     scope = ["agent"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_metadata(skill)
         prompt = meta.get("system_prompt") if isinstance(meta, dict) else None
         if not prompt:

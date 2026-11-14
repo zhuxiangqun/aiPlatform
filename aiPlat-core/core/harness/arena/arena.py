@@ -30,15 +30,33 @@ class EloScorer:
     """
 
     def __init__(self, initial_rating: float = 1500.0, k_base: float = 32.0):
+        """初始化。
+
+        Args:
+            initial_rating: initial_rating 参数。
+            k_base: k_base 参数。
+        """
         self._ratings: Dict[str, float] = {}
         self._matches: Dict[str, int] = {}  # contender → match count
         self._initial = initial_rating
         self._k_base = k_base
 
     def get_rating(self, name: str) -> float:
+        """获取 rating。
+
+        Args:
+            name: name 参数。
+        """
         return self._ratings.get(name, self._initial)
 
     def record_match(self, winner: str, loser: str, *, draw: bool = False) -> tuple:
+        """record_match。
+
+        Args:
+            winner: winner 参数。
+            loser: loser 参数。
+            draw: draw 参数。
+        """
         wa = self._ratings.setdefault(winner, self._initial)
         wb = self._ratings.setdefault(loser, self._initial)
 
@@ -65,6 +83,8 @@ class EloScorer:
         return (new_wa, new_wb)
 
     def leaderboard(self) -> List[Dict[str, Any]]:
+        """leaderboard。
+        """
         ranked = sorted(self._ratings.items(), key=lambda x: x[1], reverse=True)
         return [
             {"name": name, "rating": round(rating, 1), "matches": self._matches.get(name, 0)}
@@ -87,6 +107,7 @@ class EloScorer:
 
 @dataclass
 class ChampionResult:
+    """ChampionResult。"""
     name: str
     rating: float
     win_rate: float
@@ -111,6 +132,13 @@ class ChampionPipeline:
         win_rate_threshold: float = 0.60,
         min_matches: int = 5,
     ):
+        """初始化。
+
+        Args:
+            rating_threshold: rating_threshold 参数。
+            win_rate_threshold: win_rate_threshold 参数。
+            min_matches: min_matches 参数。
+        """
         self.rating_threshold = rating_threshold
         self.win_rate_threshold = win_rate_threshold
         self.min_matches = min_matches
@@ -119,8 +147,12 @@ class ChampionPipeline:
     def evaluate(
         self, name: str, scorer: EloScorer, match_results: List[Dict[str, Any]]
     ) -> ChampionResult:
-        """
-        Evaluate whether a contender should be promoted to champion.
+        """Evaluate whether a contender should be promoted to champion.
+
+        Args:
+            name: name 参数。
+            scorer: scorer 参数。
+            match_results: match_results 参数。
         """
         rating = scorer.get_rating(name)
         matches = scorer._matches.get(name, 0)
@@ -150,9 +182,16 @@ class ChampionPipeline:
 
     @property
     def champions(self) -> Set[str]:
+        """champions。
+        """
         return self._champions
 
     def is_champion(self, name: str) -> bool:
+        """is_champion。
+
+        Args:
+            name: name 参数。
+        """
         return name in self._champions
 
 
@@ -162,6 +201,7 @@ class ChampionPipeline:
 
 @dataclass
 class ArenaMatch:
+    """ArenaMatch。"""
     contender_a: str
     contender_b: str
     winner: Optional[str] = None
@@ -173,6 +213,7 @@ class ArenaMatch:
 
 @dataclass
 class ArenaResult:
+    """ArenaResult。"""
     matches: List[ArenaMatch] = field(default_factory=list)
     leaderboard: List[Dict[str, Any]] = field(default_factory=list)
     promotions: List[ChampionResult] = field(default_factory=list)
@@ -195,16 +236,22 @@ class DarwinArena:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._scorer = EloScorer()
         self._pipeline = ChampionPipeline()
         self._history: List[ArenaMatch] = []
 
     @property
     def scorer(self) -> EloScorer:
+        """scorer。
+        """
         return self._scorer
 
     @property
     def pipeline(self) -> ChampionPipeline:
+        """pipeline。
+        """
         return self._pipeline
 
     async def round_robin(
@@ -273,9 +320,16 @@ class DarwinArena:
         return result
 
     def leaderboard(self) -> List[Dict[str, Any]]:
+        """leaderboard。
+        """
         return self._scorer.leaderboard()
 
     def history(self, limit: int = 50) -> List[ArenaMatch]:
+        """history。
+
+        Args:
+            limit: 返回条数上限。
+        """
         return self._history[-limit:]
 
     def to_persist_state(self) -> Dict[str, Any]:
@@ -295,7 +349,11 @@ class DarwinArena:
         }
 
     def from_persist_state(self, state: Dict[str, Any]) -> None:
-        """Restore arena state from persisted data."""
+        """Restore arena state from persisted data.
+
+        Args:
+            state: state 参数。
+        """
         if not state:
             return
         for entry in state.get("leaderboard", []):

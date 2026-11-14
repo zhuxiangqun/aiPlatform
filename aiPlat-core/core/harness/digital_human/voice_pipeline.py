@@ -328,7 +328,11 @@ async def _get_whisper():
 
 async def transcribe(audio_bytes: bytes) -> str:
 
-    """Convert audio bytes to text using Whisper via InfraAudioAdapter."""
+    """Convert audio bytes to text using Whisper via InfraAudioAdapter.
+
+    Args:
+        audio_bytes: audio_bytes 参数。
+    """
 
     whisper = await _get_whisper()
 
@@ -410,13 +414,12 @@ async def generate_answer(
 ) -> Tuple[str, bytes]:
     """Platform consultant (text) with live status brief; optional TTS.
 
-    Prefer workspace agent ``platform_consultant``, fall back to ``materials_chat``.
-    Injects a deterministic disk-scanned brief. TTS off by default
-    (``AIPLAT_DIGITAL_HUMAN_TTS=true`` to enable).
-
-    page_context: str (route) or dict {route, label, group, groupLabel}
-    tenant_id: scopes personal notes (G9); sanitized to safe id
-    Returns: (answer_text, tts_audio_bytes)
+    Args:
+        text: text 参数。
+        page_context: page_context 参数。
+        session_id: 会话 ID。
+        page_data: page_data 参数。
+        tenant_id: 租户 ID。
     """
 
     if not text.strip():
@@ -715,28 +718,9 @@ async def voice_chat_handler(websocket, session_id: str = "digital_human"):
 
     """WebSocket handler: receive audio chunks → return { text, audio_base64 }.
 
-
-
-    Protocol (JSON over WebSocket):
-
-      Client sends:
-
-        {"type": "audio", "data": "<base64 audio chunk>"}
-
-        {"type": "text", "data": "hello"}
-
-        {"type": "end"}  — signals end of audio stream
-
-
-
-      Server sends:
-
-        {"type": "text", "data": "transcribed text"}
-
-        {"type": "answer", "text": "answer", "audio": "<base64 wav>", "format": "wav"}
-
-        {"type": "error", "data": "..."}
-
+    Args:
+        websocket: websocket 参数。
+        session_id: 会话 ID。
     """
 
     import base64

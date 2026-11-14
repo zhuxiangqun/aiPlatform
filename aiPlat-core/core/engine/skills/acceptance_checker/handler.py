@@ -32,14 +32,10 @@ logger = logging.getLogger("acceptance_checker")
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
-    u"""Run acceptance KPI verification + action contract validation.
+    """Run acceptance KPI verification + action contract validation.
 
-
-
-    Input: { domain_id, session_id, acceptance_data: { golden_pass_rate, avg_response_time,
-
-             coverage_rate, freshness_score, signoff_requested } }
-
+    Args:
+        params: params 参数。
     """
 
     domain_id = params.get("domain_id", "")

@@ -14,6 +14,12 @@ from typing import Any, Dict, List, Optional
 
 
 def default_run_state(*, run_id: str, task: str = "") -> Dict[str, Any]:
+    """default_run_state。
+
+    Args:
+        run_id: 运行 ID。
+        task: task 参数。
+    """
     return {
         "schema_version": "0.1",
         "run_id": str(run_id),
@@ -28,6 +34,12 @@ def default_run_state(*, run_id: str, task: str = "") -> Dict[str, Any]:
 
 
 def normalize_run_state(obj: Any, *, run_id: str) -> Dict[str, Any]:
+    """normalize_run_state。
+
+    Args:
+        obj: obj 参数。
+        run_id: 运行 ID。
+    """
     if not isinstance(obj, dict):
         return default_run_state(run_id=run_id)
     out = default_run_state(run_id=run_id)
@@ -80,8 +92,10 @@ def _todo_status_rank(st: str) -> int:
 
 
 def pick_next_todo(todo: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """
-    Pick the highest-priority unfinished todo.
+    """Pick the highest-priority unfinished todo.
+
+    Args:
+        todo: todo 参数。
     """
     items = [t for t in (todo or []) if isinstance(t, dict)]
     unfinished = [t for t in items if str(t.get("status") or "").lower() not in {"done", "completed"}]
@@ -98,8 +112,10 @@ def pick_next_todo(todo: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
 
 
 def auto_next_step_from_todo(cur: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    If next_step is empty, fill it from top pending todo.
+    """If next_step is empty, fill it from top pending todo.
+
+    Args:
+        cur: cur 参数。
     """
     rs = normalize_run_state(cur, run_id=str(cur.get("run_id") or ""))
     if rs.get("locked") is True:
@@ -114,6 +130,14 @@ def auto_next_step_from_todo(cur: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def set_todo_status(cur: Dict[str, Any], *, todo_id: str, status: str, source: str = "auto") -> Dict[str, Any]:
+    """set_todo_status。
+
+    Args:
+        cur: cur 参数。
+        todo_id: todo 标识。
+        status: status 参数。
+        source: source 参数。
+    """
     rs = normalize_run_state(cur, run_id=str(cur.get("run_id") or ""))
     if rs.get("locked") is True:
         return rs
@@ -150,9 +174,12 @@ def merge_from_evaluation(
     evaluation_report: Dict[str, Any],
     source: str = "evaluator",
 ) -> Dict[str, Any]:
-    """
-    Merge evaluator issues into run_state.open_issues and set next_step.
-    Does NOT mutate input.
+    """Merge evaluator issues into run_state.open_issues and set next_step.
+
+    Args:
+        current: current 参数。
+        evaluation_report: evaluation_report 参数。
+        source: source 参数。
     """
     cur = normalize_run_state(current, run_id=str(current.get("run_id") or ""))
     if cur.get("locked") is True:
@@ -255,10 +282,13 @@ def restate_next_step(
     last_error: Optional[str] = None,
     source: str = "loop",
 ) -> Dict[str, Any]:
-    """
-    Lightweight periodic restatement (no LLM):
-    - If approval/policy denied, steer next_step accordingly.
-    - Otherwise keep existing next_step.
+    """Lightweight periodic restatement (no LLM):。
+
+    Args:
+        current: current 参数。
+        step_count: step_count 参数。
+        last_error: last_error 参数。
+        source: source 参数。
     """
     cur = normalize_run_state(current, run_id=str(current.get("run_id") or ""))
     if cur.get("locked") is True:
@@ -279,8 +309,10 @@ def restate_next_step(
 
 
 def format_run_state_for_prompt(run_state: Dict[str, Any]) -> str:
-    """
-    A compact prompt block placed at the END of the prompt (high attention region).
+    """A compact prompt block placed at the END of the prompt (high attention region).
+
+    Args:
+        run_state: run_state 参数。
     """
     rs = run_state if isinstance(run_state, dict) else {}
     locked = bool(rs.get("locked"))

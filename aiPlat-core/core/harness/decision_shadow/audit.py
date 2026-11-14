@@ -28,6 +28,11 @@ AUDIT_FIELD_WHITELIST: Set[str] = {
 
 
 def query_hash(text: str) -> str:
+    """query_hash。
+
+    Args:
+        text: text 参数。
+    """
     return hashlib.sha256((text or "").encode("utf-8", errors="replace")).hexdigest()[
         :32
     ]
@@ -38,7 +43,12 @@ def redact_payload(
     *,
     store_raw_text: bool = False,
 ) -> Dict[str, Any]:
-    """Return a dict limited to the audit whitelist (+ optional raw)."""
+    """Return a dict limited to the audit whitelist (+ optional raw).
+
+    Args:
+        payload: 载荷 dict。
+        store_raw_text: store_raw_text 参数。
+    """
     out: Dict[str, Any] = {}
     for k in AUDIT_FIELD_WHITELIST:
         if k in payload:

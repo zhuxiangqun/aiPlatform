@@ -69,6 +69,12 @@ def _extract_tags(texts: List[str], limit: int = 8) -> List[str]:
 
 
 def classify_document(elements: List[Dict[str, Any]], kind: str) -> Dict[str, Any]:
+    """classify_document。
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+    """
     texts: List[str] = []
     table_texts: List[str] = []
     has_date = False
@@ -115,6 +121,11 @@ def classify_document(elements: List[Dict[str, Any]], kind: str) -> Dict[str, An
 
 
 def kind_category(kind: str) -> str:
+    """kind_category。
+
+    Args:
+        kind: kind 参数。
+    """
     mapping = {
         "pdf": "pdf", "video": "video",
         "word": "word", "docx": "word", "doc": "word",

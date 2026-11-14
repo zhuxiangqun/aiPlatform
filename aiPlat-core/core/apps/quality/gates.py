@@ -32,6 +32,12 @@ class QualityGate:
         thresholds: Optional[Dict[str, float]] = None,
         enabled_checks: Optional[List[str]] = None
     ):
+        """初始化。
+
+        Args:
+            thresholds: thresholds 参数。
+            enabled_checks: enabled_checks 参数。
+        """
         self._thresholds = {**self.DEFAULT_THRESHOLDS, **(thresholds or {})}
         self._enabled_checks = enabled_checks or [
             "syntax",
@@ -41,7 +47,11 @@ class QualityGate:
         ]
 
     async def check(self, context: "ExecutionContext") -> QualityGateResult:
-        """Execute quality gate checks"""
+        """Execute quality gate checks。
+
+        Args:
+            context: context 参数。
+        """
         checks: List[CheckResult] = []
         total_score = 100.0
         failed_count = 0
@@ -263,6 +273,12 @@ class ExecutionContext:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def get(self, key: str, default: Any = None) -> Any:
+        """get。
+
+        Args:
+            key: key 参数。
+            default: default 参数。
+        """
         return getattr(self, key, default) or default
 
 
@@ -270,7 +286,12 @@ def create_quality_gate(
     thresholds: Optional[Dict[str, float]] = None,
     enabled_checks: Optional[List[str]] = None
 ) -> QualityGate:
-    """Create a quality gate instance"""
+    """Create a quality gate instance。
+
+    Args:
+        thresholds: thresholds 参数。
+        enabled_checks: enabled_checks 参数。
+    """
     return QualityGate(thresholds=thresholds, enabled_checks=enabled_checks)
 
 

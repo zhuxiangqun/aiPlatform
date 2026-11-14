@@ -19,6 +19,7 @@ from typing import Dict, List
 
 @dataclass
 class ConfigIssue:
+    """ConfigIssue。"""
     server: str
     file: str
     severity: str  # "error" | "warn"
@@ -30,7 +31,11 @@ VALID_TRANSPORTS = {"sse", "stdio", "http", "streamable_http"}
 
 
 def validate_mcp_server(server_yaml_path: Path) -> List[ConfigIssue]:
-    """Validate a single server.yaml file. Returns list of issues."""
+    """Validate a single server.yaml file. Returns list of issues.
+
+    Args:
+        server_yaml_path: server_yaml_path 参数。
+    """
     issues: List[ConfigIssue] = []
     server_name = server_yaml_path.parent.name if server_yaml_path.parent.name else "unknown"
     file_path = str(server_yaml_path)
@@ -113,7 +118,11 @@ def validate_mcp_server(server_yaml_path: Path) -> List[ConfigIssue]:
 
 
 def validate_all_mcp_servers(mcps_dir: str) -> tuple:
-    """Validate all server.yaml files recursively. Returns (errors, warnings)."""
+    """Validate all server.yaml files recursively. Returns (errors, warnings).
+
+    Args:
+        mcps_dir: mcps_dir 参数。
+    """
     errors: List[ConfigIssue] = []
     warnings: List[ConfigIssue] = []
     base = Path(mcps_dir)

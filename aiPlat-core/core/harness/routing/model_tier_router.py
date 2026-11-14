@@ -27,6 +27,7 @@ logger = logging.getLogger("aiplat.model_tier_router")
 
 @dataclass
 class TierConfig:
+    """TierConfig。"""
     label: str
     complexity_range: Tuple[float, float]
     default_model: str
@@ -38,6 +39,11 @@ class ModelTierRouter:
     """T1-T5 tiered model router. Complexity → tier → cheapest capable model."""
 
     def __init__(self, config_path: str = None):
+        """初始化。
+
+        Args:
+            config_path: config_path 参数。
+        """
         self._tiers: Dict[str, TierConfig] = {}
         self._health_cache: Dict[str, Tuple[bool, float]] = {}
         self._health_cache_ttl = 30  # seconds
@@ -180,6 +186,14 @@ class ModelTierRouter:
         confidence: float = 0.8,
         profile: Optional["ControlProfile"] = None,
     ) -> Optional[str]:
+        """route_with_profile。
+
+        Args:
+            purpose: purpose 参数。
+            level: level 参数。
+            confidence: confidence 参数。
+            profile: 评测 profile。
+        """
         if profile is not None and profile.model_tier not in ("auto", "", "by_complexity"):
             tier_id = profile.model_tier
             config = self._tiers.get(tier_id)
@@ -195,7 +209,11 @@ class ModelTierRouter:
         return self.route(purpose, level, confidence)
 
     def get_max_tools(self, tier_id: str) -> int:
-        """Return max tools limit for a tier. Default 0 (unlimited)."""
+        """Return max tools limit for a tier. Default 0 (unlimited).
+
+        Args:
+            tier_id: tier 标识。
+        """
         config = self._tiers.get(tier_id)
         if config:
             return getattr(config, 'max_tools', 0) or 0
@@ -208,6 +226,8 @@ _router: Optional[ModelTierRouter] = None
 
 
 def get_tier_router() -> ModelTierRouter:
+    """获取 tier_router。
+    """
     global _router
     if _router is None:
         _router = ModelTierRouter()

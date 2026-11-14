@@ -31,6 +31,7 @@ BUILD_TIMEOUT = 300
 
 @dataclass
 class PushResult:
+    """PushResult。"""
     ok: bool
     remote: str = ""
     branch: str = ""
@@ -40,6 +41,7 @@ class PushResult:
 
 @dataclass
 class BuildResult:
+    """BuildResult。"""
     ok: bool
     image_tag: str = ""
     error: str = ""
@@ -56,6 +58,12 @@ class GitPusher:
         remote: str = DEFAULT_REMOTE,
         branch: str = DEFAULT_BRANCH,
     ) -> PushResult:
+        """push。
+
+        Args:
+            remote: remote 参数。
+            branch: branch 参数。
+        """
         try:
             sha = _subprocess.check_output(
                 [_sys.executable, "-c", "import subprocess; print(subprocess.check_output(['git','rev-parse','HEAD']).decode().strip())"],

@@ -17,11 +17,16 @@ from typing import Any, Dict, List, Optional
 
 
 class CozeAdapter:
+    """CozeAdapter。"""
     NAME = "coze"
     DESCRIPTION = "Coze/扣子 (Bot + Plugin + Workflow)"
 
     def detect(self, root_dir: Path) -> bool:
-        """Detect Coze exports: bot_manifest.json, plugin_manifest.json, workflow.json"""
+        """Detect Coze exports: bot_manifest.json, plugin_manifest.json, workflow.json。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         if (root_dir / "bot_manifest.json").is_file():
             return True
         if (root_dir / "plugin_manifest.json").is_file():
@@ -38,6 +43,12 @@ class CozeAdapter:
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         converted: List[str] = []
         skipped: List[str] = []
 

@@ -38,8 +38,12 @@ async def summarize_document(
 ) -> Dict[str, Any]:
     """Summarize a document by selecting top sentences from kb_elements.
 
-    Rule-based MVP with optional LLM refinement.
-    Always provides citations (page_idx + page_image asset_path).
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        doc_id: doc 标识。
+        profile: 评测 profile。
+        max_points: max_points 参数。
     """
     if not tenant_id:
         tenant_id = "default"

@@ -37,6 +37,11 @@ class GGUFExporter:
     """Convert safetensors model to GGUF and register with Ollama."""
 
     def __init__(self, llma_cpp_dir: str = ""):
+        """初始化。
+
+        Args:
+            llma_cpp_dir: llma_cpp_dir 参数。
+        """
         self._llama_cpp = self._resolve_llama_cpp(llma_cpp_dir)
 
     @staticmethod
@@ -79,8 +84,11 @@ class GGUFExporter:
     def fuse_adapters(self, base_model_dir: str, adapter_path: str,
                       output_dir: str) -> Optional[str]:
         """Merge LoRA adapter into base model via mlx_lm.fuse.
-        
-        Returns output directory path or None on failure.
+
+        Args:
+            base_model_dir: base_model_dir 参数。
+            adapter_path: adapter_path 参数。
+            output_dir: output_dir 参数。
         """
         try:
             import mlx_lm
@@ -107,10 +115,12 @@ class GGUFExporter:
     def convert_to_gguf(self, safetensors_dir: str, output_path: str,
                         model_family: str = "qwen2", quantize: str = "Q4_K_M") -> bool:
         """Convert safetensors to GGUF with quantization.
-        
-        Steps:
-          1. convert_hf_to_gguf.py → FP16 .gguf
-          2. llama-quantize → {quantize} .gguf
+
+        Args:
+            safetensors_dir: safetensors_dir 参数。
+            output_path: output_path 参数。
+            model_family: model_family 参数。
+            quantize: quantize 参数。
         """
         if not self.available:
             _logger.error(f"llama.cpp not available: {self.get_missing_tools()}")
@@ -154,7 +164,13 @@ class GGUFExporter:
 
     def register_ollama(self, gguf_path: str, model_name: str,
                         model_family: str = "qwen2.5") -> bool:
-        """Create Ollama Modelfile and register model via `ollama create`."""
+        """Create Ollama Modelfile and register model via `ollama create`.
+
+        Args:
+            gguf_path: gguf_path 参数。
+            model_name: model_name 参数。
+            model_family: model_family 参数。
+        """
         template = _MODEL_TEMPLATES.get(model_family, QWEN_CHATML_TEMPLATE)
         modelfile_content = f"FROM {gguf_path}\n\n" + template
 

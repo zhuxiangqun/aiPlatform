@@ -29,7 +29,11 @@ _load_doc_kinds_fn: Optional[KBLoadDocKindsCallback] = None
 
 
 def get_tenant_storage(tenant_id: str) -> str:
-    """Get tenant-specific storage path under AIPLAT_HOME."""
+    """Get tenant-specific storage path under AIPLAT_HOME.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     base = get_aiplat_home()
     return os.path.join(base, "data", "kb", "tenants", tenant_id)
 
@@ -37,11 +41,18 @@ def get_tenant_storage(tenant_id: str) -> str:
 # ── Ingest ──────────────────────────────────────────────────────────────
 
 def set_knowledge_ingest_fn(fn: KBIngestCallback) -> None:
+    """set_knowledge_ingest_fn。
+
+    Args:
+        fn: fn 参数。
+    """
     global _ingest_fn
     _ingest_fn = fn
 
 
 def get_ingest_fn() -> KBIngestCallback:
+    """获取 ingest_fn。
+    """
     if _ingest_fn is None:
         raise RuntimeError("KB ingest not initialized. Ensure platform startup calls set_knowledge_ingest_fn()")
     return _ingest_fn
@@ -50,11 +61,18 @@ def get_ingest_fn() -> KBIngestCallback:
 # ── Query ───────────────────────────────────────────────────────────────
 
 def set_kb_query_fn(fn: KBQueryCallback) -> None:
+    """set_kb_query_fn。
+
+    Args:
+        fn: fn 参数。
+    """
     global _query_fn
     _query_fn = fn
 
 
 def get_kb_query_fn() -> KBQueryCallback:
+    """获取 kb_query_fn。
+    """
     if _query_fn is None:
         raise RuntimeError("KB query not initialized. Ensure platform startup calls set_kb_query_fn()")
     return _query_fn
@@ -63,11 +81,18 @@ def get_kb_query_fn() -> KBQueryCallback:
 # ── Enqueue ingest ──────────────────────────────────────────────────────
 
 def set_kb_enqueue_ingest_fn(fn: KBEnqueueIngestCallback) -> None:
+    """set_kb_enqueue_ingest_fn。
+
+    Args:
+        fn: fn 参数。
+    """
     global _enqueue_ingest_fn
     _enqueue_ingest_fn = fn
 
 
 def get_kb_enqueue_ingest_fn() -> Optional[KBEnqueueIngestCallback]:
+    """获取 kb_enqueue_ingest_fn。
+    """
     if _enqueue_ingest_fn is None:
         raise RuntimeError("KB enqueue_ingest not initialized.")
     return _enqueue_ingest_fn
@@ -76,11 +101,18 @@ def get_kb_enqueue_ingest_fn() -> Optional[KBEnqueueIngestCallback]:
 # ── Load doc kinds ──────────────────────────────────────────────────────
 
 def set_kb_load_doc_kinds_fn(fn: KBLoadDocKindsCallback) -> None:
+    """set_kb_load_doc_kinds_fn。
+
+    Args:
+        fn: fn 参数。
+    """
     global _load_doc_kinds_fn
     _load_doc_kinds_fn = fn
 
 
 def get_kb_load_doc_kinds_fn() -> KBLoadDocKindsCallback:
+    """获取 kb_load_doc_kinds_fn。
+    """
     if _load_doc_kinds_fn is None:
         raise RuntimeError("KB load_doc_kinds not initialized.")
     return _load_doc_kinds_fn

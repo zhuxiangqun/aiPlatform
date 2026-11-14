@@ -129,6 +129,11 @@ def _entry_anchor_snippet(anchors: List[Any], entry_file: str) -> str:
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     plan = _artifact(params, "security_plan")
     trace = _artifact(params, "security_trace")
     paths = plan.get("top_hot_paths") or []

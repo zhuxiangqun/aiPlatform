@@ -11,6 +11,11 @@ from ._base import _json_dumps, _json_loads
 class JobOpsMixin:
     """Extracted from ExecutionStore."""
     async def create_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 job。
+
+        Args:
+            job: job 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -57,6 +62,11 @@ class JobOpsMixin:
         return self._job_row_to_obj(rec)
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """获取 job。
+
+        Args:
+            job_id: job 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -75,6 +85,13 @@ class JobOpsMixin:
         return self._job_row_to_obj(row) if row else None
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
+        """列出 jobs。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            enabled: 是否启用。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -112,6 +129,12 @@ class JobOpsMixin:
         }
 
     async def update_job(self, job_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """更新 job。
+
+        Args:
+            job_id: job 标识。
+            patch: patch 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -169,6 +192,11 @@ class JobOpsMixin:
         return self._job_row_to_obj(row) if row else None
 
     async def delete_job(self, job_id: str) -> bool:
+        """删除 job。
+
+        Args:
+            job_id: job 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -184,7 +212,12 @@ class JobOpsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_due_jobs(self, *, now_ts: float, limit: int = 20) -> List[Dict[str, Any]]:
-        """List enabled jobs whose next_run_at <= now_ts."""
+        """List enabled jobs whose next_run_at <= now_ts.
+
+        Args:
+            now_ts: now_ts 参数。
+            limit: 返回条数上限。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -212,10 +245,12 @@ class JobOpsMixin:
         return [self._job_row_to_obj(r) for r in rows]
 
     async def acquire_job_lock(self, job_id: str, *, owner: str, ttl_seconds: float = 300.0) -> bool:
-        """
-        Leaderless lock:
-        - Acquire succeeds if lock is absent or expired.
-        - Lock auto-expires by lock_until (TTL).
+        """Leaderless lock:。
+
+        Args:
+            job_id: job 标识。
+            owner: owner 参数。
+            ttl_seconds: ttl_seconds 参数。
         """
         await self.init()
         db_path = self._config.db_path
@@ -242,7 +277,12 @@ class JobOpsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def release_job_lock(self, job_id: str, *, owner: str) -> None:
-        """Release lock if owned by `owner` (best-effort)."""
+        """Release lock if owned by `owner` (best-effort).
+
+        Args:
+            job_id: job 标识。
+            owner: owner 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -265,6 +305,11 @@ class JobOpsMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def create_job_run(self, run: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 job_run。
+
+        Args:
+            run: run 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -304,6 +349,12 @@ class JobOpsMixin:
         return self._job_run_row_to_obj(row)
 
     async def finish_job_run(self, run_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """finish_job_run。
+
+        Args:
+            run_id: 运行 ID。
+            patch: patch 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -346,6 +397,13 @@ class JobOpsMixin:
         return self._job_run_row_to_obj(row) if row else None
 
     async def list_job_runs(self, *, job_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 job_runs。
+
+        Args:
+            job_id: job 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -377,6 +435,11 @@ class JobOpsMixin:
         }
 
     async def get_job_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 job_run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 

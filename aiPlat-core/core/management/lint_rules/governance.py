@@ -6,11 +6,17 @@ from core.management.skill_linter_base import LintIssue, LintRule
 
 
 class PermissionsCheck(LintRule):
+    """PermissionsCheck。"""
     code = "missing_permissions"
     level = "error"
     category = "governance"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_meta(skill)
         executable = bool(meta.get("executable") is True) or str(meta.get("skill_kind") or "").lower() == "executable"
         perms = self._as_list(meta.get("permissions") or meta.get("permission"))
@@ -29,6 +35,7 @@ class PermissionsCheck(LintRule):
 
 
 class HighRiskConstraintsCheck(LintRule):
+    """HighRiskConstraintsCheck。"""
     code = "high_risk_missing_constraints"
     level = "warning"
     category = "governance"
@@ -36,6 +43,11 @@ class HighRiskConstraintsCheck(LintRule):
     _CONSTRAINT_MARKERS = ("批量", "删除", "覆盖", "不可逆", "生产", "回滚", "审批", "权限", "stable", "canary")
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_meta(skill)
         perms = self._as_list(meta.get("permissions") or meta.get("permission"))
         risk = self._risk_level(perms)
@@ -70,11 +82,17 @@ class HighRiskConstraintsCheck(LintRule):
 
 
 class RequiredQuestionsCheck(LintRule):
+    """RequiredQuestionsCheck。"""
     code = "missing_required_questions"
     level = "warning"
     category = "governance"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_meta(skill)
         perms = self._as_list(meta.get("permissions") or meta.get("permission"))
         risk = self._risk_level(perms)

@@ -12,10 +12,19 @@ class LLmGrader:
     """LLM-based trace grader"""
     
     def __init__(self, judge_client=None):
+        """初始化。
+
+        Args:
+            judge_client: judge_client 参数。
+        """
         self.judge_client = judge_client
     
     async def grade(self, trace: AgentTrace) -> TraceGrade:
-        """Grade a trace using LLM judge"""
+        """Grade a trace using LLM judge。
+
+        Args:
+            trace: trace 参数。
+        """
         if not self.judge_client:
             return self._heuristic_grade(trace)
         
@@ -69,7 +78,12 @@ class LLmGrader:
 
 
 async def grade_trace(trace: AgentTrace, grader: Optional[LLmGrader] = None) -> AgentTrace:
-    """Grade a trace and return updated trace"""
+    """Grade a trace and return updated trace。
+
+    Args:
+        trace: trace 参数。
+        grader: grader 参数。
+    """
     if grader is None:
         grader = LLmGrader()
     

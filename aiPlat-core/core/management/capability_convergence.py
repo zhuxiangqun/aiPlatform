@@ -50,7 +50,12 @@ def _normalize_path(p: str) -> str:
 
 
 def run_convergence_check(repo_root: Path = None, force_rebuild: bool = False) -> Tuple[bool, List[Dict[str, Any]]]:
-    """Run all convergence checks. Returns (all_pass, violation_details)."""
+    """Run all convergence checks. Returns (all_pass, violation_details).
+
+    Args:
+        repo_root: repo_root 参数。
+        force_rebuild: force_rebuild 参数。
+    """
     if repo_root is None:
         repo_root = _ROOT
 
@@ -287,7 +292,12 @@ def _is_reachable(
 
 
 def print_report(all_pass: bool, violations: List[Dict[str, Any]]) -> str:
-    """Generate a human-readable report."""
+    """Generate a human-readable report.
+
+    Args:
+        all_pass: all_pass 参数。
+        violations: violations 参数。
+    """
     buf = io.StringIO()
     buf.write("=" * 70 + "\n")
     buf.write("  Capability Convergence Report\n")

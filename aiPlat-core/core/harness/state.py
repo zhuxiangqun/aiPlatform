@@ -43,6 +43,11 @@ class AgentLifecycleState:
             self.updated_at = self.created_at
     
     def transition_to(self, new_status: AgentStateEnum) -> "AgentLifecycleState":
+        """transition_to。
+
+        Args:
+            new_status: new_status 参数。
+        """
         valid_transitions = {
             AgentStateEnum.CREATED: [AgentStateEnum.INITIALIZING, AgentStateEnum.TERMINATED],
             AgentStateEnum.INITIALIZING: [AgentStateEnum.READY, AgentStateEnum.ERROR, AgentStateEnum.TERMINATED],
@@ -67,6 +72,8 @@ class AgentLifecycleState:
         )
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "agent_id": self.agent_id,
             "status": self.status.value,

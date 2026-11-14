@@ -49,12 +49,10 @@ def _metadata_hash(metadata: Optional[Dict[str, Any]]) -> str:
 
 
 def skills_digest(skills: Any) -> str:
-    """
-    Compute a stable digest for the planned skill set.
+    """Compute a stable digest for the planned skill set.
 
-    Input: list[{"skill_id","name","version","kind",...}] (as produced by installer_plan)
-    We intentionally hash only a stable subset to prevent accidental drift:
-      skill_id, name, version, kind
+    Args:
+        skills: skills 参数。
     """
     if not isinstance(skills, list) or not skills:
         return ""
@@ -90,8 +88,21 @@ def canonical_plan_data(
     detected_subdir: Optional[str],
     planned_skills_digest: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Canonicalize parameters that MUST match between plan and install.
+    """Canonicalize parameters that MUST match between plan and install.
+
+    Args:
+        scope: scope 参数。
+        source_type: source_type 参数。
+        url: url 参数。
+        ref: ref 参数。
+        path: 路径。
+        skill_id: Skill ID。
+        subdir: subdir 参数。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        allow_overwrite: allow_overwrite 参数。
+        metadata: metadata 参数。
+        detected_subdir: detected_subdir 参数。
+        planned_skills_digest: planned_skills_digest 参数。
     """
     return {
         "scope": (scope or "workspace").strip().lower(),
@@ -111,8 +122,11 @@ def canonical_plan_data(
 
 
 def build_plan_token(*, data: Dict[str, Any], ttl_seconds: Optional[int] = None) -> Tuple[str, float]:
-    """
-    Returns: (plan_id, expires_at_epoch_seconds)
+    """Returns: (plan_id, expires_at_epoch_seconds)。
+
+    Args:
+        data: data 参数。
+        ttl_seconds: ttl_seconds 参数。
     """
     ttl = ttl_seconds
     if ttl is None:
@@ -127,9 +141,12 @@ def build_plan_token(*, data: Dict[str, Any], ttl_seconds: Optional[int] = None)
 
 
 def verify_plan_token(*, token: str, expected_data: Dict[str, Any], now: Optional[float] = None) -> Dict[str, Any]:
-    """
-    Verify token signature, expiry and data match.
-    Returns decoded payload on success; raises ValueError/RuntimeError on failure.
+    """Verify token signature, expiry and data match.
+
+    Args:
+        token: token 参数。
+        expected_data: expected_data 参数。
+        now: now 参数。
     """
     if not token or "." not in token:
         raise ValueError("invalid_plan_id")

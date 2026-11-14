@@ -16,6 +16,8 @@ from core.harness.utils.model_injection import best_model_for_purpose
 
 
 def llm_enabled() -> bool:
+    """llm_enabled。
+    """
     api_key = (get_llm_api_key("openai") or "").strip()
     model_name = _default_model_name()
     return bool(api_key and model_name)
@@ -33,7 +35,14 @@ async def chat_complete(
     temperature: float = 0.2,
     max_tokens: int = 900,
 ) -> Optional[str]:
-    """Call LLM via Harness syscall."""
+    """Call LLM via Harness syscall.
+
+    Args:
+        system_prompt: system_prompt 参数。
+        user_prompt: user_prompt 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+    """
     from core.harness.syscalls.llm import sys_llm_generate
     from core.harness.utils.model_injection import create_selected_adapter
 
@@ -60,6 +69,10 @@ async def chat_complete(
 
 
 def extract_json_block(text: str) -> Optional[Dict[str, Any]]:
-    """Extract JSON from LLM output via CoreFacade."""
+    """Extract JSON from LLM output via CoreFacade.
+
+    Args:
+        text: text 参数。
+    """
     from core.utils.json_utils import parse_json
     return parse_json(text)

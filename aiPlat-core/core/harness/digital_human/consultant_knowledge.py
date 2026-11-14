@@ -89,8 +89,8 @@ def _registry_path() -> Path:
 def load_constitution_card(*, max_chars: int = _MAX_CONSTITUTION_CHARS) -> str:
     """Short stable mental model; facts still come from the live brief.
 
-    mtime-aware (see consultant_reload) so editing consultant_constitution.md
-    takes effect without restarting gunicorn.
+    Args:
+        max_chars: max_chars 参数。
     """
     from core.harness.digital_human.consultant_reload import load_constitution_fresh
 
@@ -227,7 +227,11 @@ def _looks_page_field_question(question: str) -> bool:
 
 
 def page_data_has_glossary(page_data: Optional[str]) -> bool:
-    """Detect structured page glossary (e.g. Eval guideGlossary) in reported pageData."""
+    """Detect structured page glossary (e.g. Eval guideGlossary) in reported pageData.
+
+    Args:
+        page_data: page_data 参数。
+    """
     raw = page_data or ""
     if not raw:
         return False
@@ -331,7 +335,9 @@ def build_controlled_wiki_excerpts(
 ) -> str:
     """Allowlisted Wiki short excerpts for Layer B. Empty if disabled / no hit.
 
-    Does not use CRAG or ``semantic_injection``; filesystem title/keyword match only.
+    Args:
+        question: question 参数。
+        budget: budget 参数。
     """
     if budget <= 0:
         return ""
@@ -393,7 +399,15 @@ def build_on_demand_pack(
     page_has_glossary: bool = False,
     skip_wiki: bool = False,
 ) -> str:
-    """Keyword-selected CAPABILITIES / registry / optional controlled Wiki. Empty if not needed."""
+    """Keyword-selected CAPABILITIES / registry / optional controlled Wiki. Empty if not needed.
+
+    Args:
+        question: question 参数。
+        max_chars: max_chars 参数。
+        force: 是否强制。
+        page_has_glossary: page_has_glossary 参数。
+        skip_wiki: skip_wiki 参数。
+    """
     if not force and not _wants_concept_pack(question):
         return ""
     # Layer A wins: on-page glossary + field/term question → do not flood with B
@@ -487,7 +501,11 @@ _PLATFORM_QUESTION_MARKERS: Tuple[str, ...] = (
 
 
 def looks_external_generic_question(question: str) -> bool:
-    """True when the user asks industry/generic knowledge, not aiPlat inventory."""
+    """True when the user asks industry/generic knowledge, not aiPlat inventory.
+
+    Args:
+        question: question 参数。
+    """
     q = (question or "").strip().lower()
     if len(q) < 2:
         return False
@@ -497,6 +515,11 @@ def looks_external_generic_question(question: str) -> bool:
 
 
 def answer_cites_platform(answer: str) -> bool:
+    """answer_cites_platform。
+
+    Args:
+        answer: answer 参数。
+    """
     a = answer or ""
     return any(m in a for m in _PLATFORM_ANSWER_MARKERS)
 
@@ -509,7 +532,10 @@ def ensure_generic_disclaimer(
 ) -> str:
     """Prepend 通用说明 when a generic answer forgot the required label.
 
-    High precision: only external-topic questions; never inventory/page/platform how-to.
+    Args:
+        answer: answer 参数。
+        question: question 参数。
+        page_only: page_only 参数。
     """
     raw = (answer or "").strip()
     if not raw or page_only:
@@ -537,7 +563,10 @@ def ensure_unreported_page_field_note(
 ) -> str:
     """When user asks field/term meaning but page has no glossary/live audit facts.
 
-    Soft post-gate (prompt may already say it); does not invent field meanings.
+    Args:
+        answer: answer 参数。
+        question: question 参数。
+        page_data: page_data 参数。
     """
     raw = (answer or "").strip()
     if not raw:
@@ -559,7 +588,11 @@ def ensure_unreported_page_field_note(
 
 
 def clear_knowledge_caches(*, reset_reload: bool = True) -> None:
-    """Drop CAPABILITIES/brief caches; optionally reset AGENT.md mtime tracker."""
+    """Drop CAPABILITIES/brief caches; optionally reset AGENT.md mtime tracker.
+
+    Args:
+        reset_reload: reset_reload 参数。
+    """
     if reset_reload:
         try:
             from core.harness.digital_human.consultant_reload import clear_reload_cache

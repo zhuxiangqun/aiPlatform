@@ -18,17 +18,12 @@ async def sys_workflow_call(
     run_name: str = "",
     trace_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """
-    Trigger a workflow execution via the platform API.
+    """Trigger a workflow execution via the platform API.
 
-    Returns:
-        {
-            "success": bool,
-            "workflow_id": str,
-            "run_id": str | None,
-            "project_id": str | None,
-            "error": str | None,
-        }
+    Args:
+        workflow_id: workflow 标识。
+        run_name: run_name 参数。
+        trace_context: trace_context 参数。
     """
     platform_url = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
     url = f"{platform_url}/platform/workflows/{workflow_id}/execute"

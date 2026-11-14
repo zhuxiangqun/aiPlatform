@@ -1,18 +1,18 @@
 {
   "_comment": "Python docstring debt snapshot",
-  "_generated": "2026-11-14T02:21:26Z",
+  "_generated": "2026-11-14T02:28:23Z",
   "scanned_py": 1936,
-  "files_with_debt": 874,
-  "total_findings": 6114,
+  "files_with_debt": 590,
+  "total_findings": 4311,
   "by_rule": {
-    "public_doc": 3657,
-    "args_doc": 2264,
-    "module_doc": 183,
-    "why_comment": 10
+    "public_doc": 2560,
+    "args_doc": 1579,
+    "module_doc": 164,
+    "why_comment": 8
   },
   "by_repo": {
     "aiPlat-app": 135,
-    "aiPlat-core": 2194,
+    "aiPlat-core": 391,
     "aiPlat-infra": 1176,
     "aiPlat-management": 699,
     "aiPlat-platform": 1457,
@@ -55,13 +55,6 @@
         "public_doc": 2
       }
     },
-    "aiPlat-core/core/schemas_builder.py": {
-      "count": 60,
-      "by_rule": {
-        "public_doc": 48,
-        "args_doc": 12
-      }
-    },
     "aiPlat-platform/apps/org/api/routes.py": {
       "count": 56,
       "by_rule": {
@@ -88,13 +81,6 @@
       "count": 40,
       "by_rule": {
         "args_doc": 40
-      }
-    },
-    "aiPlat-core/core/harness/maintenance/asset_compat.py": {
-      "count": 38,
-      "by_rule": {
-        "public_doc": 25,
-        "args_doc": 13
       }
     },
     "aiPlat-infra/infra/exceptions.py": {
@@ -140,20 +126,6 @@
         "args_doc": 8
       }
     },
-    "aiPlat-core/core/management/agent_manager.py": {
-      "count": 30,
-      "by_rule": {
-        "public_doc": 7,
-        "args_doc": 23
-      }
-    },
-    "aiPlat-core/core/management/skill_manager.py": {
-      "count": 30,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 29
-      }
-    },
     "aiPlat-infra/infra/monitoring/base.py": {
       "count": 30,
       "by_rule": {
@@ -175,19 +147,6 @@
         "args_doc": 28
       }
     },
-    "aiPlat-core/core/harness/team_harness.py": {
-      "count": 27,
-      "by_rule": {
-        "public_doc": 17,
-        "args_doc": 10
-      }
-    },
-    "aiPlat-core/core/apps/finetune/schemas.py": {
-      "count": 26,
-      "by_rule": {
-        "public_doc": 26
-      }
-    },
     "aiPlat-infra/infra/logging/base.py": {
       "count": 26,
       "by_rule": {
@@ -201,34 +160,11 @@
         "args_doc": 26
       }
     },
-    "aiPlat-core/core/harness/integration.py": {
-      "count": 24,
-      "by_rule": {
-        "public_doc": 21,
-        "args_doc": 2,
-        "why_comment": 1
-      }
-    },
-    "aiPlat-core/core/harness/integration/__init__.py": {
-      "count": 24,
-      "by_rule": {
-        "public_doc": 21,
-        "args_doc": 2,
-        "why_comment": 1
-      }
-    },
     "aiPlat-management/management/infra_client.py": {
       "count": 23,
       "by_rule": {
         "public_doc": 1,
         "args_doc": 22
-      }
-    },
-    "aiPlat-core/core/management/execution_examples.py": {
-      "count": 22,
-      "by_rule": {
-        "args_doc": 21,
-        "public_doc": 1
       }
     },
     "aiPlat-infra/infra/memory/manager.py": {
@@ -251,26 +187,6 @@
       "by_rule": {
         "public_doc": 15,
         "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/media_ops.py": {
-      "count": 21,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 16
-      }
-    },
-    "aiPlat-core/core/management/asset_audit.py": {
-      "count": 21,
-      "by_rule": {
-        "args_doc": 12,
-        "public_doc": 9
-      }
-    },
-    "aiPlat-core/core/management/execution_quality_review.py": {
-      "count": 21,
-      "by_rule": {
-        "args_doc": 21
       }
     },
     "aiPlat-infra/infra/database/mysql.py": {
@@ -323,13 +239,6 @@
         "args_doc": 12
       }
     },
-    "aiPlat-core/core/harness/models/spec_lifecycle.py": {
-      "count": 20,
-      "by_rule": {
-        "public_doc": 9,
-        "args_doc": 11
-      }
-    },
     "aiPlat-infra/infra/management/network/manager.py": {
       "count": 20,
       "by_rule": {
@@ -357,13 +266,6 @@
       "by_rule": {
         "module_doc": 1,
         "args_doc": 19
-      }
-    },
-    "aiPlat-core/core/services/execution_store/prompt_mixin.py": {
-      "count": 19,
-      "by_rule": {
-        "public_doc": 18,
-        "args_doc": 1
       }
     },
     "aiPlat-infra/infra/compute/manager.py": {
@@ -401,13 +303,6 @@
         "args_doc": 6
       }
     },
-    "aiPlat-core/core/harness/knowledge_pipeline/extractor.py": {
-      "count": 18,
-      "by_rule": {
-        "args_doc": 7,
-        "public_doc": 11
-      }
-    },
     "aiPlat-infra/infra/database/base.py": {
       "count": 18,
       "by_rule": {
@@ -435,13 +330,6 @@
       "by_rule": {
         "public_doc": 12,
         "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/arena/arena.py": {
-      "count": 17,
-      "by_rule": {
-        "public_doc": 15,
-        "args_doc": 2
       }
     },
     "aiPlat-infra/infra/management/storage/manager.py": {
@@ -491,35 +379,6 @@
         "args_doc": 15
       }
     },
-    "aiPlat-core/core/apps/mcp/protocol.py": {
-      "count": 16,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 13
-      }
-    },
-    "aiPlat-core/core/apps/ops/exporter.py": {
-      "count": 16,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 15
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/review_report.py": {
-      "count": 16,
-      "by_rule": {
-        "public_doc": 14,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/adapter_manager.py": {
-      "count": 16,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 1,
-        "args_doc": 14
-      }
-    },
     "aiPlat-infra/infra/cache/base.py": {
       "count": 16,
       "by_rule": {
@@ -548,20 +407,6 @@
         "args_doc": 3
       }
     },
-    "aiPlat-core/core/harness/health/registry.py": {
-      "count": 15,
-      "by_rule": {
-        "public_doc": 13,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/skill_linter_base.py": {
-      "count": 15,
-      "by_rule": {
-        "args_doc": 5,
-        "public_doc": 10
-      }
-    },
     "aiPlat-core/core/schemas_workbench.py": {
       "count": 15,
       "by_rule": {
@@ -573,26 +418,6 @@
       "by_rule": {
         "args_doc": 2,
         "public_doc": 13
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_base.py": {
-      "count": 14,
-      "by_rule": {
-        "public_doc": 10,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_rules/complex.py": {
-      "count": 14,
-      "by_rule": {
-        "public_doc": 14
-      }
-    },
-    "aiPlat-core/core/management/package_manager.py": {
-      "count": 14,
-      "by_rule": {
-        "public_doc": 10,
-        "args_doc": 4
       }
     },
     "aiPlat-infra/infra/database/mongodb.py": {
@@ -623,55 +448,7 @@
         "args_doc": 1
       }
     },
-    "aiPlat-core/core/apps/diagnosis/service/store.py": {
-      "count": 13,
-      "by_rule": {
-        "public_doc": 13
-      }
-    },
-    "aiPlat-core/core/management/asset_installer.py": {
-      "count": 13,
-      "by_rule": {
-        "args_doc": 1,
-        "public_doc": 12
-      }
-    },
-    "aiPlat-core/core/management/compliance_checks.py": {
-      "count": 13,
-      "by_rule": {
-        "public_doc": 10,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/harness_manager.py": {
-      "count": 13,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 12
-      }
-    },
-    "aiPlat-core/core/management/knowledge_manager.py": {
-      "count": 13,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 12
-      }
-    },
-    "aiPlat-core/core/management/mcp_manager.py": {
-      "count": 13,
-      "by_rule": {
-        "public_doc": 11,
-        "args_doc": 2
-      }
-    },
     "aiPlat-core/core/schemas_prompt_app.py": {
-      "count": 13,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 12
-      }
-    },
-    "aiPlat-core/core/services/config_registry_store.py": {
       "count": 13,
       "by_rule": {
         "module_doc": 1,
@@ -737,52 +514,10 @@
         "args_doc": 3
       }
     },
-    "aiPlat-core/core/harness/context/engine.py": {
-      "count": 12,
-      "by_rule": {
-        "public_doc": 11,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/interfaces/messaging.py": {
-      "count": 12,
-      "by_rule": {
-        "public_doc": 9,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/team_factory_seeds.py": {
-      "count": 12,
-      "by_rule": {
-        "public_doc": 7,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/management/workflow_manager.py": {
-      "count": 12,
-      "by_rule": {
-        "public_doc": 11,
-        "args_doc": 1
-      }
-    },
     "aiPlat-core/core/schemas_skills.py": {
       "count": 12,
       "by_rule": {
         "public_doc": 12
-      }
-    },
-    "aiPlat-core/core/services/conversations.py": {
-      "count": 12,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 11
-      }
-    },
-    "aiPlat-core/core/services/execution_store/job_ops_mixin.py": {
-      "count": 12,
-      "by_rule": {
-        "public_doc": 9,
-        "args_doc": 3
       }
     },
     "aiPlat-platform/apps/learning/api/learning_misc.py": {
@@ -831,35 +566,6 @@
       "count": 12,
       "by_rule": {
         "public_doc": 12
-      }
-    },
-    "aiPlat-core/core/apps/plugins/manager.py": {
-      "count": 11,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 7,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/finance/value_calculator.py": {
-      "count": 11,
-      "by_rule": {
-        "public_doc": 8,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/media_skill_handlers.py": {
-      "count": 11,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/registry/registry_loader.py": {
-      "count": 11,
-      "by_rule": {
-        "args_doc": 4,
-        "public_doc": 7
       }
     },
     "aiPlat-infra/infra/cache/file_client.py": {
@@ -980,65 +686,10 @@
         "public_doc": 10
       }
     },
-    "aiPlat-core/core/apps/mcp/client.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/artifacts/registry.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 10
-      }
-    },
-    "aiPlat-core/core/harness/deployment/canary.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 8
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/platform_status_brief.py": {
-      "count": 10,
-      "by_rule": {
-        "args_doc": 4,
-        "public_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/multimodal/trigger.py": {
-      "count": 10,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 7,
-        "args_doc": 2
-      }
-    },
     "aiPlat-core/core/learning/pipeline.py": {
       "count": 10,
       "by_rule": {
         "args_doc": 10
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/triggers.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 10
-      }
-    },
-    "aiPlat-core/core/management/memory_manager.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 9
-      }
-    },
-    "aiPlat-core/core/management/skill_installer.py": {
-      "count": 10,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 8
       }
     },
     "aiPlat-core/core/schemas_conversations.py": {
@@ -1052,20 +703,6 @@
       "count": 10,
       "by_rule": {
         "public_doc": 10
-      }
-    },
-    "aiPlat-core/core/services/context_service.py": {
-      "count": 10,
-      "by_rule": {
-        "args_doc": 9,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/trace_mixin.py": {
-      "count": 10,
-      "by_rule": {
-        "public_doc": 9,
-        "args_doc": 1
       }
     },
     "aiPlat-infra/infra/di/base.py": {
@@ -1192,100 +829,11 @@
         "args_doc": 8
       }
     },
-    "aiPlat-core/core/apps/document_intelligence/kb_provider.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 1,
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/apps/evaluation/reporter.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 8
-      }
-    },
-    "aiPlat-core/core/apps/evaluation/tracker.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 8
-      }
-    },
-    "aiPlat-core/core/apps/finetune/dataset_manager.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 8,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/finetune/providers/deepseek.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/assembly/context_assembler.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 9
-      }
-    },
-    "aiPlat-core/core/harness/deployment/deploy_engine.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 9
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/consultant_knowledge.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 8,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/remote_proxy.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 8,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/routing/skill_routing.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 8
-      }
-    },
-    "aiPlat-core/core/harness/team_friction.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/training/rl_trainer.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 5
-      }
-    },
     "aiPlat-core/core/learning/manager.py": {
       "count": 9,
       "by_rule": {
         "public_doc": 6,
         "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/format_adapters.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 3,
-        "public_doc": 6
       }
     },
     "aiPlat-core/core/policy/graph_abox_acl.py": {
@@ -1312,50 +860,6 @@
       "by_rule": {
         "public_doc": 3,
         "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/services/execution_store/metrics_mixin.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 7,
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/services/execution_store/runs_mixin.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 8,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/skill_pack_mixin.py": {
-      "count": 9,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 7,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/file_service.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 8
-      }
-    },
-    "aiPlat-core/core/services/tenant_store_protocol.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 8,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/trace_service.py": {
-      "count": 9,
-      "by_rule": {
-        "module_doc": 1,
-        "args_doc": 4,
-        "public_doc": 4
       }
     },
     "aiPlat-core/server.py": {
@@ -1498,93 +1002,6 @@
         "public_doc": 4
       }
     },
-    "aiPlat-core/core/apps/common/create_dialog_utils.py": {
-      "count": 8,
-      "by_rule": {
-        "args_doc": 4,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/apps/diagnosis/service/adapters.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/finetune/providers/local.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/consultant_personal.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/trajectory_collector.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/resolve.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/practice/recorder.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/harness/restatement/run_state.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/scheduler/cron.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/management/job_scheduler.py": {
-      "count": 8,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 6
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/schema.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 7,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/sop.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/management/prompt_app_manager.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
     "aiPlat-core/core/policy/field_level_security.py": {
       "count": 8,
       "by_rule": {
@@ -1597,24 +1014,6 @@
       "by_rule": {
         "public_doc": 6,
         "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/services/execution_store/eval_mixin.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/services/execution_store/gateway_mixin.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
-      }
-    },
-    "aiPlat-core/core/services/execution_store/onboard_mixin.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
       }
     },
     "aiPlat-infra/infra/cache/manager.py": {
@@ -1746,99 +1145,11 @@
         "args_doc": 2
       }
     },
-    "aiPlat-core/core/apps/a2a/server.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/apps/common/boundary_hints.py": {
-      "count": 7,
-      "by_rule": {
-        "args_doc": 3,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/apps/discovery/__init__.py": {
-      "count": 7,
-      "by_rule": {
-        "args_doc": 6,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/mcp/runtime.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/quality/types.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/engine/skills/e2e_test/flow.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 5
-      }
-    },
     "aiPlat-core/core/exceptions.py": {
       "count": 7,
       "by_rule": {
         "public_doc": 6,
         "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/assembly/prompt_assembler.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/harness/decision_shadow/dispatcher.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/consultant_reload.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/llm.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/team_sources.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/training/full_training.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/skill_linter.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 2
       }
     },
     "aiPlat-core/core/observability/routing_service.py": {
@@ -1847,37 +1158,6 @@
         "module_doc": 1,
         "args_doc": 2,
         "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/services/execution_store/agent_mixin.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/job_mixin.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/services/execution_store/package_mixin.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/services/execution_store/quota_mixin.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
-      }
-    },
-    "aiPlat-core/core/services/execution_store/session_mixin.py": {
-      "count": 7,
-      "by_rule": {
-        "public_doc": 7
       }
     },
     "aiPlat-core/core/utils/paths.py": {
@@ -2015,14 +1295,6 @@
         "public_doc": 7
       }
     },
-    "aiPlat-core/core/apps/mcp/adapter.py": {
-      "count": 6,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 2,
-        "args_doc": 3
-      }
-    },
     "aiPlat-core/core/governance/verification.py": {
       "count": 6,
       "by_rule": {
@@ -2030,78 +1302,11 @@
         "public_doc": 5
       }
     },
-    "aiPlat-core/core/harness/agents/kpi_agent.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/arena/regression.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/context/claude_md.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/multimodal/integrator.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/registry.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/observation/run_graph.py": {
-      "count": 6,
-      "by_rule": {
-        "args_doc": 6
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/retrieval.py": {
-      "count": 6,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/training/distillation.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 2
-      }
-    },
     "aiPlat-core/core/learning/apply.py": {
       "count": 6,
       "by_rule": {
         "public_doc": 4,
         "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/governance.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 6
-      }
-    },
-    "aiPlat-core/core/management/n8n_langchain_adapter.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 6
       }
     },
     "aiPlat-core/core/policy/engine.py": {
@@ -2123,39 +1328,6 @@
         "module_doc": 1,
         "args_doc": 4,
         "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/graph_mixin.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/ltm_mixin.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/services/execution_store/release_mixin.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 6
-      }
-    },
-    "aiPlat-core/core/services/execution_store/run_graph_mixin.py": {
-      "count": 6,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/services/execution_store/syscall_mixin.py": {
-      "count": 6,
-      "by_rule": {
-        "args_doc": 6
       }
     },
     "aiPlat-infra/infra/http/response.py": {
@@ -2410,119 +1582,12 @@
         "public_doc": 5
       }
     },
-    "aiPlat-core/core/apps/common/upload_create_clarify.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/evaluation/benchmarks.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/exec_drivers/docker.py": {
-      "count": 5,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/apps/exec_drivers/local.py": {
-      "count": 5,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/apps/finetune/job_manager.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/apps/mcp/types.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 5
-      }
-    },
     "aiPlat-core/core/governance/gating.py": {
       "count": 5,
       "by_rule": {
         "module_doc": 1,
         "public_doc": 2,
         "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/audit/prompt_auditor.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/canary/escalation.py": {
-      "count": 5,
-      "by_rule": {
-        "args_doc": 4,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/health/collector.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/intervention/howl.py": {
-      "count": 5,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/monitoring/wake_agent.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/errors.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/routing/model_tier_router.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/code_intel_syscall.py": {
-      "count": 5,
-      "by_rule": {
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/drawio_gen.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/training/auto_trigger.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 1
       }
     },
     "aiPlat-core/core/learning/autorollback.py": {
@@ -2536,13 +1601,6 @@
       "count": 5,
       "by_rule": {
         "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/management/skill_adapter.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 2
       }
     },
     "aiPlat-core/core/schemas_eval_policy.py": {
@@ -2568,19 +1626,6 @@
       "by_rule": {
         "public_doc": 4,
         "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/chat_service.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/services/execution_store/approval_mixin.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 2
       }
     },
     "aiPlat-infra/infra/cache/factory.py": {
@@ -2885,143 +1930,10 @@
         "public_doc": 4
       }
     },
-    "aiPlat-core/core/apps/evaluation/types.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/apps/exec_drivers/base.py": {
-      "count": 4,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/exec_drivers/registry.py": {
-      "count": 4,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/exec_drivers/ssh.py": {
-      "count": 4,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/finetune/gguf_exporter.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/apps/finetune/mlx_trainer.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/quality/gates.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/engine/skills/evidence_chain/handler.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/agents/strategy_agent.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/evolution_engine.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/knowledge_pipeline/resolver.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/multimodal/voice_loop.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/http_bind.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/observation/event_bus.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/scheduler/wake_scheduler.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/team_digest.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
-      }
-    },
     "aiPlat-core/core/learning/types.py": {
       "count": 4,
       "by_rule": {
         "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/management/agentskills_parser.py": {
-      "count": 4,
-      "by_rule": {
-        "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/metadata.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/skill_quality.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/management/skill_install_plan_token.py": {
-      "count": 4,
-      "by_rule": {
-        "args_doc": 4
       }
     },
     "aiPlat-core/core/schemas_agents.py": {
@@ -3034,26 +1946,6 @@
       "count": 4,
       "by_rule": {
         "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/services/execution_store/adapter_mixin.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 4
-      }
-    },
-    "aiPlat-core/core/services/implicit_feedback.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/pii_detector.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 2
       }
     },
     "aiPlat-core/core/utils/json_utils.py": {
@@ -3309,252 +2201,10 @@
         "args_doc": 2
       }
     },
-    "aiPlat-core/core/apps/a2a/agent_card.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/connectors/delivery.py": {
-      "count": 3,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/diagnosis/service/engine.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 1,
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/llm_client.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/evaluation/grader.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/evaluation/regression.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/plugins/manifest.py": {
-      "count": 3,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 2
-      }
-    },
     "aiPlat-core/core/constants.py": {
       "count": 3,
       "by_rule": {
         "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/report_aggregator.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/routing.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/engine/skills/e2e_test/handler.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/engine/skills/e2e_test/validate.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 2,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/scoring_template/handler.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/decision_shadow/client.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/decision_shadow/config.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/deployment/git_pusher.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/operational_handoff.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/digital_human/voice_pipeline.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/generation/answer_generator.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/maintenance/skill_boundary.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/registry/execution_type_policy.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/routing/model_feedback.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/file.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/ontology_reason.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/skill_corpus.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/teamai_seed_export.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/training/trajectory_scorer.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/agent_config_validator.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_rules/memory.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/coze_adapter.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/dify_adapter.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/agent_metadata.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/mcp_config.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/side_effects.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/workflow_structure.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/management/mcp_config_validator.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/skill_config_validator.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/workflow_config_validator.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 2
       }
     },
     "aiPlat-core/core/mcp/runtime_sync.py": {
@@ -3597,38 +2247,6 @@
       }
     },
     "aiPlat-core/core/schemas_tools.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/services/execution_store/audit_mixin.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/memory_mixin.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/services/execution_store/plugin_mixin.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 3
-      }
-    },
-    "aiPlat-core/core/services/execution_store/settings_mixin.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/skill_mixin.py": {
       "count": 3,
       "by_rule": {
         "public_doc": 3
@@ -4059,94 +2677,7 @@
         "public_doc": 2
       }
     },
-    "aiPlat-core/core/apps/diagnosis/service/metrics.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/answer_strategy.py": {
-      "count": 2,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/chunking/strategy_selector.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/classifier.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/question_analysis.py": {
-      "count": 2,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/retrieval_policy.py": {
-      "count": 2,
-      "by_rule": {
-        "module_doc": 1,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/mcp/config.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/apps/mcp/server.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/quality/verifier.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
     "aiPlat-core/core/diagnostics/checks/base.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/diff_loader.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/handler.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/scope_governor.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/engine/skills/security_evidence/handler.py": {
       "count": 2,
       "by_rule": {
         "public_doc": 1,
@@ -4173,101 +2704,11 @@
         "args_doc": 1
       }
     },
-    "aiPlat-core/core/harness/context/skills_disclosure.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/decision_shadow/audit.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/interfaces/skill.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/knowledge_pipeline/retriever.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/named_workspace/agent_mgr.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 1,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/routing/classifier.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/smoke/e2e.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/state.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/code.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/moa_executor.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/skill.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
     "aiPlat-core/core/learning/workspace_target.py": {
       "count": 2,
       "by_rule": {
         "module_doc": 1,
         "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_rules/fde_workbench.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/capability_convergence.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/management/lint_rules/conflicts.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
       }
     },
     "aiPlat-core/core/mcp/prod_policy.py": {
@@ -4291,19 +2732,6 @@
       }
     },
     "aiPlat-core/core/schemas_prompts.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/services/execution_store/_base.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 1,
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/tenant_mixin.py": {
       "count": 2,
       "by_rule": {
         "public_doc": 2
@@ -4792,66 +3220,6 @@
         "module_doc": 1
       }
     },
-    "aiPlat-core/core/apps/a2a/types.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/builder/service/agent_create_dialog.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/builder/service/team_create_dialog.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/chunking/__init__.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/chunking/structured_chunker.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/strategy_resolver.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/document_intelligence/summarizer.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/mcp/local_tools_server.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/quality/scanner.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/apps/workbench/service/mcp_create_dialog.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
     "aiPlat-core/core/diagnostics/checks/api_contract.py": {
       "count": 1,
       "by_rule": {
@@ -4900,222 +3268,6 @@
         "public_doc": 1
       }
     },
-    "aiPlat-core/core/engine/skills/acceptance_checker/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/autoreview/auto_fixer.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/canary_runner/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/customer_profile_creator/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/domain_assessor/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/eval_code_generator/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/field_assessment/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/file_operations/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/knowledge_retrieval/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/poc_data_inject/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/security_critique/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/security_plan/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/security_report/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/security_trace/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/summarization/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/engine/skills/test_executor/handler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/assembly/compaction_prompt.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/canary/recommendation.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/data_source/realtime_context.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/maintenance/skill_lint_scan.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/observation/event_schema.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/observation/otel_bridge.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/scheduler/cron_loader.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/smoke/autoscheduler.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/_trace.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/agent.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/evaluation.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/graph.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/ontology.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/ontology_context.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/retrieval_crag.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/tool.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/tts.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/syscalls/workflow.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_rules/async_patterns.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/management/arch_guard_rules/route_check.py": {
-      "count": 1,
-      "by_rule": {
-        "public_doc": 1
-      }
-    },
     "aiPlat-core/core/orchestration/capability_mapper.py": {
       "count": 1,
       "by_rule": {
@@ -5138,30 +3290,6 @@
       "count": 1,
       "by_rule": {
         "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/__init__.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/costs_mixin.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store/schema.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/services/execution_store_schema.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
       }
     },
     "aiPlat-core/core/utils/math_utils.py": {

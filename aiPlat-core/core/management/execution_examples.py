@@ -125,7 +125,12 @@ def _dict_is_structured_smoke(obj: Dict[str, Any]) -> bool:
 
 
 def example_content_is_thin(content: Any, *, min_chars: int = 100) -> bool:
-    """True when content is too weak to smoke-test a real skill (generic gate)."""
+    """True when content is too weak to smoke-test a real skill (generic gate).
+
+    Args:
+        content: content 参数。
+        min_chars: min_chars 参数。
+    """
     if content is None:
         return True
     if isinstance(content, (dict, list)):
@@ -187,7 +192,13 @@ def filter_rich_execution_examples(
     min_keep: int = 1,
     min_chars: int = 100,
 ) -> List[Dict[str, str]]:
-    """Drop thin LLM/heuristic chips; preserve title/content shape."""
+    """Drop thin LLM/heuristic chips; preserve title/content shape.
+
+    Args:
+        examples: examples 参数。
+        min_keep: min_keep 参数。
+        min_chars: min_chars 参数。
+    """
     out: List[Dict[str, str]] = []
     for e in examples or []:
         if not isinstance(e, dict):
@@ -355,7 +366,13 @@ def _looks_like_file_ref(key: str, typ: str) -> bool:
 
 
 def sample_value_for_field(name: str, spec: Any, *, skill_hint: str = "") -> Any:
-    """Generate a plausible smoke-test value for one field."""
+    """Generate a plausible smoke-test value for one field.
+
+    Args:
+        name: name 参数。
+        spec: spec 参数。
+        skill_hint: skill_hint 参数。
+    """
     key = str(name or "").strip().lower()
     typ = ""
     desc = ""
@@ -520,12 +537,10 @@ def sample_value_for_field(name: str, spec: Any, *, skill_hint: str = "") -> Any
 
 
 def flatten_json_schema(schema: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Normalize to flat {name: {type, required, description, ...}}.
+    """Normalize to flat {name: {type, required, description, ...}}.
 
-    Accepts either:
-    - JSON Schema object: {properties, required}
-    - Flat skill-style schema: {name: {type, required, description}}
+    Args:
+        schema: schema 参数。
     """
     if not isinstance(schema, dict) or not schema:
         return {}
@@ -560,7 +575,13 @@ def value_copies_field_description(
     spec: Any = None,
     all_descs: Optional[List[str]] = None,
 ) -> bool:
-    """True when a JSON leaf is the field description (or 「示例：」+ description)."""
+    """True when a JSON leaf is the field description (or 「示例：」+ description).
+
+    Args:
+        value: value 参数。
+        spec: spec 参数。
+        all_descs: all_descs 参数。
+    """
     if not isinstance(value, str):
         return False
     s = value.strip()
@@ -594,7 +615,13 @@ def rewrite_copied_description_values(
     *,
     skill_hint: str = "",
 ) -> Any:
-    """Replace description-as-value leaves; keep unrelated keys."""
+    """Replace description-as-value leaves; keep unrelated keys.
+
+    Args:
+        obj: obj 参数。
+        schema: schema 参数。
+        skill_hint: skill_hint 参数。
+    """
     if not isinstance(obj, dict):
         return obj
     flat = flatten_json_schema(schema)
@@ -624,7 +651,12 @@ def examples_copy_field_descriptions(
     examples: Optional[List[Dict[str, Any]]],
     schema: Optional[Dict[str, Any]] = None,
 ) -> bool:
-    """True if any chip uses 「示例：…」 or a schema description as a field value."""
+    """True if any chip uses 「示例：…」 or a schema description as a field value.
+
+    Args:
+        examples: examples 参数。
+        schema: schema 参数。
+    """
     all_descs = _field_descriptions(schema) if schema else []
     flat = flatten_json_schema(schema) if schema else {}
     for e in examples or []:
@@ -664,7 +696,13 @@ def sanitize_execution_examples(
     *,
     skill_hint: str = "",
 ) -> List[Dict[str, str]]:
-    """Rewrite persisted/LLM chips so field descriptions are never used as values."""
+    """Rewrite persisted/LLM chips so field descriptions are never used as values.
+
+    Args:
+        examples: examples 参数。
+        schema: schema 参数。
+        skill_hint: skill_hint 参数。
+    """
     out: List[Dict[str, str]] = []
     all_descs = _field_descriptions(schema)
     for e in examples or []:
@@ -693,7 +731,11 @@ def sanitize_execution_examples(
 
 
 def schema_from_io_list(items: Any) -> Dict[str, Any]:
-    """Turn YAML ``input: [{name, type, ...}]`` into a flat schema map."""
+    """Turn YAML ``input: [{name, type, ...}]`` into a flat schema map.
+
+    Args:
+        items: items 参数。
+    """
     if not isinstance(items, list):
         return {}
     out: Dict[str, Any] = {}
@@ -714,7 +756,12 @@ def resolve_skill_example_schema(
     live: Any = None,
     frontmatter: Any = None,
 ) -> Dict[str, Any]:
-    """Prefer execution_input_schema, then input_schema dict, then YAML input list, then live."""
+    """Prefer execution_input_schema, then input_schema dict, then YAML input list, then live.
+
+    Args:
+        live: live 参数。
+        frontmatter: frontmatter 参数。
+    """
     fm = frontmatter if isinstance(frontmatter, dict) else {}
     candidates = (
         fm.get("execution_input_schema"),
@@ -729,7 +776,12 @@ def resolve_skill_example_schema(
 
 
 def sop_excerpt_from_markdown(raw: str, *, limit: int = 2500) -> str:
-    """SKILL.md / AGENT.md body only (strip YAML frontmatter), truncated for prompts."""
+    """SKILL.md / AGENT.md body only (strip YAML frontmatter), truncated for prompts.
+
+    Args:
+        raw: raw 参数。
+        limit: 返回条数上限。
+    """
     text = str(raw or "").replace("\r\n", "\n")
     parts = text.split("---", 2)
     body = parts[2] if len(parts) >= 3 else text
@@ -742,7 +794,12 @@ def sop_excerpt_from_markdown(raw: str, *, limit: int = 2500) -> str:
 
 
 def example_covers_required_schema(content: Any, schema: Optional[Dict[str, Any]]) -> bool:
-    """True when JSON content has required keys with typed (non-description) values."""
+    """True when JSON content has required keys with typed (non-description) values.
+
+    Args:
+        content: content 参数。
+        schema: schema 参数。
+    """
     flat = flatten_json_schema(schema)
     required = [
         k for k, spec in flat.items()
@@ -787,7 +844,12 @@ def llm_examples_pass_schema_gate(
     examples: Optional[List[Dict[str, Any]]],
     schema: Optional[Dict[str, Any]] = None,
 ) -> bool:
-    """LLM chips count as success only with ≥2 items and required-schema coverage."""
+    """LLM chips count as success only with ≥2 items and required-schema coverage.
+
+    Args:
+        examples: examples 参数。
+        schema: schema 参数。
+    """
     dicts = [e for e in (examples or []) if isinstance(e, dict) and e.get("content")]
     if len(dicts) < 2:
         return False
@@ -811,8 +873,10 @@ def accept_llm_execution_examples(
 ) -> List[Dict[str, str]]:
     """Keep LLM chips only if the *raw* payload already fits; empty → heuristic fallback.
 
-    Sanitize must not run first: rewriting「示例：说明」into ``/tmp/sample.mp4`` would
-    launder copied descriptions as ``source=llm`` and persist them.
+    Args:
+        extracted: extracted 参数。
+        schema: schema 参数。
+        skill_hint: skill_hint 参数。
     """
     chips: List[Dict[str, Any]] = [
         e for e in (extracted or [])
@@ -841,6 +905,13 @@ def build_sample_payload(
     include_optional: bool = True,
     skill_hint: str = "",
 ) -> Dict[str, Any]:
+    """build_sample_payload。
+
+    Args:
+        schema: schema 参数。
+        include_optional: include_optional 参数。
+        skill_hint: skill_hint 参数。
+    """
     flat = flatten_json_schema(schema)
     if not flat:
         return {}
@@ -862,7 +933,13 @@ def build_examples_from_input_schema(
     skill_id: str = "",
     skill_name: str = "",
 ) -> List[Dict[str, str]]:
-    """Build one-click / auto-fill test cases from skill-style or JSON Schema."""
+    """Build one-click / auto-fill test cases from skill-style or JSON Schema.
+
+    Args:
+        input_schema: input_schema 参数。
+        skill_id: Skill ID。
+        skill_name: skill_name 参数。
+    """
     flat = flatten_json_schema(input_schema)
     if not flat:
         return []
@@ -1004,7 +1081,12 @@ def build_boundary_payload(
     *,
     skill_hint: str = "",
 ) -> Dict[str, Any]:
-    """Required-field payload with edge values (boundary / negative smoke)."""
+    """Required-field payload with edge values (boundary / negative smoke).
+
+    Args:
+        flat: flat 参数。
+        skill_hint: skill_hint 参数。
+    """
     happy = build_sample_payload(flat, include_optional=False, skill_hint=skill_hint)
     out: Dict[str, Any] = {}
     for k, v in happy.items():
@@ -1027,10 +1109,12 @@ def build_param_smoke_examples(
 ) -> List[Dict[str, str]]:
     """Tool / MCP / schema-driven smoke chips: 主路径 + 边界 + 全量.
 
-    Covers test points beyond「填个默认值」:
-    - happy path (required)
-    - boundary / negative (empty, 0, unreachable URL, flipped bool)
-    - complex (optional + enriched narrative where applicable)
+    Args:
+        input_schema: input_schema 参数。
+        asset_id: asset 标识。
+        asset_name: asset_name 参数。
+        asset_kind: asset_kind 参数。
+        text_field: text_field 参数。
     """
     flat = flatten_json_schema(input_schema)
     if not flat:
@@ -1099,7 +1183,12 @@ def build_workflow_start_examples(
     *,
     workflow_name: str = "",
 ) -> List[Dict[str, str]]:
-    """Workflow start-node smoke: 主路径 / 边界 / 复杂（按变量名启发式填值）。"""
+    """Workflow start-node smoke: 主路径 / 边界 / 复杂（按变量名启发式填值）。
+
+    Args:
+        start_inputs: start_inputs 参数。
+        workflow_name: workflow_name 参数。
+    """
     rows = [r for r in (start_inputs or []) if isinstance(r, dict)]
     keys = [str(r.get("key") or r.get("name") or "").strip() for r in rows]
     keys = [k for k in keys if k]
@@ -1137,7 +1226,11 @@ def build_workflow_start_examples(
 
 
 def workflow_example_to_start_inputs(example_content: str) -> List[Dict[str, str]]:
-    """Parse example JSON content → [{key, value}] for start node."""
+    """Parse example JSON content → [{key, value}] for start node.
+
+    Args:
+        example_content: example_content 参数。
+    """
     try:
         obj = json.loads(example_content)
     except Exception:
@@ -1154,7 +1247,14 @@ def build_agent_task_examples(
     skill_ids: Optional[List[str]] = None,
     tool_ids: Optional[List[str]] = None,
 ) -> List[Dict[str, str]]:
-    """Skill/tool-aware defaults when Agent has no execution_examples / schema."""
+    """Skill/tool-aware defaults when Agent has no execution_examples / schema.
+
+    Args:
+        display_name: display_name 参数。
+        description: description 参数。
+        skill_ids: skill_ids 参数。
+        tool_ids: tool_ids 参数。
+    """
     label = (display_name or "Agent").strip() or "Agent"
     skills = {str(s).lower() for s in (skill_ids or [])}
     tools = {str(t).lower() for t in (tool_ids or [])}
@@ -1719,7 +1819,12 @@ def examples_are_generic(
     examples: Optional[List[Dict[str, Any]]],
     schema: Optional[Dict[str, Any]] = None,
 ) -> bool:
-    """True when examples are empty, legacy smoke chips, description-as-value, or too thin."""
+    """True when examples are empty, legacy smoke chips, description-as-value, or too thin.
+
+    Args:
+        examples: examples 参数。
+        schema: schema 参数。
+    """
     if not examples:
         return True
     dicts = [e for e in examples if isinstance(e, dict)]

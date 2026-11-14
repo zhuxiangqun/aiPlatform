@@ -90,15 +90,11 @@ async def run_agent_create_dialog_turn(
     text: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
-    """
-    One turn of conversational Agent creation.
+    """One turn of conversational Agent creation.
 
-    Returns:
-      next: "ask" | "draft"
-      reply: assistant message
-      questions: optional list
-      draft: autofill payload + name/description when next=draft
-      agent_md_preview: preview text when next=draft
+    Args:
+        text: text 参数。
+        history: history 参数。
     """
     text = str(text or "").strip()
     if not text:

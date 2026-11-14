@@ -56,6 +56,11 @@ def _now() -> str:
 
 @a2a_router.get("/.well-known/agent.json")
 async def get_agent_card(request: Request):
+    """获取 agent_card。
+
+    Args:
+        request: FastAPI Request。
+    """
     base = str(request.base_url).rstrip("/")
     card = await AgentCard.from_registry(base)
     return card.to_dict()
@@ -65,6 +70,11 @@ async def get_agent_card(request: Request):
 
 @a2a_router.post("/tasks")
 async def create_task(request: Request):
+    """创建 task。
+
+    Args:
+        request: FastAPI Request。
+    """
     body = await request.json()
     user_input = str(body.get("user_input") or body.get("task", {}).get("description", ""))
     if not user_input:
@@ -114,6 +124,11 @@ async def _execute_task(task_id: str, user_input: str):
 
 @a2a_router.get("/tasks/{task_id}")
 async def get_task(task_id: str):
+    """获取 task。
+
+    Args:
+        task_id: task 标识。
+    """
     task = _tasks.get(task_id)
     if not task:
         try:
@@ -137,6 +152,11 @@ async def get_task(task_id: str):
 
 @a2a_router.get("/tasks/{task_id}/stream")
 async def stream_task(task_id: str):
+    """stream_task。
+
+    Args:
+        task_id: task 标识。
+    """
     async def event_generator():
         task = _tasks.get(task_id)
         if not task:
@@ -159,6 +179,11 @@ async def stream_task(task_id: str):
 
 @a2a_router.post("/tasks/{task_id}/cancel")
 async def cancel_task(task_id: str):
+    """cancel_task。
+
+    Args:
+        task_id: task 标识。
+    """
     task = _tasks.get(task_id)
     if not task:
         raise HTTPException(404, "task_not_found")
@@ -173,6 +198,11 @@ async def cancel_task(task_id: str):
 
 @a2a_router.get("/tasks/{task_id}/artifacts")
 async def get_task_artifacts(task_id: str):
+    """获取 task_artifacts。
+
+    Args:
+        task_id: task 标识。
+    """
     task = _tasks.get(task_id)
     if not task:
         raise HTTPException(404, "task_not_found")
@@ -183,6 +213,12 @@ async def get_task_artifacts(task_id: str):
 
 @a2a_router.get("/tasks")
 async def list_tasks(status: str = None, limit: int = 50):
+    """列出 tasks。
+
+    Args:
+        status: status 参数。
+        limit: 返回条数上限。
+    """
     tasks = list(_tasks.values())
     if status:
         tasks = [t for t in tasks if t.status.value == status]

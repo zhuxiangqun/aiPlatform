@@ -17,6 +17,12 @@ from core.harness.named_workspace.resolve import (
 
 
 def resolve_request_workspace(request: Request, *, method: Optional[str] = None) -> NamedWorkspaceContext:
+    """resolve_request_workspace。
+
+    Args:
+        request: FastAPI Request。
+        method: method 参数。
+    """
     try:
         actor = actor_from_http(request, {})
     except Exception:
@@ -37,7 +43,11 @@ def resolve_request_workspace(request: Request, *, method: Optional[str] = None)
 
 
 def require_local_disk(ctx: NamedWorkspaceContext) -> None:
-    """Local agents/eval_results APIs must not run under a remote profile header."""
+    """Local agents/eval_results APIs must not run under a remote profile header.
+
+    Args:
+        ctx: ctx 参数。
+    """
     if getattr(ctx, "is_remote", False):
         raise HTTPException(
             status_code=400,
@@ -58,6 +68,13 @@ def named_workspace_scope(
     method: Optional[str] = None,
     require_local: bool = False,
 ) -> Iterator[NamedWorkspaceContext]:
+    """named_workspace_scope。
+
+    Args:
+        request: FastAPI Request。
+        method: method 参数。
+        require_local: require_local 参数。
+    """
     ctx = resolve_request_workspace(request, method=method)
     if require_local:
         require_local_disk(ctx)
@@ -69,6 +86,11 @@ def named_workspace_scope(
 
 
 def workspace_meta(ctx: NamedWorkspaceContext) -> Dict[str, Any]:
+    """workspace_meta。
+
+    Args:
+        ctx: ctx 参数。
+    """
     out: Dict[str, Any] = {
         "named_workspace_id": ctx.workspace_id,
         "named_workspace_kind": ctx.kind,

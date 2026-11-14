@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class BuilderSessionPhase(str, Enum):
     # ── Framework-level phases (application-agnostic) ──
+    """BuilderSessionPhase。"""
     dialogue = "dialogue"
     executing = "executing"
     paused = "paused"
@@ -33,29 +34,34 @@ class BuilderSessionPhase(str, Enum):
 
 
 class AgentDecision(str, Enum):
+    """AgentDecision。"""
     PROCEED = "PROCEED"
     BLOCKED = "BLOCKED"
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
 
 
 class AgentConfidence(str, Enum):
+    """AgentConfidence。"""
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
     LOW = "LOW"
 
 
 class IssueSeverity(str, Enum):
+    """IssueSeverity。"""
     P0 = "P0"
     P1 = "P1"
     P2 = "P2"
 
 
 class TestRecommendation(str, Enum):
+    """TestRecommendation。"""
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
 
 class UserStoryPriority(str, Enum):
+    """UserStoryPriority。"""
     P0 = "P0"
     P1 = "P1"
     P2 = "P2"
@@ -64,6 +70,7 @@ class UserStoryPriority(str, Enum):
 # ── Structured artifacts ───────────────────────────────────────────
 
 class UserStory(BaseModel):
+    """UserStory。"""
     id: str
     description: str
     acceptance_criteria: List[str] = Field(default_factory=list)
@@ -71,6 +78,7 @@ class UserStory(BaseModel):
 
 
 class PRDArtifact(BaseModel):
+    """PRDArtifact。"""
     title: str
     overview: str = ""
     user_stories: List[UserStory] = Field(default_factory=list)
@@ -97,12 +105,14 @@ class ISAArtifact(BaseModel):
 
 
 class ComponentSpec(BaseModel):
+    """ComponentSpec。"""
     name: str
     responsibility: str
     dependencies: List[str] = Field(default_factory=list)
 
 
 class ArchitectureArtifact(BaseModel):
+    """ArchitectureArtifact。"""
     components: List[ComponentSpec] = Field(default_factory=list)
     data_model: Dict[str, Dict[str, str]] = Field(default_factory=dict)
     api_contracts: List[Dict[str, Any]] = Field(default_factory=list)
@@ -110,11 +120,13 @@ class ArchitectureArtifact(BaseModel):
 
 
 class FileArtifact(BaseModel):
+    """FileArtifact。"""
     path: str
     content: str
 
 
 class BugFixRecord(BaseModel):
+    """BugFixRecord。"""
     bug_id: str
     test_case_id: str
     description: str
@@ -127,6 +139,7 @@ class BugFixRecord(BaseModel):
 
 
 class CodeArtifact(BaseModel):
+    """CodeArtifact。"""
     files: List[FileArtifact] = Field(default_factory=list)
     skills_created: List[str] = Field(default_factory=list)
     agents_created: List[str] = Field(default_factory=list)
@@ -135,6 +148,7 @@ class CodeArtifact(BaseModel):
 
 
 class TestCase(BaseModel):
+    """TestCase。"""
     id: str
     description: str
     acceptance_criteria_id: str = ""
@@ -143,6 +157,7 @@ class TestCase(BaseModel):
 
 
 class TestCaseResult(BaseModel):
+    """TestCaseResult。"""
     test_case_id: str
     passed: bool
     actual: str = ""
@@ -150,6 +165,7 @@ class TestCaseResult(BaseModel):
 
 
 class TestReport(BaseModel):
+    """TestReport。"""
     test_cases: List[TestCase] = Field(default_factory=list)
     results: List[TestCaseResult] = Field(default_factory=list)
     pass_rate: float = 0.0
@@ -162,6 +178,7 @@ class TestReport(BaseModel):
 # ── Issue / escalation ─────────────────────────────────────────────
 
 class Issue(BaseModel):
+    """Issue。"""
     severity: IssueSeverity = IssueSeverity.P1
     description: str
     target_agent: str = ""
@@ -169,6 +186,7 @@ class Issue(BaseModel):
 
 
 class AgentOutput(BaseModel):
+    """AgentOutput。"""
     artifact: Optional[Any] = None
     confidence: AgentConfidence = AgentConfidence.MEDIUM
     issues: List[Issue] = Field(default_factory=list)
@@ -178,6 +196,7 @@ class AgentOutput(BaseModel):
 # ── Pipeline state ─────────────────────────────────────────────────
 
 class BuilderSessionStateResponse(BaseModel):
+    """BuilderSessionStateResponse。"""
     session_id: str
     phase: BuilderSessionPhase
     requirement: str = ""
@@ -200,6 +219,7 @@ class BuilderSessionStateResponse(BaseModel):
 
 
 class BuilderChatResponse(BaseModel):
+    """BuilderChatResponse。"""
     reply: str
     session_state: BuilderSessionStateResponse
     prd_ready: bool = False
@@ -207,10 +227,12 @@ class BuilderChatResponse(BaseModel):
 
 
 class BuilderChatRequest(BaseModel):
+    """BuilderChatRequest。"""
     message: str
 
 
 class BuilderSessionCreateRequest(BaseModel):
+    """BuilderSessionCreateRequest。"""
     requirement: str = ""
 
 
@@ -239,7 +261,11 @@ CONVERSATIONAL_AGENT_TYPES = frozenset({
 
 
 def apply_architecture_profile(stage: "PipelineStageConfig") -> "PipelineStageConfig":
-    """If architecture_profile is set, it wins over execution_backend/agent_type."""
+    """If architecture_profile is set, it wins over execution_backend/agent_type.
+
+    Args:
+        stage: stage 参数。
+    """
     raw = str(getattr(stage, "architecture_profile", "") or "").strip().lower()
     spec = ARCHITECTURE_PROFILES.get(raw)
     if spec:
@@ -285,7 +311,11 @@ STAGE_CONFIG_PERSIST_KEYS = (
 
 
 def extract_stage_persist_config(raw: Any) -> Dict[str, Any]:
-    """Compact stage overlay for SQLite resume (coding closed-loop + schedule)."""
+    """Compact stage overlay for SQLite resume (coding closed-loop + schedule).
+
+    Args:
+        raw: raw 参数。
+    """
     if not isinstance(raw, dict):
         return {}
     out: Dict[str, Any] = {}
@@ -304,10 +334,10 @@ def apply_template_stage_overlay(
 ) -> Any:
     """Copy template YAML fields (incl. refactor_sop / done_verify) onto a stage.
 
-    ``dest`` may be a ``PipelineStageConfig`` or a mutable dict. Used by factory
-    recommend_team when merging plan_stages with team template rows.
-    When ``only_missing`` is True, do not overwrite non-empty destination values
-    (bool ``False`` counts as missing so template ``True`` can fill).
+    Args:
+        dest: dest 参数。
+        src: src 参数。
+        only_missing: only_missing 参数。
     """
     if not isinstance(src, dict):
         return dest
@@ -364,7 +394,11 @@ def apply_template_stage_overlay(
 
 
 def backfill_stage_from_team_templates(stage: "PipelineStageConfig") -> "PipelineStageConfig":
-    """When resume lacks config_json, fill coding closed-loop from team YAML by agent_id."""
+    """When resume lacks config_json, fill coding closed-loop from team YAML by agent_id.
+
+    Args:
+        stage: stage 参数。
+    """
     aid = str(getattr(stage, "agent_id", "") or "").strip()
     if not aid:
         return stage
@@ -390,7 +424,11 @@ def backfill_stage_from_team_templates(stage: "PipelineStageConfig") -> "Pipelin
 
 
 def pipeline_stage_from_store_row(sr: Any) -> "PipelineStageConfig":
-    """Rebuild ``PipelineStageConfig`` from a pipeline_stages row (+ config_json)."""
+    """Rebuild ``PipelineStageConfig`` from a pipeline_stages row (+ config_json).
+
+    Args:
+        sr: sr 参数。
+    """
     row = sr if isinstance(sr, dict) else {}
     input_arts = row.get("input_artifacts", "")
     if isinstance(input_arts, list):
@@ -455,8 +493,9 @@ def pipeline_stage_from_store_row(sr: Any) -> "PipelineStageConfig":
 def stage_uses_react_loop(stage: Any, agent_type: str = "") -> bool:
     """File-output stages always use StageRunner/ReAct.
 
-    ``plan`` / ``plan_execute`` only take the chat shortcut when the stage
-    does not write files. Pipeline stages remain the schedule layer.
+    Args:
+        stage: stage 参数。
+        agent_type: agent_type 参数。
     """
     if bool(getattr(stage, "uses_file_output", False)):
         return True
@@ -467,8 +506,8 @@ def stage_uses_react_loop(stage: Any, agent_type: str = "") -> bool:
 def file_stage_control_stack(stage: Any) -> Dict[str, str]:
     """Schedule / execute / external-quality stack actually used for a stage.
 
-    Heavy coding is ready when execute is ReAct and quality is an external
-    completion standard. LLM self-critique is not this quality layer.
+    Args:
+        stage: stage 参数。
     """
     file_out = bool(getattr(stage, "uses_file_output", False))
     profile = str(getattr(stage, "architecture_profile", "") or "").strip().lower()
@@ -493,9 +532,10 @@ def control_fuses_for_stage(
 ) -> Dict[str, Any]:
     """Three-layer stack plus hard fuses (execute / quality / schedule).
 
-    - execute: ReAct ``max_steps``
-    - quality: soft done_verify vetoes before fail-open (hard standards never open)
-    - schedule: ``upgrade_policy`` (off | signals | aggressive)
+    Args:
+        stage: stage 参数。
+        max_steps: max_steps 参数。
+        quality_soft_veto_limit: quality_soft_veto_limit 参数。
     """
     stack = file_stage_control_stack(stage)
     try:
@@ -541,28 +581,8 @@ def _file_delivery_has_standard(stage: "PipelineStageConfig", dv: Dict[str, Any]
 def apply_coding_stage_defaults(stage: "PipelineStageConfig") -> "PipelineStageConfig":
     """Config-driven coding closed loop for ``uses_file_output`` stages.
 
-    Defaults (no agent_id branches): stage sandbox on (unless sandbox_mode=none),
-    light done_verify + review_gate, bind autoreview so review_gate can enforce.
-    When ``require_completion_standard`` is on and no standard is set, inject
-    ``require_substrings: ["## FILE:"]`` (same marker as code_generation skill).
-    Opt out: ``sandbox_mode: none``, ``review_gate: none``, or
-    ``AIPLAT_CODING_STAGE_SANDBOX=false`` / ``AIPLAT_CODING_STAGE_AUTOREVIEW=false``.
-    TDD before DONE: ``tdd_enforce: true`` or ``AIPLAT_CODING_STAGE_TDD=true``.
-    Problem list before DONE: ``AIPLAT_CODING_STAGE_DIAGNOSIS=true`` (``[P0]``/``[P1]``/``[P2]``).
-    Plan before code: ``AIPLAT_CODING_STAGE_PLAN=true`` (``## Refactor Plan`` / ``## 重构计划``).
-    Dependency zones: ``AIPLAT_CODING_STAGE_DEPS=true`` (安全区 + 保护区).
-    Rollback evidence: ``AIPLAT_CODING_STAGE_ROLLBACK=true`` (file checkpoint / git tag).
-    Rollback command: ``AIPLAT_CODING_STAGE_ROLLBACK_CMD=true`` (git checkout/reset or FEATURE_*=false).
-    Feature flag / canary: ``AIPLAT_CODING_STAGE_FLAG=true``.
-    Hard review (Step 5): ``AIPLAT_CODING_STAGE_REQUIRE_REVIEW=true`` / SOP
-    ``require_review`` — binds ``autoreview``, forces ``review_gate=quick``,
-    and upgrades ``execution_backend=llm`` → ``agent`` (or ``oneshot`` →
-    ``react_tools``) so ReAct can dispatch follow-up (oneshot cannot).
-    ``AIPLAT_CODING_STAGE_KEEP_LLM`` is ignored under hard ``require_review``
-    (schema hard-block: oneshot cannot satisfy review receipts).
-    Full refactor SOP (1–7 + review): stage ``refactor_sop: true`` or
-    ``AIPLAT_CODING_STAGE_REFACTOR_SOP=true``.
-    File checkpoints remain global (sys_file_write), already default-on.
+    Args:
+        stage: stage 参数。
     """
     if not bool(getattr(stage, "uses_file_output", False)):
         return stage
@@ -745,11 +765,10 @@ def workspace_agent_needs_coding_defaults(
 ) -> bool:
     """Config/skill-signal check — never agent_id string matching.
 
-    Opt in: ``uses_file_output`` / ``uses_code_skill`` on agent or bound skills,
-    ``coding_closed_loop: true``, or non-off ``coding_intensity``.
-    Opt out: ``coding_closed_loop: false`` (wins over skill signals).
-    Does **not** treat ``coding_policy_profile`` alone as opt-in (karpathy is
-    often set without meaning a file-output coding agent).
+    Args:
+        agent_cfg: agent_cfg 参数。
+        agent_meta: agent_meta 参数。
+        skills: skills 参数。
     """
     cfg = agent_cfg if isinstance(agent_cfg, dict) else {}
     meta = agent_meta if isinstance(agent_meta, dict) else {}
@@ -783,12 +802,11 @@ def inject_workspace_coding_defaults(
 ) -> List[str]:
     """Upgrade Workspace Execute state to the same coding closed loop as factory stages.
 
-    When agent/skills declare file-output coding: set ``_coding_policy_profile`` from
-    intensity, merge ``apply_coding_stage_defaults`` into ``_done_verify``, and return
-    extra skill ids to bind (e.g. ``autoreview`` for review_gate follow-up).
-
-    Non-coding trial agents stay on profile ``off`` (slim CLAUDE inject). Opt out:
-    ``coding_closed_loop: false`` on AGENT.md config/metadata.
+    Args:
+        state: state 参数。
+        agent_cfg: agent_cfg 参数。
+        agent_meta: agent_meta 参数。
+        skills: skills 参数。
     """
     if not isinstance(state, dict):
         return []
@@ -935,7 +953,14 @@ def resolve_upgrade_agent_type(
     conversational: Any = None,
     plan_upgrade: Any = None,
 ) -> str:
-    """Signal-based react → plan/reflection; upgrade_policy=off skips."""
+    """Signal-based react → plan/reflection; upgrade_policy=off skips.
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        conversational: conversational 参数。
+        plan_upgrade: plan_upgrade 参数。
+    """
     agent_type = str(getattr(stage, "agent_type", "") or "react")
     policy = str(getattr(stage, "upgrade_policy", "") or "signals").strip().lower()
     if policy in ("off", "none", "disabled"):
@@ -960,6 +985,7 @@ def resolve_upgrade_agent_type(
 
 
 class PipelineStageConfig(BaseModel):
+    """PipelineStageConfig。"""
     model_config = {"extra": "ignore"}
     id: str
     agent_id: str
@@ -1138,6 +1164,7 @@ class PipelineStageConfig(BaseModel):
 
 
 class PipelineConfig(BaseModel):
+    """PipelineConfig。"""
     stages: List[PipelineStageConfig] = Field(default_factory=list)
     max_iterations: int = 3
     max_tokens_per_run: int = 100000
@@ -1149,6 +1176,7 @@ class PipelineConfig(BaseModel):
 
 
 class TeamConfig(BaseModel):
+    """TeamConfig。"""
     team_id: str = ""
     name: str = ""
     description: str = ""
@@ -1162,6 +1190,7 @@ class TeamConfig(BaseModel):
 
 
 class TeamAssembleRequest(BaseModel):
+    """TeamAssembleRequest。"""
     model_config = {"extra": "ignore"}
     name: str = ""
     description: str = ""
@@ -1170,6 +1199,7 @@ class TeamAssembleRequest(BaseModel):
 
 
 class TeamRunResponse(BaseModel):
+    """TeamRunResponse。"""
     run_id: str
     team_id: str
     phase: BuilderSessionPhase
@@ -1177,6 +1207,7 @@ class TeamRunResponse(BaseModel):
 
 
 class AgentCatalogItem(BaseModel):
+    """AgentCatalogItem。"""
     agent_id: str
     display_name: str
     description: str
@@ -1189,6 +1220,7 @@ class AgentCatalogItem(BaseModel):
 
 
 class AgentCatalogResponse(BaseModel):
+    """AgentCatalogResponse。"""
     categories: Dict[str, List[AgentCatalogItem]] = Field(default_factory=dict)
     total: int = 0
 
@@ -1196,6 +1228,7 @@ class AgentCatalogResponse(BaseModel):
 # ── Project Workbench schemas ──────────────────────────────────────
 
 class ProjectRun(BaseModel):
+    """ProjectRun。"""
     run_id: str = ""
     project_id: str = ""
     phase: str = ""
@@ -1208,6 +1241,7 @@ class ProjectRun(BaseModel):
 
 
 class Project(BaseModel):
+    """Project。"""
     project_id: str = ""
     name: str = ""
     description: str = ""
@@ -1221,6 +1255,7 @@ class Project(BaseModel):
 
 
 class ProjectCreateRequest(BaseModel):
+    """ProjectCreateRequest。"""
     name: str = ""
     description: str = ""
     app_name: str = ""  # optional: user-provided English slug; auto-derived if empty
@@ -1234,6 +1269,7 @@ class ProjectCreateRequest(BaseModel):
 
 
 class ProjectListResponse(BaseModel):
+    """ProjectListResponse。"""
     projects: List[Project] = Field(default_factory=list)
     total: int = 0
 
@@ -1274,6 +1310,7 @@ class ProjectHealthReport(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 class SpecVersionSummary(BaseModel):
+    """SpecVersionSummary。"""
     version: Any = ""
     status: str = ""
     trigger: str = ""
@@ -1281,12 +1318,14 @@ class SpecVersionSummary(BaseModel):
     created_at: str = ""
 
 class SpecHistoryResponse(BaseModel):
+    """SpecHistoryResponse。"""
     spec_id: str
     versions: List[SpecVersionSummary] = Field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
 
 class SpecRevisionResponse(BaseModel):
+    """SpecRevisionResponse。"""
     spec_id: str
     version: Any = ""
     status: str = ""
@@ -1299,6 +1338,7 @@ class SpecRevisionResponse(BaseModel):
     re_execution_error: Optional[str] = None
 
 class SpecCreatedResponse(BaseModel):
+    """SpecCreatedResponse。"""
     spec_id: str
     version: Any = ""
     status: str = ""
@@ -1306,12 +1346,14 @@ class SpecCreatedResponse(BaseModel):
     source_version: Optional[str] = None
 
 class SpecMarkStableResponse(BaseModel):
+    """SpecMarkStableResponse。"""
     spec_id: str
     status: str  # "stable" or "unchanged"
     version: Any = ""
     reason: Optional[str] = None
 
 class SpecRadarSuggestion(BaseModel):
+    """SpecRadarSuggestion。"""
     type: str = ""
     severity: str = ""
     detail: str = ""
@@ -1319,12 +1361,14 @@ class SpecRadarSuggestion(BaseModel):
     evidence_count: int = 0
 
 class SpecRadarResponse(BaseModel):
+    """SpecRadarResponse。"""
     spec_id: str
     suggestions: List[SpecRadarSuggestion] = Field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
 
 class SpecTraceResponse(BaseModel):
+    """SpecTraceResponse。"""
     spec_id: str
     version: Any = ""
     status: str = ""
@@ -1340,16 +1384,19 @@ class SpecTraceResponse(BaseModel):
     error: Optional[str] = None
 
 class VersionInfo(BaseModel):
+    """VersionInfo。"""
     version: Any = ""
     status: str = ""
     content: Dict[str, Any] = Field(default_factory=dict)
 
 class FieldChange(BaseModel):
+    """FieldChange。"""
     field: str
     before: Any = None
     after: Any = None
 
 class SpecDiffResponse(BaseModel):
+    """SpecDiffResponse。"""
     spec_id: str
     source: VersionInfo = Field(default_factory=VersionInfo)
     target: VersionInfo = Field(default_factory=VersionInfo)
@@ -1357,6 +1404,7 @@ class SpecDiffResponse(BaseModel):
     total_changes: int = 0
 
 class SpecListItem(BaseModel):
+    """SpecListItem。"""
     spec_id: str
     version: Any = ""
     status: str = ""
@@ -1364,11 +1412,13 @@ class SpecListItem(BaseModel):
     created_at: str = ""
 
 class SpecsListResponse(BaseModel):
+    """SpecsListResponse。"""
     specs: List[SpecListItem] = Field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
 
 class TaskStatusResponse(BaseModel):
+    """TaskStatusResponse。"""
     run_id: str
     status: str = ""
     spec_id: str = ""
@@ -1376,6 +1426,7 @@ class TaskStatusResponse(BaseModel):
     error: Optional[str] = None
 
 class PromotionResponse(BaseModel):
+    """PromotionResponse。"""
     spec_id: str
     scope: str = ""
     promotion_status: str = ""

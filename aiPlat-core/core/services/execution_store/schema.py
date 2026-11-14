@@ -14,7 +14,13 @@ import sqlite3
 
 
 def run_migrations(conn, current: int, target_version: int) -> int:
-    """Apply schema migrations from current → target version."""
+    """Apply schema migrations from current → target version.
+
+    Args:
+        conn: conn 参数。
+        current: current 参数。
+        target_version: target_version 参数。
+    """
     # Local closure — captures conn from outer scope so the migration code
     # can call _set_version(ver) without passing conn explicitly.
     def _set_version(ver: int) -> None:

@@ -109,6 +109,11 @@ class JobManager:
 
     def __init__(self, base_dir: str = ""):
 
+        """初始化。
+
+        Args:
+            base_dir: base_dir 参数。
+        """
         self._base = _Path(base_dir or _os.getenv("AIPLAT_HOME", _Path(get_aiplat_home()))) / "finetune_jobs"
 
         self._base.mkdir(parents=True, exist_ok=True)
@@ -171,6 +176,11 @@ class JobManager:
 
     def create(self, req: JobCreateRequest) -> JobResponse:
 
+        """create。
+
+        Args:
+            req: req 参数。
+        """
         meta = self._read_meta()
 
 
@@ -289,6 +299,11 @@ class JobManager:
 
     def get(self, job_id: str) -> Optional[JobResponse]:
 
+        """get。
+
+        Args:
+            job_id: job 标识。
+        """
         meta = self._read_meta()
 
         entry = meta.get(job_id)
@@ -299,6 +314,12 @@ class JobManager:
 
     def list_all(self, limit: int = 100, offset: int = 0) -> JobListResponse:
 
+        """列出 all。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         meta = self._read_meta()
 
         entries = sorted(meta.values(), key=lambda e: -e.get("created_at", 0))
@@ -315,6 +336,11 @@ class JobManager:
 
     def cancel(self, job_id: str) -> bool:
 
+        """cancel。
+
+        Args:
+            job_id: job 标识。
+        """
         meta = self._read_meta()
 
         entry = meta.get(job_id)

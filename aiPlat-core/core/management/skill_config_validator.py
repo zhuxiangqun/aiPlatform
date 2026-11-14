@@ -15,6 +15,7 @@ from typing import Dict, List, Tuple
 
 @dataclass
 class SkillConfigIssue:
+    """SkillConfigIssue。"""
     skill: str
     file: str
     severity: str  # "error" | "warn"
@@ -26,7 +27,11 @@ RECOMMENDED_FIELDS = ["display_name", "description", "category", "version", "sta
 
 
 def validate_skill_file(md_path: Path) -> List[SkillConfigIssue]:
-    """Validate a single SKILL.md file. Returns list of issues."""
+    """Validate a single SKILL.md file. Returns list of issues.
+
+    Args:
+        md_path: md_path 参数。
+    """
     issues: List[SkillConfigIssue] = []
     skill_name = md_path.parent.name
     file_path = str(md_path)
@@ -96,7 +101,9 @@ def validate_skill_file(md_path: Path) -> List[SkillConfigIssue]:
 
 def validate_all_skills(skills_dir: str) -> Tuple[List[SkillConfigIssue], List[SkillConfigIssue]]:
     """Validate all SKILL.md files in a directory tree (recursive).
-    Returns (errors, warnings).
+
+    Args:
+        skills_dir: skills_dir 参数。
     """
     errors: List[SkillConfigIssue] = []
     warnings: List[SkillConfigIssue] = []

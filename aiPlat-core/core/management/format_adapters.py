@@ -31,23 +31,35 @@ class FormatAdapter(ABC):
 
     @abstractmethod
     def detect(self, root_dir: Path) -> bool:
-        """Return True if this adapter can handle the directory."""
+        """Return True if this adapter can handle the directory.
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         ...
 
     @abstractmethod
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
-        """
-        Convert files in root_dir into aiPlatform format.
-        Returns: { converted: [...], skipped: [...], hints: [...] }
+        """Convert files in root_dir into aiPlatform format.
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
         """
         ...
 
 
 class HermesAdapter(FormatAdapter):
+    """HermesAdapter。"""
     NAME = "hermes"
     DESCRIPTION = "Hermes Agent (SOUL.md + AGENTS.md + agentskills.io skills + MCP configs)"
 
     def detect(self, root_dir: Path) -> bool:
+        """detect。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         has_hermes = (root_dir / ".hermes").is_dir() or (root_dir / "hermes").is_dir()
         has_soul = (root_dir / "SOUL.md").is_file()
         has_agents_md = (root_dir / "AGENTS.md").is_file()
@@ -56,6 +68,12 @@ class HermesAdapter(FormatAdapter):
         return has_hermes or has_soul or has_agents_md or has_skills or has_mcp
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         converted: List[str] = []
         skipped: List[str] = []
         hints: List[str] = []
@@ -139,10 +157,16 @@ class HermesAdapter(FormatAdapter):
 
 
 class OpenClawAdapter(FormatAdapter):
+    """OpenClawAdapter。"""
     NAME = "openclaw"
     DESCRIPTION = "OpenClaw (Hermes predecessor, uses similar config layout)"
 
     def detect(self, root_dir: Path) -> bool:
+        """detect。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         has_openclaw = (root_dir / ".openclaw").is_dir() or (root_dir / "openclaw").is_dir()
         has_soul = (root_dir / "SOUL.md").is_file()
         has_skills = (root_dir / "skills").is_dir()
@@ -150,6 +174,12 @@ class OpenClawAdapter(FormatAdapter):
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
         # OpenClaw uses the same layout as Hermes — delegate to HermesAdapter
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         from core.management.agentskills_parser import convert_hermes_so_ul_to_agent_md, is_agentskills_format, convert_agentskills_to_aiplat
 
         converted: List[str] = []
@@ -231,9 +261,11 @@ def get_all_adapters() -> List[Any]:
 
 
 def detect_and_convert(root_dir: Path, target_skills_base: Path) -> Optional[Dict[str, Any]]:
-    """
-    Auto-detect external format and convert. Returns None if no adapter matched.
-    This is called before the normal SKILL.md/AGENT.md file scanning in AssetInstaller.
+    """Auto-detect external format and convert. Returns None if no adapter matched.
+
+    Args:
+        root_dir: root_dir 参数。
+        target_skills_base: target_skills_base 参数。
     """
     for adapter in get_all_adapters():
         if adapter.detect(root_dir):

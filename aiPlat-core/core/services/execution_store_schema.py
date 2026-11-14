@@ -195,7 +195,11 @@ ALL_TABLES = (
 
 
 def execute_schema(conn):
-    """Execute all DDL statements on a SQLite connection (idempotent)."""
+    """Execute all DDL statements on a SQLite connection (idempotent).
+
+    Args:
+        conn: conn 参数。
+    """
     for sql in ALL_TABLES:
         try:
             conn.execute(sql)

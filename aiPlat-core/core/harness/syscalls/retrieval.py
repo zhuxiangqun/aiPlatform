@@ -99,30 +99,14 @@ def sys_kb_retrieve(
 
     """Retrieve relevant text from KB documents via unified KnowledgeRetriever.
 
-
-
-    Uses SqliteEmbeddingRetriever → KnowledgeRetriever.search() (vector + BM25 + RRF + multi-factor rerank + CRAG quality gate).
-
-
-
-    返回: [{text, doc_id, element_id, score, type, page_idx, start_s, end_s}]
-
-
-
-    边界:
-
-      - 只读，不修改系统状态
-
-      - 结果可能被截断（top_k），不能作为"不存在"的证据
-
-      - 分数不可跨查询比较——每次检索的分数是相对的
-
-    退路:
-
-      - 未命中 → 扩大 top_k 或用 sys_wiki_retrieve 回退
-
-      - 需要全文 → 用 KB 文档导出 API
-
+    Args:
+        query: 查询。
+        doc_ids: doc_ids 参数。
+        collection_id: collection 标识。
+        domain_id: domain 标识。
+        tenant_id: 租户 ID。
+        top_k: top_k 参数。
+        actor_scopes: actor_scopes 参数。
     """
 
     if not query:
@@ -1046,6 +1030,12 @@ class WikiCircuitBreaker:
 
     def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 60.0):
 
+        """初始化。
+
+        Args:
+            failure_threshold: failure_threshold 参数。
+            recovery_timeout: recovery_timeout 参数。
+        """
         import threading
 
         from core.harness.infrastructure.circuit_breaker import BaseCircuitBreaker
@@ -1086,18 +1076,36 @@ class WikiCircuitBreaker:
 
     def allow_request(self, domain_id: str = "default", tenant_id: str = "default") -> bool:
 
+        """allow_request。
+
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户 ID。
+        """
         return self._get(domain_id, tenant_id).allow()
 
 
 
     def record_success(self, domain_id: str = "default", tenant_id: str = "default"):
 
+        """record_success。
+
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户 ID。
+        """
         self._get(domain_id, tenant_id).success()
 
 
 
     def record_failure(self, domain_id: str = "default", tenant_id: str = "default"):
 
+        """record_failure。
+
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户 ID。
+        """
         self._get(domain_id, tenant_id).failure()
 
 
@@ -1921,15 +1929,13 @@ async def sys_routed_retrieve(query: str, *, top_k: int = 8, include_web: bool =
                               doc_ids: List[str] = None) -> Dict[str, Any]:
     """意图路由统一检索：code/knowledge/web 三通道按查询意图分发。
 
-    返回 {route, results, sources}：
-      route    — 实际路由的通道（code/knowledge/web）
-      results  — 通道结果（统一为 {text, score, source} 事实条目形态）
-      sources  — 信源标注数组（source/url/text，对齐 web_search 结构化输出）
-
-    安全边界：
-      - 只读，不修改系统状态
-      - web 通道仅在 include_web=True 时启用（默认开，供 Agent 外部信息感知）
-      - 通道选择是"检索类型"判定，不推断业务域语义（§5.29 合规）
+    Args:
+        query: 查询。
+        top_k: top_k 参数。
+        include_web: include_web 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        doc_ids: doc_ids 参数。
     """
     intent = _route_intent(query)
     results: List[Dict[str, Any]] = []

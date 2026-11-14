@@ -93,6 +93,8 @@ class KnowledgeManager:
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._collections: Dict[str, CollectionInfo] = {}
         self._documents: Dict[str, List[DocumentInfo]] = {}
         self._index_status: Dict[str, IndexStatus] = {}
@@ -104,7 +106,14 @@ class KnowledgeManager:
         config: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> CollectionInfo:
-        """Create a new collection"""
+        """Create a new collection。
+
+        Args:
+            name: name 参数。
+            description: description 参数。
+            config: config 参数。
+            metadata: metadata 参数。
+        """
         collection_id = f"kb-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -141,7 +150,11 @@ class KnowledgeManager:
         return collection
     
     async def get_collection(self, collection_id: str) -> Optional[CollectionInfo]:
-        """Get collection by ID"""
+        """Get collection by ID。
+
+        Args:
+            collection_id: collection 标识。
+        """
         return self._collections.get(collection_id)
     
     async def list_collections(
@@ -150,7 +163,13 @@ class KnowledgeManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[CollectionInfo]:
-        """List collections with filters"""
+        """List collections with filters。
+
+        Args:
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         collections = list(self._collections.values())
         
         if status:
@@ -165,7 +184,14 @@ class KnowledgeManager:
         description: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None
     ) -> Optional[CollectionInfo]:
-        """Update collection"""
+        """Update collection。
+
+        Args:
+            collection_id: collection 标识。
+            name: name 参数。
+            description: description 参数。
+            config: config 参数。
+        """
         collection = self._collections.get(collection_id)
         if not collection:
             return None
@@ -182,7 +208,11 @@ class KnowledgeManager:
         return collection
     
     async def delete_collection(self, collection_id: str) -> bool:
-        """Delete collection"""
+        """Delete collection。
+
+        Args:
+            collection_id: collection 标识。
+        """
         if collection_id not in self._collections:
             return False
         
@@ -211,7 +241,15 @@ class KnowledgeManager:
         content: bytes,
         metadata: Optional[Dict[str, Any]] = None
     ) -> DocumentInfo:
-        """Upload document to collection"""
+        """Upload document to collection。
+
+        Args:
+            collection_id: collection 标识。
+            name: name 参数。
+            doc_type: doc_type 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+        """
         document_id = f"doc-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -239,7 +277,11 @@ class KnowledgeManager:
         return document
     
     async def get_document(self, document_id: str) -> Optional[DocumentInfo]:
-        """Get document by ID"""
+        """Get document by ID。
+
+        Args:
+            document_id: document 标识。
+        """
         for documents in self._documents.values():
             for doc in documents:
                 if doc.id == document_id:
@@ -253,7 +295,14 @@ class KnowledgeManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[DocumentInfo]:
-        """List documents in collection"""
+        """List documents in collection。
+
+        Args:
+            collection_id: collection 标识。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         documents = self._documents.get(collection_id, [])
         
         if status:
@@ -262,7 +311,11 @@ class KnowledgeManager:
         return documents[offset:offset + limit]
     
     async def delete_document(self, document_id: str) -> bool:
-        """Delete document"""
+        """Delete document。
+
+        Args:
+            document_id: document 标识。
+        """
         deleted_collection_id = None
         for collection_id, documents in self._documents.items():
             for i, doc in enumerate(documents):
@@ -288,7 +341,11 @@ class KnowledgeManager:
         return False
     
     async def reindex_collection(self, collection_id: str) -> bool:
-        """Reindex collection"""
+        """Reindex collection。
+
+        Args:
+            collection_id: collection 标识。
+        """
         collection = self._collections.get(collection_id)
         if not collection:
             return False
@@ -300,7 +357,11 @@ class KnowledgeManager:
         return True
     
     async def get_index_status(self, collection_id: str) -> Optional[IndexStatus]:
-        """Get index status"""
+        """Get index status。
+
+        Args:
+            collection_id: collection 标识。
+        """
         return self._index_status.get(collection_id)
     
     async def search(
@@ -311,7 +372,15 @@ class KnowledgeManager:
         similarity_threshold: float = 0.75,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[SearchResult]:
-        """Search in collection via CoreFacade.kb_retrieve (unified KnowledgeRetriever path)."""
+        """Search in collection via CoreFacade.kb_retrieve (unified KnowledgeRetriever path).
+
+        Args:
+            collection_id: collection 标识。
+            query: 查询。
+            top_k: top_k 参数。
+            similarity_threshold: similarity_threshold 参数。
+            filters: filters 参数。
+        """
         try:
             from core.api.facades.kb_facade import kb_retrieve
             conn = _kb_connect("default")

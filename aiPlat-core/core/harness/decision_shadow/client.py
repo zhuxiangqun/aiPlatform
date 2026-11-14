@@ -18,17 +18,24 @@ class DecisionClient:
     """Thin adapter placeholder — HTTP details stay isolated here."""
 
     def __init__(self, config: DecisionShadowConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
 
     @property
     def configured(self) -> bool:
+        """configured。
+        """
         return bool(self._config.endpoint)
 
     def score(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Synchronous score call. Skeleton refuses unless endpoint set.
 
-        Production Phase 1 worker will use timeout_ms + async path; this stub
-        exists so unit tests can assert isolation without network.
+        Args:
+            payload: 载荷 dict。
         """
         if not self._config.enabled:
             return {"ok": False, "drop_reason": "disabled"}

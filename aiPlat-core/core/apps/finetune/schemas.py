@@ -13,17 +13,20 @@ from pydantic import BaseModel, Field
 # ── Dataset ──────────────────────────────────────────────────────────────
 
 class DatasetSourceType(str, Enum):
+    """DatasetSourceType。"""
     UPLOAD = "upload"           # 用户上传 JSONL
     EXECUTION_LOG = "execution_log"  # 从执行日志筛选
     ARENA_RESULT = "arena_result"    # 从 Arena 对战结果导出
 
 
 class DatasetFormat(str, Enum):
+    """DatasetFormat。"""
     JSONL = "jsonl"
     JSON = "json"
 
 
 class DatasetStatus(str, Enum):
+    """DatasetStatus。"""
     READY = "ready"
     IMPORTING = "importing"
     VALIDATING = "validating"
@@ -33,6 +36,7 @@ class DatasetStatus(str, Enum):
 # ── Dataset API models ──
 
 class DatasetCreateRequest(BaseModel):
+    """DatasetCreateRequest。"""
     name: str = Field(min_length=1, max_length=100)
     description: str = ""
     source_type: DatasetSourceType = DatasetSourceType.UPLOAD
@@ -41,14 +45,17 @@ class DatasetCreateRequest(BaseModel):
     format: DatasetFormat = DatasetFormat.JSONL
 
 class DatasetUpdateRequest(BaseModel):
+    """DatasetUpdateRequest。"""
     name: Optional[str] = None
     description: Optional[str] = None
 
 class DatasetImportRequest(BaseModel):
+    """DatasetImportRequest。"""
     content: str = Field(default="", description="JSONL raw content")
     file_name: str = ""
 
 class DatasetResponse(BaseModel):
+    """DatasetResponse。"""
     id: str
     name: str
     description: str
@@ -64,10 +71,12 @@ class DatasetResponse(BaseModel):
     updated_at: float = 0.0
 
 class DatasetListResponse(BaseModel):
+    """DatasetListResponse。"""
     datasets: List[DatasetResponse]
     total: int
 
 class DatasetPreviewResponse(BaseModel):
+    """DatasetPreviewResponse。"""
     dataset_id: str
     samples: List[Dict[str, Any]]   # 前 100 条样本
     total_count: int
@@ -77,6 +86,7 @@ class DatasetPreviewResponse(BaseModel):
 # ── Job ──────────────────────────────────────────────────────────────────
 
 class JobStatus(str, Enum):
+    """JobStatus。"""
     QUEUED = "queued"
     VALIDATING = "validating"
     UPLOADING = "uploading"
@@ -88,12 +98,14 @@ class JobStatus(str, Enum):
 
 
 class FineTuneProvider(str, Enum):
+    """FineTuneProvider。"""
     DEEPSEEK = "deepseek"
     OPENAI = "openai"
     LOCAL = "local"
 
 
 class FineTuneTemplate(str, Enum):
+    """FineTuneTemplate。"""
     GENERAL = "general"           # 通用增强
     CODE = "code"                 # 代码能力
     CUSTOMER_SERVICE = "customer_service"  # 客服场景
@@ -109,6 +121,7 @@ TEMPLATE_HYPERPARAMS: Dict[str, Dict[str, Any]] = {
 
 
 class JobCreateRequest(BaseModel):
+    """JobCreateRequest。"""
     base_model: str = Field(min_length=1, description="基模型名 (如 deepseek-chat)")
     dataset_id: str = Field(min_length=1)
     provider: FineTuneProvider = FineTuneProvider.DEEPSEEK
@@ -119,6 +132,7 @@ class JobCreateRequest(BaseModel):
 
 
 class JobResponse(BaseModel):
+    """JobResponse。"""
     id: str
     base_model: str
     dataset_id: str
@@ -137,6 +151,7 @@ class JobResponse(BaseModel):
     estimated_duration_seconds: int = 0
 
 class JobListResponse(BaseModel):
+    """JobListResponse。"""
     jobs: List[JobResponse]
     total: int
 
@@ -144,6 +159,7 @@ class JobListResponse(BaseModel):
 # ── Provider ─────────────────────────────────────────────────────────────
 
 class ProviderInfo(BaseModel):
+    """ProviderInfo。"""
     name: FineTuneProvider
     display_name: str
     available: bool
@@ -153,6 +169,7 @@ class ProviderInfo(BaseModel):
     estimated_cost_per_job: str = ""
 
 class ProviderListResponse(BaseModel):
+    """ProviderListResponse。"""
     providers: List[ProviderInfo]
 
 # ═══════════════════════════════════════════════════════════════
@@ -160,6 +177,7 @@ class ProviderListResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════
 
 class TrainingJobResponse(BaseModel):
+    """TrainingJobResponse。"""
     job_id: str
     status: str = "running"
     iterations: int = 0
@@ -169,11 +187,13 @@ class TrainingJobResponse(BaseModel):
     error: Optional[str] = None
 
 class TrainingJobListResponse(BaseModel):
+    """TrainingJobListResponse。"""
     jobs: List[Dict[str, Any]] = Field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
 
 class ModelListItem(BaseModel):
+    """ModelListItem。"""
     name: str
     display_name: str = ""
     provider_name: str = ""
@@ -182,6 +202,7 @@ class ModelListItem(BaseModel):
     available: bool = True
 
 class ModelListResponse(BaseModel):
+    """ModelListResponse。"""
     models: List[ModelListItem] = Field(default_factory=list)
     total: int = 0
     error: Optional[str] = None
@@ -199,6 +220,7 @@ class JobStatusResponse(BaseModel):
     model_config = {"extra": "allow"}  # allow backend-specific extra fields
 
 class JobStatusErrorResponse(BaseModel):
+    """JobStatusErrorResponse。"""
     job_id: str
     status: str = "error"
     error: str = ""
@@ -207,6 +229,7 @@ DistillJobResult = _Union[JobStatusResponse, JobStatusErrorResponse]
 ScratchJobResult = _Union[JobStatusResponse, JobStatusErrorResponse]
 
 class TrainingJobCreatedResponse(BaseModel):
+    """TrainingJobCreatedResponse。"""
     job_id: str
     status: str = "running"
 
@@ -214,6 +237,7 @@ class TrainingJobCreatedResponse(BaseModel):
 # ── Request models ──────────────────────────────────────────────────
 
 class TrainingStartRequest(BaseModel):
+    """TrainingStartRequest。"""
     base_model: str
     dataset_id: str = ""
     num_iterations: int = 1
@@ -221,6 +245,7 @@ class TrainingStartRequest(BaseModel):
 
 
 class DistillationStartRequest(BaseModel):
+    """DistillationStartRequest。"""
     teacher_model: str = ""
     student_model: str = ""
     dataset_id: str = ""
@@ -231,6 +256,7 @@ class DistillationStartRequest(BaseModel):
 
 
 class ScratchTrainingStartRequest(BaseModel):
+    """ScratchTrainingStartRequest。"""
     dataset_id: str
     model_architecture: str = "gpt2"
     output_model_name: str = ""

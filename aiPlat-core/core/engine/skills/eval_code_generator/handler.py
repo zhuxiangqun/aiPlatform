@@ -28,7 +28,11 @@ def _extract_target(p: Dict[str, Any]) -> str:
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate scoring_dimensions + eval_metric/eval_runner for target_agent_id."""
+    """Generate scoring_dimensions + eval_metric/eval_runner for target_agent_id.
+
+    Args:
+        params: params 参数。
+    """
     p = params if isinstance(params, dict) else {}
     target = _extract_target(p)
     if not target:

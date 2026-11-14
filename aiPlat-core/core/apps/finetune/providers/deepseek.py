@@ -33,20 +33,31 @@ class DeepSeekFineTuneProvider:
     BASE_URL = "https://api.deepseek.com"
 
     def __init__(self, api_key: str = ""):
+        """初始化。
+
+        Args:
+            api_key: api_key 参数。
+        """
         from core.harness.utils.llm_env import get_llm_api_key
         self._api_key = api_key or get_llm_api_key("deepseek") or ""
         self._client = httpx.Client(base_url=self.BASE_URL, timeout=httpx.Timeout(60.0))
 
     @property
     def available(self) -> bool:
+        """available。
+        """
         return bool(self._api_key)
 
     @property
     def display_name(self) -> str:
+        """display_name。
+        """
         return "DeepSeek"
 
     @property
     def supported_base_models(self) -> list:
+        """supported_base_models。
+        """
         return ["deepseek-chat", "deepseek-v4-pro", "deepseek-v4-flash"]
 
     def check_quota(self) -> Dict[str, int]:
@@ -69,9 +80,10 @@ class DeepSeekFineTuneProvider:
 
     def estimate_cost(self, sample_count: int, epochs: int = 3) -> str:
         """Estimate cost based on dataset size and training parameters.
-        
-        DeepSeek pricing (approximate): ~$0.25 per 1M training tokens.
-        Typical conversation pair ≈ 500 tokens → sample_count × epochs × 500 ≈ total_tokens.
+
+        Args:
+            sample_count: sample_count 参数。
+            epochs: epochs 参数。
         """
         est_tokens = sample_count * epochs * 500
         est_cost = est_tokens / 1_000_000 * 0.25
@@ -80,7 +92,11 @@ class DeepSeekFineTuneProvider:
     # ── Fine-Tuning Job Lifecycle ──────────────────────────────────────
 
     def upload_file(self, file_path: str) -> str:
-        """Upload a JSONL file for fine-tuning. Returns file_id."""
+        """Upload a JSONL file for fine-tuning. Returns file_id.
+
+        Args:
+            file_path: file_path 参数。
+        """
         with open(file_path, "rb") as f:
             resp = self._client.post(
                 "/v1/files",
@@ -97,7 +113,14 @@ class DeepSeekFineTuneProvider:
         suffix: Optional[str] = None,
         hyperparams: Optional[Dict[str, Any]] = None,
     ) -> FineTuneJobResult:
-        """Create a fine-tuning job. Returns job metadata."""
+        """Create a fine-tuning job. Returns job metadata.
+
+        Args:
+            file_id: file 标识。
+            model: 模型名。
+            suffix: suffix 参数。
+            hyperparams: hyperparams 参数。
+        """
         body: Dict[str, Any] = {
             "model": model,
             "training_file": file_id,
@@ -121,7 +144,11 @@ class DeepSeekFineTuneProvider:
         return result
 
     def get_job(self, provider_job_id: str) -> FineTuneJobResult:
-        """Get fine-tuning job status."""
+        """Get fine-tuning job status.
+
+        Args:
+            provider_job_id: provider_job 标识。
+        """
         resp = self._client.get(
             f"/v1/fine_tuning/jobs/{provider_job_id}",
             headers=self._headers(),
@@ -137,7 +164,11 @@ class DeepSeekFineTuneProvider:
         return result
 
     def cancel_job(self, provider_job_id: str) -> bool:
-        """Cancel a running fine-tuning job."""
+        """Cancel a running fine-tuning job.
+
+        Args:
+            provider_job_id: provider_job 标识。
+        """
         resp = self._client.post(
             f"/v1/fine_tuning/jobs/{provider_job_id}/cancel",
             headers=self._headers(),

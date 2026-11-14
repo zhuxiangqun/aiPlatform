@@ -13,9 +13,11 @@ from typing import Any, Dict, List, Optional
 
 
 def sys_skill_corpus_search(query: str, limit: int = 10) -> List[Dict[str, Any]]:
-    u"""Search skill metadata corpus (including disabled skills).
+    """Search skill metadata corpus (including disabled skills).
 
-    Returns candidates with ref, name, description snippet, score, truncated flag.
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
     """
     from core.harness.integration import get_skill_registry
     reg = get_skill_registry()
@@ -23,9 +25,10 @@ def sys_skill_corpus_search(query: str, limit: int = 10) -> List[Dict[str, Any]]
 
 
 def sys_skill_corpus_inspect(ref: str) -> Optional[Dict[str, Any]]:
-    u"""Inspect a candidate skill's full metadata (NOT body).
+    """Inspect a candidate skill's full metadata (NOT body).
 
-    Returns name, description, triggers, tags, execution_type, category, skill_chain.
+    Args:
+        ref: ref 参数。
     """
     from core.harness.integration import get_skill_registry
     reg = get_skill_registry()
@@ -35,9 +38,13 @@ def sys_skill_corpus_inspect(ref: str) -> Optional[Dict[str, Any]]:
 def sys_skill_corpus_select(
     ref: str, query: str, reason: str, confidence: str = "medium"
 ) -> Dict[str, Any]:
-    u"""Select a skill from the corpus. Records audit + returns body.
+    """Select a skill from the corpus. Records audit + returns body.
 
-    Auto-enables the skill if it gets selected 3+ times.
+    Args:
+        ref: ref 参数。
+        query: 查询。
+        reason: reason 参数。
+        confidence: confidence 参数。
     """
     from core.harness.integration import get_skill_registry
     reg = get_skill_registry()

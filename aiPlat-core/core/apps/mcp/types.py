@@ -30,6 +30,8 @@ class JSONRPCRequest:
     id: Optional[Union[str, int]] = None
 
     def to_json(self) -> str:
+        """to_json。
+        """
         return json.dumps({
             "jsonrpc": self.jsonrpc.value,
             "method": self.method,
@@ -39,6 +41,11 @@ class JSONRPCRequest:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "JSONRPCRequest":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             jsonrpc=JSONRPCVersion(data.get("jsonrpc", "2.0")),
             method=data.get("method", ""),
@@ -57,9 +64,13 @@ class JSONRPCResponse:
 
     @property
     def is_error(self) -> bool:
+        """is_error。
+        """
         return self.error is not None
 
     def to_json(self) -> str:
+        """to_json。
+        """
         data = {"jsonrpc": self.jsonrpc.value, "id": self.id}
         if self.error:
             data["error"] = self.error
@@ -69,6 +80,11 @@ class JSONRPCResponse:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "JSONRPCResponse":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             jsonrpc=JSONRPCVersion(data.get("jsonrpc", "2.0")),
             result=data.get("result"),

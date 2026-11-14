@@ -61,6 +61,12 @@ class LLMCircuitBreaker:
 
     def __init__(self, failure_threshold=5, recovery_timeout=30):
 
+        """初始化。
+
+        Args:
+            failure_threshold: failure_threshold 参数。
+            recovery_timeout: recovery_timeout 参数。
+        """
         self.threshold = failure_threshold
 
         self.timeout = recovery_timeout
@@ -79,6 +85,8 @@ class LLMCircuitBreaker:
 
     def allow_request(self) -> bool:
 
+        """allow_request。
+        """
         if self._state == "open":
 
             if time.time() - self._open_ts <= self.timeout:
@@ -105,6 +113,8 @@ class LLMCircuitBreaker:
 
     def record_success(self):
 
+        """record_success。
+        """
         self._probe_in_flight = False
 
         self._failures = 0
@@ -123,6 +133,8 @@ class LLMCircuitBreaker:
 
     def record_failure(self):
 
+        """record_failure。
+        """
         self._probe_in_flight = False
 
         self._failures += 1
@@ -218,7 +230,12 @@ class LLMResult:
 
     def get(self, key: str, default: Any = None) -> Any:
 
-        u"""Dict-like access for backward compatibility."""
+        """Dict-like access for backward compatibility.
+
+        Args:
+            key: key 参数。
+            default: default 参数。
+        """
 
         return getattr(self, key, default)
 
@@ -1610,6 +1627,22 @@ async def sys_llm_generate(
 
 ) -> Any:
 
+    """sys_llm_generate。
+
+    Args:
+        model: 模型名。
+        prompt: prompt 参数。
+        session_id: 会话 ID。
+        trace_context: trace_context 参数。
+        model_name: model_name 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+        response_format: response_format 参数。
+        extra_context: extra_context 参数。
+        gate_mode: gate_mode 参数。
+        inject_context: inject_context 参数。
+        purpose: purpose 参数。
+    """
     from ._trace import trace_syscall_entry
 
     trace_syscall_entry("sys_llm_generate")
@@ -3321,12 +3354,14 @@ async def sys_llm_generate_stream(
 
     """Streaming version of sys_llm_generate. Yields text chunks as they arrive.
 
-
-
-    Uses the adapter's stream_generate() method if available,
-
-    otherwise falls back to non-streaming generate().
-
+    Args:
+        model: 模型名。
+        messages: messages 参数。
+        session_id: 会话 ID。
+        model_name: model_name 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+        response_format: response_format 参数。
     """
 
     from typing import AsyncIterator

@@ -1,3 +1,5 @@
+"""delivery：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -12,6 +14,11 @@ class ConnectorDelivery:
     """
 
     def __init__(self, *, execution_store: Any):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._store = execution_store
 
     async def post_webhook(
@@ -26,6 +33,18 @@ class ConnectorDelivery:
         retries: int = 1,
         timeout_seconds: float = 8.0,
     ) -> Dict[str, Any]:
+        """post_webhook。
+
+        Args:
+            connector: connector 参数。
+            url: url 参数。
+            payload: 载荷 dict。
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            headers: headers 参数。
+            retries: retries 参数。
+            timeout_seconds: timeout_seconds 参数。
+        """
         import aiohttp
 
         if not url:

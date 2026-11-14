@@ -21,6 +21,16 @@ class GraphMixin:
         parent_run_id: Optional[str] = None,
         resumed_from_checkpoint_id: Optional[str] = None,
     ) -> str:
+        """start_graph_run。
+
+        Args:
+            graph_name: graph_name 参数。
+            run_id: 运行 ID。
+            initial_state: initial_state 参数。
+            start_time: start_time 参数。
+            parent_run_id: parent_run 标识。
+            resumed_from_checkpoint_id: resumed_from_checkpoint 标识。
+        """
         await self.init()
         db_path = self._config.db_path
         run_id = run_id or str(uuid.uuid4())
@@ -66,6 +76,15 @@ class GraphMixin:
         summary: Optional[Dict[str, Any]] = None,
         end_time: Optional[float] = None,
     ) -> None:
+        """finish_graph_run。
+
+        Args:
+            run_id: 运行 ID。
+            status: status 参数。
+            final_state: final_state 参数。
+            summary: summary 参数。
+            end_time: end_time 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         end_time = float(end_time or time.time())
@@ -107,6 +126,15 @@ class GraphMixin:
         checkpoint_id: Optional[str] = None,
         created_at: Optional[float] = None,
     ) -> str:
+        """add_graph_checkpoint。
+
+        Args:
+            run_id: 运行 ID。
+            step: step 参数。
+            state: state 参数。
+            checkpoint_id: checkpoint 标识。
+            created_at: created_at 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         checkpoint_id = checkpoint_id or str(uuid.uuid4())
@@ -136,6 +164,13 @@ class GraphMixin:
         return checkpoint_id
 
     async def list_graph_checkpoints(self, run_id: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """列出 graph_checkpoints。
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -169,6 +204,11 @@ class GraphMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_graph_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 graph_run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -206,7 +246,15 @@ class GraphMixin:
         status: Optional[str] = None,
         trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """List graph_runs with basic filters."""
+        """List graph_runs with basic filters.
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            graph_name: graph_name 参数。
+            status: status 参数。
+            trace_id: trace 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 

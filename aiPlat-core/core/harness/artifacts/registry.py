@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class ArtifactRecord:
+    """ArtifactRecord。"""
     project_id: str
     name: str
     version: str
@@ -35,7 +36,13 @@ class ArtifactRecord:
 
 
 class ArtifactRegistry:
+    """ArtifactRegistry。"""
     def __init__(self, base_dir: str = ""):
+        """初始化。
+
+        Args:
+            base_dir: base_dir 参数。
+        """
         self._base_dir = os.path.realpath(
             base_dir or get_aiplat_data_dir("artifacts")
         )
@@ -52,6 +59,17 @@ class ArtifactRegistry:
         metadata: Optional[Dict[str, Any]] = None,
         session_id: str = "",
     ) -> ArtifactRecord:
+        """store。
+
+        Args:
+            project_id: project 标识。
+            name: name 参数。
+            files: files 参数。
+            version: version 参数。
+            tags: tags 参数。
+            metadata: metadata 参数。
+            session_id: 会话 ID。
+        """
         if not version:
             ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             version = f"v_{ts}"
@@ -103,6 +121,12 @@ class ArtifactRegistry:
         return record
 
     def list_versions(self, project_id: str, name: str) -> List[ArtifactRecord]:
+        """列出 versions。
+
+        Args:
+            project_id: project 标识。
+            name: name 参数。
+        """
         art_root = os.path.join(self._base_dir, project_id, name)
         if not os.path.isdir(art_root):
             return []
@@ -119,10 +143,23 @@ class ArtifactRegistry:
         return results
 
     def get_latest(self, project_id: str, name: str) -> Optional[ArtifactRecord]:
+        """获取 latest。
+
+        Args:
+            project_id: project 标识。
+            name: name 参数。
+        """
         versions = self.list_versions(project_id, name)
         return versions[0] if versions else None
 
     def get(self, project_id: str, name: str, version: str) -> Optional[ArtifactRecord]:
+        """get。
+
+        Args:
+            project_id: project 标识。
+            name: name 参数。
+            version: version 参数。
+        """
         meta_path = os.path.join(self._base_dir, project_id, name, version, "metadata.json")
         if not os.path.isfile(meta_path):
             return None
@@ -134,6 +171,13 @@ class ArtifactRegistry:
             return None
 
     def delete(self, project_id: str, name: str, version: str) -> bool:
+        """delete。
+
+        Args:
+            project_id: project 标识。
+            name: name 参数。
+            version: version 参数。
+        """
         art_dir = os.path.join(self._base_dir, project_id, name, version)
         if not os.path.isdir(art_dir):
             return False
@@ -144,6 +188,12 @@ class ArtifactRegistry:
         return True
 
     def search_by_tag(self, project_id: str, tag: str) -> List[ArtifactRecord]:
+        """search_by_tag。
+
+        Args:
+            project_id: project 标识。
+            tag: tag 参数。
+        """
         results = []
         proj_dir = os.path.join(self._base_dir, project_id)
         if not os.path.isdir(proj_dir):
@@ -160,6 +210,8 @@ _artifact_registry: Optional[ArtifactRegistry] = None
 
 
 def get_artifact_registry() -> ArtifactRegistry:
+    """获取 artifact_registry。
+    """
     global _artifact_registry
     if _artifact_registry is None:
         _artifact_registry = ArtifactRegistry()

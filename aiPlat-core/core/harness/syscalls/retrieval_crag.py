@@ -84,6 +84,21 @@ async def sys_crag_retrieve(
 
 ) -> Tuple[str, List[Dict[str, Any]]]:
 
+    """sys_crag_retrieve。
+
+    Args:
+        query: 查询。
+        domain_id: domain 标识。
+        collection_id: collection 标识。
+        tenant_id: 租户 ID。
+        doc_ids: doc_ids 参数。
+        ontology_class_uri: ontology_class_uri 参数。
+        top_k: top_k 参数。
+        enable_hyde: enable_hyde 参数。
+        enable_deep_research: enable_deep_research 参数。
+        time_filters: time_filters 参数。
+        run_id: 运行 ID。
+    """
     from ._trace import trace_syscall_entry
 
     trace_syscall_entry("sys_crag_retrieve")

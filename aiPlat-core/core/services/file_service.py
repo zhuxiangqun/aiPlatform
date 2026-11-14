@@ -29,6 +29,11 @@ class FileService:
     """
     
     def __init__(self, context_service: Optional[ContextService] = None):
+        """初始化。
+
+        Args:
+            context_service: context_service 参数。
+        """
         self._context_service = context_service or ContextService()
         self._files: Dict[str, ContextFile] = {}
         self._session_files: Dict[str, List[str]] = {}
@@ -47,7 +52,16 @@ class FileService:
         created_by: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Optional[ContextFile]:
-        """Create a new file in context."""
+        """Create a new file in context.
+
+        Args:
+            session_id: 会话 ID。
+            file_type: file_type 参数。
+            name: name 参数。
+            content: content 参数。
+            created_by: created_by 参数。
+            metadata: metadata 参数。
+        """
         context = await self._context_service.get_context(session_id)
         if not context:
             return None
@@ -73,7 +87,12 @@ class FileService:
         return file
     
     async def get_file(self, session_id: str, file_id: str) -> Optional[ContextFile]:
-        """Get a file by ID."""
+        """Get a file by ID.
+
+        Args:
+            session_id: 会话 ID。
+            file_id: file 标识。
+        """
         context = await self._context_service.get_context(session_id)
         if not context:
             return None
@@ -87,7 +106,13 @@ class FileService:
         file_id: str,
         new_content: str
     ) -> Optional[ContextFile]:
-        """Update file content."""
+        """Update file content.
+
+        Args:
+            session_id: 会话 ID。
+            file_id: file 标识。
+            new_content: new_content 参数。
+        """
         context = await self._context_service.get_context(session_id)
         if not context:
             return None
@@ -102,7 +127,12 @@ class FileService:
         return file
     
     async def delete_file(self, session_id: str, file_id: str) -> bool:
-        """Delete a file."""
+        """Delete a file.
+
+        Args:
+            session_id: 会话 ID。
+            file_id: file 标识。
+        """
         context = await self._context_service.get_context(session_id)
         if not context:
             return False
@@ -125,7 +155,12 @@ class FileService:
         session_id: str,
         file_type: Optional[FileType] = None
     ) -> List[ContextFile]:
-        """List files in context."""
+        """List files in context.
+
+        Args:
+            session_id: 会话 ID。
+            file_type: file_type 参数。
+        """
         context = await self._context_service.get_context(session_id)
         if not context:
             return []
@@ -140,7 +175,12 @@ class FileService:
         return files
     
     async def get_file_history(self, session_id: str, file_id: str) -> List[Dict[str, Any]]:
-        """Get file version history."""
+        """Get file version history.
+
+        Args:
+            session_id: 会话 ID。
+            file_id: file 标识。
+        """
         file = await self.get_file(session_id, file_id)
         if not file:
             return []
@@ -160,7 +200,14 @@ class FileService:
         version1: int,
         version2: int
     ) -> Optional[Dict[str, Any]]:
-        """Compare two versions of a file."""
+        """Compare two versions of a file.
+
+        Args:
+            session_id: 会话 ID。
+            file_id: file 标识。
+            version1: version1 参数。
+            version2: version2 参数。
+        """
         file = await self.get_file(session_id, file_id)
         if not file:
             return None
@@ -191,7 +238,11 @@ class FileService:
     
     @staticmethod
     def get_file_template(file_type: FileType) -> str:
-        """Get template for a file type."""
+        """Get template for a file type.
+
+        Args:
+            file_type: file_type 参数。
+        """
         templates = {
             FileType.SPEC: """# 需求规格说明
 

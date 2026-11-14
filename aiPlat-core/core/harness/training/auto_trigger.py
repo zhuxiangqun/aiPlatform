@@ -25,6 +25,7 @@ _log = logging.getLogger("aiplat.sft_trigger")
 @dataclass
 # disposition: internal data type — Phase 4.3 SFT auto-trigger, wiring pending
 class SFTDatasetConfig:
+    """SFTDatasetConfig。"""
     min_quality_label: str = "positive"
     max_samples: int = 1000
     output_format: str = "sharegpt"  # sharegpt / alpaca / openai
@@ -43,6 +44,8 @@ class LoRAAutoTrigger:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._approved_count = 0
         self._quality_count = 0   # 仅计高质量 (confidence ≥ threshold)
         self._threshold = int(os.getenv("AIPLAT_SFT_AUTO_TRIGGER_THRESHOLD", "100"))
@@ -53,7 +56,11 @@ class LoRAAutoTrigger:
         os.makedirs(self._dataset_dir, exist_ok=True)
 
     async def on_skill_approved(self, skill_draft: Any):
-        """AutoLearner 审批通过的回调"""
+        """AutoLearner 审批通过的回调。
+
+        Args:
+            skill_draft: skill_draft 参数。
+        """
         if not self._enabled:
             return
 
@@ -283,6 +290,8 @@ class LoRAAutoTrigger:
             logging.debug(str(e), exc_info=True)
 
     def get_stats(self) -> Dict[str, Any]:
+        """获取 stats。
+        """
         return {
             "approved_count": self._approved_count,
             "quality_count": self._quality_count,
@@ -298,6 +307,8 @@ class LoRAAutoTrigger:
 _trigger: Optional[LoRAAutoTrigger] = None
 
 def get_lora_auto_trigger() -> LoRAAutoTrigger:
+    """获取 lora_auto_trigger。
+    """
     global _trigger
     if _trigger is None:
         _trigger = LoRAAutoTrigger()

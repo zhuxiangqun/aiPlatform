@@ -12,6 +12,14 @@ from ._base import _json_dumps, _json_loads
 class LongTermMemoryMixin:
     """Extracted from ExecutionStore."""
     async def add_long_term_memory(self, *, user_id: str, content: str, key: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """add_long_term_memory。
+
+        Args:
+            user_id: 用户 ID。
+            content: content 参数。
+            key: key 参数。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -86,6 +94,13 @@ class LongTermMemoryMixin:
         }
 
     async def search_long_term_memory(self, *, user_id: str, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """search_long_term_memory。
+
+        Args:
+            user_id: 用户 ID。
+            query: 查询。
+            limit: 返回条数上限。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -157,7 +172,13 @@ class LongTermMemoryMixin:
         return out
 
     async def list_long_term_memories(self, *, user_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
-        """Phase 40: List all long-term memories for a user (paginated)."""
+        """Phase 40: List all long-term memories for a user (paginated).
+
+        Args:
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self.list_long_term_memories_filtered(
             user_id=user_id, limit=limit, offset=offset,
         )
@@ -169,7 +190,17 @@ class LongTermMemoryMixin:
         date_from: Optional[float] = None,
         date_to: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
-        """Phase 40: List long-term memories with structured filters (no raw SQL injection risk)."""
+        """Phase 40: List long-term memories with structured filters (no raw SQL injection risk).
+
+        Args:
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            source_tag: source_tag 参数。
+            min_trust: min_trust 参数。
+            date_from: date_from 参数。
+            date_to: date_to 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -215,7 +246,14 @@ class LongTermMemoryMixin:
         return out
 
     async def update_long_term_memory(self, *, memory_id: str, content: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None, key: Optional[str] = None) -> Dict[str, Any]:
-        """Phase 40: Update a long-term memory entry."""
+        """Phase 40: Update a long-term memory entry.
+
+        Args:
+            memory_id: memory 标识。
+            content: content 参数。
+            metadata: metadata 参数。
+            key: key 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -264,7 +302,11 @@ class LongTermMemoryMixin:
         }
 
     async def delete_long_term_memory(self, *, memory_id: str) -> bool:
-        """Phase 40: Delete a long-term memory entry."""
+        """Phase 40: Delete a long-term memory entry.
+
+        Args:
+            memory_id: memory 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 

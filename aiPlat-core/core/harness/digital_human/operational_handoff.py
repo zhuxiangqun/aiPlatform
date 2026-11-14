@@ -46,7 +46,11 @@ _HANDOFF_RULES: Tuple[Tuple[Tuple[str, ...], str, str], ...] = (
 
 
 def classify_operational_handoff(question: str) -> Optional[Dict[str, str]]:
-    """Return handoff dict if question is operational; else None."""
+    """Return handoff dict if question is operational; else None.
+
+    Args:
+        question: question 参数。
+    """
     q = (question or "").strip()
     if not q:
         return None
@@ -59,7 +63,11 @@ def classify_operational_handoff(question: str) -> Optional[Dict[str, str]]:
 
 
 def handoff_card_payload(question: str) -> Optional[Dict[str, Any]]:
-    """Structured payload for APIs/UI (route + label)."""
+    """Structured payload for APIs/UI (route + label).
+
+    Args:
+        question: question 参数。
+    """
     info = classify_operational_handoff(question)
     if not info:
         return None
@@ -72,7 +80,12 @@ def handoff_card_payload(question: str) -> Optional[Dict[str, Any]]:
 
 
 def append_handoff_action(answer: str, question: str) -> str:
-    """Ensure operational Q&A ends with a handoff ACTION (idempotent)."""
+    """Ensure operational Q&A ends with a handoff ACTION (idempotent).
+
+    Args:
+        answer: answer 参数。
+        question: question 参数。
+    """
     text = answer or ""
     if re.search(r"\[ACTION:handoff:", text):
         return text

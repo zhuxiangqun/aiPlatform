@@ -17,10 +17,16 @@ from typing import Any, Dict, List, Optional
 # ═══════════════════════════════════════════════════
 
 class N8nAdapter:
+    """N8nAdapter。"""
     NAME = "n8n"
     DESCRIPTION = "n8n (Workflow JSON with 400+ nodes)"
 
     def detect(self, root_dir: Path) -> bool:
+        """detect。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         if (root_dir / "workflow.json").is_file():
             return True
         for item in root_dir.iterdir():
@@ -34,6 +40,12 @@ class N8nAdapter:
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         converted: List[str] = []
         skipped: List[str] = []
 
@@ -170,10 +182,16 @@ def _make_code_skill(name: str, code: str, target: Path, converted: List[str]):
 # ═══════════════════════════════════════════════════
 
 class LangChainAdapter:
+    """LangChainAdapter。"""
     NAME = "langchain"
     DESCRIPTION = "LangChain (agent JSON, @tool decorator, LangGraph)"
 
     def detect(self, root_dir: Path) -> bool:
+        """detect。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         for item in root_dir.iterdir():
             if item.suffix == ".json" and item.is_file():
                 try:
@@ -195,6 +213,12 @@ class LangChainAdapter:
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         converted: List[str] = []
         skipped: List[str] = []
         agents_base = target_base.parent / "agents"

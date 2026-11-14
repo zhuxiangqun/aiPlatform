@@ -24,6 +24,16 @@ class GatewayMixin:
         tenant_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """upsert_gateway_pairing。
+
+        Args:
+            channel: channel 参数。
+            channel_user_id: channel_user 标识。
+            user_id: 用户 ID。
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -80,6 +90,12 @@ class GatewayMixin:
         return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def resolve_gateway_pairing(self, *, channel: str, channel_user_id: str) -> Optional[Dict[str, Any]]:
+        """resolve_gateway_pairing。
+
+        Args:
+            channel: channel 参数。
+            channel_user_id: channel_user 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -108,6 +124,14 @@ class GatewayMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 gateway_pairings。
+
+        Args:
+            channel: channel 参数。
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -141,6 +165,12 @@ class GatewayMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def delete_gateway_pairing(self, *, channel: str, channel_user_id: str) -> bool:
+        """删除 gateway_pairing。
+
+        Args:
+            channel: channel 参数。
+            channel_user_id: channel_user 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -167,6 +197,15 @@ class GatewayMixin:
         enabled: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """创建 gateway_token。
+
+        Args:
+            name: name 参数。
+            token: token 参数。
+            tenant_id: 租户 ID。
+            enabled: 是否启用。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         import hashlib
@@ -209,6 +248,11 @@ class GatewayMixin:
         return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def validate_gateway_token(self, *, token: str) -> Optional[Dict[str, Any]]:
+        """validate_gateway_token。
+
+        Args:
+            token: token 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         import hashlib
@@ -232,6 +276,13 @@ class GatewayMixin:
         return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def list_gateway_tokens(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
+        """列出 gateway_tokens。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            enabled: 是否启用。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -265,6 +316,11 @@ class GatewayMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def delete_gateway_token(self, *, token_id: str) -> bool:
+        """删除 gateway_token。
+
+        Args:
+            token_id: token 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 

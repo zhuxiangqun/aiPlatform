@@ -50,6 +50,7 @@ from typing import Dict, List, Optional, Set
 
 class ToolMapping:
 
+    """ToolMapping。"""
     primary: Optional[str]  # aiPlatform tool/skill name; None = no equivalent
 
     critical: bool = False  # missing → block skill activation
@@ -116,6 +117,7 @@ _TOOL_REF_PATTERN = re.compile(
 
 class SkillPattern(Enum):
 
+    """SkillPattern。"""
     PRE_ADAPTED = auto()        # handler.py exists
 
     SCRIPT_BASED = auto()       # scripts/ dir with .py files
@@ -134,6 +136,7 @@ class SkillPattern(Enum):
 
 class SkillProfile:
 
+    """SkillProfile。"""
     pattern: SkillPattern
 
     has_scripts: bool = False
@@ -150,7 +153,11 @@ class SkillProfile:
 
 def detect_pattern(skill_dir: str | Path) -> SkillProfile:
 
-    """Scan a skill directory and return its detected pattern."""
+    """Scan a skill directory and return its detected pattern.
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
 
     root = Path(skill_dir)
 
@@ -284,7 +291,11 @@ def detect_pattern(skill_dir: str | Path) -> SkillProfile:
 
 def adapt_skill(dst_dir: str | Path) -> Dict[str, any]:
 
-    """Auto-adapt a skill after installation. Returns summary dict."""
+    """Auto-adapt a skill after installation. Returns summary dict.
+
+    Args:
+        dst_dir: dst_dir 参数。
+    """
 
     root = Path(dst_dir)
 

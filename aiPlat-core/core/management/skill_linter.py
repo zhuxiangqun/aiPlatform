@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class LintIssue:
+    """LintIssue。"""
     level: str  # error|warning
     code: str
     message: str
@@ -32,6 +33,7 @@ class LintIssue:
 
 @dataclass
 class LintReport:
+    """LintReport。"""
     skill_id: str
     risk_level: str  # low|medium|high
     blocked: bool
@@ -40,6 +42,8 @@ class LintReport:
     summary: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d = asdict(self)
         d["errors"] = [asdict(x) for x in self.errors]
         d["warnings"] = [asdict(x) for x in self.warnings]
@@ -101,6 +105,11 @@ def _token_set_for_conflict(*, triggers: List[str], keywords: Dict[str, Any], ne
 
 def risk_level_from_permissions(perms: List[str]) -> str:
     # Re-export from base to avoid circular imports
+    """risk_level_from_permissions。
+
+    Args:
+        perms: perms 参数。
+    """
     from core.management.skill_linter_base import risk_level_from_permissions as _rlp
     return _rlp(perms)
 
@@ -130,19 +139,21 @@ def _read_skill_md_body(skill: Any) -> str:
 
 
 def lint_skill(skill: Any) -> Dict[str, Any]:
-    """
-    Lint a SkillInfo-like object (from SkillManager) or a dict with similar keys.
-    Returns dict(report).
+    """Lint a SkillInfo-like object (from SkillManager) or a dict with similar keys.
 
-    Delegates to extensible RuleRegistry. Add new rules via:
-      - lint_rules.yaml (declarative, 5 lines each)
-      - lint_rules/*.py (complex logic, auto-discovered)
+    Args:
+        skill: skill 参数。
     """
     from core.management.skill_linter_base import get_registry
     return get_registry().run_all(skill).to_dict()
 
 
 def lint_summary(report: Dict[str, Any]) -> Dict[str, Any]:
+    """lint_summary。
+
+    Args:
+        report: report 参数。
+    """
     if not isinstance(report, dict):
         return {"risk_level": "low", "error_count": 0, "warning_count": 0, "blocked": False}
     s = report.get("summary") if isinstance(report.get("summary"), dict) else {}
@@ -477,16 +488,11 @@ def _current_execution_type(skill: Any) -> str:
 
 
 def propose_skill_fixes(*, skill: Any, lint: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Generate deterministic fix proposals based on lint results.
+    """Generate deterministic fix proposals based on lint results.
 
-    Output contract (Phase 1):
-      {
-        "skill_id": str,
-        "scope": "engine"|"workspace"|"unknown",
-        "fixes": [ ... ],
-        "summary": { ... }
-      }
+    Args:
+        skill: skill 参数。
+        lint: lint 参数。
     """
     sid = str(getattr(skill, "id", "") or (skill.get("id") if isinstance(skill, dict) else "") or "").strip() or "<unknown>"
     meta = getattr(skill, "metadata", None) if not isinstance(skill, dict) else skill.get("metadata")

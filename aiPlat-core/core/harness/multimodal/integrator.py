@@ -20,6 +20,8 @@ class MultimodalIntegrator:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._audio_adapter = None
         self._browser_engine = None
         self._video_parser = None
@@ -44,7 +46,11 @@ class MultimodalIntegrator:
             self._initialized = True
 
     async def transcribe_audio(self, audio_path: str) -> dict:
-        """Transcribe audio to text for Agent context."""
+        """Transcribe audio to text for Agent context.
+
+        Args:
+            audio_path: audio_path 参数。
+        """
         await self._initialize()
         if not self._audio_adapter:
             return {"success": False, "text": "", "error": "Audio adapter not available"}
@@ -56,7 +62,12 @@ class MultimodalIntegrator:
             return {"success": False, "text": "", "error": str(e)[:500], "source": "audio_stt"}
 
     async def capture_browser(self, command: str, **kwargs) -> dict:
-        """Execute browser action and return structured observation."""
+        """Execute browser action and return structured observation.
+
+        Args:
+            command: command 参数。
+            kwargs: kwargs 参数。
+        """
         try:
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__)))))
@@ -88,7 +99,11 @@ class MultimodalIntegrator:
             return {"success": False, "error": str(e)[:500], "command": command, "source": "browser"}
 
     async def parse_video_context(self, video_path: str) -> dict:
-        """Extract keyframes + transcript summary from video."""
+        """Extract keyframes + transcript summary from video.
+
+        Args:
+            video_path: video_path 参数。
+        """
         try:
             repo_root = os.path.dirname(os.path.dirname(os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__)))))
@@ -138,7 +153,12 @@ class MultimodalIntegrator:
         return "\n\n".join(blocks)
 
     async def process_multimodal_input(self, file_path: str, file_type: str) -> dict:
-        """Auto-detect and process multimodal input by file extension."""
+        """Auto-detect and process multimodal input by file extension.
+
+        Args:
+            file_path: file_path 参数。
+            file_type: file_type 参数。
+        """
         ext = os.path.splitext(file_path)[1].lower() if "." in file_path else ""
 
         audio_exts = {".wav", ".mp3", ".m4a", ".ogg", ".flac", ".webm"}
@@ -160,6 +180,8 @@ _integrator: Optional[MultimodalIntegrator] = None
 
 
 async def get_multimodal_integrator() -> MultimodalIntegrator:
+    """获取 multimodal_integrator。
+    """
     global _integrator
     if _integrator is None:
         _integrator = MultimodalIntegrator()

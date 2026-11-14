@@ -33,7 +33,15 @@ async def auto_fix_loop(
     review_callback,      # ← injected by handler.py (avoids circular import)
     max_rounds: int = 2,
 ) -> ReviewReport:
-    """Auto-fix P2 issues with git stash checkpoint + rollback."""
+    """Auto-fix P2 issues with git stash checkpoint + rollback.
+
+    Args:
+        report: report 参数。
+        governor: governor 参数。
+        diff_refresh_fn: diff_refresh_fn 参数。
+        review_callback: review_callback 参数。
+        max_rounds: max_rounds 参数。
+    """
     for round_num in range(max_rounds):
         fixes = report.fixable_p2_issues()
         if not fixes:

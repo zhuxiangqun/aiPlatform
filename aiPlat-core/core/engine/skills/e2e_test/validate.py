@@ -35,7 +35,12 @@ _RECEIPT_FIELDS = ("旧", "新", "依据")
 
 
 def validate_e2e_deliverable(text: str, *, require_recon: bool = True) -> Optional[str]:
-    """Return veto reason, or None when deliverable passes the e2e contract."""
+    """Return veto reason, or None when deliverable passes the e2e contract.
+
+    Args:
+        text: text 参数。
+        require_recon: require_recon 参数。
+    """
     body = str(text or "").strip()
     if not body:
         return "e2e_test deliverable is empty — recon + spec required before DONE"
@@ -67,6 +72,12 @@ def validate_e2e_deliverable(text: str, *, require_recon: bool = True) -> Option
 
 
 def validate_report(text: str, *, require_recon: bool = True) -> Dict[str, Any]:
+    """validate_report。
+
+    Args:
+        text: text 参数。
+        require_recon: require_recon 参数。
+    """
     reason = validate_e2e_deliverable(text, require_recon=require_recon)
     return {"ok": reason is None, "error": reason, "require_recon": require_recon}
 
@@ -74,7 +85,12 @@ def validate_report(text: str, *, require_recon: bool = True) -> Dict[str, Any]:
 def locator_change_grounded(
     new_expr: str, elements: List[Dict[str, Any]]
 ) -> Optional[str]:
-    """Refuse a replacement locator that is not in the current list_elements snapshot."""
+    """Refuse a replacement locator that is not in the current list_elements snapshot.
+
+    Args:
+        new_expr: new_expr 参数。
+        elements: elements 参数。
+    """
     expr = str(new_expr or "").strip()
     if not expr:
         return "new locator empty"

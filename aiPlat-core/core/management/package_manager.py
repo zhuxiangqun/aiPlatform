@@ -58,6 +58,7 @@ def _sha256_dir(path: Path) -> str:
 
 @dataclass
 class PackageResourceRef:
+    """PackageResourceRef。"""
     kind: str  # agent|skill|mcp|hook
     id: str
     scope: str = "engine"  # engine|workspace (when copying from source)
@@ -66,6 +67,7 @@ class PackageResourceRef:
 
 @dataclass
 class PackageManifest:
+    """PackageManifest。"""
     name: str
     version: str = "0.1.0"
     description: str = ""
@@ -75,6 +77,7 @@ class PackageManifest:
 
 @dataclass
 class PackageInfo:
+    """PackageInfo。"""
     name: str
     scope: str  # engine|workspace
     version: str
@@ -86,7 +89,14 @@ class PackageInfo:
 
 
 class PackageManager:
+    """PackageManager。"""
     def __init__(self, *, scope: str = "engine", reserved_names: Optional[set] = None):
+        """初始化。
+
+        Args:
+            scope: scope 参数。
+            reserved_names: reserved_names 参数。
+        """
         self._scope = (scope or "engine").strip().lower()
         if self._scope not in {"engine", "workspace"}:
             self._scope = "engine"
@@ -122,6 +132,8 @@ class PackageManager:
         return None
 
     def reload(self) -> None:
+        """reload。
+        """
         self._packages = {}
         for base in self._resolve_packages_paths():
             if not base.exists():
@@ -168,14 +180,24 @@ class PackageManager:
                 )
 
     def list_packages(self) -> List[PackageInfo]:
+        """列出 packages。
+        """
         return list(self._packages.values())
 
     def get_package(self, name: str) -> Optional[PackageInfo]:
+        """获取 package。
+
+        Args:
+            name: name 参数。
+        """
         return self._packages.get(name)
 
     def upsert_package(self, *, manifest: Dict[str, Any], bundle: Optional[Dict[str, Any]] = None) -> PackageInfo:
-        """
-        Create/update a workspace package (writes to workspace packages base path).
+        """Create/update a workspace package (writes to workspace packages base path).
+
+        Args:
+            manifest: manifest 参数。
+            bundle: bundle 参数。
         """
         if self._scope != "workspace":
             raise ValueError("can_only_upsert_in_workspace_scope")
@@ -201,6 +223,11 @@ class PackageManager:
         return self._packages[name]
 
     def delete_package(self, name: str) -> bool:
+        """删除 package。
+
+        Args:
+            name: name 参数。
+        """
         if self._scope != "workspace":
             return False
         pkg_dir = self._find_pkg_dir(name)
@@ -219,6 +246,11 @@ class PackageManager:
         return self._installs_dir() / f"{pkg_name}.json"
 
     def read_install_record(self, pkg_name: str) -> Optional[Dict[str, Any]]:
+        """read_install_record。
+
+        Args:
+            pkg_name: pkg_name 参数。
+        """
         p = self._install_record_path(pkg_name)
         if not p.exists():
             return None
@@ -253,9 +285,11 @@ class PackageManager:
         pkg_name: str,
         allow_overwrite: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Install a package into workspace (~/.aiplat).
-        Returns a record containing applied file paths and hashes.
+        """Install a package into workspace (~/.aiplat).
+
+        Args:
+            pkg_name: pkg_name 参数。
+            allow_overwrite: allow_overwrite 参数。
         """
         pkg = self.get_package(pkg_name)
         if not pkg:
@@ -366,9 +400,14 @@ class PackageManager:
         bundle_dir: Path,
         allow_overwrite: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Install using an extracted bundle directory (bundle/*).
-        Used by the DB-backed package registry install flow.
+        """Install using an extracted bundle directory (bundle/*).
+
+        Args:
+            pkg_name: pkg_name 参数。
+            pkg_version: pkg_version 参数。
+            manifest: manifest 参数。
+            bundle_dir: bundle_dir 参数。
+            allow_overwrite: allow_overwrite 参数。
         """
         sources = self._resolve_source_dirs()
         applied: List[Dict[str, Any]] = []
@@ -454,9 +493,11 @@ class PackageManager:
         return record
 
     def uninstall(self, *, pkg_name: str, keep_modified: bool = True) -> Dict[str, Any]:
-        """
-        Best-effort uninstall using recorded paths.
-        keep_modified=True: only delete if current hash matches install record hash.
+        """Best-effort uninstall using recorded paths.
+
+        Args:
+            pkg_name: pkg_name 参数。
+            keep_modified: keep_modified 参数。
         """
         record = self.read_install_record(pkg_name)
         if not record:

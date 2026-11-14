@@ -26,6 +26,18 @@ class OnboardMixin:
         links: Optional[Dict[str, Any]] = None,
         approval_request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """创建 onboarding_evidence。
+
+        Args:
+            tenant_id: 租户 ID。
+            step_key: step_key 参数。
+            action: action 参数。
+            status: status 参数。
+            input: input 参数。
+            output: output 参数。
+            links: links 参数。
+            approval_request_id: approval_request 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -86,6 +98,14 @@ class OnboardMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 onboarding_evidence。
+
+        Args:
+            tenant_id: 租户 ID。
+            step_key: step_key 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -123,6 +143,12 @@ class OnboardMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_onboarding_evidence(self, *, tenant_id: Optional[str], evidence_id: str) -> Optional[Dict[str, Any]]:
+        """获取 onboarding_evidence。
+
+        Args:
+            tenant_id: 租户 ID。
+            evidence_id: evidence 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -149,6 +175,13 @@ class OnboardMixin:
         }
 
     async def update_onboarding_evidence_links(self, *, tenant_id: Optional[str], evidence_id: str, links: Dict[str, Any]) -> bool:
+        """更新 onboarding_evidence_links。
+
+        Args:
+            tenant_id: 租户 ID。
+            evidence_id: evidence 标识。
+            links: links 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -167,6 +200,12 @@ class OnboardMixin:
         return bool(await anyio.to_thread.run_sync(_sync))
 
     async def get_plugin(self, *, tenant_id: Optional[str], plugin_id: str) -> Optional[Dict[str, Any]]:
+        """获取 plugin。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -188,6 +227,13 @@ class OnboardMixin:
         return {**row, "manifest": _json_loads(row.get("manifest_json")) or {}, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def list_plugins(self, *, tenant_id: Optional[str], limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 plugins。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -214,6 +260,13 @@ class OnboardMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def set_plugin_enabled(self, *, tenant_id: Optional[str], plugin_id: str, enabled: bool) -> bool:
+        """set_plugin_enabled。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            enabled: 是否启用。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -245,6 +298,19 @@ class OnboardMixin:
         output: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """创建 plugin_run。
+
+        Args:
+            run_id: 运行 ID。
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            status: status 参数。
+            trace_id: trace 标识。
+            approval_request_id: approval_request 标识。
+            input: input 参数。
+            output: output 参数。
+            error: error 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 

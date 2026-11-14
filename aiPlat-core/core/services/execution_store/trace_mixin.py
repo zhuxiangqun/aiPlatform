@@ -12,6 +12,11 @@ class TraceMixin:
     # ==================== Trace ====================
 
     async def upsert_trace(self, trace: Dict[str, Any]) -> None:
+        """upsert_trace。
+
+        Args:
+            trace: trace 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -49,6 +54,11 @@ class TraceMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def upsert_span(self, span: Dict[str, Any]) -> None:
+        """upsert_span。
+
+        Args:
+            span: span 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -92,6 +102,12 @@ class TraceMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_trace(self, trace_id: str, include_spans: bool = True) -> Optional[Dict[str, Any]]:
+        """获取 trace。
+
+        Args:
+            trace_id: trace 标识。
+            include_spans: include_spans 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -138,6 +154,13 @@ class TraceMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_traces(self, limit: int = 100, offset: int = 0, status: Optional[str] = None) -> Tuple[List[Dict[str, Any]], int]:
+        """列出 traces。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            status: status 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -178,6 +201,11 @@ class TraceMixin:
     # ==================== Graph restore/resume helpers ====================
 
     async def get_graph_checkpoint(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+        """获取 graph_checkpoint。
+
+        Args:
+            checkpoint_id: checkpoint 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -204,6 +232,12 @@ class TraceMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_graph_checkpoint_by_step(self, run_id: str, step: int) -> Optional[Dict[str, Any]]:
+        """获取 graph_checkpoint_by_step。
+
+        Args:
+            run_id: 运行 ID。
+            step: step 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -236,6 +270,11 @@ class TraceMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_latest_graph_checkpoint(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 latest_graph_checkpoint。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -274,9 +313,13 @@ class TraceMixin:
         new_run_id: Optional[str] = None,
         start_time: Optional[float] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        从 checkpoint 创建一个新的 graph_run（用于“可恢复执行”的语义），并返回新 run 的初始 state。
-        注意：此方法仅提供“恢复状态+建档”；实际执行由上层组件决定。
+        """从 checkpoint 创建一个新的 graph_run（用于“可恢复执行”的语义），并返回新 run 的初始 state。
+
+        Args:
+            parent_run_id: parent_run 标识。
+            checkpoint_id: checkpoint 标识。
+            new_run_id: new_run 标识。
+            start_time: start_time 参数。
         """
         await self.init()
         parent = await self.get_graph_run(parent_run_id)
@@ -352,6 +395,11 @@ class TraceMixin:
     # ==================== execution <-> trace link queries ====================
 
     async def get_trace_id_by_execution_id(self, execution_id: str) -> Optional[str]:
+        """获取 trace_id_by_execution_id。
+
+        Args:
+            execution_id: execution 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -372,6 +420,13 @@ class TraceMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_executions_by_trace_id(self, trace_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 executions_by_trace_id。
+
+        Args:
+            trace_id: trace 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

@@ -54,6 +54,11 @@ REVIEW_SYSTEM_PROMPT = (
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     target = (params.get("target", "") or "").strip()
     focus = params.get("focus", "comprehensive")
     # Default auto (None/"auto"); explicit true/false still force.
@@ -335,9 +340,12 @@ async def review_file(
     max_chars: int = MAX_FILE_CHARS,
 ) -> ReviewReport:
     """Review a single file's full content (non-diff mode).
-    
-    Used by diagnostics for full-codebase LLM review.
-    Content is truncated if it exceeds max_chars.
+
+    Args:
+        content: content 参数。
+        file_path: file_path 参数。
+        focus: focus 参数。
+        max_chars: max_chars 参数。
     """
     if not content.strip():
         return ReviewReport()

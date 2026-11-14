@@ -21,6 +21,8 @@ class GraphRAGRetriever:
     """Entity-aware retrieval with subgraph-enhanced context."""
 
     def __init__(self):
+        """初始化。
+        """
         self._entity_cache: Dict[str, List[Dict]] = {}
 
     # ═══════════════════════════════════════════════════════
@@ -29,7 +31,14 @@ class GraphRAGRetriever:
 
     async def retrieve(self, query: str, domain_id: str = "default",
                        top_k: int = 10, run_id: str = "") -> Dict[str, Any]:
-        """Full GraphRAG retrieval pipeline."""
+        """Full GraphRAG retrieval pipeline.
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+            top_k: top_k 参数。
+            run_id: 运行 ID。
+        """
         # ── Layer 1: Entity extraction from query ──
         entities = await self._extract_query_entities(query, domain_id)
         if not entities:

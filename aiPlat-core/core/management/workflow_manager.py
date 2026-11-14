@@ -30,6 +30,7 @@ _logger = logging.getLogger(__name__)
 
 @dataclass
 class WorkflowInfo:
+    """WorkflowInfo。"""
     id: str
     name: str
     description: str = ""
@@ -60,6 +61,11 @@ class WorkflowManager:
     """Directory-based workflow manager with provenance/integrity enrichment."""
 
     def __init__(self, *, scope: str = "workspace"):
+        """初始化。
+
+        Args:
+            scope: scope 参数。
+        """
         self._scope = (scope or "workspace").strip().lower()
         self._workflows: Dict[str, WorkflowInfo] = {}
         self.reload()
@@ -298,6 +304,12 @@ class WorkflowManager:
         metadata["integrity"] = integ
 
     def compute_workflow_signature_verification(self, wf: WorkflowInfo, trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        """compute_workflow_signature_verification。
+
+        Args:
+            wf: wf 参数。
+            trusted_keys: trusted_keys 参数。
+        """
         if not isinstance(getattr(wf, "metadata", None), dict):
             return {}
         prov = dict(wf.metadata.get("provenance") or {}) if isinstance(wf.metadata.get("provenance"), dict) else {}
@@ -329,11 +341,18 @@ class WorkflowManager:
     # ==================== CRUD ====================
 
     def list_workflows(self) -> List[WorkflowInfo]:
+        """列出 workflows。
+        """
         workflows = list(self._workflows.values())
         workflows.sort(key=lambda w: w.created_at, reverse=True)
         return workflows
 
     def get_workflow(self, workflow_id: str) -> Optional[WorkflowInfo]:
+        """获取 workflow。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         return self._workflows.get(workflow_id)
 
     @staticmethod
@@ -356,6 +375,12 @@ class WorkflowManager:
         return tuple(out)
 
     def find_equivalent(self, name: str, nodes: Any = None) -> Optional[WorkflowInfo]:
+        """find_equivalent。
+
+        Args:
+            name: name 参数。
+            nodes: nodes 参数。
+        """
         want_name = (name or "").strip()
         want_fp = self._node_fingerprint(nodes)
         if not want_name:
@@ -401,6 +426,15 @@ class WorkflowManager:
         *,
         reuse_equivalent: bool = True,
     ) -> WorkflowInfo:
+        """创建 workflow。
+
+        Args:
+            name: name 参数。
+            description: description 参数。
+            nodes: nodes 参数。
+            edges: edges 参数。
+            reuse_equivalent: reuse_equivalent 参数。
+        """
         if not name.strip():
             raise ValueError("name is required")
         if reuse_equivalent:
@@ -424,6 +458,12 @@ class WorkflowManager:
         return wf
 
     def update_workflow(self, workflow_id: str, **kwargs: Any) -> Optional[WorkflowInfo]:
+        """更新 workflow。
+
+        Args:
+            workflow_id: workflow 标识。
+            kwargs: kwargs 参数。
+        """
         wf = self._workflows.get(workflow_id)
         if not wf:
             return None
@@ -448,6 +488,11 @@ class WorkflowManager:
         return wf
 
     def delete_workflow(self, workflow_id: str) -> bool:
+        """删除 workflow。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         wf = self._workflows.pop(workflow_id, None)
         if not wf:
             return False
@@ -459,6 +504,11 @@ class WorkflowManager:
         return True
 
     def toggle_enabled(self, workflow_id: str) -> Optional[bool]:
+        """toggle_enabled。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         wf = self._workflows.get(workflow_id)
         if not wf:
             return None
@@ -468,6 +518,11 @@ class WorkflowManager:
         return wf.enabled
 
     def publish(self, workflow_id: str) -> Dict[str, Any]:
+        """publish。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         wf = self._workflows.get(workflow_id)
         if not wf:
             raise ValueError(f"workflow not found: {workflow_id}")
@@ -479,7 +534,11 @@ class WorkflowManager:
     # ==================== Migration Helpers ====================
 
     def get_workflow_dict(self, workflow_id: str) -> Optional[Dict[str, Any]]:
-        """Return a dict compatible with the old SQLite-based API."""
+        """Return a dict compatible with the old SQLite-based API.
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         wf = self._workflows.get(workflow_id)
         if not wf:
             return None

@@ -41,10 +41,14 @@ _EXPORT_RESOURCES = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
 def default_export_dir() -> Path:
+    """default_export_dir。
+    """
     return aiplat_home() / "exports" / "teamai-seed"
 
 
@@ -70,7 +74,11 @@ def export_teamai_seed(
 ) -> Dict[str, Any]:
     """Materialize a TeamAI-shaped seed tree from ``~/.aiplat/team/`` (+ optional seeds).
 
-    Does **not** write ``.cursor`` / ``.claude``. TeamAI CLI can consume this repo.
+    Args:
+        dest: dest 参数。
+        include_learnings: include_learnings 参数。
+        include_sources: include_sources 参数。
+        overwrite: overwrite 参数。
     """
     from core.harness.team_harness import (
         load_team_harness_schema,

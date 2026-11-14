@@ -22,10 +22,11 @@ async def sys_graph_neighbors(
 ) -> Dict[str, Any]:
     """Look up an entity in the graph and return its neighbors.
 
-    Used by agents for proactive recommendations and context building.
-
-    Returns:
-      {entity: str, neighbors: [str], edges: [{source, target, relation}]}
+    Args:
+        entity_name: entity_name 参数。
+        domain_id: domain 标识。
+        max_hops: max_hops 参数。
+        include_edges: include_edges 参数。
     """
     trace_syscall_entry("sys_graph_neighbors")
     result: Dict[str, Any] = {"entity": entity_name, "neighbors": [], "edges": []}

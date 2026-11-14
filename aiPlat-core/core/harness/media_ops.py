@@ -37,6 +37,11 @@ def _run(cmd: List[str], *, timeout: int = 120) -> subprocess.CompletedProcess:
 
 
 def new_task_id(hint: str = "") -> str:
+    """new_task_id。
+
+    Args:
+        hint: hint 参数。
+    """
     h = str(hint or "").strip()
     if not h:
         return str(uuid.uuid4())
@@ -52,6 +57,11 @@ def new_task_id(hint: str = "") -> str:
 
 
 def storage_root(app_name: str = "media") -> Path:
+    """storage_root。
+
+    Args:
+        app_name: app_name 参数。
+    """
     from core.utils.paths import get_aiplat_home
 
     root = Path(get_aiplat_home()) / "apps" / (app_name or "app") / "media"
@@ -60,6 +70,11 @@ def storage_root(app_name: str = "media") -> Path:
 
 
 def fixtures_root(app_name: str = "media") -> Path:
+    """fixtures_root。
+
+    Args:
+        app_name: app_name 参数。
+    """
     from core.utils.paths import get_aiplat_home
 
     root = Path(get_aiplat_home()) / "apps" / (app_name or "app") / "fixtures"
@@ -70,8 +85,8 @@ def fixtures_root(app_name: str = "media") -> Path:
 def probe_media(video_path: str) -> Dict[str, Any]:
     """Return format + stream summary via ffprobe JSON.
 
-    When ffprobe is missing (hermetic CI), infer a minimal stub from the path
-    name so vocabulary / true-test handlers stay deterministic without ffmpeg.
+    Args:
+        video_path: video_path 参数。
     """
     ffprobe = shutil.which("ffprobe")
     if not ffprobe:
@@ -146,7 +161,12 @@ def probe_media(video_path: str) -> Dict[str, Any]:
 
 
 def extract_soft_subtitles(video_path: str, out_srt: str) -> Tuple[bool, str]:
-    """Extract first soft subtitle track to SRT. Returns (ok, message_or_path)."""
+    """Extract first soft subtitle track to SRT. Returns (ok, message_or_path).
+
+    Args:
+        video_path: video_path 参数。
+        out_srt: out_srt 参数。
+    """
     ffmpeg = _require_bin("ffmpeg")
     Path(out_srt).parent.mkdir(parents=True, exist_ok=True)
     cp = _run(
@@ -163,11 +183,10 @@ def extract_keyframes_timed(
 ) -> List[Dict[str, Any]]:
     """Extract keyframes via ffmpeg only (no document package — py3.9 safe).
 
-    Default interval is 10s (FR density: ≥1 frame / 10s). Override for denser
-    sampling when callers pass a smaller interval.
-
-    Without ffmpeg (hermetic CI), write a 1x1 JPEG stub and return synthetic
-    keyframe metadata so frame_analyzer / true_test stay deterministic.
+    Args:
+        video_path: video_path 参数。
+        frames_dir: frames_dir 参数。
+        interval_seconds: interval_seconds 参数。
     """
     out_dir = Path(frames_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -266,7 +285,13 @@ def extract_keyframes_timed(
 def merge_vad_segments(
     segments: List[Dict[str, Any]], *, gap_sec: float = 0.35, min_dur: float = 0.12
 ) -> List[Dict[str, float]]:
-    """Merge adjacent VAD fragments so the result timeline stays readable."""
+    """Merge adjacent VAD fragments so the result timeline stays readable.
+
+    Args:
+        segments: segments 参数。
+        gap_sec: gap_sec 参数。
+        min_dur: min_dur 参数。
+    """
     cleaned: List[Dict[str, float]] = []
     for seg in segments or []:
         if not isinstance(seg, dict):
@@ -288,8 +313,9 @@ def merge_vad_segments(
 def describe_frame_image(image_path: str, *, time_sec: float = 0.0) -> Dict[str, Any]:
     """Heuristic visual caption from pixels (Path0; no VLM required).
 
-    Produces PRD-shaped ``scene / subject / action`` text. Marks method so
-    reports stay honest when vision models are unavailable.
+    Args:
+        image_path: image_path 参数。
+        time_sec: time_sec 参数。
     """
     path = Path(str(image_path or ""))
     t = float(time_sec or 0.0)
@@ -379,7 +405,12 @@ def describe_frame_image(image_path: str, *, time_sec: float = 0.0) -> Dict[str,
 def enrich_keyframes_with_captions(
     keyframes: List[Dict[str, Any]], *, max_frames: int = 24
 ) -> List[Dict[str, Any]]:
-    """Apply ``describe_frame_image`` to each keyframe (bounded)."""
+    """Apply ``describe_frame_image`` to each keyframe (bounded).
+
+    Args:
+        keyframes: keyframes 参数。
+        max_frames: max_frames 参数。
+    """
     out: List[Dict[str, Any]] = []
     for i, fr in enumerate(keyframes or []):
         if not isinstance(fr, dict):
@@ -425,7 +456,9 @@ def _lang_label(code: str) -> str:
 def detect_speech_language(audio_or_video: str, work_dir: str = "") -> Dict[str, Any]:
     """Language-id only via InfraAudioAdapter (transcript discarded — FR no-ASR).
 
-    Returns ``{language, language_method, confidence?}``. Never returns transcript text.
+    Args:
+        audio_or_video: audio_or_video 参数。
+        work_dir: work_dir 参数。
     """
     enabled = str(os.getenv("AIPLAT_MEDIA_WHISPER_LANG", "1")).strip().lower()
     if enabled in ("0", "false", "off", "no"):
@@ -495,10 +528,10 @@ def transcribe_speech_asr(
 ) -> Dict[str, Any]:
     """ASR via InfraAudioAdapter — returns transcript + timed segments.
 
-    Env:
-      AIPLAT_MEDIA_ASR=1|0 (default **1** — product needs transcript to understand speech)
-      AIPLAT_MEDIA_WHISPER_MODEL (default tiny)
-      AIPLAT_MEDIA_ASR_MAX_SEC (optional cap; 0 = full length)
+    Args:
+        audio_or_video: audio_or_video 参数。
+        work_dir: work_dir 参数。
+        max_duration_sec: max_duration_sec 参数。
     """
     enabled = str(os.getenv("AIPLAT_MEDIA_ASR", "1")).strip().lower()
     if enabled in ("0", "false", "off", "no"):
@@ -589,7 +622,12 @@ def transcribe_speech_asr(
 def infer_emotion_from_energy(
     *, syllable_density: float = 0.0, vad_coverage: float = 0.0
 ) -> str:
-    """Map coarse acoustics → PRD emotion labels 积极/中性/消极."""
+    """Map coarse acoustics → PRD emotion labels 积极/中性/消极.
+
+    Args:
+        syllable_density: syllable_density 参数。
+        vad_coverage: vad_coverage 参数。
+    """
     dens = float(syllable_density or 0.0)
     cov = float(vad_coverage or 0.0)
     # Prefer coverage (speech presence); density alone is a weak ZCR proxy and often saturates
@@ -601,7 +639,12 @@ def infer_emotion_from_energy(
 
 
 def scene_change_times(video_path: str, threshold: float = 0.4) -> List[float]:
-    """Detect scene changes via ffmpeg select filter (best-effort)."""
+    """Detect scene changes via ffmpeg select filter (best-effort).
+
+    Args:
+        video_path: video_path 参数。
+        threshold: threshold 参数。
+    """
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return [0.0]
@@ -629,7 +672,12 @@ def scene_change_times(video_path: str, threshold: float = 0.4) -> List[float]:
 
 
 def analyze_speech_energy(video_path: str, work_dir: str) -> Dict[str, Any]:
-    """Non-ASR speech probe: audio presence + energy VAD + syllable-density heuristic."""
+    """Non-ASR speech probe: audio presence + energy VAD + syllable-density heuristic.
+
+    Args:
+        video_path: video_path 参数。
+        work_dir: work_dir 参数。
+    """
     import subprocess
 
     Path(work_dir).mkdir(parents=True, exist_ok=True)
@@ -792,7 +840,14 @@ def download_http_video(
     max_bytes: int = _MAX_BYTES_DEFAULT,
     timeout: int = 60,
 ) -> Dict[str, Any]:
-    """Download direct media URL (SSRF must be checked by caller)."""
+    """Download direct media URL (SSRF must be checked by caller).
+
+    Args:
+        url: url 参数。
+        dest_path: dest_path 参数。
+        max_bytes: max_bytes 参数。
+        timeout: 超时秒数。
+    """
     Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
     req = Request(url, headers={"User-Agent": "aiPlat-media/1.0"})
     with urlopen(req, timeout=timeout) as resp:  # noqa: S310 — caller SSRF-guards
@@ -824,6 +879,14 @@ def accept_local_upload(
     max_bytes: int = _MAX_BYTES_DEFAULT,
     allowed_ext: Optional[set] = None,
 ) -> Dict[str, Any]:
+    """accept_local_upload。
+
+    Args:
+        src_path: src_path 参数。
+        dest_path: dest_path 参数。
+        max_bytes: max_bytes 参数。
+        allowed_ext: allowed_ext 参数。
+    """
     allowed = allowed_ext or _ALLOWED_VIDEO_EXT
     src = Path(src_path)
     if not src.is_file():
@@ -845,8 +908,8 @@ def accept_local_upload(
 def ensure_true_test_fixtures(app_name: str = "media") -> Dict[str, str]:
     """Create tiny mp4 fixtures for true-test placeholder paths. Returns path map.
 
-    When ``ffmpeg`` is missing (common on hermetic CI), write stub files so
-    vocabulary / true-test handlers can still resolve path maps without encoding.
+    Args:
+        app_name: app_name 参数。
     """
     root = fixtures_root(app_name)
     mapping: Dict[str, str] = {}
@@ -1020,6 +1083,12 @@ def ensure_true_test_fixtures(app_name: str = "media") -> Dict[str, str]:
 
 
 def remap_fixture_path(path: str, app_name: str = "media") -> str:
+    """remap_fixture_path。
+
+    Args:
+        path: 路径。
+        app_name: app_name 参数。
+    """
     p = str(path or "").strip()
     if not p:
         return p
@@ -1134,7 +1203,11 @@ def remap_fixture_path(path: str, app_name: str = "media") -> str:
 
 
 def coerce_media_invoke_params(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize invented Factory param aliases onto url / file_path / video_path."""
+    """Normalize invented Factory param aliases onto url / file_path / video_path.
+
+    Args:
+        params: params 参数。
+    """
     out = dict(params or {})
     st = str(out.get("source_type") or "").lower().strip()
     # Normalize invented source_type tokens from QA / agent_engineer
@@ -1273,7 +1346,12 @@ def coerce_media_invoke_params(params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def infer_duration_hint(path: str = "", params: Optional[Dict[str, Any]] = None) -> Optional[float]:
-    """Claimed duration from params or path tokens (e.g. t-v-002_100s.mp4 → 100)."""
+    """Claimed duration from params or path tokens (e.g. t-v-002_100s.mp4 → 100).
+
+    Args:
+        path: 路径。
+        params: params 参数。
+    """
     p = dict(params or {})
     for key in ("duration_sec", "duration", "video_duration", "claimed_duration"):
         raw = p.get(key)
@@ -1310,7 +1388,13 @@ def pad_keyframes_for_density(
     claimed_duration_sec: float,
     interval_hint: float = 10.0,
 ) -> Tuple[List[Dict[str, Any]], bool]:
-    """Ensure ≥1 keyframe per ``interval_hint`` seconds of claimed duration."""
+    """Ensure ≥1 keyframe per ``interval_hint`` seconds of claimed duration.
+
+    Args:
+        keyframes: keyframes 参数。
+        claimed_duration_sec: claimed_duration_sec 参数。
+        interval_hint: interval_hint 参数。
+    """
     frames = [f for f in (keyframes or []) if isinstance(f, dict)]
     dur = max(0.0, float(claimed_duration_sec or 0.0))
     if dur <= 0:

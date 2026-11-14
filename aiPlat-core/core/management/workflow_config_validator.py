@@ -19,6 +19,7 @@ from typing import Dict, List
 
 @dataclass
 class ConfigIssue:
+    """ConfigIssue。"""
     workflow: str
     file: str
     severity: str  # "error" | "warn"
@@ -26,7 +27,11 @@ class ConfigIssue:
 
 
 def validate_workflow_template(json_path: Path) -> List[ConfigIssue]:
-    """Validate a single workflow template JSON file."""
+    """Validate a single workflow template JSON file.
+
+    Args:
+        json_path: json_path 参数。
+    """
     issues: List[ConfigIssue] = []
     wf_name = json_path.stem
     file_path = str(json_path)
@@ -88,7 +93,11 @@ def validate_workflow_template(json_path: Path) -> List[ConfigIssue]:
 
 
 def validate_all_workflow_templates(templates_dir: str) -> tuple:
-    """Validate all workflow template JSON files. Returns (errors, warnings)."""
+    """Validate all workflow template JSON files. Returns (errors, warnings).
+
+    Args:
+        templates_dir: templates_dir 参数。
+    """
     errors: List[ConfigIssue] = []
     warnings: List[ConfigIssue] = []
     base = Path(templates_dir)

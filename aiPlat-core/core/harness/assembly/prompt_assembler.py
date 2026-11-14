@@ -60,6 +60,7 @@ _DEFAULT_CONTEXT_ENGINE = DefaultContextEngine()
 
 class PromptAssemblyResult:
 
+    """PromptAssemblyResult。"""
     messages: List[Message]
 
     prompt_version: str
@@ -114,6 +115,12 @@ class MessageFormatter:
 
     ) -> PromptAssemblyResult:
 
+        """assemble。
+
+        Args:
+            prompt: prompt 参数。
+            metadata: metadata 参数。
+        """
         msgs = self._normalize(prompt)
 
         meta = dict(metadata or {})
@@ -471,6 +478,15 @@ class MessageFormatter:
 
     ) -> List[Message]:
 
+        """build_react_reasoning_messages。
+
+        Args:
+            task: task 参数。
+            history: history 参数。
+            tools_desc: tools_desc 参数。
+            skills_desc: skills_desc 参数。
+            observation: observation 参数。
+        """
         msgs: List[Message] = []
 
         has_tools = tools_desc and tools_desc != "No tools available"
@@ -503,6 +519,11 @@ class MessageFormatter:
 
     def build_plan_execute_plan_messages(self, *, task: str) -> List[Message]:
 
+        """build_plan_execute_plan_messages。
+
+        Args:
+            task: task 参数。
+        """
         from core.harness.utils.prompt_loader import _sync_resolve
 
         prompt = _sync_resolve("plan-execute-plan", task=task, context="")
@@ -513,6 +534,12 @@ class MessageFormatter:
 
     def build_plan_execute_step_messages(self, *, action: str, task: str) -> List[Message]:
 
+        """build_plan_execute_step_messages。
+
+        Args:
+            action: action 参数。
+            task: task 参数。
+        """
         prompt = f"Execute this step: {action}\nContext: {task}"
 
         return [{"role": "user", "content": prompt}]
@@ -535,6 +562,14 @@ class MessageFormatter:
 
     ) -> List[Message]:
 
+        """build_langgraph_reason_messages。
+
+        Args:
+            history: history 参数。
+            reasoning: reasoning 参数。
+            action: action 参数。
+            observation: observation 参数。
+        """
         from core.harness.utils.prompt_loader import _sync_resolve
 
         prompt = _sync_resolve("langgraph-reason",
@@ -549,6 +584,11 @@ class MessageFormatter:
 
     def build_langgraph_observe_messages(self, *, observation: str) -> List[Message]:
 
+        """build_langgraph_observe_messages。
+
+        Args:
+            observation: observation 参数。
+        """
         from core.harness.utils.prompt_loader import _sync_resolve
 
         prompt = _sync_resolve("langgraph-observe", observation=observation)

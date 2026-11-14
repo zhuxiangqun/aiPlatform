@@ -41,6 +41,13 @@ def fixture_metrics(
     blind: bool = True,
     subset: str = "core",
 ) -> Dict[str, Any]:
+    """fixture_metrics。
+
+    Args:
+        limit: 返回条数上限。
+        blind: blind 参数。
+        subset: subset 参数。
+    """
     sub = (subset or "core").strip().lower()
     if sub not in VALID_SUBSETS:
         raise ValueError(f"invalid_subset:{subset}")
@@ -135,7 +142,13 @@ def fixture_metrics_by_subset(
     limit_adv: int = 30,
     blind: bool = True,
 ) -> Dict[str, Any]:
-    """Convenience: return core + adversarial + all snapshots (honesty bundle)."""
+    """Convenience: return core + adversarial + all snapshots (honesty bundle).
+
+    Args:
+        limit_core: limit_core 参数。
+        limit_adv: limit_adv 参数。
+        blind: blind 参数。
+    """
     core = fixture_metrics(limit=limit_core, blind=blind, subset="core")
     adv = fixture_metrics(limit=limit_adv, blind=blind, subset="adversarial")
     return {

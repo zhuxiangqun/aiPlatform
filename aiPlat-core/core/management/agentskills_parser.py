@@ -112,7 +112,12 @@ def _guess_io_schema(name: str, description: str, body: str) -> Tuple[Dict[str, 
 
 
 def convert_agentskills_to_aiplat(raw_md: str, skill_dir_name: str = "") -> str:
-    """Convert an agentskills.io SKILL.md to aiPlatform format."""
+    """Convert an agentskills.io SKILL.md to aiPlatform format.
+
+    Args:
+        raw_md: raw_md 参数。
+        skill_dir_name: skill_dir_name 参数。
+    """
     fm, body = _parse_agentskills_frontmatter(raw_md)
     if not fm:
         return raw_md  # already converted or invalid
@@ -174,7 +179,11 @@ def convert_agentskills_to_aiplat(raw_md: str, skill_dir_name: str = "") -> str:
 
 
 def is_agentskills_format(raw_md: str) -> bool:
-    """Detect if SKILL.md is in agentskills.io format (YAML frontmatter with name+description only, no aiPlatform fields)."""
+    """Detect if SKILL.md is in agentskills.io format (YAML frontmatter with name+description only, no aiPlatform fields).
+
+    Args:
+        raw_md: raw_md 参数。
+    """
     try:
         fm, _ = _parse_agentskills_frontmatter(raw_md)
         if not fm:
@@ -189,7 +198,13 @@ def is_agentskills_format(raw_md: str) -> bool:
 
 
 def convert_hermes_so_ul_to_agent_md(soul_md: str, agents_md: str = "", agent_name: str = "hermes_agent") -> str:
-    """Convert Hermes SOUL.md (+ optional AGENTS.md) into aiPlatform AGENT.md."""
+    """Convert Hermes SOUL.md (+ optional AGENTS.md) into aiPlatform AGENT.md.
+
+    Args:
+        soul_md: soul_md 参数。
+        agents_md: agents_md 参数。
+        agent_name: agent_name 参数。
+    """
     body_parts = []
     if soul_md.strip():
         body_parts.append("## Personality (from Hermes SOUL.md)")
@@ -220,7 +235,11 @@ def convert_hermes_so_ul_to_agent_md(soul_md: str, agents_md: str = "", agent_na
 
 
 def convert_mcp_json_to_server_yaml(mcp_json_path: str) -> List[Dict[str, str]]:
-    """Convert Hermes MCP config JSON files to aiPlatform server.yaml + policy.yaml."""
+    """Convert Hermes MCP config JSON files to aiPlatform server.yaml + policy.yaml.
+
+    Args:
+        mcp_json_path: mcp_json_path 参数。
+    """
     import json as _json
     results: List[Dict[str, str]] = []
     try:

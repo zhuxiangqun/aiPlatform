@@ -18,6 +18,11 @@ class WorkflowConfigCompleteness(LintRule):
     RECOMMENDED = ["trigger", "description", "steps", "version"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         issues: List[LintIssue] = []
         meta = self._get_metadata(skill)
 
@@ -57,6 +62,11 @@ class WorkflowTriggerValidation(LintRule):
     VALID_TRIGGERS = {"manual", "cron", "webhook", "event", "on_create", "on_update"}
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_metadata(skill)
         trigger = meta.get("trigger", "").strip().lower() if isinstance(meta, dict) else ""
         if not trigger:
@@ -86,6 +96,11 @@ class WorkflowStepsCheck(LintRule):
     scope = ["workflow"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_metadata(skill)
         steps = meta.get("steps") if isinstance(meta, dict) else None
         if not isinstance(steps, list) or len(steps) == 0:

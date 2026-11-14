@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Tuple
 
 @dataclass
 class ConfigIssue:
+    """ConfigIssue。"""
     agent: str
     file: str
     severity: str  # "error" | "warn"
@@ -50,7 +51,11 @@ MODEL_NEEDS_API_KEY: Dict[str, str] = {
 
 
 def validate_agent_file(md_path: Path) -> List[ConfigIssue]:
-    """Validate a single AGENT.md file. Returns list of issues."""
+    """Validate a single AGENT.md file. Returns list of issues.
+
+    Args:
+        md_path: md_path 参数。
+    """
     issues: List[ConfigIssue] = []
     agent_name = md_path.parent.name
     file_path = str(md_path)
@@ -181,7 +186,9 @@ def validate_agent_file(md_path: Path) -> List[ConfigIssue]:
 
 def validate_all_agents(agents_dir: str) -> Tuple[List[ConfigIssue], List[ConfigIssue]]:
     """Validate all AGENT.md files in a directory tree (recursive).
-    Returns (errors, warnings).
+
+    Args:
+        agents_dir: agents_dir 参数。
     """
     errors: List[ConfigIssue] = []
     warnings: List[ConfigIssue] = []

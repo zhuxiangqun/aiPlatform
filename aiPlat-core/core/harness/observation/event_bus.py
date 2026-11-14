@@ -26,9 +26,15 @@ _BATCH_SIZE = 50
 
 
 class EventBus:
+    """按 run_id 发布/订阅 syscall 与图事件的进程内总线。"""
+
     @classmethod
     def subscribe(cls, run_id: str) -> asyncio.Queue:
-        """Subscribe to events for a run_id. Returns an asyncio.Queue that receives events."""
+        """订阅指定 run 的事件队列。
+
+        Args:
+            run_id: 运行 ID。
+        """
         q = _buses.get(run_id)
         if q is None:
             q = asyncio.Queue(maxsize=1000)
@@ -37,18 +43,24 @@ class EventBus:
 
     @classmethod
     def unsubscribe(cls, run_id: str) -> None:
-        """Unsubscribe from events for a run_id."""
+        """取消订阅并丢弃该 run 的队列。
+
+        Args:
+            run_id: 运行 ID。
+        """
         _buses.pop(run_id, None)
 
     @classmethod
     def publish(cls, run_id: str, event: Dict[str, Any]) -> None:
-        """发布事件到指定 run 的订阅者。非阻塞。
-        支持跨线程：Agent 在独立线程跑时，经 call_soon_threadsafe 投递到主 loop。
+        """发布事件到指定 run 的订阅者（非阻塞）。
 
-        No-subscriber path must NOT DLQ: syscall_events already persisted by
-        ``add_syscall_event``, and RunGraph SSE envelopes (``type=graph_*``)
-        lack kind/name — DLQ insert created ghost ``event/unknown`` rows
-        (run-5fc64fbf7c96 steps 27–32).
+        Args:
+            run_id: 运行 ID。
+            event: 事件载荷 dict。
+
+        支持跨线程：Agent 在独立线程跑时，经 call_soon_threadsafe 投递到主 loop。
+        无订阅者时不写 DLQ（syscall_events 已由 add_syscall_event 持久化；
+        RunGraph SSE 的 graph_* 信封缺 kind/name，误入 DLQ 会产生 ghost 行）。
         """
         if not run_id:
             return

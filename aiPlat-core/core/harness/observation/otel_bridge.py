@@ -48,7 +48,11 @@ def _init_otel() -> None:
 
 
 def export_syscall_as_span(event: Dict[str, Any]) -> None:
-    """Export a syscall event as an OpenTelemetry span. Best-effort."""
+    """Export a syscall event as an OpenTelemetry span. Best-effort.
+
+    Args:
+        event: event 参数。
+    """
     _init_otel()
     if not _OTEL_AVAILABLE or _tracer is None:
         return
