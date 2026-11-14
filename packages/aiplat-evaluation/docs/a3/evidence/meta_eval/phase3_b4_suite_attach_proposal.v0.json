@@ -2,8 +2,8 @@
   "schema": "eval.phase3.b_suite_attach_proposal.v0",
   "proposal_id": "phase3-b4-suite-attach",
   "bucket_id": "B4_eval_facade",
-  "recorded_at": "2026-11-14T21:46:00+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:50:00+08:00",
+  "status": "accepted",
   "n": 19,
   "symbols_sample": [
     "eval_freeze_all_subject_seed_pack_meta",
@@ -28,8 +28,9 @@
     "accuracy_claim": false,
     "forbid_single_coverage_percent": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. B4 eval facade suite attach; ≠ global Tier A expansion."
+  "owner_decision": "ACCEPT phase3_b_suite_attach B4",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:50:00+08:00",
+  "honesty": "Owner accepted B4 eval facade suite attach (19/19, incl. async exam entrypoints). ≠ global Tier A expansion / accuracy / process_split.",
+  "suite_hook_attach_authorized_for_bucket": true
 }
