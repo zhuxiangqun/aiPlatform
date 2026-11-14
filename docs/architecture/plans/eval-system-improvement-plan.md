@@ -805,3 +805,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec29 | 2026-11-14 | owner ACCEPT #10 F2 security judge；开提案#11 defaults（≠ L5/cert） |
 | v1.1.7+exec30 | 2026-11-14 | owner ACCEPT #11 defaults；开提案#12 family gates（≠ cert） |
 | v1.1.7+exec31 | 2026-11-14 | owner ACCEPT #12 family gates；F2 impl 3/3；开提案#13 facade |
+| v1.1.7+exec32 | 2026-11-14 | owner ACCEPT #13 F2 facade；开提案#14 defaults facade |

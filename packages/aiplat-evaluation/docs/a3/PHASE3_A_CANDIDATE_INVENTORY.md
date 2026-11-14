@@ -24,7 +24,7 @@ doc_type: Reference
 | `cohen_kappa_binary` | F1 | impl | `aiPlat-core/core/apps/eval/service/g2c.py:30` | **false** |
 | `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **false** |
 | `eval_evaluate_security_family_gates` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8021` | **false** |
-| `eval_evaluate_security_judge_calibration` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8095` | **false** |
+| `eval_evaluate_security_judge_calibration` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8095` | **scoped true** |
 | `eval_evaluate_security_severity_l5_gate` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8255` | **false** |
 | `eval_judge_calibration_gate` | F1 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:10670` | **false** |
 | `eval_load_security_judge_calib_defaults` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8158` | **false** |

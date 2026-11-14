@@ -30,8 +30,8 @@ doc_type: Reference
 | 10 | `evaluate_security_judge_calibration` | F2 | **accepted**（≠ L5） |
 | 11 | `load_judge_calib_defaults` | F2 | **accepted** |
 | 12 | `evaluate_security_family_gates` | F2 | **accepted**（≠ cert） |
-| 13 | `eval_evaluate_security_judge_calibration` | F2 | **提案中**（facade）→ [`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_judge_calibration.md) |
-| 14 | `eval_load_security_judge_calib_defaults` | F2 | queued（facade） |
+| 13 | `eval_evaluate_security_judge_calibration` | F2 | **accepted**（facade） |
+| 14 | `eval_load_security_judge_calib_defaults` | F2 | **提案中**（facade）→ [`PHASE3_TIER_A_PROPOSAL_eval_load_security_judge_calib_defaults.md`](./PHASE3_TIER_A_PROPOSAL_eval_load_security_judge_calib_defaults.md) |
 | 15 | `eval_evaluate_security_family_gates` | F2 | queued（facade） |
 | 16 | `eval_evaluate_security_severity_l5_gate` | F2 | queued（facade；≠ L5 declare） |
 | 17 | `assert_t13_process_split_boundary` | F3 | queued（≠ process_split） |
