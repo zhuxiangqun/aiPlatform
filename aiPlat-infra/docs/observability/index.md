@@ -4,6 +4,9 @@ doc_type: Index
 
 # 可观测性模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：本文档描述 infra 的 observability（Tracing/Metrics/Logging）能力。As-Is 已提供 `provider` 选择：`otel`（OpenTelemetry SDK）与 `simple`（内存桩实现），并支持 OTLP 导出与 in_memory 导出（测试）。
 
 > 提供分布式追踪、OpenTelemetry 指标收集能力

@@ -83,7 +83,7 @@ harness/
 ├── knowledge/                      # 知识系统
 │   ├── types.py                    # 知识类型
 │   ├── retriever.py                # 知识检索
-│   ├── indexer.py                  # 知识索引
+│   ├── wiki_indexer.py             # 知识索引（As-Is；无独立 indexer.py）
 │   └── evolution.py                # 知识进化
 │
 └── infrastructure/                 # 基础设施

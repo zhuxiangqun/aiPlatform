@@ -408,12 +408,12 @@ tests/
 
 ### 运行测试
 
+> As-Is：仓库根无统一 Makefile。
+
 | 命令 | 用途 | 前置条件 |
 |------|------|----------|
-| `make test-core-unit` | 运行核心层单元测试 | 无 |
-| `make test-core-integration` | 运行核心层集成测试 | Docker 服务启动 |
-| `make test-core-all` | 运行核心层所有测试 | Docker 服务启动 |
-| `make test-core-coverage` | 生成覆盖率报告 | 无 |
+| `cd aiPlat-core && python -m pytest core/tests/unit -q` | 单元测试 | 无 |
+| `cd aiPlat-core && python -m pytest core/tests -q` | 更广测试集 | 视用例依赖 |
 
 ### 测试编写规范
 

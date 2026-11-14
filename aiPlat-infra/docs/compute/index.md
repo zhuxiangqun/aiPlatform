@@ -4,6 +4,9 @@ doc_type: Index
 
 # 📚 Compute 模块文档（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：算力/执行资源管理能力以 `infra/compute/*` 代码与测试为准；K8s/Docker 适配若未闭环需标注为 To-Be。
 
 > 算力资源管理 - 基础设施层

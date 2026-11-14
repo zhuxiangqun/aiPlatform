@@ -49,14 +49,8 @@ doc_type: Index
 # 安装依赖
 pip install -e .
 
-# 初始化数据库
-make db-migrate
-
-# 启动服务
-uvicorn platform.main:app --host 0.0.0.0 --port 8000
-
-# 或使用 Make
-make run-platform
+# As-Is：无根仓 make db-migrate / make run-platform；以实际部署/CI 剧本为准
+# 启动入口以仓库 README / 管理面启动方式为准（常见管理面 :8003）
 ```
 
 ---

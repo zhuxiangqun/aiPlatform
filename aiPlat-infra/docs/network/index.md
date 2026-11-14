@@ -4,6 +4,9 @@ doc_type: Index
 
 # 📚 Network 模块文档（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：网络相关能力以 `infra/network/*` 代码与测试为准；更高层的网关/ServiceMesh 等通常属于 To-Be 或外部基础设施。
 
 > 网络资源管理 - 基础设施层

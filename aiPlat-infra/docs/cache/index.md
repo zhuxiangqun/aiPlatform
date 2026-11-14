@@ -4,6 +4,9 @@ doc_type: Index
 
 # 缓存模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：缓存模块的 As-Is 能力以 `infra/cache/*` 代码与测试为准；文档中的后端/策略若未实现需标注为 To-Be。
 
 > 提供缓存抽象层，支持多种缓存后端（Redis/内存/文件）

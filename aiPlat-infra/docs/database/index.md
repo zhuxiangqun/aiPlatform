@@ -4,6 +4,9 @@ doc_type: Index
 
 # 数据库模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：数据库模块的 As-Is 能力以 `infra/database/*` 代码与测试为准；文档中的多后端/ORM/迁移等若未实现需标注为 To-Be。
 
 > 提供数据库抽象层，支持多种数据库后端（PostgreSQL/MySQL/MongoDB）

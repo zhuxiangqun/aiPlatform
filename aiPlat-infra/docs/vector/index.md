@@ -4,6 +4,9 @@ doc_type: Index
 
 # 向量存储模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：向量存储模块的 As-Is 能力以 `infra/vector/*` 代码与测试为准；多后端适配（Milvus/Chroma/FAISS 等）若未闭环需标注为 To-Be。
 
 > 提供向量数据库抽象，支持多种向量后端（Milvus/FAISS/Pinecone/Chroma）

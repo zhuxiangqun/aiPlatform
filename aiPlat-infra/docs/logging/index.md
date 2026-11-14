@@ -4,6 +4,9 @@ doc_type: Index
 
 # 日志模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：logging 模块用于业务日志/调试信息；与 observability（OTel）与 monitoring（指标/告警）分工明确。实现以 infra 代码事实为准。
 
 ---

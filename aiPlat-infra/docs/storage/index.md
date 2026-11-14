@@ -4,6 +4,9 @@ doc_type: Index
 
 # 存储模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：存储模块的 As-Is 能力以 `infra/storage/*` 代码与测试为准；对象存储/MinIO/S3 等若未实现需标注为 To-Be。
 
 > 提供持久化存储能力，包括本地存储、网络存储、对象存储

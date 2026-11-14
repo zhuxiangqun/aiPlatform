@@ -4,6 +4,9 @@ doc_type: Index
 
 # HTTP 客户端模块（设计真值：以代码事实为准）
 
+> **As-Is（2026-11）**：模块配置在 `aiPlat-infra/config/infra/default.yaml` 对应 section（及 `development.yaml` / `production.yaml` 覆盖）。无独立 `config/infra/{module}.yaml` 文件。
+
+
 > 说明：HTTP 客户端/网关相关能力以 `infra/http/*` 代码与测试为准；重试/熔断/限流等若未闭环需标注为 To-Be。
 
 > 提供 HTTP 客户端抽象，支持重试、超时、连接池、代理等能力
