@@ -3,7 +3,7 @@
   "tickets": [
     {
       "ticket_id": "disp-f86368b35b2b",
-      "status": "open",
+      "status": "closed",
       "failure_category": "data",
       "failure_n": 1,
       "sample_task_ids": [
@@ -13,14 +13,15 @@
       "sla_owner_h": 24,
       "sla_disposition_h": 72,
       "opened_at": "2026-11-14T23:30:37+08:00",
-      "closed_at": null,
-      "disposition": null,
+      "closed_at": "2026-11-14T23:53:44+08:00",
+      "disposition": "demo_rehearsal: phase4_routing AUTHORIZE accepted; synthetic close ≠ production fix ≠ closed_loop",
       "reeval_pack_id": "pack-db80f93c8fe46dc4",
-      "source": "demo_synthetic"
+      "source": "demo_synthetic",
+      "closed_by": "apple"
     },
     {
       "ticket_id": "disp-a11c611ebf4d",
-      "status": "open",
+      "status": "closed",
       "failure_category": "implementation",
       "failure_n": 2,
       "sample_task_ids": [
@@ -31,14 +32,15 @@
       "sla_owner_h": 24,
       "sla_disposition_h": 72,
       "opened_at": "2026-11-14T23:30:37+08:00",
-      "closed_at": null,
-      "disposition": null,
+      "closed_at": "2026-11-14T23:53:48+08:00",
+      "disposition": "demo_rehearsal: phase4_routing AUTHORIZE accepted; synthetic close ≠ production fix ≠ closed_loop",
       "reeval_pack_id": "pack-db80f93c8fe46dc4",
-      "source": "demo_synthetic"
+      "source": "demo_synthetic",
+      "closed_by": "apple"
     },
     {
       "ticket_id": "disp-5d5bca12d8ed",
-      "status": "open",
+      "status": "closed",
       "failure_category": "unknown",
       "failure_n": 1,
       "sample_task_ids": [
@@ -48,10 +50,11 @@
       "sla_owner_h": 24,
       "sla_disposition_h": 72,
       "opened_at": "2026-11-14T23:30:37+08:00",
-      "closed_at": null,
-      "disposition": null,
+      "closed_at": "2026-11-14T23:53:49+08:00",
+      "disposition": "demo_rehearsal: phase4_routing AUTHORIZE accepted; synthetic close ≠ production fix ≠ closed_loop",
       "reeval_pack_id": "pack-db80f93c8fe46dc4",
-      "source": "demo_synthetic"
+      "source": "demo_synthetic",
+      "closed_by": "apple"
     }
   ],
   "packs": [
@@ -68,10 +71,10 @@
       "taxonomy_total_failures": 4
     }
   ],
-  "recorded_at": "2026-11-14T23:30:37+08:00",
+  "recorded_at": "2026-11-14T23:53:49+08:00",
   "routing_ref": "docs/a3/config/phase4_routing.v0.json",
-  "open_n": 3,
-  "closed_n": 0,
+  "open_n": 0,
+  "closed_n": 3,
   "closed_loop_claim": false,
   "chart_a3_process_split_authorized": false,
   "honesty": "Disposition ledger write path only. Tickets stay open until human disposition + reeval. ≠ closed-loop automation ≠ Chart flip."

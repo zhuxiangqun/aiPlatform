@@ -125,7 +125,21 @@ def main() -> int:
         status = "ledger_wired"
     else:
         status = "prep"
-    if routing_authorized:
+    open_n = 0
+    if ledger_wired:
+        try:
+            open_n = int(
+                (json.loads(LEDGER_FILE.read_text(encoding="utf-8")) or {}).get("open_n") or 0
+            )
+        except Exception:  # noqa: BLE001
+            open_n = 0
+    if routing_authorized and open_n == 0:
+        next_actions = [
+            "Same-pack reeval after disposition (fingerprint; still ≠ closed_loop)",
+            "Runtime auto-dispatch remains off",
+            "Do not flip Chart / closed_loop_claim without owner AUTHORIZE",
+        ]
+    elif routing_authorized:
         next_actions = [
             "Human disposition + close tickets (phase4_disposition_ledger.py --close)",
             "Same-pack reeval after disposition (fingerprint)",

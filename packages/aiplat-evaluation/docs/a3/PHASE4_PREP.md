@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Phase 4 预备（修复闭环 · routing 已授权）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:43:40+08:00
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:54:11+08:00
 > 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
 > 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
 > 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false
@@ -37,9 +37,9 @@ doc_type: Reference
 
 ## 下一步
 
-1. Human disposition + close tickets (phase4_disposition_ledger.py --close)
-2. Same-pack reeval after disposition (fingerprint)
-3. Runtime auto-dispatch remains off
+1. Same-pack reeval after disposition (fingerprint; still ≠ closed_loop)
+2. Runtime auto-dispatch remains off
+3. Do not flip Chart / closed_loop_claim without owner AUTHORIZE
 
 ## 复跑
 
