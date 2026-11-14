@@ -151,7 +151,7 @@ agent-audit scan . --fail-on high
 ## 证据索引（Evidence Index｜抽样）
 
 - 默认 hook 注册与 pre_approval_check 扫描：`core/harness/infrastructure/hooks/hook_manager.py`
-- SecurityScanHook 规则实现：`core/harness/infrastructure/hooks/builtin.py`
+- SecurityScanHook 规则实现：`core/harness/infrastructure/hooks/hook_manager.py`
 - 扫描配置项与审计事件写入：`core/harness/infrastructure/hooks/hook_manager.py`
 - 单测：`core/tests/unit/test_harness/test_hooks/test_security_scan_config.py`
 

@@ -59,7 +59,7 @@ doc_type: Reference
 | **BackgroundTasks** | 后台任务处理 | 耗时任务（To-Be） |
 
 > **实现状态补充**：
-> - `UnifiedExecutor`：代码存在（`core/harness/execution/executor/unified.py`），但默认 executors 注册逻辑仍需补齐
+> - `UnifiedExecutor`：代码存在（`core/harness/execution/engines/`），但默认 executors 注册逻辑仍需补齐
 > - `SandboxExecutor/BackgroundTasks`：当前为设计占位（To-Be），需明确接线方式与验收
 
 ---

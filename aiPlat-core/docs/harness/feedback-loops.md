@@ -229,4 +229,4 @@ fi
 
 - HookPhase 接线：`core/harness/execution/loop/: BaseLoop.run()`
 - HookManager 默认 hooks：`core/harness/infrastructure/hooks/hook_manager.py`
-- 审批前扫描（security_scan）：`core/harness/infrastructure/hooks/builtin.py`
+- 审批前扫描（security_scan）：`core/harness/infrastructure/hooks/hook_manager.py`

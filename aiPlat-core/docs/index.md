@@ -209,8 +209,7 @@ Management (管理层) ✅ 已实现
     └── harness_manager.py  (Harness 管理)
     ↓
 Services (服务层) ✅ 已实现
-    ├── prompt_service.py   (提示词管理)
-    ├── model_service.py    (模型调用封装)
+    # prompt_service/model_service 已移除 → prompt_loader + model_injection
     ├── trace_service.py    (追踪服务)
     └── context_service.py  (上下文管理)
 

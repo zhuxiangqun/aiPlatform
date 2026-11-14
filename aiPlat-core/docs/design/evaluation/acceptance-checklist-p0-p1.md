@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 自动评估/证据/回归/策略：P0/P1 验收清单（最省钱补齐顺序）
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 > 目的：把当前已落地的 auto-eval（evaluation_report + evidence_pack/diff + gates + policy）从“能跑的雏形”补齐到“团队可依赖、可治理、可持续迭代”的产品级闭环。  
 > 原则：**先可信（P0）→再可治理（P1）→最后体验/自动化（P2）**。  
 > 说明：本清单以 As‑Is 代码事实为基础，尽量复用你们现有设施（Artifacts / Change Control / Approvals / Run events）。

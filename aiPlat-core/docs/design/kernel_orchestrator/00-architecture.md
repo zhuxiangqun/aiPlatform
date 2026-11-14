@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 00｜总体架构设计：Harness Kernel + Orchestrator User-space
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 > 最后更新: 2026-07-04
 
 状态：草案（Phase 1~3 已部分对齐实现；Phase 4+ 待落地）  

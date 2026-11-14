@@ -51,14 +51,14 @@ Harness Engineering 的解决方案：分层记忆架构 + 五级压缩策略 + 
 - 上下文生命周期管理
 - TTL 和过期管理
 
-### ContextLoader (已存在)
+### Context 加载（As-Is）
 
-位置: `core/harness/context/loader.py`
+> 无独立 `core/harness/context/loader.py`。上下文组装见 `MemoryManager.build_context`（`core/harness/memory/manager.py`）与相关 compression/providers。
 
-功能:
+功能（由 MemoryManager / compression 承担）:
 - 按需加载上下文
-- 目录摘要生成
-- 上下文裁剪
+- 摘要 / 压缩
+- 预算裁剪
 
 ## 设计方案
 

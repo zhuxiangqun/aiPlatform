@@ -35,7 +35,7 @@ harness/
 │
 ├── execution/                      # 执行系统
 │   ├── loop/                      # 执行循环 (ReAct Loop)
-│   ├── retry.py                    # 重试管理器
+│   # retry.py 已移除；重试在 loop/policy 路径内
 │   ├── policy.py                   # 执行策略
 │   ├── feedback.py                 # 反馈机制
 │   ├── langgraph/                  # LangGraph 编排

@@ -4,6 +4,9 @@ doc_type: Reference
 
 # aiPlat-core 内核化改造｜严格按文档逐条验收报告
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 更新时间：2026-04-16（2026-07-04 补充更新）  
 验收基线文档：`docs/design/kernel_orchestrator/*`（00~05 + README）
 

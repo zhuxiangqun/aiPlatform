@@ -288,13 +288,13 @@ ReActAgent 和 PlanExecuteAgent 的 `execute()` 委托给 `BaseAgent.execute()`�
 
 并接线到：
 - `core/harness/execution/loop/: ReActLoop._act()`（Loop-first 主路径）
-- `core/harness/execution/langgraph/nodes/act_node.py` 与 `reason_node.py`（Graph 子系统）
+- `core/harness/execution/langgraph/nodes/` 与 `reason_node.py`（Graph 子系统）
 
 **证据**：
 - 代码入口：
   - `core/harness/execution/tool_calling.py: parse_tool_call()`
   - `core/harness/execution/loop/: ReActLoop._act()`（使用 parse_tool_call）
-  - `core/harness/execution/langgraph/nodes/act_node.py`（使用 parse_tool_call）
+  - `core/harness/execution/langgraph/nodes/`（使用 parse_tool_call）
 - 验证方式：
   - `pytest -q core/tests/unit/test_harness/test_execution/test_tool_calling.py`
 

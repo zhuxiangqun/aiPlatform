@@ -58,11 +58,15 @@ indexer.py → wiki_indexer.py
 
 路径级高信号幻影（loop/indexer/GraphQL/Makefile/infra.mcp）在活跃 docs 已基本清零。
 
+续修 tranche-6（2026-11-14）：
+- core developer / harness / services / framework：幻影路径改为现网入口
+- design/* 加 As-Is 横幅（历史/To-Be 引用勿当已实现）
+
 仍未全量清完（需逐篇）：
 ```text
-core docs 其余符号/行号（非路径类）
 infra 模块正文内历史 yaml 示例块（已有横幅兜底）
 reports/ 与 docs/archive/ 历史分析稿（非现网契约）
+core design 正文内个别历史路径（已有横幅）
 ```
 
 ## 关键发现
