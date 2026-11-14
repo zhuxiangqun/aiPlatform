@@ -1,8 +1,8 @@
 {
   "schema": "eval.phase3.b_review_cycle1.v0",
-  "recorded_at": "2026-11-14T23:02:39+08:00",
+  "recorded_at": "2026-11-15T00:23:07+08:00",
   "opened_on": "2026-11-14",
-  "status": "open",
+  "status": "owner_signed",
   "tier_b_n": 165,
   "waves": [
     {
@@ -15,12 +15,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2027-02-12",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [
         "EvalSubjectAdapter"
@@ -38,7 +38,9 @@
         "sample_ok": 5,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     },
     {
       "bucket_id": "B2_smoke",
@@ -50,12 +52,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2026-12-14",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json",
@@ -71,7 +73,9 @@
         "sample_ok": 5,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     },
     {
       "bucket_id": "B3_regression_profiles",
@@ -83,12 +87,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2026-12-14",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json",
@@ -104,7 +108,9 @@
         "sample_ok": 5,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     },
     {
       "bucket_id": "B4_eval_facade",
@@ -116,12 +122,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2027-02-12",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json",
@@ -137,7 +143,9 @@
         "sample_ok": 5,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     },
     {
       "bucket_id": "B5_types_errors",
@@ -149,12 +157,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2027-05-13",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json",
@@ -167,7 +175,9 @@
         "sample_ok": 2,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     },
     {
       "bucket_id": "B6_other",
@@ -179,12 +189,12 @@
       "cycle": 1,
       "opened_on": "2026-11-14",
       "due_on": "2027-05-13",
-      "status": "open",
+      "status": "closed",
       "checklist": {
         "suite_hook_attached": true,
         "sample_rerun": true,
         "gap_symbols_triaged": true,
-        "owner_signoff": false
+        "owner_signoff": true
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json",
@@ -200,13 +210,19 @@
         "sample_ok": 5,
         "sample_fail": [],
         "sample_n_target": 5
-      }
+      },
+      "owner_signoff_at": "2026-11-15T00:23:07+08:00",
+      "owner_signoff_by": "朱向群"
     }
   ],
   "coverage_complete_claim": false,
   "chart_a3_process_split_authorized": false,
-  "honesty": "Cycle-1 sample_rerun verifies impl_ref on disk (+ optional import). ≠ owner_signoff ≠ Tier B coverage complete ≠ Chart flip.",
+  "honesty": "Owner AUTHORIZE b_cycle1_owner_signoff closed Cycle-1 buckets after sample_rerun. ≠ Tier B coverage complete ≠ Chart flip ≠ closed_loop.",
   "rollup_ref": "docs/a3/evidence/meta_eval/phase3_b_suite_attach_rollup.v0.json",
   "sample_rerun_pass_n": 6,
-  "sample_rerun_total": 6
+  "sample_rerun_total": 6,
+  "owner_signoff_authorized": true,
+  "owner_signoff_authorized_at": "2026-11-15T00:23:07+08:00",
+  "owner_signoff_by": "朱向群",
+  "authorize_ref": "docs/a3/evidence/meta_eval/phase3_b_cycle1_owner_signoff_authorize.v0.json"
 }

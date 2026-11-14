@@ -158,6 +158,7 @@ def main() -> int:
             passed = sample_ok >= 1 and len(non_gap_fails) == 0
 
         ck = dict(w.get("checklist") or {})
+        prior_signoff = bool(ck.get("owner_signoff"))
         ck["sample_rerun"] = bool(passed)
         # gap triage: empty gaps OR documented B1 EvalSubjectAdapter remains open but triaged note
         gaps = list(w.get("gap_symbols") or [])
@@ -165,6 +166,8 @@ def main() -> int:
             ck["gap_symbols_triaged"] = True
         elif gaps == ["EvalSubjectAdapter"]:
             ck["gap_symbols_triaged"] = True  # known protocol-only partial
+        # Preserve owner AUTHORIZE signoff across engineering re-runs.
+        ck["owner_signoff"] = prior_signoff
         w["checklist"] = ck
         w["sample_rerun_at"] = _now() if passed else None
         w["sample_detail"] = {
@@ -186,10 +189,21 @@ def main() -> int:
     data["recorded_at"] = _now()
     data["sample_rerun_pass_n"] = sum(1 for r in results if r["sample_rerun"])
     data["sample_rerun_total"] = len(results)
-    data["honesty"] = (
-        "Cycle-1 sample_rerun verifies impl_ref on disk (+ optional import). "
-        "≠ owner_signoff ≠ Tier B coverage complete ≠ Chart flip."
+    all_signed = all(
+        bool((w.get("checklist") or {}).get("owner_signoff"))
+        for w in waves
+        if isinstance(w, dict)
     )
+    if data.get("owner_signoff_authorized") or all_signed:
+        data["honesty"] = (
+            "Cycle-1 sample_rerun refresh. owner_signoff already AUTHORIZE'd. "
+            "≠ Tier B coverage complete ≠ Chart flip."
+        )
+    else:
+        data["honesty"] = (
+            "Cycle-1 sample_rerun verifies impl_ref on disk (+ optional import). "
+            "≠ owner_signoff ≠ Tier B coverage complete ≠ Chart flip."
+        )
     CYCLE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     lines = [
@@ -201,7 +215,11 @@ def main() -> int:
         "",
         f"> 机器：[`evidence/meta_eval/phase3_b_review_cycle1.v0.json`](./evidence/meta_eval/phase3_b_review_cycle1.v0.json) · {data['recorded_at']}",
         f"> 开板：`{data.get('opened_on')}` · sample_rerun **{data['sample_rerun_pass_n']}/{data['sample_rerun_total']}**",
-        "> **诚实锁**：sample_rerun ≠ owner_signoff ≠ 覆盖完成 · Chart 仍 false",
+        (
+            "> **诚实锁**：owner_signoff 已 AUTHORIZE · ≠ 覆盖完成 · Chart 仍 false"
+            if (data.get("owner_signoff_authorized") or all_signed)
+            else "> **诚实锁**：sample_rerun ≠ owner_signoff ≠ 覆盖完成 · Chart 仍 false"
+        ),
         "",
         "| bucket | n | due | status | sample_rerun | owner_signoff |",
         "|---|---:|---|---|:---:|:---:|",
@@ -213,6 +231,11 @@ def main() -> int:
             f"{'✅' if ck.get('sample_rerun') else '☐'} | "
             f"{'✅' if ck.get('owner_signoff') else '☐'} |"
         )
+    footer = (
+        "owner_signoff 已 AUTHORIZE；本脚本只刷新抽样，不清 signoff。"
+        if (data.get("owner_signoff_authorized") or all_signed)
+        else "owner_signoff 仍须人工；本脚本只做工程抽样。"
+    )
     lines.extend(
         [
             "",
@@ -222,7 +245,7 @@ def main() -> int:
             "python3 packages/aiplat-evaluation/scripts/phase3_b_cycle1_sample_rerun.py",
             "```",
             "",
-            "owner_signoff 仍须人工；本脚本只做工程抽样。",
+            footer,
             "",
         ]
     )

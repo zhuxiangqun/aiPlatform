@@ -1,0 +1,26 @@
+{
+  "schema": "eval.phase3.b_cycle1_owner_signoff_authorize.v0",
+  "recorded_at": "2026-11-15T00:23:07+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE b_cycle1_owner_signoff",
+  "decided_at": "2026-11-15T00:23:07+08:00",
+  "b_cycle1_owner_signoff_authorized": true,
+  "buckets_signed": [
+    "B1_subject_adapters",
+    "B2_smoke",
+    "B3_regression_profiles",
+    "B4_eval_facade",
+    "B5_types_errors",
+    "B6_other"
+  ],
+  "buckets_n": 6,
+  "residual": {
+    "coverage_complete_claim": false,
+    "chart_a3_process_split_authorized": false,
+    "closed_loop_claim": false,
+    "independent_staging_host": false,
+    "note": "Cycle-1 owner signoff only. Staging live and Tier B coverage remain open."
+  },
+  "honesty": "Owner AUTHORIZE b_cycle1_owner_signoff. ≠ Tier B coverage complete ≠ staging live ≠ Chart flip."
+}

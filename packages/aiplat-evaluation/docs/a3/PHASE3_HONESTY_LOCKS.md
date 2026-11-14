@@ -14,6 +14,7 @@ doc_type: Reference
 | `l5_declare_authorized` | **true** | [`PHASE3_L5_DECLARE_AUTHORIZE.md`](./PHASE3_L5_DECLARE_AUTHORIZE.md) |
 | `process_split_authorized` | **true**（政策） | [`PHASE3_PROCESS_SPLIT_AUTHORIZE.md`](./PHASE3_PROCESS_SPLIT_AUTHORIZE.md) |
 | `phase4_routing_authorized` | **true** | [`PHASE4_ROUTING_AUTHORIZE.md`](./PHASE4_ROUTING_AUTHORIZE.md) |
+| `b_cycle1_owner_signoff_authorized` | **true** | [`PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md`](./PHASE3_B_CYCLE1_OWNER_SIGNOFF_AUTHORIZE.md) |
 | `security_certification` | **false** | — |
 | Chart `a3_process_split_authorized` | **false** | 待 staging live（脚手架已开 ≠ live） |
 | `production_independent_claim` | **false** | 待 staging closeout |
