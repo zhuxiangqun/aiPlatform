@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_expand_order.v0",
-  "recorded_at": "2026-11-14T21:19:30+08:00",
+  "recorded_at": "2026-11-14T21:21:30+08:00",
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -115,14 +115,14 @@
       "seq": 15,
       "symbol": "eval_evaluate_security_family_gates",
       "family": "F2",
-      "status": "proposal_pending_owner",
+      "status": "accepted",
       "kind": "facade"
     },
     {
       "seq": 16,
       "symbol": "eval_evaluate_security_severity_l5_gate",
       "family": "F2",
-      "status": "queued",
+      "status": "proposal_pending_owner",
       "kind": "facade",
       "forbid": [
         "l5_declare"

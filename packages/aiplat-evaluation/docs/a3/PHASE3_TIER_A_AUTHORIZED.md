@@ -25,9 +25,10 @@ doc_type: Reference
 | `evaluate_security_family_gates` | F2 | 安全家族门禁报告（≠ cert） |
 | `eval_evaluate_security_judge_calibration` | F2 | CoreFacade 包装（≠ L5 / cert） |
 | `eval_load_security_judge_calib_defaults` | F2 | CoreFacade 包装（≠ L5 / cert） |
+| `eval_evaluate_security_family_gates` | F2 | CoreFacade 包装（≠ cert） |
 
-owner：朱向群。F1+F4 齐 + F2 5/7 scoped。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。F1+F4 齐 + F2 6/7 scoped。下一步 #16 L5-*gate API* facade（≠ `l5_declare`）。
 
 ## 下一步
 
-提案 #15：[`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_family_gates.md)
+提案 #16：[`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_severity_l5_gate.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_severity_l5_gate.md)
