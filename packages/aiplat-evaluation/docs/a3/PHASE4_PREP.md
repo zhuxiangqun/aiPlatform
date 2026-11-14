@@ -2,9 +2,9 @@
 doc_type: Reference
 ---
 
-# Phase 4 预备（修复闭环 · 账本已接线）
+# Phase 4 预备（修复闭环 · routing 已授权）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:32:02+08:00
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-14T23:43:40+08:00
 > 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
 > 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
 > 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false
@@ -17,6 +17,7 @@ doc_type: Reference
 | G2b fail decision table | ✅ |
 | `compare_eval_reports` import | ✅ |
 | routing 配置文件 | ✅ |
+| `phase4_routing_authorized` | ✅ |
 | disposition 账本写路径 | ✅ |
 | 复评 pack 指纹 stub | ✅ |
 | runtime router 接线 | ❌ |
@@ -36,10 +37,9 @@ doc_type: Reference
 
 ## 下一步
 
-1. Owner AUTHORIZE phase4_routing (confirm categories)
-2. Human disposition + close tickets
-3. Same-pack reeval after disposition (fingerprint)
-4. Runtime auto-dispatch remains off until owner accept
+1. Human disposition + close tickets (phase4_disposition_ledger.py --close)
+2. Same-pack reeval after disposition (fingerprint)
+3. Runtime auto-dispatch remains off
 
 ## 复跑
 

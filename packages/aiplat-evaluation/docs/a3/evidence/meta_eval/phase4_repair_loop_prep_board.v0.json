@@ -1,13 +1,14 @@
 {
   "schema": "eval.phase4.repair_loop_prep.v0",
-  "recorded_at": "2026-11-14T23:32:02+08:00",
-  "status": "ledger_wired",
+  "recorded_at": "2026-11-14T23:43:40+08:00",
+  "status": "routing_authorized",
   "gates": {
     "failure_taxonomy_fn": true,
     "g2b_fail_decision_table": true,
     "report_compare_fn": true,
     "routing_table_draft": true,
     "routing_config_file": true,
+    "phase4_routing_authorized": true,
     "reeval_sla_draft": true,
     "disposition_ledger_wired": true,
     "reeval_fingerprint_stub": true,
@@ -86,10 +87,9 @@
     "packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py"
   ],
   "next_actions": [
-    "Owner AUTHORIZE phase4_routing (confirm categories)",
-    "Human disposition + close tickets",
+    "Human disposition + close tickets (phase4_disposition_ledger.py --close)",
     "Same-pack reeval after disposition (fingerprint)",
-    "Runtime auto-dispatch remains off until owner accept"
+    "Runtime auto-dispatch remains off"
   ],
   "honesty": "Disposition ledger + fingerprint stub may be wired; ≠ closed-loop automation ≠ Chart flip ≠ security cert."
 }

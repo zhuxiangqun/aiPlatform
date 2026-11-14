@@ -1,5 +1,8 @@
 {
   "schema": "eval.phase4.routing.v0",
+  "phase4_routing_authorized": true,
+  "authorized_at": "2026-11-14T23:40:00+08:00",
+  "authorize_ref": "docs/a3/evidence/meta_eval/phase4_routing_authorize.v0.json",
   "sla": {
     "tier_a_red_owner_hours": 24,
     "tier_a_disposition_hours": 72
@@ -48,5 +51,5 @@
       "sla_disposition_h": 72
     }
   ],
-  "honesty": "Config only. Writing disposition tickets ≠ closed-loop automation ≠ Chart flip."
+  "honesty": "Owner AUTHORIZE phase4_routing accepted. Writing disposition tickets ≠ closed-loop automation ≠ Chart flip."
 }

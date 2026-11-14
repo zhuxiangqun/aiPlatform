@@ -20,6 +20,7 @@ OUT_JSON = META / "phase4_repair_loop_prep_board.v0.json"
 OUT_MD = ROOT / "docs/a3/PHASE4_PREP.md"
 ROUTING_FILE = ROOT / "docs/a3/config/phase4_routing.v0.json"
 LEDGER_FILE = META / "phase4_disposition_ledger.v0.json"
+ROUTING_AUTH = META / "phase4_routing_authorize.v0.json"
 _VENV_PY = REPO / ".venv" / "bin" / "python"
 
 # Plan §10 categories → default owner_role (config table; runtime dispatch still off).
@@ -77,6 +78,21 @@ def main() -> int:
     report_compare = _import_ok("core.apps.eval.service.report_compare", "compare_eval_reports")
     routing_cfg = ROUTING_FILE.is_file()
     ledger_wired = LEDGER_FILE.is_file()
+    routing_authorized = False
+    if ROUTING_AUTH.is_file():
+        try:
+            auth = json.loads(ROUTING_AUTH.read_text(encoding="utf-8"))
+            routing_authorized = bool(auth.get("phase4_routing_authorized")) and str(
+                auth.get("status") or ""
+            ).lower() in ("authorized", "accepted")
+        except Exception:  # noqa: BLE001 — prep board records parse errors
+            routing_authorized = False
+    if routing_cfg and not routing_authorized:
+        try:
+            cfg = json.loads(ROUTING_FILE.read_text(encoding="utf-8"))
+            routing_authorized = bool(cfg.get("phase4_routing_authorized"))
+        except Exception:  # noqa: BLE001
+            pass
     fingerprint_stub = False
     if ledger_wired:
         try:
@@ -94,6 +110,7 @@ def main() -> int:
         "report_compare_fn": bool(report_compare.get("ok")),
         "routing_table_draft": True,
         "routing_config_file": routing_cfg,
+        "phase4_routing_authorized": routing_authorized,
         "reeval_sla_draft": True,
         "disposition_ledger_wired": ledger_wired,
         "reeval_fingerprint_stub": fingerprint_stub,
@@ -102,21 +119,31 @@ def main() -> int:
         "chart_a3_process_split_authorized": False,
         "security_certification": False,
     }
-    status = "ledger_wired" if ledger_wired and routing_cfg else "prep"
-    next_actions: List[str] = (
-        [
+    if ledger_wired and routing_cfg and routing_authorized:
+        status = "routing_authorized"
+    elif ledger_wired and routing_cfg:
+        status = "ledger_wired"
+    else:
+        status = "prep"
+    if routing_authorized:
+        next_actions = [
+            "Human disposition + close tickets (phase4_disposition_ledger.py --close)",
+            "Same-pack reeval after disposition (fingerprint)",
+            "Runtime auto-dispatch remains off",
+        ]
+    elif ledger_wired:
+        next_actions = [
             "Owner AUTHORIZE phase4_routing (confirm categories)",
             "Human disposition + close tickets",
             "Same-pack reeval after disposition (fingerprint)",
             "Runtime auto-dispatch remains off until owner accept",
         ]
-        if ledger_wired
-        else [
+    else:
+        next_actions = [
             "Wire disposition ledger write path after gate_v1 taxonomy",
             "Add reeval job fingerprint (same pack SHA) stub",
             "Owner accept routing_draft categories before automation",
         ]
-    )
     payload: Dict[str, Any] = {
         "schema": "eval.phase4.repair_loop_prep.v0",
         "recorded_at": _now(),
@@ -149,11 +176,12 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     g = gates
-    title = (
-        "# Phase 4 预备（修复闭环 · 账本已接线）"
-        if ledger_wired
-        else "# Phase 4 预备（修复闭环 · 未接线）"
-    )
+    if routing_authorized:
+        title = "# Phase 4 预备（修复闭环 · routing 已授权）"
+    elif ledger_wired:
+        title = "# Phase 4 预备（修复闭环 · 账本已接线）"
+    else:
+        title = "# Phase 4 预备（修复闭环 · 未接线）"
     lines = [
         "---",
         "doc_type: Reference",
@@ -180,6 +208,7 @@ def main() -> int:
             f"| G2b fail decision table | {'✅' if g['g2b_fail_decision_table'] else '❌'} |",
             f"| `compare_eval_reports` import | {'✅' if g['report_compare_fn'] else '❌'} |",
             f"| routing 配置文件 | {'✅' if g['routing_config_file'] else '❌'} |",
+            f"| `phase4_routing_authorized` | {'✅' if g['phase4_routing_authorized'] else '❌'} |",
             f"| disposition 账本写路径 | {'✅' if g['disposition_ledger_wired'] else '❌'} |",
             f"| 复评 pack 指纹 stub | {'✅' if g['reeval_fingerprint_stub'] else '❌'} |",
             f"| runtime router 接线 | ❌ |",

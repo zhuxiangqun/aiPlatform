@@ -20,8 +20,6 @@ ROOT = Path(__file__).resolve().parents[1]
 META = ROOT / "docs/a3/evidence/meta_eval"
 ROUTING = ROOT / "docs/a3/config/phase4_routing.v0.json"
 LEDGER = META / "phase4_disposition_ledger.v0.json"
-PREP = META / "phase4_repair_loop_prep_board.v0.json"
-PREP_MD = ROOT / "docs/a3/PHASE4_PREP.md"
 
 
 def _now() -> str:
@@ -232,81 +230,79 @@ def _demo_taxonomy() -> Dict[str, Any]:
     }
 
 
+def close_ticket(
+    ticket_id: str,
+    *,
+    disposition: str,
+    closed_by: str,
+) -> Dict[str, Any]:
+    """人工关单（写 disposition；不宣称闭环）。
+
+    Args:
+        ticket_id: 处置单 id。
+        disposition: 处置说明。
+        closed_by: 关单人。
+
+    Returns:
+        关单摘要。
+
+    Raises:
+        FileNotFoundError: 账本不存在。
+        KeyError: ticket 不存在或已关闭。
+    """
+    if not LEDGER.is_file():
+        raise FileNotFoundError(str(LEDGER))
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8"))
+    tickets = list(ledger.get("tickets") or [])
+    found = None
+    for t in tickets:
+        if isinstance(t, dict) and t.get("ticket_id") == ticket_id:
+            found = t
+            break
+    if found is None:
+        raise KeyError(f"ticket not found: {ticket_id}")
+    if found.get("status") == "closed":
+        raise KeyError(f"ticket already closed: {ticket_id}")
+    found["status"] = "closed"
+    found["closed_at"] = _now()
+    found["disposition"] = disposition
+    found["closed_by"] = closed_by
+    ledger["tickets"] = tickets
+    ledger["open_n"] = sum(1 for t in tickets if isinstance(t, dict) and t.get("status") == "open")
+    ledger["closed_n"] = sum(
+        1 for t in tickets if isinstance(t, dict) and t.get("status") == "closed"
+    )
+    ledger["recorded_at"] = _now()
+    ledger["closed_loop_claim"] = False
+    ledger["chart_a3_process_split_authorized"] = False
+    LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {
+        "ticket_id": ticket_id,
+        "status": "closed",
+        "open_n": ledger["open_n"],
+        "closed_n": ledger["closed_n"],
+        "reeval_pack_id": found.get("reeval_pack_id"),
+    }
+
+
 def _refresh_prep_board() -> None:
-    """刷新 Phase4 prep 闸门（disposition 已接线）。
+    """委托 phase4_repair_loop_prep.py 刷新闸门板。
 
     Returns:
         None。
     """
-    if not PREP.is_file():
+    prep_py = ROOT / "scripts" / "phase4_repair_loop_prep.py"
+    if not prep_py.is_file():
         return
-    board = json.loads(PREP.read_text(encoding="utf-8"))
-    gates = dict(board.get("gates") or {})
-    gates["disposition_ledger_wired"] = LEDGER.is_file()
-    gates["reeval_fingerprint_stub"] = True
-    gates["runtime_router_wired"] = False
-    gates["closed_loop_claim"] = False
-    gates["chart_a3_process_split_authorized"] = False
-    board["gates"] = gates
-    board["recorded_at"] = _now()
-    board["ledger_ref"] = "docs/a3/evidence/meta_eval/phase4_disposition_ledger.v0.json"
-    board["routing_ref"] = "docs/a3/config/phase4_routing.v0.json"
-    board["next_actions"] = [
-        "Owner confirm routing categories (AUTHORIZE phase4_routing)",
-        "Human disposition + close tickets",
-        "Wire runtime auto-dispatch only after owner accept (still not claimed)",
-    ]
-    board["honesty"] = (
-        "Disposition ledger + pack fingerprint stub wired. "
-        "≠ closed-loop automation ≠ Chart flip ≠ security cert."
-    )
-    PREP.write_text(json.dumps(board, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    venv = ROOT.parents[1] / ".venv" / "bin" / "python"
+    exe = str(venv) if venv.is_file() else sys.executable
+    import subprocess
 
-    g = gates
-    lines = [
-        "---",
-        "doc_type: Reference",
-        "---",
-        "",
-        "# Phase 4 预备（修复闭环 · 账本已接线）",
-        "",
-        f"> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · {_now()}",
-        f"> 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)",
-        "> 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)",
-        "> **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false",
-        "",
-        "## 闸门",
-        "",
-        "| 项 | 状态 |",
-        "|---|---|",
-        f"| `build_failure_taxonomy` import | {'✅' if g.get('failure_taxonomy_fn') else '☐'} |",
-        f"| G2b fail decision table | {'✅' if g.get('g2b_fail_decision_table') else '☐'} |",
-        f"| `compare_eval_reports` import | {'✅' if g.get('report_compare_fn') else '☐'} |",
-        f"| routing 配置 | ✅ |",
-        f"| disposition 账本写路径 | {'✅' if g.get('disposition_ledger_wired') else '❌'} |",
-        f"| 复评 pack 指纹 stub | {'✅' if g.get('reeval_fingerprint_stub') else '❌'} |",
-        f"| runtime auto-dispatch | ❌ |",
-        f"| closed_loop_claim | **false** |",
-        "",
-        "## 写入",
-        "",
-        "```bash",
-        "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --demo",
-        "# or: --taxonomy path/to/taxonomy.json",
-        "```",
-        "",
-        "## 下一步",
-        "",
-        "1. Owner `AUTHORIZE phase4_routing`（确认类别）",
-        "2. 人工 disposition 关单 + 同指纹复评",
-        "3. 未授权前禁止宣称「修复闭环已自动」",
-        "",
-    ]
-    PREP_MD.write_text("\n".join(lines), encoding="utf-8")
+    subprocess.run([exe, str(prep_py)], check=False)  # noqa: S603 — local prep refresh
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """CLI：写 disposition 账本。
+    """CLI：写 disposition 账本或关单。
 
     Args:
         argv: 参数列表。
@@ -317,6 +313,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
     taxonomy_path = None
     demo = False
+    close_id = None
+    disposition = None
     i = 0
     while i < len(argv):
         if argv[i] == "--demo":
@@ -325,17 +323,53 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif argv[i] == "--taxonomy" and i + 1 < len(argv):
             taxonomy_path = argv[i + 1]
             i += 2
+        elif argv[i] == "--close" and i + 1 < len(argv):
+            close_id = argv[i + 1]
+            i += 2
+        elif argv[i] == "--disposition" and i + 1 < len(argv):
+            disposition = argv[i + 1]
+            i += 2
         else:
             print(f"unknown arg: {argv[i]}", file=sys.stderr)
             return 2
 
+    if close_id:
+        if not disposition:
+            print("--close requires --disposition TEXT", file=sys.stderr)
+            return 2
+        try:
+            summary = close_ticket(
+                close_id,
+                disposition=disposition,
+                closed_by=os.environ.get("USER", "owner"),
+            )
+        except (FileNotFoundError, KeyError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        _refresh_prep_board()
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    **summary,
+                    "closed_loop_claim": False,
+                    "note": "Ticket closed ≠ same-pack reeval done ≠ closed_loop",
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
     if taxonomy_path:
         taxonomy = json.loads(Path(taxonomy_path).read_text(encoding="utf-8"))
         source = f"file:{taxonomy_path}"
-    else:
+    elif demo or not argv:
         demo = True
         taxonomy = _demo_taxonomy()
         source = "demo_synthetic"
+    else:
+        print("use --demo, --taxonomy PATH, or --close ID --disposition TEXT", file=sys.stderr)
+        return 2
 
     if not ROUTING.is_file():
         print("missing routing config", file=sys.stderr)

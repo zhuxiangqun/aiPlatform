@@ -1,29 +1,32 @@
 {
   "schema": "eval.phase3.honesty_locks.v0",
-  "recorded_at": "2026-11-14T22:30:00+08:00",
+  "recorded_at": "2026-11-14T23:40:00+08:00",
   "owner": "朱向群",
   "flags": {
     "global_tier_a_expansion_authorized": true,
     "accuracy_claim": true,
     "l5_declare_authorized": true,
     "process_split_authorized": true,
+    "phase4_routing_authorized": true,
     "security_certification": false,
     "tier_b_coverage_complete_claim": false,
     "forbid_single_coverage_percent": true,
     "chart_a3_process_split_authorized": false,
     "production_independent_claim": false,
+    "closed_loop_claim": false,
     "b4s_staging_scaffold_opened": true
   },
   "authorize_refs": {
     "global_tier_a_expansion": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json",
     "accuracy_claim": "docs/a3/evidence/meta_eval/phase3_accuracy_claim_authorize.v0.json",
     "l5_declare": "docs/a3/evidence/meta_eval/phase3_l5_declare_authorize.v0.json",
-    "process_split": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json"
+    "process_split": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json",
+    "phase4_routing": "docs/a3/evidence/meta_eval/phase4_routing_authorize.v0.json"
   },
   "scaffold_refs": {
     "unfreeze": "reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md",
     "scaffold_page": "docs/a3/B4S_STAGING_SCAFFOLD.md",
     "drill_template": "docs/a3/templates/live-scaffold-b4s-staging-template.v0.json"
   },
-  "honesty": "Four policy flags authorized by owner. B4-S staging scaffold/unfreeze draft opened. security_certification / production_independent_claim / Chart split annotation remain false."
+  "honesty": "Policy flags include phase4_routing_authorized. Disposition ledger may write tickets; closed_loop_claim / security_certification / production_independent_claim / Chart split annotation remain false."
 }
