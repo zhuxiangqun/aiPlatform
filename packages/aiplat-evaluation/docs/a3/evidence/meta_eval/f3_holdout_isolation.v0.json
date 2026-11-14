@@ -1,0 +1,21 @@
+{
+  "schema": "eval.meta_eval.f3_holdout_isolation.v0",
+  "family_id": "F3",
+  "recorded_at": "2026-11-14T19:16:27+08:00",
+  "policy": {
+    "process_split_authorize_holdout_until_split_checklist_all_green": true,
+    "live_production_signed_required": true,
+    "reveal": "pre_release_once",
+    "tuning_forbidden_on_holdout": true,
+    "g2b_scoped_accuracy_must_not_flip_process_split": true
+  },
+  "holdout_claims": [
+    "process_split_authorized",
+    "production_independence_claim",
+    "tier_a_expansion"
+  ],
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "process_split_authorized stays holdout until SPLIT_CHECKLIST all ✅ + live production-signed drill. G2b scoped accuracy ≠ split authorize. ≠ Tier A."
+}
