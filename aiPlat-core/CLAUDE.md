@@ -78,6 +78,21 @@ language: zh-CN
 
 溯源测试：diff 中的每一行修改都应该能直接追溯到用户的需求请求。
 
+### 3.1 中文可读性注释（强制——新代码 / 改到的 public 面）
+
+**权威条文在工作区根 `CLAUDE.md` 通用强制规则 3a（全平台）**；本节为 core 执行提醒。
+
+默认语言：**中文** docstring / 「为什么」注释；标识符、异常码、字段名保持英文。示范：`core/apps/eval/service/runs_eval_ops.py` + 同目录 `README.md`。
+
+| # | 要求 | 说明 |
+|---|------|------|
+| 1 | 公共模块必须有模块 docstring | 职责 + 非目标 + 关键入口/读序 |
+| 2 | 对外 public 符号必须有 docstring | 至少一句话；**参数必须说明**（`Args:` 逐形参；有返回写 `Returns:`；非显然失败写 `Raises:`） |
+| 3 | 安全 / 诚实锁 / 绕过 / 非直观算法 | 必须有「为什么」行内注释 |
+| 4 | 禁止复述代码的注释 | 如 `# 自增 i`、`# 返回结果` |
+
+守卫：`python3 scripts/check_python_docstring_guard.py --staged|--changed`（接入 pre-commit 与 `architecture_guard.sh` §99）。不要求一次刷全仓存量；存量随改动面补齐。
+
 ---
 
 ## 4) Goal-Driven Execution：以验收标准驱动闭环

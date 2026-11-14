@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3438
+total_capabilities: 3439
 last_updated: 2026-11-09
 version: "30.14"
 auto_sync: true
@@ -2240,6 +2240,7 @@ scan_hash: 8f9548ec24f4
 | register_with_report | `core/apps/tools/discovery.py` | ✅ | 热加载 + skipped/assets[] | 本批 |
 | tool_discovery_register_with_report | `core/api/core_facade.py` | ✅ | CoreFacade Phase D 入口 | 本批 |
 | Phase D wrap：COMPAT 守卫 + discovery report | `scripts/check_asset_compat_gates.py` §98 + server lifespan + diagnostics/workspace endpoints | ✅ | 静态防回归；启动缓存 last report；只读诊断；生成物适用：已接线 | 本批 |
+| Python 可读性注释守卫（全平台） | `scripts/check_python_docstring_guard.py` + `architecture_guard.sh` §99 + `pre-commit-hook.sh`；规约：工作区 `CLAUDE.md` 3a | ✅ | 触及面强制：模块 docstring / public+Args / 安全控制流「为什么」/ 禁废话注释；生成物适用：不适用（平台横切工程规范守卫） | 本批 |
 | get_last_discovery_report / last_report_or_refresh | `core/apps/tools/discovery.py` | ✅ | 缓存/刷新 discovery report | 本批 |
 | tool_discovery_last_report | `core/api/core_facade.py` | ✅ | CoreFacade 只读 last report | 本批 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
@@ -4343,7 +4344,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 199 | 0 | 199 |
+| Skill 系统 | 200 | 0 | 200 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4382,7 +4383,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3428** | **10** | **3438** |
+| **总计** | **3429** | **10** | **3439** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

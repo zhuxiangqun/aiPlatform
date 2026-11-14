@@ -577,6 +577,18 @@ else
     FAIL=1
 fi
 
+# ── §99: Python 可读性注释（全平台 docstring / Args / 为什么 / 禁废话）──
+# 只检查触及的 .py（相对 main 的变更）；存量随改动面补齐。
+echo -n "§99: python docstring readability: "
+if python3 scripts/check_python_docstring_guard.py --changed >/tmp/aiplat_docstring_s99.txt 2>&1; then
+    echo "✅"
+else
+    echo "❌ 触及的 .py 缺少模块/public docstring、Args、或「为什么」注释"
+    echo "   Run: python3 scripts/check_python_docstring_guard.py --changed"
+    head -20 /tmp/aiplat_docstring_s99.txt 2>/dev/null | sed 's/^/   /'
+    FAIL=1
+fi
+
 # ── §73: Capability consumer verification (replaces deprecated caller_verify.sh) ──
 # Phase 2.5 method-level wiring runs in phase_check.sh (method_verify.sh + wiring tests).
 echo -n "§73: capability consumers wired: "

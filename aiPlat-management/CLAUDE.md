@@ -46,6 +46,9 @@ language: zh-CN
 
 ---
 
+## 3.0) Python 可读性注释（全平台）
+遵守工作区根 `CLAUDE.md` 通用强制规则 **3a**（模块 docstring / public + `Args:` / 「为什么」/ 禁废话；前端 TS 不在此守卫范围）。守卫：`python3 scripts/check_python_docstring_guard.py --staged|--changed`。
+
 ## 3) Surgical Changes：手术式改动（强制）
 - 不要顺手改无关组件、样式、格式化
 - 不要重命名文件/变量只为“更优雅”
