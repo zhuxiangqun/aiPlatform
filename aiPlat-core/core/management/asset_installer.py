@@ -173,6 +173,7 @@ class InstallResult:
     converted: Optional[Dict[str, Any]] = None
     assets: List[Dict[str, Any]] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    import_failed: bool = False
 
 
 @dataclass
@@ -275,11 +276,21 @@ class AssetInstaller:
             if not skip_claude_plugin and _is_claude_plugin(repo_dir):
                 claude = self._adapt_claude_plugin(repo_dir)
                 if claude.get("converted"):
-                    result = self._install_from_dir(root=repo_dir, source={"publisher": "git", "source": url,
-                        "ref": ref, "commit": commit, "subdir": subdir or "", "metadata": metadata or {}},
-                        asset_id=asset_id, subdir=subdir, allow_overwrite=allow_overwrite)
-                    result.converted = claude
-                    return result
+                    return self._finish_claude_plugin_install(
+                        claude,
+                        root=repo_dir,
+                        source={
+                            "publisher": "git",
+                            "source": url,
+                            "ref": ref,
+                            "commit": commit,
+                            "subdir": subdir or "",
+                            "metadata": metadata or {},
+                        },
+                        asset_id=asset_id,
+                        subdir=subdir,
+                        allow_overwrite=allow_overwrite,
+                    )
 
             return self._install_from_dir(root=detect, source={"publisher": "git", "source": url,
                 "ref": ref, "commit": commit, "subdir": subdir or "", "metadata": metadata or {}},
@@ -289,6 +300,7 @@ class AssetInstaller:
         self, *, path: str, asset_id: Optional[str] = None,
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         allow_overwrite: bool = False, metadata: Optional[Dict[str, Any]] = None,
+        skip_claude_plugin: bool = False,
     ) -> InstallResult:
         """install_from_path。
 
@@ -299,6 +311,7 @@ class AssetInstaller:
             auto_detect_subdir: auto_detect_subdir 参数。
             allow_overwrite: allow_overwrite 参数。
             metadata: metadata 参数。
+            skip_claude_plugin: 跳过 Claude plugin 分解。
         """
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
@@ -306,6 +319,22 @@ class AssetInstaller:
         if not subdir and auto_detect_subdir:
             subdir = _auto_detect_subdir(root, [self._FILE_PATTERN])
         detect = root if not subdir else root / subdir
+        if not skip_claude_plugin and _is_claude_plugin(root):
+            claude = self._adapt_claude_plugin(root)
+            if claude.get("converted"):
+                return self._finish_claude_plugin_install(
+                    claude,
+                    root=detect,
+                    source={
+                        "publisher": "local",
+                        "source": str(root),
+                        "ref": "",
+                        "metadata": metadata or {},
+                    },
+                    asset_id=asset_id,
+                    subdir=None,
+                    allow_overwrite=allow_overwrite,
+                )
         return self._install_from_dir(root=detect, source={"publisher": "local", "source": str(root),
             "ref": "", "metadata": metadata or {}}, asset_id=asset_id, subdir=None,
             allow_overwrite=allow_overwrite)
@@ -328,6 +357,14 @@ class AssetInstaller:
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")
+        from core.harness.maintenance.asset_secure_scan import (
+            AssetSecureScanError,
+            secure_scan_zip,
+        )
+
+        zscan = secure_scan_zip(zp)
+        if not zscan.get("ok"):
+            raise AssetSecureScanError(list(zscan.get("issues") or ["zip_scan_failed"]))
         with tempfile.TemporaryDirectory(prefix=f"aiplat-{self.ASSET_TYPE}-install-zip-") as td:
             root = Path(td) / "unzipped"
             root.mkdir(parents=True, exist_ok=True)
@@ -336,9 +373,14 @@ class AssetInstaller:
             if not subdir and auto_detect_subdir:
                 subdir = _auto_detect_subdir(root, [self._FILE_PATTERN])
             detect = root if not subdir else root / subdir
-            return self._install_from_dir(root=detect, source={"publisher": "zip",
-                "source": str(zp), "ref": "", "metadata": metadata or {}},
-                asset_id=asset_id, subdir=None, allow_overwrite=allow_overwrite)
+            return self._install_from_dir(
+                root=detect,
+                source={"publisher": "zip", "source": str(zp), "ref": "", "metadata": metadata or {}},
+                asset_id=asset_id,
+                subdir=None,
+                allow_overwrite=allow_overwrite,
+                zip_path=zp,
+            )
 
     def plan_from_git(
         self, *, url: str, ref: str, asset_id: Optional[str] = None,
@@ -508,9 +550,21 @@ class AssetInstaller:
 
     # ── Internal ────────────────────────────────────────────────
 
-    def _install_from_dir(self, *, root: Path, source: Dict[str, Any],
-                          asset_id: Optional[str], subdir: Optional[str],
-                          allow_overwrite: bool) -> InstallResult:
+    def _install_from_dir(
+        self,
+        *,
+        root: Path,
+        source: Dict[str, Any],
+        asset_id: Optional[str],
+        subdir: Optional[str],
+        allow_overwrite: bool,
+        zip_path: Optional[Path] = None,
+    ) -> InstallResult:
+        from core.harness.maintenance.asset_secure_scan import enforce_secure_scan
+
+        # SecureScan before any copy — fail closed, no disk install
+        enforce_secure_scan(root, zip_path=zip_path)
+
         # First, try format adapters (Hermes, OpenClaw, etc.)
         converted = None
         try:
@@ -627,12 +681,21 @@ class AssetInstaller:
                 except Exception as exc:
                     logging.warning("finalize_mcp_compat failed for %s: %s", ad.name, exc)
 
+        # Normalize report rows + majority-blocked import gate (P0 meaningful import)
+        from core.harness.maintenance.asset_compat import (
+            apply_majority_import_gate,
+            normalize_asset_report_row,
+        )
+
+        report_assets = [normalize_asset_report_row(a) for a in report_assets]
+        gate = apply_majority_import_gate(assets=report_assets, warnings=warnings)
         return InstallResult(
             installed=installed,
             skipped=skipped,
             converted=converted,
-            assets=report_assets,
-            warnings=warnings,
+            assets=list(gate.get("assets") or report_assets),
+            warnings=list(gate.get("warnings") or warnings),
+            import_failed=bool(gate.get("import_failed")),
         )
 
     def _enrich_asset_frontmatter(self, dst: Path) -> None:
@@ -756,16 +819,105 @@ _auto_adapted: true
         return PlanResult(source=source, detected_subdir=subdir, assets=out,
                           warnings=warnings, claude_plugin=claude_plugin)
 
+
+    def _finish_claude_plugin_install(
+        self,
+        claude: Dict[str, Any],
+        *,
+        root: Path,
+        source: Dict[str, Any],
+        asset_id: Optional[str],
+        subdir: Optional[str],
+        allow_overwrite: bool,
+    ) -> InstallResult:
+        """Install native assets after Claude plugin adapt; MCP-only plugins OK.
+
+        Args:
+            claude: Adapt manifest.
+            root: Install root.
+            source: Source metadata.
+            asset_id: Optional asset id filter.
+            subdir: Optional subdir.
+            allow_overwrite: Overwrite flag.
+        """
+        try:
+            result = self._install_from_dir(
+                root=root,
+                source=source,
+                asset_id=asset_id,
+                subdir=subdir,
+                allow_overwrite=allow_overwrite,
+            )
+        except ValueError as exc:
+            msg = str(exc)
+            if claude.get("mcp_installed") and msg.startswith("no_"):
+                result = InstallResult(
+                    installed=list(claude.get("mcp_installed") or []),
+                    skipped=[],
+                    converted=claude,
+                    assets=[],
+                    warnings=[f"claude_plugin_mcp_only:{msg}"],
+                )
+            else:
+                raise
+        result.converted = claude
+        # Surface auto-registered MCP rows on InstallReport
+        try:
+            from core.harness.maintenance.asset_compat import (
+                normalize_asset_report_row,
+                read_mcp_compat,
+            )
+
+            base = Path(get_aiplat_home()) / "mcps"
+            existing_ids = {
+                str(a.get("id") or "")
+                for a in (result.assets or [])
+                if isinstance(a, dict)
+            }
+            for mid in list(claude.get("mcp_installed") or []):
+                if mid in existing_ids:
+                    continue
+                mdir = base / mid
+                compat = read_mcp_compat(mdir) if mdir.is_dir() else {}
+                result.assets.append(
+                    normalize_asset_report_row(
+                        {
+                            "kind": "mcp",
+                            "id": mid,
+                            "tier": (compat or {}).get("tier"),
+                            "schedulable": bool((compat or {}).get("schedulable")),
+                            "ui_state": (compat or {}).get("ui_state"),
+                            "actions_required": (
+                                []
+                                if (compat or {}).get("schedulable")
+                                else ["connect"]
+                            ),
+                            "issues": (compat or {}).get("issues") or [],
+                        }
+                    )
+                )
+        except Exception:
+            logging.debug("claude plugin mcp report rows skipped", exc_info=True)
+        _try_sync_mcp_after_claude_plugin(claude)
+        return result
+
     def _adapt_claude_plugin(self, root_dir: Path) -> Dict[str, Any]:
-        """Decompose Claude Code plugin bundle into aiPlatform components."""
-        import os as _os
-        manifest: Dict[str, Any] = {"converted": [], "skipped": [], "mcp_hints": []}
+        """Decompose Claude Code plugin bundle into aiPlatform components.
+
+        MCP JSON under ``mcp/`` is auto-registered into ``~/.aiplat/mcps/<id>/``
+        with COMPAT ``connectable`` (no manual-register primary path).
+        """
+        import json as _json
         import shutil as _shutil
 
-        base = get_aiplat_home()
-        skills_dest = Path(base) / "skills"
-        agents_dest = Path(base) / "agents"
-        hooks_dest = Path(base) / "hooks"
+        from core.management.agentskills_parser import convert_mcp_json_to_server_yaml
+
+        manifest: Dict[str, Any] = {"converted": [], "skipped": [], "mcp_installed": []}
+        base = Path(get_aiplat_home())
+        skills_dest = base / "skills"
+        agents_dest = base / "agents"
+        hooks_dest = base / "hooks"
+        mcps_dest = base / "mcps"
 
         # skills/
         if (root_dir / "skills").is_dir():
@@ -805,13 +957,65 @@ _auto_adapted: true
         if (root_dir / "commands").is_dir():
             manifest["skipped"].append({"component": "commands", "reason": "aiPlatform 无 slash command"})
 
-        # mcp/
-        if (root_dir / "mcp").is_dir():
-            for item in (root_dir / "mcp").iterdir():
-                if item.suffix == ".json":
-                    manifest["mcp_hints"].append(str(item.name))
-            if not manifest["mcp_hints"]:
-                manifest["skipped"].append({"component": "mcp", "reason": "MCP server 配置已发现，需在管理界面手动注册"})
+        # mcp/*.json → ~/.aiplat/mcps/<id>/server.yaml + COMPAT connectable
+        mcp_src = root_dir / "mcp"
+        if mcp_src.is_dir():
+            mcps_dest.mkdir(parents=True, exist_ok=True)
+            any_json = False
+            for item in sorted(mcp_src.iterdir()):
+                if item.suffix != ".json":
+                    continue
+                any_json = True
+                results = convert_mcp_json_to_server_yaml(str(item))
+                if not results:
+                    # Single-server JSON without mcpServers wrapper
+                    try:
+                        data = _json.loads(item.read_text(encoding="utf-8", errors="replace"))
+                    except Exception:
+                        data = None
+                    if isinstance(data, dict) and ("command" in data or "url" in data):
+                        name = str(data.get("name") or item.stem)
+                        wrapped = item.parent / f"._wrap_{item.stem}.json"
+                        wrapped.write_text(
+                            _json.dumps({"mcpServers": {name: data}}, ensure_ascii=False, indent=2),
+                            encoding="utf-8",
+                        )
+                        try:
+                            results = convert_mcp_json_to_server_yaml(str(wrapped))
+                        finally:
+                            try:
+                                wrapped.unlink()
+                            except OSError:
+                                logging.debug("temp mcp wrap unlink skipped", exc_info=True)  # noqa: cleanup-best-effort
+                if not results:
+                    manifest["skipped"].append(
+                        {"component": f"mcp:{item.name}", "reason": "mcp_json_unparseable"}
+                    )
+                    continue
+                for r in results:
+                    name = str(r.get("name") or item.stem).strip() or item.stem
+                    dest = mcps_dest / name
+                    dest.mkdir(parents=True, exist_ok=True)
+                    (dest / "server.yaml").write_text(str(r.get("server") or ""), encoding="utf-8")
+                    if r.get("policy"):
+                        (dest / "policy.yaml").write_text(str(r["policy"]), encoding="utf-8")
+                    try:
+                        from core.harness.maintenance.asset_compat import finalize_mcp_compat
+
+                        finalize_mcp_compat(
+                            dest,
+                            source={"publisher": "claude_plugin", "source": str(item)},
+                            adapt_summary={"adapted": True, "pattern": "claude_plugin_mcp"},
+                            connection_status="connectable",
+                        )
+                    except Exception as exc:
+                        logging.warning("finalize_mcp_compat failed for plugin mcp %s: %s", name, exc)
+                    tag = f"mcp:{name}"
+                    if tag not in manifest["converted"]:
+                        manifest["converted"].append(tag)
+                    manifest["mcp_installed"].append(name)
+            if not any_json:
+                manifest["skipped"].append({"component": "mcp", "reason": "mcp_dir_empty"})
 
         return manifest
 
@@ -821,7 +1025,8 @@ def _is_claude_plugin(root: Path) -> bool:
     has_skills = (root / "skills").is_dir()
     has_agents = (root / "agents").is_dir()
     has_hooks = (root / "hooks").is_dir()
-    return bool(has_skills or has_agents or has_hooks)
+    has_mcp = (root / "mcp").is_dir()
+    return bool(has_skills or has_agents or has_hooks or has_mcp)
 
 
 # ── Concrete installers ────────────────────────────────────────
@@ -859,6 +1064,37 @@ class WorkflowInstaller(AssetInstaller):
     _MANIFEST_NAME = "WORKFLOW.manifest.json"
     ASSET_TYPE = "workflow"
 
+
+
+def _try_sync_mcp_after_claude_plugin(converted: Optional[Dict[str, Any]]) -> None:
+    """Best-effort sync_mcp_runtime after Claude plugin MCP auto-register.
+
+    Args:
+        converted: Manifest from ``_adapt_claude_plugin``.
+    """
+    if not isinstance(converted, dict):
+        return
+    mcp_ids = list(converted.get("mcp_installed") or [])
+    if not mcp_ids and not any(str(x).startswith("mcp:") for x in (converted.get("converted") or [])):
+        return
+    try:
+        import anyio
+        from core.mcp.runtime_sync import sync_mcp_runtime
+
+        anyio.run(sync_mcp_runtime)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("claude plugin mcp sync skipped: %s", exc)
+        # Disconnect honesty: keep connectable (never fake connected)
+        try:
+            from core.harness.maintenance.asset_compat import mark_mcp_connection
+
+            base = Path(get_aiplat_home()) / "mcps"
+            for mid in mcp_ids:
+                d = base / mid
+                if d.is_dir():
+                    mark_mcp_connection(d, "connectable")
+        except Exception:
+            logging.debug("mark_mcp_connection after sync fail skipped", exc_info=True)
 
 def _try_adapt(root_dir: Path, target_skills_base: Path) -> Optional[Dict[str, Any]]:
     """Try format adapters before normal file scanning."""

@@ -469,6 +469,86 @@ def get_skill_marketplace(db_path: str = "") -> Any:
     return SkillMarketplace(db_path=db_path) if db_path else SkillMarketplace()
 
 
+def marketplace_create_submission(
+    *,
+    submission_id: str,
+    tenant_id: str,
+    skill_id: str,
+    test_result: Optional[Dict[str, Any]] = None,
+    db_path: str = "",
+) -> Dict[str, Any]:
+    """Persist a marketplace publish submission (pending_review).
+
+    Args:
+        submission_id: Unique submission id.
+        tenant_id: Tenant id.
+        skill_id: Skill under review.
+        test_result: Optional SkillSimulator payload.
+        db_path: Optional marketplace.db override.
+    """
+    mkt = get_skill_marketplace(db_path=db_path)
+    return mkt.create_submission(
+        submission_id=submission_id,
+        tenant_id=tenant_id,
+        skill_id=skill_id,
+        test_result=test_result,
+    )
+
+
+def marketplace_list_submissions(
+    *,
+    status: str = "",
+    limit: int = 50,
+    db_path: str = "",
+) -> List[Dict[str, Any]]:
+    """List marketplace publish submissions.
+
+    Args:
+        status: Optional status filter.
+        limit: Max rows.
+        db_path: Optional marketplace.db override.
+    """
+    mkt = get_skill_marketplace(db_path=db_path)
+    return mkt.list_submissions(status=status, limit=limit)
+
+
+def marketplace_decide_submission(
+    submission_id: str,
+    *,
+    decision: str,
+    decided_by: str = "admin",
+    reason: str = "",
+    db_path: str = "",
+) -> Dict[str, Any]:
+    """Approve or reject a pending marketplace submission.
+
+    Args:
+        submission_id: Submission id.
+        decision: ``approve`` or ``reject``.
+        decided_by: Actor id.
+        reason: Optional note.
+        db_path: Optional marketplace.db override.
+    """
+    mkt = get_skill_marketplace(db_path=db_path)
+    return mkt.decide_submission(
+        submission_id,
+        decision=decision,
+        decided_by=decided_by,
+        reason=reason,
+    )
+
+
+def marketplace_list_listed_skills(*, limit: int = 50, db_path: str = "") -> List[Dict[str, Any]]:
+    """Skills with marketplace listed=1 visibility.
+
+    Args:
+        limit: Max rows.
+        db_path: Optional marketplace.db override.
+    """
+    mkt = get_skill_marketplace(db_path=db_path)
+    return mkt.list_listed_skills(limit=limit)
+
+
 def list_pending_heal_fixes() -> Any:
     """List pending self-heal fixes awaiting human approval."""
     from core.harness.evaluation.self_heal_gate import SelfHealGate
@@ -13942,8 +14022,39 @@ def tool_enable_impl_draft(tool_py: str):
     return enable_tool_impl_draft(tool_py)
 
 
+def wrap_asset_install_report(
+    *,
+    assets: Optional[List[Dict[str, Any]]] = None,
+    registered: Optional[int] = None,
+    skipped: Optional[List[Any]] = None,
+    warnings: Optional[List[Any]] = None,
+    import_failed: bool = False,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """CoreFacade read-side InstallReport wrapper (schema=aiplat.install_report.v0).
+
+    Args:
+        assets: Asset rows.
+        registered: Optional registered count.
+        skipped: Optional skipped list.
+        warnings: Optional warnings.
+        import_failed: Majority-blocked / hard-fail flag.
+        extra: Extra top-level fields.
+    """
+    from core.harness.maintenance.asset_compat import wrap_install_report
+
+    return wrap_install_report(
+        assets=assets,
+        registered=registered,
+        skipped=skipped,
+        warnings=warnings,
+        import_failed=import_failed,
+        extra=extra,
+    )
+
+
 def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
-    """Phase D: hot-load workspace tools with COMPAT gate + skipped assets[].
+    """Phase D: hot-load workspace tools with COMPAT gate + install_report.v0 assets[].
 
     Args:
         tools_dir: tools_dir 参数。
@@ -13952,11 +14063,12 @@ def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
 
     from core.apps.tools.discovery import register_with_report
 
+    # Already InstallReport-shaped via discovery._stash_discovery_report
     return register_with_report(Path(tools_dir) if tools_dir else None)
 
 
 def tool_discovery_last_report(tools_dir: Optional[str] = None):
-    """Phase D wrap: cached discovery report (or refresh once if empty).
+    """Phase D wrap: cached discovery report (schema=aiplat.install_report.v0).
 
     Args:
         tools_dir: tools_dir 参数。
@@ -13965,7 +14077,20 @@ def tool_discovery_last_report(tools_dir: Optional[str] = None):
 
     from core.apps.tools.discovery import last_report_or_refresh
 
-    return last_report_or_refresh(Path(tools_dir) if tools_dir else None)
+    raw = last_report_or_refresh(Path(tools_dir) if tools_dir else None)
+    if isinstance(raw, dict) and raw.get("schema"):
+        return raw
+    return wrap_asset_install_report(
+        assets=list((raw or {}).get("assets") or []),
+        registered=(raw or {}).get("registered"),
+        skipped=list((raw or {}).get("skipped") or []),
+        warnings=(
+            list((raw or {}).get("warnings") or [])
+            if isinstance((raw or {}).get("warnings"), list)
+            else None
+        ),
+        import_failed=bool((raw or {}).get("import_failed")),
+    )
 
 
 # v2.6 — platform→CoreFacade canonical re-exports (eliminate direct core.harness imports)

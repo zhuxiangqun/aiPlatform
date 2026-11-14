@@ -30,8 +30,27 @@ def get_last_discovery_report() -> Optional[Dict[str, Any]]:
 
 
 def _stash_discovery_report(report: Dict[str, Any]) -> Dict[str, Any]:
+    """Cache discovery report wrapped as aiplat.install_report.v0 when possible."""
     global _LAST_TOOL_DISCOVERY_REPORT
-    _LAST_TOOL_DISCOVERY_REPORT = dict(report) if isinstance(report, dict) else {"registered": 0, "skipped": [], "assets": []}
+    raw = dict(report) if isinstance(report, dict) else {"registered": 0, "skipped": [], "assets": []}
+    try:
+        from core.harness.maintenance.asset_compat import wrap_install_report
+
+        wrapped = wrap_install_report(
+            assets=list(raw.get("assets") or []),
+            registered=int(raw.get("registered") or 0),
+            skipped=list(raw.get("skipped") or []),
+            warnings=list(raw.get("warnings") or []) if isinstance(raw.get("warnings"), list) else None,
+            import_failed=bool(raw.get("import_failed")),
+        )
+        # Keep discovery-native keys alongside schema wrapper
+        for k, v in raw.items():
+            if k not in wrapped:
+                wrapped[k] = v
+        _LAST_TOOL_DISCOVERY_REPORT = wrapped
+    except Exception:
+        logger.debug("wrap_install_report unavailable; caching raw discovery report", exc_info=True)
+        _LAST_TOOL_DISCOVERY_REPORT = raw
     return _LAST_TOOL_DISCOVERY_REPORT
 
 
@@ -244,16 +263,20 @@ class ToolDiscovery:
                 if module_path and not is_tool_schedulable(module_path):
                     err = tool_schedulable_error(module_path, tool_id=tool_id)
                     compat = read_tool_compat(module_path) or {}
-                    asset = {
-                        "kind": "tool",
-                        "id": tool_id,
-                        "tier": err.get("tier") or compat.get("tier"),
-                        "schedulable": False,
-                        "ui_state": err.get("ui_state") or compat.get("ui_state"),
-                        "actions_required": err.get("actions_required") or [],
-                        "issues": err.get("issues") or [],
-                        "reason": err.get("error") or "tool_not_schedulable",
-                    }
+                    from core.harness.maintenance.asset_compat import normalize_asset_report_row
+
+                    asset = normalize_asset_report_row(
+                        {
+                            "kind": "tool",
+                            "id": tool_id,
+                            "tier": err.get("tier") or compat.get("tier"),
+                            "schedulable": False,
+                            "ui_state": err.get("ui_state") or compat.get("ui_state"),
+                            "actions_required": err.get("actions_required") or [],
+                            "issues": err.get("issues") or [],
+                            "reason": err.get("error") or "tool_not_schedulable",
+                        }
+                    )
                     report["skipped"].append(asset)
                     report["assets"].append(asset)
                     logger.info(
@@ -275,16 +298,20 @@ class ToolDiscovery:
                 if sig:
                     _verify_tool_signature(d["id"], d)
                 report["registered"] = int(report["registered"]) + 1
+                from core.harness.maintenance.asset_compat import normalize_asset_report_row
+
                 report["assets"].append(
-                    {
-                        "kind": "tool",
-                        "id": tool_id,
-                        "tier": "mapped",
-                        "schedulable": True,
-                        "ui_state": "现在就能用",
-                        "actions_required": [],
-                        "issues": [],
-                    }
+                    normalize_asset_report_row(
+                        {
+                            "kind": "tool",
+                            "id": tool_id,
+                            "tier": "mapped",
+                            "schedulable": True,
+                            "ui_state": "现在就能用",
+                            "actions_required": [],
+                            "issues": [],
+                        }
+                    )
                 )
                 logger.info("Registered user tool: %s (from %s)", d["id"], d["module_path"])
             except Exception:

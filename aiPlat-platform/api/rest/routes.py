@@ -6498,69 +6498,117 @@ async def ops_overview(request: Request):
 
 
 @app.post("/marketplace/publish")
-
 async def marketplace_publish(request: Request):
-
-    """租户提交 Skill 到市场。自动预检 SkillSimulator。
+    """租户提交 Skill 到市场：SkillSimulator 预检后持久化到 publish_submissions。
 
     Args:
         request: FastAPI Request。
     """
-
     identity = _resolve_identity(request)
-
     body = await request.json()
-
     skill_id = str(body.get("skill_id") or "")
-
     if not skill_id:
-
         raise HTTPException(status_code=400, detail="skill_id_required")
-
-
 
     import uuid as _uuid
 
     submission_id = f"sub_{_uuid.uuid4().hex[:12]}"
-
-
-
-    # Run SkillSimulator pre-check
-
     test_result = None
-
     try:
-
         from core.api.core_facade import SkillSimulator
 
         sim = SkillSimulator()
-
         test_result = await sim.run(skill_id)
-
     except Exception:
-
         test_result = {"error": "simulation_unavailable"}
 
+    from core.api.core_facade import marketplace_create_submission
+
+    row = marketplace_create_submission(
+        submission_id=submission_id,
+        tenant_id=identity.tenant_id or "default",
+        skill_id=skill_id,
+        test_result=test_result if isinstance(test_result, dict) else {"raw": test_result},
+    )
+    row["message"] = (
+        "已提交审核"
+        if test_result and not (isinstance(test_result, dict) and test_result.get("error"))
+        else "已提交（预检不可用）"
+    )
+    return row
 
 
-    return {
+@app.get("/marketplace/submissions")
+async def marketplace_list_submissions(request: Request, status: str = "", limit: int = 50):
+    """列出市场上架审核队列。
 
-        "submission_id": submission_id,
+    Args:
+        request: FastAPI Request。
+        status: 可选状态过滤（pending_review|approved|rejected）。
+        limit: 返回条数上限。
+    """
+    _resolve_identity(request)
+    from core.api.core_facade import marketplace_list_submissions as _list
 
-        "skill_id": skill_id,
-
-        "tenant_id": identity.tenant_id or "default",
-
-        "status": "pending_review",
-
-        "test_result": test_result,
-
-        "message": "已提交审核" if test_result and not test_result.get("error") else "已提交（预检不可用）",
-
-    }
+    return {"submissions": _list(status=status or "", limit=int(limit or 50))}
 
 
+@app.post("/marketplace/submissions/{submission_id}/approve")
+async def marketplace_approve_submission(submission_id: str, request: Request):
+    """批准上架：submission → approved，skill listed=true。
 
+    Args:
+        submission_id: 提交 id。
+        request: FastAPI Request。
+    """
+    identity = _resolve_identity(request)
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from core.api.core_facade import marketplace_decide_submission
+
+    try:
+        return marketplace_decide_submission(
+            submission_id,
+            decision="approve",
+            decided_by=str(getattr(identity, "actor_id", None) or identity.tenant_id or "admin"),
+            reason=str((body or {}).get("reason") or ""),
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="submission_not_found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
+
+
+@app.post("/marketplace/submissions/{submission_id}/reject")
+async def marketplace_reject_submission(submission_id: str, request: Request):
+    """驳回上架：submission → rejected（不改 listed）。
+
+    Args:
+        submission_id: 提交 id。
+        request: FastAPI Request（body.reason 可选）。
+    """
+    identity = _resolve_identity(request)
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    from core.api.core_facade import marketplace_decide_submission
+
+    try:
+        return marketplace_decide_submission(
+            submission_id,
+            decision="reject",
+            decided_by=str(getattr(identity, "actor_id", None) or identity.tenant_id or "admin"),
+            reason=str((body or {}).get("reason") or ""),
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="submission_not_found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)[:200])
 
 
 # ── Ontology Bridge: cross-graph impact analysis ──

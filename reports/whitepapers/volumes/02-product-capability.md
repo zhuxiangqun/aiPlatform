@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-14T16:35:46Z"
+generated_at: "2026-11-14T17:29:06Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "e83ae6930b59630971f66189682323a0cfc66c7af65dac487f7eb67e68b3eb7b"
+caps_sha256: "dbf63af8ba82f7bba2a650c54ef6259316015af96899c44c9ca0777dcdefb46c"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=e83ae6930b59630971f66189682323a0cfc66c7af65dac487f7eb67e68b3eb7b scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=dbf63af8ba82f7bba2a650c54ef6259316015af96899c44c9ca0777dcdefb46c scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-14T16:35:46Z` |
-| CAPABILITIES sha256 | `e83ae6930b59…` |
+| 生成时间 (UTC) | `2026-11-14T17:29:06Z` |
+| CAPABILITIES sha256 | `dbf63af8ba82…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -86,7 +86,7 @@ language: zh-CN
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 624 | 1 | 625 |
+| Harness 执行引擎 | 631 | 1 | 632 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -108,7 +108,7 @@ language: zh-CN
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 149 | 0 | 149 |
+| 平台治理 | 152 | 0 | 152 |
 | Infra 基础设施 | 20 | 0 | 20 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -131,7 +131,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3463** | **11** | **3474** |
+| **总计** | **3473** | **11** | **3484** |
 
 ### 3.2 上手路径（节选）
 

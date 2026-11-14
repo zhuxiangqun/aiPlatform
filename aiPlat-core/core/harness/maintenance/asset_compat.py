@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 COMPAT_SCHEMA = "aiplat.asset_compat.v1"
+INSTALL_REPORT_SCHEMA = "aiplat.install_report.v0"
 COMPAT_FILENAME = "COMPAT.yaml"
+UI_BLOCKED = "不能用"
+DEFAULT_MAJORITY_BLOCKED_RATIO = 0.5
 HANDLER_DRAFT = "handler.py.draft"
 TOOL_IMPL_DRAFT_SUFFIX = ".py.draft"
 SKILL_NOT_SCHEDULABLE = "skill_not_schedulable"
@@ -1129,3 +1132,202 @@ def enable_tool_impl_draft(tool_py: Path | str) -> Dict[str, Any]:
     target.write_text(draft.read_text(encoding="utf-8"), encoding="utf-8")
     compat = finalize_tool_compat(target, adapt_summary={"adapted": True, "pattern": "impl_enabled"})
     return {"ok": True, "tier": compat.get("tier"), "schedulable": compat.get("schedulable"), "compat": compat}
+
+
+# ── InstallReport / discovery row alignment ───────────────────────────────────
+
+
+def normalize_asset_report_row(
+    row: Optional[Dict[str, Any]] = None,
+    *,
+    kind: str = "",
+    asset_id: str = "",
+    tier: Optional[str] = None,
+    schedulable: Optional[bool] = None,
+    ui_state: Optional[str] = None,
+    actions_required: Optional[List[Any]] = None,
+    issues: Optional[List[Any]] = None,
+) -> Dict[str, Any]:
+    """Unify InstallReport / Tool discovery asset row field names.
+
+    Args:
+        row: Optional partial row to normalize.
+        kind: Asset kind override (skill|agent|tool|mcp|…).
+        asset_id: Id override when row lacks ``id``.
+        tier: COMPAT tier override.
+        schedulable: Schedulable override.
+        ui_state: UI state override.
+        actions_required: Required actions override.
+        issues: Issues override.
+
+    Returns:
+        Row with kind/id/tier/schedulable/ui_state/actions_required/issues.
+    """
+    src = dict(row or {})
+    out_kind = str(kind or src.get("kind") or src.get("asset_kind") or "").strip()
+    out_id = str(
+        asset_id
+        or src.get("id")
+        or src.get("asset_id")
+        or src.get("tool_id")
+        or src.get("skill_id")
+        or src.get("mcp_id")
+        or src.get("agent_id")
+        or ""
+    ).strip()
+    out_tier = tier if tier is not None else src.get("tier")
+    if schedulable is None:
+        sched = src.get("schedulable")
+        if sched is None:
+            sched = False
+    else:
+        sched = bool(schedulable)
+    ui = ui_state if ui_state is not None else src.get("ui_state")
+    if not ui:
+        ui = "现在就能用" if sched else UI_BLOCKED
+    acts = actions_required if actions_required is not None else src.get("actions_required")
+    if not isinstance(acts, list):
+        acts = []
+    iss = issues if issues is not None else src.get("issues")
+    if not isinstance(iss, list):
+        iss = []
+    out: Dict[str, Any] = {
+        "kind": out_kind,
+        "id": out_id,
+        "tier": out_tier,
+        "schedulable": bool(sched),
+        "ui_state": str(ui),
+        "actions_required": [str(a) for a in acts],
+        "issues": list(iss),
+    }
+    # Preserve useful extras without inventing contract fields
+    for k in ("reason", "chat_ok", "full_ok"):
+        if k in src and k not in out:
+            out[k] = src[k]
+    return out
+
+
+def wrap_install_report(
+    *,
+    assets: Optional[List[Dict[str, Any]]] = None,
+    registered: Optional[int] = None,
+    skipped: Optional[List[Any]] = None,
+    warnings: Optional[List[Any]] = None,
+    import_failed: bool = False,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Wrap assets[] as schema=aiplat.install_report.v0 for CoreFacade read side.
+
+    Args:
+        assets: Asset rows (normalized in-place shape).
+        registered: Optional registered count (tool discovery).
+        skipped: Optional skipped list.
+        warnings: Optional warnings.
+        import_failed: Majority-blocked / hard-fail flag.
+        extra: Extra top-level fields.
+
+    Returns:
+        Install report dict with schema marker.
+    """
+    rows = [normalize_asset_report_row(a) for a in (assets or [])]
+    out: Dict[str, Any] = {
+        "schema": INSTALL_REPORT_SCHEMA,
+        "assets": rows,
+        "import_failed": bool(import_failed),
+    }
+    if registered is not None:
+        out["registered"] = int(registered)
+    if skipped is not None:
+        out["skipped"] = [
+            normalize_asset_report_row(s) if isinstance(s, dict) else s for s in skipped
+        ]
+    if warnings is not None:
+        out["warnings"] = list(warnings)
+    if extra:
+        for k, v in extra.items():
+            if k not in out:
+                out[k] = v
+    return out
+
+
+def is_asset_row_blocked(row: Dict[str, Any]) -> bool:
+    """True when row is unusable (schedulable=false or ui_state=不能用).
+
+    Args:
+        row: Normalized or raw asset report row.
+    """
+    if not isinstance(row, dict):
+        return True
+    ui = str(row.get("ui_state") or "")
+    if ui == UI_BLOCKED or "不能用" in ui:
+        return True
+    if row.get("schedulable") is False:
+        return True
+    return False
+
+
+def majority_blocked_ratio(assets: List[Dict[str, Any]]) -> float:
+    """Fraction of assets[] that are blocked / 不能用.
+
+    Args:
+        assets: Asset report rows.
+    """
+    rows = list(assets or [])
+    if not rows:
+        return 0.0
+    blocked = sum(1 for a in rows if is_asset_row_blocked(a))
+    return float(blocked) / float(len(rows))
+
+
+def should_fail_import_majority_blocked(
+    assets: List[Dict[str, Any]],
+    *,
+    threshold: float = DEFAULT_MAJORITY_BLOCKED_RATIO,
+) -> bool:
+    """P0 meaningful-import gate: non-empty assets with blocked ratio ≥ threshold.
+
+    Args:
+        assets: Asset report rows.
+        threshold: Fail when blocked/total ≥ this (default 0.5).
+    """
+    rows = list(assets or [])
+    if not rows:
+        return False
+    try:
+        thr = float(os.environ.get("AIPLAT_IMPORT_MAJORITY_BLOCKED_RATIO") or threshold)
+    except Exception:
+        thr = threshold
+    return majority_blocked_ratio(rows) >= thr
+
+
+def apply_majority_import_gate(
+    *,
+    assets: List[Dict[str, Any]],
+    warnings: Optional[List[str]] = None,
+    threshold: float = DEFAULT_MAJORITY_BLOCKED_RATIO,
+) -> Dict[str, Any]:
+    """Mark import_failed when majority of assets are blocked; raise warnings.
+
+    Args:
+        assets: Asset report rows.
+        warnings: Existing warnings list (mutated).
+        threshold: Majority ratio threshold.
+
+    Returns:
+        ``{import_failed, ratio, warnings, assets}`` with normalized assets.
+    """
+    norm = [normalize_asset_report_row(a) for a in (assets or [])]
+    warns = list(warnings or [])
+    ratio = majority_blocked_ratio(norm)
+    failed = should_fail_import_majority_blocked(norm, threshold=threshold)
+    if failed:
+        msg = f"import_majority_blocked:ratio={ratio:.2f}"
+        if msg not in warns:
+            warns.append(msg)
+        warns.append("P0:导入无意义-多数资产不能用")
+    return {
+        "import_failed": failed,
+        "ratio": ratio,
+        "warnings": warns,
+        "assets": norm,
+    }

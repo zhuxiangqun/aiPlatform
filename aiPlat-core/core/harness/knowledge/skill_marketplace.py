@@ -1,31 +1,26 @@
 """Skill Marketplace — skill discovery, installation, and rating.
 
-from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
-import logging
 H-axis L4→L5 enabler: ecosystem foundation.
 
-
-
 Provides:
-
 - Skill discovery from local and remote registries
-
 - One-click skill installation
-
 - Rating/review system
-
 - Popularity and trending metrics
-
 """
+from __future__ import annotations
 
-import asyncio, json, os, sqlite3, sys, threading
-
+import asyncio
+import json
+import logging
+import os
+import sqlite3
+import sys
+import threading
 from datetime import datetime, timezone
-
 from typing import Optional
 
-
-
+from core.utils.paths import get_aiplat_data_dir
 
 
 class SkillMarketplace:
@@ -121,7 +116,29 @@ class SkillMarketplace:
 
                 CREATE INDEX IF NOT EXISTS idx_registry_rating ON skill_registry(rating DESC);
 
+                CREATE TABLE IF NOT EXISTS publish_submissions (
+                    submission_id TEXT PRIMARY KEY,
+                    tenant_id TEXT NOT NULL DEFAULT 'default',
+                    skill_id TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending_review',
+                    test_result_json TEXT DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    decided_at TEXT,
+                    decided_by TEXT,
+                    reason TEXT DEFAULT ''
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_publish_submissions_status
+                    ON publish_submissions(status);
+
             """)
+
+            try:
+                conn.execute(
+                    "ALTER TABLE skill_registry ADD COLUMN listed INTEGER DEFAULT 0"
+                )
+            except sqlite3.OperationalError:
+                pass  # noqa: schema-idempotent
 
             conn.commit()
 
@@ -453,15 +470,195 @@ class SkillMarketplace:
             f"External install requires source_url for '{skill_id}' "
             f"(agentskills.io index provides repo URLs per skill)")
 
+    def create_submission(
+        self,
+        *,
+        submission_id: str,
+        tenant_id: str,
+        skill_id: str,
+        test_result: Optional[dict] = None,
+    ) -> dict:
+        """Persist a marketplace publish submission (pending_review).
 
+        Args:
+            submission_id: Unique submission id.
+            tenant_id: Tenant id.
+            skill_id: Skill id under review.
+            test_result: Optional SkillSimulator pre-check payload.
 
+        Returns:
+            Submission row dict.
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        payload = json.dumps(test_result if isinstance(test_result, dict) else {}, ensure_ascii=False)
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute(
+                """
+                INSERT INTO publish_submissions(
+                    submission_id, tenant_id, skill_id, status,
+                    test_result_json, created_at
+                ) VALUES (?,?,?,?,?,?)
+                """,
+                (
+                    submission_id,
+                    tenant_id or "default",
+                    skill_id,
+                    "pending_review",
+                    payload,
+                    now,
+                ),
+            )
+            conn.commit()
+            conn.close()
+        return {
+            "submission_id": submission_id,
+            "tenant_id": tenant_id or "default",
+            "skill_id": skill_id,
+            "status": "pending_review",
+            "test_result": test_result if isinstance(test_result, dict) else {},
+            "created_at": now,
+        }
 
+    def list_submissions(self, status: str = "", limit: int = 50) -> list[dict]:
+        """List publish submissions, optionally filtered by status.
+
+        Args:
+            status: Optional status filter.
+            limit: Max rows.
+
+        Returns:
+            Submission dicts.
+        """
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            if status:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM publish_submissions
+                    WHERE status=? ORDER BY created_at DESC LIMIT ?
+                    """,
+                    (status, int(limit)),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM publish_submissions
+                    ORDER BY created_at DESC LIMIT ?
+                    """,
+                    (int(limit),),
+                ).fetchall()
+            conn.close()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["test_result"] = json.loads(d.pop("test_result_json") or "{}")
+            except Exception:
+                d["test_result"] = {}
+                d.pop("test_result_json", None)
+            out.append(d)
+        return out
+
+    def decide_submission(
+        self,
+        submission_id: str,
+        *,
+        decision: str,
+        decided_by: str = "admin",
+        reason: str = "",
+    ) -> dict:
+        """Approve or reject a pending submission; approve marks skill listed.
+
+        Args:
+            submission_id: Submission id.
+            decision: ``approve`` or ``reject``.
+            decided_by: Actor id.
+            reason: Optional reject/approve note.
+
+        Returns:
+            Updated submission dict.
+
+        Raises:
+            KeyError: Unknown submission.
+            ValueError: Invalid decision or non-pending status.
+        """
+        decision_l = str(decision or "").strip().lower()
+        if decision_l not in ("approve", "reject"):
+            raise ValueError("decision must be approve|reject")
+        new_status = "approved" if decision_l == "approve" else "rejected"
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT * FROM publish_submissions WHERE submission_id=?",
+                (submission_id,),
+            ).fetchone()
+            if row is None:
+                conn.close()
+                raise KeyError(f"submission not found: {submission_id}")
+            if str(row["status"]) != "pending_review":
+                conn.close()
+                raise ValueError(f"submission not pending: {row['status']}")
+            conn.execute(
+                """
+                UPDATE publish_submissions
+                SET status=?, decided_at=?, decided_by=?, reason=?
+                WHERE submission_id=?
+                """,
+                (new_status, now, decided_by or "admin", reason or "", submission_id),
+            )
+            skill_id = str(row["skill_id"])
+            if decision_l == "approve":
+                conn.execute(
+                    """
+                    INSERT INTO skill_registry(skill_id, name, listed)
+                    VALUES(?,?,1)
+                    ON CONFLICT(skill_id) DO UPDATE SET listed=1
+                    """,
+                    (skill_id, skill_id),
+                )
+            conn.commit()
+            updated = conn.execute(
+                "SELECT * FROM publish_submissions WHERE submission_id=?",
+                (submission_id,),
+            ).fetchone()
+            conn.close()
+        d = dict(updated)
+        try:
+            d["test_result"] = json.loads(d.pop("test_result_json") or "{}")
+        except Exception:
+            d["test_result"] = {}
+            d.pop("test_result_json", None)
+        d["listed"] = decision_l == "approve"
+        return d
+
+    def list_listed_skills(self, limit: int = 50) -> list[dict]:
+        """Skills approved for marketplace listing visibility.
+
+        Args:
+            limit: Max rows.
+
+        Returns:
+            Registry rows with listed=1.
+        """
+        with self._lock:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT * FROM skill_registry WHERE listed=1
+                ORDER BY name ASC LIMIT ?
+                """,
+                (int(limit),),
+            ).fetchall()
+            conn.close()
+            return [dict(r) for r in rows]
 
 
 _marketplace: Optional[SkillMarketplace] = None
-
-
-
 
 
 def get_marketplace() -> SkillMarketplace:

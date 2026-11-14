@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3474
+total_capabilities: 3484
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -570,6 +570,13 @@ scan_hash: 8f9548ec24f4
 ## 一、Harness 执行引擎
 
 | 能力 | 位置 | 状态 | 说明 | 实施状态 |
+| wrap_asset_install_report | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| marketplace_list_listed_skills | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| marketplace_decide_submission | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| marketplace_list_submissions | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| marketplace_create_submission | `core/api/core_facade.py` | ✅ | 自动同步 | 已合入 |
+| enforce_secure_scan | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
+| secure_scan_asset_tree | `core/harness/maintenance/asset_secure_scan.py` | ✅ | 自动同步 | 已合入 |
 | write_tool_impl_draft | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | tool_schedulable_error | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
 | read_tool_compat | `core/harness/maintenance/asset_compat.py` | ✅ | 自动同步 | 已合入 |
@@ -3932,7 +3939,10 @@ scan_hash: 8f9548ec24f4
 | 租户自助入驻 | [API] — register/verify-email | ✅ | 注册→邮箱验证→激活→返回API Key | 已合入 |
 | 租户自助门户 | [API] — tenant/* | ✅ | 仪表板/API Key管理/用量/计费面板 | 已合入 |
 | 运营大盘 | [API] — ops/overview | ✅ | 跨租户聚合：租户数/Token/活跃度，platform_admin only | 已合入 |
-| 市场发布工作流 | [API] — marketplace/publish | ✅ | 提交→SkillSimulator预检→审核，含test_result | 已合入 |
+| 市场发布工作流 | [API] — marketplace/publish + submissions approve/reject；`skill_marketplace.publish_submissions` + CoreFacade | ✅ | 提交→SkillSimulator预检→**持久化** `pending_review`→`GET /marketplace/submissions`→approve（listed=1）/reject；**非**「生态互通完成」（无真实公网/GitHub MCP E2E）；生成物适用：已接线（上架横切） | 本批 |
+| Claude Plugin MCP 自动注册 | `asset_installer._adapt_claude_plugin` + `sync_mcp_runtime` | ✅ | `mcp/*.json`→`~/.aiplat/mcps/<id>/server.yaml` + COMPAT connectable；断连不假绿；生成物适用：已接线 | 本批 |
+| Asset SecureScan + 多数不能用硬门 | `harness/maintenance/asset_secure_scan.py` + `apply_majority_import_gate` | ✅ | zip/tree 拒绝 traversal/危险后缀/zip-bomb；assets 多数 blocked→`import_failed`；生成物适用：已接线（导入横切） | 本批 |
+| InstallReport 字段对齐 | `normalize_asset_report_row` / `wrap_install_report` + Tool discovery | ✅ | `schema=aiplat.install_report.v0`；kind/id/tier/schedulable/ui_state/actions_required/issues；生成物适用：已接线 | 本批 |
 | MessagingGateway | harness/infrastructure/gateway/messaging.py | ✅ | 飞书/企业微信/Slack三渠道通知，Pipeline失败自动广播 | 已合入 |
 
 ---
@@ -4373,7 +4383,7 @@ scan_hash: 8f9548ec24f4
 <!-- AUTO-STATS:BEGIN -->
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 624 | 1 | 625 |
+| Harness 执行引擎 | 631 | 1 | 632 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -4395,7 +4405,7 @@ scan_hash: 8f9548ec24f4
 | 部署与灰度 | 7 | 0 | 7 |
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
-| 平台治理 | 149 | 0 | 149 |
+| 平台治理 | 152 | 0 | 152 |
 | Infra 基础设施 | 20 | 0 | 20 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
@@ -4418,7 +4428,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3463** | **11** | **3474** |
+| **总计** | **3473** | **11** | **3484** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

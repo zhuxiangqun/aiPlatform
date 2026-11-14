@@ -452,13 +452,16 @@ class MCPManager:
                 await sync_mcp_runtime(mcp_manager=self)
         except Exception as e:
             logging.getLogger(__name__).warning("mcp installer auto-connect skipped: %s", e)
-        return {
-            "installed": res.installed,
-            "skipped": res.skipped,
-            "base": str(base),
-            "assets": list(getattr(res, "assets", None) or []),
-            "warnings": list(getattr(res, "warnings", None) or []),
-        }
+        from core.harness.maintenance.asset_compat import wrap_install_report
+
+        report = wrap_install_report(
+            assets=list(getattr(res, "assets", None) or []),
+            skipped=list(getattr(res, "skipped", None) or []),
+            warnings=list(getattr(res, "warnings", None) or []),
+            import_failed=bool(getattr(res, "import_failed", False)),
+            extra={"installed": res.installed, "base": str(base)},
+        )
+        return report
 
     async def installer_plan(self, *, source_type: str, url: Optional[str] = None,
                              ref: Optional[str] = None, path: Optional[str] = None,
