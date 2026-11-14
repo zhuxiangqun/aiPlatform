@@ -39,7 +39,7 @@ doc_type: Reference
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
 2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
-4. ⏳ 扩序 + 首案：[`PHASE3_TIER_A_EXPAND_ORDER.md`](./PHASE3_TIER_A_EXPAND_ORDER.md) · 提案 #1 [`PHASE3_TIER_A_PROPOSAL_evaluate_judge_calibration_gate.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_judge_calibration_gate.md)（待 owner ACCEPT/REJECT）
+4. ⏳ 按符号扩容：#1 `evaluate_judge_calibration_gate` **accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；#2 待决 [`PHASE3_TIER_A_PROPOSAL_open_capability_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_open_capability_judge_calibration.md)；全局扩容仍 false
 
 ## 禁止
 

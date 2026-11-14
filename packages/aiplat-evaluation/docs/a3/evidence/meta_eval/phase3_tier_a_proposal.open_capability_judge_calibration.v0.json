@@ -1,0 +1,34 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-2-open_capability_judge_calibration",
+  "seq": 2,
+  "symbol": "open_capability_judge_calibration",
+  "meta_family": "F1",
+  "recorded_at": "2026-11-14T20:58:21+08:00",
+  "status": "pending_owner_authorize",
+  "impl_def": "aiPlat-core/core/apps/eval/service/capability_p4_gate.py:96",
+  "facade_def": "aiPlat-core/core/api/core_facade.py:10705",
+  "depends_on_accepted": [
+    "evaluate_judge_calibration_gate"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+    "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+    "docs/a3/META_EVAL_F1_STATUS.md"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true,
+    "security_certification": false,
+    "l5_declare_authorized": false,
+    "process_split_authorized": false
+  },
+  "owner_decision": null,
+  "owner": null,
+  "decided_at": null,
+  "honesty": "Pending owner. Acceptance authorizes ONLY open_capability_judge_calibration as scoped F1 Tier A gate; does not unlock accuracy_claim or remaining set."
+}
