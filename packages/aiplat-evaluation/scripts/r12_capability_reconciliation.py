@@ -159,6 +159,31 @@ def main() -> int:
     collect(domain)
     by_sym = {r["symbol"]: r for r in rows}
 
+    # Full-registry index: many eval symbols live under other domains
+    # (e.g. harness-execution-engine) — not missing, just out of tranche.
+    other_domain: Dict[str, str] = {}
+
+    def collect_all(obj: Any, dom: str = "") -> None:
+        if isinstance(obj, dict):
+            for p in obj.get("provides") or []:
+                if isinstance(p, str):
+                    other_domain.setdefault(p, dom)
+                elif isinstance(p, dict):
+                    n = p.get("name") or p.get("symbol") or p.get("id")
+                    if n:
+                        other_domain.setdefault(str(n), dom)
+            for k, v in obj.items():
+                if k == "domains" and isinstance(v, dict):
+                    for dk, dv in v.items():
+                        collect_all(dv, str(dk))
+                else:
+                    collect_all(v, dom)
+        elif isinstance(obj, list):
+            for v in obj:
+                collect_all(v, dom)
+
+    collect_all(reg)
+
     diffs: List[Dict[str, Any]] = []
     for sym, r in sorted(by_sym.items()):
         if sym in cap_syms:
@@ -192,13 +217,41 @@ def main() -> int:
     for sym in eval_cap:
         if sym in by_sym:
             continue
+        # Already registered under another domain → not a missing-provides defect.
+        od = other_domain.get(sym)
+        if od and od != "evaluation-system":
+            diffs.append(
+                {
+                    "capability_or_symbol": sym,
+                    "type": "capabilities_has_registry_missing",
+                    "module": None,
+                    "category": "H6",
+                    "owner": "评测 owner",
+                    "disposition": "out_of_tranche",
+                    "exempt_until": None,
+                    "note": f"已登记于 registry domain={od}；非本 tranche 分子",
+                }
+            )
+            continue
         cat = _classify_cap(sym)
         if cat == "H3":
             disp, note = "downgrade_non_capability", "文档/UI/路径非能力"
         elif cat == "H6":
             disp, note = "out_of_tranche", "含 eval 样词但不属 evaluation-system 对账分子"
+        elif sym.startswith("_"):
+            cat, disp, note = (
+                "H2",
+                "exempt_human_view",
+                "私有/内部符号；豁免",
+            )
+        elif sym == "EVAL_V1" or re.match(r"(?i)^[A-Z0-9_]+_V\d+$", sym):
+            cat, disp, note = (
+                "H3",
+                "downgrade_non_capability",
+                "套件/常量 ID，非 provides 符号",
+            )
         else:
-            disp, note = "open", "补 registry provides 或删夸大叙述"
+            disp, note = "open", "补 evaluation-system provides 或删夸大叙述"
         diffs.append(
             {
                 "capability_or_symbol": sym,
@@ -207,7 +260,7 @@ def main() -> int:
                 "category": cat,
                 "owner": "评测 owner",
                 "disposition": disp,
-                "exempt_until": None,
+                "exempt_until": EXEMPT_UNTIL if disp.startswith("exempt") else None,
                 "note": note,
             }
         )

@@ -1,29 +1,29 @@
 {
   "schema": "eval.r12.capability_reconciliation.v0",
   "tranche": "evaluation-system-domain-only",
-  "recorded_at": "2026-11-14T17:34:23+08:00",
+  "recorded_at": "2026-11-14T17:38:38+08:00",
   "accuracy_claim": false,
   "join_key": "(module,symbol); triage=H1–H5",
   "counts": {
     "registry_symbols": 638,
     "in_both": 637,
     "diff_total": 259,
-    "open": 73,
-    "exempt": 1,
-    "downgraded": 53,
-    "out_of_tranche": 132
+    "open": 9,
+    "exempt": 2,
+    "downgraded": 51,
+    "out_of_tranche": 197
   },
   "by_category": {
-    "H2": 1,
-    "H3": 53,
-    "H6": 132,
-    "H5": 73
+    "H2": 2,
+    "H3": 51,
+    "H6": 197,
+    "H5": 9
   },
   "by_disposition": {
-    "exempt_human_view": 1,
-    "downgrade_non_capability": 53,
-    "out_of_tranche": 132,
-    "open": 73
+    "exempt_human_view": 2,
+    "downgrade_non_capability": 51,
+    "out_of_tranche": 197,
+    "open": 9
   },
   "in_both_sample": [
     "AdversarialTestSuite",
@@ -146,7 +146,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "Arena",
@@ -176,7 +176,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "ENGINEERING_UNFREEZE_EVAL_E6.md",
@@ -192,11 +192,11 @@
       "capability_or_symbol": "EVAL_V1",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "套件/常量 ID，非 provides 符号"
     },
     {
       "capability_or_symbol": "EVAL_V1_E3_GOLD_SOURCES.md",
@@ -226,7 +226,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "Eval",
@@ -272,11 +272,11 @@
       "capability_or_symbol": "EvalExamSuitePanel",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H3",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "downgrade_non_capability",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "文档/UI/路径非能力"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "EvalExamSuitePanel.tsx",
@@ -302,11 +302,11 @@
       "capability_or_symbol": "EvalFullReportPanel",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H3",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "downgrade_non_capability",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "文档/UI/路径非能力"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "EvalFullReportPanel.tsx",
@@ -452,11 +452,11 @@
       "capability_or_symbol": "EvalTypedPlanPanel",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H3",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "downgrade_non_capability",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "文档/UI/路径非能力"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "EvalTypedPlanPanel.tsx",
@@ -536,7 +536,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "GoalProgressEvaluator",
@@ -546,7 +546,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=l6-autonomy；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "KnowledgeValidator",
@@ -566,7 +566,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "PostRetrievalGovernor",
@@ -616,7 +616,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "SkillSubjectAdapter",
@@ -626,7 +626,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "SystemSubjectAdapter",
@@ -636,17 +636,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "_TypedLexicalSubjectAdapter",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H2",
       "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "disposition": "exempt_human_view",
+      "exempt_until": "2027-02-14",
+      "note": "私有/内部符号；豁免"
     },
     {
       "capability_or_symbol": "_is_multi_turn_eval_set",
@@ -656,7 +656,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "agentEvalApi",
@@ -672,181 +672,181 @@
       "capability_or_symbol": "aiplat_eval_b12_contract_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_b2l_llm_dynamic_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_b2l_local_closeout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_b3l_dual_read_drill",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_b3l_local_closeout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_g2b_accuracy_closeout_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_g2b_n100_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_local_chaos_drill",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_local_track_closeout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_guest_boot_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_linux_track_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_local_prep_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_p1_canonical_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_p1_local_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_prod_live_baseline",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_run_worker",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_s1_local_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_s1_prod_model_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "annotate_skill_eval_runtime",
@@ -856,7 +856,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "arena_p1_metrics",
@@ -866,7 +866,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "attach_evaluation_plan",
@@ -876,7 +876,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "build_eval_profile_from_declarations",
@@ -886,7 +886,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "builtin_skill_eval_suite_spec",
@@ -896,7 +896,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compare_eval_reports",
@@ -906,7 +906,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compare_eval_reports_by_id",
@@ -916,7 +916,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_bump",
@@ -926,7 +926,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_calibrate_difficulty",
@@ -936,7 +936,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_coverage",
@@ -946,7 +946,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_draft",
@@ -956,7 +956,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_enqueue_review",
@@ -966,7 +966,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_expand",
@@ -976,7 +976,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_freeze",
@@ -986,7 +986,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_from_trace",
@@ -996,7 +996,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_holdout",
@@ -1006,7 +1006,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_close",
@@ -1016,7 +1016,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_get",
@@ -1026,7 +1026,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_ratings",
@@ -1036,7 +1036,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_ticket",
@@ -1046,7 +1046,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_llm_candidates",
@@ -1056,7 +1056,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_mutate",
@@ -1066,7 +1066,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_propose_difficulty",
@@ -1076,7 +1076,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_review",
@@ -1086,7 +1086,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_review_queue",
@@ -1096,7 +1096,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "compile_evaluation_plan",
@@ -1106,7 +1106,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "config.eval_profile",
@@ -1126,7 +1126,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "default_tool_retrieval_cases",
@@ -1136,7 +1136,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "enqueue_listed_agent_eval",
@@ -1146,7 +1146,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "ensure_builtin_skill_eval_suites",
@@ -1156,7 +1156,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval",
@@ -1246,7 +1246,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evalRunPanelHelpers.ts",
@@ -1282,21 +1282,21 @@
       "capability_or_symbol": "eval_bump_case_pack_version",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_calibrate_case_pack_difficulty",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_calibration.schema.json",
@@ -1312,11 +1312,11 @@
       "capability_or_symbol": "eval_close_judge_calibration_ticket",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_code_generator",
@@ -1326,7 +1326,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_code_review_capability_",
@@ -1342,21 +1342,21 @@
       "capability_or_symbol": "eval_compare_reports",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_compile_evaluation_plan",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_dataset_capability_",
@@ -1372,81 +1372,81 @@
       "capability_or_symbol": "eval_enqueue_case_pack_review",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_evaluate_l5_claims_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_evidence_audit_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_expand_draft_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_freeze_workspace_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_g2b_claim_unlock_checklist",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_g2b_l5_gap_disclosure",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_g2b_pack_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_gate.schema.json",
@@ -1472,11 +1472,11 @@
       "capability_or_symbol": "eval_get_judge_calibration_ticket",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_kb_capability_",
@@ -1492,41 +1492,41 @@
       "capability_or_symbol": "eval_list_case_pack_review_queue",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_list_reports",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_mark_case_pack_holdout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_match_cases_for_agent_target",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_model_capability_",
@@ -1552,11 +1552,11 @@
       "capability_or_symbol": "eval_open_judge_calibration_ticket",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_plan.py",
@@ -1572,11 +1572,11 @@
       "capability_or_symbol": "eval_preference_pack_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_profile_resolve.py",
@@ -1602,11 +1602,11 @@
       "capability_or_symbol": "eval_propose_case_pack_difficulty",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_protocol",
@@ -1616,67 +1616,67 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_publish_draft_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_publish_llm_candidate_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_publish_mutation_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_publish_trace_case_pack",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_record_judge_calibration_ratings",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_resolve_agent_eval_profile",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_retrieval",
@@ -1686,67 +1686,67 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_dataset_plan_exam",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_run_generated_app_pi_smoke",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_run_model_plan_exam",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_run_prompt_plan_exam",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_run_system_plan_exam",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_run_workflow_plan_exam",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_runner.py",
@@ -1762,11 +1762,11 @@
       "capability_or_symbol": "eval_scorecard_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_session_capability_",
@@ -1786,7 +1786,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_skill_capability_",
@@ -1812,21 +1812,21 @@
       "capability_or_symbol": "eval_submit_case_pack_review",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_summarize_case_pack_coverage",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_system_capability_",
@@ -1862,31 +1862,31 @@
       "capability_or_symbol": "eval_worksheet_pack_file",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_worksheet_pack_generate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "eval_worksheet_pack_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate",
@@ -1906,7 +1906,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_delivery_session",
@@ -1916,7 +1916,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=tool-ecosystem；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_diff",
@@ -1926,7 +1926,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=runtime-intervention；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_diff_snippets",
@@ -1936,7 +1936,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=runtime-intervention；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_escort_exit_from_signals",
@@ -1946,7 +1946,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=tool-ecosystem；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_evolve_proposal",
@@ -1956,7 +1956,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=tool-ecosystem；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_files",
@@ -1966,7 +1966,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_fleet_gate",
@@ -1976,7 +1976,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=knowledge-engine-ontology；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_four_questions",
@@ -1986,7 +1986,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_freshness",
@@ -1996,7 +1996,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=knowledge-infrastructure；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_l5_claims_gate",
@@ -2006,7 +2006,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_live_unlock",
@@ -2016,7 +2016,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=knowledge-engine-ontology；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_mcp_plugin_allowlist",
@@ -2026,7 +2026,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_multi_agent_upgrade",
@@ -2036,7 +2036,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_p2_1_gate",
@@ -2046,7 +2046,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_physical_merge_gates",
@@ -2056,7 +2056,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=runtime-intervention；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_pilot_exit",
@@ -2066,7 +2066,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_post_gate",
@@ -2076,7 +2076,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=knowledge-engine-ontology；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_publish_gate",
@@ -2086,7 +2086,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_result_asserts",
@@ -2096,7 +2096,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=gate-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_run_through",
@@ -2106,7 +2106,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=management-and-quality；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_slice_offline_policy",
@@ -2116,7 +2116,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_tag_assertions",
@@ -2136,7 +2136,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=runtime-intervention；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluate_tool_shell_risk",
@@ -2146,7 +2146,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=skill-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a1_run_local",
@@ -2156,7 +2156,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a2_migrate_local",
@@ -2166,7 +2166,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_local_rehearsal",
@@ -2176,7 +2176,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_prep_check",
@@ -2186,7 +2186,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_record_live_drill",
@@ -2196,7 +2196,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_split_authorize",
@@ -2206,7 +2206,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a4_independence_check",
@@ -2216,7 +2216,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "evaluation_a5_local_closeout",
@@ -2226,37 +2226,37 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "g2b_claim_unlock_checklist",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "g2b_l5_gap_disclosure",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "g2b_pack_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "g2b_run_model_outputs.py",
@@ -2276,7 +2276,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "get_eval_job",
@@ -2286,7 +2286,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "inspect_agent_eval",
@@ -2296,7 +2296,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "isEvalJobTerminal",
@@ -2306,7 +2306,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "is_approved_evaluation",
@@ -2316,7 +2316,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "is_complete_evaluation",
@@ -2326,7 +2326,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "kb_eval",
@@ -2366,7 +2366,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "messageForEvalExecutionCode",
@@ -2376,7 +2376,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "meta-eval",
@@ -2396,7 +2396,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "package_session_eval_run",
@@ -2406,17 +2406,17 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "preference_pack_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "prompt_eval",
@@ -2446,7 +2446,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "proxy_eval_store",
@@ -2456,7 +2456,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "reevaluate_code_review_gold",
@@ -2466,7 +2466,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "release_scorecard.build_release_scorecard",
@@ -2486,7 +2486,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "retrieval.py",
@@ -2516,7 +2516,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "runs_eval",
@@ -2542,11 +2542,11 @@
       "capability_or_symbol": "scorecard_status",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry provides 或删夸大叙述"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "skillEvalApi",
@@ -2566,7 +2566,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "skill_eval_ensure_builtin_suites",
@@ -2576,7 +2576,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "skill_eval_preflight",
@@ -2586,7 +2586,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "skill_evals",
@@ -2636,7 +2636,7 @@
       "owner": "评测 owner",
       "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+      "note": "已登记于 registry domain=harness-execution-engine；非本 tranche 分子"
     },
     {
       "capability_or_symbol": "tool_eval_runtime_map",

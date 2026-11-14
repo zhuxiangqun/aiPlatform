@@ -80,5 +80,6 @@ doc_type: Reference
 |---|---|
 | 协议成文 | **done**（本文） |
 | 阈值 owner 签字 | **done**（R11） |
+| 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；0/4 绿） |
 | `evidence/meta_eval/` 实测证据 | **open**（Phase 3.5 执行） |
 | Tier A 扩容 | **blocked** 直至对应家族绿灯 |

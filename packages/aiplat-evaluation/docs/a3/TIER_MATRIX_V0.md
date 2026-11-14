@@ -40,11 +40,12 @@ doc_type: Reference
 
 ## 下一步
 
-1. 按家族挑 A_candidate 做 META_EVAL 绿灯（非一次全开）
+1. 按家族挑 A_candidate 做 META_EVAL 绿灯（非一次全开）→ [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)
 2. B 轨挂 suite + 复核日历
 3. C 仅登记；禁止挤占 A 名额
 
 ## 关联
 
 - R12：[`R12_CAPABILITY_RECONCILIATION.md`](./R12_CAPABILITY_RECONCILIATION.md) · [`R12_TRIAGE_V0.md`](./R12_TRIAGE_V0.md)
+- META：[`META_EVAL_V0.md`](./META_EVAL_V0.md) · [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)
 

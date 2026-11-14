@@ -776,3 +776,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 
 | v1.1.7+exec | 2026-11-14 | 执行加料（不改结构）：`META_EVAL_V0`；R12 H1–H5 分诊（exempt/downgrade；H1_candidate 仍 open） |
 | v1.1.7+exec2 | 2026-11-14 | R12 join 修（表首列）；H1 27 符号入 CAPABILITIES；`H1_candidate=0`；H5 仍 open |
 | v1.1.7+exec3 | 2026-11-14 | H5 收紧（严格形 + 尾 `_`→H3 + H6 out_of_tranche）；[`TIER_MATRIX_V0.md`](../../../packages/aiplat-evaluation/docs/a3/TIER_MATRIX_V0.md)（A=19/B=160/C=458；≠授权） |
+| v1.1.7+exec4 | 2026-11-14 | H5 跨域已登记→H6（open 73→9）；[`META_EVAL_FAMILY_CHECKLIST_V0.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_FAMILY_CHECKLIST_V0.md)（F1–F4 pending） |
