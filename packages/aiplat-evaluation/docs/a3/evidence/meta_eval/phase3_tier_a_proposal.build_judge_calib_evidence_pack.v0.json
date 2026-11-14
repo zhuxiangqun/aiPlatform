@@ -4,8 +4,8 @@
   "seq": 9,
   "symbol": "build_judge_calib_evidence_pack",
   "meta_family": "F4",
-  "recorded_at": "2026-11-14T21:09:30+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:11:30+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/apps/eval/service/security_cert_prep.py:140",
   "depends_on_accepted": [
     "evaluate_judge_calibration_gate",
@@ -13,9 +13,9 @@
   ],
   "meta_family_status": "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
   "evidence_refs": [
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
     "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
-    "docs/a3/scorecard_v1.json",
-    "docs/a3/evidence/evidence_manifest.v1.json"
+    "docs/a3/scorecard_v1.json"
   ],
   "scope_if_accepted": {
     "tier_a_gate_authorized_for_symbol": true,
@@ -25,8 +25,9 @@
     "report_only_remains": true,
     "unscored_axes_holdout": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. F4 evidence-pack builder scoped gate; unscored axes remain holdout; ≠ product accuracy_claim / process_split / security cert."
+  "owner_decision": "ACCEPT build_judge_calib_evidence_pack scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:11:30+08:00",
+  "honesty": "Owner accepted scoped F4 Tier A gate for build_judge_calib_evidence_pack only. unscored axes holdout; global expansion false; accuracy_claim false; ≠ security cert.",
+  "tier_a_gate_authorized_for_symbol": true
 }

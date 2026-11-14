@@ -51,8 +51,8 @@
         "docs/a3/evidence/evidence_manifest.v1.json"
       ],
       "meta_family_green": true,
-      "tier_a_gate_authorized": false,
-      "gap": "unscored scorecard axes remain holdout-from-claim"
+      "tier_a_gate_authorized": true,
+      "gap": "scoped authorized F4 evidence-pack; unscored axes holdout; product accuracy_claim still false; ≠ security cert"
     },
     {
       "symbol": "build_release_scorecard",

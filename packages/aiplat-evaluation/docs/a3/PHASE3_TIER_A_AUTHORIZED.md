@@ -19,9 +19,10 @@ doc_type: Reference
 | `eval_judge_calibration_gate` | F1 | CoreFacade 包装 #1 |
 | `eval_open_capability_judge_calibration` | F1 | CoreFacade 包装 #2 |
 | `build_release_scorecard` | F4 | 发布记分卡（未计分轴 holdout） |
+| `build_judge_calib_evidence_pack` | F4 | 证据包构建（≠ security cert） |
 
-owner：朱向群。F1 7/7 + F4 scorecard 1/2 scoped。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。F1 7/7 + F4 2/2 scoped。下一步进入 **F2**（≠ L5 / cert）。
 
 ## 下一步
 
-提案 #9：[`PHASE3_TIER_A_PROPOSAL_build_judge_calib_evidence_pack.md`](./PHASE3_TIER_A_PROPOSAL_build_judge_calib_evidence_pack.md)
+提案 #10：[`PHASE3_TIER_A_PROPOSAL_evaluate_security_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_security_judge_calibration.md)

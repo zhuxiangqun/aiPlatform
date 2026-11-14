@@ -19,7 +19,7 @@ doc_type: Reference
 |---|---|---|---|---|
 | `assert_t13_process_split_boundary` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_t13_allowlist.py:261` | **false** |
 | `build_g2b_s_dual_review_workflow` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:197` | **false** |
-| `build_judge_calib_evidence_pack` | F4 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:140` | **false** |
+| `build_judge_calib_evidence_pack` | F4 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:140` | **scoped true** |
 | `build_release_scorecard` | F4 | impl | `aiPlat-core/core/harness/evaluation/release_scorecard.py:42` | **scoped true** |
 | `cohen_kappa_binary` | F1 | impl | `aiPlat-core/core/apps/eval/service/g2c.py:30` | **false** |
 | `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **false** |
