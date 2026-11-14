@@ -250,6 +250,20 @@ def main() -> int:
                 "downgrade_non_capability",
                 "套件/常量 ID，非 provides 符号",
             )
+        elif sym in {"eval_protocol", "eval_sets", "eval_code_generator"}:
+            # Module/table/skill-id shorthand; callable path is
+            # generate_agent_eval / to_eval_protocol_v0 / store APIs.
+            cat, disp, note = (
+                "H3",
+                "downgrade_non_capability",
+                "模块/表名/技能 ID 口语，非 provides 符号",
+            )
+        elif sym == "eval_retrieval":
+            cat, disp, note = (
+                "H4",
+                "exempt_tooling",
+                "scripts/eval_retrieval.py；豁免",
+            )
         else:
             disp, note = "open", "补 evaluation-system provides 或删夸大叙述"
         diffs.append(
@@ -297,8 +311,8 @@ def main() -> int:
         "diffs": diffs,
         "owner": "评测 owner",
         "honesty": (
-            "Triage filters applied. Open H1_candidate/H5 remain. "
-            "≠ Tier A expansion; ≠ coverage complete."
+            "Triage filters applied. Tranche-1 H1_candidate/H5 open=0. "
+            "H6 out_of_tranche may remain. ≠ Tier A expansion; ≠ coverage complete."
         ),
     }
     OUT_JSON.write_text(

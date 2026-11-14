@@ -6,7 +6,7 @@ doc_type: Reference
 
 > 源：[`R12_CAPABILITY_RECONCILIATION.md`](./R12_CAPABILITY_RECONCILIATION.md) · JSON evidence  
 > 范围：tranche-1 `evaluation-system`  
-> Honesty：分诊 ≠ 已清零；清零前禁止宣称「全平台覆盖完成」
+> Honesty：tranche-1 H5=0 ≠ 全平台覆盖完成 ≠ Tier A 扩容
 
 ---
 
@@ -35,7 +35,7 @@ doc_type: Reference
 
 H5 噪声过滤：文件扩展名 / ADR / Panel / 路径 / **尾下划线文档词干**（如 `eval_`）→ H3；非严格形状 → H6；**跨域已登记** → H6。
 
-剩余 H5 open（真缺 `evaluation-system` provides）：以最近一次脚本为准（目标 ≤10；多为未登记 SubjectAdapter / 模块名口语）。
+H5 open：**0**（2026-11-14：补 5 SubjectAdapter；`eval_code_generator`/`eval_protocol`/`eval_sets`→H3；`eval_retrieval`→H4）。跨域已登记仍走 H6，不计入清零缺口。
 
 Tier 初稿：[`TIER_MATRIX_V0.md`](./TIER_MATRIX_V0.md)（`A_candidate` ≠ 已授权 Tier A）。  
 元评测家族清单：[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)。
@@ -55,8 +55,9 @@ Tier 初稿：[`TIER_MATRIX_V0.md`](./TIER_MATRIX_V0.md)（`A_candidate` ≠ 已
 ## 4. 退出标准（tranche-1 清零）
 
 ```text
-H1_candidate：0 open（升 H1 已登记，或降 H2 豁免）
-H2/H4：全部有豁免+到期日或已登记人类视图
-H3/H5：已处置
+H1_candidate：0 open（升 H1 已登记，或降 H2 豁免）✅
+H2/H4：全部有豁免+到期日或已登记人类视图 ✅
+H3/H5：已处置（H5 open=0）✅
+H6：out_of_tranche 保留（跨域/形状不符；不计入 H5）
 报表：按类别分列，禁止只报一个覆盖%
 ```

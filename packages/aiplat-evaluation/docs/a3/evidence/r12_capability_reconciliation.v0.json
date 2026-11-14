@@ -1,35 +1,36 @@
 {
   "schema": "eval.r12.capability_reconciliation.v0",
   "tranche": "evaluation-system-domain-only",
-  "recorded_at": "2026-11-14T17:38:38+08:00",
+  "recorded_at": "2026-11-14T17:46:57+08:00",
   "accuracy_claim": false,
   "join_key": "(module,symbol); triage=H1–H5",
   "counts": {
-    "registry_symbols": 638,
-    "in_both": 637,
-    "diff_total": 259,
-    "open": 9,
-    "exempt": 2,
-    "downgraded": 51,
+    "registry_symbols": 643,
+    "in_both": 642,
+    "diff_total": 254,
+    "open": 0,
+    "exempt": 3,
+    "downgraded": 54,
     "out_of_tranche": 197
   },
   "by_category": {
     "H2": 2,
-    "H3": 51,
+    "H3": 54,
     "H6": 197,
-    "H5": 9
+    "H4": 1
   },
   "by_disposition": {
     "exempt_human_view": 2,
-    "downgrade_non_capability": 51,
+    "downgrade_non_capability": 54,
     "out_of_tranche": 197,
-    "open": 9
+    "exempt_tooling": 1
   },
   "in_both_sample": [
     "AdversarialTestSuite",
     "AgentImplModeError",
     "AgentSubjectAdapter",
     "ApiCapabilityBankError",
+    "ApiSubjectAdapter",
     "CapabilityCaseBankError",
     "CapabilityCaseEditorError",
     "CapabilityCertReadinessError",
@@ -39,12 +40,14 @@
     "CodeReviewSubjectAdapter",
     "ContentPurposeOkError",
     "DatasetCapabilityBankError",
+    "DatasetSubjectAdapter",
     "EvalA1IntersectionCard",
     "EvalRunner",
     "EvalSecurityS1Card",
     "EvalStore",
     "EvalSubjectAdapter",
     "GeneratedAppCapabilityBankError",
+    "GeneratedAppSubjectAdapter",
     "HttpChatPullAdapter",
     "KbCapabilityBankError",
     "KbSubjectAdapter",
@@ -62,10 +65,7 @@
     "PromptCapabilityBankError",
     "PromptSubjectAdapter",
     "QualityScoring",
-    "RunsEvalGateFailed",
-    "SessionCapabilityBankError",
-    "SessionRunnerError",
-    "SessionSubjectAdapter"
+    "RunsEvalGateFailed"
   ],
   "diffs": [
     {
@@ -139,16 +139,6 @@
       "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
-      "capability_or_symbol": "ApiSubjectAdapter",
-      "type": "capabilities_has_registry_missing",
-      "module": null,
-      "category": "H5",
-      "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
-    },
-    {
       "capability_or_symbol": "Arena",
       "type": "capabilities_has_registry_missing",
       "module": null,
@@ -167,16 +157,6 @@
       "disposition": "out_of_tranche",
       "exempt_until": null,
       "note": "含 eval 样词但不属 evaluation-system 对账分子"
-    },
-    {
-      "capability_or_symbol": "DatasetSubjectAdapter",
-      "type": "capabilities_has_registry_missing",
-      "module": null,
-      "category": "H5",
-      "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "ENGINEERING_UNFREEZE_EVAL_E6.md",
@@ -529,16 +509,6 @@
       "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
-      "capability_or_symbol": "GeneratedAppSubjectAdapter",
-      "type": "capabilities_has_registry_missing",
-      "module": null,
-      "category": "H5",
-      "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
-    },
-    {
       "capability_or_symbol": "GoalProgressEvaluator",
       "type": "capabilities_has_registry_missing",
       "module": null,
@@ -617,26 +587,6 @@
       "disposition": "out_of_tranche",
       "exempt_until": null,
       "note": "已登记于 registry domain=agent-system；非本 tranche 分子"
-    },
-    {
-      "capability_or_symbol": "SkillSubjectAdapter",
-      "type": "capabilities_has_registry_missing",
-      "module": null,
-      "category": "H5",
-      "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
-    },
-    {
-      "capability_or_symbol": "SystemSubjectAdapter",
-      "type": "capabilities_has_registry_missing",
-      "module": null,
-      "category": "H5",
-      "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "_TypedLexicalSubjectAdapter",
@@ -1322,11 +1272,11 @@
       "capability_or_symbol": "eval_code_generator",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
+      "note": "模块/表名/技能 ID 口语，非 provides 符号"
     },
     {
       "capability_or_symbol": "eval_code_review_capability_",
@@ -1612,11 +1562,11 @@
       "capability_or_symbol": "eval_protocol",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
+      "note": "模块/表名/技能 ID 口语，非 provides 符号"
     },
     {
       "capability_or_symbol": "eval_publish_draft_case_pack",
@@ -1682,11 +1632,11 @@
       "capability_or_symbol": "eval_retrieval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H4",
       "owner": "评测 owner",
-      "disposition": "open",
-      "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
+      "disposition": "exempt_tooling",
+      "exempt_until": "2027-02-14",
+      "note": "scripts/eval_retrieval.py；豁免"
     },
     {
       "capability_or_symbol": "eval_run_dataset_plan_exam",
@@ -1782,11 +1732,11 @@
       "capability_or_symbol": "eval_sets",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 evaluation-system provides 或删夸大叙述"
+      "note": "模块/表名/技能 ID 口语，非 provides 符号"
     },
     {
       "capability_or_symbol": "eval_skill_capability_",
@@ -2660,5 +2610,5 @@
     }
   ],
   "owner": "评测 owner",
-  "honesty": "Triage filters applied. Open H1_candidate/H5 remain. ≠ Tier A expansion; ≠ coverage complete."
+  "honesty": "Triage filters applied. Tranche-1 H1_candidate/H5 open=0. H6 out_of_tranche may remain. ≠ Tier A expansion; ≠ coverage complete."
 }

@@ -1,14 +1,15 @@
 {
   "schema": "eval.tier_matrix.v0",
   "domain": "evaluation-system",
-  "recorded_at": "2026-11-14T17:34:23+08:00",
-  "source": "r12 in_both after H5/H6 filter",
+  "recorded_at": "2026-11-14T17:46:57+08:00",
+  "source": "r12 in_both after H5 tranche clear",
   "accuracy_claim": false,
   "process_split_authorized": false,
   "meta_eval_blocks_tier_a_claim": true,
+  "r12_h5_open": 0,
   "counts": {
     "C": 458,
-    "B": 160,
+    "B": 165,
     "A_candidate": 19
   },
   "tiers": {
@@ -474,15 +475,20 @@
     ],
     "B": [
       "AgentSubjectAdapter",
+      "ApiSubjectAdapter",
       "CodeReviewSubjectAdapter",
+      "DatasetSubjectAdapter",
       "EvalSubjectAdapter",
+      "GeneratedAppSubjectAdapter",
       "KbSubjectAdapter",
       "ModeAwareExamError",
       "ModelSubjectAdapter",
       "MultiAgentSubjectAdapter",
       "PromptSubjectAdapter",
       "SessionSubjectAdapter",
+      "SkillSubjectAdapter",
       "SuiteProfileExamError",
+      "SystemSubjectAdapter",
       "ToolSubjectAdapter",
       "WorkflowSubjectAdapter",
       "agent_regression_profile",
@@ -656,5 +662,5 @@
       "wilson_score_ci"
     ]
   },
-  "honesty": "A_candidate is NOT an authorized Tier A gate claim. META_EVAL_V0 green required before Tier A expansion proclamations."
+  "honesty": "A_candidate is NOT an authorized Tier A gate claim. H5 open=0 ≠ Tier A green ≠ coverage complete."
 }

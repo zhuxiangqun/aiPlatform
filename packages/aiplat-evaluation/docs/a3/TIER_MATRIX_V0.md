@@ -6,14 +6,14 @@ doc_type: Reference
 
 > 计划 §4.5 / §8 · 源：R12 `in_both` · 机器：[`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json)
 > **诚实锁**：`A_candidate` **≠** 已授权 Tier A gate 宣称；须 [`META_EVAL_V0.md`](./META_EVAL_V0.md) 绿灯
-> **时点**：2026-11-14T17:34:23+08:00
+> **时点**：2026-11-14T17:46:57+08:00 · R12 H5 open=**0**（≠ 覆盖完成 / ≠ Tier A）
 
 ## 汇总
 
 | Tier | 数量 | 含义 |
 |---|---:|---|
 | **A_candidate** | 19 | 准确率/证据/安全门/记分卡相关；扩容前须元评测 |
-| **B** | 160 | Subject/smoke/pack/方法轨等内部关键路径 |
+| **B** | 165 | Subject/smoke/pack/方法轨等内部关键路径 |
 | **C** | 458 | 其余登记符号（含 Error/helper） |
 
 ## A_candidate（摘录）

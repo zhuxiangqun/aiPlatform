@@ -36,13 +36,13 @@ doc_type: Architecture
 
 §15.3：
   R1–R9 正式 ☑
-  R10–R14 工件齐并正式 ☑（含 R11 owner 签字；R12 tranche-1 差异 open）
+  R10–R14 工件齐并正式 ☑（含 R11 owner 签字；R12 tranche-1 H5=0）
   scorecard_v1_check 绿
   accuracy 方案 A 落地 + 消费方验证
 
 仍开放（执行层，不阻止定稿）：
   Phase 2 authorize / staging
-  R12 差异队列清零
+  R12 tranche-1 H5 已清零（H6 out_of_tranche 仍在；≠全平台覆盖）
   Phase 3 / 3.5 落地
 ```
 
@@ -752,11 +752,11 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 ```text
 可写：方案已定稿（冻结）· v1.1.7
       首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）
-      Phase 2 预备中（未授权）；R12 tranche-1 对账齐（H5 open）；Tier 矩阵 v0（A_candidate≠授权）
+      Phase 2 预备中（未授权）；R12 tranche-1 H5=0；Tier 矩阵 v0（A_candidate≠授权）
 不可写：生产已独立 / 准确率已认证 / process_split_authorized=true / Tier A 自动扩容
 ```
 
-R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 全 ✅ 且 authorize 后推进；并行清 R12 H5 open、按家族跑 META_EVAL（禁一次全开 A）。
+R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 全 ✅ 且 authorize 后推进；并行按家族跑 META_EVAL F1→F4（禁一次全开 A）。
 
 ---
 
@@ -777,3 +777,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 
 | v1.1.7+exec2 | 2026-11-14 | R12 join 修（表首列）；H1 27 符号入 CAPABILITIES；`H1_candidate=0`；H5 仍 open |
 | v1.1.7+exec3 | 2026-11-14 | H5 收紧（严格形 + 尾 `_`→H3 + H6 out_of_tranche）；[`TIER_MATRIX_V0.md`](../../../packages/aiplat-evaluation/docs/a3/TIER_MATRIX_V0.md)（A=19/B=160/C=458；≠授权） |
 | v1.1.7+exec4 | 2026-11-14 | H5 跨域已登记→H6（open 73→9）；[`META_EVAL_FAMILY_CHECKLIST_V0.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_FAMILY_CHECKLIST_V0.md)（F1–F4 pending） |
+| v1.1.7+exec5 | 2026-11-14 | R12 tranche-1 H5 open=0（补 5 SubjectAdapter；`eval_code_generator`/protocol/sets→H3，retrieval→H4）；≠ Tier A |
