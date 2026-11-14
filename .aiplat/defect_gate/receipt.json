@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T00:07:29+08:00",
+  "reviewed_at": "2026-11-15T00:13:09+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "b8273c97cf61cb4290c2f39cd01a54944412b9247c04d22eef060bd0b28cae25",
-  "head_sha": "78a1c073b2a4d27b990e5402ad2efa3b8364f018",
+  "diff_sha256": "f9c0b563fa782671239cbca18f65552ef5c66e14786b43ddf19eebc081671782",
+  "head_sha": "a620475ac315ac5ada93029a4519af3c672b71da",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase4 reeval fingerprint stub. closed_loop/Chart false. Local lock only."
+  "note": "Phase4 G2b→disposition ingest. 4 open tickets human-close. closed_loop/Chart false. Local lock."
 }
