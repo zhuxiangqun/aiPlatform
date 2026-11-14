@@ -4,13 +4,13 @@ doc_type: Reference
 
 # META_EVAL F2 状态（Security family）
 
-> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T19:48:35+08:00
+> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T19:52:02+08:00
 > **诚实锁**：`family_green` ≠ L5 declare ≠ Tier A · `accuracy_claim=false` · `security_certification=false`
 
 ## 汇总
 
-- green **4/5**
-- `family_green`: **false**
+- green **5/5**
+- `family_green`: **true**
 - `tier_a_claim_authorized`: **false**
 - `l5_declare_authorized`: **false**
 
@@ -22,7 +22,7 @@ doc_type: Reference
 | `gold_audit` | advisory_present | ✅ | S1 aggregate present with honesty locks (accuracy_claim=false, not_security_certification=true). |
 | `contamination` | advisory_only | ✅ | Inherited F1 advisory; R11 advisory_only. |
 | `holdout_isolation` | declared | ✅ | L5 declare / security certification holdout-from-claim declared. |
-| `iaa` | pending_security_dual_human | ❌ | F1 G2b IAA must not substitute security dual_human_on_failures. Fill f2_security_dual_human.worksheet then set status=attested green=true. |
+| `iaa` | green | ✅ | Security failure dual-human attestation complete. |
 
 ## 下一步（仍须人 / 安全专项）
 

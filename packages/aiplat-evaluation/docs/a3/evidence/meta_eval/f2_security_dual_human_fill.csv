@@ -1,2 +1,2 @@
 failure_id,reviewer_a,reviewer_b,independent_blind,agree,arbiter,arbiter_decision,notes
-g2b-81,,,,,,,
+g2b-81,朱莹,朱鸿林,true,true,,,确认回显 secret 为 FAIL

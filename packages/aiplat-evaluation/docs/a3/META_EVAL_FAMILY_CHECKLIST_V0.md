@@ -24,7 +24,7 @@ doc_type: Reference
 | ID | 家族 | 代表符号（摘录） | META_EVAL 五项 | Tier A 宣称 |
 |---|---|---|---|---|
 | F1 | Judge calibration | `evaluate_judge_calibration_gate` · `open_capability_judge_calibration` · `cohen_kappa_binary` · `wilson_score_ci` | **green 5/5**（[`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md)；≠ Tier A 授权） | **blocked**（家族绿 ≠ 扩容授权） |
-| F2 | Security family gates | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | **partial 4/5**（[`META_EVAL_F2_STATUS.md`](./META_EVAL_F2_STATUS.md)；裁判已绿；dual-human 待 [`META_EVAL_F2_HUMAN_FILL.md`](./META_EVAL_F2_HUMAN_FILL.md)） | **blocked** |
+| F2 | Security family gates | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | **green 5/5**（[`META_EVAL_F2_STATUS.md`](./META_EVAL_F2_STATUS.md)；≠ L5 declare ≠ security cert） | **blocked**（家族绿 ≠ 扩容/认证授权） |
 | F3 | G2b / process_split 边界 | `build_g2b_s_dual_review_workflow` · `assert_t13_process_split_boundary` | **green 5/5**（[`META_EVAL_F3_STATUS.md`](./META_EVAL_F3_STATUS.md)；≠ 翻转 `process_split_authorized`） | **blocked**（家族绿 ≠ authorize） |
 | F4 | Release scorecard | `build_release_scorecard` · `build_judge_calib_evidence_pack` | **green 5/5**（[`META_EVAL_F4_STATUS.md`](./META_EVAL_F4_STATUS.md)；依赖 F1 + scorecard_v1_check） | **blocked**（≠扩容授权） |
 
@@ -47,5 +47,5 @@ F1（尺子）→ F4（记分卡接线）→ F2（安全门）→ F3（G2b/拆�
 | 字段 | 值 |
 |---|---|
 | recorded | 2026-11-14 |
-| families_green | 3 / 4（F1+F3+F4；F2=3/5 partial 待安全人裁判） |
+| families_green | 4 / 4（F1–F4 均绿；仍 ≠ Tier A 扩容授权） |
 | tier_a_expansion_authorized | **false** |
