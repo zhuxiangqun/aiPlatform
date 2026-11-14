@@ -1552,12 +1552,6 @@ async def get_agent_versions(agent_id: str, rt: RuntimeDep = None):
 
     return {"agent_id": agent_id, "versions": [{"version": v.version, "status": v.status, "created_at": v.created_at.isoformat(), "changes": v.changes} for v in versions]}
 
-    """获取 agent_versions。
-
-    Args:
-        agent_id: agent 标识。
-        rt: rt 参数。
-    """
 
 
 
@@ -1589,13 +1583,6 @@ async def create_agent_version(agent_id: str, request: dict, rt: RuntimeDep = No
 
     return {"version": version.version, "status": version.status, "created_at": version.created_at.isoformat(), "changes": version.changes}
 
-    """创建 agent_version。
-
-    Args:
-        agent_id: agent 标识。
-        request: request 参数。
-        rt: rt 参数。
-    """
 
 
 
@@ -1627,13 +1614,6 @@ async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = N
 
 
 
-    """rollback_agent_version。
-
-    Args:
-        agent_id: agent 标识。
-        version: 版本号。
-        rt: rt 参数。
-    """
 
 
 # ── Models catalog (for agent editor dropdowns) ──

@@ -116,14 +116,6 @@ async def export_audit_logs_csv(
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
     deny = await rbac_guard(http_request=http_request, payload=None, action="ops_export", resource_type="ops", resource_id="audit_logs")
-    """export_audit_logs_csv。
-
-    Args:
-        http_request: http_request 参数。
-        tenant_id: 租户 ID。
-        limit: 返回条数上限。
-        rt: rt 参数。
-    """
     if deny:
         return deny
 

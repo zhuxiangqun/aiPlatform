@@ -320,5 +320,3 @@ async def engine_routing_metric_tags() -> Dict[str, Any]:
     """engine_routing_metric_tags。
     """
     return {"status": "ok", **routing_metric_tags()}
-    """engine_routing_metric_tags。
-    """
