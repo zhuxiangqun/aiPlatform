@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T20:58:21+08:00",
+  "recorded_at": "2026-11-14T21:00:14+08:00",
   "global_tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -18,6 +18,21 @@
       "report_only_remains": true,
       "claim_eligible": false,
       "accuracy_claim": false
+    },
+    {
+      "symbol": "open_capability_judge_calibration",
+      "meta_family": "F1",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_open_capability_judge_calibration",
+      "accepted_at": "2026-11-14T21:00:14+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.open_capability_judge_calibration.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": false,
+      "accuracy_claim": false,
+      "depends_on": [
+        "evaluate_judge_calibration_gate"
+      ]
     }
   ],
   "honesty": "Per-symbol ledger only. global_tier_a_expansion_authorized stays false. Authorized symbols may be cited as scoped Tier A gates for their META family; product accuracy_claim remains false."

@@ -19,8 +19,8 @@ doc_type: Reference
 | # | 符号 | 家族 | 状态 |
 |---:|---|---|---|
 | 1 | `evaluate_judge_calibration_gate` | F1 | **accepted** → [`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md) |
-| 2 | `open_capability_judge_calibration` | F1 | **提案中** → [`PHASE3_TIER_A_PROPOSAL_open_capability_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_open_capability_judge_calibration.md) |
-| 3 | `judge_calibration_gate_for_ticket` | F1 | queued |
+| 2 | `open_capability_judge_calibration` | F1 | **accepted** |
+| 3 | `judge_calibration_gate_for_ticket` | F1 | **提案中** → [`PHASE3_TIER_A_PROPOSAL_judge_calibration_gate_for_ticket.md`](./PHASE3_TIER_A_PROPOSAL_judge_calibration_gate_for_ticket.md) |
 | 4 | `cohen_kappa_binary` | F1 | queued |
 | 5 | `wilson_score_ci` | F1 | queued |
 | 6 | `eval_judge_calibration_gate` | F1 | queued（facade） |
