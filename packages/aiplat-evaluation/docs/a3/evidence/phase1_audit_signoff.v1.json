@@ -1,0 +1,31 @@
+{
+  "schema": "eval.phase1.audit_signoff.v1",
+  "product_id": "evaluation",
+  "worksheet": "docs/a3/PHASE1_AUDIT_WORKSHEET.md",
+  "auto_check": "docs/a3/evidence/phase1_auto_check.v0.json",
+  "signed_at": "2026-11-14",
+  "scope": "SCORE_SCOPE_V1 in-scope three axes (feature / architecture / local_no_microvm)",
+  "claim_authorized": "first_edition_5_of_5_audited_relative_to_score_scope_v1",
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "not_production_authorization": true,
+  "not_accuracy_certification": true,
+  "not_plan_frozen": true,
+  "auditors": [
+    {
+      "role": "auditor_a",
+      "name": "朱向群",
+      "date": "2026-11-14",
+      "verdict": "pass",
+      "note": "Confirmed Phase1 worksheet + auto-check; product accuracy_claim stays false"
+    },
+    {
+      "role": "auditor_b",
+      "name": "朱鸿林",
+      "date": "2026-11-14",
+      "verdict": "pass",
+      "note": "Confirmed Phase1 worksheet + auto-check; ≠ authorize / ≠ production independence"
+    }
+  ],
+  "honesty": "Dual-human Phase 1 sign-off authorizes claiming 首版 5/5 已审计通过 relative to SCORE_SCOPE_V1 only. Does not freeze the improvement plan (R11/R12 open). Does not set process_split_authorized or product accuracy_claim."
+}

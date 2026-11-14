@@ -5,7 +5,7 @@ doc_type: Reference
 # Phase 0 失败处置表
 
 > **计划**：[`docs/architecture/plans/eval-system-improvement-plan.md`](../../../../docs/architecture/plans/eval-system-improvement-plan.md) §4.1 / §5  
-> **状态**：Phase 0 工程闸门绿 · 可进入 Phase 1 · **≠** 首版 5/5 已审计通过 · **≠** 方案已定稿冻结  
+> **状态**：Phase 0 工程闸门绿 · Phase 1 已双人签字（首版 5/5 相对 SCOPE 可宣称）· **≠** 方案已定稿冻结 · **≠** 生产已独立  
 > **开工日**：2026-11-14 · **更新**：2026-11-14（venv 3.11 基线 + CI 子集）
 
 | 失败 ID | 症状/命令 | 类型 | 处置 | Owner | 退出条件 | 状态 |

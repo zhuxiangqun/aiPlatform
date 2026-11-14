@@ -1,9 +1,9 @@
 {
   "schema": "eval.phase1.auto_check.v0",
-  "checked_at": "2026-11-14T16:11:57+08:00",
+  "checked_at": "2026-11-14T16:18:55+08:00",
   "accuracy_claim": false,
   "not_dual_human_signoff": true,
-  "honesty": "Engineering auto-check of PHASE1_AUDIT_WORKSHEET §2 items 1–5. Does NOT replace dual-human sign-off. Does NOT authorize claiming 首版 5/5 已审计通过.",
+  "honesty": "Engineering auto-check of PHASE1_AUDIT_WORKSHEET §2 items 1–5. Does NOT replace dual-human sign-off (see phase1_audit_signoff.v1.json when present).",
   "all_pass": true,
   "results": [
     {
@@ -24,7 +24,7 @@
     {
       "check": "P1-A4 forbidden_claims_scan",
       "pass": true,
-      "detail": "hits=0 sample=[]"
+      "detail": "prod_acc_hits=0 sample=[]; unscored_first_edition_hits=[]"
     },
     {
       "check": "P1-A5 production_unscored",

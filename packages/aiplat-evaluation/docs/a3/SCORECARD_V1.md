@@ -6,9 +6,10 @@ doc_type: Reference
 
 > Machine: [`scorecard_v1.json`](./scorecard_v1.json) · Gate: `scripts/scorecard_v1_check.sh`
 > Evidence audit: [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) + [`evidence/evidence_manifest.v1.json`](./evidence/evidence_manifest.v1.json)
-> Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**
+> Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**  
+> **Phase 1**：2026-11-14 双人审计签字 → **首版 5/5 已审计通过**（相对 SCORE_SCOPE_V1；≠ authorize；≠ 准确率认证）· 见 [`PHASE1_AUDIT_WORKSHEET.md`](./PHASE1_AUDIT_WORKSHEET.md)
 
-**记录日**：2026-11-05
+**记录日**：2026-11-05（Phase 1 审计签字：2026-11-14）
 
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|

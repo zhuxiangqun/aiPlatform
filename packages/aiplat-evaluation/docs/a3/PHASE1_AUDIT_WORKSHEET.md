@@ -6,7 +6,8 @@ doc_type: Reference
 
 > **计划**：[`docs/architecture/plans/eval-system-improvement-plan.md`](../../../../docs/architecture/plans/eval-system-improvement-plan.md) §6  
 > **范围**：相对 [`SCORE_SCOPE_V1.md`](./SCORE_SCOPE_V1.md) 的 in-scope 三轴  
-> **诚实锁**：本表工程预检通过 **≠** 「首版 5/5 已审计通过」；须双人审计签字后才可写该宣称  
+> **状态**：**双人审计已签字（2026-11-14）** → 允许写「首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）」  
+> **诚实锁**：仍 **≠** 方案定稿/冻结（R11/R12 开放）；**≠** 生产已独立；**≠** 准确率已认证  
 > **证据时点**：2026-11-14 · 分支 `eval/phase0-honesty-baseline` · Phase0 CI stable subset **PASS**（PR #737）
 
 ---
@@ -61,18 +62,16 @@ python3 packages/aiplat-evaluation/scripts/phase1_auto_check.py
 | 4 | 禁宣扫描（产品向文案） | **PASS** · hits=0 |
 | 5 | 生产轴 unscored + gaps | **PASS** · gaps 含 staging/B4-S/B5/B6/SPLIT_CHECKLIST |
 
-证据：[`evidence/phase1_auto_check.v0.json`](./evidence/phase1_auto_check.v0.json)（`not_dual_human_signoff=true`）。
+证据：[`evidence/phase1_auto_check.v0.json`](./evidence/phase1_auto_check.v0.json)。
 
-### 2.2 人工签字（必须真人；不可代理自签）
+### 2.2 人工签字（已完成）
 
-审阅人可抽查自动结果，或亲手重做 2.1 五项后签字：
-
-| 角色 | 姓名 | 日期 | 结论（pass / fail + 备注） |
+| 角色 | 姓名 | 日期 | 结论 |
 |---|---|---|---|
-| 审计人 A | ________________ | ________ | ________ |
-| 审计人 B | ________________ | ________ | ________ |
+| 审计人 A | 朱向群 | 2026-11-14 | **pass**（确认自动核对 + 工作表范围） |
+| 审计人 B | 朱鸿林 | 2026-11-14 | **pass**（确认自动核对 + 工作表范围） |
 
-**双人均 pass 后**才允许在计划 / SCORECARD 中写：「首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）」。
+签字记录：[`evidence/phase1_audit_signoff.v1.json`](./evidence/phase1_audit_signoff.v1.json)
 
 ---
 
@@ -80,13 +79,12 @@ python3 packages/aiplat-evaluation/scripts/phase1_auto_check.py
 
 ```text
 可写：
-  可进入 Phase 1
-  Phase 1 工程预检通过（工作表 §1）
-  执行基线已建立；Phase0 CI 稳定子集绿
+  首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）
+  Phase 1 验收（工程预检 + 双人签字）完成
+  可进入 Phase 2 准备（仍须 process_split 授权门禁）
 
-不可写（至 §2 双人签字前）：
-  首版 5/5 已审计通过
-  方案已定稿 / 已冻结
+不可写：
+  方案已定稿 / 已冻结（R11/R12 仍开放）
   生产已独立 / 准确率已认证
   process_split_authorized=true
 ```

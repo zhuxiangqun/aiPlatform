@@ -5,9 +5,9 @@ doc_type: Architecture
 # aiPlat 评测系统改善方案（完整可执行版）
 
 > **文档类型**：Design / Execution Plan（执行基线）  
-> **版本**：v1.1.4 · 2026-11-14  
-> **状态**：**可进入 Phase 1** — Phase 0 工程闸门绿（含 PR #737 Phase0 CI）；§15 正式勾选 12/14（R11/R12 仍开放）；**不是**已定稿 / **不是**「首版 5/5 已审计通过」  
-> **诚实锁**：R11/R12 未完成前不得「定稿/冻结」；Phase 1 双人审计签字前不得宣称「首版 5/5 已审计通过」；可写「可进入 Phase 1 / Phase 1 工程预检通过」  
+> **版本**：v1.1.5 · 2026-11-14  
+> **状态**：**Phase 1 已验收** — 首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）；§15 仍 12/14（R11/R12 开放）→ **不是**方案定稿/冻结  
+> **诚实锁**：R11/R12 未完成前不得「定稿/冻结」；仍禁止「生产已独立 / 准确率已认证 / process_split_authorized=true」  
 > **工件**：[`PHASE0_FAILURE_DISPOSITION.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_FAILURE_DISPOSITION.md) · [`SHA_CHANGE_LOG.md`](../../../packages/aiplat-evaluation/docs/a3/SHA_CHANGE_LOG.md) · [`fixtures/FIXTURE_SOURCES.md`](../../../packages/aiplat-evaluation/docs/a3/fixtures/FIXTURE_SOURCES.md) · [`PHASE0_CI_STABLE_SUBSET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_CI_STABLE_SUBSET.md) · [`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · `scripts/phase0_ci_stable_subset.sh`  
 > **关联**：[`eval-v1-charter.md`](./eval-v1-charter.md) · [`eval-production-independent-service.md`](./eval-production-independent-service.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` · `SCORE_SCOPE_V1.md` · `evidence/evidence_manifest.v1.json`  
 > **证据时点**：2026-11-14（`.venv` Py3.11：scorecard PASS；honesty scan PASS；`phase0_ci_stable_subset` PASS；`package_release_check` PASS；GH `eval-phase0-stable.yml` 已挂）  
@@ -667,8 +667,8 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 5. **CI 可自动抓住回归**：SHA、产品级 accuracy 字段、scorecard；且不冒充全量  
 6. **对外句子经得起追问**：scoped ≠ 认证；local ≠ 生产；5/5 ≠ 全能；子集绿 ≠ 全绿  
 
-**当前可写**：`可进入 Phase 1` / `Phase 1 工程预检通过`（见 `PHASE1_AUDIT_WORKSHEET.md` §1）  
-**不可写**：`方案已定稿` / `已冻结` / `首版 5/5 已审计通过`（须工作表 §2 双人签字） / `生产已独立` / `准确率已认证`
+**当前可写**：`首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）`（见 `PHASE1_AUDIT_WORKSHEET.md` §2.2 + `phase1_audit_signoff.v1.json`）  
+**不可写**：`方案已定稿` / `已冻结`（R11/R12） / `生产已独立` / `准确率已认证`
 
 ---
 
@@ -749,11 +749,11 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 当前：
 
 ```text
-可写：可进入 Phase 1 / Phase 1 工程预检通过
-不可写：方案已定稿 / 已冻结 / 首版 5/5 已审计通过（待 PHASE1_AUDIT_WORKSHEET §2 双人签字）
+可写：首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）
+不可写：方案已定稿 / 已冻结（R11/R12 仍开放）/ 生产已独立 / 准确率已认证
 ```
 
-§15 设计项（R1–R9）+ R10/R13/R14 已正式勾选，且 Phase0 CI / scorecard / honesty 绿 → **已允许「可进入 Phase 1」**。R11/R12 与 Phase 1/3 并行。Phase 1 双人审计签字后才允许「首版 5/5 已审计通过」。定稿冻结仍须 §15.3 全条件（含 R11/R12）。
+Phase 1 双人签字已完成（朱向群 / 朱鸿林 · 2026-11-14）。R11/R12 与 Phase 2/3 并行。定稿冻结仍须 §15.3 全条件（含 R11/R12）。下一阶段：Phase 2 仅在 `process_split` 授权后推进。
 
 ---
 
@@ -767,3 +767,4 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 | v1.1.2 | 2026-11-14 | Phase 0 工程落地 + §15 勾选建议稿；门禁绿；正式勾选仍待 owner |
 | v1.1.3 | 2026-11-14 | owner 授权按建议稿正式勾选 R1–R9 + R10/R13/R14；R11/R12 仍开放；仍非定稿 |
 | v1.1.4 | 2026-11-14 | Phase0 CI 绿；进入 Phase 1 工程预检；新增 `PHASE1_AUDIT_WORKSHEET`；仍非「5/5 已审计通过」 |
+| v1.1.5 | 2026-11-14 | Phase 1 双人签字（朱向群/朱鸿林）；允许「首版 5/5 已审计通过」受限宣称；仍非定稿 |

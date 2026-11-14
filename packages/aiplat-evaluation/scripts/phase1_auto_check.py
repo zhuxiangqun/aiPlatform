@@ -4,7 +4,7 @@
 Runs the five mechanical audits from PHASE1_AUDIT_WORKSHEET.md §2 and writes
 ``docs/a3/evidence/phase1_auto_check.v0.json``.
 
-Honesty: PASS here does **not** authorize claiming「首版 5/5 已审计通过」.
+Honesty: mechanical PASS ≠ dual-human sign-off; after signoff, scoped first-edition claim is separate.
 """
 from __future__ import annotations
 
@@ -30,6 +30,8 @@ META_DOCS = {
     "PHASE0_R_CHECKLIST_RECOMMENDATION.md",
     "SCORECARD_V1.md",
     "phase1_auto_check.v0.json",
+    "phase1_audit_signoff.v1.json",
+    "phase1_auto_check.py",
 }
 FORBID_CUES = (
     "不可写",
@@ -48,8 +50,16 @@ FORBID_CUES = (
     "forbid",
     "not claim",
 )
-PATTERNS = ("生产已独立", "准确率已认证", "首版 5/5 已审计通过")
-
+# After Phase 1 dual sign-off,「首版 5/5 已审计通过」may appear when scoped.
+# Still ban unqualified production / accuracy certification claims.
+PATTERNS = ("生产已独立", "准确率已认证")
+FIRST_EDITION_OK_CUES = (
+    "相对 SCORE_SCOPE",
+    "SCORE_SCOPE_V1",
+    "accuracy_claim=false",
+    "≠ authorize",
+    "产品 accuracy_claim=false",
+)
 
 def _rec(results: List[Dict[str, Any]], name: str, passed: bool, detail: str) -> None:
     results.append({"check": name, "pass": bool(passed), "detail": detail})
@@ -179,13 +189,40 @@ def main() -> int:
                         else str(path)
                     )
                     hits.append(f"{rel}:{i}:{pat}")
+    # Soft check: first-edition claim must stay scoped if present outside meta docs.
+    fe_hits: List[str] = []
+    fe_pat = "首版 5/5 已审计通过"
+    for search_root in (
+        ROOT / "docs/a3",
+        REPO / "aiPlat-management/frontend/src/pages/Eval",
+    ):
+        if not search_root.exists():
+            continue
+        for path in search_root.rglob("*"):
+            if not path.is_file() or path.name in META_DOCS:
+                continue
+            if "_archive" in path.parts or "fixtures" in path.parts:
+                continue
+            if path.suffix.lower() not in {".md", ".json", ".tsx", ".ts"}:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if fe_pat not in text:
+                continue
+            if any(c in text for c in FIRST_EDITION_OK_CUES):
+                continue
+            if any(c in text for c in FORBID_CUES):
+                continue
+            rel = str(path.relative_to(REPO)) if REPO in path.parents else str(path)
+            fe_hits.append(rel)
     _rec(
         results,
         "P1-A4 forbidden_claims_scan",
-        len(hits) == 0,
-        f"hits={len(hits)} sample={hits[:8]}",
+        len(hits) == 0 and len(fe_hits) == 0,
+        f"prod_acc_hits={len(hits)} sample={hits[:8]}; unscored_first_edition_hits={fe_hits[:5]}",
     )
-
     prod = (sc.get("axes") or {}).get("production_independence") or {}
     need = {"staging", "B4-S", "B5", "B6", "SPLIT_CHECKLIST"}
     gaps = set(prod.get("gaps") or [])
@@ -214,8 +251,8 @@ def main() -> int:
         "not_dual_human_signoff": True,
         "honesty": (
             "Engineering auto-check of PHASE1_AUDIT_WORKSHEET §2 items 1–5. "
-            "Does NOT replace dual-human sign-off. "
-            "Does NOT authorize claiming 首版 5/5 已审计通过."
+            "Does NOT replace dual-human sign-off "
+            "(see phase1_audit_signoff.v1.json when present)."
         ),
         "all_pass": all_pass,
         "results": results,
