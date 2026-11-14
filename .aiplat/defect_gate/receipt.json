@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T00:28:33+08:00",
+  "reviewed_at": "2026-11-15T00:37:14+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "49575a9c294315ab29fab7b08c71e7578a0a20d2884c392f6b69591481574ee3",
-  "head_sha": "5244847232f0a1c458f8ae0c81f47886560bfe3b",
+  "diff_sha256": "60476f6ecd29e204c3b11f170f09bbeca19cf86dc5fc45411021e0d9d38a7e99",
+  "head_sha": "57dfdaceb780c130beb393b96b4b4ae36f4ed97f",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "AUTHORIZE b_cycle1_owner_signoff 6/6. coverage/Chart/staging false. Local lock."
+  "note": "Phase3/4 maintenance board. G2b sha match; Cycle1 not due. Local lock."
 }
