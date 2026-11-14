@@ -6,7 +6,7 @@ doc_type: Reference
 
 > 计划 §8 · Tier 矩阵：[`TIER_MATRIX_V0.md`](./TIER_MATRIX_V0.md) · META：[`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)  
 > **诚实锁**：本页只做工程预备；**禁止**宣称「Tier A 已扩容 / 全平台已覆盖」  
-> `tier_a_expansion_authorized=false` · `accuracy_claim=false` · `process_split_authorized=false`
+> `tier_a_expansion_authorized=true`（[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)）· `accuracy_claim=false` · `process_split_authorized=false`
 
 ---
 
@@ -18,7 +18,7 @@ doc_type: Reference
 | Tier 矩阵 v0（A_candidate 清单） | ✅ |
 | META_EVAL F1–F4 `family_green` | ✅（[`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)） |
 | owner 按符号 scoped Tier A gate | ✅ 19/19（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)） |
-| owner 授权**全局**扩 Tier A | **false**（未开；≠ scoped 闭环） |
+| owner 授权**全局**扩 Tier A | ✅ `true`（[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)） |
 
 ---
 
@@ -26,10 +26,10 @@ doc_type: Reference
 
 | 家族 | 代表符号（摘录） | META | 扩容状态 |
 |---|---|---|---|
-| F1 Judge | `evaluate_judge_calibration_gate` · …（7） | 绿 | **scoped accepted**；全局扩容仍 false |
-| F2 Security | `evaluate_security_*` · facade（7） | 绿 | **scoped accepted**；≠ L5 declare / cert |
-| F3 Boundary | `assert_t13_*` · dual-review · facade（3） | 绿 | **scoped accepted**；≠ process_split |
-| F4 Scorecard | `build_release_scorecard` · evidence-pack（2） | 绿 | **scoped accepted**；未计分轴 holdout |
+| F1 Judge | `evaluate_judge_calibration_gate` · …（7） | 绿 | **Tier A gate 扩容可用**；≠ accuracy_claim |
+| F2 Security | `evaluate_security_*` · facade（7） | 绿 | **Tier A gate 扩容可用**；≠ L5 declare / cert |
+| F3 Boundary | `assert_t13_*` · dual-review · facade（3） | 绿 | **Tier A gate 扩容可用**；≠ process_split |
+| F4 Scorecard | `build_release_scorecard` · evidence-pack（2） | 绿 | **Tier A gate 扩容可用**；未计分轴 holdout |
 
 完整 19 个符号工程清单见 [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md) · [`evidence/meta_eval/phase3_a_candidate_inventory.v0.json`](./evidence/meta_eval/phase3_a_candidate_inventory.v0.json)。
 
@@ -40,16 +40,16 @@ doc_type: Reference
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
 2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
-4. ✅ 按符号扩容：A_candidate **19/19 scoped accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；**全局** `tier_a_expansion_authorized` 仍 **false**；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false  
-5. ✅ 覆盖率骨架 A 行实测刷新（[`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)；禁单一%）  
-6. ✅ B 轨：B1–B6 suite_hook **全部 attached**（165/165；[`PHASE3_B_SUITE_ATTACH_ROLLUP.md`](./PHASE3_B_SUITE_ATTACH_ROLLUP.md)）· **≠** Tier B 覆盖完成 · 全局扩容仍 false
+4. ✅ 按符号扩容：A_candidate **19/19 scoped** + **全局** `tier_a_expansion_authorized=true`（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false  
+5. ✅ 覆盖率骨架 A/B 分列刷新（[`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)；禁单一%）  
+6. ✅ B 轨：B1–B6 suite_hook **全部 attached**（165/165；[`PHASE3_B_SUITE_ATTACH_ROLLUP.md`](./PHASE3_B_SUITE_ATTACH_ROLLUP.md)）· **≠** Tier B 覆盖完成
 
 ## 禁止
 
 | ❌ | ✅ |
 |---|---|
 | 一次全开 19 个 A_candidate | 单符号提案 + META 家族回链 |
-| 把 `family_green` 写成 Tier A 已授权 | 保持 `tier_a_expansion_authorized=false` |
+| 把 `family_green` 写成产品准确率认证 | `accuracy_claim` 仍 false，须另授 |
 | 把 F2 绿写成 L5 / security cert | 安全认证另轨 |
 | 把 F3 绿写成 process_split | 见 [`PHASE2_PREP.md`](./PHASE2_PREP.md) |
 

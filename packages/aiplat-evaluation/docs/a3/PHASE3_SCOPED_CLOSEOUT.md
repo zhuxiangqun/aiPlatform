@@ -2,40 +2,31 @@
 doc_type: Reference
 ---
 
-# Phase 3 · A_candidate 按符号 scoped 闭环
+# Phase 3 · A scoped + 全局扩容闭环
 
-> 时点：2026-11-14 · 账本：[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)  
-> **诚实锁**：19/19 scoped **≠** `global_tier_a_expansion_authorized=true`
+> 账本：[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)  
+> 全局授权：[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)
 
 ## 已完成
 
 | 项 | 状态 |
 |---|---|
 | META_EVAL F1–F4 | 绿 |
-| A_candidate 单符号提案 #1–#19 | 全部 owner ACCEPT |
-| 覆盖率骨架 A 行实测 | `with_suite=19` · `with_gate=19` · `scoped_authorized=19` |
-| 全局扩容 / accuracy / L5 / cert / process_split | **全部仍 false** |
+| A_candidate 19/19 scoped | ✅ |
+| `global_tier_a_expansion_authorized` | **true** |
+| B suite_hook 165/165 | ✅（≠ B 覆盖完成） |
+| accuracy / L5 / cert / process_split | **仍 false** |
 
-## 禁止自动宣称
-
-- 「Tier A 已全局扩容」
-- 「全平台已评测覆盖」（禁止单一覆盖%）
-- 「准确率已认证」/ L5 declare / security cert / process_split
-
-## Owner 下一叉（须显式）
-
-A scoped 19/19 + B suite_hook 165/165：**齐**（钩子挂接 ≠ 覆盖完成）。
+## 下一叉（须另授）
 
 ```text
-AUTHORIZE global_tier_a_expansion
+AUTHORIZE accuracy_claim
+
+AUTHORIZE l5_declare
+
+AUTHORIZE process_split
 
 CONTINUE phase2_staging_prep
 
 CONTINUE phase3_tier_c_register_only
 ```
-
-
-
-
-
-

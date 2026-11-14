@@ -5,7 +5,7 @@ doc_type: Reference
 # Phase 3 · Tier A 单符号扩序（建议）
 
 > 机器：[`evidence/meta_eval/phase3_tier_a_expand_order.v0.json`](./evidence/meta_eval/phase3_tier_a_expand_order.v0.json)  
-> **诚实锁**：本序 ≠ 已授权；每次只开 1 个；全局 `tier_a_expansion_authorized` 默认仍 false（按符号记账）
+> **诚实锁**：#1–#19 均 **accepted**；全局 `tier_a_expansion_authorized=true`（[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)）；accuracy/L5/cert/process_split 仍 false
 
 ## 原则
 

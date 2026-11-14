@@ -1,7 +1,7 @@
 {
   "schema": "eval.phase3.tier_a_expand_order.v0",
-  "recorded_at": "2026-11-14T21:28:30+08:00",
-  "tier_a_expansion_authorized": false,
+  "recorded_at": "2026-11-14T22:02:00+08:00",
+  "tier_a_expansion_authorized": true,
   "accuracy_claim": false,
   "process_split_authorized": false,
   "security_certification": false,
@@ -151,6 +151,7 @@
       "kind": "facade"
     }
   ],
-  "honesty": "All 19 A_candidate symbols have owner-accepted scoped Tier A proposals. Order complete ≠ global_tier_a_expansion_authorized. Global expansion flag stays false.",
-  "a_candidate_scoped_complete": true
+  "honesty": "All 19 A_candidate scoped accepted; owner AUTHORIZE flipped global Tier A expansion. accuracy/L5/cert/process_split still false.",
+  "a_candidate_scoped_complete": true,
+  "global_tier_a_expansion_authorized": true
 }

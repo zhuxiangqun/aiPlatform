@@ -1,7 +1,7 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T21:28:30+08:00",
-  "global_tier_a_expansion_authorized": false,
+  "recorded_at": "2026-11-14T22:02:00+08:00",
+  "global_tier_a_expansion_authorized": true,
   "accuracy_claim": false,
   "process_split_authorized": false,
   "security_certification": false,
@@ -338,7 +338,10 @@
       ]
     }
   ],
-  "honesty": "Per-symbol ledger complete (19/19 A_candidate scoped). global_tier_a_expansion_authorized stays false. Authorized symbols may be cited as scoped Tier A gates for their META family; product accuracy_claim / l5_declare / security_cert / process_split remain false.",
+  "honesty": "global_tier_a_expansion_authorized=true by owner AUTHORIZE (2026-11-14). 19/19 A_candidate scoped remain the authorized set. accuracy_claim / l5_declare / security_cert / process_split remain false. ≠ single coverage% / Tier B coverage-complete / production independent.",
   "a_candidate_scoped_complete": true,
-  "n_authorized": 19
+  "n_authorized": 19,
+  "global_tier_a_expansion_authorized_at": "2026-11-14T22:02:00+08:00",
+  "global_tier_a_expansion_authorized_by": "朱向群",
+  "global_tier_a_expansion_authorize_ref": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json"
 }

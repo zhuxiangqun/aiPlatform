@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_suite_attach_rollup.v0",
-  "recorded_at": "2026-11-14T21:57:00+08:00",
+  "recorded_at": "2026-11-14T22:02:00+08:00",
   "tier_b_n": 165,
   "waves_attached": {
     "B1": 15,
@@ -12,9 +12,10 @@
   },
   "attached_total": 165,
   "gaps_b6": [],
-  "global_tier_a_expansion_authorized": false,
+  "global_tier_a_expansion_authorized": true,
   "accuracy_claim": false,
   "forbid_single_coverage_percent": true,
   "tier_b_coverage_complete_claim": false,
-  "honesty": "Sum of per-wave suite-hook attachments. Not a coverage%%. Not global Tier A expansion."
+  "honesty": "Sum of per-wave suite-hook attachments. Not a coverage%%. Not global Tier A expansion.",
+  "tier_a_expansion_authorized": true
 }

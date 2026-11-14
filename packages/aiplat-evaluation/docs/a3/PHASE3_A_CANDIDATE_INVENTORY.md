@@ -5,13 +5,13 @@ doc_type: Reference
 # Phase 3 · A_candidate 清单（工程预备）
 
 > 机器：[`evidence/meta_eval/phase3_a_candidate_inventory.v0.json`](./evidence/meta_eval/phase3_a_candidate_inventory.v0.json) · 时点 2026-11-14T20:35:28+08:00
-> **诚实锁**：本表 ≠ Tier A 扩容授权 · `tier_a_expansion_authorized=false`
+> **诚实锁**：`tier_a_expansion_authorized=true`（全局已授）· `accuracy_claim=false` · ≠ 单一覆盖%
 
 ## 汇总
 
 - n=**19** · by_family={'F3': 3, 'F4': 2, 'F1': 7, 'F2': 7}
 - 全部 `meta_family_green=true`（见 [`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)）
-- 全局 `tier_a_expansion_authorized=false`；按符号 scoped 见 [`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)
+- 全局 `tier_a_expansion_authorized=true`；按符号见 [`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md) · 授权事件 [`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)
 
 ## 明细
 

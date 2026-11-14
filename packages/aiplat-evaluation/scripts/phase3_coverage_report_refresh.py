@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Phase 3 — refresh A/B/C coverage skeleton from ledger + inventory.
 
-Does not flip global_tier_a_expansion_authorized. Never emits a single coverage%.
-with_suite = symbols whose evidence_refs all resolve under packages/aiplat-evaluation.
-with_gate = symbols with tier_a_gate_authorized on the per-symbol ledger (A only).
+Reads global_tier_a_expansion_authorized from the authorized-symbols ledger.
+Never emits a single coverage%. Does not flip authorize flags.
+with_suite(A) = symbols whose evidence_refs all resolve under packages/aiplat-evaluation.
+with_gate(A) = symbols with tier_a_gate_authorized on the per-symbol ledger.
 """
 from __future__ import annotations
 
@@ -55,7 +56,7 @@ def _measure_a() -> Dict[str, Any]:
         "unauthorized_claim": False,
         "note": (
             f"scoped_authorized={len(auth_syms)}; "
-            "global_tier_a_expansion_authorized=false; "
+            f"global_tier_a_expansion_authorized={bool(auth.get('global_tier_a_expansion_authorized'))}; "
             "with_suite=evidence_refs-on-disk"
         ),
         "missing_evidence_sample": missing_evidence[:5],

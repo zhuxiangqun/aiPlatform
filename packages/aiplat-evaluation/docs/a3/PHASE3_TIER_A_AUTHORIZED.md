@@ -2,17 +2,19 @@
 doc_type: Reference
 ---
 
-# Phase 3 · Tier A 已授权符号账本（按符号）
+# Phase 3 · Tier A 已授权符号账本
 
 > 机器：[`evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json`](./evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json)  
-> **诚实锁**：`global_tier_a_expansion_authorized=false` · `accuracy_claim=false` · `l5_declare_authorized=false` · `security_certification=false` · `process_split_authorized=false`
+> **全局扩容**：`global_tier_a_expansion_authorized=true`（[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)）  
+> **仍锁**：`accuracy_claim=false` · `l5_declare_authorized=false` · `security_certification=false` · `process_split_authorized=false`
 
 ## 状态
 
-**A_candidate 按符号 scoped 授权：19/19 完成**  
-**≠** 全局 Tier A 扩容授权 · **≠** 产品准确率认证 · **≠** L5 declare · **≠** security cert · **≠** process_split
+- A_candidate 按符号 scoped：**19/19**  
+- 全局 Tier A 扩容：**authorized**（仅此旗标）  
+- ≠ 产品准确率认证 / L5 declare / security cert / process_split / 单一覆盖%
 
-## 已授权（scoped）
+## 已授权符号（19）
 
 | 符号 | 家族 | 范围 |
 |---|---|---|
@@ -36,8 +38,14 @@ doc_type: Reference
 | `build_g2b_s_dual_review_workflow` | F3 | 双人复核工作流（≠ process_split） |
 | `eval_assert_t13_process_split_boundary` | F3 | CoreFacade 包装（≠ process_split） |
 
-owner：朱向群。扩序见 [`PHASE3_TIER_A_EXPAND_ORDER.md`](./PHASE3_TIER_A_EXPAND_ORDER.md)。
+owner：朱向群。
 
-## 下一步（非自动）
+## 下一步（须另授）
 
-若要翻转 `global_tier_a_expansion_authorized` / `accuracy_claim` / `l5_declare` / `process_split`，须 **单独、显式** owner 授权——本账本完成不构成该授权。
+```text
+AUTHORIZE accuracy_claim
+AUTHORIZE l5_declare
+AUTHORIZE process_split
+CONTINUE phase2_staging_prep
+CONTINUE phase3_tier_c_register_only
+```

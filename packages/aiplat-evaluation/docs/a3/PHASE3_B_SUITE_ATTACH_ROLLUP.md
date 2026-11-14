@@ -17,12 +17,13 @@ doc_type: Reference
 | B6 other | 37 |
 | **合计** | **165** / 165 |
 
-下一叉（须显式）：
+全局 Tier A 扩容：**已授**（[`PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md`](./PHASE3_GLOBAL_TIER_A_EXPANSION_AUTHORIZE.md)）。本汇总仍 ≠ B 覆盖完成。
 
 ```text
-AUTHORIZE global_tier_a_expansion
-
 CONTINUE phase2_staging_prep
 
 CONTINUE phase3_tier_c_register_only
+
+AUTHORIZE accuracy_claim
 ```
+
