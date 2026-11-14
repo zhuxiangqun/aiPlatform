@@ -1,0 +1,199 @@
+{
+  "schema": "eval.phase3.b2_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:44:00+08:00",
+  "bucket_id": "B2_smoke",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:44:00+08:00",
+  "n": 26,
+  "attached": 26,
+  "gaps": [],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "attachments": [
+    {
+      "symbol": "eval_run_api_capability_smoke",
+      "suite_hook": "eval_run_api_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10290",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_code_review_capability_smoke",
+      "suite_hook": "eval_run_code_review_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9846",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_dataset_capability_smoke",
+      "suite_hook": "eval_run_dataset_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10360",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_generated_app_capability_smoke",
+      "suite_hook": "eval_run_generated_app_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10218",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_kb_capability_smoke",
+      "suite_hook": "eval_run_kb_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9774",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_model_capability_smoke",
+      "suite_hook": "eval_run_model_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9704",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_multi_agent_capability_smoke",
+      "suite_hook": "eval_run_multi_agent_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10070",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_prompt_capability_smoke",
+      "suite_hook": "eval_run_prompt_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9560",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_session_capability_smoke",
+      "suite_hook": "eval_run_session_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9922",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_skill_capability_smoke",
+      "suite_hook": "eval_run_skill_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10146",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_system_capability_smoke",
+      "suite_hook": "eval_run_system_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10436",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_tool_capability_smoke",
+      "suite_hook": "eval_run_tool_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9998",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_workflow_capability_smoke",
+      "suite_hook": "eval_run_workflow_capability_smoke",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9630",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "run_api_capability_smoke",
+      "suite_hook": "run_api_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/api_capability_bank.py:282",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_code_review_capability_smoke",
+      "suite_hook": "run_code_review_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/code_review_capability_bank.py:286",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_dataset_capability_smoke",
+      "suite_hook": "run_dataset_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/dataset_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_generated_app_capability_smoke",
+      "suite_hook": "run_generated_app_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/generated_app_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_kb_capability_smoke",
+      "suite_hook": "run_kb_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/kb_capability_bank.py:282",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_model_capability_smoke",
+      "suite_hook": "run_model_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/model_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_multi_agent_capability_smoke",
+      "suite_hook": "run_multi_agent_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py:286",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_prompt_capability_smoke",
+      "suite_hook": "run_prompt_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/prompt_capability_bank.py:279",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_session_capability_smoke",
+      "suite_hook": "run_session_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/session_capability_bank.py:282",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_skill_capability_smoke",
+      "suite_hook": "run_skill_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/skill_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_system_capability_smoke",
+      "suite_hook": "run_system_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/system_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_tool_capability_smoke",
+      "suite_hook": "run_tool_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/tool_capability_bank.py:282",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "run_workflow_capability_smoke",
+      "suite_hook": "run_workflow_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/workflow_capability_bank.py:281",
+      "status": "attached",
+      "layer": "impl"
+    }
+  ],
+  "honesty": "B2 smoke symbols mapped to run_*/eval_run_* capability smoke. ≠ platform coverage complete / global Tier A expansion."
+}

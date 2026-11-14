@@ -814,3 +814,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec38 | 2026-11-14 | owner ACCEPT #19 末 facade；A_candidate 19/19 scoped 齐；全局扩容仍 false |
 | v1.1.7+exec39 | 2026-11-14 | 覆盖率骨架 A 行实测（19/19）；scoped 闭环文；开 B1 suite 挂接提案 |
 | v1.1.7+exec40 | 2026-11-14 | owner ACCEPT B1 suite 挂接（13 smoke+agent+Eval partial）；开 B2 提案 |
+| v1.1.7+exec41 | 2026-11-14 | owner ACCEPT B2 smoke 挂接 26/26；开 B3 regression 提案 |
