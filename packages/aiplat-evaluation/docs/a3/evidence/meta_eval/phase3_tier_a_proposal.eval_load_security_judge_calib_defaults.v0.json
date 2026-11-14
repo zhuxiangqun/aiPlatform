@@ -5,8 +5,8 @@
   "symbol": "eval_load_security_judge_calib_defaults",
   "meta_family": "F2",
   "kind": "facade_wrapper",
-  "recorded_at": "2026-11-14T21:18:00+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:19:30+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/api/core_facade.py:8158",
   "wraps": "load_judge_calib_defaults",
   "depends_on_accepted": [
@@ -14,8 +14,8 @@
   ],
   "meta_family_status": "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
   "evidence_refs": [
-    "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
-    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json"
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
+    "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json"
   ],
   "scope_if_accepted": {
     "tier_a_gate_authorized_for_symbol": true,
@@ -30,8 +30,9 @@
     "l5_declare",
     "security_certification"
   ],
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. F2 facade wrapper for load_judge_calib_defaults; ≠ L5 / security cert / product accuracy_claim."
+  "owner_decision": "ACCEPT eval_load_security_judge_calib_defaults scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:19:30+08:00",
+  "honesty": "Owner accepted scoped F2 facade Tier A gate for eval_load_security_judge_calib_defaults only. ≠ L5 / security cert; global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }

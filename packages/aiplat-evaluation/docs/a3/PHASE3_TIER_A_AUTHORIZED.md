@@ -24,9 +24,10 @@ doc_type: Reference
 | `load_judge_calib_defaults` | F2 | 默认阈值加载（≠ L5 / cert） |
 | `evaluate_security_family_gates` | F2 | 安全家族门禁报告（≠ cert） |
 | `eval_evaluate_security_judge_calibration` | F2 | CoreFacade 包装（≠ L5 / cert） |
+| `eval_load_security_judge_calib_defaults` | F2 | CoreFacade 包装（≠ L5 / cert） |
 
-owner：朱向群。F1+F4 齐 + F2 4/7 scoped。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。F1+F4 齐 + F2 5/7 scoped。≠ 产品准确率认证 / L5 / process_split。
 
 ## 下一步
 
-提案 #14：[`PHASE3_TIER_A_PROPOSAL_eval_load_security_judge_calib_defaults.md`](./PHASE3_TIER_A_PROPOSAL_eval_load_security_judge_calib_defaults.md)
+提案 #15：[`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_family_gates.md)
