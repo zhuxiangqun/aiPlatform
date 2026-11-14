@@ -4,7 +4,7 @@ volume_id: ecosystem-integration
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-13T16:10:49Z"
+generated_at: "2026-11-14T03:17:14Z"
 audience: "ISV、集成商、开源社区、渠道"
 core_question: "如何接入、贡献、协作？"
 priority: P2
@@ -33,7 +33,7 @@ language: zh-CN
 | 核心问题 | 如何接入、贡献、协作？ |
 | 优先级 | P2 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-13T16:10:49Z` |
+| 生成时间 (UTC) | `2026-11-14T03:17:14Z` |
 | CAPABILITIES sha256 | `3a996019412c…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
