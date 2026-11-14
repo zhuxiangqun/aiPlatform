@@ -39,6 +39,8 @@ class SecurityT13AllowlistError(ValueError):
 
 
 def default_security_seed_dir() -> Path:
+    """default_security_seed_dir。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -49,10 +51,17 @@ def default_security_seed_dir() -> Path:
 
 
 def default_t13_probes_path() -> Path:
+    """default_t13_probes_path。
+    """
     return default_security_seed_dir() / "t13_allowlist_probes.v1.json"
 
 
 def load_t13_allowlist_probes(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 t13_allowlist_probes。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_t13_probes_path()
     if not p.is_file():
         raise SecurityT13AllowlistError(f"t13_probes_missing:{p}")
@@ -169,9 +178,10 @@ def run_t13_allowlist_probes(
 ) -> Dict[str, Any]:
     """Execute fixture allowlist probes. Never requires process_split for T13.
 
-    ``process_split_authorized`` input is ignored for T13 cases (forced false).
-    T13-escape cases remain deferred unless authorized — and this module never
-    sets authorization true.
+    Args:
+        catalog: catalog 参数。
+        coverage_mode: coverage_mode 参数。
+        process_split_authorized: process_split_authorized 参数。
     """
     cat = dict(catalog) if catalog is not None else load_t13_allowlist_probes()
     cov = str(coverage_mode or COV_FIXTURE).strip()
@@ -253,7 +263,12 @@ def assert_t13_process_split_boundary(
     run: Optional[Mapping[str, Any]] = None,
     catalog: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Verify T13 pack/run never treats process_split as supply-chain前置."""
+    """Verify T13 pack/run never treats process_split as supply-chain前置.
+
+    Args:
+        run: run 参数。
+        catalog: catalog 参数。
+    """
     cat = dict(catalog) if catalog is not None else load_t13_allowlist_probes()
     errors: List[str] = []
     if cat.get("process_split_required") is not False:
@@ -294,7 +309,13 @@ def evaluate_t13_coverage(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Map run → coverage status. claim_candidate still claim-closed."""
+    """Map run → coverage status. claim_candidate still claim-closed.
+
+    Args:
+        run: run 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     cov = str(run.get("coverage") or COV_UNKNOWN)
     if not bool(run.get("t13_all_pass")):
         cov = COV_FIXTURE if cov != COV_UNKNOWN else COV_UNKNOWN
@@ -332,7 +353,13 @@ def security_sec_p1c_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P1c status card."""
+    """Facade-friendly SEC-P1c status card.
+
+    Args:
+        coverage_mode: coverage_mode 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     catalog = load_t13_allowlist_probes()
     run = run_t13_allowlist_probes(catalog=catalog, coverage_mode=coverage_mode)
     boundary = assert_t13_process_split_boundary(run=run, catalog=catalog)

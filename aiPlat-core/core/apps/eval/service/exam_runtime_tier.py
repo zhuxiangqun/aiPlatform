@@ -37,7 +37,14 @@ _RUNTIME_KEYS = (
 
 
 def annotate_agent_exam_runtime(*, live: bool) -> Dict[str, Any]:
-    """Agent exam panel: dry-run → fixture; live → workspace_execute."""
+    """Agent exam 运行时标注：dry-run → fixture；live → workspace_execute。
+
+    Args:
+        live: 是否走真实 Execute（非 fixture）。
+
+    Returns:
+        含 ``runtime_tier`` / ``target_runtime`` / ``runtime_claim`` 等字段的 dict。
+    """
     if live:
         return {
             "runtime_tier": "workspace_execute",
@@ -59,7 +66,14 @@ def annotate_agent_exam_runtime(*, live: bool) -> Dict[str, Any]:
 
 
 def annotate_external_exam_runtime(*, live: bool) -> Dict[str, Any]:
-    """External HTTP pull: dry (no scored pull) → fixture; live pull → external_pull."""
+    """外部 HTTP 拉测运行时标注：dry → fixture；live pull → external_pull。
+
+    Args:
+        live: 是否发起计分拉取。
+
+    Returns:
+        运行时标注 dict。
+    """
     if live:
         return {
             "runtime_tier": "external_pull",
@@ -87,10 +101,17 @@ def annotate_skill_eval_runtime(
     eval_kind: str = "trigger",
     mode: str = "heuristic",
 ) -> Dict[str, Any]:
-    """Skill suite (platform skill_evals) — ≠ 验管道 skill_suite Job；≠ Agent exam.
+    """Skill suite（platform skill_evals）运行时标注。
 
-    trigger: routing candidates only → fixture (subject handler not executed).
-    quality: Core skill_manager invokes target skill → core_skill_execute.
+    与验管道 skill_suite Job、Agent exam 不同路径。
+    trigger：仅路由候选 → fixture；quality：经 skill_manager 调用 → core_skill_execute。
+
+    Args:
+        eval_kind: ``trigger`` 或 ``quality``。
+        mode: 触发评测模式标签（写入 ``execution_mode``）。
+
+    Returns:
+        运行时标注 dict。
     """
     kind = str(eval_kind or "trigger").strip().lower()
     md = str(mode or "heuristic").strip().lower()
@@ -120,28 +141,56 @@ def annotate_skill_eval_runtime(
 
 
 def annotate_prompt_plan_runtime(*, live: bool) -> Dict[str, Any]:
-    """Prompt Plan-chain exam (≠ page/DB prompt_eval). See typed_plan_exam."""
+    """Prompt Plan 链 exam 运行时（≠ 页面/DB prompt_eval）。
+
+    Args:
+        live: 是否 live Plan 路径。
+
+    Returns:
+        委托 ``annotate_typed_plan_runtime`` 的标注 dict。
+    """
     from core.apps.eval.service.typed_plan_exam import annotate_typed_plan_runtime
 
     return annotate_typed_plan_runtime(object_type="prompt", live=live)
 
 
 def annotate_workflow_plan_runtime(*, live: bool) -> Dict[str, Any]:
-    """Workflow Plan-chain exam (fixture + target workspace_execute)."""
+    """Workflow Plan 链 exam 运行时（fixture + target workspace_execute）。
+
+    Args:
+        live: 是否 live Plan 路径。
+
+    Returns:
+        运行时标注 dict。
+    """
     from core.apps.eval.service.typed_plan_exam import annotate_typed_plan_runtime
 
     return annotate_typed_plan_runtime(object_type="workflow", live=live)
 
 
 def annotate_model_plan_runtime(*, live: bool) -> Dict[str, Any]:
-    """Model Plan-chain exam (fixture + target model_generate; ≠ model leaderboard)."""
+    """Model Plan 链 exam 运行时（≠ model leaderboard）。
+
+    Args:
+        live: 是否 live Plan 路径。
+
+    Returns:
+        运行时标注 dict。
+    """
     from core.apps.eval.service.typed_plan_exam import annotate_typed_plan_runtime
 
     return annotate_typed_plan_runtime(object_type="model", live=live)
 
 
 def annotate_dataset_plan_runtime(*, live: bool = False) -> Dict[str, Any]:
-    """Dataset Plan-chain exam (fixture_table asserts; ≠ KB sample path)."""
+    """Dataset Plan 链 exam 运行时（fixture_table；≠ KB sample）。
+
+    Args:
+        live: 是否 live；默认 False。
+
+    Returns:
+        运行时标注 dict。
+    """
     from core.apps.eval.service.typed_plan_exam import annotate_typed_plan_runtime
 
     return annotate_typed_plan_runtime(object_type="dataset", live=live)
@@ -151,12 +200,14 @@ def annotate_generated_app_runtime(
     *,
     mode: Literal["runs_eval", "pi_offline", "pi_live"],
 ) -> Dict[str, Any]:
-    """Generated-app eval — target_runtime always pi; runtime_tier only when Pi host ran.
+    """生成应用评测运行时：``target_runtime`` 恒为 pi；仅 Pi 宿主真正跑过时 ``runtime_tier=pi``。
 
-    modes:
-      runs_eval   — platform runs_eval path; Pi host not used → fixture + target=pi
-      pi_offline  — export/structural only; pi CLI not invoked → fixture + target=pi
-      pi_live     — pi CLI (or equivalent) executed against the bundle → pi
+    Args:
+        mode: ``runs_eval``（平台路径未接 Pi）/ ``pi_offline``（结构导出）/
+            ``pi_live``（Pi CLI 已执行）。
+
+    Returns:
+        运行时标注 dict。
     """
     if mode == "pi_live":
         return {
@@ -191,10 +242,17 @@ def annotate_generated_app_runtime(
 
 
 def merge_runtime_fields(out: Dict[str, Any], ann: Dict[str, Any]) -> Dict[str, Any]:
-    """Merge annotation into response; never upgrade accuracy_claim to true.
+    """把运行时标注合并进响应；永不把 ``accuracy_claim`` 升为 true。
 
-    If ``ann`` (or existing ``out``) carries ``runtime_parts``, top-level tier/claim
-    are rewritten via ``summarize_runtime_parts`` (heterogeneous → mixed, claim=false).
+    若 ``ann``/``out`` 含 ``runtime_parts``，顶层 tier/claim 由
+    ``summarize_runtime_parts`` 重写（异构 → mixed，claim=false）。
+
+    Args:
+        out: 待合并的响应 dict（原地修改）。
+        ann: 标注字段 dict。
+
+    Returns:
+        合并后的 ``out``。
     """
     if not isinstance(out, dict):
         return out
@@ -220,10 +278,16 @@ def merge_runtime_fields(out: Dict[str, Any], ann: Dict[str, Any]) -> Dict[str, 
 def summarize_runtime_parts(
     parts: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Aggregate runtime_parts for system / multi-entry reports (Runtime Tiers §7.1).
+    """汇总 ``runtime_parts``（系统/多入口报告，Runtime Tiers §7.1）。
 
-    Homogeneous actual tiers → that tier; heterogeneous → runtime_tier=mixed (meta only)
-    with runtime_claim=false. Never collapses heterogeneous hosts into a representative tier.
+    同质 tier → 该 tier；异构 → ``runtime_tier=mixed`` 且 ``runtime_claim=false``。
+    禁止把异构宿主塌缩成单一代表 tier。
+
+    Args:
+        parts: 子入口标注序列；每项至少含 ``sub_id`` / ``runtime_tier``。
+
+    Returns:
+        含 ``runtime_parts`` / ``runtime_tier`` / ``runtime_claim`` / ``mixed`` 的汇总 dict。
     """
     cleaned: List[Dict[str, Any]] = []
     for raw in parts or []:

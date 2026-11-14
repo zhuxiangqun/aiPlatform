@@ -61,7 +61,16 @@ def assert_pack_acl(
     caller_tenant_id: str = "",
     write: bool = False,
 ) -> None:
-    """Fail closed on cross-scope / cross-workspace / cross-tenant access."""
+    """Fail closed on cross-scope / cross-workspace / cross-tenant access.
+
+    Args:
+        scope: scope 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+        write: write 参数。
+    """
     sc = str(scope or "").strip().lower()
     if sc not in VALID_SCOPES:
         raise PackRegistryError(f"invalid scope={scope!r}")
@@ -117,7 +126,20 @@ def write_pack_payload(
     caller_tenant_id: str = "",
     allow_overwrite_frozen: bool = False,
 ) -> Path:
-    """Persist cases+meta for a pack version (needed so freeze can rehash kind)."""
+    """Persist cases+meta for a pack version (needed so freeze can rehash kind).
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        scope: scope 参数。
+        cases: 用例列表。
+        meta: meta 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+        allow_overwrite_frozen: allow_overwrite_frozen 参数。
+    """
     assert_pack_acl(
         scope=scope,
         workspace_id=workspace_id,
@@ -166,6 +188,17 @@ def load_pack_payload(
     caller_workspace_id: str = "",
     caller_tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """加载 pack_payload。
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        scope: scope 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+    """
     assert_pack_acl(
         scope=scope,
         workspace_id=workspace_id,
@@ -218,6 +251,13 @@ def load_registry(
     workspace_id: str = "",
     tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """加载 registry。
+
+    Args:
+        scope: scope 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+    """
     root = _scope_root(scope, workspace_id=workspace_id, tenant_id=tenant_id)
     path = _registry_path(root)
     if not path.is_file():
@@ -253,7 +293,22 @@ def register_pack_version(
     caller_tenant_id: str = "",
     status: str = "active",
 ) -> Dict[str, Any]:
-    """Atomically register ``(pack_id, version)``. Duplicate → fail (no clobber)."""
+    """Atomically register ``(pack_id, version)``. Duplicate → fail (no clobber).
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        kind: kind 参数。
+        claim_eligible: claim_eligible 参数。
+        scope: scope 参数。
+        pack_hash: pack_hash 参数。
+        object_types: object_types 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+        status: 状态。
+    """
     assert_claim_eligible_allowed(kind=kind, claim_eligible=claim_eligible)
     assert_pack_acl(
         scope=scope,
@@ -313,6 +368,17 @@ def get_pack_version(
     caller_workspace_id: str = "",
     caller_tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """获取 pack_version。
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        scope: scope 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+    """
     assert_pack_acl(
         scope=scope,
         workspace_id=workspace_id,
@@ -348,7 +414,18 @@ def update_pack_version_meta(
 ) -> Dict[str, Any]:
     """Update status/review/hash metadata. Never flips claim_eligible unless explicit.
 
-    Refuse kind→frozen and refuse setting claim_eligible=true here.
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        scope: scope 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+        status: 状态。
+        review: review 参数。
+        pack_hash: pack_hash 参数。
+        allow_claim_eligible: allow_claim_eligible 参数。
     """
     if allow_claim_eligible:
         raise PackRegistryError(
@@ -430,7 +507,20 @@ def freeze_pack_version(
     frozen_by: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Mark reviewed pack as kind=frozen. claim_eligible stays false (P1.2)."""
+    """Mark reviewed pack as kind=frozen. claim_eligible stays false (P1.2).
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        scope: scope 参数。
+        pack_hash: pack_hash 参数。
+        workspace_id: workspace 标识。
+        tenant_id: 租户 ID。
+        caller_workspace_id: caller_workspace 标识。
+        caller_tenant_id: caller_tenant 标识。
+        frozen_by: frozen_by 参数。
+        notes: notes 参数。
+    """
     from datetime import datetime, timezone
 
     assert_claim_eligible_allowed(kind="frozen", claim_eligible=False)

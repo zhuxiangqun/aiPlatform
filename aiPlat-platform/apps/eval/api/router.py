@@ -1,3 +1,8 @@
+"""router：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from fastapi import APIRouter, Depends
 
 from auth.deps import require_auth

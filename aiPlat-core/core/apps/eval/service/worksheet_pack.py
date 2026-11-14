@@ -65,7 +65,12 @@ def _audience_for(name: str) -> str:
 
 
 def worksheet_pack_status(*, tenant_id: str = "eval-v1", limit: int = 20) -> Dict[str, Any]:
-    """List existing human_pack stamps (facilitation; not an accuracy claim)."""
+    """List existing human_pack stamps (facilitation; not an accuracy claim).
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     root = _pack_root()
     packs: List[Dict[str, Any]] = []
     if root.is_dir():
@@ -117,7 +122,13 @@ def worksheet_pack_generate(
     skip_g2b: bool = False,
     skip_preference: bool = False,
 ) -> Dict[str, Any]:
-    """Generate a new blank pack under docs/a3/human_pack/<stamp>."""
+    """Generate a new blank pack under docs/a3/human_pack/<stamp>.
+
+    Args:
+        tenant_id: 租户 ID。
+        skip_g2b: skip_g2b 参数。
+        skip_preference: skip_preference 参数。
+    """
     mod = _load_pack_module()
     gen = getattr(mod, "generate_human_worksheet_pack", None)
     if not callable(gen):
@@ -138,7 +149,13 @@ def worksheet_pack_file(
     *,
     tenant_id: str = "eval-v1",
 ) -> Tuple[Dict[str, Any], Optional[str]]:
-    """Read one pack file. Returns (meta_or_error, text_content)."""
+    """Read one pack file. Returns (meta_or_error, text_content).
+
+    Args:
+        stamp: stamp 参数。
+        filename: filename 参数。
+        tenant_id: 租户 ID。
+    """
     if not _STAMP_RE.match(stamp):
         return {"ok": False, "error": "invalid_stamp"}, None
     if not _SAFE_FILE_RE.match(filename) or ".." in filename:

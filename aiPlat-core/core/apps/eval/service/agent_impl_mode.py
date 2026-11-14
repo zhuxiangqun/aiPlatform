@@ -1,7 +1,16 @@
-"""Agent impl_mode resolve + rank_fingerprint (M0 contracts; no live runner).
+"""
+Agent impl_mode 解析与 rank_fingerprint（M0 契约；无 live runner）。
 
-Authority: docs/architecture/plans/eval-agent-impl-mode-exam.md
-Hard rule: selection union ≠ execution union.
+职责
+----
+从 AGENT.md/registry/config 解析多值 impl_modes；加载 mode_core 矩阵；
+选择并集与分模式执行计划分离；计算跨主体 rank 指纹；跑 M0 门禁检查。
+
+非目标
+------
+- 选择并集 ≠ 执行并集（禁止合并一次跑完所有 mode）
+- 不把 unknown 默认成 react；deferred 保持 deferred
+- 不做 live create_agent / 实测跑分
 """
 from __future__ import annotations
 
@@ -42,7 +51,9 @@ SOURCE_VALUES = frozenset({"AGENT.md", "registry", "config", "derived"})
 
 
 class AgentImplModeError(ValueError):
-    """Fail-closed mode / matrix / fingerprint error."""
+    """
+    模式 / 矩阵 / 指纹失败关闭错误。
+    """
 
 
 def _sha256_hex(payload: str) -> str:
@@ -61,15 +72,38 @@ def _canon_list(raw: Any) -> List[str]:
 
 
 def default_matrix_path() -> Path:
+    """
+    返回默认 mode_core 矩阵 YAML 路径。
+
+    Returns:
+        ``Path`` 指向种子目录下矩阵文件。
+    """
     return default_seed_dir() / MATRIX_FILENAME
 
 
 def default_parity_path() -> Path:
+    """
+    返回默认 parity 样本 JSON 路径。
+
+    Returns:
+        ``Path`` 指向交集 parity 样本。
+    """
     return default_seed_dir() / PARITY_FILENAME
 
 
 def load_mode_core_matrix(*, path: Optional[Path] = None) -> Dict[str, Any]:
-    """Load + shallow-validate mode_core_capabilities.v1.yaml."""
+    """
+    加载并浅校验 ``mode_core_capabilities.v1.yaml``。
+
+    Args:
+        path: 可选矩阵路径；空则默认。
+
+    Returns:
+        矩阵 dict。
+
+    Raises:
+        AgentImplModeError: 缺失、schema 不符或 modes 空。
+    """
     p = Path(path) if path else default_matrix_path()
     if not p.is_file():
         raise AgentImplModeError(f"matrix_missing:{p}")
@@ -89,9 +123,15 @@ def resolve_impl_modes(
     *,
     allow_derived: bool = True,
 ) -> Dict[str, Any]:
-    """Resolve multi-value impl_modes from AGENT.md / registry / config mapping.
+    """
+    从 AGENT.md / registry / config mapping 解析多值 impl_modes。
 
-    Never defaults unknown → react. Deferred modes keep primary=deferred.
+    Args:
+        source: 含 ``impl_modes`` 块或扁平 agent_type 等字段。
+        allow_derived: False 时拒绝仅由扁平字段推导出的 primary。
+
+    Returns:
+        ``eval.impl_modes.v1`` 形 dict；unknown 不会默认为 react。
     """
     src = dict(source or {})
     # Prefer nested impl_modes block; else flat agent_type / supported_loop_types.
@@ -170,9 +210,15 @@ def select_capabilities_union(
     impl_modes: Mapping[str, Any],
     matrix: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Selection layer: union of mode_core across primary+secondary.
+    """
+    选择层：primary+secondary 的 mode_core 并集（不意味单次执行覆盖全部）。
 
-    Does NOT imply a single execution covering all modes.
+    Args:
+        impl_modes: ``resolve_impl_modes`` 结果。
+        matrix: 可选矩阵；空则加载默认。
+
+    Returns:
+        含 ``selection_union`` 与 ``execution_policy=per_mode_separate_runs``。
     """
     mat = matrix or load_mode_core_matrix()
     modes_cfg = mat.get("modes") if isinstance(mat.get("modes"), Mapping) else {}
@@ -232,7 +278,16 @@ def plan_executions_per_mode(
     impl_modes: Mapping[str, Any],
     matrix: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Execution layer: one independent run plan per mode (never merged)."""
+    """
+    执行层：每个 mode 一份独立 run 计划（永不合并）。
+
+    Args:
+        impl_modes: 已解析的 impl_modes。
+        matrix: 可选矩阵。
+
+    Returns:
+        ``runs`` 列表；``merged_execution_forbidden=true``。
+    """
     sel = select_capabilities_union(impl_modes, matrix=matrix)
     runs: List[Dict[str, Any]] = []
     for mode, info in (sel.get("per_mode") or {}).items():
@@ -298,7 +353,29 @@ def compute_rank_fingerprint(
     display_name: str = "",
     run_time: str = "",
 ) -> Dict[str, Any]:
-    """Stable cross-subject fingerprint for rank gate (excludes identity/time)."""
+    """
+    跨主体稳定指纹（排除身份/时间字段），供 rank gate 比对。
+
+    Args:
+        manifest_hash: manifest 哈希。
+        prompt_hash: prompt 哈希。
+        oracle_hash: oracle 哈希。
+        runner_judge_version: runner/judge 版本。
+        model_fingerprint: 模型指纹。
+        runtime_tier: 运行时档次。
+        runtime_parts_contract: 运行时部件契约。
+        tools_contract_hash: 工具契约哈希。
+        retrieval_contract_hash: 检索契约哈希。
+        session_contract_hash: 会话契约哈希。
+        subject_id: 故意忽略（设计排除）。
+        agent_id: 故意忽略。
+        workspace_id: 故意忽略。
+        display_name: 故意忽略。
+        run_time: 故意忽略。
+
+    Returns:
+        含 ``rank_fingerprint`` / ``parts`` / ``missing_parts``；claim 字段关闭。
+    """
     _ = (subject_id, agent_id, workspace_id, display_name, run_time)  # excluded by design
     parts = {
         "manifest_hash": str(manifest_hash or "").strip(),
@@ -333,6 +410,18 @@ def compute_rank_fingerprint(
 
 
 def load_parity_sample(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """
+    加载交集 parity 样本 JSON。
+
+    Args:
+        path: 可选路径；空则默认。
+
+    Returns:
+        parity 样本 dict。
+
+    Raises:
+        AgentImplModeError: 缺失或非 object。
+    """
     p = Path(path) if path else default_parity_path()
     if not p.is_file():
         raise AgentImplModeError(f"parity_missing:{p}")
@@ -343,6 +432,18 @@ def load_parity_sample(*, path: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def m1a_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """
+    读取矩阵中的 M1a 环境锁配置。
+
+    Args:
+        matrix: 可选已加载矩阵。
+
+    Returns:
+        ``m1a_environment_lock`` 对象。
+
+    Raises:
+        AgentImplModeError: 字段缺失。
+    """
     mat = matrix or load_mode_core_matrix()
     lock = mat.get("m1a_environment_lock")
     if not isinstance(lock, Mapping):
@@ -351,6 +452,18 @@ def m1a_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, A
 
 
 def m1b_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """
+    读取矩阵中的 M1b 环境锁配置。
+
+    Args:
+        matrix: 可选已加载矩阵。
+
+    Returns:
+        ``m1b_environment_lock`` 对象。
+
+    Raises:
+        AgentImplModeError: 字段缺失。
+    """
     mat = matrix or load_mode_core_matrix()
     lock = mat.get("m1b_environment_lock")
     if not isinstance(lock, Mapping):
@@ -359,6 +472,18 @@ def m1b_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, A
 
 
 def m1c_environment_lock(matrix: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """
+    读取矩阵中的 M1c 环境锁配置。
+
+    Args:
+        matrix: 可选已加载矩阵。
+
+    Returns:
+        ``m1c_environment_lock`` 对象。
+
+    Raises:
+        AgentImplModeError: 字段缺失。
+    """
     mat = matrix or load_mode_core_matrix()
     lock = mat.get("m1c_environment_lock")
     if not isinstance(lock, Mapping):
@@ -370,7 +495,15 @@ def evaluate_m0_impl_mode_contracts(
     *,
     seed_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """M0 gate: matrix + parity sample + semantic invariants (no live execute)."""
+    """
+    M0 门禁：矩阵 + parity 样本 + 语义不变量（无 live 执行）。
+
+    Args:
+        seed_dir: 可选种子根目录。
+
+    Returns:
+        含 checks / m0_exit_checklist；失败则 ``m1_blocked``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     checks: List[Dict[str, Any]] = []
     errors: List[str] = []

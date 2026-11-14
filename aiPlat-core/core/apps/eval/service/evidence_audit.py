@@ -74,7 +74,11 @@ def _check_entries(
 
 
 def evidence_audit_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Facilitator-facing evidence audit snapshot (not an accuracy claim)."""
+    """Facilitator-facing evidence audit snapshot (not an accuracy claim).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     a3 = _a3_dir()
     man_path = a3 / "evidence" / "evidence_manifest.v1.json"
     man = _read_json(man_path) or {}

@@ -58,6 +58,12 @@ def load_m1a_mode_cases(
     *,
     seed_dir: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
+    """加载 m1a_mode_cases。
+
+    Args:
+        mode: 执行/评测模式。
+        seed_dir: 种子目录；None 用默认。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     path = root / "fixtures" / "mode_exam" / mode / "cases.json"
     if not path.is_file():
@@ -74,7 +80,13 @@ def enforce_m1a_environment(
     *,
     matrix: Mapping[str, Any] | None = None,
 ) -> List[str]:
-    """Return violation codes if tools/retrieval/network/session break M1a lock."""
+    """Return violation codes if tools/retrieval/network/session break M1a lock.
+
+    Args:
+        mode: 执行/评测模式。
+        observed: observed 参数。
+        matrix: matrix 参数。
+    """
     lock_all = m1a_environment_lock(matrix)
     lock = lock_all.get(mode) if isinstance(lock_all.get(mode), Mapping) else None
     if lock is None:
@@ -253,7 +265,14 @@ async def run_m1a_mode_exam(
     seed_dir: Optional[Path] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1a exam: plan_execute + conversational, separate runs, env lock enforced."""
+    """M1a exam: plan_execute + conversational, separate runs, env lock enforced.
+
+    Args:
+        live: 是否 live（非 fixture）路径。
+        modes: modes 参数。
+        seed_dir: 种子目录；None 用默认。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     try:
         matrix = load_mode_core_matrix(
             path=(Path(seed_dir) / "mode_core_capabilities.v1.yaml")
@@ -378,6 +397,12 @@ def load_m1b_mode_cases(
     *,
     seed_dir: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
+    """加载 m1b_mode_cases。
+
+    Args:
+        mode: 执行/评测模式。
+        seed_dir: 种子目录；None 用默认。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     path = root / "fixtures" / "mode_exam" / mode / "cases.json"
     if not path.is_file():
@@ -394,7 +419,13 @@ def enforce_m1b_environment(
     *,
     matrix: Mapping[str, Any] | None = None,
 ) -> List[str]:
-    """Return violation codes if M1b rag lock is broken."""
+    """Return violation codes if M1b rag lock is broken.
+
+    Args:
+        mode: 执行/评测模式。
+        observed: observed 参数。
+        matrix: matrix 参数。
+    """
     lock_all = m1b_environment_lock(matrix)
     lock = lock_all.get(mode) if isinstance(lock_all.get(mode), Mapping) else None
     if lock is None:
@@ -597,7 +628,14 @@ async def run_m1b_mode_exam(
     seed_dir: Optional[Path] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1b exam: rag only, separate column, retrieval required, tools/network none."""
+    """M1b exam: rag only, separate column, retrieval required, tools/network none.
+
+    Args:
+        live: 是否 live（非 fixture）路径。
+        modes: modes 参数。
+        seed_dir: 种子目录；None 用默认。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     try:
         matrix = load_mode_core_matrix(
             path=(Path(seed_dir) / "mode_core_capabilities.v1.yaml")
@@ -810,6 +848,12 @@ def load_m1c_mode_cases(
     *,
     seed_dir: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
+    """加载 m1c_mode_cases。
+
+    Args:
+        mode: 执行/评测模式。
+        seed_dir: 种子目录；None 用默认。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     path = root / "fixtures" / "mode_exam" / mode / "cases.json"
     if not path.is_file():
@@ -826,7 +870,13 @@ def enforce_m1c_environment(
     *,
     matrix: Mapping[str, Any] | None = None,
 ) -> List[str]:
-    """Return violation codes if M1c react lock is broken."""
+    """Return violation codes if M1c react lock is broken.
+
+    Args:
+        mode: 执行/评测模式。
+        observed: observed 参数。
+        matrix: matrix 参数。
+    """
     lock_all = m1c_environment_lock(matrix)
     lock = lock_all.get(mode) if isinstance(lock_all.get(mode), Mapping) else None
     if lock is None:
@@ -991,7 +1041,14 @@ async def run_m1c_mode_exam(
     seed_dir: Optional[Path] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1c exam: react column; tools+sandbox required; A3–A5 coverage unknown."""
+    """M1c exam: react column; tools+sandbox required; A3–A5 coverage unknown.
+
+    Args:
+        live: 是否 live（非 fixture）路径。
+        modes: modes 参数。
+        seed_dir: 种子目录；None 用默认。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     try:
         matrix = load_mode_core_matrix(
             path=(Path(seed_dir) / "mode_core_capabilities.v1.yaml")

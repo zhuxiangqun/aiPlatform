@@ -26,6 +26,14 @@ def _new_id(prefix: str) -> str:
 
 
 def default_db_path(*, tenant_id: str = "") -> Path:
+    """解析租户作用域下的 EvalStore SQLite 默认路径（可被 AIPLAT_EVAL_STORE_DB 覆盖）。
+
+    Args:
+        tenant_id: 租户 ID；空则用 default。
+
+    Returns:
+        数据库 Path。
+    """
     from core.utils.paths import get_aiplat_data_dir
 
     tid = (tenant_id or "").strip() or "default"
@@ -150,6 +158,12 @@ class EvalStore:
     """SQLite-backed EVAL_V1 store (tenant-scoped file)."""
 
     def __init__(self, db_path: Optional[Path | str] = None, *, tenant_id: str = ""):
+        """打开（或创建）租户作用域 EvalStore 并确保 schema。
+
+        Args:
+            db_path: 显式 DB 路径；None 则按 tenant_id 推默认。
+            tenant_id: 租户 ID，用于默认路径。
+        """
         self.db_path = Path(db_path) if db_path else default_db_path(tenant_id=tenant_id)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
@@ -180,6 +194,11 @@ class EvalStore:
             conn.commit()
 
     def health(self) -> Dict[str, Any]:
+        """返回 store 健康摘要（schema 版本、路径、各表行数）。
+
+        Returns:
+            含 ok / schema_version / db_path / counts 的 dict。
+        """
         counts: Dict[str, int] = {}
         with self._connect() as conn:
             for table in (
@@ -214,6 +233,18 @@ class EvalStore:
         meta: Optional[Dict[str, Any]] = None,
         set_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """创建评测集（eval_sets）。
+
+        Args:
+            name: 集合名称。
+            version: 集合版本字符串。
+            split: 划分（如 dev/gold）。
+            meta: 可选元数据 dict。
+            set_id: 可选稳定 ID；空则自动生成。
+
+        Returns:
+            新建集合 dict。
+        """
         sid = set_id or _new_id("set")
         now = _now()
         meta = meta or {}
@@ -227,11 +258,27 @@ class EvalStore:
         return self.get_set(sid) or {"id": sid}
 
     def get_set(self, set_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取评测集。
+
+        Args:
+            set_id: 集合 ID。
+
+        Returns:
+            集合 dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_sets WHERE id=?", (set_id,)).fetchone()
         return self._row_set(row) if row else None
 
     def list_sets(self, *, limit: int = 100) -> List[Dict[str, Any]]:
+        """按 updated_at 倒序列出评测集。
+
+        Args:
+            limit: 最大返回条数（封顶 1000）。
+
+        Returns:
+            集合 dict 列表。
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM eval_sets ORDER BY updated_at DESC LIMIT ?",
@@ -265,6 +312,21 @@ class EvalStore:
         source: str = "",
         task_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """在指定集合下创建评测任务。
+
+        Args:
+            set_id: 所属集合 ID。
+            input_data: 输入 JSON。
+            expected: 期望输出 JSON。
+            rubric: 评分规则 JSON。
+            tags: 标签序列。
+            hard_negative: 是否难负例。
+            source: 来源路径或标记。
+            task_id: 可选稳定任务 ID。
+
+        Returns:
+            新建任务 dict。
+        """
         tid = task_id or _new_id("task")
         now = _now()
         with self._connect() as conn:
@@ -289,11 +351,28 @@ class EvalStore:
         return self.get_task(tid) or {"id": tid}
 
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取评测任务。
+
+        Args:
+            task_id: 任务 ID。
+
+        Returns:
+            任务 dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_tasks WHERE id=?", (task_id,)).fetchone()
         return self._row_task(row) if row else None
 
     def list_tasks(self, *, set_id: str = "", limit: int = 500) -> List[Dict[str, Any]]:
+        """列出评测任务，可按 set_id 过滤。
+
+        Args:
+            set_id: 可选集合过滤；空则全表。
+            limit: 最大条数（封顶 5000）。
+
+        Returns:
+            任务 dict 列表。
+        """
         lim = max(1, min(int(limit), 5000))
         with self._connect() as conn:
             if set_id:
@@ -335,6 +414,21 @@ class EvalStore:
         versions: Optional[Dict[str, Any]] = None,
         run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """为任务创建一次评测 run（含 versions 占位）。
+
+        Args:
+            task_id: 任务 ID。
+            target_kind: 目标类型（默认 skill）。
+            target_ref: 目标引用。
+            model: 模型名。
+            params: 运行参数。
+            status: 初始状态。
+            versions: 版本钉（dataset/judge/prompt/model/code_commit）。
+            run_id: 可选稳定 run ID。
+
+        Returns:
+            新建 run dict。
+        """
         rid = run_id or _new_id("run")
         now = _now()
         versions = versions or {}
@@ -365,6 +459,14 @@ class EvalStore:
         return self.get_run(rid) or {"id": rid}
 
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取 run。
+
+        Args:
+            run_id: run ID。
+
+        Returns:
+            run dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_runs WHERE id=?", (run_id,)).fetchone()
         if not row:
@@ -392,6 +494,19 @@ class EvalStore:
         adjudicated: bool = False,
         label_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """为任务写入人工标注 label。
+
+        Args:
+            task_id: 任务 ID。
+            annotator: 标注者标识。
+            label: 标注载荷。
+            rationale: 理由说明。
+            adjudicated: 是否已裁定。
+            label_id: 可选稳定 label ID。
+
+        Returns:
+            新建 label dict。
+        """
         lid = label_id or _new_id("label")
         now = _now()
         with self._connect() as conn:
@@ -425,6 +540,14 @@ class EvalStore:
         }
 
     def get_label(self, label_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取 label。
+
+        Args:
+            label_id: label ID。
+
+        Returns:
+            label dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_labels WHERE id=?", (label_id,)).fetchone()
         if not row:
@@ -447,6 +570,17 @@ class EvalStore:
         adjudicated: Optional[bool] = None,
         limit: int = 500,
     ) -> List[Dict[str, Any]]:
+        """列出 labels，可按集合 / 标注者 / 裁定状态过滤。
+
+        Args:
+            set_id: 可选集合过滤。
+            annotator: 可选标注者过滤。
+            adjudicated: 可选裁定布尔过滤。
+            limit: 最大条数。
+
+        Returns:
+            label dict 列表。
+        """
         sql = (
             "SELECT l.* FROM eval_labels l "
             "JOIN eval_tasks t ON t.id=l.task_id WHERE 1=1"
@@ -486,6 +620,17 @@ class EvalStore:
         rationale: Optional[str] = None,
         adjudicated: Optional[bool] = None,
     ) -> Dict[str, Any]:
+        """更新 label 载荷 / 理由 / 裁定标志。
+
+        Args:
+            label_id: label ID。
+            label: 新载荷；None 保留原值。
+            rationale: 新理由；None 保留原值。
+            adjudicated: 新裁定标志；None 保留原值。
+
+        Returns:
+            更新后的 label dict。
+        """
         existing = self.get_label(label_id)
         if not existing:
             raise ValueError(f"unknown label_id: {label_id}")
@@ -511,7 +656,18 @@ class EvalStore:
         rationale: str = "",
         label_extra: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Mark a solo-review label as adjudicated (D5 human ground truth)."""
+        """将单人复核 label 标记为已裁定（D5 人工真值）。
+
+        Args:
+            label_id: label ID。
+            passed: 可选通过布尔写入 label.pass。
+            notes: 可选备注写入 label.notes。
+            rationale: 裁定理由；空则用默认文案。
+            label_extra: 合并进 label 的额外字段。
+
+        Returns:
+            裁定后的 label dict。
+        """
         existing = self.get_label(label_id)
         if not existing:
             raise ValueError(f"unknown label_id: {label_id}")
@@ -529,6 +685,14 @@ class EvalStore:
         )
 
     def get_meta(self, key: str) -> Optional[str]:
+        """读取 eval_store_meta 键值。
+
+        Args:
+            key: 元数据键。
+
+        Returns:
+            字符串值或 None。
+        """
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT value FROM eval_store_meta WHERE key=?", (key,)
@@ -536,6 +700,12 @@ class EvalStore:
         return row["value"] if row else None
 
     def set_meta(self, key: str, value: str) -> None:
+        """写入（覆盖）eval_store_meta 键值。
+
+        Args:
+            key: 元数据键。
+            value: 元数据值。
+        """
         with self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO eval_store_meta(key, value) VALUES (?, ?)",
@@ -553,6 +723,17 @@ class EvalStore:
         prompt_version: str = "",
         calibration: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """创建或更新 judge 配置行。
+
+        Args:
+            judge_id: Judge ID。
+            model: 评判模型。
+            prompt_version: 提示词版本。
+            calibration: 校准参数。
+
+        Returns:
+            judge dict。
+        """
         now = _now()
         with self._connect() as conn:
             exists = conn.execute(
@@ -573,6 +754,14 @@ class EvalStore:
         return self.get_judge(judge_id) or {"id": judge_id}
 
     def get_judge(self, judge_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取 judge。
+
+        Args:
+            judge_id: Judge ID。
+
+        Returns:
+            judge dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_judges WHERE id=?", (judge_id,)).fetchone()
         if not row:
@@ -586,6 +775,14 @@ class EvalStore:
         }
 
     def list_judges(self, *, limit: int = 50) -> List[Dict[str, Any]]:
+        """按创建时间倒序列出 judges。
+
+        Args:
+            limit: 最大条数（封顶 200）。
+
+        Returns:
+            judge dict 列表。
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM eval_judges ORDER BY created_at DESC LIMIT ?",
@@ -614,6 +811,21 @@ class EvalStore:
         confidence: Optional[float] = None,
         judgment_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """为 run 写入一条 judgment。
+
+        Args:
+            run_id: run ID。
+            judge_id: Judge ID。
+            score: 可选分数。
+            passed: 可选是否通过。
+            reason: 理由。
+            evidence: 证据 JSON。
+            confidence: 可选置信度。
+            judgment_id: 可选稳定 ID。
+
+        Returns:
+            新建 judgment dict。
+        """
         jid = judgment_id or _new_id("jdg")
         now = _now()
         with self._connect() as conn:
@@ -661,6 +873,20 @@ class EvalStore:
         scoring: Optional[Dict[str, Any]] = None,
         meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """创建评测报告（metrics 经 stamp_eval_report_metrics 盖章）。
+
+        Args:
+            run_ids: 关联 run ID 列表。
+            metrics: 指标 dict。
+            slices: 切片指标。
+            failures: 失败列表。
+            report_id: 可选稳定报告 ID。
+            scoring: 可选评分元信息（盖章用）。
+            meta: 可选报告元信息（盖章用）。
+
+        Returns:
+            新建 report dict。
+        """
         rid = report_id or _new_id("rpt")
         now = _now()
         from core.apps.eval.service.report_compare import stamp_eval_report_metrics
@@ -693,6 +919,14 @@ class EvalStore:
         }
 
     def get_report(self, report_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取评测报告。
+
+        Args:
+            report_id: 报告 ID。
+
+        Returns:
+            report dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_reports WHERE id=?", (report_id,)).fetchone()
         if not row:
@@ -707,7 +941,14 @@ class EvalStore:
         }
 
     def list_reports(self, *, limit: int = 50) -> List[Dict[str, Any]]:
-        """Newest-first eval_reports rows (UI-2 / store list)."""
+        """按创建时间倒序列出评测报告（UI-2 / store list）。
+
+        Args:
+            limit: 最大条数（封顶 200）。
+
+        Returns:
+            report dict 列表。
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM eval_reports ORDER BY created_at DESC LIMIT ?",
@@ -739,6 +980,19 @@ class EvalStore:
         meta: Optional[Dict[str, Any]] = None,
         gate_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """创建门禁记录（baseline vs candidate）。
+
+        Args:
+            baseline: 基线标识。
+            candidate: 候选标识。
+            thresholds: 阈值 dict。
+            decision: 门禁决策（默认 pending）。
+            meta: 可选元数据。
+            gate_id: 可选稳定 ID。
+
+        Returns:
+            新建 gate dict。
+        """
         gid = gate_id or _new_id("gate")
         now = _now()
         with self._connect() as conn:
@@ -759,6 +1013,14 @@ class EvalStore:
         return self.get_gate(gid) or {"id": gid}
 
     def get_gate(self, gate_id: str) -> Optional[Dict[str, Any]]:
+        """按 ID 读取门禁记录。
+
+        Args:
+            gate_id: gate ID。
+
+        Returns:
+            gate dict 或 None。
+        """
         with self._connect() as conn:
             row = conn.execute("SELECT * FROM eval_gates WHERE id=?", (gate_id,)).fetchone()
         if not row:
@@ -775,6 +1037,14 @@ class EvalStore:
         }
 
     def list_gates(self, *, limit: int = 50) -> List[Dict[str, Any]]:
+        """按创建时间倒序列出门禁记录。
+
+        Args:
+            limit: 最大条数。
+
+        Returns:
+            gate dict 列表。
+        """
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM eval_gates ORDER BY created_at DESC LIMIT ?",
@@ -798,6 +1068,15 @@ class EvalStore:
 
 
 def get_eval_store(*, tenant_id: str = "", db_path: Optional[str] = None) -> EvalStore:
+    """工厂：构造租户作用域 EvalStore。
+
+    Args:
+        tenant_id: 租户 ID。
+        db_path: 可选显式 DB 路径。
+
+    Returns:
+        EvalStore 实例。
+    """
     return EvalStore(db_path=db_path, tenant_id=tenant_id)
 
 
@@ -809,10 +1088,17 @@ def import_code_review_gold(
     set_version: str = "v0-seed",
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Migrate code-review-gold YAML/JSON cases into eval_sets + eval_tasks.
+    """将 code-review-gold YAML/JSON 用例导入 eval_sets + eval_tasks（幂等 upsert）。
 
-    Does not delete JSONL reports; additive import with stable task ids
-    ``crg:{case_id}`` so re-runs are idempotent (INSERT OR REPLACE via delete+insert).
+    Args:
+        gold_dir: 金标目录；空则用默认 / workspace_seeds 回退。
+        tenant_id: 租户 ID。
+        set_name: 集合显示名。
+        set_version: 集合版本。
+        db_path: 可选显式 DB 路径。
+
+    Returns:
+        导入结果 dict（imported / skipped / store health）。
     """
     import yaml  # type: ignore
 

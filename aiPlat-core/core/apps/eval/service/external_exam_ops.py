@@ -38,10 +38,21 @@ HONESTY_WITH_TRAJ = (
 
 
 def list_targets(workspace_id: str) -> List[Dict[str, Any]]:
+    """列出 targets。
+
+    Args:
+        workspace_id: workspace 标识。
+    """
     return list_external_targets(workspace_id)
 
 
 def register_target(workspace_id: str, **kwargs: Any) -> Dict[str, Any]:
+    """register_target。
+
+    Args:
+        workspace_id: workspace 标识。
+        kwargs: 附加关键字参数。
+    """
     return upsert_external_target(workspace_id, **kwargs)
 
 
@@ -66,8 +77,14 @@ async def run_external_exam(
 ) -> Dict[str, Any]:
     """Run exam paper against an external http_chat_pull target.
 
-    live=False → validate target + paper (+ optional soft probe); no persist.
-    live=True → pull each task, score text + optional IN_ORDER tool sequence, persist as ext:{id}.
+    Args:
+        workspace_id: workspace 标识。
+        target_id: target 标识。
+        set_id: set 标识。
+        live: 是否 live（非 fixture）路径。
+        max_tasks: max_tasks 参数。
+        persist: persist 参数。
+        probe: probe 参数。
     """
     from core.harness.named_workspace.resolve import (
         reset_active_named_workspace,

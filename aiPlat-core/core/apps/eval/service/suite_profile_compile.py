@@ -61,7 +61,12 @@ def select_cases_for_profile(
     cases: Sequence[Mapping[str, Any]],
     profile: Mapping[str, Any],
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Apply fixed quotas; return selected cases + selection meta."""
+    """Apply fixed quotas; return selected cases + selection meta.
+
+    Args:
+        cases: 用例列表。
+        profile: profile 参数。
+    """
     quotas_raw = profile.get("quotas") if isinstance(profile.get("quotas"), Mapping) else {}
     if not quotas_raw:
         raise SuiteProfileCompileError("profile.quotas required")
@@ -152,8 +157,9 @@ def apply_profile_holdout(
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
     """Split selected into eval vs holdout per profile.holdout.
 
-    Returns (eval_cases, holdout_cases, holdout_meta).
-    Holdout cases are excluded from sample_manifest when exclude_from_tuning.
+    Args:
+        selected: selected 参数。
+        profile: profile 参数。
     """
     hold = profile.get("holdout") if isinstance(profile.get("holdout"), Mapping) else {}
     enabled = bool(hold.get("enabled"))
@@ -311,7 +317,16 @@ def compile_plan_from_suite_profile(
     object_version: str = "0.1.0",
     require_content_purpose_ok: bool = True,
 ) -> Dict[str, Any]:
-    """Compile Plan v2 whose sample_manifest is the Profile-selected case list."""
+    """Compile Plan v2 whose sample_manifest is the Profile-selected case list.
+
+    Args:
+        profile: profile 参数。
+        profile_id: profile 标识。
+        cases: 用例列表。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        require_content_purpose_ok: require_content_purpose_ok 参数。
+    """
     from core.apps.eval.service.subject_suite_profiles import (
         SubjectSuiteProfileError,
         load_cases_for_suite_profile,

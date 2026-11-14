@@ -1,6 +1,16 @@
-"""P1.4 Case Pack ops — expand draft, version++ bump, coverage summary.
+"""
+Case Pack 运维：草稿扩包 / version++ / holdout / 难度与裁判校准 / 覆盖摘要。
 
-Honesty: claim_eligible stays false; frozen packs are immutable (bump → new draft).
+职责
+----
+在非 frozen 工作区 pack 上追加用例、升版本、打 holdout、启发式/人工难度与
+judge 校准 ticket；覆盖率仅做库存盘点。持久化经 case_pack_registry。
+
+非目标
+------
+- 不把 ``claim_eligible`` / ``accuracy_claim`` 打开（诚实锁保持关闭）
+- 不就地改写 frozen pack（必须 bump 出新 draft）
+- 不做 HTTP；异常用 ``CasePackOpsError`` 留给上层映射
 """
 from __future__ import annotations
 
@@ -46,7 +56,9 @@ _EXPANDABLE_STATUSES = frozenset({"draft", "in_review", "rejected"})
 
 
 class CasePackOpsError(ValueError):
-    """Pack expand / bump / coverage failure."""
+    """
+    Case Pack 扩包 / 升版 / 覆盖操作失败。
+    """
 
 
 def _semver_bump_patch(version: str) -> str:
@@ -72,7 +84,24 @@ def expand_draft_workspace_pack(
     variants: Optional[Sequence[Mapping[str, Any]]] = None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Append cases into a non-frozen draft/in_review/rejected pack (dedupe)."""
+    """
+    向非 frozen 的 draft/in_review/rejected pack 追加用例（去重）。
+
+    Args:
+        pack_id: 包 ID。
+        version: 当前版本。
+        workspace_id: 工作区 ID。
+        cases: 直接追加的用例列表；与 template/variants 二选一。
+        template: 用例模板（配合 variants）。
+        variants: 模板变体列表。
+        caller_workspace_id: ACL 调用方工作区；空则回落 workspace_id。
+
+    Returns:
+        含 ``n_cases`` / ``added`` / ``pack_hash``；诚实字段保持关闭。
+
+    Raises:
+        CasePackOpsError: 缺参、frozen、状态不可扩、或注册表失败。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")
@@ -210,7 +239,25 @@ def bump_workspace_pack_version(
     variants: Optional[Sequence[Mapping[str, Any]]] = None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """version++: copy cases into a new draft curated pack (never mutates frozen)."""
+    """
+    version++：把用例拷到新 draft curated 版本（永不就地改 frozen）。
+
+    Args:
+        pack_id: 包 ID。
+        from_version: 源版本。
+        workspace_id: 工作区 ID。
+        to_version: 目标版本；空则对 from_version 做 patch bump。
+        extra_cases: 额外追加用例。
+        template: 模板（可选）。
+        variants: 模板变体（可选）。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        新版本元数据与 ``pack_hash``；``claim_eligible=false``。
+
+    Raises:
+        CasePackOpsError: 无用例、版本冲突或注册失败。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")
@@ -331,7 +378,25 @@ def mark_pack_holdout(
     holdout: bool = True,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Mark holdout flags on a non-frozen pack and rehash."""
+    """
+    在非 frozen pack 上标记 holdout 并重算 hash。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        case_ids: 指定 case；空则按 ratio/seed 抽样。
+        ratio: 抽样比例（无 case_ids 时）。
+        seed: 抽样种子。
+        holdout: True 标记为 holdout，False 取消。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        含 ``n_eval`` / ``n_holdout`` / ``pack_hash``。
+
+    Raises:
+        CasePackOpsError: frozen 或状态不允许。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")
@@ -434,7 +499,24 @@ def publish_generated_workspace_pack(
     caller_workspace_id: str = "",
     object_types: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Publish L3 draft pack (generated|trace). claim_eligible forced false."""
+    """
+    发布 L3 draft pack（kind=generated|trace）；强制 ``claim_eligible=false``。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        kind: ``generated`` 或 ``trace``。
+        cases: 用例序列。
+        caller_workspace_id: ACL 调用方工作区。
+        object_types: 对象类型列表；默认 agent。
+
+    Returns:
+        工厂发布结果 dict。
+
+    Raises:
+        CasePackOpsError: kind 非法或工厂失败。
+    """
     from core.apps.eval.service.case_factory import publish_draft_workspace_pack
 
     k = str(kind or "").strip().lower()
@@ -464,7 +546,21 @@ def build_mutation_draft_pack(
     seed: str = "0",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Mutate seeds → publish kind=generated draft pack."""
+    """
+    对种子用例做变异后发布 kind=generated 的 draft pack。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        seed_cases: 种子用例。
+        ops: 变异操作名列表；空则用默认集。
+        seed: 随机种子。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        发布结果，附 ``generator=case_mutation``。
+    """
     try:
         cases = mutate_cases(seed_cases, ops=ops, seed=seed)
     except CaseGenerationError as e:
@@ -490,7 +586,19 @@ def build_trace_draft_pack(
     traces: Sequence[Mapping[str, Any]],
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Trace dicts → publish kind=trace draft pack."""
+    """
+    从 trace 字典生成用例并发布 kind=trace 的 draft pack。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        traces: trace 对象序列。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        发布结果，附 ``generator=case_trace``。
+    """
     cases: List[Dict[str, Any]] = []
     try:
         for i, tr in enumerate(traces):
@@ -526,7 +634,25 @@ async def build_llm_candidate_draft_pack(
     llm_generate_fn=None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.0: LLM (or dry stub) candidates → kind=generated draft (claim closed)."""
+    """
+    LLM（或 dry stub）候选用例 → kind=generated draft（声明关闭）。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        theme: 生成主题。
+        n: 候选条数。
+        category: 用例类别（如 normal）。
+        seed: 种子。
+        model_name: 可选模型名。
+        dry: True 时可用 stub（无真实 LLM）。
+        llm_generate_fn: 可选注入的生成函数。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        发布结果，附 ``generator=case_llm``。
+    """
     try:
         cases = await generate_llm_candidate_cases(
             theme=theme,
@@ -561,7 +687,19 @@ def propose_pack_difficulty(
     caller_workspace_id: str = "",
     persist: bool = False,
 ) -> Dict[str, Any]:
-    """Heuristic difficulty on pack cases; optional persist (non-frozen only)."""
+    """
+    对 pack 用例做启发式难度提案；可选写回（仅非 frozen）。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        caller_workspace_id: ACL 调用方工作区。
+        persist: True 时写回 payload 并重 hash。
+
+    Returns:
+        含每案 difficulty 提案；``calibrated=false``，非 accuracy 声明。
+    """
     pid = str(pack_id or "").strip()
     ver = str(version or "").strip()
     wid = str(workspace_id or "").strip()
@@ -667,7 +805,20 @@ def open_judge_calibration_ticket_for_pack(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: create + persist judge calibration ticket (no claim unlock)."""
+    """
+    创建并持久化 judge 校准 ticket（不解锁 claim）。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        sample_case_ids: 抽样 case_id；空则由校准模块决定。
+        notes: 备注。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        ticket 记录 dict。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")
@@ -692,7 +843,19 @@ def record_judge_calibration_ratings_for_pack(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: append ratings + recompute agreement."""
+    """
+    追加裁判评分并重算一致性。
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket ID。
+        ratings: 评分数列。
+        rater: 评分人标识。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        更新后的 ticket / 一致性摘要。
+    """
     try:
         return record_judge_ratings(
             workspace_id=workspace_id,
@@ -712,7 +875,18 @@ def close_judge_calibration_ticket_for_pack(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: close ticket after ratings (engineering calibrated; claim closed)."""
+    """
+    在有评分后关闭 ticket（工程校准完成；claim 仍关闭）。
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket ID。
+        notes: 关闭备注。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        关闭后的 ticket 记录。
+    """
     try:
         return close_judge_ticket(
             workspace_id=workspace_id,
@@ -730,6 +904,20 @@ def get_judge_calibration_ticket_for_pack(
     ticket_id: str,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """
+    读取 judge 校准 ticket。
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket ID。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        ticket 内容 dict。
+
+    Raises:
+        CasePackOpsError: 加载失败。
+    """
     try:
         return load_judge_ticket(
             workspace_id=workspace_id,
@@ -749,7 +937,20 @@ def calibrate_pack_difficulty(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: apply human difficulty labels to non-frozen pack + save record."""
+    """
+    把人工难度标签写回非 frozen pack，并落校准记录。
+
+    Args:
+        pack_id: 包 ID。
+        version: 版本。
+        workspace_id: 工作区 ID。
+        labels: ``case_id``→难度 标签序列。
+        rater: 标注人。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        含 ``pack_hash`` / ``calibrated=true``；非 accuracy 声明。
+    """
     pid = str(pack_id or "").strip()
     ver = str(version or "").strip()
     wid = str(workspace_id or "").strip()
@@ -855,7 +1056,16 @@ def summarize_workspace_pack_coverage(
     workspace_id: str,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Coverage summary for workspace packs (status/kind counts + per-version rows)."""
+    """
+    工作区 pack 覆盖摘要（按 status/kind 计数 + 每版本行）。
+
+    Args:
+        workspace_id: 工作区 ID。
+        caller_workspace_id: ACL 调用方工作区。
+
+    Returns:
+        ``by_status`` / ``by_kind`` / ``items``；仅库存盘点。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CasePackOpsError("workspace_id required")

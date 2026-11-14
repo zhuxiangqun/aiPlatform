@@ -31,10 +31,15 @@ ASR_VERSION_DRIFT = "judge_version_drift"
 
 
 class SecurityJudgeCalibError(ValueError):
-    """Fail-closed security judge calibration error."""
+    """安全裁判校准 fail-closed 错误（缺配置 / 自裁判 / schema 不匹配）。"""
 
 
 def default_security_seed_dir() -> Path:
+    """安全评测种子目录（workspace_seeds/eval/agent_capability/security）。
+
+    Returns:
+        种子目录 Path。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -45,10 +50,26 @@ def default_security_seed_dir() -> Path:
 
 
 def default_judge_calib_defaults_path() -> Path:
+    """默认 judge 校准阈值 YAML 路径。
+
+    Returns:
+        ``judge_calib_defaults.v1.yaml`` Path。
+    """
     return default_security_seed_dir() / "judge_calib_defaults.v1.yaml"
 
 
 def load_judge_calib_defaults(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载并校验 judge 校准默认配置。
+
+    Args:
+        path: 可选 YAML 路径；默认 ``default_judge_calib_defaults_path()``。
+
+    Returns:
+        配置 dict（含 ``schema`` / ``defaults``）。
+
+    Raises:
+        SecurityJudgeCalibError: 文件缺失、YAML 不可用或 schema 不匹配。
+    """
     p = Path(path) if path else default_judge_calib_defaults_path()
     if not p.is_file():
         raise SecurityJudgeCalibError(f"judge_calib_defaults_missing:{p}")
@@ -75,7 +96,18 @@ def assert_judge_model_isolation(
     judge_model: str,
     subject_model: str,
 ) -> Dict[str, Any]:
-    """Forbid same-model self-judge. Empty models → fail-closed."""
+    """禁止 judge 与 subject 同模型（自裁判）。空模型 fail-closed。
+
+    Args:
+        judge_model: 裁判模型名。
+        subject_model: 被测模型名。
+
+    Returns:
+        含 ``ok`` / ``isolated`` / ``violation`` 等的隔离检查结果。
+
+    Raises:
+        SecurityJudgeCalibError: 任一模型名为空。
+    """
     j = _norm_model(judge_model)
     s = _norm_model(subject_model)
     if not j or not s:
@@ -103,7 +135,23 @@ def build_judge_version_manifest(
     frozen: bool = True,
     extras: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Build frozen judge_id+judge_version manifest for security eval runs."""
+    """构建冻结的 judge_id+judge_version 清单（安全评测归因）。
+
+    Args:
+        judge_id: 裁判逻辑 ID。
+        judge_version: 裁判版本号。
+        judge_model: 裁判模型。
+        subject_model: 被测模型。
+        prompt_hash: 裁判 prompt 哈希（可空）。
+        frozen: 是否标记为已冻结。
+        extras: 附加字段（不覆盖已有键）。
+
+    Returns:
+        ``MANIFEST_SCHEMA`` 清单 dict（永不解锁 claim）。
+
+    Raises:
+        SecurityJudgeCalibError: 缺 id/version 或自裁判。
+    """
     jid = str(judge_id or "").strip()
     jver = str(judge_version or "").strip()
     if not jid or not jver:
@@ -143,9 +191,16 @@ def check_judge_version_drift(
     run_manifest: Mapping[str, Any],
     frozen_manifest: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Compare run vs frozen judge_id/version/model/prompt_hash.
+    """对比本次 run 与冻结清单的 judge_id/version/model/prompt_hash。
 
-    Drift → claim_candidate_invalid=True (still engineering-only).
+    漂移时 ``claim_candidate_invalid=True``（仍仅为工程态）。
+
+    Args:
+        run_manifest: 本跑次清单。
+        frozen_manifest: 冻结基线清单。
+
+    Returns:
+        含 ``drifted`` / ``diffs`` / ``asr_status`` 的漂移报告。
     """
     keys = ("judge_id", "judge_version", "judge_model", "prompt_hash")
     diffs: List[Dict[str, Any]] = []
@@ -191,9 +246,16 @@ def _as_bool_label(v: Any) -> Optional[bool]:
 def compute_judge_vs_gold_metrics(
     pairs: Sequence[Mapping[str, Any]],
 ) -> Dict[str, Any]:
-    """Binary attack-success labels: gold vs judge.
+    """二值攻击成功标签：gold 相对 judge 的一致率与 FP/FN。
 
-    Each pair: {case_id?, gold, judge} where True = attack succeeded.
+    Args:
+        pairs: 每项 ``{case_id?, gold, judge}``；True 表示攻击成功。
+
+    Returns:
+        含 tp/fp/fn/tn、agreement、by_case 的指标 dict。
+
+    Raises:
+        SecurityJudgeCalibError: 某项不是 Mapping。
     """
     tp = fp = fn = tn = 0
     compared = 0
@@ -265,9 +327,20 @@ def evaluate_security_judge_calibration(
     dual_human_on_failures: Optional[bool] = None,
     failure_case_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Engineering calibration gate for security judges.
+    """安全裁判工程校准门禁。
 
-    Meeting the bar → calibrated_engineering only; never claim_eligible.
+    过线仅得 ``calibrated_engineering``；永不设 ``claim_eligible``。
+
+    Args:
+        pairs: gold/judge 对照样本。
+        defaults: 可选阈值配置；缺省读种子 YAML。
+        manifest: 本跑次 judge 清单（隔离/双人审）。
+        frozen_manifest: 冻结清单（漂移检查）。
+        dual_human_on_failures: 失败是否强制双人审；None 用 defaults。
+        failure_case_ids: 失败 case id 列表。
+
+    Returns:
+        ``CALIB_REPORT_SCHEMA`` 校准报告。
     """
     defs = dict(defaults) if defaults is not None else load_judge_calib_defaults()
     dflt = defs.get("defaults") if isinstance(defs.get("defaults"), Mapping) else {}
@@ -383,9 +456,16 @@ def annotate_family_asr_calibration(
     *,
     calib: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Stamp each family bucket with asr_calibration_status from calib report.
+    """按校准报告给各 threat family 桶盖 ``asr_calibration_status``。
 
-    Does not unlock claim; forces judge_uncalibrated when bar not met.
+    不解锁 claim；未过线则强制 ``judge_uncalibrated``。
+
+    Args:
+        family_report: 含 ``families`` 映射的家族报告。
+        calib: ``evaluate_security_judge_calibration`` 的结果。
+
+    Returns:
+        盖章后的家族报告副本。
     """
     out = dict(family_report)
     fams = out.get("families") if isinstance(out.get("families"), Mapping) else {}
@@ -420,7 +500,18 @@ def security_sec_p1a_status(
     judge_model: str = "eval-judge-model",
     subject_model: str = "subject-under-test",
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P1a status: defaults + sample manifest + optional calib."""
+    """门面友好的 SEC-P1a 状态：defaults + 样例清单 + 可选校准。
+
+    Args:
+        pairs: 可选 gold/judge 样本；有则跑校准。
+        judge_id: 样例裁判 ID。
+        judge_version: 样例裁判版本。
+        judge_model: 样例裁判模型。
+        subject_model: 样例被测模型。
+
+    Returns:
+        ``STATUS_SCHEMA`` 状态 dict（claim 恒 false）。
+    """
     defs = load_judge_calib_defaults()
     manifest = build_judge_version_manifest(
         judge_id=judge_id,

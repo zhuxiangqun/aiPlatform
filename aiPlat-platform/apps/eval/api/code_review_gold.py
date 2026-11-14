@@ -13,7 +13,11 @@ router = APIRouter(prefix="/code-review-gold", tags=["code-review-gold"])
 
 @router.get("/profiles", response_model=ItemResponse)
 async def get_profiles(_auth: str = Depends(require_auth)) -> Dict[str, Any]:
-    """List low_noise / balanced / high_coverage → autoreview args."""
+    """List low_noise / balanced / high_coverage → autoreview args.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import list_code_review_gold_profiles
 
     return {"data": {"profiles": list_code_review_gold_profiles()}}
@@ -26,10 +30,9 @@ async def evaluate_gold(
 ) -> Dict[str, Any]:
     """Run gold eval.
 
-    body: {profile?, gold_dir?, case_ids?, match_only?, limit?, tenant_id?, persist?, record_novel?}
-    match_only=true scores embedded ``predicted`` fixtures (no LLM).
-    record_novel 把未匹配 P0/P1 → shared_memory + experience_feedback pending
-    （升级确认后 Team Brain；不改黄金集）。默认 True。
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
     """
     from core.api.core_facade import run_code_review_gold_eval
 
@@ -71,6 +74,13 @@ async def get_reports(
     limit: int = 20,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """列出 code_review gold 评测报告。
+
+    Args:
+        tenant_id: 租户 ID；空串表示默认/不过滤。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（未使用）。
+    """
     from core.api.core_facade import list_code_review_gold_reports
 
     rows = list_code_review_gold_reports(tenant_id=tenant_id, limit=limit)
@@ -84,8 +94,9 @@ async def reevaluate_gold(
 ) -> Dict[str, Any]:
     """Re-run the same gold set and return deltas vs the previous report.
 
-    body: same as /evaluate, plus optional ``baseline`` (prior report object).
-    Without baseline, uses the latest persisted JSONL row for the tenant.
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
     """
     from core.api.core_facade import reevaluate_code_review_gold
 

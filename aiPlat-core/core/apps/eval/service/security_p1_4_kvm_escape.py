@@ -48,6 +48,7 @@ class SecurityP14Error(ValueError):
 
 
 def default_p14_probes_path() -> Path:
+    """返回 P1-4 KVM escape probe 种子 JSON 的默认路径。"""
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -59,6 +60,14 @@ def default_p14_probes_path() -> Path:
 
 
 def load_p14_escape_probes(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载并校验 P1-4 escape probe 目录（claim 锁保持关闭）。
+
+    Args:
+        path: 可选自定义 JSON 路径；缺省用 ``default_p14_probes_path()``。
+
+    Returns:
+        probe 目录 dict（含 ``probes``，且强制 ``accuracy_claim`` 等为 false）。
+    """
     p = Path(path) if path else default_p14_probes_path()
     if not p.is_file():
         raise SecurityP14Error(f"p14_probes_missing:{p}")
@@ -98,7 +107,12 @@ def _t12_probes_opt_in() -> bool:
 
 
 def assert_not_http_escape(*, evidence_kind: str = "") -> None:
-    """HTTP black-box must never be filed as sandbox escape evidence."""
+    """禁止将 HTTP 黑盒证据登记为沙箱逃逸证据。
+
+    Args:
+        evidence_kind: 证据类型标识；``http`` / ``http_only`` / ``attack_sim`` /
+            ``s7_http`` 一律拒绝。
+    """
     kind = str(evidence_kind or "").strip().lower()
     if kind in {"http", "http_only", "attack_sim", "s7_http"}:
         raise SecurityP14Error("http_is_not_escape;use_guest_channel")
@@ -109,7 +123,12 @@ def scripted_guest_channel(
     deny_escape: bool = False,
     break_negative: bool = False,
 ) -> GuestChannel:
-    """Deterministic CI channel. deny_escape=True simulates successful breakout."""
+    """Deterministic CI channel. deny_escape=True simulates successful breakout.
+
+    Args:
+        deny_escape: deny_escape 参数。
+        break_negative: break_negative 参数。
+    """
 
     def _run(probe: Mapping[str, Any]) -> Mapping[str, Any]:
         kind = str(probe.get("kind") or "")
@@ -152,7 +171,11 @@ def scripted_guest_channel(
 def build_escape_executor(
     channel: GuestChannel,
 ) -> Callable[[Mapping[str, Any]], Mapping[str, Any]]:
-    """Adapt GuestChannel → SEC-P4 escape_executor (ok == expectation met)."""
+    """Adapt GuestChannel → SEC-P4 escape_executor (ok == expectation met).
+
+    Args:
+        channel: channel 参数。
+    """
 
     def _exec(probe: Mapping[str, Any]) -> Mapping[str, Any]:
         out = dict(channel(probe) or {})
@@ -238,7 +261,19 @@ def run_p1_4_kvm_escape(
     catalog: Optional[Mapping[str, Any]] = None,
     hooks: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Run P1-4 escape suite. Never auto-covered; HTTP evidence rejected."""
+    """Run P1-4 escape suite. Never auto-covered; HTTP evidence rejected.
+
+    Args:
+        mode: 执行/评测模式。
+        guest_channel: guest_channel 参数。
+        guest_boot: guest_boot 参数。
+        admit: admit 参数。
+        evidence_kind: evidence_kind 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+        catalog: catalog 参数。
+        hooks: hooks 参数。
+    """
     assert_not_http_escape(evidence_kind=evidence_kind)
 
     p14_cat = dict(catalog) if catalog is not None else load_p14_escape_probes()
@@ -409,7 +444,12 @@ def security_p1_4_status(
     mode: str = MODE_GUEST_SIM,
     admit: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Inventory / engineering status for P1-4 (claim locks false)."""
+    """Inventory / engineering status for P1-4 (claim locks false).
+
+    Args:
+        mode: 执行/评测模式。
+        admit: admit 参数。
+    """
     cat = load_p14_escape_probes()
     kinds = sorted(
         {

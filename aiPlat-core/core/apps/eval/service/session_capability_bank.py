@@ -1,9 +1,14 @@
-"""Session capability Case Bank — curated seeds (draft, claim=false).
+"""Session 能力 Case Bank：策展种子（draft，claim=false）。
 
-Mirrors kb/code_review_capability layout under workspace_seeds/eval/session_capability/.
-Validation / smoke go through SessionSubjectAdapter; oracle mirrors package
-session_eval (per-turn exact/non-empty + profile bounds). No Plan/EvalStore fork.
-Not first-class OBJECT_TYPES.
+职责
+----
+从 ``workspace_seeds/eval/session_capability/`` 加载 pack/cases/profile，
+供校验、smoke、回归库存快照；走 SessionSubjectAdapter，不另起 Plan/EvalStore。
+
+非目标
+------
+- 不做 live host 准确性宣称
+- 不开放 claim / certification
 """
 from __future__ import annotations
 
@@ -27,10 +32,11 @@ _PURPOSE_OK = frozenset({"purpose_ok", "reviewed", "approved", "frozen"})
 
 
 class SessionCapabilityBankError(ValueError):
-    """Seed bank load / validate failure (fail closed)."""
+    """种子库加载/校验失败（失败即关闭）。"""
 
 
 def default_seed_dir() -> Path:
+    """返回本 Case Bank 默认种子目录路径。"""
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -49,6 +55,11 @@ def _read_json(path: Path) -> Any:
 
 
 def load_pack_meta(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """读取并返回 ``pack.meta.json``。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     meta = _read_json(root / "pack.meta.json")
     if not isinstance(meta, Mapping):
@@ -59,6 +70,11 @@ def load_pack_meta(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
 def build_session_capability_cases(
     *, seed_dir: Optional[Path] = None
 ) -> List[Dict[str, Any]]:
+    """加载并规范化全部 capability case。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     cases_dir = root / "cases"
     if not cases_dir.is_dir():
@@ -84,6 +100,11 @@ def build_session_capability_cases(
 def validate_session_capability_bank(
     *, seed_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
+    """校验 pack 元数据与全部 case（经 SubjectAdapter）。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     meta = load_pack_meta(seed_dir=root)
     adapter = get_subject_adapter("session")
@@ -112,6 +133,11 @@ def validate_session_capability_bank(
 
 
 def session_smoke_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 smoke 评测 profile，并强制 ``claim_eligible=False``。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     raw = _read_json(root / "profile.session.smoke.v1.json")
     if not isinstance(raw, Mapping):
@@ -122,6 +148,11 @@ def session_smoke_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def session_regression_profile(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """加载回归 profile，校验 ``profile_id`` 与 ``quotas``。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     path = root / "profile.session.regression.v1.json"
     raw = _read_json(path)
@@ -144,7 +175,12 @@ def session_regression_status(
     seed_dir: Optional[Path] = None,
     draft_sample_limit: int = 5,
 ) -> Dict[str, Any]:
-    """Honesty snapshot: regression quotas vs bank counts (claim stays false)."""
+    """诚实快照：回归配额与库存计数对比（claim 保持 false）。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+        draft_sample_limit: 每个 capability 最多收录的 draft case_id 样本数。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     meta = load_pack_meta(seed_dir=root)
     profile = session_regression_profile(seed_dir=root)
@@ -246,6 +282,12 @@ def session_regression_status(
 def run_session_capability_smoke(
     *, seed_dir: Optional[Path] = None, limit: int = 20
 ) -> Dict[str, Any]:
+    """经 SubjectAdapter 对策展 case 执行 execute+judge+normalize（fixture smoke）。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+        limit: 最多跑多少条 case。
+    """
     adapter = get_subject_adapter("session")
     cases = build_session_capability_cases(seed_dir=seed_dir)[: max(0, int(limit))]
     rows: List[Dict[str, Any]] = []

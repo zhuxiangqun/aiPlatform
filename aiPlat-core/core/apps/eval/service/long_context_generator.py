@@ -35,7 +35,14 @@ def build_long_context_fixture(
     context_tokens_est: Optional[int] = None,
     extra_slots: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Build a validated long_context_fixture object."""
+    """Build a validated long_context_fixture object.
+
+    Args:
+        must_retain_claims: must_retain_claims 参数。
+        tier: tier 参数。
+        context_tokens_est: context_tokens_est 参数。
+        extra_slots: extra_slots 参数。
+    """
     claims = [str(c).strip() for c in must_retain_claims if str(c).strip()]
     if not claims:
         raise ValueError("must_retain_claims_required")
@@ -76,7 +83,12 @@ def render_long_context_prompt(
     *,
     question: str = "请列出上文中需要保留的关键事实。",
 ) -> str:
-    """Render prompt: plant claims, inject noise, ask retention question."""
+    """Render prompt: plant claims, inject noise, ask retention question.
+
+    Args:
+        fixture: fixture 参数。
+        question: question 参数。
+    """
     claims = [str(c).strip() for c in (fixture.get("must_retain_claims") or []) if str(c).strip()]
     parts: List[str] = ["【关键事实】"]
     for i, c in enumerate(claims, 1):
@@ -110,7 +122,15 @@ def generate_long_context_case(
     scripted_answer: Optional[str] = None,
     expect_judge_fail: bool = False,
 ) -> Dict[str, Any]:
-    """Assemble a long_context EvalCase (scripted path)."""
+    """Assemble a long_context EvalCase (scripted path).
+
+    Args:
+        case_id: 用例 ID。
+        must_retain_claims: must_retain_claims 参数。
+        tier: tier 参数。
+        scripted_answer: scripted_answer 参数。
+        expect_judge_fail: expect_judge_fail 参数。
+    """
     fixture = build_long_context_fixture(
         must_retain_claims=must_retain_claims, tier=tier
     )
@@ -153,7 +173,12 @@ def judge_long_context(
     case: Mapping[str, Any],
     result: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """A9: answer must retain must_retain_claims."""
+    """A9: answer must retain must_retain_claims.
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+    """
     fixture = case.get("long_context_fixture")
     if not isinstance(fixture, Mapping):
         return {

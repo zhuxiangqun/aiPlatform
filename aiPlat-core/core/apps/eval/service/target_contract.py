@@ -58,7 +58,11 @@ def _uniq(items: Sequence[str]) -> List[str]:
 
 
 def normalize_target_contract(raw: Mapping[str, Any] | None) -> Dict[str, Any]:
-    """Normalize/validate a contract dict; raises ValueError on hard errors."""
+    """Normalize/validate a contract dict; raises ValueError on hard errors.
+
+    Args:
+        raw: raw 参数。
+    """
     src = dict(raw or {})
     schema = str(src.get("schema") or SCHEMA).strip() or SCHEMA
     if schema != SCHEMA:
@@ -116,7 +120,22 @@ def build_target_contract(
     required_env: Optional[Sequence[str]] = None,
     source_refs: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Build a normalized contract from explicit fields (config-driven)."""
+    """Build a normalized contract from explicit fields (config-driven).
+
+    Args:
+        object_type: object_type 参数。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        target_runtime: target_runtime 参数。
+        eval_purpose: eval_purpose 参数。
+        boundaries: boundaries 参数。
+        roles: roles 参数。
+        required_env: required_env 参数。
+        source_refs: source_refs 参数。
+    """
     return normalize_target_contract(
         {
             "schema": SCHEMA,
@@ -149,8 +168,15 @@ def build_agent_target_contract(
 ) -> Dict[str, Any]:
     """Agent contract from explicit profile fields — never ``if agent_id ==``.
 
-    Prefer ``eval_profile`` keys when present; fall back to passed lists.
-    Missing version → version_unspecified.
+    Args:
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
     """
     profile = dict(eval_profile or {})
     caps = capabilities if capabilities is not None else profile.get("capabilities")

@@ -33,6 +33,13 @@ def _map_ops_errors(exc: BaseException) -> HTTPException:
 
 @router.post("/runs/{run_id}/evaluate", response_model=StatusResponse)
 async def submit_run_evaluation(run_id: str, request: dict, http_request: Request):
+    """submit_run_evaluation。
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -55,6 +62,12 @@ async def submit_run_evaluation(run_id: str, request: dict, http_request: Reques
 
 @router.post("/runs/{run_id}/evaluate/auto", response_model=StatusResponse)
 async def auto_evaluate_run(run_id: str, http_request: Request):
+    """auto_evaluate_run。
+
+    Args:
+        run_id: 运行 ID。
+        http_request: http_request 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={"run_id": str(run_id)},
@@ -74,6 +87,11 @@ async def auto_evaluate_run(run_id: str, http_request: Request):
 
 @router.get("/runs/{run_id}/evaluation/latest", response_model=ItemResponse)
 async def get_latest_run_evaluation(run_id: str):
+    """获取 latest_run_evaluation。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import runs_eval_latest
 
     try:
@@ -84,6 +102,11 @@ async def get_latest_run_evaluation(run_id: str):
 
 @router.get("/runs/{run_id}/investigate/latest", response_model=ItemResponse)
 async def get_latest_investigate_report(run_id: str):
+    """获取 latest_investigate_report。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import runs_eval_investigate_latest
 
     try:
@@ -94,6 +117,12 @@ async def get_latest_investigate_report(run_id: str):
 
 @router.post("/runs/{run_id}/investigate/auto", response_model=StatusResponse)
 async def auto_investigate_run(run_id: str, http_request: Request):
+    """auto_investigate_run。
+
+    Args:
+        run_id: 运行 ID。
+        http_request: http_request 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={"run_id": str(run_id)},
@@ -113,6 +142,11 @@ async def auto_investigate_run(run_id: str, http_request: Request):
 
 @router.get("/runs/{run_id}/state/latest", response_model=ItemResponse)
 async def get_latest_run_state(run_id: str):
+    """获取 latest_run_state。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import runs_eval_state_latest
 
     try:
@@ -123,6 +157,11 @@ async def get_latest_run_state(run_id: str):
 
 @router.get("/runs/{run_id}/evidence_pack/latest", response_model=ItemResponse)
 async def get_latest_evidence_pack(run_id: str):
+    """获取 latest_evidence_pack。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import runs_eval_evidence_pack_latest
 
     try:
@@ -135,6 +174,13 @@ async def get_latest_evidence_pack(run_id: str):
 async def compute_run_evidence_diff(
     run_id: str, request: EvidenceDiffRequest, http_request: Request
 ):
+    """计算 run_evidence_diff。
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = request.dict(exclude_none=True) if hasattr(request, "dict") else {}
     deny = await rbac_guard(
         http_request=http_request,
@@ -159,6 +205,13 @@ async def compute_run_evidence_diff(
 
 @router.post("/runs/{run_id}/state", response_model=StatusResponse)
 async def upsert_run_state(run_id: str, request: dict, http_request: Request):
+    """upsert_run_state。
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -184,6 +237,11 @@ async def upsert_run_state(run_id: str, request: dict, http_request: Request):
 
 @router.get("/runs/{run_id}/evidence", response_model=ItemResponse)
 async def get_run_evidence(run_id: str):
+    """获取 run_evidence。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import runs_eval_evidence
 
     try:

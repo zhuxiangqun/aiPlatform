@@ -225,7 +225,13 @@ def subject_regression_inventory(
     workspace_id: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Honesty matrix across Subject regression banks (claim stays false)."""
+    """Honesty matrix across Subject regression banks (claim stays false).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        workspace_id: workspace 标识。
+        caller_workspace_id: caller_workspace 标识。
+    """
     rows: List[Dict[str, Any]] = []
     for kind, ot_member, tab_id, loader in _loaders():
         err: Optional[str] = None

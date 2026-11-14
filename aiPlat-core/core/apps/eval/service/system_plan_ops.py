@@ -64,7 +64,15 @@ async def run_system_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Execute typed sub-exams and aggregate runtime_parts + system Plan stamp."""
+    """Execute typed sub-exams and aggregate runtime_parts + system Plan stamp.
+
+    Args:
+        object_id: object 标识。
+        parts: parts 参数。
+        live: 是否 live（非 fixture）路径。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.eval_plan import (
         attach_evaluation_plan,
         compile_plan_for_object,

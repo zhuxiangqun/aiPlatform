@@ -142,7 +142,11 @@ def _write_last_action(agent_id: str, payload: Dict[str, Any]) -> None:
 
 
 def inspect_agent_eval(agent_id: str) -> Dict[str, Any]:
-    """Read-only snapshot: dimensions, files, traces. Never writes."""
+    """Read-only snapshot: dimensions, files, traces. Never writes.
+
+    Args:
+        agent_id: agent 标识。
+    """
     aid = str(agent_id or "").strip()
     info = _read_agent_md(aid) if aid else None
     if not aid:
@@ -446,8 +450,12 @@ async def generate_agent_eval(
 ) -> Dict[str, Any]:
     """Generate scoring_dimensions + eval_metric/eval_runner for one Agent.
 
-    Skip (auditable) when: not found / self-generator / already complete /
-    no traces yet. Listing must not fail because of this call.
+    Args:
+        agent_id: agent 标识。
+        force: 是否强制。
+        max_traces: max_traces 参数。
+        run_runner: run_runner 参数。
+        use_llm: use_llm 参数。
     """
     snap = inspect_agent_eval(agent_id)
     aid = str(snap.get("agent_id") or agent_id or "").strip()
@@ -524,7 +532,11 @@ async def generate_agent_eval(
 
 
 def enqueue_listed_agent_eval(agent_id: str) -> None:
-    """Fire-and-forget after 上架. Failures are logged, never raise to the caller."""
+    """Fire-and-forget after 上架. Failures are logged, never raise to the caller.
+
+    Args:
+        agent_id: agent 标识。
+    """
     import asyncio
 
     aid = str(agent_id or "").strip()

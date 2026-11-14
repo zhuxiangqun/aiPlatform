@@ -311,10 +311,12 @@ def run_linux_microvm_probes(
 ) -> Dict[str, Any]:
     """Run SEC-P4 Linux probed path. Never auto-covered; never process_split.
 
-    ``guest_sim`` completes probes with simulated deny/allow matching expect.
-    ``guest_live`` (SEC-P4b) requires AIPLAT_EVAL_T12_GUEST_LIVE=1, wires eval
-    microVM hooks, runs negative_control via host allowlist CLI, and only
-    completes deny-escape when ``escape_executor`` is injected (no fake green).
+    Args:
+        mode: 执行/评测模式。
+        catalog: catalog 参数。
+        admit: admit 参数。
+        hooks: hooks 参数。
+        escape_executor: escape_executor 参数。
     """
     m = str(mode or MODE_GUEST_SIM).strip()
     if m not in _VALID_MODES:
@@ -498,7 +500,16 @@ def security_sec_p4_status(
     hooks: Optional[Mapping[str, Any]] = None,
     escape_executor: Optional[EscapeExecutor] = None,
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P4/P4b status: probed path + isolation state machine."""
+    """Facade-friendly SEC-P4/P4b status: probed path + isolation state machine.
+
+    Args:
+        mode: 执行/评测模式。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+        admit: admit 参数。
+        hooks: hooks 参数。
+        escape_executor: escape_executor 参数。
+    """
     adm = dict(admit) if admit is not None else _try_microvm_admit()
     probe_run = run_linux_microvm_probes(
         mode=mode,

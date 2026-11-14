@@ -66,14 +66,23 @@ class MethodTrackError(ValueError):
 
 
 def list_method_kinds() -> List[str]:
+    """列出 method_kinds。
+    """
     return sorted(METHOD_KINDS)
 
 
 def is_method_kind(kind: str) -> bool:
+    """is_method_kind。
+
+    Args:
+        kind: kind 参数。
+    """
     return (kind or "").strip().lower() in METHOD_KINDS
 
 
 def method_catalog() -> List[Dict[str, Any]]:
+    """method_catalog。
+    """
     rows: List[Dict[str, Any]] = []
     for kind in list_method_kinds():
         row = dict(_METHOD_ROWS[kind])
@@ -83,14 +92,22 @@ def method_catalog() -> List[Dict[str, Any]]:
 
 
 def assert_not_subject_method(kind: str) -> None:
-    """Fail closed when a Method kind is requested as SubjectAdapter."""
+    """Fail closed when a Method kind is requested as SubjectAdapter.
+
+    Args:
+        kind: kind 参数。
+    """
     k = (kind or "").strip().lower()
     if k in METHOD_KINDS:
         raise MethodTrackError(f"method_track_not_subject:{k}")
 
 
 def assert_subject_kinds_exclude_methods(subject_kinds: List[str]) -> Dict[str, Any]:
-    """Validate a subject kind list never contains Method kinds."""
+    """Validate a subject kind list never contains Method kinds.
+
+    Args:
+        subject_kinds: subject_kinds 参数。
+    """
     bad = sorted({(k or "").strip().lower() for k in subject_kinds} & METHOD_KINDS)
     return {
         "schema": METHOD_TRACK_SCHEMA,

@@ -54,7 +54,13 @@ def stamp_eval_report_metrics(
     scoring: Optional[Mapping[str, Any]] = None,
     meta: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Delegate to package ensure_report_scoring (P1b stamp + meta)."""
+    """Delegate to package ensure_report_scoring (P1b stamp + meta).
+
+    Args:
+        metrics: metrics 参数。
+        scoring: scoring 参数。
+        meta: meta 参数。
+    """
     mod = _load_scoring_module("report_stamp.py", "aiplat_eval_report_stamp")
     return mod.ensure_report_scoring(metrics, scoring=scoring, meta=meta)
 
@@ -63,7 +69,12 @@ def compare_eval_reports(
     baseline: Mapping[str, Any],
     candidate: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Delegate to package SSOT compare_reports."""
+    """Delegate to package SSOT compare_reports.
+
+    Args:
+        baseline: baseline 参数。
+        candidate: candidate 参数。
+    """
     mod = _load_compare_module()
     return mod.compare_reports(baseline, candidate)
 
@@ -74,7 +85,13 @@ def compare_eval_reports_by_id(
     *,
     tenant_id: str = "eval-v1",
 ) -> Dict[str, Any]:
-    """Load two store reports then compare (cohost path)."""
+    """Load two store reports then compare (cohost path).
+
+    Args:
+        baseline_id: baseline 标识。
+        candidate_id: candidate 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     store = get_eval_store(tenant_id=tenant_id)

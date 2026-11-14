@@ -27,7 +27,8 @@ def _str_list(v: Any) -> List[str]:
 def validate_session_case_fields(case: Mapping[str, Any] | None) -> List[str]:
     """Validate session_group / turn_index / memory_probe on one case.
 
-    Empty errors when none of the session fields are present (text-only case).
+    Args:
+        case: case 参数。
     """
     if not isinstance(case, Mapping):
         return ["missing_field:case"]
@@ -75,7 +76,11 @@ def validate_session_case_fields(case: Mapping[str, Any] | None) -> List[str]:
 def validate_session_group_unique_turns(
     cases: Sequence[Mapping[str, Any]],
 ) -> List[str]:
-    """Volume-level: turn_index unique within each session_group."""
+    """Volume-level: turn_index unique within each session_group.
+
+    Args:
+        cases: 用例列表。
+    """
     by_group: Dict[str, List[int]] = {}
     errors: List[str] = []
     for case in cases:

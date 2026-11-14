@@ -42,7 +42,11 @@ class CapabilityCoverageFillError(ValueError):
 def subject_capability_scope(
     subject_kind: str = "agent",
 ) -> Tuple[Set[str], Set[str]]:
-    """Return (in_scope, out_of_scope) capability ids for a Subject."""
+    """Return (in_scope, out_of_scope) capability ids for a Subject.
+
+    Args:
+        subject_kind: subject_kind 参数。
+    """
     kind = str(subject_kind or "agent").strip().lower() or "agent"
     if kind == "agent":
         return set(V1_IN_SCOPE), set(V1_OUT_OF_SCOPE)
@@ -67,7 +71,14 @@ def resolve_coverage_context(
     subject_kind: str = "",
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Tuple[List[Dict[str, Any]], str, Optional[Dict[str, Any]]]:
-    """Resolve bank + Subject kind + normalized profile for coverage/fill."""
+    """Resolve bank + Subject kind + normalized profile for coverage/fill.
+
+    Args:
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        cases: 用例列表。
+    """
     from core.apps.eval.service.capability_case_bank import get_suite_profile
     from core.apps.eval.service.subject_suite_profiles import (
         SubjectSuiteProfileError,
@@ -183,7 +194,15 @@ def analyze_capability_coverage(
     subject_kind: str = "",
     min_per_capability: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Per-capability have/need/gap vs Profile quotas or flat minimum."""
+    """Per-capability have/need/gap vs Profile quotas or flat minimum.
+
+    Args:
+        cases: 用例列表。
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+    """
     rows, kind, prof = resolve_coverage_context(
         profile=profile,
         profile_id=profile_id,
@@ -309,7 +328,18 @@ def generate_coverage_fill_candidates(
     seed: str = "7",
     ops: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Generate draft candidates for each capability gap (mutation or template)."""
+    """Generate draft candidates for each capability gap (mutation or template).
+
+    Args:
+        cases: 用例列表。
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        method: method 参数。
+        seed: seed 参数。
+        ops: ops 参数。
+    """
     method_l = str(method or "mutation").strip().lower() or "mutation"
     if method_l not in ("mutation", "template"):
         raise CapabilityCoverageFillError(
@@ -463,9 +493,20 @@ def fill_capability_coverage(
 ) -> Dict[str, Any]:
     """Analyze gaps → propose candidates → optionally expand non-frozen pack.
 
-    ``apply=False`` (default): dry proposal only.
-    ``apply=True``: expand_draft_workspace_pack with candidates (pack must be
-    expandable; frozen packs fail closed — bump first).
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        method: method 参数。
+        seed: seed 参数。
+        ops: ops 参数。
+        apply: apply 参数。
+        cases: 用例列表。
     """
     wid = str(workspace_id or "").strip()
     if not wid:

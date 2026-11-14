@@ -30,6 +30,12 @@ def _map_ops_errors(exc: BaseException) -> HTTPException:
 
 @router.post("/skill-evals/suites", response_model=StatusResponse)
 async def upsert_skill_eval_suite(request: dict, http_request: Request):
+    """upsert_skill_eval_suite。
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
     deny = await rbac_guard(
@@ -54,7 +60,12 @@ async def upsert_skill_eval_suite(request: dict, http_request: Request):
 async def ensure_builtin_skill_eval_suites(
     request: dict, http_request: Request
 ):
-    """Idempotent seed: builtin_trigger_demo for Eval Skills empty-state."""
+    """Idempotent seed: builtin_trigger_demo for Eval Skills empty-state.
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
     deny = await rbac_guard(
@@ -83,7 +94,13 @@ async def skill_eval_preflight_api(
     eval_kind: str = "trigger",
     mode: str = "heuristic",
 ):
-    """Pre-run readiness: store / builtin / skill_manager|store_direct."""
+    """Pre-run readiness: store / builtin / skill_manager|store_direct.
+
+    Args:
+        tenant_id: 租户 ID。
+        eval_kind: eval_kind 参数。
+        mode: 执行/评测模式。
+    """
     from core.api.core_facade import skill_eval_preflight
 
     try:
@@ -101,6 +118,13 @@ async def skill_eval_preflight_api(
 async def list_skill_eval_suites(
     limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None
 ):
+    """列出 skill_eval_suites。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+    """
     from core.api.core_facade import skill_eval_list_suites
 
     try:
@@ -115,6 +139,11 @@ async def list_skill_eval_suites(
 
 @router.get("/skill-evals/suites/{suite_id}", response_model=ItemResponse)
 async def get_skill_eval_suite(suite_id: str):
+    """获取 skill_eval_suite。
+
+    Args:
+        suite_id: 套件 ID。
+    """
     from core.api.core_facade import skill_eval_get_suite
 
     try:
@@ -126,6 +155,12 @@ async def get_skill_eval_suite(suite_id: str):
 
 @router.delete("/skill-evals/suites/{suite_id}", response_model=StatusResponse)
 async def delete_skill_eval_suite(suite_id: str, http_request: Request):
+    """删除 skill_eval_suite。
+
+    Args:
+        suite_id: 套件 ID。
+        http_request: http_request 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -146,6 +181,13 @@ async def delete_skill_eval_suite(suite_id: str, http_request: Request):
 
 @router.post("/skill-evals/suites/{suite_id}/run", response_model=ItemResponse)
 async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Request):
+    """执行 skill_eval_suite。
+
+    Args:
+        suite_id: 套件 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
     deny = await rbac_guard(
@@ -172,6 +214,11 @@ async def run_skill_eval_suite(suite_id: str, request: dict, http_request: Reque
 
 @router.get("/skill-evals/runs/{run_id}", response_model=ItemResponse)
 async def get_skill_eval_run(run_id: str):
+    """获取 skill_eval_run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import skill_eval_get_run
 
     try:
@@ -182,6 +229,13 @@ async def get_skill_eval_run(run_id: str):
 
 @router.get("/skill-evals/runs/{run_id}/results", response_model=ItemResponse)
 async def list_skill_eval_results(run_id: str, limit: int = 200, offset: int = 0):
+    """列出 skill_eval_results。
+
+    Args:
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.api.core_facade import skill_eval_list_results
 
     try:
@@ -196,6 +250,13 @@ async def list_skill_eval_results(run_id: str, limit: int = 200, offset: int = 0
 async def suggest_trigger_improvements(
     run_id: str, request: dict, http_request: Request
 ):
+    """suggest_trigger_improvements。
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     deny = await rbac_guard(
         http_request=http_request,
@@ -221,6 +282,13 @@ async def suggest_trigger_improvements(
 async def apply_skill_eval_suggestion(
     suite_id: str, request: dict, http_request: Request
 ):
+    """apply_skill_eval_suggestion。
+
+    Args:
+        suite_id: 套件 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     deny = await rbac_guard(
         http_request=http_request,
@@ -247,6 +315,13 @@ async def apply_skill_eval_suggestion(
 async def apply_skill_md_suggestion(
     suite_id: str, request: dict, http_request: Request
 ):
+    """apply_skill_md_suggestion。
+
+    Args:
+        suite_id: 套件 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
     deny = await rbac_guard(
@@ -271,6 +346,12 @@ async def apply_skill_md_suggestion(
 
 @router.post("/skill-evals/compare", response_model=StatusResponse)
 async def compare_skill_eval_runs(request: dict, http_request: Request):
+    """compare_skill_eval_runs。
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     deny = await rbac_guard(
         http_request=http_request,
@@ -296,6 +377,13 @@ async def compare_skill_eval_runs(request: dict, http_request: Request):
 async def create_skill_eval_job(
     suite_id: str, request: dict, http_request: Request
 ):
+    """创建 skill_eval_job。
+
+    Args:
+        suite_id: 套件 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     body = dict(request or {}) if isinstance(request, dict) else {}
     actor = actor_from_http(http_request, body)
     deny = await rbac_guard(

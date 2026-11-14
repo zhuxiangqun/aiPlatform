@@ -16,7 +16,11 @@ def _nonempty_str(v: Any) -> str:
 
 
 def validate_mock_tool(tool: Mapping[str, Any] | None) -> List[str]:
-    """Return error codes for one tool entry; empty = pass."""
+    """Return error codes for one tool entry; empty = pass.
+
+    Args:
+        tool: tool 参数。
+    """
     errors: List[str] = []
     if not isinstance(tool, Mapping):
         return ["missing_field:tool"]
@@ -70,7 +74,11 @@ def validate_mock_tool(tool: Mapping[str, Any] | None) -> List[str]:
 
 
 def validate_mock_tool_catalog(catalog: Mapping[str, Any] | None) -> List[str]:
-    """Return error codes for a catalog document; empty = pass."""
+    """Return error codes for a catalog document; empty = pass.
+
+    Args:
+        catalog: catalog 参数。
+    """
     if not isinstance(catalog, Mapping):
         return ["missing_field:catalog"]
     errors: List[str] = []
@@ -104,6 +112,11 @@ def validate_mock_tool_catalog(catalog: Mapping[str, Any] | None) -> List[str]:
 def assert_mock_tool_catalog_valid(
     catalog: Mapping[str, Any] | None,
 ) -> Dict[str, Any]:
+    """assert_mock_tool_catalog_valid。
+
+    Args:
+        catalog: catalog 参数。
+    """
     errs = validate_mock_tool_catalog(catalog)
     if errs:
         raise ValueError("mock_tool_catalog_invalid:" + ",".join(errs))

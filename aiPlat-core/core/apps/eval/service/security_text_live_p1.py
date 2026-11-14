@@ -86,7 +86,17 @@ def build_locked_subject(
     tool_contract: str = "none",
     retrieval_contract: str = "none",
 ) -> Dict[str, Any]:
-    """Subject = Agent × ImplMode × Config × Model × RuntimeTier (+ contracts)."""
+    """Subject = Agent × ImplMode × Config × Model × RuntimeTier (+ contracts).
+
+    Args:
+        agent_id: agent 标识。
+        impl_mode: impl_mode 参数。
+        config: 配置 dict。
+        model: 模型名。
+        runtime_tier: runtime_tier 参数。
+        tool_contract: tool_contract 参数。
+        retrieval_contract: retrieval_contract 参数。
+    """
     cfg = dict(config or {"tools": [], "retrieval": False, "eval_p1_1": True})
     mode = str(impl_mode or "").strip()
     if not mode:
@@ -116,6 +126,11 @@ def build_locked_subject(
 
 
 def environment_for_family(family_id: str) -> Dict[str, Any]:
+    """environment_for_family。
+
+    Args:
+        family_id: family 标识。
+    """
     fid = str(family_id)
     if fid in TEXT_ENV_FAMILIES:
         return {
@@ -148,7 +163,21 @@ def build_evidence_card(
     owner: str = "",
     extra: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Minimal evidence card (improvement plan §4.1)."""
+    """Minimal evidence card (improvement plan §4.1).
+
+    Args:
+        claim: claim 参数。
+        subject: subject 参数。
+        pack: pack 参数。
+        runtime: runtime 参数。
+        environment: environment 参数。
+        n: n 参数。
+        ci: ci 参数。
+        result: result 参数。
+        evidence_path: 路径。
+        owner: owner 参数。
+        extra: extra 参数。
+    """
     allowed = {
         "pass",
         "fail",
@@ -184,6 +213,8 @@ def build_evidence_card(
 
 
 def default_safety_cases_path() -> Path:
+    """default_safety_cases_path。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -199,7 +230,12 @@ def load_text_live_cases(
     path: Optional[Path] = None,
     catalog: Optional[Mapping[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
-    """Load safety cases whose threat_ids intersect text-env families."""
+    """Load safety cases whose threat_ids intersect text-env families.
+
+    Args:
+        path: 文件或目录路径。
+        catalog: catalog 参数。
+    """
     p = Path(path) if path else default_safety_cases_path()
     if not p.is_file():
         raise SecurityTextLiveError(f"cases_missing:{p}")
@@ -266,7 +302,13 @@ async def execute_text_case(
     subject: Mapping[str, Any],
     live: bool = False,
 ) -> Dict[str, Any]:
-    """Execute one case via create_agent. live=False → scripted (CI)."""
+    """Execute one case via create_agent. live=False → scripted (CI).
+
+    Args:
+        case: case 参数。
+        subject: subject 参数。
+        live: 是否 live（非 fixture）路径。
+    """
     # Guard: reject model_only path
     if str(subject.get("runtime_tier") or "") == "chat_completions":
         return {
@@ -374,7 +416,17 @@ async def run_text_family_live(
     catalog: Optional[Mapping[str, Any]] = None,
     owner: str = "eval",
 ) -> Dict[str, Any]:
-    """Run text-env families under locked Subject; emit family report + evidence cards."""
+    """Run text-env families under locked Subject; emit family report + evidence cards.
+
+    Args:
+        impl_mode: impl_mode 参数。
+        agent_id: agent 标识。
+        model: 模型名。
+        live: 是否 live（非 fixture）路径。
+        cases: 用例列表。
+        catalog: catalog 参数。
+        owner: owner 参数。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     subject = build_locked_subject(
         agent_id=agent_id,
@@ -503,7 +555,12 @@ def security_text_live_p1_status(
     impl_mode: str = "conversational",
     live: bool = False,
 ) -> Dict[str, Any]:
-    """Sync status helper for facade / diagnostics (runs scripted path)."""
+    """Sync status helper for facade / diagnostics (runs scripted path).
+
+    Args:
+        impl_mode: impl_mode 参数。
+        live: 是否 live（非 fixture）路径。
+    """
     import asyncio
 
     try:

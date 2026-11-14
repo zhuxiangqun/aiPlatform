@@ -86,8 +86,16 @@ def evaluate_certification_readiness(
 ) -> Dict[str, Any]:
     """Score §8.5 checklist relative to a Profile; never unlocks certification/claim.
 
-    ``profile_complete`` = relative completeness vs declared in-scope + quotas.
-    ``certification_eligible`` is always false (external audit required — P5 另立项).
+    Args:
+        profile_id: profile 标识。
+        profile: profile 参数。
+        subject_kind: subject_kind 参数。
+        cases: 用例列表。
+        pack_kind: pack_kind 参数。
+        pack_status: pack_status 参数。
+        judge_agreement: judge_agreement 参数。
+        judge_threshold: judge_threshold 参数。
+        compile_plan: compile_plan 参数。
     """
     try:
         bank, kind, prof = resolve_coverage_context(

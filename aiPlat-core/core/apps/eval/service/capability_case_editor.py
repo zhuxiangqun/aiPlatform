@@ -48,6 +48,11 @@ def _cap_of(case: Mapping[str, Any]) -> str:
 
 
 def resolve_capability_id_safe(raw: str) -> str:
+    """resolve_capability_id_safe。
+
+    Args:
+        raw: raw 参数。
+    """
     return resolve_capability_ids([raw], fail_closed=True)[0]
 
 
@@ -70,7 +75,11 @@ def list_seed_capability_cases(
     *,
     capability_id: str = "",
 ) -> Dict[str, Any]:
-    """Read-only browse of repo seed bank (not workspace)."""
+    """Read-only browse of repo seed bank (not workspace).
+
+    Args:
+        capability_id: capability 标识。
+    """
     rows = build_agent_capability_cases()
     cap = str(capability_id or "").strip()
     if cap:
@@ -90,6 +99,11 @@ def list_seed_capability_cases(
 
 
 def get_seed_capability_case(*, case_id: str) -> Dict[str, Any]:
+    """获取 seed_capability_case。
+
+    Args:
+        case_id: 用例 ID。
+    """
     cid = str(case_id or "").strip()
     if not cid:
         raise CapabilityCaseEditorError("case_id required")
@@ -147,6 +161,15 @@ def list_workspace_pack_cases(
     capability_id: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """列出 workspace_pack_cases。
+
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        capability_id: capability 标识。
+        caller_workspace_id: caller_workspace 标识。
+    """
     meta, _payload, cases = _load_workspace_pack(
         pack_id=pack_id,
         version=version,
@@ -186,6 +209,15 @@ def get_workspace_pack_case(
     version: str = PACK_VERSION,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """获取 workspace_pack_case。
+
+    Args:
+        workspace_id: workspace 标识。
+        case_id: 用例 ID。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+    """
     cid = str(case_id or "").strip()
     if not cid:
         raise CapabilityCaseEditorError("case_id required")
@@ -355,7 +387,15 @@ def upsert_workspace_pack_case(
     version: str = PACK_VERSION,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Create or replace one case in an editable workspace pack."""
+    """Create or replace one case in an editable workspace pack.
+
+    Args:
+        workspace_id: workspace 标识。
+        case: case 参数。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+    """
     if not isinstance(case, Mapping):
         raise CapabilityCaseEditorError("case must be object")
     normalized = _normalize_editor_case(case)
@@ -402,6 +442,15 @@ def delete_workspace_pack_case(
     version: str = PACK_VERSION,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """删除 workspace_pack_case。
+
+    Args:
+        workspace_id: workspace 标识。
+        case_id: 用例 ID。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+    """
     cid = str(case_id or "").strip()
     if not cid:
         raise CapabilityCaseEditorError("case_id required")
@@ -436,7 +485,15 @@ def open_capability_bank_editor(
     caller_workspace_id: str = "",
     bump_if_frozen: bool = True,
 ) -> Dict[str, Any]:
-    """Ensure an editable workspace pack exists (seed → draft, or bump frozen)."""
+    """Ensure an editable workspace pack exists (seed → draft, or bump frozen).
+
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+        bump_if_frozen: bump_if_frozen 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CapabilityCaseEditorError("workspace_id required")

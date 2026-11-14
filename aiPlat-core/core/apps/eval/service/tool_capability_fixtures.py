@@ -31,7 +31,12 @@ def load_tool_capability_fixture_cases(
     seed_dir: Optional[Path] = None,
     capability_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Load fixtures/{cap}/cases.json arrays for tool caps."""
+    """Load fixtures/{cap}/cases.json arrays for tool caps.
+
+    Args:
+        seed_dir: 种子目录；None 用默认。
+        capability_id: capability 标识。
+    """
     root = _fixtures_root(seed_dir)
     caps = [capability_id] if capability_id else list(FIXTURE_CAPS)
     rows: List[Dict[str, Any]] = []
@@ -52,6 +57,11 @@ def load_tool_capability_fixture_cases(
 def load_session_fixture_cases(
     *, seed_dir: Optional[Path] = None
 ) -> List[Dict[str, Any]]:
+    """加载 session_fixture_cases。
+
+    Args:
+        seed_dir: 种子目录；None 用默认。
+    """
     path = _fixtures_root(seed_dir) / SESSION_FIXTURE_CAP / "cases.json"
     if not path.is_file():
         return []
@@ -66,7 +76,12 @@ def run_tool_fixture_suite(
     seed_dir: Optional[Path] = None,
     capability_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Execute+judge each tool fixture case (scripted tool_calls). claim stays false."""
+    """Execute+judge each tool fixture case (scripted tool_calls). claim stays false.
+
+    Args:
+        seed_dir: 种子目录；None 用默认。
+        capability_id: capability 标识。
+    """
     adapter = get_subject_adapter("agent")
     cases = load_tool_capability_fixture_cases(
         seed_dir=seed_dir, capability_id=capability_id
@@ -123,7 +138,11 @@ def run_tool_fixture_suite(
 def run_session_fixture_suite(
     *, seed_dir: Optional[Path] = None
 ) -> Dict[str, Any]:
-    """Run A8 multi_turn_memory fixture groups via session runner."""
+    """Run A8 multi_turn_memory fixture groups via session runner.
+
+    Args:
+        seed_dir: 种子目录；None 用默认。
+    """
     cases = load_session_fixture_cases(seed_dir=seed_dir)
     groups = group_session_cases(cases)
     results: List[Dict[str, Any]] = []

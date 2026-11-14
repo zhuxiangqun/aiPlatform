@@ -316,6 +316,8 @@ def _bank_specs() -> Dict[str, Dict[str, Any]]:
 
 
 def list_promotable_subject_kinds() -> List[str]:
+    """列出 promotable_subject_kinds。
+    """
     return sorted(_bank_specs().keys())
 
 
@@ -379,9 +381,10 @@ def stamp_subject_seed_purpose_ok(
 ) -> Dict[str, Any]:
     """Validate + content_purpose_ok → write purpose_ok into seed case JSON.
 
-    Writes ``cases/*.json``; for agent also stamps ``fixtures/*/cases.json``
-    (skips expect_judge_fail). Does **not** freeze pack.meta / workspace
-    registry. claim_eligible stays false.
+    Args:
+        subject_kind: subject_kind 参数。
+        reviewer: reviewer 参数。
+        seed_dir: 种子目录；None 用默认。
     """
     from core.apps.eval.service.content_purpose_ok import (
         ContentPurposeOkError,
@@ -468,7 +471,11 @@ def stamp_subject_seed_purpose_ok(
 def stamp_all_subject_seed_purpose_ok(
     *, reviewer: str = "owner"
 ) -> Dict[str, Any]:
-    """Stamp purpose_ok on every non-agent promotable Subject seed bank."""
+    """Stamp purpose_ok on every non-agent promotable Subject seed bank.
+
+    Args:
+        reviewer: reviewer 参数。
+    """
     rows: List[Dict[str, Any]] = []
     errors: List[Dict[str, str]] = []
     for kind in sorted(_bank_specs().keys()):
@@ -505,8 +512,10 @@ def freeze_subject_seed_pack_meta(
 ) -> Dict[str, Any]:
     """Freeze seed pack.meta.json after all cases are purpose_ok (claim=false).
 
-    Unlocks seed ``profile_complete`` (quota + purpose_ok + pack_frozen). Does
-    **not** write workspace Case Pack registry; claim/Certification stay closed.
+    Args:
+        subject_kind: subject_kind 参数。
+        reviewer: reviewer 参数。
+        seed_dir: 种子目录；None 用默认。
     """
     from core.apps.eval.service.content_purpose_ok import (
         ContentPurposeOkError,
@@ -621,7 +630,11 @@ def freeze_subject_seed_pack_meta(
 def freeze_all_subject_seed_pack_meta(
     *, reviewer: str = "owner"
 ) -> Dict[str, Any]:
-    """Freeze pack.meta on every non-agent promotable Subject seed bank."""
+    """Freeze pack.meta on every non-agent promotable Subject seed bank.
+
+    Args:
+        reviewer: reviewer 参数。
+    """
     rows: List[Dict[str, Any]] = []
     errors: List[Dict[str, str]] = []
     for kind in sorted(_bank_specs().keys()):
@@ -663,8 +676,15 @@ def promote_subject_capability_bank(
 ) -> Dict[str, Any]:
     """Validate seed bank → stamp purpose_ok → draft → approve → freeze.
 
-    claim_eligible / accuracy_claim stay false. Agent delegates to existing
-    ``promote_agent_capability_bank``.
+    Args:
+        subject_kind: subject_kind 参数。
+        workspace_id: workspace 标识。
+        reviewer: reviewer 参数。
+        frozen_by: frozen_by 参数。
+        pack_id: pack 标识。
+        version: 版本号。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
     """
     from core.apps.eval.service.method_track import assert_not_subject_method
 
@@ -844,7 +864,15 @@ def promote_all_subject_capability_banks(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Promote every promotable Subject seed bank into one workspace (claim=false)."""
+    """Promote every promotable Subject seed bank into one workspace (claim=false).
+
+    Args:
+        workspace_id: workspace 标识。
+        reviewer: reviewer 参数。
+        frozen_by: frozen_by 参数。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise SubjectCapabilityPromoteError("workspace_id required")

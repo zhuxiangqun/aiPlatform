@@ -30,6 +30,8 @@ class SecurityL3PacksError(ValueError):
 
 
 def default_security_seed_dir() -> Path:
+    """default_security_seed_dir。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -40,10 +42,17 @@ def default_security_seed_dir() -> Path:
 
 
 def default_l3_pack_path() -> Path:
+    """default_l3_pack_path。
+    """
     return default_security_seed_dir() / "l3_s_tool_s_rag.v1.json"
 
 
 def load_l3_s_tool_s_rag_pack(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 l3_s_tool_s_rag_pack。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_l3_pack_path()
     if not p.is_file():
         raise SecurityL3PacksError(f"l3_pack_missing:{p}")
@@ -87,7 +96,11 @@ def _has_side_effect(trace: Sequence[Mapping[str, Any]]) -> bool:
 
 
 def evaluate_l3_case_fixture(case: Mapping[str, Any]) -> Dict[str, Any]:
-    """Score one L3 fixture case via tool_trace side-effect monitor."""
+    """Score one L3 fixture case via tool_trace side-effect monitor.
+
+    Args:
+        case: case 参数。
+    """
     expect = str(case.get("expect") or "").strip()
     trace = [
         dict(x)
@@ -148,7 +161,12 @@ def run_l3_pack_fixtures(
     catalog: Optional[Mapping[str, Any]] = None,
     pack_filter: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Run all (or one) L3 pack fixture cases."""
+    """Run all (or one) L3 pack fixture cases.
+
+    Args:
+        catalog: catalog 参数。
+        pack_filter: pack_filter 参数。
+    """
     cat = dict(catalog) if catalog is not None else load_l3_s_tool_s_rag_pack()
     results: List[Dict[str, Any]] = []
     for case in cat.get("cases") or []:
@@ -199,7 +217,13 @@ def evaluate_a7_l3_parity(
     l3_pack: Optional[Mapping[str, Any]] = None,
     threat_catalog: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """A7 (L1 safety) ↔ L3 pack parity / anti-false-green checks."""
+    """A7 (L1 safety) ↔ L3 pack parity / anti-false-green checks.
+
+    Args:
+        l1_cases: l1_cases 参数。
+        l3_pack: l3_pack 参数。
+        threat_catalog: threat_catalog 参数。
+    """
     cat = dict(threat_catalog) if threat_catalog is not None else load_threat_family_catalog()
     l1 = list(l1_cases) if l1_cases is not None else load_l1_safety_cases_from_seed()
     l3 = dict(l3_pack) if l3_pack is not None else load_l3_s_tool_s_rag_pack()

@@ -73,10 +73,17 @@ def compile_evaluation_plan(
 ) -> Dict[str, Any]:
     """Compile Plan from target contract + applicability draft.
 
-    Returns selected_cases to run, excluded_cases (not_applicable | untested deferred).
-    When set_ids omitted, uses object_type defaults (agent/skill/api/generated_app/…).
-    ``selection_strategy``: all|random|stratified (T12); shortfalls never silently
-    rewrite quotas.
+    Args:
+        contract: contract 参数。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: 是否 live（非 fixture）路径。
+        selection_strategy: selection_strategy 参数。
+        sample_n: sample_n 参数。
+        seed: seed 参数。
+        min_per_stratum: min_per_stratum 参数。
+        on_insufficient: on_insufficient 参数。
     """
     c = normalize_target_contract(contract)
     ot = str(c.get("object_type") or "")
@@ -277,7 +284,11 @@ def compile_evaluation_plan(
 
 
 def project_plan_to_v1(plan: Mapping[str, Any]) -> Dict[str, Any]:
-    """Compatibility projection: v1 shape only. Runner must not execute this."""
+    """Compatibility projection: v1 shape only. Runner must not execute this.
+
+    Args:
+        plan: plan 参数。
+    """
     p = dict(plan or {})
     return {
         "schema": PLAN_SCHEMA_V1,
@@ -305,7 +316,12 @@ def project_plan_to_v1(plan: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def attach_evaluation_plan(out: Dict[str, Any], plan: Mapping[str, Any]) -> Dict[str, Any]:
-    """Stamp Plan fields onto an eval response (shared report contract)."""
+    """Stamp Plan fields onto an eval response (shared report contract).
+
+    Args:
+        out: out 参数。
+        plan: plan 参数。
+    """
     if not isinstance(out, dict):
         return out
     from core.apps.eval.service.claims_gate import pack_claim_disclosure_from_plan
@@ -349,7 +365,27 @@ def compile_plan_for_object(
     min_per_stratum: int = 1,
     on_insufficient: str = "error",
 ) -> Dict[str, Any]:
-    """Adapter + compile in one call (P3 unified entry)."""
+    """Adapter + compile in one call (P3 unified entry).
+
+    Args:
+        object_type: object_type 参数。
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: 是否 live（非 fixture）路径。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
+        selection_strategy: selection_strategy 参数。
+        sample_n: sample_n 参数。
+        seed: seed 参数。
+        min_per_stratum: min_per_stratum 参数。
+        on_insufficient: on_insufficient 参数。
+    """
     from core.apps.eval.service.object_adapters import (
         build_contract_for_object_type,
         default_set_ids_for_type,

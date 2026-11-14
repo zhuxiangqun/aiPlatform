@@ -46,7 +46,12 @@ def normalize_suite_profile(
     *,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """Normalize seed profile → compile-ready Suite Profile (claim closed)."""
+    """Normalize seed profile → compile-ready Suite Profile (claim closed).
+
+    Args:
+        raw: raw 参数。
+        subject_kind: subject_kind 参数。
+    """
     out = dict(raw or {})
     out.setdefault("schema", PROFILE_SCHEMA)
     kind = str(subject_kind or "").strip().lower()
@@ -96,6 +101,12 @@ def load_subject_suite_profile(
     subject_kind: str,
     profile_path: Path,
 ) -> Dict[str, Any]:
+    """加载 subject_suite_profile。
+
+    Args:
+        subject_kind: subject_kind 参数。
+        profile_path: 路径。
+    """
     raw = _read_json(profile_path)
     if not isinstance(raw, Mapping):
         raise SubjectSuiteProfileError(f"{profile_path} must be an object")
@@ -103,7 +114,11 @@ def load_subject_suite_profile(
 
 
 def list_subject_suite_profiles(*, include_agent: bool = True) -> List[Dict[str, Any]]:
-    """All seed Suite Profiles across promotable Subjects (+ agent built-ins)."""
+    """All seed Suite Profiles across promotable Subjects (+ agent built-ins).
+
+    Args:
+        include_agent: include_agent 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         list_promotable_subject_kinds,
     )
@@ -147,7 +162,11 @@ def list_subject_suite_profiles(*, include_agent: bool = True) -> List[Dict[str,
 
 
 def get_subject_suite_profile(profile_id: str) -> Dict[str, Any]:
-    """Resolve any Subject/agent Suite Profile by id (fail closed)."""
+    """Resolve any Subject/agent Suite Profile by id (fail closed).
+
+    Args:
+        profile_id: profile 标识。
+    """
     pid = str(profile_id or "").strip()
     if not pid:
         raise SubjectSuiteProfileError("profile_id required")
@@ -158,6 +177,11 @@ def get_subject_suite_profile(profile_id: str) -> Dict[str, Any]:
 
 
 def resolve_subject_kind_from_profile(profile: Mapping[str, Any]) -> str:
+    """resolve_subject_kind_from_profile。
+
+    Args:
+        profile: profile 参数。
+    """
     kind = str(profile.get("subject_kind") or "").strip().lower()
     if kind:
         return kind
@@ -174,7 +198,11 @@ def resolve_subject_kind_from_profile(profile: Mapping[str, Any]) -> str:
 
 
 def load_cases_for_suite_profile(profile: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    """Load seed cases matching the profile's Subject bank."""
+    """Load seed cases matching the profile's Subject bank.
+
+    Args:
+        profile: profile 参数。
+    """
     kind = resolve_subject_kind_from_profile(profile)
     if kind == "agent":
         return list(build_agent_capability_cases())

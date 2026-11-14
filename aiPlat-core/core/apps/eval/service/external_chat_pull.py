@@ -33,6 +33,21 @@ class HttpChatPullAdapter:
         task_id: str = "",
         set_id: str = "",
     ) -> Dict[str, Any]:
+        """对已注册目标 POST chat 请求，解析文本与可选工具名。
+
+        Args:
+            target: 外部目标配置（base_url / path / timeout_ms / auth 等）。
+            user_input: 用户输入正文。
+            task_id: 可选任务 ID（写入请求体）。
+            set_id: 可选评测集 ID（写入 metadata）。
+
+        Returns:
+            含 ``output_text`` / ``trajectory`` / ``tool_names`` / ``http_status``。
+
+        Raises:
+            ValueError: 请求或响应体过大、缺字段等。
+            RuntimeError: HTTP/URL 错误。
+        """
         url = build_invoke_url(
             str(target.get("base_url") or ""),
             str(target.get("path") or "/v1/chat"),
@@ -104,14 +119,36 @@ class HttpChatPullAdapter:
 
 
 class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """禁止跟随 HTTP 重定向，防止评测目标被跳到未登记 URL。"""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        """拦截重定向并转为 HTTPError（redirect_forbidden）。
+
+        Args:
+            req: 原始请求。
+            fp: 响应文件对象。
+            code: HTTP 状态码。
+            msg: 状态消息。
+            headers: 响应头。
+            newurl: 目标重定向 URL。
+
+        Raises:
+            urllib.error.HTTPError: 恒抛出，禁止跟随。
+        """
         raise urllib.error.HTTPError(
             req.full_url, code, f"redirect_forbidden:{newurl}", headers, fp
         )
 
 
 def parse_trajectory_tool_names(trajectory: Any) -> List[str]:
-    """Extract ordered tool names; malformed → empty + warning (lenient)."""
+    """从 trajectory 抽取有序工具名；畸形则空列表并打 warning（宽松）。
+
+    Args:
+        trajectory: 期望 dict（含 ``tool_calls``）；其它类型忽略。
+
+    Returns:
+        工具名列表（可能为空）。
+    """
     if trajectory is None:
         return []
     if not isinstance(trajectory, dict):
@@ -138,7 +175,14 @@ def parse_trajectory_tool_names(trajectory: Any) -> List[str]:
 
 
 def tool_names_to_syscall_events(names: List[str]) -> List[Dict[str, Any]]:
-    """Synthetic events for EvalMetricsEngine.compute_trajectory_quality."""
+    """把工具名转为轨迹质量引擎可用的合成 syscall 事件。
+
+    Args:
+        names: 工具名列表。
+
+    Returns:
+        ``kind=tool`` 事件 dict 列表。
+    """
     return [{"kind": "tool", "name": n, "event_type": "tool_call"} for n in names if n]
 
 
@@ -194,7 +238,14 @@ def _extract_response(
 
 
 def probe_target(target: Dict[str, Any]) -> Dict[str, Any]:
-    """Dry connectivity check: POST a tiny probe (may 4xx — still proves reachability)."""
+    """连通性探测：POST 极小探测载荷（4xx 仍可能证明可达）。
+
+    Args:
+        target: 外部目标配置。
+
+    Returns:
+        ``ok`` / ``reachable`` 与可选 ``error``。
+    """
     adapter = HttpChatPullAdapter()
     try:
         out = adapter.invoke(

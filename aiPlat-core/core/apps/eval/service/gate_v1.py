@@ -46,7 +46,11 @@ THRESHOLDS: Dict[str, Dict[str, Any]] = {
 
 
 def classify_failure(scored: Dict[str, Any]) -> str:
-    """Map a judge result to a coarse failure taxonomy bucket."""
+    """Map a judge result to a coarse failure taxonomy bucket.
+
+    Args:
+        scored: scored 参数。
+    """
     if scored.get("pass"):
         return "none"
     evidence = scored.get("evidence") or {}
@@ -66,7 +70,11 @@ def classify_failure(scored: Dict[str, Any]) -> str:
 
 
 def build_failure_taxonomy(items: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """Aggregate failure categories from scored task rows."""
+    """Aggregate failure categories from scored task rows.
+
+    Args:
+        items: items 参数。
+    """
     counts: Dict[str, int] = {}
     samples: Dict[str, List[str]] = {}
     for row in items:
@@ -182,7 +190,14 @@ def run_e5_gate(
 ) -> Dict[str, Any]:
     """Run metrics + failure taxonomy + local gate; persist report + eval_gates row.
 
-    Modes: pr (fast subset) / nightly / release (advisory until G2a).
+    Args:
+        mode: 执行/评测模式。
+        tenant_id: 租户 ID。
+        set_id: set 标识。
+        baseline: baseline 参数。
+        candidate: candidate 参数。
+        limit: 返回条数上限。
+        db_path: 路径。
     """
     mode = (mode or "pr").strip().lower()
     if mode not in THRESHOLDS:

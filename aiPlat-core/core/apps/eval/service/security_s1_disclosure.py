@@ -54,6 +54,8 @@ class SecurityS1DisclosureError(ValueError):
 def default_s1_pack_path() -> Path:
     # workspace root / packages/aiplat-evaluation/...
     # security_s1_disclosure.py → service → eval → apps → core → aiPlat-core → root
+    """default_s1_pack_path。
+    """
     root = Path(__file__).resolve().parents[5]
     return (
         root
@@ -66,6 +68,8 @@ def default_s1_pack_path() -> Path:
 
 
 def default_s1_aggregate_path() -> Path:
+    """default_s1_aggregate_path。
+    """
     root = Path(__file__).resolve().parents[5]
     return (
         root
@@ -79,6 +83,11 @@ def default_s1_aggregate_path() -> Path:
 
 
 def load_s1_live_attack_pack(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 s1_live_attack_pack。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_s1_pack_path()
     if not p.is_file():
         raise SecurityS1DisclosureError(f"s1_pack_missing:{p}")
@@ -96,6 +105,11 @@ def load_s1_live_attack_pack(*, path: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def load_s1_aggregate_evidence(*, path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """加载 s1_aggregate_evidence。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_s1_aggregate_path()
     if not p.is_file():
         return None
@@ -114,6 +128,11 @@ def load_s1_aggregate_evidence(*, path: Optional[Path] = None) -> Optional[Dict[
 
 
 def summarize_s1_pack(pack: Mapping[str, Any]) -> Dict[str, Any]:
+    """summarize_s1_pack。
+
+    Args:
+        pack: pack 参数。
+    """
     cases = [c for c in (pack.get("cases") or []) if isinstance(c, Mapping)]
     by_cat: Dict[str, int] = {}
     threat_hits: Dict[str, int] = {}
@@ -143,7 +162,13 @@ def build_untested_oos_disclosure(
     catalog: Optional[Mapping[str, Any]] = None,
     s1_summary: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """C15: auto-list untested / below_min_n / deferred / OOS families."""
+    """C15: auto-list untested / below_min_n / deferred / OOS families.
+
+    Args:
+        by_case: by_case 参数。
+        catalog: catalog 参数。
+        s1_summary: s1_summary 参数。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     report = build_security_family_report(
         by_case=by_case or {}, catalog=cat, eval_layer="L1", pack_id="disclosure"
@@ -197,7 +222,13 @@ def security_sec_p2a_status(
     pack_path: Optional[Path] = None,
     aggregate_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P2a: S1 pack card + OOS/untested disclosure."""
+    """Facade-friendly SEC-P2a: S1 pack card + OOS/untested disclosure.
+
+    Args:
+        by_case: by_case 参数。
+        pack_path: 路径。
+        aggregate_path: 路径。
+    """
     pack = load_s1_live_attack_pack(path=pack_path)
     summary = summarize_s1_pack(pack)
     aggregate = load_s1_aggregate_evidence(path=aggregate_path)

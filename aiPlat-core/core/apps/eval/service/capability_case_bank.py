@@ -40,10 +40,15 @@ _PROFILE_FILES = {
 
 
 class CapabilityCaseBankError(ValueError):
-    """Seed bank load / assemble failure (fail closed)."""
+    """种子库加载/组装失败（失败即关闭）。"""
 
 
 def default_seed_dir() -> Path:
+    """返回 Agent capability Case Bank 默认种子目录。
+
+    Returns:
+        ``workspace_seeds/eval/agent_capability`` Path。
+    """
     # .../aiPlat-core/core/apps/eval/service/this.py → parents[4]=aiPlat-core
     return (
         Path(__file__).resolve().parents[4]
@@ -63,7 +68,17 @@ def _read_json(path: Path) -> Any:
 
 
 def load_pack_meta(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """Load pack.meta.json (pack-level fields without cases)."""
+    """加载 ``pack.meta.json``（包级字段，不含 cases）。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+
+    Returns:
+        pack 元数据 dict。
+
+    Raises:
+        CapabilityCaseBankError: meta/组合包均缺失或非法。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     meta_path = root / "pack.meta.json"
     if meta_path.is_file():
@@ -110,10 +125,15 @@ def load_agent_capability_cases(
     *,
     seed_dir: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
-    """Load curated cases from cases/*.json (preferred) or combined pack.
+    """从 ``cases/*.json``（优先）或组合 pack 加载策展用例。
 
-    Prefer per-capability files under ``cases/`` — that is the edit surface.
-    Combined ``pack.*.json`` is only a fallback for older checkouts.
+    ``cases/`` 是编辑面；组合 ``pack.*.json`` 仅作旧检出回退。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用 ``default_seed_dir()``。
+
+    Returns:
+        规范化后的 case 列表。
     """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     cases_dir = root / "cases"
@@ -255,7 +275,17 @@ def list_suite_profiles() -> List[Dict[str, Any]]:
 
 
 def get_suite_profile(profile_id: str) -> Dict[str, Any]:
-    """Resolve agent or Subject Suite Profile by id (fail closed on unknown)."""
+    """按 id 解析 Agent 或 Subject Suite Profile（未知则 fail-closed）。
+
+    Args:
+        profile_id: profile 标识；空或默认 id 时返回 agent 回归 profile。
+
+    Returns:
+        profile dict。
+
+    Raises:
+        ValueError: 未知 profile。
+    """
     from core.apps.eval.service.subject_suite_profiles import (
         SubjectSuiteProfileError,
         get_subject_suite_profile,
@@ -271,7 +301,14 @@ def get_suite_profile(profile_id: str) -> Dict[str, Any]:
 
 
 def validate_capability_case(case: Mapping[str, Any]) -> List[str]:
-    """Factory fields + AgentSubjectAdapter purpose/capability checks."""
+    """工厂字段 + AgentSubjectAdapter 用途/能力校验。
+
+    Args:
+        case: 单条 case Mapping。
+
+    Returns:
+        错误码列表（空=通过）。
+    """
     errors: List[str] = []
     try:
         validate_case_dict(case)
@@ -288,6 +325,14 @@ def validate_capability_case(case: Mapping[str, Any]) -> List[str]:
 def validate_agent_capability_bank(
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
+    """校验整库 Agent capability cases，并附 T0 in-scope 合同结果。
+
+    Args:
+        cases: 可选 case 序列；``None`` 时从种子加载。
+
+    Returns:
+        含 ``ok`` / ``invalid_count`` / 逐 case 结果的校验报告（claim=false）。
+    """
     rows = list(cases) if cases is not None else build_agent_capability_cases()
     per_case: List[Dict[str, Any]] = []
     bad = 0
@@ -346,10 +391,18 @@ def build_agent_capability_pack_document() -> Dict[str, Any]:
 
 
 def write_agent_capability_seeds(*, seed_dir: Optional[Path] = None) -> Dict[str, str]:
-    """Rebuild *derived* combined pack from cases/ + ensure profile files exist.
+    """从 ``cases/`` 重建派生组合 pack，并确认 profile 文件存在。
 
-    Does not invent case content. Edit ``cases/*.json`` then call this to
-    refresh ``pack.agent.capability.v*.json`` for review / promote mirrors.
+    不发明 case 内容。编辑 ``cases/*.json`` 后调用以刷新派生 pack。
+
+    Args:
+        seed_dir: 种子根目录；``None`` 时用默认。
+
+    Returns:
+        写出路径映射（pack/meta/profile）。
+
+    Raises:
+        CapabilityCaseBankError: cases/meta/profile 缺失。
     """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     root.mkdir(parents=True, exist_ok=True)
@@ -412,10 +465,22 @@ def promote_agent_capability_bank(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Validate seed bank → draft → enqueue → approve → freeze (claim=false).
+    """校验种子库 → draft → 入队 → 审批 → freeze（claim 恒 false）。
 
-    Uses workspace registry (same path as Case Pack factory). Does not open
-    accuracy_claim. Idempotent if already frozen.
+    走 workspace registry（与 Case Pack 工厂同路径）。不开放 accuracy_claim。
+    已 freeze 时幂等。
+
+    Args:
+        workspace_id: 目标工作区。
+        reviewer: 评审人。
+        frozen_by: 冻结操作者。
+        pack_id: 包 ID。
+        version: 包版本。
+        caller_workspace_id: 调用方工作区（审计）。
+        notes: 备注。
+
+    Returns:
+        晋升/冻结结果 dict。
     """
     from core.apps.eval.service.case_factory import publish_draft_workspace_pack
     from core.apps.eval.service.case_freeze import CaseFreezeError, freeze_workspace_pack

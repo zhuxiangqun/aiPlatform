@@ -30,10 +30,17 @@ class ModeDeferredEstimateError(ValueError):
 
 
 def default_m2_estimate_path() -> Path:
+    """default_m2_estimate_path。
+    """
     return default_seed_dir() / ESTIMATE_FILENAME
 
 
 def load_m2_deferred_estimate(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 m2_deferred_estimate。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_m2_estimate_path()
     if not p.is_file():
         raise ModeDeferredEstimateError(f"m2_estimate_missing:{p}")
@@ -51,7 +58,13 @@ def validate_runtime_parts(
     mode: str,
     estimate: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Validate runtime_parts shape for a deferred mode (fail closed)."""
+    """Validate runtime_parts shape for a deferred mode (fail closed).
+
+    Args:
+        parts: parts 参数。
+        mode: 执行/评测模式。
+        estimate: estimate 参数。
+    """
     est = dict(estimate) if estimate is not None else load_m2_deferred_estimate()
     mode_key = str(mode or "").strip().lower()
     modes = est.get("deferred_modes") if isinstance(est.get("deferred_modes"), Mapping) else {}
@@ -109,7 +122,12 @@ def estimate_m2_deferred_modes(
     seed_dir: Optional[Path] = None,
     impl_source: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
-    """Produce M2 estimate report: blockers, days, runtime_parts deps; no live."""
+    """Produce M2 estimate report: blockers, days, runtime_parts deps; no live.
+
+    Args:
+        seed_dir: 种子目录；None 用默认。
+        impl_source: impl_source 参数。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     estimate = load_m2_deferred_estimate(path=root / ESTIMATE_FILENAME)
     try:
@@ -175,7 +193,11 @@ def estimate_m2_deferred_modes(
 
 
 def assert_m2_not_live(mode: str) -> None:
-    """Fail closed if caller tries to open deferred mode as live exam."""
+    """Fail closed if caller tries to open deferred mode as live exam.
+
+    Args:
+        mode: 执行/评测模式。
+    """
     m = str(mode or "").strip().lower()
     if m in DEFERRED_MODES or m == "deferred":
         raise ModeDeferredEstimateError(f"m2_live_forbidden:{m}")

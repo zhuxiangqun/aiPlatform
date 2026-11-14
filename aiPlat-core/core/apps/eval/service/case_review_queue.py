@@ -30,7 +30,15 @@ def enqueue_pack_for_review(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Move workspace pack draft → in_review."""
+    """Move workspace pack draft → in_review.
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        workspace_id: workspace 标识。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CaseReviewError("workspace_id required")
@@ -91,7 +99,13 @@ def list_review_queue(
     caller_workspace_id: str = "",
     statuses: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """List workspace packs awaiting or eligible for review."""
+    """List workspace packs awaiting or eligible for review.
+
+    Args:
+        workspace_id: workspace 标识。
+        caller_workspace_id: caller_workspace 标识。
+        statuses: statuses 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CaseReviewError("workspace_id required")
@@ -147,7 +161,17 @@ def submit_review_decision(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Approve → reviewed, reject → rejected. Never freezes or opens claim."""
+    """Approve → reviewed, reject → rejected. Never freezes or opens claim.
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        workspace_id: workspace 标识。
+        decision: decision 参数。
+        reviewer: reviewer 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     dec = str(decision or "").strip().lower()
     if dec not in VALID_DECISIONS:

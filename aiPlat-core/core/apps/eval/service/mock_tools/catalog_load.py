@@ -17,6 +17,8 @@ class MockToolCatalogError(ValueError):
 
 
 def default_mock_tools_dir() -> Path:
+    """default_mock_tools_dir。
+    """
     return default_seed_dir() / "fixtures" / "mock_tools"
 
 
@@ -28,7 +30,10 @@ def load_mock_tool_catalog(
 ) -> Dict[str, Any]:
     """Load catalog.sample.json (default) or explicit path.
 
-    Prefer JSON; ``.yaml``/``.yml`` requires PyYAML.
+    Args:
+        path: 文件或目录路径。
+        seed_dir: 种子目录；None 用默认。
+        validate: validate 参数。
     """
     if path is None:
         root = Path(seed_dir) if seed_dir else default_mock_tools_dir()

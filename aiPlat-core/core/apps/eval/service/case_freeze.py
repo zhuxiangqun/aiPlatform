@@ -31,7 +31,16 @@ def freeze_workspace_pack(
     frozen_by: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Freeze a reviewed workspace pack. claim_eligible forced false."""
+    """Freeze a reviewed workspace pack. claim_eligible forced false.
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        workspace_id: workspace 标识。
+        caller_workspace_id: caller_workspace 标识。
+        frozen_by: frozen_by 参数。
+        notes: notes 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CaseFreezeError("workspace_id required")

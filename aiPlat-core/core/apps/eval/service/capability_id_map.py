@@ -74,9 +74,9 @@ class UnknownCapabilityId(ValueError):
 def resolve_capability_id(capability_id: str, *, fail_closed: bool = True) -> str:
     """Resolve one id to canonical.
 
-    - Already canonical → return as-is.
-    - Known legacy → mapped canonical.
-    - Unknown → raise UnknownCapabilityId when fail_closed; else return stripped id.
+    Args:
+        capability_id: capability 标识。
+        fail_closed: fail_closed 参数。
     """
     raw = str(capability_id or "").strip()
     if not raw:
@@ -100,7 +100,13 @@ def resolve_capability_ids(
     fail_closed: bool = True,
     dedupe: bool = True,
 ) -> List[str]:
-    """Resolve many ids to canonical; preserve first-seen order when dedupe."""
+    """Resolve many ids to canonical; preserve first-seen order when dedupe.
+
+    Args:
+        ids: ids 参数。
+        fail_closed: fail_closed 参数。
+        dedupe: dedupe 参数。
+    """
     out: List[str] = []
     seen = set()
     for item in ids or ():
@@ -115,7 +121,11 @@ def resolve_capability_ids(
 
 
 def is_v1_in_scope(capability_id: str) -> bool:
-    """True if canonical (or resolvable) id is in signed v1 measurable subset."""
+    """True if canonical (or resolvable) id is in signed v1 measurable subset.
+
+    Args:
+        capability_id: capability 标识。
+    """
     try:
         cid = resolve_capability_id(capability_id, fail_closed=True)
     except UnknownCapabilityId:
@@ -124,7 +134,11 @@ def is_v1_in_scope(capability_id: str) -> bool:
 
 
 def capability_match_set(ids: Sequence[str] | Iterable[str] | None) -> set:
-    """Canonical set for matching; unknown ids kept as lowercased tokens (migration)."""
+    """Canonical set for matching; unknown ids kept as lowercased tokens (migration).
+
+    Args:
+        ids: ids 参数。
+    """
     have: set = set()
     for item in ids or ():
         raw = str(item or "").strip()

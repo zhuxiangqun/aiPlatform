@@ -112,7 +112,11 @@ def _has_oracle_anchor(case: Mapping[str, Any]) -> bool:
 
 
 def audit_case_content_purpose(case: Mapping[str, Any]) -> List[str]:
-    """Return machine-check error codes; empty = content_purpose ready."""
+    """Return machine-check error codes; empty = content_purpose ready.
+
+    Args:
+        case: case 参数。
+    """
     errors: List[str] = []
     if not isinstance(case, Mapping):
         return ["case_not_mapping"]
@@ -163,7 +167,12 @@ def audit_cases_content_purpose(
     *,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """Audit a case list; ok=true only when every case passes."""
+    """Audit a case list; ok=true only when every case passes.
+
+    Args:
+        cases: 用例列表。
+        subject_kind: subject_kind 参数。
+    """
     rows: List[Dict[str, Any]] = []
     ok_n = 0
     for raw in cases:
@@ -200,7 +209,12 @@ def assert_cases_content_purpose_ok(
     *,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """Fail closed before purpose_ok stamp / promote freeze."""
+    """Fail closed before purpose_ok stamp / promote freeze.
+
+    Args:
+        cases: 用例列表。
+        subject_kind: subject_kind 参数。
+    """
     report = audit_cases_content_purpose(cases, subject_kind=subject_kind)
     if not report.get("ok"):
         sample = report.get("failures") or []
@@ -233,7 +247,11 @@ def _load_subject_cases(subject_kind: str) -> List[Dict[str, Any]]:
 
 
 def content_purpose_ok_for_subject(subject_kind: str) -> Dict[str, Any]:
-    """Audit one Subject seed bank for content purpose readiness."""
+    """Audit one Subject seed bank for content purpose readiness.
+
+    Args:
+        subject_kind: subject_kind 参数。
+    """
     from core.apps.eval.service.method_track import assert_not_subject_method
 
     kind = str(subject_kind or "").strip().lower()

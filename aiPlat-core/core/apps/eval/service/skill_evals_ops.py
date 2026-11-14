@@ -1,4 +1,23 @@
-"""Skill eval suites/runs/suggestions ops (platform thin via CoreFacade). ARCH v1.1c."""
+"""Skill 评测套件 / 运行 / 建议闭环（platform 薄路由经 CoreFacade）。
+
+职责
+----
+把 Trigger/Quality Skill Eval 的套件 CRUD、预检、同步跑评、建议生成与
+落盘、A/B 对比、定时 Job 收敛到本模块，供 ``CoreFacade`` / platform
+薄路由调用。持久化走 ExecutionStore。
+
+非目标
+------
+- 不做 HTTP；LookupError / ValueError / RuntimeError 留给路由映射
+- 不翻 ``accuracy_claim``；内置样例 ``runtime_tier=fixture``
+- 不替代 ``skill_eval_trigger`` / ``skill_eval_quality`` Skill 本体
+
+读序
+----
+``ensure_builtin_skill_eval_suites`` → ``list/get/upsert/delete`` →
+``skill_eval_preflight`` → ``run_skill_eval_suite`` →
+``suggest`` / ``apply_*`` / ``compare`` / ``create_skill_eval_job``。
+"""
 from __future__ import annotations
 
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
@@ -24,7 +43,14 @@ BUILTIN_SKILL_EVAL_SUITE_ID = "builtin_trigger_demo"
 
 
 def builtin_skill_eval_suite_spec(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Deterministic trigger-eval sample (skills_override embedded; no live tools)."""
+    """构造内置 Trigger 评测样例规格（内嵌 ``skills_override``，无需 live 工具）。
+
+    Args:
+        tenant_id: 租户 ID；空则回退 ``eval-v1``。
+
+    Returns:
+        可直接交给 ``upsert_skill_eval_suite`` 的 suite body dict。
+    """
     return {
         "suite_id": BUILTIN_SKILL_EVAL_SUITE_ID,
         "name": "内置·触发评测样例",
@@ -289,21 +315,22 @@ def _resolve_skill_md_path(*, skill_id: str, scope: str) -> Optional[Path]:
 
 
 async def upsert_skill_eval_suite(*, body: Dict[str, Any], actor: Dict[str, Any]):
-    """
-    创建/更新评测套件（Trigger Eval MVP）。
+    """创建或更新 Skill 评测套件（Trigger Eval MVP）。
 
-    Body:
-      {
-        "suite_id": "optional",
-        "name": "...",
-        "description": "...",
-        "scope": "engine|workspace|all",
-        "target_skill_id": "skill_id",
-        "positive_queries": ["..."],
-        "negative_queries": ["..."],
-        "score_threshold": 0.12,
-        "quality_cases": [{"name":"...","input":{...},"expected":{...}}]
-      }
+    Args:
+        body: 请求体。必含 ``name`` / ``target_skill_id``；可选
+            ``suite_id`` / ``description`` / ``scope`` /
+            ``positive_queries`` / ``negative_queries`` /
+            ``score_threshold`` / ``skills_override`` / ``quality_cases`` /
+            ``tenant_id``。
+        actor: 操作者身份（写入 ``tenant_id`` 等元数据）。
+
+    Returns:
+        ``{"status": "ok", "suite": <row>}``。
+
+    Raises:
+        ValueError: 缺 ``name`` 或 ``target_skill_id``。
+        RuntimeError: ExecutionStore 未初始化。
     """
     store = _store()
 
@@ -383,7 +410,15 @@ async def upsert_skill_eval_suite(*, body: Dict[str, Any], actor: Dict[str, Any]
 async def ensure_builtin_skill_eval_suites(
     *, tenant_id: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Idempotent: register builtin_trigger_demo if missing (Eval Skills empty-state)."""
+    """幂等登记内置 ``builtin_trigger_demo``（Eval Skills 空态可一键可见）。
+
+    Args:
+        tenant_id: 租户 ID；空则 ``eval-v1``。
+
+    Returns:
+        含 ``status`` / ``created`` / ``suite_id`` / ``suite`` /
+        ``accuracy_claim=False``。
+    """
     tid = str(tenant_id or "eval-v1").strip() or "eval-v1"
     store = _store()
     existing = await store.get_skill_eval_suite(suite_id=BUILTIN_SKILL_EVAL_SUITE_ID)
@@ -410,6 +445,16 @@ async def ensure_builtin_skill_eval_suites(
 
 
 async def list_skill_eval_suites(*, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None):
+    """分页列出 Skill 评测套件；列表前尽力确保内置样例已登记。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 偏移量。
+        tenant_id: 按租户过滤；空则不过滤租户（内置 ensure 仍用 eval-v1）。
+
+    Returns:
+        store 的 list 结果（通常含 ``items`` / 分页字段）。
+    """
     store = _store()
     try:
         await ensure_builtin_skill_eval_suites(tenant_id=tenant_id or "eval-v1")
@@ -420,6 +465,17 @@ async def list_skill_eval_suites(*, limit: int = 50, offset: int = 0, tenant_id:
 
 
 async def get_skill_eval_suite(*, suite_id: str):
+    """按 ID 读取单个评测套件。
+
+    Args:
+        suite_id: 套件 ID。
+
+    Returns:
+        suite 行 dict。
+
+    Raises:
+        LookupError: 不存在时码为 ``not_found``。
+    """
     store = _store()
     row = await store.get_skill_eval_suite(suite_id=str(suite_id))
     if not row:
@@ -428,6 +484,14 @@ async def get_skill_eval_suite(*, suite_id: str):
 
 
 async def delete_skill_eval_suite(*, suite_id: str):
+    """删除评测套件。
+
+    Args:
+        suite_id: 套件 ID。
+
+    Returns:
+        ``{"status": "ok", "deleted": bool}``。
+    """
     store = _store()
     ok = await store.delete_skill_eval_suite(suite_id=str(suite_id))
     return {"status": "ok", "deleted": bool(ok)}
@@ -439,7 +503,17 @@ async def skill_eval_preflight(
     eval_kind: str = "trigger",
     mode: str = "heuristic",
 ) -> Dict[str, Any]:
-    """Pre-run readiness for Eval Skills (store / builtin / runtime path)."""
+    """跑评前预检：store / 内置样例 / KernelRuntime 路径是否就绪。
+
+    Args:
+        tenant_id: 租户 ID；空则 ``eval-v1``。
+        eval_kind: ``trigger`` 或 ``quality``。
+        mode: ``heuristic`` 或 ``live``（写入 runtime 标注）。
+
+    Returns:
+        含 ``ok`` / ``checks`` / ``blockers`` / ``hints`` /
+        ``accuracy_claim=False``，并合并 runtime_tier 字段。
+    """
     from core.apps.eval.service.exam_runtime_tier import (
         annotate_skill_eval_runtime,
         merge_runtime_fields,
@@ -557,19 +631,24 @@ async def _execute_trigger_store_direct(
 
 
 async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
-    """
-    运行 Trigger Eval（同步）。
+    """同步运行 Trigger/Quality Skill Eval。
 
-    Body:
-      {
-        "eval_kind": "trigger|quality",
-        "mode": "heuristic|live",
-        "max_cases": 200,
-        "skills_override": [...]   // 可选：测试/离线覆盖技能目录
-      }
+    trigger 优先 ``skill_manager``，否则 store-direct；quality 必须
+    ``skill_manager``。
 
-    trigger：优先 skill_manager；否则 store-direct（平台无 KernelRuntime 时可跑内置样例）。
-    quality：仍需 skill_manager。
+    Args:
+        suite_id: 目标套件 ID。
+        body: 可选 ``eval_kind``（trigger|quality）/ ``mode`` /
+            ``max_cases`` / ``skills_override``。
+        actor: 操作者身份（写入执行上下文）。
+
+    Returns:
+        含 ``status`` / ``run_id`` / ``result`` / ``run`` / ``exec_path``，
+        并附 runtime 标注与 eval protocol。
+
+    Raises:
+        LookupError: 套件不存在（``suite_not_found``）。
+        RuntimeError: quality 缺 skill_manager，或 store-direct 失败。
     """
     body = dict(body or {}) if isinstance(body, dict) else {}
     store = _store()
@@ -702,6 +781,17 @@ async def run_skill_eval_suite(*, suite_id: str, body: Dict[str, Any], actor: Di
 
 
 async def get_skill_eval_run(*, run_id: str):
+    """按 ID 读取一次 Skill Eval 运行记录，并附 eval protocol。
+
+    Args:
+        run_id: 评测运行 ID。
+
+    Returns:
+        run 行（或 ``{"item": row}``）并附 eval protocol。
+
+    Raises:
+        LookupError: 不存在时码为 ``not_found``。
+    """
     store = _store()
     row = await store.get_skill_eval_run(run_id=str(run_id))
     if not row:
@@ -721,16 +811,37 @@ async def get_skill_eval_run(*, run_id: str):
 
 
 async def list_skill_eval_results(*, run_id: str, limit: int = 200, offset: int = 0):
+    """分页列出某次评测运行的逐条结果。
+
+    Args:
+        run_id: 评测运行 ID。
+        limit: 返回条数上限。
+        offset: 偏移量。
+
+    Returns:
+        store 的 list 结果（通常含 ``items``）。
+    """
     store = _store()
     return await store.list_skill_eval_results(run_id=str(run_id), limit=int(limit), offset=int(offset))
 
 
 async def suggest_trigger_improvements(*, run_id: str, body: Dict[str, Any]):
-    """
-    Analyzer-lite: generate heuristic suggestions from a completed Trigger Eval run:
-    - add_keywords: tokens from false negatives to improve recall
-    - avoid_keywords: tokens from false positives to reduce misfires
-    - suggested_description: a tighter intent-focused description draft
+    """从已完成的 Trigger Eval 运行启发式生成改进建议。
+
+    产出 ``add_keywords``（假阴提升召回）、``avoid_keywords``（假阳降误触）、
+    ``suggested_description`` 与可应用 ``patch``。
+
+    Args:
+        run_id: 已完成的评测运行 ID。
+        body: 可选 ``max_tokens``（关键词条数上限，默认 12，夹紧 3–30）。
+
+    Returns:
+        含 ``status`` / ``add_keywords`` / ``avoid_keywords`` /
+        ``suggested_description`` / ``patch``。
+
+    Raises:
+        LookupError: 运行不存在。
+        ValueError: metrics 缺 ``target_skill_id``。
     """
     store = _store()
     body = dict(body or {}) if isinstance(body, dict) else {}
@@ -799,13 +910,14 @@ async def suggest_trigger_improvements(*, run_id: str, body: Dict[str, Any]):
 
 
 async def apply_skill_eval_suggestion(*, suite_id: str, body: Dict[str, Any]):
-    """
-    Apply a suggestion patch to a suite (MVP).
+    """把建议 patch 应用到套件（MVP）。
 
-    Body:
-      {
-        "patch": { ... }    // from /runs/{run_id}/suggest
-      }
+    Args:
+        suite_id: 目标套件 ID。
+        body: 须含 ``patch``（通常来自 ``/runs/{run_id}/suggest``）。
+
+    Returns:
+        更新后的 suite 结果。
     """
     store = _store()
     body = dict(body or {}) if isinstance(body, dict) else {}
@@ -844,17 +956,17 @@ async def apply_skill_eval_suggestion(*, suite_id: str, body: Dict[str, Any]):
 
 
 async def apply_skill_md_suggestion(*, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
-    """
-    Generate (and optionally apply) a SKILL.md front matter patch for the target skill in this suite.
+    """生成（可选应用）目标 Skill 的 SKILL.md front matter 补丁。
 
-    Body:
-      {
-        "patch": { ... },          // from /runs/{run_id}/suggest (optional)
-        "apply": false,            // if true: only allowed for workspace scope
-        "scope": "auto|engine|workspace",
-        "create_change": true,     // when scope resolves to engine: create change-control/audit record
-        "create_approval": true    // when scope resolves to engine: create an approval request and link it to change_id
-      }
+    Args:
+        suite_id: 套件 ID（解析 ``target_skill_id``）。
+        body: 可选 ``patch``；``apply``（仅 workspace 可真写）；
+            ``scope``（auto|engine|workspace）；engine 范围可 ``create_change`` /
+            ``create_approval``。
+        actor: 操作者（审计 / 变更单）。
+
+    Returns:
+        预览或应用结果（含 links）。
     """
     store = _store()
     body = dict(body or {}) if isinstance(body, dict) else {}
@@ -1095,14 +1207,17 @@ async def apply_skill_md_suggestion(*, suite_id: str, body: Dict[str, Any], acto
 
 
 async def compare_skill_eval_runs(*, body: Dict[str, Any]):
-    """
-    A/B compare two eval runs (MVP).
-    Body:
-      {
-        "run_id_a": "...",
-        "run_id_b": "...",
-        "limit": 500
-      }
+    """A/B 对比两次 Skill Eval 运行（MVP）。
+
+    Args:
+        body: 须含 ``run_id_a`` / ``run_id_b``；可选 ``limit``（逐条结果上限，默认 500）。
+
+    Returns:
+        含两侧 metrics 与 ``diff.flips`` 的对比结果。
+
+    Raises:
+        ValueError: 缺 run id。
+        LookupError: 任一侧 run 不存在。
     """
     store = _store()
     body = dict(body or {}) if isinstance(body, dict) else {}
@@ -1152,15 +1267,15 @@ async def compare_skill_eval_runs(*, body: Dict[str, Any]):
 
 
 async def create_skill_eval_job(*, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
-    """
-    创建一个定时 Job（由 JobScheduler 周期性执行 skill_eval_trigger）。
-    Body:
-      {
-        "cron": "0 2 * * *",
-        "timezone": "Asia/Shanghai",
-        "enabled": true,
-        "mode": "heuristic"
-      }
+    """创建定时 Job（JobScheduler 周期性跑 ``skill_eval_trigger``）。
+
+    Args:
+        suite_id: 目标套件 ID。
+        body: 可选 ``cron`` / ``timezone`` / ``enabled`` / ``mode``。
+        actor: 操作者身份。
+
+    Returns:
+        新建 job 的登记结果。
     """
     store = _store()
     body = dict(body or {}) if isinstance(body, dict) else {}

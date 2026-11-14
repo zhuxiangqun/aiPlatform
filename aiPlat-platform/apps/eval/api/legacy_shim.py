@@ -27,6 +27,11 @@ _RUNS_EVAL_RE = re.compile(
 
 
 def is_legacy_eval_path(path: str) -> bool:
+    """is_legacy_eval_path。
+
+    Args:
+        path: 文件或目录路径。
+    """
     if path.startswith(CANONICAL_PREFIX + "/") or path == CANONICAL_PREFIX:
         return False
     if any(path.startswith(p) for p in _LEGACY_EVAL_PREFIXES):
@@ -35,6 +40,11 @@ def is_legacy_eval_path(path: str) -> bool:
 
 
 def canonical_successor(path: str) -> str:
+    """canonical_successor。
+
+    Args:
+        path: 文件或目录路径。
+    """
     if path.startswith(CANONICAL_PREFIX):
         return path
     if path.startswith(LEGACY_APPS_PREFIX + "/"):
@@ -49,6 +59,12 @@ def canonical_successor(path: str) -> str:
 
 
 def apply_eval_deprecation_headers(response: Response, path: str) -> None:
+    """apply_eval_deprecation_headers。
+
+    Args:
+        response: response 参数。
+        path: 文件或目录路径。
+    """
     successor = canonical_successor(path)
     response.headers["Deprecation"] = "true"
     response.headers["X-Aiplat-Eval-Canonical-Prefix"] = CANONICAL_PREFIX
@@ -68,6 +84,12 @@ class EvalLegacyDeprecationMiddleware(BaseHTTPMiddleware):
     """308 redirect legacy flat eval paths; attach Deprecation headers on redirect."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """dispatch。
+
+        Args:
+            request: request 参数。
+            call_next: call_next 参数。
+        """
         path = request.url.path
         if is_legacy_eval_path(path):
             successor = canonical_successor(path)

@@ -1,10 +1,16 @@
-"""M3 intersection rank — rank gate + Wilson CI + Pareto (no default winner).
+"""
+模式交集排序：rank gate + Wilson CI + Pareto（默认无单一赢家）。
 
-Honesty (eval-agent-impl-mode-exam.md):
-- Compare only on rank_eligible intersection cases with matching rank_fingerprint.
-- Fixture tiers never enter the board.
-- rank_claim never auto-emitted from a completed run; needs gate + three-party signoff.
-- unknown must not count as 0 or pass.
+职责
+----
+仅在 ``rank_eligible`` 且 fingerprint 一致的交集用例上比较模式列；
+输出门禁报告与工程对比报告。诚实规则见 eval-agent-impl-mode-exam。
+
+非目标
+------
+- 不把 fixture 档次送上排行榜
+- 不因 run 完成自动发出 ``rank_claim``（需 gate + 三方签核）
+- 不把 ``unknown`` 计为 0 或 pass
 """
 from __future__ import annotations
 
@@ -32,7 +38,9 @@ A1_CASES_REL = "intersection/cases/a1_task_completion.v1.json"
 
 
 class ModeIntersectionRankError(ValueError):
-    """Fail-closed intersection / rank gate error."""
+    """
+    交集 / rank gate 失败关闭错误。
+    """
 
 
 def wilson_score_ci(
@@ -41,7 +49,17 @@ def wilson_score_ci(
     *,
     z: float = 1.96,
 ) -> Tuple[Optional[float], Optional[float]]:
-    """Wilson score interval (same formula as packages g2b helper; local copy)."""
+    """
+    Wilson 置信区间（与 packages g2b 辅助同公式；本地副本）。
+
+    Args:
+        successes: 成功次数。
+        n: 总次数。
+        z: 正态分位数；默认 1.96（约 95%）。
+
+    Returns:
+        ``(lo, hi)``；``n<=0`` 时为 ``(None, None)``。
+    """
     if n <= 0:
         return None, None
     successes = max(0, min(int(successes), int(n)))
@@ -62,7 +80,18 @@ def dominance_relation(
     b_lo: Optional[float],
     b_hi: Optional[float],
 ) -> str:
-    """A dominates B iff A.ci_lower >= B.ci_upper; else undetermined (incl. tie)."""
+    """
+    A 支配 B 当且仅当 A.ci_lower >= B.ci_upper；否则 undetermined（含平局）。
+
+    Args:
+        a_lo: A 区间下界。
+        a_hi: A 区间上界。
+        b_lo: B 区间下界。
+        b_hi: B 区间上界。
+
+    Returns:
+        ``dominates`` / ``dominated`` / ``tie`` / ``undetermined``。
+    """
     if a_lo is None or a_hi is None or b_lo is None or b_hi is None:
         return "undetermined"
     if a_lo >= b_hi:
@@ -78,9 +107,14 @@ def dominance_relation(
 def pareto_frontier(
     mode_vectors: Mapping[str, Mapping[str, float]],
 ) -> Dict[str, Any]:
-    """Pareto on per-capability rates (higher better). No single winner by default.
+    """
+    按能力向量做 Pareto 前沿（越高越好）；默认不选出单一赢家。
 
-    ``mode_vectors``: mode -> {capability_id: rate in [0,1]}
+    Args:
+        mode_vectors: mode → {capability_id: rate∈[0,1]}。
+
+    Returns:
+        含 ``frontier`` / ``dominated_by``；``single_winner`` 恒为 None。
     """
     modes = [m for m, v in mode_vectors.items() if isinstance(v, Mapping)]
     caps: List[str] = sorted(
@@ -121,6 +155,15 @@ def pareto_frontier(
 def list_rank_eligible_cases(
     parity: Mapping[str, Any] | None = None,
 ) -> List[Dict[str, Any]]:
+    """
+    列出 parity 样本中可进入排序的用例。
+
+    Args:
+        parity: 可选 parity 样本；空则 ``load_parity_sample()``。
+
+    Returns:
+        ``rank_eligible`` 且 ``parity_status=passed`` 的 case 列表。
+    """
     sample = dict(parity) if parity is not None else load_parity_sample()
     out: List[Dict[str, Any]] = []
     for c in list(sample.get("cases") or []):
@@ -141,10 +184,28 @@ def _sha256_text(text: str) -> str:
 
 
 def compute_prompt_hash(prompt: str) -> str:
+    """
+    计算 prompt 文本的 sha256 指纹。
+
+    Args:
+        prompt: 提示词正文。
+
+    Returns:
+        ``sha256:...`` 字符串。
+    """
     return _sha256_text(str(prompt or ""))
 
 
 def compute_oracle_hash(case: Mapping[str, Any]) -> str:
+    """
+    对 case 的 rubric/oracle/scripted_answer 做规范 JSON 哈希。
+
+    Args:
+        case: 用例 mapping。
+
+    Returns:
+        ``sha256:...`` 字符串。
+    """
     blob = {
         "rubric": case.get("rubric"),
         "oracle": case.get("oracle"),
@@ -154,11 +215,28 @@ def compute_oracle_hash(case: Mapping[str, Any]) -> str:
 
 
 def compute_env_contract_hash(env_contract: str) -> str:
+    """
+    计算环境契约文本的哈希。
+
+    Args:
+        env_contract: 环境契约字符串。
+
+    Returns:
+        ``sha256:...`` 字符串。
+    """
     return _sha256_text(str(env_contract or ""))
 
 
 def verify_intersection_case_hashes(case: Mapping[str, Any]) -> List[str]:
-    """Fail-closed: body must match declared prompt/oracle/env hashes."""
+    """
+    失败关闭：正文须与声明的 prompt/oracle/env hash 一致。
+
+    Args:
+        case: 交集用例。
+
+    Returns:
+        错误码列表；空表示通过。
+    """
     errors: List[str] = []
     ph = str(case.get("prompt_hash") or "")
     oh = str(case.get("oracle_hash") or "")
@@ -183,6 +261,20 @@ def load_intersection_cases(
     rel_path: str = A1_CASES_REL,
     verify_hashes: bool = True,
 ) -> List[Dict[str, Any]]:
+    """
+    从种子目录加载交集用例 JSON，可选校验 hash。
+
+    Args:
+        seed_dir: 种子根目录；空则默认。
+        rel_path: 相对路径；默认 A1 任务完成集。
+        verify_hashes: True 时 hash 失败即抛错。
+
+    Returns:
+        case dict 列表。
+
+    Raises:
+        ModeIntersectionRankError: 文件缺失、空集或 hash 失败。
+    """
     root = Path(seed_dir) if seed_dir else default_seed_dir()
     path = root / rel_path
     if not path.is_file():
@@ -216,7 +308,19 @@ def evaluate_rank_gate(
     min_n_per_capability: int = MIN_N_DEFAULT,
     track_a_complete: bool = True,
 ) -> Dict[str, Any]:
-    """Full M3 rank gate. Fail closed → rank_claim stays false."""
+    """
+    完整 M3 rank 门禁。失败关闭 → ``rank_claim`` 保持 false。
+
+    Args:
+        mode_columns: mode → 列数据（tier/fingerprint/by_case 等）。
+        parity: 可选 parity 样本。
+        signoff: 可选三方签核；空则读 sample.signoff。
+        min_n_per_capability: 每能力最小样本。
+        track_a_complete: Track A 是否完成。
+
+    Returns:
+        gate 报告；``rank_claim_allowed`` 仅当全过且签核通过。
+    """
     sample = dict(parity) if parity is not None else load_parity_sample()
     sig = dict(signoff) if signoff is not None else dict(sample.get("signoff") or {})
     checks: List[Dict[str, Any]] = []
@@ -390,11 +494,22 @@ def build_mode_intersection_rank(
     track_a_complete: bool = True,
     force_rank_claim: bool = False,
 ) -> Dict[str, Any]:
-    """Build Track B intersection comparison report (default: no single winner).
+    """
+    构建 Track B 交集对比报告（默认无单一赢家）。
 
-    ``mode_columns[mode]`` expected fields:
-      subject, runtime_tier, model_fingerprint, rank_fingerprint,
-      intersection_manifest_hash, by_case[case_id]={capability_id, ok, status}
+    Args:
+        mode_columns: 各模式列（subject/tier/fingerprint/by_case 等）。
+        parity: 可选 parity 样本。
+        signoff: 可选签核。
+        min_n_per_capability: 每能力最小 n。
+        track_a_complete: Track A 完成标志。
+        force_rank_claim: 禁止为 True（强制声明会失败关闭）。
+
+    Returns:
+        含 gate / Wilson / Pareto 的工程报告；``rank_claim`` 不由本函数发出。
+
+    Raises:
+        ModeIntersectionRankError: 试图 ``force_rank_claim``。
     """
     if force_rank_claim:
         raise ModeIntersectionRankError("force_rank_claim_forbidden")
@@ -495,7 +610,16 @@ def attach_rank_fingerprint_to_column(
     *,
     fingerprint_parts: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Helper: compute rank_fingerprint and merge into a mode column dict."""
+    """
+    计算 ``rank_fingerprint`` 并合并进模式列 dict。
+
+    Args:
+        column: 原模式列。
+        fingerprint_parts: 传给 ``compute_rank_fingerprint`` 的部件。
+
+    Returns:
+        合并后的列 dict。
+    """
     fp = compute_rank_fingerprint(**dict(fingerprint_parts))
     out = dict(column)
     out["rank_fingerprint"] = fp.get("rank_fingerprint")
@@ -505,6 +629,18 @@ def attach_rank_fingerprint_to_column(
 
 
 def load_parity_for_rank(*, seed_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """
+    为 rank 加载 parity 样本（可指定种子目录）。
+
+    Args:
+        seed_dir: 可选种子根；空则默认路径。
+
+    Returns:
+        parity 样本 dict。
+
+    Raises:
+        ModeIntersectionRankError: 加载失败。
+    """
     if seed_dir is None:
         return load_parity_sample()
     path = Path(seed_dir) / "intersection" / "parity_sample.v1.json"
