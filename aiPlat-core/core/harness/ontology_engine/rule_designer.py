@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 def validate_rule(domain_id: str, rule: Dict[str, Any]) -> Dict[str, Any]:
     """Validate a rule against the domain ontology schema.
 
-    Checks: name uniqueness, premises count, relation validity, confidence range.
-
-    Returns: {"valid": bool, "errors": [str], "warnings": [str]}
+    Args:
+        domain_id: domain 标识。
+        rule: rule 参数。
     """
     domain = _load_domain(domain_id)
     errors = []
@@ -181,11 +181,9 @@ def design_rule(
 def deploy_rule(domain_id: str, rule: Dict[str, Any]) -> Dict[str, Any]:
     """Deploy a rule to the domain YAML file and GraphInference runtime.
 
-    1. Validates rule
-    2. Appends/overwrites in domain YAML
-    3. Reloads GraphInference rules (next infer() call picks it up)
-
-    Returns: {"deployed": bool, "domain": str, "rule_name": str, "validation": {...}}
+    Args:
+        domain_id: domain 标识。
+        rule: rule 参数。
     """
     validation = validate_rule(domain_id, rule)
     if not validation["valid"]:
@@ -246,7 +244,11 @@ def deploy_rule(domain_id: str, rule: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def list_rules(domain_id: str) -> Dict[str, Any]:
-    """List all inference rules for a domain, with metadata."""
+    """List all inference rules for a domain, with metadata.
+
+    Args:
+        domain_id: domain 标识。
+    """
     domain = _load_domain(domain_id)
     if not domain:
         return {"error": f"Domain '{domain_id}' not found"}

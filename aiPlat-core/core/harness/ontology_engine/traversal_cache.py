@@ -19,6 +19,12 @@ class TraversalCache:
     """LRU cache for graph traversal with mutation-triggered invalidation."""
 
     def __init__(self, max_size: int = 512, ttl_seconds: float = 120.0):
+        """初始化。
+
+        Args:
+            max_size: max_size 参数。
+            ttl_seconds: ttl_seconds 参数。
+        """
         self._max_size = max_size
         self._ttl = ttl_seconds
         self._cache: OrderedDict[CacheKey, Tuple[float, Any]] = OrderedDict()
@@ -27,7 +33,13 @@ class TraversalCache:
         self._graph_version: int = 0  # bumped on mutation
 
     def get(self, start_entity: str, max_hops: int, direction: str) -> Optional[Any]:
-        """Get cached result or None if miss/expired."""
+        """Get cached result or None if miss/expired.
+
+        Args:
+            start_entity: start_entity 参数。
+            max_hops: max_hops 参数。
+            direction: direction 参数。
+        """
         key = (start_entity, max_hops, direction)
         if key not in self._cache:
             self._misses += 1
@@ -43,7 +55,14 @@ class TraversalCache:
         return result
 
     def set(self, start_entity: str, max_hops: int, direction: str, result: Any) -> None:
-        """Store a traversal result."""
+        """Store a traversal result.
+
+        Args:
+            start_entity: start_entity 参数。
+            max_hops: max_hops 参数。
+            direction: direction 参数。
+            result: result 参数。
+        """
         key = (start_entity, max_hops, direction)
         if key in self._cache:
             self._cache.move_to_end(key)
@@ -56,7 +75,11 @@ class TraversalCache:
         self._graph_version += 1
 
     def invalidate_entity(self, entity_id: str) -> None:
-        """Invalidate entries involving a specific entity."""
+        """Invalidate entries involving a specific entity.
+
+        Args:
+            entity_id: entity 标识。
+        """
         to_remove = [
             k for k in self._cache
             if k[0] == entity_id
@@ -65,6 +88,8 @@ class TraversalCache:
             del self._cache[k]
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         total = self._hits + self._misses
         return {
             "size": len(self._cache),
@@ -88,7 +113,11 @@ _cache_instances: Dict[str, TraversalCache] = {}
 
 
 def get_traversal_cache(domain_id: str = "default") -> TraversalCache:
-    """Get or create a TraversalCache for a domain."""
+    """Get or create a TraversalCache for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     if domain_id not in _cache_instances:
         _cache_instances[domain_id] = TraversalCache()
     return _cache_instances[domain_id]

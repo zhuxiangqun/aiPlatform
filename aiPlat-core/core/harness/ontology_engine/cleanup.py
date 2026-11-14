@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_entity_trace(*, doc_id: str, domain_id: str = "ai-knowledge") -> List[Dict[str, Any]]:
-    """Return all graph entities that were extracted from a specific KB document."""
+    """Return all graph entities that were extracted from a specific KB document.
+
+    Args:
+        doc_id: doc 标识。
+        domain_id: domain 标识。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     g = GraphIndex.load(domain_id)
@@ -43,10 +48,10 @@ def cleanup_stale_entities_by_doc(
 ) -> Dict[str, Any]:
     """Remove all graph entities sourced from a specific KB document.
 
-    Called when a KB document is deleted or re-ingested.
-    Uses snapshot() before deletion for rollback safety.
-
-    Returns: {deleted_entities: int, deleted_relations: int, dry_run: bool}
+    Args:
+        doc_id: doc 标识。
+        domain_id: domain 标识。
+        dry_run: 是否仅演练。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -88,11 +93,9 @@ def cleanup_stale_entities(
 ) -> Dict[str, Any]:
     """Scan for orphaned graph nodes (0 incoming + 0 outgoing edges).
 
-    Orphaned nodes have no connections — they exist in the graph but are
-    unreachable via traversal. These are typically leftovers from deleted
-    or superseded entities.
-
-    Returns: {orphans_found: int, deleted: int, dry_run: bool}
+    Args:
+        domain_id: domain 标识。
+        dry_run: 是否仅演练。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 

@@ -43,6 +43,13 @@ class AsyncActionRegistry:
         lock_provider: Optional[EntityLock] = None,
         cross_domain_config_path: str = "~/.aiplat/ontologies/registry.json",
     ):
+        """初始化。
+
+        Args:
+            store: store 参数。
+            lock_provider: lock_provider 参数。
+            cross_domain_config_path: cross_domain_config_path 参数。
+        """
         self._contracts: Dict[str, ActionContractModel] = {}
         self._aliases: Dict[str, str] = {}  # Phase 2 D3: legacy_id → canonical action_id
         self._handlers: Dict[str, Callable] = {}
@@ -61,6 +68,11 @@ class AsyncActionRegistry:
 
     def register(self, contract: ActionContractModel) -> None:
         # FDE contract: when action_namespace is set, validate against audit_schema.v1
+        """register。
+
+        Args:
+            contract: contract 参数。
+        """
         ns = getattr(contract, "action_namespace", "") or ""
         if ns:
             from core.harness.infrastructure.action_audit_validate import (
@@ -96,6 +108,11 @@ class AsyncActionRegistry:
         logger.info("Registered: %s (%s)", contract.action_id, contract.label)
 
     def register_batch(self, contracts: List[ActionContractModel]) -> int:
+        """register_batch。
+
+        Args:
+            contracts: contracts 参数。
+        """
         for c in contracts:
             self.register(c)
         return len(contracts)
@@ -105,18 +122,36 @@ class AsyncActionRegistry:
     # ═══════════════════════════════════════════════════════
 
     def resolve_action_id(self, action_id: str) -> str:
-        """Resolve legacy alias → canonical action_id (Phase 2 D3)."""
+        """Resolve legacy alias → canonical action_id (Phase 2 D3).
+
+        Args:
+            action_id: action 标识。
+        """
         if action_id in self._contracts:
             return action_id
         return self._aliases.get(action_id, action_id)
 
     def get(self, action_id: str) -> Optional[ActionContractModel]:
+        """get。
+
+        Args:
+            action_id: action 标识。
+        """
         return self._contracts.get(self.resolve_action_id(action_id))
 
     def list_for_class(
         self, domain_id: str, class_name: str, state: str = "", role: str = "",
         include_cross_domain: bool = False,
     ) -> List[ActionContractModel]:
+        """列出 for_class。
+
+        Args:
+            domain_id: domain 标识。
+            class_name: class_name 参数。
+            state: state 参数。
+            role: role 参数。
+            include_cross_domain: include_cross_domain 参数。
+        """
         results = []
         for c in self._contracts.values():
             # scope filter
@@ -154,9 +189,12 @@ class AsyncActionRegistry:
     ) -> Dict[str, Any]:
         """Returns {valid, reason, constraint_type}.
 
-        constraint_type mapping for frontend coloring:
-          "permission" → red, "state" → orange, "class" → orange,
-          "scope" → gray, "unknown" → gray
+        Args:
+            action_id: action 标识。
+            domain_id: domain 标识。
+            class_name: class_name 参数。
+            state: state 参数。
+            role: role 参数。
         """
         c = self.get(action_id)
         if not c:
@@ -198,6 +236,16 @@ class AsyncActionRegistry:
         role: str = "",
         _bypass_approval: bool = False,
     ) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            action_id: action 标识。
+            entity_ref: entity_ref 参数。
+            params: params 参数。
+            actor: 操作者身份。
+            role: role 参数。
+            _bypass_approval: _bypass_approval 参数。
+        """
         from core.harness.infrastructure.workbench_runtime_guard import WorkbenchRuntimeGuard
 
         guard = WorkbenchRuntimeGuard.check_action_registered(self, action_id)
@@ -366,6 +414,12 @@ class AsyncActionRegistry:
     # ═══════════════════════════════════════════════════════
 
     async def approve(self, lock_id: str, resolver: str = "approver") -> Dict[str, Any]:
+        """approve。
+
+        Args:
+            lock_id: lock 标识。
+            resolver: resolver 参数。
+        """
         pending = await self._store.get_pending(lock_id)
         if not pending:
             return {"status": "error", "error": f"Approval {lock_id} not found"}
@@ -392,6 +446,13 @@ class AsyncActionRegistry:
         return {"status": "approved", "execution": result}
 
     async def reject(self, lock_id: str, resolver: str = "approver", reason: str = "") -> Dict[str, Any]:
+        """reject。
+
+        Args:
+            lock_id: lock 标识。
+            resolver: resolver 参数。
+            reason: reason 参数。
+        """
         pending = await self._store.get_pending(lock_id)
         if not pending:
             return {"status": "error", "error": f"Approval {lock_id} not found"}
@@ -407,11 +468,8 @@ class AsyncActionRegistry:
     async def compute_closure_gate(self, action_id: str) -> Dict[str, Any]:
         """计算 Action 自动闭环误报率门（Lv4 专用）。
 
-        误报 = 历史审计中人工纠正过的执行（result_status 为
-        rejected / corrected / rolled_back / overridden 等）。
-
-        返回 {action_id, level, total, false_positives, fp_rate, allowed}
-        Lv4 且 fp_rate < CLOSURE_FP_RATE_MAX(0.5%) → allowed=True；否则降级人工确认。
+        Args:
+            action_id: action 标识。
         """
         from core.harness.infrastructure.action_contract import (
             ActionLevel,
@@ -705,6 +763,8 @@ class AsyncActionRegistry:
             self._cache_timestamp = now
 
     def invalidate_cross_domain_cache(self) -> None:
+        """invalidate_cross_domain_cache。
+        """
         self._cache_timestamp = 0
 
 
@@ -716,6 +776,8 @@ _registry: Optional[AsyncActionRegistry] = None
 
 
 def get_action_registry() -> AsyncActionRegistry:
+    """获取 action_registry。
+    """
     global _registry
     if _registry is None:
         _registry = AsyncActionRegistry()
@@ -728,6 +790,8 @@ def get_action_registry() -> AsyncActionRegistry:
 
 
 async def init_action_registry() -> None:
+    """init_action_registry。
+    """
     reg = get_action_registry()
     await reg._store.initialize()
     logger.info("ActionRegistry initialized")

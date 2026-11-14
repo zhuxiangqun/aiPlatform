@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class DataSourceConfig:
+    """DataSourceConfig。"""
     name: str
     source_type: str  # "sql" | "api" | "file"
     connection: Dict[str, Any] = field(default_factory=dict)
@@ -35,6 +36,11 @@ class DataSourceConfig:
 
     @classmethod
     def from_yaml(cls, path: str) -> DataSourceConfig:
+        """from_yaml。
+
+        Args:
+            path: 路径。
+        """
         import yaml
         with open(path, "r") as f:
             data = yaml.safe_load(f)
@@ -50,6 +56,11 @@ class DataSource(ABC):
     """Abstract base for external data sources."""
 
     def __init__(self, config: DataSourceConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
 
     @abstractmethod
@@ -59,7 +70,11 @@ class DataSource(ABC):
 
     @abstractmethod
     def fetch_all(self, *, limit: int = 1000) -> List[Dict[str, Any]]:
-        """Fetch all records from the source."""
+        """Fetch all records from the source.
+
+        Args:
+            limit: 返回条数上限。
+        """
         ...
 
     @abstractmethod
@@ -72,6 +87,8 @@ class SQLDataSource(DataSource):
     """SQL database connector (PostgreSQL/MySQL/SQLite)."""
 
     def connect(self) -> bool:
+        """connect。
+        """
         try:
             from sqlalchemy import create_engine, text as _text
             conn_str = self.config.connection.get("connection_string", "")
@@ -97,6 +114,11 @@ class SQLDataSource(DataSource):
             return False
 
     def fetch_all(self, *, limit: int = 1000) -> List[Dict[str, Any]]:
+        """fetch_all。
+
+        Args:
+            limit: 返回条数上限。
+        """
         table = self.config.connection.get("table", "")
         if not table:
             return []
@@ -111,6 +133,8 @@ class SQLDataSource(DataSource):
             return []
 
     def get_schema(self) -> Dict[str, Any]:
+        """获取 schema。
+        """
         table = self.config.connection.get("table", "")
         return {"type": "sql", "table": table, "connection": self.config.connection.get("driver", "sqlite")}
 
@@ -119,10 +143,17 @@ class APIDataSource(DataSource):
     """REST API data source."""
 
     def connect(self) -> bool:
+        """connect。
+        """
         url = self.config.connection.get("base_url", "")
         return bool(url)
 
     def fetch_all(self, *, limit: int = 1000) -> List[Dict[str, Any]]:
+        """fetch_all。
+
+        Args:
+            limit: 返回条数上限。
+        """
         import urllib.request
         url = self.config.connection.get("base_url", "")
         endpoint = self.config.connection.get("endpoint", "")
@@ -144,6 +175,8 @@ class APIDataSource(DataSource):
             return []
 
     def get_schema(self) -> Dict[str, Any]:
+        """获取 schema。
+        """
         return {"type": "api", "base_url": self.config.connection.get("base_url", "")}
 
 
@@ -151,10 +184,17 @@ class FileDataSource(DataSource):
     """CSV/JSON/Excel file data source."""
 
     def connect(self) -> bool:
+        """connect。
+        """
         path = self.config.connection.get("file_path", "")
         return bool(path) and _Path(path).exists()
 
     def fetch_all(self, *, limit: int = 1000) -> List[Dict[str, Any]]:
+        """fetch_all。
+
+        Args:
+            limit: 返回条数上限。
+        """
         path = self.config.connection.get("file_path", "")
         fmt = self.config.connection.get("format", "csv")
         try:
@@ -179,6 +219,8 @@ class FileDataSource(DataSource):
             return []
 
     def get_schema(self) -> Dict[str, Any]:
+        """获取 schema。
+        """
         return {"type": "file", "file_path": self.config.connection.get("file_path", "")}
 
 
@@ -190,6 +232,11 @@ class DataSourceRegistry:
 
     @classmethod
     def load_from_dir(cls, dir_path: str = "") -> int:
+        """load_from_dir。
+
+        Args:
+            dir_path: dir_path 参数。
+        """
         d = _Path(dir_path or _Path(get_aiplat_home()) / "datasources")
         if not d.exists():
             return 0
@@ -205,6 +252,11 @@ class DataSourceRegistry:
 
     @classmethod
     def get_source(cls, source_id: str) -> Optional[DataSource]:
+        """获取 source。
+
+        Args:
+            source_id: source 标识。
+        """
         if source_id in cls._sources:
             return cls._sources[source_id]
         config = cls._configs.get(source_id)
@@ -218,6 +270,8 @@ class DataSourceRegistry:
 
     @classmethod
     def list_sources(cls) -> List[Dict[str, Any]]:
+        """列出 sources。
+        """
         return [
             {"id": sid, "name": c.name, "type": c.source_type, "connected": sid in cls._sources}
             for sid, c in cls._configs.items()
@@ -239,7 +293,12 @@ class DataSourceRegistry:
         raw_record: Dict[str, Any],
         source_id: str,
     ) -> Dict[str, Any]:
-        """Map a raw data record to ontology instance properties."""
+        """Map a raw data record to ontology instance properties.
+
+        Args:
+            raw_record: raw_record 参数。
+            source_id: source 标识。
+        """
         config = cls._configs.get(source_id)
         if not config:
             return raw_record

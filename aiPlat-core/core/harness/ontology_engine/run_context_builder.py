@@ -15,9 +15,9 @@ from typing import Dict, List, Optional
 def build_run_context_from_graph(question: str, domain_id: str) -> Optional[dict]:
     """Scan question for entity names → GraphIndex traversal → partial RunContext.
 
-    Populates entity/entity_type/situation from graph topology.
-    Dynamic fields (priority, realtime constraints) remain empty —
-    Phase 10.3 fills them from DataSource APIs.
+    Args:
+        question: question 参数。
+        domain_id: domain 标识。
     """
     try:
         from core.harness.ontology_engine.graph_index import GraphIndex, GraphNode
@@ -62,13 +62,9 @@ def build_run_context_from_graph(question: str, domain_id: str) -> Optional[dict
 def merge_run_context(caller_ctx: Optional[dict], graph_ctx: Optional[dict]) -> Optional[dict]:
     """Merge caller-provided and graph-derived RunContext with priority rules.
 
-    Priority:
-        entity/entity_type → caller wins if provided, else graph
-        situation         → caller wins (real-time > static)
-        priority          → caller wins (business context > topology)
-        constraints       → merged (graph first, caller appended, deduplicated)
-
-    Returns merged dict or None if both are None.
+    Args:
+        caller_ctx: caller_ctx 参数。
+        graph_ctx: graph_ctx 参数。
     """
     if not caller_ctx and not graph_ctx:
         return None

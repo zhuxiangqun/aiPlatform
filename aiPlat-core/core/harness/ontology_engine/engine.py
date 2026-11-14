@@ -97,6 +97,8 @@ class ProcessResult:
 
     def __init__(self):
 
+        """初始化。
+        """
         self.instances: List[Dict[str, Any]] = []
 
         self.source_traces: List[Dict[str, Any]] = []
@@ -123,6 +125,8 @@ class ProcessResult:
 
     def to_dict(self) -> dict:
 
+        """to_dict。
+        """
         return {
 
             "instances": self.instances,
@@ -185,6 +189,11 @@ class OntologyEngine:
 
     def __init__(self, domain: OntologyDomain):
 
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
 
         self._mapper = ClassMapper(domain)
@@ -1373,7 +1382,13 @@ class OntologyEngine:
 
     ) -> ProcessResult:
 
-        """Process raw text (single chunk) through the engine."""
+        """Process raw text (single chunk) through the engine.
+
+        Args:
+            text: text 参数。
+            doc_id: doc 标识。
+            model_name: model_name 参数。
+        """
 
         chunks = [{"id": "chunk-0", "text": text, "entities": []}]
 
@@ -1403,12 +1418,10 @@ class OntologyEngine:
 
         """Palantir-style: process data from an external data source.
 
-
-
-        Loads data via DataSourceRegistry, maps raw records to ontology instances
-
-        via YAML field_mapping, then feeds through the standard engine pipeline.
-
+        Args:
+            source_id: source 标识。
+            doc_id: doc 标识。
+            model_name: model_name 参数。
         """
 
         from core.harness.ontology_engine.data_source import DataSourceRegistry
@@ -1767,7 +1780,11 @@ class OntologyEngine:
 
 def load_engine(domain_id: str = "ai-knowledge") -> Optional[OntologyEngine]:
 
-    """Factory: load engine for a domain_id."""
+    """Factory: load engine for a domain_id.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     import os as _os
 
@@ -1803,7 +1820,11 @@ _MAX_GRAPH_CACHE = 5  # keep at most 5 domain graphs in memory
 
 def get_graph(domain_id: str = "ai-knowledge") -> GraphIndex:
 
-    """Get or load the graph for a domain. Thread-safe via dict cache."""
+    """Get or load the graph for a domain. Thread-safe via dict cache.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     global _graph_cache_order
 
@@ -2002,7 +2023,12 @@ def _persist_reviews(domain_id: str, affected: List[Dict[str, Any]]) -> None:
 
 async def trigger_pipeline(pipeline_id: str, params: dict | None = None) -> None:
 
-    """Fire-and-forget pipeline execution. Used by side_effects and event handlers."""
+    """Fire-and-forget pipeline execution. Used by side_effects and event handlers.
+
+    Args:
+        pipeline_id: pipeline 标识。
+        params: params 参数。
+    """
 
     try:
 

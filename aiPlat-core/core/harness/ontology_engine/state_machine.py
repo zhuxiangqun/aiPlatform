@@ -25,6 +25,12 @@ class EvalContext:
     """Evaluation context containing all instances and their relations."""
 
     def __init__(self, instances: List[Dict[str, Any]], *, simulate: bool = False):
+        """初始化。
+
+        Args:
+            instances: instances 参数。
+            simulate: simulate 参数。
+        """
         self._instances = instances
         self.simulate = bool(simulate)
         # Build class index: class_label → list of instances
@@ -39,16 +45,19 @@ class EvalContext:
                 self._chunk_index.setdefault(cid, []).append(inst)
 
     def count_by_class(self, class_label: str) -> int:
-        """Count all instances of a given class in the context."""
+        """Count all instances of a given class in the context.
+
+        Args:
+            class_label: class_label 参数。
+        """
         return len(self._class_index.get(class_label, []))
 
     def count_co_occurring(self, class_label: str, focal_instance: Dict[str, Any]) -> int:
         """Count instances of class_label that co-occur with the focal instance.
 
-        Two instances co-occur if they share at least one chunk_id.
-        If no chunk-level co-occurrence found, falls back to class-level
-        counting (all instances in document), which is the correct behavior
-        when each chunk produces exactly one instance.
+        Args:
+            class_label: class_label 参数。
+            focal_instance: focal_instance 参数。
         """
         focal_cids = self._chunk_ids_of(focal_instance)
         if not focal_cids or not self._chunk_index:
@@ -70,9 +79,16 @@ class EvalContext:
         return max(0, raw_count)
 
     def has_instance_of(self, class_label: str) -> bool:
+        """has_instance_of。
+
+        Args:
+            class_label: class_label 参数。
+        """
         return self.count_by_class(class_label) > 0
 
     def all_instances(self) -> List[Dict[str, Any]]:
+        """all_instances。
+        """
         return self._instances
 
     def _chunk_ids_of(self, instance: Dict[str, Any]) -> List[str]:
@@ -93,6 +109,17 @@ class StateTransitionResult:
         transition_desc: str = "",
         side_effects: Optional[List[Dict[str, Any]]] = None,
     ):
+        """初始化。
+
+        Args:
+            instance_title: instance_title 参数。
+            class_name: class_name 参数。
+            from_state: from_state 参数。
+            to_state: to_state 参数。
+            trigger_type: trigger_type 参数。
+            transition_desc: transition_desc 参数。
+            side_effects: side_effects 参数。
+        """
         self.instance_title = instance_title
         self.class_name = class_name
         self.from_state = from_state
@@ -102,6 +129,8 @@ class StateTransitionResult:
         self.side_effects = side_effects or []
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "instance_title": self.instance_title,
             "class_name": self.class_name,
@@ -117,7 +146,11 @@ class StateMachine:
     """Pure-rule state machine evaluator, driven entirely by YAML config."""
 
     def __init__(self, domain):
-        """Initialize from an OntologyDomain loaded from YAML."""
+        """Initialize from an OntologyDomain loaded from YAML.
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
         self._cls_by_label: Dict[str, Any] = {}
         for cls in domain.classes:
@@ -133,7 +166,12 @@ class StateMachine:
         instance: Dict[str, Any],
         context: EvalContext,
     ) -> Optional[StateTransitionResult]:
-        """Evaluate transitions, iterating to stability (chain all that fire)."""
+        """Evaluate transitions, iterating to stability (chain all that fire).
+
+        Args:
+            instance: instance 参数。
+            context: context 参数。
+        """
         chain = self.evaluate_chain(instance, context)
         return chain[-1] if chain else None
 
@@ -142,7 +180,12 @@ class StateMachine:
         instance: Dict[str, Any],
         context: EvalContext,
     ) -> List[StateTransitionResult]:
-        """Return the full chain of state transitions, or empty list."""
+        """Return the full chain of state transitions, or empty list.
+
+        Args:
+            instance: instance 参数。
+            context: context 参数。
+        """
         class_name = str(instance.get("class_name", ""))
         cls = self._cls_by_label.get(class_name)
         if cls is None:
@@ -503,10 +546,9 @@ class StateMachine:
 def compute_indicators(instances: List[Dict[str, Any]], context: EvalContext) -> None:
     """Compute derived property indicators for each instance from co-occurrence data.
 
-    Injects computed fields into instance["properties"]:
-      _cooc_<ClassName>   — co-occurring instance count per class
-      enterprise_adoptions — count of co-occurring instances with enterprise keywords
-      has_competing        — bool, another instance of same class co-occurs
+    Args:
+        instances: instances 参数。
+        context: context 参数。
     """
     enterprise_keywords = ("enterprise", "企业", "production", "生产", "product", "工业")
 

@@ -133,7 +133,8 @@ BUILTIN_CONTRACTS: List[ActionContractModel] = [
 def register_all(registry) -> int:
     """Register all built-in contracts + scan action YAML dirs.
 
-    Registry parameter is injected to avoid circular imports.
+    Args:
+        registry: registry 参数。
     """
     count = 0
 

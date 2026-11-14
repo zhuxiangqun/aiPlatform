@@ -28,6 +28,8 @@ class StructuredChunk:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "id": self.id,
             "text": self.text,
@@ -56,6 +58,8 @@ class StructuredTable:
     chunk_id: str = ""                         # parent chunk
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "table_id": self.table_id,
             "caption": self.caption,
@@ -103,6 +107,8 @@ class ParsedDocument:
     parse_warnings: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "title": self.title,
             "format": self.format,
@@ -131,6 +137,8 @@ class QAPair:
     source_chunk_id: str = ""
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "id": self.id, "question": self.question, "answer": self.answer[:500],
             "tags": self.tags, "source_chunk_id": self.source_chunk_id,
@@ -155,7 +163,12 @@ class AdaptiveRouter:
 
     @staticmethod
     def route(page_text: str, image_regions: int = 0) -> str:
-        """Returns 'ocr' | 'vlm' based on text density heuristic."""
+        """Returns 'ocr' | 'vlm' based on text density heuristic.
+
+        Args:
+            page_text: page_text 参数。
+            image_regions: image_regions 参数。
+        """
         text_chars = len(page_text.strip()) if page_text else 0
         # If very little text but has images → VLM
         if text_chars < 100 and image_regions > 0:
@@ -178,7 +191,10 @@ class VisualPageParser:
     ) -> Dict[str, Any]:
         """Send page image to VLM, return structured output with figure descriptions.
 
-        Returns: {markdown, figures: [{kind, description, transcription, confidence}]}
+        Args:
+            image_base64: image_base64 参数。
+            model_name: model_name 参数。
+            page_num: page_num 参数。
         """
         prompt = (
             "Extract all content from this document page image. Return JSON:\n"
@@ -228,7 +244,12 @@ class VisualPageParser:
         expected_figures: int,
         parsed_figures: int,
     ) -> Dict[str, Any]:
-        """Chart completeness check. Returns {complete, missing, action}."""
+        """Chart completeness check. Returns {complete, missing, action}.
+
+        Args:
+            expected_figures: expected_figures 参数。
+            parsed_figures: parsed_figures 参数。
+        """
         missing = expected_figures - parsed_figures
         return {
             "complete": missing <= 0,
@@ -254,11 +275,9 @@ class DocumentParser:
 
     def parse_file(self, file_path: str) -> ParsedDocument:
         """Parse a document file by path. Auto-detects format from extension.
-        
-        Supports: pdf, docx, html, md, txt, mp4, avi, mov, wav, mp3, png, jpg
-        
-        Now delegates dispatch to ConverterRegistry (System A) for raw text extraction,
-        adding System B's structural enrichment on top.
+
+        Args:
+            file_path: file_path 参数。
         """
         from core.api.facades.kb_facade import _KIND_TO_EXT, normalize_kind
         path = _Path(file_path)
@@ -295,7 +314,13 @@ class DocumentParser:
             return self._parse_text(path.read_bytes().decode("utf-8", errors="ignore"), file_path)
 
     def parse_text(self, text: str, *, title: str = "", format: str = "txt") -> ParsedDocument:
-        """Parse raw text string. Uses canonical format normalization."""
+        """Parse raw text string. Uses canonical format normalization.
+
+        Args:
+            text: text 参数。
+            title: title 参数。
+            format: format 参数。
+        """
         from core.api.facades.kb_facade import normalize_kind
         fmt = normalize_kind(format)
         if fmt == "markdown":
@@ -699,7 +724,11 @@ class DocumentParser:
                 table.chunk_id = doc.chunks[ci].id
 
     def parse_qa_pairs(self, text: str) -> List[QAPair]:
-        """Extract QA pairs from FAQ-style text (Q: ... A: ... or ### heading)."""
+        """Extract QA pairs from FAQ-style text (Q: ... A: ... or ### heading).
+
+        Args:
+            text: text 参数。
+        """
         import re
         pairs = []
         qa_blocks = re.split(r'\n(?=Q\s*[：:])', text)
@@ -725,7 +754,11 @@ class DocumentParser:
         return pairs
 
     def parse_image(self, file_path: str) -> Dict[str, Any]:
-        """Multi-modal: extract image metadata and OCR text via InfraOCRAdapter."""
+        """Multi-modal: extract image metadata and OCR text via InfraOCRAdapter.
+
+        Args:
+            file_path: file_path 参数。
+        """
         result = {"file": file_path, "format": "image", "text": "", "metadata": {}}
         try:
             from PIL import Image

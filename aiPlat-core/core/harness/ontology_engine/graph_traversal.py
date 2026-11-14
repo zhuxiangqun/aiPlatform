@@ -24,6 +24,7 @@ from core.harness.ontology_engine.graph_index import GraphIndex, GraphEdge, Grap
 
 @dataclass
 class TraversalStep:
+    """TraversalStep。"""
     entity_id: str
     entity_name: str
     class_name: str
@@ -33,6 +34,8 @@ class TraversalStep:
     confidence: float = 1.0
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "entity_id": self.entity_id,
             "entity_name": self.entity_name,
@@ -46,19 +49,26 @@ class TraversalStep:
 
 @dataclass
 class TraversalPath:
+    """TraversalPath。"""
     steps: List[TraversalStep] = field(default_factory=list)
     total_weight: float = 1.0
     min_weight_on_path: float = 1.0
 
     @property
     def length(self) -> int:
+        """length。
+        """
         return max(0, len(self.steps) - 1)
 
     @property
     def terminal(self) -> Optional[TraversalStep]:
+        """terminal。
+        """
         return self.steps[-1] if self.steps else None
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "length": self.length,
             "steps": [s.to_dict() for s in self.steps],
@@ -69,6 +79,7 @@ class TraversalPath:
 
 @dataclass
 class TraversalResult:
+    """TraversalResult。"""
     paths: List[TraversalPath] = field(default_factory=list)
     terminal_entities: List[Dict[str, Any]] = field(default_factory=list)
     ranked_terminals: List[Dict[str, Any]] = field(default_factory=list)
@@ -77,6 +88,8 @@ class TraversalResult:
     stats: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "paths": [p.to_dict() for p in self.paths],
             "terminal_entities": self.terminal_entities,

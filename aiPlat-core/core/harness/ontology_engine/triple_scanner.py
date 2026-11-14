@@ -71,8 +71,8 @@ def _normalize_list(val: Any) -> List[str]:
 async def scan_and_populate(store: TripleStore = None) -> Dict[str, Any]:
     """Full scan of AGENT.md, SKILL.md, skill_deps.py, and PipelineStageConfig.
 
-    Populates the TripleStore with all discovered cross-graph dependencies.
-    Returns stats dict.
+    Args:
+        store: store 参数。
     """
     if store is None:
         store = get_triple_store()

@@ -16,10 +16,16 @@ class ShardedGraphIndex:
     """Multi-domain graph aggregator."""
 
     def __init__(self):
+        """初始化。
+        """
         self._shards: Dict[str, GraphIndex] = {}
 
     def get_shard(self, domain_id: str) -> GraphIndex:
-        """Get or load a domain shard."""
+        """Get or load a domain shard.
+
+        Args:
+            domain_id: domain 标识。
+        """
         if domain_id not in self._shards:
             self._shards[domain_id] = GraphIndex.load(domain_id)
         return self._shards[domain_id]

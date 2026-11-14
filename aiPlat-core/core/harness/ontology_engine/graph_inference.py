@@ -21,11 +21,14 @@ from core.harness.ontology_engine.graph_index import GraphIndex, GraphEdge
 
 @dataclass
 class InferenceResult:
+    """InferenceResult。"""
     inferred_edges: List[GraphEdge] = field(default_factory=list)
     rule_hits: Dict[str, int] = field(default_factory=dict)
     stats: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "inferred_edges": [
                 {
@@ -48,6 +51,12 @@ class GraphInference:
     """Rule-based reasoning engine for GraphIndex."""
 
     def __init__(self, domain, graph: GraphIndex):
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+            graph: graph 参数。
+        """
         self._domain = domain
         self._graph = graph
         self._rules: List[Dict[str, Any]] = list(
@@ -168,8 +177,9 @@ class GraphInference:
     def apply_to_graph(self, result: InferenceResult, *, via_action: bool = False) -> int:
         """Persist inferred edges — ONLY when authorized by an Action handler.
 
-        Direct calls (engine / HTTP) must NOT write GraphIndex. Default via_action=False
-        returns 0 and leaves edges as suggestions (anti false-green / dual-authority).
+        Args:
+            result: result 参数。
+            via_action: via_action 参数。
         """
         if not via_action:
             logger = __import__("logging").getLogger(__name__)
@@ -198,7 +208,11 @@ class GraphInference:
     # ── Phase F: Runtime rule CRUD ──
 
     def add_rule(self, rule: Dict[str, Any]) -> str:
-        """Add or overwrite a rule at runtime. Returns rule name."""
+        """Add or overwrite a rule at runtime. Returns rule name.
+
+        Args:
+            rule: rule 参数。
+        """
         name = str(rule.get("name", ""))
         if not name:
             raise ValueError("Rule must have a 'name' field")
@@ -210,7 +224,11 @@ class GraphInference:
         return name
 
     def remove_rule(self, name: str) -> bool:
-        """Remove a rule by name. Returns True if removed."""
+        """Remove a rule by name. Returns True if removed.
+
+        Args:
+            name: name 参数。
+        """
         for i, r in enumerate(self._rules):
             if r.get("name") == name:
                 del self._rules[i]

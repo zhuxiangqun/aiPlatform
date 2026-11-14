@@ -37,6 +37,7 @@ from typing import Any, Dict, List, Optional
 
 class ResolveResult:
 
+    """ResolveResult。"""
     merged: List[Dict[str, Any]] = field(default_factory=list)
 
     merge_map: Dict[str, str] = field(default_factory=dict)  # {old_name → canonical_name}
@@ -47,6 +48,8 @@ class ResolveResult:
 
     def to_dict(self) -> dict:
 
+        """to_dict。
+        """
         return {
 
             "merged_count": len(self.merged),
@@ -81,6 +84,11 @@ class EntityResolver:
 
     def __init__(self, domain=None):
 
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
 
         self._doc_type = ""
@@ -243,12 +251,9 @@ class EntityResolver:
 
         """Build alias → canonical_id index from extracted instances.
 
-
-
-        Maps normalized entity names to their canonical ID for fast dedup.
-
-        Also expands using synonym map for cross-name matching.
-
+        Args:
+            instances: instances 参数。
+            domain_id: domain 标识。
         """
 
         index: Dict[str, str] = {}
@@ -758,7 +763,11 @@ class EntityResolver:
 
     def normalize(cls, text: str) -> str:
 
-        """Normalize text: fullwidth→halfwidth, strip, lowercase."""
+        """Normalize text: fullwidth→halfwidth, strip, lowercase.
+
+        Args:
+            text: text 参数。
+        """
 
         t = str(text).translate(cls._FW_MAP)
 
@@ -830,18 +839,11 @@ class EntityResolver:
 
         """P1: Cross-source entity aggregation. Links entities from different data sources.
 
-
-
-        Unlike resolve() which merges within the same source, this creates cross-source
-
-        links between entities that refer to the same real-world object.
-
-
-
-        Returns a ResolveResult where merge_map maps {source_b_name → source_a_name}
-
-        for entities that should be linked.
-
+        Args:
+            instances_a: instances_a 参数。
+            instances_b: instances_b 参数。
+            source_a: source_a 参数。
+            source_b: source_b 参数。
         """
 
         result = ResolveResult()

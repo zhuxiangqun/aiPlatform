@@ -1,18 +1,18 @@
 {
   "_comment": "Python docstring debt snapshot",
-  "_generated": "2026-11-14T02:04:17Z",
+  "_generated": "2026-11-14T02:08:16Z",
   "scanned_py": 1936,
-  "files_with_debt": 1094,
-  "total_findings": 8163,
+  "files_with_debt": 1063,
+  "total_findings": 7944,
   "by_rule": {
-    "public_doc": 4590,
-    "args_doc": 3361,
+    "public_doc": 4490,
+    "args_doc": 3242,
     "module_doc": 201,
     "why_comment": 11
   },
   "by_repo": {
     "aiPlat-app": 135,
-    "aiPlat-core": 4243,
+    "aiPlat-core": 4024,
     "aiPlat-infra": 1176,
     "aiPlat-management": 699,
     "aiPlat-platform": 1457,
@@ -122,13 +122,6 @@
       "by_rule": {
         "public_doc": 23,
         "args_doc": 14
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/graph_index.py": {
-      "count": 37,
-      "by_rule": {
-        "public_doc": 12,
-        "args_doc": 25
       }
     },
     "aiPlat-platform/storage/sqlite.py": {
@@ -548,20 +541,6 @@
         "args_doc": 2
       }
     },
-    "aiPlat-core/core/harness/ontology_engine/approval.py": {
-      "count": 17,
-      "by_rule": {
-        "public_doc": 12,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/data_source.py": {
-      "count": 17,
-      "by_rule": {
-        "public_doc": 15,
-        "args_doc": 2
-      }
-    },
     "aiPlat-core/core/harness/utils/output_style.py": {
       "count": 17,
       "by_rule": {
@@ -733,13 +712,6 @@
       "by_rule": {
         "public_doc": 10,
         "args_doc": 4
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/action_registry.py": {
-      "count": 14,
-      "by_rule": {
-        "public_doc": 11,
-        "args_doc": 3
       }
     },
     "aiPlat-core/core/harness/optimization/strategy_tracker.py": {
@@ -1119,26 +1091,6 @@
       "count": 11,
       "by_rule": {
         "args_doc": 11
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/builtin_handlers.py": {
-      "count": 11,
-      "by_rule": {
-        "args_doc": 11
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/document_parser.py": {
-      "count": 11,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 7
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/state_machine.py": {
-      "count": 11,
-      "by_rule": {
-        "public_doc": 5,
-        "args_doc": 6
       }
     },
     "aiPlat-core/core/harness/registry/registry_loader.py": {
@@ -1654,26 +1606,6 @@
         "args_doc": 1
       }
     },
-    "aiPlat-core/core/harness/ontology_engine/ontology_branch.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 4,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/state_history.py": {
-      "count": 9,
-      "by_rule": {
-        "args_doc": 9
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/triple_store.py": {
-      "count": 9,
-      "by_rule": {
-        "public_doc": 6,
-        "args_doc": 3
-      }
-    },
     "aiPlat-core/core/harness/optimization/goal_executor.py": {
       "count": 9,
       "by_rule": {
@@ -2022,19 +1954,6 @@
       "by_rule": {
         "public_doc": 6,
         "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/engine.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/graph_traversal.py": {
-      "count": 8,
-      "by_rule": {
-        "public_doc": 8
       }
     },
     "aiPlat-core/core/harness/optimization/abstract_goal_decomposer.py": {
@@ -2721,27 +2640,6 @@
         "args_doc": 6
       }
     },
-    "aiPlat-core/core/harness/ontology_engine/entity_resolver.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/graph_inference.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/traversal_cache.py": {
-      "count": 6,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 4
-      }
-    },
     "aiPlat-core/core/harness/optimization/goal_progress_evaluator.py": {
       "count": 6,
       "by_rule": {
@@ -3275,13 +3173,6 @@
       "count": 5,
       "by_rule": {
         "public_doc": 5
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/sirg_auditor.py": {
-      "count": 5,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 4
       }
     },
     "aiPlat-core/core/harness/routing/model_tier_router.py": {
@@ -3884,27 +3775,6 @@
         "args_doc": 3
       }
     },
-    "aiPlat-core/core/harness/ontology_engine/knowledge_synthesis.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 3,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/property_extractor.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/relation_mapper.py": {
-      "count": 4,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 3
-      }
-    },
     "aiPlat-core/core/harness/optimization/goal_generator.py": {
       "count": 4,
       "by_rule": {
@@ -4495,25 +4365,6 @@
       "by_rule": {
         "args_doc": 2,
         "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/cleanup.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/datasource_status.py": {
-      "count": 3,
-      "by_rule": {
-        "public_doc": 2,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/rule_designer.py": {
-      "count": 3,
-      "by_rule": {
-        "args_doc": 3
       }
     },
     "aiPlat-core/core/harness/registry/execution_type_policy.py": {
@@ -5459,38 +5310,6 @@
       "by_rule": {
         "args_doc": 1,
         "public_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/audit_rules.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/class_mapper.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/knowledge_gap_detector.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/run_context_builder.py": {
-      "count": 2,
-      "by_rule": {
-        "args_doc": 2
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/sharded_graph.py": {
-      "count": 2,
-      "by_rule": {
-        "public_doc": 1,
-        "args_doc": 1
       }
     },
     "aiPlat-core/core/harness/optimization/prompt_optimizer.py": {
@@ -6453,30 +6272,6 @@
       }
     },
     "aiPlat-core/core/harness/observation/otel_bridge.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/builtin_actions.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/business_event_bridge.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/rule_prompt.py": {
-      "count": 1,
-      "by_rule": {
-        "args_doc": 1
-      }
-    },
-    "aiPlat-core/core/harness/ontology_engine/triple_scanner.py": {
       "count": 1,
       "by_rule": {
         "args_doc": 1

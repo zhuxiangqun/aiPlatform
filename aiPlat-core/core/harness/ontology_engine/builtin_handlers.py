@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 async def approve_diagnosis(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
     """Approve a diagnosis session: transition from delivered → in_progress.
 
-    Domain is read from entity (via action executor) or params. No hardcoded domain ID.
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -46,9 +49,10 @@ async def approve_diagnosis(entity: Dict[str, Any], params: Dict[str, Any], acto
 async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
     """Accept an installation order: transition from pending → accepted.
 
-    Domain is read from entity (via action executor) or params. No hardcoded domain ID.
-    Accepts both seed schema (assigned_technician/scheduled_at) and legacy
-    (technician_id/appointment_slot) param names.
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -88,7 +92,10 @@ async def accept_order(entity: Dict[str, Any], params: Dict[str, Any], actor: st
 async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
     """Generic work-order assign: required_state → target_state (default 已指派).
 
-    Domain-agnostic; used by service-domain vertical (Phase 5+ copyability).
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -112,10 +119,10 @@ async def assign_work_order(entity: Dict[str, Any], params: Dict[str, Any], acto
 async def set_entity_state(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
     """Domain-agnostic state transition. Caller/contract supplies target via new_state/target_state.
 
-    Used by customer_action lifecycle seeds (assign / start / complete / triage).
-    Writes evidence relations:
-      assigned → assigned_to; in_progress → visited_at; completed → installed_by;
-      triaging/rooted → suspects / rooted_at (it-ops alert path).
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
     from datetime import datetime, timezone
@@ -219,7 +226,10 @@ async def assert_inferred_edge(
 ) -> Dict[str, Any]:
     """Commit one inference suggestion into GraphIndex (authority path).
 
-    Must be invoked via ActionRegistry — marks edge inferred=true for audit/query split.
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -268,7 +278,13 @@ async def assert_inferred_edge(
 async def assert_inferred_edges(
     entity: Dict[str, Any], params: Dict[str, Any], actor: str = ""
 ) -> Dict[str, Any]:
-    """Batch-commit inference suggestions (still one Action audit record)."""
+    """Batch-commit inference suggestions (still one Action audit record).
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex, GraphEdge
     from core.harness.ontology_engine.graph_inference import InferenceResult, GraphInference
 
@@ -319,7 +335,13 @@ async def assert_inferred_edges(
 # ═══════════════════════════════════════════════════════════
 
 async def webhook_forward(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Fire-and-forget HTTP POST to external system (legacy call_webhook)."""
+    """Fire-and-forget HTTP POST to external system (legacy call_webhook).
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     import aiohttp
 
     url = params.get("url", "")
@@ -342,7 +364,13 @@ async def webhook_forward(entity: Dict[str, Any], params: Dict[str, Any], actor:
 # ═══════════════════════════════════════════════════════════
 
 async def deploy_ai_agent(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Cross-domain: source entity → create target entity in another domain."""
+    """Cross-domain: source entity → create target entity in another domain.
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
@@ -386,7 +414,13 @@ async def deploy_ai_agent(entity: Dict[str, Any], params: Dict[str, Any], actor:
 
 
 async def trigger_emergency_response(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Emergency response: create emergency record from clinical trial."""
+    """Emergency response: create emergency record from clinical trial.
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
     import datetime as _dt
 
@@ -429,7 +463,13 @@ async def trigger_emergency_response(entity: Dict[str, Any], params: Dict[str, A
 
 
 async def complete_bpr_delivery(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Bell24: BPR咨询交付完成 → 更新状态并记录效率数据."""
+    """Bell24: BPR咨询交付完成 → 更新状态并记录效率数据.
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
@@ -461,7 +501,13 @@ async def complete_bpr_delivery(entity: Dict[str, Any], params: Dict[str, Any], 
 
 
 async def sync_overseas_status(entity: Dict[str, Any], params: Dict[str, Any], actor: str = "") -> Dict[str, Any]:
-    """Bell24: 海外子公司状态同步 → 更新集团视图."""
+    """Bell24: 海外子公司状态同步 → 更新集团视图.
+
+    Args:
+        entity: entity 参数。
+        params: params 参数。
+        actor: 操作者身份。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     entity_id = entity.get("id") or entity.get("entity_id", "")
