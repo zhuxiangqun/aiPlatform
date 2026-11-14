@@ -6,7 +6,7 @@ doc_type: Architecture
 
 > **文档类型**：Design / Execution Plan（**已定稿冻结** · v1.1.7）  
 > **版本**：v1.1.7 · 2026-11-14  
-> **状态**：**方案已定稿（冻结）** — §15 **14/14**；Phase 1 已验收；META_EVAL F1–F4 **全绿**；Phase 2 **预备中（未授权）**；Phase 3 **A 19/19 scoped** · **B1 suite attached** · B2 待决（全局扩容仍 false）  
+> **状态**：**方案已定稿（冻结）** — §15 **14/14**；Phase 1 已验收；META_EVAL F1–F4 **全绿**；Phase 2 **预备中（未授权）**；Phase 3 **A 19/19 scoped** · **B1–B3 attached** · B4 待决（全局扩容仍 false）  
 > **诚实锁**：定稿 ≠ 生产独立 / ≠ 准确率已认证 / ≠ `process_split_authorized=true` / ≠ Tier A 自动扩容；改阈值或结构须走变更控制  
 > **工件**：[`META_EVAL_STATUS.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_STATUS.md) · [`PHASE3_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE3_PREP.md) · [`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · [`PHASE2_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE2_PREP.md) · [`R11_META_EVAL_THRESHOLDS.md`](../../../packages/aiplat-evaluation/docs/a3/R11_META_EVAL_THRESHOLDS.md) · [`R12_CAPABILITY_RECONCILIATION.md`](../../../packages/aiplat-evaluation/docs/a3/R12_CAPABILITY_RECONCILIATION.md) · [`TIER_MATRIX_V0.md`](../../../packages/aiplat-evaluation/docs/a3/TIER_MATRIX_V0.md) · Phase0 处置/SHA/fixtures/CI 子集  
 
@@ -815,3 +815,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec39 | 2026-11-14 | 覆盖率骨架 A 行实测（19/19）；scoped 闭环文；开 B1 suite 挂接提案 |
 | v1.1.7+exec40 | 2026-11-14 | owner ACCEPT B1 suite 挂接（13 smoke+agent+Eval partial）；开 B2 提案 |
 | v1.1.7+exec41 | 2026-11-14 | owner ACCEPT B2 smoke 挂接 26/26；开 B3 regression 提案 |
+| v1.1.7+exec42 | 2026-11-14 | owner ACCEPT B3 regression 挂接 66/66；开 B4 facade 提案 |

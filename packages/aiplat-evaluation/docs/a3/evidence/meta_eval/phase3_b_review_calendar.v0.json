@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_calendar.v0",
-  "recorded_at": "2026-11-14T21:44:00+08:00",
+  "recorded_at": "2026-11-14T21:46:00+08:00",
   "source": "docs/a3/evidence/tier_matrix_v0.json",
   "tier_b_n": 165,
   "waves": [
@@ -65,9 +65,12 @@
         "dataset_regression_profile",
         "dataset_regression_status"
       ],
-      "suite_hook": "proposal_pending_owner",
-      "next_review": "TBD",
-      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach_proposal.v0.json"
+      "suite_hook": "attached",
+      "next_review": "2026-monthly",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach_proposal.v0.json",
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json",
+      "attached_n": 66,
+      "gap_symbols": []
     },
     {
       "bucket_id": "B4_eval_facade",
@@ -84,8 +87,9 @@
         "eval_open_capability_bank_editor",
         "eval_promote_agent_capability_bank"
       ],
-      "suite_hook": "pending_suite_attach",
-      "next_review": "TBD"
+      "suite_hook": "proposal_pending_owner",
+      "next_review": "TBD",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach_proposal.v0.json"
     },
     {
       "bucket_id": "B5_types_errors",
