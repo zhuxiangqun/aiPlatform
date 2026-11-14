@@ -4,6 +4,9 @@ doc_type: Reference
 
 # aiPlat 自进化（Self‑Evolution）闭环：可落地实现级方案（Skills + Prompts + Tool/Policy）
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 > 面向对象：平台/架构/后端/前端/运维  
 > 目标：把“自进化”从开源项目常见的“黑盒自学习”升级为 **可治理、可审计、可灰度、可回滚、可观测** 的工程闭环，并与你们现有的 **Gates / Approvals / Change Control / ExecBackends / Prompt 发布灰度** 体系打通。
 

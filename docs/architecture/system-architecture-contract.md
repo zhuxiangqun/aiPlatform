@@ -14,6 +14,7 @@ doc_type: Architecture
 > 2026-11-14：文档诚实对齐——平台对外仅为 REST（GraphQL/平台 WS 未实现）；MCP 仅在 core；FDEBuilderOrchestrator 已归档。不改变跨层运行时契约。`clause-sync`
 > 2026-11-14：续修文档路径/入口诚实性（`execution/loop/`、`wiki_indexer`、infra 配置 section、去根仓 Makefile 幻影）。不改变跨层运行时契约。`clause-sync`
 > 2026-11-14：infra developer 目录树去掉已删 `mcp/`；测试入口改为 pytest。不改变跨层运行时契约。`clause-sync`
+> 2026-11-14：core docs 路径对账（coordination/engines/memory/services/models 幻影路径 → 现网入口）。不改变跨层运行时契约。`clause-sync`
 
 ---
 

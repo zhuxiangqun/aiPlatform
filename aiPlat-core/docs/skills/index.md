@@ -164,4 +164,4 @@ Skill Factory 属于 To-Be 的工程化能力，当前仓库尚未形成可验�
 - Registry：`core/apps/skills/registry.py`
 - Executor（inline/fork）：`core/apps/skills/executor.py`
 - 目录化技能发现（SKILL.md parser/loader/matcher）：`core/apps/skills/discovery.py`
-- 确定性脚本执行：`core/apps/skills/script_runner.py`
+- 确定性脚本执行：`core/apps/skills/base.py`

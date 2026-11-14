@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 02｜Syscalls 与 Gates 设计（Kernel Runtime）
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 状态：草案（Phase 2/3 已部分对齐实现；待补齐 CI 后可冻结“不可绕过”机制）  
 更新时间：2026-04-16
 

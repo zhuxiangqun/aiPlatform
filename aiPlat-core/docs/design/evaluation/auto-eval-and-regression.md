@@ -4,6 +4,9 @@ doc_type: Reference
 
 # 自动评估与回归门控（As-Is）
 
+> **As-Is（2026-11）**：下文部分路径为历史/To-Be 设计引用；以 `ARCHITECTURE_STATUS.md` 与当前代码树为准，勿把未存在文件当已实现。
+
+
 > 本文档用于把近期落地的“自动评估（auto-eval）/证据包（evidence）/回归对比（diff）/策略（policy）/项目级继承（project policy）/治理（change-control）”整理成可追溯的工程口径，避免实现与文档脱节。
 
 last_synced: 2026-07-04

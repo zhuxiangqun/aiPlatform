@@ -543,10 +543,11 @@ class CustomModelService(ModelService):
 
 ## 证据索引（Evidence Index｜抽样）
 
-- PromptService：`core/services/prompt_service.py`
-- ModelService：`core/services/model_service.py`
+> As-Is（2026-11）：无 `prompt_service.py` / `model_service.py`。提示词 → `core/harness/utils/prompt_loader.py`；选模 → `core/harness/utils/model_injection.py` + infra ModelManager。上文 PromptService/ModelService 示例为历史 API 叙述。
+
 - TraceService：`core/services/trace_service.py`
 - ContextService：`core/services/context_service.py`
 - FileService：`core/services/file_service.py`
+- 选模：`core/harness/utils/model_injection.py`
 **版本**: v1.1
 **维护团队**: AI Platform Team

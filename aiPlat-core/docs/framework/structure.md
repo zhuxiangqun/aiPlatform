@@ -75,7 +75,7 @@ harness/
 ├── execution/                          # 执行系统 [已实现]
 │   ├── __init__.py
 │   ├── loop/                          # 执行循环 (ReAct Loop)
-│   ├── retry.py                        # 重试管理器
+│   # retry.py 已移除；重试在 loop/policy 路径内
 │   ├── policy.py                       # 执行策略
 │   ├── feedback.py                     # [已实现] 反馈机制
 │   │
@@ -227,8 +227,7 @@ apps/
 ```
 services/
 ├── __init__.py                           # 服务入口
-├── prompt_service.py                    # PromptService - 提示词模板管理
-├── model_service.py                     # ModelService - 模型调用封装（含 FormatAffinity）
+# prompt_service/model_service 已移除 → prompt_loader + model_injection + infra ModelManager
 ├── trace_service.py                     # TraceService - 执行链路追踪（含 DecayType）
 ├── context_service.py                   # ContextService - 会话上下文管理（含 FileType/ContextFile）
 └── file_service.py                      # FileService - Agent 间文件化通信

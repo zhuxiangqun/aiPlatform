@@ -423,6 +423,6 @@ commands:
 ## 证据索引（Evidence Index｜抽样）
 
 - ApprovalManager：`core/harness/infrastructure/approval/manager.py`
-- ContractManager：`core/harness/contract/manager.py`
+- Contract / 审批：`core/harness/infrastructure/approval/manager.py`（无独立 `contract/manager.py`）
 - Loop 接线（contract/approval）：`core/harness/execution/loop/`
 - Feedback loops（local/push/prod/evolution）：`core/harness/feedback_loops/*`

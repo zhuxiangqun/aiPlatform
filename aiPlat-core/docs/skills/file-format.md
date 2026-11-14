@@ -24,7 +24,7 @@ doc_type: Reference
 | YAML frontmatter | `SKILLMD_parser.FRONT_MATTER_PATTERN` | ✅ 已实现 |
 | references/ 按需加载 | `SkillLoader.load_reference` | ✅ 已实现 |
 | scripts/ 加载 | `SkillLoader.load_script` | ✅ 已实现 |
-| scripts/ 执行 | `core/apps/skills/script_runner.py: ScriptRunner` | ✅ 已实现（sandboxed） |
+| scripts/ 执行 | `core/apps/skills/base.py: ScriptRunner` | ✅ 已实现（sandboxed） |
 | 目录发现 | `SkillDiscovery.discover()` | ✅ 已实现（但需明确扫描目录与注册策略） |
 
 > **扫描目录约定（As-Is）**：HTTP Server 启动时按 scope 扫描目录化技能：  
@@ -175,7 +175,7 @@ skills/
 
 - SKILL.md parser/loader/matcher：`core/apps/skills/discovery.py`
 - SkillManifest 等类型：`core/apps/skills/types.py`
-- ScriptRunner：`core/apps/skills/script_runner.py`
+- ScriptRunner：`core/apps/skills/base.py`
 - SkillExecutor（inline/fork）：`core/apps/skills/executor.py`
 
 #### 修改文件
@@ -265,7 +265,7 @@ class SkillCategory(Enum):
 实际执行 scripts/ 目录下的脚本，实现确定性操作。
 
 #### 新增文件
-- `core/apps/skills/script_runner.py` - ScriptRunner 类
+- `core/apps/skills/base.py` - ScriptRunner 类
 
 #### 设计要点
 

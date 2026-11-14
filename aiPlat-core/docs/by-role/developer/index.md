@@ -119,11 +119,11 @@ make test-agent-basic
 
 | 任务 | 操作路径 | 参考文件位置 |
 |------|----------|-------------|
-| 创建协调器 | 调用 `AgentCoordinator(config)` | `core/harness/coordination/coordinators/agent.py` |
-| 执行多Agent协作 | 调用 `coordinator.execute(agents, task)` | `core/harness/coordination/coordinators/agent.py` |
-| 添加收敛检测 | 调用 `ConvergenceDetector()` | `core/harness/coordination/detector/convergence.py` |
-| 配置协作模式 | 调用协调模式（Pipeline/Fan-out等） | `core/harness/coordination/patterns/` |
-| 执行LangGraph图 | 创建 Graph 并执行 | `core/harness/execution/langgraph/graphs/` |
+| 动态编排 / spawn | `DynamicOrchestrator` | `core/harness/coordination/dynamic_orchestrator.py` |
+| 添加收敛检测 | `ConvergenceDetector` / `create_detector()` | `core/harness/coordination/detector/convergence.py` |
+| 配置协作模式 | Pipeline/Fan-out 等 patterns | `core/harness/coordination/patterns/` |
+| 执行 LangGraph 图 | Graph 包 | `core/harness/execution/langgraph/graphs/` |
+| Loop / 引擎入口 | `create_loop` / engines | `core/harness/execution/loop/` · `core/harness/execution/engines/` |
 
 **协作模式**：
 - **Pipeline**：流水线模式，顺序处理
@@ -134,11 +134,11 @@ make test-agent-basic
 - **Hierarchical**：层级任务拆解
 
 **相关文件位置**：
-- 协调器：`core/harness/coordination/coordinators/agent.py`
+- 动态编排：`core/harness/coordination/dynamic_orchestrator.py`
 - 收敛检测：`core/harness/coordination/detector/convergence.py`
 - 协作模式基类：`core/harness/coordination/patterns/base.py`
 - LangGraph 图：`core/harness/execution/langgraph/graphs/`
-- 执行器：`core/harness/execution/executor/unified.py`
+- 执行引擎：`core/harness/execution/engines/`（`loop_engine.py` / `graph_engine.py` 等）
 
 ---
 
@@ -226,7 +226,7 @@ make test-agent-basic
 - 记忆基类：`core/harness/memory/base.py`
 - 短期记忆：`core/harness/memory/short_term.py`
 - 长期记忆：`core/harness/memory/long_term.py`
-- LangChain 适配器：`core/harness/memory/langchain_adapter.py`
+- 记忆管理入口：`core/harness/memory/manager.py`（无独立 `langchain_adapter.py`）
 
 ---
 
@@ -241,7 +241,7 @@ make test-agent-basic
 | 创建知识库 | 调用 `KnowledgeIndexer(config)` | `core/harness/knowledge/wiki_indexer.py` |
 | 添加文档 | 调用 `indexer.index(doc)` | `core/harness/knowledge/wiki_indexer.py` |
 | 检索知识 | 调用 `retriever.retrieve(query, top_k)` | `core/harness/knowledge/retriever.py` |
-| 知识进化 | 调用 `evolution.evolve()` | `core/harness/knowledge/evolution.py` |
+| 知识进化 | `evolution_runner` / LLM 建议 | `core/harness/knowledge/evolution_runner.py` |
 
 **文档处理流程**：
 1. 解析文档（PDF、Word、Markdown 等）
@@ -252,7 +252,7 @@ make test-agent-basic
 **相关文件位置**：
 - 知识索引器：`core/harness/knowledge/wiki_indexer.py`
 - 知识检索器：`core/harness/knowledge/retriever.py`
-- 知识进化：`core/harness/knowledge/evolution.py`
+- 知识进化：`core/harness/knowledge/evolution_runner.py`
 - 知识类型定义：`core/harness/knowledge/types.py`
 
 ---
@@ -287,43 +287,41 @@ make test-agent-basic
 
 ### services - 核心服务
 
-**详细文档**：[harness 模块文档](../../harness/index.md)
+**详细文档**：[services 模块文档](../../services/index.md)
+
+> As-Is：无独立 `prompt_service.py` / `model_service.py`。选模走 `best_model_for_purpose` → infra ModelManager；提示词走 `prompt_loader` / Skill AGENT.md。
 
 **操作路径**：
 
 | 任务 | 操作路径 | 参考文件位置 |
 |------|----------|-------------|
-| 获取提示词服务 | 调用 `PromptService(config)` | `core/services/prompt_service.py` |
-| 获取模型服务 | 调用 `ModelService(config)` | `core/services/model_service.py` |
-| 获取上下文服务 | 调用 `ContextService()` | `core/services/context_service.py` |
-| 获取追踪服务 | 调用 `TraceService(config)` | `core/services/trace_service.py` |
-| 获取文件服务 | 调用 `FileService()` | `core/services/file_service.py` |
+| 上下文服务 | `ContextService` | `core/services/context_service.py` |
+| 追踪服务 | `TraceService` | `core/services/trace_service.py` |
+| 文件服务 | `FileService` | `core/services/file_service.py` |
+| 执行存储 | `execution_store/` | `core/services/execution_store/` |
+| 选模 | `best_model_for_purpose` | `core/harness/utils/model_injection.py` |
 
 **相关文件位置**：
-- 提示词服务：`core/services/prompt_service.py`
-- 模型服务：`core/services/model_service.py`
-- 上下文服务：`core/services/context_service.py`
-- 追踪服务：`core/services/trace_service.py`
-- 文件服务：`core/services/file_service.py`
+- 上下文：`core/services/context_service.py`
+- 追踪：`core/services/trace_service.py`
+- 文件：`core/services/file_service.py`
+- 选模：`core/harness/utils/model_injection.py`
 
 ---
 
 ### models - 模型封装
 
-**详细文档**：[harness 模块文档](../../harness/index.md)
+**详细文档**：infra `ModelManager` + core `InfraLLMAdapter`
+
+> As-Is：无 `core/models/{openai,anthropic,local}.py`。远程/本地模型目录在 **infra**；core 经 `core/adapters/llm/` 消费。
 
 **操作路径**：
 
 | 任务 | 操作路径 | 参考文件位置 |
 |------|----------|-------------|
-| 获取 OpenAI 提供商 | 调用 `OpenAIProvider(config)` | `core/models/openai.py` |
-| 获取 Anthropic 提供商 | 调用 `AnthropicProvider(config)` | `core/models/anthropic.py` |
-| 获取本地模型提供商 | 调用 `LocalProvider(config)` | `core/models/local.py` |
-
-**相关文件位置**：
-- 模型提供商基类：`core/models/base.py`
-- OpenAI 提供商：`core/models/openai.py`
-- Anthropic 提供商：`core/models/anthropic.py`
+| 适配器基类 | LLM adapter | `core/adapters/llm/base.py` |
+| 选模 / 注入 | `best_model_for_purpose` / `create_selected_adapter` | `core/harness/utils/model_injection.py` |
+| 模型目录权威 | ModelManager | `aiPlat-infra/infra/`（ModelManager） |
 
 ---
 

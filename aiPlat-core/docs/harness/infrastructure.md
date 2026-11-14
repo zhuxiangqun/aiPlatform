@@ -27,7 +27,7 @@ doc_type: Reference
 harness/infrastructure/
 └── langchain/                      # LangChain 集成
     ├── models.py                   # 模型集成
-    ├── (无 memory.py)              # 记忆集成当前位于 `core/harness/memory/langchain_adapter.py`
+    ├── (无 memory.py)              # 记忆集成当前位于 `core/harness/memory/manager.py`
     ├── tools.py                    # 工具集成
     └── prompts.py                  # 提示词集成
 ```
@@ -193,7 +193,7 @@ harness/infrastructure/
 
 ## 证据索引（Evidence Index｜抽样）
 
-- LangChain adapter（记忆）：`core/harness/memory/langchain_adapter.py`
+- LangChain adapter（记忆）：`core/harness/memory/manager.py`
 - HookManager（默认 hooks 注册）：`core/harness/infrastructure/hooks/hook_manager.py`
 - infra 层 DI（生产级 DI 在 infra）：`aiPlat-infra/infra/di/*`
 
