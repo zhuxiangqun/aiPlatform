@@ -800,3 +800,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec24 | 2026-11-14 | owner ACCEPT #5 `wilson_score_ci`；F1 impl 链齐；开提案#6 facade |
 | v1.1.7+exec25 | 2026-11-14 | owner ACCEPT #6 `eval_judge_calibration_gate` facade；开提案#7 |
 | v1.1.7+exec26 | 2026-11-14 | owner ACCEPT #7 facade；F1 A_candidate 7/7 scoped；开提案#8 F4 scorecard |
+| v1.1.7+exec27 | 2026-11-14 | owner ACCEPT #8 `build_release_scorecard`；开提案#9 evidence-pack |

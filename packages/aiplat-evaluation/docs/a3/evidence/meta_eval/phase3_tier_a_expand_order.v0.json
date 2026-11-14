@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_expand_order.v0",
-  "recorded_at": "2026-11-14T21:08:04+08:00",
+  "recorded_at": "2026-11-14T21:09:30+08:00",
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -65,13 +65,13 @@
       "seq": 8,
       "symbol": "build_release_scorecard",
       "family": "F4",
-      "status": "proposal_pending_owner"
+      "status": "accepted"
     },
     {
       "seq": 9,
       "symbol": "build_judge_calib_evidence_pack",
       "family": "F4",
-      "status": "queued"
+      "status": "proposal_pending_owner"
     },
     {
       "seq": 10,

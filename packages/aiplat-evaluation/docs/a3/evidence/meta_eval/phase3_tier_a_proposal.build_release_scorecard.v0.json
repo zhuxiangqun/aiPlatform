@@ -4,17 +4,17 @@
   "seq": 8,
   "symbol": "build_release_scorecard",
   "meta_family": "F4",
-  "recorded_at": "2026-11-14T21:08:04+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:09:30+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/harness/evaluation/release_scorecard.py:42",
   "depends_on_accepted": [
     "evaluate_judge_calibration_gate"
   ],
   "meta_family_status": "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
   "evidence_refs": [
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
     "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
-    "docs/a3/scorecard_v1.json",
-    "docs/a3/evidence/evidence_manifest.v1.json"
+    "docs/a3/scorecard_v1.json"
   ],
   "scope_if_accepted": {
     "tier_a_gate_authorized_for_symbol": true,
@@ -24,8 +24,9 @@
     "report_only_remains": true,
     "unscored_axes_holdout": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. F4 release scorecard scoped gate; unscored axes remain holdout; ≠ product accuracy_claim / process_split."
+  "owner_decision": "ACCEPT build_release_scorecard scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:09:30+08:00",
+  "honesty": "Owner accepted scoped F4 Tier A gate for build_release_scorecard only. unscored axes holdout; global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }

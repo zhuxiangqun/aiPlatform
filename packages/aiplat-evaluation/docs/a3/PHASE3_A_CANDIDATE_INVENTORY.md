@@ -11,7 +11,7 @@ doc_type: Reference
 
 - n=**19** · by_family={'F3': 3, 'F4': 2, 'F1': 7, 'F2': 7}
 - 全部 `meta_family_green=true`（见 [`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)）
-- 全部 `tier_a_gate_authorized=false`
+- 全局 `tier_a_expansion_authorized=false`；按符号 scoped 见 [`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)
 
 ## 明细
 
@@ -20,7 +20,7 @@ doc_type: Reference
 | `assert_t13_process_split_boundary` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_t13_allowlist.py:261` | **false** |
 | `build_g2b_s_dual_review_workflow` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:197` | **false** |
 | `build_judge_calib_evidence_pack` | F4 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:140` | **false** |
-| `build_release_scorecard` | F4 | impl | `aiPlat-core/core/harness/evaluation/release_scorecard.py:42` | **false** |
+| `build_release_scorecard` | F4 | impl | `aiPlat-core/core/harness/evaluation/release_scorecard.py:42` | **scoped true** |
 | `cohen_kappa_binary` | F1 | impl | `aiPlat-core/core/apps/eval/service/g2c.py:30` | **false** |
 | `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **false** |
 | `eval_evaluate_security_family_gates` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8021` | **false** |
