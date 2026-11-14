@@ -808,3 +808,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec32 | 2026-11-14 | owner ACCEPT #13 F2 facade；开提案#14 defaults facade |
 | v1.1.7+exec33 | 2026-11-14 | owner ACCEPT #14 defaults facade；开提案#15 family-gates facade |
 | v1.1.7+exec34 | 2026-11-14 | owner ACCEPT #15 family-gates facade；开提案#16 L5-gate API（≠ declare） |
+| v1.1.7+exec35 | 2026-11-14 | owner ACCEPT #16 L5-gate API；`l5_declare` 仍 false；F2 7/7；开提案#17 F3 |

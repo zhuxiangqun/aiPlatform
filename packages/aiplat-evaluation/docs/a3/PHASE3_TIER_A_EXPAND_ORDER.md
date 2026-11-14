@@ -33,8 +33,8 @@ doc_type: Reference
 | 13 | `eval_evaluate_security_judge_calibration` | F2 | **accepted**（facade） |
 | 14 | `eval_load_security_judge_calib_defaults` | F2 | **accepted**（facade） |
 | 15 | `eval_evaluate_security_family_gates` | F2 | **accepted**（facade） |
-| 16 | `eval_evaluate_security_severity_l5_gate` | F2 | **提案中**（facade；≠ L5 declare）→ [`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_severity_l5_gate.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_severity_l5_gate.md) |
-| 17 | `assert_t13_process_split_boundary` | F3 | queued（≠ process_split） |
+| 16 | `eval_evaluate_security_severity_l5_gate` | F2 | **accepted**（facade；`l5_declare` false） |
+| 17 | `assert_t13_process_split_boundary` | F3 | **提案中**（≠ process_split）→ [`PHASE3_TIER_A_PROPOSAL_assert_t13_process_split_boundary.md`](./PHASE3_TIER_A_PROPOSAL_assert_t13_process_split_boundary.md) |
 | 18 | `build_g2b_s_dual_review_workflow` | F3 | queued |
 | 19 | `eval_assert_t13_process_split_boundary` | F3 | queued（facade） |
 

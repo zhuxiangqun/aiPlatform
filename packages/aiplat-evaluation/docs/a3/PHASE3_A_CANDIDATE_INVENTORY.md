@@ -25,7 +25,7 @@ doc_type: Reference
 | `eval_assert_t13_process_split_boundary` | F3 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8349` | **false** |
 | `eval_evaluate_security_family_gates` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8021` | **scoped true** |
 | `eval_evaluate_security_judge_calibration` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8095` | **scoped true** |
-| `eval_evaluate_security_severity_l5_gate` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8255` | **false** |
+| `eval_evaluate_security_severity_l5_gate` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8255` | **scoped true**（≠ L5 declare） |
 | `eval_judge_calibration_gate` | F1 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:10670` | **false** |
 | `eval_load_security_judge_calib_defaults` | F2 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:8158` | **scoped true** |
 | `eval_open_capability_judge_calibration` | F1 | facade_wrapper | `aiPlat-core/core/api/core_facade.py:10705` | **false** |

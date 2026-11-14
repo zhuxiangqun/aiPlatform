@@ -5,8 +5,8 @@
   "symbol": "eval_evaluate_security_severity_l5_gate",
   "meta_family": "F2",
   "kind": "facade_wrapper",
-  "recorded_at": "2026-11-14T21:21:30+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:23:30+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/api/core_facade.py:8255",
   "wraps": "evaluate_security_severity_l5_gate",
   "depends_on_accepted": [
@@ -15,8 +15,8 @@
   ],
   "meta_family_status": "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
   "evidence_refs": [
-    "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
-    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json"
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
+    "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json"
   ],
   "scope_if_accepted": {
     "tier_a_gate_authorized_for_symbol": true,
@@ -31,8 +31,9 @@
     "l5_declare",
     "security_certification"
   ],
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. F2 facade for severity L5 *gate evaluation API* only; accepting ≠ l5_declare_authorized flip / security cert / product accuracy_claim."
+  "owner_decision": "ACCEPT eval_evaluate_security_severity_l5_gate scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:23:30+08:00",
+  "honesty": "Owner accepted scoped F2 facade Tier A gate for eval_evaluate_security_severity_l5_gate (gate API only). l5_declare_authorized remains false; ≠ security cert; global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }
