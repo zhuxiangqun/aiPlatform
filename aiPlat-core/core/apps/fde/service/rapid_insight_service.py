@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RapidSession:
+    """RapidSession。"""
     session_id: str
     industry_name: str
     domain_id: str
@@ -45,7 +46,13 @@ def extract_industry_consensus(
     aligned_domains: List[str],
     top_n: int = 5,
 ) -> Dict[str, Any]:
-    """Q1: 提取行业共识 — 从临时域及已对齐域的 inference_rules 中取 Top-N."""
+    """Q1: 提取行业共识 — 从临时域及已对齐域的 inference_rules 中取 Top-N.
+
+    Args:
+        domain_id: domain 标识。
+        aligned_domains: aligned_domains 参数。
+        top_n: top_n 参数。
+    """
     import yaml
 
     onto_dir = os.path.expanduser(
@@ -120,7 +127,12 @@ def detect_industry_controversies(
     domain_id: str,
     aligned_domains: List[str],
 ) -> Dict[str, Any]:
-    """Q2: 路线之争 — 图结构分歧检测 + 竞争域数据."""
+    """Q2: 路线之争 — 图结构分歧检测 + 竞争域数据.
+
+    Args:
+        domain_id: domain 标识。
+        aligned_domains: aligned_domains 参数。
+    """
     from core.api.core_facade import GraphIndex
 
     controversies = []
@@ -182,7 +194,13 @@ def generate_penetrating_questions(
     aligned_domains: List[str],
     count: int = 10,
 ) -> Dict[str, Any]:
-    """Q3: 穿透性试题生成 + 穿透力过滤."""
+    """Q3: 穿透性试题生成 + 穿透力过滤.
+
+    Args:
+        domain_id: domain 标识。
+        aligned_domains: aligned_domains 参数。
+        count: count 参数。
+    """
     from core.api.core_facade import GraphIndex
 
     # Collect graph context for LLM
@@ -259,7 +277,12 @@ def locate_blind_spot_source(
     entity_name: str,
     graph: Any,
 ) -> Dict[str, Any]:
-    """盲区实体 → 反查原始文档 chunk 定位."""
+    """盲区实体 → 反查原始文档 chunk 定位.
+
+    Args:
+        entity_name: entity_name 参数。
+        graph: graph 参数。
+    """
     node = graph.get_node(entity_name)
     if not node:
         return {
@@ -522,8 +545,8 @@ SHARED_DOMAIN_PREFIXES = [
 def calculate_reuse_rate(graph: Any) -> Dict[str, Any]:
     """Calculate what fraction of entities reuse shared ontology vs custom.
 
-    Returns {rate, shared, custom, total, details}.
-    custom > 40% triggers overspill warning.
+    Args:
+        graph: graph 参数。
     """
     entities = list(graph._nodes.values())
     total = len(entities)
@@ -583,8 +606,9 @@ def auto_suggest_domains(
 ) -> List[Dict]:
     """Suggest shared domain alignment using embedding cosine similarity.
 
-    Uses existing entity index page vectors from vectors.json for comparison.
-    LLM only used for final natural-language suggestion reason.
+    Args:
+        entities: entities 参数。
+        threshold: threshold 参数。
     """
     suggestions = []
     try:
@@ -662,7 +686,11 @@ def auto_suggest_domains(
 
 
 def generate_icebreaker_questions(aligned_domains: List[str]) -> List[str]:
-    """Generate industry-specific icebreaker questions based on aligned domains."""
+    """Generate industry-specific icebreaker questions based on aligned domains.
+
+    Args:
+        aligned_domains: aligned_domains 参数。
+    """
     icebreaker_map = {
         "bell-competition": [
             "这个行业的头部公司是谁？他们各自押注的技术路线有何不同？",

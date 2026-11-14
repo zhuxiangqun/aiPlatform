@@ -48,9 +48,14 @@ def evaluate_slice_offline_policy(
 ) -> Dict[str, Any]:
     """Return ok/deny decision for offline execution window.
 
-    - No revocation channel → use shortened TTL (default 12h).
-    - Past TTL → deny (stop execution), not degrade-to-readonly success.
-    - Any requested op in denied set → deny.
+    Args:
+        last_bundle_validated_at: last_bundle_validated_at 参数。
+        now: now 参数。
+        requested_ops: requested_ops 参数。
+        has_revocation_channel: has_revocation_channel 参数。
+        offline_max_ttl_hours: offline_max_ttl_hours 参数。
+        shortened_ttl_hours: shortened_ttl_hours 参数。
+        denied_ops: denied_ops 参数。
     """
     denied_set = set(denied_ops) if denied_ops is not None else set(DEFAULT_DENIED_OPS)
     if has_revocation_channel:

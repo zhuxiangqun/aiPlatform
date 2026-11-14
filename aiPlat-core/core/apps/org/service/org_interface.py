@@ -30,6 +30,11 @@ def _as_list(val: Any) -> List[Any]:
 
 
 def load_live_raw(domain_id: str) -> Dict[str, Any]:
+    """load_live_raw。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.abox_connector import load_connector_config
 
     cfg = load_connector_config(domain_id)
@@ -78,7 +83,11 @@ def _yaml_for_domain(directory: Path, domain_id: str) -> List[Tuple[Path, Dict[s
 
 
 def resolve_interface_raw(domain_id: str) -> Tuple[Dict[str, Any], str, str]:
-    """YAML wins. connector.live is used only when no yaml exists for the domain."""
+    """YAML wins. connector.live is used only when no yaml exists for the domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "it-ops"
     home = _yaml_for_domain(_home_interface_dir(), did)
     if home:
@@ -92,7 +101,11 @@ def resolve_interface_raw(domain_id: str) -> Tuple[Dict[str, Any], str, str]:
 
 
 def materialize_interface_yaml(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Copy the resolved spec into AIPLAT_HOME yaml if missing. Never writes connector.live."""
+    """Copy the resolved spec into AIPLAT_HOME yaml if missing. Never writes connector.live.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "it-ops"
     raw, source, _path = resolve_interface_raw(did)
     spec = normalize_interface_spec(did, raw, authority_source=source)
@@ -130,7 +143,13 @@ def normalize_interface_spec(
     *,
     authority_source: str = "connector.live",
 ) -> Dict[str, Any]:
-    """Normalize connector.live into InterfaceSpec shape (C1 field set)."""
+    """Normalize connector.live into InterfaceSpec shape (C1 field set).
+
+    Args:
+        domain_id: domain 标识。
+        live: live 参数。
+        authority_source: authority_source 参数。
+    """
     did = (domain_id or "").strip() or "it-ops"
     raw = dict(live) if isinstance(live, dict) else load_live_raw(did)
     ref = str(raw.get("interface_ref") or "").strip()
@@ -202,7 +221,12 @@ def validate_interface_spec(
     *,
     raw_live: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Hard errors block outbound; warnings are soft (schema completeness)."""
+    """Hard errors block outbound; warnings are soft (schema completeness).
+
+    Args:
+        spec: spec 参数。
+        raw_live: raw_live 参数。
+    """
     errors: List[str] = []
     warnings: List[str] = []
 
@@ -270,7 +294,11 @@ def validate_interface_spec(
 
 
 def get_interface_spec(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Load + validate InterfaceSpec. YAML if present, else connector.live read-compat."""
+    """Load + validate InterfaceSpec. YAML if present, else connector.live read-compat.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "it-ops"
     raw, source, path = resolve_interface_raw(did)
     spec = normalize_interface_spec(did, raw, authority_source=source)
@@ -292,7 +320,11 @@ def get_interface_spec(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def list_interface_specs(domain_id: str = "") -> Dict[str, Any]:
-    """List InterfaceSpecs. Empty domain_id → pilot domains with live blocks."""
+    """List InterfaceSpecs. Empty domain_id → pilot domains with live blocks.
+
+    Args:
+        domain_id: domain 标识。
+    """
     domains: List[str]
     if (domain_id or "").strip():
         domains = [(domain_id or "").strip()]
@@ -336,8 +368,9 @@ def list_interface_specs(domain_id: str = "") -> Dict[str, Any]:
 def assert_action_bound(domain_id: str, action_id: str) -> Dict[str, Any]:
     """Whether action_id is allowed to use domain Interface (bound_action_ids).
 
-    Empty whitelist → deny when interface enabled (fail-closed for live);
-    when disabled, return unbound_ok for sandbox paths.
+    Args:
+        domain_id: domain 标识。
+        action_id: action 标识。
     """
     did = (domain_id or "").strip() or "it-ops"
     aid = (action_id or "").strip()
@@ -371,7 +404,11 @@ def assert_action_bound(domain_id: str, action_id: str) -> Dict[str, Any]:
 
 
 def interface_ready_for_outbound(domain_id: str = "it-ops") -> Tuple[bool, Dict[str, Any]]:
-    """Hard gate used by live_io_gates: valid spec + declared + enabled."""
+    """Hard gate used by live_io_gates: valid spec + declared + enabled.
+
+    Args:
+        domain_id: domain 标识。
+    """
     pack = get_interface_spec(domain_id)
     val = pack.get("validation") or {}
     ready = bool(val.get("ok")) and bool(val.get("declared")) and bool(val.get("enabled"))

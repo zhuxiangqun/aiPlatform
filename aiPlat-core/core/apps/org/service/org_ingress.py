@@ -47,6 +47,11 @@ def _identity_path() -> Path:
 
 
 def normalize_channel(channel: str) -> str:
+    """normalize_channel。
+
+    Args:
+        channel: channel 参数。
+    """
     c = (channel or "").strip().lower()
     if c == "lark":
         return "feishu"
@@ -54,6 +59,8 @@ def normalize_channel(channel: str) -> str:
 
 
 def ingress_status() -> Dict[str, Any]:
+    """ingress_status。
+    """
     return {
         "channel": "feishu",
         "aliases": ["lark"],
@@ -82,7 +89,16 @@ def verify_lark_signature(
     encrypt_key: str,
     now: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Feishu: sha256(timestamp + nonce + encrypt_key + body). Replay window 300s."""
+    """Feishu: sha256(timestamp + nonce + encrypt_key + body). Replay window 300s.
+
+    Args:
+        timestamp: timestamp 参数。
+        nonce: nonce 参数。
+        body: 请求体。
+        signature: signature 参数。
+        encrypt_key: encrypt_key 参数。
+        now: now 参数。
+    """
     ts_raw = (timestamp or "").strip()
     nonce_s = (nonce or "").strip()
     sig = (signature or "").strip().lower()
@@ -146,13 +162,23 @@ def _remember_nonce(nonce: str, ts: int) -> None:
 
 
 def post_channel_allowed(channel: str) -> Dict[str, Any]:
-    """C3: DigitalPost channel + validity gate (C2 callers keep this name)."""
+    """C3: DigitalPost channel + validity gate (C2 callers keep this name).
+
+    Args:
+        channel: channel 参数。
+    """
     from core.apps.org.service.org_post import evaluate_post_gate
 
     return evaluate_post_gate(channel)
 
 
 def resolve_actor(channel: str, user_id: str) -> Dict[str, Any]:
+    """resolve_actor。
+
+    Args:
+        channel: channel 参数。
+        user_id: 用户 ID。
+    """
     ch = normalize_channel(channel)
     uid = (user_id or "").strip()
     path = _identity_path()
@@ -195,7 +221,12 @@ def _intent(text: str, action: str) -> str:
 
 
 def build_dispatch_evidence(domain_id: str, run: Dict[str, Any]) -> Dict[str, Any]:
-    """C0-shaped evidence: Object/Action/Interface/Skill/PolicyGate on one trace."""
+    """C0-shaped evidence: Object/Action/Interface/Skill/PolicyGate on one trace.
+
+    Args:
+        domain_id: domain 标识。
+        run: run 参数。
+    """
     from core.apps.org.service.org_interface import get_interface_spec
 
     pack = get_interface_spec(domain_id)
@@ -237,7 +268,17 @@ def process_channel_message(
     action: str = "",
     domain_id: str = "it-ops",
 ) -> Dict[str, Any]:
-    """Verified message → confirm gate → org_run_goal. Idempotent on channel+message_id."""
+    """Verified message → confirm gate → org_run_goal. Idempotent on channel+message_id.
+
+    Args:
+        channel: channel 参数。
+        message_id: message 标识。
+        chat_id: chat 标识。
+        user_id: 用户 ID。
+        text: text 参数。
+        action: action 参数。
+        domain_id: domain 标识。
+    """
     ch = normalize_channel(channel)
     if ch not in ("feishu",):
         return _receipt("channel_not_allowed", "仅飞书入站已开放", channel=ch)
@@ -348,7 +389,13 @@ def ingest_feishu_event(
     headers: Optional[Dict[str, str]] = None,
     raw_body: bytes = b"",
 ) -> Dict[str, Any]:
-    """HTTP entry: URL challenge, signature, then process_channel_message."""
+    """HTTP entry: URL challenge, signature, then process_channel_message.
+
+    Args:
+        payload: 载荷 dict。
+        headers: headers 参数。
+        raw_body: raw_body 参数。
+    """
     headers = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
     body = payload if isinstance(payload, dict) else {}
 
@@ -442,6 +489,11 @@ def load_event_allowlist() -> List[str]:
 
 
 def list_event_previews(limit: int = 5) -> Dict[str, Any]:
+    """列出 event_previews。
+
+    Args:
+        limit: 返回条数上限。
+    """
     root = _home() / "org" / "event_previews"
     items: List[Dict[str, Any]] = []
     if root.is_dir():
@@ -472,7 +524,13 @@ def start_event_preview(
     domain_id: str,
     event_type: str,
 ) -> Dict[str, Any]:
-    """Whitelist event → one dry OrgRun. No live IO, no channel push."""
+    """Whitelist event → one dry OrgRun. No live IO, no channel push.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        event_type: event_type 参数。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "live_started": False}

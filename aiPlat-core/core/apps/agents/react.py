@@ -47,6 +47,15 @@ class ReActAgent(BaseAgent):
         loop_config: Optional[ReActAgentConfig] = None,
         hook_manager: Optional[HookManager] = None
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            tools: tools 参数。
+            loop_config: loop_config 参数。
+            hook_manager: hook_manager 参数。
+        """
         self._react_config = loop_config or ReActAgentConfig()
         self._tools = tools or []
         self._hook_manager = hook_manager or HookManager()
@@ -74,9 +83,9 @@ class ReActAgent(BaseAgent):
 
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute ReAct agent via Harness loop delegation.
-        
-        Delegates to BaseAgent.execute() which runs the ReActLoop,
-        with model/skills/tools injected before execution.
+
+        Args:
+            context: context 参数。
         """
         # Inject tools into loop before running
         if self._loop and hasattr(self._loop, 'set_tools') and self._tools:
@@ -94,7 +103,11 @@ class ReActAgent(BaseAgent):
         return await super().execute(context)
 
     def add_tool(self, tool: Any) -> None:
-        """Add tool to agent"""
+        """Add tool to agent。
+
+        Args:
+            tool: tool 参数。
+        """
         self._tools.append(tool)
 
 
@@ -104,5 +117,12 @@ def create_react_agent(
     tools: Optional[List[Any]] = None,
     **kwargs
 ) -> ReActAgent:
-    """Create ReAct agent"""
+    """Create ReAct agent。
+
+    Args:
+        config: config 参数。
+        model: 模型名。
+        tools: tools 参数。
+        kwargs: kwargs 参数。
+    """
     return ReActAgent(config=config, model=model, tools=tools, **kwargs)

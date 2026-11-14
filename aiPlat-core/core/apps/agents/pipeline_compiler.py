@@ -59,7 +59,11 @@ class PipelineCompiler:
 
     @classmethod
     def compile(cls, stages: List[Dict[str, Any]]) -> List[PipelineStageConfig]:
-        """Convert AGENT.md stages YAML list to PipelineStageConfig objects."""
+        """Convert AGENT.md stages YAML list to PipelineStageConfig objects.
+
+        Args:
+            stages: stages 参数。
+        """
         if not stages:
             return []
 
@@ -116,8 +120,10 @@ class PipelineCompiler:
     def merge_with_defaults(cls, stages: List[Dict[str, Any]],
                             base_config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Merge per-stage config with global agent defaults.
-        
-        Stages without a specific field inherit from base_config.
+
+        Args:
+            stages: stages 参数。
+            base_config: base_config 参数。
         """
         merged = []
         for s in (stages or []):

@@ -42,8 +42,11 @@ def export_slice_bundle(
 ) -> Dict[str, Any]:
     """Export a Pi thin package for a slice scenario.
 
-    Returns ``{ok, bundle_id, out_dir, integrity, export_meta, permission_claims_note, ...}``.
-    Never returns ok=True on failure.
+    Args:
+        scenario_id: scenario 标识。
+        app_home: app_home 参数。
+        out_dir: out_dir 参数。
+        runtime_mode: runtime_mode 参数。
     """
     sid = (scenario_id or "").strip()
     if not sid:

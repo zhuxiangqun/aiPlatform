@@ -20,6 +20,8 @@ def _workspace_root() -> Path:
 
 
 def live_unlock_marker_path() -> Path:
+    """live_unlock_marker_path。
+    """
     return _workspace_root() / "docs" / "contracts" / "ORG_L5_LIVE_UNLOCK.md"
 
 
@@ -53,7 +55,11 @@ def evaluate_live_unlock() -> Dict[str, Any]:
 
 
 def field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Readiness checklist for field / customer sandbox (sign-off aid)."""
+    """Readiness checklist for field / customer sandbox (sign-off aid).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_fleet import evaluate_fleet_gate
     from core.apps.org.service.org_runtime import ensure_pilot_goal, list_runs
 
@@ -289,7 +295,11 @@ def field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def customer_signoff_view(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """V3 read model. Pack readiness is not a signature. No write, no button."""
+    """V3 read model. Pack readiness is not a signature. No write, no button.
+
+    Args:
+        domain_id: domain 标识。
+    """
     cl = field_ops_checklist(domain_id or "it-ops")
     return {
         "layer": "customer_signoff",
@@ -309,7 +319,13 @@ def signoff_prep_view(
     *,
     as_markdown: bool = False,
 ) -> Dict[str, Any]:
-    """Read-only prep score for customer review. Never flips m4_claim_allowed."""
+    """Read-only prep score for customer review. Never flips m4_claim_allowed.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        as_markdown: as_markdown 参数。
+    """
     did = (domain_id or "").strip() or "it-ops"
     gid = (goal_id or "").strip() or "goal-it-ops-alert-sla"
     cl = field_ops_checklist(did)
@@ -552,7 +568,11 @@ def signoff_playbook_steps() -> List[Dict[str, str]]:
 
 
 def render_signoff_prep_markdown(view: Dict[str, Any]) -> str:
-    """Customer-review checklist. Read-only text; never a signature."""
+    """Customer-review checklist. Read-only text; never a signature.
+
+    Args:
+        view: view 参数。
+    """
     gates = view.get("gates") or []
     lines = [
         "# it-ops 签收准备度清单",

@@ -23,7 +23,11 @@ _hop_aggregate_fn = None  # type: ignore[var-annotated]
 
 
 def set_hop_aggregate_fn(fn) -> None:
-    """Register hop metrics aggregator (call from layer-2 startup)."""
+    """Register hop metrics aggregator (call from layer-2 startup).
+
+    Args:
+        fn: fn 参数。
+    """
     global _hop_aggregate_fn
     _hop_aggregate_fn = fn
 
@@ -34,7 +38,13 @@ def evaluate_fleet_gate(
     domain_id: str = "it-ops",
     project_id: str = "",
 ) -> Dict[str, Any]:
-    """Hard gate for org fleet (multi_agent). Default: blocked."""
+    """Hard gate for org fleet (multi_agent). Default: blocked.
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        project_id: project 标识。
+    """
     from core.apps.org.service.org_runtime import ensure_pilot_goal, get_goal, list_goals
 
     ensure_pilot_goal(domain_id)
@@ -137,7 +147,12 @@ def evaluate_fleet_gate(
 
 
 def set_allow_fleet(goal_id: str, allow: bool) -> Dict[str, Any]:
-    """Flip OrgGoal.allow_fleet (explicit ops action; still needs gate checks)."""
+    """Flip OrgGoal.allow_fleet (explicit ops action; still needs gate checks).
+
+    Args:
+        goal_id: goal 标识。
+        allow: allow 参数。
+    """
     from core.apps.org.service.org_runtime import patch_goal
 
     return patch_goal(goal_id, {"allow_fleet": bool(allow)})
@@ -151,7 +166,15 @@ def request_fleet_or_run(
     week_label: str = "",
     force_fleet: bool = False,
 ) -> Dict[str, Any]:
-    """If force_fleet: require gate; on pass still execute single OrgRun with fleet_meta."""
+    """If force_fleet: require gate; on pass still execute single OrgRun with fleet_meta.
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        project_id: project 标识。
+        week_label: week_label 参数。
+        force_fleet: force_fleet 参数。
+    """
     gate = evaluate_fleet_gate(goal_id, domain_id=domain_id, project_id=project_id)
     if force_fleet and not gate.get("allowed"):
         return {
@@ -203,7 +226,12 @@ async def probe_sandbox_conflict(
     *,
     resource_id: str = "shared_interface",
 ) -> Dict[str, Any]:
-    """Two mutex acquires on one resource. Second must be denied. No live write."""
+    """Two mutex acquires on one resource. Second must be denied. No live write.
+
+    Args:
+        domain_id: domain 标识。
+        resource_id: resource 标识。
+    """
     from core.harness.infrastructure.entity_lock import AsyncioEntityLock
 
     did = (domain_id or "").strip() or "it-ops"
@@ -236,7 +264,11 @@ async def probe_sandbox_conflict(
 
 
 def list_sandbox_rehearsals(limit: int = 5) -> Dict[str, Any]:
-    """Read rehearsal logs. Does not start a fleet."""
+    """Read rehearsal logs. Does not start a fleet.
+
+    Args:
+        limit: 返回条数上限。
+    """
     root = _rehearsal_dir()
     items: List[Dict[str, Any]] = []
     if root.is_dir():
@@ -267,7 +299,13 @@ async def start_sandbox_rehearsal(
     domain_id: str,
     roles: List[Any],
 ) -> Dict[str, Any]:
-    """Record a sandbox handoff + conflict probe. One dry OrgRun. Never flips allow_fleet."""
+    """Record a sandbox handoff + conflict probe. One dry OrgRun. Never flips allow_fleet.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        roles: roles 参数。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "fleet_started": False}

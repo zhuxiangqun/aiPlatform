@@ -20,6 +20,8 @@ def _home() -> Path:
 
 
 def drafts_dir() -> Path:
+    """drafts_dir。
+    """
     return _home() / "org" / "skill_drafts"
 
 
@@ -47,6 +49,11 @@ def _read(draft_id: str) -> Optional[Dict[str, Any]]:
 
 
 def list_skill_candidates(*, domain_id: str) -> List[Dict[str, Any]]:
+    """列出 skill_candidates。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
 
     did = (domain_id or "").strip() or "it-ops"
@@ -68,6 +75,12 @@ def list_skill_candidates(*, domain_id: str) -> List[Dict[str, Any]]:
 
 
 def list_skill_drafts(*, role: str, domain_id: str = "") -> Dict[str, Any]:
+    """列出 skill_drafts。
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     did = (domain_id or "").strip()
@@ -96,6 +109,13 @@ def list_skill_drafts(*, role: str, domain_id: str = "") -> Dict[str, Any]:
 
 
 def create_skill_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
+    """创建 skill_draft。
+
+    Args:
+        role: role 参数。
+        case_id: case 标识。
+        domain_id: domain 标识。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     cid = (case_id or "").strip()
@@ -147,6 +167,13 @@ def approve_skill_draft(
     draft_id: str,
     register_fn: Optional[Callable[[str, str, str], bool]] = None,
 ) -> Dict[str, Any]:
+    """approve_skill_draft。
+
+    Args:
+        role: role 参数。
+        draft_id: draft 标识。
+        register_fn: register_fn 参数。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}
@@ -182,6 +209,12 @@ def approve_skill_draft(
 
 
 def reject_skill_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
+    """reject_skill_draft。
+
+    Args:
+        role: role 参数。
+        draft_id: draft 标识。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}
@@ -200,7 +233,11 @@ def reject_skill_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
 
 
 def list_action_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Same action failed at least twice. Hint only. Does not open a write path."""
+    """Same action failed at least twice. Hint only. Does not open a write path.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
 
     did = (domain_id or "").strip() or "it-ops"
@@ -235,7 +272,12 @@ def list_action_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def assemble_skill_bundle(*, role: str, draft_ids: List[str]) -> Dict[str, Any]:
-    """Pack existing drafts into one bundle. Does not list or write SKILL.md."""
+    """Pack existing drafts into one bundle. Does not list or write SKILL.md.
+
+    Args:
+        role: role 参数。
+        draft_ids: draft_ids 参数。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     ids = [str(i).strip() for i in (draft_ids or []) if str(i).strip()]

@@ -1,3 +1,5 @@
+"""governance：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -10,6 +12,11 @@ def management_public_url() -> str:
 
 
 def ui_url(path: str) -> str:
+    """ui_url。
+
+    Args:
+        path: 路径。
+    """
     base = management_public_url()
     if not base:
         return path
@@ -20,6 +27,11 @@ def ui_url(path: str) -> str:
 
 def api_url(path: str) -> str:
     # Under the same domain in the current deployment model.
+    """api_url。
+
+    Args:
+        path: 路径。
+    """
     return ui_url(path)
 
 
@@ -30,7 +42,14 @@ def governance_links(
     run_id: Optional[str] = None,
     trace_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Generate consistent UI/API deep links for governance surfaces."""
+    """Generate consistent UI/API deep links for governance surfaces.
+
+    Args:
+        change_id: change 标识。
+        approval_request_id: approval_request 标识。
+        run_id: 运行 ID。
+        trace_id: trace 标识。
+    """
     try:
         links: Dict[str, Any] = {}
         if change_id:
@@ -77,7 +96,11 @@ def governance_links(
 
 
 def change_links(change_id: str) -> Dict[str, Any]:
-    """Backward-compatible alias (historically only had syscalls_ui/audit_ui)."""
+    """Backward-compatible alias (historically only had syscalls_ui/audit_ui).
+
+    Args:
+        change_id: change 标识。
+    """
     return governance_links(change_id=str(change_id))
 
 
@@ -91,6 +114,17 @@ def gate_error_envelope(
     next_actions: Optional[List[Dict[str, Any]]] = None,
     detail: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """gate_error_envelope。
+
+    Args:
+        code: code 参数。
+        message: message 参数。
+        change_id: change 标识。
+        approval_request_id: approval_request 标识。
+        links: links 参数。
+        next_actions: next_actions 参数。
+        detail: detail 参数。
+    """
     env: Dict[str, Any] = {"code": str(code), "message": str(message)}
     if change_id:
         env["change_id"] = str(change_id)

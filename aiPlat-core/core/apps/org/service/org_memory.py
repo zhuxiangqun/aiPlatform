@@ -39,7 +39,11 @@ def _outcome_for_status(status: str) -> str:
 
 
 def record_run_memory(run: Dict[str, Any]) -> Dict[str, Any]:
-    """Append OrgRun digest; best-effort case-store mirror (never mutates TBox)."""
+    """Append OrgRun digest; best-effort case-store mirror (never mutates TBox).
+
+    Args:
+        run: run 参数。
+    """
     if not isinstance(run, dict) or not run.get("run_id"):
         return {"status": "skip", "reason": "no_run"}
 
@@ -112,6 +116,12 @@ def record_run_memory(run: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def list_memory(limit: int = 50, domain_id: str = "") -> Dict[str, Any]:
+    """列出 memory。
+
+    Args:
+        limit: 返回条数上限。
+        domain_id: domain 标识。
+    """
     path = _memory_path()
     rows: List[Dict[str, Any]] = []
     if path.is_file():
@@ -136,7 +146,13 @@ def list_memory(limit: int = 50, domain_id: str = "") -> Dict[str, Any]:
 
 
 def search_exceptions(query: str = "", *, domain_id: str = "", limit: int = 20) -> Dict[str, Any]:
-    """Search exception jurisprudence by reason / summary keyword."""
+    """Search exception jurisprudence by reason / summary keyword.
+
+    Args:
+        query: 查询。
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     q = (query or "").strip().lower()
     items = list_memory(limit=200, domain_id=domain_id).get("items") or []
     hits: List[Dict[str, Any]] = []

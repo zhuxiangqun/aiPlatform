@@ -16,6 +16,8 @@ REASON = "edge_auto_apply_forbidden"
 
 
 def edge_auto_apply_switch_on() -> bool:
+    """edge_auto_apply_switch_on。
+    """
     return os.getenv("AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY", "false").lower() in (
         "1",
         "true",

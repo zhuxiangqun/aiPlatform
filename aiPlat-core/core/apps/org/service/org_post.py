@@ -53,6 +53,11 @@ def _as_list(val: Any) -> List[str]:
 
 
 def normalize_post(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """normalize_post。
+
+    Args:
+        raw: raw 参数。
+    """
     scope = raw.get("scope") if isinstance(raw.get("scope"), dict) else {}
     sla = raw.get("sla") if isinstance(raw.get("sla"), dict) else {}
     policy = raw.get("exception_policy") if isinstance(raw.get("exception_policy"), dict) else {}
@@ -84,6 +89,11 @@ def normalize_post(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def validate_post(post: Dict[str, Any]) -> Dict[str, Any]:
+    """validate_post。
+
+    Args:
+        post: post 参数。
+    """
     errors: List[str] = []
     for key in _REQUIRED:
         val = post.get(key)
@@ -140,6 +150,11 @@ def load_posts() -> List[Dict[str, Any]]:
 
 
 def get_post(post_id: str = "") -> Dict[str, Any]:
+    """获取 post。
+
+    Args:
+        post_id: post 标识。
+    """
     posts = load_posts()
     pid = (post_id or "").strip()
     chosen = None
@@ -154,6 +169,8 @@ def get_post(post_id: str = "") -> Dict[str, Any]:
 
 
 def list_posts() -> Dict[str, Any]:
+    """列出 posts。
+    """
     items = []
     for post in load_posts():
         val = validate_post(post)
@@ -167,7 +184,13 @@ def evaluate_post_gate(
     domain_id: str = "",
     post_id: str = "",
 ) -> Dict[str, Any]:
-    """Whether this channel may start a run under the post (data scope + interface + SLA present)."""
+    """Whether this channel may start a run under the post (data scope + interface + SLA present).
+
+    Args:
+        channel: channel 参数。
+        domain_id: domain 标识。
+        post_id: post 标识。
+    """
     pack = get_post(post_id)
     if pack.get("status") == "not_found":
         return {"ok": False, "status": "post_missing", "channel": channel}
@@ -228,7 +251,14 @@ def authorize_console_run(
     goal_id: str = "",
     post_id: str = "",
 ) -> Dict[str, Any]:
-    """One decision for the management run route. Feishu ingress does not call this."""
+    """One decision for the management run route. Feishu ingress does not call this.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        post_id: post 标识。
+    """
     role_n = (role or "").strip().lower()
     if role_n not in _CONSOLE_ROLES:
         return {"ok": False, "status": "role_denied", "reason": "role_denied", "role": role_n}

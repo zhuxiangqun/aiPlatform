@@ -28,6 +28,8 @@ def _home() -> Path:
 
 
 def ledger_path() -> Path:
+    """ledger_path。
+    """
     return _home() / "k_wave" / "k5_proposals.jsonl"
 
 
@@ -155,7 +157,13 @@ async def enqueue_repeat_failure_proposals(
     writer: Optional[Callable[..., Any]] = None,
     now: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Scan cases and enqueue edge-class drafts. auto_apply stays false."""
+    """Scan cases and enqueue edge-class drafts. auto_apply stays false.
+
+    Args:
+        domain_id: domain 标识。
+        writer: writer 参数。
+        now: now 参数。
+    """
     from core.apps.fde.service.v_wave_guard import edge_auto_apply_block
 
     blocked = edge_auto_apply_block()
@@ -266,7 +274,12 @@ def _gap_change(case: Any, *, class_name: str) -> Dict[str, Any]:
 
 
 def preview_schema_gaps(domain_id: str = "it-ops", *, limit: int = 5) -> Dict[str, Any]:
-    """Read-only Diff for schema_gap cases. Does not create proposals or write YAML."""
+    """Read-only Diff for schema_gap cases. Does not create proposals or write YAML.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import (
         OntologyCaseStore,
         VersionedOntologyStore,
@@ -326,7 +339,13 @@ async def draft_schema_gaps(
     writer: Optional[Callable[..., Any]] = None,
     limit: int = 5,
 ) -> Dict[str, Any]:
-    """One edge draft per schema_gap case. Same ledger as K5. Never applies."""
+    """One edge draft per schema_gap case. Same ledger as K5. Never applies.
+
+    Args:
+        domain_id: domain 标识。
+        writer: writer 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.fde.service.v_wave_guard import edge_auto_apply_block
     from core.api.core_facade import OntologyCaseStore
 

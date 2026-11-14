@@ -23,6 +23,13 @@ class PipelineAgent(BaseAgent):
     """
 
     def __init__(self, config: AgentConfig, stages: List[Any] = None, **kwargs):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            stages: stages 参数。
+            kwargs: kwargs 参数。
+        """
         super().__init__(config=config, model=config.model if hasattr(config, 'model') else None,
                          loop_type="react", **kwargs)
         self._pipeline_stages = stages or []
@@ -35,9 +42,9 @@ class PipelineAgent(BaseAgent):
 
     async def execute(self, context):
         """Execute pipeline stages via PipelineEngine.
-        
-        If stages are configured, runs them through the engine.
-        Otherwise falls back to the standard ReActLoop (BaseAgent.execute).
+
+        Args:
+            context: context 参数。
         """
         if self._pipeline_stages:
             return await self._execute_pipeline(context)

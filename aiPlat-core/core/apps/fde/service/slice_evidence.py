@@ -124,7 +124,15 @@ def ingest_slice_evidence(
 ) -> Dict[str, Any]:
     """Persist one evidence batch. Returns ingest record id.
 
-    ``assumed_reachable`` is a caller assumption (not a live control-plane probe).
+    Args:
+        scenario_id: scenario 标识。
+        run_id: 运行 ID。
+        bundle_version: bundle_version 参数。
+        runtime_version: runtime_version 参数。
+        events: events 参数。
+        asset_versions: asset_versions 参数。
+        assumed_reachable: assumed_reachable 参数。
+        aiplat_reachable: aiplat_reachable 参数。
     """
     sid = (scenario_id or "").strip()
     if not sid:
@@ -184,7 +192,16 @@ def build_slice_diagnosis_report(
 ) -> Dict[str, Any]:
     """Build a diagnosis report. Loads ingest_id when provided.
 
-    ``assumed_reachable`` is not a live probe of the aiPlat control plane.
+    Args:
+        scenario_id: scenario 标识。
+        ingest_id: ingest 标识。
+        run_id: 运行 ID。
+        bundle_version: bundle_version 参数。
+        runtime_version: runtime_version 参数。
+        events: events 参数。
+        asset_versions: asset_versions 参数。
+        assumed_reachable: assumed_reachable 参数。
+        aiplat_reachable: aiplat_reachable 参数。
     """
     sid = (scenario_id or "").strip()
     if not sid:
@@ -268,6 +285,11 @@ def build_slice_diagnosis_report(
 
 
 def get_slice_diagnosis_report(report_id: str) -> Dict[str, Any]:
+    """获取 slice_diagnosis_report。
+
+    Args:
+        report_id: report 标识。
+    """
     rid = (report_id or "").strip()
     if not rid:
         return {"ok": False, "error": "report_id required"}
@@ -285,7 +307,14 @@ def ingest_slice_evidence_from_jsonl(
     assumed_reachable: bool = True,
     aiplat_reachable: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store."""
+    """Ingest MB-05 Pi emit JSONL (one JSON object per line) into evidence store.
+
+    Args:
+        path: 路径。
+        scenario_id: scenario 标识。
+        assumed_reachable: assumed_reachable 参数。
+        aiplat_reachable: aiplat_reachable 参数。
+    """
     p = Path((path or "").strip())
     if not p.is_file():
         return {"ok": False, "error": f"jsonl not found: {p}"}
@@ -345,7 +374,11 @@ def _diagnosis_prod_default_enabled() -> bool:
 
 
 def slice_signoff_requires_report(body: Dict[str, Any]) -> bool:
-    """Whether acceptance signoff must bind a diagnosis report_id."""
+    """Whether acceptance signoff must bind a diagnosis report_id.
+
+    Args:
+        body: 请求体。
+    """
     if os.getenv("AIPLAT_FDE_REQUIRE_DIAG_REPORT_FOR_SLICE", "1").strip() == "0":
         return False
     # D2 unique entry: POST .../fde/acceptance/signoff → validate_slice_signoff_reports
@@ -362,7 +395,11 @@ def slice_signoff_requires_report(body: Dict[str, Any]) -> bool:
 
 
 def validate_slice_signoff_reports(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Return {ok, error?, report_ids} for slice acceptance binding."""
+    """Return {ok, error?, report_ids} for slice acceptance binding.
+
+    Args:
+        body: 请求体。
+    """
     if not slice_signoff_requires_report(body):
         return {"ok": True, "required": False, "report_ids": []}
 

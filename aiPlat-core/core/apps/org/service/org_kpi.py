@@ -29,7 +29,13 @@ def weekly_kpi_report(
     *,
     week: str = "",
 ) -> Dict[str, Any]:
-    """Compute MTTA / root_cause_rate / exception_ratio + failure TopN + pending HITL."""
+    """Compute MTTA / root_cause_rate / exception_ratio + failure TopN + pending HITL.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+    """
     ensure_pilot_goal(domain_id)
     goals = list_goals(domain_id).get("goals") or []
     goal = None
@@ -149,7 +155,11 @@ def weekly_kpi_report(
 
 
 def joint_health_view(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Read-only joint health. Does not write YAML, register actions, or start a fleet."""
+    """Read-only joint health. Does not write YAML, register actions, or start a fleet.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "it-ops"
     home = Path(get_aiplat_home())
 

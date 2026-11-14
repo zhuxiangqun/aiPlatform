@@ -28,7 +28,12 @@ def suggest_classes_from_snippets(
 ) -> Dict[str, Any]:
     """Scan text/code snippets for class-like names → proposal draft.
 
-    When enqueue=True, creates a VersionedOntologyStore draft proposal (not applied).
+    Args:
+        domain_id: domain 标识。
+        snippets: snippets 参数。
+        file_paths: file_paths 参数。
+        author: author 参数。
+        enqueue: enqueue 参数。
     """
     did = (domain_id or "").strip() or "default"
     texts: List[str] = list(snippets or [])
@@ -130,7 +135,15 @@ async def suggest_classes_from_snippets_async(
     author: str = "code-suggest",
     enqueue: bool = True,
 ) -> Dict[str, Any]:
-    """Async variant that can enqueue a draft proposal."""
+    """Async variant that can enqueue a draft proposal.
+
+    Args:
+        domain_id: domain 标识。
+        snippets: snippets 参数。
+        file_paths: file_paths 参数。
+        author: author 参数。
+        enqueue: enqueue 参数。
+    """
     base = suggest_classes_from_snippets(
         domain_id,
         snippets=snippets,
@@ -210,7 +223,12 @@ def enrich_column_meanings(
     columns: List[str],
     sample_rows: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, str]:
-    """Heuristic column → business gloss (Xingye step ② shape; not LLM authority)."""
+    """Heuristic column → business gloss (Xingye step ② shape; not LLM authority).
+
+    Args:
+        columns: columns 参数。
+        sample_rows: sample_rows 参数。
+    """
     meanings: Dict[str, str] = {}
     rows = list(sample_rows or [])
     for col in columns:
@@ -290,8 +308,14 @@ def suggest_classes_from_table_schema(
 ) -> Dict[str, Any]:
     """Table/CSV header → edge-tier class suggestion (Path A draft only).
 
-    Never writes GraphIndex and never auto-applies live YAML.
-    Use Path B ``table_map`` ingest separately when you need instances.
+    Args:
+        domain_id: domain 标识。
+        table_name: table_name 参数。
+        columns: columns 参数。
+        csv_text: csv_text 参数。
+        sample_rows: sample_rows 参数。
+        author: author 参数。
+        enqueue: enqueue 参数。
     """
     did = (domain_id or "").strip() or "default"
     cols = _normalize_columns(columns)
@@ -383,7 +407,17 @@ async def suggest_classes_from_table_schema_async(
     author: str = "schema-suggest",
     enqueue: bool = True,
 ) -> Dict[str, Any]:
-    """Async: optional VersionedOntologyStore draft (never apply)."""
+    """Async: optional VersionedOntologyStore draft (never apply).
+
+    Args:
+        domain_id: domain 标识。
+        table_name: table_name 参数。
+        columns: columns 参数。
+        csv_text: csv_text 参数。
+        sample_rows: sample_rows 参数。
+        author: author 参数。
+        enqueue: enqueue 参数。
+    """
     base = suggest_classes_from_table_schema(
         domain_id,
         table_name=table_name,

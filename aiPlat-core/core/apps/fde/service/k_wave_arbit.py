@@ -30,6 +30,8 @@ def _home() -> Path:
 
 
 def tickets_path() -> Path:
+    """tickets_path。
+    """
     return _home() / "k_wave" / "arbitration.jsonl"
 
 
@@ -80,6 +82,11 @@ def _apply_timeouts(row: Dict[str, Any], *, now: Optional[float] = None) -> Dict
 
 
 def get_ticket(ticket_id: str) -> Optional[Dict[str, Any]]:
+    """获取 ticket。
+
+    Args:
+        ticket_id: ticket 标识。
+    """
     tid = (ticket_id or "").strip()
     if not tid:
         return None
@@ -95,6 +102,13 @@ def list_tickets(
     domain_id: str = "",
     tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """列出 tickets。
+
+    Args:
+        status: status 参数。
+        domain_id: domain 标识。
+        tenant_id: 租户 ID。
+    """
     want = (status or "").strip()
     did = (domain_id or "").strip()
     tid = (tenant_id or "").strip()
@@ -147,7 +161,24 @@ def propose_ticket(
     extract_actor: str = "",
     evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Open a pending (or auto-rejected) arbitration ticket. Never writes an edge."""
+    """Open a pending (or auto-rejected) arbitration ticket. Never writes an edge.
+
+    Args:
+        view_name: view_name 参数。
+        left_id: left 标识。
+        right_id: right 标识。
+        left_domain: left_domain 参数。
+        right_domain: right_domain 参数。
+        left_tenant: left_tenant 参数。
+        right_tenant: right_tenant 参数。
+        confidence: confidence 参数。
+        strategy: strategy 参数。
+        suggested: suggested 参数。
+        trace_id: trace 标识。
+        signal_id: signal 标识。
+        extract_actor: extract_actor 参数。
+        evidence: evidence 参数。
+    """
     lid = (left_id or "").strip()
     rid = (right_id or "").strip()
     ld = (left_domain or "").strip()
@@ -222,7 +253,14 @@ def decide_ticket(
     actor: str = "",
     note: str = "",
 ) -> Dict[str, Any]:
-    """Human decision. Does not write edges. Does not call apply_proposal."""
+    """Human decision. Does not write edges. Does not call apply_proposal.
+
+    Args:
+        ticket_id: ticket 标识。
+        decision: decision 参数。
+        actor: 操作者身份。
+        note: note 参数。
+    """
     tid = (ticket_id or "").strip()
     dec = (decision or "").strip().lower()
     if dec not in _DECISIONS:
@@ -320,7 +358,12 @@ def _capture_edge_before(ticket: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def apply_ticket(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
-    """Apply an approved merge ticket. Snapshot _cross_domain, then resolve once."""
+    """Apply an approved merge ticket. Snapshot _cross_domain, then resolve once.
+
+    Args:
+        ticket_id: ticket 标识。
+        actor: 操作者身份。
+    """
     tid = (ticket_id or "").strip()
     rows = _read_all()
     found = None
@@ -418,7 +461,12 @@ def _restore_cross_domain(domain_id: str, entity_id: str, value: Any) -> bool:
 
 
 def rollback_ticket_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
-    """E2: restore one merge ticket's _cross_domain from edge_before. Not live YAML."""
+    """E2: restore one merge ticket's _cross_domain from edge_before. Not live YAML.
+
+    Args:
+        ticket_id: ticket 标识。
+        role: role 参数。
+    """
     from core.api.core_facade import PolicyDecision, PolicyGate
     from core.api.core_facade import TIER_EDGE
 
@@ -490,6 +538,11 @@ def rollback_ticket_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
 
 
 def is_approved_for_resolve(ticket_id: str) -> bool:
+    """is_approved_for_resolve。
+
+    Args:
+        ticket_id: ticket 标识。
+    """
     row = get_ticket(ticket_id)
     return bool(
         row

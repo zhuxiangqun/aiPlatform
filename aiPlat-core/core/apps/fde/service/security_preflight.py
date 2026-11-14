@@ -26,7 +26,11 @@ def _dir() -> Path:
 
 
 def summarize_security_dry_run(result: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract read-only summary for FDE Evidence display (no severity remapping)."""
+    """Extract read-only summary for FDE Evidence display (no severity remapping).
+
+    Args:
+        result: result 参数。
+    """
     report = result.get("security_report") if isinstance(result.get("security_report"), dict) else {}
     critique = result.get("security_critique") if isinstance(result.get("security_critique"), dict) else {}
     evidence = result.get("security_evidence") if isinstance(result.get("security_evidence"), dict) else {}
@@ -68,7 +72,14 @@ def save_preflight_run(
     phase_c_enabled: bool = False,
     max_paths: int = 20,
 ) -> Dict[str, Any]:
-    """Persist last preflight summary under AIPLAT_HOME (Evidence store pointer)."""
+    """Persist last preflight summary under AIPLAT_HOME (Evidence store pointer).
+
+    Args:
+        dry_run: 是否仅演练。
+        actor: 操作者身份。
+        phase_c_enabled: phase_c_enabled 参数。
+        max_paths: max_paths 参数。
+    """
     run_id = f"fde_sec_{uuid.uuid4().hex[:12]}"
     summary = summarize_security_dry_run(dry_run if isinstance(dry_run, dict) else {})
     record = {
@@ -91,6 +102,8 @@ def save_preflight_run(
 
 
 def get_latest_preflight() -> Optional[Dict[str, Any]]:
+    """获取 latest_preflight。
+    """
     fp = _dir() / "latest.json"
     if not fp.is_file():
         return None
@@ -98,6 +111,11 @@ def get_latest_preflight() -> Optional[Dict[str, Any]]:
 
 
 def list_preflight_runs(limit: int = 10) -> List[Dict[str, Any]]:
+    """列出 preflight_runs。
+
+    Args:
+        limit: 返回条数上限。
+    """
     rows: List[Dict[str, Any]] = []
     for fp in sorted(_dir().glob("fde_sec_*.json"), reverse=True):
         try:
@@ -112,7 +130,8 @@ def list_preflight_runs(limit: int = 10) -> List[Dict[str, Any]]:
 def preflight_signoff_gate(latest: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Acceptance signoff gate: require ⑥b preflight; block on high/critical findings.
 
-    Does not remap severity — uses upstream values as-is.
+    Args:
+        latest: latest 参数。
     """
     rec = latest if latest is not None else get_latest_preflight()
     if not rec:

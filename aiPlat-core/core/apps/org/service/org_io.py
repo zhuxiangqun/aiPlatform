@@ -14,7 +14,13 @@ def fetch_by_entity(
     *,
     purpose: str = "org_pilot",
 ) -> Dict[str, Any]:
-    """Ontology-anchored sandbox fetch (Core entry for org module)."""
+    """Ontology-anchored sandbox fetch (Core entry for org module).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        purpose: purpose 参数。
+    """
     from core.apps.fde.service.abox_connector import fetch_entity_snapshot
 
     return fetch_entity_snapshot(domain_id, entity_id, purpose=purpose)
@@ -25,7 +31,13 @@ def preview_write(
     entity_id: str,
     patch: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Dry-run write preview; default blocked (D3)."""
+    """Dry-run write preview; default blocked (D3).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        patch: patch 参数。
+    """
     from core.apps.fde.service.abox_connector import preview_entity_write
 
     return preview_entity_write(domain_id, entity_id, patch or {})

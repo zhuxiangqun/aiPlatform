@@ -175,6 +175,16 @@ async def list_approval_inbox(
     offset: int = 0,
     limit: int = _DEFAULT_LIMIT,
 ) -> Dict[str, Any]:
+    """列出 approval_inbox。
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        kind: kind 参数。
+        offset: 分页偏移。
+        limit: 返回条数上限。
+    """
     ok, role_n = _role_ok(role)
     if not ok:
         return {"ok": False, "reason": role_n, "writable": False}
@@ -371,6 +381,14 @@ async def get_approval_snapshot(
     role: str,
     domain_id: str = "it-ops",
 ) -> Dict[str, Any]:
+    """获取 approval_snapshot。
+
+    Args:
+        kind: kind 参数。
+        item_id: item 标识。
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     ok, role_n = _role_ok(role)
     if not ok:
         return {"ok": False, "reason": role_n, "writable": False}

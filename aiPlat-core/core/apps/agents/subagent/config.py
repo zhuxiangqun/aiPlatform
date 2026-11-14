@@ -1,3 +1,5 @@
+"""config：模块接口。"""
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
@@ -51,7 +53,11 @@ class SubagentConfig:
     graph_domain_id: Optional[str] = None  # ReconSubgraph domain for agent writes
     
     def can_use_tool(self, tool: str) -> bool:
-        """Check if tool is allowed"""
+        """Check if tool is allowed。
+
+        Args:
+            tool: tool 参数。
+        """
         if tool in self.denied_tools:
             return False
         if self.allowed_tools and tool not in self.allowed_tools:
@@ -60,7 +66,11 @@ class SubagentConfig:
     
     @staticmethod
     def from_permission_level(level: ToolPermissionLevel) -> List[str]:
-        """Get default tools for permission level"""
+        """Get default tools for permission level。
+
+        Args:
+            level: level 参数。
+        """
         level_tools = {
             ToolPermissionLevel.READ_ONLY: ["Read", "Grep", "Glob"],
             ToolPermissionLevel.READ_WRITE: ["Read", "Grep", "Glob", "Write", "Edit"],
@@ -93,11 +103,22 @@ class SubagentInstance:
         return self.messages
     
     def add_message(self, role: str, content: str):
-        """Add message to context"""
+        """Add message to context。
+
+        Args:
+            role: role 参数。
+            content: content 参数。
+        """
         self.messages.append({"role": role, "content": content})
     
     def add_tool_call(self, tool: str, params: Dict, result: Any):
-        """Add tool call record"""
+        """Add tool call record。
+
+        Args:
+            tool: tool 参数。
+            params: params 参数。
+            result: result 参数。
+        """
         self.tool_calls.append({
             "tool": tool,
             "params": params,

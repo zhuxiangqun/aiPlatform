@@ -39,7 +39,11 @@ def _load_yaml(path: Path) -> Optional[Dict[str, Any]]:
 
 
 def load_value_baseline(*, tenant_id: str = "") -> Dict[str, Any]:
-    """Tenant-isolated baseline. Never reads another tenant's file."""
+    """Tenant-isolated baseline. Never reads another tenant's file.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     tid = _safe_tenant(tenant_id)
     if tid:
         cust = _load_yaml(_home() / "org" / "tenants" / tid / "value_baseline.yaml")
@@ -88,7 +92,14 @@ def translate_org_value(
     week: str = "",
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """Audit-friendly value card from weekly KPI + baseline. Never invents savings."""
+    """Audit-friendly value card from weekly KPI + baseline. Never invents savings.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.org.service.org_kpi import weekly_kpi_report
     from core.apps.org.service.org_runtime import list_runs
 
@@ -191,7 +202,15 @@ def preview_value_roi(
     trial_minutes_per_incident: float,
     trial_mtta_seconds: float,
 ) -> Dict[str, Any]:
-    """What-if ROI. Never writes baseline; never claims customer savings."""
+    """What-if ROI. Never writes baseline; never claims customer savings.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        trial_minutes_per_incident: trial_minutes_per_incident 参数。
+        trial_mtta_seconds: trial_mtta_seconds 参数。
+    """
     from core.apps.org.service.org_kpi import weekly_kpi_report
     from core.apps.org.service.org_runtime import list_runs
 
@@ -282,7 +301,14 @@ def save_value_baseline(
     baseline_minutes_per_incident: float,
     baseline_mtta_seconds: float,
 ) -> Dict[str, Any]:
-    """S2: write tenant baseline. Never invents; never flips m4_claim_allowed."""
+    """S2: write tenant baseline. Never invents; never flips m4_claim_allowed.
+
+    Args:
+        role: role 参数。
+        tenant_id: 租户 ID。
+        baseline_minutes_per_incident: baseline_minutes_per_incident 参数。
+        baseline_mtta_seconds: baseline_mtta_seconds 参数。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}
@@ -321,6 +347,12 @@ def save_value_baseline(
 
 
 def get_value_baseline_view(*, role: str, tenant_id: str = "") -> Dict[str, Any]:
+    """获取 value_baseline_view。
+
+    Args:
+        role: role 参数。
+        tenant_id: 租户 ID。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     raw = load_value_baseline(tenant_id=tenant_id)

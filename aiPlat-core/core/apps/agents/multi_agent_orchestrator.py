@@ -18,6 +18,8 @@ class MultiAgentOrchestrator:
     """Lightweight multi-agent coordinator for L5+ readiness."""
 
     def __init__(self):
+        """初始化。
+        """
         self._agents: Dict[str, Any] = {}
         self._routing_rules: List[Dict[str, Any]] = [
             {
@@ -38,7 +40,11 @@ class MultiAgentOrchestrator:
         ]
 
     def route(self, query: str) -> List[str]:
-        """Determine which agents to invoke based on query keywords."""
+        """Determine which agents to invoke based on query keywords.
+
+        Args:
+            query: 查询。
+        """
         q = query.lower()
         for rule in self._routing_rules:
             if rule["intent"] == "default":
@@ -56,7 +62,10 @@ class MultiAgentOrchestrator:
     ) -> Dict[str, Any]:
         """Execute a multi-agent pipeline and merge results.
 
-        Pipeline: ontology_mapper → graph_traversal → knowledge_chat
+        Args:
+            query: 查询。
+            context: context 参数。
+            domain_id: domain 标识。
         """
         pipeline_results: Dict[str, Any] = {"query": query}
 
@@ -94,6 +103,8 @@ _orchestrator: Optional[MultiAgentOrchestrator] = None
 
 
 def get_orchestrator() -> MultiAgentOrchestrator:
+    """获取 orchestrator。
+    """
     global _orchestrator
     if _orchestrator is None:
         _orchestrator = MultiAgentOrchestrator()

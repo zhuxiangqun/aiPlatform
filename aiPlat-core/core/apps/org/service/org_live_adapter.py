@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 def live_config(domain_id: str) -> Dict[str, Any]:
+    """live_config。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_interface import resolve_interface_raw
 
     raw, _source, _path = resolve_interface_raw(domain_id)
@@ -26,7 +31,11 @@ def live_config(domain_id: str) -> Dict[str, Any]:
 
 
 def adapter_declared(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Whether connector declares a valid InterfaceSpec (http_json + hosts)."""
+    """Whether connector declares a valid InterfaceSpec (http_json + hosts).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_interface import get_interface_spec
 
     pack = get_interface_spec(domain_id)
@@ -90,7 +99,11 @@ def _url_allowed(url: str, allowed_hosts: List[str]) -> Tuple[bool, str]:
 
 
 def live_io_gates(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Compute whether live HTTP path may run (unlock + InterfaceSpec + base URL)."""
+    """Compute whether live HTTP path may run (unlock + InterfaceSpec + base URL).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_field_ops import evaluate_live_unlock
     from core.apps.org.service.org_interface import get_interface_spec
 
@@ -147,7 +160,14 @@ def fetch_live_http(
     purpose: str = "org_live",
     action_id: str = "",
 ) -> Dict[str, Any]:
-    """GET JSON from allowlisted customer sandbox / staging HTTP endpoint."""
+    """GET JSON from allowlisted customer sandbox / staging HTTP endpoint.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        purpose: purpose 参数。
+        action_id: action 标识。
+    """
     from core.apps.org.service.org_interface import assert_action_bound, get_interface_spec
 
     did = (domain_id or "").strip() or "it-ops"

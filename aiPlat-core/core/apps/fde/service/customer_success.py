@@ -135,6 +135,11 @@ def _default_exit(domain_id: str) -> Dict[str, Any]:
 
 
 def get_metric_handover(domain_id: str) -> Dict[str, Any]:
+    """获取 metric_handover。
+
+    Args:
+        domain_id: domain 标识。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"status": "unavailable", "error": "domain_id required"}
@@ -157,6 +162,13 @@ def save_metric_handover(
     *,
     actor: str = "fde",
 ) -> Dict[str, Any]:
+    """save_metric_handover。
+
+    Args:
+        domain_id: domain 标识。
+        patch: patch 参数。
+        actor: 操作者身份。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"status": "unavailable", "error": "domain_id required"}
@@ -187,7 +199,13 @@ async def refresh_handover_from_usage(
     actor: str = "fde",
     quality_score: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Fill P1 baselines from live usage signal (honest; no ROI)."""
+    """Fill P1 baselines from live usage signal (honest; no ROI).
+
+    Args:
+        domain_id: domain 标识。
+        actor: 操作者身份。
+        quality_score: quality_score 参数。
+    """
     from core.apps.fde.service.usage_signal import get_usage_signal
 
     domain = (domain_id or "").strip()
@@ -209,6 +227,11 @@ async def refresh_handover_from_usage(
 
 
 def get_escort_exit(domain_id: str) -> Dict[str, Any]:
+    """获取 escort_exit。
+
+    Args:
+        domain_id: domain 标识。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"status": "unavailable", "error": "domain_id required"}
@@ -231,6 +254,13 @@ def save_escort_exit(
     *,
     actor: str = "fde",
 ) -> Dict[str, Any]:
+    """save_escort_exit。
+
+    Args:
+        domain_id: domain 标识。
+        patch: patch 参数。
+        actor: 操作者身份。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"status": "unavailable", "error": "domain_id required"}
@@ -299,7 +329,17 @@ async def evaluate_escort_exit_from_signals(
     baseline_calls: Optional[float] = None,
     store: Any = None,
 ) -> Dict[str, Any]:
-    """Auto-tick A/B/C/D from usage + independence stats; customer-only → na."""
+    """Auto-tick A/B/C/D from usage + independence stats; customer-only → na.
+
+    Args:
+        domain_id: domain 标识。
+        actor: 操作者身份。
+        quality_score: quality_score 参数。
+        quality_ok: quality_ok 参数。
+        canary_ok: canary_ok 参数。
+        baseline_calls: baseline_calls 参数。
+        store: store 参数。
+    """
     from core.apps.fde.service.usage_signal import get_usage_baseline, get_usage_signal
 
     domain = (domain_id or "").strip()
@@ -474,9 +514,9 @@ async def list_domain_peers(
 ) -> Dict[str, Any]:
     """Domain-level peer table for Tab⑧ (横向对照).
 
-    Honesty: ``action_audit`` has ``domain_id`` but no customer_id, so peers are
-    **domains** (e.g. lock-service vs service-domain), not multi-tenant rows
-    inside one domain. True same-domain multi-customer needs a tenant key later.
+    Args:
+        store: store 参数。
+        limit: 返回条数上限。
     """
     from core.apps.fde.service.usage_signal import get_usage_baseline, get_usage_signal
 

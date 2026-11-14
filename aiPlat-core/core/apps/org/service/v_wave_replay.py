@@ -73,7 +73,12 @@ def _audit(trace_id: str, status: str) -> None:
 
 
 def replay_org_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Assemble one chain by exact trace_id. Never stitches by time or name."""
+    """Assemble one chain by exact trace_id. Never stitches by time or name.
+
+    Args:
+        trace_id: trace 标识。
+        domain_id: domain 标识。
+    """
     tid = (trace_id or "").strip()
     if not tid:
         return {"status": "invalid", "reason": "trace_id_required", "read_only": True, "steps": []}

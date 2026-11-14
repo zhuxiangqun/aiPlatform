@@ -66,6 +66,15 @@ class MultiAgent(ConfigurableAgent):
         multi_config: Optional[MultiAgentConfig] = None,
         **kwargs
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            agent_specs: agent_specs 参数。
+            multi_config: multi_config 参数。
+            kwargs: kwargs 参数。
+        """
         self._multi_config = multi_config or MultiAgentConfig()
         self._agent_specs = agent_specs or []
         self._sub_agents: List[BaseAgent] = []
@@ -149,8 +158,8 @@ class MultiAgent(ConfigurableAgent):
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute multi-agent coordination using Harness patterns.
 
-        Uses coordination patterns (Pipeline/FanOut/ExpertPool) with
-        AgentMessageBus for inter-agent communication (TASK_ASSIGN/RESULT/ERROR).
+        Args:
+            context: context 参数。
         """
         self._status = AgentStatus.RUNNING
         
@@ -369,12 +378,20 @@ class MultiAgent(ConfigurableAgent):
                 metadata={"pattern": "coordinated", "error": "SubagentCoordinator not reachable"})
 
     def add_sub_agent(self, agent: BaseAgent) -> None:
-        """Add a sub-agent"""
+        """Add a sub-agent。
+
+        Args:
+            agent: agent 参数。
+        """
         self._sub_agents.append(agent)
         self._pattern = self._create_pattern()
 
     def remove_sub_agent(self, agent_name: str) -> None:
-        """Remove a sub-agent"""
+        """Remove a sub-agent。
+
+        Args:
+            agent_name: agent_name 参数。
+        """
         self._sub_agents = [
             a for a in self._sub_agents
             if a.get_config().name != agent_name
@@ -387,7 +404,11 @@ class MultiAgent(ConfigurableAgent):
 
     @staticmethod
     def summarize_subagent_result(result: AgentResult) -> str:
-        """Condense subagent output for parent loop (subagent_discipline envelope)."""
+        """Condense subagent output for parent loop (subagent_discipline envelope).
+
+        Args:
+            result: result 参数。
+        """
         from core.harness.execution.subagent_discipline import condense_return
 
         if not result.success:
@@ -407,6 +428,12 @@ class SwarmAgent(MultiAgent):
     """
 
     def __init__(self, config: AgentConfig, **kwargs):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            kwargs: kwargs 参数。
+        """
         super().__init__(config=config, **kwargs)
         
         self._metadata = AgentMetadata(
@@ -424,7 +451,14 @@ def create_multi_agent(
     num_agents: int = 3,
     **kwargs
 ) -> MultiAgent:
-    """Create multi-agent system"""
+    """Create multi-agent system。
+
+    Args:
+        config: config 参数。
+        agent_specs: agent_specs 参数。
+        num_agents: num_agents 参数。
+        kwargs: kwargs 参数。
+    """
     if not agent_specs:
         agent_specs = [
             AgentSpec(name=f"agent_{i}", role="worker", system_prompt=f"You are agent {i}.")

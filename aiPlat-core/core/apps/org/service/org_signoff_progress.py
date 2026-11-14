@@ -20,10 +20,14 @@ def _home() -> Path:
 
 
 def progress_path() -> Path:
+    """progress_path。
+    """
     return _home() / "org" / "signoff_progress.json"
 
 
 def default_progress() -> Dict[str, Any]:
+    """default_progress。
+    """
     return {
         "oncall_name": "",
         "oncall_contact": "",
@@ -39,6 +43,8 @@ def default_progress() -> Dict[str, Any]:
 
 
 def load_signoff_progress() -> Dict[str, Any]:
+    """load_signoff_progress。
+    """
     path = progress_path()
     base = default_progress()
     if not path.is_file():
@@ -58,6 +64,11 @@ def load_signoff_progress() -> Dict[str, Any]:
 
 
 def get_signoff_progress(*, role: str) -> Dict[str, Any]:
+    """获取 signoff_progress。
+
+    Args:
+        role: role 参数。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     prog = load_signoff_progress()
@@ -77,6 +88,12 @@ def get_signoff_progress(*, role: str) -> Dict[str, Any]:
 
 
 def save_signoff_progress(*, role: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    """save_signoff_progress。
+
+    Args:
+        role: role 参数。
+        body: 请求体。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}

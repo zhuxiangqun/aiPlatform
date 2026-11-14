@@ -94,6 +94,11 @@ class FDEBuilderOrchestrator:
 
     def __init__(self, session_id: str):
 
+        """初始化。
+
+        Args:
+            session_id: 会话 ID。
+        """
         self.session = BuilderSession(session_id=session_id)
 
 
@@ -106,10 +111,9 @@ class FDEBuilderOrchestrator:
 
         """Use existing FDE clarification engine to understand customer needs.
 
-
-
-        Returns structured clarification with questions and knowledge gaps.
-
+        Args:
+            requirement: requirement 参数。
+            fde_context: fde_context 参数。
         """
 
         try:
@@ -254,13 +258,9 @@ class FDEBuilderOrchestrator:
 
         """Auto-suggest skills and build initial agent configuration.
 
-
-
-        Returns agent config with conflict items (skill overlap, unresolved refs)
-
-        that should be surfaced to FDE for review.
-
-         """
+        Args:
+            builder_svc: builder_svc 参数。
+        """
 
         try:
 
@@ -336,10 +336,8 @@ class FDEBuilderOrchestrator:
 
         """Auto-fill agent config and produce a diff for FDE review.
 
-
-
-        Only surfaces conflicts — FDE clicks "Apply" for each change.
-
+        Args:
+            previous_config: previous_config 参数。
         """
 
         try:
@@ -571,10 +569,9 @@ class FDEBuilderOrchestrator:
 
         """Run the full FDE Builder pipeline.
 
-
-
-        Returns intermediate results at each step.
-
+        Args:
+            requirement: requirement 参数。
+            fde_context: fde_context 参数。
         """
 
         result = {"session_id": self.session.session_id, "steps": {}}

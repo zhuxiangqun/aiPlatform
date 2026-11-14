@@ -20,16 +20,13 @@ async def run_fde_agent_one_shot(
     session_id: Optional[str] = None,
 ) -> Optional[dict]:
     """Execute an FDE Agent in one-shot mode with skill subset filtering.
-    
-    Uses the Agent's own _skills list (set at creation time) rather than 
-    context.skills (merge semantics), to avoid interference with other 
-    applications that depend on the existing merge behavior (e.g. intents.py).
 
-    session_id: stable id for MemoryManager across turns. If omitted, a
-    per-call id is generated (no cross-turn memory).
-
-    Returns None if Agent system is unavailable → caller falls back to 
-    direct Skill/API execution.
+    Args:
+        agent_id: Agent ID。
+        skill_filter: skill_filter 参数。
+        user_message: user_message 参数。
+        extra_context: extra_context 参数。
+        session_id: 会话 ID。
     """
     _t0 = time.time()
     try:

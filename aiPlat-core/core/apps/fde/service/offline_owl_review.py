@@ -35,11 +35,8 @@ def _find_domain_yaml(domain_id: str) -> Optional[Path]:
 def review_domain_owl_offline(domain_id: str) -> Dict[str, Any]:
     """Export domain to TTL (best-effort) and optionally run owlready2 consistency.
 
-    Returns:
-      status: checked | unchecked | error
-      valid: False when unchecked/error; True only if check ran and no violations
-      violations: list
-      engine: owlready2 | none
+    Args:
+        domain_id: domain 标识。
     """
     did = (domain_id or "").strip() or "default"
     result: Dict[str, Any] = {

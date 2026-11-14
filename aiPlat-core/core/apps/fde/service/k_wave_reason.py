@@ -15,7 +15,14 @@ def build_org_run_reasoning(
     *,
     max_paths: int = 8,
 ) -> Dict[str, Any]:
-    """Copy graph neighborhood paths onto a run. Never authorizes actions."""
+    """Copy graph neighborhood paths onto a run. Never authorizes actions.
+
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        hits: hits 参数。
+        max_paths: max_paths 参数。
+    """
     did = (domain_id or "").strip() or "it-ops"
     q = (query or "").strip()
     seed = [h for h in (hits or []) if isinstance(h, dict) and h.get("entity_id")]
