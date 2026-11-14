@@ -6,9 +6,9 @@ doc_type: Architecture
 
 > **文档类型**：Design / Execution Plan（**已定稿冻结** · v1.1.7）  
 > **版本**：v1.1.7 · 2026-11-14  
-> **状态**：**方案已定稿（冻结）** — §15 **14/14**；Phase 1 已验收；Phase 2 **预备中（未授权）**  
+> **状态**：**方案已定稿（冻结）** — §15 **14/14**；Phase 1 已验收；META_EVAL F1–F4 **全绿**；Phase 2 **预备中（未授权）**；Phase 3 **预备中（未授权扩容）**  
 > **诚实锁**：定稿 ≠ 生产独立 / ≠ 准确率已认证 / ≠ `process_split_authorized=true` / ≠ Tier A 自动扩容；改阈值或结构须走变更控制  
-> **工件**：[`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · [`PHASE2_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE2_PREP.md) · [`R11_META_EVAL_THRESHOLDS.md`](../../../packages/aiplat-evaluation/docs/a3/R11_META_EVAL_THRESHOLDS.md) · [`R12_CAPABILITY_RECONCILIATION.md`](../../../packages/aiplat-evaluation/docs/a3/R12_CAPABILITY_RECONCILIATION.md) · [`TIER_MATRIX_V0.md`](../../../packages/aiplat-evaluation/docs/a3/TIER_MATRIX_V0.md) · Phase0 处置/SHA/fixtures/CI 子集  
+> **工件**：[`META_EVAL_STATUS.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_STATUS.md) · [`PHASE3_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE3_PREP.md) · [`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · [`PHASE2_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE2_PREP.md) · [`R11_META_EVAL_THRESHOLDS.md`](../../../packages/aiplat-evaluation/docs/a3/R11_META_EVAL_THRESHOLDS.md) · [`R12_CAPABILITY_RECONCILIATION.md`](../../../packages/aiplat-evaluation/docs/a3/R12_CAPABILITY_RECONCILIATION.md) · [`TIER_MATRIX_V0.md`](../../../packages/aiplat-evaluation/docs/a3/TIER_MATRIX_V0.md) · Phase0 处置/SHA/fixtures/CI 子集  
 
 > **关联**：[`eval-v1-charter.md`](./eval-v1-charter.md) · [`eval-production-independent-service.md`](./eval-production-independent-service.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` · `SCORE_SCOPE_V1.md` · `evidence/evidence_manifest.v1.json`  
 > **证据时点**：2026-11-14（`.venv` Py3.11：scorecard PASS；honesty scan PASS；`phase0_ci_stable_subset` PASS；`package_release_check` PASS；GH `eval-phase0-stable.yml` 已挂；R11 owner 签字）  
@@ -752,11 +752,12 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 ```text
 可写：方案已定稿（冻结）· v1.1.7
       首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）
-      Phase 2 预备中（未授权）；R12 tranche-1 H5=0；Tier 矩阵 v0（A_candidate≠授权）
+      META_EVAL F1–F4 全绿（≠ Tier A 扩容授权）；Phase 2/3 预备中（未授权）
+      R12 tranche-1 H5=0；Tier 矩阵 v0（A_candidate≠授权）
 不可写：生产已独立 / 准确率已认证 / process_split_authorized=true / Tier A 自动扩容
 ```
 
-R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均绿；家族绿 ≠ Tier A 扩容 / L5 / process_split；Phase 2 仅 authorize 后推进；禁一次全开 A。
+R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均绿（[`META_EVAL_STATUS.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_STATUS.md)）；进入 Phase 3 预备（[`PHASE3_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE3_PREP.md)）但 `tier_a_expansion_authorized=false`；Phase 2 仅 authorize 后推进；禁一次全开 A。
 
 ---
 
@@ -788,3 +789,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec13 | 2026-11-14 | F2 CSV 人填面（judge/dual）+ import/score；仍待真人，禁 AI 预填 |
 | v1.1.7+exec14 | 2026-11-14 | F2 安全人裁判 19/19 scored（agr=1 κ=1 ECE=0.05）→ 4/5；dual-human 仍开 |
 | v1.1.7+exec15 | 2026-11-14 | F2 dual-human（朱莹/朱鸿林 · g2b-81）→ META_EVAL F1–F4 全绿；≠ Tier A/L5 |
+| v1.1.7+exec16 | 2026-11-14 | META_EVAL 汇总 + Phase3 预备页；`meta_eval_families_green=true` 仍 ≠ 扩容授权 |

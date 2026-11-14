@@ -5,8 +5,8 @@ doc_type: Reference
 # Tier 覆盖矩阵 v0（evaluation-system）
 
 > 计划 §4.5 / §8 · 源：R12 `in_both` · 机器：[`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json)
-> **诚实锁**：`A_candidate` **≠** 已授权 Tier A gate 宣称；须 [`META_EVAL_V0.md`](./META_EVAL_V0.md) 绿灯
-> **时点**：2026-11-14T17:46:57+08:00 · R12 H5 open=**0**（≠ 覆盖完成 / ≠ Tier A）
+> **诚实锁**：`A_candidate` **≠** 已授权 Tier A gate 宣称；META_EVAL 家族绿见 [`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)
+> **时点**：2026-11-14T19:58:20+08:00 · R12 H5 open=**0** · `meta_eval_families_green`=**true**（≠ 扩容授权）
 
 ## 汇总
 
@@ -16,36 +16,19 @@ doc_type: Reference
 | **B** | 165 | Subject/smoke/pack/方法轨等内部关键路径 |
 | **C** | 458 | 其余登记符号（含 Error/helper） |
 
-## A_candidate（摘录）
+## META_EVAL 前置
 
-- `assert_t13_process_split_boundary`
-- `build_g2b_s_dual_review_workflow`
-- `build_judge_calib_evidence_pack`
-- `build_release_scorecard`
-- `cohen_kappa_binary`
-- `eval_assert_t13_process_split_boundary`
-- `eval_evaluate_security_family_gates`
-- `eval_evaluate_security_judge_calibration`
-- `eval_evaluate_security_severity_l5_gate`
-- `eval_judge_calibration_gate`
-- `eval_load_security_judge_calib_defaults`
-- `eval_open_capability_judge_calibration`
-- `evaluate_judge_calibration_gate`
-- `evaluate_security_family_gates`
-- `evaluate_security_judge_calibration`
-- `judge_calibration_gate_for_ticket`
-- `load_judge_calib_defaults`
-- `open_capability_judge_calibration`
-- `wilson_score_ci`
+- `meta_eval_families_green`: **true**（F1–F4）
+- `tier_a_expansion_authorized`: **false**
 
 ## 下一步
 
-1. 按家族挑 A_candidate 做 META_EVAL 绿灯（非一次全开）→ [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)
+1. META_EVAL 已绿 → 进入 [`PHASE3_PREP.md`](./PHASE3_PREP.md) 首波 A_candidate 工程预备（禁一次全开）
 2. B 轨挂 suite + 复核日历
 3. C 仅登记；禁止挤占 A 名额
 
 ## 关联
 
-- R12：[`R12_CAPABILITY_RECONCILIATION.md`](./R12_CAPABILITY_RECONCILIATION.md) · [`R12_TRIAGE_V0.md`](./R12_TRIAGE_V0.md)
-- META：[`META_EVAL_V0.md`](./META_EVAL_V0.md) · [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)
+- R12：[`R12_CAPABILITY_RECONCILIATION.md`](./R12_CAPABILITY_RECONCILIATION.md)
+- META：[`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md) · [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)
 

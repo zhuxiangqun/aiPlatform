@@ -47,5 +47,5 @@ F1（尺子）→ F4（记分卡接线）→ F2（安全门）→ F3（G2b/拆�
 | 字段 | 值 |
 |---|---|
 | recorded | 2026-11-14 |
-| families_green | 4 / 4（F1–F4 均绿；仍 ≠ Tier A 扩容授权） |
-| tier_a_expansion_authorized | **false** |
+| families_green | 4 / 4（汇总：[`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)；仍 ≠ Tier A 扩容授权） |
+| tier_a_expansion_authorized | **false**（Phase 3 预备：[`PHASE3_PREP.md`](./PHASE3_PREP.md)） |
