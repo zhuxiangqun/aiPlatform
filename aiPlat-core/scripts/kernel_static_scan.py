@@ -29,6 +29,7 @@ RE_SYS_SKILL = re.compile(r"\bsys_skill_call\(")
 
 @dataclass
 class Rule:
+    """Rule。"""
     name: str
     pattern: Pattern[str]
     allow_prefixes: Tuple[str, ...]
@@ -68,6 +69,11 @@ def _scan_file(path: Path, rule: Rule, rel_path: str) -> List[Tuple[int, str]]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = argv or sys.argv[1:]
     repo_root = Path(__file__).resolve().parents[1]
     core_dir = repo_root / "core"

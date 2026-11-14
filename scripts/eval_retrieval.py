@@ -30,6 +30,11 @@ _sys.path.insert(0, str(_PROJECT / "aiPlat-infra"))
 # ═══════════════════════════════════════════════════════════════
 
 def load_queries(path: str) -> list:
+    """load_queries。
+
+    Args:
+        path: 路径。
+    """
     queries = []
     with open(path) as f:
         for line in f:
@@ -44,7 +49,12 @@ def load_queries(path: str) -> list:
 # ═══════════════════════════════════════════════════════════════
 
 def evaluate_retrieval(queries: list, *, collection_id: str = "default") -> dict:
-    """For each query, search wiki pages locally and compute recall."""
+    """For each query, search wiki pages locally and compute recall.
+
+    Args:
+        queries: queries 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.wiki_engine import search_pages as _wiki_search
 
     return _run_eval(queries, retriever=lambda q: _wiki_search(q, limit=10, collection_id=collection_id))
@@ -126,6 +136,7 @@ def _extract_titles(resp) -> List[str]:
 
 @dataclass
 class RetrievalConfig:
+    """RetrievalConfig。"""
     label: str
     embedding_model: str = ""
     chunk_size: int = 768
@@ -135,6 +146,7 @@ class RetrievalConfig:
 
 @dataclass
 class ExperimentResult:
+    """ExperimentResult。"""
     config: RetrievalConfig
     recall_5: float = 0
     recall_10: float = 0
@@ -147,13 +159,18 @@ class ExperimentResult:
 
 @dataclass
 class ExperimentReport:
+    """ExperimentReport。"""
     results: List[ExperimentResult] = field(default_factory=list)
     queries_count: int = 0
 
     def sorted_by_recall(self) -> List[ExperimentResult]:
+        """sorted_by_recall。
+        """
         return sorted(self.results, key=lambda r: r.recall_10, reverse=True)
 
     def print_matrix(self):
+        """print_matrix。
+        """
         total = self.queries_count
         print(f"\n{'='*105}")
         print(f"  Retrieval Experiment Matrix — {total} queries")
@@ -179,6 +196,12 @@ class RetrievalExperimentRunner:
     """
 
     def __init__(self, queries_path: str, *, disable_cache: bool = True):
+        """初始化。
+
+        Args:
+            queries_path: queries_path 参数。
+            disable_cache: disable_cache 参数。
+        """
         self.queries = load_queries(queries_path)
         self.disable_cache = disable_cache
 
@@ -189,7 +212,14 @@ class RetrievalExperimentRunner:
         top_k_values: List[int],
         reranker_configs: List[str],
     ) -> ExperimentReport:
-        """Run all parameter combinations against the same queries."""
+        """Run all parameter combinations against the same queries.
+
+        Args:
+            embedding_models: embedding_models 参数。
+            chunk_sizes: chunk_sizes 参数。
+            top_k_values: top_k_values 参数。
+            reranker_configs: reranker_configs 参数。
+        """
         import time as _time
         report = ExperimentReport(queries_count=len(self.queries))
 
@@ -251,7 +281,12 @@ class RetrievalExperimentRunner:
         return _retrieve
 
     def compare_reranker(self, baseline: str, candidate: str) -> Dict[str, Any]:
-        """A/B compare two reranker configs on a per-query basis."""
+        """A/B compare two reranker configs on a per-query basis.
+
+        Args:
+            baseline: baseline 参数。
+            candidate: candidate 参数。
+        """
         return {"baseline": baseline, "candidate": candidate, "status": "not_yet_implemented"}
 
 
@@ -260,6 +295,11 @@ class RetrievalExperimentRunner:
 # ═══════════════════════════════════════════════════════════════
 
 def print_report(report: dict):
+    """print_report。
+
+    Args:
+        report: report 参数。
+    """
     print(f"  {'Query':50s} {'Rel':>4s} {'R@5':>5s} {'R@10':>5s} {'MRR':>5s}")
     print("  " + "-" * 72)
     for r in report["results"]:
@@ -273,6 +313,8 @@ def print_report(report: dict):
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Retrieval recall evaluation")
     parser.add_argument("--queries", default=str(_Path.home() / ".aiplat" / "test_docs" / "queries.jsonl"))
     parser.add_argument("--matrix", action="store_true", help="Run experiment matrix across parameter combinations")

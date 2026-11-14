@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 
 class EvalTrigger(str, Enum):
+    """EvalTrigger。"""
     ON_DEPLOY = "on_deploy"
     ON_SCHEDULE = "on_schedule"
     ON_REQUEST = "on_request"
@@ -19,6 +20,7 @@ class EvalTrigger(str, Enum):
 
 
 class EvalMetric(str, Enum):
+    """EvalMetric。"""
     ACCURACY = "accuracy"
     FAITHFULNESS = "faithfulness"
     RELEVANCE = "relevance"
@@ -58,6 +60,8 @@ class EvalPolicy:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "policy_id": self.policy_id,
             "name": self.name,
@@ -78,6 +82,11 @@ class EvalPolicy:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "EvalPolicy":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             policy_id=data.get("policy_id", ""),
             name=data.get("name", ""),
@@ -98,6 +107,12 @@ class EvalPolicy:
 
     @classmethod
     def default_for(cls, target_type: str, target_id: str) -> "EvalPolicy":
+        """default_for。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+        """
         return cls(
             policy_id=f"{target_type}:{target_id}",
             name=f"Default evaluation for {target_type} {target_id}",

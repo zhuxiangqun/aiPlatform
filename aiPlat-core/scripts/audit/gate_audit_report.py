@@ -68,6 +68,8 @@ def _scan() -> List[Dict[str, object]]:
 
 
 def main() -> None:
+    """main。
+    """
     rows = _scan()
     # Sort: write ops first, then path
     rows.sort(key=lambda r: (r["path"], r["method"]))

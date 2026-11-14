@@ -17,6 +17,11 @@ class MattermostAdapter(ChannelAdapter):
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # Mattermost webhook: {"text":"...","user_name":"...","channel_name":"...","user_id":"..."}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = str(raw_data.get("text", "") or "")
         # webhook 文本可能带 @mention 前缀噪音，保留原样（不做业务假设）
         channel = str(raw_data.get("channel_name", "") or raw_data.get("channel_id", ""))
@@ -32,6 +37,11 @@ class MattermostAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "channel": response.message_id,
             "text": response.text,

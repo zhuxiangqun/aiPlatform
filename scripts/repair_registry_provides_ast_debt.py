@@ -41,6 +41,12 @@ IDENT = IDENT_RE
 
 
 def top_level_names(path: Path, *, defined_only: bool = False) -> Set[str]:
+    """top_level_names。
+
+    Args:
+        path: 路径。
+        defined_only: defined_only 参数。
+    """
     try:
         tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
     except (SyntaxError, OSError):
@@ -131,7 +137,11 @@ def build_symbol_index() -> Tuple[Dict[str, List[str]], Dict[str, List[str]]]:
 
 
 def repo_module(rel: str) -> str:
-    """Prefer aiPlat-core/… paths when under core/."""
+    """Prefer aiPlat-core/… paths when under core/.
+
+    Args:
+        rel: rel 参数。
+    """
     if rel.startswith("aiPlat-"):
         return rel
     return rel
@@ -143,7 +153,14 @@ def pick_module(
     claimed: str = "",
     defined_hits: Optional[List[str]] = None,
 ) -> Optional[str]:
-    """Choose defining module among index hits; None if still ambiguous."""
+    """Choose defining module among index hits; None if still ambiguous.
+
+    Args:
+        domain_id: domain 标识。
+        hits: hits 参数。
+        claimed: claimed 参数。
+        defined_hits: defined_hits 参数。
+    """
     # Prefer sites that actually define the symbol (not ImportFrom re-export)
     if defined_hits:
         picked = pick_module(domain_id, defined_hits, claimed=claimed, defined_hits=None)
@@ -179,6 +196,11 @@ def pick_module(
 
 
 def extract_idents(text: str) -> List[str]:
+    """extract_idents。
+
+    Args:
+        text: text 参数。
+    """
     parts = re.split(r"[\s/,|]+", text or "")
     out: List[str] = []
     for p in parts:
@@ -189,6 +211,8 @@ def extract_idents(text: str) -> List[str]:
 
 
 def load_yaml() -> Dict[str, Any]:
+    """load_yaml。
+    """
     import yaml
 
     return yaml.safe_load(REG_FILE.read_text(encoding="utf-8"))
@@ -217,7 +241,12 @@ def _format_provide(prov: Dict[str, Any]) -> List[str]:
 def apply_provides_preserving_comments(
     data: Dict[str, Any], only_domains: Optional[Set[str]] = None
 ) -> None:
-    """Replace selected domains' provides list + caps_count; keep section comments."""
+    """Replace selected domains' provides list + caps_count; keep section comments.
+
+    Args:
+        data: data 参数。
+        only_domains: only_domains 参数。
+    """
     text = REG_FILE.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
     domains = data.get("domains") or {}
@@ -276,6 +305,11 @@ def apply_provides_preserving_comments(
 
 
 def sync_caps_counts(data: Dict[str, Any]) -> None:
+    """sync_caps_counts。
+
+    Args:
+        data: data 参数。
+    """
     domains = data.get("domains") or {}
     total = 0
     for _did, body in domains.items():
@@ -289,6 +323,11 @@ def sync_caps_counts(data: Dict[str, Any]) -> None:
 
 
 def repair(dry_run: bool = True) -> Dict[str, Any]:
+    """repair。
+
+    Args:
+        dry_run: 是否仅演练。
+    """
     index, def_index = build_symbol_index()
     data = load_yaml()
     stats = collections.Counter()
@@ -452,6 +491,11 @@ def repair(dry_run: bool = True) -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     dry = "--apply" not in argv
     result = repair(dry_run=dry)

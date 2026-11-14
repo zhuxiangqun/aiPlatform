@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class GatewayExecuteRequest(BaseModel):
+    """GatewayExecuteRequest。"""
     channel: str = "default"
     kind: str = "agent"  # agent|skill|tool|graph
     target_id: str

@@ -9,14 +9,19 @@ from typing import Any
 
 
 class MCPServers:
+    """MCPServers。"""
     def __init__(self):
+        """初始化。
+        """
         self.title = "MCP Servers"
         self.description = "Manage Model Context Protocol servers and their tools"
 
     def render_server_list(self, servers: list, scope: str = "workspace") -> Any:
         """渲染 MCP Server 列表。
-        每个 Server 项显示：名称、URL、scope、状态（enabled/disabled）、
-        已注册工具数量。
+
+        Args:
+            servers: servers 参数。
+            scope: scope 参数。
         """
         return {
             "servers": servers,
@@ -42,7 +47,10 @@ class MCPServers:
 
     def render_tool_list(self, server_name: str, tools: list) -> Any:
         """渲染某个 MCP Server 暴露的工具列表。
-        每个工具显示：name、description、input_schema。
+
+        Args:
+            server_name: server_name 参数。
+            tools: tools 参数。
         """
         return {
             "server": server_name,
@@ -51,7 +59,12 @@ class MCPServers:
         }
 
     def render_policy_check(self, server_name: str, result: dict) -> Any:
-        """渲染 MCP Server 的策略合规性检查结果。"""
+        """渲染 MCP Server 的策略合规性检查结果。
+
+        Args:
+            server_name: server_name 参数。
+            result: result 参数。
+        """
         return {
             "server": server_name,
             "policy_check": result,

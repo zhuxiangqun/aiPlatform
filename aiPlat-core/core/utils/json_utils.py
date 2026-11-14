@@ -7,11 +7,9 @@ from typing import Any, Dict, Optional
 
 def extract_json_safe(text: str) -> Optional[str]:
     """Extract JSON substring with bracket-balanced truncation handling.
-    Unlike extract_json, this finds the first balanced {…} or […] block,
-    making it safe for LLM outputs where JSON may be followed by commentary.
 
-    Prefer whole-text JSON when valid so embedded markdown fences inside string
-    values (e.g. skill_call with ```ts code) are not mistaken for a JSON fence.
+    Args:
+        text: text 参数。
     """
     if not text:
         return None
@@ -71,7 +69,8 @@ def _apply_llm_json_fixes(text: str) -> str:
 def parse_json(raw: str) -> Optional[Dict[str, Any]]:
     """Extract and parse JSON from LLM output. Returns parsed dict or None.
 
-    Pipeline: ``extract_json_safe`` → ``json.loads`` → deterministic LLM fixes → reload.
+    Args:
+        raw: raw 参数。
     """
     import json
 
@@ -87,7 +86,11 @@ def parse_json(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def extract_json(text: str) -> str:
-    """Extract JSON block from text (markdown-fenced or bare braces)."""
+    """Extract JSON block from text (markdown-fenced or bare braces).
+
+    Args:
+        text: text 参数。
+    """
     m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
     if m:
         return m.group(1).strip()
@@ -120,12 +123,10 @@ def build_llm_response_format(
 ) -> Optional[Dict[str, Any]]:
     """Build OpenAI-compatible ``response_format`` from a JSON-Schema-like dict.
 
-    - Empty / non-dict → None (caller keeps prompt-only constraint).
-    - Valid schema (``type`` / ``properties`` / ``$ref``) → ``json_schema``.
-    - Key-only dict (legacy skill shape) → wrap as object properties then ``json_schema``.
-    - ``force_json_object`` or unusable schema → ``{"type": "json_object"}``.
-
-    Kill-switch: ``AIPLAT_LLM_RESPONSE_FORMAT=0`` → always None.
+    Args:
+        schema: schema 参数。
+        name: name 参数。
+        force_json_object: force_json_object 参数。
     """
     flag = (os.environ.get("AIPLAT_LLM_RESPONSE_FORMAT") or "1").strip().lower()
     if flag in ("0", "false", "no", "off"):

@@ -1,3 +1,5 @@
+"""workspace_target：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -21,9 +23,18 @@ async def ensure_workspace_target(
     store: Any = None,
     strict: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Ensure learning artifacts land in workspace scope.
-    If target is an engine-level agent/skill, fork a workspace copy and return the new target_id.
+    """Ensure learning artifacts land in workspace scope.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        http_request: http_request 参数。
+        engine_skill_manager: engine_skill_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        engine_agent_manager: engine_agent_manager 参数。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        store: store 参数。
+        strict: strict 参数。
     """
     t = str(target_type or "").strip()
     tid = str(target_id or "").strip()

@@ -57,8 +57,17 @@ def matrix_page(
     total: int,
     page: int,
 ):
-    """Traffic-light status matrix. rows: (capability, status, note)
-    status: done | partial | missing
+    """Traffic-light status matrix. rows: (capability, status, note)。
+
+    Args:
+        prs: prs 参数。
+        section: section 参数。
+        title: title 参数。
+        subtitle: subtitle 参数。
+        rows: rows 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
     """
     slide = blank_slide(prs)
     _section_label(slide, section)
@@ -178,6 +187,8 @@ def _subtitle(slide, text: str, top=932688):
 
 
 def new_deck() -> Presentation:
+    """new_deck。
+    """
     prs = Presentation()
     prs.slide_width = W
     prs.slide_height = H
@@ -185,6 +196,11 @@ def new_deck() -> Presentation:
 
 
 def blank_slide(prs: Presentation):
+    """blank_slide。
+
+    Args:
+        prs: prs 参数。
+    """
     layout = prs.slide_layouts[6]  # blank
     slide = prs.slides.add_slide(layout)
     _bg(slide)
@@ -193,6 +209,17 @@ def blank_slide(prs: Presentation):
 
 
 def cover(prs, *, brand: str, title: str, lines: list[str], note: str, series: str, total: int):
+    """cover。
+
+    Args:
+        prs: prs 参数。
+        brand: brand 参数。
+        title: title 参数。
+        lines: lines 参数。
+        note: note 参数。
+        series: series 参数。
+        total: total 参数。
+    """
     slide = blank_slide(prs)
     accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, 164592, H)
     _fill(accent, C_ACCENT)
@@ -206,6 +233,16 @@ def cover(prs, *, brand: str, title: str, lines: list[str], note: str, series: s
 
 
 def toc(prs, items: list, series: str, total: int, page: int, *, subtitle: Optional[str] = None):
+    """toc。
+
+    Args:
+        prs: prs 参数。
+        items: items 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
+        subtitle: subtitle 参数。
+    """
     slide = blank_slide(prs)
     _section_label(slide, "CONTENTS")
     _title(slide, "目录")
@@ -227,6 +264,17 @@ def toc(prs, items: list, series: str, total: int, page: int, *, subtitle: Optio
 
 
 def part(prs, part_no: str, title: str, sub: str, series: str, total: int, page: int):
+    """part。
+
+    Args:
+        prs: prs 参数。
+        part_no: part_no 参数。
+        title: title 参数。
+        sub: sub 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
+    """
     slide = blank_slide(prs)
     _textbox(slide, MARGIN, 2200000, 11338560, 500000, part_no, size=18, bold=True, color=C_ACCENT2)
     _textbox(slide, MARGIN, 2800000, 11338560, 700000, title, size=36, bold=True, color=C_WHITE)
@@ -246,6 +294,19 @@ def cards_page(
     page: int,
     cols: int = 3,
 ):
+    """cards_page。
+
+    Args:
+        prs: prs 参数。
+        section: section 参数。
+        title: title 参数。
+        subtitle: subtitle 参数。
+        cards: cards 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
+        cols: cols 参数。
+    """
     slide = blank_slide(prs)
     _section_label(slide, section)
     _title(slide, title)
@@ -283,6 +344,21 @@ def bullets_page(
     total: int,
     page: int,
 ):
+    """bullets_page。
+
+    Args:
+        prs: prs 参数。
+        section: section 参数。
+        title: title 参数。
+        subtitle: subtitle 参数。
+        left_title: left_title 参数。
+        left_items: left_items 参数。
+        right_title: right_title 参数。
+        right_items: right_items 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
+    """
     slide = blank_slide(prs)
     _section_label(slide, section)
     _title(slide, title)
@@ -302,6 +378,16 @@ def bullets_page(
 
 
 def closing(prs, *, line: str, points: list[str], series: str, total: int, page: int):
+    """closing。
+
+    Args:
+        prs: prs 参数。
+        line: line 参数。
+        points: points 参数。
+        series: series 参数。
+        total: total 参数。
+        page: page 参数。
+    """
     slide = blank_slide(prs)
     accent = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, 164592, H)
     _fill(accent, C_ACCENT)
@@ -318,6 +404,8 @@ def closing(prs, *, line: str, points: list[str], series: str, total: int, page:
 # ─────────────────────────── Agent deck ───────────────────────────
 
 def build_agent() -> Path:
+    """build_agent。
+    """
     series = "aiPlat Agent"
     total = 18
     prs = new_deck()
@@ -592,6 +680,8 @@ def build_agent() -> Path:
 # ─────────────────────────── Ontology deck ───────────────────────────
 
 def build_ontology() -> Path:
+    """build_ontology。
+    """
     series = "aiPlat 本体"
     total = 18
     prs = new_deck()
@@ -1247,7 +1337,12 @@ def _replace_in_textframe(tf, mapping: list) -> bool:
 
 
 def export_external(src: Path, dst: Path) -> Path:
-    """Clone deck and scrub competitor-facing wording for customer handout."""
+    """Clone deck and scrub competitor-facing wording for customer handout.
+
+    Args:
+        src: src 参数。
+        dst: dst 参数。
+    """
     import shutil
 
     shutil.copy2(src, dst)
@@ -1267,6 +1362,8 @@ def export_external(src: Path, dst: Path) -> Path:
 
 
 def main():
+    """main。
+    """
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     a = build_agent()
     o = build_ontology()

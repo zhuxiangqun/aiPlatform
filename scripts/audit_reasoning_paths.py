@@ -16,11 +16,19 @@ from pathlib import Path as _Path
 
 
 def get_db_path() -> str:
+    """获取 db_path。
+    """
     home = _Path.home() / ".aiplat" / "state_history" / "state_changes.db"
     return str(home)
 
 
 def sample_transitions(domain_id: str, limit: int = 50) -> list:
+    """sample_transitions。
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     db = get_db_path()
     conn = _sqlite3.connect(db)
     rows = conn.execute(
@@ -42,9 +50,10 @@ def sample_transitions(domain_id: str, limit: int = 50) -> list:
 
 def auto_annotate(transitions: list, domain_id: str) -> tuple:
     """Auto-annotate transitions by checking against YAML state machine rules.
-    
-    Returns (annotated_list, correct_count, total_count).
-    A transition is correct if from_state→to_state exists in the class's YAML transitions.
+
+    Args:
+        transitions: transitions 参数。
+        domain_id: domain 标识。
     """
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
     from pathlib import Path as _P
@@ -86,6 +95,12 @@ def auto_annotate(transitions: list, domain_id: str) -> tuple:
 
 
 def write_csv(transitions: list, output_path: str):
+    """write_csv。
+
+    Args:
+        transitions: transitions 参数。
+        output_path: output_path 参数。
+    """
     with open(output_path, "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["id", "entity_name", "class_name", "from_state", "to_state",
@@ -99,6 +114,11 @@ def write_csv(transitions: list, output_path: str):
 
 
 def compute_accuracy(csv_path: str) -> dict:
+    """compute_accuracy。
+
+    Args:
+        csv_path: csv_path 参数。
+    """
     total = 0
     correct = 0
     with open(csv_path, newline="") as f:
@@ -111,6 +131,8 @@ def compute_accuracy(csv_path: str) -> dict:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="State transition accuracy audit")
     parser.add_argument("--domain", default="ai-knowledge")
     parser.add_argument("--sample", type=int, default=50)

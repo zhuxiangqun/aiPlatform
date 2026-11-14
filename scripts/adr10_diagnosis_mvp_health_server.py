@@ -39,6 +39,8 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    """main。
+    """
     port = int(os.environ.get("ADR10_DIAG_HEALTH_PORT", "18765"))
     host = os.environ.get("ADR10_DIAG_HEALTH_HOST", "127.0.0.1")
     httpd = HTTPServer((host, port), _Handler)

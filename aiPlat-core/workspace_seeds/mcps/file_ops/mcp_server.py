@@ -94,9 +94,17 @@ def _check_path(path: str) -> str:
 
 
 def handle_list_tools():
+    """handle_list_tools。
+    """
     return {"tools": TOOLS}
 
 def handle_call_tool(name: str, arguments: dict):
+    """handle_call_tool。
+
+    Args:
+        name: name 参数。
+        arguments: arguments 参数。
+    """
     try:
         if name == "file_read":
             path = _check_path(arguments.get("path", ""))
@@ -159,6 +167,8 @@ def handle_call_tool(name: str, arguments: dict):
 
 
 def main():
+    """main。
+    """
     for line in sys.stdin:
         line = line.strip()
         if not line:

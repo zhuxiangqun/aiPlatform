@@ -27,6 +27,11 @@ class ACPClient:
     """Minimal WebSocket client for the aiPlat ACP server chat protocol."""
 
     def __init__(self, endpoint: str = "ws://localhost:8005/acp"):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self._endpoint = endpoint
         self._session_ids: Dict[str, str] = {}
 
@@ -47,7 +52,9 @@ class ACPClient:
     async def start_agent(self, name: str, task: str) -> Dict[str, Any]:
         """Start an agent turn — maps to an ACP chat message.
 
-        Returns SubagentProvider-compatible dict: ok/output/error/instance_id.
+        Args:
+            name: name 参数。
+            task: task 参数。
         """
         try:
             sid = str(uuid.uuid4())[:12]
@@ -76,7 +83,12 @@ class ACPClient:
             }
 
     async def continue_agent(self, instance_id: str, task: str) -> Dict[str, Any]:
-        """Continue a session — send another chat turn on the same session."""
+        """Continue a session — send another chat turn on the same session.
+
+        Args:
+            instance_id: instance 标识。
+            task: task 参数。
+        """
         try:
             resp = await self._chat(task, session_id=instance_id)
             content = str(resp.get("content") or "")

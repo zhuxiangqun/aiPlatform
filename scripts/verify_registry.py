@@ -31,6 +31,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "aiPlat-platfor
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Verify entity registry consistency")
     parser.add_argument("entity_type", nargs="?", default="all",
                         help="Entity type to check (agents|skills|mcps|workflows|tools|domains|all)")

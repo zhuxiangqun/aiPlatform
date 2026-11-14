@@ -35,6 +35,8 @@ def _run(cmd: List[str]) -> subprocess.CompletedProcess:
 
 
 def check_w1_0_attack_sim_unreachable() -> Dict[str, Any]:
+    """check_w1_0_attack_sim_unreachable。
+    """
     proc = _run(
         [sys.executable, str(ROOT / "scripts" / "security-attack-sim.py"), "http://127.0.0.1:9"]
     )
@@ -50,6 +52,8 @@ def check_w1_0_attack_sim_unreachable() -> Dict[str, Any]:
 
 
 def check_w1_3_ir_gitignore() -> Dict[str, Any]:
+    """check_w1_3_ir_gitignore。
+    """
     gi = (ROOT / ".gitignore").read_text(encoding="utf-8")
     pattern_ok = "*.local.yaml" in gi or "contacts.local.yaml" in gi
     example = ROOT / "security" / "ir" / "contacts.local.yaml.example"
@@ -68,6 +72,8 @@ def check_w1_3_ir_gitignore() -> Dict[str, Any]:
 
 
 def check_w1_5_gates() -> Dict[str, Any]:
+    """check_w1_5_gates。
+    """
     ledger = _run(
         [sys.executable, str(ROOT / "scripts" / "security_dimensions_report.py")]
     )
@@ -106,6 +112,8 @@ def check_w1_5_gates() -> Dict[str, Any]:
 
 
 def check_wave1_templates() -> Dict[str, Any]:
+    """check_wave1_templates。
+    """
     needed = [
         EVIDENCE / "wave1" / "README.md",
         EVIDENCE / "wave1" / "staging-fail-closed-card.md",
@@ -122,6 +130,8 @@ def check_wave1_templates() -> Dict[str, Any]:
 
 
 def check_w1_publish_gates_wrapper() -> Dict[str, Any]:
+    """check_w1_publish_gates_wrapper。
+    """
     script = ROOT / "scripts" / "security_publish_gates.py"
     if not script.is_file():
         return {"id": "W1-5-wrapper", "ok": False, "detail": "missing security_publish_gates.py"}
@@ -189,6 +199,8 @@ def check_wave2_pilot_fields() -> Dict[str, Any]:
 
 
 def check_wave3_card_schema() -> Dict[str, Any]:
+    """check_wave3_card_schema。
+    """
     script = ROOT / "scripts" / "security_evidence_card.py"
     template = EVIDENCE / "wave3" / "text-family-live.card.json"
     if not script.is_file() or not template.is_file():
@@ -203,6 +215,8 @@ def check_wave3_card_schema() -> Dict[str, Any]:
 
 
 def check_wave4_artifacts() -> Dict[str, Any]:
+    """check_wave4_artifacts。
+    """
     needed = [
         EVIDENCE / "wave4" / "README.md",
         EVIDENCE / "wave4" / "ir-tabletop-scorecard.schema.json",
@@ -216,6 +230,8 @@ def check_wave4_artifacts() -> Dict[str, Any]:
 
 
 def run_wave1() -> Dict[str, Any]:
+    """run_wave1。
+    """
     checks = [
         check_w1_0_attack_sim_unreachable(),
         check_w1_3_ir_gitignore(),
@@ -232,6 +248,8 @@ def run_wave1() -> Dict[str, Any]:
 
 
 def run_wave2() -> Dict[str, Any]:
+    """run_wave2。
+    """
     checks = [check_wave2_pilot_fields()]
     tpl = EVIDENCE / "wave2" / "README.md"
     checks.append(
@@ -250,6 +268,8 @@ def run_wave2() -> Dict[str, Any]:
 
 
 def run_wave3() -> Dict[str, Any]:
+    """run_wave3。
+    """
     checks = [check_wave3_card_schema()]
     for name in ("text-family-live.card.json", "staging-tenant-blackbox.card.json", "README.md"):
         p = EVIDENCE / "wave3" / name
@@ -263,6 +283,8 @@ def run_wave3() -> Dict[str, Any]:
 
 
 def run_wave4() -> Dict[str, Any]:
+    """run_wave4。
+    """
     checks = [check_wave4_artifacts()]
     return {
         "wave": 4,
@@ -273,6 +295,11 @@ def run_wave4() -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="Security wave engineering gates")
     parser.add_argument("--wave1", action="store_true")
     parser.add_argument("--wave2", action="store_true")

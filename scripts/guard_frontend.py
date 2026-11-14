@@ -28,10 +28,40 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 PATH_MISMATCH_BASELINE = Path(__file__).resolve().parent / "baselines" / "frontend_path_mismatch_baseline.txt"
 
 
-def bold(s): return f"\033[1m{s}\033[0m"
-def red(s): return f"\033[0;31m{s}\033[0m"
-def green(s): return f"\033[0;32m{s}\033[0m"
-def yellow(s): return f"\033[0;33m{s}\033[0m"
+def bold(s):
+    """ANSI 加粗。
+
+    Args:
+        s: 待着色文本。
+    """
+    return f"\033[1m{s}\033[0m"
+
+
+def red(s):
+    """ANSI 红色。
+
+    Args:
+        s: 待着色文本。
+    """
+    return f"\033[0;31m{s}\033[0m"
+
+
+def green(s):
+    """ANSI 绿色。
+
+    Args:
+        s: 待着色文本。
+    """
+    return f"\033[0;32m{s}\033[0m"
+
+
+def yellow(s):
+    """ANSI 黄色。
+
+    Args:
+        s: 待着色文本。
+    """
+    return f"\033[0;33m{s}\033[0m"
 
 
 def _normalize_fe_template(path: str) -> str:
@@ -725,6 +755,7 @@ def _compute_path_mismatches():
 
 
 def check_api_path_contract() -> list[dict]:
+    """校验前端 fetch 路径与后端路由契约（含 baseline ratchet）。"""
     issues = []
     mismatches, n_fe, n_be = _compute_path_mismatches()
     if n_fe == -1:
@@ -892,6 +923,7 @@ def check_fde_route_migration() -> list[dict]:
     return issues
 
 def main():
+    """运行前端守卫各节并打印结果；支持 --write-baseline。"""
     if "--write-baseline" in sys.argv:
         mismatches, _n_fe, _n_be = _compute_path_mismatches()
         sigs = {_mismatch_sig(mm) for mm in mismatches}

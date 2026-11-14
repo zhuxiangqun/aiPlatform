@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 
 class RepoChangesetPreviewRequest(BaseModel):
+    """RepoChangesetPreviewRequest。"""
     repo_root: str
     include_patch: bool = False  # default: do NOT return full diff
     note: Optional[str] = None
@@ -21,16 +22,19 @@ class RepoChangesetPreviewRequest(BaseModel):
 
 
 class RepoTestsRunRequest(BaseModel):
+    """RepoTestsRunRequest。"""
     repo_root: str
     note: Optional[str] = None
 
 
 class RepoStagedPreviewRequest(BaseModel):
+    """RepoStagedPreviewRequest。"""
     repo_root: str
     include_patch: bool = False
 
 
 class RepoGitBranchRequest(BaseModel):
+    """RepoGitBranchRequest。"""
     repo_root: str
     branch: str
     base: Optional[str] = None  # base ref, default: current HEAD
@@ -44,6 +48,7 @@ class RepoGitBranchRequest(BaseModel):
 
 
 class RepoGitCommitRequest(BaseModel):
+    """RepoGitCommitRequest。"""
     repo_root: str
     message: str
     # Governance

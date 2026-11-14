@@ -50,7 +50,11 @@ SKIP_DIRS = {"__pycache__", ".venv", "tests", "tools", "mcp", "adapters"}
 
 
 def extract_public_names(filepath: Path) -> Set[str]:
-    """Extract class names and singleton getter names from a file."""
+    """Extract class names and singleton getter names from a file.
+
+    Args:
+        filepath: filepath 参数。
+    """
     names: Set[str] = set()
     try:
         tree = ast.parse(filepath.read_text(encoding="utf-8"))

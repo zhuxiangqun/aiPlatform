@@ -15,6 +15,8 @@ sys.path.insert(0, str(ROOT / "aiPlat-core"))
 
 
 def main() -> int:
+    """main。
+    """
     from core.harness.knowledge.ontology_loader import list_domain_files, load_ontology_from_yaml
 
     home = Path(os.getenv("AIPLAT_HOME", Path.home() / ".aiplat"))

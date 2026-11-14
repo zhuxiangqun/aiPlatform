@@ -44,6 +44,8 @@ def _iso_future(raw: str) -> Optional[bool]:
 
 
 def check_ir_contacts() -> Dict[str, Any]:
+    """check_ir_contacts。
+    """
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         from security_ir_contacts import load_contacts  # type: ignore
@@ -54,6 +56,8 @@ def check_ir_contacts() -> Dict[str, Any]:
 
 
 def check_fail_closed() -> Dict[str, Any]:
+    """check_fail_closed。
+    """
     profile = (os.getenv("AIPLAT_PROFILE") or os.getenv("AIPLAT_ENV") or "").strip().lower()
     explicit = (os.getenv("AIPLAT_POLICY_FAIL_MODE") or "").strip().lower()
     until = (os.getenv("AIPLAT_POLICY_FAIL_OPEN_UNTIL") or "").strip()
@@ -102,6 +106,8 @@ def check_fail_closed() -> Dict[str, Any]:
 
 
 def check_hard_floor() -> Dict[str, Any]:
+    """check_hard_floor。
+    """
     flag = (os.getenv("AIPLAT_HARD_FLOOR_DISABLED") or "").strip().lower() in {
         "1",
         "true",
@@ -125,6 +131,8 @@ def check_hard_floor() -> Dict[str, Any]:
 
 
 def check_p2_1_keys() -> Dict[str, Any]:
+    """check_p2_1_keys。
+    """
     hmac = bool((os.getenv("AIPLAT_ARTIFACT_MANIFEST_HMAC_SECRET") or "").strip())
     ed_seed = bool((os.getenv("AIPLAT_ARTIFACT_MANIFEST_ED25519_SEED") or "").strip())
     ed_key = bool((os.getenv("AIPLAT_ARTIFACT_MANIFEST_ED25519_KEY") or "").strip())
@@ -149,6 +157,8 @@ def check_p2_1_keys() -> Dict[str, Any]:
 
 
 def check_engineering_closeout() -> Dict[str, Any]:
+    """check_engineering_closeout。
+    """
     proc = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "security_plan_closeout_check.py")],
         cwd=str(ROOT),
@@ -368,6 +378,8 @@ def check_dimensions() -> Dict[str, Any]:
 
 
 def run_ops_audit() -> Dict[str, Any]:
+    """run_ops_audit。
+    """
     checks = {
         "ir_contacts": check_ir_contacts(),
         "fail_closed": check_fail_closed(),
@@ -394,6 +406,8 @@ def run_ops_audit() -> Dict[str, Any]:
 
 
 def main() -> int:
+    """main。
+    """
     if "--profile-matrix" in sys.argv:
         matrix = simulate_profile_matrix()
         print(json.dumps(matrix, ensure_ascii=False, indent=2))

@@ -28,7 +28,12 @@ _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def session_file_under_root(root: Path, relative: str) -> Optional[Path]:
-    """Resolved file path inside ``root``, or None on escape / absolute path."""
+    """Resolved file path inside ``root``, or None on escape / absolute path.
+
+    Args:
+        root: root 参数。
+        relative: relative 参数。
+    """
     rel = relative or ""
     if not rel or rel.startswith(("/", "\\")) or "\\" in rel:
         return None
@@ -43,12 +48,18 @@ def session_file_under_root(root: Path, relative: str) -> Optional[Path]:
 
 @app.get("/health")
 def health():
+    """health。
+    """
     return {"status": "healthy"}
 
 
 @app.get("/app/sessions/{project_id}")
 async def serve_app_index(project_id: str):
-    """Serve the deployed app's index.html."""
+    """Serve the deployed app's index.html.
+
+    Args:
+        project_id: project 标识。
+    """
     if not _SAFE_ID.fullmatch(project_id or ""):
         raise HTTPException(status_code=400, detail="invalid_project_id")
     app_dir = (APPS_HOME / project_id / "current").resolve()
@@ -64,7 +75,13 @@ async def serve_app_index(project_id: str):
 
 @app.get("/app/media/{app_name}/{task_id}/{path:path}")
 async def serve_app_media(app_name: str, task_id: str, path: str):
-    """Serve Factory media artifacts (keyframes, etc.) under ~/.aiplat/apps/{app}/media/{task}/."""
+    """Serve Factory media artifacts (keyframes, etc.) under ~/.aiplat/apps/{app}/media/{task}/.
+
+    Args:
+        app_name: app_name 参数。
+        task_id: task 标识。
+        path: 路径。
+    """
     import re as _re
     from fastapi import HTTPException
 
@@ -87,7 +104,12 @@ async def serve_app_media(app_name: str, task_id: str, path: str):
 
 @app.get("/app/sessions/{project_id}/{path:path}")
 async def serve_app_files(project_id: str, path: str):
-    """Serve static files for the deployed app (JS, CSS, images, etc.)."""
+    """Serve static files for the deployed app (JS, CSS, images, etc.).
+
+    Args:
+        project_id: project 标识。
+        path: 路径。
+    """
     if not _SAFE_ID.fullmatch(project_id or ""):
         raise HTTPException(status_code=400, detail="invalid_project_id")
     app_dir = (APPS_HOME / project_id / "current").resolve()

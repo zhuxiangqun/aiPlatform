@@ -44,6 +44,11 @@ def _pragma_columns(db_path: Path) -> set[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="audit_schema ↔ ActionStore mapping dry-run")
     parser.add_argument(
         "--db",

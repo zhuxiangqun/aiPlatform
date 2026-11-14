@@ -16,6 +16,11 @@ class WhatsAppAdapter(ChannelAdapter):
     """WhatsApp 适配器 (Cloud API)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         entry = (raw_data.get("entry") or [{}])[0]
         changes = entry.get("changes") or [{}]
         change = changes[0]
@@ -42,6 +47,11 @@ class WhatsAppAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "messaging_product": "whatsapp",
             "to": response.message_id,

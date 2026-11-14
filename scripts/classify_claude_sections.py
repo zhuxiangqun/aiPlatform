@@ -66,6 +66,7 @@ RULE_PATTERNS = [
 
 @dataclass
 class Section:
+    """Section。"""
     number: str
     title: str
     start: int          # 1-indexed line of the ### heading
@@ -76,6 +77,8 @@ class Section:
 
     @property
     def line_count(self) -> int:
+        """line_count。
+        """
         return self.end - self.start + 1
 
 
@@ -88,6 +91,11 @@ def _match_any(patterns: List[str], text: str) -> List[str]:
 
 
 def parse_sections(lines: List[str]) -> List[Section]:
+    """parse_sections。
+
+    Args:
+        lines: lines 参数。
+    """
     sections: List[Section] = []
     for i, line in enumerate(lines):
         m = SECTION_RE.match(line.rstrip("\n"))
@@ -112,6 +120,11 @@ def parse_sections(lines: List[str]) -> List[Section]:
 def classify(sec: Section) -> None:
     # Already-migrated pointer stub → POINTER (idempotent: extractor won't re-migrate,
     # guard won't re-flag). Detected by the migration marker in the body.
+    """classify。
+
+    Args:
+        sec: sec 参数。
+    """
     if "状态明细已迁至" in sec.body:
         sec.tag = "POINTER"
         sec.reasons.append("migrated-stub")
@@ -141,6 +154,11 @@ def classify(sec: Section) -> None:
 
 
 def build_report(sections: List[Section]) -> str:
+    """build_report。
+
+    Args:
+        sections: sections 参数。
+    """
     by_tag = {"RULE": [], "STATUS": [], "MIXED": [], "OTHER": [], "POINTER": []}
     for s in sections:
         by_tag[s.tag].append(s)
@@ -189,6 +207,8 @@ def build_report(sections: List[Section]) -> str:
 
 
 def main() -> int:
+    """main。
+    """
     if not CLAUDE_MD.exists():
         print(f"ERROR: {CLAUDE_MD} not found", file=sys.stderr)
         return 0

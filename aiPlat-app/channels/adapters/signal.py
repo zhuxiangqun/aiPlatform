@@ -18,6 +18,11 @@ class SignalAdapter(ChannelAdapter):
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # signal-cli receive 输出：{"envelope": {"source": "...", "sourceUuid": "...",
         #   "timestamp": ..., "dataMessage": {"message": "...", "timestamp": ...}}}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         envelope = raw_data.get("envelope") or raw_data
         data_msg = envelope.get("dataMessage") or {}
         text = str(data_msg.get("message", "") or "")
@@ -33,6 +38,11 @@ class SignalAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "recipient": response.message_id,
             "message": response.text,

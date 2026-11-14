@@ -67,6 +67,12 @@ def discover_families() -> list[str]:
 
 
 def check(caps_text: str, families: list[str]) -> list[str]:
+    """check。
+
+    Args:
+        caps_text: caps_text 参数。
+        families: families 参数。
+    """
     violations = []
     for fam in families:
         lines = [line for line in caps_text.splitlines() if line.strip().startswith("|")]
@@ -83,6 +89,8 @@ def check(caps_text: str, families: list[str]) -> list[str]:
 
 
 def main() -> int:
+    """main。
+    """
     ci = "--ci" in sys.argv
     if not CAPABILITIES.exists():
         print("CAPABILITIES 不存在，跳过")

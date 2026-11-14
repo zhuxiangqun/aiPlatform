@@ -1,3 +1,5 @@
+"""bus：模块接口。"""
+
 import logging
 """
 Event Bus - 事件总线
@@ -14,6 +16,7 @@ from threading import Lock
 
 
 class EventPriority(str, Enum):
+    """EventPriority。"""
     HIGH = "high"
     NORMAL = "normal"
     LOW = "low"
@@ -36,6 +39,8 @@ class EventBus:
     """事件总线"""
 
     def __init__(self):
+        """初始化。
+        """
         self._subscribers: Dict[str, List[Callable]] = {}
         self._handlers: Dict[str, Callable] = {}
         self._lock = Lock()
@@ -43,14 +48,24 @@ class EventBus:
         self._max_history: int = 1000
 
     def subscribe(self, event_type: str, handler: Callable[[Event], None]) -> None:
-        """订阅事件"""
+        """订阅事件。
+
+        Args:
+            event_type: event_type 参数。
+            handler: handler 参数。
+        """
         with self._lock:
             if event_type not in self._subscribers:
                 self._subscribers[event_type] = []
             self._subscribers[event_type].append(handler)
 
     def unsubscribe(self, event_type: str, handler: Callable[[Event], None]) -> bool:
-        """取消订阅"""
+        """取消订阅。
+
+        Args:
+            event_type: event_type 参数。
+            handler: handler 参数。
+        """
         with self._lock:
             if event_type in self._subscribers and handler in self._subscribers[event_type]:
                 self._subscribers[event_type].remove(handler)
@@ -58,7 +73,11 @@ class EventBus:
         return False
 
     def publish(self, event: Event) -> str:
-        """发布事件"""
+        """发布事件。
+
+        Args:
+            event: event 参数。
+        """
         with self._lock:
             self._event_history.append(event)
             if len(self._event_history) > self._max_history:
@@ -80,7 +99,15 @@ class EventBus:
         trace_id: Optional[str] = None,
         source: str = "",
     ) -> str:
-        """发射事件"""
+        """发射事件。
+
+        Args:
+            event_type: event_type 参数。
+            payload: 载荷 dict。
+            tenant_id: 租户 ID。
+            trace_id: trace 标识。
+            source: source 参数。
+        """
         event = Event(
             event_type=event_type,
             payload=payload,
@@ -91,11 +118,20 @@ class EventBus:
         return self.publish(event)
 
     def register_handler(self, event_type: str, handler: Callable[[Event], None]) -> None:
-        """注册处理器"""
+        """注册处理器。
+
+        Args:
+            event_type: event_type 参数。
+            handler: handler 参数。
+        """
         self._handlers[event_type] = handler
 
     def handle_event(self, event: Event) -> None:
-        """处理事件"""
+        """处理事件。
+
+        Args:
+            event: event 参数。
+        """
         handler = self._handlers.get(event.event_type)
         if handler:
             try:
@@ -109,7 +145,13 @@ class EventBus:
         tenant_id: Optional[str] = None,
         limit: int = 100,
     ) -> List[Event]:
-        """获取事件历史"""
+        """获取事件历史。
+
+        Args:
+            event_type: event_type 参数。
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         history = self._event_history.copy()
 
         if event_type:

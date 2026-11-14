@@ -101,7 +101,11 @@ def _has_drift_ok(path: Path) -> bool:
 
 
 def lint_team_file(path: Path) -> List[str]:
-    """Return human-readable conflict messages (empty if none)."""
+    """Return human-readable conflict messages (empty if none).
+
+    Args:
+        path: 路径。
+    """
     doc = _load_yaml(path)
     if doc is None:
         return []
@@ -128,6 +132,11 @@ def lint_team_file(path: Path) -> List[str]:
 
 
 def discover_team_files(extra: Optional[List[Path]] = None) -> List[Path]:
+    """discover_team_files。
+
+    Args:
+        extra: extra 参数。
+    """
     found: List[Path] = []
     roots = [
         _aiplat_home() / "teams",
@@ -158,6 +167,8 @@ def discover_team_files(extra: Optional[List[Path]] = None) -> List[Path]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Lint team YAML vs AGENT.md profile drift (O2)")
     ap.add_argument("--team", action="append", type=Path, help="Team YAML path (repeatable)")
     ap.add_argument(

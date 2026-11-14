@@ -82,7 +82,12 @@ def _get_class_descriptions(ontology: dict) -> list[tuple[str, str]]:
 
 
 def seed_graph_from_json(domain_id: str, dry_run: bool = False) -> int:
-    """Load entities + relations from seed_data JSON and write to GraphIndex."""
+    """Load entities + relations from seed_data JSON and write to GraphIndex.
+
+    Args:
+        domain_id: domain 标识。
+        dry_run: 是否仅演练。
+    """
     data = _load_seed_json(domain_id)
     if not data:
         return 0
@@ -133,7 +138,13 @@ def seed_graph_from_json(domain_id: str, dry_run: bool = False) -> int:
 
 
 def seed_graph_minimal(domain_id: str, ontology: dict, dry_run: bool = False) -> int:
-    """Create 2 minimal entities using ontology's own class names."""
+    """Create 2 minimal entities using ontology's own class names.
+
+    Args:
+        domain_id: domain 标识。
+        ontology: ontology 参数。
+        dry_run: 是否仅演练。
+    """
     classes = _get_class_names(ontology)
     if not classes:
         return 0
@@ -163,7 +174,13 @@ def seed_graph_minimal(domain_id: str, ontology: dict, dry_run: bool = False) ->
 
 
 def seed_wiki_pages(domain_id: str, ontology: dict, dry_run: bool = False) -> int:
-    """Generate Wiki pages from ontology description and class definitions."""
+    """Generate Wiki pages from ontology description and class definitions.
+
+    Args:
+        domain_id: domain 标识。
+        ontology: ontology 参数。
+        dry_run: 是否仅演练。
+    """
     import yaml
     collection_dir = os.path.join(WIKI_DIR, domain_id)
     os.makedirs(collection_dir, exist_ok=True)
@@ -238,7 +255,12 @@ def _register_in_index(domain_id: str, title: str, tags: list[str]):
 
 
 def seed_domain(domain_id: str, dry_run: bool = False) -> tuple[int, int]:
-    """Seed one domain: entities to GraphIndex, wiki pages from ontology."""
+    """Seed one domain: entities to GraphIndex, wiki pages from ontology.
+
+    Args:
+        domain_id: domain 标识。
+        dry_run: 是否仅演练。
+    """
     ontology = _load_ontology(domain_id)
     if not ontology:
         print(f"  {domain_id}: no ontology YAML, skipping")
@@ -255,6 +277,8 @@ def seed_domain(domain_id: str, dry_run: bool = False) -> tuple[int, int]:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Data-driven domain seeder")
     parser.add_argument("--domain", type=str, help="Seed a specific domain")
     parser.add_argument("--all", action="store_true", help="Seed all registered domains (default)")

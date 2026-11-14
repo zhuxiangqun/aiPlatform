@@ -50,6 +50,8 @@ CHECKS = [
 
 
 def run() -> list[str]:
+    """run。
+    """
     violations: list[str] = []
     for spec in CHECKS:
         path: Path = spec["path"]
@@ -67,6 +69,11 @@ def run() -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ci", action="store_true", help="exit 1 on violations")
     args = ap.parse_args(argv)

@@ -22,7 +22,11 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
 def latest_review_state_by_user(reviews: Iterable[Dict[str, Any]]) -> Dict[str, str]:
-    """Return each reviewer's latest review state (API order is newest-first)."""
+    """Return each reviewer's latest review state (API order is newest-first).
+
+    Args:
+        reviews: reviews 参数。
+    """
     latest: Dict[str, str] = {}
     for rev in reviews:
         user = (rev.get("user") or {}).get("login")
@@ -38,6 +42,12 @@ def latest_review_state_by_user(reviews: Iterable[Dict[str, Any]]) -> Dict[str, 
 def non_author_approvers(
     reviews: Iterable[Dict[str, Any]], author: str
 ) -> List[str]:
+    """non_author_approvers。
+
+    Args:
+        reviews: reviews 参数。
+        author: author 参数。
+    """
     author_l = (author or "").strip().lower()
     out: List[str] = []
     for user, state in latest_review_state_by_user(reviews).items():
@@ -50,7 +60,11 @@ def non_author_approvers(
 
 
 def human_write_logins(collaborators: Iterable[Dict[str, Any]]) -> List[str]:
-    """Human accounts with push/admin/maintain (excludes ``*[bot]``)."""
+    """Human accounts with push/admin/maintain (excludes ``*[bot]``).
+
+    Args:
+        collaborators: collaborators 参数。
+    """
     out: List[str] = []
     for row in collaborators:
         login = str(row.get("login") or "").strip()
@@ -74,6 +88,13 @@ def check_independence(
     reviews: Iterable[Dict[str, Any]],
     write_collaborators: Optional[Iterable[str]] = None,
 ) -> Tuple[bool, str]:
+    """check_independence。
+
+    Args:
+        author: author 参数。
+        reviews: reviews 参数。
+        write_collaborators: write_collaborators 参数。
+    """
     if not (author or "").strip():
         return False, "pull request author is missing"
     author_l = author.strip().lower()
@@ -124,6 +145,11 @@ def _load_event(path: Optional[str]) -> Dict[str, Any]:
 def resolve_pr_context(
     event: Dict[str, Any],
 ) -> Tuple[Optional[int], Optional[str]]:
+    """resolve_pr_context。
+
+    Args:
+        event: event 参数。
+    """
     pr = event.get("pull_request")
     if isinstance(pr, dict):
         number = pr.get("number")
@@ -139,6 +165,11 @@ def resolve_pr_context(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--event",

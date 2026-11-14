@@ -144,7 +144,12 @@ def _has_pragma_allow(func_node: ast.FunctionDef) -> bool:
 
 
 def scan_file(filepath: Path, rel_path: str = "") -> List[Dict]:
-    """Scan a single Python file for boundary violations."""
+    """Scan a single Python file for boundary violations.
+
+    Args:
+        filepath: filepath 参数。
+        rel_path: rel_path 参数。
+    """
     violations = []
     try:
         tree = ast.parse(filepath.read_text(encoding="utf-8", errors="ignore"))
@@ -355,6 +360,8 @@ def _is_in_safe_ast_context(filepath: Path, target_line: int) -> bool:
 
 
 def main():
+    """main。
+    """
     if "--write-baseline" in sys.argv:
         count = len(scan_silent_except())
         _write_silent_baseline(count)

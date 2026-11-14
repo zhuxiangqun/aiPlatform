@@ -22,22 +22,47 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 
 
 def bold(text: str) -> str:
+    """bold。
+
+    Args:
+        text: text 参数。
+    """
     return f"\033[1m{text}\033[0m"
 
 
 def red(text: str) -> str:
+    """red。
+
+    Args:
+        text: text 参数。
+    """
     return f"\033[0;31m{text}\033[0m"
 
 
 def green(text: str) -> str:
+    """green。
+
+    Args:
+        text: text 参数。
+    """
     return f"\033[0;32m{text}\033[0m"
 
 
 def yellow(text: str) -> str:
+    """yellow。
+
+    Args:
+        text: text 参数。
+    """
     return f"\033[0;33m{text}\033[0m"
 
 
 def cyan(text: str) -> str:
+    """cyan。
+
+    Args:
+        text: text 参数。
+    """
     return f"\033[0;36m{text}\033[0m"
 
 
@@ -92,7 +117,11 @@ def _write_arch_baseline(sigs, reason: str = "") -> None:
 
 
 def format_text(report) -> str:
-    """Format ArchReport as text matching the original .sh output."""
+    """Format ArchReport as text matching the original .sh output.
+
+    Args:
+        report: report 参数。
+    """
     lines = []
     lines.append("")
     lines.append("═" * 63)
@@ -209,6 +238,8 @@ def _expand_diff_to_affected(repo_root: Path, changed_files: list) -> list:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Architecture Guard")
     parser.add_argument("--json", action="store_true", help="JSON output")
     parser.add_argument("--quick", action="store_true", help="Quick mode (imports only)")

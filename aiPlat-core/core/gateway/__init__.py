@@ -19,8 +19,19 @@ _log = logging.getLogger("aiplat.gateway")
 
 class GatewayMessage:
     """标准化网关消息。"""
+
     def __init__(self, *, channel: str, channel_chat_id: str, user_id: str = "",
                  text: str = "", message_type: str = "text", raw: Dict[str, Any] = None):
+        """构造网关消息。
+
+        Args:
+            channel: 渠道名。
+            channel_chat_id: 渠道会话 ID。
+            user_id: 用户 ID。
+            text: 消息文本。
+            message_type: 消息类型。
+            raw: 原始载荷。
+        """
         self.id = f"gw-{uuid.uuid4().hex[:12]}"
         self.channel = channel
         self.channel_chat_id = channel_chat_id
@@ -31,6 +42,7 @@ class GatewayMessage:
         self.timestamp = time.time()
 
     def session_id(self) -> str:
+        """返回渠道会话键。"""
         return f"{self.channel}:{self.channel_chat_id}"
 
 
@@ -46,6 +58,11 @@ class EnterpriseGateway:
     """
 
     def __init__(self, *, core_url: str = ""):
+        """初始化企业网关。
+
+        Args:
+            core_url: Core HTTP 基址；空则读 AIPLAT_CORE_URL。
+        """
         self._core_url = core_url or os.getenv("AIPLAT_CORE_URL", "http://localhost:8002")
         self._adapters: Dict[str, Any] = {}
         self._handler: Optional[Callable] = None
@@ -55,13 +72,22 @@ class EnterpriseGateway:
         self._dlq: Dict[str, Dict[str, Any]] = {}
 
     def register(self, channel_name: str, adapter: Any):
-        """注册渠道适配器。"""
+        """注册渠道适配器。
+
+        Args:
+            channel_name: 渠道名。
+            adapter: 渠道适配器实例。
+        """
         self._adapters[channel_name] = adapter
         adapter.gateway = self
         _log.info(f"Gateway: registered channel '{channel_name}'")
 
     def on_message(self, handler: Callable):
-        """注册消息处理器。"""
+        """注册消息处理器。
+
+        Args:
+            handler: 入站消息回调。
+        """
         self._handler = handler
 
     async def start(self):
@@ -74,7 +100,11 @@ class EnterpriseGateway:
                 _log.warning(f"Gateway: '{name}' failed to start: {e}")
 
     async def handle_message(self, msg: GatewayMessage) -> Dict[str, Any]:
-        """处理入站消息 → 调用 Agent → 返回响应。"""
+        """处理入站消息 → 调用 Agent → 返回响应。
+
+        Args:
+            msg: 标准化网关消息。
+        """
         if not msg.text:
             return {"ok": False, "error": "empty message"}
 
@@ -117,14 +147,22 @@ class EnterpriseGateway:
         return list(self._dlq.values())
 
     def delete_dlq_entry(self, entry_id: str) -> bool:
-        """Delete a DLQ entry."""
+        """删除死信队列条目。
+
+        Args:
+            entry_id: 条目 ID。
+        """
         if entry_id in self._dlq:
             del self._dlq[entry_id]
             return True
         return False
 
     async def retry_dlq_entry(self, entry_id: str) -> Dict[str, Any]:
-        """Retry a DLQ entry — re-process the failed message."""
+        """重试死信条目（重新处理失败消息）。
+
+        Args:
+            entry_id: 条目 ID。
+        """
         entry = self._dlq.get(entry_id)
         if not entry:
             return {"status": "not_found"}
@@ -160,14 +198,31 @@ class EnterpriseGateway:
 
 # disposition: abstract base class — Phase 2.3 enterprise gateway, wiring pending
 class BaseAdapter:
+    """渠道适配器基类。"""
+
     gateway: EnterpriseGateway = None
 
-    async def start(self): pass
+    async def start(self):
+        """启动适配器。"""
+        pass
+
     async def send_message(self, chat_id: str, text: str, **kwargs) -> Dict[str, Any]:
+        """发送消息（子类实现）。
+
+        Args:
+            chat_id: 会话 ID。
+            text: 文本。
+            kwargs: 附加参数。
+        """
         raise NotImplementedError
 
     def build_reply(self, answer: str, run_id: str = "") -> Dict[str, Any]:
-        """构建标准回复结构。"""
+        """构建标准回复结构。
+
+        Args:
+            answer: 回复文本。
+            run_id: 可选运行 ID。
+        """
         return {"text": answer, "run_id": run_id}
 
 
@@ -180,11 +235,19 @@ class FeishuAdapter(BaseAdapter):
     """
 
     def __init__(self, *, webhook_url: str = "", app_id: str = "", app_secret: str = ""):
+        """初始化飞书适配器。
+
+        Args:
+            webhook_url: Webhook URL。
+            app_id: 应用 ID。
+            app_secret: 应用密钥。
+        """
         self._webhook_url = webhook_url or os.getenv("AIPLAT_FEISHU_WEBHOOK", "")
         self._app_id = app_id or os.getenv("AIPLAT_FEISHU_APP_ID", "")
         self._app_secret = app_secret or os.getenv("AIPLAT_FEISHU_APP_SECRET", "")
 
     async def start(self):
+        """校验飞书配置并启动。"""
         if not self._webhook_url:
             _log.warning("Feishu: no webhook_url configured")
 
@@ -236,13 +299,26 @@ class WeComAdapter(BaseAdapter):
     """
 
     def __init__(self, *, webhook_url: str = ""):
+        """初始化企微适配器。
+
+        Args:
+            webhook_url: Webhook URL。
+        """
         self._webhook_url = webhook_url or os.getenv("AIPLAT_WECOM_WEBHOOK", "")
 
     async def start(self):
+        """校验企微配置并启动。"""
         if not self._webhook_url:
             _log.warning("WeCom: no webhook_url configured")
 
     async def send_message(self, chat_id: str, text: str, **kwargs) -> Dict[str, Any]:
+        """发送企微消息。
+
+        Args:
+            chat_id: 会话 ID。
+            text: 文本。
+            kwargs: 附加参数。
+        """
         import httpx
         body = {"msgtype": "markdown", "markdown": {"content": f"**aiPlat Agent**\n\n{text[:4000]}"}}
         try:
@@ -264,13 +340,26 @@ class SlackAdapter(BaseAdapter):
     """
 
     def __init__(self, *, bot_token: str = ""):
+        """初始化 Slack 适配器。
+
+        Args:
+            bot_token: Bot Token。
+        """
         self._token = bot_token or os.getenv("AIPLAT_SLACK_BOT_TOKEN", "")
 
     async def start(self):
+        """校验 Slack 配置并启动。"""
         if not self._token:
             _log.warning("Slack: no bot_token configured")
 
     async def send_message(self, channel: str, text: str, **kwargs) -> Dict[str, Any]:
+        """发送 Slack 消息。
+
+        Args:
+            channel: 频道 ID。
+            text: 文本。
+            kwargs: 附加参数。
+        """
         import httpx
         body = {"channel": channel, "text": text[:4000], "mrkdwn": True}
         headers = {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
@@ -288,6 +377,8 @@ class SlackAdapter(BaseAdapter):
 _gateway: Optional[EnterpriseGateway] = None
 
 def get_enterprise_gateway() -> EnterpriseGateway:
+    """获取企业网关单例。"""
     global _gateway
-    if _gateway is None: _gateway = EnterpriseGateway()
+    if _gateway is None:
+        _gateway = EnterpriseGateway()
     return _gateway

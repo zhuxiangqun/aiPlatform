@@ -11,15 +11,29 @@ class WorkbenchClient:
     """工作台客户端"""
 
     def __init__(self, base_url: str = "http://localhost:8080"):
+        """初始化。
+
+        Args:
+            base_url: base_url 参数。
+        """
         self.base_url = base_url
         self._components: dict = {}
 
     def register_component(self, name: str, component: Any) -> None:
-        """注册组件"""
+        """注册组件。
+
+        Args:
+            name: name 参数。
+            component: component 参数。
+        """
         self._components[name] = component
 
     def render(self, component_name: str) -> Any:
-        """渲染组件"""
+        """渲染组件。
+
+        Args:
+            component_name: component_name 参数。
+        """
         return self._components.get(component_name)
 
     def get_routes(self) -> list[dict]:

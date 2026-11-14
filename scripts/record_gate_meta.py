@@ -25,6 +25,8 @@ def _ensure_path() -> None:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Record gate meta-eval skip/appeal events")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--skip", action="store_true", help="record SKIP_* bypass")

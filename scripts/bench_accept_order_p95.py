@@ -114,6 +114,11 @@ async def _run(count: int, prefix: str, domain_id: str, home: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     p = argparse.ArgumentParser()
     p.add_argument("--count", type=int, default=200)
     p.add_argument("--prefix", default="IO-BENCH")

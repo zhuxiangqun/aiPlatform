@@ -1,3 +1,5 @@
+"""schemas_conversations：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -6,6 +8,7 @@ from pydantic import BaseModel, Field
 
 
 class ConversationScope(BaseModel):
+    """ConversationScope。"""
     collection_id: str = "default"
     doc_ids: List[str] = Field(default_factory=list)
     version: int = 1
@@ -13,12 +16,14 @@ class ConversationScope(BaseModel):
 
 
 class ConversationProfile(BaseModel):
+    """ConversationProfile。"""
     citation_required: bool = True
     answer_style: str = "concise"
     language: str = "zh-CN"
 
 
 class ConversationCreateRequest(BaseModel):
+    """ConversationCreateRequest。"""
     tenant_id: Optional[str] = None
     user_id: Optional[str] = None
     title: Optional[str] = None
@@ -28,6 +33,7 @@ class ConversationCreateRequest(BaseModel):
 
 
 class ConversationSummary(BaseModel):
+    """ConversationSummary。"""
     session_id: str
     title: str
     updated_at: Optional[float] = None
@@ -35,6 +41,7 @@ class ConversationSummary(BaseModel):
 
 
 class ConversationDetail(BaseModel):
+    """ConversationDetail。"""
     session_id: str
     title: str
     scope: ConversationScope
@@ -45,12 +52,14 @@ class ConversationDetail(BaseModel):
 
 
 class ConversationScopeUpdateRequest(BaseModel):
+    """ConversationScopeUpdateRequest。"""
     collection_id: Optional[str] = None
     doc_ids: Optional[List[str]] = None
     version: Optional[int] = None
 
 
 class ConversationQueryOptions(BaseModel):
+    """ConversationQueryOptions。"""
     citation_required: bool = True
     max_citations: int = 8
     top_k: int = 8
@@ -58,6 +67,7 @@ class ConversationQueryOptions(BaseModel):
 
 
 class ConversationQueryRequest(BaseModel):
+    """ConversationQueryRequest。"""
     message: str
     user_id: Optional[str] = None
     scope_override: Optional[ConversationScope] = None
@@ -66,6 +76,7 @@ class ConversationQueryRequest(BaseModel):
 
 
 class ConversationQueryAccepted(BaseModel):
+    """ConversationQueryAccepted。"""
     run_id: str
     status: str
     session_id: str

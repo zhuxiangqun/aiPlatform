@@ -771,6 +771,8 @@ def _build_volume(
 
 
 def generate_all() -> List[Path]:
+    """generate_all。
+    """
     if not SUITE.is_file():
         raise SystemExit(f"FAIL: missing {SUITE}")
     suite = _load_yaml(SUITE)
@@ -910,6 +912,8 @@ def _repair_generated_links(path: Path) -> None:
 
 
 def check_fresh() -> int:
+    """check_fresh。
+    """
     if not SUITE.is_file():
         print(f"FAIL: missing {SUITE}", file=sys.stderr)
         return 2
@@ -953,6 +957,11 @@ def check_fresh() -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
     args = ap.parse_args(argv)

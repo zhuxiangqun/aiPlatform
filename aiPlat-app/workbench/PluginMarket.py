@@ -8,14 +8,18 @@ from typing import Any
 
 
 class PluginMarket:
+    """PluginMarket。"""
     def __init__(self):
+        """初始化。
+        """
         self.title = "Plugin Market"
         self.description = "Browse, install, and manage AI plugins"
 
     def render_plugin_list(self, plugins: list) -> Any:
         """渲染已安装插件列表。
-        每个插件项显示：名称、版本、状态（active/disabled/stale）、
-        安装日期、risk_level、权限声明。
+
+        Args:
+            plugins: plugins 参数。
         """
         return {
             "plugins": plugins,
@@ -41,7 +45,11 @@ class PluginMarket:
         }
 
     def render_detail(self, plugin: dict) -> Any:
-        """渲染 Plugin 详情侧栏：metadata、permissions、effects、changelog、版本历史。"""
+        """渲染 Plugin 详情侧栏：metadata、permissions、effects、changelog、版本历史。
+
+        Args:
+            plugin: plugin 参数。
+        """
         return {
             "plugin": plugin,
             "sections": [

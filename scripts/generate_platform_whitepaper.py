@@ -298,6 +298,11 @@ def _capability_landscape_narrative(total: str, ok_n: int, warn_n: int) -> str:
 
 
 def build(raw_caps: str) -> str:
+    """build。
+
+    Args:
+        raw_caps: raw_caps 参数。
+    """
     meta, body = _parse_frontmatter(raw_caps)
     total = str(meta.get("total_capabilities") or "")
     version = str(meta.get("version") or "")
@@ -477,6 +482,12 @@ python3 scripts/generate_platform_whitepaper.py
 
 
 def check_fresh(raw_caps: str, existing: str) -> bool:
+    """check_fresh。
+
+    Args:
+        raw_caps: raw_caps 参数。
+        existing: existing 参数。
+    """
     source_sha = _sha256(raw_caps)
     scores_sha = (
         _sha256(SCORES.read_text(encoding="utf-8")) if SCORES.is_file() else ""
@@ -488,6 +499,11 @@ def check_fresh(raw_caps: str, existing: str) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--check",

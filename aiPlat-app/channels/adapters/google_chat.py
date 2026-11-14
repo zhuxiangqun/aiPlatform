@@ -16,6 +16,11 @@ class GoogleChatAdapter(ChannelAdapter):
     """Google Chat 适配器 (Hangouts Chat API)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         message = raw_data.get("message") or {}
         space = raw_data.get("space") or {}
         sender = message.get("sender") or {}
@@ -39,6 +44,11 @@ class GoogleChatAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "text": response.text,
         }

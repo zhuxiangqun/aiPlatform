@@ -29,8 +29,10 @@ def _load_snapshot(repo_root: Path) -> Dict[str, Any]:
 
 
 def render_openapi_section(snapshot: Dict[str, Any]) -> str:
-    """
-    Render markdown section for API surface.
+    """Render markdown section for API surface.
+
+    Args:
+        snapshot: snapshot 参数。
     """
     endpoints = _as_dict(snapshot.get("endpoints"))
     keys = sorted(endpoints.keys())
@@ -61,6 +63,11 @@ def render_openapi_section(snapshot: Dict[str, Any]) -> str:
 
 
 def sync_doc(repo_root: Path) -> Tuple[bool, str]:
+    """sync_doc。
+
+    Args:
+        repo_root: repo_root 参数。
+    """
     doc_path = repo_root / "docs" / "design" / "evaluation" / "auto-eval-and-regression.md"
     text = doc_path.read_text(encoding="utf-8", errors="ignore")
     begin = "<!-- OPENAPI_EVAL_BEGIN -->"
@@ -81,6 +88,8 @@ def sync_doc(repo_root: Path) -> Tuple[bool, str]:
 
 
 def main() -> None:
+    """main。
+    """
     repo_root = Path(__file__).resolve().parents[2]
     ok, msg = sync_doc(repo_root)
     if not ok:

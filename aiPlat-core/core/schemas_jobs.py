@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class JobCreateRequest(BaseModel):
+    """JobCreateRequest。"""
     name: str
     kind: str = "agent"  # agent|skill|tool|graph
     target_id: str
@@ -24,6 +25,7 @@ class JobCreateRequest(BaseModel):
 
 
 class JobUpdateRequest(BaseModel):
+    """JobUpdateRequest。"""
     name: Optional[str] = None
     cron: Optional[str] = None
     enabled: Optional[bool] = None

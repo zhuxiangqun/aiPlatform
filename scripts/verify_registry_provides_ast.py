@@ -77,6 +77,7 @@ def _parse_module(path: Path) -> Optional[ast.AST]:
 
 
 class Finding(NamedTuple):
+    """Finding。"""
     domain: str
     symbol: str
     module: str
@@ -84,10 +85,17 @@ class Finding(NamedTuple):
 
     @property
     def id(self) -> str:
+        """id。
+        """
         return f"{self.domain}|{self.symbol}|{self.module}|{self.kind}"
 
 
 def find_module(rel_path: str) -> Optional[Path]:
+    """find_module。
+
+    Args:
+        rel_path: rel_path 参数。
+    """
     if not rel_path or rel_path.startswith("~"):
         return None
     rel = rel_path.lstrip("./")
@@ -108,7 +116,11 @@ def find_module(rel_path: str) -> Optional[Path]:
 
 
 def top_level_names(path: Path) -> Set[str]:
-    """Top-level defs/assigns plus Import/ImportFrom aliases (facade re-exports)."""
+    """Top-level defs/assigns plus Import/ImportFrom aliases (facade re-exports).
+
+    Args:
+        path: 路径。
+    """
     tree = _parse_module(path)
     if tree is None:
         return set()
@@ -138,7 +150,12 @@ def _symbol_leaf(symbol: str) -> str:
 
 
 def symbol_in_module(path: Path, symbol: str) -> bool:
-    """True if leaf is top-level, or Class.method exists on a top-level class."""
+    """True if leaf is top-level, or Class.method exists on a top-level class.
+
+    Args:
+        path: 路径。
+        symbol: symbol 参数。
+    """
     raw = str(symbol or "").strip().strip("\"'")
     leaf = _symbol_leaf(raw)
     if not leaf or not IDENT_RE.match(leaf):
@@ -166,6 +183,11 @@ def symbol_in_module(path: Path, symbol: str) -> bool:
 
 
 def audit_registry(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """audit_registry。
+
+    Args:
+        data: data 参数。
+    """
     if data is None:
         import yaml
 
@@ -230,12 +252,23 @@ def audit_registry(data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
 
 
 def load_baseline(path: Path = BASELINE_PATH) -> Dict[str, Any]:
+    """load_baseline。
+
+    Args:
+        path: 路径。
+    """
     if not path.is_file():
         return {"version": 1, "finding_ids": []}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def write_baseline(result: Dict[str, Any], path: Path = BASELINE_PATH) -> None:
+    """write_baseline。
+
+    Args:
+        result: result 参数。
+        path: 路径。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "version": 1,
@@ -247,11 +280,22 @@ def write_baseline(result: Dict[str, Any], path: Path = BASELINE_PATH) -> None:
 
 
 def new_findings(result: Dict[str, Any], baseline: Dict[str, Any]) -> List[str]:
+    """new_findings。
+
+    Args:
+        result: result 参数。
+        baseline: baseline 参数。
+    """
     known = set(baseline.get("finding_ids") or [])
     return sorted(set(result["finding_ids"]) - known)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     ci = "--ci" in argv
     write = "--write-baseline" in argv

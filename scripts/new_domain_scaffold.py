@@ -207,6 +207,8 @@ CONNECTOR_TMPL = '''{{
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--domain-id", required=True)
     ap.add_argument("--name", required=True)

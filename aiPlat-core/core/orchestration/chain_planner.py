@@ -33,10 +33,9 @@ _DEFAULT_CHAINS: Dict[str, List[ChainStep]] = {}
 async def plan_chain(intent: StructuredIntent, model: Any = None) -> List[ChainStep]:
     """Generate execution chain from structured intent.
 
-    Priority:
-    1. LLM-generated chain (when model is available)
-    2. Config-driven templates (AIPLAT_CHAIN_TEMPLATES env var)
-    3. Empty chain (caller must provide chain via AGENT.md or team config)
+    Args:
+        intent: intent 参数。
+        model: 模型名。
     """
 
     # Load config-driven templates

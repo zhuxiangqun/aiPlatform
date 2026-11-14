@@ -13,13 +13,24 @@ class TelegramHandler:
     """Telegram 消息处理器"""
 
     def __init__(self, bot_token: str = "", secret_token: str = ""):
+        """初始化。
+
+        Args:
+            bot_token: bot_token 参数。
+            secret_token: secret_token 参数。
+        """
         self.bot_token = bot_token
         self.secret_token = secret_token
         self._channel = channel_dispatcher
         self._message_handler: Optional[Callable] = None
 
     def verify_webhook(self, data: bytes, signature: str) -> bool:
-        """验证 Webhook 请求"""
+        """验证 Webhook 请求。
+
+        Args:
+            data: data 参数。
+            signature: signature 参数。
+        """
         if not self.secret_token:
             from api.auth import channel_unsigned_allowed
 
@@ -34,11 +45,19 @@ class TelegramHandler:
         return hmac.compare_digest(signature, expected)
 
     def set_message_handler(self, handler: Callable[[ChannelMessage], ChannelResponse]) -> None:
-        """设置消息处理器"""
+        """设置消息处理器。
+
+        Args:
+            handler: handler 参数。
+        """
         self._message_handler = handler
 
     async def handle_update(self, update: dict) -> dict:
-        """处理 Telegram Update"""
+        """处理 Telegram Update。
+
+        Args:
+            update: update 参数。
+        """
         message = update.get("message", {})
         if not message:
             return {"ok": True}
@@ -52,7 +71,11 @@ class TelegramHandler:
         return {"ok": True, "result": {"method": "sendMessage", "chat_id": channel_msg.chat_id, "text": "Received"}}
 
     def set_commands(self, commands: list[dict]) -> None:
-        """设置命令列表"""
+        """设置命令列表。
+
+        Args:
+            commands: commands 参数。
+        """
         pass
 
 

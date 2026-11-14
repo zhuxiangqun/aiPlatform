@@ -63,7 +63,12 @@ READ_CALL_TOKENS = 600     # sys_tool_call(read) — reads file content
 
 
 def measure_graph_call(tool_name: str, args: dict) -> dict:
-    """Execute a real graph tool call and measure performance."""
+    """Execute a real graph tool call and measure performance.
+
+    Args:
+        tool_name: tool_name 参数。
+        args: args 参数。
+    """
     tool_map = {
         "sysgraph_callers": "SysGraphCallersTool",
         "sysgraph_search": "SysGraphSearchTool",
@@ -105,7 +110,11 @@ def measure_graph_call(tool_name: str, args: dict) -> dict:
 
 
 def estimate_without_graph(ops_count: int) -> dict:
-    """Estimate token cost + calls for fallback exploration (no graph)."""
+    """Estimate token cost + calls for fallback exploration (no graph).
+
+    Args:
+        ops_count: ops_count 参数。
+    """
     grep_calls = min(ops_count // 2, 3)
     read_calls = ops_count - grep_calls
 
@@ -130,7 +139,12 @@ def estimate_without_graph(ops_count: int) -> dict:
 
 
 def estimate_with_graph(graph_result: dict, call_count: int = 1) -> dict:
-    """Estimate token cost with graph tools."""
+    """Estimate token cost with graph tools.
+
+    Args:
+        graph_result: graph_result 参数。
+        call_count: call_count 参数。
+    """
     tool_call_tokens = call_count * GRAPH_CALL_TOKENS
     output_tokens = graph_result["output_chars"] // 4  # ~4 chars per token
     llm_tokens = MODEL_OVERHEAD + call_count * 100
@@ -149,6 +163,8 @@ def estimate_with_graph(graph_result: dict, call_count: int = 1) -> dict:
 
 
 def main():
+    """main。
+    """
     print("╔══════════════════════════════════════════════════════════════╗")
     print("║  Live Benchmark: sysgraph tools vs fallback exploration     ║")
     print("╚══════════════════════════════════════════════════════════════╝")

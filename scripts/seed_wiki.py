@@ -138,6 +138,11 @@ DOMAINS = {
 
 
 def generate(domain_id: str) -> dict:
+    """generate。
+
+    Args:
+        domain_id: domain 标识。
+    """
     if domain_id not in DOMAINS:
         print(f"  ⚠ No seed template for '{domain_id}', skipping")
         return None
@@ -145,6 +150,12 @@ def generate(domain_id: str) -> dict:
 
 
 def save(domain_id: str, data: dict):
+    """save。
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     path = os.path.join(SEED_DIR, f"{domain_id}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -154,6 +165,8 @@ def save(domain_id: str, data: dict):
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Generate domain seed data for Ontology Agent ingest")
     parser.add_argument("--domain", help="Single domain ID (e.g. supply-chain)")
     parser.add_argument("--all", action="store_true", help="Generate for all domains with templates")

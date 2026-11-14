@@ -21,7 +21,11 @@ FEEDBACK_DIR = os.path.expanduser(
 
 
 def submit_field_feedback(data: Dict[str, Any]) -> str:
-    """FDE 提交现场反馈 → 写入本地 JSON 文件. 返回 feedback_id."""
+    """FDE 提交现场反馈 → 写入本地 JSON 文件. 返回 feedback_id.
+
+    Args:
+        data: data 参数。
+    """
     os.makedirs(FEEDBACK_DIR, exist_ok=True)
     fid = f"fb-{int(time.time())}-{uuid.uuid4().hex[:8]}"
     record = {
@@ -36,7 +40,11 @@ def submit_field_feedback(data: Dict[str, Any]) -> str:
 
 
 def list_field_feedback(limit: int = 20) -> List[Dict[str, Any]]:
-    """返回最近 N 条现场反馈 (最新在前)."""
+    """返回最近 N 条现场反馈 (最新在前).
+
+    Args:
+        limit: 返回条数上限。
+    """
     if not os.path.isdir(FEEDBACK_DIR):
         return []
     files = sorted(

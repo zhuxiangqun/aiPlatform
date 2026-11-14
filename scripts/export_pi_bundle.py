@@ -113,6 +113,15 @@ def export_bundle(
     runtime_mode: str | None = None,
     api_base: str | None = None,
 ) -> Path:
+    """export_bundle。
+
+    Args:
+        app_home: app_home 参数。
+        out: out 参数。
+        project_id: project 标识。
+        runtime_mode: runtime_mode 参数。
+        api_base: api_base 参数。
+    """
     app_home = app_home.resolve()
     if not app_home.is_dir():
         _die(f"app-home not a directory: {app_home}")
@@ -454,6 +463,8 @@ Tool: `aiplat_tool_execute` → POST …/tools/{{name}}/execute.
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Export aiPlat Agent app as Pi Package")
     ap.add_argument(
         "--app-home",

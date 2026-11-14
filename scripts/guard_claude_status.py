@@ -66,6 +66,11 @@ def _added_headings_staged() -> set:
 
 
 def run_staged(strict: bool) -> int:
+    """run_staged。
+
+    Args:
+        strict: strict 参数。
+    """
     added = _added_headings_staged()
     if not added:
         return 0
@@ -82,6 +87,8 @@ def run_staged(strict: bool) -> int:
 
 
 def run_check() -> int:
+    """run_check。
+    """
     secs = _classify_current()
     status_secs = [s for s in secs if s.tag == "STATUS"]
     print(f"CLAUDE.md 存量 STATUS 型 §5.NNN: {len(status_secs)} 节")
@@ -95,6 +102,8 @@ def run_check() -> int:
 
 
 def main() -> int:
+    """main。
+    """
     strict = "--strict" in sys.argv
     if "--check" in sys.argv:
         return run_check()

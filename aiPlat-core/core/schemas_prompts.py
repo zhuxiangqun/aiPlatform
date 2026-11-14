@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 
 class PromptTemplateUpsertRequest(BaseModel):
+    """PromptTemplateUpsertRequest。"""
     template_id: str
     name: str
     template: str
@@ -21,6 +22,7 @@ class PromptTemplateUpsertRequest(BaseModel):
 
 
 class PromptTemplateRollbackRequest(BaseModel):
+    """PromptTemplateRollbackRequest。"""
     template_id: str
     version: str
     require_approval: bool = True

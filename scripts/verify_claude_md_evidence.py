@@ -59,6 +59,8 @@ STRICT_RE = re.compile(
 
 
 def find_claude_md_files() -> list[Path]:
+    """find_claude_md_files。
+    """
     files = []
     for d in [ROOT] + [ROOT / d for d in ('aiPlat-core', 'aiPlat-platform', 'aiPlat-infra', 'aiPlat-management')]:
         if not d.exists():
@@ -70,7 +72,11 @@ def find_claude_md_files() -> list[Path]:
 
 
 def extract_claims(filepath: Path) -> list[dict]:
-    """Extract all evidence claims from a CLAUDE.md file."""
+    """Extract all evidence claims from a CLAUDE.md file.
+
+    Args:
+        filepath: filepath 参数。
+    """
     content = filepath.read_text(encoding='utf-8')
     lines = content.split('\n')
     claims = []
@@ -105,7 +111,11 @@ def extract_claims(filepath: Path) -> list[dict]:
 
 
 def extract_unverified_strict(filepath: Path) -> list[dict]:
-    """In --strict mode: find ✅ claims that lack a verify block on the same or next line."""
+    """In --strict mode: find ✅ claims that lack a verify block on the same or next line.
+
+    Args:
+        filepath: filepath 参数。
+    """
     content = filepath.read_text(encoding='utf-8')
     lines = content.split('\n')
     unverified = []
@@ -181,7 +191,15 @@ def _cross_check_paths(cmd_str: str) -> list[dict]:
 
 def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
                  line_num: int = 0, claude_path: str = '') -> tuple[bool, str, int, str]:
-    """Run one evidence command. Returns (passed, detail, actual_num, actual_raw)."""
+    """Run one evidence command. Returns (passed, detail, actual_num, actual_raw).
+
+    Args:
+        cmd_str: cmd_str 参数。
+        expected: expected 参数。
+        operator: operator 参数。
+        line_num: line_num 参数。
+        claude_path: claude_path 参数。
+    """
     workspace_root = str(ROOT)
     cmd_str_resolved = cmd_str.strip()
 
@@ -235,9 +253,9 @@ def run_evidence(cmd_str: str, expected: str, operator: str = 'eq',
 def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
     """Build a hierarchical evidence tree (HarnessEval Evidence Tree pattern).
 
-    Structure: root → per-file branch → per-claim sub_branch → evidence leaf.
-    Includes route_reason (why this check was enabled), verdict per node, and
-    known_gaps (✅ claims without verification — the evaluator's explicit blind spots).
+    Args:
+        files: files 参数。
+        quick_mode: quick_mode 参数。
     """
     all_claims = []
     for f in files:
@@ -346,6 +364,8 @@ def build_evidence_tree(files: list[Path], quick_mode: bool = False) -> dict:
 
 
 def main() -> int:
+    """main。
+    """
     quick_mode = '--quick' in sys.argv
     workspace_only = '--workspace' in sys.argv
     strict_mode = '--strict' in sys.argv

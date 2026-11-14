@@ -26,6 +26,11 @@ sys.path.insert(0, str(_ROOT / "aiPlat-core"))
 
 
 def main(argv: list | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="autoreview gold Precision/Recall")
     parser.add_argument("--profile", default="balanced", choices=["low_noise", "balanced", "high_coverage"])
     parser.add_argument("--gold-dir", default="", help="default: ~/.aiplat/eval/code_review_gold")

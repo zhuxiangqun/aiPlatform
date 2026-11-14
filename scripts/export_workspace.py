@@ -41,6 +41,8 @@ def _is_published(item_dir: Path, definition_file: str) -> bool:
 
 
 def main():
+    """main。
+    """
     aiplat_home = Path(os.environ.get("AIPLAT_HOME", Path.home() / ".aiplat"))
     seeds_dir = Path(__file__).parent.parent / "aiPlat-core" / "core" / "workspace_seeds"
 

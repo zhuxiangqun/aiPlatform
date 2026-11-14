@@ -16,6 +16,11 @@ class TeamsAdapter(ChannelAdapter):
     """Microsoft Teams 适配器 (Bot Framework)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = str(raw_data.get("text", ""))
         return ChannelMessage(
             message_id=str(raw_data.get("id", "")),
@@ -33,6 +38,11 @@ class TeamsAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "type": "message",
             "text": response.text,

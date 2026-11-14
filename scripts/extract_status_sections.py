@@ -76,7 +76,12 @@ def _split_paragraphs(body_lines):
 
 
 def transform_status(sec, lines):
-    """STATUS: heading kept, body → pointer stub. Full section → PHASE_STATUS."""
+    """STATUS: heading kept, body → pointer stub. Full section → PHASE_STATUS.
+
+    Args:
+        sec: sec 参数。
+        lines: lines 参数。
+    """
     heading = lines[sec.start - 1]
     claude_out = [heading, "\n", _pointer_stub(sec.number), "\n"]
     status_out = list(lines[sec.start - 1:sec.end])
@@ -87,8 +92,11 @@ def transform_status(sec, lines):
 
 def transform_mixed(sec, lines):
     """MIXED: move pure-status paragraphs, keep rule paragraphs.
-    Per-section conservation gate: if retained rule-marker count != original,
-    revert to whole-section-kept (move nothing)."""
+
+    Args:
+        sec: sec 参数。
+        lines: lines 参数。
+    """
     heading = lines[sec.start - 1]
     body = lines[sec.start:sec.end]  # excludes heading line
     orig_rules = _rule_markers("".join(lines[sec.start - 1:sec.end]))
@@ -126,6 +134,8 @@ def transform_mixed(sec, lines):
 
 
 def main() -> int:
+    """main。
+    """
     lines = CLAUDE_MD.read_text(encoding="utf-8").splitlines(keepends=True)
     sections = parse_sections(lines)
     for s in sections:

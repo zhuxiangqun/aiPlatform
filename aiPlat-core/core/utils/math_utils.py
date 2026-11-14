@@ -14,7 +14,12 @@ from typing import List
 
 
 def cosine_similarity(a: List[float], b: List[float]) -> float:
-    """Standard cosine similarity between two vectors."""
+    """Standard cosine similarity between two vectors.
+
+    Args:
+        a: a 参数。
+        b: b 参数。
+    """
     if not a or not b:
         return 0.0
     dot = sum(x * y for x, y in zip(a, b))

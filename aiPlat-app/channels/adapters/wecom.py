@@ -16,6 +16,11 @@ class WeComAdapter(ChannelAdapter):
     """企业微信适配器"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = raw_data.get("Text", {})
         return ChannelMessage(
             message_id=str(raw_data.get("MsgId", "")),
@@ -28,6 +33,11 @@ class WeComAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "touser": "@all",
             "msgtype": "text",

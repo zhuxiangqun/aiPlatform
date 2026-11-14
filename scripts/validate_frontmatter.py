@@ -66,6 +66,8 @@ def _file_type(filepath: Path) -> str:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Validate YAML frontmatter in Markdown config files")
     parser.add_argument("--quick", action="store_true", help="Skip field-level checks (parse only)")
     parser.add_argument("--path", type=str, help="Scan specific directory")

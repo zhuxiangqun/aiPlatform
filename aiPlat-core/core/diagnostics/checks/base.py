@@ -13,6 +13,7 @@ from typing import Any, Dict, Callable, Coroutine
 
 
 class CheckStatus(str, Enum):
+    """CheckStatus。"""
     PASS = "pass"
     WARN = "warn"
     FAIL = "fail"
@@ -25,8 +26,9 @@ async def run_with_timeout(
 ) -> Dict[str, Any]:
     """Wrap a diagnostic check with timeout isolation.
 
-    On timeout, returns TIMEOUT status (does not raise).
-    On exception, returns FAIL status (does not crash the scheduler).
+    Args:
+        check_fn: check_fn 参数。
+        timeout: 超时秒数。
     """
     try:
         return await asyncio.wait_for(check_fn(), timeout=timeout)

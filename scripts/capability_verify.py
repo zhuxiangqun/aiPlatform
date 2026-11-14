@@ -25,12 +25,19 @@ sys.path.insert(0, str(WORKSPACE_ROOT / "aiPlat-core"))
 
 
 def load_manifest():
+    """load_manifest。
+    """
     with open(MANIFEST_FILE) as f:
         return yaml.safe_load(f)
 
 
 def has_production_caller(symbol: str, module_filename: str) -> bool:
-    """Check if a symbol has callers outside its own file and test dirs."""
+    """Check if a symbol has callers outside its own file and test dirs.
+
+    Args:
+        symbol: symbol 参数。
+        module_filename: module_filename 参数。
+    """
     import subprocess
     try:
         result = subprocess.run(
@@ -49,13 +56,21 @@ def has_production_caller(symbol: str, module_filename: str) -> bool:
 
 
 def module_exists(module_path: str) -> bool:
-    """Check if a module file exists relative to workspace."""
+    """Check if a module file exists relative to workspace.
+
+    Args:
+        module_path: module_path 参数。
+    """
     full = WORKSPACE_ROOT / module_path
     return full.exists()
 
 
 def verify_capability(cap: dict) -> dict:
-    """Run all checks on a single capability."""
+    """Run all checks on a single capability.
+
+    Args:
+        cap: cap 参数。
+    """
     cap_id = cap.get("id", "?")
     result = {
         "id": cap_id,
@@ -110,6 +125,8 @@ def verify_capability(cap: dict) -> dict:
 
 
 def verify_all() -> list:
+    """verify_all。
+    """
     manifest = load_manifest()
     caps = manifest.get("capabilities", [])
     results = []
@@ -129,7 +146,11 @@ def verify_all() -> list:
 
 
 def print_report(results: list):
-    """Print colored console report."""
+    """Print colored console report.
+
+    Args:
+        results: results 参数。
+    """
     RED = "\033[0;31m"
     GREEN = "\033[0;32m"
     YELLOW = "\033[1;33m"

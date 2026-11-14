@@ -42,6 +42,11 @@ def _parse_ts(ts: str | None) -> datetime | None:
 
 
 async def check_model_health(stale_days: int = _STALE_DAYS) -> dict[str, Any]:
+    """check_model_health。
+
+    Args:
+        stale_days: stale_days 参数。
+    """
     db_path = os.environ.get(
         "AIPLAT_MODEL_HEALTH_DB",
         os.path.join(_home_path(), "aiplat_executions.sqlite3"),

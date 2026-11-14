@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 class SkillCreateRequest(BaseModel):
     # v2: name = display_name；skill_id 可选（不填则由 name 派生）
+    """SkillCreateRequest。"""
     name: str
     skill_id: Optional[str] = None
     display_name: Optional[str] = None
@@ -37,10 +38,13 @@ class SkillCreateRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
     class Config:
+        """允许额外字段。"""
+
         extra = "allow"
 
 
 class SkillUpdateRequest(BaseModel):
+    """SkillUpdateRequest。"""
     name: Optional[str] = None
     description: Optional[str] = None
     category: Optional[str] = None
@@ -54,6 +58,7 @@ class SkillUpdateRequest(BaseModel):
 
 
 class SkillExecuteRequest(BaseModel):
+    """SkillExecuteRequest。"""
     input: Dict[str, Any] = Field(default_factory=dict)
     context: Optional[Dict[str, Any]] = None
     mode: str = "inline"
@@ -63,12 +68,14 @@ class SkillExecuteRequest(BaseModel):
 
 
 class SkillInstallerSourceType(str, Enum):
+    """SkillInstallerSourceType。"""
     git = "git"  # git clone url + ref
     path = "path"  # local directory path on server
     zip = "zip"  # local zip file path on server
 
 
 class SkillInstallerInstallRequest(BaseModel):
+    """SkillInstallerInstallRequest。"""
     scope: str = "workspace"  # workspace only (production safe); engine is not recommended
     source_type: SkillInstallerSourceType = SkillInstallerSourceType.git
     # For git:
@@ -94,33 +101,39 @@ class SkillInstallerInstallRequest(BaseModel):
 
 
 class SkillInstallerUpdateRequest(BaseModel):
+    """SkillInstallerUpdateRequest。"""
     scope: str = "workspace"
     ref: Optional[str] = None  # if omitted, keep existing manifest ref (git only)
     metadata: Optional[Dict[str, Any]] = None
 
 
 class SkillPackCreateRequest(BaseModel):
+    """SkillPackCreateRequest。"""
     name: str
     description: Optional[str] = None
     manifest: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SkillPackUpdateRequest(BaseModel):
+    """SkillPackUpdateRequest。"""
     name: Optional[str] = None
     description: Optional[str] = None
     manifest: Optional[Dict[str, Any]] = None
 
 
 class SkillPackPublishRequest(BaseModel):
+    """SkillPackPublishRequest。"""
     version: str
 
 
 class SkillPackInstallRequest(BaseModel):
+    """SkillPackInstallRequest。"""
     version: Optional[str] = None
     scope: str = "workspace"  # engine|workspace
     metadata: Optional[Dict[str, Any]] = None
 
 
 class SkillBindRequest(BaseModel):
+    """SkillBindRequest。"""
     skill_ids: List[str]
 

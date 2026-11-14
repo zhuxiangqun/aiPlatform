@@ -20,6 +20,11 @@ def _item_ok(v: Any) -> bool:
 
 
 def validate_live_file(path: Path) -> dict[str, Any]:
+    """validate_live_file。
+
+    Args:
+        path: 路径。
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
     items = data.get("items") or {}
     missing: list[str] = []
@@ -48,7 +53,12 @@ def validate_live_file(path: Path) -> dict[str, Any]:
 
 
 def sign_live_file(path: Path, *, allow_scaffold_env: bool = False) -> dict[str, Any]:
-    """Set production_signed=true if items complete; else refuse."""
+    """Set production_signed=true if items complete; else refuse.
+
+    Args:
+        path: 路径。
+        allow_scaffold_env: allow_scaffold_env 参数。
+    """
     report = validate_live_file(path)
     if report["scaffoldish_environment"] and not allow_scaffold_env:
         report["signed"] = False

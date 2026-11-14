@@ -36,6 +36,8 @@ def _load_module(name: str, rel: str):
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Promotion gate acceptance with hop samples")
     ap.add_argument("--project-id", default="prj_promo_accept")
     ap.add_argument("--use-home", action="store_true", help="Use real AIPLAT_HOME")

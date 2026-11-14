@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FieldLevelPermission:
+    """FieldLevelPermission。"""
     entity_uri: str
     field_name: str
     visibility: str = "all"               # "all" | "role:admin" | "scope:kb:read:confidential" | "none"
@@ -42,6 +43,8 @@ class FieldLevelPermission:
     created_by: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "entity_uri": self.entity_uri,
             "field_name": self.field_name,
@@ -54,6 +57,11 @@ class FieldLevelPermission:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FieldLevelPermission":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             entity_uri=data.get("entity_uri", ""),
             field_name=data.get("field_name", ""),
@@ -71,6 +79,11 @@ def _permissions_path(collection_id: str = "default") -> str:
 
 
 def load_field_permissions(collection_id: str = "default") -> List[FieldLevelPermission]:
+    """load_field_permissions。
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _permissions_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -101,7 +114,15 @@ def set_field_permission(
     *,
     collection_id: str = "default",
 ) -> FieldLevelPermission:
-    u"""Set a field-level permission rule for an entity."""
+    """Set a field-level permission rule for an entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        field_name: field_name 参数。
+        visibility: visibility 参数。
+        redaction_strategy: redaction_strategy 参数。
+        collection_id: collection 标识。
+    """
     valid_strategies = {"mask", "truncate", "replace", "remove"}
     strategy = redaction_strategy if redaction_strategy in valid_strategies else "mask"
 
@@ -128,7 +149,13 @@ def remove_field_permission(
     *,
     collection_id: str = "default",
 ) -> bool:
-    u"""Remove field-level permissions. Pass empty field_name to remove all for entity."""
+    """Remove field-level permissions. Pass empty field_name to remove all for entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        field_name: field_name 参数。
+        collection_id: collection 标识。
+    """
     perms = load_field_permissions(collection_id)
     before = len(perms)
     if field_name:
@@ -147,10 +174,14 @@ def apply_field_level_security(
     actor_scopes: Optional[List[str]] = None,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Apply field-level security redaction to entity data.
+    """Apply field-level security redaction to entity data.
 
-    Returns a new dict with sensitive fields redacted according to visibility rules.
-    Admin role bypasses all restrictions.
+    Args:
+        entity_data: entity_data 参数。
+        entity_uri: entity_uri 参数。
+        actor_role: actor_role 参数。
+        actor_scopes: actor_scopes 参数。
+        collection_id: collection 标识。
     """
     if actor_role == "admin" or (actor_scopes and "admin" in actor_scopes):
         return dict(entity_data)  # admin sees everything
@@ -185,7 +216,15 @@ def apply_field_level_security_batch(
     collection_id: str = "default",
     title_field: str = "title",
 ) -> List[Dict[str, Any]]:
-    u"""Apply field-level security to a batch of entities, using title_field as entity_uri."""
+    """Apply field-level security to a batch of entities, using title_field as entity_uri.
+
+    Args:
+        items: items 参数。
+        actor_role: actor_role 参数。
+        actor_scopes: actor_scopes 参数。
+        collection_id: collection 标识。
+        title_field: title_field 参数。
+    """
     from core.harness.knowledge.knowledge_abox_builder import _safe_uri
     AI = "http://aiplat.local/knowledge#"
 

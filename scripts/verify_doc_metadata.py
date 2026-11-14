@@ -26,6 +26,8 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.S)
 
 
 def iter_markdown() -> List[Path]:
+    """iter_markdown。
+    """
     seen = set()
     out = []
     for root in ROOTS:
@@ -41,6 +43,11 @@ def iter_markdown() -> List[Path]:
 
 
 def parse_frontmatter(text: str) -> Dict[str, str]:
+    """parse_frontmatter。
+
+    Args:
+        text: text 参数。
+    """
     m = FRONTMATTER_RE.match(text)
     if not m:
         return {}
@@ -56,6 +63,8 @@ def parse_frontmatter(text: str) -> Dict[str, str]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--strict", action="store_true", help="canonical 缺字段时阻断")
     args = ap.parse_args()

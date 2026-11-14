@@ -38,7 +38,12 @@ class Orchestrator:
         *,
         spec: Optional[SpecContext] = None,
     ) -> ExecutionPlan:
-        """Produce an ExecutionPlan from a StructuredIntent."""
+        """Produce an ExecutionPlan from a StructuredIntent.
+
+        Args:
+            intent: intent 参数。
+            spec: spec 参数。
+        """
         from core.orchestration.chain_planner import plan_chain
 
         # Get chain steps from planner
@@ -75,7 +80,12 @@ class Orchestrator:
         plan: ExecutionPlan,
         agent_context: dict,
     ) -> dict:
-        """Execute an ExecutionPlan via EngineRouter."""
+        """Execute an ExecutionPlan via EngineRouter.
+
+        Args:
+            plan: plan 参数。
+            agent_context: agent_context 参数。
+        """
         try:
             from core.harness.execution.router import EngineRouter
 
@@ -144,6 +154,8 @@ _orchestrator: Optional[Orchestrator] = None
 
 
 def get_orchestrator() -> Orchestrator:
+    """获取 orchestrator。
+    """
     global _orchestrator
     if _orchestrator is None:
         _orchestrator = Orchestrator()

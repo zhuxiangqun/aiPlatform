@@ -79,6 +79,8 @@ def _parse_hard_gates(text: str) -> dict[str, str]:
 
 
 def main() -> int:
+    """main。
+    """
     errors: list[str] = []
     data = _load_yaml(MANIFEST)
     caps = {c["id"]: c for c in (data.get("capabilities") or []) if isinstance(c, dict)}

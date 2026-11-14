@@ -29,12 +29,18 @@ PATTERN_DIR = ROOT / "scripts" / "guard_patterns"
 
 
 def load_rules() -> Dict[str, Any]:
+    """load_rules。
+    """
     with open(YAML_SRC) as fh:
         return yaml.safe_load(fh)
 
 
 def gen_pattern_files(rules: Dict) -> Dict[str, str]:
-    """Write all regex patterns to files. Returns {rule_id: filepath} map."""
+    """Write all regex patterns to files. Returns {rule_id: filepath} map.
+
+    Args:
+        rules: rules 参数。
+    """
     PATTERN_DIR.mkdir(exist_ok=True)
     pattern_files: Dict[str, str] = {}
     pid = 0
@@ -58,7 +64,12 @@ def gen_pattern_files(rules: Dict) -> Dict[str, str]:
 
 
 def gen_guard_script(rules: Dict, pattern_files: Dict[str, str]) -> str:
-    """Generate bash grep-rules script."""
+    """Generate bash grep-rules script.
+
+    Args:
+        rules: rules 参数。
+        pattern_files: pattern_files 参数。
+    """
     yaml_hash = hashlib.sha256(YAML_SRC.read_bytes()).hexdigest()[:16]
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     
@@ -177,6 +188,8 @@ def _layer_to_dirs(layer: str) -> List[str]:
 
 
 def main():
+    """main。
+    """
     rules = load_rules()
     
     # 1. Write pattern files

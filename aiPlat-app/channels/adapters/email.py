@@ -17,6 +17,11 @@ class EmailAdapter(ChannelAdapter):
     """Email 适配器 (SMTP/IMAP)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         return ChannelMessage(
             message_id=str(raw_data.get("message_id", "")),
             channel=ChannelType.EMAIL,
@@ -28,6 +33,11 @@ class EmailAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "to": response.message_id,
             "subject": "aiPlat 回复",

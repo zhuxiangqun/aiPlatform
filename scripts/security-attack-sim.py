@@ -54,6 +54,7 @@ _INJECTION_GUARD_MARKERS = (
 
 @dataclass
 class HttpResponse:
+    """HttpResponse。"""
     status: int
     body: str
     headers: Dict[str, str] = field(default_factory=dict)
@@ -61,6 +62,7 @@ class HttpResponse:
 
 @dataclass
 class CheckResult:
+    """CheckResult。"""
     scenario: str
     name: str
     ok: bool
@@ -88,6 +90,15 @@ def urllib_transport(
     headers: Optional[Dict[str, str]] = None,
     timeout: float = 10.0,
 ) -> HttpResponse:
+    """urllib_transport。
+
+    Args:
+        method: method 参数。
+        url: url 参数。
+        body: 请求体。
+        headers: headers 参数。
+        timeout: 超时秒数。
+    """
     data = _json_body(body)
     req = urllib.request.Request(url, data=data, method=method)
     hdrs = {"Content-Type": "application/json", **(headers or {})}
@@ -113,6 +124,12 @@ def urllib_transport(
 
 
 def probe_reachability(transport: Transport, base: str) -> CheckResult:
+    """probe_reachability。
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     url = f"{base.rstrip('/')}{HEALTH_PATH}"
     try:
         transport("GET", url, None, {})
@@ -138,6 +155,19 @@ def expect_status(
     body: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
 ) -> Tuple[CheckResult, Optional[HttpResponse]]:
+    """expect_status。
+
+    Args:
+        scenario: scenario 参数。
+        name: name 参数。
+        transport: transport 参数。
+        base: base 参数。
+        expect: expect 参数。
+        method: method 参数。
+        path: 路径。
+        body: 请求体。
+        headers: headers 参数。
+    """
     url = f"{base.rstrip('/')}{path}"
     try:
         resp = transport(method, url, body, headers or {})
@@ -154,7 +184,12 @@ def expect_status(
 
 
 def check_s2_prompt_injection(transport: Transport, base: str) -> CheckResult:
-    """S2: injection must be rejected or show guard evidence — not bare success theatre."""
+    """S2: injection must be rejected or show guard evidence — not bare success theatre.
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     payload = {
         "messages": [
             {
@@ -186,7 +221,13 @@ def check_s2_prompt_injection(transport: Transport, base: str) -> CheckResult:
 
 
 def check_s4_rate_limit(transport: Transport, base: str, bursts: int = 20) -> CheckResult:
-    """S4: claim rate-limit only if 429 is observed."""
+    """S4: claim rate-limit only if 429 is observed.
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+        bursts: bursts 参数。
+    """
     url = f"{base.rstrip('/')}{HEALTH_PATH}"
     saw_429 = False
     other_errors = 0
@@ -211,7 +252,12 @@ def check_s4_rate_limit(transport: Transport, base: str, bursts: int = 20) -> Ch
 
 
 def check_s7_unauthorized_mcp(transport: Transport, base: str) -> CheckResult:
-    """S7 HTTP only: unauthorized tool/MCP-shaped call must be 401 — not real escape (P1-4)."""
+    """S7 HTTP only: unauthorized tool/MCP-shaped call must be 401 — not real escape (P1-4).
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     result, _ = expect_status(
         "S7",
         "unauthorized_mcp_http_401",
@@ -226,7 +272,12 @@ def check_s7_unauthorized_mcp(transport: Transport, base: str) -> CheckResult:
 
 
 def check_s9_key_leakage(transport: Transport, base: str) -> CheckResult:
-    """S9: response must not echo secret-like material from the probe."""
+    """S9: response must not echo secret-like material from the probe.
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     probe_secret = "api_key=sk_test_leak_probe_do_not_echo"
     body = {"messages": [{"role": "user", "content": ("/" * 200) + probe_secret}]}
     url = f"{base.rstrip('/')}{EXECUTE_PATH}"
@@ -250,7 +301,12 @@ def check_s9_key_leakage(transport: Transport, base: str) -> CheckResult:
 
 
 def check_s10_replay(transport: Transport, base: str) -> CheckResult:
-    """S10: expired/replay session must not be accepted as authorized."""
+    """S10: expired/replay session must not be accepted as authorized.
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     result, resp = expect_status(
         "S10",
         "replay_expired_rejected",
@@ -277,6 +333,12 @@ def check_s10_replay(transport: Transport, base: str) -> CheckResult:
 
 
 def run_all(transport: Transport, base: str) -> List[CheckResult]:
+    """run_all。
+
+    Args:
+        transport: transport 参数。
+        base: base 参数。
+    """
     results: List[CheckResult] = []
 
     reach = probe_reachability(transport, base)
@@ -369,6 +431,11 @@ def run_all(transport: Transport, base: str) -> List[CheckResult]:
 
 
 def summarize(results: List[CheckResult]) -> Dict[str, Any]:
+    """summarize。
+
+    Args:
+        results: results 参数。
+    """
     passed = sum(1 for r in results if r.ok)
     failed = sum(1 for r in results if not r.ok)
     unreachable = any(r.kind == "reachability" and not r.ok for r in results)
@@ -406,6 +473,11 @@ def summarize(results: List[CheckResult]) -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(sys.argv[1:] if argv is None else argv)
     base = argv[0] if argv else os.environ.get("AIPLAT_ATTACK_SIM_BASE", DEFAULT_BASE)
 

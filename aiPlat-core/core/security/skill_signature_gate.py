@@ -1,3 +1,5 @@
+"""skill_signature_gate：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -7,9 +9,10 @@ import logging
 
 
 async def get_trusted_skill_pubkeys_map(execution_store: Any) -> Dict[str, str]:
-    """
-    Global trusted public keys for skill signature verification.
-    Stored in global_setting: trusted_skill_pubkeys = {"keys":[{"key_id","public_key"}]}
+    """Global trusted public keys for skill signature verification.
+
+    Args:
+        execution_store: execution_store 参数。
     """
     out: Dict[str, str] = {}
     try:
@@ -40,7 +43,16 @@ async def require_skill_signature_gate_approval(
     details: str,
     metadata: Dict[str, Any],
 ) -> str:
-    """Create approval request for unverified skill signature actions."""
+    """Create approval request for unverified skill signature actions.
+
+    Args:
+        approval_manager: approval_manager 参数。
+        user_id: 用户 ID。
+        skill_id: Skill ID。
+        action: action 参数。
+        details: details 参数。
+        metadata: metadata 参数。
+    """
     from core.harness.infrastructure.approval.types import ApprovalContext, ApprovalRule, RuleType
 
     if not approval_manager:
@@ -70,9 +82,11 @@ async def require_skill_signature_gate_approval(
 
 
 def signature_gate_eval(*, metadata: Optional[Dict[str, Any]], trusted_keys_count: int) -> Dict[str, Any]:
-    """
-    Determine whether signature gate should trigger.
-    Rule: require approval unless signature_verified == True.
+    """Determine whether signature gate should trigger.
+
+    Args:
+        metadata: metadata 参数。
+        trusted_keys_count: trusted_keys_count 参数。
     """
     prov = (metadata or {}).get("provenance") if isinstance((metadata or {}).get("provenance"), dict) else {}
     integ = (metadata or {}).get("integrity") if isinstance((metadata or {}).get("integrity"), dict) else {}
@@ -96,6 +110,12 @@ def signature_gate_eval(*, metadata: Optional[Dict[str, Any]], trusted_keys_coun
 
 
 def is_approval_resolved_approved(approval_manager: Any, approval_request_id: str) -> bool:
+    """is_approval_resolved_approved。
+
+    Args:
+        approval_manager: approval_manager 参数。
+        approval_request_id: approval_request 标识。
+    """
     if not approval_request_id or not approval_manager:
         return False
     from core.harness.infrastructure.approval.types import RequestStatus
@@ -106,10 +126,10 @@ def is_approval_resolved_approved(approval_manager: Any, approval_request_id: st
 
 
 async def auto_init_dev_keys(execution_store: Any) -> bool:
-    """
-    Auto-initialize signature keys for development environments.
-    If trusted_skill_pubkeys is not configured, generate a keypair and store it.
-    Returns True if keys were created, False if they already existed.
+    """Auto-initialize signature keys for development environments.
+
+    Args:
+        execution_store: execution_store 参数。
     """
     import time as _time
     try:

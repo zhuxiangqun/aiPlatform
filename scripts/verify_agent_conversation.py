@@ -49,6 +49,8 @@ PRD = {
 
 def main() -> int:
     # 1. 创建项目
+    """main。
+    """
     r = _http("POST", f"{PLATFORM}/platform/builder/projects", {
         "name": "智能客服助手-验证",
         "description": PRD["description"],

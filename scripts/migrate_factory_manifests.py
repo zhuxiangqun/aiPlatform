@@ -84,6 +84,13 @@ def migrate_one(
     apply: bool,
     validate,
 ) -> Dict[str, Any]:
+    """migrate_one。
+
+    Args:
+        path: 路径。
+        apply: apply 参数。
+        validate: validate 参数。
+    """
     raw = path.read_text(encoding="utf-8")
     try:
         data = json.loads(raw)
@@ -137,6 +144,8 @@ def migrate_one(
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Migrate legacy factory agent_manifest.json")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--dry-run", action="store_true", help="Report only")

@@ -49,6 +49,8 @@ def _http(method: str, url: str, body: dict | None = None, timeout: int = 30):
 
 
 def check_services():
+    """check_services。
+    """
     print("=== 服务健康检查 ===")
     for name, base in (("core", CORE), ("platform", PLATFORM)):
         try:
@@ -60,6 +62,8 @@ def check_services():
 
 
 def restart_core():
+    """restart_core。
+    """
     print("=== 重启 core 服务（SIGHUP 优雅重载）===")
     out = subprocess.run(["pgrep", "-f", "gunicorn.*server:app"],
                          capture_output=True, text=True).stdout.split()
@@ -90,6 +94,11 @@ def restart_core():
 
 
 def rebuild(project_id: str):
+    """rebuild。
+
+    Args:
+        project_id: project 标识。
+    """
     print(f"=== 触发重建 {project_id} ===")
     r = _http("POST", f"{PLATFORM}/platform/builder/projects/{project_id}/rebuild", {})
     print(f"  响应: {json.dumps(r, ensure_ascii=False)[:200]}")
@@ -97,6 +106,12 @@ def rebuild(project_id: str):
 
 
 def poll(project_id: str, timeout: int = 600):
+    """poll。
+
+    Args:
+        project_id: project 标识。
+        timeout: 超时秒数。
+    """
     print(f"=== 轮询流水线状态 {project_id} (超时 {timeout}s) ===")
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -116,6 +131,11 @@ def poll(project_id: str, timeout: int = 600):
 
 
 def check_trace(project_id: str):
+    """check_trace。
+
+    Args:
+        project_id: project 标识。
+    """
     print(f"=== 检查决策溯源 {project_id} ===")
     fp = os.path.join(TRACE_DIR, f"{project_id}.json")
     if not os.path.isfile(fp):
@@ -170,6 +190,11 @@ def _derive_failed_stages(project_id: str, test_report_raw: str):
 
 
 def fix_direct(project_id: str):
+    """fix_direct。
+
+    Args:
+        project_id: project 标识。
+    """
     print(f"=== 确定性修复（fix-from-report）{project_id} ===")
     st = _http("GET", f"{PLATFORM}/platform/builder/projects/{project_id}/state")
     state = st.get("state", {}) if isinstance(st, dict) else {}
@@ -192,6 +217,11 @@ def fix_direct(project_id: str):
 
 
 def fix_agent(project_id: str):
+    """fix_agent。
+
+    Args:
+        project_id: project 标识。
+    """
     print(f"=== 调用一键修复 agent（test_report_orchestrator）{project_id} ===")
     st = _http("GET", f"{PLATFORM}/platform/builder/projects/{project_id}/state")
     state = st.get("state", {}) if isinstance(st, dict) else {}
@@ -203,6 +233,11 @@ def fix_agent(project_id: str):
 
 
 def all_flow(project_id: str):
+    """all_flow。
+
+    Args:
+        project_id: project 标识。
+    """
     steps = [
         ("restart-core", lambda: restart_core()),
         ("rebuild", lambda: rebuild(project_id)),
@@ -220,6 +255,8 @@ def all_flow(project_id: str):
 
 
 def main():
+    """main。
+    """
     ap = argparse.ArgumentParser(description="一键修复流程冒烟验证")
     ap.add_argument("--check-services", action="store_true")
     ap.add_argument("--restart-core", action="store_true")

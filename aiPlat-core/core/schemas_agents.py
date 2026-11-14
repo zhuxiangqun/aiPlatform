@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class AgentCreateRequest(BaseModel):
+    """AgentCreateRequest。"""
     name: str
     agent_type: str = "base"
     config: Dict[str, Any] = Field(default_factory=dict)
@@ -26,6 +27,7 @@ class AgentCreateRequest(BaseModel):
 
 
 class AgentUpdateRequest(BaseModel):
+    """AgentUpdateRequest。"""
     name: Optional[str] = None
     status: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
@@ -96,10 +98,12 @@ class AgentAutoFillResponse(BaseModel):
 
 
 class AgentAutoFillBatchRequest(BaseModel):
+    """AgentAutoFillBatchRequest。"""
     names: List[str] = Field(default_factory=list, min_length=1, max_length=50)
 
 
 class AgentAutoFillBatchResponse(BaseModel):
+    """AgentAutoFillBatchResponse。"""
     results: Dict[str, AgentAutoFillResponse] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
 

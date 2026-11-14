@@ -17,7 +17,11 @@ fail_pattern = re.compile(r"(\d+) dead symbols")
 
 
 def get_dataclass_classes(filepath):
-    """Return set of class names decorated with @dataclass in the given file."""
+    """Return set of class names decorated with @dataclass in the given file.
+
+    Args:
+        filepath: filepath 参数。
+    """
     try:
         tree = ast.parse(Path(filepath).read_text())
     except Exception:
@@ -32,7 +36,12 @@ def get_dataclass_classes(filepath):
 
 
 def has_internal_caller(filepath, symbol):
-    """Check if symbol is called elsewhere in the same file (excluding its own def)."""
+    """Check if symbol is called elsewhere in the same file (excluding its own def).
+
+    Args:
+        filepath: filepath 参数。
+        symbol: symbol 参数。
+    """
     try:
         tree = ast.parse(Path(filepath).read_text())
     except Exception:
@@ -53,7 +62,12 @@ def has_internal_caller(filepath, symbol):
 
 
 def is_class_definition(filepath, symbol):
-    """Check if symbol is a class (not a function) — a type, likely used as annotation."""
+    """Check if symbol is a class (not a function) — a type, likely used as annotation.
+
+    Args:
+        filepath: filepath 参数。
+        symbol: symbol 参数。
+    """
     try:
         tree = ast.parse(Path(filepath).read_text())
     except Exception:
@@ -66,12 +80,10 @@ def is_class_definition(filepath, symbol):
 
 def used_as_type_annotation(filepath, symbol):
     """Check if symbol is used as a type annotation in other production files.
-    
-    Handles patterns like:
-      var: ClassName = ...
-      def foo() -> ClassName:
-      Dict[str, ClassName]
-      Optional[ClassName]
+
+    Args:
+        filepath: filepath 参数。
+        symbol: symbol 参数。
     """
     try:
         tree = ast.parse(Path(filepath).read_text())
@@ -114,7 +126,11 @@ def used_as_type_annotation(filepath, symbol):
 
 
 def find_file(fname):
-    """Find the project source file (excluding .venv, tests, __pycache__)."""
+    """Find the project source file (excluding .venv, tests, __pycache__).
+
+    Args:
+        fname: fname 参数。
+    """
     for root in [".", "aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app"]:
         p = WORKSPACE / root
         if not p.exists():
@@ -128,7 +144,11 @@ def find_file(fname):
 
 
 def find_files(fname):
-    """Yield all project source files matching fname."""
+    """Yield all project source files matching fname.
+
+    Args:
+        fname: fname 参数。
+    """
     for root in [".", "aiPlat-core", "aiPlat-platform", "aiPlat-infra", "aiPlat-app"]:
         p = WORKSPACE / root
         if not p.exists():

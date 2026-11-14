@@ -303,6 +303,14 @@ def _ensure_agent_body(body: str, actions: List[str]) -> str:
 
 
 def repair_one(path: Path, kind: str, *, apply: bool, validate) -> Dict[str, Any]:
+    """repair_one。
+
+    Args:
+        path: 路径。
+        kind: kind 参数。
+        apply: apply 参数。
+        validate: validate 参数。
+    """
     raw = path.read_text(encoding="utf-8")
     before = validate(str(path), kind)
     text, actions = _strip_fences(raw)
@@ -350,6 +358,8 @@ def repair_one(path: Path, kind: str, *, apply: bool, validate) -> Dict[str, Any
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Repair factory AGENT.md/SKILL.md conformance")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--dry-run", action="store_true")

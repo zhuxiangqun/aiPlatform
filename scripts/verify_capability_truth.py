@@ -94,7 +94,11 @@ def _check_registry_caps() -> Tuple[bool, List[str], Dict[str, Any]]:
 
 
 def run_checks(*, ci: bool = False) -> Dict[str, Any]:
-    """Run all hard checks + soft warnings. Never writes docs/audit."""
+    """Run all hard checks + soft warnings. Never writes docs/audit.
+
+    Args:
+        ci: ci 参数。
+    """
     hard: List[Dict[str, Any]] = []
     soft: List[Dict[str, Any]] = []
 
@@ -283,6 +287,11 @@ def run_checks(*, ci: bool = False) -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     ci = "--ci" in argv
 

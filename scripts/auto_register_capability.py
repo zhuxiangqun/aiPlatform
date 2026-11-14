@@ -44,7 +44,11 @@ def load_domain_map() -> list[tuple[str, str]]:
 
 
 def map_file_to_domain(filepath: str) -> str:
-    """Map a file path to a registry domain name."""
+    """Map a file path to a registry domain name.
+
+    Args:
+        filepath: filepath 参数。
+    """
     # Normalize: strip workspace prefix
     for prefix in ["aiPlat-core/", "aiPlat-infra/", "aiPlat-platform/",
                     "aiPlat-management/"]:
@@ -64,7 +68,16 @@ def map_file_to_domain(filepath: str) -> str:
 # ════════════════════════════════════════════════════════════
 
 class Symbol:
+    """Symbol。"""
     def __init__(self, name: str, type_: str, signature: str, module: str):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            type_: type_ 参数。
+            signature: signature 参数。
+            module: module 参数。
+        """
         self.name = name
         self.type = type_
         self.signature = signature
@@ -72,7 +85,12 @@ class Symbol:
 
 
 def extract_python_symbols(full_path: Path, rel_path: str) -> list[Symbol]:
-    """Extract public top-level symbols from a Python file."""
+    """Extract public top-level symbols from a Python file.
+
+    Args:
+        full_path: full_path 参数。
+        rel_path: rel_path 参数。
+    """
     try:
         with open(full_path) as f:
             source = f.read()
@@ -152,7 +170,12 @@ def _extract_class_sig_py(node: ast.ClassDef) -> str:
 
 
 def extract_ts_symbols(full_path: Path, rel_path: str) -> list[Symbol]:
-    """Extract exported symbols from a TypeScript/TSX file."""
+    """Extract exported symbols from a TypeScript/TSX file.
+
+    Args:
+        full_path: full_path 参数。
+        rel_path: rel_path 参数。
+    """
     try:
         with open(full_path) as f:
             source = f.read()
@@ -219,17 +242,30 @@ def _pascal_case(s: str) -> str:
 # ════════════════════════════════════════════════════════════
 
 def read_registry_lines() -> list[str]:
+    """read_registry_lines。
+    """
     with open(REGISTRY) as f:
         return f.readlines()
 
 
 def write_registry_lines(lines: list[str]) -> None:
+    """write_registry_lines。
+
+    Args:
+        lines: lines 参数。
+    """
     with open(REGISTRY, "w") as f:
         f.writelines(lines)
 
 
 def is_already_registered(lines: list[str], symbol: str, module: str) -> bool:
-    """Check if symbol is already listed (bare or with module metadata)."""
+    """Check if symbol is already listed (bare or with module metadata).
+
+    Args:
+        lines: lines 参数。
+        symbol: symbol 参数。
+        module: module 参数。
+    """
     text = "".join(lines)
     # Bare symbol line is enough — avoid duplicate full entries under multi-line provides.
     sym_re = re.compile(r'-\s+symbol:\s+[\'"]?' + re.escape(symbol) + r'[\'"]?\s*$', re.MULTILINE)
@@ -248,8 +284,9 @@ def is_already_registered(lines: list[str], symbol: str, module: str) -> bool:
 def find_domain_insertion_point(lines: list[str], domain_key: str) -> int | None:
     """Find line index to insert new provides entries in a domain.
 
-    Returns index *after* the last complete provides entry (skips type/signature/module
-    continuation lines so we never splice into the middle of a multi-line entry).
+    Args:
+        lines: lines 参数。
+        domain_key: domain_key 参数。
     """
     in_domain = False
     in_provides = False
@@ -309,7 +346,13 @@ def _yaml_single_quoted(s: str) -> str:
 
 
 def add_symbol_text(lines: list[str], sym: Symbol, domain_key: str) -> bool:
-    """Insert symbol entry into registry lines. Returns True if added."""
+    """Insert symbol entry into registry lines. Returns True if added.
+
+    Args:
+        lines: lines 参数。
+        sym: sym 参数。
+        domain_key: domain_key 参数。
+    """
     idx = find_domain_insertion_point(lines, domain_key)
     if idx is None:
         return False
@@ -330,7 +373,12 @@ def add_symbol_text(lines: list[str], sym: Symbol, domain_key: str) -> bool:
 
 
 def update_registry_counts(lines: list[str], added: int) -> None:
-    """Update caps_count and total_capabilities."""
+    """Update caps_count and total_capabilities.
+
+    Args:
+        lines: lines 参数。
+        added: added 参数。
+    """
     text = "".join(lines)
 
     # Update total_capabilities
@@ -395,6 +443,8 @@ def get_new_files() -> list[str]:
 # ════════════════════════════════════════════════════════════
 
 def main():
+    """main。
+    """
     mode = sys.argv[1] if len(sys.argv) > 1 else "--check"
 
     if not REGISTRY.exists():

@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 
 async def check_api_contract() -> Dict[str, Any]:
+    """check_api_contract。
+    """
     try:
         from core.harness.observability.metrics import get_top_endpoints
         top_eps = get_top_endpoints(limit=5)

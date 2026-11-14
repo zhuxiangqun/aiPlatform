@@ -31,6 +31,8 @@ RULES_YAML = WORKSPACE / "aiPlat-core/core/management/arch_guard_rules.yaml"
 
 
 def load_rules() -> list[dict]:
+    """load_rules。
+    """
     import yaml
     with open(RULES_YAML) as f:
         data = yaml.safe_load(f)
@@ -38,13 +40,21 @@ def load_rules() -> list[dict]:
 
 
 def check_backslash_pipe(pattern: str) -> bool:
-    """检测 pattern 中的 \\| 反模式（grep BRE OR 语法误用于 Python re）。"""
+    """检测 pattern 中的 \| 反模式（grep BRE OR 语法误用于 Python re）。
+
+    Args:
+        pattern: pattern 参数。
+    """
     # 真实反模式是 \\| （YAML 转义后为 \|），即反斜杠+竖线
     return "\\|" in pattern
 
 
 def check_compile(pattern: str) -> str | None:
-    """检测 pattern 能否被 Python re 编译。返回错误信息或 None。"""
+    """检测 pattern 能否被 Python re 编译。返回错误信息或 None。
+
+    Args:
+        pattern: pattern 参数。
+    """
     try:
         re.compile(pattern)
         return None
@@ -53,6 +63,8 @@ def check_compile(pattern: str) -> str | None:
 
 
 def main() -> int:
+    """main。
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verify", action="store_true",
                         help="额外执行黄金样本验证（grep_required 规则必须有真实命中）")

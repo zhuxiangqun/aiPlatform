@@ -1,9 +1,12 @@
+"""schemas_prompt_app：模块接口。"""
+
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
 class PromptAppTemplateCreate(BaseModel):
+    """PromptAppTemplateCreate。"""
     template_id: str
     name: str
     category: str = ""
@@ -18,6 +21,7 @@ class PromptAppTemplateCreate(BaseModel):
 
 
 class PromptAppTemplateUpdate(BaseModel):
+    """PromptAppTemplateUpdate。"""
     name: Optional[str] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -32,11 +36,13 @@ class PromptAppTemplateUpdate(BaseModel):
 
 
 class PromptPreviewRequest(BaseModel):
+    """PromptPreviewRequest。"""
     variables: Dict[str, Any] = Field(default_factory=dict)
     model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptPreviewTextRequest(BaseModel):
+    """PromptPreviewTextRequest。"""
     system_prompt: str = ""
     user_prompt: str = ""
     variables: Dict[str, Any] = Field(default_factory=dict)
@@ -44,6 +50,7 @@ class PromptPreviewTextRequest(BaseModel):
 
 
 class PromptRunRequest(BaseModel):
+    """PromptRunRequest。"""
     template_id: Optional[str] = None
     instance_id: Optional[str] = None
     variables: Dict[str, Any] = Field(default_factory=dict)
@@ -51,12 +58,14 @@ class PromptRunRequest(BaseModel):
 
 
 class PromptOptimizeRequest(BaseModel):
+    """PromptOptimizeRequest。"""
     prompt: str = ""
     template_id: Optional[str] = None
     model: str = ""  # resolved via best_model_for_purpose("default") in handler
 
 
 class PromptTestCaseCreate(BaseModel):
+    """PromptTestCaseCreate。"""
     template_id: str
     name: str = ""
     variables: Dict[str, Any] = Field(default_factory=dict)
@@ -64,12 +73,14 @@ class PromptTestCaseCreate(BaseModel):
 
 
 class PromptTestCaseUpdate(BaseModel):
+    """PromptTestCaseUpdate。"""
     name: Optional[str] = None
     variables: Optional[Dict[str, Any]] = None
     expected_keys: Optional[str] = None
 
 
 class PromptEvalRunCreate(BaseModel):
+    """PromptEvalRunCreate。"""
     template_id: str
     version_a: str
     version_b: str
@@ -78,6 +89,7 @@ class PromptEvalRunCreate(BaseModel):
 
 
 class PromptCategoryCreate(BaseModel):
+    """PromptCategoryCreate。"""
     name: str
     display_order: int = 0
     icon: str = ""
@@ -85,11 +97,13 @@ class PromptCategoryCreate(BaseModel):
 
 
 class PromptAppInstanceCreate(BaseModel):
+    """PromptAppInstanceCreate。"""
     source_template_id: str
     name: str = ""
 
 
 class PromptAppInstanceUpdate(BaseModel):
+    """PromptAppInstanceUpdate。"""
     name: Optional[str] = None
     system_prompt: Optional[str] = None
     user_prompt: Optional[str] = None

@@ -80,7 +80,12 @@ CHAPTER_MAP: dict[str, str] = {
 
 
 def count_checks_in_section(content: str, section_title: str) -> Tuple[int, int]:
-    """Count ✅ (implemented) and ⚠️ (partial) in a section table (3rd column)."""
+    """Count ✅ (implemented) and ⚠️ (partial) in a section table (3rd column).
+
+    Args:
+        content: content 参数。
+        section_title: section_title 参数。
+    """
     pattern = rf"^## {re.escape(section_title)}"
     lines = content.split("\n")
     start = -1
@@ -112,7 +117,11 @@ def count_checks_in_section(content: str, section_title: str) -> Tuple[int, int]
 
 
 def compute_section_counts(content: str) -> Dict[str, Tuple[int, int]]:
-    """Return {stat_dim: (implemented, partial)} from chapter bodies."""
+    """Return {stat_dim: (implemented, partial)} from chapter bodies.
+
+    Args:
+        content: content 参数。
+    """
     out: Dict[str, Tuple[int, int]] = {}
     for section_title, stat_dim in CHAPTER_MAP.items():
         out[stat_dim] = count_checks_in_section(content, section_title)
@@ -120,7 +129,11 @@ def compute_section_counts(content: str) -> Dict[str, Tuple[int, int]]:
 
 
 def render_stats_block(content: str) -> str:
-    """Render AUTO-STATS inner markdown (no BEGIN/END markers) from chapter counts."""
+    """Render AUTO-STATS inner markdown (no BEGIN/END markers) from chapter counts.
+
+    Args:
+        content: content 参数。
+    """
     counts = compute_section_counts(content)
     lines: List[str] = [
         "| 维度 | 已实现 | 部分实现 | 合计 |",
@@ -145,7 +158,11 @@ def render_stats_block(content: str) -> str:
 
 
 def extract_stats_block(content: str) -> Optional[str]:
-    """Return current AUTO-STATS inner body, or None if markers missing."""
+    """Return current AUTO-STATS inner body, or None if markers missing.
+
+    Args:
+        content: content 参数。
+    """
     if STATS_BEGIN in content and STATS_END in content:
         m = re.search(
             re.escape(STATS_BEGIN) + r"\n(.*)" + re.escape(STATS_END),
@@ -167,7 +184,8 @@ def extract_stats_block(content: str) -> Optional[str]:
 def apply_stats(content: str) -> Tuple[str, int, int]:
     """Replace AUTO-STATS block + sync frontmatter total_capabilities.
 
-    Returns (new_content, total_impl, total_part).
+    Args:
+        content: content 参数。
     """
     block = render_stats_block(content)
     counts = compute_section_counts(content)
@@ -215,7 +233,11 @@ def apply_stats(content: str) -> Tuple[str, int, int]:
 
 
 def check_stats_fresh(path: Optional[Path] = None) -> int:
-    """Worktree AUTO-STATS block must ≡ chapter render. Return 0/1. Does not rewrite."""
+    """Worktree AUTO-STATS block must ≡ chapter render. Return 0/1. Does not rewrite.
+
+    Args:
+        path: 路径。
+    """
     path = path or CAPABILITIES
     content = path.read_text(encoding="utf-8")
     expected = render_stats_block(content)
@@ -267,7 +289,11 @@ def check_stats_fresh(path: Optional[Path] = None) -> int:
 
 
 def fix(path: Optional[Path] = None) -> None:
-    """Rewrite AUTO-STATS block + frontmatter from chapter counts."""
+    """Rewrite AUTO-STATS block + frontmatter from chapter counts.
+
+    Args:
+        path: 路径。
+    """
     path = path or CAPABILITIES
     content = path.read_text(encoding="utf-8")
     new, total_impl, total_part = apply_stats(content)
@@ -279,7 +305,11 @@ def fix(path: Optional[Path] = None) -> None:
 
 
 def parse_stats_table(content: str) -> Dict[str, Tuple[int, int, int]]:
-    """Parse the stats table, return {dimension: (implemented, partial, total)}."""
+    """Parse the stats table, return {dimension: (implemented, partial, total)}.
+
+    Args:
+        content: content 参数。
+    """
     block = extract_stats_block(content) or ""
     stats: Dict[str, Tuple[int, int, int]] = {}
     for line in block.split("\n"):

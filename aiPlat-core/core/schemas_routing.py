@@ -55,6 +55,7 @@ class RouteKind(str, Enum):
 
 
 class ConfidenceLevel(str, Enum):
+    """ConfidenceLevel。"""
     HIGH = "high"       # ≥0.8
     MEDIUM = "medium"   # 0.4-0.8
     LOW = "low"         # <0.4

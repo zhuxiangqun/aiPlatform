@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class RoleAgentItem(BaseModel):
+    """RoleAgentItem。"""
     agent_id: str
     role: str
     model: str = ""
@@ -16,6 +17,7 @@ class RoleAgentItem(BaseModel):
 
 
 class RoleAgentUpdateResponse(BaseModel):
+    """RoleAgentUpdateResponse。"""
     agent_id: str
     role: str
     model: str = ""
@@ -24,6 +26,7 @@ class RoleAgentUpdateResponse(BaseModel):
 
 
 class RoleMetricsResponse(BaseModel):
+    """RoleMetricsResponse。"""
     employee: Dict[str, Any] = Field(default_factory=dict)
     guard: Dict[str, Any] = Field(default_factory=dict)
     advisor: Dict[str, Any] = Field(default_factory=dict)
@@ -31,6 +34,7 @@ class RoleMetricsResponse(BaseModel):
 
 
 class RoleStrategyOverrideResponse(BaseModel):
+    """RoleStrategyOverrideResponse。"""
     agent_id: str
     mode: str = ""
     config: Dict[str, Any] = Field(default_factory=dict)
@@ -39,10 +43,12 @@ class RoleStrategyOverrideResponse(BaseModel):
 # ── Request models ──────────────────────────────────────────────────
 
 class RoleAgentUpdateRequest(BaseModel):
+    """RoleAgentUpdateRequest。"""
     role: str = "employee"
     config: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RoleStrategyOverrideRequest(BaseModel):
+    """RoleStrategyOverrideRequest。"""
     agent_id: str = ""
     mode: str = "normal"

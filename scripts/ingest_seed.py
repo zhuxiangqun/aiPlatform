@@ -18,7 +18,13 @@ API_PREFIX = "/api/core"
 
 
 def post_json(url: str, data: dict, timeout: int = 60) -> dict:
-    """POST JSON and return parsed response."""
+    """POST JSON and return parsed response.
+
+    Args:
+        url: url 参数。
+        data: data 参数。
+        timeout: 超时秒数。
+    """
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode("utf-8"),
@@ -36,7 +42,12 @@ def post_json(url: str, data: dict, timeout: int = 60) -> dict:
 
 
 def ingest_domain(base_url: str, domain_id: str) -> bool:
-    """Ingest seed data for one domain via process-and-write API."""
+    """Ingest seed data for one domain via process-and-write API.
+
+    Args:
+        base_url: base_url 参数。
+        domain_id: domain 标识。
+    """
     seed_path = os.path.join(SEED_DIR, f"{domain_id}.json")
     if not os.path.isfile(seed_path):
         print(f"  ⚠ No seed file for '{domain_id}', skipping")
@@ -74,7 +85,12 @@ def ingest_domain(base_url: str, domain_id: str) -> bool:
 
 
 def verify_domain(base_url: str, domain_id: str) -> bool:
-    """Verify seed data landed in GraphIndex."""
+    """Verify seed data landed in GraphIndex.
+
+    Args:
+        base_url: base_url 参数。
+        domain_id: domain 标识。
+    """
     url = f"{base_url}{API_PREFIX}/ontology/engine/graph-stats/{domain_id}"
     try:
         result = post_json(url, {}, timeout=10)
@@ -91,6 +107,8 @@ def verify_domain(base_url: str, domain_id: str) -> bool:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Ingest domain seed data into ontology engine")
     parser.add_argument("--domain", help="Single domain ID")
     parser.add_argument("--all", action="store_true", help="Ingest all domains with seed data")

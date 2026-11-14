@@ -26,6 +26,7 @@ from .types import LearningArtifact, LearningArtifactKind, LearningArtifactStatu
 
 @dataclass
 class ReleasePublishResult:
+    """ReleasePublishResult。"""
     status: str  # published|approval_required|not_found|not_approved|error
     approval_request_id: Optional[str] = None
     error: Optional[str] = None
@@ -42,6 +43,18 @@ def build_release_candidate(
     trace_id: Optional[str] = None,
     run_id: Optional[str] = None,
 ) -> LearningArtifact:
+    """build_release_candidate。
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        artifact_ids: artifact_ids 参数。
+        summary: summary 参数。
+        metadata: metadata 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+    """
     return LearningArtifact(
         artifact_id=str(uuid.uuid4()),
         kind=LearningArtifactKind.RELEASE_CANDIDATE,
@@ -87,6 +100,14 @@ async def require_publish_approval(
     candidate_id: str,
     details: str = "",
 ) -> str:
+    """require_publish_approval。
+
+    Args:
+        approval_manager: approval_manager 参数。
+        user_id: 用户 ID。
+        candidate_id: candidate 标识。
+        details: details 参数。
+    """
     rule = get_release_publish_rule()
     approval_manager.register_rule(rule)
     ctx = ApprovalContext(
@@ -112,6 +133,15 @@ async def require_rollback_approval(
     regression_report_id: Optional[str] = None,
     details: str = "",
 ) -> str:
+    """require_rollback_approval。
+
+    Args:
+        approval_manager: approval_manager 参数。
+        user_id: 用户 ID。
+        candidate_id: candidate 标识。
+        regression_report_id: regression_report 标识。
+        details: details 参数。
+    """
     rule = get_release_rollback_rule()
     approval_manager.register_rule(rule)
     ctx = ApprovalContext(
@@ -129,6 +159,12 @@ async def require_rollback_approval(
 
 
 def is_approved(approval_manager: ApprovalManager, approval_request_id: str) -> bool:
+    """is_approved。
+
+    Args:
+        approval_manager: approval_manager 参数。
+        approval_request_id: approval_request 标识。
+    """
     req = approval_manager.get_request(approval_request_id)
     if not req:
         return False

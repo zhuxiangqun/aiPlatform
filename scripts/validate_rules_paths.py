@@ -27,9 +27,19 @@ KNOWN_DIRS = {
 }
 
 def is_file_path(p: str) -> bool:
+    """is_file_path。
+
+    Args:
+        p: p 参数。
+    """
     return any(p.endswith(ext) for ext in (".py", ".tsx", ".ts", ".yaml", ".json", ".md", ".sh"))
 
 def is_dir_path(p: str) -> bool:
+    """is_dir_path。
+
+    Args:
+        p: p 参数。
+    """
     return p.rstrip("/") in KNOWN_DIRS or p.endswith("/") or (
         not is_file_path(p) and "/" in p and not p.startswith("~")
     )

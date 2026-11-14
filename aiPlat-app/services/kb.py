@@ -16,10 +16,22 @@ from .client import APIClient
 
 
 class KBService:
+    """KBService。"""
     def __init__(self, client: APIClient):
+        """初始化。
+
+        Args:
+            client: client 参数。
+        """
         self._client = client
 
     def upload_and_ingest_pdf(self, *, collection_id: str, file_path: str) -> Dict[str, Any]:
+        """upload_and_ingest_pdf。
+
+        Args:
+            collection_id: collection 标识。
+            file_path: file_path 参数。
+        """
         p = Path(file_path).expanduser()
         if not p.is_file():
             return {"error": f"file_not_found:{p}"}
@@ -29,14 +41,25 @@ class KBService:
             return self._client.post_multipart("/api/v1/documents/ingest", form=form, files=files)
 
     def query(self, *, collection_id: str, question: str, year: Optional[int] = None, limit: int = 50) -> Dict[str, Any]:
+        """query。
+
+        Args:
+            collection_id: collection 标识。
+            question: question 参数。
+            year: year 参数。
+            limit: 返回条数上限。
+        """
         payload: Dict[str, Any] = {"collection_id": collection_id, "question": question, "limit": int(limit)}
         if year is not None:
             payload["year"] = int(year)
         return self._client.post("/api/v1/kb/query", payload)
 
     def download_asset(self, *, asset_url: str, out_path: str) -> str:
-        """
-        下载 /api/v1/kb/assets/... 到本地 out_path，返回实际写入路径。
+        """下载 /api/v1/kb/assets/... 到本地 out_path，返回实际写入路径。
+
+        Args:
+            asset_url: asset_url 参数。
+            out_path: out_path 参数。
         """
         url = f"{self._client.base_url}{asset_url}"
         resp = requests.get(url, headers={k: v for k, v in self._client._headers.items() if k.lower() != "content-type"}, timeout=60)
@@ -48,8 +71,11 @@ class KBService:
 
     @staticmethod
     def write_html_report(*, kb_result: Dict[str, Any], out_dir: str) -> str:
-        """
-        生成一个简单的 HTML 报告：展示 items 与每条 citation 的页图 + bbox 高亮框。
+        """生成一个简单的 HTML 报告：展示 items 与每条 citation 的页图 + bbox 高亮框。
+
+        Args:
+            kb_result: kb_result 参数。
+            out_dir: out_dir 参数。
         """
         outp = Path(out_dir)
         outp.mkdir(parents=True, exist_ok=True)
@@ -108,6 +134,13 @@ class KBService:
 
 
 def get_kb_service(base_url: str = "http://localhost:8080", api_key: str = "", tenant_id: str = "") -> KBService:
+    """获取 kb_service。
+
+    Args:
+        base_url: base_url 参数。
+        api_key: api_key 参数。
+        tenant_id: 租户 ID。
+    """
     client = APIClient(base_url=base_url, api_key=api_key)
     if api_key:
         client.set_api_key(api_key)

@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 
 class PackagePublishRequest(BaseModel):
+    """PackagePublishRequest。"""
     version: str
     # Optional approval gate
     require_approval: bool = False
@@ -18,6 +19,7 @@ class PackagePublishRequest(BaseModel):
 
 
 class PackageInstallRequest(BaseModel):
+    """PackageInstallRequest。"""
     package_name: Optional[str] = None  # allow body override; path param is authoritative
     version: Optional[str] = None  # if omitted, install from filesystem package (latest)
     scope: str = "workspace"  # engine|workspace (target scope for apply)
@@ -30,6 +32,7 @@ class PackageInstallRequest(BaseModel):
 
 
 class PackageUninstallRequest(BaseModel):
+    """PackageUninstallRequest。"""
     package_name: Optional[str] = None  # allow body override; path param is authoritative
     keep_modified: bool = True
     metadata: Optional[Dict[str, Any]] = None

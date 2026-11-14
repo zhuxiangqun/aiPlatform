@@ -23,9 +23,10 @@ from .types import LearningArtifact, LearningArtifactKind, LearningArtifactStatu
 
 
 def summarize_syscall_events(events: list[dict]) -> dict:
-    """
-    Compute a minimal, JSON-serializable summary from syscall_events.
-    Intended for Phase 6.2 offline feedback aggregation.
+    """Compute a minimal, JSON-serializable summary from syscall_events.
+
+    Args:
+        events: events 参数。
     """
     total = len(events)
     by_kind: Dict[str, int] = {}
@@ -78,7 +79,18 @@ def artifact_from_benchmark_result(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """Create an evaluation_report artifact from a BenchmarkResult."""
+    """Create an evaluation_report artifact from a BenchmarkResult.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        result: result 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
+    """
     return LearningArtifact(
         artifact_id=str(uuid.uuid4()),
         kind=LearningArtifactKind.EVALUATION_REPORT,
@@ -115,7 +127,20 @@ def artifact_from_regression_result(
     metadata: Optional[Dict[str, Any]] = None,
     detector: Optional[RegressionDetector] = None,
 ) -> LearningArtifact:
-    """Create a regression_report artifact by comparing current vs baseline."""
+    """Create a regression_report artifact by comparing current vs baseline.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        current: current 参数。
+        baseline: baseline 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
+        detector: detector 参数。
+    """
     det = detector or RegressionDetector()
     reg = det.detect(current, baseline)
     return LearningArtifact(
@@ -149,11 +174,17 @@ def artifact_from_prompt_revision(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """
-    Create a prompt_revision artifact.
+    """Create a prompt_revision artifact.
 
-    Patch schema:
-      {"prepend": "...", "append": "..."} (both optional)
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        patch: patch 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
     """
     p: Dict[str, Any] = {}
     if isinstance(patch.get("prepend"), str) and patch["prepend"].strip():
@@ -190,8 +221,22 @@ def artifact_from_regression_decision(
     run_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """
-    Phase 6.19: Create a regression_report artifact for an online rollback decision.
+    """Phase 6.19: Create a regression_report artifact for an online rollback decision.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        candidate_id: candidate 标识。
+        baseline_candidate_id: baseline_candidate 标识。
+        current: current 参数。
+        baseline: baseline 参数。
+        deltas: deltas 参数。
+        decision: decision 参数。
+        baseline_selection: baseline_selection 参数。
+        artifact_version: artifact_version 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        metadata: metadata 参数。
     """
     ver = artifact_version or f"regression:{candidate_id}"
     payload = {
@@ -228,7 +273,18 @@ def artifact_from_feedback_summary(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """Create a feedback_summary artifact from arbitrary feedback dict."""
+    """Create a feedback_summary artifact from arbitrary feedback dict.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        feedback: feedback 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
+    """
     return LearningArtifact(
         artifact_id=str(uuid.uuid4()),
         kind=LearningArtifactKind.FEEDBACK_SUMMARY,
@@ -253,7 +309,17 @@ def artifact_from_skill_evolution(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """Create a skill_evolution artifact from evolution output dict."""
+    """Create a skill_evolution artifact from evolution output dict.
+
+    Args:
+        skill_id: Skill ID。
+        version: version 参数。
+        evolution: evolution 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
+    """
     return LearningArtifact(
         artifact_id=str(uuid.uuid4()),
         kind=LearningArtifactKind.SKILL_EVOLUTION,
@@ -277,9 +343,15 @@ def artifact_from_skill_version(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """
-    Create a SKILL_EVOLUTION artifact from a SkillVersion object.
-    This is the recommended mapping for Phase 6.4 lineage/version persistence.
+    """Create a SKILL_EVOLUTION artifact from a SkillVersion object.
+
+    Args:
+        version_obj: version_obj 参数。
+        artifact_version: artifact_version 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
     """
     payload = {
         "skill_version": {
@@ -321,7 +393,19 @@ def artifact_from_skill_rollback(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """Create a SKILL_ROLLBACK artifact (records rollback intent/outcome)."""
+    """Create a SKILL_ROLLBACK artifact (records rollback intent/outcome).
+
+    Args:
+        skill_id: Skill ID。
+        from_version: from_version 参数。
+        to_version: to_version 参数。
+        artifact_version: artifact_version 参数。
+        reason: reason 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        metadata: metadata 参数。
+    """
     return LearningArtifact(
         artifact_id=str(uuid.uuid4()),
         kind=LearningArtifactKind.SKILL_ROLLBACK,
@@ -354,7 +438,19 @@ def artifact_from_online_run_summary(
     status: LearningArtifactStatus = LearningArtifactStatus.DRAFT,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> LearningArtifact:
-    """Create a feedback_summary artifact from an online run (agent_executions + syscall_events)."""
+    """Create a feedback_summary artifact from an online run (agent_executions + syscall_events).
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        version: version 参数。
+        run_id: 运行 ID。
+        trace_id: trace 标识。
+        agent_execution: agent_execution 参数。
+        syscall_events: syscall_events 参数。
+        status: status 参数。
+        metadata: metadata 参数。
+    """
     summary = summarize_syscall_events(syscall_events)
     payload = {
         "run": {

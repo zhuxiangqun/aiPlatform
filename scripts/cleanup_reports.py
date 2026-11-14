@@ -11,6 +11,11 @@ TODAY = dt.date.today()
 DATE_RE = re.compile(r"(20\d{2}-\d{2}-\d{2})")
 
 def rule(rel: str) -> int | None:
+    """rule。
+
+    Args:
+        rel: rel 参数。
+    """
     if (rel.startswith("products/") or rel.startswith("five-products/")) and "/ops/" in rel: return 180
     if rel.startswith("security/evidence/"): return 365
     if rel.startswith("docs-governance/"): return 365
@@ -18,6 +23,11 @@ def rule(rel: str) -> int | None:
     return None
 
 def date_of(p: Path) -> dt.date | None:
+    """date_of。
+
+    Args:
+        p: p 参数。
+    """
     text = p.read_text(encoding="utf-8", errors="ignore")[:1200]
     m = re.search(r"^(?:generated_at|date)\s*:\s*[\"']?(20\d{2}-\d{2}-\d{2})", text, re.M)
     if m: return dt.date.fromisoformat(m.group(1))
@@ -26,6 +36,8 @@ def date_of(p: Path) -> dt.date | None:
     return None
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     args = ap.parse_args()

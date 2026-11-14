@@ -34,6 +34,8 @@ def _report(label: str, mod) -> dict:
 
 
 def main() -> int:
+    """main。
+    """
     from core.harness.knowledge import code_graph_persist as cgp
     from core.harness.knowledge import cap_graph_persist as cap
 

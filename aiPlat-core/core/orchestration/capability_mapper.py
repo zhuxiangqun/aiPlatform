@@ -31,12 +31,9 @@ _ROLE_TO_AGENT_DEFAULTS: Dict[str, str] = {}
 async def map_capabilities(steps: List[ChainStep], model: Any = None) -> Dict[str, str]:
     """Map each chain step to the best-matching agent.
 
-    Priority:
-    1. AGENT.md capabilities frontmatter (exact keyword match)
-    2. Config-driven role→agent mapping (AIPLAT_ROLE_AGENT_MAP env var)
-    3. LLM-based matching (when model available and no clear match)
-
-    Returns: {step_id: agent_id}
+    Args:
+        steps: steps 参数。
+        model: 模型名。
     """
     # Load config-driven role→agent defaults
     role_map = _load_role_agent_map()

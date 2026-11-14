@@ -235,6 +235,11 @@ def _prompt_mutating_effects_issue(
 
 
 def scan(skills_root: Path) -> List[Dict[str, Any]]:
+    """scan。
+
+    Args:
+        skills_root: skills_root 参数。
+    """
     if str(CORE_ROOT) not in sys.path:
         sys.path.insert(0, str(CORE_ROOT))
 
@@ -296,6 +301,8 @@ def scan(skills_root: Path) -> List[Dict[str, Any]]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Lint engine SKILL.md quality + pairing")
     ap.add_argument(
         "--path",

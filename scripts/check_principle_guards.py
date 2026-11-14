@@ -177,7 +177,12 @@ def check_agent_strings_in_engine():
 
 
 def format_results(found, label):
-    """Print results. Return count of violations."""
+    """Print results. Return count of violations.
+
+    Args:
+        found: found 参数。
+        label: label 参数。
+    """
     if not found:
         return 0
     total = sum(len(items) for items in found.values())
@@ -200,6 +205,8 @@ def format_results(found, label):
 
 
 def main():
+    """main。
+    """
     checks = sys.argv[1:] if len(sys.argv) > 1 else ['all']
     if 'all' in checks or 'cjk' in checks:
         cjk = check_cjk_in_engine()

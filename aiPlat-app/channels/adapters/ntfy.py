@@ -17,6 +17,11 @@ class NtfyAdapter(ChannelAdapter):
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # ntfy publish 事件：{"id": "...", "topic": "...", "message": "...", "title": "..."}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = str(raw_data.get("message", ""))
         title = str(raw_data.get("title", ""))
         if title:
@@ -37,6 +42,11 @@ class NtfyAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "topic": response.message_id,
             "message": response.text,

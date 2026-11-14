@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 
 class ErrorSeverity(Enum):
+    """ErrorSeverity。"""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -19,6 +20,7 @@ class ErrorSeverity(Enum):
 
 
 class ErrorCategory(Enum):
+    """ErrorCategory。"""
     INFRA = "infra"
     CORE = "core"
     PLATFORM = "platform"
@@ -119,6 +121,15 @@ class CoreError(Exception):
         severity: Optional[ErrorSeverity] = None,
         cause: Optional[Exception] = None
     ):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            details: details 参数。
+            error_code: error_code 参数。
+            severity: severity 参数。
+            cause: cause 参数。
+        """
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -134,6 +145,8 @@ class CoreError(Exception):
         return f"[{self.error_code}] {self.message}"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "error_id": self.error_id,
             "error_code": self.error_code,
@@ -421,10 +434,17 @@ class ErrorHandler:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._error_counts: Dict[str, int] = {}
 
     def handle(self, error: Exception, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Handle an error and return a standardized response"""
+        """Handle an error and return a standardized response。
+
+        Args:
+            error: error 参数。
+            context: context 参数。
+        """
         if isinstance(error, CoreError):
             merged_details = {**error.details, **(context or {})}
             error.details = merged_details
@@ -448,6 +468,8 @@ class ErrorHandler:
         self._error_counts[error_code] = self._error_counts.get(error_code, 0) + 1
 
     def get_stats(self) -> Dict[str, int]:
+        """获取 stats。
+        """
         return self._error_counts.copy()
 
 

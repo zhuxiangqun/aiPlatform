@@ -63,7 +63,11 @@ async def load_kb_documents() -> list[dict]:
 
 
 async def load_wiki_documents(collection: str = "default") -> list[dict]:
-    """Load existing wiki pages as document sources."""
+    """Load existing wiki pages as document sources.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import search_pages, read_page
     pages = search_pages(limit=100, collection_id=collection)
     docs = []
@@ -81,13 +85,19 @@ async def load_wiki_documents(collection: str = "default") -> list[dict]:
 
 
 async def load_wiki_pages(collection: str = "default") -> set[str]:
-    """Get existing wiki page titles to avoid duplicates."""
+    """Get existing wiki page titles to avoid duplicates.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import search_pages
     pages = search_pages(limit=10000, collection_id=collection)
     return {p["title"] for p in (pages or [])}
 
 
 async def main():
+    """main。
+    """
     import argparse
     parser = argparse.ArgumentParser(description="KB文档/Wiki页面 → 本体实例迁移")
     parser.add_argument("--write", action="store_true", help="实际写入Wiki页面")

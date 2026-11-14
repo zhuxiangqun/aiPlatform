@@ -43,7 +43,11 @@ def _is_archive_path(path: Path) -> bool:
 
 
 def extract_md_links(content: str) -> list[tuple[int, str]]:
-    """Extract [text](path) Markdown links (skip http/mailto/#)."""
+    """Extract [text](path) Markdown links (skip http/mailto/#).
+
+    Args:
+        content: content 参数。
+    """
     links: list[tuple[int, str]] = []
     for m in MD_LINK_RE.finditer(content):
         path = m.group(2).strip()
@@ -54,7 +58,12 @@ def extract_md_links(content: str) -> list[tuple[int, str]]:
 
 
 def resolve_path(base_dir: Path, link: str) -> Path | None:
-    """Resolve a relative link against a base directory."""
+    """Resolve a relative link against a base directory.
+
+    Args:
+        base_dir: base_dir 参数。
+        link: link 参数。
+    """
     if "#" in link:
         link = link.split("#", 1)[0]
     if not link:
@@ -63,6 +72,12 @@ def resolve_path(base_dir: Path, link: str) -> Path | None:
 
 
 def link_exists(filepath: Path, link: str) -> bool:
+    """link_exists。
+
+    Args:
+        filepath: filepath 参数。
+        link: link 参数。
+    """
     rel_resolved = resolve_path(filepath.parent, link)
     if rel_resolved and rel_resolved.exists():
         return True
@@ -77,7 +92,13 @@ def link_exists(filepath: Path, link: str) -> bool:
 
 
 def check_file(filepath: Path, *, severity: str = "fail", print_cap: int = 10) -> int:
-    """Check all links in a file. Returns count of broken links."""
+    """Check all links in a file. Returns count of broken links.
+
+    Args:
+        filepath: filepath 参数。
+        severity: severity 参数。
+        print_cap: print_cap 参数。
+    """
     if not filepath.exists():
         label = "❌" if severity == "fail" else "⚠️"
         print(f"  {label} 文件本身不存在: {filepath}")
@@ -115,13 +136,19 @@ def collect_maint_readmes() -> list[Path]:
 
 
 def collect_archive_readmes() -> list[Path]:
+    """collect_archive_readmes。
+    """
     if not DOCS_DIR.is_dir():
         return []
     return sorted(p for p in DOCS_DIR.rglob("README.md") if _is_archive_path(p))
 
 
 def collect_docs_readme_one_hop(docs_readme: Path) -> list[Path]:
-    """Maint-area .md/.mdx targets linked from docs/README.md (one hop)."""
+    """Maint-area .md/.mdx targets linked from docs/README.md (one hop).
+
+    Args:
+        docs_readme: docs_readme 参数。
+    """
     if not docs_readme.exists():
         return []
     content = docs_readme.read_text(encoding="utf-8", errors="ignore")
@@ -173,6 +200,11 @@ def build_fail_set() -> list[Path]:
 
 
 def collect_all_markdown(include_archive: bool = False) -> list[Path]:
+    """collect_all_markdown。
+
+    Args:
+        include_archive: include_archive 参数。
+    """
     roots = [DOCS_DIR, WORKSPACE / "reports"]
     roots += sorted((WORKSPACE / "packages").glob("*/docs")) if (WORKSPACE / "packages").is_dir() else []
     for name in ("aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-management", "aiPlat-app"):
@@ -197,7 +229,11 @@ BASELINE = WORKSPACE / "scripts" / "doc_link_baseline.json"
 
 
 def collect_broken_links(files: list[Path]) -> list[tuple[str, str]]:
-    """Return stable (relative_path, link) pairs for broken links."""
+    """Return stable (relative_path, link) pairs for broken links.
+
+    Args:
+        files: files 参数。
+    """
     out = []
     for f in files:
         if not f.exists():
@@ -211,6 +247,8 @@ def collect_broken_links(files: list[Path]) -> list[tuple[str, str]]:
 
 
 def main() -> None:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true", help="扫描 docs/reports/packages/subrepo docs")
     ap.add_argument("--strict", action="store_true", help="--all 模式下仅新增断链阻断")

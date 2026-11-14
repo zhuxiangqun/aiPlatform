@@ -1,3 +1,5 @@
+"""reload：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -10,9 +12,12 @@ def rebuild_workspace_managers(
     engine_skill_manager: Any,
     engine_mcp_manager: Any,
 ) -> Dict[str, Any]:
-    """
-    Rebuild workspace managers from filesystem with engine reserved IDs/names.
-    Used after operations that modify ~/.aiplat directly (e.g., package install).
+    """Rebuild workspace managers from filesystem with engine reserved IDs/names.
+
+    Args:
+        engine_agent_manager: engine_agent_manager 参数。
+        engine_skill_manager: engine_skill_manager 参数。
+        engine_mcp_manager: engine_mcp_manager 参数。
     """
     from core.management.agent_manager import AgentManager
     from core.management.skill_manager import SkillManager
@@ -38,9 +43,10 @@ def rebuild_workspace_managers(
 
 
 async def rebuild_workspace_managers_into_runtime(*, runtime: Any) -> Dict[str, Any]:
-    """
-    Best-effort: rebuild workspace managers and update KernelRuntime fields in-place.
-    Returns the created managers (or None entries).
+    """Best-effort: rebuild workspace managers and update KernelRuntime fields in-place.
+
+    Args:
+        runtime: runtime 参数。
     """
     out = rebuild_workspace_managers(
         engine_agent_manager=getattr(runtime, "agent_manager", None),

@@ -14,6 +14,11 @@ import argparse, json, sys, time
 API = "http://localhost:8002/api/core/kb-eval"
 
 def fetch_samples(tag=None):
+    """fetch_samples。
+
+    Args:
+        tag: tag 参数。
+    """
     import urllib.request
     url = f"{API}/samples?limit=50"
     if tag: url += f"&tag={tag}"
@@ -21,6 +26,12 @@ def fetch_samples(tag=None):
         return json.loads(r.read())
 
 def run_eval(sample_ids=None, tag=None):
+    """run_eval。
+
+    Args:
+        sample_ids: sample_ids 参数。
+        tag: tag 参数。
+    """
     import urllib.request
     body = {"sample_ids": sample_ids} if sample_ids else {"tag": tag}
     req = urllib.request.Request(f"{API}/run", data=json.dumps(body).encode(),
@@ -29,6 +40,8 @@ def run_eval(sample_ids=None, tag=None):
         return json.loads(r.read())
 
 def main():
+    """main。
+    """
     p = argparse.ArgumentParser(description="RAG Evaluation CLI")
     p.add_argument("--tag", help="Filter samples by tag")
     p.add_argument("--all", action="store_true", help="Evaluate all samples")

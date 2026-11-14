@@ -36,6 +36,8 @@ class StructuredIntent:
     raw_text: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "domain": self.domain,
             "features": self.features,
@@ -45,7 +47,11 @@ class StructuredIntent:
 
 
 def analyze_intent(user_text: str) -> StructuredIntent:
-    """Analyze user text into structured intent using fast keyword heuristics."""
+    """Analyze user text into structured intent using fast keyword heuristics.
+
+    Args:
+        user_text: user_text 参数。
+    """
     text_lower = user_text.lower()
     intent = StructuredIntent(raw_text=user_text)
 

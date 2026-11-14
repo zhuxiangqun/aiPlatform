@@ -49,7 +49,11 @@ _SCOPE_TO_ROLE: Dict[str, str] = {
 
 
 def normalize_abox_role(role: str) -> str:
-    """Map login / PolicyGate role strings onto viewer|analyst|admin."""
+    """Map login / PolicyGate role strings onto viewer|analyst|admin.
+
+    Args:
+        role: role 参数。
+    """
     r = (role or "").strip().lower()
     if not r:
         return ""
@@ -64,8 +68,10 @@ def resolve_abox_actor_role(
 ) -> str:
     """Unify identity role for ABox ACL checks.
 
-    Priority: explicit body/query role > X-AIPLAT-ACTOR-ROLE header > scopes hint.
-    Empty → allow-all (backward compatible with unauthenticated demos).
+    Args:
+        explicit_role: explicit_role 参数。
+        header_role: header_role 参数。
+        scopes: scopes 参数。
     """
     for candidate in (explicit_role, header_role):
         norm = normalize_abox_role(candidate)
@@ -87,6 +93,11 @@ def _acl_path(domain_id: str) -> str:
 
 
 def load_abox_acl(domain_id: str) -> Dict[str, Any]:
+    """load_abox_acl。
+
+    Args:
+        domain_id: domain 标识。
+    """
     path = _acl_path(domain_id)
     if not os.path.isfile(path):
         return {"version": "v1", "entities": {}, "fields": {}}
@@ -102,6 +113,12 @@ def load_abox_acl(domain_id: str) -> Dict[str, Any]:
 
 
 def save_abox_acl(domain_id: str, data: Dict[str, Any]) -> None:
+    """save_abox_acl。
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     path = _acl_path(domain_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     data = dict(data or {})
@@ -118,7 +135,14 @@ def set_entity_acl(
     deny_roles: Optional[Dict[str, List[str]]] = None,
     allow_roles: Optional[Dict[str, List[str]]] = None,
 ) -> Dict[str, Any]:
-    """Set per-instance ACL. deny wins over allow when both match."""
+    """Set per-instance ACL. deny wins over allow when both match.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        deny_roles: deny_roles 参数。
+        allow_roles: allow_roles 参数。
+    """
     acl = load_abox_acl(domain_id)
     entry = dict(acl["entities"].get(entity_id) or {})
     if deny_roles is not None:
@@ -139,7 +163,16 @@ def set_field_acl(
     redaction: str = "mask",
     replace_with: str = "[REDACTED]",
 ) -> Dict[str, Any]:
-    """visibility: all | none | role:<name> | scope:<token>."""
+    """visibility: all | none | role:<name> | scope:<token>.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+        visibility: visibility 参数。
+        redaction: redaction 参数。
+        replace_with: replace_with 参数。
+    """
     acl = load_abox_acl(domain_id)
     key = f"{entity_id}.{field_name}"
     entry = {
@@ -158,7 +191,14 @@ def check_entity_acl(
     role: str,
     action: str,
 ) -> bool:
-    """Return True if role may perform action on entity. Empty role → allow."""
+    """Return True if role may perform action on entity. Empty role → allow.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        role: role 参数。
+        action: action 参数。
+    """
     action = (action or "read").strip().lower()
     if action not in _VALID_ACTIONS:
         action = "read"
@@ -217,7 +257,14 @@ def redact_entity_fields(
     payload: Dict[str, Any],
     role: str,
 ) -> Dict[str, Any]:
-    """Return a copy of payload with field ACL applied."""
+    """Return a copy of payload with field ACL applied.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        payload: 载荷 dict。
+        role: role 参数。
+    """
     acl = load_abox_acl(domain_id)
     fields = acl.get("fields") or {}
     if not fields:
@@ -254,7 +301,11 @@ def redact_entity_fields(
 
 
 def seed_demo_data_gov_acl(domain_id: str = "data-gov") -> Dict[str, Any]:
-    """Demo ACL: viewer cannot read ghost table; owner_contact admin-only."""
+    """Demo ACL: viewer cannot read ghost table; owner_contact admin-only.
+
+    Args:
+        domain_id: domain 标识。
+    """
     set_entity_acl(
         domain_id,
         "TBL-tmp_export",

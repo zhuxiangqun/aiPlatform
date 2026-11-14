@@ -19,7 +19,12 @@ _sys.path.insert(0, str(_PROJECT / "aiPlat-infra"))
 
 
 def build_test_graph(node_count: int, edge_density: float = 2.0):
-    """Build a synthetic graph with node_count nodes and approximate edge_density edges/node."""
+    """Build a synthetic graph with node_count nodes and approximate edge_density edges/node.
+
+    Args:
+        node_count: node_count 参数。
+        edge_density: edge_density 参数。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     g = GraphIndex("bench")
@@ -36,7 +41,12 @@ def build_test_graph(node_count: int, edge_density: float = 2.0):
 
 
 def benchmark_traversal(graph, runs: int = 100):
-    """Run traversal repeatedly and collect timing data."""
+    """Run traversal repeatedly and collect timing data.
+
+    Args:
+        graph: graph 参数。
+        runs: runs 参数。
+    """
     from core.harness.ontology_engine.graph_traversal import traverse
 
     times_ms = []
@@ -47,6 +57,12 @@ def benchmark_traversal(graph, runs: int = 100):
 
 
 def print_stats(label: str, times_ms: list):
+    """print_stats。
+
+    Args:
+        label: label 参数。
+        times_ms: times_ms 参数。
+    """
     sv = sorted(times_ms)
     p50 = sv[len(sv) // 2]
     p95 = sv[min(int(len(sv) * 0.95), len(sv) - 1)]
@@ -57,6 +73,8 @@ def print_stats(label: str, times_ms: list):
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Graph traversal benchmark")
     parser.add_argument("--runs", type=int, default=100, help="Number of traversal runs per size")
     args = parser.parse_args()

@@ -92,6 +92,8 @@ def _span_coverage(conn: sqlite3.Connection) -> Optional[Dict[str, Any]]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True, help="ExecutionStore sqlite db path")
     ap.add_argument("--min-trace-coverage", type=float, default=0.99)

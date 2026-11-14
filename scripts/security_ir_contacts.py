@@ -51,6 +51,8 @@ def candidate_paths() -> List[Path]:
 
 
 def resolve_contacts_path() -> Optional[Path]:
+    """resolve_contacts_path。
+    """
     for p in candidate_paths():
         if p.is_file():
             return p
@@ -58,6 +60,11 @@ def resolve_contacts_path() -> Optional[Path]:
 
 
 def load_contacts(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """load_contacts。
+
+    Args:
+        path: 路径。
+    """
     if path is not None:
         p: Optional[Path] = Path(path)
     else:
@@ -105,6 +112,12 @@ def _blank(v: Any) -> bool:
 
 
 def validate_contacts(data: Mapping[str, Any], *, path: Optional[Path] = None) -> Dict[str, Any]:
+    """validate_contacts。
+
+    Args:
+        data: data 参数。
+        path: 路径。
+    """
     errors: List[str] = []
     if str(data.get("schema") or "") != SCHEMA:
         errors.append(f"schema_mismatch:{data.get('schema')}")
@@ -135,6 +148,8 @@ def validate_contacts(data: Mapping[str, Any], *, path: Optional[Path] = None) -
 
 
 def main() -> int:
+    """main。
+    """
     report = load_contacts()
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if not report.get("filled"):

@@ -10,6 +10,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 async def run_checks(domain_id: str):
+    """run_checks。
+
+    Args:
+        domain_id: domain 标识。
+    """
     base = os.path.expanduser(f"~/.aiplat")
     results = {}
 
@@ -83,6 +88,8 @@ async def run_checks(domain_id: str):
 
 
 async def main():
+    """main。
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--domain", default="service-domain")
     args = parser.parse_args()

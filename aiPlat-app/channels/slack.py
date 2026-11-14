@@ -21,9 +21,11 @@ from .adapter import ChannelMessage, ChannelResponse, ChannelDispatcher, channel
 def verify_slack_signature(signing_secret: str, timestamp: str, body: str, signature: str) -> bool:
     """Verify Slack request signature (HMAC-SHA256).
 
-    Returns True if valid or if signing_secret is not configured.
-    Raises ValueError with 'stale' code if timestamp is outside 5-minute window.
-    Raises ValueError with 'invalid' code if signature doesn't match.
+    Args:
+        signing_secret: signing_secret 参数。
+        timestamp: timestamp 参数。
+        body: 请求体。
+        signature: signature 参数。
     """
     if not signing_secret:
         from api.auth import channel_unsigned_allowed
@@ -50,7 +52,11 @@ def verify_slack_signature(signing_secret: str, timestamp: str, body: str, signa
 
 
 def parse_slash_command(raw_body: bytes) -> Dict[str, Optional[str]]:
-    """Parse Slack slash command form-encoded body."""
+    """Parse Slack slash command form-encoded body.
+
+    Args:
+        raw_body: raw_body 参数。
+    """
     import urllib.parse
     form = urllib.parse.parse_qs(raw_body.decode("utf-8"), keep_blank_values=True)
 
@@ -71,6 +77,11 @@ class SlackHandler:
     """Slack message processor — receives webhook events, normalizes, dispatches."""
 
     def __init__(self, signing_secret: str = ""):
+        """初始化。
+
+        Args:
+            signing_secret: signing_secret 参数。
+        """
         self.signing_secret = signing_secret
         self._dispatcher = channel_dispatcher
         self._message_handler: Optional[Callable] = None
@@ -80,7 +91,12 @@ class SlackHandler:
     def verify_request(
         self, headers: Dict[str, str], raw_body: bytes
     ) -> bool:
-        """Verify a Slack request from HTTP headers and raw body."""
+        """Verify a Slack request from HTTP headers and raw body.
+
+        Args:
+            headers: headers 参数。
+            raw_body: raw_body 参数。
+        """
         ts = headers.get("x-slack-request-timestamp") or headers.get(
             "X-Slack-Request-Timestamp", ""
         )
@@ -94,13 +110,21 @@ class SlackHandler:
     # ── Event handling ─────────────────────────────────────────────
 
     def handle_url_verification(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle Slack URL verification challenge."""
+        """Handle Slack URL verification challenge.
+
+        Args:
+            body: 请求体。
+        """
         if body.get("type") == "url_verification" and body.get("challenge"):
             return {"challenge": body["challenge"]}
         return {}
 
     def handle_event(self, body: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle Slack Events API event (message, app_mention)."""
+        """Handle Slack Events API event (message, app_mention).
+
+        Args:
+            body: 请求体。
+        """
         if body.get("type") != "event_callback":
             return {"ok": True}
 
@@ -118,7 +142,11 @@ class SlackHandler:
     def handle_command(
         self, parsed: Dict[str, Optional[str]]
     ) -> Dict[str, Any]:
-        """Handle Slack slash command."""
+        """Handle Slack slash command.
+
+        Args:
+            parsed: parsed 参数。
+        """
         text = parsed.get("text") or ""
         user_id = parsed.get("user_id") or "unknown"
 
@@ -137,7 +165,11 @@ class SlackHandler:
         return {"ok": True, "response_type": "ephemeral", "text": f"Command received: {text}"}
 
     def handle_interaction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle Slack interaction (button clicks, modals)."""
+        """Handle Slack interaction (button clicks, modals).
+
+        Args:
+            payload: 载荷 dict。
+        """
         return {"ok": True}
 
     # ── Callback registration ──────────────────────────────────────
@@ -145,6 +177,11 @@ class SlackHandler:
     def set_message_handler(
         self, handler: Callable[[ChannelMessage], ChannelResponse]
     ) -> None:
+        """set_message_handler。
+
+        Args:
+            handler: handler 参数。
+        """
         self._message_handler = handler
 
 

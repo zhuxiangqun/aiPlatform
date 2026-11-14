@@ -42,6 +42,11 @@ def _d26_status(doc: Dict[str, Any]) -> str:
 
 
 def main(argv: Optional[list] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--propose-e",

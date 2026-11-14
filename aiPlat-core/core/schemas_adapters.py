@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 
 class AdapterCreateRequest(BaseModel):
+    """AdapterCreateRequest。"""
     name: str
     provider: str
     api_key: str
@@ -19,10 +20,12 @@ class AdapterCreateRequest(BaseModel):
 
 
 class AdapterUpdateRequest(BaseModel):
+    """AdapterUpdateRequest。"""
     config: Optional[Dict[str, Any]] = None
 
 
 class ModelUpdateRequest(BaseModel):
+    """ModelUpdateRequest。"""
     enabled: bool = True
     config: Dict[str, Any] = Field(default_factory=dict)
 

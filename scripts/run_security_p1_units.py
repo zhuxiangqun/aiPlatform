@@ -31,6 +31,8 @@ _ROOT_ASSIGN = re.compile(
 
 
 def main() -> int:
+    """main。
+    """
     missing = [f for f in FILES if not (TEST_DIR / f).is_file()]
     if missing:
         print(f"MISSING tests: {missing}", file=sys.stderr)

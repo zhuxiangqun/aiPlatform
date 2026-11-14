@@ -63,6 +63,8 @@ class StdioKernel:
     """JSON-RPC over stdio 持久会话内核（单进程单会话池）。"""
 
     def __init__(self) -> None:
+        """初始化。
+        """
         self._sessions: Dict[str, Any] = {}   # thread_id → PipelineSession
         self._states: Dict[str, Dict[str, Any]] = {}  # thread_id → last state
         self._after_seq: Dict[str, int] = {}  # thread_id → last consumed event seq
@@ -72,6 +74,11 @@ class StdioKernel:
     # ── 生命周期 ──────────────────────────────────────────────
 
     async def initialize(self, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """initialize。
+
+        Args:
+            params: params 参数。
+        """
         return {
             "protocol_version": PROTOCOL_VERSION,
             "jsonrpc": JSONRPC_VERSION,
@@ -85,12 +92,22 @@ class StdioKernel:
         }
 
     async def shutdown(self, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """shutdown。
+
+        Args:
+            params: params 参数。
+        """
         self._shutdown = True
         return {"status": "ok"}
 
     # ── Thread 原语 ───────────────────────────────────────────
 
     async def thread_start(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_start。
+
+        Args:
+            params: params 参数。
+        """
         project_id = str(params.get("project_id") or "")
         requirement = str(params.get("requirement") or "")
         if not project_id or not requirement:
@@ -106,18 +123,33 @@ class StdioKernel:
         return {"thread_id": thread_id, "state": state, "run_id": run_id}
 
     async def thread_status(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_status。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         state = self._states.get(thread_id, {})
         return {"thread_id": thread_id, "state": state,
                 "phase": state.get("phase") if isinstance(state, dict) else None}
 
     async def thread_events(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_events。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         run_id = self._run_id_from_state(self._states.get(thread_id, {}))
         events = self._fetch_events(run_id, after_seq=int(params.get("after_seq", 0)))
         return {"thread_id": thread_id, "events": events}
 
     async def thread_resume(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_resume。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         session = self._sessions.get(thread_id)
         if session is None:
@@ -132,7 +164,11 @@ class StdioKernel:
         return {"thread_id": thread_id, "state": state, "run_id": run_id}
 
     async def thread_approve(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """HITL allow：批准当前审批请求并继续执行。"""
+        """HITL allow：批准当前审批请求并继续执行。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         session = self._sessions.get(thread_id)
         if session is None:
@@ -145,7 +181,11 @@ class StdioKernel:
         return {"thread_id": thread_id, "state": state, "run_id": run_id}
 
     async def thread_reject(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """HITL deny：拒绝并带反馈继续（引擎按 reject 语义处理）。"""
+        """HITL deny：拒绝并带反馈继续（引擎按 reject 语义处理）。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         session = self._sessions.get(thread_id)
         if session is None:
@@ -159,6 +199,11 @@ class StdioKernel:
         return {"thread_id": thread_id, "state": state, "run_id": run_id}
 
     async def thread_rollback(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_rollback。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         session = self._sessions.get(thread_id)
         if session is None:
@@ -170,6 +215,11 @@ class StdioKernel:
         return {"thread_id": thread_id, "state": state}
 
     async def thread_cancel(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """thread_cancel。
+
+        Args:
+            params: params 参数。
+        """
         thread_id = self._require_thread(params)
         try:
             from core.api.core_facade import cancel_pipeline
@@ -253,7 +303,12 @@ _METHODS = {
 
 
 async def handle_request(kernel: StdioKernel, request: Dict[str, Any]) -> Dict[str, Any]:
-    """JSON-RPC 2.0 请求分发。"""
+    """JSON-RPC 2.0 请求分发。
+
+    Args:
+        kernel: kernel 参数。
+        request: FastAPI Request。
+    """
     req_id = request.get("id")
     method = str(request.get("method") or "")
     params = request.get("params") or {}

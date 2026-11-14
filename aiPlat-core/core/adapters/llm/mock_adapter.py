@@ -21,6 +21,12 @@ class MockAdapter(BaseLLMAdapter):
     """
 
     def __init__(self, model: str = "mock", **kwargs):
+        """初始化。
+
+        Args:
+            model: 模型名。
+            kwargs: kwargs 参数。
+        """
         metadata = AdapterMetadata(
             name="mock",
             provider="mock",
@@ -33,6 +39,12 @@ class MockAdapter(BaseLLMAdapter):
         super().__init__(metadata, config)
 
     async def generate(self, messages: List[Dict[str, str]], config: Optional[LLMConfig] = None) -> LLMResponse:
+        """generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         merged = self._merge_config(config)
         # Keep it deterministic and short; do NOT echo the prompt to avoid
         # accidentally embedding JSON examples that could be parsed as tool calls.
@@ -40,10 +52,18 @@ class MockAdapter(BaseLLMAdapter):
         return LLMResponse(content=content, model=merged.model, usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
 
     async def stream_generate(self, messages: List[Dict[str, str]], config: Optional[LLMConfig] = None) -> AsyncIterator[str]:
+        """stream_generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         r = await self.generate(messages, config=config)
         # simple chunking
         for ch in r.content:
             yield ch
 
     async def validate_connection(self) -> bool:
+        """validate_connection。
+        """
         return True
