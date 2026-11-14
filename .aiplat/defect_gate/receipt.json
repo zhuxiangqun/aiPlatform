@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T01:44:26+08:00",
+  "reviewed_at": "2026-11-15T01:50:00+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "c9cb2ddb480c290babc5df72363d1072fcde641d9812cbe6ba6e121626c60868",
-  "head_sha": "f61f9a31b61b4a8139e3f0a292a106f47c105083",
+  "diff_sha256": "baa7330cfa26edf8e9d6010467a34d76d6b3c019bbe4d4bf9d9c6d87b100cf82",
+  "head_sha": "5fe8751241faa9ad967984accbecc85f99c69c2d",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Asset interop: SecureScan before Claude adapt + SkillInstaller; import_failed sets status!=ok. Residual: zip Claude plugin still uses _install_from_dir (no early MCP adapt) — pre-existing; CI unlock needs non-author Approve."
+  "note": "CI unblock: whitepaper sync; product accuracy_claim=false + accuracy_claim_authorized; B4S doc_type; marketplace auth contract. Local arch_consolidation flake is py3.9 kw_only (CI 3.11)."
 }
