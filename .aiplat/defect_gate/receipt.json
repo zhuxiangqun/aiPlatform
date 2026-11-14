@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-15T00:37:23+08:00",
+  "reviewed_at": "2026-11-15T00:44:43+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "414c191bc1a1d455b194fbbb856cbaa68e5204b330cad043f1d0735e5bb39208",
-  "head_sha": "35b5c9b626adecfb2b828977d07130cacabd4a6b",
+  "diff_sha256": "4e4e63aaf350b71d205d258b10a0412afba781b41628d369cbefa95053523fc1",
+  "head_sha": "95b4f79b26865c1cf64299e16e176f4f0053ffa7",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase3/4 maintenance board. G2b sha match; Cycle1 not due. Local lock."
+  "note": "Phase4 G2b re-ingest idempotent. Local lock."
 }
