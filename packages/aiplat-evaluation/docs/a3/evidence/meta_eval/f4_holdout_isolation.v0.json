@@ -1,7 +1,7 @@
 {
   "schema": "eval.meta_eval.f4_holdout_isolation.v0",
   "family_id": "F4",
-  "recorded_at": "2026-11-14T19:04:33+08:00",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
   "policy": {
     "unscored_axes_are_holdout_from_claim": true,
     "reveal": "pre_release_once",

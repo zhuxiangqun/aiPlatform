@@ -4,7 +4,7 @@ doc_type: Reference
 
 # META_EVAL F1 状态（Judge family）
 
-> 机器：[`evidence/meta_eval/f1_judge_family_status.v0.json`](./evidence/meta_eval/f1_judge_family_status.v0.json) · 时点 2026-11-14T18:58:13+08:00
+> 机器：[`evidence/meta_eval/f1_judge_family_status.v0.json`](./evidence/meta_eval/f1_judge_family_status.v0.json) · 时点 2026-11-14T23:14:18+08:00
 > **诚实锁**：`family_green` 须五项全绿；当前 **≠** Tier A 授权 · `accuracy_claim=false`
 
 ## 汇总

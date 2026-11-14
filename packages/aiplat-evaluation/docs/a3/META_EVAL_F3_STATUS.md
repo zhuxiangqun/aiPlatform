@@ -4,7 +4,7 @@ doc_type: Reference
 
 # META_EVAL F3 状态（G2b / process_split 边界）
 
-> 机器：[`evidence/meta_eval/f3_process_split_boundary_status.v0.json`](./evidence/meta_eval/f3_process_split_boundary_status.v0.json) · 时点 2026-11-14T19:16:27+08:00
+> 机器：[`evidence/meta_eval/f3_process_split_boundary_status.v0.json`](./evidence/meta_eval/f3_process_split_boundary_status.v0.json) · 时点 2026-11-14T23:18:36+08:00
 > **诚实锁**：`family_green` ≠ `process_split_authorized=true` ≠ Tier A · `accuracy_claim=false`
 
 ## 汇总

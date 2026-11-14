@@ -1,11 +1,11 @@
 {
   "schema": "eval.tier_matrix.v0",
   "domain": "evaluation-system",
-  "recorded_at": "2026-11-14T19:58:20+08:00",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
   "source": "r12 in_both after H5 tranche clear",
   "accuracy_claim": true,
   "process_split_authorized": true,
-  "meta_eval_blocks_tier_a_claim": true,
+  "meta_eval_blocks_tier_a_claim": false,
   "r12_h5_open": 0,
   "counts": {
     "C": 458,
@@ -662,7 +662,7 @@
       "wilson_score_ci"
     ]
   },
-  "honesty": "A_candidate Tier A expansion + accuracy_claim + process_split + l5_declare authorized by owner. security_certification false. Chart runtime split annotation may still be false until staging.",
+  "honesty": "meta_eval_families_green=true. tier_a_expansion_authorized=true from honesty locks. Chart a3_process_split_authorized remains a separate runtime gate.",
   "meta_eval_families_green": true,
   "tier_a_expansion_authorized": true,
   "l5_declare_authorized": true,

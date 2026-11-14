@@ -1,7 +1,7 @@
 {
   "schema": "eval.meta_eval.f3_holdout_isolation.v0",
   "family_id": "F3",
-  "recorded_at": "2026-11-14T19:16:27+08:00",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
   "policy": {
     "process_split_authorize_holdout_until_split_checklist_all_green": true,
     "live_production_signed_required": true,

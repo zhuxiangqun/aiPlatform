@@ -1,6 +1,6 @@
 {
   "schema": "eval.meta_eval.aggregate_status.v0",
-  "recorded_at": "2026-11-14T19:58:20+08:00",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
   "families": [
     {
       "family_id": "F1",
@@ -44,10 +44,11 @@
     "families_total": 4
   },
   "meta_eval_families_green": true,
-  "tier_a_expansion_authorized": false,
-  "accuracy_claim": false,
+  "tier_a_expansion_authorized": true,
+  "accuracy_claim": true,
   "security_certification": false,
-  "process_split_authorized": false,
-  "l5_declare_authorized": false,
-  "honesty": "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only — ≠ Tier A expansion authorize ≠ L5 ≠ security cert ≠ process_split."
+  "process_split_authorized": true,
+  "l5_declare_authorized": true,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only. Policy flags mirrored from phase3_honesty_locks (not invented here). Chart runtime split stays independent."
 }

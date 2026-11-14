@@ -2,7 +2,7 @@
   "schema": "eval.meta_eval.f4_status.v0",
   "family_id": "F4",
   "family": "Release scorecard",
-  "recorded_at": "2026-11-14T19:04:33+08:00",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {

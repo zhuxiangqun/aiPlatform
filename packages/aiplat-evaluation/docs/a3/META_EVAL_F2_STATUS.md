@@ -4,7 +4,7 @@ doc_type: Reference
 
 # META_EVAL F2 状态（Security family）
 
-> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T19:52:02+08:00
+> 机器：[`evidence/meta_eval/f2_security_family_status.v0.json`](./evidence/meta_eval/f2_security_family_status.v0.json) · 时点 2026-11-14T23:14:18+08:00
 > **诚实锁**：`family_green` ≠ L5 declare ≠ Tier A · `accuracy_claim=false` · `security_certification=false`
 
 ## 汇总

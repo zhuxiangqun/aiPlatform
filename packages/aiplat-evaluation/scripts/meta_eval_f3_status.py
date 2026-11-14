@@ -159,12 +159,13 @@ def ensure_boundary_pin(split: Dict[str, Any]) -> Path:
     Returns:
         Boundary pin path.
     """
+    # Runtime boundary (Chart + ready_to_authorize + live sign) — not policy flag.
+    # Owner may set process_split_authorized policy true while Chart stays false.
     locks_ok = (
         split.get("ok") is True
-        and split.get("process_split_authorized_doc") is False
-        and split.get("process_split_authorized_status_json") is False
         and split.get("chart_split_false_annotation") is True
         and split.get("ready_to_authorize") is False
+        and split.get("live_production_signed") is False
     )
     out = {
         "schema": "eval.meta_eval.f3_process_split_boundary_pin.v0",
@@ -183,18 +184,19 @@ def ensure_boundary_pin(split: Dict[str, Any]) -> Path:
         "process_split_authorized_status_json": split.get(
             "process_split_authorized_status_json"
         ),
+        "process_split_policy_may_be_true": True,
         "chart_split_false_annotation": split.get("chart_split_false_annotation"),
         "ready_to_authorize": split.get("ready_to_authorize"),
         "boundary_locks_hold": locks_ok,
         "status": "boundary_hold" if locks_ok else "boundary_breach_or_gate_fail",
         "green": locks_ok,
-        "process_split_authorized": False,
+        "chart_a3_process_split_authorized": False,
         "accuracy_claim": False,
         "tier_a_claim_authorized": False,
         "honesty": (
-            "Boundary pin: process_split remains false in checklist/status/chart; "
-            "ready_to_authorize=false until live signed + all ✅. "
-            "family META_EVAL green ≠ authorize flip. ≠ Tier A."
+            "Boundary pin locks Chart runtime + ready_to_authorize + live_signed. "
+            "Policy process_split_authorized may be true (owner AUTHORIZE) without "
+            "flipping Chart. family META_EVAL green ≠ Chart flip. ≠ Tier A."
         ),
     }
     if split.get("error"):
@@ -238,12 +240,12 @@ def main() -> int:
             "f1_prerequisite_met": f1_green,
             "source": "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
             "note": (
-                "a3_split_authorize status: process_split locks hold "
-                "(doc/status false, chart annotation false, ready_to_authorize=false)."
+                "a3_split_authorize status: Chart false + ready_to_authorize=false "
+                "+ live_production_signed=false (policy flag may be true)."
                 if boundary_ok
                 else (
                     "Boundary pin missing or breached — check "
-                    "scripts/a3_split_authorize.sh status."
+                    "scripts/a3_split_authorize.sh status (Chart/ready/live)."
                 )
             ),
         }

@@ -825,4 +825,5 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec49 | 2026-11-14 | B4-S 脚手架接 Option B 本机演练 PASS（:5434）；Chart/authorize 仍锁 |
 | v1.1.7+exec50 | 2026-11-14 | 无 staging：G2b 31–100 状态板 + Tier A gold/gate 账本 + B Cycle1 复核板；Chart 仍 false |
 | v1.1.7+exec51 | 2026-11-14 | B Cycle1 sample_rerun 6/6 + 覆盖报表 B/C 分列实测；owner_signoff 仍开；Chart 仍 false |
+| v1.1.7+exec52 | 2026-11-14 | Phase4 修复闭环预备板 + META F1–F4 巡检绿；F3 pin 改为锁 Chart/runtime；Chart 仍 false |
 | v1.1.7+exec49 | 2026-11-14 | B4-S 脚手架接 Option B 本机演练（`:5434`）；migrate 用 repo `.venv`；Chart 仍 false |

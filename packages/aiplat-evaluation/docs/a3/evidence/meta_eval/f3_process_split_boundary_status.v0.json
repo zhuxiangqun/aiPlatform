@@ -2,7 +2,7 @@
   "schema": "eval.meta_eval.f3_status.v0",
   "family_id": "F3",
   "family": "G2b / process_split boundary",
-  "recorded_at": "2026-11-14T19:16:27+08:00",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {

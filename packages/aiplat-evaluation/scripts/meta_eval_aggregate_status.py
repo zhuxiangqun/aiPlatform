@@ -76,20 +76,31 @@ def main() -> int:
     green_n = sum(1 for r in rows if r.get("family_green"))
     all_green = green_n == len(rows) and len(rows) == 4
     now = _now()
+    # Policy flags come from honesty locks (do not clobber owner AUTHORIZE).
+    locks = _load(META / "phase3_honesty_locks.v0.json") or {}
+    flags = locks.get("flags") if isinstance(locks.get("flags"), dict) else {}
+    tier_a_exp = bool(flags.get("global_tier_a_expansion_authorized", False))
+    accuracy_claim = bool(flags.get("accuracy_claim", False))
+    process_split = bool(flags.get("process_split_authorized", False))
+    l5 = bool(flags.get("l5_declare_authorized", False))
+    security = bool(flags.get("security_certification", False))
+    chart_split = bool(flags.get("chart_a3_process_split_authorized", False))
     out = {
         "schema": "eval.meta_eval.aggregate_status.v0",
         "recorded_at": now,
         "families": rows,
         "counts": {"families_green": green_n, "families_total": len(rows)},
         "meta_eval_families_green": all_green,
-        "tier_a_expansion_authorized": False,
-        "accuracy_claim": False,
-        "security_certification": False,
-        "process_split_authorized": False,
-        "l5_declare_authorized": False,
+        "tier_a_expansion_authorized": tier_a_exp,
+        "accuracy_claim": accuracy_claim,
+        "security_certification": security,
+        "process_split_authorized": process_split,
+        "l5_declare_authorized": l5,
+        "chart_a3_process_split_authorized": chart_split,
         "honesty": (
-            "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only — "
-            "≠ Tier A expansion authorize ≠ L5 ≠ security cert ≠ process_split."
+            "META_EVAL F1–F4 rollup. families_green is a ruler prerequisite only. "
+            "Policy flags mirrored from phase3_honesty_locks (not invented here). "
+            "Chart runtime split stays independent."
         ),
     }
     OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -111,13 +122,15 @@ def main() -> int:
             "# META_EVAL 汇总状态",
             "",
             f"> 机器：[`evidence/meta_eval/meta_eval_aggregate_status.v0.json`](./evidence/meta_eval/meta_eval_aggregate_status.v0.json) · 时点 {now}",
-            "> **诚实锁**：`meta_eval_families_green` ≠ Tier A 扩容授权 · ≠ L5 · ≠ process_split · `accuracy_claim=false`",
+            "> **诚实锁**：`meta_eval_families_green` ≠ Chart flip · ≠ security cert · 政策旗标见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)",
             "",
             "## 汇总",
             "",
             f"- families_green **{green_n}/{len(rows)}**",
             f"- `meta_eval_families_green`: **{str(all_green).lower()}**",
-            f"- `tier_a_expansion_authorized`: **false**",
+            f"- `tier_a_expansion_authorized`: **{str(tier_a_exp).lower()}**（locks）",
+            f"- `accuracy_claim`: **{str(accuracy_claim).lower()}**（locks）",
+            f"- Chart runtime split: **{str(chart_split).lower()}**",
             "",
             "## 家族",
             "",
@@ -125,27 +138,27 @@ def main() -> int:
             "",
             "## 下一步",
             "",
-            "1. Phase 3 预备：见 [`PHASE3_PREP.md`](./PHASE3_PREP.md)（仍须 owner 授权才扩 Tier A gate）",
-            "2. Phase 2 authorize 仍独立：[`PHASE2_PREP.md`](./PHASE2_PREP.md) / SPLIT_CHECKLIST",
+            "1. Phase 3：[`PHASE3_PREP.md`](./PHASE3_PREP.md) · Phase 4 预备：[`PHASE4_PREP.md`](./PHASE4_PREP.md)",
+            "2. Phase 2 Chart/runtime：[`PHASE2_PREP.md`](./PHASE2_PREP.md) / SPLIT_CHECKLIST",
             "3. 复跑：`python3 packages/aiplat-evaluation/scripts/meta_eval_aggregate_status.py`",
             "",
         ]
     )
     OUT_MD.write_text(md + "\n", encoding="utf-8")
 
-    # Refresh Tier matrix honesty flags (do not promote A_candidate → authorized).
+    # Refresh Tier matrix META green flag; mirror authorize from locks (do not invent).
     tier = _load(TIER_JSON)
     if tier:
         tier["recorded_at"] = now
         tier["meta_eval_families_green"] = all_green
-        tier["meta_eval_blocks_tier_a_claim"] = True
-        tier["tier_a_expansion_authorized"] = False
-        tier["accuracy_claim"] = False
-        tier["process_split_authorized"] = False
+        tier["meta_eval_blocks_tier_a_claim"] = not tier_a_exp
+        tier["tier_a_expansion_authorized"] = tier_a_exp
+        tier["accuracy_claim"] = accuracy_claim
+        tier["process_split_authorized"] = process_split
         tier["honesty"] = (
-            "A_candidate is NOT an authorized Tier A gate claim. "
-            f"meta_eval_families_green={str(all_green).lower()} is prerequisite only; "
-            "tier_a_expansion_authorized remains false until owner authorize."
+            f"meta_eval_families_green={str(all_green).lower()}. "
+            f"tier_a_expansion_authorized={str(tier_a_exp).lower()} from honesty locks. "
+            "Chart a3_process_split_authorized remains a separate runtime gate."
         )
         TIER_JSON.write_text(json.dumps(tier, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         counts = tier.get("counts") if isinstance(tier.get("counts"), dict) else {}
@@ -158,27 +171,28 @@ def main() -> int:
                 "# Tier 覆盖矩阵 v0（evaluation-system）",
                 "",
                 f"> 计划 §4.5 / §8 · 源：R12 `in_both` · 机器：[`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json)",
-                f"> **诚实锁**：`A_candidate` **≠** 已授权 Tier A gate 宣称；META_EVAL 家族绿见 [`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)",
+                f"> **诚实锁**：政策旗标见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)；Chart runtime 另闸",
                 f"> **时点**：{now} · R12 H5 open=**{tier.get('r12_h5_open', '?')}** · "
-                f"`meta_eval_families_green`=**{str(all_green).lower()}**（≠ 扩容授权）",
+                f"`meta_eval_families_green`=**{str(all_green).lower()}** · "
+                f"`tier_a_expansion_authorized`=**{str(tier_a_exp).lower()}**",
                 "",
                 "## 汇总",
                 "",
                 "| Tier | 数量 | 含义 |",
                 "|---|---:|---|",
-                f"| **A_candidate** | {counts.get('A_candidate', '?')} | 准确率/证据/安全门/记分卡相关；扩容前须元评测 |",
+                f"| **A_candidate** | {counts.get('A_candidate', '?')} | 准确率/证据/安全门/记分卡相关 |",
                 f"| **B** | {counts.get('B', '?')} | Subject/smoke/pack/方法轨等内部关键路径 |",
                 f"| **C** | {counts.get('C', '?')} | 其余登记符号（含 Error/helper） |",
                 "",
                 "## META_EVAL 前置",
                 "",
                 f"- `meta_eval_families_green`: **{str(all_green).lower()}**（F1–F4）",
-                "- `tier_a_expansion_authorized`: **false**",
+                f"- `tier_a_expansion_authorized`: **{str(tier_a_exp).lower()}**（locks）",
                 "",
                 "## 下一步",
                 "",
-                "1. META_EVAL 已绿 → 进入 [`PHASE3_PREP.md`](./PHASE3_PREP.md) 首波 A_candidate 工程预备（禁一次全开）",
-                "2. B 轨挂 suite + 复核日历",
+                "1. Phase 3：[`PHASE3_PREP.md`](./PHASE3_PREP.md) · Phase 4：[`PHASE4_PREP.md`](./PHASE4_PREP.md)",
+                "2. B Cycle1 owner_signoff 仍人工",
                 "3. C 仅登记；禁止挤占 A 名额",
                 "",
                 "## 关联",
@@ -196,7 +210,8 @@ def main() -> int:
                 "ok": True,
                 "meta_eval_families_green": all_green,
                 "families_green": green_n,
-                "tier_a_expansion_authorized": False,
+                "tier_a_expansion_authorized": tier_a_exp,
+                "accuracy_claim": accuracy_claim,
                 "out": str(OUT_JSON.relative_to(ROOT)),
             },
             ensure_ascii=False,

@@ -2,7 +2,7 @@
   "schema": "eval.meta_eval.f1_status.v0",
   "family_id": "F1",
   "family": "Judge calibration",
-  "recorded_at": "2026-11-14T18:58:13+08:00",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
   "threshold_version": "meta-eval-thresholds.v0",
   "checks": [
     {

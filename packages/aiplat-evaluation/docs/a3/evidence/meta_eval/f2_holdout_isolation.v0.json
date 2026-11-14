@@ -1,7 +1,7 @@
 {
   "schema": "eval.meta_eval.f2_holdout_isolation.v0",
   "family_id": "F2",
-  "recorded_at": "2026-11-14T19:52:02+08:00",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
   "policy": {
     "l5_declare_holdout_until_meta_eval_green": true,
     "security_certification_holdout": true,

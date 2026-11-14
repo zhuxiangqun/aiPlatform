@@ -1,0 +1,82 @@
+{
+  "schema": "eval.phase4.repair_loop_prep.v0",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
+  "status": "prep",
+  "gates": {
+    "failure_taxonomy_fn": true,
+    "g2b_fail_decision_table": true,
+    "report_compare_fn": true,
+    "routing_table_draft": true,
+    "reeval_sla_draft": true,
+    "runtime_router_wired": false,
+    "closed_loop_claim": false,
+    "chart_a3_process_split_authorized": false,
+    "security_certification": false
+  },
+  "imports": {
+    "build_failure_taxonomy": {
+      "ok": true,
+      "module": "core.apps.eval.service.gate_v1",
+      "symbol": "build_failure_taxonomy"
+    },
+    "compare_eval_reports": {
+      "ok": true,
+      "module": "core.apps.eval.service.report_compare",
+      "symbol": "compare_eval_reports"
+    }
+  },
+  "routing_draft": [
+    {
+      "category": "environment",
+      "route_to": "infra_ops",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "data",
+      "route_to": "fixture_gold_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "implementation",
+      "route_to": "module_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "stale_assertion",
+      "route_to": "eval_owner_plus_product",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "product_defect",
+      "route_to": "product_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "eval_defect",
+      "route_to": "eval_owner_meta",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    }
+  ],
+  "sla_draft": {
+    "tier_a_red_owner_hours": 24,
+    "tier_a_disposition_hours": 72,
+    "note": "from eval-system-improvement-plan §10; not enforced in runtime yet"
+  },
+  "evidence_refs": [
+    "aiPlat-core/core/apps/eval/service/gate_v1.py",
+    ".aiplat/eval_trust/g2b_fail_decision_table_v0.json",
+    "docs/architecture/plans/eval-system-improvement-plan.md#10"
+  ],
+  "next_actions": [
+    "Wire disposition ledger write path after gate_v1 taxonomy",
+    "Add reeval job fingerprint (same pack SHA) stub",
+    "Owner accept routing_draft categories before automation"
+  ],
+  "honesty": "Prep inventory only. ≠ closed-loop automation claim. ≠ Chart flip ≠ security cert ≠ production independent."
+}
