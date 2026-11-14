@@ -1,0 +1,72 @@
+{
+  "schema": "eval.meta_eval.f4_status.v0",
+  "family_id": "F4",
+  "family": "Release scorecard",
+  "recorded_at": "2026-11-14T19:04:33+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "status": "green",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+      "note": "F1 family_green required before F4 treats judge-linked scorecard claims as calibrated."
+    },
+    {
+      "id": "gold_audit",
+      "status": "green",
+      "green": true,
+      "source": "docs/a3/scorecard_v1.json + scripts/scorecard_v1_check.sh",
+      "scorecard_gate": {
+        "gate": "ok",
+        "feature": 5.0,
+        "architecture": 5.0,
+        "local_no_microvm": 5.0,
+        "incomplete_dimensions": [],
+        "accuracy_claim": false,
+        "evidence_manifest": "docs/a3/evidence/evidence_manifest.v1.json",
+        "dual_human_attestation": "confirmed",
+        "feature_5_allowed": true,
+        "local_worksheets_verified": 5
+      },
+      "note": "scorecard_v1_check PASS; product accuracy_claim=false; instruction SHA pins verified."
+    },
+    {
+      "id": "contamination",
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f4_contamination.v0.json",
+      "note": "Inherited F1 advisory + scorecard SHA gate; R11 advisory_only."
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f4_holdout_isolation.v0.json",
+      "holdout_axes_n": 2,
+      "note": "Null/unscored scorecard axes are holdout-from-claim (microVM/production)."
+    },
+    {
+      "id": "iaa",
+      "status": "green",
+      "green": true,
+      "source": "docs/a3/evidence/evidence_manifest.v1.json#dual_human_attestation",
+      "note": "Scorecard feature-5 dual_human attestation confirmed."
+    }
+  ],
+  "counts": {
+    "green": 5,
+    "total": 5
+  },
+  "family_green": true,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "honesty": "F4 wires release scorecard honesty to META_EVAL five checks. family_green ≠ Tier A expansion authorize.",
+  "api_hooks": [
+    "build_release_scorecard",
+    "build_judge_calib_evidence_pack",
+    "scorecard_status"
+  ]
+}

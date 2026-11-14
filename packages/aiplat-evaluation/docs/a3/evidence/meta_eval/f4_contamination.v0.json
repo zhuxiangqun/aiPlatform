@@ -1,0 +1,14 @@
+{
+  "schema": "eval.meta_eval.f4_contamination.v0",
+  "family_id": "F4",
+  "recorded_at": "2026-11-14T19:04:33+08:00",
+  "method": "inherit_f1_token_overlap + scorecard_instruction_sha_gate",
+  "f1_contamination_ref": "docs/a3/evidence/meta_eval/f1_contamination.v0.json",
+  "f1_over_threshold": true,
+  "scorecard_gate": "scripts/scorecard_v1_check.sh verifies instruction SHA pins",
+  "disposition": "advisory_only",
+  "over_threshold": true,
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "F4 contamination = F1 advisory scan + scorecard instruction hash gate. R11 over-threshold → advisory only."
+}

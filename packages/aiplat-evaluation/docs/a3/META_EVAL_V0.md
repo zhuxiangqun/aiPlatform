@@ -80,6 +80,6 @@ doc_type: Reference
 |---|---|
 | 协议成文 | **done**（本文） |
 | 阈值 owner 签字 | **done**（R11） |
-| 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；0/4 绿） |
-| `evidence/meta_eval/` 实测证据 | **F1 green**（agreement=1.0 / κ=1.0 / ECE=0.0725；仍 ≠ Tier A 授权） |
-| Tier A 扩容 | **blocked**（F1 绿只满足该家族前置；未授权扩容） |
+| 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；F1+F4 绿） |
+| `evidence/meta_eval/` 实测证据 | **F1+F4 green**（F2/F3 未开；仍 ≠ Tier A 授权） |
+| Tier A 扩容 | **blocked**（家族绿 ≠ 扩容授权） |

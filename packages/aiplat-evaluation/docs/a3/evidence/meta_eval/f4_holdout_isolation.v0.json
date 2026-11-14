@@ -1,0 +1,35 @@
+{
+  "schema": "eval.meta_eval.f4_holdout_isolation.v0",
+  "family_id": "F4",
+  "recorded_at": "2026-11-14T19:04:33+08:00",
+  "policy": {
+    "unscored_axes_are_holdout_from_claim": true,
+    "reveal": "pre_release_once",
+    "tuning_forbidden_on_holdout_axes": true
+  },
+  "holdout_axes": [
+    {
+      "axis": "local_independence_with_microvm",
+      "score": null,
+      "gaps": [
+        "requires_linux_kvm_host_evidence"
+      ],
+      "reason": "unscored_or_null — must not be claimed as release green"
+    },
+    {
+      "axis": "production_independence",
+      "score": null,
+      "gaps": [
+        "staging",
+        "B4-S",
+        "B5",
+        "B6",
+        "SPLIT_CHECKLIST"
+      ],
+      "reason": "unscored_or_null — must not be claimed as release green"
+    }
+  ],
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Release scorecard null/unscored axes are holdout-from-claim. ≠ process_split authorize; ≠ Tier A."
+}
