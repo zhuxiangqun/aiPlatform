@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_cycle1.v0",
-  "recorded_at": "2026-11-15T00:23:07+08:00",
+  "recorded_at": "2026-11-15T00:40:54+08:00",
   "opened_on": "2026-11-14",
   "status": "owner_signed",
   "tier_b_n": 165,
@@ -26,7 +26,7 @@
         "EvalSubjectAdapter"
       ],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:53+08:00",
       "sample_detail": {
         "sampled": [
           "AgentSubjectAdapter",
@@ -61,7 +61,7 @@
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:53+08:00",
       "sample_detail": {
         "sampled": [
           "eval_run_api_capability_smoke",
@@ -96,7 +96,7 @@
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:53+08:00",
       "sample_detail": {
         "sampled": [
           "agent_regression_profile",
@@ -131,7 +131,7 @@
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:53+08:00",
       "sample_detail": {
         "sampled": [
           "eval_freeze_all_subject_seed_pack_meta",
@@ -166,7 +166,7 @@
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:39+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:54+08:00",
       "sample_detail": {
         "sampled": [
           "ModeAwareExamError",
@@ -198,7 +198,7 @@
       },
       "gap_symbols": [],
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json",
-      "sample_rerun_at": "2026-11-14T23:02:39+08:00",
+      "sample_rerun_at": "2026-11-15T00:40:54+08:00",
       "sample_detail": {
         "sampled": [
           "build_suite_profile_report",
@@ -217,7 +217,7 @@
   ],
   "coverage_complete_claim": false,
   "chart_a3_process_split_authorized": false,
-  "honesty": "Owner AUTHORIZE b_cycle1_owner_signoff closed Cycle-1 buckets after sample_rerun. ≠ Tier B coverage complete ≠ Chart flip ≠ closed_loop.",
+  "honesty": "Cycle-1 sample_rerun refresh. owner_signoff already AUTHORIZE'd. ≠ Tier B coverage complete ≠ Chart flip.",
   "rollup_ref": "docs/a3/evidence/meta_eval/phase3_b_suite_attach_rollup.v0.json",
   "sample_rerun_pass_n": 6,
   "sample_rerun_total": 6,

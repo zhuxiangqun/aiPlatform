@@ -1,7 +1,8 @@
 {
   "schema": "eval.phase4.g2b_taxonomy_ingest.v0",
-  "recorded_at": "2026-11-15T00:10:16+08:00",
+  "recorded_at": "2026-11-15T00:42:30+08:00",
   "source_path": ".aiplat/eval_trust/g2b_fail_decision_table_v0.json",
+  "source_sha256": "2a2cf239d3bfa353e2e4ef270f6a45ebf2bb174d0fdb026d943db19fe1e41236",
   "rows_n": 28,
   "taxonomy": {
     "schema_version": "eval.failure_taxonomy.v0",
@@ -42,6 +43,5 @@
   },
   "closed_loop_claim": false,
   "chart_a3_process_split_authorized": false,
-  "honesty": "G2b fail decision table → taxonomy → disposition tickets. ≠ live suite re-run ≠ closed-loop ≠ Chart flip.",
-  "source_sha256": "2a2cf239d3bfa353e2e4ef270f6a45ebf2bb174d0fdb026d943db19fe1e41236"
+  "honesty": "G2b fail decision table → taxonomy → disposition tickets. ≠ live suite re-run ≠ closed-loop ≠ Chart flip."
 }

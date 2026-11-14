@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase4.repair_loop_prep.v0",
-  "recorded_at": "2026-11-15T00:15:10+08:00",
+  "recorded_at": "2026-11-15T00:42:30+08:00",
   "status": "reeval_stub_checked",
   "gates": {
     "failure_taxonomy_fn": true,

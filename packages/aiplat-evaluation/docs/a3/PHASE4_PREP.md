@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Phase 4 预备（修复闭环 · 指纹复评 stub 已验）
 
-> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-15T00:15:10+08:00
+> 机器：[`evidence/meta_eval/phase4_repair_loop_prep_board.v0.json`](./evidence/meta_eval/phase4_repair_loop_prep_board.v0.json) · 2026-11-15T00:42:30+08:00
 > 账本：[`evidence/meta_eval/phase4_disposition_ledger.v0.json`](./evidence/meta_eval/phase4_disposition_ledger.v0.json)
 > 路由：[`config/phase4_routing.v0.json`](./config/phase4_routing.v0.json)
 > 计划 §10 · **诚实锁**：账本 ≠ 「自动改进已闭环」· Chart 仍 false

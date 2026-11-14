@@ -1,12 +1,12 @@
 {
   "schema": "eval.phase4.g2b_provisional_close.v0",
-  "recorded_at": "2026-11-15T00:15:08+08:00",
+  "recorded_at": "2026-11-15T00:40:38+08:00",
   "status": "provisional_closed",
   "closed_ticket_ids": [
-    "disp-d414cc052799",
-    "disp-1569b8481ad6",
-    "disp-1415ebf43bc8",
-    "disp-7a718c755763"
+    "disp-98bbe66cd4d8",
+    "disp-9d0edcee70c3",
+    "disp-b376ae4a4dee",
+    "disp-cb712fa952df"
   ],
   "closed_n": 4,
   "action_breakdown_by_category": {

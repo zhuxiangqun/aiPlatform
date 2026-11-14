@@ -162,11 +162,12 @@ def write_ledger(
             "packs": [],
         }
     existing = list(ledger.get("tickets") or [])
-    # Dedup: same pack_id + category open ticket → skip
+    # Dedup: same pack_id + category already present (open or closed) → skip.
+    # Prevents duplicate opens when re-ingesting an unchanged G2b pack.
     existing_keys = {
         (t.get("reeval_pack_id"), t.get("failure_category"))
         for t in existing
-        if isinstance(t, dict) and t.get("status") == "open"
+        if isinstance(t, dict) and t.get("reeval_pack_id") and t.get("failure_category")
     }
     added = 0
     for t in tickets:
@@ -311,6 +312,50 @@ def taxonomy_from_g2b_fail_table(
         ),
     }
     return taxonomy, ingest
+
+
+def collapse_duplicate_closed_tickets() -> Dict[str, Any]:
+    """合并同 pack+category 的重复 closed 单（保留最早 closed_at）。
+
+    Returns:
+        折叠摘要。
+
+    Raises:
+        FileNotFoundError: 账本缺失。
+    """
+    if not LEDGER.is_file():
+        raise FileNotFoundError(str(LEDGER))
+    ledger = json.loads(LEDGER.read_text(encoding="utf-8"))
+    tickets = [t for t in (ledger.get("tickets") or []) if isinstance(t, dict)]
+    keep: Dict[tuple, Dict[str, Any]] = {}
+    dropped = 0
+    for t in tickets:
+        key = (t.get("reeval_pack_id"), t.get("failure_category"))
+        if t.get("status") != "closed" or not key[0] or not key[1]:
+            # Keep non-closed / incomplete keys as-is under synthetic unique key.
+            keep[("raw", t.get("ticket_id"))] = t
+            continue
+        prev = keep.get(key)
+        if prev is None:
+            keep[key] = t
+            continue
+        # Keep earlier closed_at (or first if missing).
+        a = str(prev.get("closed_at") or "")
+        b = str(t.get("closed_at") or "")
+        if b and (not a or b < a):
+            keep[key] = t
+        dropped += 1
+    merged = list(keep.values())
+    ledger["tickets"] = merged
+    ledger["open_n"] = sum(1 for t in merged if t.get("status") == "open")
+    ledger["closed_n"] = sum(1 for t in merged if t.get("status") == "closed")
+    ledger["recorded_at"] = _now()
+    ledger["honesty"] = (
+        "Disposition ledger (duplicates collapsed). "
+        "≠ closed-loop automation ≠ Chart flip."
+    )
+    LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return {"dropped": dropped, "open_n": ledger["open_n"], "closed_n": ledger["closed_n"]}
 
 
 def close_ticket(
@@ -564,6 +609,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif argv[i] == "--close-from-g2b-provisional":
             close_g2b_provisional = True
             i += 1
+        elif argv[i] == "--collapse-duplicates":
+            try:
+                summary = collapse_duplicate_closed_tickets()
+            except FileNotFoundError as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+            _refresh_prep_board()
+            print(json.dumps({"ok": True, **summary, "closed_loop_claim": False}, ensure_ascii=False))
+            return 0
         elif argv[i] == "--taxonomy" and i + 1 < len(argv):
             taxonomy_path = argv[i + 1]
             i += 2

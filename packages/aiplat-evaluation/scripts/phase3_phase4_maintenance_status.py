@@ -163,6 +163,8 @@ def main() -> int:
         f"| 上次摄入 sha | `{prev_sha[:16] + '…' if prev_sha else 'none'}` |",
         f"| 需重跑 | **{'是' if g2b.get('reingest_needed') else '否'}**（{g2b.get('reason')}） |",
         "",
+        "> 仅当「需重跑=是」时执行；同 sha 强跑幂等（不重复开单）。",
+        "",
         "```bash",
         g2b["command"],
         "```",
@@ -171,6 +173,8 @@ def main() -> int:
         "",
         f"as_of **{today.isoformat()}** · 到期需抽："
         + (", ".join(f"`{b}`" for b in due_now) if due_now else "（无）"),
+        "",
+        "> 仅当「到期需抽」非空时建议执行；未到期强跑只刷新证据，不清 signoff。",
         "",
         "| bucket | due | days | sample_due | owner_signoff |",
         "|---|---|---:|:---:|:---:|",

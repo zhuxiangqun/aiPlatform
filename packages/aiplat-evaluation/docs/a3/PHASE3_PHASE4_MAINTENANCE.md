@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Phase3/4 无 staging 维护（触发式）
 
-> 机器：[`evidence/meta_eval/phase3_phase4_maintenance_status.v0.json`](./evidence/meta_eval/phase3_phase4_maintenance_status.v0.json) · 2026-11-15T00:34:34+08:00
+> 机器：[`evidence/meta_eval/phase3_phase4_maintenance_status.v0.json`](./evidence/meta_eval/phase3_phase4_maintenance_status.v0.json) · 2026-11-15T00:42:30+08:00
 > **诚实锁**：维护 ≠ closed_loop · ≠ Chart · ≠ staging live
 
 ## 1. G2b 决策表更新 → 重跑摄入
@@ -15,6 +15,8 @@ doc_type: Reference
 | 上次摄入 sha | `2a2cf239d3bfa353…` |
 | 需重跑 | **否**（sha_matches_last_ingest） |
 
+> 仅当「需重跑=是」时执行；同 sha 强跑幂等（不重复开单）。
+
 ```bash
 python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --from-g2b-fail-table && python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --close-from-g2b-provisional && python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --verify-pack
 ```
@@ -22,6 +24,8 @@ python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --from-g
 ## 2. Cycle1 到 due 日 → 再抽样
 
 as_of **2026-11-15** · 到期需抽：（无）
+
+> 仅当「到期需抽」非空时建议执行；未到期强跑只刷新证据，不清 signoff。
 
 | bucket | due | days | sample_due | owner_signoff |
 |---|---|---:|:---:|:---:|
