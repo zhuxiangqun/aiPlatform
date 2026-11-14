@@ -34,8 +34,8 @@ doc_type: Reference
 | 14 | `eval_load_security_judge_calib_defaults` | F2 | **accepted**（facade） |
 | 15 | `eval_evaluate_security_family_gates` | F2 | **accepted**（facade） |
 | 16 | `eval_evaluate_security_severity_l5_gate` | F2 | **accepted**（facade；`l5_declare` false） |
-| 17 | `assert_t13_process_split_boundary` | F3 | **提案中**（≠ process_split）→ [`PHASE3_TIER_A_PROPOSAL_assert_t13_process_split_boundary.md`](./PHASE3_TIER_A_PROPOSAL_assert_t13_process_split_boundary.md) |
-| 18 | `build_g2b_s_dual_review_workflow` | F3 | queued |
+| 17 | `assert_t13_process_split_boundary` | F3 | **accepted**（`process_split` false） |
+| 18 | `build_g2b_s_dual_review_workflow` | F3 | **提案中** → [`PHASE3_TIER_A_PROPOSAL_build_g2b_s_dual_review_workflow.md`](./PHASE3_TIER_A_PROPOSAL_build_g2b_s_dual_review_workflow.md) |
 | 19 | `eval_assert_t13_process_split_boundary` | F3 | queued（facade） |
 
 ## 关联

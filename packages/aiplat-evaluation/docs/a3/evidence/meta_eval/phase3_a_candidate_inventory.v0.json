@@ -21,8 +21,8 @@
         "docs/a3/SPLIT_CHECKLIST.md"
       ],
       "meta_family_green": true,
-      "tier_a_gate_authorized": false,
-      "gap": "family_green ≠ process_split_authorized flip"
+      "tier_a_gate_authorized": true,
+      "gap": "scoped authorized F3 boundary assert; process_split_authorized still false; product accuracy_claim still false"
     },
     {
       "symbol": "build_g2b_s_dual_review_workflow",

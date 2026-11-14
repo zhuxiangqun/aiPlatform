@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T21:23:30+08:00",
+  "recorded_at": "2026-11-14T21:25:30+08:00",
   "global_tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -282,6 +282,23 @@
       "note": "Scoped gate API authorization only; does not flip l5_declare_authorized",
       "depends_on": [
         "evaluate_security_judge_calibration",
+        "evaluate_security_family_gates"
+      ]
+    },
+    {
+      "symbol": "assert_t13_process_split_boundary",
+      "meta_family": "F3",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f3_assert_t13_process_split_boundary_assert_only",
+      "accepted_at": "2026-11-14T21:25:30+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.assert_t13_process_split_boundary.v0.json",
+      "report_only_remains": true,
+      "claim_eligible": false,
+      "accuracy_claim": false,
+      "process_split_authorized": false,
+      "note": "Scoped boundary assert only; does not flip process_split_authorized",
+      "depends_on": [
         "evaluate_security_family_gates"
       ]
     }

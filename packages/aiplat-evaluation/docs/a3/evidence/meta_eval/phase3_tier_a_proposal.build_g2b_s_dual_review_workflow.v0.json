@@ -1,0 +1,34 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-18-build_g2b_s_dual_review_workflow",
+  "seq": 18,
+  "symbol": "build_g2b_s_dual_review_workflow",
+  "meta_family": "F3",
+  "recorded_at": "2026-11-14T21:25:30+08:00",
+  "status": "pending_owner_authorize",
+  "impl_def": "aiPlat-core/core/apps/eval/service/security_cert_prep.py:197",
+  "depends_on_accepted": [
+    "assert_t13_process_split_boundary"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+    "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+    "docs/a3/SPLIT_CHECKLIST.md"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true,
+    "process_split_authorized": false
+  },
+  "forbid": [
+    "process_split_authorized"
+  ],
+  "owner_decision": null,
+  "owner": null,
+  "decided_at": null,
+  "honesty": "Pending owner. F3 build_g2b_s_dual_review_workflow scoped dual-review workflow builder; accepting ≠ process_split_authorized flip."
+}

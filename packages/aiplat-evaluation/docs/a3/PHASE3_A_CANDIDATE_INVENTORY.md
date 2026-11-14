@@ -17,7 +17,7 @@ doc_type: Reference
 
 | 符号 | 家族 | kind | impl | Tier A authorize |
 |---|---|---|---|---|
-| `assert_t13_process_split_boundary` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_t13_allowlist.py:261` | **false** |
+| `assert_t13_process_split_boundary` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_t13_allowlist.py:261` | **scoped true**（≠ process_split） |
 | `build_g2b_s_dual_review_workflow` | F3 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:197` | **false** |
 | `build_judge_calib_evidence_pack` | F4 | impl | `aiPlat-core/core/apps/eval/service/security_cert_prep.py:140` | **scoped true** |
 | `build_release_scorecard` | F4 | impl | `aiPlat-core/core/harness/evaluation/release_scorecard.py:42` | **scoped true** |
