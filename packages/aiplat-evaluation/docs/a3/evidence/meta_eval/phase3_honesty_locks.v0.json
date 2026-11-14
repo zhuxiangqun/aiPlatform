@@ -4,7 +4,8 @@
   "owner": "朱向群",
   "flags": {
     "global_tier_a_expansion_authorized": true,
-    "accuracy_claim": true,
+    "accuracy_claim": false,
+    "accuracy_claim_authorized": true,
     "l5_declare_authorized": true,
     "process_split_authorized": true,
     "phase4_routing_authorized": true,

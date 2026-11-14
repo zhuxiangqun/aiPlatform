@@ -3,7 +3,7 @@
   "domain": "evaluation-system",
   "recorded_at": "2026-11-14T23:18:36+08:00",
   "source": "r12 in_both after H5 tranche clear",
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "process_split_authorized": true,
   "meta_eval_blocks_tier_a_claim": false,
   "r12_h5_open": 0,

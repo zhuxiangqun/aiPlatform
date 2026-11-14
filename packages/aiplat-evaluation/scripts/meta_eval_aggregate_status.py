@@ -80,7 +80,11 @@ def main() -> int:
     locks = _load(META / "phase3_honesty_locks.v0.json") or {}
     flags = locks.get("flags") if isinstance(locks.get("flags"), dict) else {}
     tier_a_exp = bool(flags.get("global_tier_a_expansion_authorized", False))
-    accuracy_claim = bool(flags.get("accuracy_claim", False))
+    # Product accuracy_claim stays false (scheme A); authorize is a separate flag.
+    accuracy_claim = False
+    accuracy_claim_authorized = bool(
+        flags.get("accuracy_claim_authorized", flags.get("accuracy_claim", False))
+    )
     process_split = bool(flags.get("process_split_authorized", False))
     l5 = bool(flags.get("l5_declare_authorized", False))
     security = bool(flags.get("security_certification", False))
@@ -93,6 +97,7 @@ def main() -> int:
         "meta_eval_families_green": all_green,
         "tier_a_expansion_authorized": tier_a_exp,
         "accuracy_claim": accuracy_claim,
+        "accuracy_claim_authorized": accuracy_claim_authorized,
         "security_certification": security,
         "process_split_authorized": process_split,
         "l5_declare_authorized": l5,

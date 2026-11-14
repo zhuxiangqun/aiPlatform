@@ -45,7 +45,7 @@
   },
   "meta_eval_families_green": true,
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "security_certification": false,
   "process_split_authorized": true,
   "l5_declare_authorized": true,

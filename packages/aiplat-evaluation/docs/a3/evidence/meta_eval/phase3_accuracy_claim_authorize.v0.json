@@ -5,7 +5,7 @@
   "owner": "朱向群",
   "owner_decision": "AUTHORIZE accuracy_claim",
   "decided_at": "2026-11-14T22:14:00+08:00",
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "scope": {
     "allows": [
       "product accuracy claims for Tier A authorized symbols when suite/gate evidence supports",
@@ -20,5 +20,6 @@
   "depends_on": [
     "global_tier_a_expansion_authorized"
   ],
-  "honesty": "Owner authorized accuracy_claim. Does not auto-rewrite every code path default; evidence still required per claim."
+  "honesty": "Owner authorized product accuracy_claim eligibility. Product accuracy_claim remains false until scorecard/evidence gates flip; this record is authorize-only (scheme A).",
+  "accuracy_claim_authorized": true
 }

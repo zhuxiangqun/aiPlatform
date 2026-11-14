@@ -1,3 +1,8 @@
+---
+generated_at: 2026-11-14
+doc_type: Report
+---
+
 # Option B · B4-S local last run
 
 - recorded_at: `20261114T144550Z`

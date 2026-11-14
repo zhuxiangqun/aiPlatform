@@ -343,7 +343,7 @@
     }
   },
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "process_split_authorized": true,
   "honesty": "First review cycle opened with concrete due dates. Suite hooks attached ≠ Tier B coverage complete. Chart still false.",
   "a_candidate_scoped_complete": true,

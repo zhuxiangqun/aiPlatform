@@ -125,7 +125,11 @@ def main() -> int:
         ],
         "forbid_single_coverage_percent": True,
         "tier_a_expansion_authorized": bool(auth.get("global_tier_a_expansion_authorized")),
-        "accuracy_claim": bool(auth.get("accuracy_claim")),
+        # scheme A: product claim stays false; authorize may be true on locks
+        "accuracy_claim": False,
+        "accuracy_claim_authorized": bool(
+            auth.get("accuracy_claim_authorized", auth.get("accuracy_claim", False))
+        ),
         "a_candidate_scoped_complete": bool(auth.get("a_candidate_scoped_complete")),
         "tier_b_coverage_complete_claim": False,
         "honesty": (

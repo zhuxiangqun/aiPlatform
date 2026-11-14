@@ -364,3 +364,16 @@ admin 角色拥有全权限（9 个独占管理项），**必须启用 MFA**：
 与 FDE / EVAL 同策略。业务经 CoreFacade `diagnosis_*`；**不改变** JWT/API key 签发权威。
 诚实锁：`accuracy_claim=false` / `auto_execute=false`。验证：`test_platform_apps_require_auth.py`（diagnosis/healthz）。
 
+## 补充：Skill 市场上架审核队列鉴权（2026-11-15）
+
+`aiPlat-platform/api/rest/routes.py` 上架审核队列（经 `_resolve_identity` 注入租户/操作者，业务经 CoreFacade）：
+
+| 端点 | 身份 | 契约 |
+|---|---|---|
+| `POST /marketplace/publish` | `_resolve_identity` → `tenant_id` 写入 `publish_submissions` | 提交方租户落库；SkillSimulator 预检 best-effort |
+| `GET /marketplace/submissions` | `_resolve_identity`（登录态） | 只读列出审核队列；可选 `status`/`limit` |
+| `POST /marketplace/submissions/{id}/approve` | `_resolve_identity` → `decided_by=actor_id` | 批准后 skill `listed=true` |
+| `POST /marketplace/submissions/{id}/reject` | `_resolve_identity` → `decided_by=actor_id` | 驳回不改 `listed` |
+
+**约束**：鉴权/身份签发权威仍为 platform；core 只消费注入的 tenant/actor，不扩权。与既有 `GET /skills/marketplace/external`（`require_auth` 只读发现）互补——本表覆盖**租户上架审核写路径**。
+

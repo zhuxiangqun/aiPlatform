@@ -2,7 +2,7 @@
   "schema": "eval.phase3.tier_a_expand_order.v0",
   "recorded_at": "2026-11-14T22:14:00+08:00",
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "process_split_authorized": true,
   "security_certification": false,
   "l5_declare_authorized": true,

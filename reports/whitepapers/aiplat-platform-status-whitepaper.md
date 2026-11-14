@@ -3,19 +3,19 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-14T17:31:06Z"
+generated_at: "2026-11-14T17:49:07Z"
 source: AIPLAT_CAPABILITIES.md
 doc_type: Report
-source_sha256: "dbf63af8ba82f7bba2a650c54ef6259316015af96899c44c9ca0777dcdefb46c"
+source_sha256: "3cbe80ce12e5ae13174e82d70c3e471ce45ce16c425367d84e379e444bdbd170"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
-total_capabilities: 3484
+total_capabilities: 3486
 capabilities_version: "30.14"
 capabilities_last_updated: "2026-11-14"
 language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=dbf63af8ba82f7bba2a650c54ef6259316015af96899c44c9ca0777dcdefb46c scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3484 -->
+<!-- whitepaper_stamp source_sha256=3cbe80ce12e5ae13174e82d70c3e471ce45ce16c425367d84e379e444bdbd170 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3486 -->
 
 # aiPlat 平台现状白皮书
 
@@ -47,15 +47,15 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-14T17:31:06Z` |
-| CAPABILITIES SHA-256 | `dbf63af8ba82f7bba2a650c54ef6259316015af96899c44c9ca0777dcdefb46c` |
+| 生成时间 (UTC) | `2026-11-14T17:49:07Z` |
+| CAPABILITIES SHA-256 | `3cbe80ce12e5ae13174e82d70c3e471ce45ce16c425367d84e379e444bdbd170` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
 | CAPABILITIES last_updated | `2026-11-14` |
-| frontmatter total_capabilities | `3484` |
-| CAPABILITIES 内 ✅ 计数 | 3504 |
+| frontmatter total_capabilities | `3486` |
+| CAPABILITIES 内 ✅ 计数 | 3506 |
 | CAPABILITIES 内 ⚠️ 计数 | 28 |
-| 能力表行（估） | 3493 |
+| 能力表行（估） | 3495 |
 | 包装模式 | executive-digest（不含完整能力路径表） |
 
 ## 1. 平台定位（现状摘要）
@@ -64,7 +64,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 用业务语言概括：aiPlat 把「能跑 Agent」扩展成「能交付、能治理、能积累知识」的平台。
 
-当前能力登记总量约 **3484** 项（✅≈3504 · ⚠️≈28，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
+当前能力登记总量约 **3486** 项（✅≈3506 · ⚠️≈28，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
 
 1. **执行与编排**：多阶段流水线、ReAct 循环、多 Agent 协作——把任务跑完，而不是只聊一轮。
 2. **记忆与知识**：会话记忆 + 企业知识/本体/RAG——回答有出处、可跨会话。
@@ -98,7 +98,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 | 维度 | 已实现 | 部分实现 | 合计 |
 |------|:---:|:---:|:---:|
-| Harness 执行引擎 | 631 | 1 | 632 |
+| Harness 执行引擎 | 633 | 1 | 634 |
 | 记忆子系统 | 93 | 0 | 93 |
 | 知识引擎（本体） | 392 | 9 | 401 |
 | RAG 检索 | 58 | 0 | 58 |
@@ -143,7 +143,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3473** | **11** | **3484** |
+| **总计** | **3475** | **11** | **3486** |
 
 ## 2.5 对标、评级与五维白皮书体系
 
@@ -248,7 +248,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 | 子系统 / 章节 | ✅ | ⚠️ | 一句话（若有） |
 |---------------|---:|---:|----------------|
-| 一、Harness 执行引擎 | 631 | 1 | — |
+| 一、Harness 执行引擎 | 633 | 1 | — |
 | 二、记忆子系统 | 93 | 1 | — |
 | 三、知识引擎（本体） | 393 | 9 | — |
 | 四、RAG 检索 | 60 | 1 | — |

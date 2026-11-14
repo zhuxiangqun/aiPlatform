@@ -44,7 +44,7 @@
   ],
   "forbid_single_coverage_percent": true,
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": true,
+  "accuracy_claim": false,
   "a_candidate_scoped_complete": true,
   "tier_b_coverage_complete_claim": false,
   "honesty": "A/B/C rows measured separately. B with_suite=hook attach count, not runtime coverage. C register-only (suite/gate=0). Never collapse into one coverage%."

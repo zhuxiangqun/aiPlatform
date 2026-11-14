@@ -159,7 +159,9 @@ def main() -> int:
         evid_ok, missing = _evidence_ok(refs)
         import_status, import_detail = _import_smoke(sym)
         gate_authorized = bool(sym_row.get("tier_a_gate_authorized"))
-        claim_eligible = bool(sym_row.get("claim_eligible")) and bool(auth.get("accuracy_claim"))
+        claim_eligible = bool(sym_row.get("claim_eligible")) and bool(
+            auth.get("accuracy_claim_authorized", auth.get("accuracy_claim", False))
+        )
         # claim_ready = authorized + evidence present + import ok|skip (skip = helper documented)
         # claim_ready: authorize + family evidence. import_smoke is advisory (env may block).
         claim_ready = bool(gate_authorized and claim_eligible and evid_ok)
@@ -193,7 +195,10 @@ def main() -> int:
         "n_evidence_ok": n_evid,
         "n_import_ok": n_import_ok,
         "n_claim_ready": n_ready,
-        "accuracy_claim_policy": bool(auth.get("accuracy_claim")),
+        "accuracy_claim_policy": bool(
+            auth.get("accuracy_claim_authorized", auth.get("accuracy_claim", False))
+        ),
+        "accuracy_claim": False,
         "global_tier_a_expansion_authorized": bool(auth.get("global_tier_a_expansion_authorized")),
         "security_certification": False,
         "chart_a3_process_split_authorized": False,

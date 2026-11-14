@@ -83,7 +83,8 @@ def main() -> int:
 
     cal["recorded_at"] = _now()
     cal["tier_a_expansion_authorized"] = True
-    cal["accuracy_claim"] = True
+    cal["accuracy_claim"] = False  # scheme A product claim
+    cal["accuracy_claim_authorized"] = True
     cal["process_split_authorized"] = True
     cal["cycle1"] = {
         "opened_on": ANCHOR.isoformat(),
