@@ -566,7 +566,7 @@ bash packages/aiplat-evaluation/scripts/scorecard_v1_check.sh
 
 ## 9. Phase 3.5 — 元评测（与 Phase 3 并行咬合）
 
-最小协议（落地时可另文 `META_EVAL_V0.md`）；**初始阈值见 §4.4**（agreement≥0.80 / κ≥0.60 / ECE≤0.10 / gold 抽样错误率≤5%）：
+最小协议已成文：[`META_EVAL_V0.md`](../../../packages/aiplat-evaluation/docs/a3/META_EVAL_V0.md)；**初始阈值见 §4.4 / R11**（agreement≥0.80 / κ≥0.60 / ECE≤0.10 / gold 抽样错误率≤5%）：
 
 1. **Judge calibration**：固定人标集；低于阈 → judge 不得用于 Tier A gate。  
 2. **Gold audit**：每季度（或每升 SCOPE 版本）抽样；错误率 >5% → 冻结宣称。  
@@ -773,3 +773,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：Phase 2 仅在 SPLIT 
 | v1.1.5 | 2026-11-14 | Phase 1 双人签字（朱向群/朱鸿林）；允许「首版 5/5 已审计通过」受限宣称；仍非定稿 |
 | v1.1.6 | 2026-11-14 | Phase2 预备页；R11 阈值签字页；R12 evaluation-system 对账工件；§15→13/14 |
 | v1.1.7 | 2026-11-14 | R11 owner 签字（朱向群 accept v0）；§15 14/14；方案按 §15.3 定稿冻结 |
+| v1.1.7+exec | 2026-11-14 | 执行加料（不改结构）：`META_EVAL_V0`；R12 H1–H5 分诊（exempt/downgrade；H1_candidate 仍 open） |

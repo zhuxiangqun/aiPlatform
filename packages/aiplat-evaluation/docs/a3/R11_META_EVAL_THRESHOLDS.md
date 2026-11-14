@@ -40,4 +40,4 @@ doc_type: Reference
 
 ## 与 Phase 3.5 关系
 
-签字只锁定**尺子门槛**；Phase 3.5 落地协议可另文 `META_EVAL_V0.md`。无元评测绿灯前，不新增 Tier A gate 宣称。
+签字只锁定**尺子门槛**；落地协议见 [`META_EVAL_V0.md`](./META_EVAL_V0.md)。无元评测绿灯前，不新增 Tier A gate 宣称。

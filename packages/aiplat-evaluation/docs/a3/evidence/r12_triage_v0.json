@@ -1,0 +1,21 @@
+{
+  "schema": "eval.r12.triage.v0",
+  "recorded_at": "2026-11-14T16:36:44+08:00",
+  "exempt_until_default": "2027-02-14",
+  "by_category": {
+    "H1_candidate": 402,
+    "H2": 208,
+    "H4": 1,
+    "H3": 30,
+    "H5": 26
+  },
+  "by_disposition": {
+    "open": 428,
+    "exempt_human_view": 208,
+    "exempt_tooling": 1,
+    "downgrade_non_capability": 30
+  },
+  "h1_candidate_n": 402,
+  "doc": "docs/a3/R12_TRIAGE_V0.md",
+  "accuracy_claim": false
+}
