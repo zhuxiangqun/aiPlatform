@@ -5,8 +5,8 @@
   "symbol": "eval_open_capability_judge_calibration",
   "meta_family": "F1",
   "kind": "facade_wrapper",
-  "recorded_at": "2026-11-14T21:06:58+08:00",
-  "status": "pending_owner_authorize",
+  "recorded_at": "2026-11-14T21:08:04+08:00",
+  "status": "accepted",
   "impl_def": "aiPlat-core/core/api/core_facade.py:10705",
   "wraps": "open_capability_judge_calibration",
   "depends_on_accepted": [
@@ -24,8 +24,9 @@
     "claim_eligible": false,
     "report_only_remains": true
   },
-  "owner_decision": null,
-  "owner": null,
-  "decided_at": null,
-  "honesty": "Pending owner. Facade for open_capability_judge_calibration; ≠ new claim surface."
+  "owner_decision": "ACCEPT eval_open_capability_judge_calibration scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:08:04+08:00",
+  "honesty": "Owner accepted facade wrapper eval_open_capability_judge_calibration. global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
 }

@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T21:06:58+08:00",
+  "recorded_at": "2026-11-14T21:08:04+08:00",
   "global_tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -100,6 +100,23 @@
       "accuracy_claim": false,
       "depends_on": [
         "evaluate_judge_calibration_gate"
+      ]
+    },
+    {
+      "symbol": "eval_open_capability_judge_calibration",
+      "meta_family": "F1",
+      "kind": "facade_wrapper",
+      "tier_a_gate_authorized": true,
+      "scope": "scoped_f1_eval_open_capability_judge_calibration_facade",
+      "accepted_at": "2026-11-14T21:08:04+08:00",
+      "owner": "朱向群",
+      "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_open_capability_judge_calibration.v0.json",
+      "wraps": "open_capability_judge_calibration",
+      "report_only_remains": true,
+      "claim_eligible": false,
+      "accuracy_claim": false,
+      "depends_on": [
+        "open_capability_judge_calibration"
       ]
     }
   ],

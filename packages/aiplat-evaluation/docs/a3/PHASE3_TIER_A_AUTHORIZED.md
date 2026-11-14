@@ -7,7 +7,7 @@ doc_type: Reference
 > 机器：[`evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json`](./evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json)  
 > **诚实锁**：`global_tier_a_expansion_authorized=false` · `accuracy_claim=false`
 
-## 已授权（scoped · F1）
+## 已授权（scoped · F1 齐）
 
 | 符号 | 范围 |
 |---|---|
@@ -17,9 +17,10 @@ doc_type: Reference
 | `cohen_kappa_binary` | κ/IAA 辅助 |
 | `wilson_score_ci` | Wilson CI 辅助 |
 | `eval_judge_calibration_gate` | CoreFacade 包装 #1 |
+| `eval_open_capability_judge_calibration` | CoreFacade 包装 #2 |
 
-owner：朱向群。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。F1 A_candidate（7）已全部 scoped 授权。下一步进入 **F4**。≠ 产品准确率认证 / L5 / process_split。
 
 ## 下一步
 
-提案 #7：[`PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md)
+提案 #8：[`PHASE3_TIER_A_PROPOSAL_build_release_scorecard.md`](./PHASE3_TIER_A_PROPOSAL_build_release_scorecard.md)

@@ -190,8 +190,8 @@
         "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
       ],
       "meta_family_green": true,
-      "tier_a_gate_authorized": false,
-      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+      "tier_a_gate_authorized": true,
+      "gap": "scoped facade authorized; product accuracy_claim still false"
     },
     {
       "symbol": "evaluate_judge_calibration_gate",

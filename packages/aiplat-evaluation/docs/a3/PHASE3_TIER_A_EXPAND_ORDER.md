@@ -24,8 +24,8 @@ doc_type: Reference
 | 4 | `cohen_kappa_binary` | F1 | **accepted** |
 | 5 | `wilson_score_ci` | F1 | **accepted** |
 | 6 | `eval_judge_calibration_gate` | F1 | **accepted**（facade） |
-| 7 | `eval_open_capability_judge_calibration` | F1 | **提案中**（facade）→ [`PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md) |
-| 8 | `build_release_scorecard` | F4 | queued |
+| 7 | `eval_open_capability_judge_calibration` | F1 | **accepted**（facade） |
+| 8 | `build_release_scorecard` | F4 | **提案中** → [`PHASE3_TIER_A_PROPOSAL_build_release_scorecard.md`](./PHASE3_TIER_A_PROPOSAL_build_release_scorecard.md) |
 | 9 | `build_judge_calib_evidence_pack` | F4 | queued |
 | 10 | `evaluate_security_judge_calibration` | F2 | queued（≠ L5） |
 | 11 | `load_judge_calib_defaults` | F2 | queued |
