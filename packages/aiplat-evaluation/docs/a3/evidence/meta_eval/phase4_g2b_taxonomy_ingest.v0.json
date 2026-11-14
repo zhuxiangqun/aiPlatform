@@ -42,5 +42,6 @@
   },
   "closed_loop_claim": false,
   "chart_a3_process_split_authorized": false,
-  "honesty": "G2b fail decision table → taxonomy → disposition tickets. ≠ live suite re-run ≠ closed-loop ≠ Chart flip."
+  "honesty": "G2b fail decision table → taxonomy → disposition tickets. ≠ live suite re-run ≠ closed-loop ≠ Chart flip.",
+  "source_sha256": "2a2cf239d3bfa353e2e4ef270f6a45ebf2bb174d0fdb026d943db19fe1e41236"
 }

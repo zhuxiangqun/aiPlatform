@@ -295,10 +295,12 @@ def taxonomy_from_g2b_fail_table(
     from core.apps.eval.service.gate_v1 import build_failure_taxonomy  # noqa: WPS433
 
     taxonomy = build_failure_taxonomy(items)
+    source_sha = hashlib.sha256(table_path.read_bytes()).hexdigest()
     ingest = {
         "schema": "eval.phase4.g2b_taxonomy_ingest.v0",
         "recorded_at": _now(),
         "source_path": str(table_path.relative_to(REPO)) if table_path.is_relative_to(REPO) else str(table_path),
+        "source_sha256": source_sha,
         "rows_n": len(rows),
         "taxonomy": taxonomy,
         "closed_loop_claim": False,

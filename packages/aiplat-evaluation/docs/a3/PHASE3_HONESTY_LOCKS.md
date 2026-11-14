@@ -22,4 +22,4 @@ doc_type: Reference
 | 单一覆盖% | **禁止** | — |
 
 脚手架：[`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked`。  
-无 staging 可继续：[`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md) · [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md) · [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md) · [`PHASE4_PREP.md`](./PHASE4_PREP.md)（G2b provisional close 已演练 · `closed_loop_claim` 仍 false）。
+无 staging 可继续：[`PHASE3_PHASE4_MAINTENANCE.md`](./PHASE3_PHASE4_MAINTENANCE.md)（G2b 漂移 / Cycle1 due 抽样）· 其余板已收口 · `closed_loop_claim` 仍 false。

@@ -1,5 +1,5 @@
 ---
-total_capabilities: 3473
+total_capabilities: 3474
 last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
@@ -2717,6 +2717,7 @@ scan_hash: 8f9548ec24f4
 | evaluation_phase4_repair_loop_prep | `packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py` + `docs/a3/PHASE4_PREP.md` | ✅ | Phase4 修复闭环预备闸门；`closed_loop_claim` 恒 false；生成物适用：不适用 | 本批 |
 | evaluation_phase4_disposition_ledger | `packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py` + `docs/a3/config/phase4_routing.v0.json` | ✅ | taxonomy→处置单+指纹 stub+人工 `--close`；≠自动闭环/Chart；生成物适用：不适用 | 本批 |
 | evaluation_phase3_b_cycle1_owner_signoff | `packages/aiplat-evaluation/scripts/phase3_b_cycle1_owner_signoff.py` | ✅ | AUTHORIZE b_cycle1_owner_signoff；≠ coverage complete/Chart；生成物适用：不适用 | 本批 |
+| evaluation_phase3_phase4_maintenance_status | `packages/aiplat-evaluation/scripts/phase3_phase4_maintenance_status.py` + `docs/a3/PHASE3_PHASE4_MAINTENANCE.md` | ✅ | G2b sha 漂移/Cycle1 due 抽样状态；≠ host/Chart；生成物适用：不适用 | 本批 |
 | Observation 观测总线 | harness/observation/ | ✅ | EventBus 发布/订阅 + PipelineTrace 每阶段跟踪 | 已合入 |
 | Smoke 全链路冒烟 | harness/smoke/ | ✅ | 生产级全链路冒烟测试 + 自动清理 | 已合入 |
 | A2A 协议 | apps/a2a/ | ✅ | Agent Card + Task Send/Get/Stream/Cancel/Artifacts 全实现 | 已合入 |
@@ -4383,7 +4384,7 @@ scan_hash: 8f9548ec24f4
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
 | 部署与运维 | 23 | 0 | 23 |
-| 扩展与学习 | 176 | 1 | 177 |
+| 扩展与学习 | 177 | 1 | 178 |
 | Gate 系统 | 177 | 0 | 177 |
 | 评估系统 | 579 | 0 | 579 |
 | MCP 协议 | 11 | 0 | 11 |
@@ -4417,7 +4418,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3462** | **11** | **3473** |
+| **总计** | **3463** | **11** | **3474** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。
