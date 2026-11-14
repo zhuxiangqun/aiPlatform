@@ -171,13 +171,7 @@ aiPlat-infra/
 │   ├── memory.py                 # 内存缓存
 │   └── schemas.py
 │
-├── mcp/                          # MCP 协议
-│   ├── __init__.py
-│   ├── base.py                   # MCPClient 接口
-│   ├── factory.py                # create_mcp_client()
-│   ├── protocol.py               # JSON-RPC 协议
-│   ├── client.py                 # MCP 客户端
-│   └── schemas.py
+# mcp/ 已删除（As-Is）——实现见 aiPlat-core/core/apps/mcp/
 │
 ├── config/                       # 配置管理
 │   ├── __init__.py
@@ -231,7 +225,7 @@ aiPlat-infra/
 | `vector/` | 向量存储 | base.py, factory.py |
 | `messaging/` | 消息队列 | base.py, factory.py |
 | `cache/` | 缓存 | base.py, factory.py |
-| `mcp/` | MCP 协议 | base.py, factory.py |
+| ~~`mcp/`~~ | 已删除 | 见 `aiPlat-core/core/apps/mcp/` |
 | `config/` | 配置管理 | loader.py |
 | `logging/` | 日志系统 | logger.py |
 | `monitoring/` | 监控 | metrics.py, health.py |
@@ -629,12 +623,11 @@ tests/
 
 ### 运行测试
 
+> As-Is：仓库根无统一 Makefile。
+
 | 命令 | 用途 | 前置条件 |
 |------|------|----------|
-| `make test-infra-unit` | 运行基础设施层单元测试 | 无 |
-| `make test-infra-integration` | 运行基础设施层集成测试 | Docker 服务启动 |
-| `make test-infra-all` | 运行基础设施层所有测试 | Docker 服务启动 |
-| `make test-infra-coverage` | 生成覆盖率报告 | 无 |
+| `cd aiPlat-infra && python -m pytest tests/ -q` | infra 测试 | 视用例依赖 |
 
 ### 测试编写规范
 
