@@ -38,6 +38,7 @@ _RATIONALIZATIONS = {
 
 @dataclass
 class CriterionResult:
+    """CriterionResult。"""
     criterion: str                          # from rubric
     passed: bool
     evidence: str = ""                      # what in the output proves PASS or FAIL
@@ -48,6 +49,7 @@ class CriterionResult:
 
 @dataclass
 class AssessReport:
+    """AssessReport。"""
     stage_id: str
     overall: str                            # "PASS" | "FAIL" | "INCONCLUSIVE"
     criteria: List[CriterionResult] = field(default_factory=list)
@@ -59,6 +61,8 @@ class AssessReport:
     rationalization_rebuttal: str = ""       # anti-rationalization rebuttal if triggered
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "stage_id": self.stage_id,
             "overall": self.overall,
@@ -89,6 +93,8 @@ class AssessAgent:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._write_guard = True  # internal flag — if False, bug detected
 
     async def assess(

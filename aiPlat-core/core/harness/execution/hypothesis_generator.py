@@ -49,9 +49,10 @@ def generate_hypotheses(
 ) -> List[Dict[str, Any]]:
     """Generate ranked root-cause hypotheses for a failed pipeline run.
 
-    Reuses :func:`decision_trace.locate_max_error_node` to find the max
-    error-contribution node, then derives structured hypotheses from the
-    trace signals. Returns a list ordered by error_contribution (desc).
+    Args:
+        run_id: 运行 ID。
+        failed_stage_ids: failed_stage_ids 参数。
+        test_report: test_report 参数。
     """
     from core.harness.execution.decision_trace import locate_max_error_node, get_trace
 

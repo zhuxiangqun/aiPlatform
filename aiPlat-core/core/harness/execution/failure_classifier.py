@@ -67,6 +67,7 @@ _log = logging.getLogger("pipeline_engine.failure_classifier")
 
 
 class FailureClassifier:
+    """FailureClassifier。"""
     _RATE_LIMIT = re.compile(r'rate.limit|429|too many request|quota.*exceed', re.IGNORECASE)
     _TIMEOUT = re.compile(r'time.?out|timed.?out|deadline.*exceed|read.?timeout', re.IGNORECASE)
     _CONTEXT_OVERFLOW = re.compile(r'context.?length|too long|reduce (the )?length|token limit|max token|context window|too many token|truncat', re.IGNORECASE)
@@ -77,6 +78,12 @@ class FailureClassifier:
 
     @classmethod
     def classify(cls, error_message: str, exception_type: str = "") -> str:
+        """classify。
+
+        Args:
+            error_message: error_message 参数。
+            exception_type: exception_type 参数。
+        """
         if not error_message and not exception_type:
             return "unknown"
         msg = str(error_message or "") + " " + str(exception_type or "")
@@ -98,6 +105,12 @@ class FailureClassifier:
 
     @classmethod
     def get_constraint(cls, failure_type: str, stage_constraints: Optional[List[Dict]] = None) -> Optional[Dict]:
+        """获取 constraint。
+
+        Args:
+            failure_type: failure_type 参数。
+            stage_constraints: stage_constraints 参数。
+        """
         constraints = stage_constraints if stage_constraints else DEFAULT_FAILURE_MODE_CONSTRAINTS
         for c in constraints:
             if c.get("failure_type") == failure_type:
@@ -109,16 +122,33 @@ class FailureClassifier:
 
     @classmethod
     def get_escalation_count(cls, state: Dict[str, Any], failure_type: str) -> int:
+        """获取 escalation_count。
+
+        Args:
+            state: state 参数。
+            failure_type: failure_type 参数。
+        """
         key = f"_escalation_{failure_type}"
         return state.get(key, 0)
 
     @classmethod
     def record_escalation(cls, state: Dict[str, Any], failure_type: str) -> None:
+        """record_escalation。
+
+        Args:
+            state: state 参数。
+            failure_type: failure_type 参数。
+        """
         key = f"_escalation_{failure_type}"
         state[key] = state.get(key, 0) + 1
 
     @classmethod
     def get_auto_rule(cls, failure_type: str) -> Optional[str]:
+        """获取 auto_rule。
+
+        Args:
+            failure_type: failure_type 参数。
+        """
         _RULES: Dict[str, str] = {
             "rate_limit": "如果 LLM 返回 429 限流错误，等待 5 秒后重试，不要连续重试。",
             "timeout": "如果单次 LLM 调用超过 60 秒无响应，输出当前已分析的内容而非重试。",

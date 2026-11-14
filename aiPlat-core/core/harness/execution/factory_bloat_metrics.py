@@ -22,7 +22,11 @@ BASELINE_PROJECT_KEY = "bloat_baseline"
 
 
 def extract_file_blocks(raw: str) -> List[Dict[str, str]]:
-    """Parse ``## FILE: path`` blocks → [{path, content}, ...]."""
+    """Parse ``## FILE: path`` blocks → [{path, content}, ...].
+
+    Args:
+        raw: raw 参数。
+    """
     text = str(raw or "")
     if not text.strip():
         return []
@@ -115,6 +119,12 @@ def _deps_from_pyproject(content: str) -> List[str]:
 
 
 def deps_declared_in_file(path: str, content: str) -> List[str]:
+    """deps_declared_in_file。
+
+    Args:
+        path: 路径。
+        content: content 参数。
+    """
     p = str(path or "").replace("\\", "/").lower()
     base = p.rsplit("/", 1)[-1]
     if base in ("requirements.txt", "requirements-dev.txt", "requirements.in"):
@@ -127,7 +137,11 @@ def deps_declared_in_file(path: str, content: str) -> List[str]:
 
 
 def compute_bloat_from_files(files: Sequence[Mapping[str, str]]) -> Dict[str, Any]:
-    """Aggregate LOC / new_files / new_deps from file dicts."""
+    """Aggregate LOC / new_files / new_deps from file dicts.
+
+    Args:
+        files: files 参数。
+    """
     loc = 0
     loc_code = 0
     deps: List[str] = []
@@ -157,6 +171,11 @@ def compute_bloat_from_files(files: Sequence[Mapping[str, str]]) -> Dict[str, An
 
 
 def collect_files_from_artifact(artifact: Any) -> List[Dict[str, str]]:
+    """collect_files_from_artifact。
+
+    Args:
+        artifact: artifact 参数。
+    """
     if artifact is None:
         return []
     if isinstance(artifact, str):
@@ -188,7 +207,12 @@ def compute_bloat_from_state(
     *,
     artifact_keys: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Scan pipeline state artifacts for ## FILE blocks and aggregate metrics."""
+    """Scan pipeline state artifacts for ## FILE blocks and aggregate metrics.
+
+    Args:
+        state: state 参数。
+        artifact_keys: artifact_keys 参数。
+    """
     keys: List[str] = []
     if artifact_keys:
         keys.extend(str(k) for k in artifact_keys if k)
@@ -233,7 +257,12 @@ def compare_bloat(
     current: Optional[Mapping[str, Any]],
     baseline: Optional[Mapping[str, Any]],
 ) -> Dict[str, Any]:
-    """Delta vs previous build baseline (missing baseline → empty delta)."""
+    """Delta vs previous build baseline (missing baseline → empty delta).
+
+    Args:
+        current: current 参数。
+        baseline: baseline 参数。
+    """
     cur = current if isinstance(current, Mapping) else {}
     base = baseline if isinstance(baseline, Mapping) else {}
     if not base:
@@ -254,7 +283,13 @@ def write_bloat_metrics(
     baseline: Optional[Mapping[str, Any]] = None,
     artifact_keys: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Compute, attach to state[_bloat_metrics], optionally compare baseline."""
+    """Compute, attach to state[_bloat_metrics], optionally compare baseline.
+
+    Args:
+        state: state 参数。
+        baseline: baseline 参数。
+        artifact_keys: artifact_keys 参数。
+    """
     metrics = compute_bloat_from_state(state, artifact_keys=artifact_keys)
     if baseline:
         metrics["vs_baseline"] = compare_bloat(metrics, baseline)

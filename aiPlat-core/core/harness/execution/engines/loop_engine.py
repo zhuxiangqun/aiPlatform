@@ -11,8 +11,15 @@ from typing import Any
 
 
 class LoopEngine:
+    """LoopEngine。"""
     name = "loop"
 
     async def execute_agent(self, agent: Any, context: Any) -> Any:
+        """execute_agent。
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+        """
         return await agent.execute(context)
 

@@ -62,12 +62,23 @@ class TargetContinuity:
     """
 
     def __init__(self, high: float = 0.24, low: float = 0.08):
+        """初始化。
+
+        Args:
+            high: high 参数。
+            low: low 参数。
+        """
         self._high = high
         self._low = low
         self._llm_count = 0
 
     def decide(self, current_task: str, new_input: str) -> Dict[str, Any]:
-        """Return {same_task, overlap_score, method, reason}."""
+        """Return {same_task, overlap_score, method, reason}.
+
+        Args:
+            current_task: current_task 参数。
+            new_input: new_input 参数。
+        """
         score = _overlap_score(current_task, new_input)
 
         if score >= self._high:

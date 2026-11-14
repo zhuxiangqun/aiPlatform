@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ExpectedOutcome:
+    """ExpectedOutcome。"""
     field: str                      # field name in stage output
     constraint: str                 # "range", "equals", "in_set", "gt", "lt", "not_null", "matches_like"
     expected: Any = None            # the expected value/range
@@ -41,6 +42,7 @@ class ExpectedOutcome:
 
 @dataclass
 class VerificationResult:
+    """VerificationResult。"""
     stage_id: str
     verified: bool
     checks_passed: int
@@ -50,6 +52,8 @@ class VerificationResult:
     replay_diff: Optional[List[str]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "stage_id": self.stage_id,
             "verified": self.verified,
@@ -71,15 +75,12 @@ def verify_against_expected(
     *,
     stage_id: str = "",
 ) -> VerificationResult:
-    u"""Check stage output against declared expected outcomes.
+    """Check stage output against declared expected outcomes.
 
-    Expected outcome dicts:
-      {"field": "net_requirement", "constraint": "range", "expected": [0, 1000]}
-      {"field": "status", "constraint": "in_set", "expected": ["OK", "WARN"]}
-      {"field": "order_id", "constraint": "not_null"}
-      {"field": "total", "constraint": "gt", "expected": 0}
-
-    Returns VerificationResult with pass/fail details.
+    Args:
+        artifact: artifact 参数。
+        expected_outcomes: expected_outcomes 参数。
+        stage_id: stage 标识。
     """
     outcomes = [ExpectedOutcome(**e) if isinstance(e, dict) else e for e in expected_outcomes]
     failures: List[Dict] = []
@@ -196,10 +197,14 @@ def record_replay_snapshot(
     output_snapshot: str,
     algorithm_result: Optional[Dict] = None,
 ) -> None:
-    u"""Record a snapshot for later replay verification.
+    """Record a snapshot for later replay verification.
 
-    Algorithm nodes always record. LLM stages only record if
-    AIPLAT_ENABLE_REPLAY is set.
+    Args:
+        session_id: 会话 ID。
+        stage_id: stage 标识。
+        input_hash: input_hash 参数。
+        output_snapshot: output_snapshot 参数。
+        algorithm_result: algorithm_result 参数。
     """
     key = f"{session_id}:{stage_id}"
     if key not in _REPLAY_STORE:
@@ -238,10 +243,14 @@ def verify_replay(
     *,
     algorithm_result: Optional[Dict] = None,
 ) -> Optional[VerificationResult]:
-    u"""Check if this input was seen before and output is consistent.
+    """Check if this input was seen before and output is consistent.
 
-    Returns VerificationResult if a replay was found and compared.
-    Returns None if no prior snapshot for this input.
+    Args:
+        session_id: 会话 ID。
+        stage_id: stage 标识。
+        input_hash: input_hash 参数。
+        current_output: current_output 参数。
+        algorithm_result: algorithm_result 参数。
     """
     key = f"{session_id}:{stage_id}"
     snapshots = _REPLAY_STORE.get(key, {})

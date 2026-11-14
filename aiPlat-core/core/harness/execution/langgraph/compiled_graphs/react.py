@@ -66,6 +66,14 @@ def create_compiled_react_graph(
     max_steps: int = 10,
     graph_name: str = "compiled_react",
 ) -> CompiledGraph:
+    """创建 compiled_react_graph。
+
+    Args:
+        model: 模型名。
+        tools: tools 参数。
+        max_steps: max_steps 参数。
+        graph_name: graph_name 参数。
+    """
     _tools = tools or []
     builder = GraphBuilder(name=graph_name)
 

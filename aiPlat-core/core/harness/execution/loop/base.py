@@ -108,6 +108,12 @@ class BaseLoop(ILoop):
 
     ):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+            hook_manager: hook_manager 参数。
+        """
         self._config = config or LoopConfig()
 
         self._hook_manager = hook_manager or HookManager()
@@ -122,7 +128,12 @@ class BaseLoop(ILoop):
 
     async def run(self, state: LoopState, config: LoopConfig) -> LoopResult:
 
-        """Run execution loop"""
+        """Run execution loop。
+
+        Args:
+            state: state 参数。
+            config: config 参数。
+        """
 
         self._current_state = state
 
@@ -842,7 +853,11 @@ class BaseLoop(ILoop):
 
     def should_continue(self, state: LoopState) -> bool:
 
-        """Determine if loop should continue"""
+        """Determine if loop should continue。
+
+        Args:
+            state: state 参数。
+        """
 
         # Hard safety cap: prevent runaway loops regardless of config
 
@@ -962,7 +977,11 @@ class BaseLoop(ILoop):
 
     async def step(self, state: LoopState) -> LoopState:
 
-        """Execute single step - to be implemented by subclass"""
+        """Execute single step - to be implemented by subclass。
+
+        Args:
+            state: state 参数。
+        """
 
         state.step_count += 1
 

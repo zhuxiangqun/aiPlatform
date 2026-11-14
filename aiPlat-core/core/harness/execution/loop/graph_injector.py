@@ -36,7 +36,11 @@ def _float_env(name: str, default: float) -> float:
 
 
 def wants_code_graph(state: LoopState) -> bool:
-    """Whether this ReAct run should pay for monorepo code-graph inject."""
+    """Whether this ReAct run should pay for monorepo code-graph inject.
+
+    Args:
+        state: state 参数。
+    """
     if _env_flag("AIPLAT_SKIP_CODE_GRAPH_INJECT"):
         return False
     if _env_flag("AIPLAT_FORCE_CODE_GRAPH_INJECT"):
@@ -99,8 +103,8 @@ def _skill_deps_hint() -> Dict[str, Any]:
 async def inject_graph_context(state: LoopState) -> dict:
     """Inject code graph + Wiki + skill deps into Agent decision loop.
 
-    Heavy work is skipped for non-coding agents and otherwise run in a worker
-    thread with timeouts so the first LLM syscall is never starved.
+    Args:
+        state: state 参数。
     """
     hints: Dict[str, Any] = {}
     task = state.context.get("task", "") or state.context.get("_original_query", "")
@@ -234,8 +238,8 @@ async def inject_graph_context(state: LoopState) -> dict:
 def wants_ontology_inject(state: LoopState) -> bool:
     """Whether this ReAct run should pay for DomainRouter classify + embed build.
 
-    Same policy as code-graph: workspace/oral agents set coding_policy=off and
-    must not stall step_1 on SentenceTransformer / ModelManager cold start.
+    Args:
+        state: state 参数。
     """
     if _env_flag("AIPLAT_SKIP_ONTOLOGY_INJECT"):
         return False
@@ -250,9 +254,8 @@ def wants_ontology_inject(state: LoopState) -> bool:
 async def inject_ontology_context(state: LoopState) -> dict:
     """Inject domain ontology context into Agent decision loop (v2.6).
 
-    DomainRouter.classify is sync (embed all domains + possible T3 LLM). Skip for
-    coding_policy=off (workspace agents). Otherwise run in a worker thread with
-    timeout. Abandoned threads can still burn GIL — prefer skip over long waits.
+    Args:
+        state: state 参数。
     """
     hints: Dict[str, Any] = {}
     task = state.context.get("task", "") or state.context.get("_original_query", "")
@@ -358,8 +361,8 @@ async def inject_ontology_context(state: LoopState) -> dict:
 async def inject_memory_reminders(state: LoopState) -> None:
     """Bridge: inject MemoryManager reminders into the message loop.
 
-    When MemoryManager is available (wired at server startup), its
-    SystemReminders are injected as user-role messages for the agent.
+    Args:
+        state: state 参数。
     """
     try:
         from core.harness.memory.manager import get_memory_manager

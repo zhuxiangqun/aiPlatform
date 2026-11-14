@@ -16,6 +16,7 @@ import re
 
 @dataclass(frozen=True)
 class ParsedToolCall:
+    """ParsedToolCall。"""
     tool_name: str
     tool_args: Dict[str, Any]
     raw: str
@@ -24,6 +25,7 @@ class ParsedToolCall:
 
 @dataclass(frozen=True)
 class ParsedActionCall:
+    """ParsedActionCall。"""
     kind: str  # tool | skill | agent | workflow
     name: str
     args: Dict[str, Any]
@@ -44,10 +46,9 @@ def _try_load_json(s: str) -> Optional[Any]:
 def line_marker_content_start(text: str, marker: str) -> Optional[int]:
     """Index after a line-leading ``MARKER:`` (optional indent).
 
-    Mid-token false hits must not count: ``INACTION:`` / ``RETRACTION:`` /
-    ``FRACTION:`` contain the substring ``ACTION:``; ``UPSKILL:`` contains
-    ``SKILL:``. Only a line that starts with the marker (after whitespace)
-    is accepted — same class as leading-token eval verdicts.
+    Args:
+        text: text 参数。
+        marker: marker 参数。
     """
     if not text or not marker:
         return None
@@ -107,12 +108,10 @@ def _normalize_tool_call(obj: Any, raw: str) -> Optional[ParsedToolCall]:
 
 
 def parse_tool_call(text: str) -> Optional[ParsedToolCall]:
-    """
-    Parse a tool call.
+    """Parse a tool call.
 
-    Priority:
-    1) Structured JSON (fenced or inline)
-    2) Legacy ACTION: ...
+    Args:
+        text: text 参数。
     """
     if not text:
         return None
@@ -151,17 +150,10 @@ def parse_tool_call(text: str) -> Optional[ParsedToolCall]:
 
 
 def parse_action_call(text: str) -> Optional[ParsedActionCall]:
-    """
-    Parse an "action call" (tool or skill).
+    """Parse an "action call" (tool or skill).
 
-    Supports:
-    - Tool (structured first):
-      - {"tool":"name","args":{...}}
-      - {"name":"name","arguments":"{...}"} (OpenAI style, treated as tool by default)
-      - ACTION: name: {json_or_text}
-    - Skill (must be explicitly tagged to avoid substring false triggers):
-      - {"skill":"name","args":{...}} / {"skill_name":"name","skill_args":{...}}
-      - SKILL: name: {json_or_text}
+    Args:
+        text: text 参数。
     """
     if not text:
         return None

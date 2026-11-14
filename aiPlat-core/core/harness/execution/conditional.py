@@ -21,9 +21,9 @@ class PipelineCondition:
     @staticmethod
     def debate_converged(state: PipelineState) -> str:
         """Route based on debate convergence state.
-        
-        Returns 'done' if debate has converged, 'continue' otherwise.
-        Used as a conditional edge between debate nodes and the manager.
+
+        Args:
+            state: state 参数。
         """
         debate = state.get("_debate_state") or {}
         if isinstance(debate, dict) and debate.get("converged"):
@@ -37,8 +37,11 @@ class PipelineCondition:
     @staticmethod
     def risk_threshold(state: PipelineState, *, key: str = "_risk_score", threshold: float = 5.0) -> str:
         """Route based on risk score threshold.
-        
-        Returns 'high_risk' if score >= threshold, 'low_risk' otherwise.
+
+        Args:
+            state: state 参数。
+            key: key 参数。
+            threshold: threshold 参数。
         """
         score = float(state.get(key, 0) or 0)
         return "high_risk" if score >= threshold else "low_risk"
@@ -47,7 +50,8 @@ class PipelineCondition:
     def phase_check(state: PipelineState) -> str:
         """Route based on current pipeline phase (string constants, no business enum).
 
-        Returns: 'done' | 'failed' | 'paused' | 'executing'
+        Args:
+            state: state 参数。
         """
         from core.harness.execution.phase import PipelinePhase
         phase = str(state.get("phase", PipelinePhase.EXECUTING))
@@ -62,8 +66,10 @@ class PipelineCondition:
     @staticmethod
     def stage_completed(state: PipelineState, stage_id: str) -> str:
         """Check if a specific stage has been completed.
-        
-        Returns: 'completed' | 'not_completed'
+
+        Args:
+            state: state 参数。
+            stage_id: stage 标识。
         """
         done_key = f"_stage_{stage_id}_done"
         return "completed" if state.get(done_key) else "not_completed"
@@ -71,8 +77,11 @@ class PipelineCondition:
     @staticmethod
     def passes_threshold(state: PipelineState, *, metric: str = "pass_rate", threshold: float = 0.8) -> str:
         """Generic threshold check on a numeric state metric.
-        
-        Returns: 'pass' | 'fail'
+
+        Args:
+            state: state 参数。
+            metric: metric 参数。
+            threshold: threshold 参数。
         """
         value = float(state.get(metric, 0) or 0)
         return "pass" if value >= threshold else "fail"

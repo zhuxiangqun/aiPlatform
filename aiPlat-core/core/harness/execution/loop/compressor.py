@@ -12,7 +12,13 @@ from ...kernel.runtime import get_kernel_runtime
 
 
 async def apply_context_shaping(state: LoopState, config: LoopConfig, loop: Any = None) -> None:
-    """Original: _apply_context_shaping_pipeline (loop.py:1223)"""
+    """Original: _apply_context_shaping_pipeline (loop.py:1223)。
+
+    Args:
+        state: state 参数。
+        config: config 参数。
+        loop: loop 参数。
+    """
     """
     Multi-stage context shaping pipeline (skeleton + observability).
 
@@ -260,7 +266,13 @@ async def apply_context_shaping(state: LoopState, config: LoopConfig, loop: Any 
 
 
 async def compact_messages(state: LoopState, config: LoopConfig, loop: Any = None) -> None:
-    """Original: _maybe_compact_messages (loop.py:1907)"""
+    """Original: _maybe_compact_messages (loop.py:1907)。
+
+    Args:
+        state: state 参数。
+        config: config 参数。
+        loop: loop 参数。
+    """
     """
     When token budget pressure is high, compact older messages into a summary.
 

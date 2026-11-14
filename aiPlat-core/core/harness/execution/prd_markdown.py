@@ -10,7 +10,11 @@ from typing import Any, Dict, List
 
 
 def parse_prd_markdown(reply: str) -> Dict[str, Any]:
-    """Parse structured Markdown PRD into a dict."""
+    """Parse structured Markdown PRD into a dict.
+
+    Args:
+        reply: reply 参数。
+    """
     text = str(reply or "").replace("<!-- PRD_READY -->", "").strip()
     named = list(re.finditer(r"(?m)^##\s*项目名称", text))
     if named:

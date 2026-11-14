@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FailureSignature:
+    """FailureSignature。"""
     verifier_cause: str
     causal_status: str
     abstract_mechanism: str
@@ -45,6 +46,7 @@ class FailureSignature:
 
 @dataclass
 class ClusterResult:
+    """ClusterResult。"""
     signatures: List[FailureSignature]
     total_failures: int
     total_runs: int
@@ -57,9 +59,11 @@ class ClusterResult:
 # ══════════════════════════════════════════════════════════════
 
 def classify_verifier_cause(state: Dict[str, Any], stage_id: str) -> str:
-    u"""Identify the final rejection reason from verifiers.
+    """Identify the final rejection reason from verifiers.
 
-    Priority: assess_fail > compile_error > missing_artifact > timeout > assert_fail > unknown
+    Args:
+        state: state 参数。
+        stage_id: stage 标识。
     """
     assess = state.get(f"_assess_{stage_id}")
     if isinstance(assess, dict) and assess.get("overall") == "FAIL":
@@ -83,9 +87,11 @@ def classify_verifier_cause(state: Dict[str, Any], stage_id: str) -> str:
 
 
 def classify_causal_status(state: Dict[str, Any], stage_id: str) -> str:
-    u"""Classify how Agent behavior led to the failure.
+    """Classify how Agent behavior led to the failure.
 
-    Uses stage output, quick check issues, and reflection data.
+    Args:
+        state: state 参数。
+        stage_id: stage 标识。
     """
     # Check for infinite exploration
     output = state.get(f"_stage_output_{stage_id}", "")
@@ -118,9 +124,11 @@ def classify_causal_status(state: Dict[str, Any], stage_id: str) -> str:
 
 
 def classify_abstract_mechanism(state: Dict[str, Any], stage_id: str) -> str:
-    u"""Identify the reusable behavioral pattern from the failure.
+    """Identify the reusable behavioral pattern from the failure.
 
-    These are the high-level patterns that Self-Harness can target.
+    Args:
+        state: state 参数。
+        stage_id: stage 标识。
     """
     causal = classify_causal_status(state, stage_id)
 
@@ -141,16 +149,11 @@ def classify_failure_type(
     state: Dict[str, Any],
     stage_id: str,
 ) -> str:
-    u"""Classify failure as memory_loss, retrieval_interference, or both.
+    """Classify failure as memory_loss, retrieval_interference, or both.
 
-    Design from Neuron 2025 KV-memory paper:
-      - memory_loss: artifact actually deleted or corrupted
-      - retrieval_interference: artifact exists but couldn't be found/matched
-      - both: signs of both problems
-
-    This distinction matters for Self-Harness proposals:
-      - retrieval_interference → fix indexing/search, not content creation
-      - memory_loss → fix artifact persistence strategy
+    Args:
+        state: state 参数。
+        stage_id: stage 标识。
     """
     verifier = classify_verifier_cause(state, stage_id)
     causal = classify_causal_status(state, stage_id)
@@ -183,7 +186,12 @@ def classify_failure_type(
 
 
 def generate_failure_example(state: Dict[str, Any], stage_id: str) -> Dict[str, str]:
-    u"""Extract a minimal example from a failed run for the cluster."""
+    """Extract a minimal example from a failed run for the cluster.
+
+    Args:
+        state: state 参数。
+        stage_id: stage 标识。
+    """
     return {
         "stage_id": stage_id,
         "error": str(state.get("error", ""))[:200],
@@ -207,14 +215,11 @@ def cluster_failures(
     *,
     hold_out_ratio: float = 0.3,
 ) -> Tuple[ClusterResult, Dict[str, List[int]]]:
-    u"""Cluster failures from multiple pipeline runs into signatures.
+    """Cluster failures from multiple pipeline runs into signatures.
 
-    Each run_state is a dict containing pipeline state after execution.
-    Expects run_state to have: _current_stage_idx, stage config, error, etc.
-
-    Returns:
-        ClusterResult with clustered signatures.
-        Dict mapping signature_key → [held_in_indices, held_out_indices]
+    Args:
+        run_states: run_states 参数。
+        hold_out_ratio: hold_out_ratio 参数。
     """
     clusters: Dict[str, FailureSignature] = {}
     hold_out_map: Dict[str, Tuple[List[int], List[int]]] = defaultdict(lambda: ([], []))
@@ -290,6 +295,11 @@ def _cluster_path() -> str:
 
 
 def save_clusters(clusters: ClusterResult) -> None:
+    """save_clusters。
+
+    Args:
+        clusters: clusters 参数。
+    """
     path = _cluster_path()
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     data = {
@@ -316,6 +326,8 @@ def save_clusters(clusters: ClusterResult) -> None:
 
 
 def load_clusters() -> Optional[ClusterResult]:
+    """load_clusters。
+    """
     path = _cluster_path()
     if not _os.path.exists(path):
         return None

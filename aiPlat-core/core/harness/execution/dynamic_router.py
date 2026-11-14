@@ -59,6 +59,11 @@ class GoalAwareRouter:
     """
 
     def __init__(self, goal_tracker: Any = None):
+        """初始化。
+
+        Args:
+            goal_tracker: goal_tracker 参数。
+        """
         self.goal_tracker = goal_tracker
 
     def adjust(self) -> Dict[str, Any]:
@@ -98,6 +103,14 @@ class DynamicRouter:
         agent_descriptions: Optional[Dict[str, str]] = None,
         goal_tracker: Any = None,
     ):
+        """初始化。
+
+        Args:
+            supervisor_model: supervisor_model 参数。
+            max_steps: max_steps 参数。
+            agent_descriptions: agent_descriptions 参数。
+            goal_tracker: goal_tracker 参数。
+        """
         self.max_steps = max_steps
         self.supervisor_model = supervisor_model or self._default_supervisor_model()
         self.agent_descriptions = agent_descriptions or {}
@@ -171,11 +184,8 @@ class DynamicRouter:
     def canary_enabled(session_id: str = "") -> bool:
         """Percentage-based grayscale rollout for DynamicRouter.
 
-        Reads AIPLAT_DYNAMIC_ROUTER_PERCENTAGE (0-100). Uses deterministic
-        hashing per session_id so the same session always gets the same routing mode.
-
-        Also supports AIPLAT_DYNAMIC_ROUTER_CANARY_TENANTS (comma-separated
-        tenant IDs always routed to llm mode).
+        Args:
+            session_id: 会话 ID。
         """
         import hashlib
         import os
@@ -264,6 +274,8 @@ class DynamicRouter:
         return _Decision("finish", "", "Supervisor LLM error, force finish")
 
     def get_trace(self) -> List[Dict[str, Any]]:
+        """获取 trace。
+        """
         return list(self._trace)
 
     # Debate mode: delegated to core.harness.execution.debate.run_agent_debate() (Skill 6)

@@ -80,16 +80,23 @@ def build_execution_decision(
 ) -> Dict[str, Any]:
     """Path card for stage events / decision_traces (matrix E3/E3.1 / v1.9).
 
-    Fields are config-driven labels only — no business agent/artifact names.
-    ``path`` is the resolved runtime branch:
-    ``handler`` | ``hybrid`` | ``agent`` | ``llm``.
-
-    When ``execution_type=hybrid``, ``hybrid_semantics`` disambiguates:
-    ``stage_direct_handler`` (Pipeline Stage — no LLM plan) vs
-    ``syscall_plan_then_handler`` (``Skill.execute`` — LLM plan then handler).
-
-    v1.9 audit fields: ``stage_id``, ``skill_name``, ``handler_present``,
-    ``fail_closed_reason`` (set when unknown execution_type hard-fails).
+    Args:
+        architecture_profile: architecture_profile 参数。
+        execution_backend: execution_backend 参数。
+        agent_type: agent_type 参数。
+        capability_profile: capability_profile 参数。
+        execution_type: execution_type 参数。
+        path: 路径。
+        upgrade_policy: upgrade_policy 参数。
+        inferred_from: inferred_from 参数。
+        downgrade_reason: downgrade_reason 参数。
+        demote_skipped: demote_skipped 参数。
+        hybrid_semantics: hybrid_semantics 参数。
+        stage_id: stage 标识。
+        skill_name: skill_name 参数。
+        handler_present: handler_present 参数。
+        fail_closed_reason: fail_closed_reason 参数。
+        control: control 参数。
     """
     profile = str(architecture_profile or "").strip().lower()
     backend = str(execution_backend or "").strip().lower()
@@ -141,14 +148,14 @@ def record_decision(
 ) -> Dict[str, Any]:
     """Record one stage decision into the trace graph.
 
-    ``decision_id`` is ``f"{run_id}_{stage_id}"``. ``depends_on`` holds the
-    upstream stage_ids; they are normalized to decision_ids internally.
-    ``confidence`` is a 0-1 float (stage self-assessment), defaulting to 0.7
-    when omitted. ``error_contribution`` is populated later by
-    :func:`locate_max_error_node`. ``agent_id`` is recorded so that callers
-    can resolve failures by agent_id (the id the fix flow knows) in addition
-    to stage_id. ``execution`` (optional) is the E3 path card from
-    :func:`build_execution_decision`.
+    Args:
+        run_id: 运行 ID。
+        stage_id: stage 标识。
+        depends_on: depends_on 参数。
+        confidence: confidence 参数。
+        error_contribution: error_contribution 参数。
+        agent_id: Agent ID。
+        execution: execution 参数。
     """
     data = _load(run_id)
     decision_id = f"{run_id}_{stage_id}"
@@ -203,12 +210,9 @@ def locate_max_error_node(
 ) -> Dict[str, Any]:
     """Walk the decision graph backward and return the node with max error contribution.
 
-    ``error_contribution = (failed_downstream / total_downstream) * (1 - confidence)``.
-
-    Returns a dict with ``stage_id`` / ``decision_id`` / ``error_contribution``
-    (plus ``confidence`` / ``failed_downstream`` / ``total_downstream`` for
-    transparency), or ``{"stage_id": None, "error_contribution": 0.0}`` when no
-    upstream candidate explains any failure.
+    Args:
+        run_id: 运行 ID。
+        failed_stage_ids: failed_stage_ids 参数。
     """
     if failed_stage_ids:
         _mark_failed(run_id, failed_stage_ids)
@@ -267,10 +271,9 @@ def trace_root_cause_chain(
 ) -> List[Dict[str, Any]]:
     """Trace the full vertical root-cause chain from failure node(s) back to root.
 
-    Unlike :func:`locate_max_error_node` (single max contributor), this returns
-    the ordered chain of every implicated stage — deepest root first, failure
-    node last — each with confidence + error_contribution + depth. This is the
-    vertical drill-down for multi-level diagnosis.
+    Args:
+        run_id: 运行 ID。
+        failed_stage_ids: failed_stage_ids 参数。
     """
     if failed_stage_ids:
         _mark_failed(run_id, failed_stage_ids)
@@ -322,7 +325,11 @@ def trace_root_cause_chain(
 
 
 def get_trace(run_id: str) -> Dict[str, Any]:
-    """Return the full trace graph for ``run_id``."""
+    """Return the full trace graph for ``run_id``.
+
+    Args:
+        run_id: 运行 ID。
+    """
     return _load(run_id)
 
 
@@ -333,16 +340,10 @@ def build_fix_plan(
 ) -> List[str]:
     """Hybrid fix plan: prefer a single root cause, else the earliest failed stage.
 
-    Returns the list of stage identifiers (agent_id preferred, falling back to
-    stage_id) to regenerate. A single entry means "regenerate this stage and
-    its downstream" (covers every failed stage in a linear pipeline).
-
-    - Single root cause: when the trace shows a low-confidence node whose
-      ``error_contribution`` is high (≥ 0.5), return just that node.
-    - Otherwise: return the earliest (upstream-most) failed stage — its
-      regeneration re-runs all downstream failed stages.
-
-    ``test_report`` is reserved for future hypothesis-aware planning.
+    Args:
+        run_id: 运行 ID。
+        failed_stage_ids: failed_stage_ids 参数。
+        test_report: test_report 参数。
     """
     failed = list(failed_stage_ids or [])
     if not failed:
@@ -387,7 +388,11 @@ def build_fix_plan(
 
 
 def clear_trace(run_id: str) -> None:
-    """Drop the JSON file for ``run_id``."""
+    """Drop the JSON file for ``run_id``.
+
+    Args:
+        run_id: 运行 ID。
+    """
     with _lock:
         try:
             if os.path.isfile(_trace_file(run_id)):

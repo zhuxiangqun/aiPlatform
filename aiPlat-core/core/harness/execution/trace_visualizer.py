@@ -21,6 +21,7 @@ _log = logging.getLogger("aiplat.trace_visualizer")
 
 @dataclass
 class TraceStep:
+    """TraceStep。"""
     step: int
     agent: str
     reasoning: str
@@ -32,6 +33,7 @@ class TraceStep:
 
 @dataclass
 class TraceSummary:
+    """TraceSummary。"""
     spec_id: str
     total_steps: int
     unique_agents: List[str]
@@ -70,6 +72,14 @@ class TraceVisualizer:
         stage_count: int = 0,
         goal: str = "",
     ) -> TraceSummary:
+        """analyze。
+
+        Args:
+            trace: trace 参数。
+            spec_id: spec 标识。
+            stage_count: stage_count 参数。
+            goal: goal 参数。
+        """
         steps = self._parse_steps(trace)
         unique = list(dict.fromkeys(s.agent for s in steps if s.agent))
         repeats = [s for s in steps if s.is_repeat]
@@ -201,7 +211,11 @@ class TraceVisualizer:
         return suggestions
 
     def format_chain(self, summary: TraceSummary) -> str:
-        """Generate a text rendering of the decision chain, for frontend/diagnostic panels."""
+        """Generate a text rendering of the decision chain, for frontend/diagnostic panels.
+
+        Args:
+            summary: summary 参数。
+        """
         lines = [f"## {summary.spec_id} decision chain ({summary.total_steps} steps)"]
         for s in summary.steps:
             flag = ""
@@ -215,13 +229,21 @@ class TraceVisualizer:
         return "\n".join(lines)
 
     def format_anomalies(self, summary: TraceSummary) -> str:
-        """Generate a text rendering of the anomaly report."""
+        """Generate a text rendering of the anomaly report.
+
+        Args:
+            summary: summary 参数。
+        """
         if not summary.anomaly_warnings:
             return "✅ No anomalies detected"
         return "\n".join(summary.anomaly_warnings)
 
     def format_suggestions(self, summary: TraceSummary) -> str:
-        """Generate a text rendering of Spec adjustment suggestions."""
+        """Generate a text rendering of Spec adjustment suggestions.
+
+        Args:
+            summary: summary 参数。
+        """
         if not summary.spec_suggestions:
             return "✅ Current Spec needs no adjustment"
         return "\n".join(f"- {s}" for s in summary.spec_suggestions)
@@ -233,6 +255,8 @@ _viz_instance: Optional[TraceVisualizer] = None
 
 
 def get_trace_visualizer() -> TraceVisualizer:
+    """获取 trace_visualizer。
+    """
     global _viz_instance
     if _viz_instance is None:
         _viz_instance = TraceVisualizer()

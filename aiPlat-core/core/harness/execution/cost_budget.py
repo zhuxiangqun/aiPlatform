@@ -29,8 +29,10 @@ def get_pricing() -> Dict[str, Dict[str, float]]:
 def cost_for(model: str, prompt_tokens: int, completion_tokens: int) -> float:
     """Stateless USD cost for one call (existing CostTracker pricing).
 
-    ``prompt_tokens`` map to the pricing ``input`` rate, ``completion_tokens``
-    to the ``output`` rate (USD per million tokens).
+    Args:
+        model: 模型名。
+        prompt_tokens: prompt_tokens 参数。
+        completion_tokens: completion_tokens 参数。
     """
     p = get_pricing().get(model) or {"input": 0.0, "output": 0.0}
     return ((prompt_tokens / 1_000_000.0) * p.get("input", 0.0)
@@ -50,6 +52,13 @@ class CostBudgetController:
         max_cost_usd: float = 0.0,
         cost_priority: str = "balanced",
     ):
+        """初始化。
+
+        Args:
+            pricing: pricing 参数。
+            max_cost_usd: max_cost_usd 参数。
+            cost_priority: cost_priority 参数。
+        """
         self._pricing: Dict[str, Dict[str, float]] = dict(
             pricing if pricing is not None else get_pricing()
         )
@@ -59,13 +68,25 @@ class CostBudgetController:
         self._model_costs: Dict[str, float] = {}
 
     def cost_for(self, model: str, prompt_tokens: int, completion_tokens: int) -> float:
-        """USD cost for one call, without accumulating."""
+        """USD cost for one call, without accumulating.
+
+        Args:
+            model: 模型名。
+            prompt_tokens: prompt_tokens 参数。
+            completion_tokens: completion_tokens 参数。
+        """
         p = self._pricing.get(model) or {"input": 0.0, "output": 0.0}
         return ((prompt_tokens / 1_000_000.0) * p.get("input", 0.0)
                 + (completion_tokens / 1_000_000.0) * p.get("output", 0.0))
 
     def record(self, model: str, prompt_tokens: int, completion_tokens: int) -> float:
-        """Accumulate cost for one call and return the delta."""
+        """Accumulate cost for one call and return the delta.
+
+        Args:
+            model: 模型名。
+            prompt_tokens: prompt_tokens 参数。
+            completion_tokens: completion_tokens 参数。
+        """
         cost = self.cost_for(model, prompt_tokens, completion_tokens)
         self._cost_used += cost
         self._model_costs[model] = self._model_costs.get(model, 0.0) + cost
@@ -73,17 +94,25 @@ class CostBudgetController:
 
     @property
     def cost_used(self) -> float:
+        """cost_used。
+        """
         return self._cost_used
 
     @property
     def budget(self) -> float:
+        """budget。
+        """
         return self._budget
 
     @property
     def cost_priority(self) -> str:
+        """cost_priority。
+        """
         return self._priority
 
     def over_budget(self) -> bool:
+        """over_budget。
+        """
         return self._budget > 0.0 and self._cost_used >= self._budget
 
     def _should_downgrade(self) -> bool:
@@ -95,6 +124,8 @@ class CostBudgetController:
         return self.over_budget() and self._priority != "maximize_quality"
 
     def snapshot(self) -> Dict[str, Any]:
+        """snapshot。
+        """
         return {
             "cost_used_usd": round(self._cost_used, 6),
             "cost_budget_usd": self._budget,

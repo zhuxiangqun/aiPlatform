@@ -28,9 +28,16 @@ _GRAPH_SPECS: Dict[str, tuple] = {
 
 
 class GraphEngine:
+    """GraphEngine。"""
     name = "graph"
 
     def __init__(self, graph_type: str = "react", **config_kwargs):
+        """初始化。
+
+        Args:
+            graph_type: graph_type 参数。
+            config_kwargs: config_kwargs 参数。
+        """
         if graph_type not in _GRAPH_SPECS:
             graph_type = "react"
         graph_cls, config_cls = _GRAPH_SPECS[graph_type]
@@ -39,6 +46,12 @@ class GraphEngine:
         self._graph_type = graph_type
 
     async def execute_agent(self, agent: Any, context: Any) -> Any:
+        """execute_agent。
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+        """
         state = self._build_initial_state(agent, context)
         try:
             result_state = await self._graph.run(state)

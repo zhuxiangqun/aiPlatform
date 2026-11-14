@@ -131,6 +131,11 @@ class ReflectionGraph:
     """
 
     def __init__(self, config: Optional[ReflectionConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or ReflectionConfig()
         self._graph = None
         self._executor = None

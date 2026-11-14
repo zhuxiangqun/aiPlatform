@@ -15,9 +15,16 @@ from ...syscalls import sys_llm_generate
 
 
 class QuickEngine:
+    """QuickEngine。"""
     name = "quick"
 
     async def execute_agent(self, agent: Any, context: Any) -> Any:
+        """execute_agent。
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+        """
         model = getattr(agent, "_model", None) if agent else None
         message = self._extract_message(context)
         prompt = message or "Hello"

@@ -174,6 +174,11 @@ def _skill_dir(skill: Any) -> str:
 
 
 def handler_exists(skill: Any) -> bool:
+    """handler_exists。
+
+    Args:
+        skill: skill 参数。
+    """
     sd = _skill_dir(skill)
     if sd and os.path.isfile(os.path.join(sd, "handler.py")):
         return True
@@ -183,6 +188,11 @@ def handler_exists(skill: Any) -> bool:
 
 
 def is_mutating_effect(effect: Dict[str, Any]) -> bool:
+    """is_mutating_effect。
+
+    Args:
+        effect: effect 参数。
+    """
     t = str(effect.get("type") or "").strip().lower()
     resources = effect.get("resources") or []
     blob = " ".join(str(r).lower() for r in resources)
@@ -298,7 +308,11 @@ def _sop_or_schema_implies_mutation(skill: Any) -> bool:
 
 
 def unrealized_side_effect_reason(skill: Any) -> Optional[str]:
-    """None if execution may proceed; otherwise a human-readable refusal."""
+    """None if execution may proceed; otherwise a human-readable refusal.
+
+    Args:
+        skill: skill 参数。
+    """
     et = _execution_type(skill) or "prompt"
     has_handler = handler_exists(skill)
     if et in ("handler", "hybrid") and has_handler:
@@ -336,7 +350,11 @@ def unrealized_side_effect_reason(skill: Any) -> Optional[str]:
 
 
 def skill_descriptor_from_md_path(path: str) -> Optional[Dict[str, Any]]:
-    """Parse SKILL.md frontmatter into the dict shape the side-effect gate accepts."""
+    """Parse SKILL.md frontmatter into the dict shape the side-effect gate accepts.
+
+    Args:
+        path: 路径。
+    """
     p = str(path or "").strip()
     if not p or not os.path.isfile(p):
         return None
@@ -371,6 +389,11 @@ def skill_descriptor_from_md_path(path: str) -> Optional[Dict[str, Any]]:
 
 
 def skill_result_if_unrealized_side_effects(skill: Any) -> Optional[SkillResult]:
+    """skill_result_if_unrealized_side_effects。
+
+    Args:
+        skill: skill 参数。
+    """
     reason = unrealized_side_effect_reason(skill)
     if not reason:
         return None

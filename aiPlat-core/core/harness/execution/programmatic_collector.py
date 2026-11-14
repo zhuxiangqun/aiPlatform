@@ -262,8 +262,10 @@ class ProgrammaticCollector:
     ) -> Tuple[CollectResult, Optional[LossReport]]:
         """One-shot execution: collect + loss detection.
 
-        Returns:
-            (CollectResult, Optional[LossReport])
+        Args:
+            state: state 参数。
+            atom_definitions: atom_definitions 参数。
+            final_output: final_output 参数。
         """
         collect_result = self.collect(state, atom_definitions)
 

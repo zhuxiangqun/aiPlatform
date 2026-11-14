@@ -37,6 +37,7 @@ _SIGNAL_NAMES: Dict[int, str] = {
 
 @dataclass
 class SandboxResult:
+    """SandboxResult。"""
     success: bool
     output: str
     stderr: str = ""
@@ -63,6 +64,15 @@ class StageSandbox:
         max_processes: int = 100,
         env: Optional[Dict[str, str]] = None,
     ):
+        """初始化。
+
+        Args:
+            timeout_seconds: timeout_seconds 参数。
+            cpu_limit_seconds: cpu_limit_seconds 参数。
+            memory_limit_mb: memory_limit_mb 参数。
+            max_processes: max_processes 参数。
+            env: env 参数。
+        """
         self._timeout = timeout_seconds
         self._cpu_limit = cpu_limit_seconds
         self._memory_limit_mb = memory_limit_mb
@@ -84,6 +94,13 @@ class StageSandbox:
         *,
         project_dir: str = "",
     ) -> SandboxResult:
+        """execute。
+
+        Args:
+            stage_config: stage_config 参数。
+            state_snapshot: state_snapshot 参数。
+            project_dir: project_dir 参数。
+        """
         import time
         start = time.time()
 
@@ -278,6 +295,17 @@ class DockerSandbox(StageSandbox):
         network_enabled: bool = False,
         env: Optional[Dict[str, str]] = None,
     ):
+        """初始化。
+
+        Args:
+            timeout_seconds: timeout_seconds 参数。
+            cpu_limit_seconds: cpu_limit_seconds 参数。
+            memory_limit_mb: memory_limit_mb 参数。
+            max_processes: max_processes 参数。
+            image: image 参数。
+            network_enabled: network_enabled 参数。
+            env: env 参数。
+        """
         super().__init__(
             timeout_seconds=timeout_seconds,
             cpu_limit_seconds=cpu_limit_seconds,
@@ -295,6 +323,13 @@ class DockerSandbox(StageSandbox):
         *,
         project_dir: str = "",
     ) -> SandboxResult:
+        """execute。
+
+        Args:
+            stage_config: stage_config 参数。
+            state_snapshot: state_snapshot 参数。
+            project_dir: project_dir 参数。
+        """
         import shutil
         if not shutil.which("docker"):
             return await super().execute(stage_config, state_snapshot, project_dir=project_dir)
@@ -384,10 +419,9 @@ class DockerSandbox(StageSandbox):
 def create_sandbox(stage_config: Any, **kwargs) -> StageSandbox:
     """Create the appropriate sandbox based on stage config.
 
-    stage.sandbox_mode="docker" → DockerSandbox (falls back to StageSandbox if Docker missing)
-    default → StageSandbox (subprocess with resource limits)
-
-    Production profile / AIPLAT_SANDBOX_PREFER_DOCKER upgrades subprocess → docker.
+    Args:
+        stage_config: stage_config 参数。
+        kwargs: kwargs 参数。
     """
     mode = getattr(stage_config, "sandbox_mode", "subprocess") or "subprocess"
     prefer_docker = (

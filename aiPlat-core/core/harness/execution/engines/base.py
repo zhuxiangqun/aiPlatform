@@ -38,4 +38,10 @@ class IExecutionEngine(Protocol):
     name: str
 
     async def execute_agent(self, agent: Any, context: Any) -> Any:  # returns AgentResult
+        """execute_agent。
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+        """
         ...

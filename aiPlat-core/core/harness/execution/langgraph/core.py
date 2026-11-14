@@ -1,3 +1,5 @@
+"""core：模块接口。"""
+
 import logging
 """
 LangGraph Core Module
@@ -62,6 +64,11 @@ class ExecutionTrace:
     """Tracks execution through the graph"""
     
     def __init__(self, graph_id: str):
+        """初始化。
+
+        Args:
+            graph_id: graph 标识。
+        """
         self.graph_id = graph_id
         self.start_time = datetime.now(timezone.utc)
         self.end_time: Optional[datetime] = None
@@ -70,6 +77,12 @@ class ExecutionTrace:
         self.checkpoints: List[Dict[str, Any]] = []
     
     def record_node(self, node_name: str, result: NodeResult):
+        """record_node。
+
+        Args:
+            node_name: node_name 参数。
+            result: result 参数。
+        """
         self.nodes_executed.append(node_name)
         self.transitions.append({
             "node": node_name,
@@ -79,6 +92,11 @@ class ExecutionTrace:
         })
     
     def record_checkpoint(self, state: GraphState):
+        """record_checkpoint。
+
+        Args:
+            state: state 参数。
+        """
         self.checkpoints.append({
             "step": len(self.nodes_executed),
             "state": dict(state),
@@ -86,10 +104,14 @@ class ExecutionTrace:
         })
     
     def finalize(self):
+        """finalize。
+        """
         self.end_time = datetime.now(timezone.utc)
     
     @property
     def duration_ms(self) -> float:
+        """duration_ms。
+        """
         end = self.end_time or datetime.now(timezone.utc)
         start = self.start_time
         # Callers may assign naive datetimes; normalize to UTC before subtract.
@@ -101,12 +123,16 @@ class ExecutionTrace:
     
     @property
     def success_rate(self) -> float:
+        """success_rate。
+        """
         if not self.transitions:
             return 0.0
         successful = sum(1 for t in self.transitions if t["success"])
         return successful / len(self.transitions)
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "graph_id": self.graph_id,
             "start_time": self.start_time.isoformat(),
@@ -122,6 +148,11 @@ class GraphBuilder:
     """Builder for creating execution graphs"""
     
     def __init__(self, name: str = "default"):
+        """初始化。
+
+        Args:
+            name: name 参数。
+        """
         self.name = name
         self._nodes: Dict[str, Callable] = {}
         self._edges: Dict[str, List[str]] = {}
@@ -130,10 +161,22 @@ class GraphBuilder:
         self._conditions: Dict[str, Callable] = {}
     
     def add_node(self, name: str, func: Callable) -> "GraphBuilder":
+        """add_node。
+
+        Args:
+            name: name 参数。
+            func: func 参数。
+        """
         self._nodes[name] = func
         return self
     
     def add_edge(self, from_node: str, to_node: str) -> "GraphBuilder":
+        """add_edge。
+
+        Args:
+            from_node: from_node 参数。
+            to_node: to_node 参数。
+        """
         if from_node not in self._edges:
             self._edges[from_node] = []
         self._edges[from_node].append(to_node)
@@ -145,18 +188,37 @@ class GraphBuilder:
         condition: Callable,
         edges: Dict[str, str],
     ) -> "GraphBuilder":
+        """add_conditional_edge。
+
+        Args:
+            from_node: from_node 参数。
+            condition: condition 参数。
+            edges: edges 参数。
+        """
         self._conditions[from_node] = (condition, edges)
         return self
     
     def set_entry_point(self, node: str) -> "GraphBuilder":
+        """set_entry_point。
+
+        Args:
+            node: node 参数。
+        """
         self._entry_point = node
         return self
     
     def add_end_point(self, node: str) -> "GraphBuilder":
+        """add_end_point。
+
+        Args:
+            node: node 参数。
+        """
         self._end_points.append(node)
         return self
     
     def build(self) -> "CompiledGraph":
+        """build。
+        """
         if not self._entry_point:
             raise ValueError("Entry point not set")
         if self._entry_point not in self._nodes:
@@ -184,6 +246,16 @@ class CompiledGraph:
         end_points: List[str],
         conditions: Dict[str, tuple],
     ):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            nodes: nodes 参数。
+            edges: edges 参数。
+            entry_point: entry_point 参数。
+            end_points: end_points 参数。
+            conditions: conditions 参数。
+        """
         self.name = name
         self._nodes = nodes
         self._edges = edges
@@ -196,6 +268,12 @@ class CompiledGraph:
         initial_state: GraphState,
         config: Optional[GraphConfig] = None,
     ) -> GraphState:
+        """execute。
+
+        Args:
+            initial_state: initial_state 参数。
+            config: config 参数。
+        """
         config = config or GraphConfig()
         trace = ExecutionTrace(self.name)
         state = initial_state.copy()
@@ -313,13 +391,22 @@ class CompiledGraph:
         return state
     
     def get_nodes(self) -> List[str]:
+        """获取 nodes。
+        """
         return list(self._nodes.keys())
     
     def get_edges(self) -> Dict[str, List[str]]:
+        """获取 edges。
+        """
         return dict(self._edges)
 
 
 def create_graph_builder(name: str = "default") -> GraphBuilder:
+    """创建 graph_builder。
+
+    Args:
+        name: name 参数。
+    """
     return GraphBuilder(name)
 
 

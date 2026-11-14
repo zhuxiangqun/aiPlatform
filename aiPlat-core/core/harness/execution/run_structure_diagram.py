@@ -32,8 +32,8 @@ def _label(text: str) -> str:
 def stages_to_mermaid(stages: Sequence[Any]) -> Tuple[str, List[Dict[str, str]]]:
     """Build flowchart from stage topology.
 
-    Edges: depends_on → stage; input_artifacts producers → consumers by
-    matching output_artifact names.
+    Args:
+        stages: stages 参数。
     """
     stage_list = list(stages or [])
     if not stage_list:
@@ -128,7 +128,12 @@ def build_run_structure_diagram(
     *,
     stages: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
-    """Return structure payload — deterministic, no LLM."""
+    """Return structure payload — deterministic, no LLM.
+
+    Args:
+        state: state 参数。
+        stages: stages 参数。
+    """
     stage_seq: Sequence[Any] = stages or ()
     # Only read the generic `stages` key (baseline OK); callers should pass stages=
     if not stage_seq and isinstance(state, Mapping):
@@ -163,7 +168,12 @@ def write_structure_diagram(
     *,
     stages: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
-    """Persist under state[_structure_diagram] (best-effort like bloat metrics)."""
+    """Persist under state[_structure_diagram] (best-effort like bloat metrics).
+
+    Args:
+        state: state 参数。
+        stages: stages 参数。
+    """
     payload = build_run_structure_diagram(state, stages=stages)
     state[STATE_STRUCTURE_KEY] = payload
     return payload

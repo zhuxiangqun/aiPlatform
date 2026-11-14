@@ -102,7 +102,11 @@ _PATH_INPUT_KEYS = (
 
 
 def classify_execution(case: Dict[str, Any]) -> str:
-    """Resolve execution kind from case fields (explicit first)."""
+    """Resolve execution kind from case fields (explicit first).
+
+    Args:
+        case: case 参数。
+    """
     explicit = str(case.get("execution") or case.get("execution_kind") or "").strip().lower()
     if explicit in ("platform_check", "skill_invoke", "page_smoke", "conversation"):
         return explicit
@@ -151,10 +155,9 @@ def check_wizard_stage_io(
 ) -> Tuple[bool, List[str], List[str]]:
     """Structural gate for wizard app_page I/O (kernel-generic).
 
-    Catches preview failures that skill_invoke alone misses:
-    - progress_poller reusing ingest/download skill
-    - missing ``task_id`` / media path in progress & results ``config.input``
-    - source_type forms without ``show_when`` on URL fields
+    Args:
+        page: page 参数。
+        ui_bindings: ui_bindings 参数。
     """
     failures: List[str] = []
     evidence: List[str] = []
@@ -297,7 +300,11 @@ def check_wizard_stage_io(
 
 
 def normalize_result_section_type(raw: Any) -> str:
-    """Map alias → canonical section type; empty if unknown."""
+    """Map alias → canonical section type; empty if unknown.
+
+    Args:
+        raw: raw 参数。
+    """
     t = str(raw or "").strip().lower()
     if not t:
         return ""
@@ -314,7 +321,8 @@ def check_result_dashboard_sections(
 ) -> Tuple[bool, List[str], List[str]]:
     """Ensure result_dashboard.config.sections use platform-supported ``type`` values.
 
-    Prevents preview that dumps raw JSON because the renderer has no case for the type.
+    Args:
+        stage: stage 参数。
     """
     failures: List[str] = []
     evidence: List[str] = []
@@ -358,7 +366,11 @@ def check_result_dashboard_sections(
 
 
 def is_blocked_url(url: str) -> Tuple[bool, str]:
-    """Return (blocked, reason). Blocks file:// and private/link-local/loopback hosts."""
+    """Return (blocked, reason). Blocks file:// and private/link-local/loopback hosts.
+
+    Args:
+        url: url 参数。
+    """
     raw = (url or "").strip()
     if not raw:
         return True, "empty_url"
@@ -419,7 +431,14 @@ def check_file_rules(
     allowed_extensions: Optional[List[str]] = None,
     max_bytes: Optional[int] = None,
 ) -> Tuple[bool, str]:
-    """Return (ok, reason). Rules come from the case (PRD-derived), not hardcoded products."""
+    """Return (ok, reason). Rules come from the case (PRD-derived), not hardcoded products.
+
+    Args:
+        file_name: file_name 参数。
+        file_size: file_size 参数。
+        allowed_extensions: allowed_extensions 参数。
+        max_bytes: max_bytes 参数。
+    """
     name = (file_name or "").strip()
     if allowed_extensions:
         allowed = {e.lower().lstrip(".") for e in allowed_extensions if e}
@@ -444,8 +463,10 @@ def deterministic_precheck_from_params(
 ) -> Optional[Dict[str, Any]]:
     """If invoke params carry URL/file fields, apply platform validators before LLM.
 
-    Param-shape driven (keys ``url`` / ``file_name`` / ``file_size``) — no skill-name branching.
-    Returns a synthetic failed/ok result dict, or None to continue with agent invoke.
+    Args:
+        params: params 参数。
+        allowed_extensions: allowed_extensions 参数。
+        max_bytes: max_bytes 参数。
     """
     p = params or {}
     if "url" in p and p.get("url") is not None:
@@ -515,7 +536,11 @@ def _file_rule_hints_from_case(case: Dict[str, Any]) -> Tuple[Optional[List[str]
 
 
 def run_platform_check(case: Dict[str, Any]) -> Dict[str, Any]:
-    """Execute platform.* asserts / platform_check blob. Deterministic."""
+    """Execute platform.* asserts / platform_check blob. Deterministic.
+
+    Args:
+        case: case 参数。
+    """
     checks = case.get("platform_check")
     asserts = list(case.get("asserts") or case.get("assertions") or [])
     if isinstance(checks, dict):
@@ -862,8 +887,10 @@ def enrich_media_invoke_from_asserts(
 ) -> Dict[str, Any]:
     """Derive invoke params from asserts (duration density, subtitle fixture).
 
-    Frozen exam suites often pass short fixtures while asserting keyframe density
-    for a claimed 60s clip, or pass with_audio while asserting SRT ``-->``.
+    Args:
+        params: params 参数。
+        asserts: asserts 参数。
+        skill: skill 参数。
     """
     out = dict(params or {})
     skill_l = str(skill or "").strip().lower()
@@ -939,7 +966,13 @@ def _field_equals_ok(path: str, actual: Any, expected: Any) -> bool:
 def evaluate_result_asserts(
     result_obj: Any, asserts: List[Any], *, reply_text: str = ""
 ) -> Tuple[bool, List[str], List[str]]:
-    """Evaluate result.* asserts against invoke output / reply text."""
+    """Evaluate result.* asserts against invoke output / reply text.
+
+    Args:
+        result_obj: result_obj 参数。
+        asserts: asserts 参数。
+        reply_text: reply_text 参数。
+    """
     text = reply_text
     if not text and result_obj is not None:
         text = result_obj if isinstance(result_obj, str) else json.dumps(result_obj, ensure_ascii=False)
@@ -1115,9 +1148,11 @@ async def invoke_skill_via_agent(
 ) -> Dict[str, Any]:
     """Invoke skill: prefer real handler (media_skill_handlers / registry), else LLM agent.
 
-    Handler path enables true_test PASS for Factory media skills without prompt SKIP.
-    Isolated test_executor (no agent_app) must not run handlers or nest ReAct
-    (run-49fc6a85db3c: report_submit fuzzy-matched a media HANDLER, to_thread hung).
+    Args:
+        agent_app: agent_app 参数。
+        skill: skill 参数。
+        params: params 参数。
+        timeout: 超时秒数。
     """
     import asyncio
 
@@ -1389,6 +1424,11 @@ def _extract_json_obj(text: str) -> Optional[Dict[str, Any]]:
 
 
 def parse_app_page(frontend_pages: Any) -> Optional[Dict[str, Any]]:
+    """parse_app_page。
+
+    Args:
+        frontend_pages: frontend_pages 参数。
+    """
     if isinstance(frontend_pages, dict) and frontend_pages.get("stages"):
         return frontend_pages
     text = ""
@@ -1418,7 +1458,14 @@ async def run_page_smoke(
     case: Dict[str, Any],
     invoke_skills: bool = True,
 ) -> Dict[str, Any]:
-    """Validate app_page bindings + wizard I/O; optionally invoke each stage skill once."""
+    """Validate app_page bindings + wizard I/O; optionally invoke each stage skill once.
+
+    Args:
+        frontend_pages: frontend_pages 参数。
+        agent_app: agent_app 参数。
+        case: case 参数。
+        invoke_skills: invoke_skills 参数。
+    """
     page = parse_app_page(frontend_pages)
     if not page:
         return {
@@ -1563,7 +1610,13 @@ async def run_true_test_case(
     agent_app: str = "",
     frontend_pages: Any = None,
 ) -> Dict[str, Any]:
-    """Dispatch one case by classify_execution."""
+    """Dispatch one case by classify_execution.
+
+    Args:
+        case: case 参数。
+        agent_app: agent_app 参数。
+        frontend_pages: frontend_pages 参数。
+    """
     kind = classify_execution(case)
     asserts = list(case.get("asserts") or case.get("assertions") or [])
 

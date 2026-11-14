@@ -62,6 +62,11 @@ class PipelineRunStore:
     """
 
     def __init__(self, db_path: str = _DB_PATH):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path
         self._ensure_db()
 
@@ -211,6 +216,14 @@ class PipelineRunStore:
         total_stages: int = 0,
         tokens_budget: int = 0,
     ) -> None:
+        """创建 run。
+
+        Args:
+            run_id: 运行 ID。
+            project_id: project 标识。
+            total_stages: total_stages 参数。
+            tokens_budget: tokens_budget 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """INSERT OR REPLACE INTO pipeline_runs
@@ -221,6 +234,13 @@ class PipelineRunStore:
         )
 
     def update_run_phase(self, run_id: str, phase: str, error: str = "") -> None:
+        """更新 run_phase。
+
+        Args:
+            run_id: 运行 ID。
+            phase: phase 参数。
+            error: error 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         finished = now if phase in ("done", "failed", "cancelled") else ""
         self._execute(
@@ -237,11 +257,11 @@ class PipelineRunStore:
                          payload: Optional[Dict[str, Any]] = None) -> None:
         """Append an event to the run's append-only log (P2-A1).
 
-        Event types: stage_started / stage_completed / stage_skipped /
-        stage_paused / stage_failed / hitl_requested / hitl_resolved /
-        run_phase_changed / pipeline_started / pipeline_finished.
-        Payload is JSON-serialized. Never mutates existing rows —
-        run current state remains in pipeline_runs (state+event dual-write).
+        Args:
+            run_id: 运行 ID。
+            event_type: event_type 参数。
+            stage_id: stage 标识。
+            payload: 载荷 dict。
         """
         import json as _json
         self._execute(
@@ -254,7 +274,12 @@ class PipelineRunStore:
         )
 
     def list_run_events(self, run_id: str, limit: int = 500) -> List[Dict[str, Any]]:
-        """Read back events in append order (for replay / UI timeline)."""
+        """Read back events in append order (for replay / UI timeline).
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+        """
         import json as _json
         conn = self._get_conn()
         try:
@@ -281,11 +306,8 @@ class PipelineRunStore:
     def replay_run_events(self, run_id: str) -> Optional[Dict[str, Any]]:
         """P2-A1 phase 2: fold the append-only event log into a run state snapshot.
 
-        Derived (event-sourced) view — the *source of truth* for audit/replay.
-        The pipeline_runs row remains the fast-path state cache (dual-write);
-        this method reconstructs phase / current_stage_idx / pass_rate purely
-        from events, so consumers can cross-check or rebuild after a crash.
-        Returns None when no events exist for the run.
+        Args:
+            run_id: 运行 ID。
         """
         evs = self.list_run_events(run_id, limit=5000)
         if not evs:
@@ -357,14 +379,11 @@ class PipelineRunStore:
     ) -> Optional[Dict[str, Any]]:
         """Fork a new run from an existing run's event log (DSH fork / Codex thread/fork aligned).
 
-        Event-sourced fork: folds the source run's events (replay_run_events)
-        into a derived state, then creates a new pipeline_runs row initialized
-        from that state. The new run inherits the source's stage progress /
-        pass_rate / phase, and records a ``parent_run_id`` in its events so the
-        fork lineage is traceable (parent_run_id → child fork).
-
-        Returns the new run's folded state, or None when the source has no
-        events (nothing to fork).
+        Args:
+            source_run_id: source_run 标识。
+            new_run_id: new_run 标识。
+            project_id: project 标识。
+            note: note 参数。
         """
         folded = self.replay_run_events(source_run_id)
         if folded is None:
@@ -403,7 +422,12 @@ class PipelineRunStore:
         return folded
 
     def list_forked_runs(self, parent_run_id: str, limit: int = 50) -> List[str]:
-        """List run_ids forked from a given parent (fork lineage query)."""
+        """List run_ids forked from a given parent (fork lineage query).
+
+        Args:
+            parent_run_id: parent_run 标识。
+            limit: 返回条数上限。
+        """
         rows = self._get_conn().execute(
             """SELECT run_id FROM pipeline_run_events
                WHERE event_type = 'pipeline_forked'
@@ -420,6 +444,14 @@ class PipelineRunStore:
         tokens_used: int = 0,
         pass_rate: float = 0.0,
     ) -> None:
+        """更新 run_progress。
+
+        Args:
+            run_id: 运行 ID。
+            current_stage_idx: current_stage_idx 参数。
+            tokens_used: tokens_used 参数。
+            pass_rate: pass_rate 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """UPDATE pipeline_runs
@@ -447,10 +479,20 @@ class PipelineRunStore:
         description: str = "",
     ) -> None:
         """Update phase + HITL fields + progress + pipeline run in a single atomic SQL statement.
-        
-        Replaces the old pattern of calling update_run_progress →
-        update_run_phase → update_hitl_fields in three separate transactions
-        (which could leave the DB in an inconsistent state if one failed).
+
+        Args:
+            run_id: 运行 ID。
+            phase: phase 参数。
+            current_stage_idx: current_stage_idx 参数。
+            pass_rate: pass_rate 参数。
+            hitl_stage_id: hitl_stage 标识。
+            hitl_phase_name: hitl_phase_name 参数。
+            hitl_output_artifact: hitl_output_artifact 参数。
+            error: error 参数。
+            _progress_json: _progress_json 参数。
+            output_dir: output_dir 参数。
+            app_name: app_name 参数。
+            description: description 参数。
         """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         finished = now if phase in ("done", "failed", "cancelled", "expired") else ""
@@ -482,7 +524,14 @@ class PipelineRunStore:
         hitl_phase_name: str = "",
         hitl_output_artifact: str = "",
     ) -> None:
-        """Write precise HITL pause location for frontend visibility."""
+        """Write precise HITL pause location for frontend visibility.
+
+        Args:
+            run_id: 运行 ID。
+            hitl_stage_id: hitl_stage 标识。
+            hitl_phase_name: hitl_phase_name 参数。
+            hitl_output_artifact: hitl_output_artifact 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """UPDATE pipeline_runs
@@ -493,7 +542,11 @@ class PipelineRunStore:
         )
 
     def clear_hitl_fields(self, run_id: str) -> None:
-        """Clear HITL fields when pipeline resumes."""
+        """Clear HITL fields when pipeline resumes.
+
+        Args:
+            run_id: 运行 ID。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """UPDATE pipeline_runs
@@ -509,7 +562,9 @@ class PipelineRunStore:
     def write_hitl_action(self, project_id: str, action: str) -> bool:
         """Write a HITL action to the latest paused pipeline for a project.
 
-        Returns True if updated, False if no paused pipeline found.
+        Args:
+            project_id: project 标识。
+            action: action 参数。
         """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         conn = self._get_conn()
@@ -530,7 +585,11 @@ class PipelineRunStore:
             conn.close()
 
     def poll_hitl_action(self, run_id: str) -> str:
-        """Check for a pending HITL action on a specific run."""
+        """Check for a pending HITL action on a specific run.
+
+        Args:
+            run_id: 运行 ID。
+        """
         conn = self._get_conn()
         try:
             row = conn.execute(
@@ -542,7 +601,11 @@ class PipelineRunStore:
             conn.close()
 
     def clear_hitl_action(self, run_id: str) -> None:
-        """Clear the HITL action flag after processing."""
+        """Clear the HITL action flag after processing.
+
+        Args:
+            run_id: 运行 ID。
+        """
         self._execute(
             "UPDATE pipeline_runs SET _hitl_action = '' WHERE run_id = ?",
             (run_id,),
@@ -571,6 +634,27 @@ class PipelineRunStore:
         input_artifacts: str = "",
         config: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """upsert_stage。
+
+        Args:
+            run_id: 运行 ID。
+            stage_id: stage 标识。
+            stage_idx: stage_idx 参数。
+            agent_id: Agent ID。
+            skill_name: skill_name 参数。
+            status: status 参数。
+            progress: progress 参数。
+            artifact_key: artifact_key 参数。
+            artifact_output: artifact_output 参数。
+            elapsed_sec: elapsed_sec 参数。
+            error_message: error_message 参数。
+            output_artifact: output_artifact 参数。
+            hitl: hitl 参数。
+            hitl_phase: hitl_phase 参数。
+            agent_name: agent_name 参数。
+            input_artifacts: input_artifacts 参数。
+            config: config 参数。
+        """
         progress_str = json.dumps(progress) if progress else ""
         config_str = ""
         if isinstance(config, dict) and config:
@@ -651,6 +735,11 @@ class PipelineRunStore:
     # ── Query operations ─────────────────────────────────────────
 
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         conn = self._get_conn()
         try:
             row = conn.execute(
@@ -661,6 +750,11 @@ class PipelineRunStore:
             conn.close()
 
     def get_run_by_project(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """获取 run_by_project。
+
+        Args:
+            project_id: project 标识。
+        """
         conn = self._get_conn()
         try:
             row = conn.execute(
@@ -674,6 +768,11 @@ class PipelineRunStore:
             conn.close()
 
     def get_run_by_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 run_by_id。
+
+        Args:
+            run_id: 运行 ID。
+        """
         conn = self._get_conn()
         try:
             row = conn.execute(
@@ -685,6 +784,11 @@ class PipelineRunStore:
             conn.close()
 
     def get_stages(self, run_id: str) -> List[Dict[str, Any]]:
+        """获取 stages。
+
+        Args:
+            run_id: 运行 ID。
+        """
         conn = self._get_conn()
         try:
             rows = conn.execute(
@@ -699,8 +803,8 @@ class PipelineRunStore:
     def get_full_state(self, project_id: str) -> Dict[str, Any]:
         """Return aggregated state for frontend polling.
 
-        Merges the latest run with all its stages into one dict.
-        This is the single read path — no JSON files, no dict merging.
+        Args:
+            project_id: project 标识。
         """
         run = self.get_run_by_project(project_id)
         if not run:
@@ -789,8 +893,8 @@ class PipelineRunStore:
     def get_full_state_from_run_id(self, run_id: str) -> Dict[str, Any]:
         """Return aggregated state for a specific run_id (not project_id).
 
-        Used by orphan pipeline recovery to reload state when project_id
-        may not be known at the callsite.
+        Args:
+            run_id: 运行 ID。
         """
         run = self._get_conn().execute(
             "SELECT * FROM pipeline_runs WHERE run_id = ?", (run_id,)
@@ -899,7 +1003,11 @@ class PipelineRunStore:
             conn.close()
 
     def list_recent_runs(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Recent pipeline runs (org-harness / ops dashboards)."""
+        """Recent pipeline runs (org-harness / ops dashboards).
+
+        Args:
+            limit: 返回条数上限。
+        """
         conn = self._get_conn()
         try:
             rows = conn.execute(
@@ -913,7 +1021,11 @@ class PipelineRunStore:
             conn.close()
 
     def load_stages_config(self, run_id: str) -> List[Dict[str, Any]]:
-        """Load full stage config from pipeline_stages for engine reconstruction."""
+        """Load full stage config from pipeline_stages for engine reconstruction.
+
+        Args:
+            run_id: 运行 ID。
+        """
         return self.get_stages(run_id)
 
     def list_orphan_runs(self) -> List[str]:
@@ -929,7 +1041,11 @@ class PipelineRunStore:
             conn.close()
 
     def mark_orphan_for_retry(self, run_id: str) -> None:
-        """Reset run phase from 'executing' to allow retry after crash."""
+        """Reset run phase from 'executing' to allow retry after crash.
+
+        Args:
+            run_id: 运行 ID。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """UPDATE pipeline_runs
@@ -941,6 +1057,11 @@ class PipelineRunStore:
     # ── Cleanup ──────────────────────────────────────────────────
 
     def delete_run(self, run_id: str) -> None:
+        """删除 run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         self._execute("DELETE FROM pipeline_stages WHERE run_id = ?", (run_id,))
         self._execute("DELETE FROM pipeline_runs WHERE run_id = ?", (run_id,))
 
@@ -951,6 +1072,8 @@ _store: Optional[PipelineRunStore] = None
 
 
 def get_pipeline_run_store() -> PipelineRunStore:
+    """获取 pipeline_run_store。
+    """
     global _store
     if _store is None:
         _store = PipelineRunStore()

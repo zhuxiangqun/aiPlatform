@@ -71,6 +71,12 @@ class EvoXExecutor:
     """
 
     def __init__(self, *, max_atoms_default: int = 50, parallel_limit: int = 10):
+        """初始化。
+
+        Args:
+            max_atoms_default: max_atoms_default 参数。
+            parallel_limit: parallel_limit 参数。
+        """
         self._splitter = AtomicTaskSplitter(max_atoms=max_atoms_default)
         self._collector = ProgrammaticCollector()
         self._parallel_limit = parallel_limit

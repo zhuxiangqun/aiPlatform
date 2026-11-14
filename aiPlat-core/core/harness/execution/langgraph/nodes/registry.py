@@ -28,12 +28,20 @@ class INodeRegistry(ABC):
 
     @abstractmethod
     def register(self, definition: NodeDefinition) -> None:
-        """Register a node"""
+        """Register a node。
+
+        Args:
+            definition: definition 参数。
+        """
         pass
 
     @abstractmethod
     def get(self, name: str) -> Optional[NodeDefinition]:
-        """Get node by name"""
+        """Get node by name。
+
+        Args:
+            name: name 参数。
+        """
         pass
 
     @abstractmethod
@@ -48,14 +56,24 @@ class NodeRegistry(INodeRegistry):
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._nodes: Dict[str, NodeDefinition] = {}
 
     def register(self, definition: NodeDefinition) -> None:
-        """Register a node"""
+        """Register a node。
+
+        Args:
+            definition: definition 参数。
+        """
         self._nodes[definition.name] = definition
 
     def get(self, name: str) -> Optional[NodeDefinition]:
-        """Get node by name"""
+        """Get node by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._nodes.get(name)
 
     def list_nodes(self) -> List[str]:
@@ -69,13 +87,13 @@ def register_node(
     input_schema: Optional[Dict[str, Any]] = None,
     output_schema: Optional[Dict[str, Any]] = None
 ) -> Callable:
-    """
-    Decorator to register a node
-    
-    Usage:
-        @register_node("reason", "Reasoning node")
-        async def reason_node(state):
-            return {"reasoning": "..."}
+    """Decorator to register a node。
+
+    Args:
+        name: name 参数。
+        description: description 参数。
+        input_schema: input_schema 参数。
+        output_schema: output_schema 参数。
     """
     def decorator(func: Callable) -> Callable:
         definition = NodeDefinition(

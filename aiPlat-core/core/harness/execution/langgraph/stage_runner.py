@@ -25,7 +25,17 @@ from core.schemas_builder import PipelineStageConfig
 
 
 class StageRunner:
+    """StageRunner。"""
     def __init__(self, model=None, tools=None, skills=None, stage=None, pipeline_config=None):
+        """初始化。
+
+        Args:
+            model: 模型名。
+            tools: tools 参数。
+            skills: skills 参数。
+            stage: stage 参数。
+            pipeline_config: pipeline_config 参数。
+        """
         self._model = model
         self._tools = tools or []
         self._skills = skills or []
@@ -53,9 +63,9 @@ class StageRunner:
     def resolve_stage_loop_type(self, stage: Any = None, state: Optional[Dict[str, Any]] = None) -> str:
         """Honor pipeline/workspace ``loop_type`` and ``architecture_profile``.
 
-        ``done_verify.require_review`` stays on ReAct: PlanExecute can seal but
-        does not auto-dispatch autoreview. Plain ``uses_file_output`` no longer
-        overrides an explicit ``plan_execute`` profile (code_split backend B1).
+        Args:
+            stage: stage 参数。
+            state: state 参数。
         """
         s = stage if stage is not None else self._stage
         raw = "react"

@@ -26,7 +26,8 @@ def _tokens(s: str) -> set:
 def extract_ui_bindings(source: Any) -> Dict[str, str]:
     """Manifest map: platform component id → skill name.
 
-    Accepted keys on agent_manifest: ``ui_bindings``, ``component_skills``.
+    Args:
+        source: source 参数。
     """
     if isinstance(source, dict):
         for key in ("ui_bindings", "component_skills"):
@@ -72,7 +73,11 @@ def extract_ui_bindings(source: Any) -> Dict[str, str]:
 
 
 def extract_skill_routing(source: Any) -> Dict[str, str]:
-    """Extract ``skill_routing`` map from agent_app raw text / dict / manifest."""
+    """Extract ``skill_routing`` map from agent_app raw text / dict / manifest.
+
+    Args:
+        source: source 参数。
+    """
     if not source:
         return {}
     if isinstance(source, dict):
@@ -199,7 +204,11 @@ def _pick_skill(
 
 
 def parse_app_page_payload(raw: str) -> Tuple[Optional[Dict[str, Any]], str]:
-    """Return (app_page_dict, format) where format is json|file_block|none."""
+    """Return (app_page_dict, format) where format is json|file_block|none.
+
+    Args:
+        raw: raw 参数。
+    """
     text = str(raw or "").strip()
     if not text:
         return None, "none"
@@ -241,13 +250,12 @@ def inject_app_page_skills(
 ) -> Dict[str, Any]:
     """Fill / correct ``stage.skill`` from agent_app bindings + routing.
 
-    Priority for each stage:
-    0. Manifest ``ui_bindings[component]`` when value ∈ skill_routing (**SoT — always wins**)
-    1. Keep skill if it is already a routing key (unless overwrite_nonempty)
-    2. Canonicalize invented names onto routing keys (token overlap)
-    3. Component↔skill token overlap (last-resort, no YAML)
-    4. First unused routing key
-    5. Dedupe: if two stages share a skill and unused keys remain, reassign later stage
+    Args:
+        app_page: app_page 参数。
+        skill_routing: skill_routing 参数。
+        overwrite_nonempty: overwrite_nonempty 参数。
+        ui_bindings: ui_bindings 参数。
+        agent_app_source: agent_app_source 参数。
     """
     if not isinstance(app_page, dict):
         return app_page
@@ -388,7 +396,12 @@ def repair_frontend_pages_raw(
     frontend_raw: str,
     agent_app_source: Any,
 ) -> Tuple[str, Dict[str, Any]]:
-    """Parse frontend raw_output, inject skills from agent_app, re-serialize."""
+    """Parse frontend raw_output, inject skills from agent_app, re-serialize.
+
+    Args:
+        frontend_raw: frontend_raw 参数。
+        agent_app_source: agent_app_source 参数。
+    """
     routing = extract_skill_routing(agent_app_source)
     bindings = extract_ui_bindings(agent_app_source)
     page, fmt = parse_app_page_payload(frontend_raw)
@@ -451,7 +464,11 @@ def repair_frontend_pages_raw(
 
 
 def skill_routing_context_block(agent_app_source: Any) -> str:
-    """Compact prompt block: skill_routing + required ui_bindings for FE."""
+    """Compact prompt block: skill_routing + required ui_bindings for FE.
+
+    Args:
+        agent_app_source: agent_app_source 参数。
+    """
     routing = extract_skill_routing(agent_app_source)
     if not routing:
         return ""
@@ -474,7 +491,11 @@ def skill_routing_context_block(agent_app_source: Any) -> str:
 
 
 def speech_pipeline_context_block(prd_source: Any) -> str:
-    """Prompt block so FE follows PRD decisions.speech_pipeline for transcript UI."""
+    """Prompt block so FE follows PRD decisions.speech_pipeline for transcript UI.
+
+    Args:
+        prd_source: prd_source 参数。
+    """
     try:
         from core.harness.execution.factory_artifact_sanitize import (
             _speech_pipeline_from_src,
