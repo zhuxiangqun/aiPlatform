@@ -17,7 +17,8 @@ doc_type: Reference
 | R12 tranche-1 H5 open=0 | ✅ |
 | Tier 矩阵 v0（A_candidate 清单） | ✅ |
 | META_EVAL F1–F4 `family_green` | ✅（[`META_EVAL_STATUS.md`](./META_EVAL_STATUS.md)） |
-| owner 授权扩 Tier A gate | **false**（未开） |
+| owner 按符号 scoped Tier A gate | ✅ 19/19（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)） |
+| owner 授权**全局**扩 Tier A | **false**（未开；≠ scoped 闭环） |
 
 ---
 
@@ -25,10 +26,10 @@ doc_type: Reference
 
 | 家族 | 代表符号（摘录） | META | 扩容状态 |
 |---|---|---|---|
-| F1 Judge | `evaluate_judge_calibration_gate` · `open_capability_judge_calibration` · `cohen_kappa_binary` · `wilson_score_ci` | 绿 | **blocked**（待 authorize） |
-| F2 Security | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | 绿 | **blocked**（≠ L5 declare） |
-| F3 Boundary | `assert_t13_process_split_boundary` · `build_g2b_s_dual_review_workflow` | 绿 | **blocked**（≠ process_split） |
-| F4 Scorecard | `build_release_scorecard` · `build_judge_calib_evidence_pack` | 绿 | **blocked** |
+| F1 Judge | `evaluate_judge_calibration_gate` · …（7） | 绿 | **scoped accepted**；全局扩容仍 false |
+| F2 Security | `evaluate_security_*` · facade（7） | 绿 | **scoped accepted**；≠ L5 declare / cert |
+| F3 Boundary | `assert_t13_*` · dual-review · facade（3） | 绿 | **scoped accepted**；≠ process_split |
+| F4 Scorecard | `build_release_scorecard` · evidence-pack（2） | 绿 | **scoped accepted**；未计分轴 holdout |
 
 完整 19 个符号工程清单见 [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md) · [`evidence/meta_eval/phase3_a_candidate_inventory.v0.json`](./evidence/meta_eval/phase3_a_candidate_inventory.v0.json)。
 
@@ -39,7 +40,9 @@ doc_type: Reference
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
 2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
-4. ✅ 按符号扩容：A_candidate **19/19 scoped accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；**全局** `tier_a_expansion_authorized` 仍 **false**；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false
+4. ✅ 按符号扩容：A_candidate **19/19 scoped accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；**全局** `tier_a_expansion_authorized` 仍 **false**；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false  
+5. ✅ 覆盖率骨架 A 行实测刷新（[`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)；禁单一%）  
+6. ⏳ B 轨 suite 挂接 / 或全局扩容（须显式）→ [`PHASE3_SCOPED_CLOSEOUT.md`](./PHASE3_SCOPED_CLOSEOUT.md)
 
 ## 禁止
 
@@ -65,6 +68,7 @@ doc_type: Reference
 
 ## 关联
 
+- scoped 闭环：[`PHASE3_SCOPED_CLOSEOUT.md`](./PHASE3_SCOPED_CLOSEOUT.md)  
 - Phase 2（独立）：[`PHASE2_PREP.md`](./PHASE2_PREP.md)  
 - Phase 3.5（尺子）：[`META_EVAL_V0.md`](./META_EVAL_V0.md)  
 - 计划：`docs/architecture/plans/eval-system-improvement-plan.md` §8

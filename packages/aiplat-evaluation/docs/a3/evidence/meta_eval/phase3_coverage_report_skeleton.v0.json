@@ -1,11 +1,12 @@
 {
   "schema": "eval.phase3.coverage_report_skeleton.v0",
-  "recorded_at": "2026-11-14T20:39:45+08:00",
+  "recorded_at": "2026-11-14T21:33:12+08:00",
   "columns": [
     "tier",
     "n",
     "with_suite",
     "with_gate",
+    "scoped_authorized",
     "exempt",
     "unauthorized_claim"
   ],
@@ -13,26 +14,29 @@
     {
       "tier": "A_candidate",
       "n": 19,
-      "with_suite": null,
-      "with_gate": null,
+      "with_suite": 19,
+      "with_gate": 19,
+      "scoped_authorized": 19,
       "exempt": 0,
       "unauthorized_claim": false,
-      "note": "META families green; gate authorize false"
+      "note": "scoped_authorized=19; global_tier_a_expansion_authorized=false; with_suite=evidence_refs-on-disk"
     },
     {
       "tier": "B",
       "n": 165,
       "with_suite": null,
       "with_gate": null,
+      "scoped_authorized": null,
       "exempt": 0,
       "unauthorized_claim": false,
-      "note": "calendar draft only"
+      "note": "calendar draft only; suite attach pending"
     },
     {
       "tier": "C",
       "n": 458,
       "with_suite": null,
       "with_gate": null,
+      "scoped_authorized": null,
       "exempt": 0,
       "unauthorized_claim": false,
       "note": "register-only; must not crowd A slots"
@@ -41,5 +45,6 @@
   "forbid_single_coverage_percent": true,
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
-  "honesty": "Skeleton only — null suite/gate counts until measured. Never collapse A/B/C into one coverage%."
+  "a_candidate_scoped_complete": true,
+  "honesty": "A row measured from inventory evidence_refs + per-symbol ledger. B/C suite/gate remain null until measured. Never collapse A/B/C into one coverage%. scoped complete ≠ global_tier_a_expansion_authorized."
 }
