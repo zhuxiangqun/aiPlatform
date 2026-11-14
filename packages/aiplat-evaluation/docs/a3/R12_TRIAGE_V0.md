@@ -30,7 +30,12 @@ doc_type: Reference
 | **H2** | CoreFacade 纯 re-export / `*Error` / 私有 helper | 豁免至 **2027-02-14** | 否 |
 | **H3** | 文档/ADR/面板文件名误进 join | 降为非能力叙述 | 否 |
 | **H4** | 包内脚本 / 一次性工具 | 豁免至 **2027-02-14** | 否 |
-| **H5** | 人类视图有、本域 registry 无的可调用能力 | 补 registry 或删夸大文档 | 视宣称 |
+| **H5** | 人类视图有、本域 registry 无的可调用能力（严格 `eval_`/`aiplat_eval_`/`*SubjectAdapter` 等形） | 补 registry 或删夸大文档 | 视宣称 |
+| **H6** | 含 eval 样词但**不属**本域对账分子（形状不符） | `out_of_tranche`；不计入 H5 清零 | 否 |
+
+H5 噪声过滤：文件扩展名 / ADR / Panel / 路径 / **尾下划线文档词干**（如 `eval_`）→ H3；非严格形状 → H6。
+
+Tier 初稿：[`TIER_MATRIX_V0.md`](./TIER_MATRIX_V0.md)（`A_candidate` ≠ 已授权 Tier A）。
 
 ---
 

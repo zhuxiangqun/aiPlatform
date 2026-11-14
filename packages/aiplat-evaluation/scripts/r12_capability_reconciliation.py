@@ -84,13 +84,14 @@ def _classify_reg(sym: str, mod: str) -> str:
 
 
 def _classify_cap(sym: str) -> str:
-    """Classify CAPABILITIES-only tokens.
+    """Classify CAPABILITIES-only tokens for evaluation-system tranche.
 
     Args:
-        sym: Backtick token from AIPLAT_CAPABILITIES.md.
+        sym: Token from AIPLAT_CAPABILITIES.md.
 
     Returns:
-        Category id (H3 / H5).
+        H3 (non-capability / noise), H5 (likely missing registry), or
+        H6 (matched loose eval keyword but out of this domain tranche).
     """
     if re.search(r"(?i)\.(md|tsx|ts|json|py)$", sym):
         return "H3"
@@ -101,9 +102,20 @@ def _classify_cap(sym: str) -> str:
         or "PANEL" in sym.upper()
         or sym.endswith("Panel")
         or "Panel.tsx" in sym
+        or "/" in sym
+        or " " in sym
+        # Doc stems like `eval_` / `eval_api_capability_` are not provides.
+        or sym.endswith("_")
     ):
         return "H3"
-    return "H5"
+    # Strict: only these shapes are expected in evaluation-system provides.
+    if re.match(
+        r"(?i)^(eval_|g2b_|scorecard_|preference_|aiplat_eval_|"
+        r"run_[a-z0-9_]+_capability_smoke$|.*SubjectAdapter$)",
+        sym,
+    ):
+        return "H5"
+    return "H6"
 
 
 def main() -> int:
@@ -171,16 +183,22 @@ def main() -> int:
             }
         )
 
+    # Cap-only scan: prefer strict eval shapes; loose keyword hits → H6 out-of-tranche.
     eval_cap = sorted(
         s
         for s in cap_syms
-        if re.search(r"(?i)eval|scorecard|g2b|preference_v0|arena", s)
+        if re.search(r"(?i)eval|scorecard|g2b|preference|arena|SubjectAdapter", s)
     )
     for sym in eval_cap:
         if sym in by_sym:
             continue
         cat = _classify_cap(sym)
-        disp = "downgrade_non_capability" if cat == "H3" else "open"
+        if cat == "H3":
+            disp, note = "downgrade_non_capability", "文档/UI/路径非能力"
+        elif cat == "H6":
+            disp, note = "out_of_tranche", "含 eval 样词但不属 evaluation-system 对账分子"
+        else:
+            disp, note = "open", "补 registry provides 或删夸大叙述"
         diffs.append(
             {
                 "capability_or_symbol": sym,
@@ -190,7 +208,7 @@ def main() -> int:
                 "owner": "评测 owner",
                 "disposition": disp,
                 "exempt_until": None,
-                "note": "文档/UI 非能力" if cat == "H3" else "补 registry 或删夸大叙述",
+                "note": note,
             }
         )
 
@@ -215,6 +233,9 @@ def main() -> int:
             ),
             "downgraded": sum(
                 1 for d in diffs if d["disposition"] == "downgrade_non_capability"
+            ),
+            "out_of_tranche": sum(
+                1 for d in diffs if d["disposition"] == "out_of_tranche"
             ),
         },
         "by_category": dict(cat_c),
@@ -270,6 +291,7 @@ def main() -> int:
         f"| open | {summary['counts']['open']} |",
         f"| exempt | {summary['counts']['exempt']} |",
         f"| downgraded | {summary['counts']['downgraded']} |",
+        f"| out_of_tranche | {summary['counts']['out_of_tranche']} |",
         "",
         "## 分诊类别",
         "",
@@ -280,7 +302,9 @@ def main() -> int:
         lines.append(f"| {k} | {v} |")
     lines += [
         "",
-        f"H2/H4 豁免到期：**{EXEMPT_UNTIL}**。H1_candidate 待 owner 白名单。",
+        f"H2/H4 豁免到期：**{EXEMPT_UNTIL}**。"
+        " H1_candidate 已清零（见白名单）。"
+        " H5 open ≠ Tier A 扩容；见 [`TIER_MATRIX_V0.md`](./TIER_MATRIX_V0.md)。",
         "",
     ]
     OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")

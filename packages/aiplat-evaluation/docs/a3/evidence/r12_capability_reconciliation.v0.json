@@ -1,26 +1,29 @@
 {
   "schema": "eval.r12.capability_reconciliation.v0",
   "tranche": "evaluation-system-domain-only",
-  "recorded_at": "2026-11-14T17:28:43+08:00",
+  "recorded_at": "2026-11-14T17:34:23+08:00",
   "accuracy_claim": false,
   "join_key": "(module,symbol); triage=H1–H5",
   "counts": {
     "registry_symbols": 638,
     "in_both": 637,
-    "diff_total": 251,
-    "open": 212,
+    "diff_total": 259,
+    "open": 73,
     "exempt": 1,
-    "downgraded": 38
+    "downgraded": 53,
+    "out_of_tranche": 132
   },
   "by_category": {
     "H2": 1,
-    "H5": 212,
-    "H3": 38
+    "H3": 53,
+    "H6": 132,
+    "H5": 73
   },
   "by_disposition": {
     "exempt_human_view": 1,
-    "open": 212,
-    "downgrade_non_capability": 38
+    "downgrade_non_capability": 53,
+    "out_of_tranche": 132,
+    "open": 73
   },
   "in_both_sample": [
     "AdversarialTestSuite",
@@ -79,11 +82,11 @@
       "capability_or_symbol": "/eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "ADR-DRAFT-evaluation-a3",
@@ -93,7 +96,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "ADR-EVALUATION-A3",
@@ -103,7 +106,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "AIPLAT_EVAL_SERVICE_URL",
@@ -113,7 +116,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "ARENA_BLIND_PILOT.md",
@@ -123,37 +126,57 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "AgentEvalResult.scoring_honesty",
       "type": "capabilities_has_registry_missing",
       "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "ApiSubjectAdapter",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
       "category": "H5",
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "Arena",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "CoreFacade.evaluate_gold_profile_gate",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "DatasetSubjectAdapter",
       "type": "capabilities_has_registry_missing",
       "module": null,
       "category": "H5",
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "ENGINEERING_UNFREEZE_EVAL_E6.md",
@@ -163,7 +186,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EVAL_V1",
@@ -173,7 +196,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "EVAL_V1_E3_GOLD_SOURCES.md",
@@ -183,7 +206,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EVAL_V1_E7_CLOSEOUT.md",
@@ -193,27 +216,27 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EnvelopeValidation",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "Eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvalAgentsPanel.tsx",
@@ -223,7 +246,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalCasePackPanel",
@@ -233,17 +256,17 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalCenter",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvalExamSuitePanel",
@@ -253,7 +276,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalExamSuitePanel.tsx",
@@ -263,7 +286,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalExecutionPlaneBanner.tsx",
@@ -273,7 +296,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalFullReportPanel",
@@ -283,7 +306,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalFullReportPanel.tsx",
@@ -293,7 +316,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalGeneratedAppsPanel",
@@ -303,7 +326,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalMethodTrackPanel",
@@ -313,7 +336,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalMethodTrackPanel.tsx",
@@ -323,27 +346,27 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalMetrics",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvalMetricsEngine",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvalP1RegressionPanel",
@@ -353,7 +376,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalP1RegressionPanel.tsx",
@@ -363,7 +386,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalP4StatusPanel",
@@ -373,7 +396,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalP4StatusPanel.tsx",
@@ -383,7 +406,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalReviewPanel.tsx",
@@ -393,7 +416,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalSkillsPanel",
@@ -403,17 +426,17 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalStore.list_reports",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvalSubjectRegressionInventoryPanel",
@@ -423,7 +446,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalTypedPlanPanel",
@@ -433,7 +456,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalTypedPlanPanel.tsx",
@@ -443,157 +466,207 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "EvalTypes",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "Evaluation",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvaluationRunner",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "EvaluationWorkbench",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "Evaluator",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "G2b",
       "type": "capabilities_has_registry_missing",
       "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "GeneratedAppSubjectAdapter",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
       "category": "H5",
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "GoalProgressEvaluator",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "KnowledgeValidator",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "PipelineEvalMixin",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "PostRetrievalGovernor",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "Preference",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "Retrieval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "Scorecard",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "SecurityToolRetrievalLiveError",
       "type": "capabilities_has_registry_missing",
       "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "SkillSubjectAdapter",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
       "category": "H5",
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
+    },
+    {
+      "capability_or_symbol": "SystemSubjectAdapter",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
+      "category": "H5",
+      "owner": "评测 owner",
+      "disposition": "open",
+      "exempt_until": null,
+      "note": "补 registry provides 或删夸大叙述"
+    },
+    {
+      "capability_or_symbol": "_TypedLexicalSubjectAdapter",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
+      "category": "H5",
+      "owner": "评测 owner",
+      "disposition": "open",
+      "exempt_until": null,
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "_is_multi_turn_eval_set",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "agentEvalApi",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "aiplat_eval_b12_contract_gate",
@@ -603,7 +676,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_b2l_llm_dynamic_gate",
@@ -613,7 +686,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_b2l_local_closeout",
@@ -623,7 +696,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_b3l_dual_read_drill",
@@ -633,7 +706,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_b3l_local_closeout",
@@ -643,7 +716,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_g2b_accuracy_closeout_gate",
@@ -653,7 +726,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_g2b_n100_pack",
@@ -663,7 +736,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_local_chaos_drill",
@@ -673,7 +746,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_local_track_closeout",
@@ -683,7 +756,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_guest_boot_gate",
@@ -693,7 +766,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_linux_track_gate",
@@ -703,7 +776,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_microvm_local_prep_gate",
@@ -713,7 +786,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_p1_canonical_gate",
@@ -723,7 +796,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_p1_local_gate",
@@ -733,7 +806,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_prod_live_baseline",
@@ -743,7 +816,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_run_worker",
@@ -753,7 +826,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_s1_local_gate",
@@ -763,7 +836,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "aiplat_eval_s1_prod_model_gate",
@@ -773,407 +846,407 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "annotate_skill_eval_runtime",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "arena_p1_metrics",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "attach_evaluation_plan",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "build_eval_profile_from_declarations",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "builtin_skill_eval_suite_spec",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compare_eval_reports",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compare_eval_reports_by_id",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_bump",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_calibrate_difficulty",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_coverage",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_draft",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_enqueue_review",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_expand",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_freeze",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_from_trace",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_holdout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_close",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_get",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_ratings",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_judge_calibration_ticket",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_llm_candidates",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_mutate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_propose_difficulty",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_review",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compat_evaluation_case_pack_review_queue",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "compile_evaluation_plan",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "config.eval_profile",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "defaultSessionEvalPayload",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "default_tool_retrieval_cases",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "enqueue_listed_agent_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "ensure_builtin_skill_eval_suites",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval-exam-runtime-tiers",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval-object-contract",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval-observability",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval.claims_gate.v1",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval.protocol.v0",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval.store.v0",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "eval.target_contract.v1",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evalExecutionErrorCode",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evalRunPanelHelpers.ts",
@@ -1183,27 +1256,27 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_api_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_bump_case_pack_version",
@@ -1213,7 +1286,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_calibrate_case_pack_difficulty",
@@ -1223,7 +1296,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_calibration.schema.json",
@@ -1233,7 +1306,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_close_judge_calibration_ticket",
@@ -1243,7 +1316,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_code_generator",
@@ -1253,17 +1326,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_code_review_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_compare_reports",
@@ -1273,7 +1346,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_compile_evaluation_plan",
@@ -1283,17 +1356,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_dataset_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_enqueue_case_pack_review",
@@ -1303,7 +1376,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_evaluate_l5_claims_gate",
@@ -1313,7 +1386,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_evidence_audit_status",
@@ -1323,7 +1396,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_expand_draft_case_pack",
@@ -1333,7 +1406,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_freeze_workspace_case_pack",
@@ -1343,7 +1416,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_g2b_claim_unlock_checklist",
@@ -1353,7 +1426,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_g2b_l5_gap_disclosure",
@@ -1363,7 +1436,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_g2b_pack_status",
@@ -1373,7 +1446,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_gate.schema.json",
@@ -1383,17 +1456,17 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_generated_app_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_get_judge_calibration_ticket",
@@ -1403,17 +1476,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_kb_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_list_case_pack_review_queue",
@@ -1423,7 +1496,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_list_reports",
@@ -1433,7 +1506,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_mark_case_pack_holdout",
@@ -1443,7 +1516,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_match_cases_for_agent_target",
@@ -1453,27 +1526,27 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_model_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_multi_agent_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_open_judge_calibration_ticket",
@@ -1483,7 +1556,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_plan.py",
@@ -1493,7 +1566,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_preference_pack_status",
@@ -1503,7 +1576,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_profile_resolve.py",
@@ -1513,17 +1586,17 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_prompt_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_propose_case_pack_difficulty",
@@ -1533,7 +1606,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_protocol",
@@ -1543,7 +1616,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_publish_draft_case_pack",
@@ -1553,7 +1626,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_publish_llm_candidate_case_pack",
@@ -1563,7 +1636,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_publish_mutation_case_pack",
@@ -1573,7 +1646,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_publish_trace_case_pack",
@@ -1583,7 +1656,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_record_judge_calibration_ratings",
@@ -1593,7 +1666,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_resolve_agent_eval_profile",
@@ -1603,7 +1676,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_retrieval",
@@ -1613,7 +1686,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_dataset_plan_exam",
@@ -1623,7 +1696,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_generated_app_pi_smoke",
@@ -1633,7 +1706,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_model_plan_exam",
@@ -1643,7 +1716,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_prompt_plan_exam",
@@ -1653,7 +1726,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_system_plan_exam",
@@ -1663,7 +1736,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_run_workflow_plan_exam",
@@ -1673,7 +1746,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_runner.py",
@@ -1683,7 +1756,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_scorecard_status",
@@ -1693,17 +1766,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_session_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_sets",
@@ -1713,17 +1786,17 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_skill_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_store.schema.json",
@@ -1733,7 +1806,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_submit_case_pack_review",
@@ -1743,7 +1816,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_summarize_case_pack_coverage",
@@ -1753,37 +1826,37 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_system_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_tool_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_workflow_capability_",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H3",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "eval_worksheet_pack_file",
@@ -1793,7 +1866,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_worksheet_pack_generate",
@@ -1803,7 +1876,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "eval_worksheet_pack_status",
@@ -1813,347 +1886,347 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "evaluate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluateL5ClaimsGate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_delivery_session",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_diff",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_diff_snippets",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_escort_exit_from_signals",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_evolve_proposal",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_files",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_fleet_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_four_questions",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_freshness",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_l5_claims_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_live_unlock",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_mcp_plugin_allowlist",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_multi_agent_upgrade",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_p2_1_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_physical_merge_gates",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_pilot_exit",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_post_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_publish_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_result_asserts",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_run_through",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_slice_offline_policy",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_tag_assertions",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_testability_gate",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluate_tool_shell_risk",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a1_run_local",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a2_migrate_local",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_local_rehearsal",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_prep_check",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_record_live_drill",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a3_split_authorize",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a4_independence_check",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "evaluation_a5_local_closeout",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "g2b_claim_unlock_checklist",
@@ -2163,7 +2236,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "g2b_l5_gap_disclosure",
@@ -2173,7 +2246,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "g2b_pack_status",
@@ -2183,7 +2256,7 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "g2b_run_model_outputs.py",
@@ -2193,217 +2266,227 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "generate_agent_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "get_eval_job",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "inspect_agent_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "isEvalJobTerminal",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "is_approved_evaluation",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "is_complete_evaluation",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "kb_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "kb_eval_ops",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "load_eval_set",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "match_eval_sets_for_target",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "messageForEvalExecutionCode",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "meta-eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "package_arena_run",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "package_session_eval_run",
       "type": "capabilities_has_registry_missing",
       "module": null,
+      "category": "H6",
+      "owner": "评测 owner",
+      "disposition": "out_of_tranche",
+      "exempt_until": null,
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
+    },
+    {
+      "capability_or_symbol": "preference_pack_status",
+      "type": "capabilities_has_registry_missing",
+      "module": null,
       "category": "H5",
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "prompt_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "prompt_eval_ops",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "prompt_eval_p1_metrics",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "proxy_eval_store",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "reevaluate_code_review_gold",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "release_scorecard.build_release_scorecard",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "resolve_agent_eval_profile",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "retrieval.py",
@@ -2413,7 +2496,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "retrieval_crag.py",
@@ -2423,37 +2506,37 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "retrieval_env_available",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "runs_eval",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "runs_eval_ops",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "scorecard_status",
@@ -2463,67 +2546,67 @@
       "owner": "评测 owner",
       "disposition": "open",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "补 registry provides 或删夸大叙述"
     },
     {
       "capability_or_symbol": "skillEvalApi",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skillEvalRuntimeAnn",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skill_eval_ensure_builtin_suites",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skill_eval_preflight",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skill_evals",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skill_evals_ops",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "skill_evals_ops.py",
@@ -2533,37 +2616,37 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     },
     {
       "capability_or_symbol": "skill_evals_ops.run",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "stamp_eval_report_metrics",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "tool_eval_runtime_map",
       "type": "capabilities_has_registry_missing",
       "module": null,
-      "category": "H5",
+      "category": "H6",
       "owner": "评测 owner",
-      "disposition": "open",
+      "disposition": "out_of_tranche",
       "exempt_until": null,
-      "note": "补 registry 或删夸大叙述"
+      "note": "含 eval 样词但不属 evaluation-system 对账分子"
     },
     {
       "capability_or_symbol": "tool_eval_runtime_map.py",
@@ -2573,7 +2656,7 @@
       "owner": "评测 owner",
       "disposition": "downgrade_non_capability",
       "exempt_until": null,
-      "note": "文档/UI 非能力"
+      "note": "文档/UI/路径非能力"
     }
   ],
   "owner": "评测 owner",
