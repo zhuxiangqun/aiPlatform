@@ -30,13 +30,13 @@ doc_type: Reference
 | F3 Boundary | `assert_t13_process_split_boundary` · `build_g2b_s_dual_review_workflow` | 绿 | **blocked**（≠ process_split） |
 | F4 Scorecard | `build_release_scorecard` · `build_judge_calib_evidence_pack` | 绿 | **blocked** |
 
-完整 19 个符号见 [`evidence/tier_matrix_v0.json`](./evidence/tier_matrix_v0.json) `tiers.A_candidate`。
+完整 19 个符号工程清单见 [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md) · [`evidence/meta_eval/phase3_a_candidate_inventory.v0.json`](./evidence/meta_eval/phase3_a_candidate_inventory.v0.json)。
 
 ---
 
 ## 本地可继续（不翻转 authorize）
 
-1. 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口  
+1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
 2. B 轨挂 suite + 复核日历草稿  
 3. 覆盖率报表骨架按 A/B/C 分列（禁止单一覆盖%）  
 4. 一次只提议 **1 个** 符号升「authorized Tier A gate」，须 owner 书面授权

@@ -790,3 +790,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec14 | 2026-11-14 | F2 安全人裁判 19/19 scored（agr=1 κ=1 ECE=0.05）→ 4/5；dual-human 仍开 |
 | v1.1.7+exec15 | 2026-11-14 | F2 dual-human（朱莹/朱鸿林 · g2b-81）→ META_EVAL F1–F4 全绿；≠ Tier A/L5 |
 | v1.1.7+exec16 | 2026-11-14 | META_EVAL 汇总 + Phase3 预备页；`meta_eval_families_green=true` 仍 ≠ 扩容授权 |
+| v1.1.7+exec17 | 2026-11-14 | Phase3 A_candidate 19 符号工程清单（def/证据/缺口）；仍 ≠ 扩容授权 |

@@ -1,0 +1,306 @@
+{
+  "schema": "eval.phase3.a_candidate_inventory.v0",
+  "recorded_at": "2026-11-14T20:35:28+08:00",
+  "source": "docs/a3/evidence/tier_matrix_v0.json tiers.A_candidate",
+  "n": 19,
+  "tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "security_certification": false,
+  "l5_declare_authorized": false,
+  "items": [
+    {
+      "symbol": "assert_t13_process_split_boundary",
+      "kind": "impl",
+      "meta_family": "F3",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_t13_allowlist.py:261",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ process_split_authorized flip"
+    },
+    {
+      "symbol": "build_g2b_s_dual_review_workflow",
+      "kind": "impl",
+      "meta_family": "F3",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_cert_prep.py:197",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ process_split_authorized flip"
+    },
+    {
+      "symbol": "build_judge_calib_evidence_pack",
+      "kind": "impl",
+      "meta_family": "F4",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_cert_prep.py:140",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
+        "docs/a3/scorecard_v1.json",
+        "docs/a3/evidence/evidence_manifest.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "unscored scorecard axes remain holdout-from-claim"
+    },
+    {
+      "symbol": "build_release_scorecard",
+      "kind": "impl",
+      "meta_family": "F4",
+      "impl_def": "aiPlat-core/core/harness/evaluation/release_scorecard.py:42",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f4_release_scorecard_status.v0.json",
+        "docs/a3/scorecard_v1.json",
+        "docs/a3/evidence/evidence_manifest.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "unscored scorecard axes remain holdout-from-claim"
+    },
+    {
+      "symbol": "cohen_kappa_binary",
+      "kind": "impl",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/apps/eval/service/g2c.py:30",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "eval_assert_t13_process_split_boundary",
+      "kind": "facade_wrapper",
+      "meta_family": "F3",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:8349",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:8349",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+        "docs/a3/evidence/meta_eval/f3_process_split_boundary_pin.v0.json",
+        "docs/a3/SPLIT_CHECKLIST.md"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ process_split_authorized flip"
+    },
+    {
+      "symbol": "eval_evaluate_security_family_gates",
+      "kind": "facade_wrapper",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:8021",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:8021",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "eval_evaluate_security_judge_calibration",
+      "kind": "facade_wrapper",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:8095",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:8095",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "eval_evaluate_security_severity_l5_gate",
+      "kind": "facade_wrapper",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:8255",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:8255",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "eval_judge_calibration_gate",
+      "kind": "facade_wrapper",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:10670",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:10670",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "eval_load_security_judge_calib_defaults",
+      "kind": "facade_wrapper",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:8158",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:8158",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "eval_open_capability_judge_calibration",
+      "kind": "facade_wrapper",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/api/core_facade.py:10705",
+      "facade_def": "aiPlat-core/core/api/core_facade.py:10705",
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "evaluate_judge_calibration_gate",
+      "kind": "impl",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/apps/eval/service/capability_p4_gate.py:33",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "evaluate_security_family_gates",
+      "kind": "impl",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_family_report.py:428",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "evaluate_security_judge_calibration",
+      "kind": "impl",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_judge_calib.py:321",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "judge_calibration_gate_for_ticket",
+      "kind": "impl",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/apps/eval/service/capability_p4_gate.py:161",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "load_judge_calib_defaults",
+      "kind": "impl",
+      "meta_family": "F2",
+      "impl_def": "aiPlat-core/core/apps/eval/service/security_judge_calib.py:61",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+        "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "family_green ≠ L5 declare / security_certification"
+    },
+    {
+      "symbol": "open_capability_judge_calibration",
+      "kind": "impl",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/apps/eval/service/capability_p4_gate.py:96",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    },
+    {
+      "symbol": "wilson_score_ci",
+      "kind": "impl",
+      "meta_family": "F1",
+      "impl_def": "aiPlat-core/core/apps/eval/service/mode_intersection_rank.py:46",
+      "facade_def": null,
+      "evidence_refs": [
+        "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+        "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+        "docs/a3/evidence/g2b_kappa_aggregate.v1.json"
+      ],
+      "meta_family_green": true,
+      "tier_a_gate_authorized": false,
+      "gap": "Tier A gate authorize still false; product accuracy_claim remains false"
+    }
+  ],
+  "honesty": "Inventory only. meta_eval family_green is prerequisite; tier_a_expansion_authorized remains false. ≠ coverage complete."
+}
