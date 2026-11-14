@@ -103,4 +103,9 @@ def test_majority_blocked_import_gate():
     report = wrap_install_report(assets=ok_assets, registered=2)
     assert report["schema"] == INSTALL_REPORT_SCHEMA
     assert report["import_failed"] is False
+    assert report["status"] == "ok"
     assert report["registered"] == 2
+
+    failed_report = wrap_install_report(assets=assets, import_failed=True)
+    assert failed_report["status"] == "import_failed"
+    assert failed_report["import_failed"] is True

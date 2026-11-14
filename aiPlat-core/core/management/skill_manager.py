@@ -1621,13 +1621,16 @@ class SkillManager:
 
         self._load_directory_skills()
 
+        failed = bool(getattr(res, "import_failed", False))
         return {
             "installed": res.installed,
             "skipped": res.skipped,
             "base": str(base),
             "assets": list(getattr(res, "assets", None) or []),
             "warnings": list(getattr(res, "warnings", None) or []),
-            "import_failed": bool(getattr(res, "import_failed", False)),
+            "import_failed": failed,
+            # Must not report status=ok when majority gate failed (HTTP merges **res after ok)
+            "status": "import_failed" if failed else "ok",
         }
 
 

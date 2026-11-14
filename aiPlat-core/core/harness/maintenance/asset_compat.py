@@ -1230,10 +1230,13 @@ def wrap_install_report(
         Install report dict with schema marker.
     """
     rows = [normalize_asset_report_row(a) for a in (assets or [])]
+    failed = bool(import_failed)
     out: Dict[str, Any] = {
         "schema": INSTALL_REPORT_SCHEMA,
         "assets": rows,
-        "import_failed": bool(import_failed),
+        "import_failed": failed,
+        # Honest top-level status so callers checking status==ok cannot ignore the gate
+        "status": "import_failed" if failed else "ok",
     }
     if registered is not None:
         out["registered"] = int(registered)
