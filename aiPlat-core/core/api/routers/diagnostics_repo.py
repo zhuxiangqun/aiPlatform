@@ -1,3 +1,8 @@
+"""diagnostics_repo：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -82,9 +87,10 @@ def _is_high_risk(paths: list[str]) -> bool:
 
 @router.post("/diagnostics/repo/changeset/preview", response_model=Dict[str, Any])
 async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewRequest):
-    """
-    Repo-aware workflow MVP: summarize git working tree changes (no arbitrary commands).
-    Returns status + numstat + hashes. Optionally includes full patch (include_patch=true).
+    """Repo-aware workflow MVP: summarize git working tree changes (no arbitrary commands).
+
+    Args:
+        request: request 参数。
     """
     repo_root = str(request.repo_root or "").strip()
     if not repo_root:
@@ -162,9 +168,10 @@ async def diagnostics_repo_changeset_preview(request: RepoChangesetPreviewReques
 
 @router.post("/diagnostics/repo/tests/run", response_model=Dict[str, Any])
 async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
-    """
-    Repo-aware workflow MVP: run repo tests with an allowlisted command.
-    Security: command is controlled by env AIPLAT_REPO_TEST_CMD, not user input.
+    """Repo-aware workflow MVP: run repo tests with an allowlisted command.
+
+    Args:
+        request: request 参数。
     """
     store = _store()
     repo_root = str(request.repo_root or "").strip()
@@ -238,7 +245,11 @@ async def diagnostics_repo_tests_run(request: RepoTestsRunRequest):
 
 @router.post("/diagnostics/repo/staged/preview", response_model=Dict[str, Any])
 async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
-    """Preview staged changes and suggest a deterministic commit message."""
+    """Preview staged changes and suggest a deterministic commit message.
+
+    Args:
+        request: request 参数。
+    """
     repo_root = str(request.repo_root or "").strip()
     if not repo_root:
         raise HTTPException(status_code=400, detail="repo_root_required")
@@ -295,9 +306,10 @@ async def diagnostics_repo_staged_preview(request: RepoStagedPreviewRequest):
 
 @router.post("/diagnostics/repo/changeset/record", response_model=Dict[str, Any])
 async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest):
-    """
-    Record the repo changeset summary as a first-class change (changeset syscall),
-    so it can be reviewed in Change Control.
+    """Record the repo changeset summary as a first-class change (changeset syscall),。
+
+    Args:
+        request: request 参数。
     """
     store = _store()
     if not store:
@@ -492,7 +504,11 @@ async def diagnostics_repo_changeset_record(request: RepoChangesetPreviewRequest
 
 @router.post("/diagnostics/repo/git/branch", response_model=Dict[str, Any])
 async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
-    """Create/switch branch (git)."""
+    """Create/switch branch (git).
+
+    Args:
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -624,7 +640,11 @@ async def diagnostics_repo_git_branch(request: RepoGitBranchRequest):
 
 @router.post("/diagnostics/repo/git/commit", response_model=Dict[str, Any])
 async def diagnostics_repo_git_commit(request: RepoGitCommitRequest):
-    """Commit staged changes with commit message (with governance checks)."""
+    """Commit staged changes with commit message (with governance checks).
+
+    Args:
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

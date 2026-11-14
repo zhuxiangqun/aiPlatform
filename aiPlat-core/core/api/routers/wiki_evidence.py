@@ -14,7 +14,9 @@ router = APIRouter(tags=["wiki-evidence"])
 async def get_claim_evidence_chain(title: str, collection: str = "default"):
     """Return full evidence chain for a Wiki claim/atom.
 
-    Chain: page → source documents → contradictions → resolutions.
+    Args:
+        title: title 参数。
+        collection: collection 参数。
     """
     try:
         from core.api.core_facade import read_page, search_pages  # P0-A2: 经 CoreFacade

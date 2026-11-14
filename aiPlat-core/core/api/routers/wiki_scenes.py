@@ -16,6 +16,7 @@ router = APIRouter(tags=["wiki-scenes"])
 # ── Scene Model ─────────────────────────────────────────────────
 
 class SceneCreateRequest(BaseModel):
+    """SceneCreateRequest。"""
     scene_id: str
     name: str = ""
     description: str = ""
@@ -29,7 +30,11 @@ class SceneCreateRequest(BaseModel):
 
 @router.get("/scenes", response_model=Dict[str, Any])
 async def list_scene_models(collection: str = "default"):
-    u"""List all ontology scene templates. Auto-seeds built-in scenes on first access."""
+    """List all ontology scene templates. Auto-seeds built-in scenes on first access.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.scene_model import list_scenes, create_builtin_scenes
     scenes = list_scenes(collection_id=collection)
     if not scenes:
@@ -43,6 +48,12 @@ async def list_scene_models(collection: str = "default"):
 
 @router.post("/scenes", response_model=Dict[str, Any])
 async def create_scene_model(req: SceneCreateRequest, collection: str = "default"):
+    """创建 scene_model。
+
+    Args:
+        req: req 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.scene_model import OntologyScene, save_scene
     scene = OntologyScene(
         scene_id=req.scene_id, name=req.name, description=req.description,
@@ -56,6 +67,12 @@ async def create_scene_model(req: SceneCreateRequest, collection: str = "default
 
 @router.get("/scenes/{scene_id}", response_model=Dict[str, Any])
 async def get_scene_model(scene_id: str, collection: str = "default"):
+    """获取 scene_model。
+
+    Args:
+        scene_id: scene 标识。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.scene_model import get_scene
     scene = get_scene(scene_id, collection_id=collection)
     if not scene:
@@ -66,6 +83,13 @@ async def get_scene_model(scene_id: str, collection: str = "default"):
 
 @router.post("/scenes/{scene_id}/instantiate", response_model=Dict[str, Any])
 async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(default={}), collection: str = "default"):
+    """instantiate_scene_model。
+
+    Args:
+        scene_id: scene 标识。
+        params: params 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.scene_model import instantiate_scene
     config = instantiate_scene(scene_id, params=params, collection_id=collection)
     if not config:
@@ -75,6 +99,12 @@ async def instantiate_scene_model(scene_id: str, params: Dict[str, Any] = Body(d
 
 @router.delete("/scenes/{scene_id}", response_model=Dict[str, Any])
 async def delete_scene_model(scene_id: str, collection: str = "default"):
+    """删除 scene_model。
+
+    Args:
+        scene_id: scene 标识。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.scene_model import delete_scene
     ok = delete_scene(scene_id, collection_id=collection)
     return {"status": "ok" if ok else "not_found"}
@@ -84,7 +114,12 @@ async def delete_scene_model(scene_id: str, collection: str = "default"):
 
 @router.get("/growth-stats", response_model=Dict[str, Any])
 async def get_growth_stats(days: int = 30, collection: str = "default"):
-    u"""Get knowledge base growth statistics for the last N days."""
+    """Get knowledge base growth statistics for the last N days.
+
+    Args:
+        days: days 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_growth import get_growth_stats, estimate_compound_value
     stats = get_growth_stats(collection_id=collection, days=days)
     compound = estimate_compound_value(collection_id=collection)
@@ -93,7 +128,11 @@ async def get_growth_stats(days: int = 30, collection: str = "default"):
 
 @router.post("/growth/snapshot", response_model=Dict[str, Any])
 async def take_snapshot(collection: str = "default"):
-    u"""Manually trigger a growth snapshot."""
+    """Manually trigger a growth snapshot.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_growth import take_growth_snapshot
     snap = take_growth_snapshot(collection_id=collection)
     return {"status": "ok", "snapshot": snap.to_dict()}

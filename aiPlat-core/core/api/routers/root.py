@@ -1,3 +1,8 @@
+"""root：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from typing import Dict, Any
 

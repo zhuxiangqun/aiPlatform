@@ -1,3 +1,8 @@
+"""plugins：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -39,6 +44,13 @@ def _plugin_mgr():
 
 @router.get("/plugins", response_model=Dict[str, Any])
 async def list_plugins(http_request: Request, limit: int = 100, offset: int = 0):
+    """列出 plugins。
+
+    Args:
+        http_request: http_request 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     plugin_mgr = _plugin_mgr()
     if not store or not plugin_mgr:
@@ -50,6 +62,12 @@ async def list_plugins(http_request: Request, limit: int = 100, offset: int = 0)
 
 @router.put("/plugins", response_model=Dict[str, Any])
 async def upsert_plugin(request: dict, http_request: Request):
+    """upsert_plugin。
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     store = _store()
     plugin_mgr = _plugin_mgr()
     if not store or not plugin_mgr:
@@ -90,6 +108,13 @@ async def upsert_plugin(request: dict, http_request: Request):
 
 @router.post("/plugins/{plugin_id}/enable", response_model=Dict[str, Any])
 async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Request):
+    """set_plugin_enabled。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     store = _store()
     plugin_mgr = _plugin_mgr()
     if not store or not plugin_mgr:
@@ -129,7 +154,13 @@ async def set_plugin_enabled(plugin_id: str, request: dict, http_request: Reques
 
 @router.post("/plugins/{plugin_id}/disable", response_model=Dict[str, Any])
 async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Request):
-    """Disable a plugin (delegates to set_enabled with enabled=False)."""
+    """Disable a plugin (delegates to set_enabled with enabled=False).
+
+    Args:
+        plugin_id: plugin 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     store = _store()
     plugin_mgr = _plugin_mgr()
     if not store or not plugin_mgr:
@@ -165,6 +196,14 @@ async def set_plugin_disabled(plugin_id: str, request: dict, http_request: Reque
 
 @router.get("/plugins/{plugin_id}/versions", response_model=Dict[str, Any])
 async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int = 50, offset: int = 0):
+    """列出 plugin_versions。
+
+    Args:
+        plugin_id: plugin 标识。
+        http_request: http_request 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     plugin_mgr = _plugin_mgr()
     store = _store()
     if not store or not plugin_mgr:
@@ -181,6 +220,13 @@ async def list_plugin_versions(plugin_id: str, http_request: Request, limit: int
 
 @router.post("/plugins/{plugin_id}/rollback", response_model=Dict[str, Any])
 async def rollback_plugin(plugin_id: str, request: dict, http_request: Request):
+    """rollback_plugin。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+    """
     plugin_mgr = _plugin_mgr()
     store = _store()
     if not store or not plugin_mgr:
@@ -276,11 +322,12 @@ async def _require_plugin_run_approval(
 
 @router.post("/plugins/{plugin_id}/run", response_model=Dict[str, Any])
 async def run_plugin(plugin_id: str, request: dict, http_request: Request):
-    """
-    PR-11: plugin run (MVP)
-    - policy：基于 tenant policy 对 required_tools 做 allow/deny/approval_required 汇总
-    - approval：需要审批时返回 waiting_approval + approval_request_id
-    - execution：当前仅写 run_events/audit + 返回占位 output（后续接 workflow 执行器）
+    """PR-11: plugin run (MVP)。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: request 参数。
+        http_request: http_request 参数。
     """
     store = _store()
     plugin_mgr = _plugin_mgr()

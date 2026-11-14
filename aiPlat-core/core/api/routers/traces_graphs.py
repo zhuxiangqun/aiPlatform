@@ -1,3 +1,8 @@
+"""traces_graphs：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -66,7 +71,15 @@ def _inject_http_request_context(payload: Any, http_request: Request, *, entrypo
 
 @router.get("/traces", response_model=Dict[str, Any])
 async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] = None, project_id: str = None, rt: RuntimeDep = None):
-    """List persisted traces. Optional project_id filter: WHERE run_id LIKE 'prj_{id}%'."""
+    """List persisted traces. Optional project_id filter: WHERE run_id LIKE 'prj_{id}%'.
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        status: 状态。
+        project_id: project 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -89,7 +102,12 @@ async def list_traces(limit: int = 100, offset: int = 0, status: Optional[str] =
 
 @router.get("/traces/{trace_id}", response_model=Dict[str, Any])
 async def get_trace(trace_id: str, rt: RuntimeDep = None):
-    """Get a persisted trace with spans."""
+    """Get a persisted trace with spans.
+
+    Args:
+        trace_id: trace 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -106,7 +124,14 @@ async def get_trace(trace_id: str, rt: RuntimeDep = None):
 
 @router.get("/traces/{trace_id}/executions", response_model=Dict[str, Any])
 async def list_executions_by_trace(trace_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
-    """List agent/skill executions linked to a trace_id."""
+    """List agent/skill executions linked to a trace_id.
+
+    Args:
+        trace_id: trace 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -116,7 +141,12 @@ async def list_executions_by_trace(trace_id: str, limit: int = 100, offset: int 
 
 @router.get("/graphs/runs/{run_id}", response_model=Dict[str, Any])
 async def get_graph_run(run_id: str, rt: RuntimeDep = None):
-    """Get a persisted LangGraph run (requires ExecutionStore)."""
+    """Get a persisted LangGraph run (requires ExecutionStore).
+
+    Args:
+        run_id: 运行 ID。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -138,7 +168,17 @@ async def list_graph_runs(
     project_id: str = None,
     rt: RuntimeDep = None,
 ):
-    """List persisted graph runs. Optional project_id filter."""
+    """List persisted graph runs. Optional project_id filter.
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        graph_name: graph_name 参数。
+        status: 状态。
+        trace_id: trace 标识。
+        project_id: project 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -158,7 +198,14 @@ async def list_graph_runs(
 
 @router.get("/graphs/runs/{run_id}/checkpoints", response_model=Dict[str, Any])
 async def list_graph_checkpoints(run_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
-    """List persisted checkpoints for a run."""
+    """List persisted checkpoints for a run.
+
+    Args:
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -170,7 +217,13 @@ async def list_graph_checkpoints(run_id: str, limit: int = 100, offset: int = 0,
 
 @router.get("/graphs/runs/{run_id}/checkpoints/{checkpoint_id}", response_model=Dict[str, Any])
 async def get_graph_checkpoint(run_id: str, checkpoint_id: str, rt: RuntimeDep = None):
-    """Get a persisted checkpoint by id."""
+    """Get a persisted checkpoint by id.
+
+    Args:
+        run_id: 运行 ID。
+        checkpoint_id: checkpoint 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -183,11 +236,12 @@ async def get_graph_checkpoint(run_id: str, checkpoint_id: str, rt: RuntimeDep =
 
 @router.post("/graphs/runs/{run_id}/resume", response_model=Dict[str, Any])
 async def resume_graph_run(run_id: str, request: dict, rt: RuntimeDep = None):
-    """
-    Create a new run from a checkpoint state (restore/resume semantics).
-    request:
-      - checkpoint_id (optional)
-      - step (optional)
+    """Create a new run from a checkpoint state (restore/resume semantics).
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -226,14 +280,11 @@ async def resume_graph_run(run_id: str, request: dict, rt: RuntimeDep = None):
 
 @router.post("/graphs/compiled/react/execute", response_model=Dict[str, Any])
 async def execute_compiled_react_graph(request: dict, http_request: Request):
-    """
-    Execute internal CompiledGraph-based ReAct workflow (checkpoint/callback enabled).
+    """Execute internal CompiledGraph-based ReAct workflow (checkpoint/callback enabled).
 
-    request:
-      - messages: [{role, content}]
-      - context: dict
-      - max_steps: int
-      - checkpoint_interval: int
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
     """
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
     ctx0 = payload.get("context") if isinstance(payload.get("context"), dict) else {}
@@ -252,15 +303,12 @@ async def execute_compiled_react_graph(request: dict, http_request: Request):
 
 @router.post("/graphs/runs/{run_id}/resume/execute", response_model=Dict[str, Any])
 async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: RuntimeDep = None):
-    """
-    Resume from a checkpoint and continue executing using CompiledGraph-based ReAct workflow.
-    This endpoint closes the loop: resume -> execute -> persist.
+    """Resume from a checkpoint and continue executing using CompiledGraph-based ReAct workflow.
 
-    request:
-      - checkpoint_id (optional)
-      - step (optional)
-      - max_steps (optional)
-      - checkpoint_interval (optional)
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -358,8 +406,11 @@ async def resume_and_execute_compiled_graph(run_id: str, request: dict, rt: Runt
 async def step_run_stage(run_id: str, stage_id: str, request: dict, http_request: Request):
     """Step-Run: execute a single pipeline stage with mock input for debugging.
 
-    Body: { "mock_input": { "key": "value" } }
-    Returns: { "stage_id": stage_id, "output": {...}, "elapsed_ms": 123 }
+    Args:
+        run_id: 运行 ID。
+        stage_id: stage 标识。
+        request: request 参数。
+        http_request: http_request 参数。
     """
     rt = get_kernel_runtime()
     store = rt.execution_store if rt else None

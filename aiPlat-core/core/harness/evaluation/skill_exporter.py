@@ -21,7 +21,11 @@ class SkillExporter:
     """Export aiPlat SKILL.md declarations to external framework specs."""
 
     def to_openai(self, skill_md_content: str) -> Dict[str, Any]:
-        """Convert SKILL.md → OpenAI function calling specification."""
+        """Convert SKILL.md → OpenAI function calling specification.
+
+        Args:
+            skill_md_content: skill_md_content 参数。
+        """
         fm = self._parse_frontmatter(skill_md_content)
         if not fm:
             return {}
@@ -53,7 +57,11 @@ class SkillExporter:
         }
 
     def to_langchain(self, skill_md_content: str) -> Dict[str, Any]:
-        """Convert SKILL.md → LangChain tool specification."""
+        """Convert SKILL.md → LangChain tool specification.
+
+        Args:
+            skill_md_content: skill_md_content 参数。
+        """
         fm = self._parse_frontmatter(skill_md_content)
         if not fm:
             return {}
@@ -78,7 +86,11 @@ class SkillExporter:
         }
 
     def to_anthropic(self, skill_md_content: str) -> Dict[str, Any]:
-        """Convert SKILL.md → Anthropic tool use specification."""
+        """Convert SKILL.md → Anthropic tool use specification.
+
+        Args:
+            skill_md_content: skill_md_content 参数。
+        """
         fm = self._parse_frontmatter(skill_md_content)
         if not fm:
             return {}
@@ -96,7 +108,12 @@ class SkillExporter:
         }
 
     def export_all(self, skill_md_content: str, format: str = "all") -> Dict[str, Any]:
-        """Export to requested format(s). format: 'openai'|'langchain'|'anthropic'|'all'."""
+        """Export to requested format(s). format: 'openai'|'langchain'|'anthropic'|'all'.
+
+        Args:
+            skill_md_content: skill_md_content 参数。
+            format: format 参数。
+        """
         if format == "openai":
             return {"openai": self.to_openai(skill_md_content)}
         elif format == "langchain":
@@ -141,7 +158,11 @@ class AgentExporter:
             return {}
 
     def to_openai_assistant(self, agent_md_content: str) -> dict:
-        """Export AGENT.md → OpenAI Assistant API spec."""
+        """Export AGENT.md → OpenAI Assistant API spec.
+
+        Args:
+            agent_md_content: agent_md_content 参数。
+        """
         fm = self._parse_agent_frontmatter(agent_md_content)
         name = fm.get("name", "aiplat_agent")
         desc = fm.get("description", fm.get("display_name", ""))
@@ -162,7 +183,11 @@ class AgentExporter:
         }
 
     def to_langgraph_config(self, agent_md_content: str) -> dict:
-        """Export AGENT.md → LangGraph agent configuration."""
+        """Export AGENT.md → LangGraph agent configuration.
+
+        Args:
+            agent_md_content: agent_md_content 参数。
+        """
         fm = self._parse_agent_frontmatter(agent_md_content)
         name = fm.get("name", "aiplat_agent")
         phase = fm.get("phase", "")

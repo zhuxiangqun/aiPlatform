@@ -33,12 +33,21 @@ class EvaluatorThresholds:
 
     @classmethod
     def from_dimensions(cls, dims: Optional[List[Dict[str, Any]]] = None) -> "EvaluatorThresholds":
+        """from_dimensions。
+
+        Args:
+            dims: dims 参数。
+        """
         thresh = get_dimension_thresholds(dims)
         return cls(thresholds=thresh)
 
     @classmethod
     def from_dict(cls, d: Optional[Dict[str, Any]]) -> "EvaluatorThresholds":
-        """Deserialize from dict. Keys ending in _min are threshold entries."""
+        """Deserialize from dict. Keys ending in _min are threshold entries.
+
+        Args:
+            d: d 参数。
+        """
         dd = d or {}
         thresholds: Dict[str, float] = {}
         for key, val in dd.items():
@@ -47,6 +56,8 @@ class EvaluatorThresholds:
         return cls(thresholds=thresholds)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {f"{k}_min": v for k, v in self.thresholds.items()}
 
 
@@ -60,8 +71,10 @@ def _get_score(report: Dict[str, Any], key: str) -> float:
 
 
 def validate_report(report: Dict[str, Any]) -> Tuple[bool, str]:
-    """
-    Minimal schema validation (fail-fast but tolerant).
+    """Minimal schema validation (fail-fast but tolerant).
+
+    Args:
+        report: 报告 dict。
     """
     if not isinstance(report, dict):
         return False, "report_not_object"
@@ -82,13 +95,12 @@ def apply_threshold_gate(
     thresholds: EvaluatorThresholds,
     dims: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """
-    Mutates a shallow copy of report:
-    - Ensures thresholds field
-    - Enforces hard threshold(s) for each dimension
-    - Computes overall if missing (best-effort weighted average)
+    """Mutates a shallow copy of report:。
 
-    dims: optional scoring_dimensions override (from PipelineStageConfig)
+    Args:
+        report: 报告 dict。
+        thresholds: thresholds 参数。
+        dims: dims 参数。
     """
     dim_list = get_scoring_dimensions(dims)
     r = dict(report or {})
@@ -144,12 +156,17 @@ async def persist_evaluation(
     actor: Optional[Dict[str, Any]] = None,
     metadata_extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """
-    Persist report as:
-    - LearningArtifact(kind=evaluation_report, target_type=run)
-    - run_event(type=evaluation_report)
-    - audit_log(action=run_evaluation_submit)
-    - optional experience_feedback pending for P0/P1 issues (draft only)
+    """Persist report as:。
+
+    Args:
+        execution_store: execution_store 参数。
+        run_id: 运行 ID。
+        trace_id: trace 标识。
+        evaluator: evaluator 参数。
+        report: 报告 dict。
+        thresholds: thresholds 参数。
+        actor: 操作者身份 dict。
+        metadata_extra: metadata_extra 参数。
     """
     try:
         from core.harness.evaluation.eval_findings_bridge import (

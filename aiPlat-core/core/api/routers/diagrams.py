@@ -9,12 +9,18 @@ router = APIRouter(prefix="/diagrams", tags=["diagrams"])
 
 
 class DiagramGenerateRequest(BaseModel):
+    """DiagramGenerateRequest。"""
     description: str = ""
     modify_id: str = ""
 
 
 @router.post("/generate", response_model=Dict[str, Any])
 async def generate_diagram_api(req: DiagramGenerateRequest):
+    """generate_diagram_api。
+
+    Args:
+        req: req 参数。
+    """
     from core.harness.syscalls.drawio_gen import generate_diagram, save_diagram, load_diagram
     context = load_diagram(req.modify_id) if req.modify_id else None
     xml = await generate_diagram(req.description, context)
@@ -24,12 +30,19 @@ async def generate_diagram_api(req: DiagramGenerateRequest):
 
 @router.get("", response_model=Dict[str, Any])
 async def list_diagrams_api():
+    """列出 diagrams_api。
+    """
     from core.harness.syscalls.drawio_gen import list_diagrams
     return {"diagrams": list_diagrams()}
 
 
 @router.get("/{diagram_id}", response_model=Dict[str, Any])
 async def get_diagram_xml(diagram_id: str):
+    """获取 diagram_xml。
+
+    Args:
+        diagram_id: diagram 标识。
+    """
     from core.harness.syscalls.drawio_gen import load_diagram
     import asyncio
     xml = await asyncio.to_thread(load_diagram, diagram_id)
@@ -40,6 +53,11 @@ async def get_diagram_xml(diagram_id: str):
 
 @router.get("/viewer/{diagram_id}", response_model=Dict[str, Any])
 async def view_diagram(diagram_id: str):
+    """view_diagram。
+
+    Args:
+        diagram_id: diagram 标识。
+    """
     from core.harness.syscalls.drawio_gen import load_diagram
     import asyncio
     xml = await asyncio.to_thread(load_diagram, diagram_id)
@@ -71,6 +89,11 @@ setTimeout(send,800);
 
 @router.delete("/{diagram_id}", response_model=Dict[str, Any])
 async def delete_diagram_api(diagram_id: str):
+    """删除 diagram_api。
+
+    Args:
+        diagram_id: diagram 标识。
+    """
     from core.harness.syscalls.drawio_gen import delete_diagram
     ok = delete_diagram(diagram_id)
     if not ok:

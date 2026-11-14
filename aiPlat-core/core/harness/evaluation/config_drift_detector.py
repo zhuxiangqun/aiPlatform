@@ -43,6 +43,7 @@ import logging
 
 class DriftEntry:
 
+    """DriftEntry。"""
     agent_id: str = ""
 
     drift_type: str = ""          # "phase_violation", "skill_unused", "tool_unbind", "hitl_bypass"
@@ -65,6 +66,8 @@ class ConfigDriftDetector:
 
     def __init__(self):
 
+        """__init__。
+        """
         self._home = Path(get_aiplat_home())
 
         self._agents_dir = self._home / "agents"
@@ -413,6 +416,11 @@ class ConfigDriftDetector:
 
     def detect_pattern_ossification(self, recent_runs: int = 20) -> list:
 
+        """detect_pattern_ossification。
+
+        Args:
+            recent_runs: recent_runs 参数。
+        """
         ossified = []
 
         try:

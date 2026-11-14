@@ -1,3 +1,8 @@
+"""health：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -27,7 +32,11 @@ def _approval_manager(rt: RuntimeDep):
 
 @router.get("/health", response_model=StatusResponse)
 async def health_check(rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Health check endpoint"""
+    """Health check endpoint。
+
+    Args:
+        rt: rt 参数。
+    """
     out: Dict[str, Any] = {"status": "healthy", "message": "operational"}
     checks: Dict[str, Any] = {}
     store = _store(rt)
@@ -84,7 +93,8 @@ async def health_check(rt: RuntimeDep = Depends(get_kernel_runtime)):
 async def healthz(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """K8s / deploy probe — aiPlat A1 healthz (product_id + hosted).
 
-    `/health` stays legacy (`status: healthy|degraded`) for dashboard consumers.
+    Args:
+        rt: rt 参数。
     """
     from core.api.core_facade import aiplat_healthz_payload
 

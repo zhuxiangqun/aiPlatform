@@ -20,6 +20,7 @@ from pathlib import Path
 
 @dataclass
 class ConstraintIssue:
+    """ConstraintIssue。"""
     source: str              # agent name / file path
     issue_type: str          # file_missing / model_unavailable / phase_mismatch / skill_missing
     level: str              # CRITICAL / HIGH / WARNING
@@ -31,9 +32,13 @@ class ConstraintValidator:
     """Scan configuration references for stale or invalid entries."""
 
     def __init__(self):
+        """__init__。
+        """
         self._home = Path(get_aiplat_home())
 
     def scan_all(self) -> List[ConstraintIssue]:
+        """scan_all。
+        """
         issues = []
 
         # 1. File path check (CRITICAL)

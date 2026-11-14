@@ -13,6 +13,11 @@ from typing import Iterable, List, Tuple
 
 
 def unique_preserve_order(items: Iterable[str]) -> List[str]:
+    """unique_preserve_order。
+
+    Args:
+        items: items 参数。
+    """
     seen = set()
     out: List[str] = []
     for x in items:
@@ -25,6 +30,12 @@ def unique_preserve_order(items: Iterable[str]) -> List[str]:
 
 
 def evaluate_coverage(expected_tags: Iterable[str] | None, executed_tags: Iterable[str] | None) -> Tuple[bool, List[str]]:
+    """evaluate_coverage。
+
+    Args:
+        expected_tags: expected_tags 参数。
+        executed_tags: executed_tags 参数。
+    """
     exp = unique_preserve_order(expected_tags or [])
     exe = set(unique_preserve_order(executed_tags or []))
     missing = [t for t in exp if t not in exe]

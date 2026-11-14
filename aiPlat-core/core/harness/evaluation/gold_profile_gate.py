@@ -103,9 +103,12 @@ def evaluate_gold_profile_gate(
 ) -> Dict[str, Any]:
     """Gate verdict for same-profile gold regression.
 
-    Returns:
-      verdict: skip | pass | require_eval | block_regression
-      ok: True when change may proceed (skip/pass)
+    Args:
+        profile: profile 参数。
+        risk_level: risk_level 参数。
+        tenant_id: 租户 ID。
+        reports: reports 参数。
+        force: 是否强制。
     """
     mode = gate_mode()
     risk = (risk_level or "low").strip().lower()
@@ -221,7 +224,13 @@ def evaluate_gold_profile_gate(
 
 
 def attach_gold_gate_to_diff(diff: Dict[str, Any], *, profile: str = "balanced", tenant_id: str = "") -> Dict[str, Any]:
-    """Mutate/return agent config diff with gold_gate field."""
+    """Mutate/return agent config diff with gold_gate field.
+
+    Args:
+        diff: diff 参数。
+        profile: profile 参数。
+        tenant_id: 租户 ID。
+    """
     out = dict(diff or {})
     risk = str(out.get("risk_level") or "low")
     # Prefer balanced unless caller sets AIPLAT_GOLD_GATE_PROFILE

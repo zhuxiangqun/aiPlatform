@@ -20,6 +20,7 @@ router = APIRouter()
 
 
 class VariableCreate(BaseModel):
+    """VariableCreate。"""
     name: str
     value: str = ""
     scope: str = "global"  # "global" | "workflow"
@@ -27,6 +28,7 @@ class VariableCreate(BaseModel):
 
 
 class VariableUpdate(BaseModel):
+    """VariableUpdate。"""
     name: Optional[str] = None
     value: Optional[str] = None
     scope: Optional[str] = None
@@ -56,6 +58,11 @@ def _save(data: List[Dict[str, Any]]) -> None:
 
 @router.get("/variables", response_model=Dict[str, Any])
 async def list_variables(scope: Optional[str] = None):
+    """列出 variables。
+
+    Args:
+        scope: scope 参数。
+    """
     items = _load()
     if scope:
         items = [v for v in items if v.get("scope") == scope]
@@ -64,6 +71,11 @@ async def list_variables(scope: Optional[str] = None):
 
 @router.post("/variables", response_model=Dict[str, Any])
 async def create_variable(body: VariableCreate):
+    """创建 variable。
+
+    Args:
+        body: 请求体 dict。
+    """
     items = _load()
     for v in items:
         if v["name"] == body.name:
@@ -83,6 +95,11 @@ async def create_variable(body: VariableCreate):
 
 @router.get("/variables/{variable_id}", response_model=Dict[str, Any])
 async def get_variable(variable_id: str):
+    """获取 variable。
+
+    Args:
+        variable_id: variable 标识。
+    """
     for v in _load():
         if v["id"] == variable_id:
             return v
@@ -91,6 +108,12 @@ async def get_variable(variable_id: str):
 
 @router.put("/variables/{variable_id}", response_model=Dict[str, Any])
 async def update_variable(variable_id: str, body: VariableUpdate):
+    """update_variable。
+
+    Args:
+        variable_id: variable 标识。
+        body: 请求体 dict。
+    """
     items = _load()
     for i, v in enumerate(items):
         if v["id"] == variable_id:
@@ -110,6 +133,11 @@ async def update_variable(variable_id: str, body: VariableUpdate):
 
 @router.delete("/variables/{variable_id}", response_model=Dict[str, Any])
 async def delete_variable(variable_id: str):
+    """删除 variable。
+
+    Args:
+        variable_id: variable 标识。
+    """
     items = _load()
     filtered = [v for v in items if v["id"] != variable_id]
     if len(filtered) == len(items):

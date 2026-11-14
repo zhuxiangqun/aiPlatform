@@ -29,6 +29,11 @@ def _as_dict(obj: Any) -> Dict[str, Any]:
 
 
 def normalize_eval_status(raw: Any) -> str:
+    """normalize_eval_status。
+
+    Args:
+        raw: raw 参数。
+    """
     s = str(raw or "").strip().lower()
     if s in _STATUS_MAP:
         return _STATUS_MAP[s]
@@ -51,7 +56,21 @@ def to_eval_protocol_v0(
     evidence_refs: Optional[list] = None,
     extra: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Build a protocol v0 object (always includes schema_version)."""
+    """Build a protocol v0 object (always includes schema_version).
+
+    Args:
+        task_id: task 标识。
+        target_kind: target_kind 参数。
+        target_ref: target_ref 参数。
+        status: 状态。
+        suite: suite 参数。
+        params: params 参数。
+        trajectory_ref: trajectory_ref 参数。
+        metrics: metrics 参数。
+        report: 报告 dict。
+        evidence_refs: evidence_refs 参数。
+        extra: extra 参数。
+    """
     kind = str(target_kind or "workflow").strip().lower()
     if kind not in {"agent", "skill", "workflow", "bundle", "http", "cli"}:
         kind = "workflow"
@@ -93,7 +112,14 @@ def from_run_evaluation(
     report: Optional[Mapping[str, Any]] = None,
     artifact: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Map persist_evaluation / learning artifact shapes → protocol v0."""
+    """Map persist_evaluation / learning artifact shapes → protocol v0.
+
+    Args:
+        run_id: 运行 ID。
+        evaluator: evaluator 参数。
+        report: 报告 dict。
+        artifact: artifact 参数。
+    """
     art = _as_dict(artifact)
     payload = _as_dict(art.get("payload")) if art else {}
     rep = _as_dict(report) or _as_dict(payload.get("report")) or payload
@@ -144,7 +170,14 @@ def from_skill_eval_run(
     run_row: Optional[Mapping[str, Any]] = None,
     result: Any = None,
 ) -> Dict[str, Any]:
-    """Map skill-eval suite run row → protocol v0."""
+    """Map skill-eval suite run row → protocol v0.
+
+    Args:
+        run_id: 运行 ID。
+        suite_id: 套件 ID。
+        run_row: run_row 参数。
+        result: result 参数。
+    """
     row = _as_dict(run_row)
     status = row.get("status") or row.get("state") or "pending"
     metrics = _as_dict(row.get("metrics"))
@@ -174,7 +207,12 @@ def from_gold_eval_result(
     result: Optional[Mapping[str, Any]] = None,
     profile: str = "balanced",
 ) -> Dict[str, Any]:
-    """Map code-review gold eval result → protocol v0."""
+    """Map code-review gold eval result → protocol v0.
+
+    Args:
+        result: result 参数。
+        profile: profile 参数。
+    """
     res = _as_dict(result)
     ok = res.get("ok")
     if ok is None:
@@ -213,7 +251,15 @@ def from_generic_eval(
     result: Optional[Mapping[str, Any]] = None,
     suite: str = "",
 ) -> Dict[str, Any]:
-    """Best-effort map for kb/prompt eval payloads."""
+    """Best-effort map for kb/prompt eval payloads.
+
+    Args:
+        task_id: task 标识。
+        target_kind: target_kind 参数。
+        target_ref: target_ref 参数。
+        result: result 参数。
+        suite: suite 参数。
+    """
     res = _as_dict(result)
     status = res.get("status") or ("passed" if res.get("ok") else None) or "pending"
     metrics = _as_dict(res.get("metrics"))
@@ -237,7 +283,12 @@ def from_generic_eval(
 
 
 def attach_protocol(response: MutableMapping[str, Any], protocol: Mapping[str, Any]) -> MutableMapping[str, Any]:
-    """Attach protocol under `eval_protocol` without removing legacy fields."""
+    """Attach protocol under `eval_protocol` without removing legacy fields.
+
+    Args:
+        response: response 参数。
+        protocol: protocol 参数。
+    """
     response["eval_protocol"] = dict(protocol)
     return response
 
@@ -248,7 +299,13 @@ def to_evaluation_healthz(
     version: str = "0.0.0",
     protocol: str = SCHEMA_VERSION,
 ) -> Dict[str, Any]:
-    """Evaluation capability healthz (A1/D1 co-hosted on Central)."""
+    """Evaluation capability healthz (A1/D1 co-hosted on Central).
+
+    Args:
+        status: 状态。
+        version: 版本号。
+        protocol: protocol 参数。
+    """
     st = normalize_eval_status(status)
     # Map protocol statuses → healthz enum
     if st in {"passed", "pending", "running"}:

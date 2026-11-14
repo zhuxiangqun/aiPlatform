@@ -1,3 +1,5 @@
+"""workspace_agents：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -171,6 +173,18 @@ async def list_workspace_agents(
     rt: RuntimeDep = None,
 ):
     # Named workspace partition (read → default if header omitted).
+    """列出 workspace_agents。
+
+    Args:
+        request: FastAPI Request。
+        agent_type: agent_type 参数。
+        status: status 参数。
+        category: category 参数。
+        tags: tags 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     from core.harness.named_workspace.agent_mgr import agent_manager_for
     from core.harness.named_workspace.errors import WorkspaceError
     from core.harness.named_workspace.resolve import (
@@ -267,6 +281,13 @@ async def list_workspace_agents(
 
 @router.post("/workspace/agents", response_model=Dict[str, Any])
 async def create_workspace_agent(request: AgentCreateRequest, http_request: Request, rt: RuntimeDep = None):
+    """创建 workspace_agent。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -431,10 +452,9 @@ async def create_workspace_agent(request: AgentCreateRequest, http_request: Requ
 @router.post("/workspace/agents/generate-role-definition", response_model=Dict[str, Any])
 async def generate_role_definition(req: AgentAutoFillRequest) -> Any:
     """基于功能描述生成角色定义，让用户确认后再进行下一步的技能/工具推荐。
-    
-    支持 async_mode=true 参数：
-      - async_mode=true: 立即返回 task_id，后台执行，前端轮询 GET /generate-role-definition/{task_id}
-      - async_mode=false (默认): 同步等待 LLM 返回
+
+    Args:
+        req: req 参数。
     """
     async_mode = bool(getattr(req, "async_mode", False))
     if async_mode:
@@ -881,7 +901,11 @@ def _cleanup_expired_tasks() -> None:
 
 @router.get("/workspace/agents/auto-fill/{task_id}", response_model=Dict[str, Any])
 async def poll_auto_fill(task_id: str):
-    u"""轮询异步智能填充任务状态。"""
+    """轮询异步智能填充任务状态。
+
+    Args:
+        task_id: task 标识。
+    """
     _cleanup_expired_tasks()
     task = _read_task(task_id)
     if not task:
@@ -947,7 +971,11 @@ async def _run_role_def_task(tid: str, req: "AgentAutoFillRequest"):
 
 @router.get("/workspace/agents/generate-role-definition/{task_id}", response_model=Dict[str, Any])
 async def poll_role_definition(task_id: str):
-    """轮询异步角色定义生成任务状态。"""
+    """轮询异步角色定义生成任务状态。
+
+    Args:
+        task_id: task 标识。
+    """
     _cleanup_expired_tasks()
     task = _read_task(task_id)
     if not task:
@@ -973,10 +1001,9 @@ async def _run_auto_fill_task(tid: str, req: "AgentAutoFillRequest"):
 @router.post("/workspace/agents/auto-fill", response_model=Dict[str, Any])
 async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
     """AI 智能填充：根据功能描述自动推荐 skills / tools / MCP / config / SOP 等。
-    
-    支持 async_mode=true 参数（通过请求体中的 metadata 字段）：
-      - async_mode=true: 立即返回 task_id，后台执行，前端轮询 GET /auto-fill/{task_id}
-      - async_mode=false (默认): 同步等待 LLM 返回
+
+    Args:
+        req: req 参数。
     """
     async_mode = bool(getattr(req, "async_mode", False))
     
@@ -998,7 +1025,12 @@ async def agent_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
 @router.post("/workspace/agents/create-dialog", response_model=Dict[str, Any])
 async def agent_create_dialog(request: Dict[str, Any], rt: RuntimeDep = None):
-    """Conversational Agent creation: clarify → draft (auto-fill). Create still via POST /workspace/agents."""
+    """Conversational Agent creation: clarify → draft (auto-fill). Create still via POST /workspace/agents.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     import logging as _logging
 
     text = str(request.get("text") or "").strip()
@@ -1920,7 +1952,11 @@ async def _do_auto_fill(req: AgentAutoFillRequest) -> AgentAutoFillResponse:
 
 @router.post("/workspace/agents/auto-fill-batch", response_model=Dict[str, Any])
 async def agent_auto_fill_batch(req: AgentAutoFillBatchRequest) -> AgentAutoFillBatchResponse:
-    u"""Batch AI auto-fill: single LLM call for multiple agents."""
+    """Batch AI auto-fill: single LLM call for multiple agents.
+
+    Args:
+        req: req 参数。
+    """
     from core.schemas_agents import AgentAutoFillBatchResponse as _BatchResp, AgentAutoFillResponse as _FillResp
     import json as _json, re as _re
 
@@ -2102,7 +2138,11 @@ async def _build_wf_catalog() -> List[str]:
 
 @router.post("/workspace/agents/dedupe", response_model=Dict[str, Any])
 async def dedupe_workspace_agents(rt: RuntimeDep = None):
-    """Merge agents that share the same display_name + skills/tools fingerprint; keep newest."""
+    """Merge agents that share the same display_name + skills/tools fingerprint; keep newest.
+
+    Args:
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2149,7 +2189,11 @@ async def list_agent_seeds():
 
 @router.post("/workspace/agents/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_agent_seed(seed_id: str):
-    """Install a workspace agent seed template into ~/.aiplat/agents/."""
+    """Install a workspace agent seed template into ~/.aiplat/agents/.
+
+    Args:
+        seed_id: seed 标识。
+    """
     import shutil as _shutil
     from pathlib import Path as _P
 
@@ -2176,6 +2220,12 @@ async def install_agent_seed(seed_id: str):
 
 @router.get("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def get_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2200,7 +2250,12 @@ async def get_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 @router.get("/workspace/agents/{agent_id}/sop", response_model=Dict[str, Any])
 async def get_workspace_agent_sop(agent_id: str, rt: RuntimeDep = None):
-    """Get agent SOP (markdown) from AGENT.md '## SOP' section."""
+    """Get agent SOP (markdown) from AGENT.md '## SOP' section.
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2215,7 +2270,13 @@ async def get_workspace_agent_sop(agent_id: str, rt: RuntimeDep = None):
 
 @router.put("/workspace/agents/{agent_id}/sop", response_model=Dict[str, Any])
 async def update_workspace_agent_sop(agent_id: str, request: dict, rt: RuntimeDep = None):
-    """Update agent SOP section in AGENT.md."""
+    """Update agent SOP section in AGENT.md.
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2236,7 +2297,12 @@ async def update_workspace_agent_sop(agent_id: str, request: dict, rt: RuntimeDe
 
 @router.get("/workspace/agents/{agent_id}/execution-help", response_model=Dict[str, Any])
 async def get_workspace_agent_execution_help(agent_id: str, rt: RuntimeDep = None):
-    """Get execution input help/examples for agent."""
+    """Get execution input help/examples for agent.
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2277,9 +2343,11 @@ async def generate_workspace_agent_execution_examples(
 ):
     """Optional LLM generation of smoke test cases for Execute Agent UI.
 
-    Body:
-      persist: bool — write into AGENT.md frontmatter execution_examples
-      refine_hint: str — optional extra instruction
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -2381,10 +2449,10 @@ async def generate_workspace_agent_execution_examples(
 @router.post("/workspace/routing/classify", response_model=Dict[str, Any])
 async def classify_user_request(request: Request, rt: RuntimeDep = None):
     """Agent 路由：根据用户输入自动推荐最合适的 Agent。
-    
-    请求体: {"message": "用户输入", "agent_name": "(可选)", "agent_type": "(可选)",
-             "available_skills": [...], "available_tools": [...]}
-    返回: RoutingResult (intent, confidence, primary_route, suggested_routes, entities, skills, tools)
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     import json as _json
     try:
@@ -2437,6 +2505,12 @@ async def classify_user_request(request: Request, rt: RuntimeDep = None):
 
 @router.delete("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def delete_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    """删除 workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2448,6 +2522,12 @@ async def delete_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/start", response_model=Dict[str, Any])
 async def start_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    """start_workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2470,6 +2550,12 @@ async def start_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/stop", response_model=Dict[str, Any])
 async def stop_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    """stop_workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2481,6 +2567,14 @@ async def stop_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 @router.put("/workspace/agents/{agent_id}", response_model=Dict[str, Any])
 async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, http_request: Request, rt: RuntimeDep = None):
+    """更新 workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2569,6 +2663,12 @@ async def update_workspace_agent(agent_id: str, request: AgentUpdateRequest, htt
 
 @router.get("/workspace/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def get_workspace_agent_skills(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_skills。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2588,6 +2688,13 @@ async def get_workspace_agent_skills(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/skills", response_model=Dict[str, Any])
 async def bind_workspace_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """bind_workspace_agent_skills。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2603,6 +2710,13 @@ async def bind_workspace_agent_skills(agent_id: str, request: dict, rt: RuntimeD
 
 @router.delete("/workspace/agents/{agent_id}/skills/{skill_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None):
+    """unbind_workspace_agent_skill。
+
+    Args:
+        agent_id: Agent ID。
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2615,6 +2729,12 @@ async def unbind_workspace_agent_skill(agent_id: str, skill_id: str, rt: Runtime
 
 @router.get("/workspace/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def get_workspace_agent_tools(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_tools。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2634,6 +2754,13 @@ async def get_workspace_agent_tools(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/tools", response_model=Dict[str, Any])
 async def bind_workspace_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """bind_workspace_agent_tools。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2649,6 +2776,13 @@ async def bind_workspace_agent_tools(agent_id: str, request: dict, rt: RuntimeDe
 
 @router.delete("/workspace/agents/{agent_id}/tools/{tool_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
+    """unbind_workspace_agent_tool。
+
+    Args:
+        agent_id: Agent ID。
+        tool_id: tool 标识。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2663,6 +2797,12 @@ async def unbind_workspace_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDe
 
 @router.get("/workspace/agents/{agent_id}/mcp", response_model=Dict[str, Any])
 async def get_workspace_agent_mcp(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_mcp。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2674,6 +2814,13 @@ async def get_workspace_agent_mcp(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/mcp", response_model=Dict[str, Any])
 async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """bind_workspace_agent_mcp。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2689,6 +2836,13 @@ async def bind_workspace_agent_mcp(agent_id: str, request: dict, rt: RuntimeDep 
 
 @router.delete("/workspace/agents/{agent_id}/mcp/{mcp_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_mcp(agent_id: str, mcp_id: str, rt: RuntimeDep = None):
+    """unbind_workspace_agent_mcp。
+
+    Args:
+        agent_id: Agent ID。
+        mcp_id: mcp 标识。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2704,6 +2858,12 @@ async def unbind_workspace_agent_mcp(agent_id: str, mcp_id: str, rt: RuntimeDep 
 
 @router.get("/workspace/agents/{agent_id}/workflows", response_model=Dict[str, Any])
 async def get_workspace_agent_workflows(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_workflows。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2715,6 +2875,13 @@ async def get_workspace_agent_workflows(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/workflows", response_model=Dict[str, Any])
 async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """bind_workspace_agent_workflows。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2730,6 +2897,13 @@ async def bind_workspace_agent_workflows(agent_id: str, request: dict, rt: Runti
 
 @router.delete("/workspace/agents/{agent_id}/workflows/{workflow_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_workflow(agent_id: str, workflow_id: str, rt: RuntimeDep = None):
+    """unbind_workspace_agent_workflow。
+
+    Args:
+        agent_id: Agent ID。
+        workflow_id: workflow 标识。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2745,6 +2919,12 @@ async def unbind_workspace_agent_workflow(agent_id: str, workflow_id: str, rt: R
 
 @router.get("/workspace/agents/{agent_id}/agents", response_model=Dict[str, Any])
 async def get_workspace_agent_sub_agents(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_sub_agents。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2756,6 +2936,13 @@ async def get_workspace_agent_sub_agents(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/agents", response_model=Dict[str, Any])
 async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """bind_workspace_agent_sub_agents。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2774,6 +2961,13 @@ async def bind_workspace_agent_sub_agents(agent_id: str, request: dict, rt: Runt
 
 @router.delete("/workspace/agents/{agent_id}/agents/{sub_agent_id}", response_model=Dict[str, Any])
 async def unbind_workspace_agent_sub_agent(agent_id: str, sub_agent_id: str, rt: RuntimeDep = None):
+    """unbind_workspace_agent_sub_agent。
+
+    Args:
+        agent_id: Agent ID。
+        sub_agent_id: sub_agent 标识。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2790,6 +2984,14 @@ async def unbind_workspace_agent_sub_agent(agent_id: str, sub_agent_id: str, rt:
 
 @router.post("/workspace/agents/{agent_id}/execute", response_model=Dict[str, Any])
 async def execute_workspace_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """execute_workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2897,7 +3099,10 @@ async def execute_workspace_agent(agent_id: str, request: dict, http_request: Re
 async def review_workspace_agent_output(agent_id: str, request: dict, rt: RuntimeDep = None):
     """Post-run product-quality review for Agent execute (stream path / re-check).
 
-    When body.input is empty, restores from execution store via execution_id.
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -2946,7 +3151,13 @@ async def review_workspace_agent_output(agent_id: str, request: dict, rt: Runtim
 async def apply_workspace_agent_quality_fix(
     agent_id: str, request: dict, rt: RuntimeDep = None
 ):
-    """Append quality SOP into AGENT.md and bound Skill SKILL.md mirrors."""
+    """Append quality SOP into AGENT.md and bound Skill SKILL.md mirrors.
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -2980,11 +3191,13 @@ async def apply_workspace_agent_quality_fix(
 
 @router.post("/workspace/agents/{agent_id}/sign", response_model=Dict[str, Any])
 async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
-    """
-    Sign an agent with an Ed25519 private key, writing the signature to
-    AGENT.manifest.json and updating provenance metadata.
+    """Sign an agent with an Ed25519 private key, writing the signature to。
 
-    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -3060,6 +3273,12 @@ async def sign_workspace_agent(agent_id: str, request: Dict[str, Any], http_requ
 
 @router.post("/workspace/agents/{agent_id}/toggle-enabled", response_model=Dict[str, Any])
 async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
+    """toggle_agent_enabled。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=500, detail="agent manager not available")
@@ -3071,10 +3290,12 @@ async def toggle_agent_enabled(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/enable", response_model=Dict[str, Any])
 async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt: RuntimeDep = None):
-    """
-    Enable an agent with governance gates: autosmoke + signature verification + approval.
+    """Enable an agent with governance gates: autosmoke + signature verification + approval.
 
-    On success, the agent is enabled and ready for execution.
+    Args:
+        agent_id: Agent ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -3189,6 +3410,14 @@ async def enable_workspace_agent(agent_id: str, http_request: Request = None, rt
 
 @router.get("/workspace/agents/{agent_id}/history", response_model=Dict[str, Any])
 async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
+    """获取 workspace_agent_history。
+
+    Args:
+        agent_id: Agent ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         history, total = await store.list_agent_history(agent_id, limit=limit, offset=offset)
@@ -3199,6 +3428,12 @@ async def get_workspace_agent_history(agent_id: str, limit: int = 100, offset: i
 
 @router.get("/workspace/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def get_workspace_agent_versions(agent_id: str, rt: RuntimeDep = None):
+    """获取 workspace_agent_versions。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3211,6 +3446,13 @@ async def get_workspace_agent_versions(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/{agent_id}/versions", response_model=Dict[str, Any])
 async def create_workspace_agent_version(agent_id: str, request: dict, rt: RuntimeDep = None):
+    """创建 workspace_agent_version。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3223,6 +3465,13 @@ async def create_workspace_agent_version(agent_id: str, request: dict, rt: Runti
 
 @router.post("/workspace/agents/{agent_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_workspace_agent_version(agent_id: str, version: str, rt: RuntimeDep = None):
+    """rollback_workspace_agent_version。
+
+    Args:
+        agent_id: Agent ID。
+        version: version 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3254,6 +3503,12 @@ def _reload_workspace_managers(rt: Optional[KernelRuntime]) -> None:
 
 @router.post("/workspace/agents/{agent_id}/reload", response_model=Dict[str, Any])
 async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
+    """reload_workspace_agent。
+
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
+    """
     _reload_workspace_managers(rt)
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -3268,7 +3523,12 @@ async def reload_workspace_agent(agent_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/import-detect", response_model=Dict[str, Any])
 async def detect_agent_import(request: Dict[str, Any], rt: RuntimeDep = None):
-    """AI 检测导入的 agent 配置。接收 URL 或 zip 文件，返回推荐配置。"""
+    """AI 检测导入的 agent 配置。接收 URL 或 zip 文件，返回推荐配置。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     import yaml as _yaml
     import io
     import zipfile
@@ -3522,6 +3782,12 @@ _AGENT_IMPORT_CACHE: dict = {}
 
 @router.post("/workspace/agents/installer/plan", response_model=Dict[str, Any])
 async def workspace_agents_installer_plan(request: dict, rt: RuntimeDep = None):
+    """workspace_agents_installer_plan。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3544,6 +3810,13 @@ async def workspace_agents_installer_plan(request: dict, rt: RuntimeDep = None):
 
 @router.post("/workspace/agents/installer/install", response_model=Dict[str, Any])
 async def workspace_agents_installer_install(request: dict, http_request: Request, rt: RuntimeDep = None):
+    """workspace_agents_installer_install。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3567,6 +3840,12 @@ async def workspace_agents_installer_install(request: dict, http_request: Reques
 
 @router.post("/workspace/agents/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_agents_installer_resolve_head(request: dict, rt: RuntimeDep = None):
+    """workspace_agents_installer_resolve_head。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3584,6 +3863,15 @@ async def workspace_agents_installer_upload_plan(
     auto_detect_subdir: str = Form("true"),
     rt: RuntimeDep = None,
 ):
+    """workspace_agents_installer_upload_plan。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        asset_id: asset 标识。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3620,6 +3908,18 @@ async def workspace_agents_installer_upload_install(
     http_request: Request = None,
     rt: RuntimeDep = None,
 ):
+    """workspace_agents_installer_upload_install。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        asset_id: asset 标识。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        allow_overwrite: allow_overwrite 参数。
+        plan_id: plan 标识。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace agent manager not available")
@@ -3652,7 +3952,13 @@ async def upload_workspace_template(
     http_request: Request = None,
     rt: RuntimeDep = None,
 ):
-    """Upload a .pptx/.potx into ~/.aiplat/templates for PPT agents (方案 B confirm step)."""
+    """Upload a .pptx/.potx into ~/.aiplat/templates for PPT agents (方案 B confirm step).
+
+    Args:
+        file: file 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     import re as _re
     from pathlib import Path as _Path
 
@@ -3697,7 +4003,12 @@ async def upload_workspace_template(
 
 @router.get("/workspace/templates", response_model=Dict[str, Any])
 async def list_workspace_templates(http_request: Request = None, rt: RuntimeDep = None):
-    """List .pptx/.potx files under ~/.aiplat/templates for confirm-step pickers."""
+    """List .pptx/.potx files under ~/.aiplat/templates for confirm-step pickers.
+
+    Args:
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     from pathlib import Path as _Path
 
     if http_request is not None:
@@ -3738,10 +4049,9 @@ async def list_workspace_templates(http_request: Request = None, rt: RuntimeDep 
 async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
     """提交 Agent 进入审批流水线。
 
-    1. 获取 Agent 当前状态（仅 draft/enabled 可提交）
-    2. 运行 AGENT.md 配置校验
-    3. 有 error → 拒绝提交，返回校验报告
-    4. 无 error → status → ready, governance → pending
+    Args:
+        agent_id: Agent ID。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -3862,8 +4172,12 @@ async def submit_agent_for_review(agent_id: str, rt: RuntimeDep = None):
 @router.post("/workspace/agents/{agent_id}/invoke", response_model=Dict[str, Any])
 async def invoke_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
     """Standardized invoke endpoint — external systems call this to run an agent.
-    Body: { input: "your message", config?: {}, options?: {} }
-    Returns: { run_id, output, tokens, status }
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_agent_mgr(rt)
     if not mgr:
@@ -3914,6 +4228,7 @@ class AgentAuditRequest(BaseModel):
 
 
 class AgentAuditResponse(BaseModel):
+    """AgentAuditResponse。"""
     agent_id: str
     issues: List[Dict[str, Any]]
     summary: Dict[str, Any]
@@ -4182,14 +4497,11 @@ async def audit_agent_config(
     agent_id: str,
     req: Annotated[Optional[AgentAuditRequest], Body()] = None,
 ) -> AgentAuditResponse:
-    u"""AI 审核：检查 Agent 配置的问题点及建议。规则驱动，毫秒返回，无需 LLM。
+    """AI 审核：检查 Agent 配置的问题点及建议。规则驱动，毫秒返回，无需 LLM。
 
-    检查项包括：工具/技能上架门禁、字段格式、Coze 残留、必填字段、
-    system_prompt/status、**SOP 结构**（角色/流程/目标/验收/绑定引用对齐）、
-    **AGENT.md 正文质量**（``prompt_auditor``：模糊形容词、流水线交接/frontmatter、正文长度）、
-    以及模型（infra unified_pipeline 策略）、Toolset、loop_type、permissions/triggers、流水线字段。
-
-    请求体可选 ``sop_body`` / ``system_prompt``：编辑页传入未保存草稿，避免只审磁盘旧正文。
+    Args:
+        agent_id: Agent ID。
+        req: req 参数。
     """
     if req is None:
         req = AgentAuditRequest()

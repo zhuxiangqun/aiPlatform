@@ -30,12 +30,15 @@ _log = logging.getLogger("aiplat.standards_validator")
 
 @dataclass
 class StandardsIssue:
+    """StandardsIssue。"""
     rule_id: str
     level: str  # error | warning
     message: str
     section: str = ""
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "rule_id": self.rule_id,
             "level": self.level,
@@ -46,6 +49,7 @@ class StandardsIssue:
 
 @dataclass
 class StandardsReport:
+    """StandardsReport。"""
     passed: bool
     issues: List[StandardsIssue] = field(default_factory=list)
     error_count: int = 0
@@ -54,9 +58,13 @@ class StandardsReport:
 
     @property
     def failed_count(self) -> int:
+        """failed_count。
+        """
         return self.error_count + self.warning_count
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "passed": self.passed,
             "error_count": self.error_count,
@@ -70,6 +78,11 @@ class StandardsValidator:
     """Declarative document standards checker."""
 
     def __init__(self, rules_path: Optional[str] = None):
+        """__init__。
+
+        Args:
+            rules_path: 路径。
+        """
         if rules_path is None:
             rules_path = str(
                 Path(__file__).resolve().parent / "standards_rules.yaml"
@@ -89,6 +102,12 @@ class StandardsValidator:
             self._rules = []
 
     def validate(self, document_text: str, doc_type: str = "general") -> StandardsReport:
+        """validate。
+
+        Args:
+            document_text: document_text 参数。
+            doc_type: doc_type 参数。
+        """
         if not document_text or not document_text.strip():
             return StandardsReport(passed=False, issues=[
                 StandardsIssue(rule_id="empty_document", level="error",
@@ -219,6 +238,8 @@ class StandardsValidator:
         return None
 
     def reload(self):
+        """reload。
+        """
         self._load_rules()
 
 
@@ -226,6 +247,8 @@ _standards_validator: Optional[StandardsValidator] = None
 
 
 def get_standards_validator() -> StandardsValidator:
+    """获取 standards_validator。
+    """
     global _standards_validator
     if _standards_validator is None:
         _standards_validator = StandardsValidator()

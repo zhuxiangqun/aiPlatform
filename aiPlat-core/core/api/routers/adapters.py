@@ -1,3 +1,8 @@
+"""adapters：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -41,7 +46,13 @@ async def _record_changeset(rt: RuntimeDep, **kwargs) -> None:
 
 @router.get("/adapters", response_model=Dict[str, Any])
 async def list_adapters(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """List adapters"""
+    """List adapters。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -55,7 +66,12 @@ async def list_adapters(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depe
 
 @router.post("/adapters", response_model=Dict[str, Any])
 async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Create adapter"""
+    """Create adapter。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -77,7 +93,12 @@ async def create_adapter(request: AdapterCreateRequest, rt: RuntimeDep = Depends
 
 @router.get("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def get_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get adapter details"""
+    """Get adapter details。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -99,7 +120,13 @@ async def get_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runti
 
 @router.put("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Update adapter"""
+    """Update adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -130,7 +157,12 @@ async def update_adapter(adapter_id: str, request: AdapterUpdateRequest, rt: Run
 
 @router.delete("/adapters/{adapter_id}", response_model=Dict[str, Any])
 async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Delete adapter"""
+    """Delete adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -146,7 +178,13 @@ async def delete_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
 
 @router.post("/adapters/{adapter_id}/test", response_model=Dict[str, Any])
 async def test_adapter(adapter_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Test adapter"""
+    """Test adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -155,7 +193,12 @@ async def test_adapter(adapter_id: str, request: dict, rt: RuntimeDep = Depends(
 
 @router.post("/adapters/{adapter_id}/enable", response_model=Dict[str, Any])
 async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Enable adapter"""
+    """Enable adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -171,7 +214,12 @@ async def enable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_ru
 
 @router.post("/adapters/{adapter_id}/disable", response_model=Dict[str, Any])
 async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Disable adapter"""
+    """Disable adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -187,7 +235,12 @@ async def disable_adapter(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_r
 
 @router.get("/adapters/{adapter_id}/models", response_model=Dict[str, Any])
 async def list_adapter_models(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """List adapter models"""
+    """List adapter models。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -199,7 +252,13 @@ async def list_adapter_models(adapter_id: str, rt: RuntimeDep = Depends(get_kern
 
 @router.post("/adapters/{adapter_id}/models", response_model=Dict[str, Any])
 async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Add model to adapter"""
+    """Add model to adapter。
+
+    Args:
+        adapter_id: adapter 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -228,14 +287,27 @@ async def add_adapter_model(adapter_id: str, request: dict, rt: RuntimeDep = Dep
 
 @router.put("/adapters/{adapter_id}/models/{model_name}", response_model=Dict[str, Any])
 async def update_adapter_model(adapter_id: str, model_name: str, request: ModelUpdateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Update adapter model"""
+    """Update adapter model。
+
+    Args:
+        adapter_id: adapter 标识。
+        model_name: model_name 参数。
+        request: request 参数。
+        rt: rt 参数。
+    """
     # 保持旧实现：目前仅返回 updated（不执行实际更新）
     return {"status": "updated"}
 
 
 @router.delete("/adapters/{adapter_id}/models/{model_name}", response_model=Dict[str, Any])
 async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Delete adapter model"""
+    """Delete adapter model。
+
+    Args:
+        adapter_id: adapter 标识。
+        model_name: model_name 参数。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -251,7 +323,12 @@ async def delete_adapter_model(adapter_id: str, model_name: str, rt: RuntimeDep 
 
 @router.get("/adapters/{adapter_id}/stats", response_model=Dict[str, Any])
 async def get_adapter_stats(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get adapter stats"""
+    """Get adapter stats。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -271,7 +348,14 @@ async def get_adapter_stats(adapter_id: str, rt: RuntimeDep = Depends(get_kernel
 
 @router.get("/adapters/{adapter_id}/calls", response_model=Dict[str, Any])
 async def get_adapter_calls(adapter_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get adapter calls"""
+    """Get adapter calls。
+
+    Args:
+        adapter_id: adapter 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -284,7 +368,12 @@ async def get_adapter_calls(adapter_id: str, limit: int = 100, offset: int = 0, 
 
 @router.get("/adapters/{adapter_id}/model-distribution", response_model=Dict[str, Any])
 async def get_model_distribution(adapter_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get model distribution"""
+    """Get model distribution。
+
+    Args:
+        adapter_id: adapter 标识。
+        rt: rt 参数。
+    """
     am = _am(rt)
     if not am:
         raise HTTPException(status_code=503, detail="AdapterManager not initialized")
@@ -298,9 +387,8 @@ async def get_model_distribution(adapter_id: str, rt: RuntimeDep = Depends(get_k
 async def set_model_override_endpoint(request: dict):
     """Set session-level model override. Equivalent to /model <name> in Hermes CLI.
 
-    Body: {"model_name": "deepseek-v4-pro", "session_id": "xxx"}
-    Use session_id="_global" for global override.
-    Pass model_name="" to clear the override.
+    Args:
+        request: request 参数。
     """
     model_name = str(request.get("model_name", "")).strip()
     session_id = str(request.get("session_id", "_global")).strip()
@@ -324,8 +412,8 @@ async def set_model_override_endpoint(request: dict):
 async def set_moa_override(request: dict):
     """Set MoA as the session model with a specific preset.
 
-    Body: {"preset": "general", "session_id": "_global"}
-    Valid presets: general, creative, analysis, code_review, architecture, security
+    Args:
+        request: request 参数。
     """
     preset = str(request.get("preset", "general")).strip()
     session_id = str(request.get("session_id", "_global")).strip()

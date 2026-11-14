@@ -1,3 +1,8 @@
+"""syscalls：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from typing import Dict, Annotated, Optional, Any
@@ -33,6 +38,24 @@ async def list_syscall_events(
     span_id: Optional[str] = None,
     rt: RuntimeDep = None,
 ):
+    """列出 syscall_events。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        kind: kind 参数。
+        name: 名称。
+        status: 状态。
+        error_contains: error_contains 参数。
+        error_code: error_code 参数。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        approval_request_id: approval_request 标识。
+        span_id: span 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -60,6 +83,14 @@ async def get_syscall_stats(
     kind: Optional[str] = None,
     rt: RuntimeDep = None,
 ):
+    """获取 syscall_stats。
+
+    Args:
+        window_hours: window_hours 参数。
+        top_n: top_n 参数。
+        kind: kind 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

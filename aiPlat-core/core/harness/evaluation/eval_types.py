@@ -23,6 +23,7 @@ import time
 # ── Task Completion Levels ────────────────────────────────────────────────
 
 class TaskResultLevel(str, Enum):
+    """TaskResultLevel。"""
     COMPLETE = "complete"         # 完整完成：用户目标全部达成
     PARTIAL = "partial"           # 部分完成：达成分目标，但明确标注缺口
     CORRECT_FAILURE = "correct_failure"  # 正确失败：未达成但正确处理（追问/报告权限/说明无数据）
@@ -31,6 +32,7 @@ class TaskResultLevel(str, Enum):
 
 @dataclass
 class TaskCompletion:
+    """TaskCompletion。"""
     level: TaskResultLevel
     score: float                   # 0-1 score mapped from level
     total_tasks: int
@@ -41,6 +43,8 @@ class TaskCompletion:
 
     @property
     def completion_rate(self) -> float:
+        """completion_rate。
+        """
         if self.total_tasks == 0:
             return 0.0
         return (self.complete_count + self.partial_count) / self.total_tasks
@@ -58,6 +62,7 @@ class TaskCompletion:
 
 @dataclass
 class SingleTaskResult:
+    """SingleTaskResult。"""
     task_id: str
     agent_id: str
     run_id: str
@@ -73,6 +78,7 @@ class SingleTaskResult:
 
 @dataclass
 class ToolCallQuality:
+    """ToolCallQuality。"""
     total_calls: int
     correct_selections: int = 0     # 工具选择正确
     valid_params: int = 0           # 参数符合 Schema
@@ -87,23 +93,33 @@ class ToolCallQuality:
 
     @property
     def selection_rate(self) -> float:
+        """selection_rate。
+        """
         return self._rate(self.correct_selections)
 
     @property
     def param_rate(self) -> float:
+        """param_rate。
+        """
         return self._rate(self.valid_params)
 
     @property
     def timing_rate(self) -> float:
+        """timing_rate。
+        """
         return self._rate(self.correct_timing)
 
     @property
     def result_usage_rate(self) -> float:
+        """result_usage_rate。
+        """
         return self._rate(self.correct_result_usage)
 
     @property
     def overall_score(self) -> float:
         # Unmeasured (0 calls) → missing-fill 0.5, not measured-zero 0.0.
+        """overall_score。
+        """
         if self.usage_unmeasured:
             return 0.5
         return (self.selection_rate * 0.35 + self.param_rate * 0.25
@@ -116,6 +132,7 @@ class ToolCallQuality:
 # ── Trajectory Match (v2.9) ────────────────────────────────────────────────
 
 class MatchMode(str, Enum):
+    """MatchMode。"""
     EXACT_ORDER = "exact_order"       # 工具序列必须完全匹配
     IN_ORDER = "in_order"            # 关键工具按顺序出现，允许中间插入其他动作
     ANY_ORDER = "any_order"          # 期望的工具都调到即可，不管顺序
@@ -123,6 +140,7 @@ class MatchMode(str, Enum):
 
 @dataclass
 class TrajectoryQuality:
+    """TrajectoryQuality。"""
     expected_sequence: List[str]      # 期望的工具序列，如 ["lookup_order", "check_policy", "issue_refund"]
     actual_sequence: List[str]        # 实际执行的工具序列
     match_mode: MatchMode
@@ -139,6 +157,8 @@ class TrajectoryQuality:
 
     @property
     def completion_rate(self) -> float:
+        """completion_rate。
+        """
         if self.expected_count == 0:
             return 0.5  # missing-fill placeholder (was vacuous 1.0)
         return self.matched_count / self.expected_count
@@ -160,6 +180,7 @@ class TrajectoryQuality:
 
 @dataclass
 class CorrectnessResult:
+    """CorrectnessResult。"""
     score: float                     # 0-1 overall correctness
     claims_total: int = 0            # 回答中的总声明数
     claims_verified: int = 0         # 经过验证的声明数
@@ -173,6 +194,7 @@ class CorrectnessResult:
 
 @dataclass
 class TextQualityResult:
+    """TextQualityResult。"""
     coherence_score: float           # 0-1 internal consistency
     conciseness_score: float         # 0-1 brevity (1=concise, 0=verbose)
     instruction_following_score: float  # 0-1 format/instruction adherence
@@ -191,6 +213,7 @@ class TextQualityResult:
 
 @dataclass
 class SafetyContentResult:
+    """SafetyContentResult。"""
     harmful_score: float             # 0-1 toxicity (1 = safe, 0 = toxic)
     stereotype_score: float          # 0-1 bias (1 = no bias, 0 = biased)
     overall_score: float = 0.0
@@ -207,6 +230,7 @@ class SafetyContentResult:
 
 @dataclass
 class RefusalResult:
+    """RefusalResult。"""
     is_refusal: bool                 # 是否拒答
     refusal_type: str = ""           # "over_refusal"(不该拒但拒了) | "under_refusal"(该拒没拒) | "correct_refusal"
     confidence: float = 0.0          # 0-1 detection confidence
@@ -217,6 +241,7 @@ class RefusalResult:
 
 @dataclass
 class StepEfficiency:
+    """StepEfficiency。"""
     total_tasks: int
     avg_steps: float               # 平均步数
     invalid_call_rate: float       # 无效调用率 (没推进任务)
@@ -234,6 +259,8 @@ class StepEfficiency:
     @property
     def overall_score(self) -> float:
         # Unmeasured (0 calls) → missing-fill 0.5, not perfect 1.0 from zero rates.
+        """overall_score。
+        """
         if self.usage_unmeasured:
             return 0.5
         # Closer to 0 is better for efficiency metrics
@@ -246,6 +273,7 @@ class StepEfficiency:
 # ── Error Recovery ─────────────────────────────────────────────────────────
 
 class ErrorType(str, Enum):
+    """ErrorType。"""
     MISSING_PARAM = "missing_param"
     NO_DATA = "no_data"
     TIMEOUT = "timeout"
@@ -254,6 +282,7 @@ class ErrorType(str, Enum):
 
 
 class RecoveryAction(str, Enum):
+    """RecoveryAction。"""
     ASK_USER = "ask_user"             # 追问补充参数
     EXPAND_SCOPE = "expand_scope"     # 扩大或调整查询范围
     LIMITED_RETRY = "limited_retry"   # 有限重试
@@ -263,6 +292,7 @@ class RecoveryAction(str, Enum):
 
 @dataclass
 class ErrorRecovery:
+    """ErrorRecovery。"""
     total_failures: int
     correct_recoveries: int = 0
     by_type: Dict[str, Dict[str, int]] = field(default_factory=dict)
@@ -274,11 +304,15 @@ class ErrorRecovery:
 
     @property
     def recovery_rate(self) -> float:
+        """recovery_rate。
+        """
         return self.correct_recoveries / self.total_failures if self.total_failures > 0 else 0.0
 
     @property
     def overall_score(self) -> float:
         # Unmeasured (0 failures) → missing-fill 0.5, not measured-zero.
+        """overall_score。
+        """
         if self.usage_unmeasured:
             return 0.5
         return self.recovery_rate
@@ -288,6 +322,7 @@ class ErrorRecovery:
 
 @dataclass
 class SafetyBoundary:
+    """SafetyBoundary。"""
     high_risk_pre_confirm_violations: int = 0   # 确认前执行高风险动作
     permission_bypass_attempts: int = 0          # 尝试绕过权限
     sensitive_info_leaks: int = 0               # 泄露敏感信息
@@ -296,14 +331,20 @@ class SafetyBoundary:
 
     @property
     def violation_rate(self) -> float:
+        """violation_rate。
+        """
         return self.high_risk_pre_confirm_violations / self.total_high_risk if self.total_high_risk > 0 else 0.0
 
     @property
     def audit_completeness(self) -> float:
+        """audit_completeness。
+        """
         return self.auditable_actions / self.total_high_risk if self.total_high_risk > 0 else 0.0
 
     @property
     def overall_score(self) -> float:
+        """overall_score。
+        """
         if self.total_high_risk == 0:
             return 1.0
         base = 1.0
@@ -326,6 +367,7 @@ class SafetyBoundary:
 
 @dataclass
 class CostEfficiency:
+    """CostEfficiency。"""
     total_tasks: int
     total_tokens: int = 0
     total_calls: int = 0
@@ -333,14 +375,20 @@ class CostEfficiency:
 
     @property
     def tokens_per_task(self) -> float:
+        """tokens_per_task。
+        """
         return self.total_tokens / self.total_tasks if self.total_tasks > 0 else 0.0
 
     @property
     def calls_per_task(self) -> float:
+        """calls_per_task。
+        """
         return self.total_calls / self.total_tasks if self.total_tasks > 0 else 0.0
 
     @property
     def avg_duration_ms(self) -> float:
+        """avg_duration_ms。
+        """
         return self.total_duration_ms / self.total_tasks if self.total_tasks > 0 else 0.0
 
     @property
@@ -352,6 +400,8 @@ class CostEfficiency:
     def overall_score(self) -> float:
         # Unmeasured usage must not inflate composite as "perfect efficiency".
         # Use missing_fill placeholder 0.5 (same as absent cost object).
+        """overall_score。
+        """
         if self.usage_unmeasured:
             return 0.5
         return 0.5 + 0.5 * (1.0 / (1.0 + self.calls_per_task / 10.0))
@@ -360,12 +410,17 @@ class CostEfficiency:
 # ── Composite Eval Result ───────────────────────────────────────────────────
 
 def scoring_honesty(result: "AgentEvalResult") -> Dict[str, Any]:
-    """Module export for capability registry / callers (delegates to instance)."""
+    """Module export for capability registry / callers (delegates to instance).
+
+    Args:
+        result: result 参数。
+    """
     return result.scoring_honesty()
 
 
 @dataclass
 class AgentEvalResult:
+    """AgentEvalResult。"""
     agent_id: str
     eval_set_id: str = ""
     eval_time: float = field(default_factory=time.time)
@@ -479,6 +534,8 @@ class AgentEvalResult:
 
     @property
     def grade(self) -> str:
+        """grade。
+        """
         s = self.composite_score
         if s >= 90: return "A"
         if s >= 75: return "B"
@@ -491,6 +548,7 @@ class AgentEvalResult:
 
 @dataclass
 class EvalTask:
+    """EvalTask。"""
     task_id: str
     agent_id: str
     user_input: str
@@ -504,6 +562,7 @@ class EvalTask:
 
 @dataclass
 class EvalSet:
+    """EvalSet。"""
     set_id: str
     category: str
     description: str = ""
@@ -512,4 +571,6 @@ class EvalSet:
 
     @property
     def task_count(self) -> int:
+        """task_count。
+        """
         return len(self.tasks)

@@ -11,7 +11,11 @@ from typing import Any, Dict, Optional
 
 
 def collect_harness_factors(*, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Snapshot of harness knobs relevant to code-review / agent quality."""
+    """Snapshot of harness knobs relevant to code-review / agent quality.
+
+    Args:
+        extra: extra 参数。
+    """
     factors = {
         "coding_policy_profile": (
             os.environ.get("AIPLAT_CODING_POLICY_PROFILE_WORKSPACE")
@@ -38,7 +42,12 @@ def harness_factors_delta(
     current: Optional[Dict[str, Any]],
     previous: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    """Keys that changed between two gold runs (excluding written_at noise)."""
+    """Keys that changed between two gold runs (excluding written_at noise).
+
+    Args:
+        current: current 参数。
+        previous: previous 参数。
+    """
     cur = current if isinstance(current, dict) else {}
     prev = previous if isinstance(previous, dict) else {}
     changed = {}

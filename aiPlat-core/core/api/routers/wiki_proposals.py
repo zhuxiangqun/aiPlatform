@@ -10,7 +10,12 @@ router = APIRouter(tags=["wiki-proposals"])
 
 @router.get("/proposals", response_model=Dict[str, Any])
 async def list_proposals(status: str = "", limit: int = 50):
-    """List proposals with optional status filter."""
+    """List proposals with optional status filter.
+
+    Args:
+        status: 状态。
+        limit: 返回条数上限。
+    """
     from core.harness.learning.proposal_store import get_proposal_store
     store = get_proposal_store()
     items = store.list(status=status or None, limit=limit)
@@ -19,7 +24,11 @@ async def list_proposals(status: str = "", limit: int = 50):
 
 @router.post("/proposals/{proposal_id}/submit", response_model=Dict[str, Any])
 async def submit_proposal(proposal_id: str):
-    """Submit a draft for review (draft -> pending_approval)."""
+    """Submit a draft for review (draft -> pending_approval).
+
+    Args:
+        proposal_id: proposal 标识。
+    """
     from core.harness.learning.proposal_store import get_proposal_store
     store = get_proposal_store()
     if store.submit(proposal_id):
@@ -29,7 +38,12 @@ async def submit_proposal(proposal_id: str):
 
 @router.post("/proposals/{proposal_id}/approve", response_model=Dict[str, Any])
 async def approve_proposal(proposal_id: str, approved_by: str = "admin"):
-    """Approve -> auto-merge."""
+    """Approve -> auto-merge.
+
+    Args:
+        proposal_id: proposal 标识。
+        approved_by: approved_by 参数。
+    """
     from core.harness.learning.proposal_store import get_proposal_store
     store = get_proposal_store()
     if store.approve(proposal_id, approved_by):
@@ -39,7 +53,12 @@ async def approve_proposal(proposal_id: str, approved_by: str = "admin"):
 
 @router.post("/proposals/{proposal_id}/reject", response_model=Dict[str, Any])
 async def reject_proposal(proposal_id: str, reason: str = ""):
-    """Reject a proposal."""
+    """Reject a proposal.
+
+    Args:
+        proposal_id: proposal 标识。
+        reason: reason 参数。
+    """
     from core.harness.learning.proposal_store import get_proposal_store
     store = get_proposal_store()
     if store.reject(proposal_id, reason):

@@ -49,6 +49,7 @@ from collections import Counter
 
 class AdoptionReport:
 
+    """AdoptionReport。"""
     total_agent_calls: int = 0
 
     total_users: int = 0
@@ -83,6 +84,8 @@ class AdoptionTracker:
 
     def __init__(self):
 
+        """__init__。
+        """
         self._home = Path(get_aiplat_home())
 
 
@@ -370,7 +373,12 @@ class AdoptionTracker:
 
     def get_training_effectiveness(self, before_events: List[Dict], after_events: List[Dict]) -> Dict[str, Any]:
 
-        """Compare before/after training metrics to measure effectiveness."""
+        """Compare before/after training metrics to measure effectiveness.
+
+        Args:
+            before_events: before_events 参数。
+            after_events: after_events 参数。
+        """
 
         before_grill_complete = sum(1 for e in before_events if e.get("kind") == "grill_complete")
 
@@ -403,8 +411,8 @@ class AdoptionTracker:
     def get_historical(self, days: int = 30) -> List[Dict[str, float]]:
         """Return daily metric snapshots for baseline calculation.
 
-        Query adoption_metrics from execution_store.
-        Returns empty list on cold start (caller handles insufficient history).
+        Args:
+            days: days 参数。
         """
         try:
             from core.services.execution_store import get_execution_store

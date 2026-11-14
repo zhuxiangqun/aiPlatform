@@ -65,6 +65,8 @@ class HallucinationTracker:
     """
 
     def __init__(self):
+        """__init__。
+        """
         self._history: List[HallucinationReport] = []
         self._stats: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
 
@@ -159,7 +161,11 @@ class HallucinationTracker:
         return report
 
     def get_dashboard(self, domain_id: str = "") -> Dict[str, Any]:
-        """获取幻觉率仪表盘数据。"""
+        """获取幻觉率仪表盘数据。
+
+        Args:
+            domain_id: domain 标识。
+        """
         stats = self._stats.get(domain_id, self._stats.get("default", {}))
         return {
             "total_evaluations": len(self._history),
@@ -176,7 +182,11 @@ class HallucinationTracker:
         }
 
     def get_recent_reports(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """获取最近的幻觉报告。"""
+        """获取最近的幻觉报告。
+
+        Args:
+            limit: 返回条数上限。
+        """
         return [
             {
                 "run_id": r.run_id,
@@ -253,10 +263,9 @@ class HallucinationTracker:
     ) -> Dict[str, Any]:
         """EAEV 2.0 (P1-L4a): counterfactual perturbation — memory-inertia check.
 
-        Replace the most frequent entity in the claim with a clearly unrelated
-        token, then re-verify against the SAME context. If alignment collapses
-        (large drift) while the original claim aligned strongly, the entity was
-        carried by pretraining memory, not grounded in evidence — flag it.
+        Args:
+            claim: claim 参数。
+            context: context 参数。
         """
         import re as _re
 
@@ -374,7 +383,13 @@ class HallucinationTracker:
 
     async def evaluate_text(self, text: str, source: str = "unknown",
                             doc_id: str = "") -> Dict[str, Any]:
-        """Evaluate standalone text for hallucination. Used by sys_file_write."""
+        """Evaluate standalone text for hallucination. Used by sys_file_write.
+
+        Args:
+            text: 文本内容。
+            source: source 参数。
+            doc_id: doc 标识。
+        """
         if not text or len(text) < 50:
             return {"risk": "low", "detail": "Text too short"}
         try:
@@ -402,7 +417,11 @@ class HallucinationTracker:
 _tracker: Optional[HallucinationTracker] = None
 
 def get_hallucination_tracker() -> HallucinationTracker:
+    """获取 hallucination_tracker。
+    """
     global _tracker
     if _tracker is None:
         _tracker = HallucinationTracker()
     return _tracker
+    """获取 hallucination_tracker。
+    """

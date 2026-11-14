@@ -14,7 +14,11 @@ router = APIRouter(tags=["wiki-health-quality"])
 
 @router.get("/health/triggers", response_model=Dict[str, Any])
 async def get_health_triggers(collection: str = "default"):
-    u"""Get triggered curation tasks from ontology health checks."""
+    """Get triggered curation tasks from ontology health checks.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_quality import check_ontology_health_triggers
     triggers = check_ontology_health_triggers(collection_id=collection)
     return {"triggers": triggers, "total": len(triggers), "collection_id": collection}
@@ -22,7 +26,11 @@ async def get_health_triggers(collection: str = "default"):
 
 @router.get("/health/score", response_model=Dict[str, Any])
 async def get_ontology_health_score(collection: str = "default"):
-    u"""Get composite ontology health score from axiom validation + quality signals."""
+    """Get composite ontology health score from axiom validation + quality signals.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_validator import validate_all
         report = validate_all(collection_id=collection)
@@ -41,7 +49,12 @@ async def get_ontology_health_score(collection: str = "default"):
 
 @router.get("/quality/{entity_uri:path}", response_model=Dict[str, Any])
 async def get_entity_quality(entity_uri: str, collection: str = "default"):
-    u"""Get quality score and signal history for an ontology entity."""
+    """Get quality score and signal history for an ontology entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_quality import get_entity_quality_score  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.knowledge_quality import get_quality_signals  # P0-A2 修复: 恢复原模块(定义处)
     score = get_entity_quality_score(entity_uri, collection_id=collection)

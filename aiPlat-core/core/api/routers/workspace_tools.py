@@ -166,9 +166,9 @@ async def workspace_tools_discovery_report():
 async def create_workspace_tool(request: dict, http_request: Request):
     """Create a new workspace tool.
 
-    Phase C: import/generated path (`as_draft` / `import_mode`) writes `.py.draft`
-    only and COMPAT `needs_impl` — does not register. Normal UI create still writes
-    live `.py` + `mapped` (human-authored).
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
     """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
@@ -260,7 +260,11 @@ async def create_workspace_tool(request: dict, http_request: Request):
 
 @router.delete("/workspace/tools/{tool_name}", response_model=Dict[str, Any])
 async def delete_workspace_tool(tool_name: str):
-    """Delete a workspace tool (hard) — removes .py file and unregisters."""
+    """Delete a workspace tool (hard) — removes .py file and unregisters.
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     from core.apps.tools.base import get_tool_registry
     registry = get_tool_registry()
     tool = registry.get(tool_name)
@@ -291,7 +295,12 @@ async def delete_workspace_tool(tool_name: str):
 
 @router.post("/workspace/tools/{tool_name}/sign", response_model=Dict[str, Any])
 async def sign_workspace_tool(tool_name: str, request: dict):
-    """Sign a workspace tool with an Ed25519 private key."""
+    """Sign a workspace tool with an Ed25519 private key.
+
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
+    """
     private_key = str(request.get("private_key") or "").strip().replace("\\n", "\n")
     if not private_key:
         raise HTTPException(status_code=400, detail="private_key is required")
@@ -374,7 +383,12 @@ async def discover_workspace_tools():
 
 @router.put("/workspace/tools/{tool_name}", response_model=Dict[str, Any])
 async def update_workspace_tool(tool_name: str, request: dict):
-    """Update workspace tool metadata (description, category)."""
+    """Update workspace tool metadata (description, category).
+
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
+    """
     from core.apps.tools.base import get_tool_registry
     registry = get_tool_registry()
     tool = registry.get(tool_name)
@@ -422,7 +436,11 @@ async def update_workspace_tool(tool_name: str, request: dict):
 
 @router.get("/workspace/tools/{tool_name}/source", response_model=Dict[str, Any])
 async def get_workspace_tool_source(tool_name: str):
-    """Return the .py source file content for a workspace tool."""
+    """Return the .py source file content for a workspace tool.
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     from core.apps.tools.base import get_tool_registry
     registry = get_tool_registry()
     tool = registry.get(tool_name)
@@ -456,7 +474,12 @@ async def get_workspace_tool_source(tool_name: str):
 
 @router.put("/workspace/tools/{tool_name}/source", response_model=Dict[str, Any])
 async def update_workspace_tool_source(tool_name: str, request: dict):
-    """Save Python source code for a workspace tool. Validates syntax before saving."""
+    """Save Python source code for a workspace tool. Validates syntax before saving.
+
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
+    """
     from core.apps.tools.base import get_tool_registry, BaseTool, ToolConfig
     registry = get_tool_registry()
     tool = registry.get(tool_name)
@@ -536,7 +559,12 @@ async def update_workspace_tool_source(tool_name: str, request: dict):
 
 @router.post("/workspace/tools/{tool_name}/enable-impl-draft", response_model=Dict[str, Any])
 async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Request):
-    """Phase C: promote {name}.py.draft → {name}.py and register."""
+    """Phase C: promote {name}.py.draft → {name}.py and register.
+
+    Args:
+        tool_name: tool_name 参数。
+        http_request: http_request 参数。
+    """
     from core.api.core_facade import tool_enable_impl_draft
 
     tools_dir = Path(os.getenv("AIPLAT_TOOLS_PATH", get_aiplat_data_dir("tools")))
@@ -590,7 +618,11 @@ async def workspace_tools_enable_impl_draft(tool_name: str, http_request: Reques
 
 @router.post("/workspace/tools/{tool_name}/reload", response_model=Dict[str, Any])
 async def reload_workspace_tool(tool_name: str):
-    """Re-import a workspace tool .py file and re-register it in ToolRegistry."""
+    """Re-import a workspace tool .py file and re-register it in ToolRegistry.
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     from core.apps.tools.base import get_tool_registry, BaseTool, ToolConfig
     registry = get_tool_registry()
     tool = registry.get(tool_name)

@@ -58,6 +58,7 @@ def _actor_bits(request: Request) -> Dict[str, Optional[str]]:
 
 
 class CreateWorkspaceBody(BaseModel):
+    """CreateWorkspaceBody。"""
     workspace_id: str = Field(..., min_length=1, max_length=64)
     label: str = ""
     kind: str = "local"
@@ -68,7 +69,11 @@ class CreateWorkspaceBody(BaseModel):
 
 @router.get("/workspaces")
 async def list_named_workspaces(request: Request) -> Dict[str, Any]:
-    """List local + remote profiles visible to caller."""
+    """List local + remote profiles visible to caller.
+
+    Args:
+        request: request 参数。
+    """
     try:
         ensure_registry()
         bits = _actor_bits(request)
@@ -135,7 +140,13 @@ async def create_named_workspace(
     body: CreateWorkspaceBody,
     x_aiplat_workspace_id: Optional[str] = Header(None, alias=HEADER_NAME),
 ) -> Dict[str, Any]:
-    """Create local empty workspace or remote Core profile. Write requires workspace header."""
+    """Create local empty workspace or remote Core profile. Write requires workspace header.
+
+    Args:
+        request: request 参数。
+        body: 请求体 dict。
+        x_aiplat_workspace_id: x_aiplat_workspace 标识。
+    """
     try:
         bits = _actor_bits(request)
         headers = {k: v for k, v in request.headers.items()}
@@ -191,7 +202,12 @@ async def resolve_named_workspace_endpoint(
     request: Request,
     workspace_id: Optional[str] = Query(None),
 ) -> Dict[str, Any]:
-    """Debug/resolve current named workspace (read)."""
+    """Debug/resolve current named workspace (read).
+
+    Args:
+        request: request 参数。
+        workspace_id: workspace 标识。
+    """
     try:
         bits = _actor_bits(request)
         headers = {k: v for k, v in request.headers.items()}
@@ -219,7 +235,13 @@ async def workspace_proxy(
     path: str,
     request: Request,
 ) -> Response:
-    """Allowlisted forward to a remote Core profile. Strips local workspace header."""
+    """Allowlisted forward to a remote Core profile. Strips local workspace header.
+
+    Args:
+        profile_id: profile 标识。
+        path: 文件或目录路径。
+        request: request 参数。
+    """
     bits = _actor_bits(request)
     try:
         entry = get_registry_entry(profile_id)

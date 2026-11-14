@@ -1,3 +1,8 @@
+"""routing_observability：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -27,6 +32,14 @@ async def workspace_routing_funnel(
     limit: int = 20000,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """workspace_routing_funnel。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -50,6 +63,16 @@ async def workspace_routing_explain(
     selected_kind: Optional[str] = None,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """workspace_routing_explain。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        skill_id: skill 标识。
+        selected_kind: selected_kind 参数。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -74,6 +97,15 @@ async def workspace_routing_replay(
     limit: int = 2000,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """workspace_routing_replay。
+
+    Args:
+        routing_decision_id: routing_decision 标识。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -98,6 +130,16 @@ async def workspace_routing_metrics(
     coding_policy_profile: Optional[str] = None,
     limit: int = 20000,
 ) -> Dict[str, Any]:
+    """workspace_routing_metrics。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        bucket_minutes: bucket_minutes 参数。
+        skill_id: skill 标识。
+        coding_policy_profile: coding_policy_profile 参数。
+        limit: 返回条数上限。
+    """
     return {
         "status": "ok",
         **(
@@ -117,6 +159,8 @@ async def workspace_routing_metrics(
 
 @router.get("/workspace/skills/observability/routing-metrics/tags", response_model=Dict[str, Any])
 async def workspace_routing_metric_tags() -> Dict[str, Any]:
+    """workspace_routing_metric_tags。
+    """
     return {"status": "ok", **routing_metric_tags()}
 
 
@@ -127,6 +171,14 @@ async def engine_routing_funnel(
     limit: int = 20000,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """engine_routing_funnel。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -150,6 +202,16 @@ async def engine_routing_explain(
     selected_kind: Optional[str] = None,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """engine_routing_explain。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        skill_id: skill 标识。
+        selected_kind: selected_kind 参数。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -174,6 +236,15 @@ async def engine_routing_replay(
     limit: int = 2000,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """engine_routing_replay。
+
+    Args:
+        routing_decision_id: routing_decision 标识。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     return {
         "status": "ok",
         **(
@@ -198,6 +269,16 @@ async def engine_routing_metrics(
     coding_policy_profile: Optional[str] = None,
     limit: int = 20000,
 ) -> Dict[str, Any]:
+    """engine_routing_metrics。
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        bucket_minutes: bucket_minutes 参数。
+        skill_id: skill 标识。
+        coding_policy_profile: coding_policy_profile 参数。
+        limit: 返回条数上限。
+    """
     return {
         "status": "ok",
         **(
@@ -217,11 +298,10 @@ async def engine_routing_metrics(
 
 @router.post("/routing/learn", response_model=Dict[str, Any])
 async def apply_routing_learning(rt: RuntimeDep = None):
-    """
-    Analyze routing strict_eval events and adjust per-skill routing weights.
-    
-    Call periodically to let the system learn which skills are correctly matched.
-    Returns the adjusted weights.
+    """Analyze routing strict_eval events and adjust per-skill routing weights.
+
+    Args:
+        rt: rt 参数。
     """
     try:
         from core.harness.routing.skill_routing import apply_learned_weights
@@ -237,4 +317,8 @@ async def apply_routing_learning(rt: RuntimeDep = None):
 
 @router.get("/skills/observability/routing-metrics/tags", response_model=Dict[str, Any])
 async def engine_routing_metric_tags() -> Dict[str, Any]:
+    """engine_routing_metric_tags。
+    """
     return {"status": "ok", **routing_metric_tags()}
+    """engine_routing_metric_tags。
+    """

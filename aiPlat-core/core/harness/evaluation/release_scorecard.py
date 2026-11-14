@@ -10,6 +10,11 @@ from typing import Any, Dict, List, Mapping, Optional
 
 
 def metrics_from_duty_summary(summary: Mapping[str, Any] | None) -> Dict[str, Any]:
+    """metrics_from_duty_summary。
+
+    Args:
+        summary: summary 参数。
+    """
     if not isinstance(summary, Mapping):
         return {}
     raw = summary.get("release_metrics")
@@ -17,6 +22,11 @@ def metrics_from_duty_summary(summary: Mapping[str, Any] | None) -> Dict[str, An
 
 
 def metrics_from_faithfulness_values(values: Optional[List[Any]]) -> Dict[str, Any]:
+    """metrics_from_faithfulness_values。
+
+    Args:
+        values: values 参数。
+    """
     nums = []
     for val in values or []:
         try:
@@ -30,6 +40,11 @@ def metrics_from_faithfulness_values(values: Optional[List[Any]]) -> Dict[str, A
 
 
 def build_release_scorecard(metrics: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """构建 release_scorecard。
+
+    Args:
+        metrics: metrics 参数。
+    """
     data = dict(metrics or {})
     dims = {
         key: val
@@ -46,6 +61,11 @@ def build_release_scorecard(metrics: Mapping[str, Any] | None = None) -> Dict[st
 
 
 def scorecard_to_duty_check(scorecard: Mapping[str, Any] | None) -> str:
+    """scorecard_to_duty_check。
+
+    Args:
+        scorecard: scorecard 参数。
+    """
     if not isinstance(scorecard, Mapping):
         return "unavailable"
     status = str(scorecard.get("status") or "unavailable")
@@ -58,6 +78,12 @@ def release_decision(
     scorecard: Mapping[str, Any] | None,
     profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """release_decision。
+
+    Args:
+        scorecard: scorecard 参数。
+        profile: profile 参数。
+    """
     view = scorecard if isinstance(scorecard, Mapping) else {}
     return {
         "mode": "advisory",

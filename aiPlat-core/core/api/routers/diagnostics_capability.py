@@ -164,6 +164,11 @@ def _get_seed_data_ready(domain_id: str) -> bool:
 
 
 async def build_capability_boundary(domain_filter: Optional[str] = None) -> dict:
+    """构建 capability_boundary。
+
+    Args:
+        domain_filter: domain_filter 参数。
+    """
     registry = _load_registry()
     domains_config = registry.get("domains", {})
     golden = _load_golden_queries()
@@ -279,7 +284,12 @@ async def get_capability_boundary(
     domain: Optional[str] = Query(None),
     request: Any = None,
 ):
-    """Return per-domain capability maturity, gaps, and recommendations."""
+    """Return per-domain capability maturity, gaps, and recommendations.
+
+    Args:
+        domain: domain 参数。
+        request: request 参数。
+    """
     try:
         data = await build_capability_boundary(domain)
         return data
@@ -293,7 +303,12 @@ async def get_rag_quality(
     hours: Optional[int] = Query(24, ge=1, le=168),
     domain: Optional[str] = Query("default"),
 ):
-    """Return RAG quality dashboard: faithfulness, hallucination risk, user signals, retrieval quality."""
+    """Return RAG quality dashboard: faithfulness, hallucination risk, user signals, retrieval quality.
+
+    Args:
+        hours: hours 参数。
+        domain: domain 参数。
+    """
     try:
         from core.harness.evaluation.rag_diagnostics_collector import RAGDiagnosticsCollector
         collector = RAGDiagnosticsCollector()

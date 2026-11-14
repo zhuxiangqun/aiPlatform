@@ -129,12 +129,9 @@ def params_match(expected: Optional[Dict[str, Any]], actual: Optional[Dict[str, 
 
     """参数子集匹配：只要 actual 包含 expected 所有 key 且值相等，即通过。
 
-
-
-    允许 Agent 多传额外字段（如 timestamp），不产生误报。
-
-    用于离线工具选择评估中的参数正确性判断。
-
+    Args:
+        expected: expected 参数。
+        actual: actual 参数。
     """
 
     if not expected:
@@ -165,6 +162,11 @@ class EvalMetricsEngine:
 
     def __init__(self, store: Optional[Any] = None):
 
+        """初始化。
+
+        Args:
+            store: store 参数。
+        """
         self._store = store
 
 
@@ -181,7 +183,14 @@ class EvalMetricsEngine:
 
     ) -> TaskCompletion:
 
-        """Aggregate task completion from individual task results."""
+        """Aggregate task completion from individual task results.
+
+        Args:
+            run_id: 运行 ID。
+            task_id: task 标识。
+            agent_id: Agent ID。
+            task_results: task_results 参数。
+        """
 
         levels = Counter()
 
@@ -243,7 +252,12 @@ class EvalMetricsEngine:
 
     ) -> ToolCallQuality:
 
-        """Analyze tool call quality from syscall events."""
+        """Analyze tool call quality from syscall events.
+
+        Args:
+            syscall_events: syscall_events 参数。
+            expected_tools: expected_tools 参数。
+        """
 
         tool_calls = [e for e in syscall_events if e.get("kind") == "tool" or e.get("event_type") == "tool_call"]
 
@@ -381,14 +395,12 @@ class EvalMetricsEngine:
 
         """Three-mode trajectory matching for tool call sequences.
 
-
-
-        EXACT_ORDER: actual must equal expected exactly (e.g., ['A','B','C'] == ['A','B','C'])
-
-        IN_ORDER:    expected tools appear in order, allows intermediate calls
-
-        ANY_ORDER:   all expected tools called regardless of order
-
+        Args:
+            syscall_events: syscall_events 参数。
+            expected_trajectory: expected_trajectory 参数。
+            match_mode: match_mode 参数。
+            skip_self_heal: skip_self_heal 参数。
+            agent_id: Agent ID。
         """
 
         from core.harness.evaluation.eval_types import MatchMode, TrajectoryQuality
@@ -530,12 +542,10 @@ class EvalMetricsEngine:
 
         """LLM-based fact-checking against an expected answer.
 
-
-
-        Uses best_model_for_purpose("doc_llm") to compare the agent's output
-
-        with the expected_response, counting verified claims and mismatches.
-
+        Args:
+            output: output 参数。
+            expected_response: expected_response 参数。
+            syscall_events: syscall_events 参数。
         """
 
         from core.harness.evaluation.eval_types import CorrectnessResult
@@ -670,7 +680,12 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     ) -> StepEfficiency:
 
-        """Compute step efficiency metrics."""
+        """Compute step efficiency metrics.
+
+        Args:
+            task_results: task_results 参数。
+            syscall_events: syscall_events 参数。
+        """
 
         tool_calls = [e for e in syscall_events if e.get("kind") == "tool" or e.get("event_type") == "tool_call"]
 
@@ -764,7 +779,11 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     ) -> ErrorRecovery:
 
-        """Analyze error recovery behavior from syscall events."""
+        """Analyze error recovery behavior from syscall events.
+
+        Args:
+            syscall_events: syscall_events 参数。
+        """
 
         errors = [e for e in syscall_events if e.get("status") == "error" or e.get("error")]
 
@@ -896,7 +915,11 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     ) -> SafetyBoundary:
 
-        """Analyze safety boundary compliance."""
+        """Analyze safety boundary compliance.
+
+        Args:
+            syscall_events: syscall_events 参数。
+        """
 
         high_risk_calls = [e for e in syscall_events
 
@@ -988,7 +1011,12 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     ) -> CostEfficiency:
 
-        """Compute cost efficiency from execution data."""
+        """Compute cost efficiency from execution data.
+
+        Args:
+            task_results: task_results 参数。
+            syscall_events: syscall_events 参数。
+        """
 
         total_tasks = len(task_results) or 1
 
@@ -1062,7 +1090,17 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     ) -> AgentEvalResult:
 
-        """Compute all 7 dimensions and return composite result (v2.9: + trajectory)."""
+        """Compute all 7 dimensions and return composite result (v2.9: + trajectory).
+
+        Args:
+            agent_id: Agent ID。
+            task_results: task_results 参数。
+            syscall_events: syscall_events 参数。
+            eval_set_id: eval_set 标识。
+            expected_tools: expected_tools 参数。
+            expected_trajectory: expected_trajectory 参数。
+            expected_response: expected_response 参数。
+        """
 
         result = AgentEvalResult(
 
@@ -1182,6 +1220,11 @@ Respond in JSON: {{"claims_total": N, "claims_verified": N, "mismatches": [...],
 
     def compute_text_quality(self, output: str) -> "TextQualityResult":
 
+        """compute_text_quality。
+
+        Args:
+            output: output 参数。
+        """
         from core.harness.evaluation.eval_types import TextQualityResult
 
         if not output or len(output) < 20:
@@ -1244,6 +1287,13 @@ JSON: {{"coherence":0.X,"conciseness":0.X,"instruction_following":0.X,"reasoning
 
                                       keyword_result=None) -> "TaskCompletion":
 
+        """compute_semantic_goal_success。
+
+        Args:
+            task_description: task_description 参数。
+            output: output 参数。
+            keyword_result: keyword_result 参数。
+        """
         from core.harness.evaluation.eval_types import TaskCompletion, TaskResultLevel
 
         if not task_description or not output:
@@ -1304,7 +1354,11 @@ JSON: {{"level":"COMPLETE","score":0.X,"reasoning":"text"}}"""
 
     def compute_content_safety(self, output: str) -> "SafetyContentResult":
 
-        """Detect harmful content and stereotypes with rule-based + LLM fallback."""
+        """Detect harmful content and stereotypes with rule-based + LLM fallback.
+
+        Args:
+            output: output 参数。
+        """
 
         from core.harness.evaluation.eval_types import SafetyContentResult
 
@@ -1421,7 +1475,12 @@ JSON: {{"harmful":0.X,"stereotype":0.X,"reasoning":"text"}} (1=safe,0=harmful)""
 
     def compute_refusal(self, output: str, task_description: str = "") -> "RefusalResult":
 
-        """Detect whether the agent refused to answer and classify the refusal."""
+        """Detect whether the agent refused to answer and classify the refusal.
+
+        Args:
+            output: output 参数。
+            task_description: task_description 参数。
+        """
 
         from core.harness.evaluation.eval_types import RefusalResult
 

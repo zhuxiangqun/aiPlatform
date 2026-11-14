@@ -1,3 +1,5 @@
+"""workspace_skills：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -346,7 +348,17 @@ async def list_workspace_skills(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
-    """List workspace skills (~/.aiplat/skills)."""
+    """List workspace skills (~/.aiplat/skills).
+
+    Args:
+        category: category 参数。
+        enabled_only: enabled_only 参数。
+        status: status 参数。
+        include_lint: include_lint 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         return {"skills": [], "total": 0, "limit": limit, "offset": offset}
@@ -409,7 +421,13 @@ async def list_workspace_skills(
 
 @router.post("/workspace/skills", response_model=Dict[str, Any])
 async def create_workspace_skill(request: SkillCreateRequest, http_request: Request, rt: RuntimeDep = None):
-    """Create a new workspace skill."""
+    """Create a new workspace skill.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -747,6 +765,12 @@ async def create_workspace_skill(request: SkillCreateRequest, http_request: Requ
 
 @router.get("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def get_workspace_skill(skill_id: str, rt: RuntimeDep = None):
+    """获取 workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -780,6 +804,14 @@ _SKILL_LIFECYCLE_GOV = {
 
 @router.put("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def update_workspace_skill(skill_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """更新 workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1157,7 +1189,12 @@ async def _lint_conflicts_workspace_skills(
 
 @router.post("/workspace/skills/{skill_id}/audit", response_model=Dict[str, Any])
 async def audit_workspace_skill(skill_id: str, rt: RuntimeDep = None):
-    """AI 审核：将 skill lint + propose_skill_fixes 归一为 Agent 同款 issues/summary。"""
+    """AI 审核：将 skill lint + propose_skill_fixes 归一为 Agent 同款 issues/summary。
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     from core.management.asset_audit import index_skill_lint_fixes, summarize_audit_issues
 
     lint_payload = await lint_workspace_skill(skill_id, rt=rt)
@@ -1248,6 +1285,12 @@ async def audit_workspace_skill(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/workspace/skills/{skill_id}/lint", response_model=Dict[str, Any])
 async def lint_workspace_skill(skill_id: str, rt: RuntimeDep = None):
+    """lint_workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1314,7 +1357,14 @@ async def apply_lint_fix_workspace_skill(
     http_request: Request = None,
     rt: RuntimeDep = None,
 ):
-    """Apply lint fixes to a workspace skill (Phase-2: metadata/trigger fixes supported)."""
+    """Apply lint fixes to a workspace skill (Phase-2: metadata/trigger fixes supported).
+
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1563,8 +1613,11 @@ async def apply_lint_fix_workspace_skill(
 
 @router.post("/workspace/skills/lint-scan", response_model=Dict[str, Any])
 async def lint_scan_workspace_skills(request: Optional[dict] = None, rt: RuntimeDep = None):
-    """
-    Lint-scan workspace skills (for cron / ops). Best-effort and side-effect free.
+    """Lint-scan workspace skills (for cron / ops). Best-effort and side-effect free.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -1594,6 +1647,15 @@ async def lint_conflicts_workspace_skills(
     limit: int = 100,
     rt: RuntimeDep = None,
 ):
+    """lint_conflicts_workspace_skills。
+
+    Args:
+        tenant_id: 租户 ID。
+        threshold: threshold 参数。
+        min_overlap: min_overlap 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     return await _lint_conflicts_workspace_skills(rt, tenant_id=tenant_id, threshold=threshold, min_overlap=min_overlap, limit=limit)
 
 
@@ -1634,12 +1696,27 @@ async def _skill_invocation_metrics(rt: Optional[KernelRuntime], *, tenant_id: O
 
 @router.get("/workspace/skills/observability/skill-metrics", response_model=Dict[str, Any])
 async def workspace_skill_metrics(tenant_id: Optional[str] = None, since_hours: int = 24, limit: int = 5000, rt: RuntimeDep = None):
-    """Aggregate syscall_events(kind=skill) into a skill-level metrics view."""
+    """Aggregate syscall_events(kind=skill) into a skill-level metrics view.
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     return {"status": "ok", **(await _skill_invocation_metrics(rt, tenant_id=tenant_id, since_hours=since_hours, limit=limit))}
 
 
 @router.delete("/workspace/skills/{skill_id}", response_model=Dict[str, Any])
 async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http_request: Request = None, rt: RuntimeDep = None):
+    """删除 workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        delete_files: delete_files 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1701,6 +1778,14 @@ async def delete_workspace_skill(skill_id: str, delete_files: bool = False, http
 
 @router.post("/workspace/skills/{skill_id}/enable", response_model=Dict[str, Any])
 async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]] = None, http_request: Request = None, rt: RuntimeDep = None):
+    """enable_workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1934,14 +2019,13 @@ async def enable_workspace_skill(skill_id: str, request: Optional[Dict[str, Any]
 
 @router.post("/workspace/skills/{skill_id}/sign", response_model=Dict[str, Any])
 async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
-    """
-    Sign a skill with an Ed25519 private key, writing the signature to
-    SKILL.manifest.json and updating provenance metadata.
+    """Sign a skill with an Ed25519 private key, writing the signature to。
 
-    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
-
-    After signing, the skill transitions from pre-governance to governed.
-    Subsequent enable will enforce signature verification.
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2019,6 +2103,13 @@ async def sign_workspace_skill(skill_id: str, request: Dict[str, Any], http_requ
 
 @router.post("/workspace/skills/{skill_id}/disable", response_model=Dict[str, Any])
 async def disable_workspace_skill(skill_id: str, http_request: Request = None, rt: RuntimeDep = None):
+    """disable_workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2050,6 +2141,13 @@ async def disable_workspace_skill(skill_id: str, http_request: Request = None, r
 
 @router.post("/workspace/skills/{skill_id}/restore", response_model=Dict[str, Any])
 async def restore_workspace_skill(skill_id: str, http_request: Request = None, rt: RuntimeDep = None):
+    """restore_workspace_skill。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2081,7 +2179,14 @@ async def restore_workspace_skill(skill_id: str, http_request: Request = None, r
 
 @router.get("/workspace/skills/{skill_id}/revisions", response_model=Dict[str, Any])
 async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset: int = 0, rt: RuntimeDep = None):
-    """List revision snapshots for a workspace skill (best-effort)."""
+    """List revision snapshots for a workspace skill (best-effort).
+
+    Args:
+        skill_id: Skill ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2119,7 +2224,13 @@ async def list_workspace_skill_revisions(skill_id: str, limit: int = 50, offset:
 
 @router.get("/workspace/skills/{skill_id}/files", response_model=Dict[str, Any])
 async def list_workspace_skill_files(skill_id: str, dir: str = "references", rt: RuntimeDep = None):
-    """List files under workspace skill directory (references/scripts/assets)."""
+    """List files under workspace skill directory (references/scripts/assets).
+
+    Args:
+        skill_id: Skill ID。
+        dir: dir 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2152,7 +2263,13 @@ async def list_workspace_skill_files(skill_id: str, dir: str = "references", rt:
 
 @router.get("/workspace/skills/{skill_id}/files/{rel_path:path}", response_model=Dict[str, Any])
 async def get_workspace_skill_file(skill_id: str, rel_path: str, rt: RuntimeDep = None):
-    """Fetch a workspace skill file content (text only, best-effort)."""
+    """Fetch a workspace skill file content (text only, best-effort).
+
+    Args:
+        skill_id: Skill ID。
+        rel_path: rel_path 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2179,7 +2296,14 @@ async def get_workspace_skill_file(skill_id: str, rel_path: str, rt: RuntimeDep 
 
 @router.post("/workspace/skills/{skill_id}/execute", response_model=Dict[str, Any])
 async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request, rt: RuntimeDep = None):
-    """Execute workspace skill."""
+    """Execute workspace skill.
+
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2409,8 +2533,10 @@ async def execute_workspace_skill(skill_id: str, request: SkillExecuteRequest, h
 async def review_workspace_skill_output(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Post-run product-quality review (stream complete path / manual re-check).
 
-    Runtime completed ≠ content acceptable. Returns issues + where/how to fix SOP.
-    When body.input is empty, restores from execution store via execution_id.
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2455,9 +2581,10 @@ async def review_workspace_skill_output(skill_id: str, request: dict, rt: Runtim
 async def apply_workspace_skill_quality_fix(skill_id: str, request: dict, rt: RuntimeDep = None):
     """Append quality SOP iron-laws into workspace + engine SKILL.md mirrors (idempotent).
 
-    Engine-shipped skills (e.g. architecture_design) are often bound on workspace Agents
-    but live under core/engine/skills — do not 404 solely because WorkspaceSkillManager
-    has no row; apply_quality_sop_for_skill_id resolves engine + ~/.aiplat mirrors by id.
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     skill = None
@@ -2510,7 +2637,12 @@ async def apply_workspace_skill_quality_fix(skill_id: str, request: dict, rt: Ru
 
 @router.get("/workspace/skills/{skill_id}/agents", response_model=Dict[str, Any])
 async def get_workspace_skill_agents(skill_id: str, rt: RuntimeDep = None):
-    """Get agents bound to workspace skill."""
+    """Get agents bound to workspace skill.
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2520,7 +2652,14 @@ async def get_workspace_skill_agents(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/workspace/skills/{skill_id}/executions", response_model=Dict[str, Any])
 async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
-    """List workspace skill executions."""
+    """List workspace skill executions.
+
+    Args:
+        skill_id: Skill ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2551,7 +2690,12 @@ async def list_workspace_skill_executions(skill_id: str, limit: int = 100, offse
 
 @router.get("/workspace/skills/{skill_id}/versions", response_model=Dict[str, Any])
 async def get_workspace_skill_versions(skill_id: str, rt: RuntimeDep = None):
-    """Get versions for a workspace skill."""
+    """Get versions for a workspace skill.
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2565,7 +2709,13 @@ async def get_workspace_skill_versions(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/workspace/skills/{skill_id}/versions/{version}", response_model=Dict[str, Any])
 async def get_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDep = None):
-    """Get specific version config for workspace skill."""
+    """Get specific version config for workspace skill.
+
+    Args:
+        skill_id: Skill ID。
+        version: version 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2594,7 +2744,13 @@ async def get_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDe
 
 @router.post("/workspace/skills/{skill_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_workspace_skill_version(skill_id: str, version: str, rt: RuntimeDep = None):
-    """Rollback workspace skill to a specific version."""
+    """Rollback workspace skill to a specific version.
+
+    Args:
+        skill_id: Skill ID。
+        version: version 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2611,7 +2767,12 @@ async def rollback_workspace_skill_version(skill_id: str, version: str, rt: Runt
 
 @router.get("/workspace/skills/{skill_id}/active-version", response_model=Dict[str, Any])
 async def get_workspace_skill_active_version(skill_id: str, rt: RuntimeDep = None):
-    """Get currently active version for a workspace skill."""
+    """Get currently active version for a workspace skill.
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2625,7 +2786,12 @@ async def get_workspace_skill_active_version(skill_id: str, rt: RuntimeDep = Non
 
 @router.get("/workspace/skills/{skill_id}/execution-help", response_model=Dict[str, Any])
 async def get_workspace_skill_execution_help(skill_id: str, rt: RuntimeDep = None):
-    """Get execution input help/examples for a skill."""
+    """Get execution input help/examples for a skill.
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2647,9 +2813,11 @@ async def generate_workspace_skill_execution_examples(
 ):
     """Optional LLM generation of smoke test cases for Execute Skill UI.
 
-    Body:
-      persist: bool — write into SKILL.md frontmatter execution_examples
-      refine_hint: str — optional extra instruction
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2708,7 +2876,12 @@ async def generate_workspace_skill_execution_examples(
 
 @router.get("/workspace/skills/{skill_id}/skill-md", response_model=Dict[str, Any])
 async def get_workspace_skill_markdown(skill_id: str, rt: RuntimeDep = None):
-    """Fetch raw SKILL.md content for a workspace skill (for UI preview)."""
+    """Fetch raw SKILL.md content for a workspace skill (for UI preview).
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -2745,12 +2918,13 @@ async def get_workspace_skill_markdown(skill_id: str, rt: RuntimeDep = None):
 
 @router.put("/workspace/skills/{skill_id}/skill-md", response_model=Dict[str, Any])
 async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any], http_request: Request, rt: RuntimeDep = None):
-    """
-    Update SKILL.md for a workspace skill.
+    """Update SKILL.md for a workspace skill.
 
-    Supported modes:
-    - replace_body: keep frontmatter as-is, replace body (recommended for "开发者精修 SOP")
-    - replace_all: overwrite the full file content (advanced; may change frontmatter)
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2844,7 +3018,12 @@ async def update_workspace_skill_markdown(skill_id: str, request: Dict[str, Any]
 
 @router.post("/workspace/skills/{skill_id}/reload", response_model=Dict[str, Any])
 async def reload_workspace_skill(skill_id: str, rt: RuntimeDep = None):
-    """Best-effort reload workspace managers (pull latest SKILL.md edits from disk)."""
+    """Best-effort reload workspace managers (pull latest SKILL.md edits from disk).
+
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
+    """
     _reload_workspace_managers(rt)
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2859,10 +3038,9 @@ async def reload_workspace_skill(skill_id: str, rt: RuntimeDep = None):
 async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
     """提交 Skill 进入审批流水线。
 
-    1. 获取 Skill 当前状态（仅 draft/enabled 可提交）
-    2. 运行 Lint 静态检查
-    3. E > 0 → 拒绝提交，返回 Lint 报告
-    4. E = 0 → status → ready, governance → pending
+    Args:
+        skill_id: Skill ID。
+        rt: rt 参数。
     """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
@@ -2969,7 +3147,11 @@ async def submit_skill_for_review(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/workspace/skills/seeds", response_model=Dict[str, Any])
 async def list_skill_seeds(rt: RuntimeDep = None):
-    """List available skill seed templates from workspace_seeds/skills/."""
+    """List available skill seed templates from workspace_seeds/skills/.
+
+    Args:
+        rt: rt 参数。
+    """
     from pathlib import Path as _P
     import yaml as _yaml
 
@@ -3006,7 +3188,12 @@ async def list_skill_seeds(rt: RuntimeDep = None):
 
 @router.post("/workspace/skills/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
-    """Install a skill seed template into ~/.aiplat/skills/."""
+    """Install a skill seed template into ~/.aiplat/skills/.
+
+    Args:
+        seed_id: seed 标识。
+        rt: rt 参数。
+    """
     import shutil as _shutil
     from pathlib import Path as _P
 
@@ -3040,7 +3227,13 @@ async def install_skill_seed(seed_id: str, rt: RuntimeDep = None):
 
 @router.post("/workspace/skills/sign-all", response_model=Dict[str, Any])
 async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Request = None, rt: RuntimeDep = None):
-    """Batch-sign all workspace skills with a single Ed25519 private key."""
+    """Batch-sign all workspace skills with a single Ed25519 private key.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _ws_skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -3110,7 +3303,12 @@ async def sign_all_workspace_skills(request: Dict[str, Any], http_request: Reque
 
 @router.post("/workspace/skills/auto-fill", response_model=Dict[str, Any])
 async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
-    """AI 生成：根据名称和描述，自动生成 Skill 的 YAML frontmatter + SOP。"""
+    """AI 生成：根据名称和描述，自动生成 Skill 的 YAML frontmatter + SOP。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
     refine_hint = str(request.get("refine_hint") or "").strip()
@@ -3135,7 +3333,12 @@ async def skill_auto_fill(request: Dict[str, Any], rt: RuntimeDep = None):
 
 @router.post("/workspace/skills/create-dialog", response_model=Dict[str, Any])
 async def skill_create_dialog(request: Dict[str, Any], rt: RuntimeDep = None):
-    """Conversational Skill creation: clarify → draft (auto-fill). Create still via POST /workspace/skills."""
+    """Conversational Skill creation: clarify → draft (auto-fill). Create still via POST /workspace/skills.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     text = str(request.get("text") or "").strip()
     history = request.get("history") if isinstance(request.get("history"), list) else []
     try:
@@ -3153,7 +3356,12 @@ async def skill_create_dialog(request: Dict[str, Any], rt: RuntimeDep = None):
 
 @router.post("/workspace/skills/import-detect", response_model=Dict[str, Any])
 async def detect_skill_import(request: Dict[str, Any], rt: RuntimeDep = None):
-    """AI 检测导入的 skill 配置。接收 URL 或 SOP 正文，返回推荐配置。"""
+    """AI 检测导入的 skill 配置。接收 URL 或 SOP 正文，返回推荐配置。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     import yaml as _yaml
     
     sop_body = ""

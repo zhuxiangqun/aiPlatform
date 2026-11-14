@@ -17,6 +17,7 @@ log = logging.getLogger("aiplat.kanban")
 
 
 class TaskCreate(BaseModel):
+    """TaskCreate。"""
     title: str
     profile_id: str = "default"
     description: str = ""
@@ -25,14 +26,19 @@ class TaskCreate(BaseModel):
 
 
 class StatusUpdate(BaseModel):
+    """StatusUpdate。"""
     to_status: str
     reason: str = ""
 
 
 @router.get("/kanban/tasks", response_model=Dict[str, Any])
 async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str] = None):
-    """List tasks for a profile, optionally filtered by status. Returns tasks
-    grouped by status for a kanban board view."""
+    """List tasks for a profile, optionally filtered by status. Returns tasks。
+
+    Args:
+        profile: profile 参数。
+        status: 状态。
+    """
     from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     tasks = kb.list_tasks(profile, status=status)
@@ -50,7 +56,11 @@ async def get_kanban_tasks(profile: str = Query("default"), status: Optional[str
 
 @router.post("/kanban/tasks", response_model=Dict[str, Any])
 async def create_kanban_task(body: TaskCreate):
-    """Manually create a kanban task (for UI or admin debugging)."""
+    """Manually create a kanban task (for UI or admin debugging).
+
+    Args:
+        body: 请求体 dict。
+    """
     from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     tid = kb.create_task(profile_id=body.profile_id, title=body.title,
@@ -61,7 +71,12 @@ async def create_kanban_task(body: TaskCreate):
 
 @router.patch("/kanban/tasks/{task_id}/status", response_model=Dict[str, Any])
 async def update_kanban_task_status(task_id: str, body: StatusUpdate):
-    """Transition a task to a new status (block/retry/close)."""
+    """Transition a task to a new status (block/retry/close).
+
+    Args:
+        task_id: task 标识。
+        body: 请求体 dict。
+    """
     from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     ok = kb.transition_task(task_id, body.to_status, reason=body.reason)
@@ -72,7 +87,11 @@ async def update_kanban_task_status(task_id: str, body: StatusUpdate):
 
 @router.get("/health/kanban", response_model=Dict[str, Any])
 async def kanban_health(profile: str = Query("default")):
-    """Kanban health summary: total/todo/blocked/overdue counts."""
+    """Kanban health summary: total/todo/blocked/overdue counts.
+
+    Args:
+        profile: profile 参数。
+    """
     from core.api.core_facade import KanbanEngine  # P0-A2: 经 CoreFacade
     kb = KanbanEngine()
     all_tasks = kb.list_tasks(profile)

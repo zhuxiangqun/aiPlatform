@@ -50,6 +50,7 @@ B_MINUS_MIN = 75
 
 class SubScore:
 
+    """SubScore。"""
     score: float          # 0-100
 
     label: str
@@ -64,6 +65,7 @@ class SubScore:
 
 class HealthReport:
 
+    """HealthReport。"""
     health_index: float
 
     grade: str            # A / B+ / B / B- / C / D
@@ -90,6 +92,8 @@ class SystemHealthCalculator:
 
     def __init__(self):
 
+        """__init__。
+        """
         self._home = Path(get_aiplat_home())
 
         self._history_path = self._home / "system_health_history.json"
@@ -380,12 +384,10 @@ class SystemHealthCalculator:
 
         """Incrementally update health index when a subsystem changes.
 
-
-
-        Debounces: same event_type within 5s → skip.
-
-        Only recomputes the affected sub-score, then re-aggregates weighted total.
-
+        Args:
+            event_type: event_type 参数。
+            source: source 参数。
+            data: data 参数。
         """
 
         import time as _t
@@ -564,6 +566,8 @@ class SystemHealthCalculator:
 
     def knows_its_limits(self) -> dict:
 
+        """knows_its_limits。
+        """
         import json as _j, yaml as _y, os as _os
 
         from pathlib import Path as _P
@@ -572,6 +576,8 @@ class SystemHealthCalculator:
 
              "unverifiable_signal_count": 0, "confidence_gap_count": 0,
 
+        """knows_its_limits。
+        """
              "assessment": "System is aware of its limits"}
 
         try:

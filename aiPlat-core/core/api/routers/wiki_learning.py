@@ -10,6 +10,7 @@ router = APIRouter(tags=["wiki-learning"])
 
 
 class ProfileRequest(BaseModel):
+    """ProfileRequest。"""
     learner_id: str
     target_role: str = "ai_literate"
     current_level: str = "beginner"
@@ -21,7 +22,11 @@ class ProfileRequest(BaseModel):
 
 @router.post("/profile", response_model=Dict[str, Any])
 async def create_learner_profile(req: ProfileRequest):
-    """Create or update a learner profile."""
+    """Create or update a learner profile.
+
+    Args:
+        req: req 参数。
+    """
     from core.harness.knowledge.learning_ontology import LearnerProfile  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.learning_ontology import TargetRole  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.learning_ontology import CurrentLevel  # P0-A2 修复: 恢复原模块(定义处)
@@ -44,7 +49,11 @@ async def create_learner_profile(req: ProfileRequest):
 
 @router.get("/profile/{learner_id}", response_model=Dict[str, Any])
 async def get_learner_profile(learner_id: str):
-    """Get a learner profile."""
+    """Get a learner profile.
+
+    Args:
+        learner_id: learner 标识。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     profile = load_learner_profile(learner_id)
     if not profile:
@@ -61,7 +70,12 @@ async def list_learning_paths():
 
 @router.post("/start", response_model=Dict[str, Any])
 async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(...)):
-    """Start a learning path. Returns the first chapter with content."""
+    """Start a learning path. Returns the first chapter with content.
+
+    Args:
+        learner_id: learner 标识。
+        path_id: path 标识。
+    """
     from core.harness.knowledge.learning_ontology import save_learner_profile
     from core.harness.knowledge.learning_ontology import load_learner_profile, save_learner_profile
     from core.harness.knowledge.learning_paths import get_path, get_chapter_body_sync
@@ -89,7 +103,11 @@ async def start_learning_path(learner_id: str = Body(...), path_id: str = Body(.
 
 @router.get("/chapter/{chapter_id}", response_model=Dict[str, Any])
 async def get_chapter(chapter_id: str):
-    """Get chapter content (cached body or skeleton)."""
+    """Get chapter content (cached body or skeleton).
+
+    Args:
+        chapter_id: chapter 标识。
+    """
     from core.harness.knowledge.learning_paths import get_chapter_body_sync
     from core.harness.knowledge.learning_paths import get_builtin_paths, get_chapter_body_sync
     paths = get_builtin_paths()
@@ -103,7 +121,11 @@ async def get_chapter(chapter_id: str):
 
 @router.post("/chapter/{chapter_id}/compile", response_model=Dict[str, Any])
 async def compile_chapter_body_endpoint(chapter_id: str):
-    """Trigger AI compilation of chapter body text."""
+    """Trigger AI compilation of chapter body text.
+
+    Args:
+        chapter_id: chapter 标识。
+    """
     from core.harness.knowledge.learning_paths import compile_chapter_body
     from core.harness.knowledge.learning_paths import get_builtin_paths, compile_chapter_body
     paths = get_builtin_paths()
@@ -121,7 +143,13 @@ async def complete_chapter_endpoint(
     learner_id: str = Body(...),
     answers: List[Any] = Body(default=[]),
 ):
-    """Submit answers for a chapter's exercises. Returns assessment results."""
+    """Submit answers for a chapter's exercises. Returns assessment results.
+
+    Args:
+        chapter_id: chapter 标识。
+        learner_id: learner 标识。
+        answers: answers 参数。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     from core.harness.knowledge.learning_paths import get_builtin_paths
     from core.harness.knowledge.learning_assessment import complete_chapter
@@ -146,7 +174,11 @@ async def complete_chapter_endpoint(
 
 @router.get("/progress/{learner_id}", response_model=Dict[str, Any])
 async def get_learning_progress(learner_id: str):
-    """Get learning progress: completed chapters, scores, radar data."""
+    """Get learning progress: completed chapters, scores, radar data.
+
+    Args:
+        learner_id: learner 标识。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     from core.harness.knowledge.learning_paths import get_builtin_paths
 
@@ -184,7 +216,12 @@ async def ask_learning_coach(
     learner_id: str = Body(...),
     question: str = Body(...),
 ):
-    """Ask the AI Learning Coach a question, with learning context injected."""
+    """Ask the AI Learning Coach a question, with learning context injected.
+
+    Args:
+        learner_id: learner 标识。
+        question: question 参数。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     from core.harness.knowledge.learning_paths import _path_name
     from core.harness.knowledge.learning_paths import get_builtin_paths, _path_name
@@ -228,7 +265,11 @@ async def ask_learning_coach(
 
 @router.get("/recommendation/{learner_id}", response_model=Dict[str, Any])
 async def get_learning_recommendation(learner_id: str):
-    """Get recommended next learning action based on profile + gaps."""
+    """Get recommended next learning action based on profile + gaps.
+
+    Args:
+        learner_id: learner 标识。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     from core.harness.knowledge.learning_paths import get_builtin_paths
 

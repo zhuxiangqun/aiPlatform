@@ -48,6 +48,8 @@ def recursion_budget() -> int:
 
 
 def library_path() -> Path:
+    """library_path。
+    """
     from core.utils.paths import get_aiplat_data_dir
 
     return Path(get_aiplat_data_dir("eval/harness_improvement_library.json"))
@@ -65,7 +67,12 @@ def _load() -> List[Dict[str, Any]]:
 
 
 def recall_library(query: str = "", limit: int = 5) -> List[Dict[str, Any]]:
-    """Return reusable components plus when/why text. Never a whole-harness inherit."""
+    """Return reusable components plus when/why text. Never a whole-harness inherit.
+
+    Args:
+        query: 查询文本。
+        limit: 返回条数上限。
+    """
     rows = _load()
     q = (query or "").strip().lower()
     if q:
@@ -78,7 +85,11 @@ def recall_library(query: str = "", limit: int = 5) -> List[Dict[str, Any]]:
 
 
 def summarize_library(recent: int = 5) -> Dict[str, Any]:
-    """Duty-board slice. Counts only; does not invent a success rate."""
+    """Duty-board slice. Counts only; does not invent a success rate.
+
+    Args:
+        recent: recent 参数。
+    """
     rows = _load()
     return {
         "available": bool(rows),
@@ -90,7 +101,12 @@ def summarize_library(recent: int = 5) -> Dict[str, Any]:
 
 
 def format_library_overlay(rows: Sequence[Dict[str, Any]], max_components: int = 6) -> Optional[str]:
-    """Next-task overlay. The public harness stays; components are optional."""
+    """Next-task overlay. The public harness stays; components are optional.
+
+    Args:
+        rows: rows 参数。
+        max_components: max_components 参数。
+    """
     lines: List[str] = []
     for row in list(rows)[: max_components]:
         exp = str(row.get("experience") or "").strip()
@@ -100,11 +116,20 @@ def format_library_overlay(rows: Sequence[Dict[str, Any]], max_components: int =
 
 
 def file_paths_from_text(text: str) -> List[str]:
-    """Paths declared as ``## FILE:`` blocks in stage or skill text."""
+    """Paths declared as ``## FILE:`` blocks in stage or skill text.
+
+    Args:
+        text: 文本内容。
+    """
     return [m.group(1).strip() for m in _FILE_BLOCK.finditer(text or "")]
 
 
 def events_from_state(state: Dict[str, Any]) -> List[Dict[str, str]]:
+    """events_from_state。
+
+    Args:
+        state: state 参数。
+    """
     if not isinstance(state, dict):
         return []
     out: List[Dict[str, str]] = []
@@ -120,7 +145,13 @@ def step_from_state(
     commit: bool = False,
     stage_id: str = "",
 ) -> Optional[Dict[str, Any]]:
-    """Pair this run's contrast events. Does not write the library unless commit is set."""
+    """Pair this run's contrast events. Does not write the library unless commit is set.
+
+    Args:
+        state: state 参数。
+        commit: commit 参数。
+        stage_id: stage 标识。
+    """
     events = events_from_state(state if isinstance(state, dict) else {})
     if not events:
         return None
@@ -131,7 +162,12 @@ def step_from_state(
 
 
 def run_contrastive_step(payload: Dict[str, Any], commit: bool = False) -> Dict[str, Any]:
-    """Compose probes for one task. Without gold or probes, return an empty step."""
+    """Compose probes for one task. Without gold or probes, return an empty step.
+
+    Args:
+        payload: 载荷 dict。
+        commit: commit 参数。
+    """
     probes = payload.get("probes") if isinstance(payload, dict) else None
     items = probes if isinstance(probes, list) else []
     budget = recursion_budget()

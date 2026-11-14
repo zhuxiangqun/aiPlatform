@@ -20,7 +20,14 @@ def _successor(path: str) -> str:
 
 
 class EvalCoreLegacyDeprecationMiddleware(BaseHTTPMiddleware):
+    """EvalCoreLegacyDeprecationMiddleware。"""
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """dispatch。
+
+        Args:
+            request: request 参数。
+            call_next: call_next 参数。
+        """
         path = request.url.path
         if path.startswith("/api/core/kb-eval"):
             successor = _successor(path)

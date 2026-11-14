@@ -16,7 +16,11 @@ class NLIEngine:
     """Stub NLI engine. Returns neutral results until full implementation."""
 
     async def evaluate_claims(self, text: str) -> dict:
-        """Evaluate factual consistency of claims in text."""
+        """Evaluate factual consistency of claims in text.
+
+        Args:
+            text: 文本内容。
+        """
         logger.debug("NLIEngine.evaluate_claims: stub (not implemented)")
         return {
             "contradiction_score": 0.0,

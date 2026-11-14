@@ -12,6 +12,7 @@ router = APIRouter(prefix="/entropy", tags=["entropy"])
 
 
 class EntropyRecord(BaseModel):
+    """EntropyRecord。"""
     project_id: str = ""
     agent_id: str = ""
     drift_type: str
@@ -29,6 +30,15 @@ async def list_entropy(
     limit: int = 100,
     offset: int = 0,
 ):
+    """列出 entropy。
+
+    Args:
+        project_id: project 标识。
+        agent_id: agent 标识。
+        resolved: resolved 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.services.execution_store import get_execution_store
     store = get_execution_store()
     await store.init()
@@ -74,6 +84,11 @@ async def list_entropy(
 
 @router.get("/summary", response_model=Dict[str, Any])
 async def entropy_summary(project_id: str = ""):
+    """entropy_summary。
+
+    Args:
+        project_id: project 标识。
+    """
     from core.services.execution_store import get_execution_store
     store = get_execution_store()
     await store.init()
@@ -108,6 +123,11 @@ async def entropy_summary(project_id: str = ""):
 
 @router.post("/record", response_model=Dict[str, Any])
 async def record_entropy(body: EntropyRecord):
+    """record_entropy。
+
+    Args:
+        body: 请求体 dict。
+    """
     import uuid, time
     from core.services.execution_store import get_execution_store
     store = get_execution_store()
@@ -338,6 +358,11 @@ async def run_readiness_audit():
 
 @router.post("/resolve/{entry_id}", response_model=Dict[str, Any])
 async def resolve_entropy(entry_id: str):
+    """resolve_entropy。
+
+    Args:
+        entry_id: entry 标识。
+    """
     import time
     from core.services.execution_store import get_execution_store
     store = get_execution_store()
@@ -359,7 +384,11 @@ async def resolve_entropy(entry_id: str):
 
 @router.get("/eval/{agent_id}", response_model=Dict[str, Any])
 async def inspect_eval_for_agent(agent_id: str):
-    """Read-only: scoring_dimensions + eval files + last generate/skip."""
+    """Read-only: scoring_dimensions + eval files + last generate/skip.
+
+    Args:
+        agent_id: agent 标识。
+    """
     from core.api.core_facade import inspect_agent_eval
 
     snap = inspect_agent_eval(agent_id)
@@ -373,7 +402,12 @@ async def generate_eval_for_agent(
     agent_id: str,
     force: bool = Query(False, description="覆盖已有 scoring_dimensions / 无轨迹也生成"),
 ):
-    """Thin proxy: unique writer is CoreFacade.generate_agent_eval (eval_engineer path)."""
+    """Thin proxy: unique writer is CoreFacade.generate_agent_eval (eval_engineer path).
+
+    Args:
+        agent_id: agent 标识。
+        force: 是否强制。
+    """
     from core.api.core_facade import generate_agent_eval
 
     out = await generate_agent_eval(agent_id, force=bool(force), use_llm=True)

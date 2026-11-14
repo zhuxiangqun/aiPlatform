@@ -23,6 +23,7 @@ router = APIRouter()
 
 
 class CredentialCreate(BaseModel):
+    """CredentialCreate。"""
     name: str
     key: str
     provider: str = ""
@@ -30,6 +31,7 @@ class CredentialCreate(BaseModel):
 
 
 class CredentialUpdate(BaseModel):
+    """CredentialUpdate。"""
     name: Optional[str] = None
     key: Optional[str] = None
     provider: Optional[str] = None
@@ -72,12 +74,19 @@ def _mask_item(item: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/credentials", response_model=Dict[str, Any])
 async def list_credentials():
+    """列出 credentials。
+    """
     items = _load()
     return {"credentials": [_mask_item(i) for i in items], "total": len(items)}
 
 
 @router.post("/credentials", response_model=Dict[str, Any])
 async def create_credential(body: CredentialCreate):
+    """创建 credential。
+
+    Args:
+        body: 请求体 dict。
+    """
     items = _load()
     for c in items:
         if c["name"] == body.name:
@@ -97,6 +106,12 @@ async def create_credential(body: CredentialCreate):
 
 @router.get("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def get_credential(credential_id: str, reveal: bool = Query(False)):
+    """获取 credential。
+
+    Args:
+        credential_id: credential 标识。
+        reveal: reveal 参数。
+    """
     for c in _load():
         if c["id"] == credential_id:
             if reveal:
@@ -107,6 +122,12 @@ async def get_credential(credential_id: str, reveal: bool = Query(False)):
 
 @router.put("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def update_credential(credential_id: str, body: CredentialUpdate):
+    """update_credential。
+
+    Args:
+        credential_id: credential 标识。
+        body: 请求体 dict。
+    """
     items = _load()
     for i, c in enumerate(items):
         if c["id"] == credential_id:
@@ -126,6 +147,11 @@ async def update_credential(credential_id: str, body: CredentialUpdate):
 
 @router.delete("/credentials/{credential_id}", response_model=Dict[str, Any])
 async def delete_credential(credential_id: str):
+    """删除 credential。
+
+    Args:
+        credential_id: credential 标识。
+    """
     items = _load()
     filtered = [c for c in items if c["id"] != credential_id]
     if len(filtered) == len(items):

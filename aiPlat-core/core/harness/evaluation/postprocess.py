@@ -21,6 +21,7 @@ _log = logging.getLogger("pipeline_engine.postprocess")
 
 
 class PostprocessCorrector:
+    """PostprocessCorrector。"""
     _FIX_JSON_GARBAGE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
     _FIX_MARKDOWN_JSON = re.compile(r'```(?:json)?\s*([\s\S]*?)\s*```', re.IGNORECASE)
     _FIX_TRAILING_COMMA = re.compile(r',\s*([]}])')
@@ -28,6 +29,12 @@ class PostprocessCorrector:
 
     @classmethod
     def apply(cls, text: str, corrections: Optional[List[str]] = None) -> str:
+        """apply。
+
+        Args:
+            text: 文本内容。
+            corrections: corrections 参数。
+        """
         if not text:
             return text
         corrections = corrections or []
@@ -43,6 +50,11 @@ class PostprocessCorrector:
 
     @classmethod
     def auto_fix_json(cls, text: str) -> str:
+        """auto_fix_json。
+
+        Args:
+            text: 文本内容。
+        """
         extracted = cls._extract_json_from_markdown(text)
         if extracted:
             return extracted
