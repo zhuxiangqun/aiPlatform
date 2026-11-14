@@ -43,8 +43,10 @@ indexer.py → wiki_indexer.py
 
 续修（2026-11-14 同 PR）：
 - `ARCHITECTURE_STATUS`：CodeExecutionTool / BrowserTool ❌→✅
-- infra docs index + developer：canonical `aiPlat-infra/config/infra/`；去掉假 `*.yaml.example`
+- infra docs index + developer：canonical `aiPlat-infra/config/infra/`；去掉假 `*.yaml.example` / 假 make 入口
 - app ops：文首降级为历史示意（needs-owner 仍登记，待现网证据）
+- core docs：`execution/loop.py` → `execution/loop/`（多篇 harness/architecture/testing）
+- core/platform developer：验证命令改为 pytest（根仓无统一 Makefile）
 
 仍未全量清完（需逐篇）：
 ```text
