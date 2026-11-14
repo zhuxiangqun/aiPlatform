@@ -29,8 +29,8 @@ doc_type: Reference
 | 9 | `build_judge_calib_evidence_pack` | F4 | **accepted** |
 | 10 | `evaluate_security_judge_calibration` | F2 | **accepted**（≠ L5） |
 | 11 | `load_judge_calib_defaults` | F2 | **accepted** |
-| 12 | `evaluate_security_family_gates` | F2 | **提案中**（≠ cert）→ [`PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md) |
-| 13 | `eval_evaluate_security_judge_calibration` | F2 | queued（facade） |
+| 12 | `evaluate_security_family_gates` | F2 | **accepted**（≠ cert） |
+| 13 | `eval_evaluate_security_judge_calibration` | F2 | **提案中**（facade）→ [`PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_eval_evaluate_security_judge_calibration.md) |
 | 14 | `eval_load_security_judge_calib_defaults` | F2 | queued（facade） |
 | 15 | `eval_evaluate_security_family_gates` | F2 | queued（facade） |
 | 16 | `eval_evaluate_security_severity_l5_gate` | F2 | queued（facade；≠ L5 declare） |

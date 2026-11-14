@@ -221,8 +221,8 @@
         "docs/a3/evidence/s1_prod_model_aggregate.v1.json"
       ],
       "meta_family_green": true,
-      "tier_a_gate_authorized": false,
-      "gap": "family_green ≠ L5 declare / security_certification"
+      "tier_a_gate_authorized": true,
+      "gap": "scoped authorized F2 family gates report; ≠ security cert / L5; product accuracy_claim still false"
     },
     {
       "symbol": "evaluate_security_judge_calibration",
