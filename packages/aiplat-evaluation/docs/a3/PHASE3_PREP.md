@@ -46,7 +46,9 @@ doc_type: Reference
 7. ✅ Tier C 仅登记 n=458（[`PHASE3_TIER_C_REGISTER.md`](./PHASE3_TIER_C_REGISTER.md)）  
 8. ✅ accuracy / l5_declare / process_split（政策）已 AUTHORIZE；Chart split 与生产独立宣称仍 false  
 9. ✅ Tier A gold/gate 实跑账本 → [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md)  
-10. ✅ G2b 31–100 双标已齐 → [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)
+10. ✅ G2b 31–100 双标已齐 → [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)  
+11. ✅ B Cycle1 sample_rerun **6/6**（≠ owner_signoff）→ [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md)  
+12. ✅ 覆盖报表 A/B/C 分列实测刷新 → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)
 
 ## 禁止
 

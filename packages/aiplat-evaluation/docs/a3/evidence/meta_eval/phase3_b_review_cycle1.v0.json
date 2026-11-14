@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_cycle1.v0",
-  "recorded_at": "2026-11-14T22:56:16+08:00",
+  "recorded_at": "2026-11-14T23:02:39+08:00",
   "opened_on": "2026-11-14",
   "status": "open",
   "tier_b_n": 165,
@@ -18,14 +18,27 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
-        "gap_symbols_triaged": false,
+        "sample_rerun": true,
+        "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [
         "EvalSubjectAdapter"
       ],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_detail": {
+        "sampled": [
+          "AgentSubjectAdapter",
+          "ApiSubjectAdapter",
+          "CodeReviewSubjectAdapter",
+          "DatasetSubjectAdapter",
+          "GeneratedAppSubjectAdapter"
+        ],
+        "sample_ok": 5,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     },
     {
       "bucket_id": "B2_smoke",
@@ -40,12 +53,25 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
+        "sample_rerun": true,
         "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_detail": {
+        "sampled": [
+          "eval_run_api_capability_smoke",
+          "eval_run_code_review_capability_smoke",
+          "eval_run_dataset_capability_smoke",
+          "eval_run_generated_app_capability_smoke",
+          "eval_run_kb_capability_smoke"
+        ],
+        "sample_ok": 5,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     },
     {
       "bucket_id": "B3_regression_profiles",
@@ -60,12 +86,25 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
+        "sample_rerun": true,
         "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_detail": {
+        "sampled": [
+          "agent_regression_profile",
+          "api_regression_profile",
+          "api_regression_status",
+          "code_review_regression_profile",
+          "code_review_regression_status"
+        ],
+        "sample_ok": 5,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     },
     {
       "bucket_id": "B4_eval_facade",
@@ -80,12 +119,25 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
+        "sample_rerun": true,
         "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:36+08:00",
+      "sample_detail": {
+        "sampled": [
+          "eval_freeze_all_subject_seed_pack_meta",
+          "eval_freeze_subject_seed_pack_meta",
+          "eval_list_exam_sets",
+          "eval_list_method_kinds",
+          "eval_list_suite_profiles"
+        ],
+        "sample_ok": 5,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     },
     {
       "bucket_id": "B5_types_errors",
@@ -100,12 +152,22 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
+        "sample_rerun": true,
         "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:39+08:00",
+      "sample_detail": {
+        "sampled": [
+          "ModeAwareExamError",
+          "SuiteProfileExamError"
+        ],
+        "sample_ok": 2,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     },
     {
       "bucket_id": "B6_other",
@@ -120,16 +182,31 @@
       "status": "open",
       "checklist": {
         "suite_hook_attached": true,
-        "sample_rerun": false,
+        "sample_rerun": true,
         "gap_symbols_triaged": true,
         "owner_signoff": false
       },
       "gap_symbols": [],
-      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json"
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json",
+      "sample_rerun_at": "2026-11-14T23:02:39+08:00",
+      "sample_detail": {
+        "sampled": [
+          "build_suite_profile_report",
+          "compute_exam_fact_support",
+          "freeze_all_subject_seed_pack_meta",
+          "freeze_subject_seed_pack_meta",
+          "get_suite_exam_summary"
+        ],
+        "sample_ok": 5,
+        "sample_fail": [],
+        "sample_n_target": 5
+      }
     }
   ],
   "coverage_complete_claim": false,
   "chart_a3_process_split_authorized": false,
-  "honesty": "Cycle-1 board only. Owners must complete sample_rerun + signoff by due_on. ≠ coverage complete ≠ Chart flip.",
-  "rollup_ref": "docs/a3/evidence/meta_eval/phase3_b_suite_attach_rollup.v0.json"
+  "honesty": "Cycle-1 sample_rerun verifies impl_ref on disk (+ optional import). ≠ owner_signoff ≠ Tier B coverage complete ≠ Chart flip.",
+  "rollup_ref": "docs/a3/evidence/meta_eval/phase3_b_suite_attach_rollup.v0.json",
+  "sample_rerun_pass_n": 6,
+  "sample_rerun_total": 6
 }

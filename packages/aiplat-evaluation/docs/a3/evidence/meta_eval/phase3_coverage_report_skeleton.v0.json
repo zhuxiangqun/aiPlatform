@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.coverage_report_skeleton.v0",
-  "recorded_at": "2026-11-14T22:20:18+08:00",
+  "recorded_at": "2026-11-14T23:02:39+08:00",
   "columns": [
     "tier",
     "n",
@@ -24,27 +24,28 @@
     {
       "tier": "B",
       "n": 165,
-      "with_suite": null,
-      "with_gate": null,
-      "scoped_authorized": null,
+      "with_suite": 165,
+      "with_gate": 0,
+      "scoped_authorized": 0,
       "exempt": 0,
       "unauthorized_claim": false,
-      "note": "calendar draft only; suite attach pending"
+      "note": "with_suite=suite_hook attached_total from rollup; with_gate=0 (Tier B has no gate authorize); ≠ coverage complete"
     },
     {
       "tier": "C",
       "n": 458,
-      "with_suite": null,
-      "with_gate": null,
-      "scoped_authorized": null,
+      "with_suite": 0,
+      "with_gate": 0,
+      "scoped_authorized": 0,
       "exempt": 0,
       "unauthorized_claim": false,
-      "note": "register-only; must not crowd A slots"
+      "note": "register-only; with_suite/gate forced 0; must not crowd A slots"
     }
   ],
   "forbid_single_coverage_percent": true,
   "tier_a_expansion_authorized": true,
   "accuracy_claim": true,
   "a_candidate_scoped_complete": true,
-  "honesty": "A row measured from inventory evidence_refs + per-symbol ledger. B/C suite/gate remain null until measured. Never collapse A/B/C into one coverage%. scoped complete ≠ global_tier_a_expansion_authorized."
+  "tier_b_coverage_complete_claim": false,
+  "honesty": "A/B/C rows measured separately. B with_suite=hook attach count, not runtime coverage. C register-only (suite/gate=0). Never collapse into one coverage%."
 }
