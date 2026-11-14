@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_calendar.v0",
-  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "recorded_at": "2026-11-14T22:56:16+08:00",
   "source": "docs/a3/evidence/tier_matrix_v0.json",
   "tier_b_n": 165,
   "waves": [
@@ -20,13 +20,15 @@
         "ModelSubjectAdapter"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-Q1",
+      "next_review": "2027-02-12",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json",
       "attached_n": 15,
       "gap_symbols": [
         "EvalSubjectAdapter"
-      ]
+      ],
+      "cycle1_due_on": "2027-02-12",
+      "cycle1_status": "open"
     },
     {
       "bucket_id": "B2_smoke",
@@ -44,11 +46,13 @@
         "eval_run_prompt_capability_smoke"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-monthly",
+      "next_review": "2026-12-14",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json",
       "attached_n": 26,
-      "gap_symbols": []
+      "gap_symbols": [],
+      "cycle1_due_on": "2026-12-14",
+      "cycle1_status": "open"
     },
     {
       "bucket_id": "B3_regression_profiles",
@@ -66,11 +70,13 @@
         "dataset_regression_status"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-monthly",
+      "next_review": "2026-12-14",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json",
       "attached_n": 66,
-      "gap_symbols": []
+      "gap_symbols": [],
+      "cycle1_due_on": "2026-12-14",
+      "cycle1_status": "open"
     },
     {
       "bucket_id": "B4_eval_facade",
@@ -88,11 +94,13 @@
         "eval_promote_agent_capability_bank"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-Q1",
+      "next_review": "2027-02-12",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json",
       "attached_n": 19,
-      "gap_symbols": []
+      "gap_symbols": [],
+      "cycle1_due_on": "2027-02-12",
+      "cycle1_status": "open"
     },
     {
       "bucket_id": "B5_types_errors",
@@ -104,11 +112,13 @@
         "SuiteProfileExamError"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-H2",
+      "next_review": "2027-05-13",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json",
       "attached_n": 2,
-      "gap_symbols": []
+      "gap_symbols": [],
+      "cycle1_due_on": "2027-05-13",
+      "cycle1_status": "open"
     },
     {
       "bucket_id": "B6_other",
@@ -126,11 +136,13 @@
         "list_method_kinds"
       ],
       "suite_hook": "attached",
-      "next_review": "2026-H2",
+      "next_review": "2027-05-13",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach_proposal.v0.json",
       "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json",
       "attached_n": 37,
-      "gap_symbols": []
+      "gap_symbols": [],
+      "cycle1_due_on": "2027-05-13",
+      "cycle1_status": "open"
     }
   ],
   "buckets": {
@@ -333,7 +345,7 @@
   "tier_a_expansion_authorized": true,
   "accuracy_claim": true,
   "process_split_authorized": true,
-  "honesty": "Draft calendar only. Suite hooks pending. ≠ Tier A authorize ≠ coverage complete.",
+  "honesty": "First review cycle opened with concrete due dates. Suite hooks attached ≠ Tier B coverage complete. Chart still false.",
   "a_candidate_scoped_complete": true,
   "b_suite_attach_waves_complete": true,
   "b_suite_attach_summary": {
@@ -347,5 +359,10 @@
   "honesty_b_complete": "B1–B6 suite hooks attached by symbol. ≠ Tier B coverage complete / global Tier A expansion / single coverage%.",
   "global_tier_a_expansion_authorized": true,
   "l5_declare_authorized": true,
-  "security_certification": false
+  "security_certification": false,
+  "cycle1": {
+    "opened_on": "2026-11-14",
+    "status": "open",
+    "ref": "docs/a3/evidence/meta_eval/phase3_b_review_cycle1.v0.json"
+  }
 }

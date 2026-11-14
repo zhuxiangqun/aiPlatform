@@ -21,3 +21,5 @@ doc_type: Reference
 ## 符号（19）
 
 见机器 JSON `symbols[]`（F1×7 · F4×2 · F2×7 · F3×3）。owner：朱向群。
+
+gold/gate 实跑账本：[`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md)

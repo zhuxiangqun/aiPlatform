@@ -1,0 +1,135 @@
+{
+  "schema": "eval.phase3.b_review_cycle1.v0",
+  "recorded_at": "2026-11-14T22:56:16+08:00",
+  "opened_on": "2026-11-14",
+  "status": "open",
+  "tier_b_n": 165,
+  "waves": [
+    {
+      "bucket_id": "B1_subject_adapters",
+      "n": 15,
+      "cadence": "quarterly",
+      "owner_role": "eval_owner",
+      "suite_hook": "attached",
+      "attached_n": 15,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2027-02-12",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": false,
+        "owner_signoff": false
+      },
+      "gap_symbols": [
+        "EvalSubjectAdapter"
+      ],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b1_suite_attach.v0.json"
+    },
+    {
+      "bucket_id": "B2_smoke",
+      "n": 26,
+      "cadence": "monthly",
+      "owner_role": "eval_owner",
+      "suite_hook": "attached",
+      "attached_n": 26,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2026-12-14",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": true,
+        "owner_signoff": false
+      },
+      "gap_symbols": [],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b2_suite_attach.v0.json"
+    },
+    {
+      "bucket_id": "B3_regression_profiles",
+      "n": 66,
+      "cadence": "monthly",
+      "owner_role": "module_owner",
+      "suite_hook": "attached",
+      "attached_n": 66,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2026-12-14",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": true,
+        "owner_signoff": false
+      },
+      "gap_symbols": [],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b3_suite_attach.v0.json"
+    },
+    {
+      "bucket_id": "B4_eval_facade",
+      "n": 19,
+      "cadence": "quarterly",
+      "owner_role": "platform",
+      "suite_hook": "attached",
+      "attached_n": 19,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2027-02-12",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": true,
+        "owner_signoff": false
+      },
+      "gap_symbols": [],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b4_suite_attach.v0.json"
+    },
+    {
+      "bucket_id": "B5_types_errors",
+      "n": 2,
+      "cadence": "semi_annual",
+      "owner_role": "eval_owner",
+      "suite_hook": "attached",
+      "attached_n": 2,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2027-05-13",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": true,
+        "owner_signoff": false
+      },
+      "gap_symbols": [],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b5_suite_attach.v0.json"
+    },
+    {
+      "bucket_id": "B6_other",
+      "n": 37,
+      "cadence": "semi_annual",
+      "owner_role": "eval_owner",
+      "suite_hook": "attached",
+      "attached_n": 37,
+      "cycle": 1,
+      "opened_on": "2026-11-14",
+      "due_on": "2027-05-13",
+      "status": "open",
+      "checklist": {
+        "suite_hook_attached": true,
+        "sample_rerun": false,
+        "gap_symbols_triaged": true,
+        "owner_signoff": false
+      },
+      "gap_symbols": [],
+      "suite_attach_ref": "docs/a3/evidence/meta_eval/phase3_b6_suite_attach.v0.json"
+    }
+  ],
+  "coverage_complete_claim": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Cycle-1 board only. Owners must complete sample_rerun + signoff by due_on. ≠ coverage complete ≠ Chart flip.",
+  "rollup_ref": "docs/a3/evidence/meta_eval/phase3_b_suite_attach_rollup.v0.json"
+}

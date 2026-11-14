@@ -13,7 +13,7 @@ doc_type: Reference
 
 | Gate | State |
 |---|---|
-| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=30 closeout 已完成、31–100 待双标） |
+| Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=100 双标已齐 → [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)） |
 | Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
 | B4-S staging scaffold / unfreeze draft | ✅ opened · still `draft_blocked` |
 | Option B local rehearsal (`b4s_option_b_local`) | ✅ PASS · [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md) · **≠** staging |
@@ -47,5 +47,5 @@ bash packages/aiplat-evaluation/scripts/a3_split_authorize.sh status
 ## Out of scope here
 
 - microVM / live skill tools — see [`MICROVM_PREP.md`](./MICROVM_PREP.md)
-- G2b accuracy unlock
+- G2b scoped claim（已 attestation；见 [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)）
 - Chart `a3_process_split_authorized=true`

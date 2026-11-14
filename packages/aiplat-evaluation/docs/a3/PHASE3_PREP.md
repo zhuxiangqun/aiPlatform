@@ -38,13 +38,15 @@ doc_type: Reference
 ## 本地可继续（不翻转 authorize）
 
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
-2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
+2. ✅ B 轨复核日历 + Cycle 1 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md) · [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md)  
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
 4. ✅ 按符号扩容：A_candidate **19/19 scoped** + **全局** `tier_a_expansion_authorized=true`（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false  
 5. ✅ 覆盖率骨架 A/B 分列刷新（[`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)；禁单一%）  
 6. ✅ B 轨：B1–B6 suite_hook **全部 attached**（165/165；[`PHASE3_B_SUITE_ATTACH_ROLLUP.md`](./PHASE3_B_SUITE_ATTACH_ROLLUP.md)）· **≠** Tier B 覆盖完成  
 7. ✅ Tier C 仅登记 n=458（[`PHASE3_TIER_C_REGISTER.md`](./PHASE3_TIER_C_REGISTER.md)）  
-8. ✅ accuracy / l5_declare / process_split（政策）已 AUTHORIZE；Chart split 与生产独立宣称仍 false
+8. ✅ accuracy / l5_declare / process_split（政策）已 AUTHORIZE；Chart split 与生产独立宣称仍 false  
+9. ✅ Tier A gold/gate 实跑账本 → [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md)  
+10. ✅ G2b 31–100 双标已齐 → [`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md)
 
 ## 禁止
 
