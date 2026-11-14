@@ -692,7 +692,7 @@ docs/doc-paths.yaml
 | HookPhase 枚举 | 21 | `grep -c '^    [A-Z_]* = "' aiPlat-core/core/harness/infrastructure/hooks/hook_manager.py` |
 | Arch Guard 规则 | 195 | `grep -c '^  - id:' aiPlat-core/core/management/arch_guard_rules.yaml` |
 | 本体引擎模块 | 32 | `ls aiPlat-core/core/harness/ontology_engine/*.py | wc -l` |
-| 本体引擎总行数 | 12423 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
+| 本体引擎总行数 | 13201 | `wc -l aiPlat-core/core/harness/ontology_engine/*.py | tail -1 | awk '{print $1}'` |
 | 文档一级目录数 | 10 | `find docs -mindepth 1 -maxdepth 1 -type d | wc -l` |
 
 规则：

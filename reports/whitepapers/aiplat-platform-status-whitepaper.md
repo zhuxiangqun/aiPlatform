@@ -3,19 +3,19 @@ title: "aiPlat 平台现状白皮书"
 type: platform-status-whitepaper
 authority: derived-from-capabilities
 status: generated
-generated_at: "2026-11-14T03:17:14Z"
+generated_at: "2026-11-14T03:55:07Z"
 source: AIPLAT_CAPABILITIES.md
 doc_type: Report
-source_sha256: "3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da"
+source_sha256: "aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
-total_capabilities: 3438
+total_capabilities: 3443
 capabilities_version: "30.14"
-capabilities_last_updated: "2026-11-09"
+capabilities_last_updated: "2026-11-14"
 language: zh-CN
 packaging: executive-digest
 ---
 
-<!-- whitepaper_stamp source_sha256=3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3438 -->
+<!-- whitepaper_stamp source_sha256=aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 total_capabilities=3443 -->
 
 # aiPlat 平台现状白皮书
 
@@ -47,15 +47,15 @@ packaging: executive-digest
 
 | 字段 | 值 |
 |------|-----|
-| 生成时间 (UTC) | `2026-11-14T03:17:14Z` |
-| CAPABILITIES SHA-256 | `3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da` |
+| 生成时间 (UTC) | `2026-11-14T03:55:07Z` |
+| CAPABILITIES SHA-256 | `aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20` |
 | assessment-scores SHA-256 | `96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687` |
 | CAPABILITIES version | `30.14` |
-| CAPABILITIES last_updated | `2026-11-09` |
-| frontmatter total_capabilities | `3438` |
-| CAPABILITIES 内 ✅ 计数 | 3459 |
-| CAPABILITIES 内 ⚠️ 计数 | 24 |
-| 能力表行（估） | 3447 |
+| CAPABILITIES last_updated | `2026-11-14` |
+| frontmatter total_capabilities | `3443` |
+| CAPABILITIES 内 ✅ 计数 | 3464 |
+| CAPABILITIES 内 ⚠️ 计数 | 27 |
+| 能力表行（估） | 3452 |
 | 包装模式 | executive-digest（不含完整能力路径表） |
 
 ## 1. 平台定位（现状摘要）
@@ -64,7 +64,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 
 用业务语言概括：aiPlat 把「能跑 Agent」扩展成「能交付、能治理、能积累知识」的平台。
 
-当前能力登记总量约 **3438** 项（✅≈3459 · ⚠️≈24，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
+当前能力登记总量约 **3443** 项（✅≈3464 · ⚠️≈27，以 CAPABILITIES 扫描为准）。对外论证时不必通读路径表，可按下面五块理解：
 
 1. **执行与编排**：多阶段流水线、ReAct 循环、多 Agent 协作——把任务跑完，而不是只聊一轮。
 2. **记忆与知识**：会话记忆 + 企业知识/本体/RAG——回答有出处、可跨会话。
@@ -104,7 +104,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 199 | 0 | 199 |
+| Skill 系统 | 200 | 0 | 200 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -121,7 +121,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 149 | 0 | 149 |
-| Infra 基础设施 | 16 | 0 | 16 |
+| Infra 基础设施 | 20 | 0 | 20 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
 | 管理 & 质量 | 116 | 0 | 116 |
@@ -143,7 +143,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3428** | **10** | **3438** |
+| **总计** | **3433** | **10** | **3443** |
 
 ## 2.5 对标、评级与五维白皮书体系
 
@@ -254,13 +254,13 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 四、RAG 检索 | 60 | 1 | — |
 | 四附、知识基础设施（Knowledge） | 30 | 0 | — |
 | 五、Agent 系统 | 315 | 0 | — |
-| 六、Skill 系统 | 200 | 2 | — |
-| 七、安全与治理 | 92 | 0 | — |
+| 六、Skill 系统 | 201 | 3 | — |
+| 七、安全与治理 | 92 | 1 | — |
 | 八、可观测性 | 43 | 0 | — |
 | 九、模型基础设施 | 46 | 0 | — |
 | 十、部署与运维 | 23 | 0 | — |
 | 十一、扩展与学习 | 180 | 1 | — |
-| 十二、Gate 系统 | 177 | 0 | — |
+| 十二、Gate 系统 | 177 | 1 | — |
 | 十三、评估系统 | 581 | 0 | — |
 | 十四、MCP 协议 | 11 | 0 | — |
 | 十四附、A2A 协议 (Agent-to-Agent) | 9 | 0 | — |
@@ -271,7 +271,7 @@ aiPlat 是企业级 AI **操作系统式平台**：以执行内核（Harness）�
 | 十九、运行时干预 | 44 | 0 | — |
 | 二十、Arena & 调度 | 7 | 0 | — |
 | 二十一、平台治理 | 152 | 5 | — |
-| 二十二、Infra 基础设施 | 16 | 0 | — |
+| 二十二、Infra 基础设施 | 20 | 0 | — |
 | 二十三、核心API统一入口 | 7 | 1 | — |
 | 二十四、编排系统 | 10 | 0 | — |
 | 二十五、管理 & 质量 | 116 | 0 | — |

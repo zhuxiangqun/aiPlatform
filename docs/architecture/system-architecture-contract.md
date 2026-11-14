@@ -10,6 +10,7 @@ doc_type: Architecture
 > 全景摘要见 [`overview.md`](./overview.md)（非规范）；层边界判定见 [`boundary-standard.md`](./boundary-standard.md)。
 
 > 2026-11-12：Wiki router 的 F821 导入修复，不改变跨层运行时契约。
+> 2026-11-14：Python 可读性注释/docstring 全仓清零（含 platform auth/tenant/gateway 与 core harness），不改变跨层运行时契约、鉴权透传或 run/trace 语义。`clause-sync`
 
 ---
 
