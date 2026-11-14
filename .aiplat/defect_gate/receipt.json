@@ -2,11 +2,11 @@
   "schema": "aiplat.defect_gate.v1",
   "status": "pass",
   "findings_count": 0,
-  "reviewed_at": "2026-11-14T23:59:59+08:00",
+  "reviewed_at": "2026-11-15T00:07:29+08:00",
   "base_ref": "origin/main",
   "merge_base": "df96b402ead05809c1a6e0dffd6ae1b3d5a3735f",
-  "diff_sha256": "bba48796a58786f8a49d4293fd5365c040c2a1a252a96287d30faad578852311",
-  "head_sha": "3a8c5a30056e802961d8e2c9bddcda88c2608416",
+  "diff_sha256": "b8273c97cf61cb4290c2f39cd01a54944412b9247c04d22eef060bd0b28cae25",
+  "head_sha": "78a1c073b2a4d27b990e5402ad2efa3b8364f018",
   "checks": {
     "old_fallback": "pass",
     "call_signatures": "pass",
@@ -16,5 +16,5 @@
   },
   "findings": [],
   "reviewer": "agent",
-  "note": "Phase4 routing AUTHORIZE + demo disposition rehearsal. closed_loop_claim/Chart false. Local lock only."
+  "note": "Phase4 reeval fingerprint stub. closed_loop/Chart false. Local lock only."
 }
