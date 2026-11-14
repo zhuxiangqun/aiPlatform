@@ -1,0 +1,62 @@
+{
+  "schema": "eval.meta_eval.f2_status.v0",
+  "family_id": "F2",
+  "family": "Security family gates",
+  "recorded_at": "2026-11-14T19:10:54+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "status": "pending_security_human_judge",
+      "green": false,
+      "f1_prerequisite_met": true,
+      "source": "docs/a3/evidence/meta_eval/f2_security_judge_pack_pin.v0.json",
+      "note": "Pending security-specific human judge ratings (F1 prerequisite=met; F1 ≠ F2 security judge)."
+    },
+    {
+      "id": "gold_audit",
+      "status": "advisory_present",
+      "green": true,
+      "source": "docs/a3/evidence/s1_prod_model_aggregate.v1.json",
+      "note": "S1 aggregate present with honesty locks (accuracy_claim=false, not_security_certification=true)."
+    },
+    {
+      "id": "contamination",
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f2_contamination.v0.json",
+      "note": "Inherited F1 advisory; R11 advisory_only."
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f2_holdout_isolation.v0.json",
+      "note": "L5 declare / security certification holdout-from-claim declared."
+    },
+    {
+      "id": "iaa",
+      "status": "pending_security_dual_human",
+      "green": false,
+      "source": null,
+      "note": "F1 G2b IAA must not substitute security dual_human_on_failures. Need security failure dual-human attestation pack."
+    }
+  ],
+  "counts": {
+    "green": 3,
+    "total": 5
+  },
+  "family_green": false,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "process_split_authorized": false,
+  "l5_declare_authorized": false,
+  "honesty": "F2 partial until security judge + dual-human IAA land. family_green ≠ L5 declare ≠ Tier A.",
+  "api_hooks": [
+    "evaluate_security_family_gates",
+    "evaluate_security_judge_calibration",
+    "evaluate_security_severity_l5_gate"
+  ]
+}

@@ -14,7 +14,7 @@ doc_type: Reference
 
 1. 一次只开一家（禁止 19 条一次全绿宣称）。  
 2. 每家按 META_EVAL 五项勾：judge / gold / contamination / holdout / IAA。  
-3. 证据落 `docs/a3/evidence/meta_eval/`（F1：[`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md)；F4：[`META_EVAL_F4_STATUS.md`](./META_EVAL_F4_STATUS.md)）。  
+3. 证据落 `docs/a3/evidence/meta_eval/`（F1/F2/F4：[`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md) · [`META_EVAL_F2_STATUS.md`](./META_EVAL_F2_STATUS.md) · [`META_EVAL_F4_STATUS.md`](./META_EVAL_F4_STATUS.md)）。  
 4. 改阈值须 R11 重签 + SHA 日志。
 
 ---
@@ -24,7 +24,7 @@ doc_type: Reference
 | ID | 家族 | 代表符号（摘录） | META_EVAL 五项 | Tier A 宣称 |
 |---|---|---|---|---|
 | F1 | Judge calibration | `evaluate_judge_calibration_gate` · `open_capability_judge_calibration` · `cohen_kappa_binary` · `wilson_score_ci` | **green 5/5**（[`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md)；≠ Tier A 授权） | **blocked**（家族绿 ≠ 扩容授权） |
-| F2 | Security family gates | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | **pending** | **blocked** |
+| F2 | Security family gates | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | **partial 3/5**（[`META_EVAL_F2_STATUS.md`](./META_EVAL_F2_STATUS.md)；缺安全人裁判+dual-human） | **blocked** |
 | F3 | G2b / process_split 边界 | `build_g2b_s_dual_review_workflow` · `assert_t13_process_split_boundary` | **pending** | **blocked** |
 | F4 | Release scorecard | `build_release_scorecard` · `build_judge_calib_evidence_pack` | **green 5/5**（[`META_EVAL_F4_STATUS.md`](./META_EVAL_F4_STATUS.md)；依赖 F1 + scorecard_v1_check） | **blocked**（≠扩容授权） |
 
@@ -47,5 +47,5 @@ F1（尺子）→ F4（记分卡接线）→ F2（安全门）→ F3（G2b/拆�
 | 字段 | 值 |
 |---|---|
 | recorded | 2026-11-14 |
-| families_green | 2 / 4（F1+F4；F2/F3 未开） |
+| families_green | 2 / 4（F1+F4；F2=3/5 partial；F3 未开） |
 | tier_a_expansion_authorized | **false** |
