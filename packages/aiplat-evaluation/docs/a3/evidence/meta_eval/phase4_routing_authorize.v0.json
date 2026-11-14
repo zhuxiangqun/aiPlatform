@@ -1,0 +1,27 @@
+{
+  "schema": "eval.phase4.routing_authorize.v0",
+  "recorded_at": "2026-11-14T23:40:00+08:00",
+  "status": "authorized",
+  "owner": "朱向群",
+  "owner_decision": "AUTHORIZE phase4_routing",
+  "decided_at": "2026-11-14T23:40:00+08:00",
+  "phase4_routing_authorized": true,
+  "routing_ref": "docs/a3/config/phase4_routing.v0.json",
+  "accepted_routes": [
+    {"category": "environment", "route_to": "infra_ops", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "data", "route_to": "fixture_gold_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "implementation", "route_to": "module_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "stale_assertion", "route_to": "eval_owner_plus_product", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "product_defect", "route_to": "product_owner", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "eval_defect", "route_to": "eval_owner_meta", "sla_owner_h": 24, "sla_disposition_h": 72},
+    {"category": "unknown", "route_to": "eval_owner", "sla_owner_h": 24, "sla_disposition_h": 72}
+  ],
+  "residual": {
+    "closed_loop_claim": false,
+    "runtime_router_wired": false,
+    "chart_a3_process_split_authorized": false,
+    "security_certification": false,
+    "note": "Owner accepted routing categories/SLA only. Disposition + same-pack reeval remain human; auto-dispatch off."
+  },
+  "honesty": "Owner AUTHORIZE phase4_routing. Policy flag true. ≠ closed-loop automation ≠ Chart flip ≠ security cert."
+}

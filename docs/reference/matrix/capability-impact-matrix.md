@@ -5,7 +5,7 @@ doc_type: Reference
 # Capability Impact Matrix
 
 > Auto-generated from `capability_registry.yaml`
-> Version: 1.1.0 | 34 domains | 2674 capabilities (caps_count) | 2674 symbols (provides)
+> Version: 1.1.0 | 34 domains | 2691 capabilities (caps_count) | 2691 symbols (provides)
 
 > 口径：`caps_count` 应对齐 `len(provides)`（登记公开符号数）；勿与 `AIPLAT_CAPABILITIES.md` 产品能力行计数混算。
 
@@ -91,13 +91,13 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 630 | FDE Pipeline 状态查询 |
+| harness-execution-engine | §一 Harness 执行引擎 | 642 | FDE Pipeline 状态查询 |
 
 ### aiPlat-platform/apps/fde/api/fde_quality_summary.py
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| evaluation-system | §十三 评估系统 | 639 | FDE 质量摘要 |
+| evaluation-system | §十三 评估系统 | 644 | FDE 质量摘要 |
 
 ### aiPlat-platform/apps/fde/api/router.py
 
@@ -128,7 +128,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 630 | PipelineEngine 调度入口 |
+| harness-execution-engine | §一 Harness 执行引擎 | 642 | PipelineEngine 调度入口 |
 
 ### core/api/routers/diagnostics.py
 
@@ -231,7 +231,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 630 | 自身消费 PipelineStageConfig + StageRunner |
+| harness-execution-engine | §一 Harness 执行引擎 | 642 | 自身消费 PipelineStageConfig + StageRunner |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | _run_moa 路由模式 |
 | model-infrastructure | §九 模型基础设施 | 7 | Pipeline 阶段模型选择 |
 | memory-subsystem | §二 记忆子系统 | 59 | _crystallize_skill → save_task_skill |
@@ -243,7 +243,7 @@ doc_type: Reference
 | observability | §八 可观测性 | 23 | Pipeline trace 事件 |
 | skill-system | §六 Skill 系统 | 201 | HITL → PolicyGate + ApprovalGate |
 | extension-and-learning | §十一 扩展与学习 | 10 | Pipeline 故障→StrategySearchEngine |
-| evaluation-system | §十三 评估系统 | 639 | Pipeline 质量评分 |
+| evaluation-system | §十三 评估系统 | 644 | Pipeline 质量评分 |
 | gate-system | §十二 Gate 系统 | 153 | Pipeline 阶段 Gate 检查 |
 | knowledge-infrastructure | §四附 知识基础设施 | 5 | RunContext 运行时上下文 |
 
@@ -263,7 +263,7 @@ doc_type: Reference
 
 | Domain | Section | Caps | Reason |
 |--------|---------|:---:|--------|
-| harness-execution-engine | §一 Harness 执行引擎 | 630 | ReActLoop 运行时 |
+| harness-execution-engine | §一 Harness 执行引擎 | 642 | ReActLoop 运行时 |
 | moa-multi-model-reasoning | §三十 MoA 多模型推理 | 5 | ReActLoop MoA interception |
 | memory-subsystem | §二 记忆子系统 | 59 | build_context() + save_interaction() 调用 |
 
@@ -476,7 +476,7 @@ doc_type: Reference
 - **core/harness/ontology_engine/engine.py** — OntologyEngine 文档输入
 - **core/api/routers/wiki.py** — Upload/ingest 端点
 
-### §十三 评估系统 (639 caps)
+### §十三 评估系统 (644 caps)
 
 - **core/harness/execution/pipeline_engine.py** — Pipeline 质量评分
 - **aiPlat-platform/apps/fde/api/fde_quality_summary.py** — FDE 质量摘要
@@ -500,7 +500,7 @@ doc_type: Reference
 - **core/harness/infrastructure/integration.py** — 8 Gate 统一出口
 - **core/server.py** — BackpressureMiddleware 挂载 + backpressure_stats 诊断
 
-### §一 Harness 执行引擎 (630 caps)
+### §一 Harness 执行引擎 (642 caps)
 
 - **core/api/routers/builder_project_service.py** — PipelineEngine 调度入口
 - **core/harness/execution/pipeline_engine.py** — 自身消费 PipelineStageConfig + StageRunner

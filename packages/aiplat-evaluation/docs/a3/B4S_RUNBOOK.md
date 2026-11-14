@@ -75,7 +75,9 @@ bash scripts/b4s_local_rehearsal.sh
 
 ## 8. When real staging host arrives
 
+Scaffold already prepared（≠ live）: [`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked`.
+
 1. Confirm host per [`B4S_PREP.md`](./B4S_PREP.md)  
-2. Open `ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING`  
+2. Activate [`ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING`](../../../../reports/five-products/ops/ENGINEERING_UNFREEZE_EVAL_A3_B4_STAGING.md) (`draft_blocked` → `active`)  
 3. Re-run this runbook against **staging** DSN/OIDC/MinIO  
-4. Sign live drill — only then B6 authorize path
+4. Sign live drill — only then `a3_split_authorize.sh authorize`

@@ -1,0 +1,150 @@
+{
+  "schema": "eval.phase3.b4_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:50:00+08:00",
+  "bucket_id": "B4_eval_facade",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:50:00+08:00",
+  "n": 19,
+  "attached": 19,
+  "gaps": [],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "attachments": [
+    {
+      "symbol": "eval_freeze_all_subject_seed_pack_meta",
+      "suite_hook": "eval_freeze_all_subject_seed_pack_meta",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10924",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_freeze_subject_seed_pack_meta",
+      "suite_hook": "eval_freeze_subject_seed_pack_meta",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10904",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_list_exam_sets",
+      "suite_hook": "eval_list_exam_sets",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:7584",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_list_method_kinds",
+      "suite_hook": "eval_list_method_kinds",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9347",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_list_suite_profiles",
+      "suite_hook": "eval_list_suite_profiles",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10536",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_method_catalog",
+      "suite_hook": "eval_method_catalog",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9354",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_open_capability_bank_editor",
+      "suite_hook": "eval_open_capability_bank_editor",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:11367",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_promote_agent_capability_bank",
+      "suite_hook": "eval_promote_agent_capability_bank",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10751",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_promote_all_subject_capability_banks",
+      "suite_hook": "eval_promote_all_subject_capability_banks",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10839",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_promote_subject_capability_bank",
+      "suite_hook": "eval_promote_subject_capability_bank",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10797",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_agent_exam",
+      "suite_hook": "eval_run_agent_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:7693",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_external_exam",
+      "suite_hook": "eval_run_external_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:12112",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_m1a_mode_exam",
+      "suite_hook": "eval_run_m1a_mode_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:7862",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_m1b_mode_exam",
+      "suite_hook": "eval_run_m1b_mode_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:7884",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_m1c_mode_exam",
+      "suite_hook": "eval_run_m1c_mode_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:7906",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_run_suite_profile_exam",
+      "suite_hook": "eval_run_suite_profile_exam",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10970",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_subject_suite_profile_inventory",
+      "suite_hook": "eval_subject_suite_profile_inventory",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10554",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_suite_profile_report",
+      "suite_hook": "eval_suite_profile_report",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:11041",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_validate_agent_capability_bank",
+      "suite_hook": "eval_validate_agent_capability_bank",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10515",
+      "status": "attached",
+      "layer": "facade"
+    }
+  ],
+  "honesty": "B4 eval_* facade symbols mapped to core_facade (incl. async def exam runners). ≠ platform coverage complete / global Tier A expansion."
+}

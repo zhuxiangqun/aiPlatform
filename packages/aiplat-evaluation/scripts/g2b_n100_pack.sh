@@ -27,9 +27,15 @@ PYTHONPATH=. python3 "$ROOT/scripts/human_worksheet_pack.py" --out "$OUT" --skip
 
 if [[ "$RUN_MODEL" == "1" ]]; then
   echo "== run model_outputs (AIPLAT_EVAL_LLM must be on) =="
-  # Seed 01-30 from prior pack outputs when present
-  PRIOR="$ROOT/docs/a3/human_pack/20261103T130302Z/model_outputs.json"
-  if [[ -f "$PRIOR" ]]; then
+  # Seed 01-30 from prior pack outputs when present (active n100 first; archive fallback).
+  PRIOR=""
+  for cand in \
+    "$ROOT/docs/a3/human_pack/20261105T132500Z-n100/model_outputs.json" \
+    "$ROOT/docs/a3/_archive/human_pack/20261103T130302Z/model_outputs.json"
+  do
+    if [[ -f "$cand" ]]; then PRIOR="$cand"; break; fi
+  done
+  if [[ -n "$PRIOR" ]]; then
     cp "$PRIOR" "$OUT/model_outputs.json"
   else
     echo '{}' >"$OUT/model_outputs.json"

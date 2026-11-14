@@ -1,0 +1,71 @@
+{
+  "schema": "eval.phase4.routing.v0",
+  "phase4_routing_authorized": true,
+  "authorized_at": "2026-11-14T23:40:00+08:00",
+  "authorize_ref": "docs/a3/evidence/meta_eval/phase4_routing_authorize.v0.json",
+  "sla": {
+    "tier_a_red_owner_hours": 24,
+    "tier_a_disposition_hours": 72
+  },
+  "routes": [
+    {
+      "category": "environment",
+      "route_to": "infra_ops",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "data",
+      "route_to": "fixture_gold_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "implementation",
+      "route_to": "module_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "stale_assertion",
+      "route_to": "eval_owner_plus_product",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "product_defect",
+      "route_to": "product_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "eval_defect",
+      "route_to": "eval_owner_meta",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    },
+    {
+      "category": "unknown",
+      "route_to": "eval_owner",
+      "sla_owner_h": 24,
+      "sla_disposition_h": 72
+    }
+  ],
+  "g2b_decision_map": {
+    "by_action": {
+      "re_label_pass": "stale_assertion",
+      "format_rerun_pass": "data"
+    },
+    "by_hypothesis": {
+      "content_or_rubric_strict": "eval_defect",
+      "safety_behavior_mismatch": "product_defect",
+      "format_oververbose": "data",
+      "format_not_json": "data",
+      "format_code_instead_of_json": "data",
+      "translation_or_phrasing": "stale_assertion"
+    },
+    "default_category": "unknown",
+    "note": "Maps G2b fail decision table action/hypothesis → Phase4 categories. Config only; ≠ auto-dispatch."
+  },
+  "honesty": "Owner AUTHORIZE phase4_routing accepted. Writing disposition tickets ≠ closed-loop automation ≠ Chart flip."
+}

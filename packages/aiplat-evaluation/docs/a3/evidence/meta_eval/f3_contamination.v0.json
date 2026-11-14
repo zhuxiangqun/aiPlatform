@@ -1,0 +1,13 @@
+{
+  "schema": "eval.meta_eval.f3_contamination.v0",
+  "family_id": "F3",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "method": "inherit_f1_token_overlap_advisory",
+  "f1_contamination_ref": "docs/a3/evidence/meta_eval/f1_contamination.v0.json",
+  "over_threshold": true,
+  "disposition": "advisory_only",
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "F3 contamination inherits F1 advisory scan. R11 over-threshold → advisory only. ≠ process_split authorize."
+}

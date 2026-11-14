@@ -1,0 +1,30 @@
+{
+  "schema": "eval.r11.meta_eval_thresholds_signoff.v1",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "signed_at": "2026-11-14",
+  "owner": "朱向群",
+  "verdict": "accept_initial_thresholds",
+  "thresholds": {
+    "judge_calibration": {
+      "agreement_min": 0.8,
+      "kappa_min": 0.6,
+      "ece_max": 0.1
+    },
+    "gold_audit": {
+      "sample_error_rate_max": 0.05
+    },
+    "contamination": {
+      "over_threshold": "advisory_only"
+    },
+    "holdout_isolation": {
+      "reveal": "pre_release_once"
+    },
+    "inter_annotator": {
+      "kappa_min": 0.6
+    }
+  },
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "not_tier_a_auto_expand": true,
+  "honesty": "Owner accepts meta-eval initial thresholds v0. Changing thresholds requires SHA/semantic change control. Does not authorize Tier A expansion, process_split, or product accuracy_claim."
+}

@@ -1,0 +1,69 @@
+{
+  "schema": "eval.phase3_phase4.maintenance_status.v0",
+  "recorded_at": "2026-11-15T00:42:30+08:00",
+  "g2b_reingest": {
+    "table_present": true,
+    "reingest_needed": false,
+    "command": "python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --from-g2b-fail-table && python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --close-from-g2b-provisional && python3 packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py --verify-pack",
+    "current_sha256": "2a2cf239d3bfa353e2e4ef270f6a45ebf2bb174d0fdb026d943db19fe1e41236",
+    "last_ingest_at": "2026-11-15T00:42:30+08:00",
+    "last_ingest_rows_n": 28,
+    "last_ingest_sha256": "2a2cf239d3bfa353e2e4ef270f6a45ebf2bb174d0fdb026d943db19fe1e41236",
+    "reason": "sha_matches_last_ingest"
+  },
+  "cycle1_due_sample": {
+    "cycle_present": true,
+    "as_of": "2026-11-15",
+    "buckets_due_for_sample": [],
+    "sample_rerun_needed": false,
+    "waves": [
+      {
+        "bucket_id": "B1_subject_adapters",
+        "due_on": "2027-02-12",
+        "days_until_due": 89,
+        "owner_signoff": true,
+        "sample_due": false
+      },
+      {
+        "bucket_id": "B2_smoke",
+        "due_on": "2026-12-14",
+        "days_until_due": 29,
+        "owner_signoff": true,
+        "sample_due": false
+      },
+      {
+        "bucket_id": "B3_regression_profiles",
+        "due_on": "2026-12-14",
+        "days_until_due": 29,
+        "owner_signoff": true,
+        "sample_due": false
+      },
+      {
+        "bucket_id": "B4_eval_facade",
+        "due_on": "2027-02-12",
+        "days_until_due": 89,
+        "owner_signoff": true,
+        "sample_due": false
+      },
+      {
+        "bucket_id": "B5_types_errors",
+        "due_on": "2027-05-13",
+        "days_until_due": 179,
+        "owner_signoff": true,
+        "sample_due": false
+      },
+      {
+        "bucket_id": "B6_other",
+        "due_on": "2027-05-13",
+        "days_until_due": 179,
+        "owner_signoff": true,
+        "sample_due": false
+      }
+    ],
+    "command": "python3 packages/aiplat-evaluation/scripts/phase3_b_cycle1_sample_rerun.py",
+    "note": "Due-day sampling refreshes evidence; does not clear owner_signoff."
+  },
+  "closed_loop_claim": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Maintenance status only. Re-ingest / due-day sample are optional ops until triggers fire. ≠ host tasks ≠ Chart flip ≠ closed_loop."
+}

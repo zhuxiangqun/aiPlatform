@@ -1,0 +1,35 @@
+{
+  "schema": "eval.phase3.b_suite_attach_proposal.v0",
+  "proposal_id": "phase3-b5-suite-attach",
+  "bucket_id": "B5_types_errors",
+  "recorded_at": "2026-11-14T21:51:30+08:00",
+  "status": "accepted",
+  "n": 2,
+  "symbols_sample": [
+    "ModeAwareExamError",
+    "SuiteProfileExamError"
+  ],
+  "symbols": [
+    "ModeAwareExamError",
+    "SuiteProfileExamError"
+  ],
+  "cadence": "semi_annual",
+  "owner_role": "eval_owner",
+  "depends_on": [
+    "B1_subject_adapters",
+    "B2_smoke",
+    "B3_regression_profiles",
+    "B4_eval_facade"
+  ],
+  "scope_if_accepted": {
+    "suite_hook_attach_authorized_for_bucket": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "forbid_single_coverage_percent": true
+  },
+  "owner_decision": "ACCEPT phase3_b_suite_attach B5",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:51:30+08:00",
+  "honesty": "Owner accepted B5 types/errors suite attach (2/2). ≠ global Tier A expansion / accuracy / process_split.",
+  "suite_hook_attach_authorized_for_bucket": true
+}

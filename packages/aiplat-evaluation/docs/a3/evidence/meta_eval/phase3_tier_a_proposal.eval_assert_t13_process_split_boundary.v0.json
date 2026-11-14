@@ -1,0 +1,36 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-19-eval_assert_t13_process_split_boundary",
+  "seq": 19,
+  "symbol": "eval_assert_t13_process_split_boundary",
+  "meta_family": "F3",
+  "kind": "facade_wrapper",
+  "recorded_at": "2026-11-14T21:28:30+08:00",
+  "status": "accepted",
+  "impl_def": "aiPlat-core/core/api/core_facade.py:8349",
+  "wraps": "assert_t13_process_split_boundary",
+  "depends_on_accepted": [
+    "assert_t13_process_split_boundary"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
+    "docs/a3/evidence/meta_eval/f3_process_split_boundary_status.v0.json"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true,
+    "process_split_authorized": false
+  },
+  "forbid": [
+    "process_split_authorized"
+  ],
+  "owner_decision": "ACCEPT eval_assert_t13_process_split_boundary scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:28:30+08:00",
+  "honesty": "Owner accepted final A_candidate (#19/19) scoped F3 facade Tier A gate for eval_assert_t13_process_split_boundary. process_split_authorized remains false; global_tier_a_expansion_authorized remains false; accuracy_claim false. Per-symbol ledger complete ≠ global expansion authorize.",
+  "tier_a_gate_authorized_for_symbol": true
+}

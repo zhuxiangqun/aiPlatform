@@ -1,0 +1,17 @@
+{
+  "schema": "eval.phase4.demo_disposition_rehearsal.v0",
+  "recorded_at": "2026-11-14T23:55:00+08:00",
+  "status": "demo_closed",
+  "owner": "朱向群",
+  "phase4_routing_authorized": true,
+  "tickets_closed": [
+    "disp-f86368b35b2b",
+    "disp-a11c611ebf4d",
+    "disp-5d5bca12d8ed"
+  ],
+  "reeval_pack_id": "pack-db80f93c8fe46dc4",
+  "disposition": "demo_rehearsal: phase4_routing AUTHORIZE accepted; synthetic close ≠ production fix ≠ closed_loop",
+  "closed_loop_claim": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Demo ticket close rehearsal only. Same-pack reeval still pending. ≠ closed-loop automation ≠ Chart flip."
+}

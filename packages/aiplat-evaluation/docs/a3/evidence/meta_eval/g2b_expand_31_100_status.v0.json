@@ -1,0 +1,33 @@
+{
+  "schema": "eval.g2b.expand_31_100_status.v0",
+  "recorded_at": "2026-11-14T22:50:00+08:00",
+  "status": "dual_label_complete",
+  "n_total": 100,
+  "n_ci30": 30,
+  "n_expand_31_100": 70,
+  "annotator_a_filled_31_100": 70,
+  "annotator_b_filled_31_100": 70,
+  "pending_dual_human_n": 0,
+  "agreed_n": 92,
+  "disputed_n": 8,
+  "disputed_task_ids": [
+    "g2b-22",
+    "g2b-26",
+    "g2b-27",
+    "g2b-29",
+    "g2b-30",
+    "g2b-39",
+    "g2b-62",
+    "g2b-92"
+  ],
+  "adjudication": "complete",
+  "gold_path": "docs/a3/evidence/g2b_adjudicated_gold.v1.json",
+  "kappa_path": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
+  "accuracy_aggregate_path": "docs/a3/evidence/g2b_accuracy_aggregate.v1.json",
+  "attestation_path": "docs/a3/evidence/g2b_accuracy_claim_attestation.v1.json",
+  "scoped_g2b_accuracy_claim": true,
+  "platform_accuracy_claim_policy": true,
+  "security_certification": false,
+  "chart_a3_process_split_authorized": false,
+  "honesty": "Expand 31–100 dual-human labels already complete (not pending). Scoped G2b accuracy claim accepted 2026-11-13. ≠ security cert ≠ Chart flip ≠ production certification."
+}

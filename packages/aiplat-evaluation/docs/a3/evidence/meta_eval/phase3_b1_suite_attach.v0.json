@@ -1,0 +1,129 @@
+{
+  "schema": "eval.phase3.b1_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:40:00+08:00",
+  "bucket_id": "B1_subject_adapters",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:40:00+08:00",
+  "n": 15,
+  "attached": 15,
+  "attached_full_smoke": 13,
+  "attached_partial": 1,
+  "gaps": [
+    "EvalSubjectAdapter"
+  ],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "attachments": [
+    {
+      "symbol": "AgentSubjectAdapter",
+      "subject_kind": "agent",
+      "suite_hook": "agent_smoke_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:258",
+      "status": "attached",
+      "note": "uses capability_case_bank.agent_smoke_profile (no run_agent_capability_smoke)"
+    },
+    {
+      "symbol": "ApiSubjectAdapter",
+      "subject_kind": "api",
+      "suite_hook": "run_api_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/api_capability_bank.py:282",
+      "status": "attached"
+    },
+    {
+      "symbol": "CodeReviewSubjectAdapter",
+      "subject_kind": "code_review",
+      "suite_hook": "run_code_review_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/code_review_capability_bank.py:286",
+      "status": "attached"
+    },
+    {
+      "symbol": "DatasetSubjectAdapter",
+      "subject_kind": "dataset",
+      "suite_hook": "run_dataset_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/dataset_capability_bank.py:281",
+      "status": "attached"
+    },
+    {
+      "symbol": "EvalSubjectAdapter",
+      "subject_kind": "eval",
+      "suite_hook": "protocol_registry_only",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_adapter.py:170",
+      "status": "attached_partial",
+      "note": "Protocol + get_subject_adapter registry; no dedicated capability_smoke yet",
+      "gap": "missing run_eval_capability_smoke"
+    },
+    {
+      "symbol": "GeneratedAppSubjectAdapter",
+      "subject_kind": "generated_app",
+      "suite_hook": "run_generated_app_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/generated_app_capability_bank.py:281",
+      "status": "attached"
+    },
+    {
+      "symbol": "KbSubjectAdapter",
+      "subject_kind": "kb",
+      "suite_hook": "run_kb_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/kb_capability_bank.py:282",
+      "status": "attached"
+    },
+    {
+      "symbol": "ModelSubjectAdapter",
+      "subject_kind": "model",
+      "suite_hook": "run_model_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/model_capability_bank.py:281",
+      "status": "attached"
+    },
+    {
+      "symbol": "MultiAgentSubjectAdapter",
+      "subject_kind": "multi_agent",
+      "suite_hook": "run_multi_agent_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py:286",
+      "status": "attached"
+    },
+    {
+      "symbol": "PromptSubjectAdapter",
+      "subject_kind": "prompt",
+      "suite_hook": "run_prompt_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/prompt_capability_bank.py:279",
+      "status": "attached"
+    },
+    {
+      "symbol": "SessionSubjectAdapter",
+      "subject_kind": "session",
+      "suite_hook": "run_session_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/session_capability_bank.py:282",
+      "status": "attached"
+    },
+    {
+      "symbol": "SkillSubjectAdapter",
+      "subject_kind": "skill",
+      "suite_hook": "run_skill_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/skill_capability_bank.py:281",
+      "status": "attached"
+    },
+    {
+      "symbol": "SystemSubjectAdapter",
+      "subject_kind": "system",
+      "suite_hook": "run_system_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/system_capability_bank.py:281",
+      "status": "attached"
+    },
+    {
+      "symbol": "ToolSubjectAdapter",
+      "subject_kind": "tool",
+      "suite_hook": "run_tool_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/tool_capability_bank.py:282",
+      "status": "attached"
+    },
+    {
+      "symbol": "WorkflowSubjectAdapter",
+      "subject_kind": "workflow",
+      "suite_hook": "run_workflow_capability_smoke",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/workflow_capability_bank.py:281",
+      "status": "attached"
+    }
+  ],
+  "honesty": "B1 suite hooks attached by symbol. EvalSubjectAdapter is protocol-only partial. ≠ platform coverage complete / global Tier A expansion."
+}

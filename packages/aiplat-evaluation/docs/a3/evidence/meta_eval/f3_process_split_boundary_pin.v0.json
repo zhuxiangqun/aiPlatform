@@ -1,0 +1,32 @@
+{
+  "schema": "eval.meta_eval.f3_process_split_boundary_pin.v0",
+  "family_id": "F3",
+  "recorded_at": "2026-11-14T23:18:36+08:00",
+  "api_hooks": [
+    "assert_t13_process_split_boundary",
+    "build_g2b_s_dual_review_workflow",
+    "eval_assert_t13_process_split_boundary"
+  ],
+  "split_authorize_gate": "scripts/a3_split_authorize.sh status",
+  "checklist_marks": {
+    "1": "🟨",
+    "2": "✅",
+    "3": "✅",
+    "4": "🟨",
+    "5": "✅"
+  },
+  "all_green": false,
+  "live_production_signed": false,
+  "process_split_authorized_doc": true,
+  "process_split_authorized_status_json": true,
+  "process_split_policy_may_be_true": true,
+  "chart_split_false_annotation": true,
+  "ready_to_authorize": false,
+  "boundary_locks_hold": true,
+  "status": "boundary_hold",
+  "green": true,
+  "chart_a3_process_split_authorized": false,
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Boundary pin locks Chart runtime + ready_to_authorize + live_signed. Policy process_split_authorized may be true (owner AUTHORIZE) without flipping Chart. family META_EVAL green ≠ Chart flip. ≠ Tier A."
+}

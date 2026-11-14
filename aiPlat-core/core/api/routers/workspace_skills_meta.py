@@ -1289,13 +1289,18 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
             allow_overwrite=bool(request.allow_overwrite),
             metadata=request.metadata,
         )
+        install_status = (
+            "import_failed"
+            if isinstance(res, dict) and res.get("import_failed")
+            else "ok"
+        )
         try:
             es = _store(rt)
             if es is not None:
                 actor = actor_from_http(http_request, request.model_dump())
                 await es.add_audit_log(
                     action="workspace_skill_installer_install",
-                    status="ok",
+                    status=install_status,
                     tenant_id=str(actor.get("tenant_id") or "") or None,
                     actor_id=str(actor.get("actor_id") or "") or None,
                     actor_role=str(actor.get("actor_role") or "") or None,
@@ -1308,11 +1313,13 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
                         "ref": request.ref,
                         "installed": res.get("installed") if isinstance(res, dict) else None,
                         "skipped": res.get("skipped") if isinstance(res, dict) else None,
+                        "import_failed": bool(res.get("import_failed")) if isinstance(res, dict) else False,
                     },
                 )
         except Exception as e:
             logging.warning(str(e), exc_info=True)
-        return {"status": "ok", **res}
+        # **res after status so manager status/import_failed win over literal ok
+        return {"status": install_status, **(res if isinstance(res, dict) else {})}
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

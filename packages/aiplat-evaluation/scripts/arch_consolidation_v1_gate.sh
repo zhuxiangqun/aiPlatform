@@ -7,6 +7,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
 cd "$ROOT"
 
+# Prefer caller interpreter (venv / CI). System python3 may be 3.9 without kw_only.
+PYTHON="${PYTHON:-python3}"
+
 DOC="$ROOT/docs/a3/ARCH_CONSOLIDATION_V1.md"
 [[ -f "$DOC" ]] || { echo "REFUSE: missing ARCH_CONSOLIDATION_V1.md" >&2; exit 2; }
 
@@ -14,14 +17,14 @@ EVID_DIR="${AIPLAT_EVAL_ARCH_EVIDENCE_DIR:-$ROOT/docs/a3/drills}"
 mkdir -p "$EVID_DIR"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
-echo "== unit: platform canonical + package composite =="
+echo "== unit: platform canonical + package composite (python=$PYTHON) =="
 cd "$REPO"
-PYTHONPATH=aiPlat-platform:aiPlat-core python3 -m pytest \
+PYTHONPATH=aiPlat-platform:aiPlat-core "$PYTHON" -m pytest \
   aiPlat-platform/tests/test_eval_v1_e1_canonical.py -q --tb=line
 cd "$ROOT"
-PYTHONPATH=. python3 -m pytest tests/test_p1_composite_semantics.py -q --tb=line
+PYTHONPATH=. "$PYTHON" -m pytest tests/test_p1_composite_semantics.py -q --tb=line
 
-python3 - <<PY
+"$PYTHON" - <<PY
 import json
 import re
 from datetime import datetime, timezone

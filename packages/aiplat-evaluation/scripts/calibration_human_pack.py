@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import random
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,11 +26,49 @@ def _load(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _g2b_task_index() -> Dict[str, Dict[str, Any]]:
+    """Build task_id → prompt/rubric[/model_output] from tracked fixtures only.
+
+    Why: `docs/a3/human_pack/**` is gitignored; CI must not require facilitator JSON.
+    Optional local overlay: ``AIPLAT_EVAL_G2B_FACILITATOR`` → path to a facilitator
+    sheet that may supply ``model_output`` for human packing runs.
+    """
+    pack = _load(ROOT / "docs/a3/g2b_tasks.v0.json")
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for t in pack.get("tasks") or []:
+        tid = str(t.get("id") or t.get("task_id") or "")
+        if not tid:
+            continue
+        by_id[tid] = {
+            "task_id": tid,
+            "prompt": t.get("prompt") or "",
+            "rubric": t.get("rubric") or "",
+            "model_output": "",
+            "family": t.get("family") or "",
+        }
+    overlay = (os.environ.get("AIPLAT_EVAL_G2B_FACILITATOR") or "").strip()
+    if overlay:
+        fac_path = Path(overlay)
+        if not fac_path.is_file():
+            raise FileNotFoundError(f"AIPLAT_EVAL_G2B_FACILITATOR not found: {fac_path}")
+        fac = _load(fac_path)
+        for t in fac.get("tasks") or []:
+            tid = str(t.get("task_id") or t.get("id") or "")
+            if tid not in by_id:
+                continue
+            if t.get("prompt"):
+                by_id[tid]["prompt"] = t.get("prompt") or ""
+            if t.get("rubric"):
+                by_id[tid]["rubric"] = t.get("rubric") or ""
+            if t.get("model_output"):
+                by_id[tid]["model_output"] = t.get("model_output") or ""
+    return by_id
+
+
 def _sample_g2b(rng: random.Random, n_each: int = 10) -> List[Dict[str, Any]]:
     gold = _load(ROOT / "docs/a3/evidence/g2b_adjudicated_gold.v1.json")
     labels = {str(r["task_id"]): bool(r["gold_pass"]) for r in gold["labels"]}
-    fac = _load(ROOT / "docs/a3/human_pack/20261105T132500Z-n100/g2b_facilitator.json")
-    by_id = {str(t["task_id"]): t for t in fac.get("tasks") or []}
+    by_id = _g2b_task_index()
     pos = [tid for tid, g in labels.items() if g]
     neg = [tid for tid, g in labels.items() if not g]
     rng.shuffle(pos)
@@ -46,7 +85,7 @@ def _sample_g2b(rng: random.Random, n_each: int = 10) -> List[Dict[str, Any]]:
                 "rubric": t.get("rubric") or "",
                 "model_output": t.get("model_output") or "",
                 "original_conclusion": "PASS" if labels[tid] else "FAIL",
-                "context": "gold_pass from adjudicated G2b gold",
+                "context": "gold_pass from adjudicated G2b gold; prompts from g2b_tasks.v0",
                 "recheck": "",
                 "notes": "",
             }
@@ -106,7 +145,8 @@ def _sample_arena(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
 
 
 def _sample_preference(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
-    sheet = _load(ROOT / "docs/a3/human_pack/20261103T130302Z/pref_annotator_a.json")
+    # Formal fixture (not _archive / not raw human_pack) — Phase 0 §4.6.
+    sheet = _load(ROOT / "docs/a3/fixtures/calibration/pref_annotator_a.v0.json")
     labels = list(sheet.get("labels") or [])
     rng.shuffle(labels)
     rows: List[Dict[str, Any]] = []
@@ -119,7 +159,7 @@ def _sample_preference(rng: random.Random, n: int = 20) -> List[Dict[str, Any]]:
                 "option_a": r.get("a") or "",
                 "option_b": r.get("b") or "",
                 "original_conclusion": str(r.get("preferred") or "").lower(),
-                "context": "annotator_a preferred from 20261103T130302Z pack",
+                "context": "fixture_calibration_pref_a (derived from archived 20261103 pack)",
                 "recheck": "",
                 "notes": "",
             }

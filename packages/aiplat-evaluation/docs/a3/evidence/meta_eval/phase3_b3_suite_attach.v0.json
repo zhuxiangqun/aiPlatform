@@ -1,0 +1,479 @@
+{
+  "schema": "eval.phase3.b3_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:46:00+08:00",
+  "bucket_id": "B3_regression_profiles",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:46:00+08:00",
+  "n": 66,
+  "attached": 66,
+  "gaps": [],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "attachments": [
+    {
+      "symbol": "agent_regression_profile",
+      "suite_hook": "agent_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:253",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "api_regression_profile",
+      "suite_hook": "api_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/api_capability_bank.py:150",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "api_regression_status",
+      "suite_hook": "api_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/api_capability_bank.py:173",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "code_review_regression_profile",
+      "suite_hook": "code_review_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/code_review_capability_bank.py:154",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "code_review_regression_status",
+      "suite_hook": "code_review_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/code_review_capability_bank.py:177",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "compile_plan_from_suite_profile",
+      "suite_hook": "compile_plan_from_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_profile_compile.py:311",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "dataset_regression_profile",
+      "suite_hook": "dataset_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/dataset_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "dataset_regression_status",
+      "suite_hook": "dataset_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/dataset_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "eval_agent_regression_profile",
+      "suite_hook": "eval_agent_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10529",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_api_regression_profile",
+      "suite_hook": "eval_api_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10301",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_api_regression_status",
+      "suite_hook": "eval_api_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10308",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_code_review_regression_profile",
+      "suite_hook": "eval_code_review_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9859",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_code_review_regression_status",
+      "suite_hook": "eval_code_review_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9868",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_compile_plan_from_suite_profile",
+      "suite_hook": "eval_compile_plan_from_suite_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10939",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_dataset_regression_profile",
+      "suite_hook": "eval_dataset_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10373",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_dataset_regression_status",
+      "suite_hook": "eval_dataset_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10382",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_generated_app_regression_profile",
+      "suite_hook": "eval_generated_app_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10231",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_generated_app_regression_status",
+      "suite_hook": "eval_generated_app_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10240",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_get_suite_profile",
+      "suite_hook": "eval_get_suite_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10543",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_kb_regression_profile",
+      "suite_hook": "eval_kb_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9787",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_kb_regression_status",
+      "suite_hook": "eval_kb_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9794",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_method_track_status",
+      "suite_hook": "eval_method_track_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9378",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_model_regression_profile",
+      "suite_hook": "eval_model_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9717",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_model_regression_status",
+      "suite_hook": "eval_model_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9724",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_multi_agent_regression_profile",
+      "suite_hook": "eval_multi_agent_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10083",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_multi_agent_regression_status",
+      "suite_hook": "eval_multi_agent_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10092",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_p1_regression_status",
+      "suite_hook": "eval_p1_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9412",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_prompt_regression_profile",
+      "suite_hook": "eval_prompt_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9573",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_prompt_regression_status",
+      "suite_hook": "eval_prompt_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9580",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_session_regression_profile",
+      "suite_hook": "eval_session_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9935",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_session_regression_status",
+      "suite_hook": "eval_session_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9944",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_skill_regression_profile",
+      "suite_hook": "eval_skill_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10159",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_skill_regression_status",
+      "suite_hook": "eval_skill_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10166",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_subject_regression_inventory",
+      "suite_hook": "eval_subject_regression_inventory",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10473",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_system_regression_profile",
+      "suite_hook": "eval_system_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10449",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_system_regression_status",
+      "suite_hook": "eval_system_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10458",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_tool_regression_profile",
+      "suite_hook": "eval_tool_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10011",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_tool_regression_status",
+      "suite_hook": "eval_tool_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:10018",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_workflow_regression_profile",
+      "suite_hook": "eval_workflow_regression_profile",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9643",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "eval_workflow_regression_status",
+      "suite_hook": "eval_workflow_regression_status",
+      "impl_ref": "aiPlat-core/core/api/core_facade.py:9652",
+      "status": "attached",
+      "layer": "facade"
+    },
+    {
+      "symbol": "generated_app_regression_profile",
+      "suite_hook": "generated_app_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/generated_app_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "generated_app_regression_status",
+      "suite_hook": "generated_app_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/generated_app_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "get_subject_suite_profile",
+      "suite_hook": "get_subject_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:164",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "get_suite_profile",
+      "suite_hook": "get_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/capability_case_bank.py:277",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "kb_regression_profile",
+      "suite_hook": "kb_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/kb_capability_bank.py:150",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "kb_regression_status",
+      "suite_hook": "kb_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/kb_capability_bank.py:173",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "load_cases_for_suite_profile",
+      "suite_hook": "load_cases_for_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:200",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "load_subject_suite_profile",
+      "suite_hook": "load_subject_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:99",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "model_regression_profile",
+      "suite_hook": "model_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/model_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "model_regression_status",
+      "suite_hook": "model_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/model_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "multi_agent_regression_profile",
+      "suite_hook": "multi_agent_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py:153",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "multi_agent_regression_status",
+      "suite_hook": "multi_agent_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/multi_agent_capability_bank.py:176",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "normalize_suite_profile",
+      "suite_hook": "normalize_suite_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_suite_profiles.py:44",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "prompt_regression_profile",
+      "suite_hook": "prompt_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/prompt_capability_bank.py:147",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "prompt_regression_status",
+      "suite_hook": "prompt_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/prompt_capability_bank.py:170",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "session_regression_profile",
+      "suite_hook": "session_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/session_capability_bank.py:150",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "session_regression_status",
+      "suite_hook": "session_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/session_capability_bank.py:173",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "skill_regression_profile",
+      "suite_hook": "skill_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/skill_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "skill_regression_status",
+      "suite_hook": "skill_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/skill_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "subject_regression_inventory",
+      "suite_hook": "subject_regression_inventory",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/subject_regression_inventory.py:222",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "system_regression_profile",
+      "suite_hook": "system_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/system_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "system_regression_status",
+      "suite_hook": "system_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/system_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "tool_regression_profile",
+      "suite_hook": "tool_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/tool_capability_bank.py:150",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "tool_regression_status",
+      "suite_hook": "tool_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/tool_capability_bank.py:173",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "workflow_regression_profile",
+      "suite_hook": "workflow_regression_profile",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/workflow_capability_bank.py:149",
+      "status": "attached",
+      "layer": "impl"
+    },
+    {
+      "symbol": "workflow_regression_status",
+      "suite_hook": "workflow_regression_status",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/workflow_capability_bank.py:172",
+      "status": "attached",
+      "layer": "impl"
+    }
+  ],
+  "honesty": "B3 regression/profile/status symbols mapped to impl defs. ≠ platform coverage complete / global Tier A expansion."
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "eval.meta_eval.f1_holdout_isolation.v0",
+  "family_id": "F1",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
+  "pack": "g2b_tasks.v0",
+  "pack_sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+  "policy": {
+    "splits": [
+      "dev",
+      "val",
+      "holdout"
+    ],
+    "ratios_forbidden_on_holdout": true,
+    "ci_runs": [
+      "dev",
+      "val"
+    ],
+    "reveal": "pre_release_once",
+    "ratio": {
+      "dev": 0.7,
+      "val": 0.15,
+      "holdout": 0.15
+    }
+  },
+  "counts": {
+    "dev": 70,
+    "val": 15,
+    "holdout": 15
+  },
+  "holdout_task_ids": [
+    "g2b-85",
+    "g2b-86",
+    "g2b-87",
+    "g2b-88",
+    "g2b-89",
+    "g2b-90",
+    "g2b-91",
+    "g2b-92",
+    "g2b-93",
+    "g2b-94",
+    "g2b-95",
+    "g2b-96",
+    "g2b-97",
+    "g2b-98",
+    "g2b-99"
+  ],
+  "freeze_ref": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Rules declared for META_EVAL holdout isolation. Holdout not revealed for scoring. ≠ Tier A authorize."
+}

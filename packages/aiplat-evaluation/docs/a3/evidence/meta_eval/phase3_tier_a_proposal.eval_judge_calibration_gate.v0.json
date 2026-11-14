@@ -1,0 +1,32 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-6-eval_judge_calibration_gate",
+  "seq": 6,
+  "symbol": "eval_judge_calibration_gate",
+  "meta_family": "F1",
+  "kind": "facade_wrapper",
+  "recorded_at": "2026-11-14T21:06:58+08:00",
+  "status": "accepted",
+  "impl_def": "aiPlat-core/core/api/core_facade.py:10670",
+  "wraps": "evaluate_judge_calibration_gate",
+  "depends_on_accepted": [
+    "evaluate_judge_calibration_gate"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/meta_eval/phase3_tier_a_authorized_symbols.v0.json",
+    "docs/a3/evidence/meta_eval/f1_judge_family_status.v0.json"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true
+  },
+  "owner_decision": "ACCEPT eval_judge_calibration_gate scoped Tier A gate",
+  "owner": "朱向群",
+  "decided_at": "2026-11-14T21:06:58+08:00",
+  "honesty": "Owner accepted facade wrapper eval_judge_calibration_gate. global expansion false; accuracy_claim false.",
+  "tier_a_gate_authorized_for_symbol": true
+}

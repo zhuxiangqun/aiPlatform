@@ -7,22 +7,29 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
 cd "$ROOT"
 
+PYTHON="${PYTHON:-python3}"
+
 PKG_JSON="$ROOT/package.json"
 [[ -f "$PKG_JSON" ]] || { echo "REFUSE: missing package.json" >&2; exit 2; }
 
-VER="$(python3 -c "import json; print(json.load(open('$PKG_JSON'))['version'])")"
+VER="$("$PYTHON" -c "import json; print(json.load(open('$PKG_JSON'))['version'])")"
 [[ -n "$VER" ]] || { echo "REFUSE: empty version" >&2; exit 2; }
-echo "== version $VER =="
+echo "== version $VER (python=$PYTHON) =="
 
-python3 "$ROOT/contracts/validate_sample.py"
+"$PYTHON" "$ROOT/contracts/validate_sample.py"
 
-PYTHONPATH=. python3 -m pytest \
-  tests/test_arch_consolidation_v1.py \
-  tests/test_scorecard_v1.py \
-  -q --tb=line
+# Prefer Phase 0 stable subset when available; keep thin fallback for older callers.
+if [[ "${AIPLAT_EVAL_RELEASE_USE_PHASE0_SUBSET:-1}" == "1" ]] && [[ -f "$ROOT/scripts/phase0_ci_stable_subset.sh" ]]; then
+  PYTHON="$PYTHON" bash "$ROOT/scripts/phase0_ci_stable_subset.sh"
+else
+  PYTHONPATH=. "$PYTHON" -m pytest \
+    tests/test_arch_consolidation_v1.py \
+    tests/test_scorecard_v1.py \
+    -q --tb=line
+fi
 
 # Contracts SSOT: reports must not carry divergent schema copies.
-python3 - <<PY
+"$PYTHON" - <<PY
 from pathlib import Path
 repo = Path("$REPO")
 pkg = repo / "packages/aiplat-evaluation/contracts/schemas"

@@ -1,0 +1,22 @@
+{
+  "schema": "eval.b4s.local_rehearsal.v0",
+  "product_id": "evaluation",
+  "environment": "local",
+  "not_staging_evidence": true,
+  "option_b_track": true,
+  "process_split_authorized": false,
+  "chart_a3_process_split_authorized": false,
+  "production_signed": false,
+  "accuracy_claim": false,
+  "compose_file": "compose/docker-compose.b4s-local.yml",
+  "db_url_host": "127.0.0.1:5434",
+  "jobs_before": 4,
+  "jobs_after_restore": 4,
+  "backup_bytes": 13653,
+  "dual_read_drill": true,
+  "keycloak_jwks_ok": true,
+  "skip_keycloak": true,
+  "skip_minio": true,
+  "recorded_at": "20261114T144551Z",
+  "honesty": "B4-S Option B local Docker rehearsal (:5434 sibling of PGHA :5433) — not staging host; not PITR certification; Chart/runtime authorize stays false"
+}

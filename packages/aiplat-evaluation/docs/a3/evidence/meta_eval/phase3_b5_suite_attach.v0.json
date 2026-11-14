@@ -1,0 +1,33 @@
+{
+  "schema": "eval.phase3.b5_suite_attach.v0",
+  "recorded_at": "2026-11-14T21:51:30+08:00",
+  "bucket_id": "B5_types_errors",
+  "authorized": true,
+  "owner": "朱向群",
+  "accepted_at": "2026-11-14T21:51:30+08:00",
+  "n": 2,
+  "attached": 2,
+  "gaps": [],
+  "global_tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "forbid_single_coverage_percent": true,
+  "attachments": [
+    {
+      "symbol": "ModeAwareExamError",
+      "suite_hook": "ModeAwareExamError",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/mode_aware_exam.py:39",
+      "status": "attached",
+      "layer": "type",
+      "note": "importable exception/type symbol"
+    },
+    {
+      "symbol": "SuiteProfileExamError",
+      "suite_hook": "SuiteProfileExamError",
+      "impl_ref": "aiPlat-core/core/apps/eval/service/suite_profile_exam.py:35",
+      "status": "attached",
+      "layer": "type",
+      "note": "importable exception/type symbol"
+    }
+  ],
+  "honesty": "B5 exception/type symbols mapped to class defs. ≠ platform coverage complete / global Tier A expansion."
+}

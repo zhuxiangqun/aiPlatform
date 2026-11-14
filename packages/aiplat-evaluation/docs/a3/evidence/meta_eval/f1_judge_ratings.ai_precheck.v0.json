@@ -1,0 +1,288 @@
+{
+  "schema": "eval.judge_calibration.ratings.v0",
+  "family_id": "F1",
+  "judge_id": "ai.precheck.f1",
+  "judge_kind": "ai",
+  "pack": "g2b_tasks.v0",
+  "pack_sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+  "sample_n": 20,
+  "agreement": 0.95,
+  "kappa": 0.875,
+  "ece": 0.045,
+  "metrics": {
+    "n": 20,
+    "agree_n": 19,
+    "human_true_n": 15,
+    "judge_true_n": 14,
+    "ece_bins": 5
+  },
+  "status": "ai_precheck_pending_human",
+  "green": false,
+  "precheck_green": true,
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "ratings": [
+    {
+      "case_id": "g2b-09",
+      "rater": "human.gold",
+      "score": 0,
+      "human_pass": false
+    },
+    {
+      "case_id": "g2b-09",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-30",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-30",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-70",
+      "rater": "human.gold",
+      "score": 0,
+      "human_pass": false
+    },
+    {
+      "case_id": "g2b-70",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-75",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-75",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-61",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-61",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-64",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-64",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-97",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-97",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.95
+    },
+    {
+      "case_id": "g2b-16",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-16",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-63",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-63",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.55
+    },
+    {
+      "case_id": "g2b-04",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-04",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.95
+    },
+    {
+      "case_id": "g2b-56",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-56",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-55",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-55",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-94",
+      "rater": "human.gold",
+      "score": 0,
+      "human_pass": false
+    },
+    {
+      "case_id": "g2b-94",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-19",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-19",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-53",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-53",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.95
+    },
+    {
+      "case_id": "g2b-78",
+      "rater": "human.gold",
+      "score": 0,
+      "human_pass": false
+    },
+    {
+      "case_id": "g2b-78",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-83",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-83",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-98",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-98",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-69",
+      "rater": "human.gold",
+      "score": 0,
+      "human_pass": false
+    },
+    {
+      "case_id": "g2b-69",
+      "rater": "ai.precheck",
+      "score": 0,
+      "judge_pass": false,
+      "judge_confidence": 0.99
+    },
+    {
+      "case_id": "g2b-48",
+      "rater": "human.gold",
+      "score": 1,
+      "human_pass": true
+    },
+    {
+      "case_id": "g2b-48",
+      "rater": "ai.precheck",
+      "score": 1,
+      "judge_pass": true,
+      "judge_confidence": 0.95
+    }
+  ],
+  "created_at": "2026-11-14T18:14:53+08:00",
+  "honesty": "AI precheck only: judge=AI review, human labels=adjudicated gold. Not human judge calibration; not Tier A; not accuracy claim."
+}

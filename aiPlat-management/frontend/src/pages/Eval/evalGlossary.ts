@@ -58,8 +58,16 @@ export const EVAL_GLOSSARY: EvalGlossEntry[] = [
     term: 'accuracy_claim',
     aliases: ['宣称准确率', 'accuracy'],
     meaning:
-      '是否宣称「模型准确率」：默认false；跑通Job≠测准；仅claims-gate门槛+explicit_authorize后可对限定范围声明',
+      '产品级准确率认证字段：方案A下永远false；跑通Job≠测准；不可与 scoped_accuracy_claim 混用',
     domain: 'honesty',
+  },
+  {
+    term: 'scoped_accuracy_claim',
+    aliases: ['G2b scoped claim', 'scoped准确率'],
+    meaning:
+      '仅G2b范围的准确率披露：owner attestation+aggregate --claim-ready后可为true；≠产品级accuracy_claim、≠安全/生产认证',
+    domain: 'honesty',
+    surfaces: ['g2b', 'scorecard'],
   },
   {
     term: 'claims_gate',

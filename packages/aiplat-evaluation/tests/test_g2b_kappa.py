@@ -8,15 +8,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "g2b_kappa.py"
-TASKS = ROOT / "docs/a3/g2b_tasks.v0.json"
+TASKS_FULL = ROOT / "docs/a3/g2b_tasks.v0.json"
+# CI subset: κ gate uses 30-task pack; full n=100 remains closeout-only.
+TASKS_CI30 = ROOT / "docs/a3/fixtures/g2b_tasks.ci30.v0.json"
 
 
 def test_task_pack_has_30():
-    pack = json.loads(TASKS.read_text(encoding="utf-8"))
+    pack = json.loads(TASKS_FULL.read_text(encoding="utf-8"))
     assert pack["accuracy_claim"] is False
     assert len(pack["tasks"]) >= 30
     ids = [t["id"] for t in pack["tasks"]]
     assert len(ids) == len(set(ids))
+    ci = json.loads(TASKS_CI30.read_text(encoding="utf-8"))
+    assert ci["accuracy_claim"] is False
+    assert len(ci["tasks"]) == 30
 
 
 def test_cohen_perfect_and_chance():
@@ -37,8 +42,9 @@ def test_cohen_perfect_and_chance():
 
 
 def test_cli_pairs_30(tmp_path: Path):
-    pack = json.loads(TASKS.read_text(encoding="utf-8"))
-    ids = [t["id"] for t in pack["tasks"][:30]]
+    pack = json.loads(TASKS_CI30.read_text(encoding="utf-8"))
+    ids = [t["id"] for t in pack["tasks"]]
+    assert len(ids) == 30
 
     def sheet(name: str, flip: bool = False) -> Path:
         labels = []
@@ -67,7 +73,7 @@ def test_cli_pairs_30(tmp_path: Path):
             "--b",
             str(b),
             "--tasks",
-            str(TASKS),
+            str(TASKS_CI30),
             "--out",
             str(out),
         ],

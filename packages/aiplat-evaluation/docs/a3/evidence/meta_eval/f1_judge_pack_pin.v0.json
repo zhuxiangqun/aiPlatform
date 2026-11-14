@@ -1,0 +1,32 @@
+{
+  "schema": "eval.meta_eval.f1_judge_pack_pin.v0",
+  "family_id": "F1",
+  "recorded_at": "2026-11-14T17:57:19+08:00",
+  "pack": "g2b_tasks.v0",
+  "pack_sha256": "749e5d98311237ec176359f3eed435fecfcf1582dcaec69d5ffab27a1bcb379f",
+  "seed": 20261114,
+  "freeze_ref": "docs/a3/evidence/g2b_freeze_record.v1.json",
+  "freeze_status": "confirmed",
+  "api_hooks": [
+    "open_capability_judge_calibration",
+    "evaluate_judge_calibration_gate",
+    "cohen_kappa_binary"
+  ],
+  "ratings_path": "docs/a3/evidence/meta_eval/f1_judge_ratings.human_judge.v0.json",
+  "agreement": 1.0,
+  "kappa": 1.0,
+  "ece": 0.0725,
+  "status": "scored",
+  "green": true,
+  "accuracy_claim": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "Human judge calibration scored (pass+confidence). agreement=1.0 kappa=1.0 ece=0.0725. ≠ Tier A.",
+  "ratings_n": 20,
+  "sample_n": 20,
+  "judge_kind": "human",
+  "precheck_green": false,
+  "prechecked_at": "2026-11-14T18:29:50+08:00",
+  "used_n": 20,
+  "excluded_n": 0,
+  "scored_at": "2026-11-14T18:57:47+08:00"
+}

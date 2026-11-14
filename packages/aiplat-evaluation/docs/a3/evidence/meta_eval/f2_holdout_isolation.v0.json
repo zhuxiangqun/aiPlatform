@@ -1,0 +1,20 @@
+{
+  "schema": "eval.meta_eval.f2_holdout_isolation.v0",
+  "family_id": "F2",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
+  "policy": {
+    "l5_declare_holdout_until_meta_eval_green": true,
+    "security_certification_holdout": true,
+    "reveal": "pre_release_once",
+    "tuning_forbidden_on_holdout": true
+  },
+  "holdout_claims": [
+    "l5_declare_allowed_families",
+    "security_certification",
+    "accuracy_claim"
+  ],
+  "accuracy_claim": false,
+  "security_certification": false,
+  "tier_a_claim_authorized": false,
+  "honesty": "L5 declare / security certification stay holdout-from-claim until F2 META_EVAL family_green AND explicit owner authorize. ≠ Tier A."
+}

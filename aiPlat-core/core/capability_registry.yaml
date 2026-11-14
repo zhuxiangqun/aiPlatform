@@ -13,7 +13,7 @@ generated_at: "2026-10-22"
 # caps_count MUST equal len(provides) per domain (公开符号登记数；勿与 CAPABILITIES 产品行混算).
 # 矩阵全文 ≡ generate_impact_matrix.render_matrix_markdown(registry)；校验用临时全文 diff。
 total_capability_domains: 34
-total_capabilities: 2674
+total_capabilities: 2691
 domains:
   # ══════════════════════════════════════════════════════════════
   # 一、Harness 执行引擎 (317 caps)
@@ -21,7 +21,7 @@ domains:
   harness-execution-engine:
     section: "一"
     section_name: "Harness 执行引擎"
-    caps_count: 630
+    caps_count: 642
     provides:
       - symbol: "PipelineEngine"
         module: aiPlat-core/core/harness/execution/pipeline_engine.py
@@ -2499,6 +2499,54 @@ domains:
         type: function
         signature: 'Write {name}.py.draft only — never enable as .py.'
         module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: normalize_asset_report_row
+        type: function
+        signature: 'Unify InstallReport / Tool discovery asset row field names.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: wrap_install_report
+        type: function
+        signature: 'Wrap assets[] as schema=aiplat.install_report.v0.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: apply_majority_import_gate
+        type: function
+        signature: 'Mark import_failed when majority of assets are blocked.'
+        module: aiPlat-core/core/harness/maintenance/asset_compat.py
+      - symbol: secure_scan_asset_tree
+        type: function
+        signature: 'Scan asset tree for traversal and blocked suffixes.'
+        module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
+      - symbol: enforce_secure_scan
+        type: function
+        signature: 'Run SecureScan; raise AssetSecureScanError on failure.'
+        module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
+      - symbol: marketplace_create_submission
+        type: function
+        signature: 'Persist a marketplace publish submission (pending_review).'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: marketplace_list_submissions
+        type: function
+        signature: 'List marketplace publish submissions.'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: marketplace_decide_submission
+        type: function
+        signature: 'Approve or reject a pending marketplace submission.'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: marketplace_list_listed_skills
+        type: function
+        signature: 'Skills with marketplace listed=1 visibility.'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: wrap_asset_install_report
+        type: function
+        signature: 'CoreFacade InstallReport wrapper (schema=aiplat.install_report.v0).'
+        module: aiPlat-core/core/api/core_facade.py
+      - symbol: AssetSecureScanError
+        type: class
+        signature: 'Raised when SecureScan blocks an import (no disk install).'
+        module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
+      - symbol: secure_scan_zip
+        type: function
+        signature: 'Scan zip members for traversal / bomb / blocked suffixes before extract.'
+        module: aiPlat-core/core/harness/maintenance/asset_secure_scan.py
     breaks: []
     consumers_expected:
       - module: "core/api/routers/builder_project_service.py"
@@ -7055,7 +7103,7 @@ domains:
   evaluation-system:
     section: "十三"
     section_name: "评估系统"
-    caps_count: 639
+    caps_count: 644
     provides:
       - symbol: estimate_m2_deferred_modes
         type: function
@@ -8292,6 +8340,26 @@ domains:
       - symbol: MultiAgentSubjectAdapter
         type: class
         signature: 'Multi-Agent Subject adapter — fixture handoff path; claim_eligible=false; not OBJECT_TYPES.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: SkillSubjectAdapter
+        type: class
+        signature: 'Skill Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: GeneratedAppSubjectAdapter
+        type: class
+        signature: 'Generated-App Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: ApiSubjectAdapter
+        type: class
+        signature: 'API Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: DatasetSubjectAdapter
+        type: class
+        signature: 'Dataset Subject adapter — lexical fixture; claim_eligible=false.'
+        module: aiPlat-core/core/apps/eval/service/subject_adapter.py
+      - symbol: SystemSubjectAdapter
+        type: class
+        signature: 'System Subject adapter — lexical fixture; claim_eligible=false.'
         module: aiPlat-core/core/apps/eval/service/subject_adapter.py
       - symbol: list_subject_kinds
         type: function

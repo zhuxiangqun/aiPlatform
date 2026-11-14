@@ -1,0 +1,62 @@
+{
+  "schema": "eval.meta_eval.f2_status.v0",
+  "family_id": "F2",
+  "family": "Security family gates",
+  "recorded_at": "2026-11-14T23:14:18+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "status": "green",
+      "green": true,
+      "f1_prerequisite_met": true,
+      "source": "docs/a3/evidence/meta_eval/f2_security_judge_pack_pin.v0.json",
+      "note": "Security human judge metrics meet R11."
+    },
+    {
+      "id": "gold_audit",
+      "status": "advisory_present",
+      "green": true,
+      "source": "docs/a3/evidence/s1_prod_model_aggregate.v1.json",
+      "note": "S1 aggregate present with honesty locks (accuracy_claim=false, not_security_certification=true)."
+    },
+    {
+      "id": "contamination",
+      "status": "advisory_only",
+      "green": true,
+      "over_threshold": true,
+      "source": "docs/a3/evidence/meta_eval/f2_contamination.v0.json",
+      "note": "Inherited F1 advisory; R11 advisory_only."
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f2_holdout_isolation.v0.json",
+      "note": "L5 declare / security certification holdout-from-claim declared."
+    },
+    {
+      "id": "iaa",
+      "status": "green",
+      "green": true,
+      "source": "docs/a3/evidence/meta_eval/f2_security_dual_human.worksheet.v0.json",
+      "note": "Security failure dual-human attestation complete."
+    }
+  ],
+  "counts": {
+    "green": 5,
+    "total": 5
+  },
+  "family_green": true,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "security_certification": false,
+  "process_split_authorized": false,
+  "l5_declare_authorized": false,
+  "honesty": "F2 partial until security judge + dual-human IAA land. family_green ≠ L5 declare ≠ Tier A.",
+  "api_hooks": [
+    "evaluate_security_family_gates",
+    "evaluate_security_judge_calibration",
+    "evaluate_security_severity_l5_gate"
+  ]
+}

@@ -6,9 +6,10 @@ doc_type: Reference
 
 > Machine: [`scorecard_v1.json`](./scorecard_v1.json) · Gate: `scripts/scorecard_v1_check.sh`
 > Evidence audit: [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md) + [`evidence/evidence_manifest.v1.json`](./evidence/evidence_manifest.v1.json)
-> Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**
+> Honesty: 分值只相对 **首版声明范围**；`accuracy_claim=false` · ≠ 生产授权 · **功能 5 需可审计证据 + 双人真实性确认**  
+> **Phase 1**：2026-11-14 双人审计签字 → **首版 5/5 已审计通过**（相对 SCORE_SCOPE_V1；≠ authorize；≠ 准确率认证）· 见 [`PHASE1_AUDIT_WORKSHEET.md`](./PHASE1_AUDIT_WORKSHEET.md)
 
-**记录日**：2026-11-05
+**记录日**：2026-11-05（Phase 1 审计签字：2026-11-14）
 
 | 轴 | 当前分 | 首版 5/5？ | 主要缺口 |
 |----|--------|-----------|----------|
@@ -24,7 +25,7 @@ G2b κ≈0.7624、preference agreement=0.75/κ≈0.47；聚合见 `docs/a3/evide
 `dual_human_attestation.status=confirmed`（2026-11-04 操作员确认两名真人独立盲填）。
 审计门禁见 [`EVIDENCE_AUDIT_V1.md`](./EVIDENCE_AUDIT_V1.md)。
 
-**仍禁止误读**：功能分 ≠ 准确率；`accuracy_claim=false`；κ/agreement ≠ accuracy。G2b **pass-rate vs adjudicated gold** 见 [`G2B_ACCURACY_CLOSEOUT.md`](./G2B_ACCURACY_CLOSEOUT.md)（claim 仍 false，待产品 owner 签 attestation）。
+**仍禁止误读**：功能分 ≠ 准确率；产品级 `accuracy_claim=false`；κ/agreement ≠ accuracy。G2b **pass-rate vs adjudicated gold** 见 evidence aggregate（方案 A：`scoped_accuracy_claim=true` + attestation；**≠** 产品级准确率认证）。Phase 1 审计工作表：[`PHASE1_AUDIT_WORKSHEET.md`](./PHASE1_AUDIT_WORKSHEET.md)。
 
 ### 架构 5.0（首版范围）
 
