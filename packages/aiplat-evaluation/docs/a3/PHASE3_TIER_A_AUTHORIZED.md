@@ -16,9 +16,10 @@ doc_type: Reference
 | `judge_calibration_gate_for_ticket` | 按工单门禁 |
 | `cohen_kappa_binary` | κ/IAA 辅助 |
 | `wilson_score_ci` | Wilson CI 辅助 |
+| `eval_judge_calibration_gate` | CoreFacade 包装 #1 |
 
-owner：朱向群。F1 impl 度量链已齐；下一步为 facade 包装。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。≠ 产品准确率认证 / L5 / process_split。
 
 ## 下一步
 
-提案 #6：[`PHASE3_TIER_A_PROPOSAL_eval_judge_calibration_gate.md`](./PHASE3_TIER_A_PROPOSAL_eval_judge_calibration_gate.md)（CoreFacade 包装）
+提案 #7：[`PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md`](./PHASE3_TIER_A_PROPOSAL_eval_open_capability_judge_calibration.md)
