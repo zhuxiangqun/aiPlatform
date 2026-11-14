@@ -14,7 +14,7 @@ doc_type: Reference
 | F-002 | SHA mismatch G2B_PREP | 断言过期 | semantic index stub → 更新 SHA；不升 SCOPE | 评测 owner | 同上 | **done** |
 | F-003 | SHA mismatch PREFERENCE_V0 | 断言过期 | editorial → 更新 SHA | 评测 owner | 同上 | **done** |
 | F-004 | aggregate 产品级 `accuracy_claim=true` 字段冲突 | 实现 | 方案 A 拆字段 + closeout/g2b/UI/tests | 评测 owner | 产品级 false；scoped true | **done**（core 6 passed @ venv 3.11） |
-| F-005 | calibration 指向已归档 human_pack | 数据 | fixture + FIXTURE_SOURCES；脚本改指 | 评测 owner | calibration 测绿 | **done** |
+| F-005 | calibration 指向已归档/gitignore human_pack | 数据 | preference→fixture；G2b→`g2b_tasks.v0`（可选 `AIPLAT_EVAL_G2B_FACILITATOR`） | 评测 owner | CI `test_calibration_human_pack` 绿 | **done**（2026-11-14 CI 复验：G2b 路径补齐） |
 | F-006 | κ CLI n=100 vs 测试 30 → incomplete_pair | 数据 | `g2b_tasks.ci30.v0.json` | 评测 owner | κ 30 绿 | **done** |
 | F-007 | core eval 基线（曾被系统 Py3.9 阻断） | 环境 | 使用仓库 `.venv`（3.11）重跑 | 评测 owner | core g2b 6 passed 有报告 | **done** |
 | F-008 | package 全量曾缺 jwt / collect error | 环境 | `.venv` 全量：207 passed / 1 failed（F-009） | 评测 owner | 全量报告归档 | **done**（报告见 drills） |
