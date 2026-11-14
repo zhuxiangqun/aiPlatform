@@ -25,6 +25,7 @@ _log = logging.getLogger("aiplat.emotion_tracker")
 
 
 class EmotionalTone(str, Enum):
+    """EmotionalTone。"""
     NEUTRAL = "neutral"
     POSITIVE = "positive"
     ANXIOUS = "anxious"
@@ -37,6 +38,7 @@ class EmotionalTone(str, Enum):
 
 @dataclass
 class EmotionSnapshot:
+    """EmotionSnapshot。"""
     session_id: str
     timestamp: float
     dominant_tone: EmotionalTone = EmotionalTone.NEUTRAL
@@ -44,6 +46,8 @@ class EmotionSnapshot:
     keywords: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "session_id": self.session_id,
             "timestamp": self.timestamp,
@@ -55,6 +59,7 @@ class EmotionSnapshot:
 
 @dataclass
 class EmotionState:
+    """EmotionState。"""
     tenant_id: str
     session_id: str
     current_tone: EmotionalTone = EmotionalTone.NEUTRAL
@@ -65,6 +70,8 @@ class EmotionState:
     avg_session_length_min: float = 0.0
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "tenant_id": self.tenant_id,
             "session_id": self.session_id,
@@ -97,6 +104,12 @@ class EmotionTracker:
     """Cross-session emotional state tracker."""
 
     def __init__(self, dependency_window_days: int = 7, dependency_threshold_sessions: int = 30):
+        """初始化。
+
+        Args:
+            dependency_window_days: dependency_window_days 参数。
+            dependency_threshold_sessions: dependency_threshold_sessions 参数。
+        """
         self._window_days = dependency_window_days
         self._threshold_sessions = dependency_threshold_sessions
         self._cache: Dict[str, EmotionState] = {}
@@ -182,6 +195,14 @@ class EmotionTracker:
         tenant_id: str = "default",
         session_duration_s: float = 0.0,
     ):
+        """track。
+
+        Args:
+            session_id: 会话 ID。
+            messages: messages 参数。
+            tenant_id: 租户 ID。
+            session_duration_s: session_duration_s 参数。
+        """
         if not messages:
             return
 
@@ -281,12 +302,23 @@ class EmotionTracker:
         return "low"
 
     async def get_state(self, session_id: str, tenant_id: str = "default") -> Optional[EmotionState]:
+        """获取 state。
+
+        Args:
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+        """
         key = self._cache_key(tenant_id, session_id)
         if key in self._cache:
             return self._cache[key]
         return await self._load_from_store(session_id, tenant_id)
 
     def get_flagged_sessions(self, tenant_id: str = "default") -> List[EmotionState]:
+        """获取 flagged_sessions。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         flagged = []
         prefix = f"{tenant_id}:"
         for key, state in self._cache.items():
@@ -301,6 +333,8 @@ _emotion_tracker: Optional[EmotionTracker] = None
 
 
 def get_emotion_tracker() -> EmotionTracker:
+    """获取 emotion_tracker。
+    """
     global _emotion_tracker
     if _emotion_tracker is None:
         _emotion_tracker = EmotionTracker()

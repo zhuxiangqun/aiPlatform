@@ -1,3 +1,5 @@
+"""push：模块接口。"""
+
 from typing import Dict, Any, Optional, Callable, List, Awaitable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -6,6 +8,7 @@ import asyncio
 
 
 class PushDestination(Enum):
+    """PushDestination。"""
     WEBHOOK = "webhook"
     KAFKA = "kafka"
     RABBITMQ = "rabbitmq"
@@ -15,6 +18,7 @@ class PushDestination(Enum):
 
 
 class PushStatus(Enum):
+    """PushStatus。"""
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
@@ -23,6 +27,7 @@ class PushStatus(Enum):
 
 @dataclass
 class PushTarget:
+    """PushTarget。"""
     name: str
     destination: PushDestination
     endpoint: str
@@ -35,6 +40,7 @@ class PushTarget:
 
 @dataclass
 class PushMessage:
+    """PushMessage。"""
     id: str
     target: PushTarget
     payload: Dict[str, Any]
@@ -49,7 +55,13 @@ PushSender = Callable[[PushTarget, Dict[str, Any]], Awaitable[bool]]
 
 
 class PushManager:
+    """PushManager。"""
     def __init__(self, max_queue_size: int = 1000):
+        """初始化。
+
+        Args:
+            max_queue_size: max_queue_size 参数。
+        """
         self.max_queue_size = max_queue_size
         self._targets: Dict[str, PushTarget] = {}
         self._queue: asyncio.Queue[PushMessage] = asyncio.Queue(maxsize=max_queue_size)
@@ -68,6 +80,18 @@ class PushManager:
         headers: Optional[Dict[str, str]] = None,
         **metadata,
     ):
+        """register_target。
+
+        Args:
+            name: name 参数。
+            destination: destination 参数。
+            endpoint: endpoint 参数。
+            enabled: 是否启用。
+            retry_count: retry_count 参数。
+            timeout_seconds: timeout_seconds 参数。
+            headers: headers 参数。
+            metadata: metadata 参数。
+        """
         target = PushTarget(
             name=name,
             destination=destination,
@@ -82,15 +106,31 @@ class PushManager:
         return target
 
     def remove_target(self, name: str) -> bool:
+        """remove_target。
+
+        Args:
+            name: name 参数。
+        """
         if name in self._targets:
             del self._targets[name]
             return True
         return False
 
     def get_target(self, name: str) -> Optional[PushTarget]:
+        """获取 target。
+
+        Args:
+            name: name 参数。
+        """
         return self._targets.get(name)
 
     def register_sender(self, destination: PushDestination, sender: PushSender):
+        """register_sender。
+
+        Args:
+            destination: destination 参数。
+            sender: sender 参数。
+        """
         self._custom_senders[destination] = sender
 
     async def push(
@@ -98,6 +138,12 @@ class PushManager:
         target_name: str,
         payload: Dict[str, Any],
     ) -> bool:
+        """push。
+
+        Args:
+            target_name: target_name 参数。
+            payload: 载荷 dict。
+        """
         target = self._targets.get(target_name)
         if not target or not target.enabled:
             return False
@@ -120,6 +166,13 @@ class PushManager:
         event_type: str,
         data: Dict[str, Any],
     ):
+        """emit。
+
+        Args:
+            target_name: target_name 参数。
+            event_type: event_type 参数。
+            data: data 参数。
+        """
         payload = {
             "event_type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -128,12 +181,16 @@ class PushManager:
         await self.push(target_name, payload)
 
     async def start(self):
+        """start。
+        """
         if self._running:
             return
         self._running = True
         self._processing_task = asyncio.create_task(self._process_messages())
 
     async def stop(self):
+        """stop。
+        """
         self._running = False
         if self._processing_task:
             await self._processing_task
@@ -185,9 +242,13 @@ class PushManager:
             return False
 
     def get_queue_size(self) -> int:
+        """获取 queue_size。
+        """
         return self._queue.qsize()
 
     def get_target_status(self) -> Dict[str, Dict[str, Any]]:
+        """获取 target_status。
+        """
         return {
             name: {
                 "enabled": target.enabled,
@@ -199,15 +260,33 @@ class PushManager:
 
 
 class PushFeedbackHandler:
+    """PushFeedbackHandler。"""
     def __init__(self, push_manager: PushManager, target_name: str):
+        """初始化。
+
+        Args:
+            push_manager: push_manager 参数。
+            target_name: target_name 参数。
+        """
         self.push_manager = push_manager
         self.target_name = target_name
 
     async def handle(self, event_type: str, data: Dict[str, Any]):
+        """handle。
+
+        Args:
+            event_type: event_type 参数。
+            data: data 参数。
+        """
         await self.push_manager.emit(self.target_name, event_type, data)
 
 
 def create_push_manager(max_queue_size: int = 1000) -> PushManager:
+    """创建 push_manager。
+
+    Args:
+        max_queue_size: max_queue_size 参数。
+    """
     return PushManager(max_queue_size)
 
 
@@ -215,4 +294,6 @@ _push_manager = PushManager()
 
 
 def get_push_manager() -> PushManager:
+    """获取 push_manager。
+    """
     return _push_manager

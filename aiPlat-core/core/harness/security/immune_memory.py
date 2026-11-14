@@ -1,3 +1,5 @@
+"""immune_memory：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from core.utils.math_utils import cosine_similarity
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ImmunityRecord:
+    """ImmunityRecord。"""
     text_snippet: str
     embedding: List[float]
     attack_type: str           # jailbreak / injection / prompt_leak / role_confusion
@@ -46,6 +49,7 @@ class ImmunityRecord:
 
 @dataclass
 class ImmunityMatch:
+    """ImmunityMatch。"""
     level: int = 3             # 1=拦截, 2=注入防御前缀, 3=放行
     attack_type: Optional[str] = None
     similarity: float = 0.0
@@ -114,7 +118,12 @@ class ImmuneMemory:
 
     @classmethod
     def immunize(cls, input_text: str, attack_type: str) -> None:
-        """Remember an attack pattern for future detection."""
+        """Remember an attack pattern for future detection.
+
+        Args:
+            input_text: input_text 参数。
+            attack_type: attack_type 参数。
+        """
         text_hash = hashlib.md5(input_text[:100].encode()).hexdigest()[:16]
         recent = cls._memories.get(attack_type, [])[-10:]
         for rec in recent:
@@ -143,7 +152,11 @@ class ImmuneMemory:
 
     @classmethod
     def scan(cls, input_text: str) -> ImmunityMatch:
-        """Scan input against all known attack patterns."""
+        """Scan input against all known attack patterns.
+
+        Args:
+            input_text: input_text 参数。
+        """
         if not input_text or len(input_text) < 5:
             return ImmunityMatch()
 
@@ -175,6 +188,11 @@ class ImmuneMemory:
 
     @classmethod
     def export_defense_skill(cls, attack_type: str) -> Optional[Dict[str, Any]]:
+        """export_defense_skill。
+
+        Args:
+            attack_type: attack_type 参数。
+        """
         records = cls._memories.get(attack_type, [])
         if len(records) < cls.EXPORT_TRIGGER_COUNT:
             return None
@@ -212,6 +230,11 @@ class ImmuneMemory:
 
     @classmethod
     def save_persistent(cls, filepath: str = None) -> None:
+        """save_persistent。
+
+        Args:
+            filepath: filepath 参数。
+        """
         filepath = filepath or get_aiplat_data_dir("immune_memory.json")
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         data = {
@@ -224,6 +247,11 @@ class ImmuneMemory:
 
     @classmethod
     def load_persistent(cls, filepath: str = None) -> None:
+        """load_persistent。
+
+        Args:
+            filepath: filepath 参数。
+        """
         filepath = filepath or get_aiplat_data_dir("immune_memory.json")
         if not os.path.exists(filepath):
             return
@@ -246,6 +274,8 @@ class ImmuneMemory:
 
     @classmethod
     def get_stats(cls) -> Dict[str, Any]:
+        """获取 stats。
+        """
         return {
             "total_types": len(cls._memories),
             "total_records": sum(len(v) for v in cls._memories.values()),
@@ -257,6 +287,11 @@ class ImmuneMemory:
 
     @classmethod
     def clear(cls, attack_type: Optional[str] = None) -> None:
+        """clear。
+
+        Args:
+            attack_type: attack_type 参数。
+        """
         if attack_type:
             cls._memories.pop(attack_type, None)
         else:

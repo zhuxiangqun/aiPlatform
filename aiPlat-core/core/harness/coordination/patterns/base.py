@@ -65,7 +65,11 @@ class ICoordinationPattern(ABC):
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute coordination"""
+        """Execute coordination。
+
+        Args:
+            context: context 参数。
+        """
         pass
 
 
@@ -80,7 +84,11 @@ class PipelinePattern(ICoordinationPattern):
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute pipeline coordination"""
+        """Execute pipeline coordination。
+
+        Args:
+            context: context 参数。
+        """
         outputs = []
         errors = []
         
@@ -112,7 +120,11 @@ class FanOutFanInPattern(ICoordinationPattern):
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute fan-out fan-in coordination"""
+        """Execute fan-out fan-in coordination。
+
+        Args:
+            context: context 参数。
+        """
         # Fan-out: execute all agents in parallel
         async def _run(i: int, agent: Any, task: str):
             ok, output, err = await _safe_execute(agent, task, i)
@@ -155,10 +167,17 @@ class ExpertPoolPattern(ICoordinationPattern):
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._expertises: Dict[str, List[Any]] = {}
 
     def register_expert(self, expertise: str, agent: Any) -> None:
-        """Register an expert for a specific expertise"""
+        """Register an expert for a specific expertise。
+
+        Args:
+            expertise: expertise 参数。
+            agent: agent 参数。
+        """
         if expertise not in self._expertises:
             self._expertises[expertise] = []
         self._expertises[expertise].append(agent)
@@ -167,7 +186,11 @@ class ExpertPoolPattern(ICoordinationPattern):
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute expert pool coordination"""
+        """Execute expert pool coordination。
+
+        Args:
+            context: context 参数。
+        """
         # Determine required expertise from task
         task = context.task.lower()
         
@@ -206,13 +229,22 @@ class ProducerReviewerPattern(ICoordinationPattern):
     """
 
     def __init__(self, max_iterations: int = 3):
+        """初始化。
+
+        Args:
+            max_iterations: max_iterations 参数。
+        """
         self._max_iterations = max_iterations
 
     async def coordinate(
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute producer-reviewer coordination"""
+        """Execute producer-reviewer coordination。
+
+        Args:
+            context: context 参数。
+        """
         if len(context.agents) < 2:
             return CoordinationResult(
                 success=False,
@@ -283,22 +315,36 @@ class SupervisorPattern(ICoordinationPattern):
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._supervisor = None
         self._workers: List[Any] = []
 
     def set_supervisor(self, agent: Any) -> None:
-        """Set supervisor agent"""
+        """Set supervisor agent。
+
+        Args:
+            agent: agent 参数。
+        """
         self._supervisor = agent
 
     def add_worker(self, agent: Any) -> None:
-        """Add worker agent"""
+        """Add worker agent。
+
+        Args:
+            agent: agent 参数。
+        """
         self._workers.append(agent)
 
     async def coordinate(
         self,
         context: CoordinationContext
     ) -> CoordinationResult:
-        """Execute supervisor coordination"""
+        """Execute supervisor coordination。
+
+        Args:
+            context: context 参数。
+        """
         if not self._supervisor or not self._workers:
             return CoordinationResult(
                 success=False,
@@ -368,6 +414,12 @@ class HierarchicalDelegationPattern(ICoordinationPattern):
     """
 
     def __init__(self, depth_limit: int = 3, max_nodes: int = 20):
+        """初始化。
+
+        Args:
+            depth_limit: depth_limit 参数。
+            max_nodes: max_nodes 参数。
+        """
         self._depth_limit = depth_limit
         self._max_nodes = max_nodes
 
@@ -385,6 +437,11 @@ class HierarchicalDelegationPattern(ICoordinationPattern):
         return tasks[: self._max_nodes]
 
     async def coordinate(self, context: CoordinationContext) -> CoordinationResult:
+        """coordinate。
+
+        Args:
+            context: context 参数。
+        """
         if not context.agents:
             return CoordinationResult(success=False, errors=["Need at least 1 agent"])
 
@@ -439,7 +496,11 @@ class HierarchicalDelegationPattern(ICoordinationPattern):
 
 
 def create_pattern(pattern_type: str) -> ICoordinationPattern:
-    """Factory function to create coordination pattern"""
+    """Factory function to create coordination pattern。
+
+    Args:
+        pattern_type: pattern_type 参数。
+    """
     patterns = {
         "pipeline": PipelinePattern,
         "fan_out_fan_in": FanOutFanInPattern,

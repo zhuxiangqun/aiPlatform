@@ -47,6 +47,11 @@ class MineruConverter(DocumentConverter):
     ACCEPTED_MIME_PREFIXES = ("application/pdf", "application/x-pdf")
 
     def __init__(self, backend: str = "cli"):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+        """
         self._backend = backend
 
     def accepts(
@@ -55,6 +60,13 @@ class MineruConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
+        """accepts。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         if not self._accepts_by_format(stream_info):
             return False
         enabled = os.getenv("AIPLAT_PDF_MINERU_ENABLED", "true").strip().lower()
@@ -70,6 +82,13 @@ class MineruConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> List[DocumentElement]:
+        """convert。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         file_path = stream_info.local_path
         if not file_path:
             from core.harness.document.protocol import MissingDependencyException
@@ -187,7 +206,11 @@ class MineruConverter(DocumentConverter):
 # ── Helper: table extraction from MinerU JSON ────────────────────
 
 def table_text_to_cells(obj: Dict[str, Any]) -> Optional[List[List[str]]]:
-    """Normalize MinerU/Docling table payloads to 2D cell array."""
+    """Normalize MinerU/Docling table payloads to 2D cell array.
+
+    Args:
+        obj: obj 参数。
+    """
     for key in ("cells", "table_cells"):
         val = obj.get(key)
         if isinstance(val, list) and val and isinstance(val[0], list):
@@ -204,7 +227,11 @@ def table_text_to_cells(obj: Dict[str, Any]) -> Optional[List[List[str]]]:
 
 
 def parse_markdown_table(md: str) -> Optional[List[List[str]]]:
-    """Parse a markdown table string to 2D cell array."""
+    """Parse a markdown table string to 2D cell array.
+
+    Args:
+        md: md 参数。
+    """
     lines = [l.strip() for l in md.strip().split("\n") if l.strip()]
     if len(lines) < 2:
         return None
@@ -219,7 +246,11 @@ def parse_markdown_table(md: str) -> Optional[List[List[str]]]:
 
 
 def cells_to_markdown(cells: List[List[str]]) -> str:
-    """Convert 2D cells to markdown table string."""
+    """Convert 2D cells to markdown table string.
+
+    Args:
+        cells: cells 参数。
+    """
     if not cells:
         return ""
     lines = []
@@ -231,7 +262,11 @@ def cells_to_markdown(cells: List[List[str]]) -> str:
 
 
 def load_mineru_content_list(output_dir: str) -> List[Dict[str, Any]]:
-    """Scan output_dir for MinerU content-list JSON files."""
+    """Scan output_dir for MinerU content-list JSON files.
+
+    Args:
+        output_dir: output_dir 参数。
+    """
     root = Path(output_dir)
     json_files = sorted(
         [p for p in root.rglob("*.json")

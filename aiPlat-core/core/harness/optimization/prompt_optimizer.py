@@ -43,6 +43,11 @@ class PromptOptimizer:
     """
 
     def __init__(self, agent_id: str):
+        """初始化。
+
+        Args:
+            agent_id: Agent ID。
+        """
         self.agent_id = agent_id
         cfg = _load_optimization_config(agent_id)
         self.max_rounds = int(cfg.get("max_rounds", 20))
@@ -130,15 +135,9 @@ class PromptOptimizer:
     def compare_ab(run_a: Dict[str, Any], run_b: Dict[str, Any]) -> Dict[str, Any]:
         """Compare two optimization runs (A/B experiment) and return winner.
 
-        Returns:
-            {
-                "winner": "A" | "B" | "tie",
-                "a_score": float,
-                "b_score": float,
-                "a_rounds": int,
-                "b_rounds": int,
-                "recommendation": str,
-            }
+        Args:
+            run_a: run_a 参数。
+            run_b: run_b 参数。
         """
         a_score = run_a.get("final_score", 0) or 0
         b_score = run_b.get("final_score", 0) or 0

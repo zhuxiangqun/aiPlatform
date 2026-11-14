@@ -15,10 +15,17 @@ _runtime: Optional[Any] = None
 
 
 def set_kernel_runtime(runtime: Any) -> None:
+    """set_kernel_runtime。
+
+    Args:
+        runtime: runtime 参数。
+    """
     global _runtime
     _runtime = runtime
 
 
 def get_kernel_runtime() -> Optional[Any]:
+    """获取 kernel_runtime。
+    """
     return _runtime
 

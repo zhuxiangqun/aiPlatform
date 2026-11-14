@@ -26,6 +26,7 @@ _log = logging.getLogger("aiplat.code_auditor")
 @dataclass
 # disposition: internal data type — used within code auditor module
 class SecurityIssue:
+    """SecurityIssue。"""
     rule_id: str = ""
     severity: str = ""       # "high" / "medium"
     description: str = ""
@@ -36,6 +37,7 @@ class SecurityIssue:
 @dataclass
 # disposition: internal data type — used within code auditor module
 class AuditResult:
+    """AuditResult。"""
     skill_name: str = ""
     issues: List[SecurityIssue] = field(default_factory=list)
     status: str = "pass"     # "pass" / "blocked"
@@ -178,6 +180,8 @@ class CodeAuditor:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._rules = RULES
 
     def audit(self, code: str, *, skill_name: str = "") -> AuditResult:
@@ -237,7 +241,11 @@ class CodeAuditor:
         )
 
     def audit_quick(self, code: str) -> bool:
-        """快速审计: 返回 True 表示通过 (0 高危)"""
+        """快速审计: 返回 True 表示通过 (0 高危)。
+
+        Args:
+            code: code 参数。
+        """
         return self.audit(code).high_count == 0
 
 

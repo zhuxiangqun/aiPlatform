@@ -37,10 +37,14 @@ class StrategyRecord:
 
     @property
     def success_rate(self) -> float:
+        """success_rate。
+        """
         return self.successes / self.attempts if self.attempts > 0 else 0.0
 
     @property
     def avg_tokens(self) -> float:
+        """avg_tokens。
+        """
         return self.tokens_consumed / self.attempts if self.attempts > 0 else 0.0
 
     @property
@@ -57,6 +61,8 @@ class StrategyRecord:
         return self.attempts == 0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "error_type": self.error_type,
             "strategy_name": self.strategy_name,
@@ -71,12 +77,22 @@ class StrategyRecord:
         }
 
     def record_success(self, tokens_used: int = 0) -> None:
+        """record_success。
+
+        Args:
+            tokens_used: tokens_used 参数。
+        """
         self.attempts += 1
         self.successes += 1
         self.tokens_consumed += tokens_used
         self.last_success_ts = time.time()
 
     def record_failure(self, tokens_used: int = 0) -> None:
+        """record_failure。
+
+        Args:
+            tokens_used: tokens_used 参数。
+        """
         self.attempts += 1
         self.tokens_consumed += tokens_used
         self.last_failure_ts = time.time()
@@ -101,6 +117,8 @@ class StrategyEffectivenessTracker:
     ]
 
     def __init__(self):
+        """初始化。
+        """
         self._records: Dict[Tuple[str, str], StrategyRecord] = {}
         self._total_attempts: int = 0
         self._loaded_ts: float = time.time()
@@ -123,7 +141,14 @@ class StrategyEffectivenessTracker:
         success: bool,
         tokens_used: int = 0,
     ) -> None:
-        """Record the outcome of a strategy attempt."""
+        """Record the outcome of a strategy attempt.
+
+        Args:
+            error_type: error_type 参数。
+            strategy_name: strategy_name 参数。
+            success: success 参数。
+            tokens_used: tokens_used 参数。
+        """
         rec = self._get_or_create(error_type, strategy_name)
         if success:
             rec.record_success(tokens_used)
@@ -181,7 +206,15 @@ class StrategyEffectivenessTracker:
         post_snapshot_id: str,
         session_id: str,
     ) -> None:
-        """Record strategy outcome by comparing Phase 25 snapshots."""
+        """Record strategy outcome by comparing Phase 25 snapshots.
+
+        Args:
+            error_type: error_type 参数。
+            strategy_name: strategy_name 参数。
+            pre_snapshot_id: pre_snapshot 标识。
+            post_snapshot_id: post_snapshot 标识。
+            session_id: 会话 ID。
+        """
         try:
             from core.harness.execution.snapshot import (
                 compare_execution_snapshots,
@@ -202,7 +235,9 @@ class StrategyEffectivenessTracker:
     ) -> List[Dict[str, Any]]:
         """Return strategies ranked by effectiveness for the given error type.
 
-        Strategies with fewer than min_attempts are returned at lower priority.
+        Args:
+            error_type: error_type 参数。
+            min_attempts: min_attempts 参数。
         """
         candidates = [
             self._get_or_create(error_type, s)
@@ -213,7 +248,11 @@ class StrategyEffectivenessTracker:
         return [c.to_dict() for c in candidates if c.attempts >= min_attempts or min_attempts == 0]
 
     def best_strategy(self, error_type: str) -> Optional[str]:
-        """Return the single best strategy for this error type, or None if cold start."""
+        """Return the single best strategy for this error type, or None if cold start.
+
+        Args:
+            error_type: error_type 参数。
+        """
         ranked = self.rank_strategies(error_type, min_attempts=1)
         if not ranked:
             return None
@@ -223,7 +262,11 @@ class StrategyEffectivenessTracker:
         return None
 
     def explore_strategy(self, error_type: str) -> Optional[str]:
-        """Return an untried strategy for exploration, or None if all tried."""
+        """Return an untried strategy for exploration, or None if all tried.
+
+        Args:
+            error_type: error_type 参数。
+        """
         for strategy_name in self.ALL_STRATEGIES:
             rec = self._get_or_create(error_type, strategy_name)
             if rec.cold_start:
@@ -235,7 +278,11 @@ class StrategyEffectivenessTracker:
         return None
 
     def is_cold_start(self, error_type: str) -> bool:
-        """True if no strategy has ever been tried for this error type."""
+        """True if no strategy has ever been tried for this error type.
+
+        Args:
+            error_type: error_type 参数。
+        """
         for strategy_name in self.ALL_STRATEGIES:
             rec = self._get_or_create(error_type, strategy_name)
             if rec.attempts > 0:
@@ -243,6 +290,8 @@ class StrategyEffectivenessTracker:
         return True
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "total_attempts": self._total_attempts,
             "tracked_pairs": len(self._records),
@@ -260,6 +309,8 @@ class StrategyEffectivenessTracker:
         }
 
     def to_dict(self) -> List[Dict[str, Any]]:
+        """to_dict。
+        """
         return [r.to_dict() for r in self._records.values()]
 
 

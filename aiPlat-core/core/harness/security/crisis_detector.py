@@ -31,6 +31,7 @@ _log = logging.getLogger("aiplat.crisis_detector")
 
 
 class CrisisSeverity(str, Enum):
+    """CrisisSeverity。"""
     NONE = "none"
     LOW = "low"           # distress / anxiety
     MEDIUM = "medium"     # violence / abuse
@@ -39,6 +40,7 @@ class CrisisSeverity(str, Enum):
 
 
 class CrisisMode(str, Enum):
+    """CrisisMode。"""
     WARN = "warn"
     BLOCK = "block"
     SILENT = "silent"
@@ -46,6 +48,7 @@ class CrisisMode(str, Enum):
 
 @dataclass
 class CrisisSignal:
+    """CrisisSignal。"""
     rule_id: str
     severity: CrisisSeverity
     pattern_matched: str
@@ -54,6 +57,7 @@ class CrisisSignal:
 
 @dataclass
 class CrisisResult:
+    """CrisisResult。"""
     is_crisis: bool = False
     signals: List[CrisisSignal] = field(default_factory=list)
     severity: CrisisSeverity = CrisisSeverity.NONE
@@ -61,6 +65,8 @@ class CrisisResult:
     recommended_action: str = ""
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "is_crisis": self.is_crisis,
             "severity": self.severity.value,
@@ -137,7 +143,13 @@ RECOMMENDED_ACTIONS = {
 
 
 class CrisisEscalation(Exception):
+    """CrisisEscalation。"""
     def __init__(self, result: CrisisResult):
+        """初始化。
+
+        Args:
+            result: result 参数。
+        """
         self.result = result
         super().__init__(f"Crisis detected: severity={result.severity.value}, signals={len(result.signals)}")
 
@@ -146,10 +158,22 @@ class CrisisDetector:
     """Pattern-based crisis detection with optional LLM verification."""
 
     def __init__(self, mode: Optional[CrisisMode] = None):
+        """初始化。
+
+        Args:
+            mode: mode 参数。
+        """
         self.mode = mode or CrisisMode(os.getenv("AIPLAT_CRISIS_MODE", "warn"))
         self._compiled = [(r["id"], r["severity"], [re.compile(p) for p in r["patterns"]]) for r in CRISIS_RULES]
 
     def detect(self, text: str, session_id: str = "", enable_llm: bool = False) -> CrisisResult:
+        """detect。
+
+        Args:
+            text: text 参数。
+            session_id: 会话 ID。
+            enable_llm: enable_llm 参数。
+        """
         if not text or not text.strip():
             return CrisisResult()
 
@@ -191,6 +215,11 @@ class CrisisDetector:
         )
 
     def detect_quick(self, text: str) -> bool:
+        """detect_quick。
+
+        Args:
+            text: text 参数。
+        """
         result = self.detect(text)
         return result.is_crisis and result.severity in (CrisisSeverity.HIGH, CrisisSeverity.CRITICAL)
 
@@ -199,6 +228,8 @@ _crisis_detector: Optional[CrisisDetector] = None
 
 
 def get_crisis_detector() -> CrisisDetector:
+    """获取 crisis_detector。
+    """
     global _crisis_detector
     if _crisis_detector is None:
         _crisis_detector = CrisisDetector()

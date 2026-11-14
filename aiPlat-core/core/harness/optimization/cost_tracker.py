@@ -125,6 +125,8 @@ class CostTracker:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._lock = threading.Lock()
 
         self._usage: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -166,6 +168,14 @@ class CostTracker:
 
                tenant_id: str = "default") -> None:
 
+        """record。
+
+        Args:
+            model: 模型名。
+            input_tokens: input_tokens 参数。
+            output_tokens: output_tokens 参数。
+            tenant_id: 租户 ID。
+        """
         if not model:
 
             return
@@ -196,6 +206,11 @@ class CostTracker:
 
     def cost_for_model(self, model: str) -> float:
 
+        """cost_for_model。
+
+        Args:
+            model: 模型名。
+        """
         pricing = self._pricing.get(model, {"input": 0.0, "output": 0.0})
 
         u = self._usage[model]
@@ -210,18 +225,24 @@ class CostTracker:
 
     def total_cost(self) -> float:
 
+        """total_cost。
+        """
         return round(sum(self.cost_for_model(m) for m in self._usage), 4)
 
 
 
     def total_tokens(self) -> int:
 
+        """total_tokens。
+        """
         return sum(u["input_tokens"] + u["output_tokens"] for u in self._usage.values())
 
 
 
     def stats(self) -> Dict[str, Any]:
 
+        """stats。
+        """
         with self._lock:
 
             per_model = {}
@@ -306,6 +327,8 @@ _tracker: Optional[CostTracker] = None
 
 def get_cost_tracker() -> CostTracker:
 
+    """获取 cost_tracker。
+    """
     global _tracker
 
     if _tracker is None:

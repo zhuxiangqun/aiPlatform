@@ -38,6 +38,11 @@ class ProfileConfig:
 
     @classmethod
     def from_yaml(cls, path: str) -> Optional["ProfileConfig"]:
+        """from_yaml。
+
+        Args:
+            path: 路径。
+        """
         try:
             import yaml
             with open(path) as f:
@@ -73,6 +78,11 @@ class ProfileManager:
     """
 
     def __init__(self, home_dir: str = ""):
+        """初始化。
+
+        Args:
+            home_dir: home_dir 参数。
+        """
         h = home_dir or get_aiplat_home()
         self._profiles_dir = os.path.join(h, "profiles")
         self._profiles: Dict[str, ProfileConfig] = {}
@@ -93,10 +103,17 @@ class ProfileManager:
                 self._profiles[cfg.name] = cfg
 
     def get(self, name: str) -> Optional[ProfileConfig]:
+        """get。
+
+        Args:
+            name: name 参数。
+        """
         self._ensure_loaded()
         return self._profiles.get(name)
 
     def get_default(self) -> ProfileConfig:
+        """获取 default。
+        """
         self._ensure_loaded()
         for cfg in self._profiles.values():
             if cfg.default:
@@ -106,7 +123,10 @@ class ProfileManager:
 
     def get_mcp_servers(self, name: str) -> List[str]:
         """Return MCP server IDs scoped to a profile (per-profile MCP isolation, A2.4 L3→L4).
-        Falls back to all registered servers if profile has no explicit mcp_servers list."""
+
+        Args:
+            name: name 参数。
+        """
         cfg = self.get(name)
         if cfg and cfg.mcp_servers:
             return cfg.mcp_servers
@@ -118,13 +138,24 @@ class ProfileManager:
             return []
 
     def list_all(self) -> List[ProfileConfig]:
+        """列出 all。
+        """
         self._ensure_loaded()
         return list(self._profiles.values())
 
     def create(self, name: str, namespace: str = "", description: str = "",
                industry: str = "", deployment_mode: str = "online",
                profile_type: str = "customer") -> ProfileConfig:
-        """Create a new profile and persist to ~/.aiplat/profiles/{namespace}.yaml."""
+        """Create a new profile and persist to ~/.aiplat/profiles/{namespace}.yaml.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+            description: description 参数。
+            industry: industry 参数。
+            deployment_mode: deployment_mode 参数。
+            profile_type: profile_type 参数。
+        """
         import yaml
         ns = namespace or name.lower().replace(" ", "-")
         os.makedirs(self._profiles_dir, exist_ok=True)
@@ -153,7 +184,11 @@ class ProfileManager:
         return cfg
 
     def delete(self, namespace: str) -> bool:
-        """Delete a profile YAML file and remove from cache."""
+        """Delete a profile YAML file and remove from cache.
+
+        Args:
+            namespace: namespace 参数。
+        """
         fp = os.path.join(self._profiles_dir, f"{namespace}.yaml")
         if os.path.isfile(fp):
             try:
@@ -168,7 +203,15 @@ class ProfileManager:
 
     def update(self, namespace: str, name: str = "", description: str = "",
                deployment_mode: str = "", industry: str = "") -> Optional[ProfileConfig]:
-        """Update an existing profile's fields and rewrite YAML."""
+        """Update an existing profile's fields and rewrite YAML.
+
+        Args:
+            namespace: namespace 参数。
+            name: name 参数。
+            description: description 参数。
+            deployment_mode: deployment_mode 参数。
+            industry: industry 参数。
+        """
         fp = os.path.join(self._profiles_dir, f"{namespace}.yaml")
         cfg = self.get(namespace)
         if not cfg or not os.path.isfile(fp):
@@ -200,6 +243,8 @@ _profile_manager: Optional[ProfileManager] = None
 
 
 def get_profile_manager() -> ProfileManager:
+    """获取 profile_manager。
+    """
     global _profile_manager
     if _profile_manager is None:
         _profile_manager = ProfileManager()

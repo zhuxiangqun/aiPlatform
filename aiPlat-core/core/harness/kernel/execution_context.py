@@ -16,6 +16,7 @@ import time
 
 @dataclass
 class ActiveReleaseContext:
+    """ActiveReleaseContext。"""
     target_type: str
     target_id: str
     candidate_id: str
@@ -23,6 +24,8 @@ class ActiveReleaseContext:
     summary: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "target_type": self.target_type,
             "target_id": self.target_id,
@@ -36,16 +39,26 @@ _active_release_ctx: ContextVar[Optional[ActiveReleaseContext]] = ContextVar("ac
 
 
 def set_active_release_context(ctx: Optional[ActiveReleaseContext]):
-    """Set active release context for current async task. Returns a token for reset()."""
+    """Set active release context for current async task. Returns a token for reset().
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active_release_ctx.set(ctx)
 
 
 def reset_active_release_context(token) -> None:
-    """Reset to previous value using token returned by set_active_release_context()."""
+    """Reset to previous value using token returned by set_active_release_context().
+
+    Args:
+        token: token 参数。
+    """
     _active_release_ctx.reset(token)
 
 
 def get_active_release_context() -> Optional[ActiveReleaseContext]:
+    """获取 active_release_context。
+    """
     return _active_release_ctx.get()
 
 @dataclass
@@ -69,6 +82,8 @@ class ActiveWorkspaceContext:
     claude_md_files: Optional[List[str]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "repo_root": self.repo_root,
             "context_file": self.context_file,
@@ -84,16 +99,26 @@ _active_workspace_ctx: ContextVar[Optional[ActiveWorkspaceContext]] = ContextVar
 
 
 def set_active_workspace_context(ctx: Optional[ActiveWorkspaceContext]):
-    """Set active workspace context for current async task. Returns a token for reset()."""
+    """Set active workspace context for current async task. Returns a token for reset().
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active_workspace_ctx.set(ctx)
 
 
 def reset_active_workspace_context(token) -> None:
-    """Reset to previous value using token returned by set_active_workspace_context()."""
+    """Reset to previous value using token returned by set_active_workspace_context().
+
+    Args:
+        token: token 参数。
+    """
     _active_workspace_ctx.reset(token)
 
 
 def get_active_workspace_context() -> Optional[ActiveWorkspaceContext]:
+    """获取 active_workspace_context。
+    """
     return _active_workspace_ctx.get()
 
 
@@ -105,7 +130,11 @@ _gate_coverage: ContextVar[set] = ContextVar("_gate_coverage", default=set())
 
 
 def mark_gate_passed(gate_name: str) -> None:
-    """Mark a mandatory gate as passed for the current execution."""
+    """Mark a mandatory gate as passed for the current execution.
+
+    Args:
+        gate_name: gate_name 参数。
+    """
     _gate_coverage.get().add(gate_name)
 
 
@@ -128,15 +157,26 @@ _active_approval_request_id: ContextVar[Optional[str]] = ContextVar("active_appr
 
 
 def set_active_approval_request_id(approval_request_id: Optional[str]):
-    """Set current approval_request_id for nested syscalls. Returns a token for reset()."""
+    """Set current approval_request_id for nested syscalls. Returns a token for reset().
+
+    Args:
+        approval_request_id: approval_request 标识。
+    """
     return _active_approval_request_id.set(str(approval_request_id) if approval_request_id else None)
 
 
 def reset_active_approval_request_id(token) -> None:
+    """reset_active_approval_request_id。
+
+    Args:
+        token: token 参数。
+    """
     _active_approval_request_id.reset(token)
 
 
 def get_active_approval_request_id() -> Optional[str]:
+    """获取 active_approval_request_id。
+    """
     return _active_approval_request_id.get()
 
 
@@ -147,11 +187,14 @@ def get_active_approval_request_id() -> Optional[str]:
 
 @dataclass
 class ActiveTenantPolicyContext:
+    """ActiveTenantPolicyContext。"""
     tenant_id: Optional[str]
     version: Optional[int]
     policy: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "tenant_id": self.tenant_id,
             "version": self.version,
@@ -165,14 +208,26 @@ _active_tenant_policy_ctx: ContextVar[Optional[ActiveTenantPolicyContext]] = Con
 
 
 def set_active_tenant_policy_context(ctx: Optional[ActiveTenantPolicyContext]):
+    """set_active_tenant_policy_context。
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active_tenant_policy_ctx.set(ctx)
 
 
 def reset_active_tenant_policy_context(token) -> None:
+    """reset_active_tenant_policy_context。
+
+    Args:
+        token: token 参数。
+    """
     _active_tenant_policy_ctx.reset(token)
 
 
 def get_active_tenant_policy_context() -> Optional[ActiveTenantPolicyContext]:
+    """获取 active_tenant_policy_context。
+    """
     return _active_tenant_policy_ctx.get()
 
 
@@ -193,6 +248,8 @@ class ActiveRequestContext:
     request_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "user_id": self.user_id,
             "session_id": self.session_id,
@@ -209,16 +266,26 @@ _active_request_ctx: ContextVar[Optional[ActiveRequestContext]] = ContextVar("ac
 
 
 def set_active_request_context(ctx: Optional[ActiveRequestContext]):
-    """Set active request context for current async task. Returns a token for reset()."""
+    """Set active request context for current async task. Returns a token for reset().
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active_request_ctx.set(ctx)
 
 
 def reset_active_request_context(token) -> None:
-    """Reset to previous value using token returned by set_active_request_context()."""
+    """Reset to previous value using token returned by set_active_request_context().
+
+    Args:
+        token: token 参数。
+    """
     _active_request_ctx.reset(token)
 
 
 def get_active_request_context() -> Optional[ActiveRequestContext]:
+    """获取 active_request_context。
+    """
     return _active_request_ctx.get()
 
 
@@ -238,6 +305,8 @@ class PromptRevisionAudit:
     updated_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "applied_prompt_revision_ids": list(self.applied_ids),
             "ignored_prompt_revision_ids": list(self.ignored_ids),
@@ -251,14 +320,26 @@ _prompt_revision_audit_ctx: ContextVar[Optional[PromptRevisionAudit]] = ContextV
 
 
 def set_prompt_revision_audit(audit: Optional[PromptRevisionAudit]):
+    """set_prompt_revision_audit。
+
+    Args:
+        audit: audit 参数。
+    """
     return _prompt_revision_audit_ctx.set(audit)
 
 
 def reset_prompt_revision_audit(token) -> None:
+    """reset_prompt_revision_audit。
+
+    Args:
+        token: token 参数。
+    """
     _prompt_revision_audit_ctx.reset(token)
 
 
 def get_prompt_revision_audit() -> Optional[PromptRevisionAudit]:
+    """获取 prompt_revision_audit。
+    """
     return _prompt_revision_audit_ctx.get()
 
 
@@ -268,8 +349,12 @@ def record_prompt_revision_application(
     ignored_ids: list[str],
     conflicts: list[dict],
 ) -> None:
-    """
-    Best-effort aggregation used by sys_llm_generate.
+    """Best-effort aggregation used by sys_llm_generate.
+
+    Args:
+        applied_ids: applied_ids 参数。
+        ignored_ids: ignored_ids 参数。
+        conflicts: conflicts 参数。
     """
     audit = _prompt_revision_audit_ctx.get()
     if audit is None:
@@ -312,6 +397,8 @@ class ActiveChangeContract:
     updated_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "source_skill": self.source_skill,
             "changed_files": list(self.changed_files or []),
@@ -327,15 +414,26 @@ _change_contract_ctx: ContextVar[Optional[ActiveChangeContract]] = ContextVar("c
 
 
 def set_active_change_contract(contract: Optional[ActiveChangeContract]):
-    """Set active change contract for current async task. Returns a token for reset()."""
+    """Set active change contract for current async task. Returns a token for reset().
+
+    Args:
+        contract: contract 参数。
+    """
     return _change_contract_ctx.set(contract)
 
 
 def reset_active_change_contract(token) -> None:
+    """reset_active_change_contract。
+
+    Args:
+        token: token 参数。
+    """
     _change_contract_ctx.reset(token)
 
 
 def get_active_change_contract() -> Optional[ActiveChangeContract]:
+    """获取 active_change_contract。
+    """
     return _change_contract_ctx.get()
 
 
@@ -354,6 +452,7 @@ def get_active_change_contract() -> Optional[ActiveChangeContract]:
 
 @dataclass
 class ActiveTraceContext:
+    """ActiveTraceContext。"""
     run_id: str
     span_id: str
     parent_span_id: str = ""
@@ -363,16 +462,26 @@ _active_trace_ctx: ContextVar[Optional[ActiveTraceContext]] = ContextVar("active
 
 
 def set_active_trace_context(ctx: Optional[ActiveTraceContext]):
-    """Set active trace context for current async task. Returns a token for reset()."""
+    """Set active trace context for current async task. Returns a token for reset().
+
+    Args:
+        ctx: ctx 参数。
+    """
     return _active_trace_ctx.set(ctx)
 
 
 def reset_active_trace_context(token) -> None:
-    """Reset to previous value using token returned by set_active_trace_context()."""
+    """Reset to previous value using token returned by set_active_trace_context().
+
+    Args:
+        token: token 参数。
+    """
     _active_trace_ctx.reset(token)
 
 
 def get_active_trace_context() -> Optional[ActiveTraceContext]:
+    """获取 active_trace_context。
+    """
     return _active_trace_ctx.get()
 
 
@@ -386,10 +495,16 @@ async def emit_trace_event_async(
     duration_ms: float = 0.0,
     error: Optional[str] = None,
 ) -> Optional[str]:
-    """
-    Emit a syscall event using the current trace context (async version).
-    For use in async handlers, code nodes, MCP adapters, etc.
-    Writes through the unified add_syscall_event → SQLite + EventBus + SSE path.
+    """Emit a syscall event using the current trace context (async version).
+
+    Args:
+        kind: kind 参数。
+        name: name 参数。
+        status: status 参数。
+        args: args 参数。
+        result: result 参数。
+        duration_ms: duration_ms 参数。
+        error: error 参数。
     """
     import uuid
     import time as _time
@@ -438,10 +553,16 @@ def emit_trace_event(
     duration_ms: float = 0.0,
     error: Optional[str] = None,
 ) -> Optional[str]:
-    """
-    Emit a syscall event using the current trace context (sync wrapper).
-    For use in sync code. Schedules via asyncio.create_task if loop is running.
-    Prefer emit_trace_event_async() in async contexts.
+    """Emit a syscall event using the current trace context (sync wrapper).
+
+    Args:
+        kind: kind 参数。
+        name: name 参数。
+        status: status 参数。
+        args: args 参数。
+        result: result 参数。
+        duration_ms: duration_ms 参数。
+        error: error 参数。
     """
     import asyncio
     import uuid

@@ -48,7 +48,11 @@ class UCB1Arm:
         return self.successes / self.attempts if self.attempts > 0 else 0.0
 
     def ucb_score(self, total_attempts: int) -> float:
-        """UCB1 upper confidence bound."""
+        """UCB1 upper confidence bound.
+
+        Args:
+            total_attempts: total_attempts 参数。
+        """
         if self.attempts == 0:
             return 0.0  # cold-start: don't select untried strategies
         exploitation = self.q
@@ -56,7 +60,11 @@ class UCB1Arm:
         return exploitation + exploration
 
     def upper_bound(self, total_attempts: int) -> float:
-        """Upper bound for convergence check (includes exploration bonus)."""
+        """Upper bound for convergence check (includes exploration bonus).
+
+        Args:
+            total_attempts: total_attempts 参数。
+        """
         if self.attempts == 0:
             return float("inf")  # avoid converging before all tried
         return self.q + math.sqrt(2.0 * math.log(total_attempts + 1) / (self.attempts + 1))
@@ -76,6 +84,11 @@ class StrategySearchEngine:
     """
 
     def __init__(self, tracker):
+        """初始化。
+
+        Args:
+            tracker: tracker 参数。
+        """
         self._tracker = tracker
         self._converged: Dict[str, str] = {}  # error_type → frozen best_strategy
         self._consecutive: Dict[str, Tuple[str, int]] = {}  # (last_selected, count)
@@ -93,7 +106,11 @@ class StrategySearchEngine:
         return arms
 
     def select_best(self, error_type: str) -> Optional[str]:
-        """Select best strategy using UCB1. Returns None if cold start."""
+        """Select best strategy using UCB1. Returns None if cold start.
+
+        Args:
+            error_type: error_type 参数。
+        """
         # Check if already converged
         if error_type in self._converged:
             return self._converged[error_type]
@@ -147,7 +164,11 @@ class StrategySearchEngine:
         return selected_name
 
     def is_converged(self, error_type: str) -> Tuple[bool, Optional[str]]:
-        """Check if a strategy has converged for this error type."""
+        """Check if a strategy has converged for this error type.
+
+        Args:
+            error_type: error_type 参数。
+        """
         if error_type in self._converged:
             return True, self._converged[error_type]
 
@@ -176,7 +197,11 @@ class StrategySearchEngine:
         return False, None
 
     def reset(self, error_type: str = "") -> None:
-        """Reset convergence state (e.g., after pipeline config change)."""
+        """Reset convergence state (e.g., after pipeline config change).
+
+        Args:
+            error_type: error_type 参数。
+        """
         if error_type:
             self._converged.pop(error_type, None)
             self._consecutive.pop(error_type, None)
@@ -185,6 +210,8 @@ class StrategySearchEngine:
             self._consecutive.clear()
 
     def get_converged_count(self) -> int:
+        """获取 converged_count。
+        """
         return len(self._converged)
 
     def stats(self) -> Dict[str, Any]:
@@ -200,7 +227,8 @@ class StrategySearchEngine:
     def explain_decision(self, error_type: str) -> Dict[str, Any]:
         """Phase 54: Explain why a specific strategy was selected (model interpretability).
 
-        Returns per-strategy breakdown: Q(exploitation), U(exploration), UCB score.
+        Args:
+            error_type: error_type 参数。
         """
         arms = self._get_arms(error_type)
         total = sum(a.attempts for a in arms)

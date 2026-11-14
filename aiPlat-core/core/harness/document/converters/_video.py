@@ -25,6 +25,13 @@ class VideoConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
+        """accepts。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         return self._accepts_by_format(stream_info)
 
     def convert(
@@ -33,6 +40,13 @@ class VideoConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> List[DocumentElement]:
+        """convert。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         file_path = stream_info.local_path
         ext = (stream_info.extension or "").lower().strip(".")
         if ext not in ("mp4", "mov", "mkv", "avi", "webm", "m4v"):

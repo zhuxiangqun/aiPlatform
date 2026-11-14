@@ -95,7 +95,11 @@ class StreamInfo:
     url: Optional[str] = None
 
     def copy_and_update(self, **kwargs: Any) -> "StreamInfo":
-        """Immutable update helper (functional pattern from markitdown)."""
+        """Immutable update helper (functional pattern from markitdown).
+
+        Args:
+            kwargs: kwargs 参数。
+        """
         d = {
             "extension": self.extension,
             "mimetype": self.mimetype,
@@ -249,21 +253,29 @@ class DocumentConverter(ABC):
     @abstractmethod
     def accepts(self, file_stream: BinaryIO, stream_info: StreamInfo, **kwargs: Any) -> bool:
         """Return True if this converter can handle the given file.
-        
-        MUST NOT change the file_stream position.
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
         """
         ...
 
     @abstractmethod
     def convert(self, file_stream: BinaryIO, stream_info: StreamInfo, **kwargs: Any) -> List[DocumentElement]:
         """Parse the file and return a list of DocumentElements.
-        
-        May advance file_stream position; registry will seek back after failure.
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
         """
         ...
 
     @property
     def name(self) -> str:
+        """name。
+        """
         return type(self).__name__
 
 
@@ -300,6 +312,11 @@ class FailedConversionAttempt:
 class FileConversionException(DocumentConverterException):
     """All converters failed for this file."""
     def __init__(self, attempts: List[FailedConversionAttempt]):
+        """初始化。
+
+        Args:
+            attempts: attempts 参数。
+        """
         self.attempts = attempts
         msgs = []
         for a in attempts:
@@ -339,6 +356,8 @@ class ConverterRegistry:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._registrations: List[ConverterRegistration] = []
 
     def register(
@@ -347,7 +366,12 @@ class ConverterRegistry:
         *,
         priority: float = PRIORITY_SPECIFIC_FORMAT,
     ) -> None:
-        """Register a converter. Later registrations with same priority are tried first."""
+        """Register a converter. Later registrations with same priority are tried first.
+
+        Args:
+            converter: converter 参数。
+            priority: priority 参数。
+        """
         self._registrations.insert(
             0, ConverterRegistration(converter=converter, priority=priority)
         )
@@ -362,11 +386,10 @@ class ConverterRegistry:
         **kwargs: Any,
     ) -> Optional[DocumentConverter]:
         """Find the first available converter that accepts this file.
-        
-        Checks converters in priority order. Returns None if no converter accepts.
-        
-        Enhanced with content-based detection: if stream_info has a local_path,
-        reads file header to validate extension and uses multi-guess resolution.
+
+        Args:
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
         """
         guesses = self._generate_guesses(stream_info)
         for guess_info in guesses:
@@ -422,7 +445,11 @@ class ConverterRegistry:
         self,
         stream_info: StreamInfo,
     ) -> List[DocumentConverter]:
-        """Return all converters that accept this file, sorted by priority."""
+        """Return all converters that accept this file, sorted by priority.
+
+        Args:
+            stream_info: stream_info 参数。
+        """
         result = []
         for reg in self._sorted_registrations():
             conv = reg.converter
@@ -591,12 +618,9 @@ class ConverterRegistry:
 
 def detect_structure_role(text: str) -> str:
     """Detect the structural role of a text element from its content.
-    
-    Returns one of: "h1", "h2", "h3", "h4", "h5", "h6", "table", "list_item", "caption", 
-    "paragraph", "code_block", or "" (unknown).
-    
-    Used by converters to populate DocumentElement.structure_role for downstream
-    chunking and retrieval strategy selection.
+
+    Args:
+        text: text 参数。
     """
     import re
     lines = text.strip().split("\n", 1)

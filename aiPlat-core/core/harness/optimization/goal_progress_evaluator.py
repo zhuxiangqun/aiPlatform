@@ -24,6 +24,7 @@ logger = logging.getLogger("aiplat.goal_progress_evaluator")
 
 @dataclass
 class ProgressReport:
+    """ProgressReport。"""
     abstract_goal: str
     completed_count: int = 0
     total_count: int = 0
@@ -44,6 +45,11 @@ class GoalProgressEvaluator:
     """
 
     def __init__(self, *, plateau_threshold: int = 3):
+        """初始化。
+
+        Args:
+            plateau_threshold: plateau_threshold 参数。
+        """
         self._plateau_threshold = plateau_threshold
         self._plateau_counter = 0
         self._last_completion_rate: float = 0.0
@@ -153,14 +159,23 @@ class GoalProgressEvaluator:
         return numerator / denominator
 
     def should_replan(self, report: ProgressReport) -> bool:
+        """should_replan。
+
+        Args:
+            report: report 参数。
+        """
         return report.recommendation == "replan"
 
     def reset(self) -> None:
+        """reset。
+        """
         self._plateau_counter = 0
         self._last_completion_rate = 0.0
         self._rate_history.clear()
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "evaluation_count": self._evaluation_count,
             "plateau_counter": self._plateau_counter,
@@ -174,6 +189,8 @@ _goal_progress_evaluator: Optional[GoalProgressEvaluator] = None
 
 
 def get_goal_progress_evaluator() -> GoalProgressEvaluator:
+    """获取 goal_progress_evaluator。
+    """
     global _goal_progress_evaluator
     if _goal_progress_evaluator is None:
         _goal_progress_evaluator = GoalProgressEvaluator()

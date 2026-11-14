@@ -26,16 +26,20 @@ class GraphConsensusPattern(CoordinationPattern):
     """Multi-agent graph construction with entity dedup, cross-validation, and staged commit."""
 
     def __init__(self, *, max_hops: int = 5, min_merge_confidence: float = 0.7):
+        """初始化。
+
+        Args:
+            max_hops: max_hops 参数。
+            min_merge_confidence: min_merge_confidence 参数。
+        """
         self.max_hops = max_hops
         self.min_merge_confidence = min_merge_confidence
 
     async def coordinate(self, context: CoordinationContext) -> Dict[str, Any]:
         """Execute the 5-phase graph consensus workflow.
 
-        context.state must contain:
-          - "run_id": unique query identifier
-          - "query": the user question (for task decomposition)
-          - "domain_id": ontology domain for graph operations
+        Args:
+            context: context 参数。
         """
         run_id = context.state.get("run_id", "")
         query = context.state.get("query", "")

@@ -21,7 +21,11 @@ def _env_ocr(name: str, default: str = "") -> str:
 
 
 def ocr_keyframes(frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """OCR a batch of image frames → list of {time_ms, text} via InfraOCRAdapter."""
+    """OCR a batch of image frames → list of {time_ms, text} via InfraOCRAdapter.
+
+    Args:
+        frames: frames 参数。
+    """
     try:
         from core.harness.infrastructure.base_model_adapter import create_adapter
         adapter = create_adapter("ocr")

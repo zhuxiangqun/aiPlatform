@@ -80,6 +80,11 @@ class VulnerabilitySLATracker:
 
     def __init__(self, db_path: str = "~/.aiplat/security/vuln_sla.db"):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = os.path.expanduser(db_path)
 
         self._lock = threading.Lock()
@@ -166,6 +171,14 @@ class VulnerabilitySLATracker:
 
                source: str = "dependabot") -> int:
 
+        """record。
+
+        Args:
+            cve_id: cve 标识。
+            cvss: cvss 参数。
+            description: description 参数。
+            source: source 参数。
+        """
         severity = self._severity_from_cvss(cvss)
 
         tier = SLA_TIERS[severity]
@@ -200,6 +213,11 @@ class VulnerabilitySLATracker:
 
     def mark_fixed(self, cve_id: str):
 
+        """mark_fixed。
+
+        Args:
+            cve_id: cve 标识。
+        """
         now = datetime.now(timezone.utc).isoformat()
 
         with self._lock:
@@ -278,6 +296,8 @@ class VulnerabilitySLATracker:
 
     def get_dashboard(self) -> dict:
 
+        """获取 dashboard。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -368,6 +388,8 @@ _sla_tracker: Optional[VulnerabilitySLATracker] = None
 
 def get_sla_tracker() -> VulnerabilitySLATracker:
 
+    """获取 sla_tracker。
+    """
     global _sla_tracker
 
     if _sla_tracker is None:

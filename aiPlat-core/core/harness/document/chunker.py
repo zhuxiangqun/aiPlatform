@@ -14,6 +14,13 @@ from typing import Any, Dict, List, Optional
 def fixed_size_chunks(
     text: str, chunk_size: int = 1000, overlap: int = 200
 ) -> List[Dict[str, Any]]:
+    """fixed_size_chunks。
+
+    Args:
+        text: text 参数。
+        chunk_size: chunk_size 参数。
+        overlap: overlap 参数。
+    """
     if not text:
         return []
     chunks: List[Dict[str, Any]] = []
@@ -32,6 +39,12 @@ def fixed_size_chunks(
 def semantic_chunks(
     text: str, target_size: int = 1000
 ) -> List[Dict[str, Any]]:
+    """semantic_chunks。
+
+    Args:
+        text: text 参数。
+        target_size: target_size 参数。
+    """
     if not text:
         return []
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
@@ -59,6 +72,13 @@ def semantic_chunks(
 def recursive_chunks(
     text: str, target_size: int = 1000, overlap: int = 200
 ) -> List[Dict[str, Any]]:
+    """recursive_chunks。
+
+    Args:
+        text: text 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
+    """
     if not text:
         return []
     chunks = semantic_chunks(text, target_size)
@@ -82,6 +102,14 @@ def chunk_document(
     chunk_size: int = 1000,
     overlap: int = 200,
 ) -> List[Dict[str, Any]]:
+    """chunk_document。
+
+    Args:
+        text: text 参数。
+        strategy: strategy 参数。
+        chunk_size: chunk_size 参数。
+        overlap: overlap 参数。
+    """
     if strategy == "fixed_size":
         return fixed_size_chunks(text, chunk_size, overlap)
     if strategy == "semantic":

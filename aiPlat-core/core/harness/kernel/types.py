@@ -93,6 +93,7 @@ class RunContext:
 
 @dataclass
 class PlanStep:
+    """PlanStep。"""
     step: int
     action: str
     kind: PlanStepKind = "instruction"
@@ -102,6 +103,7 @@ class PlanStep:
 
 @dataclass
 class ExecutionPlan:
+    """ExecutionPlan。"""
     version: str = "9.0"
     explain: str = ""
     steps: List[PlanStep] = field(default_factory=list)
@@ -112,21 +114,29 @@ class ExecutionPlan:
 
     @property
     def current(self) -> Optional[PlanStep]:
+        """current。
+        """
         if 0 <= self.current_step < len(self.steps):
             return self.steps[self.current_step]
         return None
 
     @property
     def remaining(self) -> List[PlanStep]:
+        """remaining。
+        """
         return self.steps[self.current_step + 1:]
 
     def advance(self) -> Optional[PlanStep]:
+        """advance。
+        """
         if self.current and self.current.status != "completed":
             self.current.status = "completed"
         self.current_step += 1
         return self.current
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "version": self.version,
             "explain": self.explain,
@@ -222,6 +232,8 @@ class DAG:
         return layers
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "explain": self.explain,
             "created_at": self.created_at,
@@ -234,6 +246,11 @@ class DAG:
 
     @classmethod
     def from_dict(cls, data: Dict) -> DAG:
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             explain=data.get("explain", ""),
             created_at=data.get("created_at", ""),
@@ -284,6 +301,8 @@ class AuditStep:
     action_result: str = ""          # "success" | "failed" | "pending"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "step_id": self.step_id,
             "parent_step_id": self.parent_step_id,
