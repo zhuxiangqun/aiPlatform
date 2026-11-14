@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Phase 3 · 覆盖率报表骨架（A/B/C 分列）
 
-> 机器：[`evidence/meta_eval/phase3_coverage_report_skeleton.v0.json`](./evidence/meta_eval/phase3_coverage_report_skeleton.v0.json) · 时点 2026-11-14T22:04:45+08:00
+> 机器：[`evidence/meta_eval/phase3_coverage_report_skeleton.v0.json`](./evidence/meta_eval/phase3_coverage_report_skeleton.v0.json) · 时点 2026-11-14T22:20:18+08:00
 > **禁止**单一「覆盖%」；B/C 的 `with_suite`/`with_gate` 仍为 null（待实测）
 
 

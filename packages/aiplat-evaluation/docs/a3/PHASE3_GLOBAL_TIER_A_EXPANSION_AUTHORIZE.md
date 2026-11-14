@@ -17,12 +17,12 @@ doc_type: Reference
 
 | 旗标 | 值 |
 |---|---|
-| `accuracy_claim` | false |
-| `l5_declare_authorized` | false |
-| `security_certification` | false |
-| `process_split_authorized` | false |
-| Tier B 覆盖完成宣称 | false |
+| `security_certification` | false（仍锁） |
+| Chart runtime split | false（仍锁） |
+| 生产独立宣称 | 禁止 |
 | 单一覆盖% | 禁止 |
+
+> 后续另授：`accuracy_claim` / `l5_declare` / `process_split`（政策）见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)。
 
 ## 范围
 

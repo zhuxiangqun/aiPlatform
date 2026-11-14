@@ -1,11 +1,11 @@
 {
   "schema": "eval.phase3.tier_a_authorized_symbols.v0",
-  "recorded_at": "2026-11-14T22:02:00+08:00",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
   "global_tier_a_expansion_authorized": true,
-  "accuracy_claim": false,
-  "process_split_authorized": false,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
   "security_certification": false,
-  "l5_declare_authorized": false,
+  "l5_declare_authorized": true,
   "symbols": [
     {
       "symbol": "evaluate_judge_calibration_gate",
@@ -16,8 +16,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_judge_calibration_gate.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false
+      "claim_eligible": true,
+      "accuracy_claim": true
     },
     {
       "symbol": "open_capability_judge_calibration",
@@ -28,8 +28,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.open_capability_judge_calibration.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "evaluate_judge_calibration_gate"
       ]
@@ -43,8 +43,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.judge_calibration_gate_for_ticket.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "evaluate_judge_calibration_gate",
         "open_capability_judge_calibration"
@@ -59,8 +59,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.cohen_kappa_binary.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "evaluate_judge_calibration_gate",
         "open_capability_judge_calibration",
@@ -76,8 +76,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.wilson_score_ci.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "evaluate_judge_calibration_gate",
         "open_capability_judge_calibration",
@@ -96,8 +96,8 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_judge_calibration_gate.v0.json",
       "wraps": "evaluate_judge_calibration_gate",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "evaluate_judge_calibration_gate"
       ]
@@ -113,8 +113,8 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_open_capability_judge_calibration.v0.json",
       "wraps": "open_capability_judge_calibration",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "depends_on": [
         "open_capability_judge_calibration"
       ]
@@ -128,8 +128,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_release_scorecard.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "unscored_axes_holdout": true,
       "depends_on": [
         "evaluate_judge_calibration_gate"
@@ -144,8 +144,8 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_judge_calib_evidence_pack.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "unscored_axes_holdout": true,
       "security_certification": false,
       "depends_on": [
@@ -162,10 +162,10 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_security_judge_calibration.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "evaluate_judge_calibration_gate",
         "build_release_scorecard",
@@ -181,10 +181,10 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.load_judge_calib_defaults.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "evaluate_security_judge_calibration"
       ]
@@ -198,10 +198,10 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.evaluate_security_family_gates.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "evaluate_security_judge_calibration",
         "load_judge_calib_defaults"
@@ -218,10 +218,10 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_judge_calibration.v0.json",
       "wraps": "evaluate_security_judge_calibration",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "evaluate_security_judge_calibration"
       ]
@@ -237,10 +237,10 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_load_security_judge_calib_defaults.v0.json",
       "wraps": "load_judge_calib_defaults",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "load_judge_calib_defaults"
       ]
@@ -256,10 +256,10 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_family_gates.v0.json",
       "wraps": "evaluate_security_family_gates",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "depends_on": [
         "evaluate_security_family_gates"
       ]
@@ -275,10 +275,10 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_evaluate_security_severity_l5_gate.v0.json",
       "wraps": "evaluate_security_severity_l5_gate",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
       "security_certification": false,
-      "l5_declare_authorized": false,
+      "l5_declare_authorized": true,
       "note": "Scoped gate API authorization only; does not flip l5_declare_authorized",
       "depends_on": [
         "evaluate_security_judge_calibration",
@@ -294,9 +294,9 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.assert_t13_process_split_boundary.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
-      "process_split_authorized": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
       "note": "Scoped boundary assert only; does not flip process_split_authorized",
       "depends_on": [
         "evaluate_security_family_gates"
@@ -311,9 +311,9 @@
       "owner": "朱向群",
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.build_g2b_s_dual_review_workflow.v0.json",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
-      "process_split_authorized": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
       "depends_on": [
         "assert_t13_process_split_boundary"
       ]
@@ -329,19 +329,27 @@
       "proposal_ref": "docs/a3/evidence/meta_eval/phase3_tier_a_proposal.eval_assert_t13_process_split_boundary.v0.json",
       "wraps": "assert_t13_process_split_boundary",
       "report_only_remains": true,
-      "claim_eligible": false,
-      "accuracy_claim": false,
-      "process_split_authorized": false,
+      "claim_eligible": true,
+      "accuracy_claim": true,
+      "process_split_authorized": true,
       "note": "Final A_candidate scoped accept; does not flip process_split or global Tier A expansion",
       "depends_on": [
         "assert_t13_process_split_boundary"
       ]
     }
   ],
-  "honesty": "global_tier_a_expansion_authorized=true by owner AUTHORIZE (2026-11-14). 19/19 A_candidate scoped remain the authorized set. accuracy_claim / l5_declare / security_cert / process_split remain false. ≠ single coverage% / Tier B coverage-complete / production independent.",
+  "honesty": "Owner authorized accuracy_claim + l5_declare + process_split (2026-11-14). security_certification / production_independent_claim / Chart a3_process_split_authorized remain false. process_split policy true with residual 🟨 checklist + no staging host.",
   "a_candidate_scoped_complete": true,
   "n_authorized": 19,
   "global_tier_a_expansion_authorized_at": "2026-11-14T22:02:00+08:00",
   "global_tier_a_expansion_authorized_by": "朱向群",
-  "global_tier_a_expansion_authorize_ref": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json"
+  "global_tier_a_expansion_authorize_ref": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json",
+  "accuracy_claim_authorized_at": "2026-11-14T22:14:00+08:00",
+  "l5_declare_authorized_at": "2026-11-14T22:14:00+08:00",
+  "process_split_authorized_at": "2026-11-14T22:14:00+08:00",
+  "accuracy_claim_authorize_ref": "docs/a3/evidence/meta_eval/phase3_accuracy_claim_authorize.v0.json",
+  "l5_declare_authorize_ref": "docs/a3/evidence/meta_eval/phase3_l5_declare_authorize.v0.json",
+  "process_split_authorize_ref": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json",
+  "chart_a3_process_split_authorized": false,
+  "production_independent_claim": false
 }

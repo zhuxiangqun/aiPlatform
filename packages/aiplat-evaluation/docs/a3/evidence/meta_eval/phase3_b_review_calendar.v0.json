@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.b_review_calendar.v0",
-  "recorded_at": "2026-11-14T22:02:00+08:00",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
   "source": "docs/a3/evidence/tier_matrix_v0.json",
   "tier_b_n": 165,
   "waves": [
@@ -331,8 +331,8 @@
     }
   },
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": false,
-  "process_split_authorized": false,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
   "honesty": "Draft calendar only. Suite hooks pending. ≠ Tier A authorize ≠ coverage complete.",
   "a_candidate_scoped_complete": true,
   "b_suite_attach_waves_complete": true,
@@ -345,5 +345,7 @@
     "B6": 37
   },
   "honesty_b_complete": "B1–B6 suite hooks attached by symbol. ≠ Tier B coverage complete / global Tier A expansion / single coverage%.",
-  "global_tier_a_expansion_authorized": true
+  "global_tier_a_expansion_authorized": true,
+  "l5_declare_authorized": true,
+  "security_certification": false
 }

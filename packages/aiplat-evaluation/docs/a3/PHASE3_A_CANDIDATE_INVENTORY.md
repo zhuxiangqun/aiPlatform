@@ -5,7 +5,7 @@ doc_type: Reference
 # Phase 3 · A_candidate 清单（工程预备）
 
 > 机器：[`evidence/meta_eval/phase3_a_candidate_inventory.v0.json`](./evidence/meta_eval/phase3_a_candidate_inventory.v0.json) · 时点 2026-11-14T20:35:28+08:00
-> **诚实锁**：`tier_a_expansion_authorized=true`（全局已授）· `accuracy_claim=false` · ≠ 单一覆盖%
+> **诚实锁**：见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md) · ≠ 单一覆盖%
 
 ## 汇总
 

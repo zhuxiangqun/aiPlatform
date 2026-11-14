@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.coverage_report_skeleton.v0",
-  "recorded_at": "2026-11-14T22:04:45+08:00",
+  "recorded_at": "2026-11-14T22:20:18+08:00",
   "columns": [
     "tier",
     "n",
@@ -44,7 +44,7 @@
   ],
   "forbid_single_coverage_percent": true,
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": false,
+  "accuracy_claim": true,
   "a_candidate_scoped_complete": true,
   "honesty": "A row measured from inventory evidence_refs + per-symbol ledger. B/C suite/gate remain null until measured. Never collapse A/B/C into one coverage%. scoped complete ≠ global_tier_a_expansion_authorized."
 }

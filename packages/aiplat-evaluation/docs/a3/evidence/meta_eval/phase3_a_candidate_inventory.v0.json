@@ -1,13 +1,13 @@
 {
   "schema": "eval.phase3.a_candidate_inventory.v0",
-  "recorded_at": "2026-11-14T20:35:28+08:00",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
   "source": "docs/a3/evidence/tier_matrix_v0.json tiers.A_candidate",
   "n": 19,
   "tier_a_expansion_authorized": true,
-  "accuracy_claim": false,
-  "process_split_authorized": false,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
   "security_certification": false,
-  "l5_declare_authorized": false,
+  "l5_declare_authorized": true,
   "items": [
     {
       "symbol": "assert_t13_process_split_boundary",
@@ -305,5 +305,6 @@
   "honesty": "19/19 scoped + global_tier_a_expansion_authorized=true; accuracy/L5/cert/process_split still false",
   "n_scoped_authorized": 19,
   "a_candidate_scoped_complete": true,
-  "honesty_note": "19/19 scoped + global_tier_a_expansion_authorized=true; accuracy/L5/cert/process_split still false"
+  "honesty_note": "19/19 scoped + global_tier_a_expansion_authorized=true; accuracy/L5/cert/process_split still false",
+  "global_tier_a_expansion_authorized": true
 }

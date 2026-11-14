@@ -1,8 +1,8 @@
 {
   "schema_version": "aiplat.evaluation.a3.prep.v0",
   "capability_id": "evaluation",
-  "checked_at": "2026-11-01T03:23:00Z",
-  "process_split_authorized": false,
+  "checked_at": "2026-11-14T14:14:00Z",
+  "process_split_authorized": true,
   "adr_status": "accepted_conditional",
   "items": {
     "2_chart_skeleton": {
@@ -41,6 +41,12 @@
   "auto_prep_green": true,
   "local_rehearsal_green": true,
   "manual_still_required": [
-    "4_backup_restore_rollback_live_drill"
-  ]
+    "4_backup_restore_rollback_live_drill",
+    "independent_staging_host",
+    "chart_runtime_annotation_flip"
+  ],
+  "process_split_authorize_mode": "owner_policy_override",
+  "process_split_authorized_at": "2026-11-14T22:14:00+08:00",
+  "chart_a3_process_split_authorized": false,
+  "production_independent_claim": false
 }

@@ -1,0 +1,23 @@
+{
+  "schema": "eval.phase3.honesty_locks.v0",
+  "recorded_at": "2026-11-14T22:14:00+08:00",
+  "owner": "朱向群",
+  "flags": {
+    "global_tier_a_expansion_authorized": true,
+    "accuracy_claim": true,
+    "l5_declare_authorized": true,
+    "process_split_authorized": true,
+    "security_certification": false,
+    "tier_b_coverage_complete_claim": false,
+    "forbid_single_coverage_percent": true,
+    "chart_a3_process_split_authorized": false,
+    "production_independent_claim": false
+  },
+  "authorize_refs": {
+    "global_tier_a_expansion": "docs/a3/evidence/meta_eval/phase3_global_tier_a_expansion_authorize.v0.json",
+    "accuracy_claim": "docs/a3/evidence/meta_eval/phase3_accuracy_claim_authorize.v0.json",
+    "l5_declare": "docs/a3/evidence/meta_eval/phase3_l5_declare_authorize.v0.json",
+    "process_split": "docs/a3/evidence/meta_eval/phase3_process_split_authorize.v0.json"
+  },
+  "honesty": "Four policy flags authorized by owner. security_certification / production_independent_claim / Chart split annotation remain false."
+}

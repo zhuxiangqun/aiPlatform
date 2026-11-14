@@ -4,7 +4,7 @@ doc_type: Reference
 
 # Evaluation A3 进程拆分硬门清单
 
-> `process_split_authorized` 仅当下列全部为 ✅（🟨 = 本地演练，≠ 授权）。  
+> 政策 `process_split_authorized: true`（owner AUTHORIZE · 覆盖）；🟨 = 本地演练；Chart runtime 仍 false 直至 staging live。  
 > ADR：[`ADR-EVALUATION-A3.md`](../../../../reports/five-products/ADR-EVALUATION-A3.md) **Accepted（有条件）**  
 > 刷新：`bash packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` → `a3_prep_check.sh`
 
@@ -16,7 +16,7 @@ doc_type: Reference
 | 4 | 备份恢复 + 回滚演练（切回共宿） | 运维 | 🟨 |
 | 5 | ADR Accepted 联签 | 架构 | ✅ |
 
-`process_split_authorized: false`
+`process_split_authorized: true`
 
 ## 自动 vs 人工
 
@@ -27,3 +27,12 @@ doc_type: Reference
 | #3 platform apps 无 `core.harness` 直导 | |
 | #4 本地 SQLite 演练（🟨） | |
 | #5 ADR Accepted（有条件） | |
+
+
+## Owner authorize 备注（2026-11-14）
+
+Owner `AUTHORIZE process_split`：政策旗标 **true**。
+- Checklist #1 / #4 仍为 🟨（本地 ≠ live）
+- Chart `aiplat.a3_process_split_authorized` **仍为 false**（待独立 staging + live 证据）
+- ≠ 对外宣称「生产已独立」
+- 机器：`evidence/meta_eval/phase3_process_split_authorize.v0.json`

@@ -3,8 +3,8 @@
   "domain": "evaluation-system",
   "recorded_at": "2026-11-14T19:58:20+08:00",
   "source": "r12 in_both after H5 tranche clear",
-  "accuracy_claim": false,
-  "process_split_authorized": false,
+  "accuracy_claim": true,
+  "process_split_authorized": true,
   "meta_eval_blocks_tier_a_claim": true,
   "r12_h5_open": 0,
   "counts": {
@@ -662,7 +662,9 @@
       "wilson_score_ci"
     ]
   },
-  "honesty": "A_candidate is NOT an authorized Tier A gate claim. meta_eval_families_green=true is prerequisite only; tier_a_expansion_authorized remains false until owner authorize.",
+  "honesty": "A_candidate Tier A expansion + accuracy_claim + process_split + l5_declare authorized by owner. security_certification false. Chart runtime split annotation may still be false until staging.",
   "meta_eval_families_green": true,
-  "tier_a_expansion_authorized": false
+  "tier_a_expansion_authorized": true,
+  "l5_declare_authorized": true,
+  "security_certification": false
 }

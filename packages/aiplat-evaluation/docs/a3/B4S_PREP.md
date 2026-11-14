@@ -16,7 +16,8 @@ doc_type: Reference
 | Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
 | PITR / backup live drill on staging | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |
-| `process_split_authorized` | **false** (refuse until checklist + signed staging) |
+| 政策 `process_split_authorized` | **true**（owner 覆盖；见 [`PHASE3_PROCESS_SPLIT_AUTHORIZE.md`](./PHASE3_PROCESS_SPLIT_AUTHORIZE.md)） |
+| Chart `a3_process_split_authorized` | **false**（仍须 staging live 才翻） |
 
 ## Host prerequisites (D2)
 
