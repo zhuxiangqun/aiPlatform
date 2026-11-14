@@ -18,4 +18,5 @@ doc_type: Reference
 | `production_independent_claim` | **false** | 待 staging closeout |
 | 单一覆盖% | **禁止** | — |
 
-脚手架：[`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked`。
+脚手架：[`B4S_STAGING_SCAFFOLD.md`](./B4S_STAGING_SCAFFOLD.md) · unfreeze `draft_blocked`。  
+无 staging 可继续：[`G2B_EXPAND_31_100_STATUS.md`](./G2B_EXPAND_31_100_STATUS.md) · [`PHASE3_TIER_A_GOLD_GATE_LEDGER.md`](./PHASE3_TIER_A_GOLD_GATE_LEDGER.md) · [`PHASE3_B_REVIEW_CYCLE1.md`](./PHASE3_B_REVIEW_CYCLE1.md)。
