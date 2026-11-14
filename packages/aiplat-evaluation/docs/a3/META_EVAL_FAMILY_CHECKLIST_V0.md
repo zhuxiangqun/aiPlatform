@@ -23,7 +23,7 @@ doc_type: Reference
 
 | ID | 家族 | 代表符号（摘录） | META_EVAL 五项 | Tier A 宣称 |
 |---|---|---|---|---|
-| F1 | Judge calibration | `evaluate_judge_calibration_gate` · `open_capability_judge_calibration` · `cohen_kappa_binary` · `wilson_score_ci` | **partial 3/5**（IAA+contam+holdout 绿；judge/gold 待人）→ [`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md) | **blocked** |
+| F1 | Judge calibration | `evaluate_judge_calibration_gate` · `open_capability_judge_calibration` · `cohen_kappa_binary` · `wilson_score_ci` | **green 5/5**（[`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md)；≠ Tier A 授权） | **blocked**（家族绿 ≠ 扩容授权） |
 | F2 | Security family gates | `evaluate_security_family_gates` · `evaluate_security_judge_calibration` · `evaluate_security_severity_l5_gate` | **pending** | **blocked** |
 | F3 | G2b / process_split 边界 | `build_g2b_s_dual_review_workflow` · `assert_t13_process_split_boundary` | **pending** | **blocked** |
 | F4 | Release scorecard | `build_release_scorecard` · `build_judge_calib_evidence_pack` | **pending** | **blocked** |
@@ -47,5 +47,5 @@ F1（尺子）→ F4（记分卡接线）→ F2（安全门）→ F3（G2b/拆�
 | 字段 | 值 |
 |---|---|
 | recorded | 2026-11-14 |
-| families_green | 0 / 4（F1=3/5 partial） |
+| families_green | 1 / 4（仅 F1；F2–F4 未开） |
 | tier_a_expansion_authorized | **false** |

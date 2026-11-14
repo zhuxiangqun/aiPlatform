@@ -116,20 +116,84 @@ def _check_judge(thr: Dict[str, Any]) -> Dict[str, Any]:
         and float(kappa) >= kmin
         and float(ece) <= emax
     )
+    status = str(pin.get("status") or "pending_ratings")
+    judge_kind = str(pin.get("judge_kind") or "human").lower()
+    ratings_path = str(pin.get("ratings_path") or "")
+    # paths in pin are relative to package root (docs/a3/...)
+    ratings_doc = _load(ROOT / ratings_path) if ratings_path else None
+    ratings_kind = str((ratings_doc or {}).get("judge_kind") or "").lower()
+    ratings_judge_id = str((ratings_doc or {}).get("judge_id") or "").lower()
+    ratings_honesty = str((ratings_doc or {}).get("honesty") or "").lower()
+    ratings_status = str((ratings_doc or {}).get("status") or "").lower()
+    honesty = str(pin.get("honesty") or "").lower()
+    path_l = ratings_path.lower()
+    path_looks_ai = any(
+        x in path_l
+        for x in (
+            "ai_precheck",
+            "ai.precheck",
+            "ai_judge",
+            "plus_ai",
+            "human_plus_ai",
+        )
+    )
+    ratings_looks_ai = (
+        ratings_kind in {"ai", "llm", "model"}
+        or ratings_kind.startswith("ai.")
+        or "precheck" in ratings_kind
+        or "ai." in ratings_judge_id
+        or "precheck" in ratings_judge_id
+        or "ai precheck" in ratings_honesty
+        or "not a human judge" in ratings_honesty
+        or "pending" in ratings_status
+        or "ai_judge" in ratings_status
+        or bool((ratings_doc or {}).get("precheck_green"))
+    )
+    honesty_blocks = (
+        "pending" in honesty
+        or "ai precheck" in honesty
+        or "judge side ai" in honesty
+        or "still pending" in honesty
+    )
+    # AI / precheck / pending_human never counts as META_EVAL judge green.
+    human_ok = (
+        bool(pin.get("green"))
+        and judge_kind in {"human", "dual_human"}
+        and ("pending" not in status and "ai_" not in status and "precheck" not in status)
+        and not path_looks_ai
+        and not ratings_looks_ai
+        and not honesty_blocks
+        and ratings_doc is not None
+        and bool((ratings_doc or {}).get("green")) is True
+    )
+    green = bool(metrics_ok and human_ok)
+    if metrics_ok and not human_ok:
+        note = (
+            f"Metrics meet R11 numerically (agreement={agreement}, κ={kappa}, "
+            f"ECE={ece}) but human evidence incomplete: status={status!r} "
+            f"judge_kind={judge_kind!r} ratings_path={ratings_path!r} "
+            f"ratings_judge_kind={ratings_kind!r}. "
+            "Need human ratings file (not ai_precheck) + honesty without pending."
+        )
+    elif not metrics_ok:
+        note = (
+            "Pack pinned; ratings/ECE missing or below threshold — not green. "
+            "Do not reuse G2b IAA as judge calibration."
+        )
+    else:
+        note = "Judge↔human metrics meet R11 thresholds (report-only)."
     return {
         **base,
-        "status": "green" if metrics_ok else str(pin.get("status") or "pending_ratings"),
-        "green": bool(metrics_ok),
+        "status": "green" if green else status,
+        "green": green,
         "agreement": agreement,
         "kappa": kappa,
         "ece": ece,
+        "precheck_green": pin.get("precheck_green"),
+        "judge_kind": judge_kind,
+        "ratings_path": ratings_path or None,
         "source": "docs/a3/evidence/meta_eval/f1_judge_pack_pin.v0.json",
-        "note": (
-            "Pack pinned; ratings/ECE missing — not green. "
-            "Do not reuse G2b IAA as judge calibration."
-            if not metrics_ok
-            else "Judge↔human metrics meet R11 thresholds (report-only)."
-        ),
+        "note": note,
     }
 
 
@@ -321,11 +385,14 @@ def main() -> int:
             "",
             *rows,
             "",
-            "## 下一步（仍须人）",
+            "## 下一步",
             "",
-            "1. 填 `f1_judge_pack_pin` ratings → agreement/κ/ECE",
-            "2. 填 `f1_gold_audit_sample` 的 `reaudit_*` → `sample_error_rate`",
-            "3. prep（可复跑）：`python3 packages/aiplat-evaluation/scripts/meta_eval_f1_prep.py`",
+            (
+                "- F1 已 `family_green`：**仍禁止** Tier A 扩容宣称"
+                if family_green
+                else "- 补齐未绿项后复跑本脚本"
+            ),
+            "- 下一家族：F4 / F2 / F3（见 [`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)）",
             "",
             "复跑状态：`python3 packages/aiplat-evaluation/scripts/meta_eval_f1_status.py`",
             "",

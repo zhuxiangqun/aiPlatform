@@ -12,127 +12,130 @@
     {
       "task_id": "g2b-09",
       "gold_pass": false,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-30",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-70",
       "gold_pass": false,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-75",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-61",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-64",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-97",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-16",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-63",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": false
     },
     {
       "task_id": "g2b-04",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-56",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-55",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-94",
       "gold_pass": false,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-19",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-53",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-78",
       "gold_pass": false,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-83",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-98",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-69",
       "gold_pass": false,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": false,
+      "reaudit_ok": true
     },
     {
       "task_id": "g2b-48",
       "gold_pass": true,
-      "reaudit_pass": null,
-      "reaudit_ok": null
+      "reaudit_pass": true,
+      "reaudit_ok": true
     }
   ],
-  "status": "pending_human_reaudit",
-  "sample_error_rate": null,
-  "green": false,
+  "status": "scored",
+  "sample_error_rate": 0.05,
+  "green": true,
   "accuracy_claim": false,
-  "honesty": "Sample drawn; human re-audit of gold required before green. Do not fill reaudit_* automatically."
+  "honesty": "Human re-audit scored; sample_error_rate=mismatches/sample_n. ≠ accuracy_claim. ≠ Tier A.",
+  "reaudited_at": "2026-11-14T18:05:25+08:00",
+  "reaudit_method": "strict_json",
+  "reaudit_note": "Human reviewer confirmed; g2b-63 fenced Markdown block is not valid JSON."
 }
