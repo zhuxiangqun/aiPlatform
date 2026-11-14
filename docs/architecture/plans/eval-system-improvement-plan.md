@@ -689,7 +689,7 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 
 > **建议稿全文**：[`packages/aiplat-evaluation/docs/a3/PHASE0_R_CHECKLIST_RECOMMENDATION.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_R_CHECKLIST_RECOMMENDATION.md)  
 > **确认方式**：产品/评测 owner 授权执行方按建议稿落勾（2026-11-14）；**不等于**定稿冻结。  
-> R11/R12 仍按建议稿 **暂不勾完成**。
+> R12 已勾（tranche-1 对账工件）；**R11 仍暂不勾完成**（缺阈值 owner 签字）。
 
 | # | 审核项 | 设计/条件 | 建议 | 完成勾选 | 理由 / 工件 |
 |---|---|---|---|---|---|
