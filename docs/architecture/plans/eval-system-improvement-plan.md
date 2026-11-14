@@ -5,10 +5,11 @@ doc_type: Architecture
 # aiPlat 评测系统改善方案（完整可执行版）
 
 > **文档类型**：Design / Execution Plan（执行基线）  
-> **版本**：v1.1.5 · 2026-11-14  
-> **状态**：**Phase 1 已验收** — 首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）；§15 仍 12/14（R11/R12 开放）→ **不是**方案定稿/冻结  
-> **诚实锁**：R11/R12 未完成前不得「定稿/冻结」；仍禁止「生产已独立 / 准确率已认证 / process_split_authorized=true」  
-> **工件**：[`PHASE0_FAILURE_DISPOSITION.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_FAILURE_DISPOSITION.md) · [`SHA_CHANGE_LOG.md`](../../../packages/aiplat-evaluation/docs/a3/SHA_CHANGE_LOG.md) · [`fixtures/FIXTURE_SOURCES.md`](../../../packages/aiplat-evaluation/docs/a3/fixtures/FIXTURE_SOURCES.md) · [`PHASE0_CI_STABLE_SUBSET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_CI_STABLE_SUBSET.md) · [`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · `scripts/phase0_ci_stable_subset.sh`  
+> **版本**：v1.1.6 · 2026-11-14  
+> **状态**：**Phase 1 已验收**；Phase 2 **预备中（未授权）**；§15 **13/14**（R12 对账工件齐；**R11 仍缺 owner 签字**）→ **不是**方案定稿/冻结  
+> **诚实锁**：R11 未签前不得「定稿/冻结」；仍禁止「生产已独立 / 准确率已认证 / process_split_authorized=true」  
+> **工件**：[`PHASE1_AUDIT_WORKSHEET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE1_AUDIT_WORKSHEET.md) · [`PHASE2_PREP.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE2_PREP.md) · [`R11_META_EVAL_THRESHOLDS.md`](../../../packages/aiplat-evaluation/docs/a3/R11_META_EVAL_THRESHOLDS.md) · [`R12_CAPABILITY_RECONCILIATION.md`](../../../packages/aiplat-evaluation/docs/a3/R12_CAPABILITY_RECONCILIATION.md) · Phase0 处置/SHA/fixtures/CI 子集  
+
 > **关联**：[`eval-v1-charter.md`](./eval-v1-charter.md) · [`eval-production-independent-service.md`](./eval-production-independent-service.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` · `SCORE_SCOPE_V1.md` · `evidence/evidence_manifest.v1.json`  
 > **证据时点**：2026-11-14（`.venv` Py3.11：scorecard PASS；honesty scan PASS；`phase0_ci_stable_subset` PASS；`package_release_check` PASS；GH `eval-phase0-stable.yml` 已挂）  
 > **本文件不是**：实施记录宣称完成；不代表 `process_split_authorized` / 产品级 `accuracy_claim` / staging 已解冻；**不代表方案已定稿冻结**。
@@ -34,14 +35,14 @@ doc_type: Architecture
 当前可定稿性：不满足
 
 原因（仍开放）：
-  R11 缺元评测阈值 owner 签字页
-  R12 缺能力对账结果工件
-  §15.3 定稿四条件未齐
+  R11 缺元评测阈值 owner 签字（页已建：R11_META_EVAL_THRESHOLDS.md）
+  §15.3 定稿四条件未齐（含 R11）
+  Phase 2 authorize / staging 未开
 
 已关闭（相对初审）：
   R1–R9 设计正式 ☑
-  R10/R13/R14 工件齐并正式 ☑
-  Phase 0 工程工件已产出；scorecard / honesty / phase0 子集门禁绿
+  R10/R12/R13/R14 工件齐并正式 ☑（R12 tranche-1；差异队列 open）
+  Phase 0 工程工件 + Phase 1 双人签字（首版 5/5 相对 SCOPE）
   accuracy 方案 A 已落地（产品级 false / scoped 分离）
 ```
 
@@ -50,7 +51,7 @@ doc_type: Architecture
 五个硬收口：方向正确
 五个执行细节：正确（比 v1.0 完整）
 可作为执行基线：是
-可作为已审核冻结定稿：否（等 R11/R12）
+可作为已审核冻结定稿：否（等 R11 签字）
 ```
 
 一句话：
@@ -702,18 +703,18 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 | R8 | 生产独立门禁 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | authorize 未开 |
 | R9 | 立刻第一步（§16） | ✅ 设计可通过 | 建议正式 ☑ | ☑ | §16 已执行 |
 | R10 | 0.0a 全量基线 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | drills 基线报告 + `PHASE0_CI_STABLE_SUBSET.md` |
-| R11 | 元评测阈值 + owner | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 阈值已写；**缺 owner 签字页** |
-| R12 | 能力对账 | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 规则已写；**缺对账结果** |
+| R11 | 元评测阈值 + owner | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 阈值页 [`R11_META_EVAL_THRESHOLDS.md`](../../../packages/aiplat-evaluation/docs/a3/R11_META_EVAL_THRESHOLDS.md)；**缺 owner 签字** |
+| R12 | 能力对账 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | tranche-1：[`R12_CAPABILITY_RECONCILIATION.md`](../../../packages/aiplat-evaluation/docs/a3/R12_CAPABILITY_RECONCILIATION.md)（差异多为 open） |
 | R13 | 证据版本与回滚 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | `evidence_version` + change log rollback |
 | R14 | fixture 隐私/来源 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | `FIXTURE_SOURCES.md` + fixtures |
 
 ```text
-正式完成勾选：12 / 14
+正式完成勾选：13 / 14
   R1–R9：正式 ☑（设计确认）
-  R10/R13/R14：正式 ☑（工件齐）
-  R11/R12：条件接受，暂不勾完成
-  门禁：绿（scorecard + honesty scan + phase0_ci_stable_subset + package_release_check）
-  定稿（冻结）：否（等 R11 签字 + R12 对账结果 + §15.3 其余条件）
+  R10/R12/R13/R14：正式 ☑（工件齐；R12 差异队列仍 open）
+  R11：阈值页已建，暂不勾完成（缺 owner 签字）
+  门禁：绿（scorecard + honesty + phase0 子集）
+  定稿（冻结）：否（等 R11 签字 + §15.3 其余条件）
 ```
 
 ### 15.3 何时可改为「定稿（冻结）」
@@ -750,10 +751,11 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 
 ```text
 可写：首版 5/5 已审计通过（相对 SCORE_SCOPE_V1；产品 accuracy_claim=false；≠ authorize）
-不可写：方案已定稿 / 已冻结（R11/R12 仍开放）/ 生产已独立 / 准确率已认证
+      Phase 2 预备中（未授权）；R12 tranche-1 对账工件齐
+不可写：方案已定稿 / 已冻结（R11 未签）/ 生产已独立 / 准确率已认证
 ```
 
-Phase 1 双人签字已完成（朱向群 / 朱鸿林 · 2026-11-14）。R11/R12 与 Phase 2/3 并行。定稿冻结仍须 §15.3 全条件（含 R11/R12）。下一阶段：Phase 2 仅在 `process_split` 授权后推进。
+Phase 1 已签字。R12 对账工件齐（差异 open）。R11 待 owner 签阈值页。Phase 2 仅在 SPLIT 全 ✅ 且 authorize 后推进；此前只做 `PHASE2_PREP` 盘点与 local 工程。
 
 ---
 
@@ -768,3 +770,4 @@ Phase 1 双人签字已完成（朱向群 / 朱鸿林 · 2026-11-14）。R11/R12
 | v1.1.3 | 2026-11-14 | owner 授权按建议稿正式勾选 R1–R9 + R10/R13/R14；R11/R12 仍开放；仍非定稿 |
 | v1.1.4 | 2026-11-14 | Phase0 CI 绿；进入 Phase 1 工程预检；新增 `PHASE1_AUDIT_WORKSHEET`；仍非「5/5 已审计通过」 |
 | v1.1.5 | 2026-11-14 | Phase 1 双人签字（朱向群/朱鸿林）；允许「首版 5/5 已审计通过」受限宣称；仍非定稿 |
+| v1.1.6 | 2026-11-14 | Phase2 预备页；R11 阈值签字页；R12 evaluation-system 对账工件；§15→13/14 |
