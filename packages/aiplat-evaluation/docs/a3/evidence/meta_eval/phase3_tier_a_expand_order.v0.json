@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_expand_order.v0",
-  "recorded_at": "2026-11-14T21:00:14+08:00",
+  "recorded_at": "2026-11-14T21:01:48+08:00",
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -33,13 +33,13 @@
       "seq": 3,
       "symbol": "judge_calibration_gate_for_ticket",
       "family": "F1",
-      "status": "proposal_pending_owner"
+      "status": "accepted"
     },
     {
       "seq": 4,
       "symbol": "cohen_kappa_binary",
       "family": "F1",
-      "status": "queued"
+      "status": "proposal_pending_owner"
     },
     {
       "seq": 5,

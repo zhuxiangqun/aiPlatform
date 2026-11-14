@@ -795,3 +795,4 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec19 | 2026-11-14 | Tier A 扩序 + 提案#1 `evaluate_judge_calibration_gate`（pending owner；≠ 已授权） |
 | v1.1.7+exec20 | 2026-11-14 | owner ACCEPT #1 scoped gate；账本 1 符号；开提案#2；全局扩容仍 false |
 | v1.1.7+exec21 | 2026-11-14 | owner ACCEPT #2 `open_capability_judge_calibration`；账本 2 符号；开提案#3 |
+| v1.1.7+exec22 | 2026-11-14 | owner ACCEPT #3 `judge_calibration_gate_for_ticket`；账本 3 符号；开提案#4 κ |
