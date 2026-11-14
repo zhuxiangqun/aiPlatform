@@ -28,9 +28,10 @@ doc_type: Reference
 | `eval_evaluate_security_family_gates` | F2 | CoreFacade 包装（≠ cert） |
 | `eval_evaluate_security_severity_l5_gate` | F2 | L5-*gate API* facade（`l5_declare` 仍 false） |
 | `assert_t13_process_split_boundary` | F3 | 边界断言（`process_split` 仍 false） |
+| `build_g2b_s_dual_review_workflow` | F3 | 双人复核工作流（≠ process_split） |
 
-owner：朱向群。F1+F4+F2 齐 + F3 1/3 scoped。≠ 产品准确率认证 / L5 declare / process_split。
+owner：朱向群。18/19 scoped；最后 #19 F3 facade。全局扩容仍 false。
 
 ## 下一步
 
-提案 #18：[`PHASE3_TIER_A_PROPOSAL_build_g2b_s_dual_review_workflow.md`](./PHASE3_TIER_A_PROPOSAL_build_g2b_s_dual_review_workflow.md)
+提案 #19（末）：[`PHASE3_TIER_A_PROPOSAL_eval_assert_t13_process_split_boundary.md`](./PHASE3_TIER_A_PROPOSAL_eval_assert_t13_process_split_boundary.md)
