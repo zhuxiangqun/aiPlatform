@@ -18,8 +18,9 @@ async def product_healthz(
 ) -> Union[Dict[str, Any], Response]:
     """Mirror standalone `GET /api/platform/apps/eval/healthz` when proxied.
 
-    Cohost (no AIPLAT_EVAL_SERVICE_URL): return a minimal cohost payload so the
-    path is not 404 — FE treats missing product healthz as soft-fail already.
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
     """
     proxied = await proxy_eval_store(request, path="/healthz")
     if proxied is not None:

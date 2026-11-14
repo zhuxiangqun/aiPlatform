@@ -1,3 +1,8 @@
+"""runs：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from core.schemas_common import MessageResponse
 
@@ -149,6 +154,12 @@ def _diff_outputs(prev_out: Any, new_out: Any) -> Dict[str, Any]:
 
 @router.get("/runs/{run_id}", response_model=Dict[str, Any])
 async def get_run(run_id: str, rt: RuntimeDep = None):
+    """获取 run。
+
+    Args:
+        run_id: 运行 ID。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -184,6 +195,14 @@ async def get_run(run_id: str, rt: RuntimeDep = None):
 
 @router.get("/runs/{run_id}/events", response_model=Dict[str, Any])
 async def list_run_events(run_id: str, after_seq: int = 0, limit: int = 200, rt: RuntimeDep = None):
+    """列出 run_events。
+
+    Args:
+        run_id: 运行 ID。
+        after_seq: after_seq 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -199,8 +218,15 @@ async def get_run_cost(
     max_tokens_increase_pct: float = 0.2,
     rt: RuntimeDep = None,
 ):
-    """
-    Lightweight per-run cost summary derived from syscall_events.
+    """Lightweight per-run cost summary derived from syscall_events.
+
+    Args:
+        run_id: 运行 ID。
+        tenant_id: 租户 ID。
+        limit_syscalls: limit_syscalls 参数。
+        baseline_run_id: baseline_run 标识。
+        max_tokens_increase_pct: max_tokens_increase_pct 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -238,8 +264,11 @@ async def get_run_cost(
 
 @router.get("/runs/{run_id}/children", response_model=Dict[str, Any])
 async def list_child_runs(run_id: str, rt: RuntimeDep = None):
-    """
-    P6-2: "SOP 节点 = 子 run" 原语：列出该 parent run 派生的子 run（从 run_events 推导）。
+    """P6-2: "SOP 节点 = 子 run" 原语：列出该 parent run 派生的子 run（从 run_events 推导）。
+
+    Args:
+        run_id: 运行 ID。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -268,12 +297,13 @@ async def list_child_runs(run_id: str, rt: RuntimeDep = None):
 
 @router.get("/runs/{run_id}/graph", response_model=Dict[str, Any])
 async def get_run_graph(run_id: str, include_child_summaries: bool = True, after_seq: int = 0, rt: RuntimeDep = None):
-    """
-    Return a graph/DAG view derived from run_events:
-    - nodes: SOP nodes with current child run + history (spawn events)
-    - edges: depends_on relationships
-    - joins: join barriers (defined/ready)
-    - checkpoints: checkpoint lifecycle (requested/resolved/applied)
+    """Return a graph/DAG view derived from run_events:。
+
+    Args:
+        run_id: 运行 ID。
+        include_child_summaries: include_child_summaries 参数。
+        after_seq: after_seq 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -600,18 +630,13 @@ async def get_run_graph(run_id: str, include_child_summaries: bool = True, after
     }
 @router.post("/runs/{run_id}/children/spawn", response_model=Dict[str, Any])
 async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-2: "SOP 节点 = 子 run" 原语：在 parent run 下创建并执行一个 child run。
+    """P6-2: "SOP 节点 = 子 run" 原语：在 parent run 下创建并执行一个 child run。
 
-    Body:
-      {
-        "node_id": "step_b",
-        "depends_on": ["step_a"],
-        "kind": "skill|tool|agent|graph",
-        "target_id": "...",
-        "payload": {"input": {...}, "context": {...}},
-        "options": {...}  // optional (pass-through into payload.options)
-      }
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -793,25 +818,13 @@ async def spawn_child_run(run_id: str, request: dict, http_request: Request, rt:
 
 @router.post("/runs/{run_id}/joins/define", response_model=Dict[str, Any])
 async def define_join(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-4: Define a join barrier on a parent run.
+    """P6-4: Define a join barrier on a parent run.
 
-    Body:
-      {
-        "join_id": "optional",
-        "node_id": "join_step",
-        "required_nodes": ["step_1", "step_2"],
-        "mode": "all_success|all_done",
-        "blocking": true,
-        "checkpoint_on_ready": {
-          "enabled": true,
-          "title": "汇合复核",
-          "risk_level": "medium",
-          "blocking": true,
-          "on_approved_spawn": {"node_id": "next_step", "kind": "skill", "target_id": "...", "payload": {...}, "depends_on": ["step_1","step_2"]},
-          "on_rejected_redo_node": {"node_id": "step_1", "patch": {"input": {...}}, "reason": "fix upstream"}
-        }
-      }
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -868,9 +881,14 @@ async def define_join(run_id: str, request: dict, http_request: Request, rt: Run
 
 @router.post("/runs/{run_id}/joins/{join_id}/wait", response_model=Dict[str, Any])
 async def wait_join(run_id: str, join_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-4: Long-poll until join is ready.
-    It will emit join_ready once, then return.
+    """P6-4: Long-poll until join is ready.
+
+    Args:
+        run_id: 运行 ID。
+        join_id: join 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1122,15 +1140,14 @@ async def wait_join(run_id: str, join_id: str, request: dict, http_request: Requ
 
 @router.post("/runs/{run_id}/nodes/{node_id}/redo", response_model=Dict[str, Any])
 async def redo_node(run_id: str, node_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-2 (node-level): Redo a single SOP node by re-spawning a new child run from stored request_payload.
+    """P6-2 (node-level): Redo a single SOP node by re-spawning a new child run from stored request_payload.
 
-    This is intentionally conservative:
-    - Only invalidates downstream nodes that explicitly depend_on this node.
-    - Does not auto-cancel already-running child runs; it marks them stale via run_events.
-
-    Body:
-      { "patch": {"input": {...}, "context": {...}}, "reason": "..." }
+    Args:
+        run_id: 运行 ID。
+        node_id: node 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1165,18 +1182,13 @@ async def redo_node(run_id: str, node_id: str, request: dict, http_request: Requ
 
 @router.post("/runs/{run_id}/checkpoints/request", response_model=Dict[str, Any])
 async def request_checkpoint(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-1: Request a human checkpoint (review) for an in-flight run.
+    """P6-1: Request a human checkpoint (review) for an in-flight run.
 
-    Body (suggested):
-      {
-        "node_id": "B->C",
-        "title": "发布前审核",
-        "artifact": {"type":"evidence_pack","id":"...","url":"..."},
-        "risk_level": "high|medium|low",
-        "suggested_reviewers": ["role:operator","user:u1"],
-        "blocking": true
-      }
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1232,16 +1244,14 @@ async def request_checkpoint(run_id: str, request: dict, http_request: Request, 
 
 @router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/resolve", response_model=Dict[str, Any])
 async def resolve_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-1: Resolve a checkpoint (approve/reject/comment_only).
-    This endpoint is event-based; it does not directly mutate run execution.
+    """P6-1: Resolve a checkpoint (approve/reject/comment_only).
 
-    Body (optional):
-      {
-        "decision": "approved|rejected|comment_only",
-        "comments": "text",
-        "checklist_result": [{"text":"...","status":"passed|failed","note":"..."}]
-      }
+    Args:
+        run_id: 运行 ID。
+        checkpoint_id: checkpoint 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1556,18 +1566,14 @@ async def _redo_node_internal(
 
 @router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/apply", response_model=Dict[str, Any])
 async def apply_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-4 enhancement: Apply a resolved checkpoint to advance workflow.
+    """P6-4 enhancement: Apply a resolved checkpoint to advance workflow.
 
-    Current supported action:
-    - If checkpoint was approved AND checkpoint_requested payload contains `on_approved_spawn`,
-      spawn the described child run.
-
-    Idempotency:
-    - If checkpoint_applied already exists for checkpoint_id, this is a no-op.
-
-    Body:
-      { "patch": {"input": {...}, "context": {...}}, "reason": "..." }
+    Args:
+        run_id: 运行 ID。
+        checkpoint_id: checkpoint 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1866,15 +1872,14 @@ async def apply_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_
 
 @router.post("/runs/{run_id}/checkpoints/{checkpoint_id}/redo", response_model=Dict[str, Any])
 async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    P6-2: Reject -> redo.
-    Create a new run by replaying run_start.request_payload, with optional patch overrides.
+    """P6-2: Reject -> redo.
 
-    Body:
-      {
-        "patch": {"input": {...}, "context": {...}},
-        "reason": "why redo"
-      }
+    Args:
+        run_id: 运行 ID。
+        checkpoint_id: checkpoint 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1989,12 +1994,13 @@ async def redo_from_checkpoint(run_id: str, checkpoint_id: str, request: dict, h
 
 @router.post("/runs/{run_id}/cancel", response_model=MessageResponse)
 async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
-    """
-    Best-effort stop/cancel for platform runs.
-    - If run is queued (session_queue), mark it cancelled so it won't be dequeued.
-    - Always write a cancel_requested marker to run_events.
-    - If run has no run_end yet, append run_end(status=cancelled) so UI becomes stable.
-    - Also cancel matching agent/skill execution rows (zombie ReAct runs).
+    """Best-effort stop/cancel for platform runs.
+
+    Args:
+        run_id: 运行 ID。
+        http_request: http_request 参数。
+        body: 请求体 dict。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -2052,10 +2058,12 @@ async def cancel_run(run_id: str, http_request: Request, body: Optional[Dict[str
 
 @router.post("/runs/{run_id}/retry", response_model=Dict[str, Any])
 async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
-    """
-    Best-effort retry for platform runs.
-    This replays the run_start.request_payload captured in run_events (redacted),
-    and re-executes via Harness with a new run_id.
+    """Best-effort retry for platform runs.
+
+    Args:
+        run_id: 运行 ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -2107,11 +2115,13 @@ async def retry_run(run_id: str, http_request: Request, rt: RuntimeDep = None):
 
 @router.post("/runs/{run_id}/undo", response_model=Dict[str, Any])
 async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
-    """
-    Undo when safe: queued → cancel.
+    """Undo when safe: queued → cancel.
 
-    For completed/active runs there is no universal undo — return 409 with
-    explainable alternatives (file checkpoints UI, cancel, domain rollback).
+    Args:
+        run_id: 运行 ID。
+        http_request: http_request 参数。
+        body: 请求体 dict。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -2172,10 +2182,13 @@ async def undo_run(run_id: str, http_request: Request, body: Optional[Dict[str, 
 
 @router.post("/runs/{run_id}/wait", response_model=Dict[str, Any])
 async def wait_run(run_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    Long-poll run events until terminal state or timeout.
-    Body:
-      { "timeout_ms": 30000, "after_seq": 0, "auto_resume": false }
+    """Long-poll run events until terminal state or timeout.
+
+    Args:
+        run_id: 运行 ID。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:

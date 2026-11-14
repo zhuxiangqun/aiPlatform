@@ -43,9 +43,8 @@ def _static_token_ok(got: str) -> bool:
 def require_wiki_loop_auth(request: Request) -> None:
     """Require a wiki-loop token unless unsigned access is explicitly allowed.
 
-    Default require=true. ``AIPLAT_WIKI_LOOP_REQUIRE_AUTH=false`` remains an
-    escape. Prefer ``AIPLAT_WIKI_LOOP_WEBHOOK_TOKEN``; fall back to
-    ``AIPLAT_API_KEY`` so deployments that already set a core key work.
+    Args:
+        request: FastAPI Request。
     """
     if wiki_loop_unsigned_allowed():
         return

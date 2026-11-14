@@ -21,7 +21,12 @@ from typing import Any, List, Optional
 # ── Hash fallback (synchronous, zero-dependency) ──────────────────────────
 
 def hash_embed(text: str, dim: int = 128) -> List[float]:
-    """SHA-256 n-gram hash → normalized float vector. Zero-dependency fallback."""
+    """SHA-256 n-gram hash → normalized float vector. Zero-dependency fallback.
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
     if not text:
         return [0.0] * dim
     n = max(1, dim // 4)
@@ -43,6 +48,12 @@ def hash_embed(text: str, dim: int = 128) -> List[float]:
 
 
 def cosine_similarity(a: List[float], b: List[float]) -> float:
+    """cosine_similarity。
+
+    Args:
+        a: a 参数。
+        b: b 参数。
+    """
     if not a or not b or len(a) != len(b):
         return 0.0
     dot = sum(x * y for x, y in zip(a, b))
@@ -72,7 +83,11 @@ def _get_semantic_model() -> Any:
 
 
 def embed_text_semantic(text: str) -> Optional[List[float]]:
-    """Sync semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity."""
+    """Sync semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity.
+
+    Args:
+        text: text 参数。
+    """
     if _backend_name() == "hash":
         return hash_embed(text)
     model = _get_semantic_model()
@@ -88,7 +103,11 @@ def embed_text_semantic(text: str) -> Optional[List[float]]:
 
 # disposition: internal helper — used by SemanticEmbedder.embed_batch() in same module
 def embed_texts_semantic(texts: List[str]) -> Optional[List[List[float]]]:
-    """Sync batch semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity."""
+    """Sync batch semantic embedding. Respects AIPLAT_EMBED_BACKEND=hash for offline/test parity.
+
+    Args:
+        texts: texts 参数。
+    """
     if _backend_name() == "hash":
         return [hash_embed(t) for t in texts]
     model = _get_semantic_model()
@@ -113,7 +132,12 @@ def _backend_name() -> str:
 
 
 async def embed_text(text: str, dim: int = 128) -> List[float]:
-    """Unified async embed — selects backend via AIPLAT_EMBED_BACKEND."""
+    """Unified async embed — selects backend via AIPLAT_EMBED_BACKEND.
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
     backend = _backend_name()
     if backend == "hash":
         return hash_embed(text, dim)
@@ -133,7 +157,12 @@ async def embed_text(text: str, dim: int = 128) -> List[float]:
 
 
 async def embed_texts(texts: List[str], dim: int = 128) -> List[List[float]]:
-    """Unified async batch embed — selects backend via AIPLAT_EMBED_BACKEND."""
+    """Unified async batch embed — selects backend via AIPLAT_EMBED_BACKEND.
+
+    Args:
+        texts: texts 参数。
+        dim: dim 参数。
+    """
     backend = _backend_name()
     if backend == "hash":
         return [hash_embed(t, dim) for t in texts]
@@ -162,6 +191,12 @@ class SemanticEmbedder:
     """
     
     def __init__(self, *, backend: str = "", model_name: str = ""):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            model_name: model_name 参数。
+        """
         backend = backend or _backend_name()
         model_name = model_name or ""
         if not model_name:
@@ -174,9 +209,19 @@ class SemanticEmbedder:
         self._model_name = model_name
     
     async def embed(self, text: str) -> List[float]:
+        """embed。
+
+        Args:
+            text: text 参数。
+        """
         return await embed_text(text)
     
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """embed_batch。
+
+        Args:
+            texts: texts 参数。
+        """
         return await embed_texts(texts)
 
 

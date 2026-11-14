@@ -41,9 +41,15 @@ async def kb_qa_retrieve(
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """Canonical user-facing KB Q&A retrieval (W4).
 
-    Routes through ``sys_crag_retrieve`` (GraphRAG L0 when domain_id set →
-    ontology → FTS via kb_retrieve → HyDE). Do not open a parallel user API
-    for GraphRAG — it is an internal CRAG branch.
+    Args:
+        query: 查询。
+        doc_ids: doc_ids 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        domain_id: domain 标识。
+        top_k: top_k 参数。
+        enable_hyde: enable_hyde 参数。
+        kwargs: kwargs 参数。
     """
     from core.harness.syscalls.retrieval_crag import sys_crag_retrieve
 
@@ -66,6 +72,13 @@ async def kb_qa_retrieve(
 
 def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
 
+    """wiki_retrieve。
+
+    Args:
+        query: 查询。
+        wiki_titles: wiki_titles 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.retrieval import sys_wiki_retrieve
 
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
@@ -76,6 +89,14 @@ def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
 
 def kb_chunk_elements(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
 
+    """kb_chunk_elements。
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
+    """
     from core.apps.document_intelligence.chunking import chunk_elements
 
     return chunk_elements(elements, kind=kind, target_size=target_size, overlap=overlap)
@@ -86,6 +107,13 @@ def kb_chunk_elements(elements: Any, kind: str = "pdf", target_size: int = 1000,
 
 def kb_transcribe_audio(audio_path: str, language: str = "auto", diagnostics: Any = None) -> Any:
 
+    """kb_transcribe_audio。
+
+    Args:
+        audio_path: audio_path 参数。
+        language: language 参数。
+        diagnostics: diagnostics 参数。
+    """
     from core.harness.document.transcriber import transcribe_audio
 
     return transcribe_audio(audio_path, language=language or None, diagnostics=diagnostics)
@@ -96,6 +124,13 @@ def kb_transcribe_audio(audio_path: str, language: str = "auto", diagnostics: An
 
 def kb_transcribe_audio_chunked(audio_path: str, language: str = "auto", chunk_seconds: int = 60) -> Any:
 
+    """kb_transcribe_audio_chunked。
+
+    Args:
+        audio_path: audio_path 参数。
+        language: language 参数。
+        chunk_seconds: chunk_seconds 参数。
+    """
     from core.harness.document.transcriber import transcribe_audio_chunked
 
     return transcribe_audio_chunked(audio_path, language=language or None, chunk_seconds=chunk_seconds)
@@ -106,7 +141,12 @@ def kb_transcribe_audio_chunked(audio_path: str, language: str = "auto", chunk_s
 
 def kb_embed_text(text: str, dim: int = 128) -> Any:
 
-    """Embed text into a vector. Safe to call from sync or async context."""
+    """Embed text into a vector. Safe to call from sync or async context.
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
 
     import asyncio as _asyncio, concurrent.futures as _cf
 
@@ -136,6 +176,12 @@ def kb_embed_text(text: str, dim: int = 128) -> Any:
 
 def kb_embed_text_sync(text: str, dim: int = 128) -> Any:
 
+    """kb_embed_text_sync。
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
     from core.harness.knowledge.embedder import hash_embed
 
     return hash_embed(text, dim)
@@ -146,6 +192,11 @@ def kb_embed_text_sync(text: str, dim: int = 128) -> Any:
 
 def kb_extract_keywords(text: str) -> Any:
 
+    """kb_extract_keywords。
+
+    Args:
+        text: text 参数。
+    """
     from core.harness.knowledge.utils import extract_keywords
 
     return extract_keywords(text)
@@ -156,6 +207,12 @@ def kb_extract_keywords(text: str) -> Any:
 
 def kb_classify_document(elements: Any, kind: str) -> Any:
 
+    """kb_classify_document。
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+    """
     from core.apps.document_intelligence.classifier import classify_document
 
     return classify_document(elements, kind)
@@ -166,6 +223,11 @@ def kb_classify_document(elements: Any, kind: str) -> Any:
 
 def kb_element_source(element: Any) -> Any:
 
+    """kb_element_source。
+
+    Args:
+        element: element 参数。
+    """
     from core.harness.knowledge.utils import element_source
 
     return element_source(element)
@@ -176,6 +238,12 @@ def kb_element_source(element: Any) -> Any:
 
 def kb_score_text(text: str, keywords: Any) -> Any:
 
+    """kb_score_text。
+
+    Args:
+        text: text 参数。
+        keywords: keywords 参数。
+    """
     from core.harness.knowledge.utils import score_text
 
     return score_text(text, list(keywords) if keywords else [])
@@ -186,6 +254,11 @@ def kb_score_text(text: str, keywords: Any) -> Any:
 
 def kb_kind_category(kind: str) -> Any:
 
+    """kb_kind_category。
+
+    Args:
+        kind: kind 参数。
+    """
     from core.apps.document_intelligence.classifier import kind_category
 
     return kind_category(kind)
@@ -196,6 +269,8 @@ def kb_kind_category(kind: str) -> Any:
 
 def kb_get_ingest_fn() -> Any:
 
+    """kb_get_ingest_fn。
+    """
     from core.apps.document_intelligence.kb_provider import get_ingest_fn
 
     return get_ingest_fn()
@@ -206,6 +281,11 @@ def kb_get_ingest_fn() -> Any:
 
 def kb_get_tenant_storage(tenant_id: str) -> Any:
 
+    """kb_get_tenant_storage。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.document_intelligence.kb_provider import get_tenant_storage
 
     return get_tenant_storage(tenant_id)
@@ -216,6 +296,11 @@ def kb_get_tenant_storage(tenant_id: str) -> Any:
 
 def kb_create_infra_db_client(db_path: str) -> Any:
 
+    """kb_create_infra_db_client。
+
+    Args:
+        db_path: db_path 参数。
+    """
     from core.harness.infrastructure.infra_bridge import create_infra_database_client
 
     return create_infra_database_client(db_path)
@@ -232,6 +317,14 @@ create_infra_database_client = kb_create_infra_db_client
 
 def kb_llm_chat_complete(system_prompt: str, user_prompt: str, temperature: float = 0.1, max_tokens: int = 700) -> Any:
 
+    """kb_llm_chat_complete。
+
+    Args:
+        system_prompt: system_prompt 参数。
+        user_prompt: user_prompt 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+    """
     from core.apps.document_intelligence.llm_client import chat_complete
 
     return chat_complete(system_prompt=system_prompt, user_prompt=user_prompt, temperature=temperature, max_tokens=max_tokens)
@@ -242,6 +335,8 @@ def kb_llm_chat_complete(system_prompt: str, user_prompt: str, temperature: floa
 
 def kb_llm_enabled() -> bool:
 
+    """kb_llm_enabled。
+    """
     from core.apps.document_intelligence.llm_client import llm_enabled
 
     return llm_enabled()
@@ -252,6 +347,15 @@ def kb_llm_enabled() -> bool:
 
 async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: str, profile: str = "key_points", **kwargs: Any) -> Any:
 
+    """kb_summarize_document。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        doc_id: doc 标识。
+        profile: 评测 profile。
+        kwargs: kwargs 参数。
+    """
     from core.apps.document_intelligence.summarizer import summarize_document
 
     return await summarize_document(tenant_id=tenant_id, collection_id=collection_id, doc_id=doc_id, profile=profile, **kwargs)
@@ -344,7 +448,11 @@ _KIND_CANONICAL = {
 
 def normalize_kind(kind: str) -> str:
 
-    """Normalize a document kind string to its canonical form."""
+    """Normalize a document kind string to its canonical form.
+
+    Args:
+        kind: kind 参数。
+    """
 
     return _KIND_CANONICAL.get(str(kind).lower(), str(kind).lower())
 
@@ -356,12 +464,9 @@ def kb_parse_document(file_path: str, kind: str) -> Any:
 
     """Parse a document file via the ConverterRegistry with full fallback chain.
 
-    
-
-    Uses convert_with_fallback() — tries all accepting converters in priority order.
-
-    Each failure is collected; if no converter succeeds, FileConversionException is raised.
-
+    Args:
+        file_path: file_path 参数。
+        kind: kind 参数。
     """
 
     from core.harness.document.protocol import get_document_registry, StreamInfo
@@ -417,6 +522,14 @@ def kb_parse_document(file_path: str, kind: str) -> Any:
 
 def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
 
+    """kb_chunk_document。
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
+    """
     from core.harness.document.chunker import chunk_document
 
     return chunk_document(elements, kind=kind, target_size=target_size, overlap=overlap)
@@ -441,18 +554,9 @@ def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
 
     """Register platform-level knowledge provider callbacks for core KB operations.
 
-    
-
-    Callbacks registered:
-
-        ingest_fn      → set_knowledge_ingest_fn()
-
-        query_fn       → set_kb_query_fn()
-
-        enqueue_fn     → set_kb_enqueue_ingest_fn()
-
-        load_doc_kinds_fn → set_kb_load_doc_kinds_fn()
-
+    Args:
+        args: args 参数。
+        kwargs: kwargs 参数。
     """
 
     from core.apps.document_intelligence.kb_provider import (

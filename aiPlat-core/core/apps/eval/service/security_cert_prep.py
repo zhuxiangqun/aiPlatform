@@ -60,8 +60,12 @@ def run_per_family_cert_prep(
 ) -> Dict[str, Any]:
     """Per-family harness: classify L5-candidate vs report_only vs untested.
 
-    ``use_seed_annotation_fixture`` builds annotation-only cases from safety.json
-    (not a live scored run). Prefer real ``by_case`` for CERT-PREP evidence.
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        pack_id: pack 标识。
+        eval_layer: eval_layer 参数。
+        use_seed_annotation_fixture: use_seed_annotation_fixture 参数。
     """
     cases = dict(by_case or {})
     annotation_only = False
@@ -143,7 +147,17 @@ def build_judge_calib_evidence_pack(
     dual_human_completed: bool = False,
     failure_case_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Package judge isolation + calibration report for CERT-PREP evidence."""
+    """Package judge isolation + calibration report for CERT-PREP evidence.
+
+    Args:
+        judge_model: 裁判模型。
+        subject_model: 被测模型。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        pairs: 对照样本序列。
+        dual_human_completed: dual_human_completed 参数。
+        failure_case_ids: failure_case_ids 参数。
+    """
     defaults = load_judge_calib_defaults()
     pair_rows = [dict(x) for x in (pairs or []) if isinstance(x, Mapping)]
     fail_ids = [str(x) for x in (failure_case_ids or []) if str(x).strip()]
@@ -186,7 +200,13 @@ def build_g2b_s_dual_review_workflow(
     security_failure_ids: Optional[Sequence[str]] = None,
     dual_reviews: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """G2b-S dual-blind review checklist for CERT-PREP (facilitation)."""
+    """G2b-S dual-blind review checklist for CERT-PREP (facilitation).
+
+    Args:
+        tenant_id: 租户 ID。
+        security_failure_ids: security_failure_ids 参数。
+        dual_reviews: dual_reviews 参数。
+    """
     pack = g2b_pack_status(tenant_id=tenant_id)
     gap = g2b_l5_gap_disclosure(tenant_id=tenant_id)
     fails = [str(x) for x in (security_failure_ids or []) if str(x).strip()]
@@ -248,7 +268,24 @@ def rehearse_l5_limited_claim(
     has_run_evidence: bool = False,
     human_review: bool = False,
 ) -> Dict[str, Any]:
-    """Rehearse limited L5 claim template + claims_gate. Cert always false."""
+    """Rehearse limited L5 claim template + claims_gate. Cert always false.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        pack_id: pack 标识。
+        pack_version: pack_version 参数。
+        runtime_tier: runtime_tier 参数。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+        judge_usable: judge_usable 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+        sample_n: sample_n 参数。
+        has_run_evidence: 布尔开关。
+        human_review: human_review 参数。
+    """
     tmpl = build_security_l5_claim_template(
         by_case=by_case or {},
         subject=subject or {"label": "cert-prep-subject", "object_id": "cert-prep"},
@@ -324,7 +361,18 @@ def security_cert_prep_status(
     explicit_authorize: bool = False,
     signoffs: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Facade-friendly CERT-PREP dashboard across the three prep steps."""
+    """Facade-friendly CERT-PREP dashboard across the three prep steps.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        judge_model: 裁判模型。
+        subject_model: 被测模型。
+        security_failure_ids: security_failure_ids 参数。
+        dual_reviews: dual_reviews 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+    """
     family = run_per_family_cert_prep(
         by_case=by_case,
         subject=subject,

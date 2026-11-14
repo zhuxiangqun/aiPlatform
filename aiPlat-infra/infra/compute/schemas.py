@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 import os
@@ -5,6 +7,7 @@ import os
 
 @dataclass
 class ResourceRequest:
+    """ResourceRequest。"""
     resource_type: str = "cpu"
     quantity: int = 1
     priority: int = 0
@@ -12,6 +15,7 @@ class ResourceRequest:
 
 @dataclass
 class Allocation:
+    """Allocation。"""
     id: str = ""
     node_id: str = ""
     resources: Dict[str, Any] = field(default_factory=dict)
@@ -20,6 +24,7 @@ class Allocation:
 
 @dataclass
 class Node:
+    """Node。"""
     id: str = ""
     type: str = ""
     status: str = ""
@@ -29,6 +34,7 @@ class Node:
 
 @dataclass
 class Task:
+    """Task。"""
     id: str = ""
     command: str = ""
     resources: Dict[str, Any] = field(default_factory=dict)
@@ -37,6 +43,7 @@ class Task:
 
 @dataclass
 class TaskStatus:
+    """TaskStatus。"""
     id: str = ""
     state: str = ""
     progress: float = 0.0
@@ -45,6 +52,7 @@ class TaskStatus:
 
 @dataclass
 class KubernetesConfig:
+    """KubernetesConfig。"""
     group: str = os.getenv("AIPLAT_K8S_CRD_GROUP", "")
     version: str = "v1"
     plural: str = "resources"
@@ -53,6 +61,7 @@ class KubernetesConfig:
 
 @dataclass
 class ComputeConfig:
+    """ComputeConfig。"""
     backend: str = "local"
     default_quota: Dict[str, int] = field(default_factory=dict)
     scheduling_policy: str = "fifo"

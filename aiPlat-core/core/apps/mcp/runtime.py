@@ -27,30 +27,36 @@ _MCP_TOOL_DESC_BUDGET: int = int(os.getenv("AIPLAT_MCP_TOOL_DESC_BUDGET", "4000"
 
 @dataclass
 class MCPRuntimeServerState:
+    """MCPRuntimeServerState。"""
     server_name: str
     tool_names: List[str]
     tool_descriptions: Dict[str, str] = field(default_factory=dict)
 
 
 class MCPRuntime:
+    """MCPRuntime。"""
     def __init__(self) -> None:
+        """初始化。
+        """
         self._manager = MCPClientManager()
         self._wrapper = MCPClientWrapper(self._manager)
         self._registered: Dict[str, MCPRuntimeServerState] = {}
 
     @property
     def manager(self) -> MCPClientManager:
+        """manager。
+        """
         return self._manager
 
     def _is_prod(self) -> bool:
         return os.getenv("AIPLAT_ENV", "").lower() in {"prod", "production"}
 
     async def sync_from_servers(self, *, servers: List[Any], tool_registry: Any) -> Dict[str, Any]:
-        """
-        Sync runtime clients & ToolRegistry tools from a list of MCPServerInfo-like objects.
+        """Sync runtime clients & ToolRegistry tools from a list of MCPServerInfo-like objects.
 
-        Returns a summary:
-          { "connected": [...], "skipped": [...], "unregistered": [...] }
+        Args:
+            servers: servers 参数。
+            tool_registry: tool_registry 参数。
         """
         enabled = {s.name: s for s in servers if getattr(s, "enabled", False)}
         summary = {"connected": [], "skipped": [], "unregistered": []}
@@ -252,6 +258,8 @@ class MCPRuntime:
         # Note: COMPAT connection_status written by sync_from_servers after success
 
     def total_tool_descriptions_chars(self) -> int:
+        """total_tool_descriptions_chars。
+        """
         return sum(
             sum(len(str(d)) for d in state.tool_descriptions.values())
             for state in self._registered.values()
@@ -260,9 +268,9 @@ class MCPRuntime:
     async def search_and_register(self, tool_name_hint: str, tool_registry: Any) -> Optional[str]:
         """On-demand MCP tool discovery and registration.
 
-        When an agent calls a tool that doesn't exist in ToolRegistry,
-        search connected MCP servers by name similarity and register
-        the first match. Returns the registered tool name or None.
+        Args:
+            tool_name_hint: tool_name_hint 参数。
+            tool_registry: tool_registry 参数。
         """
         import difflib
         hint_lower = tool_name_hint.lower().replace("mcp.", "")

@@ -103,6 +103,7 @@ CHECKLIST_ITEMS = [
 
 @dataclass
 class Finding:
+    """Finding。"""
     rule_id: str
     severity: str
     path: str
@@ -113,6 +114,7 @@ class Finding:
 
 @dataclass
 class ScanResult:
+    """ScanResult。"""
     root: str
     ok: bool
     error_count: int
@@ -122,6 +124,8 @@ class ScanResult:
     generated_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d = asdict(self)
         return d
 
@@ -151,6 +155,11 @@ def _rel(root: Path, path: Path) -> str:
 
 
 def scan_root(root: Path) -> ScanResult:
+    """scan_root。
+
+    Args:
+        root: root 参数。
+    """
     root = root.resolve()
     findings: List[Finding] = []
     n_files = 0
@@ -202,6 +211,12 @@ def scan_root(root: Path) -> ScanResult:
 
 
 def render_checklist(result: ScanResult, *, project_id: str = "") -> str:
+    """render_checklist。
+
+    Args:
+        result: result 参数。
+        project_id: project 标识。
+    """
     lines = [
         "# 出厂交付清单（A 扫描 + B 签收）",
         "",
@@ -261,6 +276,11 @@ def render_checklist(result: ScanResult, *, project_id: str = "") -> str:
 
 
 def render_usage_boundary(*, project_id: str = "") -> str:
+    """render_usage_boundary。
+
+    Args:
+        project_id: project 标识。
+    """
     return f"""# 使用边界一页纸
 
 > 项目: `{project_id or "（填写）"}`  
@@ -299,6 +319,13 @@ def write_scan_artifacts(
     project_id: str = "",
     result: Optional[ScanResult] = None,
 ) -> ScanResult:
+    """write_scan_artifacts。
+
+    Args:
+        root: root 参数。
+        project_id: project 标识。
+        result: result 参数。
+    """
     root = root.resolve()
     result = result or scan_root(root)
     (root / "delivery_scan.json").write_text(
@@ -316,6 +343,11 @@ def write_scan_artifacts(
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description="Scan Pi bundle for delivery hygiene")
     ap.add_argument("--root", type=Path, required=True, help="Bundle or app-home root")
     ap.add_argument("--project-id", default="", help="Project id for checklist header")

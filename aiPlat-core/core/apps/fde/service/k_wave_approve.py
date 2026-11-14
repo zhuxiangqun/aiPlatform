@@ -10,7 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 async def approve_proposal_once(proposal_id: str, *, role: str) -> Dict[str, Any]:
-    """Identity is the caller role. Body roles are not consulted."""
+    """Identity is the caller role. Body roles are not consulted.
+
+    Args:
+        proposal_id: proposal 标识。
+        role: role 参数。
+    """
     from core.apps.fde.service.k_wave_signal import live_yaml_hash
     from core.api.core_facade import ActionStore
     from core.api.core_facade import PolicyDecision, PolicyGate

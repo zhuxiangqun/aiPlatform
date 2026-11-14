@@ -277,14 +277,11 @@ def enrich_query_for_retrieval(
     *,
     collection_id: str = "default",
 ) -> str:
-    u"""Convenience function: map query and return the rewritten version.
+    """Convenience function: map query and return the rewritten version.
 
-    Use this directly in sys_wiki_context and sys_kb_retrieve as a
-    one-line pre-processing step.
-
-    Example:
-        enriched = enrich_query_for_retrieval("轴承库存")
-        results = sys_wiki_retrieve(enriched)
+    Args:
+        question: question 参数。
+        collection_id: collection 标识。
     """
     result = map_query_to_ontology(question, collection_id=collection_id)
     return result.get("rewritten_query", question)
@@ -297,10 +294,9 @@ def parse_to_logic_form(
 ) -> Dict[str, Any]:
     """NL2LF: Parse natural language question to structured Logic Form.
 
-    Data Agent semantic layer: converts natural language questions
-    into structured query representations for downstream engines.
-
-    Returns: {intent, entities, target_class, metrics, filters, time_range, aggregation, confidence}
+    Args:
+        question: question 参数。
+        domain_id: domain 标识。
     """
     import re
     r = {
@@ -339,14 +335,22 @@ def parse_to_logic_form(
 # ══════════════════════════════════════════════════════════════
 
 def rewrite_generic(query: str) -> str:
-    """Strategy 1: Clean noise, preserve all core info. Restore base intent."""
+    """Strategy 1: Clean noise, preserve all core info. Restore base intent.
+
+    Args:
+        query: 查询。
+    """
     import re
     q = re.sub(r'[？?！!。，,、\s]+$', '', query.strip())
     q = re.sub(r'\s+', ' ', q)
     return q
 
 def rewrite_keywords(query: str) -> str:
-    """Strategy 2: Extract core nouns and business topics, drop modifiers."""
+    """Strategy 2: Extract core nouns and business topics, drop modifiers.
+
+    Args:
+        query: 查询。
+    """
     import re
     # Chinese: keep meaningful 2-4 char phrases
     cn = re.findall(r'[\u4e00-\u9fff]{2,4}', query)
@@ -357,11 +361,19 @@ def rewrite_keywords(query: str) -> str:
     return ' '.join(keywords) if keywords else query
 
 def rewrite_pseudo_answer(query: str) -> str:
-    """Strategy 3: Return empty — caller generates pseudo-answer via LLM."""
+    """Strategy 3: Return empty — caller generates pseudo-answer via LLM.
+
+    Args:
+        query: 查询。
+    """
     return ""  # Requires LLM, handled by caller
 
 def rewrite_core(query: str) -> str:
-    """Strategy 4: Strip redundant details, keep core intent (first 3-5 meaningful chars)."""
+    """Strategy 4: Strip redundant details, keep core intent (first 3-5 meaningful chars).
+
+    Args:
+        query: 查询。
+    """
     import re
     cn = re.findall(r'[\u4e00-\u9fff]{2,4}', query)
     en = re.findall(r'[a-zA-Z]{2,}', query)
@@ -377,9 +389,9 @@ def rewrite_multi_dmqr(
 ) -> List[str]:
     """DMQR-RAG: Adaptive multi-query rewrite.
 
-    Applies all active strategies and returns deduplicated variants.
-    Default strategies: generic + keywords (no LLM), core (no LLM).
-    Pseudo-answer requires LLM and should be handled by caller.
+    Args:
+        query: 查询。
+        strategies: strategies 参数。
     """
     active = strategies or ["generic", "keywords", "core"]
     variants = [query]
@@ -400,7 +412,11 @@ def rewrite_multi_dmqr(
 
 
 def rewrite_with_llm_pseudo_answer(query: str) -> str:
-    """Generate a pseudo-answer using LLM for HyDE-like retrieval enrichment."""
+    """Generate a pseudo-answer using LLM for HyDE-like retrieval enrichment.
+
+    Args:
+        query: 查询。
+    """
     return (
         f"请用一段专业、正式的语言(50-100字)，描述以下问题的核心概念和可能的答案方向。"
         f"这个描述将用于检索文档，所以请使用文档中可能出现的术语。\n\n问题: {query}"

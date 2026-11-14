@@ -19,6 +19,11 @@ class SkillEffectsCheck(ArchRule):
     section_name = "SKILL.md Metadata Consistency"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         skills_dir = repo_root / "aiPlat-core/core/engine/skills"
         if not skills_dir.is_dir():
             return []
@@ -51,6 +56,11 @@ class CoreImplicitCrossLayerImportCheck(ArchRule):
     section_name = "Cross-Layer Import Direction"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         import ast
         core_dir = repo_root / "aiPlat-core"
         platform_dir = repo_root / "aiPlat-platform"
@@ -138,6 +148,11 @@ class SkillRequiredFieldsCheck(ArchRule):
     section_name = "SKILL.md Metadata Consistency"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         skills_dir = repo_root / "aiPlat-core/core/engine/skills"
         if not skills_dir.is_dir():
             return []
@@ -171,6 +186,11 @@ class AgentHandoffCheck(ArchRule):
                          "frontend_engineer", "backend_developer", "qa_agent"]
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         agents_dir = Path(get_aiplat_data_dir("agents"))
         missing = []
         for agent in self._PIPELINE_AGENTS:
@@ -203,6 +223,11 @@ class CoreAppsDirectoryCheck(ArchRule):
     _CONCERN_PATTERNS = r"sqlite3\.connect|threading\.Thread|ThreadPool|job_queue|enqueue|tenant.*storage|video.*ingest|multimodal_kb|KBSqlite"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         apps_dir = repo_root / "aiPlat-core/core/apps"
         if not apps_dir.is_dir():
             return []
@@ -235,6 +260,11 @@ class AgentAddSkillCheck(ArchRule):
     section_name = "Agent Class — Method Completeness"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         agents_dir = repo_root / "aiPlat-core/core/apps/agents"
         if not agents_dir.is_dir():
             return []
@@ -283,6 +313,11 @@ class BoundaryDeclarationCheck(ArchRule):
     ]
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         issues = []
 
         # §15a: Check for missing BOUNDARY.yaml
@@ -355,6 +390,11 @@ class BoundaryCoverageCheck(ArchRule):
     ]
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         missing = []
         for d in self._CHECK_DIRS:
             dd = repo_root / d
@@ -381,6 +421,11 @@ class PytestCheck(ArchRule):
     section_name = "Builder Pipeline E2E Tests"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         try:
             result = subprocess.run(
                 [sys.executable, "-m", "pytest",
@@ -420,6 +465,11 @@ class ASTBehaviorCheck(ArchRule):
     section_name = "Platform AST Behavior Check"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         guard_script = repo_root / "scripts" / "guard_ast_behavior.py"
         if not guard_script.exists():
             return []
@@ -459,6 +509,11 @@ class TestCoverageCheck(ArchRule):
     ]
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         uncovered = []
         for mod in self._MODULES:
             mod_path = repo_root / mod
@@ -490,6 +545,11 @@ class InfraImplExposureCheck(ArchRule):
     section_name = "Infra — No Impl Class Exposure"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         infra_dir = repo_root / "aiPlat-infra/infra"
         if not infra_dir.is_dir():
             return []
@@ -537,6 +597,11 @@ class SkillDepsCheck(ArchRule):
     section_name = "Agent→Skill Dependency Validation"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         try:
             import sys
             sys.path.insert(0, str(repo_root / "aiPlat-core"))
@@ -585,6 +650,11 @@ class L5ModuleCoreFacadeCheck(ArchRule):
     }
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         core_facade = repo_root / "aiPlat-core/core/api/core_facade.py"
         if not core_facade.is_file():
             return []

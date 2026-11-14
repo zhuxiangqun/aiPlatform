@@ -1,3 +1,5 @@
+"""core_client：模块接口。"""
+
 import logging
 """
 Core Layer API Client
@@ -29,6 +31,12 @@ class CoreAPIError(Exception):
     """
 
     def __init__(self, status_code: int, payload: Any):
+        """初始化。
+
+        Args:
+            status_code: status_code 参数。
+            payload: 载荷 dict。
+        """
         super().__init__(f"Core API error: status={status_code}")
         self.status_code = int(status_code)
         self.payload = payload
@@ -38,6 +46,11 @@ class CoreAPIClient:
     """HTTP client for aiPlat-core API."""
     
     def __init__(self, config: Optional[CoreAPIClientConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or CoreAPIClientConfig()
         if not self.config.base_url:
             self.config.base_url = os.getenv("AIPLAT_CORE_URL", "http://localhost:8002")
@@ -142,22 +155,50 @@ class CoreAPIClient:
     # ===== Trace / Persistence (ExecutionStore) =====
 
     async def list_traces(self, limit: int = 100, offset: int = 0, status: Optional[str] = None) -> Dict[str, Any]:
+        """列出 traces。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            status: status 参数。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if status:
             params["status"] = status
         return await self._request("GET", "/api/core/traces", params=params)
 
     async def get_trace(self, trace_id: str) -> Dict[str, Any]:
+        """获取 trace。
+
+        Args:
+            trace_id: trace 标识。
+        """
         return await self._request("GET", f"/api/core/traces/{trace_id}")
 
     async def get_trace_by_execution(self, execution_id: str) -> Dict[str, Any]:
+        """获取 trace_by_execution。
+
+        Args:
+            execution_id: execution 标识。
+        """
         return await self._request("GET", f"/api/core/executions/{execution_id}/trace")
 
     async def get_observation_run_graph(self, run_id: str) -> Dict[str, Any]:
-        """Authoritative ReAct/ExecutionViewer run_graph (not LangGraph graph_runs)."""
+        """Authoritative ReAct/ExecutionViewer run_graph (not LangGraph graph_runs).
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("GET", f"/api/core/observation/runs/{run_id}/graph")
 
     async def list_executions_by_trace(self, trace_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 executions_by_trace。
+
+        Args:
+            trace_id: trace 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/traces/{trace_id}/executions", params=params)
 
@@ -177,6 +218,22 @@ class CoreAPIClient:
         approval_request_id: Optional[str] = None,
         span_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """列出 syscall_events。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            kind: kind 参数。
+            name: name 参数。
+            status: status 参数。
+            error_contains: error_contains 参数。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            approval_request_id: approval_request 标识。
+            span_id: span 标识。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if trace_id:
             params["trace_id"] = trace_id
@@ -207,6 +264,13 @@ class CoreAPIClient:
         top_n: int = 10,
         kind: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """获取 syscall_stats。
+
+        Args:
+            window_hours: window_hours 参数。
+            top_n: top_n 参数。
+            kind: kind 参数。
+        """
         params: Dict[str, Any] = {"window_hours": window_hours, "top_n": top_n}
         if kind:
             params["kind"] = kind
@@ -220,6 +284,13 @@ class CoreAPIClient:
     # ===== Change Control (derived) =====
 
     async def list_change_controls(self, *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        """列出 change_controls。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if tenant_id:
             params["tenant_id"] = str(tenant_id)
@@ -233,30 +304,68 @@ class CoreAPIClient:
         offset: int = 0,
         tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """获取 change_control。
+
+        Args:
+            change_id: change 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if tenant_id:
             params["tenant_id"] = str(tenant_id)
         return await self._request("GET", f"/api/core/change-control/changes/{change_id}", params=params)
 
     async def autosmoke_change_control(self, change_id: str) -> Dict[str, Any]:
+        """autosmoke_change_control。
+
+        Args:
+            change_id: change 标识。
+        """
         return await self._request("POST", f"/api/core/change-control/changes/{change_id}/autosmoke", json={})
 
     # ===== Runs (Platform execution contract) =====
 
     async def get_run(self, run_id: str) -> Dict[str, Any]:
+        """获取 run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("GET", f"/api/core/runs/{run_id}")
 
     async def get_run_cost(self, run_id: str, *, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        """获取 run_cost。
+
+        Args:
+            run_id: 运行 ID。
+            tenant_id: 租户 ID。
+        """
         params: Dict[str, Any] = {}
         if tenant_id:
             params["tenant_id"] = tenant_id
         return await self._request("GET", f"/api/core/runs/{run_id}/cost", params=params)
 
     async def list_run_events(self, run_id: str, *, after_seq: int = 0, limit: int = 200) -> Dict[str, Any]:
+        """列出 run_events。
+
+        Args:
+            run_id: 运行 ID。
+            after_seq: after_seq 参数。
+            limit: 返回条数上限。
+        """
         params: Dict[str, Any] = {"after_seq": int(after_seq), "limit": int(limit)}
         return await self._request("GET", f"/api/core/runs/{run_id}/events", params=params)
 
     async def wait_run(self, run_id: str, *, timeout_ms: int = 30000, after_seq: int = 0) -> Dict[str, Any]:
+        """wait_run。
+
+        Args:
+            run_id: 运行 ID。
+            timeout_ms: timeout_ms 参数。
+            after_seq: after_seq 参数。
+        """
         return await self._request(
             "POST",
             f"/api/core/runs/{run_id}/wait",
@@ -264,136 +373,331 @@ class CoreAPIClient:
         )
 
     async def cancel_run(self, run_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """cancel_run。
+
+        Args:
+            run_id: 运行 ID。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/cancel", json=body or {})
 
     async def retry_run(self, run_id: str) -> Dict[str, Any]:
+        """retry_run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/retry", json={})
 
     async def undo_run(self, run_id: str, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """undo_run。
+
+        Args:
+            run_id: 运行 ID。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/undo", json=body or {})
 
     async def submit_run_evaluation(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """submit_run_evaluation。
+
+        Args:
+            run_id: 运行 ID。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/evaluate", json=body or {})
 
     async def auto_run_evaluation(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """auto_run_evaluation。
+
+        Args:
+            run_id: 运行 ID。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/evaluate/auto", json=body or {})
 
     async def get_latest_run_evaluation(self, run_id: str) -> Dict[str, Any]:
+        """获取 latest_run_evaluation。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("GET", f"/api/core/runs/{run_id}/evaluation/latest")
 
     async def get_latest_run_state(self, run_id: str) -> Dict[str, Any]:
+        """获取 latest_run_state。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("GET", f"/api/core/runs/{run_id}/state/latest")
 
     async def upsert_run_state(self, run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_run_state。
+
+        Args:
+            run_id: 运行 ID。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/runs/{run_id}/state", json=body or {})
 
     async def get_latest_evaluation_policy(self) -> Dict[str, Any]:
+        """获取 latest_evaluation_policy。
+        """
         return await self._request("GET", "/api/core/evaluation/policy/latest")
 
     async def upsert_evaluation_policy(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_evaluation_policy。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/evaluation/policy", json=body or {})
 
     async def get_latest_scoped_evaluation_policy(self, scope_id: str) -> Dict[str, Any]:
+        """获取 latest_scoped_evaluation_policy。
+
+        Args:
+            scope_id: scope 标识。
+        """
         return await self._request("GET", f"/api/core/scopes/{scope_id}/evaluation/policy/latest")
 
     async def upsert_scoped_evaluation_policy(self, scope_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_scoped_evaluation_policy。
+
+        Args:
+            scope_id: scope 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/scopes/{scope_id}/evaluation/policy", json=body or {})
 
     # ===== Diagnostics: E2E smoke =====
     async def run_e2e_smoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """run_e2e_smoke。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/e2e/smoke",
             json=body or {}, timeout=httpx.Timeout(180.0, connect=15.0))
 
     # ===== Adapters =====
 
     async def list_adapters(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 adapters。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         return await self._request("GET", "/api/core/adapters", params=params)
 
     async def create_adapter(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 adapter。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/adapters", json=body or {})
 
     async def test_adapter(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """test_adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/test", json=body or {})
 
     async def add_adapter_model(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """add_adapter_model。
+
+        Args:
+            adapter_id: adapter 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/models", json=body or {})
 
     async def update_adapter(self, adapter_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """更新 adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+            body: 请求体。
+        """
         return await self._request("PUT", f"/api/core/adapters/{adapter_id}", json=body or {})
 
     # ===== Core Onboarding =====
 
     async def get_onboarding_state(self) -> Dict[str, Any]:
+        """获取 onboarding_state。
+        """
         return await self._platform_req("GET", "/onboarding/state")
 
     async def set_default_llm(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_default_llm。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/default-llm", json=body or {})
 
     async def init_tenant(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """init_tenant。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/init-tenant", json=body or {})
 
     async def set_autosmoke(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_autosmoke。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/autosmoke", json=body or {})
 
     async def get_secrets_status(self) -> Dict[str, Any]:
+        """获取 secrets_status。
+        """
         return await self._platform_req("GET", "/onboarding/secrets/status")
 
     async def migrate_secrets(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """migrate_secrets。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/secrets/migrate", json=body or {})
 
     async def set_strong_gate(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_strong_gate。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/strong-gate", json=body or {})
 
     async def set_exec_backend(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_exec_backend。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/exec-backend", json=body or {})
 
     async def set_context_config(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_context_config。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/context-config", json=body or {})
 
     async def set_trusted_skill_keys(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """set_trusted_skill_keys。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/trusted-skill-keys", json=body or {})
 
     async def generate_skill_key(self, body: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """generate_skill_key。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/generate-skill-key", json=body or {})
 
     async def create_onboarding_evidence(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 onboarding_evidence。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/onboarding/evidence/runs", json=body or {})
 
     async def list_onboarding_evidence(self, *, step_key: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 onboarding_evidence。
+
+        Args:
+            step_key: step_key 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if step_key:
             params["step_key"] = str(step_key)
         return await self._platform_req("GET", "/onboarding/evidence/runs", params=params)
 
     async def get_onboarding_evidence(self, evidence_id: str) -> Dict[str, Any]:
+        """获取 onboarding_evidence。
+
+        Args:
+            evidence_id: evidence 标识。
+        """
         return await self._platform_req("GET", f"/onboarding/evidence/runs/{evidence_id}")
 
     # ===== Tenant Policies =====
 
     async def get_tenant_policy(self, tenant_id: str) -> Dict[str, Any]:
+        """获取 tenant_policy。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return await self._platform_req("GET", f"/platform/tenant-policies/policies/tenants/{tenant_id}")
 
     # ===== Diagnostics: context/prompt =====
 
     async def get_context_config(self) -> Dict[str, Any]:
+        """获取 context_config。
+        """
         return await self._request("GET", "/api/core/diagnostics/context/config")
 
     async def diagnostics_prompt_assemble(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """diagnostics_prompt_assemble。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/prompt/assemble", json=body or {})
 
     async def get_model_tier(self) -> Dict[str, Any]:
+        """获取 model_tier。
+        """
         return await self._request("GET", "/api/core/diagnostics/model-tier")
 
     # ===== Prompt Templates =====
 
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 prompt_templates。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", "/api/core/prompts", params={"limit": int(limit), "offset": int(offset)})
 
     async def get_prompt_template(self, template_id: str) -> Dict[str, Any]:
+        """获取 prompt_template。
+
+        Args:
+            template_id: template 标识。
+        """
         return await self._request("GET", f"/api/core/prompts/{template_id}")
 
     async def list_prompt_template_versions(self, template_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 prompt_template_versions。
+
+        Args:
+            template_id: template 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request(
             "GET",
             f"/api/core/prompts/{template_id}/versions",
@@ -401,12 +705,31 @@ class CoreAPIClient:
         )
 
     async def upsert_prompt_template(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_prompt_template。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/prompts", json=body or {})
 
     async def rollback_prompt_template(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """rollback_prompt_template。
+
+        Args:
+            template_id: template 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/prompts/{template_id}/rollback", json=body or {})
 
     async def delete_prompt_template(self, template_id: str, *, require_approval: bool = True, approval_request_id: Optional[str] = None, details: Optional[str] = None) -> Dict[str, Any]:
+        """删除 prompt_template。
+
+        Args:
+            template_id: template 标识。
+            require_approval: require_approval 参数。
+            approval_request_id: approval_request 标识。
+            details: details 参数。
+        """
         params: Dict[str, Any] = {"require_approval": bool(require_approval)}
         if approval_request_id:
             params["approval_request_id"] = str(approval_request_id)
@@ -417,24 +740,62 @@ class CoreAPIClient:
     # ===== Repo diagnostics =====
 
     async def repo_changeset_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_changeset_preview。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/changeset/preview", json=body or {})
 
     async def repo_changeset_record(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_changeset_record。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/changeset/record", json=body or {})
 
     async def repo_tests_run(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_tests_run。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/tests/run", json=body or {})
 
     async def repo_staged_preview(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_staged_preview。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/staged/preview", json=body or {})
 
     async def repo_git_branch(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_git_branch。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/git/branch", json=body or {})
 
     async def repo_git_commit(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """repo_git_commit。
+
+        Args:
+            body: 请求体。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/git/commit", json=body or {})
 
     async def context_metrics_recent(self, *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """context_metrics_recent。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if tenant_id:
             params["tenant_id"] = str(tenant_id)
@@ -443,64 +804,161 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/diagnostics/context/metrics/recent", params=params)
 
     async def context_metrics_summary(self, *, window_hours: int = 24, top_n: int = 8, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+        """context_metrics_summary。
+
+        Args:
+            window_hours: window_hours 参数。
+            top_n: top_n 参数。
+            tenant_id: 租户 ID。
+        """
         params: Dict[str, Any] = {"window_hours": int(window_hours), "top_n": int(top_n)}
         if tenant_id:
             params["tenant_id"] = str(tenant_id)
         return await self._request("GET", "/api/core/diagnostics/context/metrics/summary", params=params)
 
     async def prompt_template_diff(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """prompt_template_diff。
+
+        Args:
+            template_id: template 标识。
+            params: params 参数。
+        """
         return await self._request("GET", f"/api/core/prompts/{template_id}/diff", params=params or {})
 
     async def prompt_template_resolve(self, template_id: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """prompt_template_resolve。
+
+        Args:
+            template_id: template 标识。
+            params: params 参数。
+        """
         return await self._request("GET", f"/api/core/prompts/{template_id}/resolve", params=params or {})
 
     async def exec_backends(self) -> Dict[str, Any]:
+        """exec_backends。
+        """
         return await self._request("GET", "/api/core/diagnostics/exec/backends")
 
     async def exec_backend_metrics_summary(self, *, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
+        """exec_backend_metrics_summary。
+
+        Args:
+            window_hours: window_hours 参数。
+            limit: 返回条数上限。
+        """
         params = {"window_hours": int(window_hours), "limit": int(limit)}
         return await self._request("GET", "/api/core/diagnostics/exec/metrics/summary", params=params)
 
     async def prompt_template_release(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """prompt_template_release。
+
+        Args:
+            template_id: template 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/prompts/{template_id}/release", json=body or {})
 
     async def prompt_template_release_rollback(self, template_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """prompt_template_release_rollback。
+
+        Args:
+            template_id: template 标识。
+            body: 请求体。
+        """
         return await self._request("POST", f"/api/core/prompts/{template_id}/release/rollback", json=body or {})
 
     # ===== Jobs / Cron (Roadmap-3) =====
 
     async def list_jobs(self, *, limit: int = 100, offset: int = 0, enabled: Optional[bool] = None) -> Dict[str, Any]:
+        """列出 jobs。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            enabled: 是否启用。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if enabled is not None:
             params["enabled"] = bool(enabled)
         return await self._request("GET", "/api/core/jobs", params=params)
 
     async def create_job(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 job。
+
+        Args:
+            data: data 参数。
+        """
         return await self._request("POST", "/api/core/jobs", json=data)
 
     async def get_job(self, job_id: str) -> Dict[str, Any]:
+        """获取 job。
+
+        Args:
+            job_id: job 标识。
+        """
         return await self._request("GET", f"/api/core/jobs/{job_id}")
 
     async def update_job(self, job_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """更新 job。
+
+        Args:
+            job_id: job 标识。
+            data: data 参数。
+        """
         return await self._request("PUT", f"/api/core/jobs/{job_id}", json=data)
 
     async def delete_job(self, job_id: str) -> Dict[str, Any]:
+        """删除 job。
+
+        Args:
+            job_id: job 标识。
+        """
         return await self._request("DELETE", f"/api/core/jobs/{job_id}")
 
     async def enable_job(self, job_id: str) -> Dict[str, Any]:
+        """enable_job。
+
+        Args:
+            job_id: job 标识。
+        """
         return await self._request("POST", f"/api/core/jobs/{job_id}/enable", json={})
 
     async def disable_job(self, job_id: str) -> Dict[str, Any]:
+        """disable_job。
+
+        Args:
+            job_id: job 标识。
+        """
         return await self._request("POST", f"/api/core/jobs/{job_id}/disable", json={})
 
     async def run_job(self, job_id: str) -> Dict[str, Any]:
+        """run_job。
+
+        Args:
+            job_id: job 标识。
+        """
         return await self._request("POST", f"/api/core/jobs/{job_id}/run", json={})
 
     async def list_job_runs(self, job_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 job_runs。
+
+        Args:
+            job_id: job 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/jobs/{job_id}/runs", params=params)
 
     async def list_job_delivery_dlq(self, *, status: Optional[str] = None, job_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 job_delivery_dlq。
+
+        Args:
+            status: status 参数。
+            job_id: job 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if status:
             params["status"] = status
@@ -509,14 +967,32 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/jobs/dlq", params=params)
 
     async def retry_job_delivery_dlq(self, dlq_id: str) -> Dict[str, Any]:
+        """retry_job_delivery_dlq。
+
+        Args:
+            dlq_id: dlq 标识。
+        """
         return await self._request("POST", f"/api/core/jobs/dlq/{dlq_id}/retry", json={})
 
     async def delete_job_delivery_dlq(self, dlq_id: str) -> Dict[str, Any]:
+        """删除 job_delivery_dlq。
+
+        Args:
+            dlq_id: dlq 标识。
+        """
         return await self._request("DELETE", f"/api/core/jobs/dlq/{dlq_id}")
 
     # ===== Gateway Admin (pairings/tokens) =====
 
     async def list_gateway_pairings(self, *, channel: Optional[str] = None, user_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 gateway_pairings。
+
+        Args:
+            channel: channel 参数。
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if channel:
             params["channel"] = channel
@@ -525,22 +1001,50 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/gateway/pairings", params=params)
 
     async def upsert_gateway_pairing(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_gateway_pairing。
+
+        Args:
+            data: data 参数。
+        """
         return await self._request("POST", "/api/core/gateway/pairings", json=data)
 
     async def delete_gateway_pairing(self, *, channel: str, channel_user_id: str) -> Dict[str, Any]:
+        """删除 gateway_pairing。
+
+        Args:
+            channel: channel 参数。
+            channel_user_id: channel_user 标识。
+        """
         params: Dict[str, Any] = {"channel": channel, "channel_user_id": channel_user_id}
         return await self._request("DELETE", "/api/core/gateway/pairings", params=params)
 
     async def list_gateway_tokens(self, *, enabled: Optional[bool] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 gateway_tokens。
+
+        Args:
+            enabled: 是否启用。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if enabled is not None:
             params["enabled"] = bool(enabled)
         return await self._request("GET", "/api/core/gateway/tokens", params=params)
 
     async def create_gateway_token(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 gateway_token。
+
+        Args:
+            data: data 参数。
+        """
         return await self._request("POST", "/api/core/gateway/tokens", json=data)
 
     async def delete_gateway_token(self, token_id: str) -> Dict[str, Any]:
+        """删除 gateway_token。
+
+        Args:
+            token_id: token 标识。
+        """
         return await self._request("DELETE", f"/api/core/gateway/tokens/{token_id}")
 
     # ===== Learning / Release Management (Phase 6) =====
@@ -557,6 +1061,18 @@ class CoreAPIClient:
         limit: int = 50,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 learning_artifacts。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            kind: kind 参数。
+            status: status 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if target_type:
             params["target_type"] = target_type
@@ -573,9 +1089,21 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/learning/artifacts", params=params)
 
     async def get_learning_artifact(self, artifact_id: str) -> Dict[str, Any]:
+        """获取 learning_artifact。
+
+        Args:
+            artifact_id: artifact 标识。
+        """
         return await self._request("GET", f"/api/core/learning/artifacts/{artifact_id}")
 
     async def set_learning_artifact_status(self, artifact_id: str, *, status: str, metadata_update: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """set_learning_artifact_status。
+
+        Args:
+            artifact_id: artifact 标识。
+            status: status 参数。
+            metadata_update: metadata_update 参数。
+        """
         return await self._request(
             "POST",
             f"/api/core/learning/artifacts/{artifact_id}/status",
@@ -583,27 +1111,69 @@ class CoreAPIClient:
         )
 
     async def publish_release_candidate(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """publish_release_candidate。
+
+        Args:
+            candidate_id: candidate 标识。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/publish", json=payload)
 
     async def rollback_release_candidate(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """rollback_release_candidate。
+
+        Args:
+            candidate_id: candidate 标识。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/rollback", json=payload)
 
     async def expire_releases(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """expire_releases。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/releases/expire", json=payload)
 
     async def auto_rollback_regression(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """auto_rollback_regression。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/auto-rollback/regression", json=payload)
 
     async def cleanup_rollback_approvals(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """cleanup_rollback_approvals。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/approvals/cleanup-rollback-approvals", json=payload)
 
     async def autocapture_to_prompt_revision(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """autocapture_to_prompt_revision。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/autocapture/to_prompt_revision", json=payload)
 
     async def autocapture(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """autocapture。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/autocapture", json=payload)
 
     async def autocapture_to_skill_evolution(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """autocapture_to_skill_evolution。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/learning/autocapture/to_skill_evolution", json=payload)
 
     async def list_release_rollouts(
@@ -614,6 +1184,14 @@ class CoreAPIClient:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 release_rollouts。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if target_type:
             params["target_type"] = target_type
@@ -622,12 +1200,28 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/learning/rollouts", params=params)
 
     async def upsert_release_rollout(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_release_rollout。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("PUT", "/api/core/learning/rollouts", json=payload)
 
     async def delete_release_rollout(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """删除 release_rollout。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("DELETE", "/api/core/learning/rollouts", json=payload)
 
     async def add_release_metric_snapshot(self, candidate_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """add_release_metric_snapshot。
+
+        Args:
+            candidate_id: candidate 标识。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/learning/releases/{candidate_id}/metrics/snapshots", json=payload)
 
     async def list_release_metric_snapshots(
@@ -638,6 +1232,14 @@ class CoreAPIClient:
         limit: int = 200,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 release_metric_snapshots。
+
+        Args:
+            candidate_id: candidate 标识。
+            metric_key: metric_key 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if metric_key:
             params["metric_key"] = metric_key
@@ -654,18 +1256,46 @@ class CoreAPIClient:
         limit: int = 200,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 pending_approvals。
+
+        Args:
+            user_id: 用户 ID。
+            order_by: order_by 参数。
+            order_dir: order_dir 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"order_by": order_by, "order_dir": order_dir, "limit": limit, "offset": offset}
         if user_id:
             params["user_id"] = user_id
         return await self._request("GET", "/api/core/approvals/pending", params=params)
 
     async def get_approval_request(self, request_id: str) -> Dict[str, Any]:
+        """获取 approval_request。
+
+        Args:
+            request_id: request 标识。
+        """
         return await self._request("GET", f"/api/core/approvals/{request_id}")
 
     async def approve_request(self, request_id: str, approved_by: str, comments: str = "") -> Dict[str, Any]:
+        """approve_request。
+
+        Args:
+            request_id: request 标识。
+            approved_by: approved_by 参数。
+            comments: comments 参数。
+        """
         return await self._request("POST", f"/api/core/approvals/{request_id}/approve", json={"approved_by": approved_by, "comments": comments})
 
     async def reject_request(self, request_id: str, rejected_by: str, comments: str = "") -> Dict[str, Any]:
+        """reject_request。
+
+        Args:
+            request_id: request 标识。
+            rejected_by: rejected_by 参数。
+            comments: comments 参数。
+        """
         return await self._request("POST", f"/api/core/approvals/{request_id}/reject", json={"rejected_by": rejected_by, "comments": comments})
 
     # ===== Graph runs / checkpoints (ExecutionStore) =====
@@ -678,6 +1308,15 @@ class CoreAPIClient:
         status: Optional[str] = None,
         trace_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """列出 graph_runs。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            graph_name: graph_name 参数。
+            status: status 参数。
+            trace_id: trace 标识。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if graph_name:
             params["graph_name"] = graph_name
@@ -688,21 +1327,49 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/graphs/runs", params=params)
 
     async def get_graph_run(self, run_id: str) -> Dict[str, Any]:
+        """获取 graph_run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return await self._request("GET", f"/api/core/graphs/runs/{run_id}")
 
     async def list_graph_checkpoints(self, run_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 graph_checkpoints。
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         return await self._request("GET", f"/api/core/graphs/runs/{run_id}/checkpoints", params=params)
 
     async def get_graph_checkpoint(self, run_id: str, checkpoint_id: str) -> Dict[str, Any]:
+        """获取 graph_checkpoint。
+
+        Args:
+            run_id: 运行 ID。
+            checkpoint_id: checkpoint 标识。
+        """
         return await self._request("GET", f"/api/core/graphs/runs/{run_id}/checkpoints/{checkpoint_id}")
 
     async def resume_graph_run(self, run_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new run from checkpoint (restore/resume)."""
+        """Create a new run from checkpoint (restore/resume).
+
+        Args:
+            run_id: 运行 ID。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/graphs/runs/{run_id}/resume", json=payload)
 
     async def resume_and_execute_graph_run(self, run_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Resume from checkpoint and continue executing (closes the loop)."""
+        """Resume from checkpoint and continue executing (closes the loop).
+
+        Args:
+            run_id: 运行 ID。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/graphs/runs/{run_id}/resume/execute", json=payload)
     
     # ===== Agent Management =====
@@ -710,7 +1377,14 @@ class CoreAPIClient:
     async def list_agents(self, agent_type: Optional[str] = None, 
                           status: Optional[str] = None,
                           limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List all agents."""
+        """List all agents.
+
+        Args:
+            agent_type: agent_type 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params = {"limit": limit, "offset": offset}
         if agent_type:
             params["agent_type"] = agent_type
@@ -719,39 +1393,77 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/agents", params=params)
     
     async def get_agent(self, agent_id: str) -> Dict[str, Any]:
-        """Get agent details."""
+        """Get agent details.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}")
     
     async def create_agent(self, agent: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new agent."""
+        """Create a new agent.
+
+        Args:
+            agent: agent 参数。
+        """
         return await self._request("POST", "/api/core/agents", json=agent)
     
     async def update_agent(self, agent_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update agent."""
+        """Update agent.
+
+        Args:
+            agent_id: Agent ID。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/agents/{agent_id}", json=updates)
     
     async def delete_agent(self, agent_id: str) -> Dict[str, Any]:
-        """Delete agent."""
+        """Delete agent.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("DELETE", f"/api/core/agents/{agent_id}")
     
     async def start_agent(self, agent_id: str) -> Dict[str, Any]:
-        """Start agent."""
+        """Start agent.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/start")
     
     async def stop_agent(self, agent_id: str) -> Dict[str, Any]:
-        """Stop agent."""
+        """Stop agent.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/stop")
     
     async def get_agent_skills(self, agent_id: str) -> Dict[str, Any]:
-        """Get skills bound to agent."""
+        """Get skills bound to agent.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}/skills")
 
     async def get_agent_sop(self, agent_id: str) -> Dict[str, Any]:
-        """Get agent SOP (AGENT.md body)."""
+        """Get agent SOP (AGENT.md body).
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}/sop")
 
     async def list_models(self, *, provider: Optional[str] = None, status: Optional[str] = None) -> Dict[str, Any]:
-        """List available models from infra ModelManager (calls infra directly)."""
+        """List available models from infra ModelManager (calls infra directly).
+
+        Args:
+            provider: provider 参数。
+            status: status 参数。
+        """
         import httpx, os
         infra_url = os.getenv("AIPLAT_INFRA_URL", "http://localhost:8001")
         params: Dict[str, Any] = {}
@@ -763,43 +1475,91 @@ class CoreAPIClient:
             return resp.json()
 
     async def get_agent_versions(self, agent_id: str) -> Dict[str, Any]:
-        """Get agent version history."""
+        """Get agent version history.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}/versions")
 
     async def rollback_agent_version(self, agent_id: str, version: str) -> Dict[str, Any]:
-        """Rollback agent to a previous version."""
+        """Rollback agent to a previous version.
+
+        Args:
+            agent_id: Agent ID。
+            version: version 参数。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/versions/{version}/rollback")
     
     async def bind_agent_skills(self, agent_id: str, skill_ids: List[str]) -> Dict[str, Any]:
-        """Bind skills to agent."""
+        """Bind skills to agent.
+
+        Args:
+            agent_id: Agent ID。
+            skill_ids: skill_ids 参数。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/skills", json={"skill_ids": skill_ids})
     
     async def unbind_agent_skill(self, agent_id: str, skill_id: str) -> Dict[str, Any]:
-        """Unbind skill from agent."""
+        """Unbind skill from agent.
+
+        Args:
+            agent_id: Agent ID。
+            skill_id: Skill ID。
+        """
         return await self._request("DELETE", f"/api/core/agents/{agent_id}/skills/{skill_id}")
     
     async def get_agent_tools(self, agent_id: str) -> Dict[str, Any]:
-        """Get tools bound to agent."""
+        """Get tools bound to agent.
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}/tools")
     
     async def bind_agent_tools(self, agent_id: str, tool_ids: List[str]) -> Dict[str, Any]:
-        """Bind tools to agent."""
+        """Bind tools to agent.
+
+        Args:
+            agent_id: Agent ID。
+            tool_ids: tool_ids 参数。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/tools", json={"tool_ids": tool_ids})
     
     async def unbind_agent_tool(self, agent_id: str, tool_id: str) -> Dict[str, Any]:
-        """Unbind tool from agent."""
+        """Unbind tool from agent.
+
+        Args:
+            agent_id: Agent ID。
+            tool_id: tool 标识。
+        """
         return await self._request("DELETE", f"/api/core/agents/{agent_id}/tools/{tool_id}")
     
     async def get_agent_history(self, agent_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get agent execution history."""
+        """Get agent execution history.
+
+        Args:
+            agent_id: Agent ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/agents/{agent_id}/history", params={"limit": limit, "offset": offset})
     
     async def execute_agent(self, agent_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute agent with input."""
+        """Execute agent with input.
+
+        Args:
+            agent_id: Agent ID。
+            data: data 参数。
+        """
         return await self._request("POST", f"/api/core/agents/{agent_id}/execute", json=data)
     
     async def get_execution(self, execution_id: str) -> Dict[str, Any]:
-        """Get execution details."""
+        """Get execution details.
+
+        Args:
+            execution_id: execution 标识。
+        """
         return await self._request("GET", f"/api/core/agents/executions/{execution_id}")
     
     # ===== Skill Management =====
@@ -812,7 +1572,15 @@ class CoreAPIClient:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
-        """List all skills."""
+        """List all skills.
+
+        Args:
+            category: category 参数。
+            status: status 参数。
+            enabled_only: enabled_only 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": limit, "offset": offset}
         if category:
             params["category"] = category
@@ -823,26 +1591,48 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/skills", params=params)
     
     async def get_skill(self, skill_id: str) -> Dict[str, Any]:
-        """Get skill details."""
+        """Get skill details.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}")
     
     async def create_skill(self, skill: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new skill."""
+        """Create a new skill.
+
+        Args:
+            skill: skill 参数。
+        """
         return await self._request("POST", "/api/core/skills", json=skill)
     
     async def update_skill(self, skill_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update skill."""
+        """Update skill.
+
+        Args:
+            skill_id: Skill ID。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/skills/{skill_id}", json=updates)
     
     async def delete_skill(self, skill_id: str, *, delete_files: bool = False) -> Dict[str, Any]:
-        """Delete skill (default soft delete; delete_files=true for hard delete)."""
+        """Delete skill (default soft delete; delete_files=true for hard delete).
+
+        Args:
+            skill_id: Skill ID。
+            delete_files: delete_files 参数。
+        """
         params: Dict[str, Any] = {}
         if delete_files:
             params["delete_files"] = "true"
         return await self._request("DELETE", f"/api/core/skills/{skill_id}", params=params)
 
     async def restore_skill(self, skill_id: str) -> Dict[str, Any]:
-        """Restore a deprecated skill."""
+        """Restore a deprecated skill.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/restore")
 
     # ===== MCP Management =====
@@ -852,16 +1642,32 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/mcp/servers")
 
     async def enable_mcp_server(self, server_name: str) -> Dict[str, Any]:
-        """Enable MCP server."""
+        """Enable MCP server.
+
+        Args:
+            server_name: server_name 参数。
+        """
         return await self._request("POST", f"/api/core/mcp/servers/{server_name}/enable")
 
     async def disable_mcp_server(self, server_name: str) -> Dict[str, Any]:
-        """Disable MCP server."""
+        """Disable MCP server.
+
+        Args:
+            server_name: server_name 参数。
+        """
         return await self._request("POST", f"/api/core/mcp/servers/{server_name}/disable")
 
     # ===== Workspace (user-facing) =====
 
     async def list_workspace_agents(self, agent_type: Optional[str] = None, status: Optional[str] = None, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 workspace_agents。
+
+        Args:
+            agent_type: agent_type 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": str(limit), "offset": str(offset)}
         if agent_type:
             params["type"] = agent_type
@@ -870,96 +1676,258 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/workspace/agents", params=params)
 
     async def create_workspace_agent(self, agent: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 workspace_agent。
+
+        Args:
+            agent: agent 参数。
+        """
         return await self._request("POST", "/api/core/workspace/agents", json=agent)
 
     async def auto_fill_workspace_agent(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """auto_fill_workspace_agent。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/workspace/agents/auto-fill", json=payload)
 
     async def list_workspace_agent_seeds(self) -> Dict[str, Any]:
+        """列出 workspace_agent_seeds。
+        """
         return await self._request("GET", "/api/core/workspace/agents/seeds")
 
     async def get_workspace_agent(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}")
 
     async def update_workspace_agent(self, agent_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """更新 workspace_agent。
+
+        Args:
+            agent_id: Agent ID。
+            payload: 载荷 dict。
+        """
         return await self._request("PUT", f"/api/core/workspace/agents/{agent_id}", json=payload)
 
     async def delete_workspace_agent(self, agent_id: str) -> Dict[str, Any]:
+        """删除 workspace_agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}")
 
     async def execute_workspace_agent(self, agent_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """execute_workspace_agent。
+
+        Args:
+            agent_id: Agent ID。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/execute", json=payload)
 
     async def get_workspace_agent_skills(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_skills。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/skills")
 
     async def bind_workspace_agent_skills(self, agent_id: str, skill_ids: List[str]) -> Dict[str, Any]:
+        """bind_workspace_agent_skills。
+
+        Args:
+            agent_id: Agent ID。
+            skill_ids: skill_ids 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/skills", json={"skill_ids": skill_ids})
 
     async def unbind_workspace_agent_skill(self, agent_id: str, skill_id: str) -> Dict[str, Any]:
+        """unbind_workspace_agent_skill。
+
+        Args:
+            agent_id: Agent ID。
+            skill_id: Skill ID。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/skills/{skill_id}")
 
     async def get_workspace_agent_tools(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_tools。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/tools")
 
     async def get_workspace_agent_sop(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_sop。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/sop")
 
     # ── MCP bindings ──
 
     async def get_workspace_agent_mcp(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_mcp。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/mcp")
 
     async def bind_workspace_agent_mcp(self, agent_id: str, mcp_ids: List[str]) -> Dict[str, Any]:
+        """bind_workspace_agent_mcp。
+
+        Args:
+            agent_id: Agent ID。
+            mcp_ids: mcp_ids 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/mcp", json={"mcp_ids": mcp_ids})
 
     async def unbind_workspace_agent_mcp(self, agent_id: str, mcp_id: str) -> Dict[str, Any]:
+        """unbind_workspace_agent_mcp。
+
+        Args:
+            agent_id: Agent ID。
+            mcp_id: mcp 标识。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/mcp/{mcp_id}")
 
     async def get_workspace_agent_execution_help(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_execution_help。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/execution-help")
 
     # ── Workflow bindings ──
 
     async def get_workspace_agent_workflows(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_workflows。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/workflows")
 
     async def bind_workspace_agent_workflows(self, agent_id: str, workflow_ids: List[str]) -> Dict[str, Any]:
+        """bind_workspace_agent_workflows。
+
+        Args:
+            agent_id: Agent ID。
+            workflow_ids: workflow_ids 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/workflows", json={"workflow_ids": workflow_ids})
 
     async def unbind_workspace_agent_workflow(self, agent_id: str, workflow_id: str) -> Dict[str, Any]:
+        """unbind_workspace_agent_workflow。
+
+        Args:
+            agent_id: Agent ID。
+            workflow_id: workflow 标识。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/workflows/{workflow_id}")
 
     # ── Sub-agent bindings ──
 
     async def get_workspace_agent_sub_agents(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_sub_agents。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/agents")
 
     async def bind_workspace_agent_sub_agents(self, agent_id: str, agent_ids: List[str]) -> Dict[str, Any]:
+        """bind_workspace_agent_sub_agents。
+
+        Args:
+            agent_id: Agent ID。
+            agent_ids: agent_ids 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/agents", json={"agent_ids": agent_ids})
 
     async def unbind_workspace_agent_sub_agent(self, agent_id: str, sub_agent_id: str) -> Dict[str, Any]:
+        """unbind_workspace_agent_sub_agent。
+
+        Args:
+            agent_id: Agent ID。
+            sub_agent_id: sub_agent 标识。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/agents/{sub_agent_id}")
 
     async def bind_workspace_agent_tools(self, agent_id: str, tool_ids: List[str]) -> Dict[str, Any]:
+        """bind_workspace_agent_tools。
+
+        Args:
+            agent_id: Agent ID。
+            tool_ids: tool_ids 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/tools", json={"tool_ids": tool_ids})
 
     async def unbind_workspace_agent_tool(self, agent_id: str, tool_id: str) -> Dict[str, Any]:
+        """unbind_workspace_agent_tool。
+
+        Args:
+            agent_id: Agent ID。
+            tool_id: tool 标识。
+        """
         return await self._request("DELETE", f"/api/core/workspace/agents/{agent_id}/tools/{tool_id}")
 
     async def get_workspace_agent_history(self, agent_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """获取 workspace_agent_history。
+
+        Args:
+            agent_id: Agent ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/history", params={"limit": limit, "offset": offset})
 
     async def get_workspace_agent_versions(self, agent_id: str) -> Dict[str, Any]:
+        """获取 workspace_agent_versions。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return await self._request("GET", f"/api/core/workspace/agents/{agent_id}/versions")
 
     async def create_workspace_agent_version(self, agent_id: str, changes: str = "") -> Dict[str, Any]:
+        """创建 workspace_agent_version。
+
+        Args:
+            agent_id: Agent ID。
+            changes: changes 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/versions", json={"changes": changes})
 
     async def rollback_workspace_agent_version(self, agent_id: str, version: str) -> Dict[str, Any]:
+        """rollback_workspace_agent_version。
+
+        Args:
+            agent_id: Agent ID。
+            version: version 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/agents/{agent_id}/versions/{version}/rollback")
 
     async def list_workspace_skills(self, category: Optional[str] = None, status: Optional[str] = None, *, enabled_only: bool = False, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 workspace_skills。
+
+        Args:
+            category: category 参数。
+            status: status 参数。
+            enabled_only: enabled_only 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params: Dict[str, Any] = {"limit": str(limit), "offset": str(offset)}
         if category:
             params["category"] = category
@@ -970,39 +1938,105 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/workspace/skills", params=params)
 
     async def create_workspace_skill(self, skill: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 workspace_skill。
+
+        Args:
+            skill: skill 参数。
+        """
         return await self._request("POST", "/api/core/workspace/skills", json=skill)
 
     async def get_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        """获取 workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/workspace/skills/{skill_id}")
 
     async def update_workspace_skill(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """更新 workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+            payload: 载荷 dict。
+        """
         return await self._request("PUT", f"/api/core/workspace/skills/{skill_id}", json=payload)
 
     async def execute_workspace_skill(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """execute_workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/execute", json=payload)
 
     async def list_workspace_skill_executions(self, skill_id: str, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 workspace_skill_executions。
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/executions", params={"limit": limit, "offset": offset})
 
     async def get_workspace_skill_versions(self, skill_id: str) -> Dict[str, Any]:
+        """获取 workspace_skill_versions。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/versions")
 
     async def get_workspace_skill_active_version(self, skill_id: str) -> Dict[str, Any]:
+        """获取 workspace_skill_active_version。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/workspace/skills/{skill_id}/active-version")
 
     async def rollback_workspace_skill_version(self, skill_id: str, version: str) -> Dict[str, Any]:
+        """rollback_workspace_skill_version。
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/versions/{version}/rollback")
 
     async def enable_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        """enable_workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/enable")
 
     async def disable_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        """disable_workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/disable")
 
     async def restore_workspace_skill(self, skill_id: str) -> Dict[str, Any]:
+        """restore_workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/{skill_id}/restore")
 
     async def delete_workspace_skill(self, skill_id: str, *, delete_files: bool = False) -> Dict[str, Any]:
+        """删除 workspace_skill。
+
+        Args:
+            skill_id: Skill ID。
+            delete_files: delete_files 参数。
+        """
         params: Dict[str, Any] = {}
         if delete_files:
             params["delete_files"] = "true"
@@ -1011,110 +2045,241 @@ class CoreAPIClient:
     # ---- Workspace Skill Installer (open-source skills) ----
 
     async def plan_workspace_skill_install(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """plan_workspace_skill_install。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/workspace/skills/installer/plan", json=payload or {})
 
     async def install_workspace_skill(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """install_workspace_skill。
+
+        Args:
+            payload: 载荷 dict。
+        """
         return await self._request("POST", "/api/core/workspace/skills/installer/install", json=payload or {})
 
     async def update_workspace_skill_install(self, skill_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """更新 workspace_skill_install。
+
+        Args:
+            skill_id: Skill ID。
+            payload: 载荷 dict。
+        """
         return await self._request("POST", f"/api/core/workspace/skills/installer/update/{skill_id}", json=payload or {})
 
     async def uninstall_workspace_skill_install(self, skill_id: str, *, delete_files: bool = True) -> Dict[str, Any]:
+        """uninstall_workspace_skill_install。
+
+        Args:
+            skill_id: Skill ID。
+            delete_files: delete_files 参数。
+        """
         params: Dict[str, Any] = {}
         if delete_files:
             params["delete_files"] = "true"
         return await self._request("POST", f"/api/core/workspace/skills/installer/uninstall/{skill_id}", params=params, json={})
 
     async def resolve_workspace_skill_install_head(self, url: str) -> Dict[str, Any]:
+        """resolve_workspace_skill_install_head。
+
+        Args:
+            url: url 参数。
+        """
         return await self._request("POST", "/api/core/workspace/skills/installer/resolve-head", json={"url": url})
 
     async def list_workspace_mcp_servers(self) -> Dict[str, Any]:
+        """列出 workspace_mcp_servers。
+        """
         return await self._request("GET", "/api/core/workspace/mcp/servers")
 
     async def enable_workspace_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        """enable_workspace_mcp_server。
+
+        Args:
+            server_name: server_name 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/mcp/servers/{server_name}/enable")
 
     async def disable_workspace_mcp_server(self, server_name: str) -> Dict[str, Any]:
+        """disable_workspace_mcp_server。
+
+        Args:
+            server_name: server_name 参数。
+        """
         return await self._request("POST", f"/api/core/workspace/mcp/servers/{server_name}/disable")
     
     async def enable_skill(self, skill_id: str) -> Dict[str, Any]:
-        """Enable skill."""
+        """Enable skill.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/enable")
     
     async def disable_skill(self, skill_id: str) -> Dict[str, Any]:
-        """Disable skill."""
+        """Disable skill.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/disable")
     
     async def get_skill_agents(self, skill_id: str) -> Dict[str, Any]:
-        """Get agents bound to skill."""
+        """Get agents bound to skill.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/agents")
     
     async def get_skill_binding_stats(self, skill_id: str) -> Dict[str, Any]:
-        """Get skill binding statistics."""
+        """Get skill binding statistics.
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/binding-stats")
     
     async def get_skill_versions(self, skill_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get skill version list."""
+        """Get skill version list.
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/versions", params={"limit": limit, "offset": offset})
     
     async def get_skill_version(self, skill_id: str, version: str) -> Dict[str, Any]:
-        """Get specific skill version."""
+        """Get specific skill version.
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/versions/{version}")
     
     async def rollback_skill_version(self, skill_id: str, version: str) -> Dict[str, Any]:
-        """Rollback skill to specific version."""
+        """Rollback skill to specific version.
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/versions/{version}/rollback")
     
     # ===== Skill trigger_conditions (新增) =====
     
     async def get_skill_trigger_conditions(self, skill_id: str) -> Dict[str, Any]:
-        """Get skill trigger conditions (routing rules)."""
+        """Get skill trigger conditions (routing rules).
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/trigger-conditions")
     
     async def update_skill_trigger_conditions(self, skill_id: str, conditions: Dict[str, Any]) -> Dict[str, Any]:
-        """Update skill trigger conditions."""
+        """Update skill trigger conditions.
+
+        Args:
+            skill_id: Skill ID。
+            conditions: conditions 参数。
+        """
         return await self._request("PUT", f"/api/core/skills/{skill_id}/trigger-conditions", json=conditions)
     
     async def test_skill_trigger(self, skill_id: str, test_input: Dict[str, Any]) -> Dict[str, Any]:
-        """Test if skill would be triggered by given input."""
+        """Test if skill would be triggered by given input.
+
+        Args:
+            skill_id: Skill ID。
+            test_input: test_input 参数。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/test-trigger", json=test_input)
     
     # ===== Skill Evolution (新增) =====
     
     async def get_skill_evolution_status(self, skill_id: str) -> Dict[str, Any]:
-        """Get skill evolution status (CAPTURED/FIX/DERIVED)."""
+        """Get skill evolution status (CAPTURED/FIX/DERIVED).
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/evolution")
     
     async def trigger_skill_evolution(self, skill_id: str, trigger_type: str) -> Dict[str, Any]:
-        """Manually trigger skill evolution."""
+        """Manually trigger skill evolution.
+
+        Args:
+            skill_id: Skill ID。
+            trigger_type: trigger_type 参数。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/evolution", json={"trigger_type": trigger_type})
     
     async def get_skill_lineage(self, skill_id: str) -> Dict[str, Any]:
-        """Get skill lineage (evolution history)."""
+        """Get skill lineage (evolution history).
+
+        Args:
+            skill_id: Skill ID。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/lineage")
     
     async def get_skill_captures(self, skill_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get captured interactions for skill."""
+        """Get captured interactions for skill.
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/captures", params={"limit": limit, "offset": offset})
     
     async def get_skill_fixes(self, skill_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get applied fixes for skill."""
+        """Get applied fixes for skill.
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/fixes", params={"limit": limit, "offset": offset})
     
     async def get_skill_derived(self, skill_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get derived skills from parent skill."""
+        """Get derived skills from parent skill.
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/derived", params={"limit": limit, "offset": offset})
     
     async def execute_skill(self, skill_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute skill with input."""
+        """Execute skill with input.
+
+        Args:
+            skill_id: Skill ID。
+            data: data 参数。
+        """
         return await self._request("POST", f"/api/core/skills/{skill_id}/execute", json=data)
     
     async def get_skill_execution(self, execution_id: str) -> Dict[str, Any]:
-        """Get skill execution result."""
+        """Get skill execution result.
+
+        Args:
+            execution_id: execution 标识。
+        """
         return await self._request("GET", f"/api/core/skills/executions/{execution_id}")
     
     async def list_skill_executions(self, skill_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get skill execution history."""
+        """Get skill execution history.
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/skills/{skill_id}/executions", params={"limit": limit, "offset": offset})
     
     # ===== Memory Management =====
@@ -1122,7 +2287,14 @@ class CoreAPIClient:
     async def list_sessions(self, status: Optional[str] = None,
                             agent_type: Optional[str] = None,
                             limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List all sessions."""
+        """List all sessions.
+
+        Args:
+            status: status 参数。
+            agent_type: agent_type 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params = {"limit": limit, "offset": offset}
         if status:
             params["status"] = status
@@ -1131,15 +2303,27 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/memory/sessions", params=params)
     
     async def get_session(self, session_id: str) -> Dict[str, Any]:
-        """Get session details."""
+        """Get session details.
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._request("GET", f"/api/core/memory/sessions/{session_id}")
     
     async def create_session(self, session: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new session."""
+        """Create a new session.
+
+        Args:
+            session: session 参数。
+        """
         return await self._request("POST", "/api/core/memory/sessions", json=session)
     
     async def delete_session(self, session_id: str) -> Dict[str, Any]:
-        """Delete session."""
+        """Delete session.
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._request("DELETE", f"/api/core/memory/sessions/{session_id}")
     
     async def get_memory_stats(self) -> Dict[str, Any]:
@@ -1147,23 +2331,45 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/memory/stats")
     
     async def get_session_context(self, session_id: str) -> Dict[str, Any]:
-        """Get session context and messages."""
+        """Get session context and messages.
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._request("GET", f"/api/core/memory/sessions/{session_id}/context")
     
     async def add_session_message(self, session_id: str, message: Dict[str, Any]) -> Dict[str, Any]:
-        """Add message to session."""
+        """Add message to session.
+
+        Args:
+            session_id: 会话 ID。
+            message: message 参数。
+        """
         return await self._request("POST", f"/api/core/memory/sessions/{session_id}/messages", json=message)
     
     async def search_memory(self, query: Dict[str, Any]) -> Dict[str, Any]:
-        """Search memory with vector similarity."""
+        """Search memory with vector similarity.
+
+        Args:
+            query: 查询。
+        """
         return await self._request("POST", "/api/core/memory/search", json=query)
     
     async def cleanup_memory(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Clean up expired memories."""
+        """Clean up expired memories.
+
+        Args:
+            params: params 参数。
+        """
         return await self._request("POST", "/api/core/memory/cleanup", json=params)
     
     async def export_memory(self, format: Optional[str] = None, session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Export memory data."""
+        """Export memory data.
+
+        Args:
+            format: format 参数。
+            session_id: 会话 ID。
+        """
         params = {}
         if format:
             params["format"] = format
@@ -1172,61 +2378,120 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/memory/export", params=params)
     
     async def import_memory(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Import memory data."""
+        """Import memory data.
+
+        Args:
+            data: data 参数。
+        """
         return await self._request("POST", "/api/core/memory/import", json=data)
     
     # ===== Knowledge Management =====
     
     async def list_collections(self, status: Optional[str] = None,
                                limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List all collections."""
+        """List all collections.
+
+        Args:
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params = {"limit": limit, "offset": offset}
         if status:
             params["status"] = status
         return await self._request("GET", "/api/core/knowledge/collections", params=params)
     
     async def get_collection(self, collection_id: str) -> Dict[str, Any]:
-        """Get collection details."""
+        """Get collection details.
+
+        Args:
+            collection_id: collection 标识。
+        """
         return await self._request("GET", f"/api/core/knowledge/collections/{collection_id}")
     
     async def create_collection(self, collection: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new collection."""
+        """Create a new collection.
+
+        Args:
+            collection: collection 参数。
+        """
         return await self._request("POST", "/api/core/knowledge/collections", json=collection)
     
     async def update_collection(self, collection_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update collection."""
+        """Update collection.
+
+        Args:
+            collection_id: collection 标识。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/knowledge/collections/{collection_id}", json=updates)
     
     async def delete_collection(self, collection_id: str) -> Dict[str, Any]:
-        """Delete collection."""
+        """Delete collection.
+
+        Args:
+            collection_id: collection 标识。
+        """
         return await self._request("DELETE", f"/api/core/knowledge/collections/{collection_id}")
     
     async def reindex_collection(self, collection_id: str) -> Dict[str, Any]:
-        """Rebuild collection index."""
+        """Rebuild collection index.
+
+        Args:
+            collection_id: collection 标识。
+        """
         return await self._request("POST", f"/api/core/knowledge/collections/{collection_id}/reindex")
     
     async def upload_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
-        """Upload document to knowledge base."""
+        """Upload document to knowledge base.
+
+        Args:
+            document: document 参数。
+        """
         return await self._request("POST", "/api/core/knowledge/documents", json=document)
     
     async def get_document(self, document_id: str) -> Dict[str, Any]:
-        """Get document status."""
+        """Get document status.
+
+        Args:
+            document_id: document 标识。
+        """
         return await self._request("GET", f"/api/core/knowledge/documents/{document_id}")
     
     async def list_collection_documents(self, collection_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List documents in collection."""
+        """List documents in collection.
+
+        Args:
+            collection_id: collection 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/knowledge/collections/{collection_id}/documents", params={"limit": limit, "offset": offset})
     
     async def delete_document(self, document_id: str) -> Dict[str, Any]:
-        """Delete document from knowledge base."""
+        """Delete document from knowledge base.
+
+        Args:
+            document_id: document 标识。
+        """
         return await self._request("DELETE", f"/api/core/knowledge/documents/{document_id}")
     
     async def search_knowledge(self, query: Dict[str, Any]) -> Dict[str, Any]:
-        """Search/retrieve knowledge."""
+        """Search/retrieve knowledge.
+
+        Args:
+            query: 查询。
+        """
         return await self._request("POST", "/api/core/knowledge/search", json=query)
     
     async def get_search_logs(self, collection_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get search logs for collection."""
+        """Get search logs for collection.
+
+        Args:
+            collection_id: collection 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/knowledge/collections/{collection_id}/search/logs", params={"limit": limit, "offset": offset})
     
     # ===== Adapter Management =====
@@ -1234,7 +2499,14 @@ class CoreAPIClient:
     async def list_adapters(self, provider: Optional[str] = None,
                             status: Optional[str] = None,
                             limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List all adapters."""
+        """List all adapters.
+
+        Args:
+            provider: provider 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         params = {"limit": limit, "offset": offset}
         if provider:
             params["provider"] = provider
@@ -1243,65 +2515,132 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/adapters", params=params)
     
     async def get_adapter(self, adapter_id: str) -> Dict[str, Any]:
-        """Get adapter details."""
+        """Get adapter details.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("GET", f"/api/core/adapters/{adapter_id}")
     
     async def create_adapter(self, adapter: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new adapter."""
+        """Create a new adapter.
+
+        Args:
+            adapter: adapter 参数。
+        """
         return await self._request("POST", "/api/core/adapters", json=adapter)
     
     async def update_adapter(self, adapter_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update adapter."""
+        """Update adapter.
+
+        Args:
+            adapter_id: adapter 标识。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/adapters/{adapter_id}", json=updates)
     
     async def delete_adapter(self, adapter_id: str) -> Dict[str, Any]:
-        """Delete adapter."""
+        """Delete adapter.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("DELETE", f"/api/core/adapters/{adapter_id}")
     
     async def test_adapter(self, adapter_id: str) -> Dict[str, Any]:
-        """Test adapter connection."""
+        """Test adapter connection.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/test")
     
     async def enable_adapter(self, adapter_id: str) -> Dict[str, Any]:
-        """Enable adapter."""
+        """Enable adapter.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/enable")
     
     async def disable_adapter(self, adapter_id: str) -> Dict[str, Any]:
-        """Disable adapter."""
+        """Disable adapter.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/disable")
     
     async def get_adapter_models(self, adapter_id: str) -> Dict[str, Any]:
-        """Get adapter model list."""
+        """Get adapter model list.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("GET", f"/api/core/adapters/{adapter_id}/models")
     
     async def add_adapter_model(self, adapter_id: str, model: Dict[str, Any]) -> Dict[str, Any]:
-        """Add model configuration."""
+        """Add model configuration.
+
+        Args:
+            adapter_id: adapter 标识。
+            model: 模型名。
+        """
         return await self._request("POST", f"/api/core/adapters/{adapter_id}/models", json=model)
     
     async def update_adapter_model(self, adapter_id: str, model_name: str, model: Dict[str, Any]) -> Dict[str, Any]:
-        """Update model configuration."""
+        """Update model configuration.
+
+        Args:
+            adapter_id: adapter 标识。
+            model_name: model_name 参数。
+            model: 模型名。
+        """
         return await self._request("PUT", f"/api/core/adapters/{adapter_id}/models/{model_name}", json=model)
     
     async def delete_adapter_model(self, adapter_id: str, model_name: str) -> Dict[str, Any]:
-        """Delete model configuration."""
+        """Delete model configuration.
+
+        Args:
+            adapter_id: adapter 标识。
+            model_name: model_name 参数。
+        """
         return await self._request("DELETE", f"/api/core/adapters/{adapter_id}/models/{model_name}")
     
     async def get_adapter_stats(self, adapter_id: str) -> Dict[str, Any]:
-        """Get adapter call statistics."""
+        """Get adapter call statistics.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("GET", f"/api/core/adapters/{adapter_id}/stats")
     
     async def get_adapter_calls(self, adapter_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """Get adapter call history."""
+        """Get adapter call history.
+
+        Args:
+            adapter_id: adapter 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", f"/api/core/adapters/{adapter_id}/calls", params={"limit": limit, "offset": offset})
     
     async def get_adapter_model_distribution(self, adapter_id: str) -> Dict[str, Any]:
-        """Get model call distribution."""
+        """Get model call distribution.
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return await self._request("GET", f"/api/core/adapters/{adapter_id}/model-distribution")
     
     # ===== System Overview =====
 
     async def get_overview(self, refresh: bool = False) -> Dict[str, Any]:
-        """Get system overview (4-layer health)."""
+        """Get system overview (4-layer health).
+
+        Args:
+            refresh: refresh 参数。
+        """
         params = {"refresh": "true"} if refresh else {}
         return await self._request("GET", "/api/core/overview", params=params)
 
@@ -1320,7 +2659,11 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/harness/config")
     
     async def update_harness_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Update harness configuration."""
+        """Update harness configuration.
+
+        Args:
+            config: config 参数。
+        """
         return await self._request("PUT", "/api/core/harness/config", json=config)
     
     async def get_harness_metrics(self) -> Dict[str, Any]:
@@ -1330,7 +2673,14 @@ class CoreAPIClient:
     async def get_harness_logs(self, limit: int = 100, offset: int = 0,
                                status: Optional[str] = None,
                                agent: Optional[str] = None) -> Dict[str, Any]:
-        """Get execution logs."""
+        """Get execution logs.
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            status: status 参数。
+            agent: agent 参数。
+        """
         params = {"limit": limit, "offset": offset}
         if status:
             params["status"] = status
@@ -1343,39 +2693,78 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/harness/hooks")
     
     async def add_hook(self, hook: Dict[str, Any]) -> Dict[str, Any]:
-        """Add a hook."""
+        """Add a hook.
+
+        Args:
+            hook: hook 参数。
+        """
         return await self._request("POST", "/api/core/harness/hooks", json=hook)
     
     async def delete_hook(self, hook_id: str) -> Dict[str, Any]:
-        """Delete a hook."""
+        """Delete a hook.
+
+        Args:
+            hook_id: hook 标识。
+        """
         return await self._request("DELETE", f"/api/core/harness/hooks/{hook_id}")
     
     async def update_hook(self, hook_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update a hook."""
+        """Update a hook.
+
+        Args:
+            hook_id: hook 标识。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/harness/hooks/{hook_id}", json=updates)
     
     async def get_execution_detail(self, execution_id: str) -> Dict[str, Any]:
-        """Get execution details."""
+        """Get execution details.
+
+        Args:
+            execution_id: execution 标识。
+        """
         return await self._request("GET", f"/api/core/harness/executions/{execution_id}")
     
     async def list_coordinators(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
-        """List all coordinators."""
+        """List all coordinators.
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._request("GET", "/api/core/harness/coordinators", params={"limit": limit, "offset": offset})
     
     async def create_coordinator(self, coordinator: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new coordinator."""
+        """Create a new coordinator.
+
+        Args:
+            coordinator: coordinator 参数。
+        """
         return await self._request("POST", "/api/core/harness/coordinators", json=coordinator)
     
     async def get_coordinator(self, coordinator_id: str) -> Dict[str, Any]:
-        """Get coordinator details."""
+        """Get coordinator details.
+
+        Args:
+            coordinator_id: coordinator 标识。
+        """
         return await self._request("GET", f"/api/core/harness/coordinators/{coordinator_id}")
     
     async def update_coordinator(self, coordinator_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update coordinator."""
+        """Update coordinator.
+
+        Args:
+            coordinator_id: coordinator 标识。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/core/harness/coordinators/{coordinator_id}", json=updates)
     
     async def delete_coordinator(self, coordinator_id: str) -> Dict[str, Any]:
-        """Delete coordinator."""
+        """Delete coordinator.
+
+        Args:
+            coordinator_id: coordinator 标识。
+        """
         return await self._request("DELETE", f"/api/core/harness/coordinators/{coordinator_id}")
     
     async def get_feedback_config(self) -> Dict[str, Any]:
@@ -1383,12 +2772,23 @@ class CoreAPIClient:
         return await self._request("GET", "/api/core/harness/feedback/config")
     
     async def update_feedback_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Update feedback loop configuration."""
+        """Update feedback loop configuration.
+
+        Args:
+            config: config 参数。
+        """
         return await self._request("PUT", "/api/core/harness/feedback/config", json=config)
 
     # ===== Tools =====
 
     async def list_tools(self, *, limit: int = 100, offset: int = 0, available_only: bool = False) -> Dict[str, Any]:
+        """列出 tools。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            available_only: available_only 参数。
+        """
         params: Dict[str, Any] = {"limit": int(limit), "offset": int(offset)}
         if available_only:
             params["available_only"] = str(available_only).lower()
@@ -1397,68 +2797,178 @@ class CoreAPIClient:
     # ===== Builder Projects (App Studio) — routed to platform (Builder moved from core to platform) =====
 
     async def create_builder_session(self, requirement: str) -> Dict[str, Any]:
+        """创建 builder_session。
+
+        Args:
+            requirement: requirement 参数。
+        """
         return await self._platform_req("POST", "/platform/builder/sessions", json={"requirement": requirement})
 
     async def builder_chat(self, session_id: str, message: str) -> Dict[str, Any]:
+        """builder_chat。
+
+        Args:
+            session_id: 会话 ID。
+            message: message 参数。
+        """
         return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/chat", json={"message": message})
 
     async def builder_confirm(self, session_id: str) -> Dict[str, Any]:
+        """builder_confirm。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/confirm")
 
     async def builder_start(self, session_id: str) -> Dict[str, Any]:
+        """builder_start。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._platform_req("POST", f"/platform/builder/sessions/{session_id}/start")
 
     async def get_builder_session(self, session_id: str) -> Dict[str, Any]:
+        """获取 builder_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self._platform_req("GET", f"/platform/builder/sessions/{session_id}")
 
     async def list_projects(self, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 projects。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         return await self._platform_req("GET", "/platform/builder/projects", params={"limit": limit, "offset": offset})
 
     async def create_project(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 project。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/platform/builder/projects", json=body or {})
 
     async def get_project(self, project_id: str) -> Dict[str, Any]:
+        """获取 project。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("GET", f"/platform/builder/projects/{project_id}")
 
     async def delete_project(self, project_id: str) -> Dict[str, Any]:
+        """删除 project。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("DELETE", f"/platform/builder/projects/{project_id}")
 
     async def project_chat(self, project_id: str, message: str) -> Dict[str, Any]:
+        """project_chat。
+
+        Args:
+            project_id: project 标识。
+            message: message 参数。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/chat", json={"message": message})
 
     async def project_confirm(self, project_id: str) -> Dict[str, Any]:
+        """project_confirm。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/confirm")
 
     async def project_start(self, project_id: str) -> Dict[str, Any]:
+        """project_start。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/start")
 
     async def project_approve(self, project_id: str) -> Dict[str, Any]:
+        """project_approve。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/approve")
 
     async def project_reject(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
+        """project_reject。
+
+        Args:
+            project_id: project 标识。
+            feedback: feedback 参数。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/reject", json={"feedback": feedback})
 
     async def project_rollback(self, project_id: str, stage_id: str) -> Dict[str, Any]:
+        """project_rollback。
+
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/rollback/{stage_id}")
 
     async def project_fix(self, project_id: str) -> Dict[str, Any]:
+        """project_fix。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("POST", f"/platform/builder/projects/{project_id}/fix")
 
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
+        """获取 project_state。
+
+        Args:
+            project_id: project 标识。
+        """
         return await self._platform_req("GET", f"/platform/builder/projects/{project_id}/state")
 
     async def get_project_deploy_url(self, project_id: str) -> str:
+        """获取 project_deploy_url。
+
+        Args:
+            project_id: project 标识。
+        """
         base = os.getenv("AIPLAT_PLATFORM_URL", "http://localhost:8003")
         return f"{base}/platform/builder/projects/{project_id}/deploy"
 
     async def list_teams(self) -> Dict[str, Any]:
+        """列出 teams。
+        """
         return await self._platform_req("GET", "/platform/builder/teams")
 
     async def create_team(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 team。
+
+        Args:
+            body: 请求体。
+        """
         return await self._platform_req("POST", "/platform/builder/teams", json=body or {})
 
     async def run_team(self, team_id: str, description: str = "") -> Dict[str, Any]:
+        """run_team。
+
+        Args:
+            team_id: team 标识。
+            description: description 参数。
+        """
         return await self._platform_req("POST", f"/platform/builder/teams/{team_id}/run", json={"description": description})
 
     async def run_repo_tests(self) -> Dict[str, Any]:
+        """run_repo_tests。
+        """
         return await self._request("POST", "/api/core/diagnostics/repo/tests/run", json={})

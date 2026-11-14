@@ -84,6 +84,8 @@ class DomainRouter:
         return os.path.join(DomainRouter._home(), "ontologies", f"{domain_id}.yaml")
 
     def __init__(self):
+        """初始化。
+        """
         self._label_index: Dict[str, str] = {}           # label_lower → domain_id
         self._domain_vectors: Dict[str, np.ndarray] = {}  # domain_id → embedding
         self._built = False
@@ -149,7 +151,11 @@ class DomainRouter:
         return round(sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac, 3)
 
     def classify(self, query: str) -> Optional[str]:
-        u"""3-tier domain classification. Returns domain_id or None if no match."""
+        """3-tier domain classification. Returns domain_id or None if no match.
+
+        Args:
+            query: 查询。
+        """
         self._ensure_built()
         domains = self.list_domains()
         if len(domains) <= 1:
@@ -211,7 +217,12 @@ class DomainRouter:
         return did if did else None
 
     def suggest(self, query: str, top_k: int = 3) -> List[tuple[str, float]]:
-        """返回 top-k 候选领域及相似度分数。即使未达路由阈值也返回，用于用户手动选择。"""
+        """返回 top-k 候选领域及相似度分数。即使未达路由阈值也返回，用于用户手动选择。
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+        """
         self._ensure_built()
         scores = []
         for did in self.list_domains():
@@ -262,9 +273,9 @@ class DomainRouter:
 
     def per_domain_cost(self, query: str) -> Dict[str, Any]:
         """Estimate routing cost per domain for the given query.
-        
-        Returns a breakdown of which tier each domain would use,
-        and the estimated LLM token cost avoided by T1/T2 hits.
+
+        Args:
+            query: 查询。
         """
         self._ensure_built()
         domains = self.list_domains()
@@ -299,7 +310,11 @@ class DomainRouter:
         }
 
     def resolve(self, collection_id: str) -> str:
-        u"""collection_id → domain_id via registry.json."""
+        """collection_id → domain_id via registry.json.
+
+        Args:
+            collection_id: collection 标识。
+        """
         registry = self._load_registry()
         for did, cfg in registry.get("domains", {}).items():
             if cfg.get("collection_id") == collection_id:
@@ -307,11 +322,19 @@ class DomainRouter:
         return collection_id
 
     def resolve_collection(self, domain_id: str) -> str:
-        u"""domain_id → collection_id via registry.json."""
+        """domain_id → collection_id via registry.json.
+
+        Args:
+            domain_id: domain 标识。
+        """
         return self.domain_config(domain_id).get("collection_id", domain_id)
 
     def domain_config(self, domain_id: str) -> dict:
-        u"""Get full domain config from registry."""
+        """Get full domain config from registry.
+
+        Args:
+            domain_id: domain 标识。
+        """
         return self._load_registry().get("domains", {}).get(domain_id, {})
 
     def list_domains(self) -> List[str]:
@@ -328,8 +351,8 @@ class DomainRouter:
     def require_known_domain(self, domain_id: str) -> str:
         """Phase 1 hard acceptance: domain must be registered (or be tracking domain).
 
-        Raises ValueError if unknown — forces callers through DomainRouter instead of
-        silent GraphIndex.load on arbitrary literals.
+        Args:
+            domain_id: domain 标识。
         """
         did = (domain_id or "").strip()
         if not did:
@@ -347,7 +370,14 @@ class DomainRouter:
         return self._load_registry().get("fallback_domains", ["default"])
 
     def register_domain(self, domain_id: str, config: dict, auto_rebuild: bool = True, tenant_id: str = "default"):
-        u"""Hot-register a new domain at runtime (no restart)."""
+        """Hot-register a new domain at runtime (no restart).
+
+        Args:
+            domain_id: domain 标识。
+            config: config 参数。
+            auto_rebuild: auto_rebuild 参数。
+            tenant_id: 租户 ID。
+        """
         registry_path = self._registry_path()
         registry = self._load_registry()
         config["tenant_id"] = tenant_id
@@ -377,10 +407,12 @@ class DomainRouter:
         pain_points: str = "",
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
-        u"""Rank domains by scenario suitability (data-driven, not LLM).
+        """Rank domains by scenario suitability (data-driven, not LLM).
 
-        Uses scenario_selector.recommend_order() if available, otherwise falls back
-        to maturity-based ranking.
+        Args:
+            industry: industry 参数。
+            pain_points: pain_points 参数。
+            limit: 返回条数上限。
         """
         try:
             from core.harness.knowledge.scenario_selector import recommend_order
@@ -416,7 +448,11 @@ class DomainRouter:
             ]
 
     def refresh_domain_maturity(self, domain_id: str = "") -> Dict[str, Any]:
-        u"""Refresh maturity scores for one or all domains, writing back to registry."""
+        """Refresh maturity scores for one or all domains, writing back to registry.
+
+        Args:
+            domain_id: domain 标识。
+        """
         import json as _json
         registry = self._load_registry()
 

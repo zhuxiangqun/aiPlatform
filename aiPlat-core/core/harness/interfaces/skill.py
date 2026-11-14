@@ -77,16 +77,21 @@ class ISkill(ABC):
 
     @abstractmethod
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """
-        Execute skill with given context and parameters
+        """Execute skill with given context and parameters。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
         """
 
     async def execute_stream(
         self, context: SkillContext, params: Dict[str, Any]
     ) -> AsyncGenerator[SkillStreamEvent, None]:
-        """
-        Execute skill with streaming output. Default falls back to execute().
-        Override for skills that can produce incremental output.
+        """Execute skill with streaming output. Default falls back to execute().
+
+        Args:
+            context: context 参数。
+            params: params 参数。
         """
         result = await self.execute(context, params)
         yield SkillStreamEvent(event_type="done", data=result, progress=1.0)

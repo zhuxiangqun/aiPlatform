@@ -23,10 +23,14 @@ DEFAULT_MAX_RETURN_CHARS = 800
 
 
 def is_production_profile() -> bool:
+    """is_production_profile。
+    """
     return (os.environ.get(ENV_PROFILE) or "").strip().lower() == "production"
 
 
 def max_return_chars() -> int:
+    """max_return_chars。
+    """
     try:
         return max(200, min(8000, int(os.environ.get(ENV_MAX_RETURN) or DEFAULT_MAX_RETURN_CHARS)))
     except (TypeError, ValueError):
@@ -44,7 +48,11 @@ def force_isolate_mode() -> str:
 
 
 def resolve_isolate_context(requested: bool = True) -> Tuple[bool, Dict[str, Any]]:
-    """Return (isolate_flag, meta). Production/auto coerces False → True."""
+    """Return (isolate_flag, meta). Production/auto coerces False → True.
+
+    Args:
+        requested: requested 参数。
+    """
     mode = force_isolate_mode()
     want_force = mode == "on" or (mode == "auto" and is_production_profile())
     coerced = False
@@ -62,7 +70,11 @@ def resolve_isolate_context(requested: bool = True) -> Tuple[bool, Dict[str, Any
 
 
 def filter_protocol_violations(output: str) -> str:
-    """Deterministic strip of tool/thought/code blocks (CLAUDE §5.26)."""
+    """Deterministic strip of tool/thought/code blocks (CLAUDE §5.26).
+
+    Args:
+        output: output 参数。
+    """
     text = output or ""
     text = re.sub(r"```[\s\S]*?```", "[code removed]", text)
     text = re.sub(
@@ -83,6 +95,12 @@ def filter_protocol_violations(output: str) -> str:
 
 
 def safe_truncate(text: str, max_chars: int) -> str:
+    """safe_truncate。
+
+    Args:
+        text: text 参数。
+        max_chars: max_chars 参数。
+    """
     if len(text) <= max_chars:
         return text
     cut = text[:max_chars]
@@ -101,7 +119,10 @@ def condense_return(
 ) -> str:
     """Hard envelope for anything returned to the parent loop.
 
-    Sync, deterministic last mile — always ≤ max_chars after protocol filter.
+    Args:
+        output: output 参数。
+        max_chars: max_chars 参数。
+        filter_protocol: filter_protocol 参数。
     """
     limit = int(max_chars) if max_chars is not None else max_return_chars()
     if output is None:

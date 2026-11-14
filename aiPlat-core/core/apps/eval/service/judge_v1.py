@@ -18,6 +18,11 @@ ECE_BINS = 5
 
 
 def register_judge_v1(store: EvalStore) -> Dict[str, Any]:
+    """register_judge_v1。
+
+    Args:
+        store: 存储后端。
+    """
     return store.upsert_judge(
         judge_id=JUDGE_V1_ID,
         model=JUDGE_V1_MODEL,
@@ -33,7 +38,11 @@ def _f1(precision: float, recall: float) -> float:
 
 
 def score_task_match_only(task: Dict[str, Any]) -> Dict[str, Any]:
-    """Deterministic judge: predicted fixtures vs gold_findings."""
+    """Deterministic judge: predicted fixtures vs gold_findings.
+
+    Args:
+        task: task 参数。
+    """
     from core.harness.evaluation.code_review_gold import (
         GoldFinding,
         match_review_findings,
@@ -82,7 +91,12 @@ def expected_calibration_error(
     *,
     n_bins: int = ECE_BINS,
 ) -> Dict[str, Any]:
-    """ECE over (confidence, correct) pairs. Empty → recorded as None."""
+    """ECE over (confidence, correct) pairs. Empty → recorded as None.
+
+    Args:
+        pairs: 对照样本序列。
+        n_bins: n_bins 参数。
+    """
     if not pairs:
         return {"ece": None, "n": 0, "bins": []}
     bins: List[Dict[str, Any]] = []
@@ -111,7 +125,12 @@ def run_e4_calibration(
 ) -> Dict[str, Any]:
     """Run judge v1 over gold tasks with k repeats; persist judgments + calibration report.
 
-    Does not claim accuracy. κ is always null under D5 solo review.
+    Args:
+        tenant_id: 租户 ID。
+        set_id: set 标识。
+        k: k 参数。
+        limit: 返回条数上限。
+        db_path: 路径。
     """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     register_judge_v1(store)

@@ -39,7 +39,13 @@ def _read_json_list(path: Optional[str]) -> List[Dict[str, Any]]:
 def aggregate(evidence_tree_path: Optional[str] = None,
               guard_trace_path: Optional[str] = None,
               experience_path: Optional[str] = None) -> Dict[str, Any]:
-    """聚合三个评测观测产物为统一视图。路径缺省读环境变量。"""
+    """聚合三个评测观测产物为统一视图。路径缺省读环境变量。
+
+    Args:
+        evidence_tree_path: evidence_tree_path 参数。
+        guard_trace_path: guard_trace_path 参数。
+        experience_path: experience_path 参数。
+    """
     et_path = evidence_tree_path or os.environ.get("AIPLAT_EVIDENCE_TREE_OUT")
     gt_path = guard_trace_path or os.environ.get("AIPLAT_GUARD_TRACE_OUT")
     exp_path = experience_path or os.environ.get("AIPLAT_EXPERIENCE_FILE")

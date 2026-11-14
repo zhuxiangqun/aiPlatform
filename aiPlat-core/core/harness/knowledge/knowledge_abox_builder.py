@@ -33,7 +33,11 @@ _ABOX_CACHE: Dict[str, tuple] = {}  # collection_id → (timestamp, ontology)
 
 
 def invalidate_abox_cache(collection_id: str = "default") -> None:
-    """Invalidate cached A-Box for a collection. Call from write_page/delete_page."""
+    """Invalidate cached A-Box for a collection. Call from write_page/delete_page.
+
+    Args:
+        collection_id: collection 标识。
+    """
     _ABOX_CACHE.pop(collection_id, None)
 
 
@@ -44,9 +48,11 @@ def _wiki_root(collection_id: str = "default") -> Path:
 
 
 def build_abox(partial: Optional[str] = None, *, collection_id: str = "default") -> KnowledgeOntology:
-    """
-    Build A-Box from current Wiki + KB data.
-    Full rebuilds are cached per collection_id for 60s to avoid redundant computation.
+    """Build A-Box from current Wiki + KB data.
+
+    Args:
+        partial: partial 参数。
+        collection_id: collection 标识。
     """
     # Check cache (full rebuild only; partial rebuilds are always fresh)
     if partial is None:
@@ -451,17 +457,31 @@ def _safe_uri(name: str) -> str:
 # ══════════════════════════════════════════════════════════════
 
 def rebuild_for_doc(doc_id: str, *, collection_id: str = "default") -> KnowledgeOntology:
-    """Incremental rebuild: only triples related to a specific KB document."""
+    """Incremental rebuild: only triples related to a specific KB document.
+
+    Args:
+        doc_id: doc 标识。
+        collection_id: collection 标识。
+    """
     return build_abox(partial=doc_id, collection_id=collection_id)
 
 
 def rebuild_for_page(title: str, *, collection_id: str = "default") -> KnowledgeOntology:
-    """Incremental rebuild: only triples related to a specific Wiki page."""
+    """Incremental rebuild: only triples related to a specific Wiki page.
+
+    Args:
+        title: title 参数。
+        collection_id: collection 标识。
+    """
     return build_abox(partial=title, collection_id=collection_id)
 
 
 def rebuild_full(*, collection_id: str = "default") -> KnowledgeOntology:
-    """Full A-Box rebuild from scratch."""
+    """Full A-Box rebuild from scratch.
+
+    Args:
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_ontology import reset_ontology
     reset_ontology()
     result = build_abox(collection_id=collection_id)

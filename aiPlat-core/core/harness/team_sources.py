@@ -25,6 +25,8 @@ _SEED_SOURCES = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
@@ -55,12 +57,16 @@ def load_sources_config() -> Dict[str, Any]:
 
 
 def sources_root() -> Path:
+    """sources_root。
+    """
     from core.harness.team_harness import resource_relpath, team_dir
 
     return team_dir() / resource_relpath("sources")
 
 
 def list_source_namespaces() -> List[str]:
+    """列出 source_namespaces。
+    """
     root = sources_root()
     if not root.is_dir():
         return []
@@ -83,7 +89,10 @@ def merge_source_tree(
 ) -> Dict[str, Any]:
     """Copy secondary source into team/sources/{ns}/ — never into locked primary paths.
 
-    Locked primary bodies under team/{skills,rules,…} are untouched.
+    Args:
+        src: src 参数。
+        namespace: namespace 参数。
+        resources: resources 参数。
     """
     from core.harness.team_harness import is_resource_locked, load_team_harness_schema, resource_relpath
 
@@ -149,7 +158,11 @@ def merge_source_tree(
 
 
 def configure_sources(sources: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
-    """Persist sources list to ~/.aiplat/sources.yaml (and team/ copy when present)."""
+    """Persist sources list to ~/.aiplat/sources.yaml (and team/ copy when present).
+
+    Args:
+        sources: sources 参数。
+    """
     payload = {
         "schema_version": "1",
         "sources": [dict(s) for s in sources],
@@ -171,7 +184,11 @@ def configure_sources(sources: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
 
 
 def apply_configured_sources(*, dry_run: bool = False) -> Dict[str, Any]:
-    """Materialize each configured local path source under team/sources/{ns}/."""
+    """Materialize each configured local path source under team/sources/{ns}/.
+
+    Args:
+        dry_run: 是否仅演练。
+    """
     cfg = load_sources_config()
     rows = cfg.get("sources") if isinstance(cfg.get("sources"), list) else []
     results: List[Dict[str, Any]] = []
@@ -208,7 +225,8 @@ def apply_configured_sources(*, dry_run: bool = False) -> Dict[str, Any]:
 def namespaced_skill_candidates(skill_name: str) -> List[str]:
     """Resolve skill name across primary + sources/{ns}/skills/{name}.
 
-    Returns filesystem candidates (paths as strings). Does not overwrite primary.
+    Args:
+        skill_name: skill_name 参数。
     """
     from core.harness.team_harness import resource_relpath, team_dir
 

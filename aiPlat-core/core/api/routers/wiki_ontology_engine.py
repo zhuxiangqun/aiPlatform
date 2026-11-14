@@ -31,10 +31,9 @@ async def ontology_engine_process(req: dict, collection: str = "default"):
 
     """本体引擎处理：单文档 → 本体实例。
 
-    
-
-    请求体: {"text": "...", "domain_id": "ai-knowledge", "doc_id": "kb:xxx"}
-
+    Args:
+        req: req 参数。
+        collection: collection 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -77,10 +76,9 @@ async def ontology_engine_process_and_write(req: dict, collection: str = "defaul
 
     """本体引擎 → 实例 → 自动写 Wiki 页面。
 
-    
-
-    请求体: {"text": "...", "domain_id": "ai-knowledge", "doc_id": "kb:xxx", "auto_write": true}
-
+    Args:
+        req: req 参数。
+        collection: collection 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -165,12 +163,8 @@ async def cleanup_cross_domain_nodes(domain_id: str):
 
     """Remove graph nodes whose entity_name matches keywords from other domains.
 
-
-
-    Auto-detects cross-domain vocabulary from other domains' YAML labels and synonyms.
-
-    Config-driven — no hardcoded domain terms. Scales to any new domain.
-
+    Args:
+        domain_id: domain 标识。
     """
 
     from core.api.core_facade import GraphIndex
@@ -265,12 +259,10 @@ async def backfill_summaries(domain_id: str, collection: str = "", limit: int = 
 
     """Backfill empty summaries for all wiki pages in this domain's collection.
 
-
-
-    Calls write_page for each page with empty summary, which triggers
-
-    auto-summary generation from the page body.
-
+    Args:
+        domain_id: domain 标识。
+        collection: collection 参数。
+        limit: 返回条数上限。
     """
 
     from core.harness.knowledge.wiki_engine import read_page, write_page, list_all_pages
@@ -470,10 +462,10 @@ async def build_instances_batch(domain_id: str, collection: str = "", limit: int
 
     """Batch-run ontology engine on all Wiki pages in this domain's collection.
 
-    
-
-    Uses parallel processing (2 concurrent) — prevents OOM on 16GB machines.
-
+    Args:
+        domain_id: domain 标识。
+        collection: collection 参数。
+        limit: 返回条数上限。
     """
 
     from core.harness.ontology_engine.engine import load_engine
@@ -662,18 +654,8 @@ async def build_cross_page_edges(domain_id: str):
 
     """Build cross-page edges by linking graph nodes via wiki references + keyword overlap.
 
-    
-
-    Strategy:
-
-      1. Load graph nodes + wiki page cross-references (related, source_articles)
-
-      2. Match references to other graph nodes
-
-      3. Use YAML relation type definitions to determine edge type
-
-      4. Add edges to graph via add_relation()
-
+    Args:
+        domain_id: domain 标识。
     """
 
     from core.harness.ontology_engine.engine import get_graph
@@ -1254,7 +1236,12 @@ async def _process_single_page(engine, page: dict, cid: str) -> dict:
 
 async def ontology_engine_trace(instance_title: str, doc_id: str = ""):
 
-    """查询实例溯源。需提供 instance_title 和可选的 doc_id。"""
+    """查询实例溯源。需提供 instance_title 和可选的 doc_id。
+
+    Args:
+        instance_title: instance_title 参数。
+        doc_id: doc 标识。
+    """
 
     import os as _os
 
@@ -1284,14 +1271,8 @@ async def ontology_engine_parse(req: dict):
 
     """解析文档 → 结构化Chunk → 本体引擎处理。
 
-    
-
-    支持: 文本字符串 + 格式参数
-
-    
-
-    请求体: {"text":"...", "format":"md|txt|html", "domain_id":"ai-knowledge"}
-
+    Args:
+        req: req 参数。
     """
 
     text = req.get("text", "") if isinstance(req, dict) else ""
@@ -1376,10 +1357,9 @@ async def ontology_engine_parse_and_process(req: dict, collection: str = "defaul
 
     """解析文档 → 结构化Chunk → 本体引擎 → 自动写Wiki页面。
 
-    
-
-    完整链路: 上传文档 → 解析 → 类映射 → 属性提取 → 写入
-
+    Args:
+        req: req 参数。
+        collection: collection 参数。
     """
 
     from core.harness.ontology_engine.document_parser import DocumentParser
@@ -1490,24 +1470,8 @@ async def simulate_state_transitions(req: dict):
 
     """模拟状态机：给定一批实例，返回状态转换链和受影响的实例。
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "instances": [
-
-        {"class_name": "AI方法", "properties": {"name": "RAG", "maturity": "research"}, "chunk_id": "c0"},
-
-        {"class_name": "AI系统", "properties": {"name": "SysA"}, "chunk_id": "c0"}
-
-      ]
-
-    }
-
-    返回: { state_transitions, affected_instances, summary }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -1655,28 +1619,8 @@ async def simulate_scenarios(req: dict):
 
     """Multi-scenario simulation sandbox — compare different configurations side by side.
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "instances": [...],   # 基础实例
-
-      "scenarios": [        # 多个场景对比
-
-        {"label": "基线(无干预)", "instances": [...]},
-
-        {"label": "方案A: 加强审查", "instances": [...]},
-
-        {"label": "方案B: 自动放行", "instances": [...]}
-
-      ]
-
-    }
-
-    返回: { domain_id, baseline: {...}, scenarios: [{label, ...}, ...], comparison: {...} }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -1821,7 +1765,11 @@ async def simulate_scenarios(req: dict):
 
 async def list_ontology_reviews(domain_id: str):
 
-    """Get pending review queue for a domain ontology."""
+    """Get pending review queue for a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     from pathlib import Path as _Path
 
@@ -1867,7 +1815,12 @@ async def list_ontology_reviews(domain_id: str):
 
 async def resolve_ontology_review(domain_id: str, req: dict):
 
-    """Mark a review as resolved."""
+    """Mark a review as resolved.
+
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
+    """
 
     from pathlib import Path as _Path
 
@@ -1953,7 +1906,11 @@ async def get_cross_domain_stats():
 
 async def get_graph_stats(domain_id: str):
 
-    """Get graph statistics: nodes, edges, inferred edges."""
+    """Get graph statistics: nodes, edges, inferred edges.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     from core.api.core_facade import GraphIndex, attach_ontology_api, ontology_api_from_graph_health
 
@@ -1977,20 +1934,8 @@ async def cross_source_resolve(req: dict):
 
     """P1: Cross-source entity aggregation. Link entities from different data sources.
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "instances_a": [...],  // primary source
-
-      "instances_b": [...],  // secondary source to link against
-
-      "source_a": "wiki", "source_b": "erp"
-
-    }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -2059,18 +2004,8 @@ async def resolve_entities(req: dict):
 
     """Run entity resolver on a list of instances.
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "instances": [{"class_name":"AI方法","entity_text":"RAG","chunk_id":"c0"}, ...],
-
-      "doc_type": "md"
-
-    }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -2131,7 +2066,13 @@ async def resolve_entities(req: dict):
 
 async def get_state_history(domain_id: str, entity: str = "", limit: int = 200):
 
-    """Get state machine change history for a domain or specific entity."""
+    """Get state machine change history for a domain or specific entity.
+
+    Args:
+        domain_id: domain 标识。
+        entity: entity 参数。
+        limit: 返回条数上限。
+    """
 
     from core.harness.ontology_engine.state_history import get_domain_history, get_entity_history
 
@@ -2255,24 +2196,8 @@ async def graph_traverse(req: dict):
 
     """Multi-hop graph traversal from a start entity.
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "start_entity": "RAG",
-
-      "max_hops": 2,
-
-      "relation_types": ["implements", "applies"],
-
-      "direction": "both"
-
-    }
-
-    返回: { paths, terminal_entities, stats }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -2343,10 +2268,8 @@ async def submit_feedback(req: dict):
 
     """Submit user feedback on an answer.
 
-    
-
-    请求体: {"session_id":"...", "query":"...", "rating":4, "is_helpful":true, "domain_id":"default"}
-
+    Args:
+        req: req 参数。
     """
 
     from core.harness.ontology_engine.state_history import record_feedback
@@ -2373,6 +2296,11 @@ async def submit_feedback(req: dict):
 
 async def get_feedback_statistics(domain_id: str):
 
+    """获取 feedback_statistics。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.ontology_engine.state_history import get_feedback_stats
 
     return get_feedback_stats(domain_id)
@@ -2397,12 +2325,11 @@ async def get_knowledge_recommendations(
 
     """L5 active knowledge recommendation.
 
-
-
-    Query: ?department=研发部&queries=RAG,知识检索&limit=5
-
-    Returns ranked recommendations with reasons.
-
+    Args:
+        domain_id: domain 标识。
+        department: department 参数。
+        queries: queries 参数。
+        limit: 返回条数上限。
     """
 
     from core.harness.knowledge.wiki_engine import recommend_knowledge
@@ -2427,7 +2354,11 @@ async def get_knowledge_recommendations(
 
 async def parse_logic_form(req: dict):
 
-    """NL2LF: Parse natural language to structured Logic Form."""
+    """NL2LF: Parse natural language to structured Logic Form.
+
+    Args:
+        req: req 参数。
+    """
 
     from core.harness.knowledge.ontology_query_mapper import parse_to_logic_form
 
@@ -2447,18 +2378,8 @@ async def detect_knowledge_gaps_endpoint(req: dict):
 
     """Detect knowledge gaps from query patterns.
 
-
-
-    请求体: {
-
-      "domain_id": "ai-knowledge",
-
-      "queries": ["什么是RAG", "RAG怎么用", ...],
-
-      "min_frequency": 2
-
-    }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -2485,10 +2406,8 @@ async def process_from_datasource(req: dict):
 
     """Palantir-style: process data from an external data source through the ontology engine.
 
-
-
-    请求体: {"source_id": "erp_db", "domain_id": "ai-knowledge"}
-
+    Args:
+        req: req 参数。
     """
 
     from core.harness.ontology_engine.data_source import DataSourceRegistry
@@ -2545,6 +2464,8 @@ async def process_from_datasource(req: dict):
 
 async def list_datasources():
 
+    """列出 datasources。
+    """
     from core.harness.ontology_engine.data_source import DataSourceRegistry
 
     DataSourceRegistry.load_from_dir()
@@ -2561,12 +2482,8 @@ async def run_knowledge_synthesis(req: dict):
 
     """Synthesize graph knowledge into Wiki pages.
 
-
-
-    请求体: {"domain_id": "ai-knowledge"}
-
-    返回: { pages_written, chains, fact_cards, conclusions }
-
+    Args:
+        req: req 参数。
     """
 
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
@@ -2605,7 +2522,12 @@ async def run_knowledge_synthesis(req: dict):
 
 async def create_graph_snapshot(domain_id: str, label: str = ""):
 
-    """Create a versioned snapshot of the current graph state."""
+    """Create a versioned snapshot of the current graph state.
+
+    Args:
+        domain_id: domain 标识。
+        label: label 参数。
+    """
 
     from core.api.core_facade import GraphIndex
 
@@ -2627,6 +2549,11 @@ async def create_graph_snapshot(domain_id: str, label: str = ""):
 
 async def list_graph_snapshots(domain_id: str):
 
+    """列出 graph_snapshots。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import GraphIndex
 
     graph = GraphIndex.load(domain_id)
@@ -2641,6 +2568,12 @@ async def list_graph_snapshots(domain_id: str):
 
 async def restore_graph_snapshot(domain_id: str, req: dict):
 
+    """restore_graph_snapshot。
+
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
+    """
     snapshot_id = int(req.get("snapshot_id", 0)) if isinstance(req, dict) else 0
 
     if not snapshot_id:
@@ -2665,16 +2598,9 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 
     """Generate a client SDK from the domain ontology YAML.
 
-
-
-    Produces dataclass definitions with fields, enums, state machines,
-
-    and API wrappers for all CRUD operations on the domain.
-
-
-
-    Query: ?language=python|typescript
-
+    Args:
+        domain_id: domain 标识。
+        language: language 参数。
     """
 
     from core.api.core_facade import load_ontology_from_yaml
@@ -2807,9 +2733,8 @@ async def generate_ontology_sdk(domain_id: str, language: str = "python"):
 async def run_graph_inference(req: dict):
     """Run inference rules — suggestion layer by default.
 
-    Body: {"domain_id": "...", "apply": false}
-    When apply=true, each edge is committed via platform_action:graph:assert_inferred_edge
-    (Action audit, inferred=true) — never via silent apply_to_graph.
+    Args:
+        req: req 参数。
     """
     domain_id = req.get("domain_id", "ai-knowledge") if isinstance(req, dict) else "ai-knowledge"
     do_apply = bool(req.get("apply")) if isinstance(req, dict) else False
@@ -2875,6 +2800,7 @@ async def run_graph_inference(req: dict):
 
 class OntologyDomainCreate(BaseModel):
 
+    """OntologyDomainCreate。"""
     id: str = Field(min_length=1, max_length=50, description="域标识 (如 ai-knowledge)")
 
     name: str = Field(min_length=1, max_length=100, description="显示名 (如 AI知识)")
@@ -2889,6 +2815,7 @@ class OntologyDomainCreate(BaseModel):
 
 class OntologyClassCreate(BaseModel):
 
+    """OntologyClassCreate。"""
     name: str
 
     label: str
@@ -2907,6 +2834,7 @@ class OntologyClassCreate(BaseModel):
 
 class OntologyPropertyCreate(BaseModel):
 
+    """OntologyPropertyCreate。"""
     name: str
 
     label: str
@@ -2992,8 +2920,8 @@ def _write_domain_yaml(domain_id: str, data: dict) -> None:
 async def sync_search_index(domain_id: str):
     """Sync graph entity classes to Wiki FTS5 + vector cache for search discoverability.
 
-    Zero LLM calls. Reads GraphIndex entities, creates/updates entity class index
-    Wiki pages, rebuilds FTS5 index. Returns count of pages synced.
+    Args:
+        domain_id: domain 标识。
     """
     try:
         from core.api.core_facade import GraphIndex

@@ -1,3 +1,5 @@
+"""scoring_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""Ontology Editor — Scoring Models API endpoints (v2.7)."""
 from fastapi import APIRouter, HTTPException, Query
@@ -8,7 +10,11 @@ router = APIRouter(tags=["ontology-editor-scoring"])
 
 @router.get("/domains/{domain_id}/scoring-models", response_model=StatusResponse)
 async def list_scoring_models(domain_id: str):
-    u"""List all scoring models for a domain."""
+    """List all scoring models for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
@@ -28,7 +34,13 @@ async def list_scoring_models(domain_id: str):
 
 @router.get("/domains/{domain_id}/scoring-models/{model_name}/evaluate", response_model=StatusResponse)
 async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("")):
-    u"""Evaluate a single entity against a scoring model."""
+    """Evaluate a single entity against a scoring model.
+
+    Args:
+        domain_id: domain 标识。
+        model_name: model_name 参数。
+        entity: entity 参数。
+    """
     if not entity:
         raise HTTPException(status_code=400, detail="entity query parameter required")
     try:
@@ -57,7 +69,13 @@ async def evaluate_entity(domain_id: str, model_name: str, entity: str = Query("
 
 @router.post("/domains/{domain_id}/scoring-models/{model_name}/evaluate-batch", response_model=StatusResponse)
 async def evaluate_batch(domain_id: str, model_name: str, data: Dict[str, Any]):
-    u"""Batch evaluate all entities of a class against a scoring model."""
+    """Batch evaluate all entities of a class against a scoring model.
+
+    Args:
+        domain_id: domain 标识。
+        model_name: model_name 参数。
+        data: data 参数。
+    """
     try:
         class_name = data.get("class_name", "")
         if not class_name:
@@ -87,7 +105,12 @@ async def evaluate_batch(domain_id: str, model_name: str, data: Dict[str, Any]):
 
 @router.get("/domains/{domain_id}/scoring-models/{model_name}/alerts", response_model=StatusResponse)
 async def get_alerts(domain_id: str, model_name: str):
-    u"""Get all high/medium level alerts for a scoring model."""
+    """Get all high/medium level alerts for a scoring model.
+
+    Args:
+        domain_id: domain 标识。
+        model_name: model_name 参数。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)

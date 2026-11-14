@@ -1,3 +1,5 @@
+"""prod：模块接口。"""
+
 from typing import Dict, Any, Optional, Callable, List
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -9,12 +11,14 @@ from pathlib import Path
 
 
 class ProdEnvironment(Enum):
+    """ProdEnvironment。"""
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
 
 
 class StorageBackend(Enum):
+    """StorageBackend。"""
     MEMORY = "memory"
     FILE = "file"
     DATABASE = "database"
@@ -22,6 +26,7 @@ class StorageBackend(Enum):
 
 
 class FeedbackStorageType(Enum):
+    """FeedbackStorageType。"""
     SESSION = "session"
     LONG_TERM = "long_term"
     PERSISTENT = "persistent"
@@ -29,6 +34,7 @@ class FeedbackStorageType(Enum):
 
 @dataclass
 class ProdFeedbackConfig:
+    """ProdFeedbackConfig。"""
     environment: ProdEnvironment = ProdEnvironment.DEVELOPMENT
     storage_backend: StorageBackend = StorageBackend.MEMORY
     storage_path: Optional[str] = None
@@ -39,6 +45,7 @@ class ProdFeedbackConfig:
 
 @dataclass
 class StoredFeedback:
+    """StoredFeedback。"""
     id: str
     session_id: str
     feedback_type: str
@@ -50,7 +57,13 @@ class StoredFeedback:
 
 
 class ProdFeedbackStore:
+    """ProdFeedbackStore。"""
     def __init__(self, config: ProdFeedbackConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._memory_store: List[StoredFeedback] = []
         self._session_index: Dict[str, List[str]] = {}
@@ -66,6 +79,15 @@ class ProdFeedbackStore:
         metadata: Optional[Dict[str, Any]] = None,
         storage_type: FeedbackStorageType = FeedbackStorageType.SESSION,
     ) -> StoredFeedback:
+        """store。
+
+        Args:
+            session_id: 会话 ID。
+            feedback_type: feedback_type 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+            storage_type: storage_type 参数。
+        """
         feedback = StoredFeedback(
             id=f"fb_{datetime.now(timezone.utc).timestamp()}",
             session_id=session_id,
@@ -95,6 +117,13 @@ class ProdFeedbackStore:
         feedback_type: Optional[str] = None,
         limit: int = 100,
     ) -> List[StoredFeedback]:
+        """retrieve。
+
+        Args:
+            session_id: 会话 ID。
+            feedback_type: feedback_type 参数。
+            limit: 返回条数上限。
+        """
         if self.config.storage_backend == StorageBackend.MEMORY:
             result = self._memory_store
             if session_id:
@@ -110,6 +139,11 @@ class ProdFeedbackStore:
         return await self._retrieve_from_file(session_id, feedback_type, limit)
 
     async def delete(self, feedback_id: str) -> bool:
+        """delete。
+
+        Args:
+            feedback_id: feedback 标识。
+        """
         if self.config.storage_backend == StorageBackend.MEMORY:
             for i, f in enumerate(self._memory_store):
                 if f.id == feedback_id:
@@ -127,6 +161,11 @@ class ProdFeedbackStore:
         return False
 
     async def cleanup(self, older_than_days: Optional[int] = None):
+        """cleanup。
+
+        Args:
+            older_than_days: older_than_days 参数。
+        """
         if not older_than_days:
             older_than_days = self.config.max_retention_days
         cutoff = datetime.now(timezone.utc).timestamp() - (older_than_days * 86400)
@@ -292,10 +331,21 @@ class ProdFeedbackStore:
 
 
 class ProdFeedbackAnalytics:
+    """ProdFeedbackAnalytics。"""
     def __init__(self, store: ProdFeedbackStore):
+        """初始化。
+
+        Args:
+            store: store 参数。
+        """
         self.store = store
 
     async def get_session_summary(self, session_id: str) -> Dict[str, Any]:
+        """获取 session_summary。
+
+        Args:
+            session_id: 会话 ID。
+        """
         feedbacks = await self.store.retrieve(session_id=session_id, limit=1000)
         if not feedbacks:
             return {"session_id": session_id, "total": 0}
@@ -313,6 +363,11 @@ class ProdFeedbackAnalytics:
         }
 
     async def get_error_rate(self, session_id: str) -> float:
+        """获取 error_rate。
+
+        Args:
+            session_id: 会话 ID。
+        """
         feedbacks = await self.store.retrieve(session_id=session_id, limit=1000)
         if not feedbacks:
             return 0.0
@@ -321,16 +376,26 @@ class ProdFeedbackAnalytics:
 
 
 class ProductionFeedbackLoop:
+    """ProductionFeedbackLoop。"""
     def __init__(self, config: Optional[ProdFeedbackConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or ProdFeedbackConfig()
         self.store = ProdFeedbackStore(self.config)
         self.analytics = ProdFeedbackAnalytics(self.store)
         self._enabled = True
 
     def enable(self):
+        """enable。
+        """
         self._enabled = True
 
     def disable(self):
+        """disable。
+        """
         self._enabled = False
 
     async def record(
@@ -341,6 +406,15 @@ class ProductionFeedbackLoop:
         metadata: Optional[Dict[str, Any]] = None,
         storage_type: FeedbackStorageType = FeedbackStorageType.SESSION,
     ):
+        """record。
+
+        Args:
+            session_id: 会话 ID。
+            feedback_type: feedback_type 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+            storage_type: storage_type 参数。
+        """
         if not self._enabled:
             return None
         return await self.store.store(session_id, feedback_type, content, metadata, storage_type)
@@ -351,19 +425,43 @@ class ProductionFeedbackLoop:
         feedback_type: Optional[str] = None,
         limit: int = 100,
     ) -> List[StoredFeedback]:
+        """retrieve。
+
+        Args:
+            session_id: 会话 ID。
+            feedback_type: feedback_type 参数。
+            limit: 返回条数上限。
+        """
         return await self.store.retrieve(session_id, feedback_type, limit)
 
     async def get_session_summary(self, session_id: str) -> Dict[str, Any]:
+        """获取 session_summary。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self.analytics.get_session_summary(session_id)
 
     async def get_error_rate(self, session_id: str) -> float:
+        """获取 error_rate。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self.analytics.get_error_rate(session_id)
 
     async def cleanup(self):
+        """cleanup。
+        """
         await self.store.cleanup()
 
 
 def create_production_feedback(config: Optional[ProdFeedbackConfig] = None) -> ProductionFeedbackLoop:
+    """创建 production_feedback。
+
+    Args:
+        config: config 参数。
+    """
     return ProductionFeedbackLoop(config)
 
 
@@ -371,4 +469,6 @@ _production_feedback = ProductionFeedbackLoop()
 
 
 def get_production_feedback() -> ProductionFeedbackLoop:
+    """获取 production_feedback。
+    """
     return _production_feedback

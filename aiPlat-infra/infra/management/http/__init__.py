@@ -10,13 +10,21 @@ from typing import Any, Dict
 class HTTPManager:
     """Manages HTTP configuration and health for the infra layer."""
     def __init__(self):
+        """初始化。
+        """
         self._initialized = True
 
     def health(self) -> Dict[str, Any]:
+        """health。
+        """
         return {"status": "healthy", "initialized": self._initialized}
 
     def status(self) -> Dict[str, Any]:
+        """status。
+        """
         return {"initialized": self._initialized}
 
     def diagnostics(self) -> Dict[str, Any]:
+        """diagnostics。
+        """
         return {"version": "1.0.0"}

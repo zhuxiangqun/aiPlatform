@@ -122,7 +122,15 @@ async def capture_skill_decision(
     reason: str = "",
     alternatives: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[str]:
-    """在 sys_skill_call 执行前捕获技能选择决策."""
+    """在 sys_skill_call 执行前捕获技能选择决策.
+
+    Args:
+        skill_name: skill_name 参数。
+        params: params 参数。
+        trace_context: trace_context 参数。
+        reason: reason 参数。
+        alternatives: alternatives 参数。
+    """
     try:
         from core.harness.infrastructure.lineage_store import LineageStore, DecisionRecord
 
@@ -160,7 +168,15 @@ async def capture_fallback_decision(
     reason: str,
     trace_context: Optional[Dict[str, Any]],
 ) -> Optional[str]:
-    """在 Pipeline 降级时捕获降级决策."""
+    """在 Pipeline 降级时捕获降级决策.
+
+    Args:
+        stage_name: stage_name 参数。
+        from_model: from_model 参数。
+        to_model: to_model 参数。
+        reason: reason 参数。
+        trace_context: trace_context 参数。
+    """
     try:
         from core.harness.infrastructure.lineage_store import LineageStore, DecisionRecord
 
@@ -199,7 +215,13 @@ async def update_decision_outcome(
     outcome_status: str,
     outcome_summary: str = "",
 ) -> None:
-    """更新之前记录的决策结果."""
+    """更新之前记录的决策结果.
+
+    Args:
+        decision_id: decision 标识。
+        outcome_status: outcome_status 参数。
+        outcome_summary: outcome_summary 参数。
+    """
     if not decision_id:
         return
     try:
@@ -251,8 +273,11 @@ def inject_context_version_pin(
 ) -> None:
     """在 MemoryManager.build_context() 后注入上下文版本到 trace_context.
 
-    这样后续的 sys_tool_call / sys_skill_call 可以通过 _extract_context_versions()
-    自动读取并记录到 lineage_decisions 表中.
+    Args:
+        trace_context: trace_context 参数。
+        ontology_version: ontology_version 参数。
+        kb_collection_version: kb_collection_version 参数。
+        context_snapshot_id: context_snapshot 标识。
     """
     if ontology_version:
         trace_context["ontology_version"] = ontology_version

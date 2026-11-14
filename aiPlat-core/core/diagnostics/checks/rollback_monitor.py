@@ -20,6 +20,8 @@ _ROLLBACK_LOG = Path(get_aiplat_home()) / "data" / "rollback_events.jsonl"
 
 
 async def check_rollback_rate() -> Dict[str, Any]:
+    """check_rollback_rate。
+    """
     if not _ROLLBACK_LOG.exists():
         return {"status": "pass", "rollback_count_24h": 0, "note": "no rollback log yet"}
 

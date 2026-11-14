@@ -48,7 +48,11 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
 
 
 def preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Facilitator-facing preference pack readiness (not an accuracy claim)."""
+    """Facilitator-facing preference pack readiness (not an accuracy claim).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     pairs_path = _pairs_path()
     pack = _read_json(pairs_path) or {}
     pairs = pack.get("pairs") if isinstance(pack.get("pairs"), list) else []

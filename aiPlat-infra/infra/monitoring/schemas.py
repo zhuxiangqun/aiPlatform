@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 import os
@@ -5,6 +7,7 @@ import os
 
 @dataclass
 class MetricConfig:
+    """MetricConfig。"""
     enabled: bool = True
     prefix: str = os.getenv("AIPLAT_METRICS_PREFIX", "")
     labels: Dict[str, str] = field(default_factory=dict)
@@ -13,6 +16,7 @@ class MetricConfig:
 
 @dataclass
 class HealthCheckConfig:
+    """HealthCheckConfig。"""
     enabled: bool = True
     path: str = "/health"
     interval: int = 30
@@ -20,6 +24,7 @@ class HealthCheckConfig:
 
 @dataclass
 class HeartbeatConfig:
+    """HeartbeatConfig。"""
     enabled: bool = True
     interval: int = 10
     timeout: int = 30
@@ -27,6 +32,7 @@ class HeartbeatConfig:
 
 @dataclass
 class AlertRule:
+    """AlertRule。"""
     name: str = ""
     metric: str = ""
     condition: str = ""
@@ -36,6 +42,7 @@ class AlertRule:
 
 @dataclass
 class MonitoringConfig:
+    """MonitoringConfig。"""
     enabled: bool = True
     port: int = 9090
     metrics: Optional[MetricConfig] = None

@@ -18,6 +18,13 @@ class AppHealthChecker(HttpHealthChecker):
         timeout: float = 30.0,
         transport: Optional[httpx.BaseTransport] = None,
     ):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         super().__init__(
             layer="app",
             endpoint=endpoint or "http://localhost:8004",

@@ -20,10 +20,13 @@ def chunk_elements(
     target_size: int = 1000,
     overlap: int = 150,
 ) -> List[Dict[str, Any]]:
-    """
-    Auto-select chunking strategy and apply it to parsed elements.
+    """Auto-select chunking strategy and apply it to parsed elements.
 
-    Returns list of chunk dicts: {text, page_idx, meta{chunk_strategy, ...}}
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
     """
     if not elements:
         return []

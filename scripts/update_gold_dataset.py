@@ -19,7 +19,11 @@ GOLD_FILE = "aiPlat-core/core/tests/data/gold_tool_selection.json"
 
 
 def extract_from_tools(root: str) -> list:
-    """从 BaseTool 子类的 gold_examples 类属性提取。"""
+    """从 BaseTool 子类的 gold_examples 类属性提取。
+
+    Args:
+        root: root 参数。
+    """
     cases = []
     tools_dir = os.path.join(root, "aiPlat-core/core/apps/tools")
     if not os.path.isdir(tools_dir):
@@ -45,7 +49,11 @@ def extract_from_tools(root: str) -> list:
 
 
 def extract_from_skills(root: str) -> list:
-    """从 SKILL.md 的 ## Gold Examples 区块提取。"""
+    """从 SKILL.md 的 ## Gold Examples 区块提取。
+
+    Args:
+        root: root 参数。
+    """
     cases = []
     skills_dir = os.path.join(root, "aiPlat-core/core/apps/skills")
     if not os.path.isdir(skills_dir):
@@ -71,6 +79,8 @@ def extract_from_skills(root: str) -> list:
 
 
 def main():
+    """main。
+    """
     root = os.getcwd()
     all_cases = extract_from_tools(root) + extract_from_skills(root)
 

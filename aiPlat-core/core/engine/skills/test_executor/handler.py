@@ -1066,7 +1066,8 @@ async def _execute_body(params: Dict[str, Any]) -> Dict[str, Any]:
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Skill entry. Hard cap so nested true_test cannot hold ReAct forever.
 
-    Pytest mode allows a longer wall clock (deps install + suite); true_test stays 90s.
+    Args:
+        params: params 参数。
     """
     import asyncio
 

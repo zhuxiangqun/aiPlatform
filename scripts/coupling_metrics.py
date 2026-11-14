@@ -72,7 +72,11 @@ def _import_targets(file_path: Path, root: Path) -> Set[str]:
 
 
 def compute_metrics(root: Path) -> Tuple[Dict[str, int], Dict[str, List[str]], List[str]]:
-    """返回 (degree_map, dependents_map, module_list)。"""
+    """返回 (degree_map, dependents_map, module_list)。
+
+    Args:
+        root: root 参数。
+    """
     modules: List[str] = []
     in_edges: Dict[str, Set[str]] = defaultdict(set)  # module → 谁 import 它
     out_edges: Dict[str, Set[str]] = defaultdict(set)  # module → 它 import 谁
@@ -94,6 +98,12 @@ def compute_metrics(root: Path) -> Tuple[Dict[str, int], Dict[str, List[str]], L
 
 
 def summarize(degree: Dict[str, int], modules: List[str]) -> Dict[str, object]:
+    """summarize。
+
+    Args:
+        degree: degree 参数。
+        modules: modules 参数。
+    """
     non_agg = {m: d for m, d in degree.items() if m not in AGGREGATION_POINTS}
     avg = sum(degree.values()) / max(len(degree), 1)
     top = sorted(degree.items(), key=lambda x: -x[1])[:20]
@@ -109,6 +119,8 @@ def summarize(degree: Dict[str, int], modules: List[str]) -> Dict[str, object]:
 
 
 def main() -> int:
+    """main。
+    """
     parser = argparse.ArgumentParser(description="耦合度量基线（roadmap §0.2）")
     parser.add_argument("--root", default="aiPlat-core/core", help="扫描根（相对 workspace）")
     parser.add_argument("--baseline", default="", help="基线 JSON 路径（对比，超基线 exit 1）")

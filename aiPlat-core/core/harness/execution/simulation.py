@@ -152,6 +152,12 @@ class SimulationOrchestrator:
     """
 
     def __init__(self, *, max_concurrent: int = 3, timeout_per_scenario_s: float = 300.0):
+        """初始化。
+
+        Args:
+            max_concurrent: max_concurrent 参数。
+            timeout_per_scenario_s: timeout_per_scenario_s 参数。
+        """
         self._max_concurrent = max_concurrent
         self._timeout_per_scenario = timeout_per_scenario_s
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -249,7 +255,10 @@ class SimulationOrchestrator:
     ) -> SimulationReport:
         """快速参数变异推演 (复用 pipeline_sandbox 的 mutation 策略)。
 
-        不需要运行完整 Pipeline，仅对参数做变异和校验。
+        Args:
+            seed_params: seed_params 参数。
+            scenario_count: scenario_count 参数。
+            assessment_rubric: assessment_rubric 参数。
         """
         from core.harness.execution.pipeline_sandbox import run_sandbox_validation
 
@@ -290,13 +299,10 @@ class SimulationOrchestrator:
     ) -> SimulationReport:
         """EvoX 蜂群场景推演: 对比不同 atom 拆分策略的效果.
 
-        自动生成 3 组场景:
-          场景A: 少原子 (max_atoms/3) — 粗粒度拆分
-          场景B: 多原子 (max_atoms)  — 细粒度拆分
-          场景C: 互补模式    — 互补 Agent 配对
-
-        Returns:
-            SimulationReport 包含拆分策略对比 + 损耗率分析
+        Args:
+            task: task 参数。
+            max_atoms: max_atoms 参数。
+            scenario_count: scenario_count 参数。
         """
         try:
             from core.harness.execution.evox_executor import EvoXExecutor
@@ -814,7 +820,11 @@ class SimulationOrchestrator:
 # ══════════════════════════════════════════════════════════════
 
 def load_simulation_report(simulation_id: str) -> Optional[Dict[str, Any]]:
-    """从磁盘加载历史模拟报告。"""
+    """从磁盘加载历史模拟报告。
+
+    Args:
+        simulation_id: simulation 标识。
+    """
     try:
         path = get_aiplat_data_dir(f"simulations/{simulation_id}/report.json")
         if not _os.path.exists(path):
@@ -826,7 +836,11 @@ def load_simulation_report(simulation_id: str) -> Optional[Dict[str, Any]]:
 
 
 def list_simulations(limit: int = 20) -> List[Dict[str, Any]]:
-    """列出最近的模拟报告。"""
+    """列出最近的模拟报告。
+
+    Args:
+        limit: 返回条数上限。
+    """
     sim_dir = get_aiplat_data_dir("simulations")
     if not _os.path.isdir(sim_dir):
         return []

@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 
 class Severity(str, Enum):
+    """Severity。"""
     CRITICAL = "critical"   # system cannot function without this
     HIGH = "high"           # service degraded
     MEDIUM = "medium"       # non-essential feature affected
@@ -27,6 +28,7 @@ class Severity(str, Enum):
 
 
 class Status(str, Enum):
+    """Status。"""
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -36,6 +38,7 @@ class Status(str, Enum):
 
 @dataclass
 class HealthResult:
+    """HealthResult。"""
     module: str
     status: Status
     severity: Severity
@@ -47,6 +50,7 @@ class HealthResult:
 
 @dataclass
 class HealthReport:
+    """HealthReport。"""
     results: List[HealthResult] = field(default_factory=list)
     overall: Status = Status.UNKNOWN
     summary: Dict[str, int] = field(default_factory=lambda: {
@@ -65,6 +69,8 @@ class HealthCheck:
     timeout_s: float = 15.0          # per-check timeout
 
     async def run(self) -> HealthResult:
+        """run。
+        """
         raise NotImplementedError
 
     def __repr__(self):
@@ -77,6 +83,8 @@ class HealthCheckRegistry:
     _instance: Optional["HealthCheckRegistry"] = None
 
     def __init__(self):
+        """初始化。
+        """
         self._checks: Dict[str, HealthCheck] = {}
         self._cache: Optional[HealthReport] = None
         self._cache_ts: float = 0.0
@@ -84,28 +92,51 @@ class HealthCheckRegistry:
 
     @classmethod
     def instance(cls) -> "HealthCheckRegistry":
+        """instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def register(self, check: HealthCheck) -> None:
+        """register。
+
+        Args:
+            check: check 参数。
+        """
         if not check.module:
             raise ValueError(f"HealthCheck {check} must set 'module'")
         self._checks[check.module] = check
         self._cache = None  # invalidate cache
 
     def unregister(self, module: str) -> None:
+        """unregister。
+
+        Args:
+            module: module 参数。
+        """
         self._checks.pop(module, None)
         self._cache = None
 
     def get(self, module: str) -> Optional[HealthCheck]:
+        """get。
+
+        Args:
+            module: module 参数。
+        """
         return self._checks.get(module)
 
     def list_modules(self) -> List[str]:
+        """列出 modules。
+        """
         return sorted(self._checks.keys())
 
     def get_status(self, module: str) -> Optional[Status]:
-        """Get cached status without running check."""
+        """Get cached status without running check.
+
+        Args:
+            module: module 参数。
+        """
         if self._cache and time.time() - self._cache_ts < self._cache_ttl:
             for r in self._cache.results:
                 if r.module == module:
@@ -113,12 +144,18 @@ class HealthCheckRegistry:
         return None
 
     def get_cached_report(self) -> Optional[HealthReport]:
+        """获取 cached_report。
+        """
         if self._cache and time.time() - self._cache_ts < self._cache_ttl:
             return self._cache
         return None
 
     async def run_all(self, modules: Optional[List[str]] = None) -> HealthReport:
-        """Run checks in dependency order. If modules is specified, only those."""
+        """Run checks in dependency order. If modules is specified, only those.
+
+        Args:
+            modules: modules 参数。
+        """
         if modules:
             checks = {k: v for k, v in self._checks.items() if k in modules}
         else:
@@ -233,6 +270,8 @@ class HealthCheckRegistry:
 
 
 def get_registry() -> HealthCheckRegistry:
+    """获取 registry。
+    """
     return HealthCheckRegistry.instance()
 
 

@@ -98,10 +98,18 @@ async def _handle_search_intent(query: str):
 
 
 def handle_list_tools():
+    """handle_list_tools。
+    """
     return {"tools": TOOLS}
 
 
 async def handle_call_tool(name: str, arguments: dict):
+    """handle_call_tool。
+
+    Args:
+        name: name 参数。
+        arguments: arguments 参数。
+    """
     try:
         if name == "search_web":
             if not WEB_ENABLED:
@@ -123,6 +131,8 @@ async def handle_call_tool(name: str, arguments: dict):
 
 
 def main():
+    """main。
+    """
     import asyncio
     for line in sys.stdin:
         line = line.strip()

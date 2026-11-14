@@ -17,12 +17,8 @@ from typing import List
 def normalize_roles(messages: List[dict]) -> List[dict]:
     """Ensure valid role alternation for LLM conversation format.
 
-    Handles:
-      - Consecutive user messages → merge (short) or placeholder (long)
-      - Consecutive assistant messages → merge (short) or placeholder (long)
-      - Consecutive tool messages → insert user placeholder to restore alternation
-      - System messages → always pass through unchanged
-      - Already-compressed markers → skip (don't re-compress)
+    Args:
+        messages: messages 参数。
     """
     if not messages or len(messages) < 2:
         return messages

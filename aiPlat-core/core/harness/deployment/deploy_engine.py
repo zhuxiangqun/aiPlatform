@@ -65,6 +65,7 @@ logger = logging.getLogger("aiplat.deploy_engine")
 
 class DeployResult:
 
+    """DeployResult。"""
     skill_name: str
 
     version: str
@@ -87,6 +88,8 @@ class DeployResult:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "skill_name": self.skill_name,
@@ -149,6 +152,8 @@ class DeployEngine:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._deploy_count = 0
 
         self._last_result: Optional[DeployResult] = None
@@ -159,6 +164,8 @@ class DeployEngine:
 
     def enabled(self) -> bool:
 
+        """enabled。
+        """
         return _os.getenv("AIPLAT_AUTO_DEPLOY_ENABLED", "true").lower() in (
 
             "1", "true", "yes",
@@ -171,6 +178,8 @@ class DeployEngine:
 
     def max_risk(self) -> str:
 
+        """max_risk。
+        """
         return _os.getenv("AIPLAT_AUTO_DEPLOY_MAX_RISK", "read")
 
 
@@ -179,6 +188,8 @@ class DeployEngine:
 
     def target(self) -> str:
 
+        """target。
+        """
         return _os.getenv("AIPLAT_AUTO_DEPLOY_TARGET", "none")
 
 
@@ -197,6 +208,13 @@ class DeployEngine:
 
     ) -> DeployResult:
 
+        """deploy。
+
+        Args:
+            skill_name: skill_name 参数。
+            version: version 参数。
+            effects_type: effects_type 参数。
+        """
         t0 = _time.monotonic()
 
         result = DeployResult(skill_name=skill_name, version=version)
@@ -649,6 +667,8 @@ class DeployEngine:
 
     def stats(self) -> Dict[str, Any]:
 
+        """stats。
+        """
         return {
 
             "enabled": self.enabled,
@@ -675,6 +695,8 @@ _deploy_engine: Optional[DeployEngine] = None
 
 def get_deploy_engine() -> DeployEngine:
 
+    """获取 deploy_engine。
+    """
     global _deploy_engine
 
     if _deploy_engine is None:

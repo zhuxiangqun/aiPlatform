@@ -38,6 +38,8 @@ class ModelRateLimit:
     window_duration: float = 10.0  # seconds — doubles on each consecutive hit
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "model": self.model, "first_hit_at": self.first_hit_at,
             "last_hit_at": self.last_hit_at, "consecutive_hits": self.consecutive_hits,
@@ -46,6 +48,11 @@ class ModelRateLimit:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ModelRateLimit":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(
             model=str(d.get("model", "")), first_hit_at=float(d.get("first_hit_at", 0)),
             last_hit_at=float(d.get("last_hit_at", 0)),
@@ -63,18 +70,35 @@ class InProcessBackend:
     """Default: shared state in process memory with asyncio.Lock."""
     
     def __init__(self):
+        """初始化。
+        """
         self._table: Dict[str, ModelRateLimit] = {}
         self._lock = asyncio.Lock()
 
     async def get(self, model: str) -> Optional[ModelRateLimit]:
+        """get。
+
+        Args:
+            model: 模型名。
+        """
         async with self._lock:
             return self._table.get(model)
 
     async def set(self, entry: ModelRateLimit) -> None:
+        """set。
+
+        Args:
+            entry: entry 参数。
+        """
         async with self._lock:
             self._table[entry.model] = entry
 
     async def delete(self, model: str) -> None:
+        """delete。
+
+        Args:
+            model: 模型名。
+        """
         async with self._lock:
             self._table.pop(model, None)
 
@@ -89,6 +113,11 @@ class RedisBackend:
     """
     
     def __init__(self, redis_url: str = ""):
+        """初始化。
+
+        Args:
+            redis_url: redis_url 参数。
+        """
         self._url = redis_url or _os.getenv("AIPLAT_RATE_LIMIT_REDIS_URL", "")
         self._redis = None
         self._prefix = "aiplat:rl:"
@@ -113,6 +142,11 @@ class RedisBackend:
         return f"{self._prefix}{model}"
 
     async def get(self, model: str) -> Optional[ModelRateLimit]:
+        """get。
+
+        Args:
+            model: 模型名。
+        """
         await self._ensure_redis()
         data = await self._redis.get(self._key(model))
         if data:
@@ -120,10 +154,20 @@ class RedisBackend:
         return None
 
     async def set(self, entry: ModelRateLimit) -> None:
+        """set。
+
+        Args:
+            entry: entry 参数。
+        """
         await self._ensure_redis()
         await self._redis.set(self._key(entry.model), _json.dumps(entry.to_dict()))
 
     async def delete(self, model: str) -> None:
+        """delete。
+
+        Args:
+            model: 模型名。
+        """
         await self._ensure_redis()
         await self._redis.delete(self._key(model))
 
@@ -136,6 +180,8 @@ _backend: Optional[InProcessBackend | RedisBackend] = None
 
 
 def get_backend() -> InProcessBackend | RedisBackend:
+    """获取 backend。
+    """
     global _backend
     if _backend is None:
         redis_url = _os.getenv("AIPLAT_RATE_LIMIT_REDIS_URL", "").strip()
@@ -158,9 +204,8 @@ def get_backend() -> InProcessBackend | RedisBackend:
 async def check_and_acquire(model: str) -> float:
     """Check if model is rate-limited and reserve a call slot if not.
 
-    Returns:
-        0.0 → can call immediately.
-        > 0 → must wait this many seconds before calling.
+    Args:
+        model: 模型名。
     """
     backend = get_backend()
     
@@ -181,7 +226,12 @@ async def check_and_acquire(model: str) -> float:
 
 
 async def record(model: str, retry_after: float = 0.0) -> None:
-    """Record a rate-limit event. Called after receiving a 429 or rate limit error."""
+    """Record a rate-limit event. Called after receiving a 429 or rate limit error.
+
+    Args:
+        model: 模型名。
+        retry_after: retry_after 参数。
+    """
     backend = get_backend()
     
     if isinstance(backend, InProcessBackend):
@@ -223,7 +273,11 @@ async def _record_impl(table: dict, model: str, retry_after: float) -> None:
 
 
 async def success(model: str) -> None:
-    """Record a successful call — reset consecutive hit counter and cooldown."""
+    """Record a successful call — reset consecutive hit counter and cooldown.
+
+    Args:
+        model: 模型名。
+    """
     backend = get_backend()
     
     if isinstance(backend, InProcessBackend):
@@ -246,7 +300,11 @@ async def success(model: str) -> None:
 
 
 def status(model: str) -> dict:
-    """Return current rate-limit status for diagnostic display (sync, in-process only)."""
+    """Return current rate-limit status for diagnostic display (sync, in-process only).
+
+    Args:
+        model: 模型名。
+    """
     backend = get_backend()
     if isinstance(backend, InProcessBackend):
         entry = backend._table.get(model)

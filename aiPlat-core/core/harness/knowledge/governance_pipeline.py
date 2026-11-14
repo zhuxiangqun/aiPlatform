@@ -45,6 +45,7 @@ HISTORY_DIR = get_aiplat_data_dir("governance_cycles")
 
 class StepResult:
 
+    """StepResult。"""
     step_index: int
 
     step_name: str
@@ -65,6 +66,7 @@ class StepResult:
 
 class GovernanceCycleResult:
 
+    """GovernanceCycleResult。"""
     cycle_id: str
 
     timestamp: str
@@ -97,7 +99,13 @@ async def run_cycle(
 
 ) -> GovernanceCycleResult:
 
-    u"""Run the 6-step governance cycle for a domain."""
+    """Run the 6-step governance cycle for a domain.
+
+    Args:
+        domain_id: domain 标识。
+        steps: steps 参数。
+        auto_publish: auto_publish 参数。
+    """
 
     import time
 
@@ -251,7 +259,12 @@ async def run_all_domains() -> List[GovernanceCycleResult]:
 
 def get_cycle_history(domain_id: str = "", limit: int = 10) -> List[Dict]:
 
-    u"""Get historical governance cycle results."""
+    """Get historical governance cycle results.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
 
     import json, os
 

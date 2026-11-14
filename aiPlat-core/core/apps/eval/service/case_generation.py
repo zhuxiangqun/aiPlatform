@@ -55,7 +55,14 @@ def mutate_cases(
     seed: str = "0",
     id_prefix: str = "mut",
 ) -> List[Dict[str, Any]]:
-    """Deterministic mutations of seed cases (no LLM). kind provenance=mutation."""
+    """Deterministic mutations of seed cases (no LLM). kind provenance=mutation.
+
+    Args:
+        seeds: seeds 参数。
+        ops: ops 参数。
+        seed: seed 参数。
+        id_prefix: id_prefix 参数。
+    """
     op_list = [str(o).strip() for o in (ops or ["append_noise"])]
     if not op_list:
         raise CaseGenerationError("ops required")
@@ -113,8 +120,10 @@ def cases_from_trace(
 ) -> List[Dict[str, Any]]:
     """Build draft case(s) from a chat/tool trace dict (no LLM).
 
-    Expected keys (flexible): messages[{role,content}], tool_calls[{name}],
-    or prompt / user_input directly.
+    Args:
+        trace: trace 参数。
+        case_id: 用例 ID。
+        category: category 参数。
     """
     if not isinstance(trace, Mapping):
         raise CaseGenerationError("trace must be object")
@@ -189,7 +198,15 @@ def apply_holdout_flags(
     ratio: float = 0.0,
     seed: str = "0",
 ) -> List[Dict[str, Any]]:
-    """Set holdout flags. Explicit case_ids win; else deterministic ratio split."""
+    """Set holdout flags. Explicit case_ids win; else deterministic ratio split.
+
+    Args:
+        cases: 用例列表。
+        case_ids: case_ids 参数。
+        holdout: holdout 参数。
+        ratio: ratio 参数。
+        seed: seed 参数。
+    """
     rows = [dict(c) for c in cases]
     if not rows:
         return []
@@ -222,7 +239,11 @@ def apply_holdout_flags(
 def partition_holdout(
     cases: Sequence[Mapping[str, Any]],
 ) -> Dict[str, List[Dict[str, Any]]]:
-    """Split cases into eval vs holdout lists (by holdout flag)."""
+    """Split cases into eval vs holdout lists (by holdout flag).
+
+    Args:
+        cases: 用例列表。
+    """
     eval_cases: List[Dict[str, Any]] = []
     holdout_cases: List[Dict[str, Any]] = []
     for c in cases:
@@ -270,7 +291,14 @@ def stub_llm_candidate_json(
     category: str = "normal",
     seed: str = "0",
 ) -> str:
-    """Deterministic stub JSON for dry/tests (no network)."""
+    """Deterministic stub JSON for dry/tests (no network).
+
+    Args:
+        theme: theme 参数。
+        n: n 参数。
+        category: category 参数。
+        seed: seed 参数。
+    """
     rows = []
     for i in range(max(1, int(n))):
         tag = _stable_int(seed, f"llm-{i}") % 10000
@@ -298,7 +326,14 @@ async def generate_llm_candidate_cases(
 ) -> List[Dict[str, Any]]:
     """Ask LLM (or stub) for candidate cases; validate + provenance=case_llm.
 
-    Always L3 discovery material — never claim_eligible.
+    Args:
+        theme: theme 参数。
+        n: n 参数。
+        category: category 参数。
+        seed: seed 参数。
+        model_name: model_name 参数。
+        dry: dry 参数。
+        llm_generate_fn: llm_generate_fn 参数。
     """
     theme_s = str(theme or "").strip()
     if not theme_s:
@@ -381,7 +416,11 @@ async def generate_llm_candidate_cases(
 def propose_difficulty(
     cases: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Heuristic difficulty labels (not calibrated; claim closed)."""
+    """Heuristic difficulty labels (not calibrated; claim closed).
+
+    Args:
+        cases: 用例列表。
+    """
     out: List[Dict[str, Any]] = []
     for c in cases:
         prompt = str(c.get("prompt") or "")
@@ -415,7 +454,14 @@ def build_judge_calibration_ticket(
     sample_case_ids: Optional[Sequence[str]] = None,
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Open a work-order style ticket for judge calibration (no claim)."""
+    """Open a work-order style ticket for judge calibration (no claim).
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        sample_case_ids: sample_case_ids 参数。
+        notes: notes 参数。
+    """
     pid = str(pack_id or "").strip()
     ver = str(version or "").strip()
     if not pid or not ver:

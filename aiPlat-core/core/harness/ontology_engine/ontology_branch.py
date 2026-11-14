@@ -39,6 +39,7 @@ BRANCH_REGISTRY_PATH = HOME / "branches.json"
 # ── Data Models ────────────────────────────────────────────────────────────
 
 class MergeLevel(str, Enum):
+    """MergeLevel。"""
     AUTO = "auto"         # 无冲突，自动合并
     WARN = "warn"         # 属性级冲突，警告但可合并
     BLOCKED = "blocked"   # 结构级冲突，禁止合并
@@ -46,6 +47,7 @@ class MergeLevel(str, Enum):
 
 @dataclass
 class BranchInfo:
+    """BranchInfo。"""
     domain_id: str
     branch_name: str
     created_at: float
@@ -56,6 +58,8 @@ class BranchInfo:
     commit_count: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "domain_id": self.domain_id,
             "branch_name": self.branch_name,
@@ -137,6 +141,8 @@ class OntologyBranchManager:
 
     @classmethod
     def get(cls) -> "OntologyBranchManager":
+        """get。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -229,7 +235,11 @@ class OntologyBranchManager:
         return info
 
     def list_branches(self, domain_id: str) -> List[BranchInfo]:
-        """列出域的所有分支."""
+        """列出域的所有分支.
+
+        Args:
+            domain_id: domain 标识。
+        """
         registry = _load_registry()
         branches = []
         prefix = f"{domain_id}::"
@@ -250,7 +260,12 @@ class OntologyBranchManager:
         return sorted(branches, key=lambda b: b.created_at, reverse=True)
 
     def delete_branch(self, domain_id: str, branch_name: str) -> bool:
-        """删除分支 (不允许删除 main)."""
+        """删除分支 (不允许删除 main).
+
+        Args:
+            domain_id: domain 标识。
+            branch_name: branch_name 参数。
+        """
         if branch_name == "main":
             raise ValueError("Cannot delete main branch")
 
@@ -278,7 +293,12 @@ class OntologyBranchManager:
         return True
 
     def get_branch_info(self, domain_id: str, branch_name: str) -> Optional[BranchInfo]:
-        """获取分支信息."""
+        """获取分支信息.
+
+        Args:
+            domain_id: domain 标识。
+            branch_name: branch_name 参数。
+        """
         registry = _load_registry()
         key = _branch_key(domain_id, branch_name)
         data = registry.get("branches", {}).get(key)
@@ -298,7 +318,10 @@ class OntologyBranchManager:
     ) -> DiffResult:
         """三方差异对比: ancestor → source vs ancestor → target.
 
-        使用 compare_snapshots() 做基础对比，再补充 YAML 级别的属性差异.
+        Args:
+            domain_id: domain 标识。
+            source_branch: source_branch 参数。
+            target_branch: target_branch 参数。
         """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex
@@ -506,7 +529,12 @@ class OntologyBranchManager:
         )
 
     def commit_branch(self, domain_id: str, branch_name: str) -> BranchInfo:
-        """更新分支的最后修改时间 (相当于 git commit)."""
+        """更新分支的最后修改时间 (相当于 git commit).
+
+        Args:
+            domain_id: domain 标识。
+            branch_name: branch_name 参数。
+        """
         registry = _load_registry()
         key = _branch_key(domain_id, branch_name)
         info_data = registry.get("branches", {}).get(key)

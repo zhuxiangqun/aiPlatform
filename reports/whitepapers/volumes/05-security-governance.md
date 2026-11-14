@@ -4,19 +4,19 @@ volume_id: security-governance
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-14T03:17:14Z"
+generated_at: "2026-11-14T03:55:07Z"
 audience: "CISO、合规、风控"
 core_question: "如何可信可控？"
 priority: P0
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da"
+caps_sha256: "aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=security-governance suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=security-governance suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 安全与治理白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 如何可信可控？ |
 | 优先级 | P0 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-14T03:17:14Z` |
-| CAPABILITIES sha256 | `3a996019412c…` |
+| 生成时间 (UTC) | `2026-11-14T03:55:07Z` |
+| CAPABILITIES sha256 | `aadffd17b9cc…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -243,7 +243,7 @@ rules:
 | resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
 | default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
 | is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
-| apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
+| apply_architecture_profile | ⚠️ deprecated core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
 | 记忆投毒防御 | harness/memory/base.py:39 | ✅ | source_tag/trust_weight/provenance | 已合入 |
@@ -271,7 +271,7 @@ rules:
 | CrisisDetector | harness/security/crisis_detector.py | ✅ | 自伤/暴力/危急三級检测，WARN/BLOCK/SILENT 模式 | 已合入 |
 | CrisisGate | harness/security/crisis_gate.py | ✅ | syscall 边界危机拦截，ALLOW/WARN/FLAG/BLOCK/ESCALATE | 已合入 |
 | EmotionTracker | harness/security/emotion_tracker.py | ✅ | 跨会话情绪弧追踪 + 过度依赖检测 | 已合入 |
-| ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approve / session 批准
+| ApprovalGate (危险命令) | harness/infrastructure/gates/approval_gate.py | ✅ | 25规则危险操作检测，CRITICAL/HIGH/MEDIUM/LOW 四级，集成 PolicyGate；**Hard floors**：CRITICAL 不可被 auto_approv
 
 …
 

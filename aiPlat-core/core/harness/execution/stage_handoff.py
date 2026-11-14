@@ -63,11 +63,17 @@ STRUCTURED_ARTIFACT_KEYS: tuple[str, ...] = (
 
 
 def empty_handoff() -> Dict[str, Any]:
+    """empty_handoff。
+    """
     return {k: "" if k != HANDOFF_KNOWN_ISSUES else [] for k in HANDOFF_FIELDS}
 
 
 def normalize_handoff(raw: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
-    """Return a complete handoff dict with frozen keys only."""
+    """Return a complete handoff dict with frozen keys only.
+
+    Args:
+        raw: raw 参数。
+    """
     base = empty_handoff()
     if not isinstance(raw, Mapping):
         return base
@@ -93,14 +99,24 @@ def attach_handoff(
     *,
     meta_key: str = "handoff",
 ) -> Dict[str, Any]:
-    """Write normalized handoff under target[meta_key]; return the normalized dict."""
+    """Write normalized handoff under target[meta_key]; return the normalized dict.
+
+    Args:
+        target: target 参数。
+        handoff: handoff 参数。
+        meta_key: meta_key 参数。
+    """
     norm = normalize_handoff(handoff)
     target[meta_key] = norm
     return norm
 
 
 def schema_is_active(schema: Any) -> bool:
-    """False when schema is empty → gate must no-op (compat)."""
+    """False when schema is empty → gate must no-op (compat).
+
+    Args:
+        schema: schema 参数。
+    """
     if schema in (None, "", {}, []):
         return False
     if isinstance(schema, Mapping) and not schema:
@@ -246,9 +262,10 @@ def gate_check(
 ) -> Dict[str, Any]:
     """C1 stage schema gate. Empty schema → ok/skipped (backward compatible).
 
-    Returns dict:
-      ok, skipped, phase, errors, action (""|block|hitl|fail_pipeline),
-      handoff_missing (bool when handoff_required).
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        phase: phase 参数。
     """
     phase_l = str(phase or "output").strip().lower()
     if phase_l not in ("input", "output"):
@@ -319,7 +336,14 @@ def apply_gate_failure(
     *,
     stages: Optional[Sequence[Any]] = None,
 ) -> bool:
-    """Apply gate_on_fail policy. Returns True if caller should pause (HITL/block)."""
+    """Apply gate_on_fail policy. Returns True if caller should pause (HITL/block).
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+        gate_result: gate_result 参数。
+        stages: stages 参数。
+    """
     if gate_result.get("ok") or gate_result.get("skipped"):
         return False
     errors = [str(e) for e in (gate_result.get("errors") or [])]
@@ -435,7 +459,14 @@ def append_hitl_audit(
     actor: str = "system",
     detail: str = "",
 ) -> None:
-    """C2: append a HITL / schema-gate audit row (best-effort)."""
+    """C2: append a HITL / schema-gate audit row (best-effort).
+
+    Args:
+        state: state 参数。
+        action: action 参数。
+        actor: 操作者身份。
+        detail: detail 参数。
+    """
     try:
         row = {
             "action": str(action or ""),
@@ -458,8 +489,10 @@ def try_resume_schema_gate(
 ) -> Dict[str, Any]:
     """C2: after human patch/approve, re-run the gate that paused the pipeline.
 
-    Returns ``{ok, phase, gate_result, cleared}``. When ok, clears pause/error
-    fields so the caller can execute (input) or advance (output).
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+        stages: stages 参数。
     """
     phase = str(
         state.get(STATE_SCHEMA_GATE_PHASE)
@@ -510,7 +543,11 @@ def try_resume_schema_gate(
 
 
 def is_schema_gate_pause(state: Mapping[str, Any]) -> bool:
-    """True when current pause is from C1/C2 schema gate (not stage.hitl review)."""
+    """True when current pause is from C1/C2 schema gate (not stage.hitl review).
+
+    Args:
+        state: state 参数。
+    """
     if str(state.get("_hitl_phase_name") or "") == "schema_gate":
         return True
     if state.get(STATE_SCHEMA_GATE_PHASE):
@@ -519,7 +556,11 @@ def is_schema_gate_pause(state: Mapping[str, Any]) -> bool:
 
 
 def extract_structured_fields(artifact: Any) -> Optional[Dict[str, Any]]:
-    """C3: return structured keys present on an artifact (no raw_output)."""
+    """C3: return structured keys present on an artifact (no raw_output).
+
+    Args:
+        artifact: artifact 参数。
+    """
     if not isinstance(artifact, Mapping):
         return None
     out: Dict[str, Any] = {}
@@ -539,8 +580,10 @@ def format_structured_artifact_block(
 ) -> str:
     """C3: prefer structured JSON block; fall back to raw_output prose.
 
-    When structured fields exist, do **not** dump full raw markdown — downstream
-    must consume fields, not regex prose.
+    Args:
+        artifact_name: artifact_name 参数。
+        artifact: artifact 参数。
+        raw_fallback_limit: raw_fallback_limit 参数。
     """
     name = str(artifact_name or "artifact")
     structured = extract_structured_fields(artifact)
@@ -605,7 +648,12 @@ def resolve_next_stage_hint(
     stage: Any,
     stages: Optional[Sequence[Any]] = None,
 ) -> str:
-    """Next pipeline stage id/artifact for handoff.next (config-driven)."""
+    """Next pipeline stage id/artifact for handoff.next (config-driven).
+
+    Args:
+        stage: stage 参数。
+        stages: stages 参数。
+    """
     if not stages:
         return ""
     sid = str(getattr(stage, "id", "") or "")
@@ -642,7 +690,16 @@ def build_stage_handoff(
 ) -> Dict[str, Any]:
     """Build a thin MetaGPT-style envelope from stage config + artifact shape.
 
-    Domain-agnostic: uses PipelineStageConfig fields and artifact structure only.
+    Args:
+        stage: stage 参数。
+        artifact_key: artifact_key 参数。
+        artifact: artifact 参数。
+        sanitize_meta: sanitize_meta 参数。
+        status: status 参数。
+        error: error 参数。
+        next_hint: next_hint 参数。
+        existing: existing 参数。
+        writing_source: writing_source 参数。
     """
     seed = normalize_handoff(existing)
     if isinstance(artifact, Mapping) and isinstance(artifact.get("handoff"), Mapping):
@@ -748,7 +805,18 @@ def write_stage_handoff(
     error: str = "",
     stages: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
-    """Attach handoff to artifact dict + ``state[_handoff][artifact_key]``."""
+    """Attach handoff to artifact dict + ``state[_handoff][artifact_key]``.
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+        artifact_key: artifact_key 参数。
+        artifact: artifact 参数。
+        sanitize_meta: sanitize_meta 参数。
+        status: status 参数。
+        error: error 参数。
+        stages: stages 参数。
+    """
     key = str(artifact_key or getattr(stage, "output_artifact", "") or "").strip()
     if not key:
         return empty_handoff()
@@ -810,7 +878,11 @@ def write_stage_handoff(
 
 
 def format_handoff_regenerate_feedback(handoff: Optional[Mapping[str, Any]]) -> str:
-    """Compact feedback string for regenerate_stage (next + known_issues)."""
+    """Compact feedback string for regenerate_stage (next + known_issues).
+
+    Args:
+        handoff: handoff 参数。
+    """
     h = normalize_handoff(handoff)
     lines = ["[handoff]"]
     if h.get(HANDOFF_SUMMARY):

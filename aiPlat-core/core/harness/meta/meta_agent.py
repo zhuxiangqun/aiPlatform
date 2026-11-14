@@ -74,7 +74,11 @@ class MetaAgent:
         return {}
 
     def analyze(self, days: Optional[int] = None) -> List[MetaSuggestion]:
-        """分析最近 days 天的系统健康，返回策略建议列表。"""
+        """分析最近 days 天的系统健康，返回策略建议列表。
+
+        Args:
+            days: days 参数。
+        """
         window = days or self.days
         suggestions: List[MetaSuggestion] = []
 

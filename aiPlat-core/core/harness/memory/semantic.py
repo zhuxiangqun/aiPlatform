@@ -1,3 +1,5 @@
+"""semantic：模块接口。"""
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
@@ -34,6 +36,12 @@ class SemanticMemory:
     """Semantic memory - long-term knowledge storage"""
 
     def __init__(self, store_type: str = "simple", tenant_id: str = "default"):
+        """初始化。
+
+        Args:
+            store_type: store_type 参数。
+            tenant_id: 租户 ID。
+        """
         self._store_type = store_type
         self._tenant_id = tenant_id or "default"
         self._items: Dict[str, MemoryItem] = {}
@@ -116,7 +124,15 @@ class SemanticMemory:
         embedding: Optional[List[float]] = None,
         expires_at: Optional[datetime] = None,
     ) -> MemoryItem:
-        """Store a memory item"""
+        """Store a memory item。
+
+        Args:
+            key: key 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+            embedding: embedding 参数。
+            expires_at: expires_at 参数。
+        """
         metadata = metadata or {}
 
         # Phase 23.1 G2: Semantic fact contradiction detection
@@ -174,8 +190,13 @@ class SemanticMemory:
         session_id: Optional[str] = None,
     ) -> List[MemoryItem]:
         """Retrieve relevant memories using vector similarity (primary) or keyword match (fallback).
-        On hit: dynamically renews expires_at to prevent high-frequency memories from being cleaned.
-        Filters out soft-deleted items.
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+            threshold: threshold 参数。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
         """
         active_items = [item for item in self._items.values() if not item.is_deleted]
         # Defense-in-depth tenant+session isolation (§5.12): when a scope is given,
@@ -246,9 +267,10 @@ class SemanticMemory:
                   session_id: Optional[str] = None) -> Optional[MemoryItem]:
         """Get a specific memory. Filters soft-deleted items.
 
-        When tenant_id/session_id are provided, enforces tenant+session isolation
-        (returns None for cross-tenant/session keys) — defense-in-depth matching
-        get_deleted()'s isolation guarantee (§5.12).
+        Args:
+            key: key 参数。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
         """
         item = self._items.get(key)
         if item and not item.is_deleted:
@@ -262,7 +284,11 @@ class SemanticMemory:
         return None
 
     def latest_by_tag(self, tag: str) -> Optional[MemoryItem]:
-        """Newest non-deleted item with metadata.tag == tag. Fixed inject, not similarity."""
+        """Newest non-deleted item with metadata.tag == tag. Fixed inject, not similarity.
+
+        Args:
+            tag: tag 参数。
+        """
         want = (tag or "").strip()
         if not want:
             return None
@@ -288,7 +314,13 @@ class SemanticMemory:
         return best
 
     async def get_deleted(self, key: str, *, tenant_id: str, session_id: str) -> Optional[MemoryItem]:
-        """Retrieve a soft-deleted memory (for recovery). Requires tenant+session isolation."""
+        """Retrieve a soft-deleted memory (for recovery). Requires tenant+session isolation.
+
+        Args:
+            key: key 参数。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+        """
         item = self._items.get(key)
         if item and item.is_deleted:
             # Enforce tenant + session isolation — caller cannot bypass
@@ -298,7 +330,11 @@ class SemanticMemory:
         return None
 
     async def recover_deleted(self, key: str) -> bool:
-        """Restore a soft-deleted memory."""
+        """Restore a soft-deleted memory.
+
+        Args:
+            key: key 参数。
+        """
         item = self._items.get(key)
         if item and item.is_deleted:
             item.is_deleted = False
@@ -311,7 +347,11 @@ class SemanticMemory:
         return False
 
     async def increment_access_count(self, keys: list) -> None:
-        """Phase 46: Batch increment access_count for semantic memory keys."""
+        """Phase 46: Batch increment access_count for semantic memory keys.
+
+        Args:
+            keys: keys 参数。
+        """
         if not keys:
             return
         if self._store_type == "sqlite" and hasattr(self, "_conn"):
@@ -326,7 +366,11 @@ class SemanticMemory:
                 logging.debug("increment_access_count failed: %s", e)
 
     async def delete(self, key: str) -> bool:
-        """Soft-delete a memory (sets is_deleted=1)."""
+        """Soft-delete a memory (sets is_deleted=1).
+
+        Args:
+            key: key 参数。
+        """
         item = self._items.get(key)
         if item:
             item.is_deleted = True
@@ -339,7 +383,11 @@ class SemanticMemory:
         return False
 
     async def hard_delete(self, key: str) -> bool:
-        """Permanently remove a memory (use only for GDPR/compliance)."""
+        """Permanently remove a memory (use only for GDPR/compliance).
+
+        Args:
+            key: key 参数。
+        """
         if key in self._items:
             del self._items[key]
             if self._store_type == "sqlite" and hasattr(self, "_conn"):
@@ -382,7 +430,11 @@ class SemanticMemory:
         self,
         metadata_filter: Dict[str, Any]
     ) -> List[MemoryItem]:
-        """Search by metadata fields (excludes soft-deleted)."""
+        """Search by metadata fields (excludes soft-deleted).
+
+        Args:
+            metadata_filter: metadata_filter 参数。
+        """
         results = []
         for item in self._items.values():
             if item.is_deleted:

@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -15,6 +17,11 @@ class PluginManager:
     """
 
     def __init__(self, execution_store: Any):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._store = execution_store
 
     async def upsert_plugin(
@@ -24,6 +31,13 @@ class PluginManager:
         manifest: Dict[str, Any],
         enabled: bool = False,
     ) -> Dict[str, Any]:
+        """upsert_plugin。
+
+        Args:
+            tenant_id: 租户 ID。
+            manifest: manifest 参数。
+            enabled: 是否启用。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         m = PluginManifest.from_dict(manifest)
@@ -38,26 +52,61 @@ class PluginManager:
         )
 
     async def list_plugins(self, *, tenant_id: Optional[str], limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 plugins。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         return await self._store.list_plugins(tenant_id=str(tenant_id) if tenant_id else None, limit=limit, offset=offset)
 
     async def get_plugin(self, *, tenant_id: Optional[str], plugin_id: str) -> Optional[Dict[str, Any]]:
+        """获取 plugin。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         return await self._store.get_plugin(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id))
 
     async def set_enabled(self, *, tenant_id: Optional[str], plugin_id: str, enabled: bool) -> bool:
+        """set_enabled。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            enabled: 是否启用。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         return await self._store.set_plugin_enabled(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id), enabled=bool(enabled))
 
     async def list_versions(self, *, tenant_id: Optional[str], plugin_id: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """列出 versions。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         return await self._store.list_plugin_versions(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id), limit=limit, offset=offset)
 
     async def rollback(self, *, tenant_id: Optional[str], plugin_id: str, version: str) -> Dict[str, Any]:
+        """rollback。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            version: version 参数。
+        """
         if not self._store:
             raise RuntimeError("ExecutionStore not initialized")
         cur = await self._store.get_plugin(tenant_id=str(tenant_id) if tenant_id else None, plugin_id=str(plugin_id))
@@ -100,7 +149,12 @@ def _bounded_archive_write(plugin_id: str, slot: str, state: Dict[str, Any]) -> 
 
 
 def register_plugin_slot(plugin_id: str, slot: str) -> bool:
-    """Register plugin to a slot. Replaces existing plugin if slot occupied."""
+    """Register plugin to a slot. Replaces existing plugin if slot occupied.
+
+    Args:
+        plugin_id: plugin 标识。
+        slot: slot 参数。
+    """
     strict = _os.getenv("AIPLAT_PLUGIN_SLOT_STRICT", "true").lower() not in ("0", "false", "no")
     if strict and slot in _slot_registry and _slot_registry[slot] != plugin_id:
         _slot_log.error("Slot '%s' already occupied by '%s', rejecting '%s'", slot, _slot_registry[slot], plugin_id)
@@ -111,12 +165,21 @@ def register_plugin_slot(plugin_id: str, slot: str) -> bool:
 
 
 def get_active_plugin(slot: str) -> Optional[str]:
-    """Get the active plugin ID for a slot."""
+    """Get the active plugin ID for a slot.
+
+    Args:
+        slot: slot 参数。
+    """
     return _slot_registry.get(slot)
 
 
 def unregister_plugin_slot(slot: str, archive_state: Optional[Dict[str, Any]] = None) -> None:
-    """Unregister a slot, optionally archiving the old plugin's state."""
+    """Unregister a slot, optionally archiving the old plugin's state.
+
+    Args:
+        slot: slot 参数。
+        archive_state: archive_state 参数。
+    """
     old = _slot_registry.pop(slot, None)
     if old and archive_state:
         _bounded_archive_write(old, slot, archive_state)

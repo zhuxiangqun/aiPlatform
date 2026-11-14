@@ -20,11 +20,22 @@ class PropertyExtractor:
     """Extract property values from text using LLM, guided by class field definitions."""
 
     def __init__(self, domain: OntologyDomain):
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
 
     def build_extraction_prompt(self, class_name: str, text: str, *,
                                   table_context: str = "") -> str:
-        """Build LLM prompt with class field definitions + optional table context."""
+        """Build LLM prompt with class field definitions + optional table context.
+
+        Args:
+            class_name: class_name 参数。
+            text: text 参数。
+            table_context: table_context 参数。
+        """
         cls: Optional[OntologyClass] = None
         for c in self._domain.classes:
             if c.label == class_name:
@@ -83,7 +94,12 @@ class PropertyExtractor:
     ) -> Dict[str, Any]:
         """Extract field values from text using LLM.
 
-        Returns: {"name": "RAG", "description": "...", "maturity": "production", ...}
+        Args:
+            class_name: class_name 参数。
+            text: text 参数。
+            model_name: model_name 参数。
+            timeout: 超时秒数。
+            table_context: table_context 参数。
         """
         prompt = self.build_extraction_prompt(class_name, text, table_context=table_context)
 
@@ -112,7 +128,14 @@ class PropertyExtractor:
         model_name: str = "",
         timeout: int = 30,
     ) -> Dict[str, Any]:
-        """Synchronous wrapper for non-async contexts."""
+        """Synchronous wrapper for non-async contexts.
+
+        Args:
+            class_name: class_name 参数。
+            text: text 参数。
+            model_name: model_name 参数。
+            timeout: 超时秒数。
+        """
         import asyncio
         try:
             loop = asyncio.get_event_loop()

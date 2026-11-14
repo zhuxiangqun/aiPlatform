@@ -35,6 +35,23 @@ class AuditMixin:
         detail: Optional[Dict[str, Any]] = None,
         created_at: Optional[float] = None,
     ) -> None:
+        """add_audit_log。
+
+        Args:
+            action: action 参数。
+            status: status 参数。
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            actor_role: actor_role 参数。
+            resource_type: resource_type 参数。
+            resource_id: resource 标识。
+            request_id: request 标识。
+            change_id: change 标识。
+            run_id: 运行 ID。
+            trace_id: trace 标识。
+            detail: detail 参数。
+            created_at: created_at 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -98,14 +115,8 @@ class AuditMixin:
     async def verify_audit_chain(self, *, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """Verify the tamper-evidence hash chain for a tenant's audit log.
 
-        Recomputes each entry_hash from the stored immutable fields + the prior row's
-        hash and compares to the stored hash. Any mismatch means a row was modified,
-        deleted, or inserted out of band (tampering). Legacy rows with NULL entry_hash
-        (written before the v51 migration) are counted as 'unverifiable' and skipped.
-
-        Returns: {ok, total, verified, unverifiable, broken_at}
-          - ok: True iff every hashed row verifies
-          - broken_at: id of the first row whose recomputed hash mismatches (None if ok)
+        Args:
+            tenant_id: 租户 ID。
         """
         await self.init()
         db_path = self._config.db_path
@@ -169,6 +180,24 @@ class AuditMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 audit_logs。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            action: action 参数。
+            resource_type: resource_type 参数。
+            resource_id: resource 标识。
+            request_id: request 标识。
+            change_id: change 标识。
+            run_id: 运行 ID。
+            trace_id: trace 标识。
+            status: status 参数。
+            created_after: created_after 参数。
+            created_before: created_before 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

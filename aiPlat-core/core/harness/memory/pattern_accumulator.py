@@ -35,9 +35,19 @@ class Pattern:
     tenants: Set[str] = field(default_factory=set)
 
     def meets_frequency(self, threshold: int = 3) -> bool:
+        """meets_frequency。
+
+        Args:
+            threshold: threshold 参数。
+        """
         return self.frequency >= threshold
 
     def meets_tenant_threshold(self, threshold: int = 2) -> bool:
+        """meets_tenant_threshold。
+
+        Args:
+            threshold: threshold 参数。
+        """
         return len(self.tenants) >= threshold
 
 
@@ -58,6 +68,11 @@ class PatternAccumulator:
     """
 
     def __init__(self, frequency_threshold: int = 3):
+        """初始化。
+
+        Args:
+            frequency_threshold: frequency_threshold 参数。
+        """
         self._freq_threshold = frequency_threshold
         self._patterns: Dict[str, Pattern] = {}
 
@@ -86,7 +101,12 @@ class PatternAccumulator:
         return self._patterns[pattern_hash]
 
     async def extract_from_run(self, run_id: str, tenant_id: str = "") -> Optional[Pattern]:
-        """从单次执行的 syscall_events 提取工具序列作为模式指纹。"""
+        """从单次执行的 syscall_events 提取工具序列作为模式指纹。
+
+        Args:
+            run_id: 运行 ID。
+            tenant_id: 租户 ID。
+        """
         store = await self._ensure_store()
         events = await store.get_syscall_events(run_id) if hasattr(store, 'get_syscall_events') else []
         if not events:
@@ -109,7 +129,13 @@ class PatternAccumulator:
         self, run_id: str, error_context: Dict[str, Any] = None,
         tenant_id: str = "",
     ) -> Optional[Pattern]:
-        """CMM 准则 1+2: 频次 ≥3 + 检索验证通过才生成 Draft。"""
+        """CMM 准则 1+2: 频次 ≥3 + 检索验证通过才生成 Draft。
+
+        Args:
+            run_id: 运行 ID。
+            error_context: error_context 参数。
+            tenant_id: 租户 ID。
+        """
         pattern = await self.extract_from_run(run_id, tenant_id=tenant_id)
         if not pattern:
             return None
@@ -141,8 +167,9 @@ class PatternAccumulator:
     async def ingest_anomaly(self, tool_name: str, anomaly: Dict[str, Any]) -> None:
         """实时接入：将异常事件转化为 Pattern（CMM 观察层 Layer 2）。
 
-        与 extract_from_failure 不同：extract_from_failure 读完整 syscall_events，
-        ingest_anomaly 只接收单个异常事件，用于实时模式。
+        Args:
+            tool_name: tool_name 参数。
+            anomaly: anomaly 参数。
         """
         anomaly_type = anomaly.get("type", "unknown")
         tool_seq = (tool_name, f"anomaly:{anomaly_type}")
@@ -166,8 +193,9 @@ class PatternAccumulator:
     ) -> Optional[ComparisonReport]:
         """MetaClaw 双轨综合：比较同一任务的成功和失败轨迹。
 
-        不只看失败错了什么，也看成功做对了什么。
-        两者工具序列不同 → 提取差异 → 生成建议。
+        Args:
+            intent: intent 参数。
+            days: days 参数。
         """
         store = await self._ensure_store()
         success_runs = await store.get_runs(intent=intent, status="completed", days=days) \
@@ -202,6 +230,8 @@ class PatternAccumulator:
         )
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "total_patterns": len(self._patterns),
             "frequent_patterns": sum(1 for p in self._patterns.values() if p.meets_frequency()),
@@ -213,6 +243,8 @@ _accumulator: Optional[PatternAccumulator] = None
 
 
 def get_pattern_accumulator() -> PatternAccumulator:
+    """获取 pattern_accumulator。
+    """
     global _accumulator
     if _accumulator is None:
         _accumulator = PatternAccumulator()

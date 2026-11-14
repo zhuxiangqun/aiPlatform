@@ -49,6 +49,14 @@ def build_monthly_ops_report(
     project_id: str = "",
     collection_id: str = "default",
 ) -> Dict[str, Any]:
+    """build_monthly_ops_report。
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        collection_id: collection 标识。
+    """
     from delivery.cost_report import build_delivery_cost_report
     from delivery.kb_health import build_kb_health_report
 
@@ -82,7 +90,11 @@ def build_monthly_ops_report(
 
 
 def render_monthly_ops_markdown(report: Dict[str, Any]) -> str:
-    """Customer-facing monthly ops page (Chinese; no invented metrics)."""
+    """Customer-facing monthly ops page (Chinese; no invented metrics).
+
+    Args:
+        report: report 参数。
+    """
     cost = report.get("cost") or {}
     kb = report.get("kb_health") or {}
     daemon = report.get("daemon") or {}
@@ -186,7 +198,11 @@ def render_monthly_ops_markdown(report: Dict[str, Any]) -> str:
 
 
 def monthly_ops_summary_lines(report: Dict[str, Any]) -> str:
-    """Short summary for Pi slash / ops dashboards."""
+    """Short summary for Pi slash / ops dashboards.
+
+    Args:
+        report: report 参数。
+    """
     cost = report.get("cost") or {}
     kb = report.get("kb_health") or {}
     daemon = report.get("daemon") or {}

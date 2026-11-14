@@ -67,15 +67,12 @@ def compress_retrieved_docs(docs: str, model_name: str = "",
                             budget_fraction: float = 0.6,
                             max_chars: int = 8000) -> str:
     """Token-aware truncation of retrieved documents.
-    
-    Keeps retrieved docs within budget_fraction of the model's context window.
-    Falls back to char-based truncation when model context size is unknown.
-    
-    Strategy:
-      1. Query model context size from infra ModelManager
-      2. Reserve budget_fraction of context for documents
-      3. Truncate docs to fit within token budget (≈2 chars per token for CJK)
-      4. Fall back to max_chars if model info unavailable
+
+    Args:
+        docs: docs 参数。
+        model_name: model_name 参数。
+        budget_fraction: budget_fraction 参数。
+        max_chars: max_chars 参数。
     """
     if not docs:
         return ""
@@ -153,7 +150,12 @@ def _truncate_smart(docs: str, max_chars: int) -> str:
 
 
 def get_model_max_completion(model_name: str = "", default: int = 2000) -> int:
-    """Get max completion tokens for a model, adapting to context window size."""
+    """Get max completion tokens for a model, adapting to context window size.
+
+    Args:
+        model_name: model_name 参数。
+        default: default 参数。
+    """
     context = _get_context_size(model_name)
     if context >= 100000:
         return 4096

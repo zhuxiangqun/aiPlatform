@@ -39,6 +39,11 @@ class SuiteProfileExamError(ValueError):
 def index_cases_by_id(
     cases: Sequence[Mapping[str, Any]],
 ) -> Dict[str, Dict[str, Any]]:
+    """index_cases_by_id。
+
+    Args:
+        cases: 用例列表。
+    """
     out: Dict[str, Dict[str, Any]] = {}
     for c in cases:
         if not isinstance(c, Mapping):
@@ -53,7 +58,12 @@ def verify_capability_manifest_hashes(
     manifest: Sequence[Mapping[str, Any]],
     cases_by_id: Mapping[str, Mapping[str, Any]],
 ) -> None:
-    """Fail closed if manifest hash ≠ bank case canonical hash."""
+    """Fail closed if manifest hash ≠ bank case canonical hash.
+
+    Args:
+        manifest: 清单 dict。
+        cases_by_id: cases_by 标识。
+    """
     if not manifest:
         raise ManifestValidationError("sample_manifest empty — fail closed")
     for i, row in enumerate(manifest):
@@ -221,7 +231,20 @@ async def run_suite_profile_exam(
     max_cases: int = 0,
     workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Compile Profile Plan → require sample_manifest → execute only those cases."""
+    """Compile Profile Plan → require sample_manifest → execute only those cases.
+
+    Args:
+        profile_id: profile 标识。
+        profile: profile 参数。
+        cases: 用例列表。
+        live: 是否 live（非 fixture）路径。
+        model: 模型名。
+        run_key: run_key 参数。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        max_cases: max_cases 参数。
+        workspace_id: workspace 标识。
+    """
     wid = _resolve_exam_workspace_id(workspace_id)
     bank, subject_kind = _resolve_exam_bank(
         profile=profile, profile_id=profile_id, cases=cases

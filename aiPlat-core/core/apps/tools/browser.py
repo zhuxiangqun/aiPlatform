@@ -1,3 +1,5 @@
+"""browser：模块接口。"""
+
 import logging
 """
 Browser Tool — Full Playwright-based implementation.
@@ -589,6 +591,12 @@ class BrowserTool(BaseTool):
     ]
 
     def __init__(self, navigation_timeout: int = 30000, **kwargs):
+        """初始化。
+
+        Args:
+            navigation_timeout: navigation_timeout 参数。
+            kwargs: kwargs 参数。
+        """
         _ = navigation_timeout
         config = ToolConfig(
             name="browser",
@@ -618,6 +626,11 @@ class BrowserTool(BaseTool):
         super().__init__(config)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         action = params.get("action", "")
         if action not in self.SUPPORTED_ACTIONS:
             return ToolResult(success=False, error=f"不支持的操作: {action}")

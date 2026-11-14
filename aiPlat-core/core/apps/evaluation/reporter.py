@@ -13,14 +13,24 @@ class ResultReporter:
     """Generates evaluation reports"""
     
     def __init__(self):
+        """初始化。
+        """
         self.history: List[Dict[str, Any]] = []
     
     def add_result(self, result: BenchmarkResult):
-        """Add result to history"""
+        """Add result to history。
+
+        Args:
+            result: result 参数。
+        """
         self.history.append(result.to_dict())
     
     def add_regression_result(self, result: RegressionResult):
-        """Add regression result to history"""
+        """Add regression result to history。
+
+        Args:
+            result: result 参数。
+        """
         self.history.append({
             "type": "regression",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -28,7 +38,11 @@ class ResultReporter:
         })
     
     def generate_text(self, result: BenchmarkResult) -> str:
-        """Generate text report"""
+        """Generate text report。
+
+        Args:
+            result: result 参数。
+        """
         lines = [
             f"Benchmark: {result.benchmark_name}",
             f"执行时间: {result.executed_at}",
@@ -50,11 +64,19 @@ class ResultReporter:
         return "\n".join(lines)
     
     def generate_json(self, result: BenchmarkResult) -> Dict[str, Any]:
-        """Generate JSON report"""
+        """Generate JSON report。
+
+        Args:
+            result: result 参数。
+        """
         return result.to_dict()
     
     def generate_markdown(self, result: BenchmarkResult) -> str:
-        """Generate Markdown report"""
+        """Generate Markdown report。
+
+        Args:
+            result: result 参数。
+        """
         return f"""
 # Benchmark Report: {result.benchmark_name}
 
@@ -91,7 +113,11 @@ class ResultReporter:
         return "\n".join(lines)
     
     def generate_regression_text(self, result: RegressionResult) -> str:
-        """Generate regression text report"""
+        """Generate regression text report。
+
+        Args:
+            result: result 参数。
+        """
         status = "⚠️ 检测到回归" if result.has_regression else "✅ 无回归"
         
         lines = [
@@ -115,7 +141,13 @@ class ResultReporter:
         return "\n".join(lines)
     
     def save_report(self, result: BenchmarkResult, path: str, format: str = "text"):
-        """Save report to file"""
+        """Save report to file。
+
+        Args:
+            result: result 参数。
+            path: 路径。
+            format: format 参数。
+        """
         import os
         os.makedirs(os.path.dirname(path), exist_ok=True)
         
@@ -135,7 +167,12 @@ class ResultReporter:
 
 
 def generate_report(result: BenchmarkResult, format: str = "text") -> str:
-    """Generate report in specified format"""
+    """Generate report in specified format。
+
+    Args:
+        result: result 参数。
+        format: format 参数。
+    """
     reporter = ResultReporter()
     
     if format == "json":

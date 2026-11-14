@@ -20,6 +20,12 @@ async def run_mcp_create_dialog_turn(
     text: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
+    """run_mcp_create_dialog_turn。
+
+    Args:
+        text: text 参数。
+        history: history 参数。
+    """
     text = str(text or "").strip()
     if not text:
         return {

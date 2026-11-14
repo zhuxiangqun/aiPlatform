@@ -21,24 +21,33 @@ import hashlib
 
 @dataclass
 class ActiveRelease:
+    """ActiveRelease。"""
     candidate_id: str
     version: str
     summary: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {"candidate_id": self.candidate_id, "version": self.version, "summary": self.summary}
 
 
 class LearningApplier:
+    """LearningApplier。"""
     def __init__(self, execution_store: Any):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._store = execution_store
 
     async def resolve_active_release(self, *, target_type: str, target_id: str) -> Optional[ActiveRelease]:
-        """
-        Resolve the active published release_candidate for a target.
+        """Resolve the active published release_candidate for a target.
 
-        Selection policy (Phase 6.7 minimal):
-        - Choose the latest created_at among published release_candidate artifacts for the target.
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
         """
         if not self._store or not hasattr(self._store, "list_learning_artifacts"):
             return None
@@ -110,16 +119,11 @@ class LearningApplier:
     async def resolve_prompt_revision_patch(
         self, *, target_type: str, target_id: str
     ) -> Dict[str, Any]:
-        """
-        Resolve a merged prompt revision patch for the target from the active release.
+        """Resolve a merged prompt revision patch for the target from the active release.
 
-        Return schema:
-          {
-            "patch": {"prepend": "...", "append": "..."},
-            "artifact_ids": ["..."]
-            "conflicts": [{"type": "...", "artifact_ids":[...], "details": {...}}],
-            "ignored_artifact_ids": ["..."]
-          }
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
         """
         active = await self.resolve_active_release(target_type=target_type, target_id=target_id)
         if not active:

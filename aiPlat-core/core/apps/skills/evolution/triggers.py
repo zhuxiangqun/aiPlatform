@@ -33,6 +33,8 @@ class ToolMetrics:
     
     @property
     def success_rate(self) -> float:
+        """success_rate。
+        """
         total = self.success_count + self.failure_count
         if total == 0:
             return 1.0
@@ -43,10 +45,16 @@ class PostExecutionTrigger(BaseTrigger):
     """Trigger: Analyze after task execution"""
     
     def __init__(self):
+        """初始化。
+        """
         self._execution_queue: List[Dict] = []
     
     async def enqueue(self, execution_record: Dict):
-        """Add execution record to analysis queue"""
+        """Add execution record to analysis queue。
+
+        Args:
+            execution_record: execution_record 参数。
+        """
         self._execution_queue.append(execution_record)
     
     async def check(self) -> List[EvolutionTrigger]:
@@ -91,11 +99,18 @@ class ToolDegradationTrigger(BaseTrigger):
     """Trigger: Detect tool success rate degradation"""
     
     def __init__(self):
+        """初始化。
+        """
         self._tool_metrics: Dict[str, ToolMetrics] = {}
         self._degradation_threshold = 0.2  # 20% drop
     
     async def record_execution(self, tool_name: str, success: bool):
-        """Record tool execution result"""
+        """Record tool execution result。
+
+        Args:
+            tool_name: tool_name 参数。
+            success: success 参数。
+        """
         if tool_name not in self._tool_metrics:
             self._tool_metrics[tool_name] = ToolMetrics(tool_name=tool_name)
         
@@ -147,11 +162,19 @@ class MetricMonitorTrigger(BaseTrigger):
     """Trigger: Monitor skill metrics and trigger on threshold"""
     
     def __init__(self):
+        """初始化。
+        """
         self._skill_metrics: Dict[str, Dict[str, float]] = {}
         self._check_interval_seconds = 3600  # 1 hour
     
     async def record_metric(self, skill_id: str, metric_name: str, value: float):
-        """Record metric for a skill"""
+        """Record metric for a skill。
+
+        Args:
+            skill_id: Skill ID。
+            metric_name: metric_name 参数。
+            value: value 参数。
+        """
         if skill_id not in self._skill_metrics:
             self._skill_metrics[skill_id] = {}
         self._skill_metrics[skill_id][metric_name] = value
@@ -188,21 +211,38 @@ class TriggerManager:
     """Manages all evolution triggers"""
     
     def __init__(self):
+        """初始化。
+        """
         self._post_exec_trigger = PostExecutionTrigger()
         self._tool_degradation_trigger = ToolDegradationTrigger()
         self._metric_trigger = MetricMonitorTrigger()
         self._engine = get_evolution_engine()
     
     async def trigger_post_exec(self, execution_record: Dict):
-        """Trigger analysis after execution"""
+        """Trigger analysis after execution。
+
+        Args:
+            execution_record: execution_record 参数。
+        """
         await self._post_exec_trigger.enqueue(execution_record)
     
     async def trigger_tool_execution(self, tool_name: str, success: bool):
-        """Record tool execution for degradation detection"""
+        """Record tool execution for degradation detection。
+
+        Args:
+            tool_name: tool_name 参数。
+            success: success 参数。
+        """
         await self._tool_degradation_trigger.record_execution(tool_name, success)
     
     async def trigger_metric(self, skill_id: str, metric_name: str, value: float):
-        """Record metric for monitoring"""
+        """Record metric for monitoring。
+
+        Args:
+            skill_id: Skill ID。
+            metric_name: metric_name 参数。
+            value: value 参数。
+        """
         await self._metric_trigger.record_metric(skill_id, metric_name, value)
     
     async def check_all_triggers(self) -> List[EvolutionTrigger]:

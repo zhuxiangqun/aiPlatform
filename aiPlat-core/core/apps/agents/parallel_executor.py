@@ -30,6 +30,11 @@ class ParallelExecutor:
     """
 
     def __init__(self, max_concurrency: int = 5):
+        """初始化。
+
+        Args:
+            max_concurrency: max_concurrency 参数。
+        """
         self._max_concurrency = max_concurrency
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
@@ -247,6 +252,11 @@ class EmbeddingBridge:
     """
 
     def __init__(self, *, compression_ratio: float = 0.7):
+        """初始化。
+
+        Args:
+            compression_ratio: compression_ratio 参数。
+        """
         self._compression_ratio = max(0.3, min(0.9, compression_ratio))
         self._sent_count = 0
         self._token_saved = 0
@@ -296,6 +306,8 @@ class EmbeddingBridge:
 
     @property
     def compression_stats(self) -> Dict[str, Any]:
+        """compression_stats。
+        """
         return {
             "sent_count": self._sent_count,
             "token_saved": self._token_saved,

@@ -363,7 +363,12 @@ def _update_path(item_id: str, item_type: str) -> str:
 
 @router.post("/approval/approve")
 async def approve_item(id: str = Query(...), type: str = Query("agent")):
-    """功能审核: ready → published"""
+    """功能审核: ready → published。
+
+    Args:
+        id: id 参数。
+        type: type 参数。
+    """
     path = _update_path(id, type)
     await _core_put(path, {"status": "published"})
     return {"ok": True, "id": id, "type": type, "status": "published"}
@@ -371,7 +376,12 @@ async def approve_item(id: str = Query(...), type: str = Query("agent")):
 
 @router.post("/approval/submit")
 async def submit_item(id: str = Query(...), type: str = Query("agent")):
-    """提交审核: draft → ready（Tool 等需先进待审核队列）。"""
+    """提交审核: draft → ready（Tool 等需先进待审核队列）。
+
+    Args:
+        id: id 参数。
+        type: type 参数。
+    """
     if type == "tool":
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(f"{CORE_BASE}/tools/{id}/submit-for-review")
@@ -398,8 +408,9 @@ async def _submit_item_impl(id: str, type: str = "agent") -> Dict[str, Any]:
 async def publish_item(id: str = Query(...), type: str = Query("agent")):
     """上架审核: published → listed。
 
-    Agent 硬门禁：skills / mcp_ids / tools 未就绪则拒绝上架。
-    Skill/MCP/Workflow 本身无此类依赖门禁。
+    Args:
+        id: id 参数。
+        type: type 参数。
     """
     if type == "agent":
         agent = await _fetch_agent(id)
@@ -421,7 +432,12 @@ async def publish_item(id: str = Query(...), type: str = Query("agent")):
 
 @router.post("/approval/reject")
 async def reject_item(id: str = Query(...), type: str = Query("agent")):
-    """退回: ready → draft"""
+    """退回: ready → draft。
+
+    Args:
+        id: id 参数。
+        type: type 参数。
+    """
     path = _update_path(id, type)
     await _core_put(path, {"status": "draft"})
     return {"ok": True, "id": id, "type": type, "status": "draft"}
@@ -429,7 +445,12 @@ async def reject_item(id: str = Query(...), type: str = Query("agent")):
 
 @router.post("/approval/unlist")
 async def unlist_item(id: str = Query(...), type: str = Query("agent")):
-    """下架: listed → published"""
+    """下架: listed → published。
+
+    Args:
+        id: id 参数。
+        type: type 参数。
+    """
     path = _update_path(id, type)
     await _core_put(path, {"status": "published"})
     return {"ok": True, "id": id, "type": type, "status": "published"}
@@ -437,7 +458,12 @@ async def unlist_item(id: str = Query(...), type: str = Query("agent")):
 
 @router.post("/approval/deprecate")
 async def deprecate_item(id: str = Query(...), type: str = Query("agent")):
-    """废弃: published → deprecated"""
+    """废弃: published → deprecated。
+
+    Args:
+        id: id 参数。
+        type: type 参数。
+    """
     path = _update_path(id, type)
     await _core_put(path, {"status": "deprecated"})
     return {"ok": True, "id": id, "type": type, "status": "deprecated"}
@@ -445,7 +471,11 @@ async def deprecate_item(id: str = Query(...), type: str = Query("agent")):
 
 @router.get("/approval/history")
 async def approval_history(limit: int = Query(50)):
-    """审批操作记录 — approver 可查看自己的审批历史。"""
+    """审批操作记录 — approver 可查看自己的审批历史。
+
+    Args:
+        limit: 返回条数上限。
+    """
     items = []
     try:
         data = await _core_get("/workspace/agents", params={"limit": 200})

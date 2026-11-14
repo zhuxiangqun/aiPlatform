@@ -12,6 +12,7 @@ router = APIRouter(tags=["wiki-loop-triggers"], dependencies=[Depends(require_wi
 
 
 class TriggerRegisterRequest(BaseModel):
+    """TriggerRegisterRequest。"""
     trigger_id: str = ""
     mode: str = "cron"              # cron | webhook | goal
     scene_id: str = ""
@@ -22,7 +23,11 @@ class TriggerRegisterRequest(BaseModel):
 
 @router.post("/triggers", response_model=Dict[str, Any])
 async def register_loop_trigger(req: TriggerRegisterRequest):
-    """Register a pipeline trigger (cron/webhook/goal)."""
+    """Register a pipeline trigger (cron/webhook/goal).
+
+    Args:
+        req: req 参数。
+    """
     from core.harness.execution.event_loop import register_trigger, Trigger
     t = Trigger(
         trigger_id=req.trigger_id or f"trigger_{int(__import__('time').time())}",
@@ -43,7 +48,11 @@ async def list_loop_triggers():
 
 @router.delete("/triggers/{trigger_id}", response_model=Dict[str, Any])
 async def remove_loop_trigger(trigger_id: str):
-    """Remove a pipeline trigger."""
+    """Remove a pipeline trigger.
+
+    Args:
+        trigger_id: trigger 标识。
+    """
     from core.harness.execution.event_loop import remove_trigger
     ok = remove_trigger(trigger_id)
     return {"status": "ok" if ok else "not_found"}
@@ -53,8 +62,9 @@ async def remove_loop_trigger(trigger_id: str):
 async def handle_webhook(source: str = Body(...), payload: Dict[str, Any] = Body(default={})):
     """Handle incoming webhook — dispatches to matching triggers.
 
-    Auth is enforced by router-level ``require_wiki_loop_auth`` (token required
-    unless ``AIPLAT_WIKI_LOOP_ALLOW_UNSIGNED`` is set).
+    Args:
+        source: source 参数。
+        payload: 载荷 dict。
     """
     from core.harness.execution.event_loop import dispatch_webhook
     count = await dispatch_webhook(source, payload)

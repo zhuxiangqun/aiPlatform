@@ -29,6 +29,11 @@ REQUIRED = (
 
 
 def validate_card(payload: Dict[str, Any]) -> List[str]:
+    """validate_card。
+
+    Args:
+        payload: 载荷 dict。
+    """
     errors: List[str] = []
     for key in REQUIRED:
         if key not in payload:
@@ -45,6 +50,11 @@ def validate_card(payload: Dict[str, Any]) -> List[str]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="Validate security evidence cards")
     parser.add_argument("--validate", required=True, help="Path to card JSON")
     args = parser.parse_args(argv)

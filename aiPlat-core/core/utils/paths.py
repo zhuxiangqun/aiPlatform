@@ -93,24 +93,38 @@ def get_eval_results_dir() -> str:
 
 
 def get_skills_dir() -> str:
+    """获取 skills_dir。
+    """
     return get_aiplat_data_dir("skills")
 
 def get_tools_dir() -> str:
+    """获取 tools_dir。
+    """
     return get_aiplat_data_dir("tools")
 
 def get_kb_dir() -> str:
+    """获取 kb_dir。
+    """
     return get_aiplat_data_dir("kb")
 
 def get_data_dir() -> str:
+    """获取 data_dir。
+    """
     return get_aiplat_data_dir("data")
 
 def get_ontologies_dir() -> str:
+    """获取 ontologies_dir。
+    """
     return get_aiplat_data_dir("ontologies")
 
 def get_hooks_dir() -> str:
+    """获取 hooks_dir。
+    """
     return get_aiplat_data_dir("hooks")
 
 def get_mcps_dir() -> str:
+    """获取 mcps_dir。
+    """
     return get_aiplat_data_dir("mcps")
 
 def get_workspace_seeds_dir() -> str:

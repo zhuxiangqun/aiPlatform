@@ -22,6 +22,11 @@ class DatasetManager:
     """Manage fine-tuning datasets stored in SQLite + JSONL files."""
 
     def __init__(self, base_dir: str = ""):
+        """初始化。
+
+        Args:
+            base_dir: base_dir 参数。
+        """
         self._base = _Path(base_dir or get_aiplat_home()) / "finetune_data"
         self._base.mkdir(parents=True, exist_ok=True)
         self._meta_path = self._base / "datasets_meta.json"
@@ -42,6 +47,11 @@ class DatasetManager:
     # ── CRUD ──────────────────────────────────────────────────────────
 
     def create(self, req: DatasetCreateRequest) -> DatasetResponse:
+        """create。
+
+        Args:
+            req: req 参数。
+        """
         meta = self._read_meta()
         did = _uuid.uuid4().hex[:12]
         now = _time.time()
@@ -65,6 +75,11 @@ class DatasetManager:
         return DatasetResponse(**entry)
 
     def get(self, dataset_id: str) -> Optional[DatasetResponse]:
+        """get。
+
+        Args:
+            dataset_id: dataset 标识。
+        """
         meta = self._read_meta()
         entry = meta.get(dataset_id)
         if not entry:
@@ -72,6 +87,12 @@ class DatasetManager:
         return DatasetResponse(**entry)
 
     def list_all(self, limit: int = 100, offset: int = 0) -> DatasetListResponse:
+        """列出 all。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         meta = self._read_meta()
         entries = sorted(meta.values(), key=lambda e: -e.get("created_at", 0))
         total = len(entries)
@@ -81,6 +102,12 @@ class DatasetManager:
         )
 
     def update(self, dataset_id: str, updates: dict) -> Optional[DatasetResponse]:
+        """update。
+
+        Args:
+            dataset_id: dataset 标识。
+            updates: updates 参数。
+        """
         meta = self._read_meta()
         entry = meta.get(dataset_id)
         if not entry:
@@ -92,6 +119,11 @@ class DatasetManager:
         return DatasetResponse(**entry)
 
     def delete(self, dataset_id: str) -> bool:
+        """delete。
+
+        Args:
+            dataset_id: dataset 标识。
+        """
         meta = self._read_meta()
         if dataset_id not in meta:
             return False
@@ -105,6 +137,12 @@ class DatasetManager:
     # ── Import JSONL ──────────────────────────────────────────────────
 
     def import_jsonl(self, dataset_id: str, content: str) -> DatasetResponse:
+        """import_jsonl。
+
+        Args:
+            dataset_id: dataset 标识。
+            content: content 参数。
+        """
         meta = self._read_meta()
         entry = meta.get(dataset_id)
         if not entry:
@@ -158,6 +196,12 @@ class DatasetManager:
     # ── Preview ───────────────────────────────────────────────────────
 
     def preview(self, dataset_id: str, limit: int = 100) -> DatasetPreviewResponse:
+        """preview。
+
+        Args:
+            dataset_id: dataset 标识。
+            limit: 返回条数上限。
+        """
         meta = self._read_meta()
         entry = meta.get(dataset_id)
         if not entry:
@@ -190,7 +234,12 @@ class DatasetManager:
     # ── Snapshot for job ──────────────────────────────────────────────
 
     def snapshot(self, dataset_id: str, job_id: str) -> _Path:
-        """Copy dataset to job snapshot for reproducibility."""
+        """Copy dataset to job snapshot for reproducibility.
+
+        Args:
+            dataset_id: dataset 标识。
+            job_id: job 标识。
+        """
         data_file = self._base / f"{dataset_id}.jsonl"
         if not data_file.exists():
             raise ValueError(f"Dataset {dataset_id} has no data file")

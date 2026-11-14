@@ -61,10 +61,12 @@ class OntologyValidator:
     ) -> ValidationResult:
         """PreToolUse 阶段: 检查操作是否合法.
 
-        校验内容:
-          1. 状态守卫 (allowed_from): 当前状态是否允许此操作
-          2. 依赖检查 (dependency_check): 必要字段是否已就绪
-          3. 权限约束: 操作是否有保留策略限制
+        Args:
+            domain_id: domain 标识。
+            action: action 参数。
+            state: state 参数。
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
         """
         rules = self._load_rules(domain_id, state.get("current_state", ""))
         if not rules:
@@ -131,9 +133,12 @@ class OntologyValidator:
     ) -> ValidationResult:
         """PostToolUse 阶段: 检查执行结果是否符合约束.
 
-        校验内容:
-          1. 高风险操作是否绑定了审批记录
-          2. 执行结果是否包含必要字段
+        Args:
+            domain_id: domain 标识。
+            action: action 参数。
+            state: state 参数。
+            result: result 参数。
+            expected: expected 参数。
         """
         rules = self._load_rules(domain_id, state.get("current_state", ""))
         if not rules:
@@ -177,9 +182,9 @@ class OntologyValidator:
     ) -> ValidationResult:
         """Stop 阶段: 检查是否满足业务闭环条件.
 
-        校验内容:
-          1. 必要字段是否已填充
-          2. 是否所有依赖都已满足
+        Args:
+            domain_id: domain 标识。
+            state: state 参数。
         """
         rules = self._load_rules(domain_id, state.get("current_state", ""))
         if not rules:

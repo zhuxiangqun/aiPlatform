@@ -43,6 +43,16 @@ class ChatContext:
         model: Any = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            agent_name: agent_name 参数。
+            session_id: 会话 ID。
+            user_input: user_input 参数。
+            user_id: 用户 ID。
+            model: 模型名。
+            metadata: metadata 参数。
+        """
         self.agent_name = agent_name
         self.session_id = session_id
         self.user_input = user_input
@@ -64,6 +74,15 @@ class ChatResult:
         memory_saved: bool = False,
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            reply: reply 参数。
+            trace_id: trace 标识。
+            skills_used: skills_used 参数。
+            memory_saved: memory_saved 参数。
+            metadata: metadata 参数。
+        """
         self.reply = reply
         self.trace_id = trace_id
         self.skills_used = skills_used or []
@@ -83,6 +102,14 @@ class ExecuteContext:
         model: Any = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            stages: stages 参数。
+            input_data: input_data 参数。
+            model: 模型名。
+            metadata: metadata 参数。
+        """
         self.stages = stages
         self.input_data = input_data or {}
         self.model = model
@@ -100,6 +127,14 @@ class ExecuteResult:
         trace_id: str = "",
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            success: success 参数。
+            output: output 参数。
+            trace_id: trace 标识。
+            metadata: metadata 参数。
+        """
         self.success = success
         self.output = output or {}
         self.trace_id = trace_id
@@ -118,6 +153,15 @@ class QueryContext:
         model: Any = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            query_text: query_text 参数。
+            session_id: 会话 ID。
+            scope: scope 参数。
+            model: 模型名。
+            metadata: metadata 参数。
+        """
         self.query_text = query_text
         self.session_id = session_id
         self.scope = scope or {}
@@ -136,6 +180,14 @@ class QueryResult:
         trace_id: str = "",
         metadata: Optional[Dict[str, Any]] = None,
     ):
+        """初始化。
+
+        Args:
+            answer: answer 参数。
+            citations: citations 参数。
+            trace_id: trace 标识。
+            metadata: metadata 参数。
+        """
         self.answer = answer
         self.citations = citations or []
         self.trace_id = trace_id
@@ -178,16 +230,8 @@ def _unwrap_agent_reply(reply: str) -> str:
 async def core_chat(ctx: ChatContext) -> ChatResult:
     """Execute a conversational agent turn.
 
-    Application declares intent (agent_name + session_id + user_input).
-    Core automatically activates:
-
-    1. AgentRegistry → discovers agent config and system prompt
-    2. MemoryManager → persists conversation (survives restart)
-    3. SkillRegistry → binds matching Skills from AGENT.md
-    4. Trace → generates trace_id for end-to-end observability
-
-    Application interprets the reply at its layer (PRD ready? approval?).
-    Core does NOT know what PRD, approval, or requirements mean.
+    Args:
+        ctx: ctx 参数。
     """
     import time
     import uuid as _uuid
@@ -449,14 +493,8 @@ async def core_chat(ctx: ChatContext) -> ChatResult:
 async def core_execute(ctx: ExecuteContext) -> ExecuteResult:
     """Execute a pipeline with automatic subsystem activation.
 
-    Application declares intent (stages + input). Core automatically activates:
-    1. PipelineEngine → runs stages through ReAct loop
-    2. Evaluation → auto-evaluates each stage output
-    3. Trace → full pipeline trace_id
-    4. Feedback → records execution feedback for future optimization
-    5. Governance → creates changeset audit trail
-
-    Application interprets the output (artifacts, pass rates, etc.).
+    Args:
+        ctx: ctx 参数。
     """
     import uuid as _uuid
 
@@ -496,13 +534,8 @@ async def core_execute(ctx: ExecuteContext) -> ExecuteResult:
 async def core_query(ctx: QueryContext) -> QueryResult:
     """Execute a knowledge retrieval query.
 
-    Application declares intent (query_text + scope). Core automatically activates:
-    1. RAG Agent → retrieves relevant documents
-    2. MemoryManager → includes conversation context
-    3. SkillRegistry → binds kb_query/doc_query skills
-    4. Trace → generates trace_id
-
-    Application interprets the results (citations, relevance, etc.).
+    Args:
+        ctx: ctx 参数。
     """
     import uuid as _uuid
     from core.api.core_facade import create_agent

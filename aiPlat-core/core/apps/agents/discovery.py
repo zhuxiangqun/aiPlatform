@@ -44,7 +44,11 @@ class AGENTMD_PARSER:
     
     @staticmethod
     def parse(agent_dir: Path) -> Optional[DiscoveredAgent]:
-        """Parse AGENT.md file in agent directory"""
+        """Parse AGENT.md file in agent directory。
+
+        Args:
+            agent_dir: agent_dir 参数。
+        """
         agent_md = agent_dir / "AGENT.md"
         if not agent_md.exists():
             return None
@@ -154,11 +158,19 @@ class AgentDiscovery:
         return self._discovered
     
     def get(self, name: str) -> Optional[DiscoveredAgent]:
-        """Get discovered agent by name"""
+        """Get discovered agent by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._discovered.get(name)
     
     def list_by_type(self, agent_type: str) -> List[DiscoveredAgent]:
-        """List agents by type"""
+        """List agents by type。
+
+        Args:
+            agent_type: agent_type 参数。
+        """
         return [a for a in self._discovered.values() if a.agent_type == agent_type]
     
     def list_types(self) -> List[str]:
@@ -166,7 +178,11 @@ class AgentDiscovery:
         return list(set(a.agent_type for a in self._discovered.values()))
     
     def load_handler(self, agent_info: DiscoveredAgent):
-        """Load agent handler module"""
+        """Load agent handler module。
+
+        Args:
+            agent_info: agent_info 参数。
+        """
         if not agent_info.handler_path:
             return None
         
@@ -194,11 +210,20 @@ class AgentLoader:
     """
     
     def __init__(self, discovery: AgentDiscovery):
+        """初始化。
+
+        Args:
+            discovery: discovery 参数。
+        """
         self._discovery = discovery
         self._handlers: Dict[str, Any] = {}
     
     def load_handler(self, agent_name: str):
-        """Load and cache agent handler"""
+        """Load and cache agent handler。
+
+        Args:
+            agent_name: agent_name 参数。
+        """
         if agent_name in self._handlers:
             return self._handlers[agent_name]
         
@@ -213,7 +238,11 @@ class AgentLoader:
         return handler
     
     def get_agent_class(self, agent_name: str):
-        """Get agent class from handler module"""
+        """Get agent class from handler module。
+
+        Args:
+            agent_name: agent_name 参数。
+        """
         handler = self.load_handler(agent_name)
         if not handler:
             return None
@@ -228,13 +257,10 @@ class AgentLoader:
 
 
 def create_agent_discovery(base_path: str) -> AgentDiscovery:
-    """
-    Factory function to create agent discovery.
+    """Factory function to create agent discovery.
 
-    Supports multi-path by allowing `base_path` to be a pathsep-separated string:
-      - "pathA:pathB" on Linux/macOS
-      - "pathA;pathB" on Windows
-    Later paths override earlier ones when agent names collide.
+    Args:
+        base_path: base_path 参数。
     """
     if isinstance(base_path, str) and (os.pathsep in base_path):
         parts = [p.strip() for p in base_path.split(os.pathsep) if p.strip()]
@@ -247,11 +273,18 @@ class MultiAgentDiscovery(AgentDiscovery):
     """Merge multiple AgentDiscovery instances with override semantics (later wins)."""
 
     def __init__(self, base_paths: List[str]):
+        """初始化。
+
+        Args:
+            base_paths: base_paths 参数。
+        """
         self.base_paths = [Path(p) for p in base_paths]
         self._parser = AGENTMD_PARSER()
         self._discovered: Dict[str, DiscoveredAgent] = {}
 
     async def discover(self) -> Dict[str, DiscoveredAgent]:
+        """discover。
+        """
         self._discovered = {}
         for bp in self.base_paths:
             d = AgentDiscovery(str(bp))
@@ -261,7 +294,11 @@ class MultiAgentDiscovery(AgentDiscovery):
 
 
 def create_agent_loader(discovery: AgentDiscovery) -> AgentLoader:
-    """Factory function to create agent loader"""
+    """Factory function to create agent loader。
+
+    Args:
+        discovery: discovery 参数。
+    """
     return AgentLoader(discovery)
 
 
@@ -273,6 +310,8 @@ class AgentRegistry:
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._agents: Dict[str, Any] = {}
         self._configs: Dict[str, Dict[str, Any]] = {}
         self._states: Dict[str, str] = {}
@@ -290,7 +329,19 @@ class AgentRegistry:
                  category: str = "",
                  tags: Optional[List[str]] = None,
                  phase: str = ""):
-        """Register an agent instance"""
+        """Register an agent instance。
+
+        Args:
+            name: name 参数。
+            agent: agent 参数。
+            config: config 参数。
+            metadata: metadata 参数。
+            skills: skills 参数。
+            tools: tools 参数。
+            category: category 参数。
+            tags: tags 参数。
+            phase: phase 参数。
+        """
         self._agents[name] = agent
         self._configs[name] = config
         try:
@@ -312,14 +363,22 @@ class AgentRegistry:
             self._phases[name] = phase
     
     def unregister(self, name: str):
-        """Unregister an agent"""
+        """Unregister an agent。
+
+        Args:
+            name: name 参数。
+        """
         self._agents.pop(name, None)
         self._configs.pop(name, None)
         self._states.pop(name, None)
         self._metadata.pop(name, None)
     
     def get(self, name: str) -> Optional[Any]:
-        """Get agent by name"""
+        """Get agent by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._agents.get(name)
     
     def list_all(self) -> List[str]:
@@ -327,24 +386,45 @@ class AgentRegistry:
         return list(self._agents.keys())
     
     def update_state(self, name: str, state: str):
-        """Update agent state"""
+        """Update agent state。
+
+        Args:
+            name: name 参数。
+            state: state 参数。
+        """
         if name in self._agents:
             self._states[name] = state
     
     def get_state(self, name: str) -> Optional[str]:
-        """Get agent state"""
+        """Get agent state。
+
+        Args:
+            name: name 参数。
+        """
         return self._states.get(name)
     
     def get_config(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get agent config"""
+        """Get agent config。
+
+        Args:
+            name: name 参数。
+        """
         return self._configs.get(name)
     
     def get_metadata(self, name: str) -> Optional[DiscoveredAgent]:
-        """Get agent metadata"""
+        """Get agent metadata。
+
+        Args:
+            name: name 参数。
+        """
         return self._metadata.get(name)
     
     def list_by_state(self, state: str) -> List[str]:
-        """List agents by state"""
+        """List agents by state。
+
+        Args:
+            state: state 参数。
+        """
         return [name for name, s in self._states.items() if s == state]
 
 

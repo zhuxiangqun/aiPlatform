@@ -39,6 +39,7 @@ logger = logging.getLogger("scoring_engine")
 
 @dataclass
 class ScoringRule:
+    """ScoringRule。"""
     name: str
     weight: float = 1.0
     condition: Dict[str, Any] = field(default_factory=dict)
@@ -47,6 +48,7 @@ class ScoringRule:
 
 @dataclass
 class ScoringModel:
+    """ScoringModel。"""
     name: str
     label: str
     description: str = ""
@@ -58,6 +60,7 @@ class ScoringModel:
 
 @dataclass
 class ScoringResult:
+    """ScoringResult。"""
     model_name: str
     entity_name: str
     total_score: float = 0.0
@@ -68,7 +71,11 @@ class ScoringResult:
 
 
 def load_models(domain_yaml_raw: Dict[str, Any]) -> List[ScoringModel]:
-    u"""Load scoring models from domain YAML raw dict."""
+    """Load scoring models from domain YAML raw dict.
+
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
+    """
     raw_models = domain_yaml_raw.get("scoring_models", {})
     result = []
     for name, raw in raw_models.items():
@@ -97,7 +104,13 @@ def evaluate(
     model: ScoringModel,
     domain_id: str,
 ) -> ScoringResult:
-    u"""Evaluate a single entity against a scoring model."""
+    """Evaluate a single entity against a scoring model.
+
+    Args:
+        entity_name: entity_name 参数。
+        model: 模型名。
+        domain_id: domain 标识。
+    """
     result = ScoringResult(model_name=model.name, entity_name=entity_name)
 
     for rule in model.rules:
@@ -123,7 +136,13 @@ def evaluate_batch(
     model: ScoringModel,
     domain_id: str,
 ) -> List[ScoringResult]:
-    u"""Evaluate all entities of a given class."""
+    """Evaluate all entities of a given class.
+
+    Args:
+        class_name: class_name 参数。
+        model: 模型名。
+        domain_id: domain 标识。
+    """
     results = []
     entities = _get_entities_by_class(class_name, domain_id)
     for entity_name in entities:
@@ -138,7 +157,13 @@ def get_alerts(
     domain_id: str,
     class_name: str = "",
 ) -> List[ScoringResult]:
-    u"""Get all high-level alerts for a scoring model."""
+    """Get all high-level alerts for a scoring model.
+
+    Args:
+        model: 模型名。
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+    """
     if class_name:
         results = evaluate_batch(class_name, model, domain_id)
     else:

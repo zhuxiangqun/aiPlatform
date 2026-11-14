@@ -21,7 +21,20 @@ def write_local_drill(
     authorize_flag_key: str,
     local_sign: bool = False,
 ) -> Dict[str, Any]:
-    """Write local-*.json. production_signed always False."""
+    """Write local-*.json. production_signed always False.
+
+    Args:
+        out_path: out_path 参数。
+        kind: kind 参数。
+        schema_version: schema_version 参数。
+        drill_id: drill 标识。
+        operator: operator 参数。
+        items: items 参数。
+        limitations: limitations 参数。
+        note: note 参数。
+        authorize_flag_key: authorize_flag_key 参数。
+        local_sign: local_sign 参数。
+    """
     merged = dict(items)
     items_file = (os.environ.get("AIPLAT_LOCAL_DRILL_ITEMS_FILE") or "").strip()
     if items_file and Path(items_file).is_file():
@@ -58,6 +71,11 @@ def write_local_drill(
 
 
 def latest_local(drill_dir: Path) -> Optional[Path]:
+    """latest_local。
+
+    Args:
+        drill_dir: drill_dir 参数。
+    """
     files = list(drill_dir.glob("local-*.json"))
     if not files:
         return None
@@ -66,6 +84,11 @@ def latest_local(drill_dir: Path) -> Optional[Path]:
 
 
 def summarize_local(drill_dir: Path) -> Dict[str, Any]:
+    """summarize_local。
+
+    Args:
+        drill_dir: drill_dir 参数。
+    """
     latest = latest_local(drill_dir)
     out: Dict[str, Any] = {
         "drill_dir": str(drill_dir),

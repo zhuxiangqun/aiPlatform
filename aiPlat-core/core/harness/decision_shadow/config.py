@@ -17,6 +17,7 @@ from typing import Any, Dict, Optional
 
 @dataclass(frozen=True)
 class DecisionShadowConfig:
+    """DecisionShadowConfig。"""
     enabled: bool = False
     sample_rate: float = 0.01
     trigger: str = "t3_or_t2_boundary"
@@ -28,6 +29,8 @@ class DecisionShadowConfig:
     store_raw_text: bool = False
 
     def to_public_dict(self) -> Dict[str, Any]:
+        """to_public_dict。
+        """
         d = asdict(self)
         d["honesty"] = (
             "skeleton only; default off; ≠ DomainRouter hook; "
@@ -82,7 +85,11 @@ def load_decision_shadow_config(
     *,
     overlay: Optional[Dict[str, Any]] = None,
 ) -> DecisionShadowConfig:
-    """Resolve config: defaults ← YAML ← env (env wins). Always defaults to off."""
+    """Resolve config: defaults ← YAML ← env (env wins). Always defaults to off.
+
+    Args:
+        overlay: overlay 参数。
+    """
     y = overlay if overlay is not None else _load_yaml_overlay()
     base = DecisionShadowConfig(
         enabled=bool(y.get("enabled", False)),

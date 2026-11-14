@@ -1,3 +1,5 @@
+"""base：模块接口。"""
+
 import logging
 """
 Skill Base Module
@@ -47,14 +49,28 @@ class BaseSkill(ISkill):
     """
 
     def __init__(self, config: SkillConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute skill - to be implemented by subclass"""
+        """Execute skill - to be implemented by subclass。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         raise NotImplementedError("Subclass must implement execute")
 
     async def validate(self, params: Dict[str, Any]) -> bool:
-        """Validate parameters - to be implemented by subclass"""
+        """Validate parameters - to be implemented by subclass。
+
+        Args:
+            params: params 参数。
+        """
         return True
 
     def get_config(self) -> SkillConfig:
@@ -92,6 +108,8 @@ class TextGenerationSkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = SkillConfig(
             name="text_generation",
             description="Generate text based on prompt",
@@ -109,11 +127,20 @@ class TextGenerationSkill(BaseSkill):
         self._model = None
 
     def set_model(self, model: Any) -> None:
-        """Set model for skill"""
+        """Set model for skill。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute text generation"""
+        """Execute text generation。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         if not self._model:
             return SkillResult(
                 success=False,
@@ -160,6 +187,8 @@ class CodeGenerationSkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = SkillConfig(
             name="code_generation",
             description="Generate code based on requirements",
@@ -181,7 +210,11 @@ class CodeGenerationSkill(BaseSkill):
         self._model = None
 
     def set_model(self, model: Any) -> None:
-        """Set model for skill"""
+        """Set model for skill。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
 
     @staticmethod
@@ -251,7 +284,12 @@ class CodeGenerationSkill(BaseSkill):
         return ""
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute code generation using best-available LLM via model_injection."""
+        """Execute code generation using best-available LLM via model_injection.
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         language = params.get("language", "python") if isinstance(params, dict) else "python"
         _lang_locked = bool(
             (params if isinstance(params, dict) else {}).get("_language_locked")
@@ -567,6 +605,8 @@ class DataAnalysisSkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         config = SkillConfig(
             name="data_analysis",
             description="Analyze data and provide insights",
@@ -584,11 +624,20 @@ class DataAnalysisSkill(BaseSkill):
         self._model = None
 
     def set_model(self, model: Any) -> None:
-        """Set model for skill"""
+        """Set model for skill。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
-        """Execute data analysis"""
+        """Execute data analysis。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         if not self._model:
             return SkillResult(
                 success=False,
@@ -640,8 +689,9 @@ _skill_factory_registry: Dict[str, type] = {}
 def register_skill_factory(skill_type: str, factory_class: type) -> None:
     """Register a skill factory class for a given skill type name.
 
-    Called during seed_data() so create_skill() can resolve types
-    without hardcoded if/elif chains.
+    Args:
+        skill_type: skill_type 参数。
+        factory_class: factory_class 参数。
     """
     _skill_factory_registry[skill_type] = factory_class
 
@@ -650,7 +700,12 @@ def create_skill(
     skill_type: str,
     **kwargs
 ) -> BaseSkill:
-    """Factory function to create skill. Uses registry lookup, not hardcoded if/elif."""
+    """Factory function to create skill. Uses registry lookup, not hardcoded if/elif.
+
+    Args:
+        skill_type: skill_type 参数。
+        kwargs: kwargs 参数。
+    """
     factory = _skill_factory_registry.get(skill_type)
     if factory:
         return factory()

@@ -1,3 +1,5 @@
+"""loader：模块接口。"""
+
 import logging
 """
 Config Loader Implementation - 配置加载器实现
@@ -21,6 +23,14 @@ class ConfigLoaderImpl(ConfigLoader):
         reload_interval: int = 60,
         validate: bool = True,
     ):
+        """初始化。
+
+        Args:
+            sources: sources 参数。
+            watch_enabled: watch_enabled 参数。
+            reload_interval: reload_interval 参数。
+            validate: validate 参数。
+        """
         self._sources = sources or []
         self._config: Optional[Config] = None
         self._watch_callbacks: List[Callable[[List[str], Config], None]] = []
@@ -29,11 +39,19 @@ class ConfigLoaderImpl(ConfigLoader):
         self._validate = validate
 
     def add_source(self, source: Any) -> None:
-        """添加配置源"""
+        """添加配置源。
+
+        Args:
+            source: source 参数。
+        """
         self._sources.append(source)
 
     def load(self, path: Optional[str] = None) -> Config:
-        """加载配置"""
+        """加载配置。
+
+        Args:
+            path: 路径。
+        """
         config_dict: Dict[str, Any] = {}
 
         for source in sorted(self._sources, key=lambda s: s.priority):
@@ -51,7 +69,11 @@ class ConfigLoaderImpl(ConfigLoader):
         return self.load()
 
     def watch(self, callback: Callable[[List[str], Config], None]) -> None:
-        """监听配置变更"""
+        """监听配置变更。
+
+        Args:
+            callback: callback 参数。
+        """
         self._watch_callbacks.append(callback)
 
     def _notify_watchers(self, changed_keys: List[str]) -> None:

@@ -41,9 +41,12 @@ def build_run_report(
 ) -> Dict[str, Any]:
     """Build a complete governance/explainability report for a pipeline run.
 
-    Aggregates the decision trace, cost, root-cause chain, and hypotheses into
-    one report. ``cost_used_usd`` / ``cost_budget_usd`` come from the pipeline
-    state (passed in by the caller), since cost is tracked per-run there.
+    Args:
+        run_id: 运行 ID。
+        cost_used_usd: cost_used_usd 参数。
+        cost_budget_usd: cost_budget_usd 参数。
+        failed_stage_ids: failed_stage_ids 参数。
+        test_report: test_report 参数。
     """
     from core.harness.execution.decision_trace import get_trace, trace_root_cause_chain, locate_max_error_node
     from core.harness.execution.hypothesis_generator import generate_hypotheses

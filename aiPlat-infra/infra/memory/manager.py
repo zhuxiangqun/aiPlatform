@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import os
 import uuid
 import psutil
@@ -18,13 +20,24 @@ logger = logging.getLogger(__name__)
 
 
 class RAMMemoryManager(MemoryManager):
+    """RAMMemoryManager。"""
     def __init__(self, config: MemoryConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._allocations: Dict[str, Allocation] = {}
         self._limits: Dict[str, MemoryLimit] = {}
         self._oom_threshold = config.oom_threshold
 
     def allocate(self, request: MemoryRequest) -> Allocation:
+        """allocate。
+
+        Args:
+            request: FastAPI Request。
+        """
         allocation = Allocation(
             id=str(uuid.uuid4()),
             address=0,
@@ -34,12 +47,22 @@ class RAMMemoryManager(MemoryManager):
         return allocation
 
     def release(self, allocation_id: str) -> bool:
+        """release。
+
+        Args:
+            allocation_id: allocation 标识。
+        """
         if allocation_id in self._allocations:
             del self._allocations[allocation_id]
             return True
         return False
 
     def get_stats(self, node_id: str) -> MemoryStats:
+        """获取 stats。
+
+        Args:
+            node_id: node 标识。
+        """
         mem = psutil.virtual_memory()
         return MemoryStats(
             total=mem.total,
@@ -49,14 +72,30 @@ class RAMMemoryManager(MemoryManager):
         )
 
     def set_limit(self, tenant_id: str, limit: MemoryLimit) -> bool:
+        """set_limit。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         self._limits[tenant_id] = limit
         return True
 
     def enable_oom_protection(self, threshold: float) -> bool:
+        """enable_oom_protection。
+
+        Args:
+            threshold: threshold 参数。
+        """
         self._oom_threshold = threshold
         return True
 
     def compact(self, node_id: str) -> bool:
+        """compact。
+
+        Args:
+            node_id: node 标识。
+        """
         import gc
 
         gc.collect()
@@ -64,7 +103,13 @@ class RAMMemoryManager(MemoryManager):
 
 
 class VRAMMemoryManager(MemoryManager):
+    """VRAMMemoryManager。"""
     def __init__(self, config: MemoryConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._allocations: Dict[str, Allocation] = {}
         self._limits: Dict[str, MemoryLimit] = {}
@@ -120,6 +165,11 @@ class VRAMMemoryManager(MemoryManager):
             return self._base_address + (self._address_counter * 4096)
 
     def allocate(self, request: MemoryRequest) -> Allocation:
+        """allocate。
+
+        Args:
+            request: FastAPI Request。
+        """
         allocation_id = str(uuid.uuid4())
         gpu_index = self._current_gpu_index
         if gpu_index == -1 and self._gpu_count > 0:
@@ -152,6 +202,11 @@ class VRAMMemoryManager(MemoryManager):
         return allocation
 
     def release(self, allocation_id: str) -> bool:
+        """release。
+
+        Args:
+            allocation_id: allocation 标识。
+        """
         with self._lock:
             if allocation_id in self._allocations:
                 allocation = self._allocations[allocation_id]
@@ -162,6 +217,11 @@ class VRAMMemoryManager(MemoryManager):
         return False
 
     def get_stats(self, node_id: str) -> MemoryStats:
+        """获取 stats。
+
+        Args:
+            node_id: node 标识。
+        """
         gpu_index = self._current_gpu_index
         if gpu_index == -1 and self._gpu_count > 0:
             gpu_index = 0
@@ -177,12 +237,23 @@ class VRAMMemoryManager(MemoryManager):
         )
 
     def set_limit(self, tenant_id: str, limit: MemoryLimit) -> bool:
+        """set_limit。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         with self._lock:
             self._limits[tenant_id] = limit
         logger.debug(f"Set memory limit for tenant {tenant_id}: soft={limit.soft_limit}, hard={limit.hard_limit}")
         return True
 
     def enable_oom_protection(self, threshold: float) -> bool:
+        """enable_oom_protection。
+
+        Args:
+            threshold: threshold 参数。
+        """
         if not self._initialized:
             logger.warning("Cannot enable OOM protection: NVML not initialized")
             return False
@@ -196,6 +267,8 @@ class VRAMMemoryManager(MemoryManager):
         return True
 
     def disable_oom_protection(self) -> bool:
+        """disable_oom_protection。
+        """
         self._oom_protection_enabled = False
         self._oom_stop_event.set()
         if self._oom_monitor_thread:
@@ -222,6 +295,11 @@ class VRAMMemoryManager(MemoryManager):
             self._oom_stop_event.wait(timeout=1.0)
 
     def compact(self, node_id: str) -> bool:
+        """compact。
+
+        Args:
+            node_id: node 标识。
+        """
         import gc
 
         with self._lock:
@@ -230,6 +308,8 @@ class VRAMMemoryManager(MemoryManager):
         return True
 
     def get_all_gpu_stats(self) -> List[MemoryStats]:
+        """获取 all_gpu_stats。
+        """
         if not self._initialized:
             return []
         stats_list = []
@@ -247,6 +327,11 @@ class VRAMMemoryManager(MemoryManager):
         return stats_list
 
     def set_active_gpu(self, gpu_index: int) -> bool:
+        """set_active_gpu。
+
+        Args:
+            gpu_index: gpu_index 参数。
+        """
         if gpu_index < 0 or gpu_index >= self._gpu_count:
             logger.error(f"Invalid GPU index: {gpu_index}")
             return False
@@ -255,9 +340,16 @@ class VRAMMemoryManager(MemoryManager):
         return True
 
     def get_gpu_count(self) -> int:
+        """获取 gpu_count。
+        """
         return self._gpu_count
 
     def get_allocator_name(self, gpu_index: int = 0) -> Optional[str]:
+        """获取 allocator_name。
+
+        Args:
+            gpu_index: gpu_index 参数。
+        """
         if not self._initialized:
             return None
         try:

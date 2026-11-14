@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 
 class TaskStatus(str, Enum):
+    """TaskStatus。"""
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"

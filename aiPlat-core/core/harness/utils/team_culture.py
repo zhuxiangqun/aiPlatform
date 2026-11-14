@@ -27,6 +27,8 @@ _SEED_CULTURE = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
@@ -39,6 +41,8 @@ def culture_body_path() -> Path:
 
 
 def load_culture_text() -> str:
+    """load_culture_text。
+    """
     path = culture_body_path()
     try:
         return path.read_text(encoding="utf-8")
@@ -48,6 +52,11 @@ def load_culture_text() -> str:
 
 
 def culture_body_hash(text: Optional[str] = None) -> str:
+    """culture_body_hash。
+
+    Args:
+        text: text 参数。
+    """
     raw = text if text is not None else load_culture_text()
     if not raw:
         return ""
@@ -55,6 +64,11 @@ def culture_body_hash(text: Optional[str] = None) -> str:
 
 
 def estimate_tokens(text: str) -> int:
+    """estimate_tokens。
+
+    Args:
+        text: text 参数。
+    """
     s = str(text or "")
     if not s:
         return 0
@@ -66,7 +80,12 @@ def truncate_culture_body(
     *,
     max_tokens: int = CULTURE_MAX_TOKENS,
 ) -> Dict[str, Any]:
-    """Keep mission/principles short; truncate with audit flag when over budget."""
+    """Keep mission/principles short; truncate with audit flag when over budget.
+
+    Args:
+        text: text 参数。
+        max_tokens: max_tokens 参数。
+    """
     body = str(text or "").strip()
     # Drop markdown H1 noise if present; keep content
     lines = [ln for ln in body.splitlines() if ln.strip()]
@@ -96,7 +115,12 @@ def resolve_culture_enabled(
     *,
     default: bool = True,
 ) -> bool:
-    """Independent switch. Env AIPLAT_TEAM_CULTURE=0 forces off."""
+    """Independent switch. Env AIPLAT_TEAM_CULTURE=0 forces off.
+
+    Args:
+        source: source 参数。
+        default: default 参数。
+    """
     env = os.getenv("AIPLAT_TEAM_CULTURE", "").strip().lower()
     if env in ("0", "false", "off", "no"):
         return False
@@ -122,7 +146,13 @@ def build_culture_overlay(
     text: Optional[str] = None,
     max_tokens: int = CULTURE_MAX_TOKENS,
 ) -> str:
-    """Ephemeral system-tail Culture block (empty when disabled/missing)."""
+    """Ephemeral system-tail Culture block (empty when disabled/missing).
+
+    Args:
+        enabled: 是否启用。
+        text: text 参数。
+        max_tokens: max_tokens 参数。
+    """
     if not enabled:
         return ""
     raw = text if text is not None else load_culture_text()
@@ -147,7 +177,13 @@ def inject_team_culture(
     enabled: bool = True,
     text: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Append Culture overlay to last system message. Never mutates tool roles."""
+    """Append Culture overlay to last system message. Never mutates tool roles.
+
+    Args:
+        messages: messages 参数。
+        enabled: 是否启用。
+        text: text 参数。
+    """
     msgs: List[Dict[str, Any]] = [dict(m) for m in messages]
     overlay = build_culture_overlay(enabled=enabled, text=text)
     if not overlay:
@@ -170,7 +206,14 @@ def compose_prose_overlays(
     hard_overlay: str = "",
     writing_overlay: str = "",
 ) -> str:
-    """Concatenate overlays in locked order: hard → Culture → output_style → writing."""
+    """Concatenate overlays in locked order: hard → Culture → output_style → writing.
+
+    Args:
+        culture_overlay: culture_overlay 参数。
+        style_overlay: style_overlay 参数。
+        hard_overlay: hard_overlay 参数。
+        writing_overlay: writing_overlay 参数。
+    """
     parts = [
         p.strip()
         for p in (hard_overlay, culture_overlay, style_overlay, writing_overlay)
@@ -184,7 +227,12 @@ def apply_project_culture_meta(
     *,
     culture_enabled: Optional[bool] = None,
 ) -> None:
-    """Persist Culture switch + hash on project metadata."""
+    """Persist Culture switch + hash on project metadata.
+
+    Args:
+        project: project 参数。
+        culture_enabled: culture_enabled 参数。
+    """
     if culture_enabled is not None:
         project["culture_enabled"] = bool(culture_enabled)
     project.setdefault("metadata", {})

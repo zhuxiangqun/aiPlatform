@@ -16,6 +16,12 @@ _ALLOWED = frozenset({"goto", "login", "click", "fill", "expect_url", "recon"})
 
 
 def normalize_step(raw: Any, *, index: int = 1) -> Optional[Dict[str, Any]]:
+    """normalize_step。
+
+    Args:
+        raw: raw 参数。
+        index: index 参数。
+    """
     if not isinstance(raw, dict):
         return None
     action = str(raw.get("action") or raw.get("type") or raw.get("kind") or "").strip().lower()
@@ -50,7 +56,11 @@ def normalize_step(raw: Any, *, index: int = 1) -> Optional[Dict[str, Any]]:
 
 
 def parse_flow(params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Build ordered steps from ``flow`` / ``steps`` / task text heuristics."""
+    """Build ordered steps from ``flow`` / ``steps`` / task text heuristics.
+
+    Args:
+        params: params 参数。
+    """
     raw = None
     for key in ("flow", "steps", "e2e_flow"):
         if isinstance(params.get(key), (list, dict, str)):
@@ -185,6 +195,14 @@ def find_element(
     role: str = "",
     password: bool = False,
 ) -> Optional[Dict[str, Any]]:
+    """find_element。
+
+    Args:
+        elements: elements 参数。
+        target: target 参数。
+        role: role 参数。
+        password: password 参数。
+    """
     rows = [e for e in (elements or []) if isinstance(e, dict)]
     want = str(target or "").casefold()
     want_role = str(role or "").casefold()
@@ -236,7 +254,11 @@ def find_element(
 
 
 def login_controls(elements: List[Dict[str, Any]]) -> Dict[str, Optional[Dict[str, Any]]]:
-    """Username, password, and submit taken from one list_elements snapshot."""
+    """Username, password, and submit taken from one list_elements snapshot.
+
+    Args:
+        elements: elements 参数。
+    """
     user = find_element(elements, role="text_input")
     password = find_element(elements, password=True)
     submit = (
@@ -249,7 +271,11 @@ def login_controls(elements: List[Dict[str, Any]]) -> Dict[str, Optional[Dict[st
 
 
 def semantic_hook(el: Optional[Dict[str, Any]]) -> str:
-    """testid or accessible name required before a control can be written into a spec."""
+    """testid or accessible name required before a control can be written into a spec.
+
+    Args:
+        el: el 参数。
+    """
     if not isinstance(el, dict):
         return ""
     for key in ("testid", "visible_text", "aria_label", "name", "placeholder"):
@@ -260,7 +286,12 @@ def semantic_hook(el: Optional[Dict[str, Any]]) -> str:
 
 
 def login_gap(step: Dict[str, Any], elements: List[Dict[str, Any]]) -> Optional[str]:
-    """Why this login step cannot be grounded. None when the snapshot is enough."""
+    """Why this login step cannot be grounded. None when the snapshot is enough.
+
+    Args:
+        step: step 参数。
+        elements: elements 参数。
+    """
     needs_user = bool(str(step.get("username") or "").strip())
     needs_pass = bool(str(step.get("password") or "").strip())
     if not needs_user and not needs_pass:
@@ -289,7 +320,13 @@ def scaffold_flow_spec(
     recon_by_step: Dict[str, Dict[str, Any]],
     title: str = "e2e business flow",
 ) -> str:
-    """Emit one Playwright test chaining semantic actions from per-step recon."""
+    """Emit one Playwright test chaining semantic actions from per-step recon.
+
+    Args:
+        steps: steps 参数。
+        recon_by_step: recon_by_step 参数。
+        title: title 参数。
+    """
     lines = [
         "import { test, expect } from '@playwright/test';",
         "",

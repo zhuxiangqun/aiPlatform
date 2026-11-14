@@ -46,10 +46,13 @@ _NEVER_RETRY: tuple[Type[BaseException], ...] = (TimeoutError, asyncio.TimeoutEr
 
 class ResilienceGate:
 
+    """ResilienceGate。"""
     def __init__(self) -> None:
 
         # ── Structured metrics ──
 
+        """初始化。
+        """
         self._total_calls: int = 0
 
         self._total_retries: int = 0
@@ -88,6 +91,16 @@ class ResilienceGate:
 
     ) -> T:
 
+        """run。
+
+        Args:
+            fn: fn 参数。
+            retries: retries 参数。
+            timeout_seconds: timeout_seconds 参数。
+            retry_on: retry_on 参数。
+            backoff_base_seconds: backoff_base_seconds 参数。
+            backoff_max_seconds: backoff_max_seconds 参数。
+        """
         self._total_calls += 1
 
         last_exc: Optional[BaseException] = None
@@ -297,6 +310,8 @@ class ResilienceGate:
 
     def get_stats(self) -> dict:
 
+        """获取 stats。
+        """
         return {
 
             "total_calls": self._total_calls,

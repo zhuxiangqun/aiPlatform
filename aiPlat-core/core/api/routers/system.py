@@ -1,3 +1,8 @@
+"""system：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -7,6 +12,7 @@ from pydantic import BaseModel
 
 class ItemResponse(BaseModel):
 
+    """ItemResponse。"""
     data: dict = {}
 
 
@@ -15,6 +21,7 @@ class ItemResponse(BaseModel):
 
 class StatusResponse(BaseModel):
 
+    """StatusResponse。"""
     status: str = "ok"
 
     message: str = ""
@@ -604,7 +611,11 @@ async def _scheduler_loop(interval_seconds: int = 3600):
 
 def start_background_scheduler(interval_seconds: int = 3600):
 
-    """Start the self-evolution background scheduler. Idempotent."""
+    """Start the self-evolution background scheduler. Idempotent.
+
+    Args:
+        interval_seconds: interval_seconds 参数。
+    """
 
     global _scheduler_started
 

@@ -81,7 +81,12 @@ COST_PER_TOOL = {
 # ============================================================
 
 def measure_graph_tool(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
-    """Run a single graph tool call and measure performance."""
+    """Run a single graph tool call and measure performance.
+
+    Args:
+        tool_name: tool_name 参数。
+        args: args 参数。
+    """
     tool_map = {
         "sysgraph_callers": "SysGraphCallersTool",
         "sysgraph_search": "SysGraphSearchTool",
@@ -131,12 +136,8 @@ def measure_graph_tool(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 def simulate_fallback(ops_count: int) -> Dict[str, Any]:
     """Simulate fallback exploration without graph tools.
 
-    A typical exploration without a graph involves:
-      - 1-2 grep/find calls to locate candidates
-      - N Read calls to inspect candidate files
-      - More greps to resolve dependencies
-
-    ops_count represents the total number of tool calls.
+    Args:
+        ops_count: ops_count 参数。
     """
     grep_calls = min(ops_count // 2, 3)
     read_calls = ops_count - grep_calls

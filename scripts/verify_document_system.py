@@ -13,15 +13,29 @@ DOC = WORKSPACE / "docs" / "DOCUMENT_SYSTEM.md"
 
 
 def fail(msg: str) -> None:
+    """fail。
+
+    Args:
+        msg: msg 参数。
+    """
     print(f"❌ {msg}")
 
 
 def section(text: str, start: str, end: str) -> str:
+    """section。
+
+    Args:
+        text: text 参数。
+        start: start 参数。
+        end: end 参数。
+    """
     m = re.search(rf"{re.escape(start)}.*?(?=^{re.escape(end)})", text, re.S | re.M)
     return m.group(0) if m else ""
 
 
 def main() -> int:
+    """main。
+    """
     errors: list[str] = []
     if not DOC.exists():
         fail(f"missing {DOC}")

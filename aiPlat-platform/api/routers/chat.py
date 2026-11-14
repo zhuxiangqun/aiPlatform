@@ -33,6 +33,13 @@ def _svc(rt: Optional[KernelRuntime] = None):
 
 @router.post("/sessions", response_model=ChatSessionResponse)
 async def create_session(request: dict, rt: RuntimeDep = None, _auth: str = Depends(require_auth)):
+    """创建 session。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     agent_id = request.get("agent_id", "")
     system_prompt = request.get("system_prompt", "")
     template_id = request.get("template_id", "")
@@ -60,12 +67,27 @@ async def create_session(request: dict, rt: RuntimeDep = None, _auth: str = Depe
 
 @router.post("/sessions/{session_id}/chat", response_model=ChatReplyResponse)
 async def chat(session_id: str, request: dict, rt: RuntimeDep = None, _auth: str = Depends(require_auth)):
+    """chat。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        rt: rt 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     message = request.get("message", "")
     return await _svc(rt).chat(session_id, message)
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionDetailResponse)
 async def get_session(session_id: str, rt: RuntimeDep = None, _auth: str = Depends(require_auth)):
+    """获取 session。
+
+    Args:
+        session_id: 会话 ID。
+        rt: rt 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     s = await _svc(rt).get_session(session_id)
     if not s:
         raise HTTPException(404, "Session not found")

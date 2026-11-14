@@ -139,6 +139,8 @@ class SkillCurator:
 
     def curate(self) -> Dict[str, Any]:
 
+        """curate。
+        """
         if not _should_curate():
 
             return {"skipped": True, "reason": "Last curation < 7 days ago"}

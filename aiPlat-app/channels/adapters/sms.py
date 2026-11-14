@@ -17,6 +17,11 @@ class SMSAdapter(ChannelAdapter):
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # Twilio: {"From":"+15551234567","To":"+15559876543","Body":"hello","MessageSid":"SM..."}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = str(raw_data.get("Body", "") or raw_data.get("body", "") or "")
         from_num = str(raw_data.get("From", "") or raw_data.get("from", ""))
         to_num = str(raw_data.get("To", "") or raw_data.get("to", ""))
@@ -32,6 +37,11 @@ class SMSAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "To": response.message_id,
             "Body": response.text,

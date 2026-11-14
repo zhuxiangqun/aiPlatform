@@ -43,6 +43,7 @@ RULES = {
 
 @dataclass
 class HealLogEntry:
+    """HealLogEntry。"""
     timestamp: float
     signal_type: str
     source: str
@@ -55,6 +56,8 @@ class SelfHealGate:
     """Automated system health response with safety gating."""
 
     def __init__(self):
+        """__init__。
+        """
         self._home = Path(get_aiplat_home())
         self._log_path = self._home / "self_heal_log.json"
         self._pending_path = self._home / "self_heal_pending.json"
@@ -94,7 +97,10 @@ class SelfHealGate:
               agent_importance: str = "dev") -> Dict[str, Any]:
         """Apply the appropriate response and log it.
 
-        Returns execution result for audit trail.
+        Args:
+            signal_type: signal_type 参数。
+            signal_data: signal_data 参数。
+            agent_importance: agent_importance 参数。
         """
         level = self.evaluate(signal_type, signal_data, agent_importance)
         rule = RULES.get(signal_type, {"level": SUGGEST, "action": "Unknown"})
@@ -197,7 +203,11 @@ class SelfHealGate:
             logging.getLogger(__name__).debug("SelfHeal: failed to write heal log", exc_info=True)
 
     def get_heal_log(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """Read recent self-heal actions."""
+        """Read recent self-heal actions.
+
+        Args:
+            limit: 返回条数上限。
+        """
         try:
             if not self._log_path.exists():
                 return []
@@ -213,8 +223,9 @@ class SelfHealGate:
     def evaluate_all(self, eval_results: dict, skip_rejected: bool = True) -> Dict[str, Any]:
         """Inline self-heal: only triggers for agents with composite < 60.
 
-        Has re-entrance protection: same agent+signal_type within 60s → skip.
-        Only applies AUTO + SUGGEST rules; REJECT rules deferred to cron.
+        Args:
+            eval_results: eval_results 参数。
+            skip_rejected: skip_rejected 参数。
         """
         import time as _t
         results = {}
@@ -275,7 +286,11 @@ class SelfHealGate:
         return []
 
     def approve_fix(self, fix_id: str) -> Dict[str, Any]:
-        """Approve and apply a pending fix from the dashboard."""
+        """Approve and apply a pending fix from the dashboard.
+
+        Args:
+            fix_id: fix 标识。
+        """
         entries = self.list_pending()
         for e in entries:
             if e.get("id") == fix_id:
@@ -292,7 +307,12 @@ class SelfHealGate:
         return {"status": "not_found", "fix_id": fix_id}
 
     def reject_fix(self, fix_id: str, reason: str = "") -> Dict[str, Any]:
-        """Reject a pending fix from the dashboard."""
+        """Reject a pending fix from the dashboard.
+
+        Args:
+            fix_id: fix 标识。
+            reason: reason 参数。
+        """
         entries = self.list_pending()
         for e in entries:
             if e.get("id") == fix_id:

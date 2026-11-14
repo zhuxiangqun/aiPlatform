@@ -7,6 +7,7 @@ import logging
 
 @dataclass
 class AgentCard:
+    """AgentCard。"""
     name: str = "aiPlat"
     description: str = "企业AI平台 — 303项能力，四层架构（Harness×记忆×知识×编排）"
     version: str = "7.0"
@@ -22,7 +23,11 @@ class AgentCard:
 
     @classmethod
     async def from_registry(cls, base_url: str = "") -> "AgentCard":
-        """Auto-populate skills from SkillRegistry and ToolRegistry."""
+        """Auto-populate skills from SkillRegistry and ToolRegistry.
+
+        Args:
+            base_url: base_url 参数。
+        """
         skills: List[Dict] = []
 
         try:
@@ -60,6 +65,8 @@ class AgentCard:
         )
 
     def to_dict(self) -> Dict:
+        """to_dict。
+        """
         return {
             "@context": "https://a2a-protocol.google.com/context/agent.jsonld",
             "name": self.name,

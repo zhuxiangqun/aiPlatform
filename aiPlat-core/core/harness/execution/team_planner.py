@@ -31,6 +31,7 @@ logger = logging.getLogger("aiplat.team_planner")
 
 @dataclass
 class AgentCatalogEntry:
+    """AgentCatalogEntry。"""
     agent_id: str
     display_name: str
     agent_type: str
@@ -44,6 +45,7 @@ class AgentCatalogEntry:
 
 @dataclass
 class TeamRecommendation:
+    """TeamRecommendation。"""
     team_name: str
     reasoning: str
     stages: List[Dict[str, Any]] = field(default_factory=list)
@@ -92,7 +94,11 @@ _TEMPLATE_TO_MODE = {
 
 
 def normalize_factory_mode(raw: Any) -> str:
-    """Normalize user/LLM factory_mode to agent|code|hybrid, or '' if unset/auto."""
+    """Normalize user/LLM factory_mode to agent|code|hybrid, or '' if unset/auto.
+
+    Args:
+        raw: raw 参数。
+    """
     s = str(raw or "").strip().lower()
     if not s or s in ("auto", "none", "unset"):
         return ""
@@ -105,15 +111,19 @@ def normalize_factory_mode(raw: Any) -> str:
 def mode_to_team_template(mode: str) -> str:
     """Map normalized factory_mode → team YAML stem (default|code_split|hybrid).
 
-    ``code`` maps to ``code_split`` (startable Vite+FastAPI scaffold team).
-    Explicit ``team_template="code"`` still loads the legacy programmer-only YAML.
+    Args:
+        mode: mode 参数。
     """
     m = normalize_factory_mode(mode)
     return _MODE_TO_TEMPLATE.get(m, "default") if m else "default"
 
 
 def team_template_to_mode(template: str) -> str:
-    """Map team YAML name/path → factory_mode."""
+    """Map team YAML name/path → factory_mode.
+
+    Args:
+        template: template 参数。
+    """
     name = str(template or "").strip().removesuffix(".yaml").removesuffix(".yml")
     name = name.rsplit("/", 1)[-1]
     return _TEMPLATE_TO_MODE.get(name, "")
@@ -217,8 +227,8 @@ def _team_yaml_candidates(name: str) -> List[str]:
 def load_team_template(name: str) -> Optional[TeamTemplate]:
     """Load a specific team template by name (without .yaml extension).
 
-    Search order: pulled ``team/teams`` → ``$AIPLAT_HOME/teams`` →
-    ``workspace_seeds/teams``. Returns None if missing.
+    Args:
+        name: name 参数。
     """
     import yaml as _yaml
 
@@ -376,7 +386,11 @@ def _topological_order(stages: List[Dict]) -> List[Dict]:
 
 
 def build_agent_catalog_markdown(agents: Optional[List[AgentCatalogEntry]] = None) -> str:
-    """Format agent catalog as a markdown table for LLM prompts."""
+    """Format agent catalog as a markdown table for LLM prompts.
+
+    Args:
+        agents: agents 参数。
+    """
     if agents is None:
         agents = list_available_agents()
 
@@ -741,7 +755,12 @@ async def recommend_team_stages(
 
 
 def json_dumps_safe(obj: Any, max_len: int = 8000) -> str:
-    """Safe JSON dump with length limit."""
+    """Safe JSON dump with length limit.
+
+    Args:
+        obj: obj 参数。
+        max_len: max_len 参数。
+    """
     import json as _json
     try:
         if isinstance(obj, dict):

@@ -103,6 +103,8 @@ app.add_middleware(PlatformTokenMiddleware)
 
 def health():
 
+    """health。
+    """
     return {"status": "healthy"}
 
 
@@ -226,7 +228,12 @@ async def _governance_middleware(request: Request, call_next):
 
 async def value_error_handler(request: Request, exc: ValueError):
 
-    """Convert uncaught ValueError to structured response (404 for not-found, 400 otherwise)."""
+    """Convert uncaught ValueError to structured response (404 for not-found, 400 otherwise).
+
+    Args:
+        request: FastAPI Request。
+        exc: exc 参数。
+    """
 
     import logging
 
@@ -324,6 +331,7 @@ except Exception:
 
 class Identity:
 
+    """Identity。"""
     request_id: str
 
     tenant_id: str
@@ -1644,6 +1652,11 @@ async def platform_whoami(request: Request):
 
     # Spoofable headers only via _resolve_identity (DEV_MODE / identity secret / JWT / API key).
 
+    """platform_whoami。
+
+    Args:
+        request: FastAPI Request。
+    """
     ident = _resolve_identity(request)
 
     return {
@@ -1670,6 +1683,12 @@ async def platform_whoami(request: Request):
 
 def platform_app_create_channel(body: Dict[str, Any], request: Request):
 
+    """platform_app_create_channel。
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from datetime import datetime, timezone as _dt
 
     cid = _new_prefixed_id("ch")
@@ -1698,6 +1717,12 @@ def platform_app_create_channel(body: Dict[str, Any], request: Request):
 
 def platform_app_create_session(body: Dict[str, Any], request: Request):
 
+    """platform_app_create_session。
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from datetime import datetime, timezone as _dt
 
     sid = _new_prefixed_id("ses")
@@ -1730,7 +1755,9 @@ async def kb_reindex(request: Request):
 
     """Re-embed all existing document elements using the current embedding model.
 
-    Useful after switching embedding models (e.g., MiniLM → Jina)."""
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -1810,7 +1837,12 @@ async def kb_reindex(request: Request):
 
 async def kb_doc_versions(doc_id: str, request: Request):
 
-    """Get version history for a document."""
+    """Get version history for a document.
+
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -1870,7 +1902,13 @@ async def kb_doc_versions(doc_id: str, request: Request):
 
 async def kb_doc_rollback(doc_id: str, version: int, request: Request):
 
-    """Rollback document to a previous version (un-archive old elements)."""
+    """Rollback document to a previous version (un-archive old elements).
+
+    Args:
+        doc_id: doc 标识。
+        version: version 参数。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -1940,7 +1978,11 @@ async def kb_doc_rollback(doc_id: str, version: int, request: Request):
 
 async def kb_stats(request: Request):
 
-    """Knowledge base statistics: document/element/embedding counts + storage."""
+    """Knowledge base statistics: document/element/embedding counts + storage.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -2018,6 +2060,11 @@ async def kb_stats(request: Request):
 
 async def kb_list_collections(request: Request):
 
+    """kb_list_collections。
+
+    Args:
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -2076,6 +2123,12 @@ async def kb_list_collections(request: Request):
 
 async def kb_get_job(job_id: str, request: Request):
 
+    """kb_get_job。
+
+    Args:
+        job_id: job 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -2138,6 +2191,14 @@ async def kb_get_job(job_id: str, request: Request):
 
 async def kb_get_job_events(job_id: str, request: Request, limit: int = 200, offset: int = 0):
 
+    """kb_get_job_events。
+
+    Args:
+        job_id: job 标识。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -2220,6 +2281,12 @@ async def kb_get_job_events(job_id: str, request: Request, limit: int = 200, off
 
 async def kb_create_collection(req: KBCollectionCreateRequest, request: Request):
 
+    """kb_create_collection。
+
+    Args:
+        req: req 参数。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:write")
@@ -2268,6 +2335,12 @@ async def kb_create_collection(req: KBCollectionCreateRequest, request: Request)
 
 async def kb_document_categories(request: Request, collection_id: Optional[str] = None):
 
+    """kb_document_categories。
+
+    Args:
+        request: FastAPI Request。
+        collection_id: collection 标识。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -2354,6 +2427,12 @@ async def kb_document_categories(request: Request, collection_id: Optional[str] 
 
 async def kb_list_documents(collection_id: str, request: Request):
 
+    """kb_list_documents。
+
+    Args:
+        collection_id: collection 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -2426,6 +2505,12 @@ async def kb_list_documents(collection_id: str, request: Request):
 
 async def kb_delete_document(doc_id: str, request: Request):
 
+    """kb_delete_document。
+
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:write")
@@ -2552,7 +2637,11 @@ async def kb_delete_document(doc_id: str, request: Request):
 
 async def kb_ingest_url(request: Request):
 
-    """Ingest a web page by URL. Parses HTML and adds to knowledge base."""
+    """Ingest a web page by URL. Parses HTML and adds to knowledge base.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     import logging
 
@@ -2605,7 +2694,12 @@ async def kb_ingest_url(request: Request):
 
 async def kb_metrics(tenant_id: str = "", hours: int = 168):
 
-    """Return 7 operational KB metrics: no-answer rate, citation coverage, etc."""
+    """Return 7 operational KB metrics: no-answer rate, citation coverage, etc.
+
+    Args:
+        tenant_id: 租户 ID。
+        hours: hours 参数。
+    """
 
     from kb.metrics import get_kb_metrics
 
@@ -2623,12 +2717,11 @@ async def kb_metrics(tenant_id: str = "", hours: int = 168):
 
 async def kb_reingest_document(doc_id: str, request: Request):
 
-    """
+    """Re-run ingest for an existing document (uses stored source_uri).
 
-    Re-run ingest for an existing document (uses stored source_uri).
-
-    Returns a new job_id (core enqueue_ingest creates a fresh job each time).
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
     """
 
     identity = _resolve_identity(request)
@@ -2798,6 +2891,7 @@ async def kb_reingest_document(doc_id: str, request: Request):
 
 class AgentExecuteRequest(BaseModel):
 
+    """AgentExecuteRequest。"""
     input: str
 
     session_id: str = ""
@@ -2810,6 +2904,7 @@ class AgentExecuteRequest(BaseModel):
 
 class DocIngestRequest(BaseModel):
 
+    """DocIngestRequest。"""
     collection_id: str = "default"
 
     url: Optional[str] = None
@@ -2830,12 +2925,14 @@ class DocIngestRequest(BaseModel):
 
 class DocRefreshRequest(BaseModel):
 
+    """DocRefreshRequest。"""
     force: bool = False
 
 
 
 class KBCollectionCreateRequest(BaseModel):
 
+    """KBCollectionCreateRequest。"""
     collection_id: Optional[str] = ""
 
     name: Optional[str] = ""
@@ -2844,6 +2941,7 @@ class KBCollectionCreateRequest(BaseModel):
 
 class KBQueryRequest(BaseModel):
 
+    """KBQueryRequest。"""
     collection_id: Optional[str] = ""
 
     question: Optional[str] = ""
@@ -2862,18 +2960,10 @@ class KBQueryRequest(BaseModel):
 
 async def documents_preview(request: Request):
 
-    """
+    """Preview a document without saving to KB.
 
-    Preview a document without saving to KB.
-
-    Accepts:
-
-      - multipart/form-data with: file, kind, collection_id
-
-      - application/json with: url, collection_id
-
-    Returns parsed elements + classification for user review before ingest.
-
+    Args:
+        request: FastAPI Request。
     """
 
     identity = _resolve_identity(request)
@@ -3002,16 +3092,10 @@ async def documents_preview(request: Request):
 
 async def documents_ingest(request: Request):
 
-    """
+    """Generic document ingest (MVP):。
 
-    Generic document ingest (MVP):
-
-    - multipart: upload file
-
-    - json: ingest by url
-
-    Returns {job_id, doc_id}.
-
+    Args:
+        request: FastAPI Request。
     """
 
     identity = _resolve_identity(request)
@@ -3278,7 +3362,11 @@ async def documents_ingest(request: Request):
 
 async def documents_ingest_directory(request: Request):
 
-    """Batch ingest documents from a directory — delegates to kb/service.py pipeline."""
+    """Batch ingest documents from a directory — delegates to kb/service.py pipeline.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -3300,7 +3388,11 @@ async def documents_ingest_directory(request: Request):
 
 async def kb_watch_directory(request: Request):
 
-    """Watch a directory for auto-ingest — delegates to kb/service.py background thread."""
+    """Watch a directory for auto-ingest — delegates to kb/service.py background thread.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -3454,10 +3546,15 @@ async def documents_list(
 
 ):
 
-    """
+    """List documents with lightweight stats for management UI.
 
-    List documents with lightweight stats for management UI.
-
+    Args:
+        request: FastAPI Request。
+        collection_id: collection 标识。
+        status: status 参数。
+        kind: kind 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
     """
 
     identity = _resolve_identity(request)
@@ -3576,12 +3673,11 @@ async def documents_list(
 
 async def documents_categories(request: Request, collection_id: Optional[str] = None):
 
-    """
+    """Aggregate category counts for the left sidebar tree.
 
-    Aggregate category counts for the left sidebar tree.
-
-    Returns kind_categories (by file type) and content_categories (by content analysis).
-
+    Args:
+        request: FastAPI Request。
+        collection_id: collection 标识。
     """
 
     identity = _resolve_identity(request)
@@ -3698,10 +3794,11 @@ async def documents_categories(request: Request, collection_id: Optional[str] = 
 
 async def documents_get(doc_id: str, request: Request):
 
-    """
+    """Get one document with aggregated stats.
 
-    Get one document with aggregated stats.
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
     """
 
     identity = _resolve_identity(request)
@@ -3780,10 +3877,13 @@ async def documents_get(doc_id: str, request: Request):
 
 async def documents_list_sources(doc_id: str, request: Request, limit: int = 100, offset: int = 0):
 
-    """
+    """List provenance sources for a document.
 
-    List provenance sources for a document.
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
     """
 
     identity = _resolve_identity(request)
@@ -3870,10 +3970,15 @@ async def documents_list_sources(doc_id: str, request: Request, limit: int = 100
 
 async def documents_list_analysis_runs(doc_id: str, request: Request, run_type: Optional[str] = None, q: Optional[str] = None, limit: int = 100, offset: int = 0):
 
-    """
+    """List persisted analysis results for a document.
 
-    List persisted analysis results for a document.
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+        run_type: run_type 参数。
+        q: q 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
     """
 
     identity = _resolve_identity(request)
@@ -3990,10 +4095,12 @@ async def documents_list_analysis_runs(doc_id: str, request: Request, run_type: 
 
 async def documents_delete_analysis_run(doc_id: str, run_id: str, request: Request):
 
-    """
+    """Delete one persisted analysis result.
 
-    Delete one persisted analysis result.
-
+    Args:
+        doc_id: doc 标识。
+        run_id: 运行 ID。
+        request: FastAPI Request。
     """
 
     identity = _resolve_identity(request)
@@ -4066,14 +4173,14 @@ async def documents_export(
 
 ):
 
-    """
+    """Export a document as JSON or Markdown.
 
-    Export a document as JSON or Markdown.
-
-    - format=json: structured payload for integrations
-
-    - format=markdown: lightweight readable text
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+        format: format 参数。
+        include_embeddings: include_embeddings 参数。
+        limit: 返回条数上限。
     """
 
     identity = _resolve_identity(request)
@@ -4354,12 +4461,14 @@ async def documents_export(
 
 async def documents_list_elements(doc_id: str, request: Request, type: Optional[str] = None, limit: int = 200, offset: int = 0):
 
-    """
+    """List parsed elements for a document.
 
-    List parsed elements for a document.
-
-    This is a debug-friendly API for app integration.
-
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+        type: type 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
     """
 
     identity = _resolve_identity(request)
@@ -4480,6 +4589,12 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
     # Structured retrieve via platform_query (not prompt skill) so Pi citation + telemetry get items.
 
+    """kb_query。
+
+    Args:
+        req: req 参数。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -4544,7 +4659,11 @@ async def kb_query(req: KBQueryRequest, request: Request):
 
 async def collection_query(request: Request):
 
-    """Query a single KB collection — wraps structured retrieve with top_k→limit mapping."""
+    """Query a single KB collection — wraps structured retrieve with top_k→limit mapping.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -4610,7 +4729,11 @@ async def collection_query(request: Request):
 
 async def document_summarize(request: Request):
 
-    """Summarize a document using LLM (calls core skill document_summarize)."""
+    """Summarize a document using LLM (calls core skill document_summarize).
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -4650,7 +4773,11 @@ async def document_summarize(request: Request):
 
 async def collection_rewrite_answer(request: Request):
 
-    """Rewrite/improve a KB answer using LLM (calls core skill collection_rewrite_answer)."""
+    """Rewrite/improve a KB answer using LLM (calls core skill collection_rewrite_answer).
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -4698,6 +4825,13 @@ async def kb_get_page_image(doc_id: str, page_idx: int, request: Request):
 
     # Static asset: return rendered page image (safe path join by tenant/doc/page).
 
+    """kb_get_page_image。
+
+    Args:
+        doc_id: doc 标识。
+        page_idx: page_idx 参数。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -4724,6 +4858,13 @@ async def kb_get_page_image(doc_id: str, page_idx: int, request: Request):
 
 async def kb_get_frame_image(doc_id: str, frame_idx: int, request: Request):
 
+    """kb_get_frame_image。
+
+    Args:
+        doc_id: doc 标识。
+        frame_idx: frame_idx 参数。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "kb:read")
@@ -4746,6 +4887,13 @@ async def kb_get_frame_image(doc_id: str, frame_idx: int, request: Request):
 
 async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request: Request):
 
+    """api_v1_agent_execute。
+
+    Args:
+        agent_id: Agent ID。
+        req: req 参数。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _reject_anonymous_execute(identity)
@@ -4794,6 +4942,13 @@ async def api_v1_agent_execute(agent_id: str, req: AgentExecuteRequest, request:
 
 async def api_v1_agents_list(request: Request, limit: int = 100, offset: int = 0):
 
+    """api_v1_agents_list。
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     identity = _resolve_identity(request)
 
     data = await _core_request(
@@ -4820,7 +4975,13 @@ async def api_v1_agents_list(request: Request, limit: int = 100, offset: int = 0
 
 async def platform_workspace_agents_list(request: Request, limit: int = 200, offset: int = 0):
 
-    """Agent pool for team assembly — delegates to core workspace agents."""
+    """Agent pool for team assembly — delegates to core workspace agents.
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
 
     identity = _resolve_identity(request)
 
@@ -4844,6 +5005,12 @@ async def platform_workspace_agents_list(request: Request, limit: int = 200, off
 
 async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
 
+    """api_v1_agents_create。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     import logging
 
     identity = _resolve_identity(request)
@@ -4940,6 +5107,12 @@ async def api_v1_agents_create(request: Request, body: Dict[str, Any]):
 
 async def api_v1_agents_get(agent_id: str, request: Request):
 
+    """api_v1_agents_get。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     agent = await _core_request("GET", f"/api/core/workspace/agents/{agent_id}", identity=identity)
@@ -4954,6 +5127,13 @@ async def api_v1_agents_get(agent_id: str, request: Request):
 
 async def api_v1_agents_update(agent_id: str, request: Request, body: Dict[str, Any]):
 
+    """api_v1_agents_update。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     identity = _resolve_identity(request)
 
     if not isinstance(body, dict):
@@ -4988,6 +5168,12 @@ async def api_v1_agents_update(agent_id: str, request: Request, body: Dict[str, 
 
 async def api_v1_agents_delete(agent_id: str, request: Request):
 
+    """api_v1_agents_delete。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     try:
@@ -5020,6 +5206,12 @@ async def api_v1_agents_delete(agent_id: str, request: Request):
 
 async def list_gateway_routes(enabled: Optional[bool] = None, _auth: str = Depends(require_auth)):
 
+    """列出 gateway_routes。
+
+    Args:
+        enabled: 是否启用。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     routes = platform_store.list_gateway_routes(enabled=enabled)
 
     return {"routes": routes, "total": len(routes)}
@@ -5034,6 +5226,12 @@ async def list_gateway_routes(enabled: Optional[bool] = None, _auth: str = Depen
 
 async def create_gateway_route(body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """创建 gateway_route。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     rid = str(body.get("id") or _new_prefixed_id("route"))
 
     route = {
@@ -5072,6 +5270,12 @@ async def create_gateway_route(body: Dict[str, Any], _auth: str = Depends(requir
 
 async def get_gateway_route(route_id: str, _auth: str = Depends(require_auth)):
 
+    """获取 gateway_route。
+
+    Args:
+        route_id: route 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     r = platform_store.get_gateway_route(route_id)
 
     if not r:
@@ -5090,6 +5294,13 @@ async def get_gateway_route(route_id: str, _auth: str = Depends(require_auth)):
 
 async def update_gateway_route(route_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """更新 gateway_route。
+
+    Args:
+        route_id: route 标识。
+        patch: patch 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     r = platform_store.get_gateway_route(route_id)
 
     if not r:
@@ -5110,6 +5321,12 @@ async def update_gateway_route(route_id: str, patch: Dict[str, Any], _auth: str 
 
 async def delete_gateway_route(route_id: str, _auth: str = Depends(require_admin)):
 
+    """删除 gateway_route。
+
+    Args:
+        route_id: route 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     platform_store.delete_gateway_route(route_id)
 
     return {"status": "ok"}
@@ -5123,6 +5340,11 @@ async def delete_gateway_route(route_id: str, _auth: str = Depends(require_admin
 async def gateway_metrics(_auth: str = Depends(require_auth)):
 
     # Not instrumented yet — never fake success_rate=1.0 (enterprise trust).
+    """gateway_metrics。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return {
         "status": "unavailable",
         "total_requests": None,
@@ -5142,6 +5364,12 @@ async def gateway_metrics(_auth: str = Depends(require_auth)):
 
 async def gateway_execute(body: Dict[str, Any], request: Request):
 
+    """gateway_execute。
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _reject_anonymous_execute(identity)
@@ -5226,6 +5454,13 @@ async def gateway_execute(body: Dict[str, Any], request: Request):
 
 async def list_auth_users(role: Optional[str] = None, status: Optional[str] = None, _auth: str = Depends(require_admin)):
 
+    """列出 auth_users。
+
+    Args:
+        role: role 参数。
+        status: status 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     users = platform_store.list_auth_users(role=role, status=status)
 
     return {"users": users, "total": len(users)}
@@ -5238,6 +5473,12 @@ async def list_auth_users(role: Optional[str] = None, status: Optional[str] = No
 
 async def create_auth_user(body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """创建 auth_user。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     uid = str(body.get("id") or _new_prefixed_id("u"))
 
     user = {
@@ -5263,7 +5504,12 @@ async def create_auth_user(body: Dict[str, Any], _auth: str = Depends(require_ad
 
 @app.post("/platform/auth/mfa/setup")
 async def mfa_setup(body: Dict[str, Any], _auth: str = Depends(require_admin)):
-    """为指定用户启用 MFA，返回 TOTP 密钥与扫码 URI。"""
+    """为指定用户启用 MFA，返回 TOTP 密钥与扫码 URI。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from auth.mfa import generate_totp_secret, totp_uri
     uid = str(body.get("user_id") or "")
     user = platform_store.get_auth_user(uid)
@@ -5279,7 +5525,12 @@ async def mfa_setup(body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
 @app.post("/platform/auth/mfa/verify")
 async def mfa_verify(body: Dict[str, Any], _auth: str = Depends(require_admin)):
-    """校验 TOTP 码，通过后激活该用户 MFA。"""
+    """校验 TOTP 码，通过后激活该用户 MFA。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from auth.mfa import verify_totp
     uid = str(body.get("user_id") or "")
     code = str(body.get("code") or "")
@@ -5295,7 +5546,12 @@ async def mfa_verify(body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
 @app.post("/platform/auth/mfa/disable")
 async def mfa_disable(body: Dict[str, Any], _auth: str = Depends(require_admin)):
-    """关闭用户 MFA（需提供有效 TOTP 码）。"""
+    """关闭用户 MFA（需提供有效 TOTP 码）。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from auth.mfa import verify_totp
     uid = str(body.get("user_id") or "")
     code = str(body.get("code") or "")
@@ -5317,6 +5573,13 @@ async def mfa_disable(body: Dict[str, Any], _auth: str = Depends(require_admin))
 
 async def update_auth_user(user_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """更新 auth_user。
+
+    Args:
+        user_id: 用户 ID。
+        patch: patch 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     u = platform_store.get_auth_user(user_id)
 
     if not u:
@@ -5335,6 +5598,12 @@ async def update_auth_user(user_id: str, patch: Dict[str, Any], _auth: str = Dep
 
 async def delete_auth_user(user_id: str, _auth: str = Depends(require_admin)):
 
+    """删除 auth_user。
+
+    Args:
+        user_id: 用户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     platform_store.delete_auth_user(user_id)
 
     return {"status": "ok"}
@@ -5347,7 +5616,11 @@ async def delete_auth_user(user_id: str, _auth: str = Depends(require_admin)):
 
 async def list_auth_roles(_auth: str = Depends(require_admin)):
 
-    """Return available system roles with their descriptions and permissions."""
+    """Return available system roles with their descriptions and permissions.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
 
     return {
 
@@ -5385,6 +5658,13 @@ async def list_auth_roles(_auth: str = Depends(require_admin)):
 
 async def set_user_role(user_id: str, body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """set_user_role。
+
+    Args:
+        user_id: 用户 ID。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     u = platform_store.get_auth_user(user_id)
 
     if not u:
@@ -5413,7 +5693,12 @@ async def set_user_role(user_id: str, body: Dict[str, Any], _auth: str = Depends
 
 async def oidc_login(request: Request, redirect_uri: str = ""):
 
-    """返回 IdP 授权页 URL。前端将用户重定向到该 URL。"""
+    """返回 IdP 授权页 URL。前端将用户重定向到该 URL。
+
+    Args:
+        request: FastAPI Request。
+        redirect_uri: redirect_uri 参数。
+    """
 
     from auth.identity_provider import get_oidc_provider
 
@@ -5443,7 +5728,11 @@ async def oidc_login(request: Request, redirect_uri: str = ""):
 
 async def oidc_callback(request: Request):
 
-    """授权码回调：用 code 交换 id_token，返回 Identity。"""
+    """授权码回调：用 code 交换 id_token，返回 Identity。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     body = await request.json()
 
@@ -5495,7 +5784,11 @@ async def oidc_callback(request: Request):
 
 async def oidc_verify_token(request: Request):
 
-    """验证 id_token 并返回 Identity。用于前端已有 token 的场景。"""
+    """验证 id_token 并返回 Identity。用于前端已有 token 的场景。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     body = await request.json()
 
@@ -5547,6 +5840,12 @@ async def oidc_verify_token(request: Request):
 
 async def list_tenants(status: Optional[str] = None, _auth: str = Depends(require_admin)):
 
+    """列出 tenants。
+
+    Args:
+        status: status 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tenants = platform_store.list_tenants(status=status)
 
     return {"tenants": tenants, "total": len(tenants)}
@@ -5559,6 +5858,12 @@ async def list_tenants(status: Optional[str] = None, _auth: str = Depends(requir
 
 async def create_tenant(body: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """创建 tenant。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tid = str(body.get("id") or _new_prefixed_id("t"))
 
     t = {
@@ -5589,6 +5894,13 @@ async def create_tenant(body: Dict[str, Any], _auth: str = Depends(require_admin
 
 async def update_tenant(tenant_id: str, patch: Dict[str, Any], _auth: str = Depends(require_admin)):
 
+    """更新 tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+        patch: patch 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     t = platform_store.get_tenant(tenant_id)
 
     if not t:
@@ -5607,6 +5919,12 @@ async def update_tenant(tenant_id: str, patch: Dict[str, Any], _auth: str = Depe
 
 async def delete_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
+    """删除 tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     platform_store.delete_tenant(tenant_id)
 
     return {"status": "ok"}
@@ -5619,6 +5937,12 @@ async def delete_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
 async def suspend_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
+    """suspend_tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     t = platform_store.get_tenant(tenant_id)
 
     if not t:
@@ -5639,6 +5963,12 @@ async def suspend_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
 async def resume_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
+    """resume_tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     t = platform_store.get_tenant(tenant_id)
 
     if not t:
@@ -5663,7 +5993,11 @@ async def resume_tenant(tenant_id: str, _auth: str = Depends(require_admin)):
 
 async def tenant_register(request: Request):
 
-    """租户自助注册。返回待验证状态。"""
+    """租户自助注册。返回待验证状态。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     body = await request.json()
 
@@ -5767,7 +6101,11 @@ async def tenant_register(request: Request):
 
 async def tenant_verify_email(request: Request):
 
-    """验证邮箱 → 激活租户 → 返回初始 API Key。"""
+    """验证邮箱 → 激活租户 → 返回初始 API Key。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     body = await request.json()
 
@@ -5843,7 +6181,11 @@ async def tenant_verify_email(request: Request):
 
 async def tenant_dashboard(request: Request):
 
-    """租户首页概览。"""
+    """租户首页概览。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -5871,7 +6213,11 @@ async def tenant_dashboard(request: Request):
 
 async def tenant_list_api_keys(request: Request):
 
-    """租户查看自己的 API Keys。"""
+    """租户查看自己的 API Keys。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -5897,7 +6243,11 @@ async def tenant_list_api_keys(request: Request):
 
 async def tenant_create_api_key(request: Request):
 
-    """租户创建 API Key。"""
+    """租户创建 API Key。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -5946,7 +6296,12 @@ async def tenant_create_api_key(request: Request):
 
 async def tenant_revoke_api_key(key_prefix: str, request: Request):
 
-    """租户撤销自己的 API Key。"""
+    """租户撤销自己的 API Key。
+
+    Args:
+        key_prefix: key_prefix 参数。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -5970,7 +6325,11 @@ async def tenant_revoke_api_key(key_prefix: str, request: Request):
 
 async def tenant_usage(request: Request):
 
-    """租户查看自己的用量。"""
+    """租户查看自己的用量。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6000,7 +6359,13 @@ async def tenant_usage(request: Request):
 
 async def tenant_billing(request: Request, year: int = None, month: int = None):
 
-    """租户查看自己的账单（按月分解）。"""
+    """租户查看自己的账单（按月分解）。
+
+    Args:
+        request: FastAPI Request。
+        year: year 参数。
+        month: month 参数。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6054,7 +6419,11 @@ async def tenant_billing(request: Request, year: int = None, month: int = None):
 
 async def ops_overview(request: Request):
 
-    """平台运营全局视图。仅限 platform_admin 角色。"""
+    """平台运营全局视图。仅限 platform_admin 角色。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6132,7 +6501,11 @@ async def ops_overview(request: Request):
 
 async def marketplace_publish(request: Request):
 
-    """租户提交 Skill 到市场。自动预检 SkillSimulator。"""
+    """租户提交 Skill 到市场。自动预检 SkillSimulator。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6236,7 +6609,11 @@ async def ontology_impact(urn: str, direction: str = "downstream", depth: int = 
 
 async def ontology_triples_by_predicate(predicate: str):
 
-    """按关系类型查询所有三元组。"""
+    """按关系类型查询所有三元组。
+
+    Args:
+        predicate: predicate 参数。
+    """
 
     from core.api.core_facade import get_triple_store
 
@@ -6252,7 +6629,11 @@ async def ontology_triples_by_predicate(predicate: str):
 
 async def ontology_rescan(request: Request):
 
-    """手动触发全量跨域依赖扫描。"""
+    """手动触发全量跨域依赖扫描。
+
+    Args:
+        request: FastAPI Request。
+    """
 
     from core.api.core_facade import scan_and_populate
 
@@ -6272,6 +6653,7 @@ async def ontology_rescan(request: Request):
 
 class BuilderSessionCreateReq(BaseModel):
 
+    """BuilderSessionCreateReq。"""
     requirement: str = ""
 
 
@@ -6280,6 +6662,7 @@ class BuilderSessionCreateReq(BaseModel):
 
 class BuilderChatReq(BaseModel):
 
+    """BuilderChatReq。"""
     message: str
 
 
@@ -6288,6 +6671,7 @@ class BuilderChatReq(BaseModel):
 
 class BuilderConfirmReq(BaseModel):
 
+    """BuilderConfirmReq。"""
     pass
 
 
@@ -6414,6 +6798,13 @@ app.include_router(file_checkpoints_router)
 
 async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
 
+    """列出 mcp_servers。
+
+    Args:
+        request: FastAPI Request。
+        scope: scope 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:read")
@@ -6430,6 +6821,11 @@ async def list_mcp_servers(request: Request, scope: str = "workspace", _auth: st
 
 async def register_mcp_server(request: Request):
 
+    """register_mcp_server。
+
+    Args:
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:write")
@@ -6448,6 +6844,13 @@ async def register_mcp_server(request: Request):
 
 async def enable_mcp_server(name: str, request: Request, scope: str = "workspace"):
 
+    """enable_mcp_server。
+
+    Args:
+        name: name 参数。
+        request: FastAPI Request。
+        scope: scope 参数。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:write")
@@ -6462,6 +6865,13 @@ async def enable_mcp_server(name: str, request: Request, scope: str = "workspace
 
 async def disable_mcp_server(name: str, request: Request, scope: str = "workspace"):
 
+    """disable_mcp_server。
+
+    Args:
+        name: name 参数。
+        request: FastAPI Request。
+        scope: scope 参数。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:write")
@@ -6476,6 +6886,14 @@ async def disable_mcp_server(name: str, request: Request, scope: str = "workspac
 
 async def list_mcp_server_tools(name: str, request: Request, scope: str = "workspace", _auth: str = Depends(require_auth)):
 
+    """列出 mcp_server_tools。
+
+    Args:
+        name: name 参数。
+        request: FastAPI Request。
+        scope: scope 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:read")
@@ -6490,6 +6908,13 @@ async def list_mcp_server_tools(name: str, request: Request, scope: str = "works
 
 async def check_mcp_server_policy(name: str, request: Request, scope: str = "workspace"):
 
+    """check_mcp_server_policy。
+
+    Args:
+        name: name 参数。
+        request: FastAPI Request。
+        scope: scope 参数。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "mcp:read")
@@ -6510,6 +6935,13 @@ async def check_mcp_server_policy(name: str, request: Request, scope: str = "wor
 
 async def list_plugins(request: Request, status: str = "active", _auth: str = Depends(require_auth)):
 
+    """列出 plugins。
+
+    Args:
+        request: FastAPI Request。
+        status: status 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:read")
@@ -6526,6 +6958,11 @@ async def list_plugins(request: Request, status: str = "active", _auth: str = De
 
 async def install_or_update_plugin(request: Request):
 
+    """install_or_update_plugin。
+
+    Args:
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:write")
@@ -6550,6 +6987,12 @@ async def install_or_update_plugin(request: Request):
 
 async def enable_plugin(plugin_id: str, request: Request):
 
+    """enable_plugin。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:write")
@@ -6564,6 +7007,12 @@ async def enable_plugin(plugin_id: str, request: Request):
 
 async def disable_plugin(plugin_id: str, request: Request):
 
+    """disable_plugin。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:write")
@@ -6578,6 +7027,13 @@ async def disable_plugin(plugin_id: str, request: Request):
 
 async def list_plugin_versions(plugin_id: str, request: Request, _auth: str = Depends(require_auth)):
 
+    """列出 plugin_versions。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:read")
@@ -6592,6 +7048,12 @@ async def list_plugin_versions(plugin_id: str, request: Request, _auth: str = De
 
 async def rollback_plugin(plugin_id: str, request: Request):
 
+    """rollback_plugin。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:write")
@@ -6606,6 +7068,12 @@ async def rollback_plugin(plugin_id: str, request: Request):
 
 async def run_plugin_async(plugin_id: str, request: Request):
 
+    """run_plugin_async。
+
+    Args:
+        plugin_id: plugin 标识。
+        request: FastAPI Request。
+    """
     identity = _resolve_identity(request)
 
     _require_scope(identity, "plugins:execute")
@@ -6626,7 +7094,12 @@ async def run_plugin_async(plugin_id: str, request: Request):
 
 async def kb_update_doc_meta(doc_id: str, request: Request):
 
-    """Update document metadata (title, tags, description)."""
+    """Update document metadata (title, tags, description).
+
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6672,7 +7145,13 @@ async def kb_update_doc_meta(doc_id: str, request: Request):
 
 async def kb_export_document(doc_id: str, format: str = "json", request: Request = None):
 
-    """Export document content in various formats (json/markdown/pdf/docx)."""
+    """Export document content in various formats (json/markdown/pdf/docx).
+
+    Args:
+        doc_id: doc 标识。
+        format: format 参数。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request) if request else type('',(),{'tenant_id':'default','actor_id':'system','request_id':'export'})()
 
@@ -6772,7 +7251,11 @@ async def kb_export_document(doc_id: str, format: str = "json", request: Request
 
 async def kb_create_with_ai(request: Request):
 
-    """AI-assisted document creation: LLM generates draft from title + prompt."""
+    """AI-assisted document creation: LLM generates draft from title + prompt.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6864,7 +7347,12 @@ async def kb_create_with_ai(request: Request):
 
 async def kb_update_doc_content(doc_id: str, request: Request):
 
-    """Update document content — full-text editing."""
+    """Update document content — full-text editing.
+
+    Args:
+        doc_id: doc 标识。
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6902,7 +7390,11 @@ async def kb_update_doc_content(doc_id: str, request: Request):
 
 async def kb_storage_cleanup(request: Request):
 
-    """Clean up old/archived elements and orphaned embeddings."""
+    """Clean up old/archived elements and orphaned embeddings.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -6946,7 +7438,11 @@ async def kb_storage_cleanup(request: Request):
 
 async def kb_storage_stats(request: Request):
 
-    """Storage statistics for tenant KB."""
+    """Storage statistics for tenant KB.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     identity = _resolve_identity(request)
 
@@ -7084,6 +7580,11 @@ def _resolve_vault_path(vault_id: str, tenant_id: str = "default") -> str:
 
 async def vault_list(tenant_id: str = "default"):
 
+    """vault_list。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from kb.service import vault_list
 
     return {"vaults": vault_list(tenant_id=tenant_id)}
@@ -7096,6 +7597,11 @@ async def vault_list(tenant_id: str = "default"):
 
 async def vault_connect(body: dict):
 
+    """vault_connect。
+
+    Args:
+        body: 请求体。
+    """
     from kb.service import vault_connect
 
     return vault_connect(tenant_id=body.get("tenant_id", "default"), vault_path=body["path"],
@@ -7110,6 +7616,11 @@ async def vault_connect(body: dict):
 
 async def vault_disconnect(body: dict):
 
+    """vault_disconnect。
+
+    Args:
+        body: 请求体。
+    """
     from kb.service import vault_disconnect
 
     return vault_disconnect(tenant_id=body.get("tenant_id", "default"), vault_id=body["vault_id"])
@@ -7122,6 +7633,13 @@ async def vault_disconnect(body: dict):
 
 async def vault_tree(vault_id: str, subdir: str = "", max_depth: int = 3):
 
+    """vault_tree。
+
+    Args:
+        vault_id: vault 标识。
+        subdir: subdir 参数。
+        max_depth: max_depth 参数。
+    """
     from kb.service import vault_tree
 
     return vault_tree(vault_path=_resolve_vault_path(vault_id), subdir=subdir,
@@ -7136,7 +7654,12 @@ async def vault_tree(vault_id: str, subdir: str = "", max_depth: int = 3):
 
 async def vault_read_file(vault_id: str, path: str):
 
-    """Read a single vault file's content + frontmatter."""
+    """Read a single vault file's content + frontmatter.
+
+    Args:
+        vault_id: vault 标识。
+        path: 路径。
+    """
 
     from kb.service import vault_read
 
@@ -7150,6 +7673,12 @@ async def vault_read_file(vault_id: str, path: str):
 
 async def vault_index_status(vault_id: str, tenant_id: str = "default"):
 
+    """vault_index_status。
+
+    Args:
+        vault_id: vault 标识。
+        tenant_id: 租户 ID。
+    """
     from kb.service import vault_index_status
 
     return vault_index_status(tenant_id=tenant_id, vault_id=vault_id)
@@ -7162,6 +7691,13 @@ async def vault_index_status(vault_id: str, tenant_id: str = "default"):
 
 async def vault_index_start(vault_id: str, tenant_id: str = "default", collection_id: str = "default"):
 
+    """vault_index_start。
+
+    Args:
+        vault_id: vault 标识。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+    """
     from kb.service import vault_start_indexer
 
     return vault_start_indexer(vault_path=_resolve_vault_path(vault_id), tenant_id=tenant_id,
@@ -7176,6 +7712,12 @@ async def vault_index_start(vault_id: str, tenant_id: str = "default", collectio
 
 async def vault_index_stop(vault_id: str, tenant_id: str = "default"):
 
+    """vault_index_stop。
+
+    Args:
+        vault_id: vault 标识。
+        tenant_id: 租户 ID。
+    """
     from kb.service import vault_stop_indexer
 
     return vault_stop_indexer(tenant_id=tenant_id, vault_id=vault_id)
@@ -7188,6 +7730,11 @@ async def vault_index_stop(vault_id: str, tenant_id: str = "default"):
 
 async def vault_send_to_wiki(body: dict):
 
+    """vault_send_to_wiki。
+
+    Args:
+        body: 请求体。
+    """
     from kb.service import vault_to_wiki
 
     return await vault_to_wiki(file_path=body["file_path"],
@@ -7206,6 +7753,11 @@ async def vault_send_to_wiki(body: dict):
 
 async def vault_wiki_backlinks(doc_id: str):
 
+    """vault_wiki_backlinks。
+
+    Args:
+        doc_id: doc 标识。
+    """
     from core.api.core_facade import search_pages
 
     pages = search_pages(limit=1000)
@@ -7234,6 +7786,11 @@ async def vault_wiki_backlinks(doc_id: str):
 
 async def create_analysis_batch(request: Request):
 
+    """创建 analysis_batch。
+
+    Args:
+        request: FastAPI Request。
+    """
     tenant_id = _resolve_identity(request).tenant_id or "default"
 
     body = await request.json()
@@ -7262,6 +7819,12 @@ async def create_analysis_batch(request: Request):
 
 async def list_analysis_batches(request: Request, collection_id: Optional[str] = None):
 
+    """列出 analysis_batches。
+
+    Args:
+        request: FastAPI Request。
+        collection_id: collection 标识。
+    """
     tenant_id = _resolve_identity(request).tenant_id or "default"
 
     batches = _list_analysis_batches(tenant_id=tenant_id, collection_id=collection_id)
@@ -7276,6 +7839,12 @@ async def list_analysis_batches(request: Request, collection_id: Optional[str] =
 
 async def delete_analysis_batch(batch_id: str, request: Request):
 
+    """删除 analysis_batch。
+
+    Args:
+        batch_id: batch 标识。
+        request: FastAPI Request。
+    """
     tenant_id = _resolve_identity(request).tenant_id or "default"
 
     ok = _delete_analysis_batch(tenant_id=tenant_id, batch_id=batch_id)
@@ -7400,7 +7969,13 @@ async def governance_org_harness(
     recent_limit: int = 10,
     tenant_id: str = "",
 ):
-    """组织 harness 暗账本：HITL/审批 Amdahl + 黄金集回归 / P0 漏检。"""
+    """组织 harness 暗账本：HITL/审批 Amdahl + 黄金集回归 / P0 漏检。
+
+    Args:
+        run_id: 运行 ID。
+        recent_limit: recent_limit 参数。
+        tenant_id: 租户 ID。
+    """
     from core.api.core_facade import org_harness_status
 
     return org_harness_status(
@@ -7422,7 +7997,12 @@ async def governance_repo_health_status():
 async def governance_repo_health_scan(
     request: Request, payload: dict = Body(default={}),
 ):
-    """值班板 CTA：全树扫描并可选写入 org/repo_health JSONL（默认同 CLI persist）。"""
+    """值班板 CTA：全树扫描并可选写入 org/repo_health JSONL（默认同 CLI persist）。
+
+    Args:
+        request: FastAPI Request。
+        payload: 载荷 dict。
+    """
     require_governance_ops_auth(request)
     import asyncio
 
@@ -7445,7 +8025,12 @@ async def governance_jobs_list():
 
 @app.post("/governance/jobs")
 async def governance_jobs_start(request: Request, payload: dict = Body(...)):
-    """启动后台任务：{name, command, cwd?}——新会话组，终端关闭不终止。须 governance ops token。"""
+    """启动后台任务：{name, command, cwd?}——新会话组，终端关闭不终止。须 governance ops token。
+
+    Args:
+        request: FastAPI Request。
+        payload: 载荷 dict。
+    """
     require_governance_ops_auth(request)
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().start(
@@ -7455,21 +8040,35 @@ async def governance_jobs_start(request: Request, payload: dict = Body(...)):
 
 @app.get("/governance/jobs/{job_id}")
 async def governance_job_status(job_id: str):
-    """查询单个后台任务状态（running/finished/failed/killed + exit_code）。"""
+    """查询单个后台任务状态（running/finished/failed/killed + exit_code）。
+
+    Args:
+        job_id: job 标识。
+    """
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().status(job_id)
 
 
 @app.get("/governance/jobs/{job_id}/output")
 async def governance_job_output(job_id: str, lines: int = 50):
-    """读取后台任务输出尾部（attach）。"""
+    """读取后台任务输出尾部（attach）。
+
+    Args:
+        job_id: job 标识。
+        lines: lines 参数。
+    """
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().attach(job_id, max(1, min(lines, 500)))
 
 
 @app.post("/governance/jobs/{job_id}/kill")
 async def governance_job_kill(job_id: str, request: Request):
-    """终止后台任务（连同其会话组子进程）。须 governance ops token。"""
+    """终止后台任务（连同其会话组子进程）。须 governance ops token。
+
+    Args:
+        job_id: job 标识。
+        request: FastAPI Request。
+    """
     require_governance_ops_auth(request)
     from governance.daemon_jobs import DaemonJobStore
     return DaemonJobStore().kill(job_id)
@@ -7488,7 +8087,13 @@ async def governance_agents_list():
 async def governance_agent_register(
     agent_id: str, request: Request, payload: dict = Body(default={}),
 ):
-    """agent 上线注册：{pid?, kind?}。须 governance ops token。"""
+    """agent 上线注册：{pid?, kind?}。须 governance ops token。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        payload: 载荷 dict。
+    """
     require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().register(agent_id, meta=payload)
@@ -7496,7 +8101,12 @@ async def governance_agent_register(
 
 @app.post("/governance/agents/{agent_id}/unregister")
 async def governance_agent_unregister(agent_id: str, request: Request):
-    """agent 下线。须 governance ops token。"""
+    """agent 下线。须 governance ops token。
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+    """
     require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().unregister(agent_id)
@@ -7504,7 +8114,12 @@ async def governance_agent_unregister(agent_id: str, request: Request):
 
 @app.post("/governance/agents/messages")
 async def governance_agent_send(request: Request, payload: dict = Body(...)):
-    """agent 点对点发消息：{from, to, message}——不经用户中转。须 governance ops token。"""
+    """agent 点对点发消息：{from, to, message}——不经用户中转。须 governance ops token。
+
+    Args:
+        request: FastAPI Request。
+        payload: 载荷 dict。
+    """
     require_governance_ops_auth(request)
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().send(
@@ -7514,7 +8129,13 @@ async def governance_agent_send(request: Request, payload: dict = Body(...)):
 
 @app.get("/governance/agents/{agent_id}/messages")
 async def governance_agent_inbox(agent_id: str, unread: bool = False, mark_read: bool = False):
-    """查收件箱（可选只看未读 / 标记已读）。"""
+    """查收件箱（可选只看未读 / 标记已读）。
+
+    Args:
+        agent_id: Agent ID。
+        unread: unread 参数。
+        mark_read: mark_read 参数。
+    """
     from governance.agent_messages import AgentMessageStore
     return AgentMessageStore().inbox(agent_id, unread_only=unread, mark_read=mark_read)
 

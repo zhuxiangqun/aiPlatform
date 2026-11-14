@@ -82,6 +82,8 @@ def _scan_file(path: Path) -> List[str]:
 
 
 def check() -> Tuple[List[str], int]:
+    """check。
+    """
     files: List[Path] = []
     for pattern in SCAN_GLOBS:
         files.extend(WORKSPACE.glob(pattern))
@@ -93,6 +95,11 @@ def check() -> Tuple[List[str], int]:
 
 
 def main(argv: List[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ci", action="store_true")
     args = ap.parse_args(argv)

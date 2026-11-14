@@ -40,8 +40,8 @@ async def four_questions_meta():
 async def four_questions_evaluate(body: Dict[str, Any]):
     """立项四问评估：输入决策属性 → 逐问得分 + 总分 + 结论 + MVP 本体建议 tier。
 
-    Body: {title, recurrence(daily|weekly|monthly|rare), systems_count(int),
-           has_owner(bool), metrics(list), action_writeback(str|None)}
+    Args:
+        body: 请求体。
     """
     from core.apps.fde.service.four_questions import evaluate_four_questions
     try:
@@ -62,8 +62,9 @@ async def fde_trends(
 ):
     """Time-series trend analysis across all FDE diagnosis sessions.
 
-    Returns per-bucket: session count, delivery rate, top actions,
-    term dictionary growth, and readiness score distribution.
+    Args:
+        months: months 参数。
+        bucket: bucket 参数。
     """
     try:
         from core.api.core_facade import GraphIndex
@@ -209,8 +210,10 @@ async def fde_search(
 ):
     """Search across all FDE data entities with a single text query.
 
-    Returns matches ranked by relevance (substring match weighted by entity type).
-    Each result includes entity type, name, matched text excerpt, and context.
+    Args:
+        q: q 参数。
+        scope: scope 参数。
+        limit: 返回条数上限。
     """
     query = q.strip().lower()
     if not query:
@@ -348,12 +351,8 @@ async def fde_alerts(
 ):
     """Scan all sessions and return ones needing attention.
 
-    Alert types:
-      - blocked: actions in blocked status
-      - stale: no transitions in 30+ days and not completed
-      - low_quality: overall quality < 40
-      - zero_evidence: no ontology-backed conclusions
-      - high_gaps: > 3 unbacked concepts
+    Args:
+        min_severity: min_severity 参数。
     """
     try:
         from core.api.core_facade import GraphIndex

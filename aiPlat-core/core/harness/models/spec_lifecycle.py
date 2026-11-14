@@ -73,6 +73,7 @@ _log = logging.getLogger("aiplat.spec_lifecycle")
 
 class SpecStatus(str, Enum):
 
+    """SpecStatus。"""
     DRAFT = "draft"            # 草稿，尚未提交执行
 
     PENDING = "pending"        # 已提交，等待首次执行
@@ -93,6 +94,11 @@ class SpecStatus(str, Enum):
 
     def valid_transitions(cls, current: "SpecStatus") -> List["SpecStatus"]:
 
+        """valid_transitions。
+
+        Args:
+            current: current 参数。
+        """
         _transitions = {
 
             cls.DRAFT:     [cls.PENDING, cls.ARCHIVED],
@@ -119,6 +125,7 @@ class SpecStatus(str, Enum):
 
 class RevisionTrigger(str, Enum):
 
+    """RevisionTrigger。"""
     MANUAL = "manual"               # 开发者手动修改
 
     USER_FEEDBACK = "user_feedback"  # 用户行为信号触发
@@ -137,6 +144,7 @@ class RevisionTrigger(str, Enum):
 
 class SpecVersion:
 
+    """SpecVersion。"""
     spec_id: str
 
     version: int
@@ -291,6 +299,11 @@ class SpecLifecycle:
 
     def __init__(self, db_path: Optional[str] = None):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path or get_aiplat_data_dir("spec_lifecycle.db")
 
         os.makedirs(os.path.dirname(self._db_path), exist_ok=True)
@@ -467,7 +480,14 @@ class SpecLifecycle:
 
     ) -> SpecVersion:
 
-        """创建草稿版本 (DRAFT). 接线点: OnboardingWizard.activate"""
+        """创建草稿版本 (DRAFT). 接线点: OnboardingWizard.activate。
+
+        Args:
+            spec_id: spec 标识。
+            content: content 参数。
+            created_by: created_by 参数。
+            trigger_detail: trigger_detail 参数。
+        """
 
         version = self._next_version(spec_id)
 
@@ -507,7 +527,11 @@ class SpecLifecycle:
 
     def promote_to_pending(self, spec_id: str) -> Optional[SpecVersion]:
 
-        """标记为待执行 (DRAFT→PENDING). 接线点: UserWorkbench 提交时"""
+        """标记为待执行 (DRAFT→PENDING). 接线点: UserWorkbench 提交时。
+
+        Args:
+            spec_id: spec 标识。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -523,7 +547,12 @@ class SpecLifecycle:
 
     def mark_executing(self, spec_id: str, run_id: str = "") -> Optional[SpecVersion]:
 
-        """标记为执行中 (PENDING→EXECUTING). 接线点: PipelineEngine.start()"""
+        """标记为执行中 (PENDING→EXECUTING). 接线点: PipelineEngine.start()。
+
+        Args:
+            spec_id: spec 标识。
+            run_id: 运行 ID。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -559,7 +588,14 @@ class SpecLifecycle:
 
     ) -> Optional[SpecVersion]:
 
-        """标记为待审查 (EXECUTING→REVIEW). 接线点: PipelineEngine 执行完成"""
+        """标记为待审查 (EXECUTING→REVIEW). 接线点: PipelineEngine 执行完成。
+
+        Args:
+            spec_id: spec 标识。
+            version: version 参数。
+            run_id: 运行 ID。
+            result: result 参数。
+        """
 
         sv = self.get_version(spec_id, version)
 
@@ -615,12 +651,13 @@ class SpecLifecycle:
 
         """修订 Spec (REVIEW/STABLE→REVISING→新版本 PENDING).
 
-
-
-        接线点: UserWorkbench 开发者点击"修订"
-
-        默认只重跑受影响阶段，全量重跑需传入 affected_stages=None（表示全部）.
-
+        Args:
+            spec_id: spec 标识。
+            new_content: new_content 参数。
+            trigger: trigger 参数。
+            trigger_detail: trigger_detail 参数。
+            created_by: created_by 参数。
+            affected_stages: affected_stages 参数。
         """
 
         latest = self.get_latest(spec_id)
@@ -689,7 +726,11 @@ class SpecLifecycle:
 
     def mark_stable(self, spec_id: str) -> Optional[SpecVersion]:
 
-        """标记为稳定 (REVIEW→STABLE). 接线点: EvolutionEngine Step 12"""
+        """标记为稳定 (REVIEW→STABLE). 接线点: EvolutionEngine Step 12。
+
+        Args:
+            spec_id: spec 标识。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -707,7 +748,11 @@ class SpecLifecycle:
 
     def mark_archived(self, spec_id: str) -> Optional[SpecVersion]:
 
-        """标记为归档 (STABLE→ARCHIVED 或 timeout). 接线点: EvolutionEngine Step 12"""
+        """标记为归档 (STABLE→ARCHIVED 或 timeout). 接线点: EvolutionEngine Step 12。
+
+        Args:
+            spec_id: spec 标识。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -733,7 +778,13 @@ class SpecLifecycle:
 
     ) -> Optional[SpecVersion]:
 
-        """Request promotion: mark a Spec as pending platform review."""
+        """Request promotion: mark a Spec as pending platform review.
+
+        Args:
+            spec_id: spec 标识。
+            requester: requester 参数。
+            notes: notes 参数。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -775,7 +826,13 @@ class SpecLifecycle:
 
     ) -> Optional[SpecVersion]:
 
-        """Approve platform promotion: scope=platform, status=approved."""
+        """Approve platform promotion: scope=platform, status=approved.
+
+        Args:
+            spec_id: spec 标识。
+            reviewer: reviewer 参数。
+            notes: notes 参数。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -836,7 +893,13 @@ class SpecLifecycle:
 
     ) -> Optional[SpecVersion]:
 
-        """Reject platform promotion: scope back to tenant."""
+        """Reject platform promotion: scope back to tenant.
+
+        Args:
+            spec_id: spec 标识。
+            reviewer: reviewer 参数。
+            reason: reason 参数。
+        """
 
         latest = self.get_latest(spec_id)
 
@@ -916,6 +979,11 @@ class SpecLifecycle:
 
     def get_latest(self, spec_id: str) -> Optional[SpecVersion]:
 
+        """获取 latest。
+
+        Args:
+            spec_id: spec 标识。
+        """
         with self._connect() as conn:
 
             row = conn.execute(
@@ -932,6 +1000,12 @@ class SpecLifecycle:
 
     def get_version(self, spec_id: str, version: int) -> Optional[SpecVersion]:
 
+        """获取 version。
+
+        Args:
+            spec_id: spec 标识。
+            version: version 参数。
+        """
         with self._connect() as conn:
 
             row = conn.execute(
@@ -948,6 +1022,11 @@ class SpecLifecycle:
 
     def get_history(self, spec_id: str) -> List[SpecVersion]:
 
+        """获取 history。
+
+        Args:
+            spec_id: spec 标识。
+        """
         with self._connect() as conn:
 
             rows = conn.execute(
@@ -1016,10 +1095,8 @@ class SpecLifecycle:
 
         """将最新 Spec 版本翻译为 pipeline 可用的 stage 配置列表。
 
-
-
-        输出格式兼容 PipelineStageConfig，engine 零改动.
-
+        Args:
+            spec_id: spec 标识。
         """
 
         latest = self.get_latest(spec_id)
@@ -1064,6 +1141,11 @@ _spec_lifecycle_instance: Optional[SpecLifecycle] = None
 
 def get_spec_lifecycle(db_path: Optional[str] = None) -> SpecLifecycle:
 
+    """获取 spec_lifecycle。
+
+    Args:
+        db_path: db_path 参数。
+    """
     global _spec_lifecycle_instance
 
     if _spec_lifecycle_instance is None:

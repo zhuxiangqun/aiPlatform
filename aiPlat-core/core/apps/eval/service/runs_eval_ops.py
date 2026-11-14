@@ -1,4 +1,23 @@
-"""Run evaluation / investigate / evidence / state ops (platform thin via CoreFacade)."""
+"""Run 评测闭环：evaluation / investigate / evidence / run_state。
+
+职责
+----
+把「一次 pipeline/agent run」上的评测相关读写收敛到本模块，供
+``CoreFacade`` / platform 薄路由调用。持久化走 ExecutionStore +
+LearningManager artifacts（见同目录 README 的 kind 表）。
+
+非目标
+------
+- 不算 Object Contract / Plan 编译
+- 不翻 ``accuracy_claim`` / 不授权 process_split
+- 不做 HTTP；门禁失败用 ``RunsEvalGateFailed`` 留给路由映射 409
+
+读序
+----
+``submit_run_evaluation`` → ``auto_evaluate_run`` /
+``auto_investigate_run`` → ``get_latest_*`` / ``upsert_run_state`` /
+``compute_run_evidence_diff``。
+"""
 from __future__ import annotations
 
 import logging
@@ -9,15 +28,27 @@ _log = logging.getLogger("aiplat.runs_eval_ops")
 
 
 class RunsEvalGateFailed(Exception):
-    """enforce_gate=True and report.pass is false — map to HTTP 409 in thin route."""
+    """``enforce_gate=True`` 且报告未通过时抛出；薄路由应映射为 HTTP 409。"""
 
     def __init__(self, *, artifact_id: Any, report: Dict[str, Any]):
+        """Args:
+            artifact_id: 已落盘的 evaluation artifact id（便于路由回传）。
+            report: 门禁后的评测报告（含 ``pass`` 等字段）。
+        """
         self.artifact_id = artifact_id
         self.report = report
         super().__init__("evaluation_failed")
 
 
 async def _require_store() -> Any:
+    """从内核运行时解析 ExecutionStore；缺失则直接失败。
+
+    Returns:
+        ExecutionStore 实例。
+
+    Raises:
+        RuntimeError: 运行时或 store 未初始化。
+    """
     from core.api.core_facade import get_kernel_runtime
 
     rt = get_kernel_runtime()
@@ -35,6 +66,14 @@ async def _require_store() -> Any:
 
 
 def _latest(items: Any) -> Optional[Dict[str, Any]]:
+    """按 ``created_at``（epoch 浮点）取最新一条。
+
+    Args:
+        items: artifact 列表；非 list 或空则视为无。
+
+    Returns:
+        最新一条 dict，或 ``None``。
+    """
     if isinstance(items, list) and items:
         return sorted(
             items, key=lambda x: float((x or {}).get("created_at") or 0), reverse=True
@@ -43,6 +82,18 @@ def _latest(items: Any) -> Optional[Dict[str, Any]]:
 
 
 async def _require_run(store: Any, run_id: str) -> Dict[str, Any]:
+    """加载 run 摘要。
+
+    Args:
+        store: ExecutionStore。
+        run_id: 运行 ID。
+
+    Returns:
+        run 摘要 dict。
+
+    Raises:
+        LookupError: 不存在时码为 ``run_not_found``。
+    """
     rid = str(run_id)
     run = await store.get_run_summary(run_id=rid)
     if not run:
@@ -56,6 +107,24 @@ async def submit_run_evaluation(
     body: Dict[str, Any],
     actor: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """校验并门禁人工/自动评测报告，持久化后合并进 run_state。
+
+    Args:
+        run_id: 目标运行 ID。
+        body: 请求体。必须含 ``report`` dict；可选
+            ``thresholds`` / ``enforce_gate`` / ``project_id`` /
+            ``url`` / ``tag_template`` / ``base_evidence_pack_id`` /
+            ``evaluator``。
+        actor: 操作者身份（写入 Learning 元数据）。
+
+    Returns:
+        含 ``status`` / ``artifact_id`` / ``report``，并附 eval protocol。
+
+    Raises:
+        ValueError: 缺报告或报告校验失败。
+        LookupError: run 不存在。
+        RunsEvalGateFailed: ``enforce_gate`` 且报告未通过。
+    """
     from core.api.core_facade import (
         EvaluatorThresholds,
         apply_threshold_gate,
@@ -120,6 +189,7 @@ async def submit_run_evaluation(
             "tag_template": tag_template,
         },
     )
+    # 尽力合并：评测已落盘时，run_state 合并失败不应拖垮整次提交。
     try:
         mgr = LearningManager(execution_store=store)
         latest = await store.list_learning_artifacts(
@@ -162,6 +232,7 @@ async def submit_run_evaluation(
     except Exception as e:
         _log.warning(str(e), exc_info=True)
 
+    # 为什么：enforce_gate 是调用方显式诚实锁；未通过不得静默 200，须抛给薄路由映射 409。
     if enforce_gate and not bool(gated_report.get("pass")):
         raise RunsEvalGateFailed(
             artifact_id=saved.get("artifact_id"), report=gated_report
@@ -184,6 +255,20 @@ async def submit_run_evaluation(
 
 
 async def auto_evaluate_run(*, run_id: str) -> Dict[str, Any]:
+    """只读快照：最新评测报告 + 证据包 + syscall 错误计数。
+
+    不编造分数；缺失的 artifact 以空 dict 返回。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        含 ``trace_id`` / ``latest_eval`` / ``latest_pack`` /
+        ``syscall_summary``，并附 eval protocol。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     from core.api.core_facade import (
         attach_eval_protocol,
         eval_protocol_from_run_evaluation,
@@ -255,6 +340,17 @@ async def auto_evaluate_run(*, run_id: str) -> Dict[str, Any]:
 
 
 async def get_latest_run_evaluation(*, run_id: str) -> Dict[str, Any]:
+    """返回该 run 最新的 ``evaluation_report``。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "item": <artifact|None>}``，有报告时附 protocol。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     from core.api.core_facade import (
         attach_eval_protocol,
         eval_protocol_from_run_evaluation,
@@ -284,6 +380,14 @@ async def get_latest_run_evaluation(*, run_id: str) -> Dict[str, Any]:
 
 
 async def get_latest_investigate_report(*, run_id: str) -> Dict[str, Any]:
+    """返回最新的 ``investigate_report``。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "item": <artifact|None>}``。
+    """
     store = await _require_store()
     rid = str(run_id)
     res = await store.list_learning_artifacts(
@@ -300,6 +404,20 @@ async def get_latest_investigate_report(*, run_id: str) -> Dict[str, Any]:
 
 
 async def auto_investigate_run(*, run_id: str) -> Dict[str, Any]:
+    """根据评测 + 证据 + syscall 汇总并持久化一份 investigate_report。
+
+    聚合最新 evaluation / evidence / diff 与截断后的 syscall 样本，写成 draft
+    artifact。各数据源拉取均为尽力而为，单源失败不阻断整包。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "artifact_id": ..., "report": <payload>}``。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     from core.learning.manager import LearningManager
     from core.learning.types import LearningArtifactKind
 
@@ -357,6 +475,7 @@ async def auto_investigate_run(*, run_id: str) -> Dict[str, Any]:
         syscall_items = (s0 or {}).get("items") if isinstance(s0, dict) else []
         if not isinstance(syscall_items, list):
             syscall_items = []
+        # status 非 ok/success，或带 error 字段，都视为失败（不同写入方字段不一）。
         errs = [
             x
             for x in syscall_items
@@ -490,6 +609,18 @@ async def auto_investigate_run(*, run_id: str) -> Dict[str, Any]:
 
 
 async def get_latest_run_state(*, run_id: str) -> Dict[str, Any]:
+    """最新 ``run_state``；若无则返回默认空状态。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "item": <artifact|默认payload包装>}``；
+        无历史时 ``artifact_id=None``。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     from core.api.core_facade import default_run_state
 
     store = await _require_store()
@@ -513,6 +644,17 @@ async def get_latest_run_state(*, run_id: str) -> Dict[str, Any]:
 
 
 async def get_latest_evidence_pack(*, run_id: str) -> Dict[str, Any]:
+    """返回该 run 最新的 ``evidence_pack``。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "item": <artifact|None>}``。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     store = await _require_store()
     rid = str(run_id)
     await _require_run(store, rid)
@@ -531,6 +673,20 @@ async def compute_run_evidence_diff(
     base_evidence_pack_id: str,
     new_evidence_pack_id: str,
 ) -> Dict[str, Any]:
+    """对比两份证据包，并持久化 ``evidence_diff`` artifact。
+
+    Args:
+        run_id: 归属的运行 ID（写入 artifact target）。
+        base_evidence_pack_id: 基线证据包 artifact id。
+        new_evidence_pack_id: 新证据包 artifact id。
+
+    Returns:
+        ``{"status": "ok", "artifact_id": ..., "diff": <对比结果>}``。
+
+    Raises:
+        ValueError: id 缺失或 payload 非法。
+        LookupError: run 或证据包不存在。
+    """
     from core.api.core_facade import compute_evidence_diff
     from core.learning.manager import LearningManager
     from core.learning.types import LearningArtifactKind
@@ -552,6 +708,7 @@ async def compute_run_evidence_diff(
         raise ValueError("invalid_evidence_pack_payload")
     base_payload = dict(base_payload)
     new_payload = dict(new_payload)
+    # 写入 pack id，使 diff 记录离线也可自描述来源。
     base_payload["evidence_pack_id"] = base_id
     new_payload["evidence_pack_id"] = new_id
     diff = compute_evidence_diff(base_payload, new_payload)
@@ -581,6 +738,24 @@ async def upsert_run_state(
     lock: Any,
     actor: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """规范化并追加一份新的 ``run_state`` 快照（人工 / UI 路径）。
+
+    ``lock is not None`` 时覆盖 ``locked``；始终记录 ``updated_by``。
+    另尽力追加一条 ``run_state`` run 事件便于观测。
+
+    Args:
+        run_id: 目标运行 ID。
+        state: 原始状态 dict（会经 ``normalize_run_state``）。
+        lock: 若非 ``None``，强制写入 ``locked=bool(lock)``；为 ``None`` 则不覆盖。
+        actor: 操作者（``actor_id`` / ``actor_role`` / ``tenant_id`` 等）。
+
+    Returns:
+        ``{"status": "ok", "artifact_id": ..., "state": <规范化状态>}``。
+
+    Raises:
+        ValueError: ``state`` 不是 dict。
+        LookupError: run 不存在。
+    """
     from core.api.core_facade import normalize_run_state
     from core.learning.manager import LearningManager
     from core.learning.types import LearningArtifactKind
@@ -629,6 +804,17 @@ async def upsert_run_state(
 
 
 async def get_run_evidence(*, run_id: str) -> Dict[str, Any]:
+    """列出该 run 最近最多 5 份证据包。
+
+    Args:
+        run_id: 目标运行 ID。
+
+    Returns:
+        ``{"status": "ok", "run_id": ..., "evidence_packs": [{artifact_id, version, payload}, ...]}``。
+
+    Raises:
+        LookupError: run 不存在。
+    """
     store = await _require_store()
     rid = str(run_id)
     await _require_run(store, rid)

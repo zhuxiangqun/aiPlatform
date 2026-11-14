@@ -26,7 +26,11 @@ def _env_ok_for_authorize(env: str) -> bool:
 
 
 def summarize_live_drills(drill_dir: Path) -> dict[str, Any]:
-    """Return latest live-*.json summary for a track (ignores local-*.json)."""
+    """Return latest live-*.json summary for a track (ignores local-*.json).
+
+    Args:
+        drill_dir: drill_dir 参数。
+    """
     out: dict[str, Any] = {
         "drill_dir": str(drill_dir),
         "live_count": 0,
@@ -78,6 +82,10 @@ def summarize_live_drills(drill_dir: Path) -> dict[str, Any]:
 
 
 def require_signed_live(drill_dir: Path) -> tuple[bool, dict[str, Any]]:
-    """True iff newest live-*.json is production_signed and env is staging/prod-canary."""
+    """True iff newest live-*.json is production_signed and env is staging/prod-canary.
+
+    Args:
+        drill_dir: drill_dir 参数。
+    """
     summary = summarize_live_drills(drill_dir)
     return bool(summary.get("production_signed")), summary

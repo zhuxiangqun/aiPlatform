@@ -51,11 +51,8 @@ _CLASSIFICATION_CACHE: Dict[str, str] = {}
 def auto_classify(template_id: str) -> str:
     """Classify template as 'admin' or 'app' by scanning real call sites in source code.
 
-    Scans all .py files under aiPlat-core/ for _sync_resolve / _async_prompt_resolve
-    calls referencing the given template_id.  Results are cached for subsequent calls.
-
-    Admin: callers in harness/engine, memory, assembly, evaluation, knowledge, skills infrastructure
-    App: callers in API routers, service layer, platform layer, or no callers found
+    Args:
+        template_id: template 标识。
     """
     # Cache hit
     cached = _CLASSIFICATION_CACHE.get(template_id)
@@ -185,17 +182,29 @@ def _sync_resolve(template_id: str, **variables) -> str:
 
 
 def get_metadata(template_id: str) -> Optional[Dict]:
-    """Get template metadata (variables, role, category, immutable, version)."""
+    """Get template metadata (variables, role, category, immutable, version).
+
+    Args:
+        template_id: template 标识。
+    """
     return _METADATA.get(template_id)
 
 
 def get_versions(template_id: str) -> Dict[str, str]:
-    """P2: Get all versions for a template. Returns {version: text} dict."""
+    """P2: Get all versions for a template. Returns {version: text} dict.
+
+    Args:
+        template_id: template 标识。
+    """
     return _VERSIONED_PROMPTS.get(template_id, {}).copy()
 
 
 def get_latest_version(template_id: str) -> str:
-    """P2: Get the latest version string for a template."""
+    """P2: Get the latest version string for a template.
+
+    Args:
+        template_id: template 标识。
+    """
     return _LATEST_VERSION.get(template_id, "1.0.0")
 
 

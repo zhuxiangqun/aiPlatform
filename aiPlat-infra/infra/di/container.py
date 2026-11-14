@@ -46,12 +46,22 @@ class ScopeImpl(IScope):
     """作用域实现"""
 
     def __init__(self, container: "DIContainerImpl", name: str):
+        """初始化。
+
+        Args:
+            container: container 参数。
+            name: name 参数。
+        """
         self._container = container
         self._name = name
         self._instances: Dict[Type, Any] = {}
 
     def resolve(self, service: Type) -> Any:
-        """解析服务"""
+        """解析服务。
+
+        Args:
+            service: service 参数。
+        """
         # 检查是否有已创建的实例
         if service in self._instances:
             return self._instances[service]
@@ -90,6 +100,11 @@ class DIContainerImpl(DIContainer):
     """
 
     def __init__(self, config: Optional[DIContainerConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or DIContainerConfig()
         self._services: Dict[Type, ServiceDescriptor] = {}
         self._singletons: Dict[Type, Any] = {}
@@ -131,6 +146,11 @@ class DIContainerImpl(DIContainer):
         self._interceptor_chain = chain
 
     def get_interceptor(self, name: str) -> Optional[Any]:
+        """获取 interceptor。
+
+        Args:
+            name: name 参数。
+        """
         return self._interceptors.get((name or "").strip().lower())
 
     def _scan_packages(self) -> None:
@@ -177,7 +197,13 @@ class DIContainerImpl(DIContainer):
         implementation: Type,
         lifetime: Lifetime = Lifetime.SINGLETON,
     ) -> None:
-        """注册服务"""
+        """注册服务。
+
+        Args:
+            service: service 参数。
+            implementation: implementation 参数。
+            lifetime: lifetime 参数。
+        """
         self._services[service] = ServiceDescriptor(
             service=service, implementation=implementation, lifetime=lifetime
         )
@@ -186,7 +212,12 @@ class DIContainerImpl(DIContainer):
         )
 
     def register_instance(self, service: Type, instance: Any) -> None:
-        """注册实例"""
+        """注册实例。
+
+        Args:
+            service: service 参数。
+            instance: instance 参数。
+        """
         self._services[service] = ServiceDescriptor(
             service=service,
             implementation=type(instance),
@@ -198,7 +229,12 @@ class DIContainerImpl(DIContainer):
         _log.debug(f"Registered instance for {service.__name__}")
 
     def register_factory(self, service: Type, factory: Callable[..., Any]) -> None:
-        """注册工厂函数"""
+        """注册工厂函数。
+
+        Args:
+            service: service 参数。
+            factory: factory 参数。
+        """
         self._services[service] = ServiceDescriptor(
             service=service,
             implementation=type(None),  # 工厂不使用实现类
@@ -208,7 +244,11 @@ class DIContainerImpl(DIContainer):
         _log.debug(f"Registered factory for {service.__name__}")
 
     def resolve(self, service: Type) -> Any:
-        """解析服务"""
+        """解析服务。
+
+        Args:
+            service: service 参数。
+        """
         # 检查单例缓存
         if service in self._singletons:
             return self._singletons[service]
@@ -224,7 +264,11 @@ class DIContainerImpl(DIContainer):
         return self._wrap(instance)
 
     def resolve_all(self, service: Type) -> List[Any]:
-        """解析所有实现"""
+        """解析所有实现。
+
+        Args:
+            service: service 参数。
+        """
         implementations = []
         for desc in self._services.values():
             if desc.service == service:
@@ -277,7 +321,11 @@ class DIContainerImpl(DIContainer):
         self._scopes.clear()
 
     def create_scope(self, scope_name: str) -> IScope:
-        """创建作用域"""
+        """创建作用域。
+
+        Args:
+            scope_name: scope_name 参数。
+        """
         if scope_name in self._scopes:
             return self._scopes[scope_name]
 
@@ -287,7 +335,11 @@ class DIContainerImpl(DIContainer):
 
     @contextmanager
     def scope(self, scope_name: str):
-        """作用域上下文管理器"""
+        """作用域上下文管理器。
+
+        Args:
+            scope_name: scope_name 参数。
+        """
         scope = self.create_scope(scope_name)
         try:
             yield scope

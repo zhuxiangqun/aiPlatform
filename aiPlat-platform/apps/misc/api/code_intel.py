@@ -1,3 +1,5 @@
+"""code_intel：模块接口。"""
+
 from __future__ import annotations
 from apps.common_schemas import StatusResponse, ListResponse, ItemResponse
 
@@ -519,6 +521,12 @@ def _health_by_root(*, roots: List[str], nodes: Dict[str, Dict[str, Any]], edges
 
 
 async def code_intel_scan(rt, roots: List[str]) -> ScanResult:
+    """code_intel_scan。
+
+    Args:
+        rt: rt 参数。
+        roots: roots 参数。
+    """
     roots_key = ",".join(roots)
 
     _repo_root = repo_root()
@@ -546,11 +554,15 @@ async def scan_code_intel(
     limit: int = 0,
     rt=Depends(get_kernel_runtime),
 ):
-    """
-    Code intelligence scan (CodeFlow-inspired, server-side).
-    Defaults to scanning: aiPlat-core + aiPlat-management/frontend
+    """Code intelligence scan (CodeFlow-inspired, server-side).
 
-    mode: file | folder | layer | symbol
+    Args:
+        request: FastAPI Request。
+        roots: roots 参数。
+        mode: mode 参数。
+        depth: depth 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
     """
     store = getattr(rt, "execution_store", None) if rt else None
     if not store:
@@ -641,6 +653,13 @@ async def scan_code_intel(
 
 @router.get("/diagnostics/code-intel/hubs", response_model=ItemResponse)
 async def code_intel_hubs(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
+    """code_intel_hubs。
+
+    Args:
+        roots: roots 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "hubs": _top_hubs(nodes=res.nodes, issues=res.issues, limit=int(limit or 30), compute_blast_for_top=15)}
@@ -648,6 +667,13 @@ async def code_intel_hubs(roots: Optional[str] = None, limit: int = 30, rt=Depen
 
 @router.get("/diagnostics/code-intel/cycles", response_model=ItemResponse)
 async def code_intel_cycles(roots: Optional[str] = None, limit: int = 30, rt=Depends(get_kernel_runtime)):
+    """code_intel_cycles。
+
+    Args:
+        roots: roots 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     return {"status": "ok", "roots": root_list, "cycles": _top_cycles(nodes=res.nodes, edges=res.edges, limit=int(limit or 30))}
@@ -659,6 +685,13 @@ async def blast_radius(
     roots: Optional[str] = None,
     rt=Depends(get_kernel_runtime),
 ):
+    """blast_radius。
+
+    Args:
+        file: file 参数。
+        roots: roots 参数。
+        rt: rt 参数。
+    """
     root_list = [x.strip() for x in (roots.split(",") if roots else default_roots()) if x.strip()]
     res = await code_intel_scan(rt, root_list)
     start = str(file).strip()
@@ -668,7 +701,11 @@ async def blast_radius(
 
 @router.get("/diagnostics/code-intel/export", response_model=ItemResponse)
 async def export_code_graph(rt=Depends(get_kernel_runtime)):
-    """Export the full code graph as committable JSON for team onboarding."""
+    """Export the full code graph as committable JSON for team onboarding.
+
+    Args:
+        rt: rt 参数。
+    """
     import time as _t
     root_list = default_roots()
     res = await code_intel_scan(rt, root_list)
@@ -704,7 +741,11 @@ async def security_view(
 ):
     """Deterministic security view (secview.v1) compiled from code_graph.
 
-    Heuristic only: import/call reachability ≠ taint. See metrics.heuristic.
+    Args:
+        layer: layer 参数。
+        max_paths: max_paths 参数。
+        force: 是否强制。
+        rt: rt 参数。
     """
     from core.api.core_facade import get_security_view
 
@@ -727,7 +768,13 @@ async def security_hot_paths(
     max_paths: int = 20,
     rt=Depends(get_kernel_runtime),
 ):
-    """Scored hot_paths from security view (always heuristic=True)."""
+    """Scored hot_paths from security view (always heuristic=True).
+
+    Args:
+        entry_id: entry 标识。
+        max_paths: max_paths 参数。
+        rt: rt 参数。
+    """
     from core.api.core_facade import code_intel_hot_paths
 
     _ = rt
@@ -742,7 +789,13 @@ async def security_plan_run(
     max_paths: int = 12,
     rt=Depends(get_kernel_runtime),
 ):
-    """Phase B plan stage only (deterministic handler, no LLM)."""
+    """Phase B plan stage only (deterministic handler, no LLM).
+
+    Args:
+        force: 是否强制。
+        max_paths: max_paths 参数。
+        rt: rt 参数。
+    """
     from core.api.core_facade import run_security_plan
 
     _ = rt
@@ -760,7 +813,13 @@ async def security_review_dry_run(
     max_paths: int = 12,
     rt=Depends(get_kernel_runtime),
 ):
-    """Phase B dry-run: plan→trace→critique→report (all handlers, no LLM)."""
+    """Phase B dry-run: plan→trace→critique→report (all handlers, no LLM).
+
+    Args:
+        force: 是否强制。
+        max_paths: max_paths 参数。
+        rt: rt 参数。
+    """
     from core.api.core_facade import run_security_review_dry
 
     _ = rt
@@ -769,7 +828,12 @@ async def security_review_dry_run(
 
 @router.get("/diagnostics/code-intel/tour", response_model=ItemResponse)
 async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
-    """Return dependency-sorted file list for guided architecture tour."""
+    """Return dependency-sorted file list for guided architecture tour.
+
+    Args:
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     root_list = default_roots()
     res = await code_intel_scan(rt, root_list)
     
@@ -797,7 +861,11 @@ async def guided_tour(limit: int = 30, rt=Depends(get_kernel_runtime)):
 
 @router.get("/diagnostics/code-intel/domain-view", response_model=ItemResponse)
 async def domain_view(rt=Depends(get_kernel_runtime)):
-    """Aggregate code graph into business domains."""
+    """Aggregate code graph into business domains.
+
+    Args:
+        rt: rt 参数。
+    """
     root_list = default_roots()
     res = await code_intel_scan(rt, root_list)
     nodes = res.nodes

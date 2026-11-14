@@ -23,9 +23,10 @@ def pre_llm_prep_close_ids(
 ) -> List[str]:
     """Syscall ids that must be closed together for 「准备 · LLM 前置」.
 
-    Open uses ``{run}:pre_llm_prep:{step}``; several close paths historically
-    wrote only ``{run}:pre_llm_prep``. UPSERT then never hits the running row
-    (qa_agent run-124d89d5ef3f: auto_done ok, canvas stuck on step_2).
+    Args:
+        run_id: 运行 ID。
+        step_count: step_count 参数。
+        parent_span_id: parent_span 标识。
     """
     rid = str(run_id or "").strip()
     if not rid:
@@ -62,7 +63,18 @@ async def emit_pre_llm_prep_close(
     extra_args: Optional[Dict[str, Any]] = None,
     error: Optional[str] = None,
 ) -> None:
-    """Close both legacy and stepped pre_llm_prep syscall rows."""
+    """Close both legacy and stepped pre_llm_prep syscall rows.
+
+    Args:
+        store: store 参数。
+        run_id: 运行 ID。
+        status: status 参数。
+        step_count: step_count 参数。
+        parent_span_id: parent_span 标识。
+        reason: reason 参数。
+        extra_args: extra_args 参数。
+        error: error 参数。
+    """
     import time as _t
 
     adder = getattr(store, "add_syscall_event", None)
@@ -114,9 +126,8 @@ async def emit_pre_llm_prep_close(
 def coerce_coding_delivery_text(output_text: str) -> str:
     """Unwrap ``{code, language}`` JSON / Python-repr into the coding body.
 
-    Skill observe often leaves ``str({'code': '...## FILE...', 'language': 'typescript'})``
-    as the Agent delivery string. Sealing that as ``{"text": "<repr>"}`` forces the UI
-    to show a dict dump (run-c896745b). Prefer the inner ``code`` when present.
+    Args:
+        output_text: output_text 参数。
     """
     s = str(output_text or "").strip()
     if not s or not s.startswith(("{", "[")):
@@ -153,11 +164,12 @@ def skill_nested_llm_trace_context(
 ) -> Dict[str, Any]:
     """Build ``sys_llm_generate`` trace_context for nested Skill LLM calls.
 
-    Any Agent that calls any Skill (prompt / hybrid / handler) can hang the
-    orphan watchdog if the nested generate has no ``run_id``. Do not limit this
-    to ``code_generation``.
-
-    ``purpose`` stamps cost-report traffic share (defaults from ``source``).
+    Args:
+        context: context 参数。
+        params: params 参数。
+        source: source 参数。
+        purpose: purpose 参数。
+        extra: extra 参数。
     """
     tc: Dict[str, Any] = {"source": str(source or "skill")}
     if extra:
@@ -228,7 +240,13 @@ def mint_execute_session_id(
     target_id: str,
     session_id: Optional[str] = None,
 ) -> str:
-    """Return a usable session id; replace empty / ``default`` with a unique trial id."""
+    """Return a usable session id; replace empty / ``default`` with a unique trial id.
+
+    Args:
+        kind: kind 参数。
+        target_id: target 标识。
+        session_id: 会话 ID。
+    """
     sid = str(session_id or "").strip()
     if sid and sid.lower() != "default":
         return sid
@@ -310,10 +328,9 @@ _SKILL_TERMINAL = frozenset(
 def skill_call_in_flight_after(items: Any, *, after_ts: float) -> bool:
     """True when a skill was routed after ``after_ts`` and has not terminalized yet.
 
-    ``sys_skill_call`` emits ``routing/skill_route`` (selected) at start, but the
-    ``kind=skill`` syscall row only appears on completion. Orphan ``post_llm_zombie``
-    must treat that gap as live work — otherwise nested skill LLM is killed as a
-    false zombie (run-c32ebc4df1eb: code_generation started, Agent timed out at 90s).
+    Args:
+        items: items 参数。
+        after_ts: after_ts 参数。
     """
     try:
         after = float(after_ts or 0.0)
@@ -377,10 +394,9 @@ def skill_call_in_flight_after(items: Any, *, after_ts: float) -> bool:
 def has_progress_after_generate(items: Any, newest_end: float) -> bool:
     """True when skill/observe/done landed around the latest generate (not a zombie).
 
-    Nested skill LLM and observation often finish <100ms after generate
-    (architect run-e51daea7e4e4: observation start = generate_end + 73ms).
-    Requiring ``t1 > newest_end + 0.5`` false-triggered ``post_llm_zombie``
-    and timed out completed skills.
+    Args:
+        items: items 参数。
+        newest_end: newest_end 参数。
     """
     try:
         end = float(newest_end or 0.0)
@@ -415,12 +431,9 @@ def has_progress_after_generate(items: Any, newest_end: float) -> bool:
 def llm_generate_event_stall_limit(event: Optional[Dict[str, Any]], *, fallback: float) -> float:
     """Per-running-generate stall limit from syscall event args.timeout_seconds.
 
-    Declared ``timeout_seconds`` is the ``sys_llm_generate`` wait_for budget. Local
-    models often outlive that (sync to_thread does not always abort mid-read) —
-    run-b6f2abb608bf ~337s / run-870f0cf94fb9 ~359s with declare=180; ``ev_to+90``
-    orphaned at 270s mid-skill. Use +180 slack and never sit below global floor.
-
-    Without a declared per-call timeout, keep ``fallback``.
+    Args:
+        event: event 参数。
+        fallback: fallback 参数。
     """
     fb = float(fallback)
     if not isinstance(event, dict):
@@ -442,9 +455,8 @@ def llm_generate_event_stall_limit(event: Optional[Dict[str, Any]], *, fallback:
 def agent_stream_timeout_seconds(max_steps: int = 10) -> float:
     """Orphan / status-poll wall for workspace agent stream executes.
 
-    Agent ReAct may nest skill LLM calls; default skill orphan wall (360s) is too
-    short. Budget ≈ max_steps × LLM timeout × 1.25, clamped by env floors/ceilings.
-    Stored on execution ``metadata.timeout`` so orphan_watchdog uses ``mt + 45``.
+    Args:
+        max_steps: max_steps 参数。
     """
     llm_to = llm_timeout_seconds()
     steps = max(1, int(max_steps or 10))
@@ -468,8 +480,8 @@ def agent_stream_timeout_seconds(max_steps: int = 10) -> float:
 def resolve_workspace_agent_model_purpose(agent_info: Any) -> str:
     """Purpose for workspace Agent ``model: auto`` (must match audit / llm_profile).
 
-    Prefer AGENT.md ``skill_model_purpose``; else ReAct-like ``loop_type`` → agent;
-    else agent_type map; default chat.
+    Args:
+        agent_info: agent_info 参数。
     """
     meta = getattr(agent_info, "metadata", None)
     if not isinstance(meta, dict):
@@ -504,7 +516,12 @@ def resolve_workspace_agent_model_purpose(agent_info: Any) -> str:
 
 
 def resolve_skill_model_purpose(skill: Any, *, default: str = "skill_execution") -> str:
-    """Purpose for Skill LLM binding from SKILL.md ``skill_model_purpose`` metadata."""
+    """Purpose for Skill LLM binding from SKILL.md ``skill_model_purpose`` metadata.
+
+    Args:
+        skill: skill 参数。
+        default: default 参数。
+    """
     cfg = getattr(skill, "_config", None)
     if cfg is None and hasattr(skill, "get_config"):
         try:
@@ -532,8 +549,10 @@ def persist_startable_scaffold_delivery(
 ) -> Dict[str, Any]:
     """Write startable-scaffold ``## FILE`` bodies to a run workspace on disk.
 
-    Isolated coding slices are unchanged (observe-only). Gate is task-shaped
-    (``_input_asks_startable_scaffold`` / FastAPI+Vite FILE list), not ``agent_id``.
+    Args:
+        run_id: 运行 ID。
+        input_text: input_text 参数。
+        output_text: output_text 参数。
     """
     info: Dict[str, Any] = {"disk_persist": "skip"}
     try:
@@ -619,13 +638,13 @@ async def finalize_agent_after_skill_delivery(
 ) -> bool:
     """Persist Agent row + RunGraph as completed right after delivery/auto_done.
 
-    Why: ReAct may set LoopState FINISHED and emit ``skill_delivery_once`` / ``auto_done``,
-    then hang in POST_LOOP / SECI / other teardown before
-    ``_execute_workspace_agent_background`` reaches its normal upsert. UI stays
-    「执行中」with a finished trajectory (canvas green, top badge still running).
-
-    Idempotent: if the row is already terminal with non-empty output, returns True
-    without wiping it.
+    Args:
+        run_id: 运行 ID。
+        agent_id: Agent ID。
+        output_text: output_text 参数。
+        start_time: start_time 参数。
+        trace_id: trace 标识。
+        metadata_extra: metadata_extra 参数。
     """
     import logging
     import time as _time
@@ -1208,8 +1227,8 @@ async def finalize_agent_after_skill_delivery(
 def looks_like_pending_action_envelope(text: str) -> bool:
     """True when body is still a skill_call/tool_call intent — not a finished product.
 
-    Weak models often emit ``{"type":"skill_call","skill":"code_generation",...}`` as
-    the final answer. Sealing that as completed greenwashes a call that never ran.
+    Args:
+        text: text 参数。
     """
     raw = str(text or "").strip()
     if not raw or raw[:1] not in "{[":
@@ -1244,7 +1263,11 @@ def looks_like_pending_action_envelope(text: str) -> bool:
 
 
 def extract_skill_delivery_answer(event: Dict[str, Any]) -> str:
-    """Pull answer text from a skill_delivery_once / done syscall or graph node."""
+    """Pull answer text from a skill_delivery_once / done syscall or graph node.
+
+    Args:
+        event: event 参数。
+    """
     if not isinstance(event, dict):
         return ""
     result = event.get("result")
@@ -1305,9 +1328,11 @@ def orphan_seal_requires_quality_review(
 ) -> bool:
     """True when orphan seal must run QR (coding / review-bound).
 
-    Conversational ``auto_done`` seals keep skip_qr for the 8s status budget.
-    ``skill_delivery_once`` / coding primary / bound follow-up / ``## FILE:``
-    must not greenwash without ``quality_review_blocks_success``.
+    Args:
+        metadata: metadata 参数。
+        metadata_extra: metadata_extra 参数。
+        syscall_items: syscall_items 参数。
+        output_text: output_text 参数。
     """
     bags = [x for x in (metadata, metadata_extra) if isinstance(x, dict)]
     for bag in bags:
@@ -1356,7 +1381,16 @@ async def orphan_finalize_status_payload(
     age: float,
     input_payload: Any = None,
 ) -> Dict[str, Any]:
-    """Status-probe body after orphan finalize — always use DB status (never hardcode completed)."""
+    """Status-probe body after orphan finalize — always use DB status (never hardcode completed).
+
+    Args:
+        store: store 参数。
+        run_id: 运行 ID。
+        kind: kind 参数。
+        fallback_output: fallback_output 参数。
+        age: age 参数。
+        input_payload: input_payload 参数。
+    """
     import time as _time
 
     row: Dict[str, Any] = {}
@@ -1424,8 +1458,9 @@ async def orphan_finalize_status_payload(
 def resolve_bound_skill_ids(state: Any, skills: Any = None) -> List[str]:
     """Agent ``required_skills`` for HITL waiver and coding follow-up gates.
 
-    Prefer ``state.context['_bound_skill_ids']`` (set by CoreFacade / StageRunner).
-    Fall back to injected skill object names. Never match on agent_id.
+    Args:
+        state: state 参数。
+        skills: skills 参数。
     """
     ctx: Any = None
     if isinstance(state, dict):
@@ -1458,14 +1493,8 @@ def resolve_bound_skill_ids(state: Any, skills: Any = None) -> List[str]:
 def orphan_skill_delivery_answer(items: Any) -> str:
     """Answer body for status-orphan seal — only after the loop declared delivery done.
 
-    Do **not** seal merely because a skill succeeded (run-073bd173ac06): coding Agents
-    with ``skill_delivery=once`` still need bound follow-ups (``autoreview`` etc.) before
-    observe emits ``skill_delivery_once``. Sealing mid-loop skips that review step.
-
-    Ready when ``skill_delivery_once`` exists, **or** conversational ``auto_done`` with
-    a real answer and no coding-primary skill in the same run (qa_agent / PM: POST_LOOP
-    hang after auto_done left the row ``running`` — run-124d89d5ef3f). Premature
-    coding ``auto_done`` without ``skill_delivery_once`` still returns empty.
+    Args:
+        items: items 参数。
     """
     rows = items if isinstance(items, list) else []
     has_delivery_once = False
@@ -1540,7 +1569,11 @@ def agent_no_progress_seconds() -> float:
 
 
 def count_progress_syscalls(items: Any) -> int:
-    """Count syscalls that prove ReAct left the agent_start gate."""
+    """Count syscalls that prove ReAct left the agent_start gate.
+
+    Args:
+        items: items 参数。
+    """
     n = 0
     for it in items or []:
         if not isinstance(it, dict):
@@ -1569,7 +1602,13 @@ async def mark_agent_no_progress_timeout(
 ) -> bool:
     """Persist timeout when Agent never left agent_start (0 progress syscalls).
 
-    Used by API-loop early watch (survives hung bg thread) and status orphan probe.
+    Args:
+        run_id: 运行 ID。
+        agent_id: Agent ID。
+        start_time: start_time 参数。
+        input_payload: input_payload 参数。
+        trace_id: trace 标识。
+        source: source 参数。
     """
     import logging
     import time as _time
@@ -1675,7 +1714,17 @@ async def watch_agent_no_progress(
     cancel_cb: Optional[Any] = None,
     source: str = "agent_no_progress_watch",
 ) -> None:
-    """Sleep then timeout the Agent if still at agent_start with zero progress."""
+    """Sleep then timeout the Agent if still at agent_start with zero progress.
+
+    Args:
+        run_id: 运行 ID。
+        agent_id: Agent ID。
+        start_time: start_time 参数。
+        input_payload: input_payload 参数。
+        trace_id: trace 标识。
+        cancel_cb: cancel_cb 参数。
+        source: source 参数。
+    """
     import asyncio
     import logging
 
@@ -1756,7 +1805,12 @@ _USER_TASK_MARKERS = (
 
 
 def skill_arg_payload_is_thin(val: str, user_task: str) -> bool:
-    """True when skill_call input is a SOP blurb / stub, not the user brief."""
+    """True when skill_call input is a SOP blurb / stub, not the user brief.
+
+    Args:
+        val: val 参数。
+        user_task: user_task 参数。
+    """
     s = (val or "").strip()
     task = (user_task or "").strip()
     if len(s) < 80:

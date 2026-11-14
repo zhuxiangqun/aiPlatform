@@ -29,11 +29,8 @@ async def ontology_healthz() -> Dict[str, Any]:
 async def ontology_query(body: dict = Body(...)) -> Dict[str, Any]:
     """跨域本体查询。
 
-    Body: {
-        "urn": "urn:aiplat:agent:pm_agent",
-        "direction": "downstream|upstream",
-        "depth": 3
-    }
+    Args:
+        body: 请求体 dict。
     """
     urn = body.get("urn", "")
     if not urn:
@@ -64,7 +61,9 @@ async def ontology_impact(
 ) -> Dict[str, Any]:
     """一次性返回上游（谁依赖我）+ 下游（我依赖谁）。
 
-    示例: GET /api/core/ontology/impact/agent:pm_agent?depth=3
+    Args:
+        path_urn: path_urn 参数。
+        depth: depth 参数。
     """
     urn = f"urn:aiplat:{path_urn}"
     store = get_triple_store()

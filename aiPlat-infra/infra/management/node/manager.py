@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import logging
 """
 Node Manager
@@ -137,6 +139,11 @@ class NodeManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._nodes: Dict[str, NodeInfo] = {}
         self._driver_versions: List[str] = []
@@ -279,7 +286,11 @@ class NodeManager(ManagementBase):
         }
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update node manager configuration."""
+        """Update node manager configuration.
+
+        Args:
+            config: config 参数。
+        """
         if "kubernetes_api" in config:
             self.config["kubernetes_api"] = config["kubernetes_api"]
         if "driver_versions" in config:
@@ -388,7 +399,12 @@ class NodeManager(ManagementBase):
         return node
     
     async def update_node_labels(self, node_name: str, labels: Dict[str, str]) -> bool:
-        """Update (merge) labels on a node."""
+        """Update (merge) labels on a node.
+
+        Args:
+            node_name: node_name 参数。
+            labels: labels 参数。
+        """
         node = self._nodes.get(node_name)
         if node is None:
             return False
@@ -494,7 +510,11 @@ class NodeManager(ManagementBase):
         ]
     
     async def get_driver(self, version: str) -> Optional[Dict[str, Any]]:
-        """Get driver details by version."""
+        """Get driver details by version.
+
+        Args:
+            version: version 参数。
+        """
         nodes_with_version = [
             node for node in self._nodes.values()
             if node.driver_version == version
@@ -518,7 +538,12 @@ class NodeManager(ManagementBase):
         }
     
     async def upgrade_driver_batch(self, version: str, nodes: Optional[List[str]] = None) -> List[str]:
-        """Upgrade GPU driver on specified nodes (or all nodes if not specified)."""
+        """Upgrade GPU driver on specified nodes (or all nodes if not specified).
+
+        Args:
+            version: version 参数。
+            nodes: nodes 参数。
+        """
         target_nodes = nodes if nodes else list(self._nodes.keys())
         upgraded = []
         
@@ -530,7 +555,12 @@ class NodeManager(ManagementBase):
         return upgraded
     
     async def rollback_driver(self, version: str, nodes: Optional[List[str]] = None) -> List[str]:
-        """Rollback GPU driver to a previous version."""
+        """Rollback GPU driver to a previous version.
+
+        Args:
+            version: version 参数。
+            nodes: nodes 参数。
+        """
         target_nodes = nodes if nodes else list(self._nodes.keys())
         rolled_back = []
         

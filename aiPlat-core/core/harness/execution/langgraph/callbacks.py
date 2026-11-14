@@ -1,3 +1,5 @@
+"""callbacks：模块接口。"""
+
 import logging
 """
 LangGraph Callbacks Module
@@ -46,30 +48,59 @@ class CallbackRegistry:
     """Registry for callback handlers"""
     
     def __init__(self):
+        """初始化。
+        """
         self._handlers: Dict[CallbackEvent, List[CallbackHandler]] = {
             event: [] for event in CallbackEvent
         }
         self._global_handlers: List[CallbackHandler] = []
     
     def register(self, event: CallbackEvent, handler: CallbackHandler):
+        """register。
+
+        Args:
+            event: event 参数。
+            handler: handler 参数。
+        """
         self._handlers[event].append(handler)
         return self
     
     def register_global(self, handler: CallbackHandler):
+        """register_global。
+
+        Args:
+            handler: handler 参数。
+        """
         self._global_handlers.append(handler)
         return self
     
     def unregister(self, event: CallbackEvent, handler: CallbackHandler):
+        """unregister。
+
+        Args:
+            event: event 参数。
+            handler: handler 参数。
+        """
         if handler in self._handlers[event]:
             self._handlers[event].remove(handler)
         return self
     
     def unregister_global(self, handler: CallbackHandler):
+        """unregister_global。
+
+        Args:
+            handler: handler 参数。
+        """
         if handler in self._global_handlers:
             self._global_handlers.remove(handler)
         return self
     
     async def trigger(self, context: CallbackContext):
+        """trigger。
+
+        Args:
+            context: context 参数。
+        """
         for handler in self._handlers[context.event]:
             try:
                 await handler(context)
@@ -89,6 +120,8 @@ class CallbackManager:
     _instance: Optional["CallbackManager"] = None
     
     def __init__(self):
+        """初始化。
+        """
         self._registry = CallbackRegistry()
         self._enabled = True
         self._history: List[CallbackContext] = []
@@ -96,54 +129,109 @@ class CallbackManager:
     
     @classmethod
     def get_instance(cls) -> "CallbackManager":
+        """获取 instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
     
     def enable(self):
+        """enable。
+        """
         self._enabled = True
     
     def disable(self):
+        """disable。
+        """
         self._enabled = False
     
     def on_graph_start(self, handler: CallbackHandler):
+        """on_graph_start。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.GRAPH_START, handler)
         return self
     
     def on_graph_end(self, handler: CallbackHandler):
+        """on_graph_end。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.GRAPH_END, handler)
         return self
     
     def on_graph_error(self, handler: CallbackHandler):
+        """on_graph_error。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.GRAPH_ERROR, handler)
         return self
     
     def on_node_start(self, handler: CallbackHandler):
+        """on_node_start。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.NODE_START, handler)
         return self
     
     def on_node_end(self, handler: CallbackHandler):
+        """on_node_end。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.NODE_END, handler)
         return self
     
     def on_node_error(self, handler: CallbackHandler):
+        """on_node_error。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.NODE_ERROR, handler)
         return self
     
     def on_state_update(self, handler: CallbackHandler):
+        """on_state_update。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.STATE_UPDATE, handler)
         return self
     
     def on_checkpoint(self, handler: CallbackHandler):
+        """on_checkpoint。
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register(CallbackEvent.CHECKPOINT, handler)
         return self
 
     def register_global(self, handler: CallbackHandler):
-        """Register handler for all events (used for process-level persistence/audit wiring)."""
+        """Register handler for all events (used for process-level persistence/audit wiring).
+
+        Args:
+            handler: handler 参数。
+        """
         self._registry.register_global(handler)
         return self
     
     async def trigger(self, context: CallbackContext):
+        """trigger。
+
+        Args:
+            context: context 参数。
+        """
         if not self._enabled:
             return
         
@@ -154,6 +242,12 @@ class CallbackManager:
         await self._registry.trigger(context)
     
     async def trigger_graph_start(self, graph_name: str, state: Dict[str, Any]):
+        """trigger_graph_start。
+
+        Args:
+            graph_name: graph_name 参数。
+            state: state 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.GRAPH_START,
             graph_name=graph_name,
@@ -161,6 +255,12 @@ class CallbackManager:
         ))
     
     async def trigger_graph_end(self, graph_name: str, state: Dict[str, Any]):
+        """trigger_graph_end。
+
+        Args:
+            graph_name: graph_name 参数。
+            state: state 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.GRAPH_END,
             graph_name=graph_name,
@@ -173,6 +273,13 @@ class CallbackManager:
         error: Exception,
         state: Dict[str, Any],
     ):
+        """trigger_graph_error。
+
+        Args:
+            graph_name: graph_name 参数。
+            error: error 参数。
+            state: state 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.GRAPH_ERROR,
             graph_name=graph_name,
@@ -186,6 +293,13 @@ class CallbackManager:
         node_name: str,
         state: Dict[str, Any],
     ):
+        """trigger_node_start。
+
+        Args:
+            graph_name: graph_name 参数。
+            node_name: node_name 参数。
+            state: state 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.NODE_START,
             graph_name=graph_name,
@@ -200,6 +314,14 @@ class CallbackManager:
         state: Dict[str, Any],
         result: Any,
     ):
+        """trigger_node_end。
+
+        Args:
+            graph_name: graph_name 参数。
+            node_name: node_name 参数。
+            state: state 参数。
+            result: result 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.NODE_END,
             graph_name=graph_name,
@@ -215,6 +337,14 @@ class CallbackManager:
         error: Exception,
         state: Dict[str, Any],
     ):
+        """trigger_node_error。
+
+        Args:
+            graph_name: graph_name 参数。
+            node_name: node_name 参数。
+            error: error 参数。
+            state: state 参数。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.NODE_ERROR,
             graph_name=graph_name,
@@ -229,6 +359,13 @@ class CallbackManager:
         state: Dict[str, Any],
         checkpoint_id: str,
     ):
+        """trigger_checkpoint。
+
+        Args:
+            graph_name: graph_name 参数。
+            state: state 参数。
+            checkpoint_id: checkpoint 标识。
+        """
         await self.trigger(CallbackContext(
             event=CallbackEvent.CHECKPOINT,
             graph_name=graph_name,
@@ -241,6 +378,12 @@ class CallbackManager:
         event: Optional[CallbackEvent] = None,
         limit: int = 100,
     ) -> List[CallbackContext]:
+        """获取 history。
+
+        Args:
+            event: event 参数。
+            limit: 返回条数上限。
+        """
         history = self._history
         if event:
             history = [c for c in history if c.event == event]
@@ -251,9 +394,19 @@ class LoggingCallback:
     """Built-in callback for logging"""
     
     def __init__(self, log_level: str = "INFO"):
+        """初始化。
+
+        Args:
+            log_level: log_level 参数。
+        """
         self.log_level = log_level
     
     async def __call__(self, context: CallbackContext):
+        """__call__。
+
+        Args:
+            context: context 参数。
+        """
         timestamp = context.timestamp.isoformat()
         node_info = f" [{context.node_name}]" if context.node_name else ""
         error_info = f" ERROR: {context.error}" if context.error else ""
@@ -264,9 +417,16 @@ class MetricsCallback:
     """Built-in callback for collecting metrics"""
     
     def __init__(self):
+        """初始化。
+        """
         self._metrics: Dict[str, List[float]] = {}
     
     async def __call__(self, context: CallbackContext):
+        """__call__。
+
+        Args:
+            context: context 参数。
+        """
         metric_name = f"{context.graph_name}.{context.event.value}"
         if metric_name not in self._metrics:
             self._metrics[metric_name] = []
@@ -274,6 +434,8 @@ class MetricsCallback:
         self._metrics[metric_name].append(timestamp)
     
     def get_metrics(self) -> Dict[str, Dict[str, float]]:
+        """获取 metrics。
+        """
         result = {}
         for name, values in self._metrics.items():
             if values:
@@ -286,14 +448,23 @@ class MetricsCallback:
 
 
 def create_callback_manager() -> CallbackManager:
+    """创建 callback_manager。
+    """
     return CallbackManager()
 
 
 def create_logging_callback(log_level: str = "INFO") -> LoggingCallback:
+    """创建 logging_callback。
+
+    Args:
+        log_level: log_level 参数。
+    """
     return LoggingCallback(log_level)
 
 
 def create_metrics_callback() -> MetricsCallback:
+    """创建 metrics_callback。
+    """
     return MetricsCallback()
 
 

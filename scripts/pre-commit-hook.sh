@@ -223,6 +223,16 @@ if duplicates:
     fi
 fi
 
+# ── Step 5.5: Python 可读性注释守卫（全平台 docstring / Args / 为什么）──
+echo ""
+echo "  Checking Python docstring readability on staged files..."
+if ! python3 "$WORKSPACE/scripts/check_python_docstring_guard.py" --staged 2>&1; then
+    echo ""
+    echo "  ❌ Docstring guard failed. Fix module/public Args/「为什么」注释后再 commit。"
+    echo "     规范: 工作区 CLAUDE.md 通用强制规则 3a"
+    exit 1
+fi
+
 # ── Step 6: Architecture guard (quick) — catch new violations before commit ──
 echo ""
 echo "  Running architecture guard (quick)..."

@@ -54,6 +54,11 @@ class RecursivePatternDetector:
     """
 
     def __init__(self, *, threshold: float = 0.6):
+        """初始化。
+
+        Args:
+            threshold: threshold 参数。
+        """
         self._threshold = threshold
         self._session_scores: Dict[str, float] = {}  # session_id → cumulative risk
 
@@ -67,8 +72,11 @@ class RecursivePatternDetector:
     ) -> Tuple[bool, float, Dict[str, Any]]:
         """检测当前轮次是否存在递归自指风险.
 
-        Returns:
-            (is_risk, score, details)
+        Args:
+            user_input: user_input 参数。
+            assistant_output: assistant_output 参数。
+            session_id: 会话 ID。
+            message_history: message_history 参数。
         """
         score = 0.0
         details: Dict[str, Any] = {
@@ -122,6 +130,11 @@ class RecursivePatternDetector:
         return is_risk, score, details
 
     def reset_session(self, session_id: str):
+        """reset_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         self._session_scores.pop(session_id, None)
 
 
@@ -134,7 +147,14 @@ def check_cognitive_safety(
     session_id: str = "",
     message_history: Optional[List[Dict]] = None,
 ) -> Dict[str, Any]:
-    """快速检查认知安全性."""
+    """快速检查认知安全性.
+
+    Args:
+        user_input: user_input 参数。
+        assistant_output: assistant_output 参数。
+        session_id: 会话 ID。
+        message_history: message_history 参数。
+    """
     detector = RecursivePatternDetector()
     is_risk, score, details = detector.check(
         user_input, assistant_output,

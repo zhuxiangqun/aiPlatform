@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 @dataclass
 class GraphEdge:
+    """GraphEdge。"""
     source_id: str
     target_id: str
     relation_name: str
@@ -42,7 +43,11 @@ class GraphEdge:
     valid_to: str = ""             # Phase 0: ISO 8601, empty=permanent
 
     def is_active(self, at_time: Optional[str] = None) -> bool:
-        """Check if this edge/relation is valid at the given time (Phase 0)."""
+        """Check if this edge/relation is valid at the given time (Phase 0).
+
+        Args:
+            at_time: at_time 参数。
+        """
         if not self.valid_from and not self.valid_to:
             return True
         from datetime import datetime, timezone as _tz
@@ -71,6 +76,7 @@ def _class_synonyms(domain_id: str, class_name: str) -> List[str]:
 
 @dataclass
 class GraphNode:
+    """GraphNode。"""
     entity_id: str
     entity_name: str
     class_name: str
@@ -108,6 +114,12 @@ class GraphIndex:
     _load_epoch: float = 0.0
 
     def __init__(self, domain_id: str, tenant_id: str = "default"):
+        """初始化。
+
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户 ID。
+        """
         self.domain_id = domain_id
         self.tenant_id = tenant_id
         self._nodes: Dict[str, GraphNode] = {}
@@ -235,8 +247,10 @@ class GraphIndex:
     def add_entity_property(self, entity_id: str, key: str, value: Any) -> None:
         """Add or update a metadata property on an existing entity.
 
-        Used by DynamicSchemaMapper and CrossDomainResolver to write
-        entity attributes, mapping metadata, and cross-domain edges.
+        Args:
+            entity_id: entity 标识。
+            key: key 参数。
+            value: value 参数。
         """
         if entity_id not in self._nodes:
             logging.warning("Entity %s not found in %s, cannot set %s", entity_id, self.domain_id, key)
@@ -249,7 +263,13 @@ class GraphIndex:
         return
 
     def set_entity_property(self, entity_id: str, key: str, value: Any) -> bool:
-        """Set metadata[key]. None removes the key. False if the entity is absent."""
+        """Set metadata[key]. None removes the key. False if the entity is absent.
+
+        Args:
+            entity_id: entity 标识。
+            key: key 参数。
+            value: value 参数。
+        """
         if entity_id not in self._nodes:
             return False
         node = self._nodes[entity_id]
@@ -278,7 +298,13 @@ class GraphIndex:
             return False
 
     def update_entity_property(self, entity_id: str, key: str, value: Any) -> None:
-        """Alias for add_entity_property (handlers historically call update_*)."""
+        """Alias for add_entity_property (handlers historically call update_*).
+
+        Args:
+            entity_id: entity 标识。
+            key: key 参数。
+            value: value 参数。
+        """
         self.add_entity_property(entity_id, key, value)
 
     def get_entity_classes(self) -> List[str]:
@@ -286,11 +312,20 @@ class GraphIndex:
         return sorted(set(n.class_name for n in self._nodes.values() if n.class_name))
 
     def get_entities_by_class(self, class_name: str) -> List[GraphNode]:
-        """Return all graph nodes of the given class."""
+        """Return all graph nodes of the given class.
+
+        Args:
+            class_name: class_name 参数。
+        """
         return [n for n in self._nodes.values() if n.class_name == class_name]
 
     def migrate_class_nodes(self, old_class_name: str, new_class_name: str) -> int:
-        """Rename a class across all graph nodes. Returns count of migrated nodes."""
+        """Rename a class across all graph nodes. Returns count of migrated nodes.
+
+        Args:
+            old_class_name: old_class_name 参数。
+            new_class_name: new_class_name 参数。
+        """
         count = 0
         for entity_id, node in list(self._nodes.items()):
             if node.class_name == old_class_name:
@@ -322,10 +357,19 @@ class GraphIndex:
         valid_to: str = "",      # Phase 0
     ) -> None:
         """Add a directed edge. Creates out_edge on source and in_edge on target.
-        Writes to SQLite incrementally.
 
-        Validates domain/range constraints from the domain YAML's object_properties.
-        Relations violating constraints get confidence reduced to 0.3.
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
+            relation_name: relation_name 参数。
+            relation_label: relation_label 参数。
+            confidence: confidence 参数。
+            inverse_name: inverse_name 参数。
+            inverse_label: inverse_label 参数。
+            inferred: inferred 参数。
+            rule_name: rule_name 参数。
+            valid_from: valid_from 参数。
+            valid_to: valid_to 参数。
         """
         if source_id not in self._nodes or target_id not in self._nodes:
             return
@@ -402,7 +446,16 @@ class GraphIndex:
         self, source_id: str, target_id: str, relation_name: str, *,
         relation_label: str = "", confidence: float = 1.0, rule_name: str = "",
     ) -> bool:
-        """Add an inferred edge. Skips if duplicate exists. Returns True if added."""
+        """Add an inferred edge. Skips if duplicate exists. Returns True if added.
+
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
+            relation_name: relation_name 参数。
+            relation_label: relation_label 参数。
+            confidence: confidence 参数。
+            rule_name: rule_name 参数。
+        """
         if source_id not in self._nodes or target_id not in self._nodes:
             return False
         src = self._nodes[source_id]
@@ -438,7 +491,11 @@ class GraphIndex:
                          context_description: str = "") -> bool:
         """Set a human-readable context description for an edge.
 
-        Example: "RAG implements RAGChat as an enterprise Q&A system handling 5000+ queries/day"
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
+            relation_name: relation_name 参数。
+            context_description: context_description 参数。
         """
         node = self._nodes.get(source_id)
         if not node:
@@ -457,7 +514,14 @@ class GraphIndex:
 
     def set_edge_embedding(self, source_id: str, target_id: str, relation_name: str, *,
                            embedding: List[float]) -> bool:
-        """Set a per-relation embedding vector. Stored as JSON in SQLite."""
+        """Set a per-relation embedding vector. Stored as JSON in SQLite.
+
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
+            relation_name: relation_name 参数。
+            embedding: embedding 参数。
+        """
         node = self._nodes.get(source_id)
         if not node:
             return False
@@ -474,7 +538,11 @@ class GraphIndex:
         return False
 
     def remove_entity(self, entity_id: str) -> bool:
-        """Remove a node and all its edges. Incremental DELETE."""
+        """Remove a node and all its edges. Incremental DELETE.
+
+        Args:
+            entity_id: entity 标识。
+        """
         if entity_id not in self._nodes:
             return False
         del self._nodes[entity_id]
@@ -550,6 +618,11 @@ class GraphIndex:
         return he
 
     def get_hyperedge(self, event_id: str) -> Optional[HyperEdge]:
+        """获取 hyperedge。
+
+        Args:
+            event_id: event 标识。
+        """
         return self._hyperedges.get(event_id)
 
     def get_hyperedge_neighbors(
@@ -576,10 +649,19 @@ class GraphIndex:
         return list(neighbors.values())
 
     def get_hyperedges_for_entity(self, entity_id: str) -> List[HyperEdge]:
-        """Get all hyperedges that contain the given entity."""
+        """Get all hyperedges that contain the given entity.
+
+        Args:
+            entity_id: entity 标识。
+        """
         return [he for he in self._hyperedges.values() if entity_id in he.entity_ids]
 
     def remove_hyperedge(self, event_id: str) -> bool:
+        """remove_hyperedge。
+
+        Args:
+            event_id: event 标识。
+        """
         if event_id not in self._hyperedges:
             return False
         del self._hyperedges[event_id]
@@ -595,7 +677,12 @@ class GraphIndex:
     def add_relations_batch(
         self, relations: List[Dict[str, Any]], *, domain,
     ) -> int:
-        """Batch-add relations from RelationMapper output."""
+        """Batch-add relations from RelationMapper output.
+
+        Args:
+            relations: relations 参数。
+            domain: domain 参数。
+        """
         added = 0
         prop_map = {getattr(p, "name", ""): p for p in getattr(domain, "object_properties", [])}
         for p in getattr(domain, "object_properties", []):
@@ -628,10 +715,19 @@ class GraphIndex:
     # ── Queries ────────────────────────────────────────────────────
 
     def get_node(self, entity_id: str) -> Optional[GraphNode]:
+        """获取 node。
+
+        Args:
+            entity_id: entity 标识。
+        """
         return self._nodes.get(entity_id)
 
     def find_by_name(self, name: str) -> Optional[GraphNode]:
-        """Find entity by name with 3-level matching (exact → alias → substring)."""
+        """Find entity by name with 3-level matching (exact → alias → substring).
+
+        Args:
+            name: name 参数。
+        """
         nl = name.lower()
         # 1. Exact match on entity_name
         for node in self._nodes.values():
@@ -653,6 +749,13 @@ class GraphIndex:
         direction: str = "outgoing",
         relation_filter: Optional[List[str]] = None,
     ) -> List[GraphNode]:
+        """获取 neighbors。
+
+        Args:
+            entity_id: entity 标识。
+            direction: direction 参数。
+            relation_filter: relation_filter 参数。
+        """
         node = self._nodes.get(entity_id)
         if not node:
             return []
@@ -680,9 +783,13 @@ class GraphIndex:
         at_time: Optional[str] = None,    # Phase 0: reference time for active check
     ) -> List[Tuple[str, GraphEdge]]:
         """Return (neighbor_id, edge) tuples. Use when callers need edge info (relation_name etc).
-        
-        Unlike get_neighbors() which returns bare GraphNode objects, this method preserves
-        the edge data so callers can check relation_name, confidence, and other edge fields.
+
+        Args:
+            entity_id: entity 标识。
+            direction: direction 参数。
+            relation_filter: relation_filter 参数。
+            active_only: active_only 参数。
+            at_time: at_time 参数。
         """
         node = self._nodes.get(entity_id)
         if not node:
@@ -708,13 +815,22 @@ class GraphIndex:
         return results
 
     def get_inverse_relations(self, entity_id: str) -> List[GraphEdge]:
+        """获取 inverse_relations。
+
+        Args:
+            entity_id: entity 标识。
+        """
         node = self._nodes.get(entity_id)
         return list(node.in_edges) if node else []
 
     # ── Adamic-Adar Graph Similarity (v2.9) ──
 
     def get_node_degree(self, entity_id: str) -> int:
-        """Return total degree (in-edges + out-edges) for a node."""
+        """Return total degree (in-edges + out-edges) for a node.
+
+        Args:
+            entity_id: entity 标识。
+        """
         node = self._nodes.get(entity_id)
         if not node:
             return 0
@@ -723,10 +839,9 @@ class GraphIndex:
     def adamic_adar_similarity(self, source_id: str, target_id: str) -> float:
         """Compute Adamic-Adar similarity between two nodes.
 
-        AA(u, v) = Σ 1 / log(degree(z)) for z in Γ(u) ∩ Γ(v)
-        
-        Shared neighbors with lower degree contribute more to similarity
-        (they are more "specific" connectors). Returns value in [0, 1].
+        Args:
+            source_id: source 标识。
+            target_id: target 标识。
         """
         import math as _math
         src_node = self._nodes.get(source_id)
@@ -762,8 +877,9 @@ class GraphIndex:
     def suggest_related_entities(self, entity_id: str, top_k: int = 10) -> List[Dict[str, Any]]:
         """Find the top-k most similar entities using Adamic-Adar similarity.
 
-        Returns sorted list of {entity_id, entity_name, class_name, aa_score}.
-        Used by RAG retrieval to enrich query context with related entities.
+        Args:
+            entity_id: entity 标识。
+            top_k: top_k 参数。
         """
         if entity_id not in self._nodes:
             return []
@@ -791,8 +907,10 @@ class GraphIndex:
                             domain_id: str = "") -> float:
         """Compute ontology class hierarchy distance. 0=same class, 1=max distant.
 
-        Reads domain YAML to find parent relationships and computes normalized
-        tree distance. Smaller value = more semantically similar.
+        Args:
+            class_a: class_a 参数。
+            class_b: class_b 参数。
+            domain_id: domain 标识。
         """
         if class_a == class_b:
             return 0.0
@@ -839,8 +957,9 @@ class GraphIndex:
     def source_overlap_score(self, entity_a: str, entity_b: str) -> float:
         """Compute source document overlap between two entities.
 
-        Higher score = more shared source documents = closer semantic relationship.
-        Returns 0-1 normalized overlap ratio.
+        Args:
+            entity_a: entity_a 参数。
+            entity_b: entity_b 参数。
         """
         sources_a = set()
         sources_b = set()
@@ -870,9 +989,9 @@ class GraphIndex:
 
     def get_entity_source_docs(self, entity_ids: List[str]) -> Dict[str, str]:
         """Batch lookup source_doc_id for a set of entity IDs.
-        
-        Used by community detection and drift monitoring to trace
-        entities back to their originating KB documents.
+
+        Args:
+            entity_ids: entity_ids 参数。
         """
         if not entity_ids:
             return {}
@@ -887,11 +1006,8 @@ class GraphIndex:
     def detect_communities(self, max_iterations: int = 10) -> Dict[str, List[Dict[str, Any]]]:
         """Louvain modularity-based community detection for knowledge graphs.
 
-        Groups densely connected entities into knowledge communities.
-        Returns {community_label: [{entity_id, entity_name, class_name}, ...]}.
-        
-        Algorithm: simplified Louvain — greedy modularity optimization
-        with node-by-node reassignment and convergence check.
+        Args:
+            max_iterations: max_iterations 参数。
         """
         import random as _random
 
@@ -1018,7 +1134,11 @@ class GraphIndex:
     # ── Persistence ────────────────────────────────────────────────
 
     def save(self, *, export_json: bool = True) -> str:
-        """Sync in-memory to SQLite (commit). Optionally export JSON."""
+        """Sync in-memory to SQLite (commit). Optionally export JSON.
+
+        Args:
+            export_json: export_json 参数。
+        """
         if self._conn:
             self._conn.commit()
         if export_json:
@@ -1052,9 +1172,9 @@ class GraphIndex:
     def load(cls, domain_id: str, tenant_id: str = "default") -> GraphIndex:
         """Load graph from SQLite first, fall back to JSON.
 
-        Uses a class-level LRU cache to prevent duplicate in-memory copies
-        when multiple callers load the same domain graph concurrently.
-        tenant_id scopes the graph to a specific tenant partition.
+        Args:
+            domain_id: domain 标识。
+            tenant_id: 租户 ID。
         """
         cache_key = f"gi:{tenant_id}:{domain_id}"
         if cache_key in cls._loaded_instances:
@@ -1185,6 +1305,8 @@ class GraphIndex:
     # ── Stats ──────────────────────────────────────────────────────
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         node_count = len(self._nodes)
         edge_count = sum(len(n.out_edges) for n in self._nodes.values())
         return {
@@ -1339,7 +1461,11 @@ class GraphIndex:
     # ── Graph Snapshots (versioning + rollback) ────────────────────
 
     def snapshot(self, label: str = "") -> Dict[str, Any]:
-        """Save a versioned snapshot of current graph state."""
+        """Save a versioned snapshot of current graph state.
+
+        Args:
+            label: label 参数。
+        """
         conn = self._get_conn()
         conn.execute("""
             CREATE TABLE IF NOT EXISTS graph_snapshots (
@@ -1374,6 +1500,11 @@ class GraphIndex:
         return {"id": conn.execute("SELECT last_insert_rowid()").fetchone()[0], "label": label, "timestamp": ts}
 
     def list_snapshots(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """列出 snapshots。
+
+        Args:
+            limit: 返回条数上限。
+        """
         conn = self._get_conn()
         rows = conn.execute(
             "SELECT id, label, timestamp FROM graph_snapshots WHERE domain_id=? ORDER BY timestamp DESC LIMIT ?",
@@ -1382,6 +1513,11 @@ class GraphIndex:
         return [{"id": r[0], "label": r[1], "timestamp": r[2]} for r in rows]
 
     def restore_snapshot(self, snapshot_id: int) -> Dict[str, Any]:
+        """restore_snapshot。
+
+        Args:
+            snapshot_id: snapshot 标识。
+        """
         conn = self._get_conn()
         row = conn.execute(
             "SELECT data, label, timestamp FROM graph_snapshots WHERE id=? AND domain_id=?",
@@ -1409,6 +1545,12 @@ class GraphIndex:
                 "nodes": len(self._nodes), "edges": sum(len(n.out_edges) for n in self._nodes.values())}
 
     def compare_snapshots(self, id_a: int, id_b: int) -> Dict[str, Any]:
+        """compare_snapshots。
+
+        Args:
+            id_a: id_a 参数。
+            id_b: id_b 参数。
+        """
         conn = self._get_conn()
         a_row = conn.execute("SELECT data FROM graph_snapshots WHERE id=?", (id_a,)).fetchone()
         b_row = conn.execute("SELECT data FROM graph_snapshots WHERE id=?", (id_b,)).fetchone()

@@ -24,7 +24,11 @@ _thread: Optional[threading.Thread] = None
 
 
 def start(interval_seconds: float = None) -> None:
-    u"""Start the background SLA monitor thread."""
+    """Start the background SLA monitor thread.
+
+    Args:
+        interval_seconds: interval_seconds 参数。
+    """
     global _running, _thread
     if _running:
         return
@@ -43,7 +47,11 @@ def stop() -> None:
 
 
 def scan_once(ontologies_dir: str = "") -> List[Dict[str, Any]]:
-    u"""Run one scan cycle, returning triggered transitions."""
+    """Run one scan cycle, returning triggered transitions.
+
+    Args:
+        ontologies_dir: ontologies_dir 参数。
+    """
     triggered = []
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
     base_path = Path(base)

@@ -20,6 +20,13 @@ if str(CORE) not in sys.path:
 
 
 def seed_orders(count: int, prefix: str, domain_id: str) -> list[str]:
+    """seed_orders。
+
+    Args:
+        count: count 参数。
+        prefix: prefix 参数。
+        domain_id: domain 标识。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
     # Clear cached instances so AIPLAT_HOME takes effect
@@ -37,6 +44,11 @@ def seed_orders(count: int, prefix: str, domain_id: str) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     p = argparse.ArgumentParser(description="Seed lock-service InstallOrders")
     p.add_argument("--count", type=int, default=200)
     p.add_argument("--prefix", default="IO-P2")

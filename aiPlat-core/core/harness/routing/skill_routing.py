@@ -18,6 +18,7 @@ import re
 
 @dataclass(frozen=True)
 class SkillCandidate:
+    """SkillCandidate。"""
     skill_id: str
     name: str
     scope: str  # engine | workspace | unknown
@@ -26,7 +27,11 @@ class SkillCandidate:
 
 
 def extract_query_text(params: Dict[str, Any]) -> str:
-    """best-effort：从参数中提取“用户问题/指令”文本。"""
+    """best-effort：从参数中提取“用户问题/指令”文本。
+
+    Args:
+        params: params 参数。
+    """
     p = params or {}
     for k in ("prompt", "query", "text", "input", "question", "instruction"):
         v = p.get(k)
@@ -39,7 +44,11 @@ def extract_query_text(params: Dict[str, Any]) -> str:
 
 
 def skill_trigger_text(description: str) -> str:
-    """Opening sentence used for wake matching. Procedure text after it stays out."""
+    """Opening sentence used for wake matching. Procedure text after it stays out.
+
+    Args:
+        description: description 参数。
+    """
     text = (description or "").strip()
     if not text:
         return ""
@@ -53,7 +62,12 @@ def skill_trigger_text(description: str) -> str:
 
 
 def skill_catalog_entry(name: str, stub: str) -> str:
-    """One catalog line: skill name plus the opening sentence only."""
+    """One catalog line: skill name plus the opening sentence only.
+
+    Args:
+        name: name 参数。
+        stub: stub 参数。
+    """
     label = (name or "").strip() or "skill"
     raw = (stub or "").strip()
     prefix = f"{label}:"
@@ -63,7 +77,13 @@ def skill_catalog_entry(name: str, stub: str) -> str:
 
 
 def procedural_memory_block(query: str, skills: Sequence[Dict[str, Any]], *, limit: int = 5) -> str:
-    """Hot skills whose opening sentence overlaps the ask. Unrelated stubs stay out."""
+    """Hot skills whose opening sentence overlaps the ask. Unrelated stubs stay out.
+
+    Args:
+        query: 查询。
+        skills: skills 参数。
+        limit: 返回条数上限。
+    """
     q = tokenize(query or "")
     if not q:
         return ""
@@ -95,7 +115,11 @@ def procedural_memory_block(query: str, skills: Sequence[Dict[str, Any]], *, lim
 
 
 def tokenize(text: str) -> Set[str]:
-    """轻量分词：英文按空格；中文做 bigram（best-effort）。"""
+    """轻量分词：英文按空格；中文做 bigram（best-effort）。
+
+    Args:
+        text: text 参数。
+    """
     s0 = _norm(text)
     if not s0:
         return set()
@@ -115,9 +139,12 @@ def compute_skill_candidates(
     skills: Sequence[Dict[str, Any]],
     top_k: int = 8,
 ) -> List[SkillCandidate]:
-    """
-    基于 query_text 与 skill 的 (name/开头一句描述/trigger_conditions/keywords) overlap 生成候选列表。
-    注意：这不是“最终选择”，只是用于可解释的观测与调参。
+    """基于 query_text 与 skill 的 (name/开头一句描述/trigger_conditions/keywords) overlap 生成候选列表。
+
+    Args:
+        query_text: query_text 参数。
+        skills: skills 参数。
+        top_k: top_k 参数。
     """
     qt = tokenize(query_text)
     if not qt:
@@ -199,12 +226,21 @@ def _bounded_weight_write(skill_name: str, weight: float) -> None:
 
 
 def get_skill_weight(skill_name: str) -> float:
-    """Get the learned routing weight for a skill. Default 1.0."""
+    """Get the learned routing weight for a skill. Default 1.0.
+
+    Args:
+        skill_name: skill_name 参数。
+    """
     return _skill_weights.get(skill_name, 1.0)
 
 
 def set_skill_weight(skill_name: str, weight: float) -> None:
-    """Set the learned routing weight for a skill. Clamped to [0.1, 5.0]."""
+    """Set the learned routing weight for a skill. Clamped to [0.1, 5.0].
+
+    Args:
+        skill_name: skill_name 参数。
+        weight: weight 参数。
+    """
     _bounded_weight_write(skill_name, max(0.1, min(5.0, weight)))
 
 

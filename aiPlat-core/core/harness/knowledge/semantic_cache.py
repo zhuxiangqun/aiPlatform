@@ -1,3 +1,5 @@
+"""semantic_cache：模块接口。"""
+
 from __future__ import annotations
 
 from core.utils.math_utils import cosine_similarity
@@ -48,6 +50,13 @@ class SemanticCache:
         ttl: int = 0,
         l2_threshold: float = 0.0,
     ):
+        """初始化。
+
+        Args:
+            redis_url: redis_url 参数。
+            ttl: ttl 参数。
+            l2_threshold: l2_threshold 参数。
+        """
         self._redis_url = redis_url or os.getenv("AIPLAT_CACHE_REDIS_URL", "redis://localhost:6379")
         self._ttl = ttl or int(os.getenv("AIPLAT_CACHE_TTL", "3600"))
         self._l2_threshold = l2_threshold or float(os.getenv("AIPLAT_CACHE_L2_SIMILARITY", "0.95"))
@@ -60,10 +69,14 @@ class SemanticCache:
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     @property
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         total = self._l1_hits + self._l2_hits + self._misses
         return {
             "l1_hits": self._l1_hits,
@@ -112,7 +125,12 @@ class SemanticCache:
     # ── Layer 1: Exact Match ────────────────────────────────────────────
 
     async def get_l1(self, query: str, domain_id: str) -> Optional[Dict[str, Any]]:
-        """精确匹配缓存。"""
+        """精确匹配缓存。
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+        """
         await self._ensure_redis()
         if not self._enabled or self._redis is False:
             return None
@@ -126,6 +144,13 @@ class SemanticCache:
         return None
 
     async def set_l1(self, query: str, domain_id: str, result: Dict[str, Any]):
+        """set_l1。
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+            result: result 参数。
+        """
         await self._ensure_redis()
         if not self._enabled or self._redis is False:
             return
@@ -149,7 +174,12 @@ class SemanticCache:
             return []
 
     async def get_l2(self, query: str, domain_id: str) -> Optional[Dict[str, Any]]:
-        """语义相似缓存。"""
+        """语义相似缓存。
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+        """
         await self._ensure_redis()
         if not self._enabled or self._redis is False:
             return None
@@ -186,7 +216,13 @@ class SemanticCache:
         return None
 
     async def set_l2(self, query: str, domain_id: str, result: Dict[str, Any]):
-        """Store embedding vector for semantic search."""
+        """Store embedding vector for semantic search.
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+            result: result 参数。
+        """
         await self._ensure_redis()
         if not self._enabled or self._redis is False:
             return
@@ -205,7 +241,12 @@ class SemanticCache:
     # ── Public API ────────────────────────────────────────────────────────
 
     async def get(self, query: str, domain_id: str = "default") -> Optional[Dict[str, Any]]:
-        """Try L1 → L2(Latent) → L3(Redis)."""
+        """Try L1 → L2(Latent) → L3(Redis).
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+        """
         if not self._enabled:
             return None
         # L1
@@ -230,7 +271,13 @@ class SemanticCache:
         return None
 
     async def set(self, query: str, domain_id: str, result: Dict[str, Any]):
-        """Store in L1 + L2."""
+        """Store in L1 + L2.
+
+        Args:
+            query: 查询。
+            domain_id: domain 标识。
+            result: result 参数。
+        """
         if not self._enabled:
             return
         await self.set_l1(query, domain_id, result)
@@ -249,10 +296,8 @@ class SemanticCache:
     async def invalidate_domain(self, domain_id: str):
         """Atomically invalidate all cache for a domain.
 
-        Redis: increments a version counter (O(1)) so versioned keys naturally miss;
-        old keys are left for Redis LRU eviction. Also proactively clears L1 keys.
-        In-memory LatentStageCache (L2): explicitly cleared — it matches by embedding
-        (not versioned key), so version bumps do NOT invalidate it.
+        Args:
+            domain_id: domain 标识。
         """
         if not self._enabled:
             return
@@ -344,6 +389,8 @@ class LatentStageCache:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._enabled = os.getenv("AIPLAT_LATENT_CACHE_ENABLED", "true").lower() not in ("0", "false", "no")
         self._alpha = float(os.getenv("AIPLAT_LATENT_CACHE_ALPHA", "0.4"))
         self._beta = float(os.getenv("AIPLAT_LATENT_CACHE_BETA", "0.2"))
@@ -358,7 +405,14 @@ class LatentStageCache:
         vector: List[float],
         metadata: Dict[str, Any] = None,
     ):
-        """存储单个阶段的向量"""
+        """存储单个阶段的向量。
+
+        Args:
+            run_id: 运行 ID。
+            stage_name: stage_name 参数。
+            vector: vector 参数。
+            metadata: metadata 参数。
+        """
         if not self._enabled:
             return
         if run_id not in self._stages:
@@ -381,10 +435,10 @@ class LatentStageCache:
     ) -> List[Dict[str, Any]]:
         """多级隐空间相似度匹配。
 
-        combined_score = α·query_sim + β·domain_sim + γ·retrieval_sim
-
-        Returns:
-            匹配结果列表 [{run_id, score, results, domain}]
+        Args:
+            query_vector: query_vector 参数。
+            domain_vector: domain_vector 参数。
+            top_k: top_k 参数。
         """
         if not self._enabled or not self._stages:
             return []
@@ -430,9 +484,8 @@ class LatentStageCache:
     def clear_domain(self, domain_id: str) -> int:
         """Remove cached stages for a domain (in-memory invalidation).
 
-        The LatentStageCache matches by embedding similarity (not versioned key),
-        so version bumps on their own do NOT invalidate it. This removes all cached
-        stages whose metadata.domain matches. Returns count removed.
+        Args:
+            domain_id: domain 标识。
         """
         to_remove = []
         for run_id, stages in self._stages.items():
@@ -455,6 +508,8 @@ class LatentStageCache:
         return dot / (norm_a * norm_b)
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "enabled": self._enabled,
             "entries": len(self._stages),
@@ -468,6 +523,8 @@ _cache: Optional[SemanticCache] = None
 
 
 def get_semantic_cache() -> SemanticCache:
+    """获取 semantic_cache。
+    """
     global _cache
     if _cache is None:
         _cache = SemanticCache()

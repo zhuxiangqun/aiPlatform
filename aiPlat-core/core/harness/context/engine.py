@@ -29,6 +29,7 @@ Message = Dict[str, Any]
 
 @dataclass
 class ContextResult:
+    """ContextResult。"""
     messages: List[Message]
     metadata: Dict[str, Any]
     status: Dict[str, Any] = field(default_factory=dict)
@@ -36,20 +37,47 @@ class ContextResult:
 
 
 class ContextEngine:
+    """ContextEngine。"""
     def apply(self, *, messages: List[Message], metadata: Dict[str, Any], repo_root: Optional[str]) -> ContextResult:
+        """apply。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+            repo_root: repo_root 参数。
+        """
         raise NotImplementedError
 
     def should_compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> bool:
+        """should_compact。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+        """
         return False
 
     def compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> ContextResult:
+        """compact。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+        """
         return ContextResult(messages=list(messages or []), metadata=dict(metadata or {}))
 
     def get_status(self, *, messages: List[Message], metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """获取 status。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+        """
         return {}
 
 
 class DefaultContextEngine(ContextEngine):
+    """DefaultContextEngine。"""
     _INJECTION_PATTERNS = [
         (re.compile(r"ignore\s+(previous|all|above|prior)\s+instructions", re.I), "prompt_injection"),
         (re.compile(r"do\s+not\s+tell\s+the\s+user", re.I), "deception_hide"),
@@ -79,10 +107,19 @@ class DefaultContextEngine(ContextEngine):
 
     def __init__(self) -> None:
         # naive cache: {repo_root: (mtime, content, path)}
+        """初始化。
+        """
         self._cache: Dict[str, Tuple[float, str, str]] = {}
         self._cache_max = 16
 
     def apply(self, *, messages: List[Message], metadata: Dict[str, Any], repo_root: Optional[str]) -> ContextResult:
+        """apply。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+            repo_root: repo_root 参数。
+        """
         msgs = list(messages or [])
         meta = dict(metadata or {})
         status: Dict[str, Any] = {
@@ -805,6 +842,12 @@ class DefaultContextEngine(ContextEngine):
             return ""
 
     def should_compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> bool:
+        """should_compact。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+        """
         try:
             token_limit = int(os.getenv("AIPLAT_CONTEXT_TOKEN_LIMIT", "24000") or "24000")
             max_messages = int(os.getenv("AIPLAT_CONTEXT_MAX_MESSAGES", "120") or "120")
@@ -816,13 +859,11 @@ class DefaultContextEngine(ContextEngine):
         return est > token_limit or len(messages or []) > max_messages or ch > char_limit
 
     def compact(self, *, messages: List[Message], metadata: Dict[str, Any]) -> ContextResult:
-        """
-        Deterministic compaction (no LLM):
-        - Keep leading system messages
-        - Keep last K messages
-        - Summarize the middle as a system note (hash + truncated snippets)
-        - If too many system messages, summarize excess system messages as a single note
-        - Emit compaction stats for observability (before/after hash, chars, tokens, drops)
+        """Deterministic compaction (no LLM):。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
         """
         meta = dict(metadata or {})
         msgs = list(messages or [])
@@ -915,6 +956,12 @@ class DefaultContextEngine(ContextEngine):
         }
         return ContextResult(messages=msgs2, metadata=meta)
     def get_status(self, *, messages: List[Message], metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """获取 status。
+
+        Args:
+            messages: messages 参数。
+            metadata: metadata 参数。
+        """
         return {
             "message_count": len(messages or []),
             "estimated_tokens": self._estimate_tokens(messages),

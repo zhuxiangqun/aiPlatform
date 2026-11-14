@@ -63,7 +63,11 @@ def get_registered_dirs() -> set:
 
 
 def check_scope_roots(strict: bool) -> int:
-    """v2.4: root reports/packages/subrepo docs must be registered in DOCUMENT_SYSTEM."""
+    """v2.4: root reports/packages/subrepo docs must be registered in DOCUMENT_SYSTEM.
+
+    Args:
+        strict: strict 参数。
+    """
     content = DOC_SYSTEM.read_text(encoding="utf-8") if DOC_SYSTEM.exists() else ""
     missing = []
     for p in SCOPE_ROOTS:
@@ -83,6 +87,8 @@ def check_scope_roots(strict: bool) -> int:
 
 
 def main():
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--strict", action="store_true", help="v2.4 scope 未登记时阻断")
     args = ap.parse_args()

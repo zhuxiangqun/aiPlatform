@@ -28,11 +28,25 @@ class TenantStoreProtocol(Protocol):
     """Tenant quota / usage / policy CRUD contract (implemented by platform)."""
 
     # ── tenant_quotas ──
-    async def get_tenant_quota(self, *, tenant_id: str) -> Optional[Dict[str, Any]]: ...
+    async def get_tenant_quota(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """读取租户配额。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
+        ...
 
     async def upsert_tenant_quota(
         self, *, tenant_id: str, quota: Dict[str, Any], version: Optional[int] = None
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """写入或更新租户配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            quota: 配额字段 dict。
+            version: 可选乐观锁版本。
+        """
+        ...
 
     # ── tenant_usage ──
     async def add_tenant_usage(
@@ -42,11 +56,28 @@ class TenantStoreProtocol(Protocol):
         metric_key: str,
         amount: float,
         day: Optional[str] = None,
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """累加租户用量。
+
+        Args:
+            tenant_id: 租户 ID。
+            metric_key: 用量指标键。
+            amount: 增量。
+            day: 可选日分区；None 表示当天。
+        """
+        ...
 
     async def get_tenant_usage(
         self, *, tenant_id: str, day: str, metric_key: str
-    ) -> float: ...
+    ) -> float:
+        """读取单日单指标用量。
+
+        Args:
+            tenant_id: 租户 ID。
+            day: 日分区。
+            metric_key: 用量指标键。
+        """
+        ...
 
     async def list_tenant_usage(
         self,
@@ -57,18 +88,50 @@ class TenantStoreProtocol(Protocol):
         metric_key: Optional[str] = None,
         limit: int = 500,
         offset: int = 0,
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """分页列出租户用量。
+
+        Args:
+            tenant_id: 租户 ID。
+            day_start: 起始日；None 不限。
+            day_end: 结束日；None 不限。
+            metric_key: 可选指标过滤。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
+        ...
 
     # ── tenant_policies ──
-    async def get_tenant_policy(self, *, tenant_id: str) -> Optional[Dict[str, Any]]: ...
+    async def get_tenant_policy(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """读取租户策略。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
+        ...
 
     async def upsert_tenant_policy(
         self, *, tenant_id: str, policy: Dict[str, Any], version: Optional[int] = None
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """写入或更新租户策略。
+
+        Args:
+            tenant_id: 租户 ID。
+            policy: 策略字段 dict。
+            version: 可选乐观锁版本。
+        """
+        ...
 
     async def list_tenant_policies(
         self, *, limit: int = 100, offset: int = 0
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """分页列出租户策略。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
+        ...
 
 
 # ── registry ──
@@ -76,11 +139,15 @@ _tenant_store: Optional[TenantStoreProtocol] = None
 
 
 def set_tenant_store(store: Optional[TenantStoreProtocol]) -> None:
-    """Inject the platform TenantStore (idempotent; call once at startup)."""
+    """注入平台 TenantStore（启动时调用一次，可幂等）。
+
+    Args:
+        store: 平台实现；None 表示卸载。
+    """
     global _tenant_store
     _tenant_store = store
 
 
 def get_tenant_store() -> Optional[TenantStoreProtocol]:
-    """Return the injected tenant store, or None if not yet injected."""
+    """返回已注入的租户存储；未注入时为 None。"""
     return _tenant_store

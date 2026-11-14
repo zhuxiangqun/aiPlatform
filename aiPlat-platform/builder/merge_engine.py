@@ -109,8 +109,10 @@ def _importers_of(import_root: str, rel_path: str, py_files: List[str],
 def analyze_impact(import_root: str, modify_files: List[Dict], manifest: List[Dict]) -> Dict[str, Any]:
     """Affected-file set: user-checked files + first-order import references.
 
-    v1 scope: Python only. Result is advisory — frontend shows auto-added files
-    and the user may uncheck them (design §3.3/§3.6).
+    Args:
+        import_root: import_root 参数。
+        modify_files: modify_files 参数。
+        manifest: manifest 参数。
     """
     affected = [str(m.get("path") or "").strip() for m in modify_files if m and m.get("path")]
     affected = [p for p in affected if p]
@@ -173,7 +175,13 @@ def _categorize_hunk(hunk_lines: List[str]) -> str:
 
 
 def build_merge_preview(original: str, new: str, path: str) -> Dict[str, Any]:
-    """New-vs-original unified diff → preview (three-way: base=imported original)."""
+    """New-vs-original unified diff → preview (three-way: base=imported original).
+
+    Args:
+        original: original 参数。
+        new: new 参数。
+        path: 路径。
+    """
     diff_lines = list(difflib.unified_diff(
         original.splitlines(keepends=True),
         new.splitlines(keepends=True),
@@ -197,7 +205,12 @@ def build_merge_preview(original: str, new: str, path: str) -> Dict[str, Any]:
 
 
 def syntax_check(content: str, path: str) -> Dict[str, Any]:
-    """Python: compile() check. Other languages: skipped (text-only)."""
+    """Python: compile() check. Other languages: skipped (text-only).
+
+    Args:
+        content: content 参数。
+        path: 路径。
+    """
     if path.endswith(".py"):
         try:
             compile(content, path, "exec")
@@ -231,7 +244,13 @@ def _extract_signatures(content: str) -> List[str]:
 
 
 def verify_interface_preserved(original: str, new: str, path: str) -> Dict[str, Any]:
-    """Python: function/class/route signatures must survive the merge."""
+    """Python: function/class/route signatures must survive the merge.
+
+    Args:
+        original: original 参数。
+        new: new 参数。
+        path: 路径。
+    """
     if not path.endswith(".py"):
         return {"ok": True, "note": "non-python, interface check skipped"}
     old_sigs = _extract_signatures(original)
@@ -248,7 +267,12 @@ def verify_interface_preserved(original: str, new: str, path: str) -> Dict[str, 
 
 
 def snapshot_affected_files(import_root: str, paths: List[str]) -> Dict[str, str]:
-    """L3-P0-02: sha256 snapshot of affected imported files before generation."""
+    """L3-P0-02: sha256 snapshot of affected imported files before generation.
+
+    Args:
+        import_root: import_root 参数。
+        paths: paths 参数。
+    """
     snap: Dict[str, str] = {}
     for rel in paths:
         full = os.path.join(import_root, rel)
@@ -262,7 +286,12 @@ def snapshot_affected_files(import_root: str, paths: List[str]) -> Dict[str, str
 
 
 def verify_snapshot(import_root: str, snapshot: Dict[str, str]) -> Tuple[bool, List[str]]:
-    """L3-P0-02: verify imported files still match the pre-generation snapshot."""
+    """L3-P0-02: verify imported files still match the pre-generation snapshot.
+
+    Args:
+        import_root: import_root 参数。
+        snapshot: snapshot 参数。
+    """
     changed = []
     for rel, old_hash in (snapshot or {}).items():
         full = os.path.join(import_root, rel)
@@ -286,13 +315,14 @@ def _sha256(data: bytes) -> str:
 
 def apply_merge(project_id: str, import_root: str, deploy_dir: str,
                 previews: List[Dict], decisions: Dict[str, str]) -> Dict[str, Any]:
-    """Apply approved previews: write new versions to deploy_dir, copy the rest
-    of the imported originals as baseline, snapshot deploy_dir to deploy.prev first.
+    """Apply approved previews: write new versions to deploy_dir, copy the rest。
 
-    L3-P0-01: atomic approval — every preview path MUST be "approved", otherwise
-    the merge is refused (rejected = regenerate, never partial apply).
-
-    decisions: {path: "approved"} only; any missing/rejected path → ValueError.
+    Args:
+        project_id: project 标识。
+        import_root: import_root 参数。
+        deploy_dir: deploy_dir 参数。
+        previews: previews 参数。
+        decisions: decisions 参数。
     """
     os.makedirs(deploy_dir, exist_ok=True)
 

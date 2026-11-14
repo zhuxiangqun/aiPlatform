@@ -19,6 +19,11 @@ from typing import Dict, Any, List
 
 def load_chain(chain_file: str) -> Dict[str, Any]:
 
+    """load_chain。
+
+    Args:
+        chain_file: chain_file 参数。
+    """
     path = Path(os.path.expanduser(chain_file))
 
     if not path.exists():
@@ -35,7 +40,11 @@ def load_chain(chain_file: str) -> Dict[str, Any]:
 
 def extract_source_data(source: Dict) -> Dict[str, Any]:
 
-    """Extract data from a single source."""
+    """Extract data from a single source.
+
+    Args:
+        source: source 参数。
+    """
 
     src_type = source.get("type", "file")
 
@@ -99,7 +108,12 @@ def extract_source_data(source: Dict) -> Dict[str, Any]:
 
 def evaluate_sources(chain: Dict[str, Any], query_context: Dict[str, Any]) -> Dict[str, Any]:
 
-    """Execute evidence chain: extract → verify → confidence."""
+    """Execute evidence chain: extract → verify → confidence.
+
+    Args:
+        chain: chain 参数。
+        query_context: query_context 参数。
+    """
 
     sources = chain.get("sources", [])
 
@@ -258,7 +272,11 @@ def evaluate_sources(chain: Dict[str, Any], query_context: Dict[str, Any]) -> Di
 
 def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
-    """Skill entry point."""
+    """Skill entry point.
+
+    Args:
+        params: params 参数。
+    """
 
     chain_file = params["chain_file"]
 

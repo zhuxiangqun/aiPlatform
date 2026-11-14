@@ -1,3 +1,5 @@
+"""run_contract：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -7,6 +9,13 @@ import logging
 
 
 def normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_code: Optional[str]) -> str:
+    """normalize_run_status_v2。
+
+    Args:
+        ok: ok 参数。
+        legacy_status: legacy_status 参数。
+        error_code: error_code 参数。
+    """
     s = str(legacy_status or "").lower().strip()
     c = str(error_code or "").upper().strip()
     if s in {"accepted", "queued"}:
@@ -27,15 +36,23 @@ def normalize_run_status_v2(*, ok: bool, legacy_status: Optional[str], error_cod
 
 
 def normalize_run_error(*, code: Optional[str], message: Optional[str], detail: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """normalize_run_error。
+
+    Args:
+        code: code 参数。
+        message: message 参数。
+        detail: detail 参数。
+    """
     if not code and not message and not detail:
         return None
     return {"code": str(code or "EXECUTION_FAILED"), "message": str(message or "Execution failed"), "detail": detail or None}
 
 
 def wrap_execution_result_as_run_summary(result: Any) -> Dict[str, Any]:
-    """
-    PR-02: Run Contract v2
-    Return: {ok, run_id, trace_id, status, output, error{code,message,detail}, ...legacy fields...}
+    """PR-02: Run Contract v2。
+
+    Args:
+        result: result 参数。
     """
     payload = dict(getattr(result, "payload", None) or {}) if isinstance(getattr(result, "payload", None), dict) else {}
     ok0 = bool(getattr(result, "ok", False))

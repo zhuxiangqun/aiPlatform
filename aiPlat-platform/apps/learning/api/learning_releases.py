@@ -1,3 +1,5 @@
+"""learning_releases：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -45,9 +47,12 @@ def _managers():
 
 @router.post("/learning/releases/{candidate_id}/publish", response_model=StatusResponse)
 async def publish_release_candidate(candidate_id: str, request: dict, http_request: Request):
-    """
-    Publish a release_candidate (status transitions only).
-    Supports optional approval gate using existing ApprovalManager.
+    """Publish a release_candidate (status transitions only).
+
+    Args:
+        candidate_id: candidate 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:
@@ -440,9 +445,12 @@ async def publish_release_candidate(candidate_id: str, request: dict, http_reque
 
 @router.post("/learning/releases/{candidate_id}/rollback", response_model=StatusResponse)
 async def rollback_release_candidate(candidate_id: str, request: dict, http_request: Request):
-    """
-    Rollback a release_candidate (status transitions only).
-    Supports optional approval gate (learning:rollback_release).
+    """Rollback a release_candidate (status transitions only).
+
+    Args:
+        candidate_id: candidate 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:

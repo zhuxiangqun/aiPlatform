@@ -65,6 +65,7 @@ from core.services.tenant_store_protocol import get_tenant_store  # P0-A3: tenan
 
 class PolicyDecision(str, Enum):
 
+    """PolicyDecision。"""
     ALLOW = "allow"
 
     DENY = "deny"
@@ -95,6 +96,7 @@ class PolicyScope(str, Enum):
 
 class PolicyResult:
 
+    """PolicyResult。"""
     decision: PolicyDecision
 
     reason: Optional[str] = None
@@ -318,9 +320,8 @@ def resolve_runtime_profile() -> str:
 def default_fail_mode_for_profile(profile: Optional[str] = None) -> str:
     """Profile-based default when ``AIPLAT_POLICY_FAIL_MODE`` is unset (P0-2 grayscale).
 
-    - production / staging → closed
-    - development → ask
-    - unset / unknown → open (compat; explicit profile required for fail-closed)
+    Args:
+        profile: 评测 profile。
     """
     p = resolve_runtime_profile() if profile is None else str(profile or "").strip().lower()
     if p in ("production", "prod", "staging", "stage", "preprod"):
@@ -369,16 +370,8 @@ def fail_open_override_honored() -> bool:
 def resolve_policy_fail_mode(*, critical: bool = False) -> str:
     """Resolve policy infra degradation mode (安全体系审计 §4.1 方案 C + P0-2 grayscale).
 
-    Env:
-      AIPLAT_PROFILE / AIPLAT_ENV — production|staging|development (drives default)
-      AIPLAT_POLICY_FAIL_MODE — open|ask|closed (overrides profile default when set)
-      AIPLAT_POLICY_FAIL_OPEN_UNTIL — ISO deadline; prod/staging open override requires
-        a future value or open is ignored (auto-restore to profile default)
-      AIPLAT_POLICY_FAIL_CRITICAL_MODE — optional override for critical paths
-
-    Non-critical paths always return open (audit + alert only) so DB jitter
-    does not mass-deny unrelated tools. One-click rollback: set FAIL_MODE=open
-    with FAIL_OPEN_UNTIL in the near future on prod/staging.
+    Args:
+        critical: critical 参数。
     """
     explicit = os.getenv("AIPLAT_POLICY_FAIL_MODE")
     if explicit is not None and str(explicit).strip() != "":
@@ -424,10 +417,13 @@ def audit_policy_fail_mode_config() -> Dict[str, Any]:
 
 class PolicyGate:
 
+    """PolicyGate。"""
     def __init__(self) -> None:
 
         # Dev escape hatch: disable approvals entirely.
 
+        """初始化。
+        """
         self._disable_approvals = os.getenv("AIPLAT_APPROVALS_DISABLED", "false").lower() in (
 
             "1", "true", "yes", "y",
@@ -718,18 +714,12 @@ class PolicyGate:
 
     def check_route_access(path: str, role: str, method: str = "GET") -> bool:
 
-        """        Route-level access control — check if role can access this path.
+        """Route-level access control — check if role can access this path.
 
-
-
-        Matches path against ROUTE_PERMISSIONS using prefix matching.  # noqa: boundary — enforcement mechanism
-
-        Each route entry defines which roles are allowed.
-
-        If METHOD_RESTRICTIONS is configured for the role, only allowed  # noqa: boundary
-
-        HTTP methods are permitted (e.g., viewer GET-only).
-
+        Args:
+            path: 路径。
+            role: role 参数。
+            method: method 参数。
         """
 
         from core.api.core_facade import get_route_permissions, get_method_restrictions
@@ -773,7 +763,12 @@ class PolicyGate:
 
 
     def decide_ontology_approval(self, role: str, tier: str) -> PolicyResult:
-        """Single decision for proposal approval. Empty identity is not a grant."""
+        """Single decision for proposal approval. Empty identity is not a grant.
+
+        Args:
+            role: role 参数。
+            tier: tier 参数。
+        """
         role_n = (role or "").strip().lower()
         if not role_n:
             return PolicyResult(decision=PolicyDecision.DENY, reason="identity_missing")
@@ -1136,7 +1131,13 @@ class PolicyGate:
 
     async def check_tool(self, *, user_id: str, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
 
-        """Single-point permission enforcement for tool execution (§11)."""
+        """Single-point permission enforcement for tool execution (§11).
+
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+        """
 
         _args = tool_args if isinstance(tool_args, dict) else {}
         _auto_approve = bool(_args.get("_auto_approve"))
@@ -1913,11 +1914,14 @@ class PolicyGate:
     ) -> PolicyResult:
         """三维权限融合检查: Role ∩ Purpose ∩ Marking.
 
-        先跑标准 check_tool (Role-based), 再叠加 Purpose + Marking 限制。
-        任一维度 DENY → 整体 DENY.
-
-        设计原则 (Palantir 对齐):
-          工具调用权限 = Role能做的 ∩ Purpose允许的 ∩ Marking可见的 → 运行时动态计算
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            purpose_id: purpose 标识。
+            role: role 参数。
+            marking_level: marking_level 参数。
+            trace_context: trace_context 参数。
         """
         # Dimension 1: Standard RBAC (Role) check
         result = await self.check_tool(
@@ -1980,20 +1984,12 @@ class PolicyGate:
 
     async def check_skill(self, *, user_id: str, skill_name: str, skill_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
 
-        """
+        """Governance for executable skills.
 
-        Governance for executable skills.
-
-
-
-        Design:
-
-        - Reuse the same approval manager + policy engine machinery as tools
-
-        - Default posture is deny/ask depending on env rules (handled in syscall wrapper)
-
-        - Skill approval request is recorded as operation: "skill:<name>"
-
+        Args:
+            user_id: 用户 ID。
+            skill_name: skill_name 参数。
+            skill_args: skill_args 参数。
         """
 
         args = skill_args if isinstance(skill_args, dict) else {}
@@ -2336,7 +2332,13 @@ class PolicyGate:
 
     async def check_agent(self, *, user_id: str, agent_id: str, agent_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
 
-        """Governance for agent execution. Enforces RBAC permission + optional approval sampling."""
+        """Governance for agent execution. Enforces RBAC permission + optional approval sampling.
+
+        Args:
+            user_id: 用户 ID。
+            agent_id: Agent ID。
+            agent_args: agent_args 参数。
+        """
 
         args = agent_args if isinstance(agent_args, dict) else {}
 
@@ -2422,7 +2424,13 @@ class PolicyGate:
 
     async def check_workflow(self, *, user_id: str, workflow_id: str, workflow_args: Optional[Dict[str, Any]] = None) -> PolicyResult:
 
-        """Governance for workflow execution. Enforces RBAC permission + optional approval."""
+        """Governance for workflow execution. Enforces RBAC permission + optional approval.
+
+        Args:
+            user_id: 用户 ID。
+            workflow_id: workflow 标识。
+            workflow_args: workflow_args 参数。
+        """
 
         args = workflow_args if isinstance(workflow_args, dict) else {}
 
@@ -2666,20 +2674,15 @@ async def check_kb_access(
 
 ) -> PolicyResult:
 
-    u"""Three-layer fused permission computation for knowledge base access.
+    """Three-layer fused permission computation for knowledge base access.
 
-
-
-    Layer 1 — RBAC scope coarse filter.
-
-    Layer 2 — Markings lineage check (propagated via ontology relations).
-
-    Layer 3 — Per-object permission fine check.
-
-
-
-    Any layer DENY → overall DENY. Reason MUST state which layer blocked.
-
+    Args:
+        entity_uri: entity_uri 参数。
+        action: action 参数。
+        actor_role: actor_role 参数。
+        actor_scopes: actor_scopes 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
     """
 
     actor_scopes = actor_scopes or []

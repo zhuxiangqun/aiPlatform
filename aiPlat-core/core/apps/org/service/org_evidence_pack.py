@@ -175,7 +175,17 @@ def build_evidence_pack(
     sandbox_mode: bool = False,
     as_markdown: bool = False,
 ) -> Dict[str, Any]:
-    """Assemble a customer-safe evidence pack. Never writes business state."""
+    """Assemble a customer-safe evidence pack. Never writes business state.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        max_traces: max_traces 参数。
+        sandbox_mode: sandbox_mode 参数。
+        as_markdown: as_markdown 参数。
+    """
     if not _role_ok(role):
         return {"ok": False, "reason": "identity_missing", "writable": False}
 

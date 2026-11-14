@@ -82,7 +82,11 @@ def _parse_until(raw: str) -> Optional[datetime]:
 
 
 def parse_ladder_ok(text: str) -> Tuple[bool, str]:
-    """Return (ok, error_or_empty). Validates inline ``# ladder-ok:`` quality."""
+    """Return (ok, error_or_empty). Validates inline ``# ladder-ok:`` quality.
+
+    Args:
+        text: text 参数。
+    """
     m = _LADDER_OK_RE.search(text or "")
     if not m:
         return False, "missing # ladder-ok: <reason>"
@@ -111,7 +115,11 @@ def parse_ladder_ok(text: str) -> Tuple[bool, str]:
 
 
 def parse_proof_block(text: str) -> Tuple[bool, List[str]]:
-    """Parse proof template fields; return (ok, error messages)."""
+    """Parse proof template fields; return (ok, error messages).
+
+    Args:
+        text: text 参数。
+    """
     errors: List[str] = []
     fields: Dict[str, str] = {}
     for key in _PROOF_KEYS:
@@ -149,7 +157,12 @@ def parse_proof_block(text: str) -> Tuple[bool, List[str]]:
 
 
 def justification_ok(local_text: str, caps_window: str = "") -> Tuple[bool, str]:
-    """Accept full proof block OR valid # ladder-ok (v1.9 quality gate)."""
+    """Accept full proof block OR valid # ladder-ok (v1.9 quality gate).
+
+    Args:
+        local_text: local_text 参数。
+        caps_window: caps_window 参数。
+    """
     blob = f"{local_text or ''}\n{caps_window or ''}"
     proof_ok, proof_errs = parse_proof_block(blob)
     if proof_ok:
@@ -207,6 +220,11 @@ def scan_mcps() -> Dict[str, str]:
 
 
 def load_baseline(path: Path) -> Set[str]:
+    """load_baseline。
+
+    Args:
+        path: 路径。
+    """
     if not path.is_file():
         return set()
     out: Set[str] = set()
@@ -218,6 +236,12 @@ def load_baseline(path: Path) -> Set[str]:
 
 
 def write_baseline(path: Path, keys: List[str]) -> None:
+    """write_baseline。
+
+    Args:
+        path: 路径。
+        keys: keys 参数。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     body = "\n".join(sorted(keys)) + ("\n" if keys else "")
     path.write_text(body, encoding="utf-8")
@@ -244,7 +268,11 @@ def _staged_paths() -> Set[str]:
 
 
 def check(*, staged_only: bool = False) -> Tuple[List[str], List[str]]:
-    """Return (errors, warnings)."""
+    """Return (errors, warnings).
+
+    Args:
+        staged_only: staged_only 参数。
+    """
     errors: List[str] = []
     warnings: List[str] = []
     caps = _caps_text()
@@ -303,6 +331,8 @@ def check(*, staged_only: bool = False) -> Tuple[List[str], List[str]]:
 
 
 def cmd_rebuild() -> int:
+    """cmd_rebuild。
+    """
     sys_keys = sorted(scan_syscalls())
     mcp_keys = sorted(scan_mcps())
     write_baseline(SYSCALL_BASELINE, sys_keys)
@@ -313,6 +343,11 @@ def cmd_rebuild() -> int:
 
 
 def cmd_check(*, staged_only: bool = False) -> int:
+    """cmd_check。
+
+    Args:
+        staged_only: staged_only 参数。
+    """
     errors, warnings = check(staged_only=staged_only)
     for w in warnings:
         print(f"WARN: {w}")
@@ -326,6 +361,8 @@ def cmd_check(*, staged_only: bool = False) -> int:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Cost ladder ratchet (syscall / MCP)")
     ap.add_argument("--check", action="store_true", help="Fail on new entries without justification")
     ap.add_argument("--rebuild", action="store_true", help="Rewrite baselines from disk")

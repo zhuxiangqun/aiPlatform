@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import Logger, StructuredLogger, Formatter, LogOutput, LogFilter, LogContext
 from .schemas import LoggingConfig, LogEvent, LogRecord, FileConfig, StructuredConfig
 from .factory import create_logger

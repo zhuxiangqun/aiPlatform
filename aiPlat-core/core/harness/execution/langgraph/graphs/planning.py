@@ -141,7 +141,11 @@ class SubTask:
 
     def is_ready(self, completed_ids: set) -> bool:
 
-        """Check if all dependencies are satisfied."""
+        """Check if all dependencies are satisfied.
+
+        Args:
+            completed_ids: completed_ids 参数。
+        """
 
         return all(dep_id in completed_ids for dep_id in self.dependencies)
 
@@ -264,6 +268,11 @@ class PlanningGraph:
 
     def __init__(self, config: Optional[PlanningConfig] = None):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or PlanningConfig()
 
         self._graph = None

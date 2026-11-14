@@ -1,3 +1,5 @@
+"""conversations：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -21,6 +23,12 @@ def _scope_hash(scope: Dict[str, Any]) -> str:
 
 
 def normalize_scope(scope: Optional[Dict[str, Any]], fallback: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """normalize_scope。
+
+    Args:
+        scope: scope 参数。
+        fallback: fallback 参数。
+    """
     base = dict(fallback or {})
     cur = dict(scope or {})
     collection_id = str(cur.get("collection_id") or base.get("collection_id") or "default").strip() or "default"
@@ -46,7 +54,13 @@ def _metadata_with_scope(metadata: Optional[Dict[str, Any]], *, title: Optional[
 
 
 class ConversationService:
+    """ConversationService。"""
     def __init__(self, store: ExecutionStore):
+        """初始化。
+
+        Args:
+            store: store 参数。
+        """
         self.store = store
 
     async def create_conversation_session(
@@ -60,6 +74,17 @@ class ConversationService:
         session_id: Optional[str] = None,
         agent_type: str = "materials_chat",
     ) -> Dict[str, Any]:
+        """创建 conversation_session。
+
+        Args:
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+            title: title 参数。
+            scope: scope 参数。
+            profile: 评测 profile。
+            session_id: 会话 ID。
+            agent_type: agent_type 参数。
+        """
         normalized_scope = normalize_scope(scope)
         rec = await self.store.create_memory_session(
             tenant_id=tenant_id,
@@ -72,6 +97,14 @@ class ConversationService:
         return await self.get_conversation_session(session_id=str(rec["id"]))
 
     async def list_conversation_sessions(self, *, tenant_id: str, user_id: Optional[str], limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 conversation_sessions。
+
+        Args:
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         rows = await self.store.list_memory_sessions(tenant_id=tenant_id, user_id=user_id, limit=limit, offset=offset)
         items: List[Dict[str, Any]] = []
         for row in rows.get("items") or []:
@@ -90,6 +123,11 @@ class ConversationService:
         return {"items": items, "total": len(items), "limit": limit, "offset": offset}
 
     async def get_conversation_session(self, *, session_id: str) -> Dict[str, Any]:
+        """获取 conversation_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         row = await self.store.get_memory_session(session_id=session_id)
         if not row:
             raise ValueError("conversation_not_found")
@@ -108,6 +146,11 @@ class ConversationService:
         }
 
     async def get_conversation_scope(self, *, session_id: str) -> Dict[str, Any]:
+        """获取 conversation_scope。
+
+        Args:
+            session_id: 会话 ID。
+        """
         convo = await self.get_conversation_session(session_id=session_id)
         return dict(convo.get("scope") or {})
 
@@ -122,6 +165,17 @@ class ConversationService:
         profile: Optional[Dict[str, Any]] = None,
         agent_type: str = "materials_chat",
     ) -> Dict[str, Any]:
+        """set_conversation_scope。
+
+        Args:
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+            title: title 参数。
+            scope: scope 参数。
+            profile: 评测 profile。
+            agent_type: agent_type 参数。
+        """
         current = await self.get_conversation_session(session_id=session_id)
         current_scope = normalize_scope(current.get("scope") or {})
         merged = normalize_scope(scope, fallback=current_scope)
@@ -154,6 +208,15 @@ class ConversationService:
         content: str,
         run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """append_conversation_user_message。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            user_id: 用户 ID。
+            content: content 参数。
+            run_id: 运行 ID。
+        """
         return await self.store.add_memory_message(
             tenant_id=tenant_id,
             session_id=session_id,
@@ -182,6 +245,24 @@ class ConversationService:
         answer_strategy: Optional[Dict[str, Any]] = None,
         run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """append_conversation_assistant_message。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            user_id: 用户 ID。
+            content: content 参数。
+            citations: citations 参数。
+            turn_summary: turn_summary 参数。
+            strategy: strategy 参数。
+            mode: mode 参数。
+            intent: intent 参数。
+            skills_used: skills_used 参数。
+            analysis: analysis 参数。
+            retrieval_policy: retrieval_policy 参数。
+            answer_strategy: answer_strategy 参数。
+            run_id: 运行 ID。
+        """
         return await self.store.add_memory_message(
             tenant_id=tenant_id,
             session_id=session_id,
@@ -203,6 +284,13 @@ class ConversationService:
         )
 
     async def build_conversation_context(self, *, session_id: str, tenant_id: str, limit: int = 12) -> Dict[str, Any]:
+        """build_conversation_context。
+
+        Args:
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+        """
         convo = await self.get_conversation_session(session_id=session_id)
         rows = await self.store.list_memory_messages(session_id=session_id, tenant_id=tenant_id, limit=limit, offset=max(0, int((convo.get("messages") or []).__len__()) - limit))
         messages = list(rows.get("items") or [])

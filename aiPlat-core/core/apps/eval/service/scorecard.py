@@ -48,7 +48,11 @@ def _axis_summary(axes: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def scorecard_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Facilitator-facing scorecard honesty snapshot (not an accuracy claim)."""
+    """Facilitator-facing scorecard honesty snapshot (not an accuracy claim).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     sc_path = _a3_dir() / "scorecard_v1.json"
     man_path = _a3_dir() / "evidence" / "evidence_manifest.v1.json"
     sc = _read_json(sc_path) or {}

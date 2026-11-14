@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class NetworkNode:
+    """NetworkNode。"""
     agent_id: str
     degree: int = 0                     # 连接数
     betweenness: float = 0.0            # 介数中心性
@@ -38,6 +39,8 @@ class NetworkNode:
     actions: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "agent_id": self.agent_id,
             "degree": self.degree,
@@ -60,6 +63,8 @@ class NetworkSnapshot:
     summary: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "timestamp": self.timestamp,
             "node_count": self.node_count,
@@ -82,6 +87,8 @@ class AgentNetwork:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._snapshots: Dict[str, List[NetworkSnapshot]] = {}
         self._network_file = ""
         try:
@@ -163,7 +170,10 @@ class AgentNetwork:
     ) -> List[NetworkSnapshot]:
         """追踪网络演化.
 
-        按时间间隔生成多张网络快照，观察网络结构的演化趋势。
+        Args:
+            agent_ids: agent_ids 参数。
+            interval_hours: interval_hours 参数。
+            count: count 参数。
         """
         snapshots: List[NetworkSnapshot] = []
 

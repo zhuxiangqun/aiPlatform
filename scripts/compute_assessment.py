@@ -91,6 +91,11 @@ def _verify_items(items: list, drift: list, ctx: str) -> None:
 
 
 def compute(spec: dict) -> dict:
+    """compute。
+
+    Args:
+        spec: spec 参数。
+    """
     lm = spec["weighting"]["framework_one"]["level_map"]
     drift: list = []
     result: dict = {
@@ -180,6 +185,11 @@ def compute(spec: dict) -> dict:
 
 
 def print_summary(r: dict) -> None:
+    """print_summary。
+
+    Args:
+        r: r 参数。
+    """
     f1 = r["frameworks"]["framework_one"]
     f2 = r["frameworks"]["framework_two"]
     f3 = r["frameworks"]["framework_three"]
@@ -209,6 +219,11 @@ _RENDER_TARGETS = [
 
 
 def build_score_block(r: dict) -> str:
+    """build_score_block。
+
+    Args:
+        r: r 参数。
+    """
     import re as _re
     f1 = r["frameworks"]["framework_one"]
     f2 = r["frameworks"]["framework_two"]
@@ -242,6 +257,11 @@ def build_score_block(r: dict) -> str:
 
 
 def render_docs(r: dict) -> None:
+    """render_docs。
+
+    Args:
+        r: r 参数。
+    """
     import re as _re
     block = build_score_block(r)
     pat = _re.compile(_re.escape(_MARK_BEGIN) + r".*?" + _re.escape(_MARK_END), _re.DOTALL)
@@ -273,7 +293,10 @@ def _all_items(r: dict):
 
 def compute_bridge(r: dict) -> list:
     """P1: 桥接框架'能'(declared) vs 运行时'做过'(telemetry).
-    对有 runtime_ref 的项跑运行时信号; 能但零动作=idle(盲区); 能且有动作=active."""
+
+    Args:
+        r: r 参数。
+    """
     bridge = []
     for fw, gid, it in _all_items(r):
         ref = it.get("runtime_ref")
@@ -298,7 +321,12 @@ def compute_bridge(r: dict) -> list:
 
 
 def compute_goals(r: dict, bridge: list) -> list:
-    """P2: 从框架发现自动生成修复 Goal 提案 (喂 GoalGenerator / 修复中心)."""
+    """P2: 从框架发现自动生成修复 Goal 提案 (喂 GoalGenerator / 修复中心).
+
+    Args:
+        r: r 参数。
+        bridge: bridge 参数。
+    """
     goals = []
 
     def add(gid, title, gtype, priority, evidence):
@@ -330,6 +358,8 @@ def compute_goals(r: dict, bridge: list) -> list:
 
 
 def main() -> int:
+    """main。
+    """
     spec = yaml.safe_load(SPEC.read_text(encoding="utf-8"))
     r = compute(spec)
     bridge = compute_bridge(r)

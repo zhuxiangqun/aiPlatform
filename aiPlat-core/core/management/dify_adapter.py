@@ -18,10 +18,16 @@ from typing import Any, Dict, List, Optional
 
 
 class DifyAdapter:
+    """DifyAdapter。"""
     NAME = "dify"
     DESCRIPTION = "Dify (App + Custom Tool + Workflow/Chatflow)"
 
     def detect(self, root_dir: Path) -> bool:
+        """detect。
+
+        Args:
+            root_dir: root_dir 参数。
+        """
         if (root_dir / "app.yml").is_file():
             return True
         if (root_dir / "app.yaml").is_file():
@@ -33,6 +39,12 @@ class DifyAdapter:
         return False
 
     def convert(self, root_dir: Path, target_base: Path) -> Dict[str, Any]:
+        """convert。
+
+        Args:
+            root_dir: root_dir 参数。
+            target_base: target_base 参数。
+        """
         converted: List[str] = []
         skipped: List[str] = []
 

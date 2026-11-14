@@ -21,6 +21,11 @@ router = APIRouter(prefix="/store", tags=["eval-store"])
 async def store_upstream_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """store_upstream_status。
+
+    Args:
+        _auth: _auth 参数。
+    """
     return {"data": proxy_status()}
 
 
@@ -30,6 +35,13 @@ async def store_health(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """store_health。
+
+    Args:
+        request: request 参数。
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/store/healthz")
     if proxied is not None:
         return proxied
@@ -47,6 +59,14 @@ async def list_sets(
 ) -> Dict[str, Any]:
     # Sets + tasks share Core EvalStore. Do not proxy to :8010 — package store
     # has no task CRUD; dual-write would break Eval Center maintenance UI.
+    """列出 sets。
+
+    Args:
+        request: request 参数。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     _ = request
     from core.api.core_facade import eval_store_list_sets
 
@@ -61,6 +81,13 @@ async def create_set(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
     # Same cohost store as POST /store/tasks (see list_sets).
+    """创建 set。
+
+    Args:
+        request: request 参数。
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     _ = request
     from core.api.core_facade import eval_store_create_set
 
@@ -82,6 +109,14 @@ async def get_set(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 set。
+
+    Args:
+        request: request 参数。
+        set_id: set 标识。
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     _ = request
     from core.api.core_facade import eval_store_get_set
 
@@ -96,6 +131,14 @@ async def list_tasks(
     limit: int = Query(500, ge=1, le=5000),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """列出 tasks。
+
+    Args:
+        set_id: set 标识。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_store_list_tasks
 
     items = eval_store_list_tasks(set_id=set_id, tenant_id=tenant_id, limit=limit)
@@ -107,6 +150,12 @@ async def create_task(
     body: Dict[str, Any],
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """创建 task。
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_store_create_task
 
     try:
@@ -131,7 +180,12 @@ async def migrate_code_review_gold(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Import code-review-gold YAML → eval_sets + eval_tasks (idempotent)."""
+    """Import code-review-gold YAML → eval_sets + eval_tasks (idempotent).
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_store_import_code_review_gold
 
     body = body or {}
@@ -152,7 +206,12 @@ async def bootstrap_e3(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """EVAL_V1 E3: import ≥15 gold tasks + open solo review label queue."""
+    """EVAL_V1 E3: import ≥15 gold tasks + open solo review label queue.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_bootstrap_e3_gold
 
     body = body or {}
@@ -172,6 +231,12 @@ async def get_e3_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 e3_status。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_e3_status
 
     return {"data": eval_e3_status(tenant_id=tenant_id)}
@@ -183,6 +248,13 @@ async def list_judges(
     limit: int = Query(50, ge=1, le=200),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """列出 judges。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_list_judges
 
     items = eval_list_judges(tenant_id=tenant_id, limit=limit)
@@ -194,7 +266,12 @@ async def calibrate_e4(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """EVAL_V1 E4: judge v1 k-repeat calibration report (not an accuracy claim)."""
+    """EVAL_V1 E4: judge v1 k-repeat calibration report (not an accuracy claim).
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_run_e4_calibration
 
     body = body or {}
@@ -215,7 +292,12 @@ async def gate_e5(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """EVAL_V1 E5: local engineering gate (pr/nightly/release); not accuracy/G2a claim."""
+    """EVAL_V1 E5: local engineering gate (pr/nightly/release); not accuracy/G2a claim.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_run_e5_gate
 
     body = body or {}
@@ -240,6 +322,12 @@ async def get_g2a_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 g2a_status。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_g2a_status
 
     return {"data": eval_g2a_status(tenant_id=tenant_id)}
@@ -252,6 +340,14 @@ async def get_review_queue(
     limit: int = Query(100, ge=1, le=500),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 review_queue。
+
+    Args:
+        tenant_id: 租户 ID。
+        annotator: annotator 参数。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_list_review_queue
 
     return {
@@ -266,7 +362,12 @@ async def preannotate_queue(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """AI pre-annotation only — does not adjudicate (D5)."""
+    """AI pre-annotation only — does not adjudicate (D5).
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_preannotate_review_queue
 
     body = body or {}
@@ -287,7 +388,13 @@ async def adjudicate_label_api(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Solo human adjudication (D5). Required before lock_v0 / G2a."""
+    """Solo human adjudication (D5). Required before lock_v0 / G2a.
+
+    Args:
+        label_id: label 标识。
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_adjudicate_label
 
     body = body or {}
@@ -312,7 +419,12 @@ async def lock_v0_api(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Lock gold v0 when ≥30 tasks + ≥30 solo adjudicated. Not an accuracy claim."""
+    """Lock gold v0 when ≥30 tasks + ≥30 solo adjudicated. Not an accuracy claim.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_lock_v0
 
     body = body or {}
@@ -324,7 +436,12 @@ async def gate_g2a(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """EVAL_V1 G2a: local gate claim after v0 lock; accuracy_claim stays false."""
+    """EVAL_V1 G2a: local gate claim after v0 lock; accuracy_claim stays false.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_run_g2a_gate
 
     body = body or {}
@@ -347,7 +464,12 @@ async def get_g2b_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """G2b pack facilitation status — accuracy_claim stays false."""
+    """G2b pack facilitation status — accuracy_claim stays false.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_g2b_pack_status
 
     return {"data": eval_g2b_pack_status(tenant_id=tenant_id)}
@@ -357,7 +479,11 @@ async def get_g2b_status(
 async def get_method_track_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Method-track catalog + Subject cross-check — claim stays false."""
+    """Method-track catalog + Subject cross-check — claim stays false.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_method_track_status
 
     return {"data": eval_method_track_status()}
@@ -369,7 +495,13 @@ async def get_p1_regression_status(
     pack_status: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """P1 Regression readiness — quotas vs human purpose_ok; claim stays false."""
+    """P1 Regression readiness — quotas vs human purpose_ok; claim stays false.
+
+    Args:
+        pack_kind: pack_kind 参数。
+        pack_status: pack_status 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_p1_regression_status
 
     return {
@@ -384,7 +516,11 @@ async def get_p1_regression_status(
 async def get_p4_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """P4 benchmark/holdout + judge engineering bar — claim stays false."""
+    """P4 benchmark/holdout + judge engineering bar — claim stays false.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_p4_status
 
     return {"data": eval_p4_status()}
@@ -395,7 +531,12 @@ async def get_prompt_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Prompt Subject regression quotas vs bank — claim stays false."""
+    """Prompt Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_prompt_regression_status
 
     return {
@@ -410,7 +551,12 @@ async def get_workflow_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Workflow Subject regression quotas vs bank — claim stays false."""
+    """Workflow Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_workflow_regression_status
 
     return {
@@ -425,7 +571,12 @@ async def get_model_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Model Subject regression quotas vs bank — claim stays false."""
+    """Model Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_model_regression_status
 
     return {
@@ -440,7 +591,12 @@ async def get_tool_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Tool Subject regression quotas vs bank — claim stays false."""
+    """Tool Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_tool_regression_status
 
     return {
@@ -455,7 +611,12 @@ async def get_session_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Session Subject regression quotas vs bank — claim stays false."""
+    """Session Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_session_regression_status
 
     return {
@@ -470,7 +631,12 @@ async def get_kb_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """KB Subject regression quotas vs bank — claim stays false."""
+    """KB Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_kb_regression_status
 
     return {
@@ -485,7 +651,12 @@ async def get_code_review_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Code Review Subject regression quotas vs bank — claim stays false."""
+    """Code Review Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_code_review_regression_status
 
     return {
@@ -500,7 +671,12 @@ async def get_multi_agent_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Multi-Agent Subject regression quotas vs bank — claim stays false."""
+    """Multi-Agent Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_multi_agent_regression_status
 
     return {
@@ -515,7 +691,12 @@ async def get_skill_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Skill Subject regression quotas vs bank — claim stays false."""
+    """Skill Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_skill_regression_status
 
     return {
@@ -530,7 +711,12 @@ async def get_generated_app_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Generated-App Subject regression quotas vs bank — claim stays false."""
+    """Generated-App Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_generated_app_regression_status
 
     return {
@@ -545,7 +731,12 @@ async def get_api_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """API Subject regression quotas vs bank — claim stays false."""
+    """API Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_api_regression_status
 
     return {
@@ -560,7 +751,12 @@ async def get_dataset_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Dataset Subject regression quotas vs bank — claim stays false."""
+    """Dataset Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_dataset_regression_status
 
     return {
@@ -575,7 +771,12 @@ async def get_system_regression_status(
     draft_sample_limit: int = 5,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """System Subject regression quotas vs bank — claim stays false."""
+    """System Subject regression quotas vs bank — claim stays false.
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_system_regression_status
 
     return {
@@ -593,8 +794,10 @@ async def get_subject_regression_inventory(
 ) -> Dict[str, Any]:
     """Cross-Subject regression honesty matrix — claim stays false.
 
-    When a named workspace header is present, enrich rows with
-    ``workspace_promoted`` (registry freeze) for Promote ladder honesty.
+    Args:
+        request: request 参数。
+        draft_sample_limit: draft_sample_limit 参数。
+        _auth: _auth 参数。
     """
     from core.api.core_facade import eval_subject_regression_inventory
 
@@ -617,7 +820,12 @@ async def get_content_purpose_ok_inventory(
     subject_kind: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """ADR P1 content_purpose_ok audit — claim stays false."""
+    """ADR P1 content_purpose_ok audit — claim stays false.
+
+    Args:
+        subject_kind: subject_kind 参数。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import (
         eval_content_purpose_ok_for_subject,
         eval_content_purpose_ok_inventory,
@@ -633,7 +841,11 @@ async def get_content_purpose_ok_inventory(
 async def get_subject_suite_profile_inventory(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """ADR P2 Subject Suite Profile discovery — claim stays false."""
+    """ADR P2 Subject Suite Profile discovery — claim stays false.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_subject_suite_profile_inventory
 
     return {"data": eval_subject_suite_profile_inventory()}
@@ -643,7 +855,11 @@ async def get_subject_suite_profile_inventory(
 async def get_subject_kinds(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Registered EvalSubjectAdapter kinds (Agent/Prompt/…); not Methods."""
+    """Registered EvalSubjectAdapter kinds (Agent/Prompt/…); not Methods.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_list_subject_kinds
 
     return {
@@ -660,7 +876,12 @@ async def get_g2b_l5_gap(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """G2b L5 gap disclosure — accuracy_claim / authorize stay false."""
+    """G2b L5 gap disclosure — accuracy_claim / authorize stay false.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_g2b_l5_gap_disclosure
 
     return {"data": eval_g2b_l5_gap_disclosure(tenant_id=tenant_id)}
@@ -671,7 +892,12 @@ async def get_g2b_claim_unlock(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """G2b claim unlock AND-gates — never flips accuracy_claim."""
+    """G2b claim unlock AND-gates — never flips accuracy_claim.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_g2b_claim_unlock_checklist
 
     return {"data": eval_g2b_claim_unlock_checklist(tenant_id=tenant_id)}
@@ -681,7 +907,11 @@ async def get_g2b_claim_unlock(
 async def get_a1_intersection_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """A1 intersection read-only gate/Pareto — rank_claim never auto-true."""
+    """A1 intersection read-only gate/Pareto — rank_claim never auto-true.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_a1_intersection_status
 
     return {"data": eval_a1_intersection_status()}
@@ -691,7 +921,11 @@ async def get_a1_intersection_status(
 async def get_security_sec_p2a_status(
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """SEC-P2a S1 pack + OOS/untested disclosure — accuracy_claim stays false."""
+    """SEC-P2a S1 pack + OOS/untested disclosure — accuracy_claim stays false.
+
+    Args:
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_security_sec_p2a_status
 
     return {"data": eval_security_sec_p2a_status()}
@@ -702,7 +936,12 @@ async def get_preference_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Preference pack facilitation status — accuracy_claim stays false."""
+    """Preference pack facilitation status — accuracy_claim stays false.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_preference_pack_status
 
     return {"data": eval_preference_pack_status(tenant_id=tenant_id)}
@@ -713,7 +952,12 @@ async def get_scorecard_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Scorecard honesty status — accuracy_claim / authorize stay false."""
+    """Scorecard honesty status — accuracy_claim / authorize stay false.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_scorecard_status
 
     return {"data": eval_scorecard_status(tenant_id=tenant_id)}
@@ -724,7 +968,12 @@ async def get_evidence_audit_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Evidence audit status — hash + attestation; accuracy_claim stays false."""
+    """Evidence audit status — hash + attestation; accuracy_claim stays false.
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_evidence_audit_status
 
     return {"data": eval_evidence_audit_status(tenant_id=tenant_id)}
@@ -736,7 +985,13 @@ async def get_worksheet_pack_status(
     limit: int = Query(20, ge=1, le=100),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """List human worksheet packs — accuracy_claim stays false."""
+    """List human worksheet packs — accuracy_claim stays false.
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_worksheet_pack_status
 
     return {"data": eval_worksheet_pack_status(tenant_id=tenant_id, limit=limit)}
@@ -747,7 +1002,12 @@ async def post_worksheet_pack_generate(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Generate blank G2b/preference worksheets — never accuracy."""
+    """Generate blank G2b/preference worksheets — never accuracy.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_worksheet_pack_generate
 
     body = body or {}
@@ -769,7 +1029,14 @@ async def get_worksheet_pack_file(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Download one pack file as JSON/text payload."""
+    """Download one pack file as JSON/text payload.
+
+    Args:
+        stamp: stamp 参数。
+        filename: filename 参数。
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_worksheet_pack_file
 
     return {
@@ -782,7 +1049,12 @@ async def get_g2c_status(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """G2c self-consistency status (intra-rater; never accuracy)."""
+    """G2c self-consistency status (intra-rater; never accuracy).
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_g2c_status
 
     return {"data": eval_g2c_status(tenant_id=tenant_id)}
@@ -794,6 +1066,13 @@ async def get_g2c_retest_queue(
     limit: int = Query(100, ge=1, le=500),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 G2C 复测队列。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（未使用）。
+    """
     from core.api.core_facade import eval_list_g2c_retest_queue
 
     return {"data": eval_list_g2c_retest_queue(tenant_id=tenant_id, limit=limit)}
@@ -804,10 +1083,16 @@ async def post_g2c_retest(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Record same-annotator retest — not a second annotator / not accuracy."""
+    """Record same-annotator retest — not a second annotator / not accuracy.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_record_g2c_retest
 
     body = body or {}
+    # 为什么：禁止客户端伪造 accuracy_claim，诚实锁保持 false，避免把复测当准确率宣称
     if body.get("accuracy_claim") is True:
         return {
             "data": {
@@ -840,10 +1125,16 @@ async def post_g2c_report(
     body: Optional[Dict[str, Any]] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Compute intra-rater κ / agreement; accuracy_claim stays false."""
+    """Compute intra-rater κ / agreement; accuracy_claim stays false.
+
+    Args:
+        body: 请求体 dict。
+        _auth: _auth 参数。
+    """
     from core.api.core_facade import eval_compute_g2c_report
 
     body = body or {}
+    # 为什么：G2C 报告只做一致性指标，禁止请求体打开 accuracy_claim 诚实锁
     if body.get("accuracy_claim") is True:
         return {
             "data": {
@@ -865,6 +1156,13 @@ async def list_gates(
     limit: int = Query(50, ge=1, le=200),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """列出评测门禁记录。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（未使用）。
+    """
     from core.api.core_facade import eval_list_gates
 
     items = eval_list_gates(tenant_id=tenant_id, limit=limit)
@@ -877,6 +1175,13 @@ async def get_gate(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """按 ID 获取单条门禁记录。
+
+    Args:
+        gate_id: 门禁记录 ID。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（未使用）。
+    """
     from core.api.core_facade import eval_get_gate
 
     row = eval_get_gate(gate_id, tenant_id=tenant_id)
@@ -890,7 +1195,14 @@ async def list_store_reports(
     limit: int = Query(50, ge=1, le=200),
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """UI-2 — list eval store reports (proxy when AIPLAT_EVAL_SERVICE_URL set)."""
+    """UI-2 — list eval store reports (proxy when AIPLAT_EVAL_SERVICE_URL set).
+
+    Args:
+        request: request 参数。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/store/reports")
     if proxied is not None:
         return proxied
@@ -907,7 +1219,14 @@ async def compare_store_reports(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """P1b — baseline vs candidate; comparable only if same composite_version."""
+    """P1b — baseline vs candidate; comparable only if same composite_version.
+
+    Args:
+        request: request 参数。
+        body: 请求体 dict。
+        tenant_id: 租户 ID。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(
         request, path="/store/reports/compare", method="POST"
     )
@@ -931,6 +1250,14 @@ async def get_store_report(
     tenant_id: str = "eval-v1",
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """按 ID 获取评测 store 报告（可代理上游）。
+
+    Args:
+        request: FastAPI 请求（上游代理用）。
+        report_id: 报告 ID。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（未使用）。
+    """
     proxied = await proxy_eval_store(request, path=f"/store/reports/{report_id}")
     if proxied is not None:
         return proxied

@@ -29,6 +29,11 @@ class DiscoveryListener:
     _CHECK_INTERVAL = 30  # seconds
 
     def __init__(self, *, enabled: bool = False):
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+        """
         self._enabled = enabled
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -37,13 +42,22 @@ class DiscoveryListener:
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        """enabled。
+
+        Args:
+            value: value 参数。
+        """
         self._enabled = value
 
     async def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -52,6 +66,8 @@ class DiscoveryListener:
                      self._WATCH_DIR, self._CHECK_INTERVAL)
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
@@ -125,6 +141,8 @@ class DiscoveryListener:
             logger.debug("[discovery_listener] auto_register failed: %s", e)
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "enabled": self._enabled,
             "running": self._running,
@@ -138,6 +156,8 @@ _discovery_listener: Optional[DiscoveryListener] = None
 
 
 def get_discovery_listener() -> DiscoveryListener:
+    """获取 discovery_listener。
+    """
     global _discovery_listener
     if _discovery_listener is None:
         enabled = _os.getenv("AIPLAT_DISCOVERY_ENABLED", "false").lower() in (

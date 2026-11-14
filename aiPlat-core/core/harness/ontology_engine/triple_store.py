@@ -50,6 +50,11 @@ class TripleStore:
 
     def __init__(self, db_path: str = ""):
         # AIPLAT_HOME 优先（配置驱动，§5；复用 core.utils.paths 权威路径解析，防路径漂移）
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         from core.utils.paths import get_aiplat_home
         path = db_path or os.path.join(get_aiplat_home(), "ontology_triples.sqlite3")
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -73,6 +78,16 @@ class TripleStore:
     def add(self, subject: str, predicate: str, object: str,
             confidence: float = 1.0, source: str = "code_scan",
             metadata: dict = None) -> None:
+        """add。
+
+        Args:
+            subject: subject 参数。
+            predicate: predicate 参数。
+            object: object 参数。
+            confidence: confidence 参数。
+            source: source 参数。
+            metadata: metadata 参数。
+        """
         self._conn.execute(
             "INSERT OR REPLACE INTO triples VALUES (?, ?, ?, ?, ?, ?)",
             (subject, predicate, object, confidence, source,
@@ -80,7 +95,11 @@ class TripleStore:
         self._conn.commit()
 
     def add_batch(self, triples: List[Tuple[str, str, str, float, str, dict]]) -> None:
-        """批量写入三元组。自动序列化 metadata dict。"""
+        """批量写入三元组。自动序列化 metadata dict。
+
+        Args:
+            triples: triples 参数。
+        """
         serialized = [
             (s, p, o, c, src, json.dumps(m, ensure_ascii=False) if isinstance(m, dict) else m or "{}")
             for s, p, o, c, src, m in triples
@@ -90,6 +109,11 @@ class TripleStore:
         self._conn.commit()
 
     def clear_source(self, source: str = "code_scan") -> int:
+        """clear_source。
+
+        Args:
+            source: source 参数。
+        """
         c = self._conn.execute("DELETE FROM triples WHERE source = ?", (source,))
         self._conn.commit()
         return c.rowcount
@@ -97,7 +121,12 @@ class TripleStore:
     # ── Core queries ──────────────────────────────
 
     def get_downstream(self, urn: str, depth: int = 3) -> List[Dict[str, Any]]:
-        """BFS 多跳下游遍历。"""
+        """BFS 多跳下游遍历。
+
+        Args:
+            urn: urn 参数。
+            depth: depth 参数。
+        """
         results: List[Dict[str, Any]] = []
         visited = {urn}
         queue = [(urn, 0, [urn])]
@@ -120,7 +149,12 @@ class TripleStore:
         return results
 
     def get_upstream(self, urn: str, depth: int = 3) -> List[Dict[str, Any]]:
-        """BFS 反向多跳遍历（哪些实体依赖了我）。"""
+        """BFS 反向多跳遍历（哪些实体依赖了我）。
+
+        Args:
+            urn: urn 参数。
+            depth: depth 参数。
+        """
         results: List[Dict[str, Any]] = []
         visited = {urn}
         queue = [(urn, 0, [urn])]
@@ -143,6 +177,11 @@ class TripleStore:
         return results
 
     def get_by_predicate(self, predicate: str) -> List[Dict[str, Any]]:
+        """获取 by_predicate。
+
+        Args:
+            predicate: predicate 参数。
+        """
         rows = self._conn.execute(
             "SELECT subject, predicate, object, confidence FROM triples WHERE predicate = ?",
             (predicate,)).fetchall()
@@ -150,6 +189,8 @@ class TripleStore:
                 for r in rows]
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         total = self._conn.execute("SELECT COUNT(*) FROM triples").fetchone()[0]
         preds = self._conn.execute(
             "SELECT predicate, COUNT(*) as cnt FROM triples GROUP BY predicate"
@@ -164,6 +205,8 @@ _store: Optional[TripleStore] = None
 
 
 def get_triple_store() -> TripleStore:
+    """获取 triple_store。
+    """
     global _store
     if _store is None:
         _store = TripleStore()

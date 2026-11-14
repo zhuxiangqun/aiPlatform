@@ -214,20 +214,12 @@ async def ontology_first_retrieve(
 
     """Ontology-first multi-class retrieval with neighbor class expansion.
 
-
-
-    Pipeline:
-
-      1. Build target_classes from ontology_class_uri + 1-hop graph neighbors
-
-      2. Parallel async retrieval for each target class
-
-      3. Merge results and deduplicate by title
-
-
-
-    Returns (retrieved_docs: str, citations: List[dict]).
-
+    Args:
+        query: 查询。
+        ontology_class_uri: ontology_class_uri 参数。
+        domain_id: domain 标识。
+        collection_id: collection 标识。
+        top_k: top_k 参数。
     """
 
     try:
@@ -369,12 +361,10 @@ def build_reasoning_path(
 
     """Build a structured reasoning path from ontology mapping + graph traversal.
 
-
-
-    Extracted from MaterialsChatAgent. Returns a list of step dicts showing
-
-    how the agent arrived at its answer: intent_classify → traversal → retrieval.
-
+    Args:
+        question: question 参数。
+        ontology_mapping: ontology_mapping 参数。
+        traversal_result: traversal_result 参数。
     """
 
     path: List[Dict[str, Any]] = []

@@ -29,6 +29,12 @@ def _store(rt: RuntimeDep):
 
 @router.get("/snapshot", response_model=StatusResponse)
 async def get_policy_snapshot(tenant_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """获取 policy_snapshot。
+
+    Args:
+        tenant_id: 租户 ID。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -40,6 +46,13 @@ async def get_policy_snapshot(tenant_id: str, rt: RuntimeDep = Depends(get_kerne
 
 @router.put("/snapshot", response_model=StatusResponse)
 async def put_policy_snapshot(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """put_policy_snapshot。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -69,6 +82,12 @@ async def put_policy_snapshot(request: dict, http_request: Request, rt: RuntimeD
 
 @router.get("/versions", response_model=StatusResponse)
 async def list_policy_versions(tenant_id: Optional[str] = None, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """列出 policy_versions。
+
+    Args:
+        tenant_id: 租户 ID。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -94,8 +113,10 @@ async def put_managed_policy(request: dict, http_request: Request,
                              rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Set enterprise-managed policy entries (admin only).
 
-    Body: {"tenant_id": str, "policy": {"key": {"value": ..., "managed": true}}}
-    Managed keys override local policy; local cannot relax managed entries.
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:

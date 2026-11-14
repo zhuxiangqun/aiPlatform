@@ -13,9 +13,10 @@ logger = logging.getLogger("rule_auditor")
 
 
 def audit_rules(domain_yaml_raw: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Run full audit on a domain's inference rules.
+    """Run full audit on a domain's inference rules.
 
-    Returns: {"conflicts": [...], "unreachable": [...], "missing_transitions": [...]}
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
     """
     rules = domain_yaml_raw.get("inference_rules", [])
     if not rules:
@@ -36,7 +37,11 @@ def audit_rules(domain_yaml_raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def detect_conflicts(rules: List[Dict]) -> List[Dict[str, Any]]:
-    u"""Detect rules with same conclusion relation but contradictory premises."""
+    """Detect rules with same conclusion relation but contradictory premises.
+
+    Args:
+        rules: rules 参数。
+    """
     by_conclusion: Dict[str, List[Dict]] = {}
     for rule in rules:
         conc = rule.get("conclusion", {})
@@ -63,7 +68,12 @@ def detect_conflicts(rules: List[Dict]) -> List[Dict[str, Any]]:
 
 
 def detect_unreachable(rules: List[Dict], domain_raw: Dict) -> List[Dict[str, Any]]:
-    u"""Detect rules whose premises reference non-existent relations."""
+    """Detect rules whose premises reference non-existent relations.
+
+    Args:
+        rules: rules 参数。
+        domain_raw: domain_raw 参数。
+    """
     obj_props = domain_raw.get("object_properties", [])
     existing_rels = {p.get("name", "") for p in obj_props}
 
@@ -81,7 +91,11 @@ def detect_unreachable(rules: List[Dict], domain_raw: Dict) -> List[Dict[str, An
 
 
 def detect_missing_transitions(domain_raw: Dict) -> List[Dict[str, Any]]:
-    u"""Detect classes with states defined but no transitions."""
+    """Detect classes with states defined but no transitions.
+
+    Args:
+        domain_raw: domain_raw 参数。
+    """
     classes = domain_raw.get("classes", {})
     issues = []
     for cls_name, cls_def in classes.items():

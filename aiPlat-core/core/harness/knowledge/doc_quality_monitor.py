@@ -165,6 +165,8 @@ class DocumentQualityMonitor:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._running = False
 
         self._task: Optional[asyncio.Task] = None
@@ -183,6 +185,8 @@ class DocumentQualityMonitor:
 
     async def start(self):
 
+        """start。
+        """
         if self._running:
 
             return
@@ -197,6 +201,8 @@ class DocumentQualityMonitor:
 
     async def stop(self):
 
+        """stop。
+        """
         self._running = False
 
         if self._task:
@@ -783,6 +789,8 @@ class DocumentQualityMonitor:
 
     def get_stats(self) -> dict:
 
+        """获取 stats。
+        """
         conn = _get_db()
 
         try:
@@ -817,6 +825,11 @@ class DocumentQualityMonitor:
 
     def get_alerts(self, limit: int = 20) -> list:
 
+        """获取 alerts。
+
+        Args:
+            limit: 返回条数上限。
+        """
         conn = _get_db()
 
         try:
@@ -839,6 +852,8 @@ class DocumentQualityMonitor:
 
     def get_doc_health(self) -> list:
 
+        """获取 doc_health。
+        """
         conn = _get_db()
 
         try:
@@ -903,6 +918,8 @@ _doc_quality_monitor: Optional[DocumentQualityMonitor] = None
 
 def get_doc_quality_monitor() -> DocumentQualityMonitor:
 
+    """获取 doc_quality_monitor。
+    """
     global _doc_quality_monitor
 
     if _doc_quality_monitor is None:

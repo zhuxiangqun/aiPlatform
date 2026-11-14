@@ -35,8 +35,9 @@ async def import_claude_memories(
 ) -> Dict[str, Any]:
     """导入 Claude Code 会话 JSONL → MemoryManager。
 
-    body: {"base_path": "~/.claude/projects", "max_sessions": 50}
-    返回 {imported, sessions, turns, skipped, errors}。
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     from core.api.core_facade import import_claude_memories as _import
 
@@ -48,7 +49,11 @@ async def import_claude_memories(
 
 @router.get("/memory/import/status", response_model=StatusResponse)
 async def memory_import_status(_auth: str = Depends(require_auth)) -> Dict[str, Any]:
-    """返回记忆导入能力信息（来源路径、上限）。"""
+    """返回记忆导入能力信息（来源路径、上限）。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return {
         "status": "ok",
         "service": "memory-import",
@@ -66,7 +71,9 @@ async def capture_ide_session(
 ) -> Dict[str, Any]:
     """IDE/Cursor/CC 旁路投递 → Team Brain（可选 Session Wiki）。
 
-    body: {prompt, result?, tools?, success?, tags?, session_id?, write_wiki?, source?}
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     from core.api.core_facade import ingest_ide_capture as _ingest
 
@@ -95,7 +102,15 @@ async def session_archive(
     session_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """On-demand search of turns archived before compaction. Not the sticky fact list."""
+    """On-demand search of turns archived before compaction. Not the sticky fact list.
+
+    Args:
+        request: FastAPI Request。
+        q: q 参数。
+        limit: 返回条数上限。
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import query_session_archive as _query
 
     out = _query(
@@ -113,7 +128,13 @@ async def sticky_memory(
     max_chars: Optional[int] = None,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """User profile + pinned MEMORY.md for Pi / hybrid session start. Shared budget."""
+    """User profile + pinned MEMORY.md for Pi / hybrid session start. Shared budget.
+
+    Args:
+        request: FastAPI Request。
+        max_chars: max_chars 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import sticky_memory_slice as _slice
 
     out = _slice(max_chars=max_chars, tenant_id=_tenant_from_request(request))
@@ -126,7 +147,13 @@ async def upsert_sticky_memory(
     body: Dict[str, Any],
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
-    """Add or replace a durable pinned fact. Same-key merge when budget is full."""
+    """Add or replace a durable pinned fact. Same-key merge when budget is full.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import upsert_pinned_memory as _upsert
 
     out = _upsert(

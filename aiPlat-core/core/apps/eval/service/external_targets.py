@@ -1,4 +1,21 @@
-"""Per-named-workspace external eval target registry (http_chat_pull)."""
+"""按命名工作区登记外部评测目标（``http_chat_pull``）。
+
+职责
+----
+在 ``AIPLAT_HOME`` / 工作区目录下读写 ``external_targets.yaml``：
+校验 ID、SSRF 守卫、公开视图、鉴权头解析与原子落盘。
+
+非目标
+------
+- 不执行拉评本身（仅登记与解析）
+- 不把密钥写入 YAML（只存 ``auth_secret_env`` 名）
+- 不解锁 ``accuracy_claim``
+
+读序
+----
+``upsert_external_target`` / ``list_external_targets`` →
+``get_external_target`` → ``build_invoke_url`` / ``resolve_auth_header``。
+"""
 from __future__ import annotations
 
 import logging
@@ -23,6 +40,17 @@ DEFAULT_PATH = "/v1/chat"
 
 
 def validate_target_id(target_id: str) -> str:
+    """校验并规范化外部目标 ID。
+
+    Args:
+        target_id: 原始目标 ID。
+
+    Returns:
+        规范化后的 ID。
+
+    Raises:
+        ValueError: 为空、格式非法或含路径分隔符。
+    """
     tid = (target_id or "").strip()
     if not tid or not _ID_RE.match(tid):
         raise ValueError(f"invalid target_id: {target_id!r}")
@@ -32,11 +60,26 @@ def validate_target_id(target_id: str) -> str:
 
 
 def external_agent_id(target_id: str) -> str:
-    """Synthetic agent_id for eval_results persistence."""
+    """生成写入 eval_results 的合成 ``agent_id``（``ext:{id}``）。
+
+    Args:
+        target_id: 外部目标 ID。
+
+    Returns:
+        ``ext:<validated_id>`` 字符串。
+    """
     return f"ext:{validate_target_id(target_id)}"
 
 
 def targets_path_for_workspace(workspace_id: str) -> Path:
+    """解析工作区对应的 ``external_targets.yaml`` 路径。
+
+    Args:
+        workspace_id: 工作区 ID；``default`` 落在 AIPLAT_HOME 根下。
+
+    Returns:
+        YAML 文件 Path。
+    """
     home = Path(get_aiplat_home())
     wid = (workspace_id or "default").strip() or "default"
     if wid == "default":
@@ -110,6 +153,17 @@ def _atomic_write_yaml(path: Path, doc: Dict[str, Any]) -> None:
 
 
 def load_targets_doc(workspace_id: str) -> Dict[str, Any]:
+    """加载工作区外部目标文档（缺失则返回空文档）。
+
+    Args:
+        workspace_id: 工作区 ID。
+
+    Returns:
+        含 ``schema_version`` / ``targets`` 的文档 dict。
+
+    Raises:
+        RuntimeError: YAML 不可用、损坏或 schema 版本不支持。
+    """
     path = targets_path_for_workspace(workspace_id)
     if not path.exists():
         return _empty_doc()
@@ -136,6 +190,14 @@ def load_targets_doc(workspace_id: str) -> Dict[str, Any]:
 
 
 def list_external_targets(workspace_id: str) -> List[Dict[str, Any]]:
+    """列出工作区外部目标的公开视图（不含密钥原文）。
+
+    Args:
+        workspace_id: 工作区 ID。
+
+    Returns:
+        公开目标 dict 列表。
+    """
     doc = load_targets_doc(workspace_id)
     out: List[Dict[str, Any]] = []
     for row in doc.get("targets") or []:
@@ -148,6 +210,15 @@ def list_external_targets(workspace_id: str) -> List[Dict[str, Any]]:
 
 
 def get_external_target(workspace_id: str, target_id: str) -> Optional[Dict[str, Any]]:
+    """按 ID 取完整目标行（含 ``auth_secret_env`` 名，不含密钥值）。
+
+    Args:
+        workspace_id: 工作区 ID。
+        target_id: 目标 ID。
+
+    Returns:
+        完整行 dict，或 ``None``。
+    """
     tid = validate_target_id(target_id)
     doc = load_targets_doc(workspace_id)
     for row in doc.get("targets") or []:
@@ -157,6 +228,14 @@ def get_external_target(workspace_id: str, target_id: str) -> Optional[Dict[str,
 
 
 def public_target_view(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """将存储行转为 API 安全公开视图。
+
+    Args:
+        row: 存储中的目标行。
+
+    Returns:
+        公开字段 dict；缺 ``target_id`` 时返回 ``None``。
+    """
     tid = str(row.get("target_id") or "").strip()
     if not tid:
         return None
@@ -187,7 +266,14 @@ def _normalize_base_url(base_url: str) -> str:
 
 
 def assert_url_allowed(url: str) -> None:
-    """SSRF guard for registered external eval endpoints."""
+    """对已登记外部评测端点做 SSRF 守卫。
+
+    Args:
+        url: 待校验完整 URL。
+
+    Raises:
+        ValueError: 命中阻断且未开启私网放行时，码形如 ``ssrf_blocked:...``。
+    """
     from core.harness.execution.true_test_runtime import is_blocked_url
 
     allow_private = os.environ.get("AIPLAT_EXTERNAL_EVAL_ALLOW_PRIVATE", "").strip() in (
@@ -198,6 +284,7 @@ def assert_url_allowed(url: str) -> None:
     )
     blocked, reason = is_blocked_url(url)
     if blocked and allow_private:
+        # 为什么：显式 env 旁路仅用于受控内网评测，仍记审计告警
         logger.warning(
             "external_eval_allow_private: would block url reason=%s (audit)",
             reason,
@@ -208,12 +295,24 @@ def assert_url_allowed(url: str) -> None:
 
 
 def build_invoke_url(base_url: str, path: str) -> str:
+    """拼接调用 URL，并强制同主机 / SSRF 校验。
+
+    Args:
+        base_url: 已登记的 http(s) 基址。
+        path: 相对路径（默认 ``/v1/chat``）。
+
+    Returns:
+        可调用的完整 URL。
+
+    Raises:
+        ValueError: 基址非法、path 逃逸主机或 SSRF 阻断。
+    """
     base = _normalize_base_url(base_url)
     p = (path or DEFAULT_PATH).strip() or DEFAULT_PATH
     if not p.startswith("/"):
         p = "/" + p
     url = urljoin(base + "/", p.lstrip("/"))
-    # Rebuild must stay on same host as base
+    # 重建后必须仍落在登记主机
     bp, up = urlparse(base), urlparse(url)
     if (up.hostname or "").lower() != (bp.hostname or "").lower():
         raise ValueError("path escapes registered host")
@@ -236,6 +335,27 @@ def upsert_external_target(
     response_mode: str = "aiplat_v0",
     kind: str = KIND_HTTP_CHAT_PULL,
 ) -> Dict[str, Any]:
+    """创建或更新外部目标并原子写入 YAML。
+
+    Args:
+        workspace_id: 工作区 ID。
+        target_id: 目标 ID。
+        label: 展示名；空则用 ``target_id``。
+        base_url: http(s) 基址。
+        path: 调用路径。
+        auth_header_name: 鉴权头名（可选）。
+        auth_secret_env: 存放密钥的环境变量名（可选）。
+        timeout_ms: 超时毫秒，范围 ``1..MAX_TIMEOUT_MS``。
+        response_mode: ``aiplat_v0`` / ``openai_chat`` / ``plain_text``。
+        kind: 当前仅支持 ``http_chat_pull``。
+
+    Returns:
+        公开视图 dict。
+
+    Raises:
+        ValueError: 字段非法或 SSRF 校验失败。
+        RuntimeError: 落盘/YAML 失败。
+    """
     tid = validate_target_id(target_id)
     if (kind or KIND_HTTP_CHAT_PULL) != KIND_HTTP_CHAT_PULL:
         raise ValueError(f"unsupported kind: {kind}")
@@ -277,6 +397,17 @@ def upsert_external_target(
 
 
 def resolve_auth_header(row: Dict[str, Any]) -> Optional[tuple]:
+    """从环境变量解析鉴权头 ``(name, value)``。
+
+    Args:
+        row: 目标行（含 ``auth_header_name`` / ``auth_secret_env``）。
+
+    Returns:
+        ``(header_name, secret)``；未配置头名或 env 名时返回 ``None``。
+
+    Raises:
+        ValueError: 已配置 env 名但环境变量未设置。
+    """
     name = str(row.get("auth_header_name") or "").strip()
     env_key = str(row.get("auth_secret_env") or "").strip()
     if not name or not env_key:

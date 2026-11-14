@@ -38,7 +38,11 @@ def _domain_yaml_path(domain_id: str) -> Optional[Path]:
 
 
 def get_ontology_pillars(domain_id: str) -> Dict[str, Any]:
-    """Aggregate data (ABox counts), logic (axioms/rules), action (contracts)."""
+    """Aggregate data (ABox counts), logic (axioms/rules), action (contracts).
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "it-ops"
     out: Dict[str, Any] = {
         "domain_id": did,

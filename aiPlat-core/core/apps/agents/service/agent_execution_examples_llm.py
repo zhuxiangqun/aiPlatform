@@ -102,8 +102,15 @@ async def generate_agent_execution_examples_llm(
 ) -> Dict[str, Any]:
     """Generate 2–4 realistic smoke test cases for an Agent via LLM.
 
-    Returns:
-      {examples: [{title, content}], model: str, source: "llm"|heuristic_fallback, warning?}
+    Args:
+        agent_id: Agent ID。
+        agent_name: agent_name 参数。
+        description: description 参数。
+        skill_ids: skill_ids 参数。
+        tool_ids: tool_ids 参数。
+        input_schema: input_schema 参数。
+        refine_hint: refine_hint 参数。
+        sop_excerpt: sop_excerpt 参数。
     """
     agent_id = str(agent_id or "").strip()
     if not agent_id:

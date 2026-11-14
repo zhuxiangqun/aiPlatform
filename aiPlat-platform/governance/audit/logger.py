@@ -15,6 +15,7 @@ from enum import Enum
 
 
 class AuditAction(str, Enum):
+    """AuditAction。"""
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
@@ -48,6 +49,8 @@ class AuditLogger:
     """审计日志服务 — SHA-256 链式哈希防篡改"""
 
     def __init__(self):
+        """初始化。
+        """
         self._logs: list[AuditLog] = []
         self._prev_hash: Optional[str] = None
 
@@ -69,7 +72,21 @@ class AuditLogger:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> AuditLog:
-        """记录审计日志（含链式哈希）"""
+        """记录审计日志（含链式哈希）。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            action: action 参数。
+            resource_type: resource_type 参数。
+            resource_id: resource 标识。
+            result: result 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            details: details 参数。
+            ip_address: ip_address 参数。
+            user_agent: user_agent 参数。
+        """
         log_id = f"audit_{len(self._logs)}_{datetime.now(timezone.utc).timestamp()}"
 
         # Build entry with prev_hash for chain integrity
@@ -125,7 +142,11 @@ class AuditLogger:
         return violations
 
     def get_today_count(self, tenant_id: str = None) -> int:
-        """获取今日审计日志数量"""
+        """获取今日审计日志数量。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         today = datetime.now(timezone.utc).date()
         logs = self._logs
         if tenant_id:
@@ -142,7 +163,17 @@ class AuditLogger:
         end_time: Optional[datetime] = None,
         limit: int = 100,
     ) -> list[AuditLog]:
-        """查询审计日志"""
+        """查询审计日志。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            action: action 参数。
+            resource_type: resource_type 参数。
+            start_time: start_time 参数。
+            end_time: end_time 参数。
+            limit: 返回条数上限。
+        """
         logs = self._logs.copy()
 
         if tenant_id:
@@ -162,7 +193,11 @@ class AuditLogger:
         return logs[:limit]
 
     def get_logs_count(self, tenant_id: str) -> int:
-        """获取租户日志数量"""
+        """获取租户日志数量。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return len([l for l in self._logs if l.tenant_id == tenant_id])
 
 

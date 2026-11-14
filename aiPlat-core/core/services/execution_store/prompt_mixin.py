@@ -22,6 +22,15 @@ class PromptMixin:
         metadata: Optional[Dict[str, Any]] = None,
         increment_version: bool = True,
     ) -> Dict[str, Any]:
+        """upsert_prompt_template。
+
+        Args:
+            template_id: template 标识。
+            name: name 参数。
+            template: template 参数。
+            metadata: metadata 参数。
+            increment_version: increment_version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -70,6 +79,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_prompt_template(self, *, template_id: str) -> Optional[Dict[str, Any]]:
+        """获取 prompt_template。
+
+        Args:
+            template_id: template 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -85,6 +99,12 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_prompt_template_version(self, *, template_id: str, version: str) -> Optional[Dict[str, Any]]:
+        """获取 prompt_template_version。
+
+        Args:
+            template_id: template 标识。
+            version: version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -103,9 +123,12 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def update_prompt_template_metadata(self, *, template_id: str, patch: Dict[str, Any], merge: bool = True) -> Optional[Dict[str, Any]]:
-        """
-        Update prompt template metadata_json without changing template content or version.
-        merge=True will shallow-merge patch into existing metadata.
+        """Update prompt template metadata_json without changing template content or version.
+
+        Args:
+            template_id: template 标识。
+            patch: patch 参数。
+            merge: merge 参数。
         """
         await self.init()
         db_path = self._config.db_path
@@ -137,6 +160,12 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_prompt_templates(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 prompt_templates。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -156,6 +185,13 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_prompt_template_versions(self, *, template_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 prompt_template_versions。
+
+        Args:
+            template_id: template 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -180,6 +216,12 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def rollback_prompt_template_version(self, *, template_id: str, version: str) -> Dict[str, Any]:
+        """rollback_prompt_template_version。
+
+        Args:
+            template_id: template 标识。
+            version: version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -207,6 +249,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def delete_prompt_template(self, *, template_id: str) -> bool:
+        """删除 prompt_template。
+
+        Args:
+            template_id: template 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -226,6 +273,14 @@ class PromptMixin:
 
     async def list_prompt_app_templates(self, *, limit: int = 100, offset: int = 0,
                                          category: str = "", status: str = "") -> Dict[str, Any]:
+        """列出 prompt_app_templates。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            category: category 参数。
+            status: status 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -248,6 +303,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_prompt_app_template(self, *, template_id: str) -> Optional[Dict[str, Any]]:
+        """获取 prompt_app_template。
+
+        Args:
+            template_id: template 标识。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -265,6 +325,22 @@ class PromptMixin:
                                           assistant_prompt: str = "", variables: str = "[]",
                                           examples: str = "", constraints: str = "", scenario_tags: str = "[]",
                                           status: str = "draft") -> Dict[str, Any]:
+        """upsert_prompt_app_template。
+
+        Args:
+            template_id: template 标识。
+            name: name 参数。
+            category: category 参数。
+            tags: tags 参数。
+            system_prompt: system_prompt 参数。
+            user_prompt: user_prompt 参数。
+            assistant_prompt: assistant_prompt 参数。
+            variables: variables 参数。
+            examples: examples 参数。
+            constraints: constraints 参数。
+            scenario_tags: scenario_tags 参数。
+            status: status 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         import time as _t, json as _j
@@ -290,6 +366,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def delete_prompt_app_template(self, *, template_id: str) -> bool:
+        """删除 prompt_app_template。
+
+        Args:
+            template_id: template 标识。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -303,6 +384,8 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def list_prompt_app_categories(self) -> List[str]:
+        """列出 prompt_app_categories。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -315,6 +398,14 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def upsert_prompt_app_category(self, *, name: str, display_order: int = 0, icon: str = "", parent: str = ""):
+        """upsert_prompt_app_category。
+
+        Args:
+            name: name 参数。
+            display_order: display_order 参数。
+            icon: icon 参数。
+            parent: parent 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         import time as _t
@@ -332,6 +423,11 @@ class PromptMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def delete_prompt_app_category(self, *, name: str) -> bool:
+        """删除 prompt_app_category。
+
+        Args:
+            name: name 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -347,6 +443,12 @@ class PromptMixin:
     # ── Prompt App Instance CRUD ────────────────────────────────────
 
     async def list_prompt_app_instances(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 prompt_app_instances。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -364,6 +466,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_prompt_app_instance(self, *, instance_id: str) -> Optional[Dict[str, Any]]:
+        """获取 prompt_app_instance。
+
+        Args:
+            instance_id: instance 标识。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():
@@ -379,6 +486,18 @@ class PromptMixin:
                                           system_prompt: str = "", user_prompt: str = "",
                                           assistant_prompt: str = "", variables: str = "[]",
                                           status: str = "draft") -> Dict[str, Any]:
+        """upsert_prompt_app_instance。
+
+        Args:
+            instance_id: instance 标识。
+            name: name 参数。
+            source_template_id: source_template 标识。
+            system_prompt: system_prompt 参数。
+            user_prompt: user_prompt 参数。
+            assistant_prompt: assistant_prompt 参数。
+            variables: variables 参数。
+            status: status 参数。
+        """
         await self.init()
         db_path = self._config.db_path
         import time as _t
@@ -404,6 +523,11 @@ class PromptMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def delete_prompt_app_instance(self, *, instance_id: str) -> bool:
+        """删除 prompt_app_instance。
+
+        Args:
+            instance_id: instance 标识。
+        """
         await self.init()
         db_path = self._config.db_path
         def _sync():

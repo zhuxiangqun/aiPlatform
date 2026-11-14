@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import HTTPClient, AsyncHTTPClient
 from .response import Response, HTTPError
 from .schemas import HTTPConfig, TimeoutConfig, RetryConfig, PoolConfig, ProxyConfig

@@ -19,6 +19,11 @@ DST_DIR = get_aiplat_home()
 
 
 def run(dry_run: bool = True):
+    """run。
+
+    Args:
+        dry_run: 是否仅演练。
+    """
     if not os.path.exists(SRC_DB):
         logger.info("No source DB found — nothing to migrate")
         return

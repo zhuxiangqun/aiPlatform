@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class VoiceLoopTool(BaseTool):
+    """VoiceLoopTool。"""
     def __init__(self):
+        """初始化。
+        """
         super().__init__(ToolMetadata(
             name="voice_loop",
             description="执行完整语音循环: 语音转文字(STT) → Agent 推理 → 浏览器操作 → 文字转语音(TTS)。"
@@ -38,6 +41,11 @@ class VoiceLoopTool(BaseTool):
         }
 
     async def execute(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """execute。
+
+        Args:
+            args: args 参数。
+        """
         audio_path = str(args.get("audio_path", "")).strip()
         if not audio_path:
             return {"success": False, "error": "audio_path 不能为空"}

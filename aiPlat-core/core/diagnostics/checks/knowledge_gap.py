@@ -29,6 +29,8 @@ _GAP_KEYWORDS = [
 
 
 async def check_knowledge_gap() -> Dict[str, Any]:
+    """check_knowledge_gap。
+    """
     try:
         from core.harness.execution.pipeline_run_store import get_pipeline_run_store
         store = get_pipeline_run_store()

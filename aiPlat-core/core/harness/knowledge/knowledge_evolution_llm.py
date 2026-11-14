@@ -264,10 +264,11 @@ def predict_evolution_impact(
     suggestion: Dict[str, Any],
     onto: Any,
 ) -> Dict[str, Any]:
-    u"""Predict the impact scope of an ontology evolution suggestion.
+    """Predict the impact scope of an ontology evolution suggestion.
 
-    Helps answer: "If I accept this suggestion, how many entities and
-    relations will be affected?"
+    Args:
+        suggestion: suggestion 参数。
+        onto: onto 参数。
     """
     affected_entities: List[str] = []
     affected_relations = 0

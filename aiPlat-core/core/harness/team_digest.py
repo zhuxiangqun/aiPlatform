@@ -16,10 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
 def digest_store_path() -> Path:
+    """digest_store_path。
+    """
     return aiplat_home() / "local" / "team_digest.json"
 
 
@@ -36,7 +40,13 @@ def build_team_digest(
     project: Optional[Mapping[str, Any]] = None,
     lookback_sec: float = 7 * 24 * 3600,
 ) -> Dict[str, Any]:
-    """Build a privacy-safe metrics digest slice (T5 / F-T5)."""
+    """Build a privacy-safe metrics digest slice (T5 / F-T5).
+
+    Args:
+        project_id: project 标识。
+        project: project 参数。
+        lookback_sec: lookback_sec 参数。
+    """
     now = time.time()
     since = now - max(3600.0, float(lookback_sec))
     proj = dict(project or {})
@@ -76,7 +86,11 @@ def build_team_digest(
 
 
 def record_digest_view(project_id: str = "") -> Dict[str, Any]:
-    """Increment view counter for digest adoption metric."""
+    """Increment view counter for digest adoption metric.
+
+    Args:
+        project_id: project 标识。
+    """
     path = digest_store_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data: Dict[str, Any] = {"views": 0, "by_project": {}}

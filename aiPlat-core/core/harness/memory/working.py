@@ -23,13 +23,25 @@ class WorkingMemory:
     """Working memory - maintains current task context with sliding window"""
     
     def __init__(self, max_tokens: int = 30000, max_messages: int = 20):
+        """初始化。
+
+        Args:
+            max_tokens: max_tokens 参数。
+            max_messages: max_messages 参数。
+        """
         self._max_tokens = max_tokens
         self._max_messages = max_messages
         self._messages: deque = deque(maxlen=max_messages)
         self._token_estimate = 0
     
     def add(self, role: str, content: str, metadata: Optional[Dict] = None):
-        """Add a message to working memory"""
+        """Add a message to working memory。
+
+        Args:
+            role: role 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+        """
         message = Message(
             role=role,
             content=content,
@@ -40,7 +52,11 @@ class WorkingMemory:
         self._ensure_within_limit()
     
     def get_context(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get current context as message list, optionally filtered by session_id."""
+        """Get current context as message list, optionally filtered by session_id.
+
+        Args:
+            session_id: 会话 ID。
+        """
         messages = self._messages
         if session_id:
             messages = [m for m in messages if m.metadata.get("session_id") == session_id]
@@ -62,7 +78,11 @@ class WorkingMemory:
         ]
     
     def get_last_n(self, n: int) -> List[Message]:
-        """Get last N messages"""
+        """Get last N messages。
+
+        Args:
+            n: n 参数。
+        """
         return list(self._messages)[-n:]
     
     def clear(self):
@@ -71,6 +91,8 @@ class WorkingMemory:
         self._token_estimate = 0
 
     def snapshot(self) -> Dict[str, Any]:
+        """snapshot。
+        """
         import copy
         return {
             "messages": copy.deepcopy(list(self._messages)),
@@ -78,15 +100,24 @@ class WorkingMemory:
         }
 
     def restore(self, snap: Dict[str, Any]) -> None:
+        """restore。
+
+        Args:
+            snap: snap 参数。
+        """
         self._messages = deque(snap.get("messages", []), maxlen=self._max_messages)
         self._token_estimate = snap.get("token_estimate", 0)
     
     @property
     def token_count(self) -> int:
+        """token_count。
+        """
         return self._token_estimate
     
     @property
     def message_count(self) -> int:
+        """message_count。
+        """
         return len(self._messages)
     
     def _ensure_within_limit(self):

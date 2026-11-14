@@ -15,12 +15,23 @@ class TraceTracker:
     """Tracks agent execution traces"""
     
     def __init__(self, storage_path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            storage_path: storage_path 参数。
+        """
         self.storage_path = storage_path
         self.current_trace: Optional[AgentTrace] = None
         self.traces: Dict[str, AgentTrace] = {}
     
     def start_trace(self, session_id: str, task_id: str, prompt: str) -> AgentTrace:
-        """Start a new trace"""
+        """Start a new trace。
+
+        Args:
+            session_id: 会话 ID。
+            task_id: task 标识。
+            prompt: prompt 参数。
+        """
         trace = AgentTrace(
             session_id=session_id,
             task_id=task_id,
@@ -30,7 +41,12 @@ class TraceTracker:
         return trace
     
     def record_tool_call(self, tool_name: str, tool_input: Dict[str, Any]):
-        """Record a tool call"""
+        """Record a tool call。
+
+        Args:
+            tool_name: tool_name 参数。
+            tool_input: tool_input 参数。
+        """
         if self.current_trace:
             self.current_trace.tool_calls.append({
                 "tool": tool_name,
@@ -39,7 +55,12 @@ class TraceTracker:
             })
     
     def record_tool_result(self, tool_name: str, result: Dict[str, Any]):
-        """Record a tool result"""
+        """Record a tool result。
+
+        Args:
+            tool_name: tool_name 参数。
+            result: result 参数。
+        """
         if self.current_trace:
             self.current_trace.tool_results.append({
                 "tool": tool_name,
@@ -54,7 +75,14 @@ class TraceTracker:
         latency_ms: int,
         tokens_used: int
     ) -> AgentTrace:
-        """End current trace"""
+        """End current trace。
+
+        Args:
+            final_response: final_response 参数。
+            success: success 参数。
+            latency_ms: latency_ms 参数。
+            tokens_used: tokens_used 参数。
+        """
         if self.current_trace:
             self.current_trace.final_response = final_response
             self.current_trace.success = success
@@ -70,7 +98,11 @@ class TraceTracker:
         raise RuntimeError("No active trace to end")
     
     def save_to_file(self, path: Optional[str] = None):
-        """Save traces to file"""
+        """Save traces to file。
+
+        Args:
+            path: 路径。
+        """
         save_path = path or self.storage_path
         if not save_path:
             return
@@ -85,7 +117,11 @@ class TraceTracker:
             )
     
     def load_from_file(self, path: str):
-        """Load traces from file"""
+        """Load traces from file。
+
+        Args:
+            path: 路径。
+        """
         if not os.path.exists(path):
             return
         
@@ -96,7 +132,11 @@ class TraceTracker:
                 self.traces[trace.session_id] = trace
     
     def get_trace(self, session_id: str) -> Optional[AgentTrace]:
-        """Get trace by session ID"""
+        """Get trace by session ID。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return self.traces.get(session_id)
     
     def get_all_traces(self) -> List[AgentTrace]:
@@ -110,7 +150,14 @@ async def track_execution(
     task_id: str,
     prompt: str
 ) -> AgentTrace:
-    """Context manager for tracking execution"""
+    """Context manager for tracking execution。
+
+    Args:
+        tracker: tracker 参数。
+        session_id: 会话 ID。
+        task_id: task 标识。
+        prompt: prompt 参数。
+    """
     return tracker.start_trace(session_id, task_id, prompt)
 
 

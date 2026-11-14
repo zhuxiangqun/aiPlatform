@@ -25,7 +25,13 @@ def generate_totp_secret() -> str:
 
 
 def totp_uri(secret_b32: str, account: str, issuer: str = "aiPlat") -> str:
-    """生成 otpauth:// URI（供扫码导入 Authenticator）。"""
+    """生成 otpauth:// URI（供扫码导入 Authenticator）。
+
+    Args:
+        secret_b32: secret_b32 参数。
+        account: account 参数。
+        issuer: issuer 参数。
+    """
     import urllib.parse
     label = urllib.parse.quote(f"{issuer}:{account}")
     params = urllib.parse.urlencode({"secret": secret_b32, "issuer": issuer, "algorithm": "SHA1", "digits": 6, "period": 30})
@@ -43,7 +49,14 @@ def _hotp(secret_b32: str, counter: int, digits: int = 6) -> str:
 
 
 def verify_totp(secret_b32: str, code: str, window: int = 1, digits: int = 6) -> bool:
-    """校验 TOTP 码（±window 步容差，默认 ±1 步 = 60s 窗口）。"""
+    """校验 TOTP 码（±window 步容差，默认 ±1 步 = 60s 窗口）。
+
+    Args:
+        secret_b32: secret_b32 参数。
+        code: code 参数。
+        window: window 参数。
+        digits: digits 参数。
+    """
     if not code or not code.isdigit() or len(code) != digits:
         return False
     try:
@@ -57,10 +70,18 @@ def verify_totp(secret_b32: str, code: str, window: int = 1, digits: int = 6) ->
 
 
 def is_mfa_enabled(user: dict) -> bool:
-    """检查用户是否已启用 MFA。"""
+    """检查用户是否已启用 MFA。
+
+    Args:
+        user: user 参数。
+    """
     return bool(user.get("mfa_enabled")) and bool(user.get("mfa_secret"))
 
 
 def require_mfa_for_role(role: str) -> bool:
-    """admin 角色强制 MFA（CLAUDE.md §11b）。"""
+    """admin 角色强制 MFA（CLAUDE.md §11b）。
+
+    Args:
+        role: role 参数。
+    """
     return role == "admin"

@@ -270,7 +270,11 @@ async def _scan_governance() -> Dict[str, Any]:
 
 @router.get("/overview", response_model=Dict[str, Any])
 async def system_overview(refresh: bool = Query(False)) -> Dict[str, Any]:
-    u"""Aggregated system state organized by architecture layer."""
+    """Aggregated system state organized by architecture layer.
+
+    Args:
+        refresh: refresh 参数。
+    """
     global _OV_CACHE, _OV_CACHE_TS
 
     # Force refresh — clear cache

@@ -27,6 +27,11 @@ import yaml
 
 
 def load_registry(root: Optional[Path] = None) -> Dict[str, Any]:
+    """load_registry。
+
+    Args:
+        root: root 参数。
+    """
     root = root or Path(__file__).resolve().parent.parent
     reg_path = root / "aiPlat-core" / "core" / "capability_registry.yaml"
     if not reg_path.exists():
@@ -36,7 +41,11 @@ def load_registry(root: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def render_matrix_markdown(data: Dict[str, Any]) -> str:
-    """Render full impact matrix markdown from registry data (no I/O)."""
+    """Render full impact matrix markdown from registry data (no I/O).
+
+    Args:
+        data: data 参数。
+    """
     consumer_map: Dict[str, list] = defaultdict(list)
     domains = data.get("domains") or {}
     for domain_id, domain in domains.items():
@@ -104,6 +113,13 @@ def render_matrix_markdown(data: Dict[str, Any]) -> str:
 
 
 def write_matrix(out_path: Path, data: Optional[Dict[str, Any]] = None, root: Optional[Path] = None) -> Path:
+    """write_matrix。
+
+    Args:
+        out_path: out_path 参数。
+        data: data 参数。
+        root: root 参数。
+    """
     if data is None:
         data = load_registry(root or Path(__file__).resolve().parent.parent)
     text = render_matrix_markdown(data)
@@ -113,7 +129,11 @@ def write_matrix(out_path: Path, data: Optional[Dict[str, Any]] = None, root: Op
 
 
 def check_matrix_fresh(root: Optional[Path] = None) -> int:
-    """Regenerate into a temp file and diff against the committed matrix. Return 0/1."""
+    """Regenerate into a temp file and diff against the committed matrix. Return 0/1.
+
+    Args:
+        root: root 参数。
+    """
     root = root or Path(__file__).resolve().parent.parent
     data = load_registry(root)
     expected = render_matrix_markdown(data)
@@ -150,6 +170,11 @@ def check_matrix_fresh(root: Optional[Path] = None) -> int:
 
 
 def main(argv=None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     root = Path(__file__).resolve().parent.parent
     if "--ci" in argv or "--check" in argv:

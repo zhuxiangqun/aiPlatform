@@ -34,8 +34,15 @@ def ingest_ide_capture(
 ) -> Dict[str, Any]:
     """Deliver one IDE/agent turn into Team Brain (+ optional session wiki).
 
-    Production callers: CoreFacade.ingest_ide_capture, POST /memory/ide-capture,
-    scripts/ide_capture.py, SESSION_END wiki worker (via write_session_wiki).
+    Args:
+        prompt: prompt 参数。
+        result: result 参数。
+        tools: tools 参数。
+        success: success 参数。
+        tags: tags 参数。
+        source: source 参数。
+        session_id: 会话 ID。
+        write_wiki: write_wiki 参数。
     """
     prompt = (prompt or "").strip()
     result = (result or "").strip()

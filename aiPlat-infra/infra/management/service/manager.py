@@ -77,6 +77,11 @@ class ServiceManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._services: Dict[str, ServiceInfo] = {}
         self._images: Dict[str, ImageInfo] = {}
@@ -217,7 +222,11 @@ class ServiceManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     async def diagnose(self) -> DiagnosisResult:
@@ -297,7 +306,11 @@ class ServiceManager(ManagementBase):
         return None
     
     async def stop_service(self, service_name: str) -> bool:
-        """Stop a service (mark as stopped)."""
+        """Stop a service (mark as stopped).
+
+        Args:
+            service_name: service_name 参数。
+        """
         if self._standalone_mode:
             self._refresh_services_from_processes()
         for key, service in self._services.items():
@@ -307,7 +320,11 @@ class ServiceManager(ManagementBase):
         return False
     
     async def deploy_service(self, config: Dict[str, Any]) -> ServiceInfo:
-        """Deploy a new service (not supported in standalone mode)."""
+        """Deploy a new service (not supported in standalone mode).
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Deploy not supported in standalone mode")
         
@@ -333,7 +350,11 @@ class ServiceManager(ManagementBase):
         return service
     
     async def delete_service(self, service_name: str) -> None:
-        """Delete a service (not supported in standalone mode)."""
+        """Delete a service (not supported in standalone mode).
+
+        Args:
+            service_name: service_name 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete not supported in standalone mode")
         
@@ -343,7 +364,12 @@ class ServiceManager(ManagementBase):
         self._service_count = len(self._services)
     
     async def scale_service(self, service_name: str, replicas: int) -> None:
-        """Scale a service (not supported in standalone mode)."""
+        """Scale a service (not supported in standalone mode).
+
+        Args:
+            service_name: service_name 参数。
+            replicas: replicas 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Scale not supported in standalone mode")
         
@@ -352,7 +378,11 @@ class ServiceManager(ManagementBase):
                 service.replicas = replicas
     
     async def restart_service(self, service_name: str) -> None:
-        """Restart a service (not supported in standalone mode)."""
+        """Restart a service (not supported in standalone mode).
+
+        Args:
+            service_name: service_name 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Restart not supported in standalone mode")
         
@@ -361,25 +391,45 @@ class ServiceManager(ManagementBase):
                 service.status = "Restarting"
     
     async def get_service_logs(self, service_name: str, lines: int = 100) -> str:
-        """Get service logs (not supported in standalone mode)."""
+        """Get service logs (not supported in standalone mode).
+
+        Args:
+            service_name: service_name 参数。
+            lines: lines 参数。
+        """
         if self._standalone_mode:
             return "Logs not available in standalone mode"
         return ""
     
     async def get_logs(self, service_name: str, lines: int = 100, follow: bool = False) -> List[str]:
-        """Get service logs."""
+        """Get service logs.
+
+        Args:
+            service_name: service_name 参数。
+            lines: lines 参数。
+            follow: follow 参数。
+        """
         if self._standalone_mode:
             return ["Logs not available in standalone mode"]
         return []
     
     async def get_events(self, service_name: str) -> List[Dict[str, Any]]:
-        """Get service events."""
+        """Get service events.
+
+        Args:
+            service_name: service_name 参数。
+        """
         if self._standalone_mode:
             return []
         return []
     
     async def list_images(self, type: Optional[str] = None, search: Optional[str] = None) -> List[ImageInfo]:
-        """List available images."""
+        """List available images.
+
+        Args:
+            type: type 参数。
+            search: search 参数。
+        """
         images = list(self._images.values())
         if type:
             images = [i for i in images if i.type == type]
@@ -388,7 +438,11 @@ class ServiceManager(ManagementBase):
         return images
     
     async def get_image(self, image_id: str) -> Optional[Dict[str, Any]]:
-        """Get image details."""
+        """Get image details.
+
+        Args:
+            image_id: image 标识。
+        """
         image = self._images.get(image_id)
         if not image:
             return None
@@ -402,7 +456,11 @@ class ServiceManager(ManagementBase):
         }
     
     async def get_image_details(self, image_id: str) -> Optional[ImageInfo]:
-        """Get image details."""
+        """Get image details.
+
+        Args:
+            image_id: image 标识。
+        """
         return self._images.get(image_id)
     
     async def build_image(
@@ -413,7 +471,15 @@ class ServiceManager(ManagementBase):
         context: Optional[str] = None,
         build_args: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """Build a new image."""
+        """Build a new image.
+
+        Args:
+            name: name 参数。
+            tag: tag 参数。
+            dockerfile: dockerfile 参数。
+            context: context 参数。
+            build_args: build_args 参数。
+        """
         import uuid
         build_id = str(uuid.uuid4())[:8]
         

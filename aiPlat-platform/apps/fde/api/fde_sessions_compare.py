@@ -24,8 +24,9 @@ async def fde_compare_sessions(
 ):
     """Compare two diagnosis sessions side by side.
 
-    Useful for: before/after analysis (same customer), cross-customer comparison
-    (same industry), or solution effectiveness comparison.
+    Args:
+        left: left 参数。
+        right: right 参数。
     """
     if not left or not right:
         raise HTTPException(status_code=400, detail="Both left and right session IDs are required")

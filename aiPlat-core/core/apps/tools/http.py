@@ -32,6 +32,13 @@ class HTTPClientTool(BaseTool):
         timeout: int = DEFAULT_TIMEOUT,
         max_response_size: int = MAX_RESPONSE_SIZE
     ):
+        """初始化。
+
+        Args:
+            whitelist: whitelist 参数。
+            timeout: 超时秒数。
+            max_response_size: max_response_size 参数。
+        """
         self._whitelist = whitelist or []
         self._timeout = timeout / 1000  # Convert to seconds
         self._max_response_size = max_response_size
@@ -76,7 +83,11 @@ class HTTPClientTool(BaseTool):
         super().__init__(config)
         
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute HTTP request"""
+        """Execute HTTP request。
+
+        Args:
+            params: params 参数。
+        """
         import aiohttp
         
         url = params.get("url", "")

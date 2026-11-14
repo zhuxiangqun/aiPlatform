@@ -811,6 +811,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     """
 
     def __init__(self, model: Any = None, team_service: Optional[BuilderTeamService] = None):
+        """初始化。
+
+        Args:
+            model: 模型名。
+            team_service: team_service 参数。
+        """
         self._model = model  # None = lazy init on first use
         self._team_service = team_service or BuilderTeamService(None)
         self._projects: Dict[str, Dict[str, Any]] = {}
@@ -939,6 +945,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
     async def create_project(self, req: ProjectCreateRequest) -> Project:
         # ── Dedup: reuse existing project if same name + description exists ──
+        """创建 project。
+
+        Args:
+            req: req 参数。
+        """
         self._reload_if_stale()
         for pid, data in self._projects.items():
             if data.get("name") == req.name and data.get("description") == req.description:
@@ -1098,6 +1109,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         )
 
     async def list_projects(self) -> List[Project]:
+        """列出 projects。
+        """
         self._reload_if_stale()
         # ── Sync stuck "executing" runs from Core (best-effort, non-blocking) ──
         for pid, data in list(self._projects.items()):
@@ -1147,9 +1160,19 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return projects
 
     async def get_project(self, project_id: str) -> Optional[Dict[str, Any]]:
+        """获取 project。
+
+        Args:
+            project_id: project 标识。
+        """
         return self._projects.get(project_id)
 
     async def delete_project(self, project_id: str) -> bool:
+        """删除 project。
+
+        Args:
+            project_id: project 标识。
+        """
         if project_id not in self._projects:
             return False
         import shutil
@@ -1223,7 +1246,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return deleted
 
     def delete_project_sync(self, project_id: str) -> bool:
-        """Synchronous version of delete_project for batch operations."""
+        """Synchronous version of delete_project for batch operations.
+
+        Args:
+            project_id: project 标识。
+        """
         if project_id not in self._projects:
             return False
         import shutil
@@ -1261,7 +1288,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return True
 
     async def chat(self, project_id: str, message: str) -> Dict[str, Any]:
-        """PM dialogue — directly managed through self._sessions (chat dicts only)."""
+        """PM dialogue — directly managed through self._sessions (chat dicts only).
+
+        Args:
+            project_id: project 标识。
+            message: message 参数。
+        """
         from core.api.intents import core_chat, ChatContext
 
         # T1b: never block chat; background pull when AUTOSYNC=1
@@ -1718,6 +1750,13 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return None
 
     async def confirm_prd(self, project_id: str, prd_data: Any = None, *, force_confirm: bool = False) -> Dict[str, Any]:
+        """confirm_prd。
+
+        Args:
+            project_id: project 标识。
+            prd_data: prd_data 参数。
+            force_confirm: force_confirm 参数。
+        """
         session = self._sessions.get(project_id)
         if not session:
             session = self._load_chat_session(project_id)
@@ -1806,7 +1845,10 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     ) -> Dict[str, Any]:
         """F1 one-click: confirm_prd → recommend_team → start_pipeline_background.
 
-        Returns combined status. If PRD gate blocks, does not start the pipeline.
+        Args:
+            project_id: project 标识。
+            prd_data: prd_data 参数。
+            force_confirm: force_confirm 参数。
         """
         confirm = await self.confirm_prd(
             project_id, prd_data=prd_data, force_confirm=force_confirm
@@ -1871,11 +1913,10 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def execute_skill(self, project_id: str, skill_name: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Frontend page → Agent bridge: execute a skill through the generated Agent.
 
-        Routing through the Agent (not direct skill call) ensures ReActLoop runs —
-        activating all 18 platform capabilities (SECI, Memory, Feedback, etc.).
-
-        Multi-agent: reads agent_manifest.json for skill→agent routing.
-        Prefer platform media handlers when skill name is registered (real ffmpeg I/O).
+        Args:
+            project_id: project 标识。
+            skill_name: skill_name 参数。
+            params: params 参数。
         """
         from core.api.intents import core_chat, ChatContext
         import json as _json, re as _re
@@ -2066,7 +2107,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             }
 
     def get_promotion_status(self, project_id: str) -> Dict[str, Any]:
-        """Phase C W5：hop 聚合 + 四维跑通晋升快照（供 Factory / API）。"""
+        """Phase C W5：hop 聚合 + 四维跑通晋升快照（供 Factory / API）。
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.hop_metrics import (
             aggregate_hops,
             derive_test_evidence,
@@ -2201,9 +2246,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def recommend_team(self, project_id: str) -> Dict[str, Any]:
         """Use Planning Agent to analyze PRD and recommend a team configuration.
 
-        Delegates to core/harness/execution/team_planner.recommend_team_stages()
-        for the AI inference (boundary-standard.md §决策树: agent discovery → Core).
-        Platform-specific logic (team creation, project association) stays here.
+        Args:
+            project_id: project 标识。
         """
         from core.api.core_facade import recommend_team_stages
 
@@ -2672,7 +2716,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                 pass  # noqa: cleanup-best-effort
 
     async def approve_stage(self, project_id: str, feedback: str = "") -> Dict[str, Any]:
-        """v3.1: Forward HITL approve to Core — no local pipeline manipulation."""
+        """v3.1: Forward HITL approve to Core — no local pipeline manipulation.
+
+        Args:
+            project_id: project 标识。
+            feedback: feedback 参数。
+        """
         try:
             from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
             client = PipelineOrchestratorClient()
@@ -2764,7 +2813,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             return None
 
     async def start_fix(self, project_id: str) -> Dict[str, Any]:
-        """Approve the current HITL pause on Core (non-blocking)."""
+        """Approve the current HITL pause on Core (non-blocking).
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
         client = PipelineOrchestratorClient()
         resp = await client.resolve_hitl(project_id, action="approve")
@@ -2773,7 +2826,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return {"status": "error", "detail": resp.get("detail", "Core unavailable")}
 
     async def reject_stage(self, project_id: str, feedback: str) -> Dict[str, Any]:
-        """v3.1: Forward HITL reject to Core — no local pipeline manipulation."""
+        """v3.1: Forward HITL reject to Core — no local pipeline manipulation.
+
+        Args:
+            project_id: project 标识。
+            feedback: feedback 参数。
+        """
         try:
             from builder.pipeline_orchestrator_client import PipelineOrchestratorClient
             client = PipelineOrchestratorClient()
@@ -2851,7 +2909,14 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         signal: str = "regenerate_count",
         detail: str = "",
     ) -> Dict[str, Any]:
-        """F-T4: user confirms regenerate friction → local learning draft."""
+        """F-T4: user confirms regenerate friction → local learning draft.
+
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
+            signal: signal 参数。
+            detail: detail 参数。
+        """
         try:
             from core.api.core_facade import (
                 attach_friction_cta,
@@ -2895,7 +2960,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         *,
         events: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
-        """Oversight P1: persist verification metrics (read-only; no coding/deploy)."""
+        """Oversight P1: persist verification metrics (read-only; no coding/deploy).
+
+        Args:
+            project_id: project 标识。
+            events: events 参数。
+        """
         from core.api.core_facade import (
             STATE_EVIDENCE_METRICS_KEY,
             empty_evidence_metrics,
@@ -2964,8 +3034,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     ) -> Dict[str, Any]:
         """Delegate stage regeneration to Core (single authority, non-blocking).
 
-        Returns immediately — the pipeline re-runs from the target stage on Core.
-        ``preserve_artifacts`` keeps frozen exam suites (test_cases) across fix runs.
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
+            feedback: feedback 参数。
+            preserve_artifacts: preserve_artifacts 参数。
         """
         self._sync_team_stages(project_id)
         proj = self._projects.get(project_id, {})
@@ -3052,8 +3125,9 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def locate_max_error_node(self, project_id: str, failed_stage_ids: List[str]) -> Dict[str, Any]:
         """Locate the max error-contribution node from the decision trace graph.
 
-        Delegates to Core's generic decision trace (single authority). Returns
-        {"stage_id", "decision_id", "error_contribution", "confidence", ...}.
+        Args:
+            project_id: project 标识。
+            failed_stage_ids: failed_stage_ids 参数。
         """
         from core.api.core_facade import locate_max_error_node as _locate
         try:
@@ -3069,8 +3143,10 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                                       test_report: str = "") -> Dict[str, Any]:
         """Generate root-cause hypotheses + a hybrid fix plan from the decision trace.
 
-        Delegates to Core (single authority). Returns
-        {"hypotheses": [...], "max_error_stage": str, "fix_plan": [...], "status": "ok"}.
+        Args:
+            project_id: project 标识。
+            failed_stage_ids: failed_stage_ids 参数。
+            test_report: test_report 参数。
         """
         from core.api.core_facade import generate_hypotheses as _gen
         from core.api.core_facade import build_fix_plan as _plan
@@ -3095,14 +3171,10 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     ) -> Dict[str, Any]:
         """Deterministic one-click fix: map bugs → stages → regenerate (no ReAct agent).
 
-        Prefer this over ``test_report_orchestrator`` — that path is slow and often
-        returns without calling regenerate when the LLM drifts.
-
-        For ``no_platform_handler``-only reports: remap agent_app + test_cases skill
-        names onto the platform media catalog (no LLM), then re-run test_executor.
-
-        By default **freezes** ``test_cases`` (no qa LLM rewrite). Pass
-        ``regenerate_test_cases=True`` to allow rewriting the exam suite.
+        Args:
+            project_id: project 标识。
+            test_report: test_report 参数。
+            regenerate_test_cases: regenerate_test_cases 参数。
         """
         from core.api.core_facade import plan_fix_from_report as _plan
         from core.api.core_facade import apply_no_platform_handler_fixes as _apply_media
@@ -3294,8 +3366,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
                                cost_budget_usd: float = 0.0) -> Dict[str, Any]:
         """Build a governance/explainability report for a pipeline run.
 
-        Delegates to Core's governance report (single authority). Returns the
-        full report dict with a "status" field.
+        Args:
+            project_id: project 标识。
+            failed_stage_ids: failed_stage_ids 参数。
+            test_report: test_report 参数。
+            cost_used_usd: cost_used_usd 参数。
+            cost_budget_usd: cost_budget_usd 参数。
         """
         from core.api.core_facade import build_run_report as _report
         try:
@@ -3308,7 +3384,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
             return {"status": "error", "run_id": project_id, "detail": str(e)[:200]}
 
     async def rollback_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
-        """Delegate stage rollback to Core (single authority, non-blocking)."""
+        """Delegate stage rollback to Core (single authority, non-blocking).
+
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
+        """
         self._sync_team_stages(project_id)
         proj = self._projects.get(project_id, {})
         config = self._build_stage_config(project_id, proj)
@@ -3322,7 +3403,9 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def resume_from_stage(self, project_id: str, stage_id: str) -> Dict[str, Any]:
         """Delegate stage resume to Core (single authority, non-blocking).
 
-        Resume from a specific stage WITHOUT clearing artifacts.
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
         """
         self._sync_team_stages(project_id)
         proj = self._projects.get(project_id, {})
@@ -3335,7 +3418,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def rollback_prd(self, project_id: str) -> Dict[str, Any]:
-        """Roll back to PRD editing phase"""
+        """Roll back to PRD editing phase。
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         proj["confirmed_prd"] = None
         self._save_projects()
@@ -3386,7 +3473,13 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
 
     async def update_prd(self, project_id: str, prd: dict, *, force_confirm: bool = False) -> Dict[str, Any]:
-        """Directly update the confirmed PRD without re-running PM chat."""
+        """Directly update the confirmed PRD without re-running PM chat.
+
+        Args:
+            project_id: project 标识。
+            prd: prd 参数。
+            force_confirm: force_confirm 参数。
+        """
         import logging as _log2
         proj = self._projects.get(project_id, {})
         if not proj:
@@ -3419,10 +3512,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def start_pipeline(self, project_id: str) -> Dict[str, Any]:
         """启动/触发项目流水线执行（P0-1 修复, 2026-08-25）。
 
-        原接线断裂：builder_app_service / builder_workflow_service / api/routers/builder.py
-        共 6 处调用本方法但类中无定义 → 运行 AttributeError。本方法委托
-        rebuild_project（复用已确认 PRD + _rebuild_via_core 经 Core HTTP 执行路径），
-        与 /projects/{id}/start 和 /sessions/{id}/start 端点语义一致。
+        Args:
+            project_id: project 标识。
         """
         proj = self._projects.get(project_id, {})
         if not proj:
@@ -3439,7 +3530,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return {"status": "ok", "run_id": project_id, "project_id": project_id, "phase": "executing", **result}
 
     async def start_pipeline_background(self, project_id: str) -> Dict[str, Any]:
-        """异步启动流水线（P0-1 修复, 2026-08-25）：不阻塞调用方，后台触发执行。"""
+        """异步启动流水线（P0-1 修复, 2026-08-25）：不阻塞调用方，后台触发执行。
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         if not proj:
             return {"status": "error", "detail": "项目不存在"}
@@ -3450,7 +3545,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return {"status": "accepted", "run_id": project_id, "detail": "后台构建已触发"}
 
     async def rebuild_project(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
-        """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes."""
+        """Re-run the pipeline with the existing confirmed PRD. Re-recommends team to pick up latest config changes.
+
+        Args:
+            project_id: project 标识。
+            module_id: module 标识。
+        """
         self._reload_if_stale()
         proj = self._projects.get(project_id, {})
         if not proj:
@@ -3727,16 +3827,21 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return {"status": "error", "detail": result.get("detail", "Core unavailable")}
 
     async def get_deploy_dir(self, project_id: str) -> Optional[str]:
-        """Get deploy directory path for a project."""
+        """Get deploy directory path for a project.
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         return proj.get("deploy_dir") or None
 
     async def update_stage_artifact(self, project_id: str, stage_id: str, content: str) -> Dict[str, Any]:
         """Update a stage's raw_output artifact — allows user to manually edit before rebuild.
 
-        State SoT is Core pipeline_run_store (SQLite + output_dir files). Local
-        ``builder_states/*.json`` is optional cache and often missing after
-        Core-owned runs — must fall back to Core read/write.
+        Args:
+            project_id: project 标识。
+            stage_id: stage 标识。
+            content: content 参数。
         """
         # 1) Resolve current state: memory → local file → Core store
         state = self._runs.get(project_id) or self._load_pipeline_state(project_id)
@@ -3884,10 +3989,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def get_project_state(self, project_id: str) -> Dict[str, Any]:
         """Read pipeline state from SQLite — never blocked by Core's event loop.
 
-        The Core server's HTTP endpoint for state can time out during LLM execution
-        (single-worker event loop blocked by pipeline). SQLite WAL allows concurrent
-        reads while Core writes — 100% available regardless of pipeline activity.
-        P1-12 收敛（§10）：读取逻辑统一到 `_get_state_via_core`（唯一实现）。
+        Args:
+            project_id: project 标识。
         """
         result = await self._get_state_via_core(project_id)
 
@@ -4104,7 +4207,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return None
 
     async def get_messages(self, project_id: str) -> Dict[str, Any]:
-        """Return chat messages for a project (for UI to restore conversation)."""
+        """Return chat messages for a project (for UI to restore conversation).
+
+        Args:
+            project_id: project 标识。
+        """
         session = self._sessions.get(project_id)
         if not session:
             session = self._load_chat_session(project_id)
@@ -4242,7 +4349,11 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return session
 
     async def get_graph(self, project_id: str) -> Dict[str, Any]:
-        """Return pipeline execution graph for visualization (P2-9)."""
+        """Return pipeline execution graph for visualization (P2-9).
+
+        Args:
+            project_id: project 标识。
+        """
         state = self._runs.get(project_id) or self._load_pipeline_state(project_id) or {}
         graph_trace = state.get("_graph_trace", []) or []
         proj = self._projects.get(project_id, {})
@@ -4276,10 +4387,8 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
     async def run_tests(self, project_id: str) -> Dict[str, Any]:
         """Run E2E smoke + repo tests for a completed project pipeline.
 
-        2026-08-27 升级：e2e_smoke 从"目录存在"假通过 → 真实冒烟
-        （检测入口 → daemon_jobs 托管启动 → HTTP 健康探测，见 builder/app_runtime.py）；
-        repo_tests 升级为测试经理真实测试（递归发现用例 → pytest → test_report + bug_summary）。
-        结果持久化到项目状态 last_test_report（前端展示 bug 清单 + suggested_fix）。
+        Args:
+            project_id: project 标识。
         """
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
@@ -4316,35 +4425,60 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
 
     # ── 生成 app 运行时（2026-08-27，生成物侧接线：daemon_jobs 生成物适用 待接线 → 已接线）──
     async def runtime_launch(self, project_id: str) -> Dict[str, Any]:
-        """检测生成 app 入口并经 daemon_jobs 托管启动。"""
+        """检测生成 app 入口并经 daemon_jobs 托管启动。
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.app_runtime import launch
         return launch(project_id)
 
     async def runtime_status(self, project_id: str) -> Dict[str, Any]:
-        """生成 app 运行状态（daemon job 存活 + 端口 + 入口）。"""
+        """生成 app 运行状态（daemon job 存活 + 端口 + 入口）。
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.app_runtime import status
         return status(project_id)
 
     async def runtime_stop(self, project_id: str) -> Dict[str, Any]:
-        """停止生成 app（daemon_jobs kill 会话组 + 清理记录）。"""
+        """停止生成 app（daemon_jobs kill 会话组 + 清理记录）。
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.app_runtime import stop
         return stop(project_id)
 
     async def runtime_real_tests(self, project_id: str, install_deps: bool = True) -> Dict[str, Any]:
-        """测试经理真实测试：递归发现生成物测试用例 → pytest 执行 → test_report（含 bug_summary）。"""
+        """测试经理真实测试：递归发现生成物测试用例 → pytest 执行 → test_report（含 bug_summary）。
+
+        Args:
+            project_id: project 标识。
+            install_deps: install_deps 参数。
+        """
         from builder.app_runtime import real_tests
         proj = self._projects.get(project_id, {})
         deploy_dir = proj.get("deploy_dir", "") or await self.get_deploy_dir(project_id)
         return real_tests(project_id, deploy_dir=deploy_dir or None, install_deps=install_deps)
 
     async def get_last_test_report(self, project_id: str) -> Optional[Dict[str, Any]]:
-        """最近一次真实测试报告（run_tests 持久化的 last_test_report）。"""
+        """最近一次真实测试报告（run_tests 持久化的 last_test_report）。
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         return proj.get("last_test_report") or None
 
     async def runtime_auto_repair(self, project_id: str, max_rounds: int = 2) -> Dict[str, Any]:
         """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。
-        F4: hard-cap max_rounds; persist repair_exhausted for UI/HITL."""
+
+        Args:
+            project_id: project 标识。
+            max_rounds: max_rounds 参数。
+        """
         from builder.app_runtime import MAX_REPAIR_ATTEMPTS, auto_repair
         try:
             max_rounds = int(max_rounds)
@@ -4380,7 +4514,12 @@ class BuilderProjectService(BuilderL2L5Mixin, BuilderDeployMixin):
         return result
 
     async def runtime_smoke(self, project_id: str, keep_alive: bool = False) -> Dict[str, Any]:
-        """生成 app 冒烟测试（启动 + 健康探测 + 报告）。F4: persist openable on project."""
+        """生成 app 冒烟测试（启动 + 健康探测 + 报告）。F4: persist openable on project.
+
+        Args:
+            project_id: project 标识。
+            keep_alive: keep_alive 参数。
+        """
         from builder.app_runtime import detect_runtime, smoke_test
         proj = self._projects.get(project_id, {})
         det = detect_runtime(project_id)

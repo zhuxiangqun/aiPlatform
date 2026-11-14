@@ -1,3 +1,5 @@
+"""adapter：模块接口。"""
+
 import logging
 """
 MCP Tool Adapter
@@ -37,6 +39,20 @@ class MCPToolAdapter(BaseTool):
         extra_metadata: Optional[Dict[str, Any]] = None,
         server_description: str = "",
     ):
+        """初始化。
+
+        Args:
+            mcp_tool: mcp_tool 参数。
+            client: client 参数。
+            timeout: 超时秒数。
+            server_name: server_name 参数。
+            tool_name: tool_name 参数。
+            risk_level: risk_level 参数。
+            approval_required: approval_required 参数。
+            disabled_reason: disabled_reason 参数。
+            extra_metadata: extra_metadata 参数。
+            server_description: server_description 参数。
+        """
         self._mcp_tool = mcp_tool
         self._client = client
         self._timeout = timeout
@@ -67,7 +83,11 @@ class MCPToolAdapter(BaseTool):
         super().__init__(config)
         
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Execute the MCP tool via client"""
+        """Execute the MCP tool via client。
+
+        Args:
+            params: params 参数。
+        """
         start_time = asyncio.get_event_loop().time()
         
         try:
@@ -121,7 +141,11 @@ class MCPToolExporter:
     
     @staticmethod
     def to_mcp_tool(tool: ITool) -> MCPTool:
-        """Convert local ITool to MCP Tool"""
+        """Convert local ITool to MCP Tool。
+
+        Args:
+            tool: tool 参数。
+        """
         schema = tool.get_schema()
         
         return MCPTool(
@@ -139,6 +163,11 @@ class MCPClientWrapper:
     """Wrapper for integrating MCP clients with ToolRegistry"""
     
     def __init__(self, manager: MCPClientManager):
+        """初始化。
+
+        Args:
+            manager: manager 参数。
+        """
         self._manager = manager
         
     async def register_server_tools(
@@ -153,9 +182,17 @@ class MCPClientWrapper:
         disabled_reason: Optional[str] = None,
         server_description: str = "",
     ) -> int:
-        """
-        Register all tools from an MCP server to the local registry.
-        Returns the number of tools registered.
+        """Register all tools from an MCP server to the local registry.
+
+        Args:
+            server_name: server_name 参数。
+            registry: registry 参数。
+            allowed_tools: allowed_tools 参数。
+            risk_level: risk_level 参数。
+            tool_risk: tool_risk 参数。
+            approval_required: approval_required 参数。
+            disabled_reason: disabled_reason 参数。
+            server_description: server_description 参数。
         """
         client = self._manager.get_client(server_name)
         if not client:

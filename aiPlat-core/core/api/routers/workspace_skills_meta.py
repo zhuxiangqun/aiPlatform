@@ -51,7 +51,13 @@ RuntimeDep = Optional[KernelRuntime]
 
 @router.post("/workspace/skills/governance-preview", response_model=Dict[str, Any])
 async def preview_workspace_skill_governance(request: Dict[str, Any], http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Preview governance/risk/approval hints for wizard UX (workspace scope)."""
+    """Preview governance/risk/approval hints for wizard UX (workspace scope).
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -69,7 +75,13 @@ async def preview_workspace_skill_governance(request: Dict[str, Any], http_reque
 
 @router.get("/workspace/skills/meta/permissions-catalog", response_model=Dict[str, Any])
 async def workspace_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Permissions catalog for UI (workspace scope)."""
+    """Permissions catalog for UI (workspace scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -101,7 +113,13 @@ async def workspace_permissions_catalog(http_request: Request, tenant_id: Option
 
 @router.get("/workspace/skills/meta/skill-spec-v2-schema", response_model=Dict[str, Any])
 async def workspace_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """SkillSpec v2 schema registry endpoint (workspace scope)."""
+    """SkillSpec v2 schema registry endpoint (workspace scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -127,7 +145,14 @@ async def workspace_skill_spec_v2_schema(http_request: Request, tenant_id: Optio
 
 @router.post("/workspace/skills/meta/skill-spec-v2-schema/publish", response_model=Dict[str, Any])
 async def workspace_publish_skill_spec_v2_schema(request: Dict[str, Any], http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Publish a new SkillSpec v2 schema for a tenant/channel (workspace scope)."""
+    """Publish a new SkillSpec v2 schema for a tenant/channel (workspace scope).
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -153,7 +178,13 @@ async def workspace_publish_skill_spec_v2_schema(request: Dict[str, Any], http_r
 
 @router.post("/workspace/skills/meta/skill-spec-v2-schema/rollback", response_model=Dict[str, Any])
 async def workspace_rollback_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Rollback to previous published SkillSpec v2 schema (workspace scope)."""
+    """Rollback to previous published SkillSpec v2 schema (workspace scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -175,7 +206,14 @@ async def workspace_rollback_skill_spec_v2_schema(http_request: Request, tenant_
 
 @router.post("/workspace/skills/meta/permissions-catalog/publish", response_model=Dict[str, Any])
 async def workspace_publish_permissions_catalog(request: Dict[str, Any], http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Publish a new permissions catalog for a tenant/channel (workspace scope)."""
+    """Publish a new permissions catalog for a tenant/channel (workspace scope).
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -201,7 +239,13 @@ async def workspace_publish_permissions_catalog(request: Dict[str, Any], http_re
 
 @router.post("/workspace/skills/meta/permissions-catalog/rollback", response_model=Dict[str, Any])
 async def workspace_rollback_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Rollback to previous published permissions catalog (workspace scope)."""
+    """Rollback to previous published permissions catalog (workspace scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -572,7 +616,15 @@ async def workspace_config_registry_status(
     tenant_id: Optional[str] = None,
     channel: Optional[str] = None,
 ):
-    """UI: get published status (version/prev/updated_by/updated_at)."""
+    """UI: get published status (version/prev/updated_by/updated_at).
+
+    Args:
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -601,7 +653,16 @@ async def workspace_config_registry_versions(
     limit: int = 50,
     offset: int = 0,
 ):
-    """UI: list versions for an asset."""
+    """UI: list versions for an asset.
+
+    Args:
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -629,7 +690,15 @@ async def workspace_config_registry_asset(
     tenant_id: Optional[str] = None,
     version: str = "",
 ):
-    """UI: fetch one version payload (for preview/diff)."""
+    """UI: fetch one version payload (for preview/diff).
+
+    Args:
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        version: version 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -658,7 +727,17 @@ async def workspace_config_registry_publish(
     channel: Optional[str] = None,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """UI: publish a specific version (or provided payload) to stable/canary."""
+    """UI: publish a specific version (or provided payload) to stable/canary.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+        rt: rt 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=request or {},
@@ -814,7 +893,16 @@ async def workspace_config_registry_rollback(
     channel: Optional[str] = None,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """UI: rollback published version."""
+    """UI: rollback published version.
+
+    Args:
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+        rt: rt 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -971,7 +1059,17 @@ async def workspace_config_registry_diff(
     from_ref: str = "published",
     to_version: str = "",
 ):
-    """UI: diff published/current vs a target version (or inline payload in future)."""
+    """UI: diff published/current vs a target version (or inline payload in future).
+
+    Args:
+        http_request: http_request 参数。
+        asset_type: asset_type 参数。
+        scope: scope 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+        from_ref: from_ref 参数。
+        to_version: to_version 参数。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload={},
@@ -1036,13 +1134,12 @@ async def workspace_config_registry_diff(
 
 @router.post("/workspace/skills/installer/install", response_model=Dict[str, Any])
 async def workspace_skills_installer_install(request: SkillInstallerInstallRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """
-    Install skills from external sources into workspace skills directory.
+    """Install skills from external sources into workspace skills directory.
 
-    Source types:
-    - git: url + ref (required)
-    - path: local directory path on server
-    - zip: local zip file path on server
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
@@ -1226,7 +1323,13 @@ async def workspace_skills_installer_install(request: SkillInstallerInstallReque
 
 @router.post("/workspace/skills/installer/plan", response_model=Dict[str, Any])
 async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Dry-run plan for installer. No filesystem write."""
+    """Dry-run plan for installer. No filesystem write.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1300,7 +1403,13 @@ async def workspace_skills_installer_plan(request: SkillInstallerInstallRequest,
 
 @router.post("/workspace/skills/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_skills_installer_resolve_head(payload: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Resolve git remote HEAD SHA for a URL (helper for 'always latest but pinned sha' workflow)."""
+    """Resolve git remote HEAD SHA for a URL (helper for 'always latest but pinned sha' workflow).
+
+    Args:
+        payload: 载荷 dict。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1337,6 +1446,14 @@ async def workspace_skills_installer_resolve_head(payload: dict, http_request: R
 
 @router.post("/workspace/skills/installer/update/{skill_id}", response_model=Dict[str, Any])
 async def workspace_skills_installer_update(skill_id: str, request: SkillInstallerUpdateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """workspace_skills_installer_update。
+
+    Args:
+        skill_id: Skill ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1382,6 +1499,14 @@ async def workspace_skills_installer_update(skill_id: str, request: SkillInstall
 
 @router.post("/workspace/skills/installer/uninstall/{skill_id}", response_model=Dict[str, Any])
 async def workspace_skills_installer_uninstall(skill_id: str, http_request: Request, delete_files: bool = True, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """workspace_skills_installer_uninstall。
+
+    Args:
+        skill_id: Skill ID。
+        http_request: http_request 参数。
+        delete_files: delete_files 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1427,7 +1552,13 @@ async def workspace_skills_installer_uninstall(skill_id: str, http_request: Requ
 async def workspace_skills_enable_handler_draft(
     skill_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)
 ):
-    """Phase A §5.4: promote handler.py.draft → handler.py after human confirm."""
+    """Phase A §5.4: promote handler.py.draft → handler.py after human confirm.
+
+    Args:
+        skill_id: Skill ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     from pathlib import Path
 
     from core.api.core_facade import skill_enable_handler_draft
@@ -1491,7 +1622,15 @@ async def workspace_skills_installer_upload_plan(
     auto_detect_subdir: str = Form("true"),
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """Plan from uploaded zip file — no filesystem write."""
+    """Plan from uploaded zip file — no filesystem write.
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        skill_id: Skill ID。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1532,7 +1671,18 @@ async def workspace_skills_installer_upload_install(
     http_request: Request = None,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """Install from uploaded zip file."""
+    """Install from uploaded zip file.
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        skill_id: Skill ID。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        allow_overwrite: allow_overwrite 参数。
+        plan_id: plan 标识。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     ws_mgr = _ws_skill_manager(rt)
     if not ws_mgr:
         raise HTTPException(status_code=503, detail="Workspace skill manager not available")
@@ -1575,8 +1725,10 @@ async def workspace_skills_installer_catalog(
 ):
     """返回可安装的第三方 Skill 目录列表。
 
-    数据源：~/.aiplat/skills/catalog.yaml（用户空间，不入仓库）
-    每个条目包含 installed 字段——运行时对比已安装的 Workspace Skill 动态计算。
+    Args:
+        category: category 参数。
+        query: 查询。
+        rt: rt 参数。
     """
     try:
         import yaml as _yaml

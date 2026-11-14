@@ -28,6 +28,7 @@ _log = logging.getLogger(__name__)
 
 @dataclass
 class DiffResult:
+    """DiffResult。"""
     files: List[str]
     content: str
     total_lines: int
@@ -35,6 +36,13 @@ class DiffResult:
 
 
 def load_diff(target: str, *, cwd: Optional[str] = None, timeout: Optional[float] = None) -> DiffResult:
+    """load_diff。
+
+    Args:
+        target: target 参数。
+        cwd: cwd 参数。
+        timeout: 超时秒数。
+    """
     cmd = _build_git_cmd(target)
     work = (cwd or os.environ.get("GIT_WORK_TREE") or "").strip() or None
     if work and not os.path.isdir(work):

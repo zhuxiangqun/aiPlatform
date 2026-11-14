@@ -39,7 +39,11 @@ _TERMINAL_DONE_RE = re.compile(
 
 
 def is_terminal_done_marker(text: Any) -> bool:
-    """True when DONE/FINAL/FINISHED starts the text, not a mid-string mention."""
+    """True when DONE/FINAL/FINISHED starts the text, not a mid-string mention.
+
+    Args:
+        text: text 参数。
+    """
     raw = str(text or "").strip()
     if not raw:
         return False
@@ -47,7 +51,11 @@ def is_terminal_done_marker(text: Any) -> bool:
 
 
 def strip_terminal_done_marker(text: Any) -> str:
-    """Remove a leading DONE/FINAL/FINISHED marker; return the remainder."""
+    """Remove a leading DONE/FINAL/FINISHED marker; return the remainder.
+
+    Args:
+        text: text 参数。
+    """
     raw = str(text or "").strip()
     m = _TERMINAL_DONE_RE.match(raw)
     if not m:
@@ -56,6 +64,8 @@ def strip_terminal_done_marker(text: Any) -> str:
 
 
 def receipt_bind_enabled() -> bool:
+    """receipt_bind_enabled。
+    """
     return os.getenv("AIPLAT_COMPLETION_RECEIPT", "true").strip().lower() not in (
         "0",
         "false",
@@ -67,8 +77,8 @@ def receipt_bind_enabled() -> bool:
 def infer_receipt_status(action_result: Any) -> str:
     """ok or failed from the tool observation head. Empty is failed.
 
-    Avoid false fails on benign tool text such as ``Pattern not found`` or
-    ``error_count: 0`` — only treat clear failure prefixes / policy denials.
+    Args:
+        action_result: action_result 参数。
     """
     text = str(action_result or "")
     if not text.strip():
@@ -103,7 +113,14 @@ def record_tool_receipt(
     status: str,
     detail: str = "",
 ) -> None:
-    """Append one tool receipt. ``status`` is ``ok`` or ``failed``."""
+    """Append one tool receipt. ``status`` is ``ok`` or ``failed``.
+
+    Args:
+        context: context 参数。
+        tool: tool 参数。
+        status: status 参数。
+        detail: detail 参数。
+    """
     if not isinstance(context, dict):
         return
     seal = "ok" if str(status).strip().lower() in ("ok", "completed", "success") else "failed"
@@ -130,7 +147,12 @@ def record_tool_receipt(
 
 
 def bind_completion_to_receipts(text: str, context: Dict[str, Any]) -> Tuple[str, str]:
-    """Return ``(answer, seal_status)``. ``seal_status`` is ok | unverified | failed."""
+    """Return ``(answer, seal_status)``. ``seal_status`` is ok | unverified | failed.
+
+    Args:
+        text: text 参数。
+        context: context 参数。
+    """
     raw = str(text or "")
     if not receipt_bind_enabled() or not isinstance(context, dict):
         return raw, "ok"
@@ -177,8 +199,9 @@ def select_repair_candidate(
 ) -> Dict[str, Any]:
     """Pick the highest-scored repair. Score is caller-supplied, not a world model.
 
-    Only the chosen candidate should be executed. Others are listed as skipped.
-    ``predicted_pass`` is true when the chosen score is at least ``min_score``.
+    Args:
+        candidates: candidates 参数。
+        min_score: min_score 参数。
     """
     rows: List[Dict[str, Any]] = []
     items = candidates if isinstance(candidates, list) else []
@@ -217,7 +240,8 @@ _CANDIDATE_BLOCK = re.compile(
 def ingest_repair_candidates(context: Dict[str, Any]) -> None:
     """Read ``## REPAIR_CANDIDATES`` from output when the list is not already set.
 
-    Scores stay caller-supplied. This does not rank with a world model.
+    Args:
+        context: context 参数。
     """
     if not isinstance(context, dict):
         return
@@ -236,7 +260,11 @@ def ingest_repair_candidates(context: Dict[str, Any]) -> None:
 
 
 def apply_repair_selection(context: Dict[str, Any]) -> Optional[str]:
-    """Select once from ``_repair_candidates`` and replace ``output`` with the winner."""
+    """Select once from ``_repair_candidates`` and replace ``output`` with the winner.
+
+    Args:
+        context: context 参数。
+    """
     if not isinstance(context, dict) or context.get("_repair_candidate_selected"):
         return None
     remember_repair_candidates(context)
@@ -307,7 +335,8 @@ def _stamp_pre_selection_verifies(context: Dict[str, Any]) -> None:
 def remember_repair_candidates(context: Dict[str, Any]) -> None:
     """Keep a multi-candidate block after this turn's reasoning is replaced.
 
-    A later ``code`` call still sees the list. Scores stay caller-supplied.
+    Args:
+        context: context 参数。
     """
     if not isinstance(context, dict) or context.get("_repair_candidate_selected"):
         return
@@ -400,7 +429,11 @@ def _is_repair_shell_body(body: str) -> bool:
 
 
 def maybe_note_repair_fs_delta(context: Dict[str, Any]) -> None:
-    """After a tool returns, note cwd writes if a repair baseline was captured."""
+    """After a tool returns, note cwd writes if a repair baseline was captured.
+
+    Args:
+        context: context 参数。
+    """
     note_repair_writes_from_fs_delta(context)
 
 
@@ -442,7 +475,19 @@ def note_repair_write(
     binary: bool = False,
     source_script: str = "",
 ) -> None:
-    """Remember a write so a later selection can drop a skipped candidate file."""
+    """Remember a write so a later selection can drop a skipped candidate file.
+
+    Args:
+        context: context 参数。
+        path: 路径。
+        content: content 参数。
+        existed: existed 参数。
+        checkpoint_id: checkpoint 标识。
+        prior_content: prior_content 参数。
+        prior_b64: prior_b64 参数。
+        binary: binary 参数。
+        source_script: source_script 参数。
+    """
     if not isinstance(context, dict):
         return
     rows = context.get("_repair_writes")
@@ -587,7 +632,12 @@ _LITERAL_FILE_WRITES = (
 
 
 def note_repair_writes_from_code(context: Dict[str, Any], tool_args: Any = None) -> None:
-    """Record literal Path.write_text / open().write / with-open write targets."""
+    """Record literal Path.write_text / open().write / with-open write targets.
+
+    Args:
+        context: context 参数。
+        tool_args: tool_args 参数。
+    """
     if not isinstance(context, dict):
         return
     body = _verify_code_body(tool_args)
@@ -615,7 +665,11 @@ _SKIP_FS_DIRS = frozenset({
 
 
 def capture_repair_fs_baseline(context: Dict[str, Any]) -> None:
-    """Snapshot cwd before a code tool runs so variable writes can be noted after."""
+    """Snapshot cwd before a code tool runs so variable writes can be noted after.
+
+    Args:
+        context: context 参数。
+    """
     if not isinstance(context, dict):
         return
     root = _repair_workdir(context)
@@ -684,7 +738,11 @@ def capture_repair_fs_baseline(context: Dict[str, Any]) -> None:
 
 
 def note_repair_writes_from_fs_delta(context: Dict[str, Any]) -> None:
-    """After a code tool returns, note new or changed files under cwd."""
+    """After a code tool returns, note new or changed files under cwd.
+
+    Args:
+        context: context 参数。
+    """
     if not isinstance(context, dict):
         return
     baseline = context.pop("_repair_fs_baseline", None)
@@ -791,9 +849,8 @@ def _write_tied_to_skipped(row: Dict[str, Any], skipped_texts: List[str]) -> boo
 def revert_skipped_repair_writes(context: Dict[str, Any]) -> List[str]:
     """Drop skipped-candidate writes from disk after selection.
 
-    Matches by file body or by the code script that produced the write.
-    New files are removed. Overwrites are restored from a checkpoint id or the
-    prior content captured at note time. Scores stay caller-supplied.
+    Args:
+        context: context 参数。
     """
     if not isinstance(context, dict) or not context.get("_repair_candidate_selected"):
         return []
@@ -888,7 +945,10 @@ def block_skipped_repair_write(
 ) -> Optional[str]:
     """Refuse writing a skipped repair candidate after selection.
 
-    Read/list/delete are left alone. Scores stay caller-supplied.
+    Args:
+        context: context 参数。
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
     """
     if not isinstance(context, dict):
         return None
@@ -945,10 +1005,10 @@ def block_extra_repair_verify(
 ) -> Optional[str]:
     """Allow one successful verify after multiple candidates; refuse the rest.
 
-    Scores stay caller-supplied. The gate does not rank with a world model.
-    A failed measurement may be retried on the same winner. A script that still
-    contains a skipped candidate is not executed. Shell/bash only count when the
-    command is a check (``pytest``/…) or a ``python`` patch — not ``ls``/``cat``.
+    Args:
+        context: context 参数。
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
     """
     if not isinstance(context, dict):
         return None
@@ -1017,7 +1077,14 @@ def note_prediction_outcome(
     actual_pass: bool,
     candidate_id: str = "",
 ) -> None:
-    """Store predicted-vs-actual. A failed measurement is also a tool receipt."""
+    """Store predicted-vs-actual. A failed measurement is also a tool receipt.
+
+    Args:
+        context: context 参数。
+        predicted_pass: predicted_pass 参数。
+        actual_pass: actual_pass 参数。
+        candidate_id: candidate 标识。
+    """
     if not isinstance(context, dict) or context.get("_prediction_receipt"):
         return
     row = {

@@ -22,6 +22,15 @@ class MemoryMixin:
         created_by: Optional[str] = None,
         note: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """pin_memory_message。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            message_id: message 标识。
+            created_by: created_by 参数。
+            note: note 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -63,6 +72,12 @@ class MemoryMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def unpin_memory_message(self, *, tenant_id: Optional[str], message_id: str) -> bool:
+        """unpin_memory_message。
+
+        Args:
+            tenant_id: 租户 ID。
+            message_id: message 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -83,6 +98,14 @@ class MemoryMixin:
     async def list_memory_pins(
         self, *, tenant_id: Optional[str], session_id: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
+        """列出 memory_pins。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

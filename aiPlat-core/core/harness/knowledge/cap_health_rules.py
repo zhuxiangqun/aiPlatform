@@ -28,6 +28,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 @dataclass
 class CapIssue:
+    """CapIssue。"""
     type: str
     label: str
     detail: str = ""
@@ -48,6 +49,7 @@ class CapContext:
 
 @dataclass
 class CapHealthReport:
+    """CapHealthReport。"""
     score: float
     grade: str
     signals: Dict[str, Any]
@@ -57,6 +59,8 @@ class CapHealthReport:
     by_type: Dict[str, int]
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         result = {
             "score": self.score,
             "grade": self.grade,
@@ -84,14 +88,29 @@ class CapRule:
     description: str = ""
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         raise NotImplementedError
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
-        """Return penalty to deduct from health score."""
+        """Return penalty to deduct from health score.
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return 0.0
 
     def bonus(self, ctx: CapContext, issues: List[CapIssue]) -> float:
-        """Return bonus to add to health score."""
+        """Return bonus to add to health score.
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return 0.0
 
 
@@ -100,6 +119,7 @@ class CapRule:
 # ============================================================
 
 class UnusedSkillCheck(CapRule):
+    """UnusedSkillCheck。"""
     code = "unused_skills"
     issue_key = "unused_skills"
     description = "Unused skills (0 in-degree)"
@@ -143,6 +163,11 @@ class UnusedSkillCheck(CapRule):
     }
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n["type"] in ("skill", "workspace_skill") and ctx.in_degree.get(nid, 0) == 0:
@@ -152,7 +177,12 @@ class UnusedSkillCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
-        """Heavy penalty for high unused ratio."""
+        """Heavy penalty for high unused ratio.
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         total = ctx.by_type.get("skill", 0)
         if total == 0:
             return 0
@@ -167,6 +197,7 @@ class UnusedSkillCheck(CapRule):
 
 
 class OrphanAgentCheck(CapRule):
+    """OrphanAgentCheck。"""
     code = "orphan_agents"
     issue_key = "orphan_agents"
     description = "Orphan agents (0 out-degree)"
@@ -181,6 +212,11 @@ class OrphanAgentCheck(CapRule):
     }
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n["type"] in ("agent", "workspace_agent") and ctx.out_degree.get(nid, 0) == 0:
@@ -190,6 +226,12 @@ class OrphanAgentCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         total = ctx.by_type.get("agent", 0)
         if total == 0:
             return 0
@@ -204,6 +246,7 @@ class OrphanAgentCheck(CapRule):
 
 
 class UnresolvedRefCheck(CapRule):
+    """UnresolvedRefCheck。"""
     code = "unresolved_refs"
     issue_key = "unresolved_refs"
     description = "Unresolved agent→skill references"
@@ -222,6 +265,11 @@ class UnresolvedRefCheck(CapRule):
     }
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for e in ctx.edges:
             if e.get("relation") == "requires" and e["to"] not in ctx.nodes:
@@ -252,15 +300,27 @@ class UnresolvedRefCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 2, 20)
 
 
 class EntryPointDupCheck(CapRule):
+    """EntryPointDupCheck。"""
     code = "entry_point_duplicates"
     issue_key = "entry_point_duplicates"
     description = "Duplicate entry points (same capability, multiple routes)"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n.get("type") == "entry_point" and n.get("has_duplicate"):
@@ -276,18 +336,36 @@ class EntryPointDupCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 3, 15)
 
 
 class TopHubsCheck(CapRule):
+    """TopHubsCheck。"""
     code = "top_hubs"
     issue_key = None  # Not an issue — informative metric
     description = "Top nodes by degree"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         return []  # Informational only, not issues
 
     def bonus(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """bonus。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         if not ctx.nodes:
             return 0
         avg_degree = (2 * len(ctx.edges)) / len(ctx.nodes)
@@ -305,6 +383,11 @@ class NestedAssetCheck(CapRule):
     description = "Assets installed at nested paths (broken zip import)"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n.get("nested") and n.get("nesting_depth", 0) > 1:
@@ -317,6 +400,12 @@ class NestedAssetCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 10, 30)
 
 
@@ -327,6 +416,11 @@ class HandlerMissingCheck(CapRule):
     description = "handler.py missing for handler-type skills"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n.get("type") not in ("skill", "workspace_skill"):
@@ -343,6 +437,12 @@ class HandlerMissingCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 8, 20)
 
 
@@ -353,6 +453,11 @@ class SkillToolBindingCheck(CapRule):
     description = "Skill→tool references where tool doesn't exist"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         # Collect all tool node IDs
         tool_ids = {nid for nid, n in ctx.nodes.items() if n.get("type") in ("tool", "syscall")}
@@ -370,6 +475,12 @@ class SkillToolBindingCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 3, 15)
 
 
@@ -380,6 +491,11 @@ class SyscallCoverageCheck(CapRule):
     description = "Syscall usage extraction coverage"
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         skill_count = ctx.by_type.get("skill", 0)
         if skill_count == 0:
@@ -394,6 +510,12 @@ class SyscallCoverageCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         return min(len(issues) * 2, 5)
 
 
@@ -407,10 +529,17 @@ class RuntimeEvalCheck(CapRule):
     _EVAL_DIR = str(Path(get_aiplat_home()) / "eval_results")
 
     def __init__(self):
+        """初始化。
+        """
         super().__init__()
         Path(self._EVAL_DIR).mkdir(parents=True, exist_ok=True)
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n.get("type") not in ("agent", "workspace_agent"):
@@ -426,6 +555,12 @@ class RuntimeEvalCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         total = ctx.by_type.get("agent", 0) + ctx.by_type.get("workspace_agent", 0)
         if total == 0:
             return 0
@@ -455,6 +590,11 @@ class CodeHygieneCheck(CapRule):
     )
 
     def check(self, ctx: CapContext) -> List[CapIssue]:
+        """check。
+
+        Args:
+            ctx: ctx 参数。
+        """
         issues = []
         for nid, n in ctx.nodes.items():
             if n.get("type") not in ("agent", "workspace_agent"):
@@ -479,6 +619,12 @@ class CodeHygieneCheck(CapRule):
         return issues
 
     def penalty(self, ctx: CapContext, issues: List[CapIssue]) -> float:
+        """penalty。
+
+        Args:
+            ctx: ctx 参数。
+            issues: issues 参数。
+        """
         total = ctx.by_type.get("agent", 0) + ctx.by_type.get("workspace_agent", 0)
         if total == 0:
             return 0
@@ -498,13 +644,24 @@ class CapHealthRegistry:
     """Runs all capability health rules against a graph and computes score."""
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[CapRule] = [cls() for cls in _all_rules()]
 
     def register(self, rule: CapRule) -> None:
+        """register。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
 
     def run(self, graph_result) -> CapHealthReport:
-        """Produce a health report from a CapabilityGraphResult."""
+        """Produce a health report from a CapabilityGraphResult.
+
+        Args:
+            graph_result: graph_result 参数。
+        """
         nodes = graph_result.nodes
         edges = graph_result.edges
 
@@ -688,6 +845,8 @@ _registry: Optional[CapHealthRegistry] = None
 
 
 def get_cap_registry() -> CapHealthRegistry:
+    """获取 cap_registry。
+    """
     global _registry
     if _registry is None:
         _registry = CapHealthRegistry()

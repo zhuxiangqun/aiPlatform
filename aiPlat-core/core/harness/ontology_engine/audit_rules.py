@@ -23,7 +23,11 @@ _OPERATORS = {
 
 
 def load_audit_rules(domain_id: str) -> List[Dict[str, Any]]:
-    """Load audit_rules from domain YAML file."""
+    """Load audit_rules from domain YAML file.
+
+    Args:
+        domain_id: domain 标识。
+    """
     import os as _os
     import yaml as _yaml
 
@@ -36,7 +40,12 @@ def load_audit_rules(domain_id: str) -> List[Dict[str, Any]]:
 
 
 def match_rule_triggers(decision_data: Dict[str, Any], triggers: List[Dict]) -> bool:
-    """Check if decision_data matches ALL triggers (AND logic)."""
+    """Check if decision_data matches ALL triggers (AND logic).
+
+    Args:
+        decision_data: decision_data 参数。
+        triggers: triggers 参数。
+    """
     for trigger in triggers:
         field = trigger.get("field", "")
         operator = trigger.get("operator", "")

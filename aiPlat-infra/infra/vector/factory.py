@@ -1,14 +1,25 @@
+"""factory：模块接口。"""
+
 from typing import Optional
 from .schemas import VectorConfig
 from .base import VectorStore
 
 
 def create(config: Optional[VectorConfig] = None) -> VectorStore:
-    """创建向量存储（便捷函数）"""
+    """创建向量存储（便捷函数）。
+
+    Args:
+        config: config 参数。
+    """
     return create_vector_store(config)
 
 
 def create_vector_store(config: Optional[VectorConfig] = None) -> VectorStore:
+    """创建 vector_store。
+
+    Args:
+        config: config 参数。
+    """
     config = config or VectorConfig()
 
     if config.type == "milvus":

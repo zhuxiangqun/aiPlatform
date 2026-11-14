@@ -12,9 +12,9 @@ from typing import Any, Dict
 async def sys_ontology_context(urn: str, depth: int = 3) -> Dict[str, Any]:
     """返回 URN 的知识网络上下文。
 
-    Agent 在 ReActLoop 中调用:
-        ctx = await sys_ontology_context("urn:aiplat:skill:code_generation")
-        # → {"entity": "...", "downstream": [...], "upstream": [...]}
+    Args:
+        urn: urn 参数。
+        depth: depth 参数。
     """
     from core.harness.ontology_engine.triple_store import get_triple_store
 

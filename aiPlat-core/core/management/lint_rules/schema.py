@@ -6,6 +6,7 @@ from core.management.skill_linter_base import LintIssue, LintRule
 
 
 class ChangeContractCheck(LintRule):
+    """ChangeContractCheck。"""
     code = "missing_change_contract"
     level = "warning"
     category = "schema"
@@ -16,8 +17,8 @@ class ChangeContractCheck(LintRule):
     def check(self, skill: Any) -> List[LintIssue]:
         """Only for coding skills (category/tags).
 
-        change_plan/changed_files/rollback 面向「改代码」验收，不适用于
-        generation/analysis 的 handler（如 PPT）或 prompt+tools executable。
+        Args:
+            skill: skill 参数。
         """
         category = str(
             getattr(skill, "type", "")
@@ -54,12 +55,18 @@ class ChangeContractCheck(LintRule):
 
 
 class MarkdownSchemaCheck(LintRule):
+    """MarkdownSchemaCheck。"""
     code = "invalid_markdown_schema"
     level = "error"
     category = "schema"
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
         if not isinstance(output_schema, dict) or not output_schema:
             return []
@@ -76,12 +83,18 @@ class MarkdownSchemaCheck(LintRule):
 
 
 class MarkdownRequiredCheck(LintRule):
+    """MarkdownRequiredCheck。"""
     code = "markdown_required"
     level = "warning"
     category = "schema"
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
         if not isinstance(output_schema, dict) or not output_schema:
             return []
@@ -98,12 +111,18 @@ class MarkdownRequiredCheck(LintRule):
 
 
 class MarkdownTypeCheck(LintRule):
+    """MarkdownTypeCheck。"""
     code = "markdown_type"
     level = "error"
     category = "schema"
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         output_schema = getattr(skill, "output_schema", None) if not isinstance(skill, dict) else skill.get("output_schema")
         if not isinstance(output_schema, dict) or not output_schema:
             return []

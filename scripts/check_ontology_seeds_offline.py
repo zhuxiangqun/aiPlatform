@@ -16,6 +16,8 @@ from pathlib import Path
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--seed-dir",

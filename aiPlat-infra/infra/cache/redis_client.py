@@ -1,3 +1,5 @@
+"""redis_client：模块接口。"""
+
 import json
 from typing import Optional, List, Any
 from .base import CacheClient
@@ -5,7 +7,13 @@ from .schemas import CacheConfig
 
 
 class RedisCacheClient(CacheClient):
+    """RedisCacheClient。"""
     def __init__(self, config: CacheConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._prefix = config.key_prefix or ""
@@ -14,6 +22,8 @@ class RedisCacheClient(CacheClient):
         return f"{self._prefix}{key}"
 
     async def connect(self):
+        """connect。
+        """
         import redis.asyncio as redis
 
         pool_config = self.config.pool
@@ -31,6 +41,11 @@ class RedisCacheClient(CacheClient):
         )
 
     async def get(self, key: str) -> Optional[Any]:
+        """get。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         value = await self._client.get(self._key(key))
@@ -42,6 +57,13 @@ class RedisCacheClient(CacheClient):
             return value.decode("utf-8")
 
     async def set(self, key: str, value: Any, ttl: int = 0) -> bool:
+        """set。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+            ttl: ttl 参数。
+        """
         if not self._client:
             await self.connect()
         serialized = json.dumps(value) if not isinstance(value, str) else value
@@ -50,21 +72,38 @@ class RedisCacheClient(CacheClient):
         return await self._client.set(self._key(key), serialized)
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         return await self._client.delete(self._key(key)) > 0
 
     async def exists(self, key: str) -> bool:
+        """exists。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         return await self._client.exists(self._key(key)) > 0
 
     async def clear(self) -> None:
+        """clear。
+        """
         if not self._client:
             await self.connect()
         await self._client.flushdb()
 
     async def keys(self, pattern: str) -> List[str]:
+        """keys。
+
+        Args:
+            pattern: pattern 参数。
+        """
         if not self._client:
             await self.connect()
         prefix = self._prefix + pattern
@@ -78,15 +117,28 @@ class RedisCacheClient(CacheClient):
         return keys
 
     async def expire(self, key: str, ttl: int) -> bool:
+        """expire。
+
+        Args:
+            key: key 参数。
+            ttl: ttl 参数。
+        """
         if not self._client:
             await self.connect()
         return await self._client.expire(self._key(key), ttl)
 
     async def ttl(self, key: str) -> int:
+        """ttl。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         return await self._client.ttl(self._key(key))
 
     async def close(self):
+        """close。
+        """
         if self._client:
             await self._client.close()

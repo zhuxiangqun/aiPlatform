@@ -1,3 +1,5 @@
+"""skill_pack_mixin：模块接口。"""
+
 class GatewayMixin:
     """Extracted from ExecutionStore."""
 """
@@ -15,6 +17,12 @@ from ._base import _json_dumps, _json_loads
 class SkillPackMixin:
     """Skill Pack CRUD — extracted from ExecutionStore."""
     async def update_skill_pack(self, pack_id: str, patch: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """更新 skill_pack。
+
+        Args:
+            pack_id: pack 标识。
+            patch: patch 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -53,6 +61,11 @@ class SkillPackMixin:
         }
 
     async def delete_skill_pack(self, pack_id: str) -> bool:
+        """删除 skill_pack。
+
+        Args:
+            pack_id: pack 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -68,8 +81,11 @@ class SkillPackMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def publish_skill_pack_version(self, *, pack_id: str, version: str) -> Dict[str, Any]:
-        """
-        Publish an immutable version snapshot for a skill pack.
+        """Publish an immutable version snapshot for a skill pack.
+
+        Args:
+            pack_id: pack 标识。
+            version: version 参数。
         """
         await self.init()
         db_path = self._config.db_path
@@ -108,6 +124,13 @@ class SkillPackMixin:
         }
 
     async def list_skill_pack_versions(self, *, pack_id: str, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 skill_pack_versions。
+
+        Args:
+            pack_id: pack 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -140,6 +163,12 @@ class SkillPackMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def get_skill_pack_version(self, *, pack_id: str, version: str) -> Optional[Dict[str, Any]]:
+        """获取 skill_pack_version。
+
+        Args:
+            pack_id: pack 标识。
+            version: version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -168,6 +197,11 @@ class SkillPackMixin:
     """Skill Pack CRUD only."""
     pass
     async def create_skill_pack(self, pack: Dict[str, Any]) -> Dict[str, Any]:
+        """创建 skill_pack。
+
+        Args:
+            pack: pack 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -203,6 +237,11 @@ class SkillPackMixin:
         }
 
     async def get_skill_pack(self, pack_id: str) -> Optional[Dict[str, Any]]:
+        """获取 skill_pack。
+
+        Args:
+            pack_id: pack 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -228,6 +267,12 @@ class SkillPackMixin:
         }
 
     async def list_skill_packs(self, *, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 skill_packs。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

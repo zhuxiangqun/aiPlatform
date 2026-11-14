@@ -23,7 +23,10 @@ logger = logging.getLogger("aiplat.text_cleaner")
 
 
 class TextCleaner:
+    """TextCleaner。"""
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[dict] = []
         self._load_rules()
 
@@ -93,10 +96,10 @@ class TextCleaner:
                      len(self._rules), len(default_rules), len(industry_rules), len(user_rules))
 
     def clean(self, text: str) -> Tuple[str, int]:
-        """
-        Apply all enabled rules to the text.
+        """Apply all enabled rules to the text.
 
-        Returns: (cleaned_text, removed_count)
+        Args:
+            text: text 参数。
         """
         if not text or not self._rules:
             return text, 0
@@ -125,6 +128,8 @@ class TextCleaner:
         return result, removed
 
     def get_stats(self) -> dict:
+        """获取 stats。
+        """
         return {
             "total_rules": len(self._rules),
             "rules": [
@@ -141,6 +146,8 @@ _text_cleaner: Optional[TextCleaner] = None
 
 
 def get_text_cleaner() -> TextCleaner:
+    """获取 text_cleaner。
+    """
     global _text_cleaner
     if _text_cleaner is None:
         _text_cleaner = TextCleaner()

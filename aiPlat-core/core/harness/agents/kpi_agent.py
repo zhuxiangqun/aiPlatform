@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Alert:
+    """Alert。"""
     level: str  # "ok" | "warning" | "critical"
     message: str
     suggested_action: str = ""
@@ -24,6 +25,7 @@ class Alert:
 
 @dataclass
 class StrategySuggestion:
+    """StrategySuggestion。"""
     mode: str  # "speed" | "quality" | "guard" | "balanced"
     confidence: float  # 0-1
     reason: str = ""
@@ -33,13 +35,16 @@ class KPIAgent:
     """Auto-monitor business goals, alert on deviation, suggest strategy."""
 
     def __init__(self):
+        """初始化。
+        """
         self._deviation_threshold = float(
             __import__("os").getenv("AIPLAT_KPI_DEVIATION_THRESHOLD", "0.7"))
 
     async def monitor(self, goal_id: str) -> Alert:
         """Check goal progress; return warning if lagging.
 
-        Called from: EvolutionEngine Step 12 (monthly), BusinessGoals page (on load)
+        Args:
+            goal_id: goal 标识。
         """
         try:
             from core.harness.finance.value_calculator import get_value_calculator
@@ -70,7 +75,8 @@ class KPIAgent:
     async def suggest_strategy(self, goal_id: str) -> Optional[StrategySuggestion]:
         """Analyze historical progress → recommend best strategy.
 
-        Called from: BusinessGoals page (strategy suggestion card)
+        Args:
+            goal_id: goal 标识。
         """
         try:
             from core.harness.finance.value_calculator import get_value_calculator
@@ -113,6 +119,8 @@ _kpi_agent: Optional[KPIAgent] = None
 
 
 def get_kpi_agent() -> KPIAgent:
+    """获取 kpi_agent。
+    """
     global _kpi_agent
     if _kpi_agent is None:
         _kpi_agent = KPIAgent()

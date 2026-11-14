@@ -16,12 +16,24 @@ from .loop_engine import LoopEngine
 
 
 class PlanEngine:
+    """PlanEngine。"""
     name = "plan"
 
     def __init__(self, fallback: Optional[LoopEngine] = None):
+        """初始化。
+
+        Args:
+            fallback: fallback 参数。
+        """
         self._fallback = fallback or LoopEngine()
 
     async def execute_agent(self, agent: Any, context: Any) -> Any:
+        """execute_agent。
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+        """
         import uuid as _uuid, time as _time
         plan = self._load_plan(agent, context)
         if not plan or not plan.steps:

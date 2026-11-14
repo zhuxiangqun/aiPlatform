@@ -100,6 +100,7 @@ def _ucb_c() -> float:
 
 @dataclass
 class OntologyCase:
+    """OntologyCase。"""
     case_id: str
     domain_id: str
     title: str
@@ -118,10 +119,17 @@ class OntologyCase:
     updated_at: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return asdict(self)
 
     @classmethod
     def from_dict(cls, raw: Dict[str, Any]) -> "OntologyCase":
+        """from_dict。
+
+        Args:
+            raw: raw 参数。
+        """
         return cls(
             case_id=str(raw.get("case_id") or ""),
             domain_id=str(raw.get("domain_id") or "default"),
@@ -146,6 +154,11 @@ class OntologyCaseStore:
     """Per-domain JSON case library with reward-weighted keyword retrieval."""
 
     def __init__(self, domain_id: str = ""):
+        """初始化。
+
+        Args:
+            domain_id: domain 标识。
+        """
         self.domain_id = (domain_id or "").strip() or "default"
 
     def _load(self) -> Dict[str, OntologyCase]:
@@ -192,6 +205,20 @@ class OntologyCaseStore:
         case_id: str = "",
         write_graph: bool = False,
     ) -> Dict[str, Any]:
+        """record。
+
+        Args:
+            title: title 参数。
+            summary: summary 参数。
+            outcome: outcome 参数。
+            reward: reward 参数。
+            action_id: action 标识。
+            entity_id: entity 标识。
+            tags: tags 参数。
+            metadata: metadata 参数。
+            case_id: case 标识。
+            write_graph: write_graph 参数。
+        """
         if not _enabled():
             return {"status": "disabled", "case_id": ""}
 
@@ -255,6 +282,14 @@ class OntologyCaseStore:
         note: str = "",
         actor: str = "user",
     ) -> Dict[str, Any]:
+        """record_feedback。
+
+        Args:
+            case_id: case 标识。
+            rating: rating 参数。
+            note: note 参数。
+            actor: 操作者身份。
+        """
         if not _enabled():
             return {"status": "disabled"}
         cases = self._load()
@@ -302,6 +337,13 @@ class OntologyCaseStore:
         top_k: int = 5,
         outcome: str = "",
     ) -> List[Dict[str, Any]]:
+        """search。
+
+        Args:
+            query: 查询。
+            top_k: top_k 参数。
+            outcome: outcome 参数。
+        """
         if not _enabled():
             return []
         loaded = self._load()
@@ -363,11 +405,20 @@ class OntologyCaseStore:
         return out
 
     def get(self, case_id: str) -> Optional[OntologyCase]:
+        """get。
+
+        Args:
+            case_id: case 标识。
+        """
         return self._load().get(case_id)
 
 
 def ontology_case_learning_meta(domain_id: str = "") -> Dict[str, Any]:
-    """Runtime flags for demos / ops (no secrets). Does not mutate TBox."""
+    """Runtime flags for demos / ops (no secrets). Does not mutate TBox.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip()
     meta: Dict[str, Any] = {
         "enabled": _enabled(),
@@ -391,7 +442,12 @@ def ontology_case_learning_meta(domain_id: str = "") -> Dict[str, Any]:
 
 
 def select_cases_for_context(hits: List[Dict[str, Any]], *, top_k: int = 3) -> Dict[str, Any]:
-    """Drop repeated low-yield failures from injection. Does not delete cases."""
+    """Drop repeated low-yield failures from injection. Does not delete cases.
+
+    Args:
+        hits: hits 参数。
+        top_k: top_k 参数。
+    """
     cap = max(1, min(int(top_k or 3), 8))
     kept: List[Dict[str, Any]] = []
     demoted = 0
@@ -421,7 +477,11 @@ def select_cases_for_context(hits: List[Dict[str, Any]], *, top_k: int = 3) -> D
 
 
 def is_cold_archive_candidate(case: Any) -> bool:
-    """Stricter than inject demotion. Does not mutate."""
+    """Stricter than inject demotion. Does not mutate.
+
+    Args:
+        case: case 参数。
+    """
     if isinstance(case, dict):
         meta = case.get("metadata") if isinstance(case.get("metadata"), dict) else {}
         serves = int(case.get("serve_count") or 0)
@@ -483,7 +543,12 @@ def _save_cold(domain_id: str, cases: Dict[str, OntologyCase]) -> None:
 
 
 def list_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, Any]:
-    """Read-only cold archive listing. Does not inject or write YAML."""
+    """Read-only cold archive listing. Does not inject or write YAML.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     did = (domain_id or "").strip() or "it-ops"
     lim = max(1, min(int(limit or 20), 50))
     rows = list(_load_cold(did).values())
@@ -513,7 +578,12 @@ def list_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, 
 
 
 def archive_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[str, Any]:
-    """Move low-yield live cases to cold store. Does not delete. Does not change TBox."""
+    """Move low-yield live cases to cold store. Does not delete. Does not change TBox.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     did = (domain_id or "").strip() or "it-ops"
     cap = max(1, min(int(limit or 20), 40))
     store = OntologyCaseStore(did)
@@ -559,7 +629,11 @@ def archive_cold_cases(domain_id: str = "it-ops", *, limit: int = 20) -> Dict[st
 
 
 def context_hit_rate(cases: List[Any]) -> Dict[str, Any]:
-    """Injected cases that received feedback. No cases served → no rate."""
+    """Injected cases that received feedback. No cases served → no rate.
+
+    Args:
+        cases: cases 参数。
+    """
     served = 0
     used = 0
     for case in cases or []:
@@ -588,7 +662,13 @@ def format_cases_for_context(
     *,
     top_k: int = 3,
 ) -> str:
-    """Compact overlay for ContextBus / prompts. Not TBox authority."""
+    """Compact overlay for ContextBus / prompts. Not TBox authority.
+
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        top_k: top_k 参数。
+    """
     if not _enabled() or not (domain_id or "").strip():
         return ""
     hits = OntologyCaseStore(domain_id).search(query or domain_id, top_k=max(top_k * 4, top_k))
@@ -624,6 +704,11 @@ def format_cases_for_context(
 
 
 def find_case(case_id: str) -> Optional[OntologyCase]:
+    """find_case。
+
+    Args:
+        case_id: case 标识。
+    """
     root = _cases_dir()
     if not root.is_dir():
         return None
@@ -657,7 +742,17 @@ def record_case_from_action(
     actor: str = "",
     write_graph: bool = False,
 ) -> Dict[str, Any]:
-    """Best-effort hook for ActionRegistry — never raises to caller."""
+    """Best-effort hook for ActionRegistry — never raises to caller.
+
+    Args:
+        domain_id: domain 标识。
+        action_id: action 标识。
+        entity_id: entity 标识。
+        status: status 参数。
+        result: result 参数。
+        actor: 操作者身份。
+        write_graph: write_graph 参数。
+    """
     if not _enabled():
         return {"status": "disabled"}
     try:
@@ -712,7 +807,13 @@ async def maybe_enqueue_evolution_proposal(
     force: bool = False,
     author: str = "ontology-case-learning",
 ) -> Dict[str, Any]:
-    """P1: high-reward case → draft ontology proposal (auto_apply=false)."""
+    """P1: high-reward case → draft ontology proposal (auto_apply=false).
+
+    Args:
+        case_id: case 标识。
+        force: 是否强制。
+        author: author 参数。
+    """
     case = find_case(case_id)
     if not case:
         return {"status": "not_found", "case_id": case_id, "auto_apply": False}
@@ -862,7 +963,11 @@ async def maybe_enqueue_evolution_proposal(
 
 
 async def rollback_case_evolution(case_id: str) -> Dict[str, Any]:
-    """P2: rollback live YAML for the proposal linked to a case (if applied)."""
+    """P2: rollback live YAML for the proposal linked to a case (if applied).
+
+    Args:
+        case_id: case 标识。
+    """
     case = find_case(case_id)
     if not case:
         return {"ok": False, "reason": "case_not_found", "case_id": case_id}
@@ -899,7 +1004,15 @@ async def record_feedback_and_maybe_evolve(
     actor: str = "user",
     auto_enqueue: bool = True,
 ) -> Dict[str, Any]:
-    """Feedback writeback; optionally enqueue proposal when threshold met."""
+    """Feedback writeback; optionally enqueue proposal when threshold met.
+
+    Args:
+        case_id: case 标识。
+        rating: rating 参数。
+        note: note 参数。
+        actor: 操作者身份。
+        auto_enqueue: auto_enqueue 参数。
+    """
     case = find_case(case_id)
     if not case:
         return {"status": "not_found", "case_id": case_id}

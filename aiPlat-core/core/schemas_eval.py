@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 
 
 class AutoEvalStep(BaseModel):
+    """AutoEvalStep。"""
     tool: str
     args: Optional[Dict[str, Any]] = None
     tag: Optional[str] = None
 
 
 class AutoEvalRequest(BaseModel):
+    """AutoEvalRequest。"""
     evaluator: str = "auto-llm"
     thresholds: Optional[Dict[str, Any]] = None
     enforce_gate: bool = False
@@ -30,28 +32,39 @@ class AutoEvalRequest(BaseModel):
     base_evidence_pack_id: Optional[str] = None
 
     class Config:
+        """允许额外字段。"""
+
         extra = "allow"
 
 
 class UpsertEvaluationPolicyRequest(BaseModel):
+    """UpsertEvaluationPolicyRequest。"""
     policy: Dict[str, Any] = Field(default_factory=dict)
 
     class Config:
+        """允许额外字段。"""
+
         extra = "allow"
 
 
 class UpsertProjectEvaluationPolicyRequest(BaseModel):
+    """UpsertProjectEvaluationPolicyRequest。"""
     policy: Dict[str, Any] = Field(default_factory=dict)
     mode: str = "merge"  # merge|replace
 
     class Config:
+        """允许额外字段。"""
+
         extra = "allow"
 
 
 class EvidenceDiffRequest(BaseModel):
+    """EvidenceDiffRequest。"""
     base_evidence_pack_id: str
     new_evidence_pack_id: str
 
     class Config:
+        """允许额外字段。"""
+
         extra = "allow"
 

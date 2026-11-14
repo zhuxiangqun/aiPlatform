@@ -20,12 +20,22 @@ class CLI:
     """命令行工具"""
 
     def __init__(self, name: str = "aiplat"):
+        """初始化。
+
+        Args:
+            name: name 参数。
+        """
         self.name = name
         self._commands: dict[str, click.Command] = {}
         self._app = click.Group(name=name)
 
     def command(self, name: str, help: str = "") -> click.Command:
-        """装饰器：定义命令"""
+        """装饰器：定义命令。
+
+        Args:
+            name: name 参数。
+            help: help 参数。
+        """
         def decorator(func: Callable) -> click.Command:
             cmd = click.command(name=name, help=help)(func)
             self._commands[name] = cmd
@@ -34,13 +44,21 @@ class CLI:
         return decorator
 
     def group(self, name: str) -> click.Group:
-        """装饰器：定义命令组"""
+        """装饰器：定义命令组。
+
+        Args:
+            name: name 参数。
+        """
         grp = click.group(name=name)
         self._app.add_command(grp)
         return grp
 
     def add_command(self, cmd: click.Command) -> None:
-        """添加命令"""
+        """添加命令。
+
+        Args:
+            cmd: cmd 参数。
+        """
         self._commands[cmd.name] = cmd
         self._app.add_command(cmd)
 
@@ -54,7 +72,13 @@ class CLI:
 @click.option("--base-url", "-u", default="http://localhost:8080", help="API Base URL")
 @click.pass_context
 def aiplat(ctx, api_key: str, base_url: str):
-    """aiPlat CLI - AI Platform Command Line Interface"""
+    """aiPlat CLI - AI Platform Command Line Interface。
+
+    Args:
+        ctx: ctx 参数。
+        api_key: api_key 参数。
+        base_url: base_url 参数。
+    """
     ctx.ensure_object(dict)
     ctx.obj["api_key"] = api_key
     ctx.obj["base_url"] = base_url
@@ -70,7 +94,12 @@ def list_agents():
 @click.argument("agent")
 @click.option("--input", "-i", help="Input message")
 def execute_agent(agent: str, input: str):
-    """Execute an agent"""
+    """Execute an agent。
+
+    Args:
+        agent: agent 参数。
+        input: input 参数。
+    """
     click.echo(f"Executing agent: {agent}")
 
 
@@ -78,7 +107,12 @@ def execute_agent(agent: str, input: str):
 @click.argument("skill")
 @click.option("--param", "-p", multiple=True, help="Parameters")
 def run_skill(skill: str, param: tuple):
-    """Run a skill"""
+    """Run a skill。
+
+    Args:
+        skill: skill 参数。
+        param: param 参数。
+    """
     click.echo(f"Running skill: {skill}")
 
 
@@ -102,7 +136,14 @@ def kb_group():
 @click.option("--file", "file_path", required=True, help="PDF file path")
 @click.pass_context
 def kb_ingest(ctx, tenant_id: str, collection_id: str, file_path: str):
-    """Upload and ingest a PDF into KB"""
+    """Upload and ingest a PDF into KB。
+
+    Args:
+        ctx: ctx 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        file_path: file_path 参数。
+    """
     base_url = ctx.obj.get("base_url")
     api_key = ctx.obj.get("api_key") or ""
     svc = get_kb_service(base_url=base_url, api_key=api_key, tenant_id=tenant_id)
@@ -118,7 +159,16 @@ def kb_ingest(ctx, tenant_id: str, collection_id: str, file_path: str):
 @click.option("--out-dir", default="./kb_out", help="Output directory (save json/images/html)")
 @click.pass_context
 def kb_query(ctx, tenant_id: str, collection_id: str, question: str, year: int, out_dir: str):
-    """Query KB and save an HTML report with bbox highlights"""
+    """Query KB and save an HTML report with bbox highlights。
+
+    Args:
+        ctx: ctx 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        question: question 参数。
+        year: year 参数。
+        out_dir: out_dir 参数。
+    """
     import json
     from pathlib import Path
 

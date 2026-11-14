@@ -1,3 +1,5 @@
+"""example_hook：模块接口。"""
+
 # Example workspace hook — on_pipeline_complete
 #
 # Hooks are Python scripts that run in response to system events.

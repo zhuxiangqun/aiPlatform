@@ -20,6 +20,11 @@ class VersionLineage:
     """Manages skill version history as a DAG"""
     
     def __init__(self, db_path: str = ":memory:"):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path
         self._versions: Dict[str, SkillVersion] = {}
         self._children: Dict[str, Set[str]] = {}  # parent -> children
@@ -37,7 +42,16 @@ class VersionLineage:
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> SkillVersion:
-        """Create a new version"""
+        """Create a new version。
+
+        Args:
+            skill_id: Skill ID。
+            parent_version: parent_version 参数。
+            evolution_type: evolution_type 参数。
+            trigger: trigger 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+        """
         # Get next version number
         existing = [v for v in self._versions.values() if v.skill_id == skill_id]
         if existing:
@@ -78,7 +92,11 @@ class VersionLineage:
         return version
     
     async def get_lineage(self, skill_id: str) -> List[SkillVersion]:
-        """Get complete lineage for a skill"""
+        """Get complete lineage for a skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         skill_versions = [
             v for v in self._versions.values()
             if v.skill_id == skill_id
@@ -86,7 +104,12 @@ class VersionLineage:
         return sorted(skill_versions, key=lambda v: v.created_at)
     
     async def get_ancestors(self, skill_id: str, version: str) -> List[SkillVersion]:
-        """Get all ancestors of a version"""
+        """Get all ancestors of a version。
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
         ancestors = []
         current_key = f"{skill_id}:{version}"
         
@@ -102,7 +125,12 @@ class VersionLineage:
         return ancestors
     
     async def get_descendants(self, skill_id: str, version: str) -> List[SkillVersion]:
-        """Get all descendants of a version"""
+        """Get all descendants of a version。
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
         descendants = []
         visited = set()
         
@@ -124,20 +152,34 @@ class VersionLineage:
         return descendants
     
     async def get_latest_version(self, skill_id: str) -> Optional[SkillVersion]:
-        """Get the latest version of a skill"""
+        """Get the latest version of a skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
         versions = await self.get_lineage(skill_id)
         if versions:
             return versions[-1]
         return None
     
     async def rollback(self, skill_id: str, target_version: str) -> bool:
-        """Rollback to a specific version"""
+        """Rollback to a specific version。
+
+        Args:
+            skill_id: Skill ID。
+            target_version: target_version 参数。
+        """
         # In practice, this would restore content from the version
         logger.info(f"Rolling back skill {skill_id} to version {target_version}")
         return True
     
     async def prune_old_versions(self, skill_id: str, keep_count: int = 10) -> int:
-        """Prune old versions, keeping only the latest N"""
+        """Prune old versions, keeping only the latest N。
+
+        Args:
+            skill_id: Skill ID。
+            keep_count: keep_count 参数。
+        """
         versions = await self.get_lineage(skill_id)
         if len(versions) <= keep_count:
             return 0

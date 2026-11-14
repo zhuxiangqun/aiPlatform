@@ -1,3 +1,5 @@
+"""local：模块接口。"""
+
 import gc
 import logging
 import os
@@ -10,6 +12,7 @@ from ..schemas import ChatRequest, ChatResponse, LLMConfig, StreamChunk
 
 
 class LocalLLMClient(LLMClient):
+    """LocalLLMClient。"""
     _instance_lock = threading.Lock()
     _model_cache: Dict[str, Any] = {}
     _embedding_model_cache: Dict[str, Any] = {}
@@ -18,6 +21,11 @@ class LocalLLMClient(LLMClient):
     _IDLE_TTL_SECONDS = 1800  # 30 min idle → auto-unload
 
     def __init__(self, config: LLMConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._model = None
         self._embedding_model = None
@@ -313,9 +321,19 @@ class LocalLLMClient(LLMClient):
             pass  # noqa: optional-dependency
 
     def chat(self, request: ChatRequest) -> ChatResponse:
+        """chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         raise NotImplementedError("Use achat for async")
 
     async def achat(self, request: ChatRequest) -> ChatResponse:
+        """achat。
+
+        Args:
+            request: FastAPI Request。
+        """
         self._get_model()
 
         if self._backend == "llama_cpp":
@@ -326,6 +344,11 @@ class LocalLLMClient(LLMClient):
             raise RuntimeError(f"Unknown backend: {self._backend}")
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[StreamChunk]:
+        """stream_chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         self._get_model()
 
         if self._backend == "llama_cpp":
@@ -411,6 +434,11 @@ class LocalLLMClient(LLMClient):
                     break
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
+        """embed。
+
+        Args:
+            texts: texts 参数。
+        """
         try:
             model = self._get_embedding_model()
             embeddings = model.encode(texts, convert_to_numpy=True)
@@ -419,6 +447,11 @@ class LocalLLMClient(LLMClient):
             raise RuntimeError(f"Embedding generation failed: {e}")
 
     def count_tokens(self, text: str) -> int:
+        """count_tokens。
+
+        Args:
+            text: text 参数。
+        """
         try:
             if self._backend == "llama_cpp" and self._model:
                 return len(self._model.tokenize(text.encode("utf-8")))
@@ -430,6 +463,8 @@ class LocalLLMClient(LLMClient):
         return len(text) // 4
 
     def get_metrics(self) -> dict:
+        """获取 metrics。
+        """
         metrics = self._metrics.copy()
         try:
             import psutil
@@ -501,6 +536,8 @@ class LocalLLMClient(LLMClient):
             cls._model_load_timestamps[cache_key] = time.time()
 
     def unload_model(self):
+        """unload_model。
+        """
         if self._backend == "llama_cpp":
             cache_key = f"llama_cpp:{self.config.model}"
             if cache_key in self._model_cache:
@@ -526,6 +563,8 @@ class LocalLLMClient(LLMClient):
 
     @classmethod
     def clear_cache(cls):
+        """clear_cache。
+        """
         cls._model_cache.clear()
         cls._embedding_model_cache.clear()
         gc.collect()

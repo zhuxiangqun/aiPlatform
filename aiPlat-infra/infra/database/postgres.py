@@ -1,3 +1,5 @@
+"""postgres：模块接口。"""
+
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from .base import DatabaseClient
@@ -7,7 +9,13 @@ import logging
 
 
 class PostgresConnectionPool(ConnectionPool):
+    """PostgresConnectionPool。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         pool_config = config.pool
         self._pool = None
@@ -30,13 +38,22 @@ class PostgresConnectionPool(ConnectionPool):
         return self._pool
 
     async def acquire(self):
+        """acquire。
+        """
         pool = await self._get_pool()
         return await pool.acquire()
 
     async def release(self, conn):
+        """release。
+
+        Args:
+            conn: conn 参数。
+        """
         await conn.release()
 
     def get_stats(self) -> PoolStats:
+        """获取 stats。
+        """
         if self._pool is None:
             return PoolStats()
         return PoolStats(
@@ -46,23 +63,39 @@ class PostgresConnectionPool(ConnectionPool):
         )
 
     async def resize(self, min_size: int, max_size: int) -> None:
+        """resize。
+
+        Args:
+            min_size: min_size 参数。
+            max_size: max_size 参数。
+        """
         self._min_size = min_size
         self._max_size = max_size
         if self._pool:
             await self._pool.set_pool_size(min_size, max_size)
 
     async def close(self):
+        """close。
+        """
         if self._pool:
             await self._pool.close()
 
 
 class PostgresClient(DatabaseClient):
+    """PostgresClient。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._pool: Optional[PostgresConnectionPool] = None
         self._connection = None
 
     async def connect(self):
+        """connect。
+        """
         self._pool = PostgresConnectionPool(self.config)
         # 获取一个连接用于执行查询
         self._connection = await self._pool.acquire()
@@ -85,6 +118,12 @@ class PostgresClient(DatabaseClient):
         return self._connection
 
     async def execute(self, query: str, params=None) -> List[Dict]:
+        """execute。
+
+        Args:
+            query: 查询。
+            params: params 参数。
+        """
         conn = await self._get_connection()
         # asyncpg uses positional parameters, so params can be:
         # - None: no parameters
@@ -104,6 +143,12 @@ class PostgresClient(DatabaseClient):
         return [dict(row) for row in rows]
 
     async def execute_one(self, query: str, params=None) -> Optional[Dict]:
+        """execute_one。
+
+        Args:
+            query: 查询。
+            params: params 参数。
+        """
         conn = await self._get_connection()
         if params is None:
             row = await conn.fetchrow(query)
@@ -117,6 +162,12 @@ class PostgresClient(DatabaseClient):
         return dict(row) if row else None
 
     async def execute_many(self, query: str, params_list=None) -> List[Any]:
+        """execute_many。
+
+        Args:
+            query: 查询。
+            params_list: params_list 参数。
+        """
         conn = await self._get_connection()
         results = []
         params_list = params_list or []
@@ -136,21 +187,31 @@ class PostgresClient(DatabaseClient):
 
     @asynccontextmanager
     async def transaction(self):
+        """transaction。
+        """
         conn = await self._get_connection()
         async with conn.transaction():
             yield conn
 
     async def begin(self):
+        """begin。
+        """
         pass
 
     async def commit(self):
+        """commit。
+        """
         pass
 
     async def rollback(self):
+        """rollback。
+        """
         pass
 
     async def close(self):
         # 释放连接回连接池
+        """close。
+        """
         if self._connection and self._pool:
             try:
                 await self._pool.release(self._connection)
@@ -172,8 +233,12 @@ class PostgresClient(DatabaseClient):
             self._pool = None
 
     def is_connected(self) -> bool:
+        """is_connected。
+        """
         return self._connection is not None
 
     @property
     def pool(self) -> Optional[ConnectionPool]:
+        """pool。
+        """
         return self._pool

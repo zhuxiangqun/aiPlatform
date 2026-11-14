@@ -27,6 +27,7 @@ logger = logging.getLogger("aiplat.cron")
 
 @dataclass
 class CronJob:
+    """CronJob。"""
     name: str
     interval_seconds: float
     handler: Callable
@@ -41,6 +42,8 @@ class CronScheduler:
     """Lightweight asyncio-based cron scheduler for self-evolution tasks."""
 
     def __init__(self):
+        """初始化。
+        """
         self._jobs: Dict[str, CronJob] = {}
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -54,6 +57,15 @@ class CronScheduler:
         description: str = "",
         enabled: bool = True,
     ) -> None:
+        """register。
+
+        Args:
+            name: name 参数。
+            interval_seconds: interval_seconds 参数。
+            handler: handler 参数。
+            description: description 参数。
+            enabled: 是否启用。
+        """
         if interval_seconds < 10:
             raise ValueError("Minimum interval is 10 seconds")
         self._jobs[name] = CronJob(
@@ -66,9 +78,16 @@ class CronScheduler:
         )
 
     def unregister(self, name: str) -> None:
+        """unregister。
+
+        Args:
+            name: name 参数。
+        """
         self._jobs.pop(name, None)
 
     async def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -76,6 +95,8 @@ class CronScheduler:
         logger.info(f"CronScheduler started with {len(self._jobs)} jobs")
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task:
             self._task.cancel()
@@ -107,6 +128,8 @@ class CronScheduler:
             logger.warning(f"Cron job failed: {job.name} — {e}")
 
     def get_status(self) -> Dict[str, Any]:
+        """获取 status。
+        """
         return {
             "running": self._running,
             "jobs": {
@@ -127,6 +150,8 @@ _cron_scheduler: Optional[CronScheduler] = None
 
 
 def get_cron_scheduler() -> CronScheduler:
+    """获取 cron_scheduler。
+    """
     global _cron_scheduler
     if _cron_scheduler is None:
         _cron_scheduler = CronScheduler()

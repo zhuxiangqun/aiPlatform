@@ -78,12 +78,11 @@ async def detect_synthesis_gaps(
 
     """Detect knowledge gaps suitable for active synthesis.
 
-
-
-    Priortizes 'no_instance' gaps (entity known but no wiki page exists).
-
-    Falls back to 'no_entity' gaps if sample is too small.
-
+    Args:
+        domain_id: domain 标识。
+        min_frequency: min_frequency 参数。
+        max_gaps: max_gaps 参数。
+        queries: queries 参数。
     """
 
     try:
@@ -219,7 +218,12 @@ _RESEARCH_QUESTIONS_PROMPT = """你是一个主题研究助手。给定一个知
 
 async def generate_research_questions(entity: str, gap: Dict[str, Any]) -> List[str]:
 
-    """Generate focused research questions for a knowledge gap."""
+    """Generate focused research questions for a knowledge gap.
+
+    Args:
+        entity: entity 参数。
+        gap: gap 参数。
+    """
 
     try:
 
@@ -297,7 +301,13 @@ def retrieve_source_documents(
 
 ) -> str:
 
-    """Retrieve relevant raw documents from kb_elements for synthesis."""
+    """Retrieve relevant raw documents from kb_elements for synthesis.
+
+    Args:
+        entity_name: entity_name 参数。
+        domain_id: domain 标识。
+        top_k: top_k 参数。
+    """
 
     try:
 
@@ -466,7 +476,13 @@ async def synthesize_wiki_page(
 
 ) -> Optional[Dict[str, Any]]:
 
-    """Synthesize a draft wiki page from research and source documents."""
+    """Synthesize a draft wiki page from research and source documents.
+
+    Args:
+        entity: entity 参数。
+        research_questions: research_questions 参数。
+        source_docs: source_docs 参数。
+    """
 
     if not source_docs:
 
@@ -590,7 +606,12 @@ def submit_as_proposal(
 
 ) -> bool:
 
-    """Submit a synthesized draft as a knowledge proposal for human review."""
+    """Submit a synthesized draft as a knowledge proposal for human review.
+
+    Args:
+        draft: draft 参数。
+        collection_id: collection 标识。
+    """
 
     try:
 
@@ -854,10 +875,10 @@ def trigger_active_synthesis(
 
     """Trigger active synthesis in background (non-blocking).
 
-
-
-    Gated by AIPLAT_ACTIVE_SYNTHESIS_ENABLED (default: false).
-
+    Args:
+        domain_id: domain 标识。
+        max_gaps: max_gaps 参数。
+        auto_submit: auto_submit 参数。
     """
 
     enabled = __import__("os").getenv("AIPLAT_ACTIVE_SYNTHESIS_ENABLED", "false").lower() in ("true", "1", "yes")

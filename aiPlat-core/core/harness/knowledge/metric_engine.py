@@ -25,6 +25,7 @@ DB_PATH = get_aiplat_data_dir("state_changes.db")
 
 @dataclass
 class MetricDefinition:
+    """MetricDefinition。"""
     name: str
     label: str
     description: str = ""
@@ -40,7 +41,11 @@ class MetricDefinition:
 
 
 def load_metrics(domain_yaml_raw: Dict[str, Any]) -> List[MetricDefinition]:
-    u"""Load metric definitions from domain YAML raw dict."""
+    """Load metric definitions from domain YAML raw dict.
+
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
+    """
     raw_metrics = domain_yaml_raw.get("metrics", {})
     result = []
     if not raw_metrics or not isinstance(raw_metrics, dict):
@@ -82,7 +87,13 @@ def compute(
     *,
     time_window_days: int = 30,
 ) -> Dict[str, Any]:
-    u"""Compute a metric value from state_history.db + GraphIndex."""
+    """Compute a metric value from state_history.db + GraphIndex.
+
+    Args:
+        metric: metric 参数。
+        domain_id: domain 标识。
+        time_window_days: time_window_days 参数。
+    """
     if not _os.path.exists(DB_PATH):
         return {"value": None, "error": "state_changes.db not found", "metric_name": metric.name}
 
@@ -143,7 +154,13 @@ def get_trend(
     domain_id: str,
     days: int = 30,
 ) -> List[Dict[str, Any]]:
-    u"""Get daily metric values for the last N days."""
+    """Get daily metric values for the last N days.
+
+    Args:
+        metric: metric 参数。
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     results = []
     for offset in range(days):
         val = compute(metric, domain_id, time_window_days=1)
@@ -154,7 +171,12 @@ def get_trend(
 
 
 def scorecard(metrics: List[MetricDefinition], domain_id: str) -> List[Dict[str, Any]]:
-    u"""Compute all metrics for a domain, returning a scorecard."""
+    """Compute all metrics for a domain, returning a scorecard.
+
+    Args:
+        metrics: metrics 参数。
+        domain_id: domain 标识。
+    """
     result = []
     for m in metrics:
         val = compute(m, domain_id)

@@ -19,6 +19,11 @@ class ClassMapper:
     """Map text entities to ontology domain classes."""
 
     def __init__(self, domain: OntologyDomain):
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
         # Build keyword index: {keyword_string → class_label}
         self._keyword_index: Dict[str, List[str]] = self._build_keyword_index()
@@ -155,7 +160,9 @@ class ClassMapper:
     ) -> Optional[str]:
         """Classify raw text to the best ontology class.
 
-        Returns class_name or None.
+        Args:
+            text: text 参数。
+            threshold: threshold 参数。
         """
         tokens = self._tokenize(text)
         if not tokens:

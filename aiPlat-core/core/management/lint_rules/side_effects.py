@@ -6,12 +6,18 @@ from core.management.skill_linter_base import FixProposal, LintIssue, LintRule
 
 
 class UnrealizedSideEffectCheck(LintRule):
+    """UnrealizedSideEffectCheck。"""
     code = "unrealized_side_effect"
     level = "error"
     category = "metadata"
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         reason = unrealized_side_effect_reason(skill)
         if not reason:
             return []
@@ -25,6 +31,12 @@ class UnrealizedSideEffectCheck(LintRule):
         ]
 
     def propose_fix(self, skill: Any, issue: LintIssue) -> Optional[FixProposal]:
+        """propose_fix。
+
+        Args:
+            skill: skill 参数。
+            issue: issue 参数。
+        """
         return FixProposal(
             fix_id="fix_unrealized_side_effect",
             issue_code=self.code,

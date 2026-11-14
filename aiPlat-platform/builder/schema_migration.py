@@ -100,7 +100,11 @@ def _pydantic_field(stmt: ast.AnnAssign) -> Dict[str, Any]:
 
 
 def extract_schema(code_files: Dict[str, str]) -> Dict[str, Any]:
-    """Extract {table: {column: {type, nullable, primary}}} from code files."""
+    """Extract {table: {column: {type, nullable, primary}}} from code files.
+
+    Args:
+        code_files: code_files 参数。
+    """
     schema: Dict[str, Dict[str, Any]] = {}
     for rel, content in (code_files or {}).items():
         if not rel.endswith(".py"):
@@ -131,7 +135,12 @@ def extract_schema(code_files: Dict[str, str]) -> Dict[str, Any]:
 # ── SchemaDiffAnalyzer (§3.4) ────────────────────────────────────────────────
 
 def diff_schema(old: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
-    """Old-vs-new schema diff with destructive classification."""
+    """Old-vs-new schema diff with destructive classification.
+
+    Args:
+        old: old 参数。
+        new: new 参数。
+    """
     old_tables = set(old.keys())
     new_tables = set(new.keys())
     added_tables = sorted(new_tables - old_tables)
@@ -182,7 +191,14 @@ def _column_ddl(tbl_schema: Dict[str, Any], col: str) -> str:
 
 def generate_migration(diff: Dict[str, Any], project_id: str,
                        new_schema: Dict[str, Any], module_id: str = "default") -> Dict[str, Any]:
-    """diff → {id, up_sql, down_sql, destructive, created_at, module_id}. None if no changes."""
+    """diff → {id, up_sql, down_sql, destructive, created_at, module_id}. None if no changes.
+
+    Args:
+        diff: diff 参数。
+        project_id: project 标识。
+        new_schema: new_schema 参数。
+        module_id: module 标识。
+    """
     if not diff.get("has_changes"):
         return None
     up: List[str] = []

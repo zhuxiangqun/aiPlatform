@@ -22,6 +22,7 @@ import yaml
 
 @dataclass
 class MCPServerInfo:
+    """MCPServerInfo。"""
     name: str
     enabled: bool = True
     status: str = "ready"  # draft | ready | published | listed | deprecated
@@ -51,7 +52,14 @@ def _notify_resource_mutated(resource_type: str, action: str, resource_id: str) 
 
 
 class MCPManager:
+    """MCPManager。"""
     def __init__(self, *, scope: str = "engine", reserved_names: Optional[set] = None):
+        """初始化。
+
+        Args:
+            scope: scope 参数。
+            reserved_names: reserved_names 参数。
+        """
         self._servers: Dict[str, MCPServerInfo] = {}
         self._scope = scope  # "engine" | "workspace"
         self._reserved_names = reserved_names or set()
@@ -268,6 +276,12 @@ class MCPManager:
         metadata["integrity"] = integ
 
     def compute_mcp_signature_verification(self, server: "MCPServerInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        """compute_mcp_signature_verification。
+
+        Args:
+            server: server 参数。
+            trusted_keys: trusted_keys 参数。
+        """
         if not isinstance(getattr(server, "metadata", None), dict):
             return {}
         prov = dict(server.metadata.get("provenance") or {}) if isinstance(server.metadata.get("provenance"), dict) else {}
@@ -300,16 +314,29 @@ class MCPManager:
     # ================================================================
 
     def list_servers(self) -> List[MCPServerInfo]:
+        """列出 servers。
+        """
         return list(self._servers.values())
 
     def get_server_names(self) -> List[str]:
+        """获取 server_names。
+        """
         return list(self._servers.keys())
 
     def get_server(self, name: str) -> Optional[MCPServerInfo]:
+        """获取 server。
+
+        Args:
+            name: name 参数。
+        """
         return self._servers.get(name)
 
     def upsert_server(self, info: MCPServerInfo) -> MCPServerInfo:
-        """Write to primary path and reload."""
+        """Write to primary path and reload.
+
+        Args:
+            info: info 参数。
+        """
         if self._reserved_names and info.name in self._reserved_names:
             raise ValueError(f"MCP server '{info.name}' is reserved by engine scope and cannot be created/updated in workspace.")
         base = self._resolve_mcp_base_path()
@@ -345,6 +372,12 @@ class MCPManager:
         return self._servers[info.name]
 
     def set_enabled(self, name: str, enabled: bool) -> bool:
+        """set_enabled。
+
+        Args:
+            name: name 参数。
+            enabled: 是否启用。
+        """
         info = self._servers.get(name)
         if not info:
             return False
@@ -353,7 +386,11 @@ class MCPManager:
         return True
 
     def delete_server(self, name: str) -> bool:
-        """Delete a server from disk and in-memory."""
+        """Delete a server from disk and in-memory.
+
+        Args:
+            name: name 参数。
+        """
         server_dir = self._find_server_dir(name)
         if server_dir:
             import shutil as _shutil
@@ -369,6 +406,19 @@ class MCPManager:
                                 mcp_id: Optional[str] = None, subdir: Optional[str] = None,
                                 auto_detect_subdir: bool = True, allow_overwrite: bool = False,
                                 metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """installer_install。
+
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            mcp_id: mcp 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+        """
         if (self._scope or "engine").strip().lower() != "workspace":
             raise PermissionError("installer_install_only_allowed_in_workspace_scope")
         from core.management.asset_installer import MCPInstaller
@@ -415,6 +465,18 @@ class MCPManager:
                              mcp_id: Optional[str] = None, subdir: Optional[str] = None,
                              auto_detect_subdir: bool = True,
                              metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """installer_plan。
+
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            mcp_id: mcp 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         if (self._scope or "engine").strip().lower() != "workspace":
             raise PermissionError("installer_plan_only_allowed_in_workspace_scope")
         from core.management.asset_installer import MCPInstaller
@@ -438,5 +500,10 @@ class MCPManager:
                 "claude_plugin": plan.claude_plugin}
 
     async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
+        """installer_resolve_head。
+
+        Args:
+            url: url 参数。
+        """
         from core.management.asset_installer import resolve_remote_head_sha
         return {"url": url, "sha": resolve_remote_head_sha(url)}

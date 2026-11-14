@@ -33,8 +33,8 @@ def _workspace_fault_it_ops_yaml() -> Path:
 def ensure_it_ops_fault_ontology(*, force: bool = False) -> Dict[str, Any]:
     """Install fault-diagnosis it-ops.yaml into AIPLAT_HOME if Alert class missing.
 
-    Local `~/.aiplat/ontologies/it-ops.yaml` may be a different「IT运维知识」本体
-    (基础设施/配置项…). Path C demo needs 告警/服务/中间件/主机.
+    Args:
+        force: 是否强制。
     """
     src = _workspace_fault_it_ops_yaml()
     dest_dir = _aiplat_home() / "ontologies"
@@ -84,9 +84,14 @@ def seed_it_ops_demo_graph(
 ) -> Dict[str, Any]:
     """Write call-path (+ optional complex flood) into GraphIndex ``g``.
 
-    Profiles:
-      - minimal: cast-query → cast-action → redis @ host + one alert
-      - complex: B3.2 teaching topology (multi-alert, fork, noise) aligned to docs
+    Args:
+        g: g 参数。
+        profile: 评测 profile。
+        primary_alert_id: primary_alert 标识。
+        primary_alert_name: primary_alert_name 参数。
+        primary_state: primary_state 参数。
+        source_doc_id: source_doc 标识。
+        ensure_ontology: ensure_ontology 参数。
     """
     onto_meta: Dict[str, Any] = {}
     if ensure_ontology:
@@ -246,11 +251,11 @@ def import_it_ops_alert_payload(
 ) -> Dict[str, Any]:
     """Path B: write monitor/JSON payload into GraphIndex with class/rel checks.
 
-    Delegates to domain-configurable ``import_abox_payload`` (connector allowlists).
-    Expected payload shape (see fixtures/it_ops_alert_import_sample.json):
-      entities: [{id, name, class, state?, props?}, ...]
-      relations: [{from, to, rel, label?}, ...]
-      primary_alert_id?, default_root?
+    Args:
+        g: g 参数。
+        payload: 载荷 dict。
+        source_doc_id: source_doc 标识。
+        ensure_ontology: ensure_ontology 参数。
     """
     from core.apps.fde.service.abox_connector import import_abox_payload
 

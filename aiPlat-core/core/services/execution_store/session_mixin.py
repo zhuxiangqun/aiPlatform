@@ -20,6 +20,16 @@ class SessionMixin:
         metadata: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """创建 memory_session。
+
+        Args:
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+            agent_type: agent_type 参数。
+            session_type: session_type 参数。
+            metadata: metadata 参数。
+            session_id: 会话 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -88,6 +98,20 @@ class SessionMixin:
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """add_memory_message。
+
+        Args:
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
+            user_id: 用户 ID。
+            role: role 参数。
+            content: content 参数。
+            sensitivity: sensitivity 参数。
+            source_run_id: source_run 标识。
+            metadata: metadata 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -195,6 +219,14 @@ class SessionMixin:
     async def list_memory_sessions(
         self, *, tenant_id: Optional[str] = None, user_id: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
+        """列出 memory_sessions。
+
+        Args:
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -230,6 +262,11 @@ class SessionMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def get_memory_session(self, *, session_id: str) -> Optional[Dict[str, Any]]:
+        """获取 memory_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -248,6 +285,11 @@ class SessionMixin:
         return {**row, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def delete_memory_session(self, *, session_id: str) -> bool:
+        """删除 memory_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -270,6 +312,14 @@ class SessionMixin:
     async def list_memory_messages(
         self, *, session_id: str, tenant_id: Optional[str] = None, limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
+        """列出 memory_messages。
+
+        Args:
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -321,6 +371,15 @@ class SessionMixin:
         limit: int = 10,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """search_memory_messages。
+
+        Args:
+            query: 查询。
+            user_id: 用户 ID。
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

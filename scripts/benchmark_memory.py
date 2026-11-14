@@ -42,7 +42,11 @@ def collect_compression_stats() -> dict:
 
 
 def compute_metrics(stats_data: dict) -> dict:
-    """Compute compression efficiency metrics from raw stats."""
+    """Compute compression efficiency metrics from raw stats.
+
+    Args:
+        stats_data: stats_data 参数。
+    """
     samples = stats_data.get("raw_stats", [])
     if not samples or len(samples) < 2:
         return {"error": f"insufficient samples ({len(samples)}, need ≥2)"}
@@ -64,6 +68,8 @@ def compute_metrics(stats_data: dict) -> dict:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Memory compression benchmark")
     parser.add_argument("--ci", action="store_true", help="CI mode: regression check")
     parser.add_argument("--json", action="store_true", help="JSON output")

@@ -28,7 +28,11 @@ def _pass_of(label_row: Dict[str, Any]) -> Optional[bool]:
 
 
 def cohen_kappa_binary(pairs: List[Tuple[bool, bool]]) -> Dict[str, Any]:
-    """Cohen's κ for binary (pass/fail) paired ratings. Empty → null κ."""
+    """Cohen's κ for binary (pass/fail) paired ratings. Empty → null κ.
+
+    Args:
+        pairs: 对照样本序列。
+    """
     n = len(pairs)
     if n == 0:
         return {
@@ -66,6 +70,12 @@ def cohen_kappa_binary(pairs: List[Tuple[bool, bool]]) -> Dict[str, Any]:
 
 
 def g2c_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> Dict[str, Any]:
+    """g2c_status。
+
+    Args:
+        tenant_id: 租户 ID。
+        db_path: 路径。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     g2a = g2a_status(tenant_id=tenant_id, db_path=db_path)
     set_id = str(g2a.get("set_id") or "")
@@ -117,7 +127,13 @@ def list_g2c_retest_queue(
     limit: int = 100,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Adjudicated primary labels that still lack a g2c_retest label."""
+    """Adjudicated primary labels that still lack a g2c_retest label.
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        db_path: 路径。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     st = g2c_status(tenant_id=tenant_id, db_path=db_path)
     set_id = str(st.get("set_id") or "")
@@ -163,7 +179,16 @@ def record_g2c_retest(
     tenant_id: str = "eval-v1",
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Record same-annotator blind retest (does not adjudicate; not a second annotator)."""
+    """Record same-annotator blind retest (does not adjudicate; not a second annotator).
+
+    Args:
+        task_id: task 标识。
+        passed: passed 参数。
+        notes: notes 参数。
+        rationale: rationale 参数。
+        tenant_id: 租户 ID。
+        db_path: 路径。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     existing = store.list_labels(annotator=G2C_RETEST_ANNOTATOR, limit=5000)
     for row in existing:
@@ -216,7 +241,13 @@ def compute_g2c_report(
     db_path: Optional[str] = None,
     persist: bool = True,
 ) -> Dict[str, Any]:
-    """Pair primary adjudicated vs g2c_retest → intra-rater agreement/κ."""
+    """Pair primary adjudicated vs g2c_retest → intra-rater agreement/κ.
+
+    Args:
+        tenant_id: 租户 ID。
+        db_path: 路径。
+        persist: persist 参数。
+    """
     import json
 
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)

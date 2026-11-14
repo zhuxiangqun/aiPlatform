@@ -50,6 +50,12 @@ class SubagentCoordinator:
     """
 
     def __init__(self, create_agent_fn=None, get_tool_registry_fn=None):
+        """初始化。
+
+        Args:
+            create_agent_fn: create_agent_fn 参数。
+            get_tool_registry_fn: get_tool_registry_fn 参数。
+        """
         self._registry = None
         self._active_instances: Dict[str, SubagentInstance] = {}
         self._create_agent_fn = create_agent_fn
@@ -67,7 +73,11 @@ class SubagentCoordinator:
         return sorted(self._providers.keys())
 
     def get_provider(self, name: str = ""):
-        """Get a provider by name (default: AIPLAT_SUBAGENT_PROVIDER or in_process)."""
+        """Get a provider by name (default: AIPLAT_SUBAGENT_PROVIDER or in_process).
+
+        Args:
+            name: name 参数。
+        """
         if not self._providers:
             self.list_providers()
         if not name:
@@ -91,7 +101,13 @@ class SubagentCoordinator:
         session_id: str,
         custom_config: Optional[SubagentConfig] = None
     ) -> SubagentInstance:
-        """Create a new Subagent instance"""
+        """Create a new Subagent instance。
+
+        Args:
+            name: name 参数。
+            session_id: 会话 ID。
+            custom_config: custom_config 参数。
+        """
         registry = await self._get_registry()
         
         if custom_config:
@@ -122,10 +138,12 @@ class SubagentCoordinator:
     ) -> SubagentResult:
         """Execute a single Subagent via a conversational AI agent.
 
-        Creates a lightweight conversational agent from the subagent config,
-        binds allowed tools, executes the task, and returns a summarized
-        result (max ~800 chars per §5.26 Subagent 摘要原则).
-        Production coerces isolate_context=True (subagent_discipline).
+        Args:
+            task: task 参数。
+            subagent_name: subagent_name 参数。
+            context: context 参数。
+            isolate_context: isolate_context 参数。
+            read_only_context: read_only_context 参数。
         """
         start_time = datetime.now(timezone.utc)
         try:
@@ -315,11 +333,9 @@ class SubagentCoordinator:
     ) -> SubagentResult:
         """Continue a settled subagent via its retained agent (DSH continuable).
 
-        复用 execute_single 创建的 conversational agent：向同一会话追加
-        用户消息后重新执行——保留多轮上下文（conversational agent 的
-        _conversation_history 天然支持）。instance_id 格式 "inproc:{name}"。
-
-        Fail-loud：未知 instance / agent 不可续 → 返回错误（不静默）。
+        Args:
+            instance_id: instance 标识。
+            message: message 参数。
         """
         if instance_id not in self._active_instances:
             return SubagentResult(
@@ -392,8 +408,11 @@ class SubagentCoordinator:
     ) -> SubagentResult:
         """Execute a subagent via a named provider (P1-A3).
 
-        Default provider comes from AIPLAT_SUBAGENT_PROVIDER (in_process).
-        External providers (acp) run the subagent outside this process.
+        Args:
+            task: task 参数。
+            subagent_name: subagent_name 参数。
+            context: context 参数。
+            provider: provider 参数。
         """
         from .providers import ProviderResult
         prov = self.get_provider(provider)
@@ -503,9 +522,11 @@ class SubagentCoordinator:
     ) -> List[SubagentResult]:
         """Execute multiple Subagents in parallel.
 
-        ``provider`` (P1-A3): when non-empty, dispatch each subagent via the
-        named provider (e.g. ``acp`` external backend) instead of the default
-        in-process path. Empty → existing execute_single behavior (zero change).
+        Args:
+            task: task 参数。
+            subagent_names: subagent_names 参数。
+            context: context 参数。
+            provider: provider 参数。
         """
         if provider:
             from .providers import default_provider_name
@@ -540,7 +561,9 @@ class SubagentCoordinator:
     async def send_message(self, instance_id: str, message: str) -> SubagentResult:
         """Resume a settled subagent via its provider (DSH send_message tool).
 
-        Fails loud when the active provider lacks continuation capability.
+        Args:
+            instance_id: instance 标识。
+            message: message 参数。
         """
         from .providers import default_provider_name
 
@@ -573,7 +596,12 @@ class SubagentCoordinator:
         return status
 
     async def interrupt_instance(self, session_id: str, name: str) -> bool:
-        """Cancel a running subagent, delegating to its provider if available."""
+        """Cancel a running subagent, delegating to its provider if available.
+
+        Args:
+            session_id: 会话 ID。
+            name: name 参数。
+        """
         cancelled = await self.cancel_instance(session_id, name)
         if cancelled:
             return True
@@ -588,7 +616,13 @@ class SubagentCoordinator:
         subagent_names: List[str],
         context: Optional[List[Dict]] = None
     ) -> List[SubagentResult]:
-        """Execute multiple Subagents sequentially"""
+        """Execute multiple Subagents sequentially。
+
+        Args:
+            task: task 参数。
+            subagent_names: subagent_names 参数。
+            context: context 参数。
+        """
         results = []
         current_context = context or []
         
@@ -611,7 +645,13 @@ class SubagentCoordinator:
         subagent_names: List[str],
         context: Optional[List[Dict]] = None
     ) -> Dict[str, Any]:
-        """Execute with coordinator pattern - analyze task and dispatch"""
+        """Execute with coordinator pattern - analyze task and dispatch。
+
+        Args:
+            task: task 参数。
+            subagent_names: subagent_names 参数。
+            context: context 参数。
+        """
         # First, analyze task to determine dispatch strategy
         analysis = self._analyze_task(task)
         
@@ -636,7 +676,11 @@ class SubagentCoordinator:
         }
     
     def aggregate_results(self, results: List[SubagentResult]) -> Dict[str, Any]:
-        """Aggregate results from multiple Subagents"""
+        """Aggregate results from multiple Subagents。
+
+        Args:
+            results: results 参数。
+        """
         successful = [r for r in results if r.success]
         failed = [r for r in results if not r.success]
         
@@ -660,7 +704,12 @@ class SubagentCoordinator:
         }
     
     async def cancel_instance(self, session_id: str, name: str) -> bool:
-        """Cancel a running Subagent instance"""
+        """Cancel a running Subagent instance。
+
+        Args:
+            session_id: 会话 ID。
+            name: name 参数。
+        """
         key = f"{session_id}:{name}"
         if key in self._active_instances:
             self._active_instances[key].state = "cancelled"
@@ -677,7 +726,12 @@ _coordinator: Optional[SubagentCoordinator] = None
 
 
 def get_subagent_coordinator(create_agent_fn=None, get_tool_registry_fn=None) -> SubagentCoordinator:
-    """Get global Subagent coordinator. Optional DI callables for agent creation."""
+    """Get global Subagent coordinator. Optional DI callables for agent creation.
+
+    Args:
+        create_agent_fn: create_agent_fn 参数。
+        get_tool_registry_fn: get_tool_registry_fn 参数。
+    """
     global _coordinator
     if _coordinator is None:
         _coordinator = SubagentCoordinator(

@@ -46,10 +46,14 @@ STATE_CTA_KEY = "_friction_share_cta"
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
 def local_learnings_dir() -> Path:
+    """local_learnings_dir。
+    """
     d = aiplat_home() / "local" / "learnings"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -96,7 +100,13 @@ def note_regenerate(
     *,
     detail: str = "",
 ) -> Dict[str, Any]:
-    """Increment regenerate count; emit CTA when threshold reached (confirm/cooldown)."""
+    """Increment regenerate count; emit CTA when threshold reached (confirm/cooldown).
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        detail: detail 参数。
+    """
     store = _load_store()
     counts = store.setdefault("regenerate_counts", {})
     key = _rk(project_id, stage_id)
@@ -145,7 +155,15 @@ def record_friction_event(
     detail: str = "",
     confirmed: bool = False,
 ) -> Dict[str, Any]:
-    """Record a T4a/T4b friction signal; write local learning when allowed."""
+    """Record a T4a/T4b friction signal; write local learning when allowed.
+
+    Args:
+        signal: signal 参数。
+        project_id: project 标识。
+        stage_id: stage 标识。
+        detail: detail 参数。
+        confirmed: confirmed 参数。
+    """
     sig = str(signal or "").strip()
     if sig not in ALLOWED_SIGNALS:
         return {"ok": False, "error": f"unknown_signal:{sig}"}
@@ -223,7 +241,14 @@ def confirm_friction_share(
     signal: str = SIGNAL_REGENERATE,
     detail: str = "",
 ) -> Dict[str, Any]:
-    """User confirmed sharing a regenerate friction as local learning."""
+    """User confirmed sharing a regenerate friction as local learning.
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        signal: signal 参数。
+        detail: detail 参数。
+    """
     sig = str(signal or SIGNAL_REGENERATE).strip()
     if sig != SIGNAL_REGENERATE:
         # other signals already auto-drafted
@@ -243,13 +268,23 @@ def attach_friction_cta(
     state: MutableMapping[str, Any],
     cta: Optional[Mapping[str, Any]],
 ) -> None:
-    """Persist CTA on pipeline/project state for Factory polling."""
+    """Persist CTA on pipeline/project state for Factory polling.
+
+    Args:
+        state: state 参数。
+        cta: cta 参数。
+    """
     if not cta:
         return
     state[STATE_CTA_KEY] = dict(cta)
 
 
 def clear_friction_cta(state: MutableMapping[str, Any]) -> None:
+    """clear_friction_cta。
+
+    Args:
+        state: state 参数。
+    """
     state.pop(STATE_CTA_KEY, None)
 
 
@@ -261,7 +296,15 @@ def record_schema_gate_friction(
     detail: str = "",
     state: Optional[MutableMapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """T4b: map schema_gate_* audit actions → local friction learning."""
+    """T4b: map schema_gate_* audit actions → local friction learning.
+
+    Args:
+        action: action 参数。
+        project_id: project 标识。
+        stage_id: stage 标识。
+        detail: detail 参数。
+        state: state 参数。
+    """
     sig = str(action or "").strip()
     if sig not in T4B_SIGNALS - {SIGNAL_REPAIR_EXHAUSTED}:
         if sig.startswith("schema_gate_"):
@@ -277,6 +320,11 @@ def record_schema_gate_friction(
 
 
 def list_local_learnings(*, limit: int = 20) -> List[Dict[str, Any]]:
+    """列出 local_learnings。
+
+    Args:
+        limit: 返回条数上限。
+    """
     rows: List[Dict[str, Any]] = []
     root = local_learnings_dir()
     files = sorted(root.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)

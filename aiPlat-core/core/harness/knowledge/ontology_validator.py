@@ -22,6 +22,7 @@ import time as _time
 
 @dataclass
 class ValidationItem:
+    """ValidationItem。"""
     item_type: str            # orphan_page | missing_fields | orphan_node | state_mismatch | orphan_edge
     severity: str             # error | warning
     message: str
@@ -32,6 +33,7 @@ class ValidationItem:
 
 @dataclass
 class ValidationReport:
+    """ValidationReport。"""
     domain_id: str
     items: List[ValidationItem] = field(default_factory=list)
     summary: Dict[str, int] = field(default_factory=lambda: {
@@ -42,6 +44,11 @@ class ValidationReport:
     generated_at: float = 0.0
 
     def add(self, item: ValidationItem):
+        """add。
+
+        Args:
+            item: item 参数。
+        """
         self.items.append(item)
         key_map = {
             "orphan_page": "orphan_pages", "missing_fields": "missing_fields",
@@ -204,7 +211,11 @@ def _validate_graph_nodes(report: ValidationReport, domain, domain_id: str, home
 
 
 def validate_report_to_dict(report: ValidationReport) -> Dict[str, Any]:
-    """Serialize validation report for API response."""
+    """Serialize validation report for API response.
+
+    Args:
+        report: report 参数。
+    """
     return {
         "domain_id": report.domain_id,
         "summary": report.summary,

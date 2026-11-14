@@ -1,3 +1,5 @@
+"""apply_engine_skill_md_patch：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -20,6 +22,8 @@ class ApplyEngineSkillMdPatchSkill(BaseSkill):
     """
 
     def __init__(self):
+        """初始化。
+        """
         cfg = SkillConfig(
             name="skill_apply_engine_skill_md_patch",
             description="应用 engine skill 的 SKILL.md 补丁（来自 change-control changeset），用于变更治理闭环。",
@@ -38,6 +42,12 @@ class ApplyEngineSkillMdPatchSkill(BaseSkill):
         super().__init__(cfg)
 
     async def execute(self, context: SkillContext, params: Dict[str, Any]) -> SkillResult:
+        """execute。
+
+        Args:
+            context: context 参数。
+            params: params 参数。
+        """
         rt = get_kernel_runtime()
         store = getattr(rt, "execution_store", None) if rt else None
         if store is None:
@@ -129,4 +139,10 @@ class ApplyEngineSkillMdPatchSkill(BaseSkill):
 
 
 def build_skill(*args, **kwargs):
+    """build_skill。
+
+    Args:
+        args: args 参数。
+        kwargs: kwargs 参数。
+    """
     return ApplyEngineSkillMdPatchSkill()

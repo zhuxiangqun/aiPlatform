@@ -47,6 +47,11 @@ class KanbanEngine:
 
     def __init__(self, db_path: str = "~/.aiplat/kanban.db"):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = os.path.expanduser(db_path)
 
         self._lock = threading.Lock()
@@ -137,6 +142,17 @@ class KanbanEngine:
 
                     scheduled_at: str | None = None, metadata: dict | None = None) -> str:
 
+        """创建 task。
+
+        Args:
+            profile_id: profile 标识。
+            title: title 参数。
+            description: description 参数。
+            depends_on: depends_on 参数。
+            priority: priority 参数。
+            scheduled_at: scheduled_at 参数。
+            metadata: metadata 参数。
+        """
         task_id = str(uuid.uuid4())[:8]
 
         now = datetime.now(timezone.utc).isoformat()
@@ -171,6 +187,13 @@ class KanbanEngine:
 
     def transition_task(self, task_id: str, to_status: str, reason: str = "") -> bool:
 
+        """transition_task。
+
+        Args:
+            task_id: task 标识。
+            to_status: to_status 参数。
+            reason: reason 参数。
+        """
         valid_transitions = {
 
             "pending": ["todo"],
@@ -317,6 +340,12 @@ class KanbanEngine:
 
     def list_tasks(self, profile_id: str, status: str | None = None) -> list[dict]:
 
+        """列出 tasks。
+
+        Args:
+            profile_id: profile 标识。
+            status: status 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -345,6 +374,11 @@ class KanbanEngine:
 
     def get_due_scheduled_tasks(self, profile_id: str) -> list[dict]:
 
+        """获取 due_scheduled_tasks。
+
+        Args:
+            profile_id: profile 标识。
+        """
         now = datetime.now(timezone.utc).isoformat()
 
         with self._lock:
@@ -385,6 +419,12 @@ class CronScheduler:
 
     def __init__(self, kanban: KanbanEngine, poll_interval: int = 60):
 
+        """初始化。
+
+        Args:
+            kanban: kanban 参数。
+            poll_interval: poll_interval 参数。
+        """
         self.kanban = kanban
 
         self.poll_interval = poll_interval
@@ -399,7 +439,11 @@ class CronScheduler:
 
     def set_exec_hook(self, hook):
 
-        """Set async callback: hook(kanban, task_dict) -> None"""
+        """Set async callback: hook(kanban, task_dict) -> None。
+
+        Args:
+            hook: hook 参数。
+        """
 
         self._exec_hook = hook
 
@@ -407,6 +451,8 @@ class CronScheduler:
 
     async def start(self):
 
+        """start。
+        """
         self._running = True
 
         while self._running:
@@ -440,6 +486,8 @@ class CronScheduler:
 
     def stop(self):
 
+        """stop。
+        """
         self._running = False
 
 
@@ -458,6 +506,8 @@ _scheduler: Optional[CronScheduler] = None
 
 def get_kanban() -> KanbanEngine:
 
+    """获取 kanban。
+    """
     global _kanban
 
     if _kanban is None:
@@ -472,6 +522,11 @@ def get_kanban() -> KanbanEngine:
 
 async def get_scheduler(poll_interval: int = 60) -> CronScheduler:
 
+    """获取 scheduler。
+
+    Args:
+        poll_interval: poll_interval 参数。
+    """
     global _scheduler
 
     if _scheduler is None:
@@ -506,6 +561,11 @@ class CrossProfileOrchestrator:
 
     def __init__(self, kanban: KanbanEngine):
 
+        """初始化。
+
+        Args:
+            kanban: kanban 参数。
+        """
         self.kanban = kanban
 
         self._resources: dict[str, dict] = {}  # resource_id → {owner, status}
@@ -516,7 +576,13 @@ class CrossProfileOrchestrator:
 
                                   target_title: str) -> str:
 
-        """Create a dependent task in another profile that blocks source until done."""
+        """Create a dependent task in another profile that blocks source until done.
+
+        Args:
+            source_task_id: source_task 标识。
+            target_profile: target_profile 参数。
+            target_title: target_title 参数。
+        """
 
         target_id = self.kanban.create_task(target_profile, target_title, priority=1)
 
@@ -544,7 +610,13 @@ class CrossProfileOrchestrator:
 
     def negotiate_resource(self, resource_id: str, profile_id: str, action: str = "acquire") -> str:
 
-        """Acquire or release a shared resource across profiles."""
+        """Acquire or release a shared resource across profiles.
+
+        Args:
+            resource_id: resource 标识。
+            profile_id: profile 标识。
+            action: action 参数。
+        """
 
         if action == "acquire":
 

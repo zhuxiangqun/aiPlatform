@@ -98,6 +98,11 @@ class TriAgentGraph:
     """
 
     def __init__(self, config: Optional[TriAgentConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or self._default_config()
         self._graph = None
         self._planner = None

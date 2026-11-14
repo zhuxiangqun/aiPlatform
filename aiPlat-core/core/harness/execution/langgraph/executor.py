@@ -29,7 +29,12 @@ class IGraphExecutor(ABC):
 
     @abstractmethod
     async def execute(self, graph: Any, initial_state: Dict[str, Any]) -> Any:
-        """Execute graph"""
+        """Execute graph。
+
+        Args:
+            graph: graph 参数。
+            initial_state: initial_state 参数。
+        """
         pass
 
     @abstractmethod
@@ -39,7 +44,13 @@ class IGraphExecutor(ABC):
         initial_state: Dict[str, Any],
         config: ExecutorConfig
     ) -> Any:
-        """Execute graph with config"""
+        """Execute graph with config。
+
+        Args:
+            graph: graph 参数。
+            initial_state: initial_state 参数。
+            config: config 参数。
+        """
         pass
 
 
@@ -49,10 +60,20 @@ class LangGraphExecutor(IGraphExecutor):
     """
 
     def __init__(self, config: Optional[ExecutorConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or ExecutorConfig()
 
     async def execute(self, graph: Any, initial_state: Dict[str, Any]) -> Any:
-        """Execute graph"""
+        """Execute graph。
+
+        Args:
+            graph: graph 参数。
+            initial_state: initial_state 参数。
+        """
         return await self.execute_with_config(graph, initial_state, self._config)
 
     async def execute_with_config(
@@ -61,7 +82,13 @@ class LangGraphExecutor(IGraphExecutor):
         initial_state: Dict[str, Any],
         config: ExecutorConfig
     ) -> Any:
-        """Execute graph with config and retry logic."""
+        """Execute graph with config and retry logic.
+
+        Args:
+            graph: graph 参数。
+            initial_state: initial_state 参数。
+            config: config 参数。
+        """
         last_error = None
         for attempt in range(max(1, config.max_retries)):
             try:

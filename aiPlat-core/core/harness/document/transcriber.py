@@ -70,8 +70,10 @@ def transcribe_audio_chunked(
 ) -> List[Dict[str, Any]]:
     """Split audio into chunks, transcribe each, merge with corrected timestamps.
 
-    Used as a fallback when full-audio transcription has low coverage
-    (indicating ffmpeg timeout or Whisper failure on long audio).
+    Args:
+        audio_path: audio_path 参数。
+        language: language 参数。
+        chunk_seconds: chunk_seconds 参数。
     """
     tmpdir = tempfile.mkdtemp(prefix="whisper_chunks_")
     try:

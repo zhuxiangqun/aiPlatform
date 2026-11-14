@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 
 class SchemaVerdict(str, Enum):
 
+    """SchemaVerdict。"""
     PASS = "pass"
 
     FAIL = "fail"
@@ -50,6 +51,7 @@ class SchemaVerdict(str, Enum):
 
 class SchemaResult:
 
+    """SchemaResult。"""
     verdict: SchemaVerdict
 
     errors: List[str] = field(default_factory=list)
@@ -400,6 +402,8 @@ _schema_instance: Optional[SchemaGate] = None
 
 def get_schema_gate() -> SchemaGate:
 
+    """获取 schema_gate。
+    """
     global _schema_instance
 
     if _schema_instance is None:

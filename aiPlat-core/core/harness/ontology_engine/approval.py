@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ApprovalComment:
+    """ApprovalComment。"""
     actor_id: str
     text: str
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -32,6 +33,7 @@ class ApprovalComment:
 
 @dataclass
 class ApprovalRecord:
+    """ApprovalRecord。"""
     id: str
     entity_id: str
     entity_type: str
@@ -47,9 +49,17 @@ class ApprovalRecord:
 
     @property
     def is_pending(self) -> bool:
+        """is_pending。
+        """
         return self.status == "pending"
 
     def approve(self, actor_id: str, comment: str = ""):
+        """approve。
+
+        Args:
+            actor_id: actor 标识。
+            comment: comment 参数。
+        """
         self.status = "approved"
         self.resolved_at = datetime.now(timezone.utc).isoformat()
         if comment:
@@ -57,6 +67,12 @@ class ApprovalRecord:
                                   "timestamp": datetime.now(timezone.utc).isoformat()})
 
     def reject(self, actor_id: str, reason: str = ""):
+        """reject。
+
+        Args:
+            actor_id: actor 标识。
+            reason: reason 参数。
+        """
         self.status = "rejected"
         self.resolved_at = datetime.now(timezone.utc).isoformat()
         if reason:
@@ -68,16 +84,35 @@ class ApprovalPersistence:
     """In-memory approval record storage with optional SQLite backing."""
 
     def __init__(self):
+        """初始化。
+        """
         self._records: Dict[str, ApprovalRecord] = {}
 
     async def save(self, record: ApprovalRecord):
+        """save。
+
+        Args:
+            record: record 参数。
+        """
         self._records[record.id] = record
 
     async def get(self, record_id: str) -> Optional[ApprovalRecord]:
+        """get。
+
+        Args:
+            record_id: record 标识。
+        """
         return self._records.get(record_id)
 
     async def get_pending(self, assignee: str = None, group: str = None,
                           timeout_hours: int = None) -> List[ApprovalRecord]:
+        """获取 pending。
+
+        Args:
+            assignee: assignee 参数。
+            group: group 参数。
+            timeout_hours: timeout_hours 参数。
+        """
         results = []
         for r in self._records.values():
             if r.status != "pending":
@@ -95,6 +130,11 @@ class ApprovalPersistence:
         return sorted(results, key=lambda r: r.created_at)
 
     async def list_by_entity(self, entity_id: str) -> List[ApprovalRecord]:
+        """列出 by_entity。
+
+        Args:
+            entity_id: entity 标识。
+        """
         return [r for r in self._records.values() if r.entity_id == entity_id]
 
 
@@ -113,6 +153,13 @@ class ApprovalWorkflow:
         alert_channel: str = "none",
         timeout_hours: int = 48,
     ):
+        """初始化。
+
+        Args:
+            persistence: persistence 参数。
+            alert_channel: alert_channel 参数。
+            timeout_hours: timeout_hours 参数。
+        """
         self._persistence = persistence or ApprovalPersistence()
         self._alert_channel = alert_channel
         self._timeout_hours = timeout_hours
@@ -127,7 +174,16 @@ class ApprovalWorkflow:
         assignee: str = None,
         assignee_group: str = "ontology_admins",
     ) -> ApprovalRecord:
-        """Submit an entity for approval."""
+        """Submit an entity for approval.
+
+        Args:
+            entity_id: entity 标识。
+            proposed_state: proposed_state 参数。
+            entity_type: entity_type 参数。
+            current_state: current_state 参数。
+            assignee: assignee 参数。
+            assignee_group: assignee_group 参数。
+        """
         if not assignee:
             assignee = await self._resolve_default_assignee(assignee_group)
 
@@ -146,7 +202,13 @@ class ApprovalWorkflow:
         return record
 
     async def approve(self, record_id: str, actor_id: str, comment: str = "") -> ApprovalRecord:
-        """Approve and execute state transition."""
+        """Approve and execute state transition.
+
+        Args:
+            record_id: record 标识。
+            actor_id: actor 标识。
+            comment: comment 参数。
+        """
         record = await self._persistence.get(record_id)
         if not record:
             raise ValueError(f"Approval record not found: {record_id}")
@@ -162,7 +224,13 @@ class ApprovalWorkflow:
         return record
 
     async def reject(self, record_id: str, actor_id: str, reason: str = "") -> ApprovalRecord:
-        """Reject — entity returns to DRAFT."""
+        """Reject — entity returns to DRAFT.
+
+        Args:
+            record_id: record 标识。
+            actor_id: actor 标识。
+            reason: reason 参数。
+        """
         record = await self._persistence.get(record_id)
         if not record:
             raise ValueError(f"Approval record not found: {record_id}")
@@ -180,7 +248,13 @@ class ApprovalWorkflow:
     async def request_changes(
         self, record_id: str, actor_id: str, comment: str
     ) -> ApprovalRecord:
-        """Request changes — stays UNDER_REVIEW, notifies submitter."""
+        """Request changes — stays UNDER_REVIEW, notifies submitter.
+
+        Args:
+            record_id: record 标识。
+            actor_id: actor 标识。
+            comment: comment 参数。
+        """
         record = await self._persistence.get(record_id)
         if not record:
             raise ValueError(f"Approval record not found: {record_id}")
@@ -193,6 +267,12 @@ class ApprovalWorkflow:
         return record
 
     async def get_pending(self, assignee: str = None, group: str = None) -> List[ApprovalRecord]:
+        """获取 pending。
+
+        Args:
+            assignee: assignee 参数。
+            group: group 参数。
+        """
         return await self._persistence.get_pending(assignee=assignee, group=group)
 
     async def check_timeout(self) -> List[ApprovalRecord]:
@@ -256,7 +336,12 @@ def get_approval_workflow(
     alert_channel: str = "",
     timeout_hours: int = 0,
 ) -> ApprovalWorkflow:
-    """Get or create the singleton ApprovalWorkflow."""
+    """Get or create the singleton ApprovalWorkflow.
+
+    Args:
+        alert_channel: alert_channel 参数。
+        timeout_hours: timeout_hours 参数。
+    """
     global _workflow_instance
     if _workflow_instance is None:
         ch = alert_channel or os.getenv("AIPLAT_ALERT_CHANNEL", "none")

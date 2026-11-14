@@ -65,7 +65,11 @@ TIER_ORDER = {TIER_CORE: 3, TIER_LOGIC: 2, TIER_EDGE: 1}  # 数值越大越"承�
 
 
 def normalize_tier(value: Any) -> str:
-    """Normalize a raw YAML tier value to one of VALID_TIERS; unknown → logic."""
+    """Normalize a raw YAML tier value to one of VALID_TIERS; unknown → logic.
+
+    Args:
+        value: value 参数。
+    """
     if isinstance(value, str) and value.strip().lower() in VALID_TIERS:
         return value.strip().lower()
     return TIER_LOGIC
@@ -607,6 +611,7 @@ AXIOMS: List[OntologyAxiom] = [
 
 @dataclass
 class SchemaValidationResult:
+    """SchemaValidationResult。"""
     is_valid: bool
     class_uri: str
     class_label: str
@@ -620,8 +625,8 @@ class SchemaValidationResult:
 def get_class_by_category(category: str) -> Optional[OntologyClass]:
     """Map Wiki category string → most specific OntologyClass with that category.
 
-    Prefers the class with more constraints (required_fields count) and
-    fewer categories (more specific).
+    Args:
+        category: category 参数。
     """
     candidates = [cls for cls in CLASSES if category in cls.allowed_categories]
     
@@ -680,8 +685,8 @@ def _extension_path(collection_id: str):
 def load_collection_extension(collection_id: str) -> Optional[Dict]:
     """Load per-collection T-Box extension YAML. Returns None if not found.
 
-    Cached in memory after first load (invalidate on file change via mtime check).
-    collection_id="default" always returns None (no extension for default).
+    Args:
+        collection_id: collection 标识。
     """
     if collection_id == "default":
         return None
@@ -709,8 +714,9 @@ def load_collection_extension(collection_id: str) -> Optional[Dict]:
 def get_extended_class(category: str, collection_id: str = "default") -> Optional[OntologyClass]:
     """Get the T-Box class for a category, merged with collection extension.
 
-    Returns a NEW OntologyClass instance with merged required/optional fields.
-    Original CLASSES list is never modified.
+    Args:
+        category: category 参数。
+        collection_id: collection 标识。
     """
     base = get_class_by_category(category)
     if base is None:
@@ -840,8 +846,11 @@ def build_atom_extraction_prompt(doc_text: str, doc_id: str, *,
                                   max_length: int = 12000) -> str:
     """Build KnowledgeAtom-level extraction prompt for LLM-driven KB→Wiki conversion.
 
-    Returns a structured prompt instructing the LLM to extract atoms with
-    precise evidence positions, confidence scores, and contradiction markers.
+    Args:
+        doc_text: doc_text 参数。
+        doc_id: doc 标识。
+        max_atoms: max_atoms 参数。
+        max_length: max_length 参数。
     """
     atom_cls = get_class_by_category("atoms")
     if not atom_cls:
@@ -896,24 +905,44 @@ class KnowledgeOntology:
     triples: List[OntologyTriple] = field(default_factory=list)
 
     def get_class(self, uri: str) -> Optional[OntologyClass]:
+        """获取 class。
+
+        Args:
+            uri: uri 参数。
+        """
         for c in self.classes:
             if c.uri == uri:
                 return c
         return None
 
     def get_property(self, uri: str):
+        """获取 property。
+
+        Args:
+            uri: uri 参数。
+        """
         for p in self.object_properties + self.data_properties:
             if p.uri == uri:
                 return p
         return None
 
     def get_axiom(self, axiom_id: str) -> Optional[OntologyAxiom]:
+        """获取 axiom。
+
+        Args:
+            axiom_id: axiom 标识。
+        """
         for a in self.axioms:
             if a.id == axiom_id:
                 return a
         return None
 
     def get_class_by_label(self, label: str) -> Optional[OntologyClass]:
+        """获取 class_by_label。
+
+        Args:
+            label: label 参数。
+        """
         for c in self.classes:
             if c.label == label:
                 return c
@@ -1107,7 +1136,11 @@ def _suggestions_path(collection_id: str = "default") -> str:
 
 
 def load_pending_suggestions(collection_id: str = "default") -> List[Dict[str, Any]]:
-    """Load all suggestions from the tracking file."""
+    """Load all suggestions from the tracking file.
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _suggestions_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -1121,7 +1154,12 @@ def load_pending_suggestions(collection_id: str = "default") -> List[Dict[str, A
 
 
 def save_suggestions(suggestions: List[Dict[str, Any]], collection_id: str = "default") -> None:
-    """Write suggestions to the tracking file."""
+    """Write suggestions to the tracking file.
+
+    Args:
+        suggestions: suggestions 参数。
+        collection_id: collection 标识。
+    """
     path = _suggestions_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
@@ -1133,7 +1171,13 @@ def save_suggestions(suggestions: List[Dict[str, Any]], collection_id: str = "de
 
 
 def accept_suggestion(suggestion_id: str, reviewer: str = "", *, collection_id: str = "default") -> Optional[Dict]:
-    """Mark a suggestion as accepted. Does NOT modify any code."""
+    """Mark a suggestion as accepted. Does NOT modify any code.
+
+    Args:
+        suggestion_id: suggestion 标识。
+        reviewer: reviewer 参数。
+        collection_id: collection 标识。
+    """
     suggestions = load_pending_suggestions(collection_id)
     for s in suggestions:
         if s.get("id") == suggestion_id:
@@ -1146,7 +1190,14 @@ def accept_suggestion(suggestion_id: str, reviewer: str = "", *, collection_id: 
 
 
 def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", *, collection_id: str = "default") -> Optional[Dict]:
-    """Mark a suggestion as rejected with optional reason."""
+    """Mark a suggestion as rejected with optional reason.
+
+    Args:
+        suggestion_id: suggestion 标识。
+        reason: reason 参数。
+        reviewer: reviewer 参数。
+        collection_id: collection 标识。
+    """
     suggestions = load_pending_suggestions(collection_id)
     for s in suggestions:
         if s.get("id") == suggestion_id:
@@ -1162,9 +1213,9 @@ def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", 
 def generate_code_for_suggestion(suggestion_id: str, *, collection_id: str = "default") -> Dict[str, Any]:
     """Generate Python code block for implementing an accepted suggestion.
 
-    Uses template-based code generation (NOT LLM). Each suggestion type maps
-    to a deterministic code template. The generated code is for human review
-    only — it never writes to disk.
+    Args:
+        suggestion_id: suggestion 标识。
+        collection_id: collection 标识。
     """
     suggestions = load_pending_suggestions(collection_id)
     suggestion = next((s for s in suggestions if s.get("id") == suggestion_id), None)
@@ -1255,11 +1306,10 @@ def add_suggestions_from_patterns(
 ) -> List[Dict[str, Any]]:
     """Generate ontology suggestions from detected patterns.
 
-    Tier 1: Rule-based analysis of OntologyPatterns (always).
-    Tier 2: LLM-driven semantic suggestions (opt-in via include_llm=True).
-
-    For LLM-powered suggestions standalone, call:
-      POST /ontology/suggestions/semantic  (uses knowledge_evolution_llm.generate_semantic_suggestions)
+    Args:
+        collection_id: collection 标识。
+        include_llm: include_llm 参数。
+        max_llm_suggestions: max_llm_suggestions 参数。
     """
     from core.harness.knowledge.knowledge_validator import detect_ontology_patterns
     patterns = detect_ontology_patterns(collection_id)
@@ -1366,13 +1416,12 @@ def add_suggestions_from_patterns(
 def check_key_discrimination(
     title: str, summary: str = "", *, collection_id: str = "default"
 ) -> Tuple[bool, List[str]]:
-    u"""A8: Check that a new entity's key has sufficient discrimination from existing ones.
+    """A8: Check that a new entity's key has sufficient discrimination from existing ones.
 
-    Uses cosine similarity of hash embeddings (zero-dependency, deterministic).
-    Returns (ok, warnings) — ok=False means similarity > 0.85 with an existing entity.
-
-    From Neuron 2025 KV-memory paper: hippocampus enforces 'repulsion' to maximize
-    key distinctness. This is the computational equivalent.
+    Args:
+        title: title 参数。
+        summary: summary 参数。
+        collection_id: collection 标识。
     """
     from core.harness.knowledge.embedder import hash_embed, cosine_similarity
     from core.harness.knowledge.knowledge_abox_builder import _scan_wiki_pages
@@ -1401,8 +1450,8 @@ def check_key_discrimination(
 def check_schema_readiness(collection_id: str = "default"):
     """Scan all wiki pages and report ERROR-mode schema compliance.
 
-    Returns a readiness report showing which pages would be rejected
-    if AIPLAT_WIKI_SCHEMA_MODE=error were enabled.
+    Args:
+        collection_id: collection 标识。
     """
     from core.harness.knowledge.wiki_engine import search_pages, read_page
     all_pages = search_pages(limit=10000, collection_id=collection_id)
@@ -1469,8 +1518,8 @@ _SYNONYM_MAP = None  # Optional[Dict[str, str]] — {synonym → canonical_term}
 def load_synonyms(path: str = "") -> Dict[str, str]:
     """Load synonym groups from YAML. Returns {synonym → canonical_term}.
 
-    Loads from ~/.aiplat/synonyms.yaml by default.
-    Each group's first term is the canonical/preferred label.
+    Args:
+        path: 路径。
     """
     global _SYNONYM_MAP
     if _SYNONYM_MAP is not None:
@@ -1503,8 +1552,8 @@ def load_synonyms(path: str = "") -> Dict[str, str]:
 def expand_query_with_synonyms(query: str) -> List[str]:
     """Expand a search query with synonym variants (bidirectional).
 
-    Both synonyms → canonical AND canonical → synonyms expansions.
-    Returns list of [original_query, expansions, ...] for OR-matching.
+    Args:
+        query: 查询。
     """
     synonyms = load_synonyms()
     if not synonyms:
@@ -1532,6 +1581,8 @@ def expand_query_with_synonyms(query: str) -> List[str]:
 
 
 def reset_synonyms() -> None:
+    """reset_synonyms。
+    """
     global _SYNONYM_MAP
     _SYNONYM_MAP = None
 
@@ -1571,9 +1622,9 @@ def export_suggestions_to_owl(collection_id: str = "default",
                               format: str = "turtle") -> str:
     """Ontology learning output: pending suggestions → standard OWL/Turtle.
 
-    Same prefixes/serialization conventions as export_to_owl_rdf; only the
-    learned T-Box (classes + properties) is emitted — ABox triples are not
-    part of the learning output.
+    Args:
+        collection_id: collection 标识。
+        format: format 参数。
     """
     suggestions = load_pending_suggestions(collection_id)
     lines = [
@@ -1630,9 +1681,9 @@ def write_suggestions_owl_file(collection_id: str = "default",
                                format: str = "turtle") -> Optional[str]:
     """Persist learned suggestions as an OWL/Turtle file under ~/.aiplat/ontologies/.
 
-    Returns the file path, or None when there is nothing to write (no pending
-    class/property suggestions). The file is named {collection_id}.learned.ttl
-    so it can be reviewed, imported (ontology_importer) or loaded by Protégé.
+    Args:
+        collection_id: collection 标识。
+        format: format 参数。
     """
     ttl = export_suggestions_to_owl(collection_id, format=format)
     if "owl:Class" not in ttl:

@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OntologyScene:
+    """OntologyScene。"""
     scene_id: str                          # unique identifier, e.g. "supply_chain_mrp"
     name: str = ""                         # human-readable name
     description: str = ""                  # what business problem this solves
@@ -70,6 +71,8 @@ class OntologyScene:
     tags: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "scene_id": self.scene_id,
             "name": self.name,
@@ -87,6 +90,11 @@ class OntologyScene:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OntologyScene":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             scene_id=data.get("scene_id", ""),
             name=data.get("name", ""),
@@ -178,6 +186,11 @@ def _scene_path(collection_id: str = "default") -> str:
 
 
 def list_scenes(collection_id: str = "default") -> List[OntologyScene]:
+    """列出 scenes。
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _scene_path(collection_id)
     if not _os.path.exists(path):
         return []
@@ -189,6 +202,12 @@ def list_scenes(collection_id: str = "default") -> List[OntologyScene]:
 
 
 def get_scene(scene_id: str, *, collection_id: str = "default") -> Optional[OntologyScene]:
+    """获取 scene。
+
+    Args:
+        scene_id: scene 标识。
+        collection_id: collection 标识。
+    """
     scenes = list_scenes(collection_id)
     for s in scenes:
         if s.scene_id == scene_id:
@@ -197,6 +216,12 @@ def get_scene(scene_id: str, *, collection_id: str = "default") -> Optional[Onto
 
 
 def save_scene(scene: OntologyScene, *, collection_id: str = "default") -> OntologyScene:
+    """save_scene。
+
+    Args:
+        scene: scene 参数。
+        collection_id: collection 标识。
+    """
     scenes = list_scenes(collection_id)
     existing_idx = next((i for i, s in enumerate(scenes) if s.scene_id == scene.scene_id), None)
     scene.updated_at = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
@@ -218,6 +243,12 @@ def save_scene(scene: OntologyScene, *, collection_id: str = "default") -> Ontol
 
 
 def delete_scene(scene_id: str, *, collection_id: str = "default") -> bool:
+    """删除 scene。
+
+    Args:
+        scene_id: scene 标识。
+        collection_id: collection 标识。
+    """
     scenes = list_scenes(collection_id)
     before = len(scenes)
     scenes = [s for s in scenes if s.scene_id != scene_id]
@@ -240,10 +271,12 @@ def instantiate_scene(
     params: Optional[Dict[str, Any]] = None,
     collection_id: str = "default",
 ) -> Optional[Dict[str, Any]]:
-    u"""Instantiate a scene into a PipelineConfig dict.
+    """Instantiate a scene into a PipelineConfig dict.
 
-    Merges scene template nodes with user-provided parameter overrides.
-    Returns a dict compatible with PipelineConfig constructor.
+    Args:
+        scene_id: scene 标识。
+        params: params 参数。
+        collection_id: collection 标识。
     """
     scene = get_scene(scene_id, collection_id=collection_id)
     if scene is None:

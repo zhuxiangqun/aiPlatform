@@ -19,6 +19,7 @@ from collections import Counter
 
 @dataclass
 class KnowledgeGap:
+    """KnowledgeGap。"""
     query: str
     frequency: int
     gap_type: str  # "no_entity" | "no_instance" | "low_relevance"
@@ -27,6 +28,8 @@ class KnowledgeGap:
     suggestion: str = ""
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "query": self.query,
             "frequency": self.frequency,

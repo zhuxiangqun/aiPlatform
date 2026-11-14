@@ -63,6 +63,7 @@ logger = logging.getLogger("aiplat.abstract_goal_decomposer")
 
 class CapabilityMatch:
 
+    """CapabilityMatch。"""
     capability: str
 
     relevance: float
@@ -81,6 +82,7 @@ class CapabilityMatch:
 
 class DecomposeResult:
 
+    """DecomposeResult。"""
     abstract_goal: str
 
     triples: List[Tuple[str, str, str]] = field(default_factory=list)
@@ -123,6 +125,12 @@ class AbstractGoalDecomposer:
 
     def __init__(self, *, enabled: bool = False, max_sub_goals: int = 5):
 
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+            max_sub_goals: max_sub_goals 参数。
+        """
         self._enabled = enabled
 
         self._max_sub_goals = max_sub_goals
@@ -137,6 +145,8 @@ class AbstractGoalDecomposer:
 
     def enabled(self) -> bool:
 
+        """enabled。
+        """
         return self._enabled
 
 
@@ -145,6 +155,11 @@ class AbstractGoalDecomposer:
 
     def enabled(self, value: bool) -> None:
 
+        """enabled。
+
+        Args:
+            value: value 参数。
+        """
         self._enabled = value
 
 
@@ -163,10 +178,9 @@ class AbstractGoalDecomposer:
 
         """将抽象业务目标分解为子目标列表。
 
-
-
-        返回未分解的空结果（而不是报错）当 disabled 或输入为空时。
-
+        Args:
+            abstract_goal: abstract_goal 参数。
+            domain_id: domain 标识。
         """
 
         t0 = _time.monotonic()
@@ -711,6 +725,8 @@ class AbstractGoalDecomposer:
 
     def stats(self) -> Dict[str, Any]:
 
+        """stats。
+        """
         return {
 
             "enabled": self._enabled,
@@ -735,6 +751,8 @@ _abstract_goal_decomposer: Optional[AbstractGoalDecomposer] = None
 
 def get_abstract_goal_decomposer() -> AbstractGoalDecomposer:
 
+    """获取 abstract_goal_decomposer。
+    """
     global _abstract_goal_decomposer
 
     if _abstract_goal_decomposer is None:

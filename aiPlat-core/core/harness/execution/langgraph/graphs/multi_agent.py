@@ -49,6 +49,11 @@ class MultiAgentGraph:
     """
 
     def __init__(self, config: Optional[MultiAgentConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or MultiAgentConfig()
         self._agents: List[ReActGraph] = []
         self._graph = None

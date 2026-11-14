@@ -61,6 +61,7 @@ _LOGIC_DEF = re.compile(
 
 @dataclass
 class TestabilityFinding:
+    """TestabilityFinding。"""
     code: str
     message: str
     path: str = ""
@@ -69,6 +70,7 @@ class TestabilityFinding:
 
 @dataclass
 class TestabilityReport:
+    """TestabilityReport。"""
     ok: bool
     mode: str
     findings: List[TestabilityFinding] = field(default_factory=list)
@@ -77,6 +79,8 @@ class TestabilityReport:
     block_after: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "ok": self.ok,
             "mode": self.mode,
@@ -106,6 +110,11 @@ def _default_seed() -> Path:
 
 
 def load_testability_config(override: Optional[Mapping[str, Any]] = None) -> Tuple[Dict[str, Any], str]:
+    """load_testability_config。
+
+    Args:
+        override: override 参数。
+    """
     if isinstance(override, Mapping) and override:
         return dict(override), "override"
 
@@ -140,6 +149,12 @@ def _default_config() -> Dict[str, Any]:
 
 
 def resolve_mode(cfg: Mapping[str, Any], *, now: Optional[date] = None) -> str:
+    """resolve_mode。
+
+    Args:
+        cfg: cfg 参数。
+        now: now 参数。
+    """
     env = (os.getenv("AIPLAT_TESTABILITY_GATE_MODE") or "").strip().lower()
     if env in ("off", "warn", "block"):
         base = env
@@ -163,15 +178,30 @@ def resolve_mode(cfg: Mapping[str, Any], *, now: Optional[date] = None) -> str:
 
 
 def is_impure_test(content: str) -> bool:
+    """is_impure_test。
+
+    Args:
+        content: content 参数。
+    """
     text = str(content or "")
     return any(rx.search(text) for rx in _IMPURE_RES)
 
 
 def is_integration_marked(content: str) -> bool:
+    """is_integration_marked。
+
+    Args:
+        content: content 参数。
+    """
     return bool(_INTEGRATION_MARK.search(str(content or "")))
 
 
 def has_assertion(content: str) -> bool:
+    """has_assertion。
+
+    Args:
+        content: content 参数。
+    """
     return bool(_ASSERT_RE.search(str(content or "")))
 
 
@@ -238,10 +268,8 @@ def _merge_file_item(out: Dict[str, str], path: str, content: str) -> None:
 def collect_files_from_context(context: Mapping[str, Any]) -> Dict[str, str]:
     """Gather path→content from done_verify / pipeline context.
 
-    Sources (in order): explicit written_files maps, nested ``files=`` lists,
-    then factory ``## FILE:`` blocks via ``factory_bloat_metrics`` (coding
-    stages rarely populate ``_written_files`` — without this scrape the gate
-    silently no-ops).
+    Args:
+        context: context 参数。
     """
     out: Dict[str, str] = {}
     ctx = context if isinstance(context, Mapping) else {}
@@ -361,7 +389,13 @@ def evaluate_files(
     config: Optional[Mapping[str, Any]] = None,
     mode_override: str = "",
 ) -> TestabilityReport:
-    """Evaluate path→content map for handler pure-test coverage."""
+    """Evaluate path→content map for handler pure-test coverage.
+
+    Args:
+        files: files 参数。
+        config: config 参数。
+        mode_override: mode_override 参数。
+    """
     cfg, source = load_testability_config(override=config)
     mode = (mode_override or "").strip().lower()
     if mode not in ("off", "warn", "block"):
@@ -484,8 +518,10 @@ def enrich_files_from_workspace(
 ) -> Dict[str, str]:
     """Merge-time: pull existing pure tests from disk so handler edits aren't false-positives.
 
-    Only loads test_*.py / *_test.py under the same package tree or ``**/tests/**``
-    that reference the handler stem/parent name (bounded walk).
+    Args:
+        files: files 参数。
+        root: root 参数。
+        basenames: basenames 参数。
     """
     out: Dict[str, str] = {_norm_path(k): str(v or "") for k, v in (files or {}).items()}
     root = Path(root)
@@ -548,7 +584,14 @@ def evaluate_diff_snippets(
     mode_override: str = "",
     workspace_root: Optional[Path] = None,
 ) -> TestabilityReport:
-    """Merge-time helper: snippets from physical_merge_gates DiffStats (+ disk tests)."""
+    """Merge-time helper: snippets from physical_merge_gates DiffStats (+ disk tests).
+
+    Args:
+        added_snippets: added_snippets 参数。
+        config: config 参数。
+        mode_override: mode_override 参数。
+        workspace_root: workspace_root 参数。
+    """
     files = dict(added_snippets or {})
     if workspace_root is not None:
         cfg, _ = load_testability_config(override=config)
@@ -566,7 +609,11 @@ def evaluate_diff_snippets(
 
 
 def veto_reason_from_report(report: TestabilityReport) -> Optional[str]:
-    """For done_verify: return veto string when mode=block and findings exist."""
+    """For done_verify: return veto string when mode=block and findings exist.
+
+    Args:
+        report: report 参数。
+    """
     if report.mode == "off":
         return None
     if not report.findings:

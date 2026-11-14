@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional
 
 @dataclass
 class QualityResult:
+    """QualityResult。"""
     ok: bool
     score_delta: float     # [-1.0, +1.0] — how much to adjust quality_scores
     details: Dict[str, Any] = field(default_factory=dict)
@@ -35,7 +36,13 @@ class QualityValidator:
 
     @classmethod
     def validate(cls, purpose: str, response_text: str, context: dict = None) -> QualityResult:
-        """Validate LLM output for a given purpose. Returns QualityResult with score delta."""
+        """Validate LLM output for a given purpose. Returns QualityResult with score delta.
+
+        Args:
+            purpose: purpose 参数。
+            response_text: response_text 参数。
+            context: context 参数。
+        """
         if purpose not in cls.VALIDATORS:
             return QualityResult(ok=True, score_delta=0.0,
                                 details={"reason": "no_validator_for_purpose"})
@@ -175,17 +182,30 @@ class QualityTracker:
     """Persistent quality score tracking with EWMA (Exponential Weighted Moving Average)."""
 
     def __init__(self, alpha: float = 0.3):
-        """alpha: EWMA smoothing factor. Lower = smoother, slower to react."""
+        """alpha: EWMA smoothing factor. Lower = smoother, slower to react.
+
+        Args:
+            alpha: alpha 参数。
+        """
         self._alpha = alpha
         self._scores: Dict[str, Dict[str, float]] = {}  # model_name → {purpose: score}
 
     def initial_score(self, model_name: str) -> float:
-        """Cold-start bootstrap: give known-good models a slight initial advantage."""
+        """Cold-start bootstrap: give known-good models a slight initial advantage.
+
+        Args:
+            model_name: model_name 参数。
+        """
         trusted_prefixes = ["qwen", "deepseek", "gemma", "gpt", "claude"]
         return 0.05 if any(model_name.startswith(p) for p in trusted_prefixes) else 0.0
 
     def get(self, model_name: str, purpose: str) -> float:
-        """Get current quality score. Returns initial bootstrap if no history."""
+        """Get current quality score. Returns initial bootstrap if no history.
+
+        Args:
+            model_name: model_name 参数。
+            purpose: purpose 参数。
+        """
         if model_name not in self._scores:
             self._scores[model_name] = {}
         if purpose not in self._scores[model_name]:
@@ -193,11 +213,19 @@ class QualityTracker:
         return self._scores[model_name][purpose]
 
     def update(self, model_name: str, purpose: str, delta: float):
-        """Update score using EWMA: new = old * (1-α) + delta * α."""
+        """Update score using EWMA: new = old * (1-α) + delta * α.
+
+        Args:
+            model_name: model_name 参数。
+            purpose: purpose 参数。
+            delta: delta 参数。
+        """
         old = self.get(model_name, purpose)
         self._scores[model_name][purpose] = old * (1 - self._alpha) + delta * self._alpha
 
     def to_dict(self) -> Dict[str, Dict[str, float]]:
+        """to_dict。
+        """
         return dict(self._scores)
 
 
@@ -206,4 +234,6 @@ _quality_tracker = QualityTracker()
 
 
 def get_quality_tracker() -> QualityTracker:
+    """获取 quality_tracker。
+    """
     return _quality_tracker

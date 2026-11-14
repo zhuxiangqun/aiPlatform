@@ -41,6 +41,14 @@ class RAGAgent(BaseAgent):
         retriever: Optional[KnowledgeRetriever] = None,
         model: Optional[Any] = None,
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            rag_config: rag_config 参数。
+            retriever: retriever 参数。
+            model: 模型名。
+        """
         super().__init__(config, model=model)
         self._rag_config = rag_config or RAGConfig()
         self._retriever = retriever  # Phase 45: retrieval now via sys_crag_retrieve, passed retriever optional
@@ -56,6 +64,8 @@ class RAGAgent(BaseAgent):
 
     @property
     def metadata(self) -> AgentMetadata:
+        """metadata。
+        """
         return self._metadata
     
     async def execute(
@@ -65,8 +75,9 @@ class RAGAgent(BaseAgent):
     ) -> AgentResult:
         """Execute via shared ReAct loop (§5.22: delegates to BaseAgent).
 
-        Retrieval is done here (pre-loop), then the loop handles generation
-        using the retrieved context injected into context.variables.
+        Args:
+            context: context 参数。
+            params: params 参数。
         """
         params = params or {}
         query = params.get("query") or context.variables.get("query", "")
@@ -152,6 +163,13 @@ Please provide a comprehensive answer based on the context above."""
         title: Optional[str] = None,
         tags: Optional[List[str]] = None,
     ) -> str:
+        """add_knowledge。
+
+        Args:
+            content: content 参数。
+            title: title 参数。
+            tags: tags 参数。
+        """
         from ...harness.knowledge import KnowledgeEntry, KnowledgeType, KnowledgeSource, KnowledgeMetadata
         
         import uuid
@@ -180,6 +198,13 @@ def create_rag_agent(
     rag_config: Optional[RAGConfig] = None,
     model: Optional[Any] = None,
 ) -> RAGAgent:
+    """创建 rag_agent。
+
+    Args:
+        config: config 参数。
+        rag_config: rag_config 参数。
+        model: 模型名。
+    """
     config = config or AgentConfig(name="rag_agent")
     return RAGAgent(config, rag_config, model=model)
 

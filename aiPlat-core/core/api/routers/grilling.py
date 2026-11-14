@@ -9,19 +9,25 @@ router = APIRouter(prefix="/grilling", tags=["grilling"])
 
 
 class StartGrillRequest(BaseModel):
+    """StartGrillRequest。"""
     entry_point: str
     domain_id: str = ""
     context: Optional[Dict[str, Any]] = None
 
 
 class AnswerRequest(BaseModel):
+    """AnswerRequest。"""
     session_id: str
     answer: str
 
 
 @router.post("/start", response_model=Dict[str, Any])
 async def start_grill(req: StartGrillRequest):
-    """Start a grilling clarification interview. Returns first question."""
+    """Start a grilling clarification interview. Returns first question.
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import start_grilling
     result = start_grilling(req.entry_point, req.domain_id, req.context)
     return result
@@ -29,7 +35,11 @@ async def start_grill(req: StartGrillRequest):
 
 @router.post("/answer", response_model=Dict[str, Any])
 async def answer_grill(req: AnswerRequest):
-    """Submit answer to current question. Returns next question or finalize."""
+    """Submit answer to current question. Returns next question or finalize.
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import continue_grilling
     if not req.answer or not req.answer.strip():
         raise HTTPException(status_code=400, detail="Answer cannot be empty")
@@ -39,7 +49,11 @@ async def answer_grill(req: AnswerRequest):
 
 @router.post("/skip", response_model=Dict[str, Any])
 async def skip_grill(req: AnswerRequest):
-    """Skip current non-required question."""
+    """Skip current non-required question.
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import skip_grilling_question
     result = skip_grilling_question(req.session_id)
     if result.get("status") == "error":
@@ -49,17 +63,26 @@ async def skip_grill(req: AnswerRequest):
 
 @router.get("/progress/{session_id}", response_model=Dict[str, Any])
 async def progress_grill(session_id: str):
-    """Get current grilling session state for UI recovery on page refresh."""
+    """Get current grilling session state for UI recovery on page refresh.
+
+    Args:
+        session_id: session 标识。
+    """
     from core.api.core_facade import get_grilling_progress
     return get_grilling_progress(session_id)
 
 
 class FinalizeRequest(BaseModel):
+    """FinalizeRequest。"""
     session_id: str
 
 
 @router.post("/finalize", response_model=Dict[str, Any])
 async def finalize_grill(req: FinalizeRequest):
-    """Skip remaining questions and finalize the grilling session."""
+    """Skip remaining questions and finalize the grilling session.
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import _finalize_grilling
     return _finalize_grilling(req.session_id)

@@ -43,11 +43,8 @@ def _seed_templates_dir() -> Path:
 def load_delivery_template(name: str = TEMPLATE_ID) -> Dict[str, Any]:
     """Load workflow template as dict with ``stages`` list.
 
-    Supports:
-      - ``{name}.json``
-      - ``{name}/workflow.yaml`` (frontmatter + JSON body, as installed by WorkflowInstaller)
-
-    Search order: ``$AIPLAT_HOME/workflow_templates`` then workspace seeds.
+    Args:
+        name: name 参数。
     """
     safe = "".join(c for c in name if c.isalnum() or c in "_-").strip("_-")[:50]
     for d in (_templates_dir(), _seed_templates_dir()):
@@ -90,8 +87,12 @@ def start_delivery_session(
 ) -> Dict[str, Any]:
     """Create a queryable delivery session paused at first HITL (or first stage).
 
-    Phase 3: optional ``builder_project_id`` links factory Builder products;
-    workbench must not invent a parallel build path.
+    Args:
+        template_id: template 标识。
+        customer_name: customer_name 参数。
+        domain_id: domain 标识。
+        actor: 操作者身份。
+        builder_project_id: builder_project 标识。
     """
     tpl = load_delivery_template(template_id)
     stages = list(tpl.get("stages") or [])
@@ -161,7 +162,12 @@ def _honesty(builder_linked: bool) -> Dict[str, str]:
 
 
 def link_builder_project(session_id: str, builder_project_id: str) -> Dict[str, Any]:
-    """Attach an existing Builder project_id (opaque link; no rebuild in FDE)."""
+    """Attach an existing Builder project_id (opaque link; no rebuild in FDE).
+
+    Args:
+        session_id: 会话 ID。
+        builder_project_id: builder_project 标识。
+    """
     session = get_delivery_session(session_id)
     if not session:
         raise FileNotFoundError(session_id)
@@ -188,7 +194,13 @@ def attach_builder_observation(
     *,
     artifact_links: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Persist Builder observe snapshot from platform (caller fills via Facade)."""
+    """Persist Builder observe snapshot from platform (caller fills via Facade).
+
+    Args:
+        session_id: 会话 ID。
+        observation: observation 参数。
+        artifact_links: artifact_links 参数。
+    """
     session = get_delivery_session(session_id)
     if not session:
         raise FileNotFoundError(session_id)
@@ -261,8 +273,8 @@ def _extract_artifact_links(observation: Dict[str, Any]) -> List[Dict[str, Any]]
 def evaluate_delivery_session(session_id: str) -> Dict[str, Any]:
     """Apply audit_schema ``fde_delivery_pipeline`` gate (Phase 3+).
 
-    When Builder is linked, require observation + standardized artifact_links.
-    Template-only sessions pass with honesty note.
+    Args:
+        session_id: 会话 ID。
     """
     session = get_delivery_session(session_id)
     if not session:
@@ -323,6 +335,11 @@ def evaluate_delivery_session(session_id: str) -> Dict[str, Any]:
 
 
 def get_delivery_session(session_id: str) -> Optional[Dict[str, Any]]:
+    """获取 delivery_session。
+
+    Args:
+        session_id: 会话 ID。
+    """
     fp = _sessions_dir() / f"{session_id}.json"
     if not fp.is_file():
         return None
@@ -330,6 +347,11 @@ def get_delivery_session(session_id: str) -> Optional[Dict[str, Any]]:
 
 
 def list_delivery_sessions(limit: int = 20) -> List[Dict[str, Any]]:
+    """列出 delivery_sessions。
+
+    Args:
+        limit: 返回条数上限。
+    """
     rows = []
     for fp in sorted(_sessions_dir().glob("fde_del_*.json"), reverse=True):
         try:
@@ -344,7 +366,9 @@ def list_delivery_sessions(limit: int = 20) -> List[Dict[str, Any]]:
 def approve_delivery_session(session_id: str, feedback: str = "") -> Dict[str, Any]:
     """Resolve current HITL pause and advance; auto-skip non-HITL stages.
 
-    Phase 3: when Builder is linked, final accept runs ``fde_delivery_pipeline`` eval.
+    Args:
+        session_id: 会话 ID。
+        feedback: feedback 参数。
     """
     session = get_delivery_session(session_id)
     if not session:

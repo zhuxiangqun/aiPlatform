@@ -1,3 +1,8 @@
+"""agents：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -255,7 +260,17 @@ async def list_agents(
 
 ):
 
-    """List all agents (engine scope)."""
+    """List all agents (engine scope).
+
+    Args:
+        agent_type: agent_type 参数。
+        status: 状态。
+        category: category 参数。
+        tags: tags 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
 
     mgr = _agent_mgr(rt)
 
@@ -313,7 +328,12 @@ async def list_agents(
 
 async def create_agent(request: AgentCreateRequest, rt: RuntimeDep = None):
 
-    """Create a new agent (engine scope)."""
+    """Create a new agent (engine scope).
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
 
     mgr = _agent_mgr(rt)
 
@@ -349,6 +369,12 @@ async def create_agent(request: AgentCreateRequest, rt: RuntimeDep = None):
 
 async def get_agent(agent_id: str, rt: RuntimeDep = None):
 
+    """获取 agent。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -401,7 +427,12 @@ async def get_agent(agent_id: str, rt: RuntimeDep = None):
 
 async def get_agent_sop(agent_id: str, rt: RuntimeDep = None):
 
-    """Get agent SOP (Markdown) from AGENT.md body."""
+    """Get agent SOP (Markdown) from AGENT.md body.
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
 
     mgr = _agent_mgr(rt)
 
@@ -425,6 +456,13 @@ async def get_agent_sop(agent_id: str, rt: RuntimeDep = None):
 
 async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDep = None):
 
+    """update_agent。
+
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -471,6 +509,12 @@ async def update_agent(agent_id: str, request: AgentUpdateRequest, rt: RuntimeDe
 
 async def delete_agent(agent_id: str, rt: RuntimeDep = None):
 
+    """删除 agent。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -499,6 +543,12 @@ async def delete_agent(agent_id: str, rt: RuntimeDep = None):
 
 async def start_agent(agent_id: str, rt: RuntimeDep = None):
 
+    """start_agent。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -521,6 +571,12 @@ async def start_agent(agent_id: str, rt: RuntimeDep = None):
 
 async def stop_agent(agent_id: str, rt: RuntimeDep = None):
 
+    """stop_agent。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -549,6 +605,12 @@ async def stop_agent(agent_id: str, rt: RuntimeDep = None):
 
 async def get_agent_skills(agent_id: str, rt: RuntimeDep = None):
 
+    """获取 agent_skills。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -587,6 +649,13 @@ async def get_agent_skills(agent_id: str, rt: RuntimeDep = None):
 
 async def bind_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None):
 
+    """bind_agent_skills。
+
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -615,6 +684,13 @@ async def bind_agent_skills(agent_id: str, request: dict, rt: RuntimeDep = None)
 
 async def unbind_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None):
 
+    """unbind_agent_skill。
+
+    Args:
+        agent_id: agent 标识。
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -639,6 +715,12 @@ async def unbind_agent_skill(agent_id: str, skill_id: str, rt: RuntimeDep = None
 
 async def get_agent_tools(agent_id: str, rt: RuntimeDep = None):
 
+    """获取 agent_tools。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -677,6 +759,13 @@ async def get_agent_tools(agent_id: str, rt: RuntimeDep = None):
 
 async def bind_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
 
+    """bind_agent_tools。
+
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -705,6 +794,13 @@ async def bind_agent_tools(agent_id: str, request: dict, rt: RuntimeDep = None):
 
 async def unbind_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
 
+    """unbind_agent_tool。
+
+    Args:
+        agent_id: agent 标识。
+        tool_id: tool 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -735,7 +831,14 @@ async def unbind_agent_tool(agent_id: str, tool_id: str, rt: RuntimeDep = None):
 
 async def execute_agent(agent_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
 
-    """Execute agent (engine scope)."""
+    """Execute agent (engine scope).
+
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
 
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
 
@@ -943,8 +1046,9 @@ async def review_engine_agent_output(agent_id: str, request: dict):
 
     """Post-run product-quality review for engine agents (stream / re-check).
 
-    When body.input is empty, restores from execution store via execution_id.
-
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
     """
 
     body = request if isinstance(request, dict) else {}
@@ -1021,18 +1125,12 @@ async def review_engine_agent_output(agent_id: str, request: dict):
 
 async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDep = None):
 
-    """
+    """Minimal resume: re-run the original execution request after approval is granted.
 
-    Minimal resume: re-run the original execution request after approval is granted.
-
-
-
-    Notes:
-
-    - Supports checkpointed resume when loop_state_snapshot exists (Phase 3.5).
-
-    - Falls back to persisted kernel_resume payload in ExecutionStore on restart.
-
+    Args:
+        execution_id: execution 标识。
+        request: request 参数。
+        rt: rt 参数。
     """
 
     paused = _paused_agent_executions.get(execution_id)
@@ -1374,7 +1472,12 @@ async def resume_agent_execution(execution_id: str, request: dict, rt: RuntimeDe
 
 async def get_agent_execution(execution_id: str, rt: RuntimeDep = None):
 
-    """Get agent execution record."""
+    """Get agent execution record.
+
+    Args:
+        execution_id: execution 标识。
+        rt: rt 参数。
+    """
 
     store = _store(rt)
 
@@ -1398,7 +1501,14 @@ async def get_agent_execution(execution_id: str, rt: RuntimeDep = None):
 
 async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
 
-    """Get agent execution history."""
+    """Get agent execution history.
+
+    Args:
+        agent_id: agent 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
 
     store = _store(rt)
 
@@ -1420,6 +1530,12 @@ async def get_agent_history(agent_id: str, limit: int = 100, offset: int = 0, rt
 
 async def get_agent_versions(agent_id: str, rt: RuntimeDep = None):
 
+    """获取 agent_versions。
+
+    Args:
+        agent_id: agent 标识。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -1444,6 +1560,13 @@ async def get_agent_versions(agent_id: str, rt: RuntimeDep = None):
 
 async def create_agent_version(agent_id: str, request: dict, rt: RuntimeDep = None):
 
+    """创建 agent_version。
+
+    Args:
+        agent_id: agent 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -1468,6 +1591,13 @@ async def create_agent_version(agent_id: str, request: dict, rt: RuntimeDep = No
 
 async def rollback_agent_version(agent_id: str, version: str, rt: RuntimeDep = None):
 
+    """rollback_agent_version。
+
+    Args:
+        agent_id: agent 标识。
+        version: 版本号。
+        rt: rt 参数。
+    """
     mgr = _agent_mgr(rt)
 
     if not mgr:
@@ -1548,7 +1678,11 @@ async def list_models():
 
 async def list_pending_approvals(request: Request):
 
-    """兼容端点 — 返回空审批列表（新审批系统由 management 审批中心接管）"""
+    """兼容端点 — 返回空审批列表（新审批系统由 management 审批中心接管）。
+
+    Args:
+        request: request 参数。
+    """
 
     _ = request
 
@@ -1564,16 +1698,9 @@ async def submit_agent_feedback(body: dict, request: Request):
 
     """Phase 4.2: Submit implicit feedback signal for a previous agent execution.
 
-
-
-    Accepts: {run_id, signal_type, session_id}
-
-    Signals: copy_full, select_text, re_query, repeat_query, abandon
-
-
-
-    Frontend sends this after user interaction with the answer.
-
+    Args:
+        body: 请求体 dict。
+        request: request 参数。
     """
 
     run_id = str((body or {}).get("run_id", "")).strip()
@@ -1628,7 +1755,11 @@ async def submit_agent_feedback(body: dict, request: Request):
 
 async def get_hallucination_dashboard(domain_id: str = "default"):
 
-    """Phase 3.1: Get hallucination tracking dashboard."""
+    """Phase 3.1: Get hallucination tracking dashboard.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     try:
 
@@ -1688,10 +1819,9 @@ async def override_autoreview(agent_id: str, body: Dict[str, Any]):
 
     """人工否决 autoreview 的 clean 判断并触发 deep mode 重新审查。
 
-
-
-    Body: { "target": "diff", "reason": "misdiagnosed security issue", "actor_id": "admin" }
-
+    Args:
+        agent_id: agent 标识。
+        body: 请求体 dict。
     """
 
     target = body.get("target", "diff")
@@ -1748,16 +1878,9 @@ async def resolve_pipeline_hitl(pipeline_id: str, request: dict):
 
     """Approve or reject a paused pipeline stage.
 
-
-
-    Body: {"action": "approve"|"reject"|"grilling", "feedback": "optional comment"}
-
-    
-
-    v2.9: Added grilling action — starts a GrillingBridge interview for structured
-
-    requirements review instead of a binary approve/reject.
-
+    Args:
+        pipeline_id: pipeline 标识。
+        request: request 参数。
     """
 
     action = str(request.get("action", "approve")).lower()
@@ -1820,12 +1943,9 @@ async def adjust_pipeline_stage(pipeline_id: str, request: dict):
 
     """Runtime modification of pipeline stage configuration.
 
-    
-
-    Body: {"stage_id":"...","action":"modify_prompt|skip|change_agent",
-
-           "prompt_extra":"...","agent_type":"react|plan|reflection"}
-
+    Args:
+        pipeline_id: pipeline 标识。
+        request: request 参数。
     """
 
     stage_id = str(request.get("stage_id", ""))
@@ -1886,6 +2006,7 @@ async def adjust_pipeline_stage(pipeline_id: str, request: dict):
 
 class AgentDiffRequest(BaseModel):
 
+    """AgentDiffRequest。"""
     old_content: str = ""
 
     new_content: str = ""
@@ -1898,14 +2019,9 @@ async def agent_config_diff(agent_id: str, req: AgentDiffRequest):
 
     """Compute structured diff between two versions of an agent's AGENT.md frontmatter.
 
-
-
-    Used by HITL review workflows to show approvers exactly what changed
-
-    (added/removed/changed fields, risk assessment). High-risk model changes
-
-    attach same-profile gold_gate (require recent non-regressing gold eval).
-
+    Args:
+        agent_id: agent 标识。
+        req: req 参数。
     """
 
     from core.harness.evaluation.agent_config_diff import compute_agent_diff
@@ -1922,7 +2038,12 @@ async def agent_config_diff(agent_id: str, req: AgentDiffRequest):
 
 async def export_skill(skill_name: str, format: str = "all"):
 
-    """Export a skill definition to external framework specs (OpenAI/LangChain/Anthropic)."""
+    """Export a skill definition to external framework specs (OpenAI/LangChain/Anthropic).
+
+    Args:
+        skill_name: skill_name 参数。
+        format: format 参数。
+    """
 
     from core.harness.evaluation.skill_exporter import SkillExporter
 
@@ -1950,6 +2071,7 @@ async def export_skill(skill_name: str, format: str = "all"):
 
     return {"skill_name": skill_name, "format": format, **exporter.export_all(content, format)}
 
+    """AgentDiffRequest。"""
 
 
 # ── v2.9: Business Value Report API ──
@@ -1960,7 +2082,13 @@ async def export_skill(skill_name: str, format: str = "all"):
 
 async def get_business_value(project_id: str, project_name: str = "", monthly_count: int = 100):
 
-    """Generate a project-level business value report for renewal decisions."""
+    """Generate a project-level business value report for renewal decisions.
+
+    Args:
+        project_id: project 标识。
+        project_name: project_name 参数。
+        monthly_count: monthly_count 参数。
+    """
 
     from core.harness.evaluation.business_value import generate_renewal_report
 
@@ -1974,7 +2102,13 @@ async def get_business_value(project_id: str, project_name: str = "", monthly_co
 
 async def get_renewal_report(project_id: str, project_name: str = "", monthly_count: int = 100):
 
-    """Generate a detailed renewal report with business KPIs and recommendations."""
+    """Generate a detailed renewal report with business KPIs and recommendations.
+
+    Args:
+        project_id: project 标识。
+        project_name: project_name 参数。
+        monthly_count: monthly_count 参数。
+    """
 
     from core.harness.evaluation.business_value import generate_renewal_report
 

@@ -90,7 +90,12 @@ def compute_domain_maturity(
     domain_id: str,
     ontologies_dir: str = "",
 ) -> Dict[str, Any]:
-    u"""Compute 6-dimension maturity for a domain. Returns score + level + dimensions."""
+    """Compute 6-dimension maturity for a domain. Returns score + level + dimensions.
+
+    Args:
+        domain_id: domain 标识。
+        ontologies_dir: ontologies_dir 参数。
+    """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
 
     dims = {}
@@ -214,7 +219,11 @@ def compute_domain_maturity(
 
 
 def compare_domains(ontologies_dir: str = "") -> List[Dict[str, Any]]:
-    u"""Cross-domain comparison: compute maturity for all domains, sorted by score desc."""
+    """Cross-domain comparison: compute maturity for all domains, sorted by score desc.
+
+    Args:
+        ontologies_dir: ontologies_dir 参数。
+    """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
     import json
     reg_path = _os.path.join(base, "registry.json")
@@ -238,9 +247,11 @@ def compare_domains(ontologies_dir: str = "") -> List[Dict[str, Any]]:
 
 
 def compute_gap_cost(domain_id: str, ontologies_dir: str = "") -> Dict[str, Any]:
-    u"""Estimate the effort to close knowledge gaps in a domain.
+    """Estimate the effort to close knowledge gaps in a domain.
 
-    Uses knowledge_gap_detector output if available, otherwise basic counts.
+    Args:
+        domain_id: domain 标识。
+        ontologies_dir: ontologies_dir 参数。
     """
     effort = {"total_hours": 0, "breakdown": []}
 
@@ -278,7 +289,12 @@ def compute_gap_cost(domain_id: str, ontologies_dir: str = "") -> Dict[str, Any]
 
 
 def export_comparison_report(domain_ids: List[str] = None, format: str = "md") -> str:
-    u"""Generate a markdown comparison report for selected domains."""
+    """Generate a markdown comparison report for selected domains.
+
+    Args:
+        domain_ids: domain_ids 参数。
+        format: format 参数。
+    """
     results = compare_domains()
     if domain_ids:
         results = [r for r in results if r["domain_id"] in domain_ids]

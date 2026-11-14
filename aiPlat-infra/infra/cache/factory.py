@@ -1,19 +1,34 @@
+"""factory：模块接口。"""
+
 from typing import Optional
 from .base import CacheClient, CacheManager
 from .schemas import CacheConfig
 
 
 def create(cache: Optional[CacheConfig] = None) -> CacheClient:
-    """创建缓存客户端（便捷函数）"""
+    """创建缓存客户端（便捷函数）。
+
+    Args:
+        cache: cache 参数。
+    """
     return create_cache_client(cache)
 
 
 def create_cache(cache: Optional[CacheConfig] = None) -> CacheClient:
-    """创建缓存客户端（便捷函数）"""
+    """创建缓存客户端（便捷函数）。
+
+    Args:
+        cache: cache 参数。
+    """
     return create_cache_client(cache)
 
 
 def create_cache_client(config: Optional[CacheConfig] = None) -> CacheClient:
+    """创建 cache_client。
+
+    Args:
+        config: config 参数。
+    """
     config = config or CacheConfig()
 
     if config.type == "redis":
@@ -33,6 +48,11 @@ def create_cache_client(config: Optional[CacheConfig] = None) -> CacheClient:
 
 
 def create_cache_manager(cache_client: CacheClient) -> CacheManager:
+    """创建 cache_manager。
+
+    Args:
+        cache_client: cache_client 参数。
+    """
     from .manager import DefaultCacheManager
 
     return DefaultCacheManager(cache_client)

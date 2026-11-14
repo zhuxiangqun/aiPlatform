@@ -96,11 +96,8 @@ def reset_execution_store() -> None:
 def get_execution_store(db_path: Optional[str] = None) -> ExecutionStore:
     """Process-wide singleton.
 
-    Path resolution (first match wins):
-      1. ``db_path`` argument
-      2. ``AIPLAT_EXECUTION_DB_PATH`` env var
-      3. ``$AIPLAT_HOME/aiplat_executions.sqlite3`` when ``AIPLAT_HOME`` is set
-      4. ``~/.aiplat/aiplat_executions.sqlite3`` (default)
+    Args:
+        db_path: db_path 参数。
     """
     global _execution_store
     desired_path = db_path or default_execution_db_path()

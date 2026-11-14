@@ -8,6 +8,11 @@ from typing import Dict, Any
 
 
 def load_rules(rule_file: str) -> Dict[str, Any]:
+    """load_rules。
+
+    Args:
+        rule_file: rule_file 参数。
+    """
     path = Path(os.path.expanduser(rule_file))
     if not path.exists():
         raise FileNotFoundError(f"规则文件不存在: {rule_file}")
@@ -16,6 +21,12 @@ def load_rules(rule_file: str) -> Dict[str, Any]:
 
 
 def score_with_rules(rules: Dict[str, Any], target_data: Dict[str, Any]) -> Dict[str, Any]:
+    """score_with_rules。
+
+    Args:
+        rules: rules 参数。
+        target_data: target_data 参数。
+    """
     dimensions = rules.get("dimensions", [])
     verdict_rules = rules.get("verdict", {})
 
@@ -78,7 +89,11 @@ def score_with_rules(rules: Dict[str, Any], target_data: Dict[str, Any]) -> Dict
 
 
 def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Skill entry point."""
+    """Skill entry point.
+
+    Args:
+        params: params 参数。
+    """
     rule_file = params["rule_file"]
     target_data = params.get("target_data", {})
     rules = load_rules(rule_file)

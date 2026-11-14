@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 
 async def check_human_feedback() -> Dict[str, Any]:
+    """check_human_feedback。
+    """
     try:
         from core.harness.evaluation.adoption_metrics import AdoptionTracker
         tracker = AdoptionTracker()

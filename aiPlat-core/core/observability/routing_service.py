@@ -1,3 +1,5 @@
+"""routing_service：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -10,7 +12,11 @@ import logging
 async def skill_invocation_metrics(*, store: Any, tenant_id: Optional[str], since_hours: int, limit: int) -> Dict[str, Any]:
     """Aggregate syscall_events(kind=skill) into a skill-level metrics view.
 
-    NOTE: extracted from core.server.py to a service module for better reuse/testing.
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
     """
     if not store:
         return {"items": [], "total": 0}
@@ -62,10 +68,14 @@ async def skill_routing_funnel(
     limit: int,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Funnel view per skill:
-    - routing.selected / routing.policy_denied / routing.approval_required from syscall_events(kind=routing,name=skill_route)
-    - execution success/failed from syscall_events(kind=skill)
+    """Funnel view per skill:。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
     """
     if not store:
         return {"items": [], "total": 0}
@@ -339,6 +349,17 @@ async def routing_explain_events(
     selected_kind: Optional[str] = None,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """routing_explain_events。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        skill_id: Skill ID。
+        selected_kind: selected_kind 参数。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     if not store:
         return {"items": [], "total": 0}
     since_hours = max(1, min(int(since_hours or 24), 24 * 30))
@@ -394,6 +415,16 @@ async def routing_replay(
     limit: int,
     coding_policy_profile: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """routing_replay。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        routing_decision_id: routing_decision 标识。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        coding_policy_profile: coding_policy_profile 参数。
+    """
     if not store:
         return {"items": [], "total": 0}
     rid = str(routing_decision_id or "").strip()
@@ -501,6 +532,18 @@ async def routing_metrics(
     coding_policy_profile: Optional[str] = None,
     limit: int = 20000,
 ) -> Dict[str, Any]:
+    """routing_metrics。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        bucket_minutes: bucket_minutes 参数。
+        skill_id: Skill ID。
+        scope: scope 参数。
+        coding_policy_profile: coding_policy_profile 参数。
+        limit: 返回条数上限。
+    """
     if not store:
         return {"series": {}, "hists": {}, "meta": {}}
     since_hours = max(1, min(int(since_hours or 24), 24 * 30))
@@ -620,6 +663,8 @@ async def routing_metrics(
 
 
 def routing_metric_tags() -> Dict[str, Any]:
+    """routing_metric_tags。
+    """
     return {
         "scalars": [
             {"tag": "strict_miss_rate", "display_name": "strict_miss_rate", "description": "严格未命中率（miss_total/eligible_total），按时间分桶。"},

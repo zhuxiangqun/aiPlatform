@@ -63,6 +63,11 @@ def _require_bin(name: str) -> str:
 
 def probe_duration_ms(video_path: str) -> int:
 
+    """probe_duration_ms。
+
+    Args:
+        video_path: video_path 参数。
+    """
     ffprobe = _require_bin("ffprobe")
 
     cp = _run([
@@ -87,6 +92,12 @@ def probe_duration_ms(video_path: str) -> int:
 
 def extract_audio(video_path: str, audio_path: str) -> None:
 
+    """extract_audio。
+
+    Args:
+        video_path: video_path 参数。
+        audio_path: audio_path 参数。
+    """
     ffmpeg = _require_bin("ffmpeg")
 
     _run([ffmpeg, "-y", "-i", video_path, "-vn", "-ac", "1", "-ar", "16000", "-f", "wav", audio_path])
@@ -97,6 +108,13 @@ def extract_audio(video_path: str, audio_path: str) -> None:
 
 def extract_keyframes(video_path: str, frames_dir: str, interval_seconds: int = 15) -> List[Dict[str, Any]]:
 
+    """extract_keyframes。
+
+    Args:
+        video_path: video_path 参数。
+        frames_dir: frames_dir 参数。
+        interval_seconds: interval_seconds 参数。
+    """
     ffmpeg = _require_bin("ffmpeg")
 
     Path(frames_dir).mkdir(parents=True, exist_ok=True)
@@ -149,13 +167,22 @@ class VideoParser:
 
     def __init__(self, *, frame_interval_seconds: int = 15):
 
+        """初始化。
+
+        Args:
+            frame_interval_seconds: frame_interval_seconds 参数。
+        """
         self._interval = max(1, int(frame_interval_seconds))
 
 
 
     def probe(self, video_path: str) -> Optional[int]:
 
-        """Get video duration in ms. Returns None if ffprobe unavailable."""
+        """Get video duration in ms. Returns None if ffprobe unavailable.
+
+        Args:
+            video_path: video_path 参数。
+        """
 
         try:
 
@@ -169,7 +196,11 @@ class VideoParser:
 
     async def transcribe_audio(self, video_path: str) -> str:
 
-        """Extract and transcribe audio track."""
+        """Extract and transcribe audio track.
+
+        Args:
+            video_path: video_path 参数。
+        """
 
         import tempfile
 
@@ -216,7 +247,11 @@ class VideoParser:
 
     async def describe_frames(self, video_path: str) -> List[Dict[str, Any]]:
 
-        """Extract keyframes and return frame metadata."""
+        """Extract keyframes and return frame metadata.
+
+        Args:
+            video_path: video_path 参数。
+        """
 
         import tempfile
 
@@ -247,22 +282,8 @@ class VideoParser:
 
         """Full pipeline: probe → transcribe → extract frames.
 
-
-
-        Returns:
-
-            {
-
-                "duration_ms": int,
-
-                "transcript": str,
-
-                "keyframe_count": int,
-
-                "status": "ok" | "partial",
-
-            }
-
+        Args:
+            video_path: video_path 参数。
         """
 
         result = {
@@ -327,6 +348,11 @@ class VideoSummarizer:
 
     def __init__(self, parser: Optional[VideoParser] = None):
 
+        """初始化。
+
+        Args:
+            parser: parser 参数。
+        """
         self._parser = parser or VideoParser()
 
 
@@ -335,20 +361,9 @@ class VideoSummarizer:
 
         """Full video understanding: parse → summarize → return structured result.
 
-
-
-        Returns:
-
-            {
-
-                "duration_ms": int, "transcript": str, "keyframe_count": int,
-
-                "summary": str, "topics": [str], "action_segments": [str],
-
-                "status": "ok" | "partial",
-
-            }
-
+        Args:
+            video_path: video_path 参数。
+            max_segments: max_segments 参数。
         """
 
         parsed = await self._parser.parse(video_path)

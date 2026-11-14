@@ -23,6 +23,11 @@ class DebateState:
     """Tracks debate state across rounds."""
 
     def __init__(self, positions: List[str] = None):
+        """初始化。
+
+        Args:
+            positions: positions 参数。
+        """
         self.positions = positions or []
         self.round_outputs: List[Dict[str, Any]] = []
         self.rounds: int = 0
@@ -31,11 +36,22 @@ class DebateState:
         self._last_positions: List[str] = []
 
     def record_round(self, side: str, output: Any) -> None:
+        """record_round。
+
+        Args:
+            side: side 参数。
+            output: output 参数。
+        """
         self.rounds += 1
         self.round_outputs.append({"side": side, "output": output, "ts": time.time()})
 
     def check_stability(self, current_outputs: Dict[str, str], threshold: int = 2) -> bool:
-        """Check if debate has converged (positions unchanged for N rounds)."""
+        """Check if debate has converged (positions unchanged for N rounds).
+
+        Args:
+            current_outputs: current_outputs 参数。
+            threshold: threshold 参数。
+        """
         current_positions = sorted(
             f"{k}:{str(v)[:200]}" for k, v in current_outputs.items()
         )

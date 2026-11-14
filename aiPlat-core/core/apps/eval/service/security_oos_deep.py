@@ -32,6 +32,8 @@ class SecurityOosDeepError(ValueError):
 
 
 def default_oos_deep_packs_path() -> Path:
+    """default_oos_deep_packs_path。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -43,6 +45,11 @@ def default_oos_deep_packs_path() -> Path:
 
 
 def load_oos_deep_packs(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 oos_deep_packs。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_oos_deep_packs_path()
     if not p.is_file():
         raise SecurityOosDeepError(f"oos_deep_packs_missing:{p}")
@@ -60,6 +67,11 @@ def load_oos_deep_packs(*, path: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def list_engineering_oos_ids(packs: Optional[Mapping[str, Any]] = None) -> List[str]:
+    """列出 engineering_oos_ids。
+
+    Args:
+        packs: packs 参数。
+    """
     g = dict(packs) if packs is not None else load_oos_deep_packs()
     eng = g.get("engineering_packs") if isinstance(g.get("engineering_packs"), Mapping) else {}
     ordered = [oid for oid in ENGINEERING_ORDER if oid in eng]
@@ -75,7 +87,13 @@ def evaluate_oos_engineering_pack(
     packs: Optional[Mapping[str, Any]] = None,
     probe_results: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate one engineering OOS pack. Missing results → incomplete (not covered)."""
+    """Evaluate one engineering OOS pack. Missing results → incomplete (not covered).
+
+    Args:
+        oos_id: oos 标识。
+        packs: packs 参数。
+        probe_results: probe_results 参数。
+    """
     g = dict(packs) if packs is not None else load_oos_deep_packs()
     eng = g.get("engineering_packs") if isinstance(g.get("engineering_packs"), Mapping) else {}
     oid = str(oos_id)
@@ -148,7 +166,11 @@ def evaluate_oos_engineering_pack(
 def build_research_refuse_inventory(
     *, packs: Optional[Mapping[str, Any]] = None
 ) -> Dict[str, Any]:
-    """OOS-01/02/03 refuse-to-test inventory (never scored as covered)."""
+    """OOS-01/02/03 refuse-to-test inventory (never scored as covered).
+
+    Args:
+        packs: packs 参数。
+    """
     g = dict(packs) if packs is not None else load_oos_deep_packs()
     research = g.get("research_refuse") if isinstance(g.get("research_refuse"), Mapping) else {}
     cards = []
@@ -200,7 +222,12 @@ def evaluate_oos05_t11_fixture_gate(
     packs: Optional[Mapping[str, Any]] = None,
     t11_evidence: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """OOS-05 fixtures feed T11 min_fixture_pack evidence; still not auto-graduate."""
+    """OOS-05 fixtures feed T11 min_fixture_pack evidence; still not auto-graduate.
+
+    Args:
+        packs: packs 参数。
+        t11_evidence: t11_evidence 参数。
+    """
     g = dict(packs) if packs is not None else load_oos_deep_packs()
     eng = g.get("engineering_packs") if isinstance(g.get("engineering_packs"), Mapping) else {}
     pack = dict(eng.get("OOS-05") or {})
@@ -236,7 +263,12 @@ def security_oos_deep_status(
     probe_results_by_oos: Optional[Mapping[str, Mapping[str, Mapping[str, Any]]]] = None,
     t11_evidence: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Facade-friendly OOS deep status across engineering + research cards."""
+    """Facade-friendly OOS deep status across engineering + research cards.
+
+    Args:
+        probe_results_by_oos: probe_results_by_oos 参数。
+        t11_evidence: t11_evidence 参数。
+    """
     packs = load_oos_deep_packs()
     by = dict(probe_results_by_oos or {})
     engineering = []

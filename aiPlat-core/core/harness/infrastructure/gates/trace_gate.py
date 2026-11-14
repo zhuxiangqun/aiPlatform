@@ -27,8 +27,11 @@ class TraceSpan:
 
 
 class TraceGate:
+    """TraceGate。"""
     def __init__(self) -> None:
         # ── Span completeness metrics ──
+        """初始化。
+        """
         self._spans_started: int = 0
         self._spans_ended: int = 0
         self._spans_success: int = 0
@@ -36,6 +39,12 @@ class TraceGate:
         self._open_spans: Dict[str, TraceSpan] = {}
 
     async def start(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> TraceSpan:
+        """start。
+
+        Args:
+            name: name 参数。
+            attributes: attributes 参数。
+        """
         runtime = get_kernel_runtime()
         trace_service = getattr(runtime, "trace_service", None) if runtime else None
         if not trace_service:
@@ -61,6 +70,12 @@ class TraceGate:
             return TraceSpan(trace_id=None, span_id=None, name=name)
 
     async def end(self, span: TraceSpan, success: bool = True) -> None:
+        """end。
+
+        Args:
+            span: span 参数。
+            success: success 参数。
+        """
         runtime = get_kernel_runtime()
         trace_service = getattr(runtime, "trace_service", None) if runtime else None
         if not trace_service or not span.span_id:
@@ -84,6 +99,8 @@ class TraceGate:
             return
 
     def get_stats(self) -> dict:
+        """获取 stats。
+        """
         return {
             "spans_started": self._spans_started,
             "spans_ended": self._spans_ended,

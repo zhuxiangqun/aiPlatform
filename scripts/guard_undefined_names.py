@@ -44,7 +44,11 @@ KNOWN_FP = {
 
 
 def check_file(fp: Path) -> list:
-    """返回该文件 (name, lineno) 列表——函数内使用但无 import/定义的大写符号。"""
+    """返回该文件 (name, lineno) 列表——函数内使用但无 import/定义的大写符号。
+
+    Args:
+        fp: fp 参数。
+    """
     try:
         tree = ast.parse(fp.read_text(encoding="utf-8", errors="ignore"))
     except SyntaxError:
@@ -105,6 +109,8 @@ def check_file(fp: Path) -> list:
 
 
 def main() -> int:
+    """main。
+    """
     show_all = "--all" in sys.argv
     rebuild = "--rebuild" in sys.argv
 

@@ -23,6 +23,11 @@ class InfraAPIClient:
     """HTTP client for aiPlat-infra API."""
     
     def __init__(self, config: Optional[InfraAPIClientConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or InfraAPIClientConfig()
         if not self.config.base_url:
             self.config.base_url = os.getenv("AIPLAT_INFRA_URL", "http://localhost:8001")
@@ -80,52 +85,97 @@ class InfraAPIClient:
         return await self._request("GET", "/api/infra/nodes")
     
     async def get_node(self, node_name: str) -> Dict[str, Any]:
-        """Get node details."""
+        """Get node details.
+
+        Args:
+            node_name: node_name 参数。
+        """
         return await self._request("GET", f"/api/infra/nodes/{node_name}")
     
     async def add_node(self, node: Dict[str, Any]) -> Dict[str, Any]:
-        """Add a new node."""
+        """Add a new node.
+
+        Args:
+            node: node 参数。
+        """
         return await self._request("POST", "/api/infra/nodes", json=node)
     
     async def remove_node(self, node_name: str) -> Dict[str, Any]:
-        """Remove a node."""
+        """Remove a node.
+
+        Args:
+            node_name: node_name 参数。
+        """
         return await self._request("DELETE", f"/api/infra/nodes/{node_name}")
     
     async def drain_node(self, node_name: str) -> Dict[str, Any]:
-        """Drain a node."""
+        """Drain a node.
+
+        Args:
+            node_name: node_name 参数。
+        """
         return await self._request("POST", f"/api/infra/nodes/{node_name}/drain")
     
     async def restart_node(self, node_name: str) -> Dict[str, Any]:
-        """Restart a node."""
+        """Restart a node.
+
+        Args:
+            node_name: node_name 参数。
+        """
         return await self._request("POST", f"/api/infra/nodes/{node_name}/restart")
     
     # ===== Service Management =====
     
     async def list_services(self, namespace: Optional[str] = None) -> Dict[str, Any]:
-        """List all services."""
+        """List all services.
+
+        Args:
+            namespace: namespace 参数。
+        """
         params = {}
         if namespace:
             params["namespace"] = namespace
         return await self._request("GET", "/api/infra/services", params=params)
     
     async def get_service(self, service_name: str) -> Dict[str, Any]:
-        """Get service details."""
+        """Get service details.
+
+        Args:
+            service_name: service_name 参数。
+        """
         return await self._request("GET", f"/api/infra/services/{service_name}")
     
     async def deploy_service(self, service: Dict[str, Any]) -> Dict[str, Any]:
-        """Deploy a new service."""
+        """Deploy a new service.
+
+        Args:
+            service: service 参数。
+        """
         return await self._request("POST", "/api/infra/services", json=service)
     
     async def delete_service(self, service_name: str) -> Dict[str, Any]:
-        """Delete a service."""
+        """Delete a service.
+
+        Args:
+            service_name: service_name 参数。
+        """
         return await self._request("DELETE", f"/api/infra/services/{service_name}")
     
     async def scale_service(self, service_name: str, replicas: int) -> Dict[str, Any]:
-        """Scale a service."""
+        """Scale a service.
+
+        Args:
+            service_name: service_name 参数。
+            replicas: replicas 参数。
+        """
         return await self._request("POST", f"/api/infra/services/{service_name}/scale?replicas={replicas}")
     
     async def restart_service(self, service_name: str) -> Dict[str, Any]:
-        """Restart a service."""
+        """Restart a service.
+
+        Args:
+            service_name: service_name 参数。
+        """
         return await self._request("POST", f"/api/infra/services/{service_name}/restart")
     
     # ===== Scheduler Management =====
@@ -141,7 +191,11 @@ class InfraAPIClient:
         return result if isinstance(result, list) else []
     
     async def list_tasks(self, queue: Optional[str] = None) -> List[Dict[str, Any]]:
-        """List all tasks."""
+        """List all tasks.
+
+        Args:
+            queue: queue 参数。
+        """
         params = {}
         if queue:
             params["queue"] = queue
@@ -203,7 +257,14 @@ class InfraAPIClient:
     
     async def list_models(self, source: Optional[str] = None, type: Optional[str] = None,
                           enabled: Optional[bool] = None, status: Optional[str] = None) -> Dict[str, Any]:
-        """List all models."""
+        """List all models.
+
+        Args:
+            source: source 参数。
+            type: type 参数。
+            enabled: 是否启用。
+            status: status 参数。
+        """
         params = {}
         if source:
             params["source"] = source
@@ -216,39 +277,76 @@ class InfraAPIClient:
         return await self._request("GET", "/api/infra/models", params=params)
     
     async def get_model(self, model_id: str) -> Dict[str, Any]:
-        """Get model details."""
+        """Get model details.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("GET", f"/api/infra/models/{model_id}")
     
     async def add_model(self, model: Dict[str, Any]) -> Dict[str, Any]:
-        """Add a new model."""
+        """Add a new model.
+
+        Args:
+            model: 模型名。
+        """
         return await self._request("POST", "/api/infra/models", json=model)
     
     async def update_model(self, model_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update model configuration."""
+        """Update model configuration.
+
+        Args:
+            model_id: model 标识。
+            updates: updates 参数。
+        """
         return await self._request("PUT", f"/api/infra/models/{model_id}", json=updates)
     
     async def delete_model(self, model_id: str) -> Dict[str, Any]:
-        """Delete a model."""
+        """Delete a model.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("DELETE", f"/api/infra/models/{model_id}")
     
     async def enable_model(self, model_id: str) -> Dict[str, Any]:
-        """Enable a model."""
+        """Enable a model.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("POST", f"/api/infra/models/{model_id}/enable")
     
     async def disable_model(self, model_id: str) -> Dict[str, Any]:
-        """Disable a model."""
+        """Disable a model.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("POST", f"/api/infra/models/{model_id}/disable")
     
     async def test_model_connectivity(self, model_id: str) -> Dict[str, Any]:
-        """Test model connectivity."""
+        """Test model connectivity.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("POST", f"/api/infra/models/{model_id}/test/connectivity")
     
     async def test_model_response(self, model_id: str) -> Dict[str, Any]:
-        """Test model response."""
+        """Test model response.
+
+        Args:
+            model_id: model 标识。
+        """
         return await self._request("POST", f"/api/infra/models/{model_id}/test/response")
     
     async def scan_local_models(self, endpoint: Optional[str] = None) -> Dict[str, Any]:
-        """Scan local Ollama models."""
+        """Scan local Ollama models.
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         params = {}
         if endpoint:
             params["endpoint"] = endpoint

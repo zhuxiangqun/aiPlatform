@@ -27,7 +27,12 @@ def _get_queue() -> asyncio.Queue:
 
 
 def enqueue(task_type: str, **kwargs) -> None:
-    """Enqueue a background task. Safe to call from sync or async context."""
+    """Enqueue a background task. Safe to call from sync or async context.
+
+    Args:
+        task_type: task_type 参数。
+        kwargs: kwargs 参数。
+    """
     q = _get_queue()
     try:
         loop = asyncio.get_running_loop()

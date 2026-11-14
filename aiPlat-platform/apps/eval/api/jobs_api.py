@@ -40,6 +40,13 @@ async def get_eval_job(
     job_id: str,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """获取 eval_job。
+
+    Args:
+        request: request 参数。
+        job_id: job 标识。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path=f"/jobs/{job_id}")
     if proxied is not None:
         return proxied
@@ -55,6 +62,13 @@ async def cancel_eval_job(
     job_id: str,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """cancel_eval_job。
+
+    Args:
+        request: request 参数。
+        job_id: job 标识。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path=f"/jobs/{job_id}/cancel")
     if proxied is not None:
         return proxied
@@ -69,7 +83,12 @@ async def package_code_review_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue B2 code_review_gold (≠ cohost POST …/evaluate)."""
+    """Enqueue B2 code_review_gold (≠ cohost POST …/evaluate).
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/code-review-gold/run")
     if proxied is not None:
         return proxied
@@ -84,7 +103,12 @@ async def package_prompt_eval_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue B2 prompt_eval (≠ cohost POST …/prompts/eval/runs sync)."""
+    """Enqueue B2 prompt_eval (≠ cohost POST …/prompts/eval/runs sync).
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/prompts/eval/runs")
     if proxied is not None:
         return proxied
@@ -99,7 +123,12 @@ async def package_kb_eval_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue B2 kb_rag (≠ cohost POST …/kb-eval/run sync)."""
+    """Enqueue B2 kb_rag (≠ cohost POST …/kb-eval/run sync).
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/kb-eval/run")
     if proxied is not None:
         return proxied
@@ -114,7 +143,12 @@ async def package_session_eval_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue B2 session_eval (multi-turn fixture/live)."""
+    """Enqueue B2 session_eval (multi-turn fixture/live).
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/session-eval/run")
     if proxied is not None:
         return proxied
@@ -129,7 +163,12 @@ async def package_arena_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue B2 arena length-smoke (≠ quality gate)."""
+    """Enqueue B2 arena length-smoke (≠ quality gate).
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/arena/run")
     if proxied is not None:
         return proxied
@@ -145,7 +184,13 @@ async def package_skill_suite_run(
     suite_id: str,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
-    """Enqueue skill_suite fixture (needs sandbox admit; docker for wrap)."""
+    """Enqueue skill_suite fixture (needs sandbox admit; docker for wrap).
+
+    Args:
+        request: request 参数。
+        suite_id: 套件 ID。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(
         request, path=f"/skill-evals/suites/{suite_id}/run"
     )
@@ -162,6 +207,12 @@ async def package_context_mgmt_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """package_context_mgmt_run。
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/context-mgmt/run")
     if proxied is not None:
         return proxied
@@ -176,6 +227,12 @@ async def package_memory_persist_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """package_memory_persist_run。
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/memory-persist/run")
     if proxied is not None:
         return proxied
@@ -190,6 +247,12 @@ async def package_self_learn_run(
     request: Request,
     _auth: str = Depends(require_auth),
 ) -> Union[Dict[str, Any], Response]:
+    """package_self_learn_run。
+
+    Args:
+        request: request 参数。
+        _auth: _auth 参数。
+    """
     proxied = await proxy_eval_store(request, path="/self-learn/run")
     if proxied is not None:
         return proxied

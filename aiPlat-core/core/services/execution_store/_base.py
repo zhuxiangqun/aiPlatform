@@ -53,7 +53,11 @@ _STORE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
 
 
 async def run_store_io(fn: Callable[[], _T]) -> _T:
-    """Run sync store work on the dedicated executor (never the LLM thread pool)."""
+    """Run sync store work on the dedicated executor (never the LLM thread pool).
+
+    Args:
+        fn: fn 参数。
+    """
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_STORE_EXECUTOR, fn)
 
@@ -129,6 +133,7 @@ def _derive_change_summary(latest: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
 @dataclass(frozen=True)
 class ExecutionStoreConfig:
+    """ExecutionStoreConfig。"""
     db_path: str
     retention_days: Optional[int] = None
     max_rows_per_entity: Optional[int] = None

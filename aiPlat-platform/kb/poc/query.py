@@ -1,3 +1,5 @@
+"""query：模块接口。"""
+
 from __future__ import annotations
 
 import re
@@ -10,13 +12,11 @@ _YEAR_RE = re.compile(r"(19\d{2}|20\d{2})")
 
 
 def answer_question(ingested: IngestResult, question: str) -> QAResult:
-    """
-    PoC 查询：
-    - 从问题中抽取年份 year
-    - 在每一页的 numbers_by_page 中寻找与 year 上下文相关的数字
-    - 返回一个最可能的 value，并附带 bbox citation（页码 + page_image + bbox）
+    """PoC 查询：。
 
-    注意：这是“先跑通链路”的 PoC，不代表最终精度。
+    Args:
+        ingested: ingested 参数。
+        question: question 参数。
     """
     q = str(question or "").strip()
     m = _YEAR_RE.search(q)

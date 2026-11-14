@@ -72,6 +72,8 @@ class PlaybookManifest:
         return errors
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "playbook_version": self.playbook_version,
             "min_platform_version": self.min_platform_version,
@@ -90,10 +92,17 @@ class PlaybookManifest:
         }
 
     def to_json(self) -> str:
+        """to_json。
+        """
         return json.dumps(self.to_dict(), indent=2, ensure_ascii=False)
 
     @classmethod
     def from_dict(cls, data: dict) -> "PlaybookManifest":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             id=data["id"],
             name=data["name"],
@@ -117,11 +126,11 @@ class PlaybookManifest:
 # ════════════════════════════════════════════════════════════
 
 async def pack_playbook(manifest: PlaybookManifest, output_path: str = "") -> str:
-    """
-    Package skills, ontology, pipelines, policies, and cleanup rules
-    into a .aipb zip archive.
+    """Package skills, ontology, pipelines, policies, and cleanup rules。
 
-    Returns the path to the generated archive.
+    Args:
+        manifest: manifest 参数。
+        output_path: output_path 参数。
     """
     manifest.updated_at = time.time()
     errors = manifest.validate()

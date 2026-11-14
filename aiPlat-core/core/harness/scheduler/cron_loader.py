@@ -62,14 +62,8 @@ def load_cron_from_profile(home_dir: str = "") -> int:
 
     """Scan ~/.aiplat/cron/*.yaml, register each entry with CronScheduler.
 
-
-
-    Returns count of registered jobs (0 = no cron entries or all skipped).
-
-    Failure-per-entry isolation: a broken YAML file skips just that entry,
-
-    never blocks the scheduler or the startup sequence.
-
+    Args:
+        home_dir: home_dir 参数。
     """
 
     h = home_dir or get_aiplat_home()

@@ -11,7 +11,11 @@ from core.harness.evaluation.harness_recursion import CONTRAST_STATE_KEYS
 
 
 def clear_contrast_signals(state: Dict[str, Any]) -> None:
-    """Drop contrast flags so the next stage cannot reuse this run's events."""
+    """Drop contrast flags so the next stage cannot reuse this run's events.
+
+    Args:
+        state: state 参数。
+    """
     if not isinstance(state, dict):
         return
     for key in CONTRAST_STATE_KEYS:
@@ -19,7 +23,11 @@ def clear_contrast_signals(state: Dict[str, Any]) -> None:
 
 
 def surface_contrast_signals(context: Dict[str, Any]) -> None:
-    """Fill contrast flags from receipts already on the loop context."""
+    """Fill contrast flags from receipts already on the loop context.
+
+    Args:
+        context: context 参数。
+    """
     if not isinstance(context, dict):
         return
     receipts = context.get("_tool_receipts")
@@ -28,7 +36,12 @@ def surface_contrast_signals(context: Dict[str, Any]) -> None:
 
 
 def copy_contrast_signals(context: Dict[str, Any], state: Dict[str, Any]) -> None:
-    """Copy contrast flags from the loop context onto the pipeline state."""
+    """Copy contrast flags from the loop context onto the pipeline state.
+
+    Args:
+        context: context 参数。
+        state: state 参数。
+    """
     if not isinstance(context, dict) or not isinstance(state, dict):
         return
     surface_contrast_signals(context)

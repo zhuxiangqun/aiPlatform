@@ -1,3 +1,5 @@
+"""pinecone：模块接口。"""
+
 import asyncio
 import uuid
 from typing import List, Optional, Dict, Any
@@ -7,7 +9,13 @@ from .schemas import Vector, SearchResult, VectorConfig
 
 
 class PineconeStore(VectorStore):
+    """PineconeStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._index = None
@@ -67,6 +75,12 @@ class PineconeStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -97,6 +111,13 @@ class PineconeStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         filter_dict = None
@@ -129,6 +150,11 @@ class PineconeStore(VectorStore):
         return search_results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         if not ids:
@@ -139,6 +165,11 @@ class PineconeStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         results = self._index.fetch(ids=[id], namespace=self._namespace)
@@ -155,6 +186,8 @@ class PineconeStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         
         stats = self._index.describe_index_stats()
@@ -165,6 +198,11 @@ class PineconeStore(VectorStore):
         return stats.total_vector_count if hasattr(stats, 'total_vector_count') else 0
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -190,11 +228,19 @@ class PineconeStore(VectorStore):
         return ids
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
         
         pass
 
     async def close(self) -> None:
+        """close。
+        """
         if self._index:
             self._index = None
         if self._client:

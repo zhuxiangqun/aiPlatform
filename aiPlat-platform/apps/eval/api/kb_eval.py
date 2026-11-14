@@ -11,6 +11,13 @@ router = APIRouter(prefix="/kb-eval", tags=["kb-eval"])
 
 @router.get("/samples", response_model=ItemResponse)
 async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = None):
+    """列出 samples。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tag: tag 参数。
+    """
     from core.api.core_facade import kb_eval_list_samples
 
     return kb_eval_list_samples(limit=limit, offset=offset, tag=tag)
@@ -18,6 +25,11 @@ async def list_samples(limit: int = 100, offset: int = 0, tag: Optional[str] = N
 
 @router.post("/samples", response_model=StatusResponse)
 async def create_sample(body: Dict[str, Any]):
+    """创建 sample。
+
+    Args:
+        body: 请求体 dict。
+    """
     from core.api.core_facade import kb_eval_create_sample
 
     return kb_eval_create_sample(body)
@@ -25,6 +37,11 @@ async def create_sample(body: Dict[str, Any]):
 
 @router.delete("/samples/{sample_id}", response_model=StatusResponse)
 async def delete_sample(sample_id: str):
+    """删除 sample。
+
+    Args:
+        sample_id: sample 标识。
+    """
     from core.api.core_facade import kb_eval_delete_sample
 
     return kb_eval_delete_sample(sample_id)
@@ -32,6 +49,11 @@ async def delete_sample(sample_id: str):
 
 @router.post("/run", response_model=StatusResponse)
 async def run_evaluation(body: Dict[str, Any]):
+    """执行 evaluation。
+
+    Args:
+        body: 请求体 dict。
+    """
     from core.api.core_facade import kb_eval_run
 
     try:
@@ -42,6 +64,12 @@ async def run_evaluation(body: Dict[str, Any]):
 
 @router.get("/reports", response_model=ItemResponse)
 async def list_reports(limit: int = 50, offset: int = 0):
+    """列出 reports。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.api.core_facade import kb_eval_list_reports
 
     return kb_eval_list_reports(limit=limit, offset=offset)
@@ -49,6 +77,11 @@ async def list_reports(limit: int = 50, offset: int = 0):
 
 @router.post("/samples/import", response_model=StatusResponse)
 async def import_samples_csv(file: UploadFile = File(...)):
+    """import_samples_csv。
+
+    Args:
+        file: file 参数。
+    """
     from core.api.core_facade import kb_eval_import_csv_text
 
     content = await file.read()
@@ -61,6 +94,11 @@ async def import_samples_csv(file: UploadFile = File(...)):
 
 @router.get("/reports/series", response_model=ItemResponse)
 async def reports_time_series(days: int = 30):
+    """reports_time_series。
+
+    Args:
+        days: days 参数。
+    """
     from core.api.core_facade import kb_eval_reports_series
 
     return kb_eval_reports_series(days=days)
@@ -68,6 +106,12 @@ async def reports_time_series(days: int = 30):
 
 @router.get("/reports/compare", response_model=ItemResponse)
 async def compare_reports(session_a: str = "", session_b: str = ""):
+    """compare_reports。
+
+    Args:
+        session_a: session_a 参数。
+        session_b: session_b 参数。
+    """
     from core.api.core_facade import kb_eval_compare_reports
 
     return kb_eval_compare_reports(session_a=session_a, session_b=session_b)

@@ -13,6 +13,7 @@ from datetime import datetime
 
 
 class ChannelType(str, Enum):
+    """ChannelType。"""
     TELEGRAM = "telegram"
     SLACK = "slack"
     WEBCHAT = "webchat"
@@ -63,12 +64,20 @@ class ChannelAdapter(ABC):
 
     @abstractmethod
     def parse_message(self, raw_data: dict) -> ChannelMessage:
-        """解析原始消息"""
+        """解析原始消息。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         pass
 
     @abstractmethod
     def format_response(self, response: ChannelResponse) -> dict:
-        """格式化响应"""
+        """格式化响应。
+
+        Args:
+            response: FastAPI Response。
+        """
         pass
 
 
@@ -76,6 +85,11 @@ class TelegramAdapter(ChannelAdapter):
     """Telegram 适配器"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         message = raw_data.get("message", {})
         chat = message.get("chat", {})
 
@@ -90,6 +104,11 @@ class TelegramAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "method": "sendMessage",
             "chat_id": response.message_id,
@@ -102,6 +121,11 @@ class SlackAdapter(ChannelAdapter):
     """Slack 适配器"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         event = raw_data.get("event", {})
 
         return ChannelMessage(
@@ -115,6 +139,11 @@ class SlackAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "channel": response.message_id,
             "text": response.text,
@@ -125,6 +154,11 @@ class WebChatAdapter(ChannelAdapter):
     """WebChat 适配器"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         return ChannelMessage(
             message_id=raw_data.get("message_id", str(uuid.uuid4())),
             channel=ChannelType.WEBCHAT,
@@ -136,6 +170,11 @@ class WebChatAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "message_id": response.message_id,
             "text": response.text,
@@ -148,6 +187,8 @@ class ChannelDispatcher:
     """通道调度器"""
 
     def __init__(self):
+        """初始化。
+        """
         self._adapters: Dict[ChannelType, ChannelAdapter] = {
             ChannelType.TELEGRAM: TelegramAdapter(),
             ChannelType.SLACK: SlackAdapter(),
@@ -163,16 +204,40 @@ class ChannelDispatcher:
             pass  # noqa: extended-adapters-optional
 
     def register_adapter(self, channel: ChannelType, adapter: ChannelAdapter) -> None:
+        """register_adapter。
+
+        Args:
+            channel: channel 参数。
+            adapter: adapter 参数。
+        """
         self._adapters[channel] = adapter
 
     def get_adapter(self, channel: ChannelType) -> ChannelAdapter:
+        """获取 adapter。
+
+        Args:
+            channel: channel 参数。
+        """
         return self._adapters.get(channel, WebChatAdapter())
 
     def dispatch(self, channel: ChannelType, raw_data: dict) -> ChannelMessage:
+        """dispatch。
+
+        Args:
+            channel: channel 参数。
+            raw_data: raw_data 参数。
+        """
         adapter = self.get_adapter(channel)
         return adapter.parse_message(raw_data)
 
     def reply(self, channel: ChannelType, message_id: str, text: str) -> dict:
+        """reply。
+
+        Args:
+            channel: channel 参数。
+            message_id: message 标识。
+            text: text 参数。
+        """
         adapter = self.get_adapter(channel)
         response = ChannelResponse(message_id=message_id, text=text)
         return adapter.format_response(response)
@@ -185,12 +250,8 @@ channel_adapter = channel_dispatcher
 def get_channel_adapter(name: str) -> ChannelAdapter:
     """Get a channel adapter instance by channel name (P1-A4 acceptance).
 
-    ``name`` is a ChannelType value (e.g. 'telegram', 'slack', 'webchat',
-    'discord', 'wecom', 'email', 'dingtalk', 'whatsapp', 'lark', 'teams',
-    'signal', 'matrix', 'mattermost', 'line', 'qq', 'reddit', 'github', 'sms').
-    Extended adapters (Discord/WeCom/Email/DingTalk/WhatsApp/Lark/Teams/
-    Signal/Matrix/Mattermost/Line/QQ/Reddit/GitHub/SMS) resolve via the adapters registry.
-    ``wecom`` is accepted as an alias of ``wechat`` (WeComAdapter).
+    Args:
+        name: name 参数。
     """
     _aliases = {"wecom": "wechat"}
     name = _aliases.get(name, name)

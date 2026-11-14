@@ -13,10 +13,10 @@ logger = logging.getLogger("knowledge_retrieval_handler")
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Execute knowledge retrieval with CRAG fallback.
+    """Execute knowledge retrieval with CRAG fallback.
 
-    Input: { query, domain_id?, collection_id?, top_k?, wiki_first? }
-    Output: { results, strategy, trace }
+    Args:
+        params: params 参数。
     """
     query = params.get("query", "")
     domain_id = params.get("domain_id", "")

@@ -28,9 +28,12 @@ def _store(rt: RuntimeDep):
 
 @router.post("/ops/prune", response_model=StatusResponse)
 async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """
-    Trigger ExecutionStore.prune() manually (best-effort).
-    Use RBAC guard: action=ops_prune.
+    """Trigger ExecutionStore.prune() manually (best-effort).
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -63,6 +66,14 @@ async def ops_prune(request: dict, http_request: Request, rt: RuntimeDep = Depen
 
 @router.get("/ops/export/run_events.csv", response_model=StatusResponse)
 async def export_run_events_csv(http_request: Request, run_id: str, limit: int = 5000, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """export_run_events_csv。
+
+    Args:
+        http_request: http_request 参数。
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -85,6 +96,17 @@ async def export_syscall_events_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_syscall_events_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        run_id: 运行 ID。
+        kind: kind 参数。
+        status: status 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -101,6 +123,15 @@ async def export_syscall_events_csv(
 
 @router.get("/ops/export/approvals.csv", response_model=StatusResponse)
 async def export_approvals_csv(http_request: Request, tenant_id: Optional[str] = None, status: Optional[str] = None, limit: int = 1000, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """export_approvals_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        status: status 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -123,6 +154,17 @@ async def export_tenant_usage_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_tenant_usage_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        day_start: day_start 参数。
+        day_end: day_end 参数。
+        metric_key: metric_key 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -146,6 +188,16 @@ async def export_gateway_dlq_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_gateway_dlq_csv。
+
+    Args:
+        http_request: http_request 参数。
+        status: status 参数。
+        tenant_id: 租户 ID。
+        connector: connector 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -170,6 +222,17 @@ async def export_connector_attempts_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_connector_attempts_csv。
+
+    Args:
+        http_request: http_request 参数。
+        connector: connector 参数。
+        tenant_id: 租户 ID。
+        run_id: 运行 ID。
+        status: status 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -192,6 +255,15 @@ async def export_jobs_dlq_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_jobs_dlq_csv。
+
+    Args:
+        http_request: http_request 参数。
+        status: status 参数。
+        job_id: job 标识。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -213,6 +285,16 @@ async def export_job_delivery_attempts_csv(
     limit: int = 2000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_job_delivery_attempts_csv。
+
+    Args:
+        http_request: http_request 参数。
+        job_id: job 标识。
+        run_id: 运行 ID。
+        status: status 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -235,6 +317,15 @@ async def export_gateway_pairings_csv(
     limit: int = 5000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_gateway_pairings_csv。
+
+    Args:
+        http_request: http_request 参数。
+        channel: channel 参数。
+        user_id: 用户 ID。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -254,6 +345,14 @@ async def export_gateway_tokens_csv(
     limit: int = 5000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_gateway_tokens_csv。
+
+    Args:
+        http_request: http_request 参数。
+        enabled: 是否启用。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -275,6 +374,16 @@ async def export_release_rollouts_csv(
     limit: int = 5000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_release_rollouts_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -298,6 +407,16 @@ async def export_release_metrics_csv(
     limit: int = 5000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_release_metrics_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        candidate_id: candidate 标识。
+        metric_key: metric_key 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -324,6 +443,19 @@ async def export_learning_artifacts_csv(
     limit: int = 5000,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """export_learning_artifacts_csv。
+
+    Args:
+        http_request: http_request 参数。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        kind: kind 参数。
+        status: status 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -355,9 +487,17 @@ async def export_ops_bundle_zip(
     include: Optional[str] = None,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """
-    PR-14+: 打包导出常用运维 CSV 为 zip。
-    注意：仅打包“常用集合”，避免参数爆炸；更复杂的组合可按单文件导出。
+    """PR-14+: 打包导出常用运维 CSV 为 zip。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        day_start: day_start 参数。
+        day_end: day_end 参数。
+        run_id: 运行 ID。
+        candidate_id: candidate 标识。
+        include: include 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:

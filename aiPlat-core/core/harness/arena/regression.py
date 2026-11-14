@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class BenchmarkTask:
+    """BenchmarkTask。"""
     id: str
     category: str
     task: str
@@ -31,6 +32,7 @@ class BenchmarkTask:
 
 @dataclass
 class TaskResult:
+    """TaskResult。"""
     task_id: str
     category: str
     passed: bool
@@ -45,6 +47,7 @@ class TaskResult:
 
 @dataclass
 class RegressionReport:
+    """RegressionReport。"""
     baseline: Optional[Dict[str, Any]] = None
     current: Dict[str, Any] = field(default_factory=dict)
     tasks: List[TaskResult] = field(default_factory=list)
@@ -63,11 +66,18 @@ class RegressionRunner:
     """
 
     def __init__(self, benchmarks_path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            benchmarks_path: benchmarks_path 参数。
+        """
         self._benchmarks_path = benchmarks_path or os.path.join(
             os.path.dirname(__file__), "benchmarks", "sample_tasks.yaml"
         )
 
     def load_tasks(self) -> List[BenchmarkTask]:
+        """load_tasks。
+        """
         try:
             with open(self._benchmarks_path) as f:
                 data = yaml.safe_load(f)
@@ -94,8 +104,12 @@ class RegressionRunner:
         baseline_path: Optional[str] = None,
         save_baseline: bool = False,
     ) -> RegressionReport:
-        """
-        Run all benchmark tasks and compare against baseline.
+        """Run all benchmark tasks and compare against baseline.
+
+        Args:
+            agent_fn: agent_fn 参数。
+            baseline_path: baseline_path 参数。
+            save_baseline: save_baseline 参数。
         """
         tasks = self.load_tasks()
         if not tasks:

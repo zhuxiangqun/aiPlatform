@@ -18,7 +18,15 @@ def build_run_rollback_guidance(
     checkpoint_count: Optional[int] = None,
     checkpoint_preview: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Structured guidance returned when ``POST /runs/{id}/undo`` cannot undo."""
+    """Structured guidance returned when ``POST /runs/{id}/undo`` cannot undo.
+
+    Args:
+        run_id: 运行 ID。
+        run_status: run_status 参数。
+        session_id: 会话 ID。
+        checkpoint_count: checkpoint_count 参数。
+        checkpoint_preview: checkpoint_preview 参数。
+    """
     status = str(run_status or "").strip().lower()
     alternatives: List[Dict[str, Any]] = []
 

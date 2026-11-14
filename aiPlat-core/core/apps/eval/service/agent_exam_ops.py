@@ -91,9 +91,9 @@ def compute_exam_fact_support(
 ) -> Dict[str, Any]:
     """Lexical fact-gold support rate from evidence/reasoning vs success_criteria.
 
-    Checks expected_facts / expected_answer / must_cite|citations|reference /
-    must_contain as substring matches (engineering, not semantic NLI).
-    sufficiency still false.
+    Args:
+        evalset: evalset 参数。
+        task_results: task_results 参数。
     """
     by_id: Dict[str, Dict[str, Any]] = {}
     for tr in task_results or []:
@@ -264,8 +264,13 @@ async def run_agent_exam(
 ) -> Dict[str, Any]:
     """Run exam paper ``set_id`` with all tasks bound to ``agent_id``.
 
-    live=False → dry_run (validate only, no agent execution).
-    live=True → execute agent and optionally persist to eval_results.
+    Args:
+        agent_id: agent 标识。
+        set_id: set 标识。
+        live: 是否 live（非 fixture）路径。
+        max_tasks: max_tasks 参数。
+        persist: persist 参数。
+        run_key: run_key 参数。
     """
     aid = (agent_id or "").strip()
     sid = (set_id or "").strip()
@@ -561,7 +566,17 @@ def match_cases_for_agent_target(
     roles: Optional[Sequence[str]] = None,
     eval_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """P0: explainable MatchReport for agent + set_ids (advisory; no execute)."""
+    """P0: explainable MatchReport for agent + set_ids (advisory; no execute).
+
+    Args:
+        agent_id: agent 标识。
+        set_ids: set_ids 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+    """
     from core.apps.eval.service.case_match import match_eval_sets_for_target
     from core.apps.eval.service.target_contract import build_agent_target_contract
 

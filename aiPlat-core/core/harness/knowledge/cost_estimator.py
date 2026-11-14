@@ -35,6 +35,8 @@ class CostEstimate:
     latency_est_ms: int = 0             # Estimated latency in ms
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "query_complexity": self.query_complexity,
             "doc_count": self.doc_count,
@@ -53,7 +55,12 @@ _LATENCY_MAX_SAMPLES = 1000
 
 
 def record_latency(strategy: str, latency_ms: float) -> None:
-    """Record a latency sample for aggregate statistics."""
+    """Record a latency sample for aggregate statistics.
+
+    Args:
+        strategy: strategy 参数。
+        latency_ms: latency_ms 参数。
+    """
     if strategy in _latency_buffer:
         buf = _latency_buffer[strategy]
         buf.append(latency_ms)
@@ -62,7 +69,11 @@ def record_latency(strategy: str, latency_ms: float) -> None:
 
 
 def get_latency_stats(strategy: Optional[str] = None) -> Dict[str, Any]:
-    """Return P50/P95 latency stats for all or a specific strategy."""
+    """Return P50/P95 latency stats for all or a specific strategy.
+
+    Args:
+        strategy: strategy 参数。
+    """
     import statistics
 
     strategies = [strategy] if strategy else list(_latency_buffer.keys())
@@ -168,9 +179,8 @@ def estimate_query_cost(
 def resolve_routing_mode(cost: CostEstimate) -> str:
     """Map CostEstimate.recommendation to a concrete routing mode.
 
-    Extracted from MaterialsChatAgent — any cost-aware agent needs this mapping.
-    The full_context token threshold (20000) is a sensible default; override via
-    AIPLAT_FULL_CONTEXT_TOKEN_LIMIT env var.
+    Args:
+        cost: cost 参数。
     """
     threshold_raw = os.getenv("AIPLAT_FULL_CONTEXT_TOKEN_LIMIT", "20000")
     try:
@@ -186,7 +196,11 @@ def resolve_routing_mode(cost: CostEstimate) -> str:
 
 
 def get_cost_summary(recent: int = 100) -> Dict[str, Any]:
-    """Return aggregate cost summary including token savings and strategy distribution."""
+    """Return aggregate cost summary including token savings and strategy distribution.
+
+    Args:
+        recent: recent 参数。
+    """
     stats = get_latency_stats()
     return {
         "latency_p50_p95": stats,

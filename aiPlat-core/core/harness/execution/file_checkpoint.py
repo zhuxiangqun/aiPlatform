@@ -55,6 +55,7 @@ def _path_key(abs_path: str) -> str:
 
 @dataclass
 class FileCheckpoint:
+    """FileCheckpoint。"""
     checkpoint_id: str
     session_id: str
     path: str                # absolute original path
@@ -64,6 +65,8 @@ class FileCheckpoint:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return asdict(self)
 
 
@@ -75,8 +78,10 @@ def checkpoint_file(
 ) -> Optional[str]:
     """Back up the current content of an existing file. Returns checkpoint_id or None.
 
-    No-op (returns None) when: disabled, file missing, too large, or unchanged
-    since the last checkpoint (content-hash dedup). Never raises.
+    Args:
+        path: 路径。
+        session_id: 会话 ID。
+        reason: reason 参数。
     """
     if not _enabled():
         return None
@@ -143,7 +148,12 @@ def _list_headers(dstdir: str, *, path_key: str = "") -> List[Dict[str, Any]]:
 
 
 def list_file_checkpoints(*, session_id: str = "", path: str = "") -> List[Dict[str, Any]]:
-    """List file checkpoints for a session (newest first), optionally filtered by path."""
+    """List file checkpoints for a session (newest first), optionally filtered by path.
+
+    Args:
+        session_id: 会话 ID。
+        path: 路径。
+    """
     dstdir = _session_dir(session_id or "default")
     pkey = _path_key(os.path.realpath(os.path.abspath(path))) if path else ""
     headers = _list_headers(dstdir, path_key=pkey)
@@ -161,7 +171,12 @@ def _find_header(checkpoint_id: str, session_id: str) -> Optional[Dict[str, Any]
 
 
 def get_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Optional[Dict[str, Any]]:
-    """Return a checkpoint header + its stored content (decoded best-effort)."""
+    """Return a checkpoint header + its stored content (decoded best-effort).
+
+    Args:
+        checkpoint_id: checkpoint 标识。
+        session_id: 会话 ID。
+    """
     header = _find_header(checkpoint_id, session_id)
     if header is None:
         return None
@@ -181,7 +196,9 @@ def get_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Optional[Di
 def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[str, Any]:
     """Restore a file to the content captured in the given checkpoint.
 
-    Writes the stored bytes back to the original path. Returns a result dict.
+    Args:
+        checkpoint_id: checkpoint 标识。
+        session_id: 会话 ID。
     """
     header = _find_header(checkpoint_id, session_id)
     if header is None:

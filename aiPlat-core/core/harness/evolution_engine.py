@@ -64,6 +64,7 @@ _log = logging.getLogger("aiplat.evolution")
 
 class StepResult:
 
+    """StepResult。"""
     step_name: str
 
     status: str          # ok / timeout / error / skipped
@@ -84,6 +85,7 @@ class StepResult:
 
 class EvolutionRun:
 
+    """EvolutionRun。"""
     run_id: str
 
     started_at: float
@@ -126,6 +128,8 @@ class EvolutionEngine:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._enabled = os.getenv("AIPLAT_EVOLUTION_ENABLED", "true").lower() not in ("0", "false", "no")
 
         self._cron_hour = int(os.getenv("AIPLAT_EVOLUTION_CRON_HOUR", "3"))
@@ -964,6 +968,8 @@ _engine: Optional[EvolutionEngine] = None
 
 def get_evolution_engine() -> EvolutionEngine:
 
+    """获取 evolution_engine。
+    """
     global _engine
 
     if _engine is None: _engine = EvolutionEngine()

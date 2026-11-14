@@ -28,14 +28,10 @@ logger = logging.getLogger("customer_profile_creator")
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
-    u"""Pre-filter domains by industry detection.
+    """Pre-filter domains by industry detection.
 
-
-
-    Input: { company_name, company_description, industry, pain_points }
-
-    Output: { profile with pre_filtered_domains }
-
+    Args:
+        params: params 参数。
     """
 
     profile = params.copy()

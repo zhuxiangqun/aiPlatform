@@ -53,6 +53,15 @@ class PlanExecuteAgent(BaseAgent):
         agent_config: Optional[PlanExecuteAgentConfig] = None,
         **kwargs
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            tools: tools 参数。
+            agent_config: agent_config 参数。
+            kwargs: kwargs 参数。
+        """
         self._pe_config = agent_config or PlanExecuteAgentConfig()
         self._tools = tools or []
         self._plan: List[PlanStep] = []
@@ -74,9 +83,9 @@ class PlanExecuteAgent(BaseAgent):
 
     async def execute(self, context: AgentContext) -> AgentResult:
         """Execute Plan-Execute agent via Harness loop delegation.
-        
-        Delegates to BaseAgent.execute() which runs the PlanExecuteLoop,
-        with model injected before execution.
+
+        Args:
+            context: context 参数。
         """
         if self._loop and hasattr(self._loop, 'set_model') and self._model:
             self._loop.set_model(self._model)
@@ -90,5 +99,12 @@ def create_plan_execute_agent(
     tools: Optional[List[Any]] = None,
     **kwargs
 ) -> PlanExecuteAgent:
-    """Create Plan-Execute agent"""
+    """Create Plan-Execute agent。
+
+    Args:
+        config: config 参数。
+        model: 模型名。
+        tools: tools 参数。
+        kwargs: kwargs 参数。
+    """
     return PlanExecuteAgent(config=config, model=model, tools=tools, **kwargs)

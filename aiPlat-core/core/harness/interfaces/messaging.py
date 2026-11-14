@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 
 
 class AgentMessageType(Enum):
+    """AgentMessageType。"""
     TASK_ASSIGN = "task_assign"
     PROGRESS_UPDATE = "progress_update"
     RESULT = "result"
@@ -33,6 +34,7 @@ class AgentMessageType(Enum):
 
 @dataclass
 class AgentMessage:
+    """AgentMessage。"""
     msg_id: str
     type: AgentMessageType
     sender_id: str
@@ -41,6 +43,8 @@ class AgentMessage:
     parent_msg_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "msg_id": self.msg_id,
             "type": self.type.value,
@@ -52,6 +56,11 @@ class AgentMessage:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AgentMessage":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             msg_id=str(data.get("msg_id", "")),
             type=AgentMessageType(str(data.get("type", "task_assign"))),
@@ -71,11 +80,18 @@ class AgentMessageBus:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._inbox: Dict[str, List[AgentMessage]] = {}
         self._sent: List[AgentMessage] = []
         self._requests: Dict[str, asyncio.Future] = {}
 
     def send(self, msg: AgentMessage) -> None:
+        """send。
+
+        Args:
+            msg: msg 参数。
+        """
         target = msg.receiver_id or "broadcast"
         if target not in self._inbox:
             self._inbox[target] = []
@@ -83,16 +99,29 @@ class AgentMessageBus:
         self._sent.append(msg)
 
     def receive(self, agent_id: str, msg_type: Optional[AgentMessageType] = None) -> List[AgentMessage]:
+        """receive。
+
+        Args:
+            agent_id: Agent ID。
+            msg_type: msg_type 参数。
+        """
         inbox = list(self._inbox.get(agent_id, []))
         if msg_type is not None:
             inbox = [m for m in inbox if m.type == msg_type]
         return inbox
 
     def drain(self, agent_id: str) -> List[AgentMessage]:
+        """drain。
+
+        Args:
+            agent_id: Agent ID。
+        """
         msgs = self._inbox.pop(agent_id, [])
         return msgs
 
     def clear(self) -> None:
+        """clear。
+        """
         self._inbox.clear()
         self._sent.clear()
 
@@ -107,7 +136,12 @@ class AgentMessageBus:
     ) -> Optional[Dict[str, Any]]:
         """Send a request to a specific agent and await its response.
 
-        Returns the response payload, or None on timeout.
+        Args:
+            target_agent: target_agent 参数。
+            sender_agent: sender_agent 参数。
+            msg_type: msg_type 参数。
+            payload: 载荷 dict。
+            timeout: 超时秒数。
         """
         request_id = str(uuid.uuid4())
         self._requests[request_id] = asyncio.get_event_loop().create_future()
@@ -128,7 +162,14 @@ class AgentMessageBus:
             self._requests.pop(request_id, None)
 
     def respond(self, request_id: str, result: Dict[str, Any], sender_agent: str, target_agent: str) -> None:
-        """Respond to a pending request."""
+        """Respond to a pending request.
+
+        Args:
+            request_id: request 标识。
+            result: result 参数。
+            sender_agent: sender_agent 参数。
+            target_agent: target_agent 参数。
+        """
         future = self._requests.get(request_id)
         if future is not None and not future.done():
             future.set_result(result)
@@ -143,7 +184,11 @@ class AgentMessageBus:
         self.send(msg)
 
     def collect_requests(self, agent_id: str) -> List[AgentMessage]:
-        """Collect pending REQUEST messages for an agent (non-destructive)."""
+        """Collect pending REQUEST messages for an agent (non-destructive).
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self.receive(agent_id, AgentMessageType.REQUEST)
 
 

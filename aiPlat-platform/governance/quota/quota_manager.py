@@ -1,3 +1,5 @@
+"""quota_manager：模块接口。"""
+
 import logging
 """
 Quota Manager - 配额管理
@@ -38,6 +40,8 @@ class QuotaManager:
     """配额管理服务"""
 
     def __init__(self):
+        """初始化。
+        """
         self._quotas: dict[str, Quota] = {}
         self._usage: dict[str, QuotaUsage] = {}
         self._db = None
@@ -63,7 +67,16 @@ class QuotaManager:
         max_concurrent_runs: int = 5,
         monthly_tokens: int = 1_000_000,
     ) -> None:
-        """设置配额"""
+        """设置配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            max_agents: max_agents 参数。
+            max_skills: max_skills 参数。
+            max_api_keys: max_api_keys 参数。
+            max_concurrent_runs: max_concurrent_runs 参数。
+            monthly_tokens: monthly_tokens 参数。
+        """
         self._quotas[tenant_id] = Quota(
             tenant_id=tenant_id,
             max_agents=max_agents,
@@ -86,11 +99,21 @@ class QuotaManager:
             logging.debug(str(e), exc_info=True)
 
     def get_quota(self, tenant_id: str) -> Optional[Quota]:
-        """获取配额"""
+        """获取配额。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return self._quotas.get(tenant_id)
 
     def check(self, tenant_id: str, resource: str, value: int = 1) -> bool:
-        """检查配额"""
+        """检查配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            resource: resource 参数。
+            value: value 参数。
+        """
         quota = self._quotas.get(tenant_id)
         if not quota:
             return True
@@ -110,7 +133,13 @@ class QuotaManager:
         return False
 
     def consume(self, tenant_id: str, resource: str, value: int = 1) -> bool:
-        """消费配额"""
+        """消费配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            resource: resource 参数。
+            value: value 参数。
+        """
         if not self.check(tenant_id, resource, value):
             return False
 
@@ -132,7 +161,13 @@ class QuotaManager:
         return True
 
     def release(self, tenant_id: str, resource: str, value: int = 1) -> None:
-        """释放配额"""
+        """释放配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            resource: resource 参数。
+            value: value 参数。
+        """
         if tenant_id not in self._usage:
             return
 
@@ -149,11 +184,19 @@ class QuotaManager:
             usage.monthly_tokens = max(0, usage.monthly_tokens - value)
 
     def get_usage(self, tenant_id: str) -> Optional[QuotaUsage]:
-        """获取配额使用"""
+        """获取配额使用。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return self._usage.get(tenant_id)
 
     def reset_usage(self, tenant_id: str) -> None:
-        """重置配额使用"""
+        """重置配额使用。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         if tenant_id in self._usage:
             self._usage[tenant_id] = QuotaUsage(tenant_id=tenant_id)
 

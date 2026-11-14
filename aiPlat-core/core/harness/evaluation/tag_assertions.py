@@ -70,14 +70,11 @@ def evaluate_tag_assertions_with_stats(
     evidence_pack: Dict[str, Any],
     tag_expectations: Dict[str, Any],
 ) -> Tuple[bool, List[Dict[str, Any]], Dict[str, Any]]:
-    """
-    Returns (ok, failures).
+    """Returns (ok, failures).
 
-    tag_expectations example:
-      {
-        "login": {"text_contains": ["Welcome"], "max_console_errors": 0, "max_network_5xx": 0, "max_duration_ms": 5000},
-        "save": {"max_network_5xx": 0}
-      }
+    Args:
+        evidence_pack: evidence_pack 参数。
+        tag_expectations: tag_expectations 参数。
     """
     ev = _as_dict(evidence_pack)
     by_tag = _as_dict(ev.get("by_tag"))
@@ -168,5 +165,17 @@ def evaluate_tag_assertions_with_stats(
 
 
 def evaluate_tag_assertions(evidence_pack: Dict[str, Any], tag_expectations: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
+    """evaluate_tag_assertions。
+
+    Args:
+        evidence_pack: evidence_pack 参数。
+        tag_expectations: tag_expectations 参数。
+    """
     ok, failures, _stats = evaluate_tag_assertions_with_stats(evidence_pack, tag_expectations)
     return ok, failures
+    """evaluate_tag_assertions。
+
+    Args:
+        evidence_pack: evidence_pack 参数。
+        tag_expectations: tag_expectations 参数。
+    """

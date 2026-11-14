@@ -181,7 +181,12 @@ def create_security_scanner(
     enabled_types: List[VulnerabilityType] = None,
     severity_threshold: VulnerabilitySeverity = VulnerabilitySeverity.MEDIUM
 ) -> SecurityScanner:
-    """Create a security scanner instance"""
+    """Create a security scanner instance。
+
+    Args:
+        enabled_types: enabled_types 参数。
+        severity_threshold: severity_threshold 参数。
+    """
     return SecurityScanner(enabled_types=enabled_types, severity_threshold=severity_threshold)
 
 

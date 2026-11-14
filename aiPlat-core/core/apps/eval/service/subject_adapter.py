@@ -168,24 +168,80 @@ _SESSION_PROFILE_BOUNDS = {
 
 @runtime_checkable
 class EvalSubjectAdapter(Protocol):
+    """评测 Subject 适配器协议：契约 / 目录 / 校验 / 执行 / 评判 / 归一。"""
     subject_kind: str
 
-    def build_contract(self, **kwargs: Any) -> Dict[str, Any]: ...
+    def build_contract(self, **kwargs: Any) -> Dict[str, Any]:
+        """构建该 Subject 的评测契约。
 
-    def capability_catalog(self) -> List[Dict[str, Any]]: ...
+        Args:
+            **kwargs: 契约字段（object_id、capabilities 等，由实现约定）。
 
-    def validate_case(self, case: Mapping[str, Any]) -> List[str]: ...
+        Returns:
+            契约 dict。
+        """
+        ...
 
-    def execute(self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None) -> Dict[str, Any]: ...
+    def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回该 Subject 的能力目录行。
 
-    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]: ...
+        Returns:
+            能力条目列表。
+        """
+        ...
+
+    def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验用例字段，返回错误码列表。
+
+        Args:
+            case: 待校验用例映射。
+
+        Returns:
+            错误码字符串列表；空表示通过。
+        """
+        ...
+
+    def execute(self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+        """执行用例并返回运行结果（fixture / mock，非准确率声明）。
+
+        Args:
+            case: 用例映射。
+            env: 可选运行环境覆盖。
+
+        Returns:
+            执行结果 dict（含 status / runtime_claim 等）。
+        """
+        ...
+
+    def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """根据用例与执行结果做评判。
+
+        Args:
+            case: 用例映射。
+            result: execute 产出。
+
+        Returns:
+            评判 dict（含 passed / errors 等）。
+        """
+        ...
 
     def normalize(
         self,
         case: Mapping[str, Any],
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
-    ) -> Dict[str, Any]: ...
+    ) -> Dict[str, Any]:
+        """将执行与评判归一为统一报告字段（claim 资格等）。
+
+        Args:
+            case: 用例映射。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
+        ...
 
 
 class AgentSubjectAdapter:
@@ -205,6 +261,21 @@ class AgentSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 Agent Subject 评测契约。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本；空则由下游填默认。
+            capabilities: 能力 ID 序列；会经 resolve 校验。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像覆盖。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict。
+        """
         caps = resolve_capability_ids(capabilities or (), fail_closed=True) if capabilities else None
         profile = dict(eval_profile or {})
         if caps is None and profile.get("capabilities"):
@@ -224,6 +295,11 @@ class AgentSubjectAdapter:
         )
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 Agent 规范能力目录（含 v1 in/out of scope）。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(CANONICAL_IDS):
             rows.append(
@@ -237,6 +313,14 @@ class AgentSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 Agent 用例（capabilities / test_purpose / session / long_context）。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -269,6 +353,15 @@ class AgentSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 Agent 用例：文本脚本或 mock tool_trace（禁止宣称 live）。
+
+        Args:
+            case: 用例。
+            env: 可选环境（answer / scripted_tool_calls 等）。
+
+        Returns:
+            执行结果 dict。
+        """
         from core.apps.eval.service.mock_tools.harness import (
             MockToolHarnessError,
             invoke_mock_tools,
@@ -360,6 +453,15 @@ class AgentSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """评判 Agent 结果：long_context / tool_trace / multi_turn 脚本烟测。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         from core.apps.eval.service.long_context_generator import judge_long_context
         from core.apps.eval.service.tool_trace_judge import judge_tool_trace
 
@@ -412,6 +514,16 @@ class AgentSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 Agent 评判；未处理能力返回 not_implemented。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告；claim_eligible 恒为 False。
+        """
         from core.apps.eval.service.capability_id_map import is_v1_in_scope
 
         caps = resolve_capability_ids(
@@ -770,6 +882,21 @@ class KbSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 KB/RAG Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本。
+            capabilities: 能力 ID 序列。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict（含 honesty 声明）。
+        """
         caps = (
             resolve_capability_ids(capabilities or (), fail_closed=True)
             if capabilities
@@ -801,6 +928,11 @@ class KbSubjectAdapter:
         }
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 KB/RAG v1 可测能力目录。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(self.v1_caps):
             rows.append(
@@ -816,6 +948,14 @@ class KbSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 KB/RAG 用例必填字段与能力范围。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -857,6 +997,15 @@ class KbSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 KB/RAG fixture 路径；live=True 时返回 not_implemented。
+
+        Args:
+            case: 用例。
+            env: 可选环境覆盖。
+
+        Returns:
+            执行结果 dict。
+        """
         env_map = dict(env or {})
         if bool(env_map.get("live")):
             return {
@@ -887,6 +1036,15 @@ class KbSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """按 KB/RAG oracle 评判 fixture 结果。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         res = result if isinstance(result, Mapping) else {}
         hits = res.get("hits") if isinstance(res.get("hits"), list) else []
         errors: List[str] = []
@@ -924,6 +1082,16 @@ class KbSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 KB/RAG 评判；claim/certification 恒不可申领。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
@@ -964,6 +1132,21 @@ class CodeReviewSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 Code Review Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本。
+            capabilities: 能力 ID 序列。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict（含 honesty 声明）。
+        """
         caps = (
             resolve_capability_ids(capabilities or (), fail_closed=True)
             if capabilities
@@ -999,6 +1182,11 @@ class CodeReviewSubjectAdapter:
         }
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 Code Review v1 可测能力目录。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(self.v1_caps):
             rows.append(
@@ -1014,6 +1202,14 @@ class CodeReviewSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 Code Review 用例必填字段与能力范围。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -1057,6 +1253,15 @@ class CodeReviewSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 Code Review fixture 路径；live=True 时返回 not_implemented。
+
+        Args:
+            case: 用例。
+            env: 可选环境覆盖。
+
+        Returns:
+            执行结果 dict。
+        """
         env_map = dict(env or {})
         if bool(env_map.get("live")):
             return {
@@ -1087,6 +1292,15 @@ class CodeReviewSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """按 Code Review oracle 评判 fixture 结果。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         res = result if isinstance(result, Mapping) else {}
         findings = res.get("findings") if isinstance(res.get("findings"), list) else []
         gold = case.get("gold") if isinstance(case.get("gold"), list) else []
@@ -1124,6 +1338,16 @@ class CodeReviewSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 Code Review 评判；claim/certification 恒不可申领。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
@@ -1164,6 +1388,21 @@ class SessionSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 Session Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本。
+            capabilities: 能力 ID 序列。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict（含 honesty 声明）。
+        """
         caps = (
             resolve_capability_ids(capabilities or (), fail_closed=True)
             if capabilities
@@ -1199,6 +1438,11 @@ class SessionSubjectAdapter:
         }
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 Session v1 可测能力目录。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(self.v1_caps):
             rows.append(
@@ -1214,6 +1458,14 @@ class SessionSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 Session 用例必填字段与能力范围。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -1274,6 +1526,15 @@ class SessionSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 Session fixture 路径；live=True 时返回 not_implemented。
+
+        Args:
+            case: 用例。
+            env: 可选环境覆盖。
+
+        Returns:
+            执行结果 dict。
+        """
         env_map = dict(env or {})
         if bool(env_map.get("live")):
             return {
@@ -1312,6 +1573,15 @@ class SessionSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """按 Session oracle 评判 fixture 结果。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         res = result if isinstance(result, Mapping) else {}
         turns = res.get("turns") if isinstance(res.get("turns"), list) else []
         if not turns:
@@ -1386,6 +1656,16 @@ class SessionSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 Session 评判；claim/certification 恒不可申领。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
@@ -1428,6 +1708,21 @@ class ToolSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 Tool/MCP Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本。
+            capabilities: 能力 ID 序列。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict（含 honesty 声明）。
+        """
         caps = (
             resolve_capability_ids(capabilities or (), fail_closed=True)
             if capabilities
@@ -1463,6 +1758,11 @@ class ToolSubjectAdapter:
         }
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 Tool/MCP v1 可测能力目录。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(self.v1_caps):
             rows.append(
@@ -1478,6 +1778,14 @@ class ToolSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 Tool/MCP 用例必填字段与能力范围。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -1518,6 +1826,15 @@ class ToolSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 Tool/MCP fixture 路径；live=True 时返回 not_implemented。
+
+        Args:
+            case: 用例。
+            env: 可选环境覆盖。
+
+        Returns:
+            执行结果 dict。
+        """
         from core.apps.eval.service.mock_tools.harness import (
             MockToolHarnessError,
             invoke_mock_tools,
@@ -1592,6 +1909,15 @@ class ToolSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """按 Tool/MCP oracle 评判 fixture 结果。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         from core.apps.eval.service.tool_trace_judge import judge_tool_trace
 
         res = result if isinstance(result, Mapping) else {}
@@ -1609,6 +1935,16 @@ class ToolSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 Tool/MCP 评判；claim/certification 恒不可申领。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
@@ -1682,6 +2018,21 @@ class MultiAgentSubjectAdapter:
         eval_profile: Optional[Mapping[str, Any]] = None,
         source_refs: Optional[Sequence[str]] = None,
     ) -> Dict[str, Any]:
+        """构建 Multi-Agent Subject 本地契约（未注册 OBJECT_TYPES；claim 恒 false）。
+
+        Args:
+            object_id: 对象 ID。
+            object_version: 对象版本。
+            capabilities: 能力 ID 序列。
+            tools: 工具名序列。
+            permissions: 权限序列。
+            roles: 角色序列。
+            eval_profile: 评测画像。
+            source_refs: 来源引用。
+
+        Returns:
+            契约 dict（含 honesty 声明）。
+        """
         caps = (
             resolve_capability_ids(capabilities or (), fail_closed=True)
             if capabilities
@@ -1717,6 +2068,11 @@ class MultiAgentSubjectAdapter:
         }
 
     def capability_catalog(self) -> List[Dict[str, Any]]:
+        """返回 Multi-Agent v1 可测能力目录。
+
+        Returns:
+            能力条目列表。
+        """
         rows: List[Dict[str, Any]] = []
         for cid in sorted(self.v1_caps):
             rows.append(
@@ -1732,6 +2088,14 @@ class MultiAgentSubjectAdapter:
         return rows
 
     def validate_case(self, case: Mapping[str, Any]) -> List[str]:
+        """校验 Multi-Agent 用例必填字段与能力范围。
+
+        Args:
+            case: 待校验用例。
+
+        Returns:
+            错误码列表。
+        """
         errors: List[str] = []
         if not isinstance(case, Mapping):
             return ["invalid_case"]
@@ -1786,6 +2150,15 @@ class MultiAgentSubjectAdapter:
     def execute(
         self, case: Mapping[str, Any], env: Mapping[str, Any] | None = None
     ) -> Dict[str, Any]:
+        """执行 Multi-Agent fixture 路径；live=True 时返回 not_implemented。
+
+        Args:
+            case: 用例。
+            env: 可选环境覆盖。
+
+        Returns:
+            执行结果 dict。
+        """
         env_map = dict(env or {})
         if bool(env_map.get("live")):
             return {
@@ -1822,6 +2195,15 @@ class MultiAgentSubjectAdapter:
         }
 
     def judge(self, case: Mapping[str, Any], result: Mapping[str, Any]) -> Dict[str, Any]:
+        """按 Multi-Agent oracle 评判 fixture 结果。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+
+        Returns:
+            评判 dict。
+        """
         res = result if isinstance(result, Mapping) else {}
         handoffs = res.get("handoffs") if isinstance(res.get("handoffs"), list) else []
         if not handoffs:
@@ -1879,6 +2261,16 @@ class MultiAgentSubjectAdapter:
         result: Mapping[str, Any],
         judgment: Mapping[str, Any],
     ) -> Dict[str, Any]:
+        """归一 Multi-Agent 评判；claim/certification 恒不可申领。
+
+        Args:
+            case: 用例。
+            result: 执行结果。
+            judgment: 评判结果。
+
+        Returns:
+            归一化报告 dict。
+        """
         caps = resolve_capability_ids(
             list((case or {}).get("capabilities") or []), fail_closed=False
         )
@@ -1917,6 +2309,14 @@ _REGISTRY: Dict[str, EvalSubjectAdapter] = {
 
 
 def get_subject_adapter(subject_kind: str) -> EvalSubjectAdapter:
+    """按 subject_kind 从注册表取适配器；禁止把 Method 名当作 Subject。
+
+    Args:
+        subject_kind: Subject 种类（如 agent / prompt / kb）。
+
+    Returns:
+        EvalSubjectAdapter 实现。
+    """
     from core.apps.eval.service.method_track import assert_not_subject_method
 
     kind = (subject_kind or "").strip().lower()
@@ -1928,4 +2328,9 @@ def get_subject_adapter(subject_kind: str) -> EvalSubjectAdapter:
 
 
 def list_subject_kinds() -> List[str]:
+    """列出已注册的 Subject 种类（排序后）。
+
+    Returns:
+        subject_kind 字符串列表。
+    """
     return sorted(_REGISTRY.keys())

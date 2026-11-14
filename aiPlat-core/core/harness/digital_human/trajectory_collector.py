@@ -33,6 +33,8 @@ _BAD_MARKERS = (
 
 
 def ensure_dir() -> None:
+    """ensure_dir。
+    """
     _TRAJ_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -117,8 +119,10 @@ def mark_feedback(
 ) -> Dict[str, Any]:
     """Mark the latest assistant turn as good/bad; optional gold correction.
 
-    rating: "good" | "bad"
-    correction: when bad, user-provided better answer (or short fix note).
+    Args:
+        session_id: 会话 ID。
+        rating: rating 参数。
+        correction: correction 参数。
     """
     sid = (session_id or "").strip()
     rate = (rating or "").strip().lower()
@@ -164,7 +168,8 @@ def mark_feedback(
 def infer_feedback_from_user(user_text: str) -> Optional[Dict[str, str]]:
     """Detect verbal praise/correction without a thumbs UI.
 
-    Returns {"rating": "good"|"bad", "correction": "..."} or None.
+    Args:
+        user_text: user_text 参数。
     """
     t = (user_text or "").strip()
     if not t or len(t) > 400:
@@ -183,7 +188,13 @@ def recent_session_turns(
     max_turns: int = 6,
     max_chars: int = 500,
 ) -> List[Dict[str, str]]:
-    """This WebSocket/session's last turns (working continuity, not long-term memory)."""
+    """This WebSocket/session's last turns (working continuity, not long-term memory).
+
+    Args:
+        session_id: 会话 ID。
+        max_turns: max_turns 参数。
+        max_chars: max_chars 参数。
+    """
     sid = (session_id or "").strip()
     if not sid or max_turns <= 0:
         return []
@@ -212,6 +223,11 @@ def recent_session_turns(
 
 
 def format_session_dialogue(turns: List[Dict[str, str]]) -> str:
+    """format_session_dialogue。
+
+    Args:
+        turns: turns 参数。
+    """
     if not turns:
         return ""
     lines = ["本会话刚才（不是长期记忆，追问须接上，勿换题）:"]
@@ -222,7 +238,11 @@ def format_session_dialogue(turns: List[Dict[str, str]]) -> str:
 
 
 def get_recent_trajectories(limit: int = 10) -> List[Dict[str, Any]]:
-    """Get recent trajectories for few-shot injection."""
+    """Get recent trajectories for few-shot injection.
+
+    Args:
+        limit: 返回条数上限。
+    """
     try:
         ensure_dir()
         files = sorted(_TRAJ_DIR.glob("*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
@@ -323,9 +343,9 @@ def export_curated_sharegpt_dataset(
 ) -> Dict[str, Any]:
     """Export only human-rated good / gold-corrected pairs for SFT.
 
-    Pairing rules:
-    - quality=good on assistant → previous user + this assistant
-    - quality=gold on assistant → previous user (before the bad assistant) + gold
+    Args:
+        output_dir: output_dir 参数。
+        session_filter: session_filter 参数。
     """
     try:
         ensure_dir()
@@ -442,8 +462,9 @@ _SEED_QA: List[Tuple[str, str]] = [
 def export_seed_sharegpt_dataset(*, output_dir: str = "", force: bool = False) -> Dict[str, Any]:
     """Write distilled platform-mindset Q&A seeds for FineTune bootstrap.
 
-    Stable file name (overwrite when force). Complements curated human feedback;
-    never replaces live brief for inventory facts.
+    Args:
+        output_dir: output_dir 参数。
+        force: 是否强制。
     """
     try:
         out_dir = output_dir or get_aiplat_data_dir("training")

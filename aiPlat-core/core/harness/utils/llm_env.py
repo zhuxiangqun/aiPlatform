@@ -12,7 +12,11 @@ _log = logging.getLogger(__name__)
 
 
 def get_llm_api_key(provider: str = "") -> Optional[str]:
-    """Resolve LLM API key — infra ModelManager credential pool ONLY."""
+    """Resolve LLM API key — infra ModelManager credential pool ONLY.
+
+    Args:
+        provider: provider 参数。
+    """
     try:
         from core.harness.infrastructure.infra_bridge import get_infra_bridge
         bridge = get_infra_bridge()
@@ -30,7 +34,11 @@ def get_llm_api_key(provider: str = "") -> Optional[str]:
 
 
 def get_llm_base_url(provider: str = "") -> Optional[str]:
-    """Resolve LLM base URL — infra ModelManager ONLY."""
+    """Resolve LLM base URL — infra ModelManager ONLY.
+
+    Args:
+        provider: provider 参数。
+    """
     try:
         from core.harness.infrastructure.infra_bridge import get_infra_bridge
         bridge = get_infra_bridge()

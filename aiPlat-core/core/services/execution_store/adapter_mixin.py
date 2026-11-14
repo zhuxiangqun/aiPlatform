@@ -14,6 +14,11 @@ class AdapterMixin:
     # ---------------------------------------------------------------------
 
     async def upsert_adapter(self, record: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_adapter。
+
+        Args:
+            record: record 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -123,6 +128,11 @@ class AdapterMixin:
         }
 
     async def get_adapter(self, adapter_id: str) -> Optional[Dict[str, Any]]:
+        """获取 adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -164,6 +174,14 @@ class AdapterMixin:
         }
 
     async def list_adapters(self, *, provider: Optional[str] = None, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 adapters。
+
+        Args:
+            provider: provider 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -209,6 +227,11 @@ class AdapterMixin:
         return {"items": items, "total": int(res.get("total") or 0), "limit": int(limit), "offset": int(offset)}
 
     async def delete_adapter(self, adapter_id: str) -> bool:
+        """删除 adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 

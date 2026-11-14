@@ -19,11 +19,17 @@ class GraphSyncHandler:
     """Centralized handler for resource mutation → graph cache invalidation."""
 
     def __init__(self):
+        """初始化。
+        """
         self._debounce_task: Optional[asyncio.Task] = None
         self._debounce_secs = 2.0
 
     async def on_resource_mutated(self, event):
-        """Debounced cache clear: coalesces rapid mutations into one invalidation."""
+        """Debounced cache clear: coalesces rapid mutations into one invalidation.
+
+        Args:
+            event: event 参数。
+        """
         if self._debounce_task and not self._debounce_task.done():
             self._debounce_task.cancel()
         self._debounce_task = asyncio.create_task(self._clear_after_debounce())

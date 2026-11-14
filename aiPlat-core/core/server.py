@@ -69,6 +69,12 @@ _server_ready = False
 class ServerReadinessMiddleware(BaseHTTPMiddleware):
     """Reject all requests until the server has finished startup initialization."""
     async def dispatch(self, request, call_next):
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         if not _server_ready:
             return JSONResponse(
                 status_code=503,
@@ -111,6 +117,12 @@ class BackpressureMiddleware(BaseHTTPMiddleware):
     >0 时启用协议级背压（对齐 Codex JSON-RPC -32001 语义的 HTTP 表达）。
     """
     async def dispatch(self, request, call_next):
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         global _backpressure_inflight
         if _BACKPRESSURE_MAX_INFLIGHT <= 0:
             return await call_next(request)
@@ -377,6 +389,11 @@ def _reload_workspace_managers() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """lifespan。
+
+    Args:
+        app: app 参数。
+    """
     from pathlib import Path as _Path  # explicit local import to avoid Python 3.13 scoping bug
     global _agent_discovery, _skill_discovery
     global _agent_manager, _skill_manager, _memory_manager
@@ -2555,7 +2572,12 @@ async def core_health_check():
 
 @app.post("/api/core/gateway/execute")
 async def gateway_execute(http_request: Request, body: Dict[str, Any] = None):
-    """Execute agent/skill/tool via HTTP — used by platform's conversations/kb modules."""
+    """Execute agent/skill/tool via HTTP — used by platform's conversations/kb modules.
+
+    Args:
+        http_request: http_request 参数。
+        body: 请求体。
+    """
     if not body:
         raise HTTPException(status_code=400, detail="body_required")
     # Read cross-service tracing ID from platform proxy headers
@@ -2594,7 +2616,11 @@ async def gateway_dlq_list():
 
 @app.delete("/api/core/gateway/dlq/{entry_id}")
 async def gateway_dlq_delete(entry_id: str):
-    """Delete a DLQ entry."""
+    """Delete a DLQ entry.
+
+    Args:
+        entry_id: entry 标识。
+    """
     from core.gateway import get_enterprise_gateway
     gw = get_enterprise_gateway()
     if not gw or not gw.delete_dlq_entry(entry_id):
@@ -2604,7 +2630,11 @@ async def gateway_dlq_delete(entry_id: str):
 
 @app.post("/api/core/gateway/dlq/{entry_id}/retry")
 async def gateway_dlq_retry(entry_id: str):
-    """Retry a DLQ entry."""
+    """Retry a DLQ entry.
+
+    Args:
+        entry_id: entry 标识。
+    """
     from core.gateway import get_enterprise_gateway
     gw = get_enterprise_gateway()
     if not gw:
@@ -2615,7 +2645,11 @@ async def gateway_dlq_retry(entry_id: str):
 
 @app.get("/api/core/quota/snapshot")
 async def quota_snapshot(tenant_id: str = Query("default")):
-    """Return a quota snapshot — aggregate execution store stats."""
+    """Return a quota snapshot — aggregate execution store stats.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     try:
         import time as _time
         store = get_execution_store()
@@ -2638,7 +2672,13 @@ async def quota_usage(
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """Return quota usage items — paginated execution event stats."""
+    """Return quota usage items — paginated execution event stats.
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     try:
         store = get_execution_store()
         stats = await store.get_syscall_event_stats(window_hours=720, top_n=limit + offset)
@@ -2763,7 +2803,12 @@ except Exception as e:
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8002):
-    """Run the server (loopback by default; non-loopback needs API token)."""
+    """Run the server (loopback by default; non-loopback needs API token).
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     from core.api.bind_gate import assert_core_bind_allowed
 
     assert_core_bind_allowed(host)

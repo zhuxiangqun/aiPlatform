@@ -44,6 +44,7 @@ from typing import Any, Dict, List, Optional
 
 class BusinessKPI:
 
+    """BusinessKPI。"""
     label: str               # 客户能理解的指标名
 
     value: str               # 展示值
@@ -64,6 +65,7 @@ class BusinessKPI:
 
 class RenewalReport:
 
+    """RenewalReport。"""
     project_id: str
 
     project_name: str
@@ -100,6 +102,8 @@ class BusinessValueTranslator:
 
     def __init__(self):
 
+        """__init__。
+        """
         self._score_cache: Dict[str, Any] = {}
 
 
@@ -120,12 +124,11 @@ class BusinessValueTranslator:
 
         """Generate business-value renewal report for one FDE project.
 
-
-
-        Aggregates eval data from ALL agents in the project (architect,
-
-        programmer, QA, etc.) and translates into client-facing KPIs.
-
+        Args:
+            project_id: project 标识。
+            project_name: project_name 参数。
+            monthly_exec_count: monthly_exec_count 参数。
+            avg_manual_time_min: avg_manual_time_min 参数。
         """
 
         report = RenewalReport(
@@ -562,7 +565,13 @@ def generate_renewal_report(project_id: str, project_name: str = "",
 
                             monthly_count: int = 100) -> Dict[str, Any]:
 
-    """Convenience function for API endpoints."""
+    """Convenience function for API endpoints.
+
+    Args:
+        project_id: project 标识。
+        project_name: project_name 参数。
+        monthly_count: monthly_count 参数。
+    """
 
     translator = BusinessValueTranslator()
 

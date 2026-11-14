@@ -37,7 +37,14 @@ def evaluate_judge_calibration_gate(
     threshold: float = DEFAULT_AGREEMENT_THRESHOLD,
     ticket: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Compute engineering agreement bar; always report-only for claim."""
+    """Compute engineering agreement bar; always report-only for claim.
+
+    Args:
+        agreement: agreement 参数。
+        ratings: ratings 参数。
+        threshold: threshold 参数。
+        ticket: ticket 参数。
+    """
     if agreement is None:
         if ratings is not None:
             agreement = compute_rating_agreement(ratings)
@@ -99,7 +106,20 @@ def open_capability_judge_calibration(
     profile: Optional[Mapping[str, Any]] = None,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """Open judge ticket sampling first N case_ids from Subject bank."""
+    """Open judge ticket sampling first N case_ids from Subject bank.
+
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        sample_n: sample_n 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+        cases: 用例列表。
+        profile_id: profile 标识。
+        profile: profile 参数。
+        subject_kind: subject_kind 参数。
+    """
     from core.apps.eval.service.capability_coverage_fill import resolve_coverage_context
 
     bank, kind, _prof = resolve_coverage_context(
@@ -145,7 +165,14 @@ def judge_calibration_gate_for_ticket(
     threshold: float = DEFAULT_AGREEMENT_THRESHOLD,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Load ticket and evaluate engineering gate (claim still closed)."""
+    """Load ticket and evaluate engineering gate (claim still closed).
+
+    Args:
+        workspace_id: workspace 标识。
+        ticket_id: ticket 标识。
+        threshold: threshold 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     try:
         ticket = load_judge_ticket(
             workspace_id=workspace_id,
@@ -213,8 +240,13 @@ def benchmark_readiness_report(
 ) -> Dict[str, Any]:
     """Coverage vs Profile quotas (default agent benchmark; Subject-aware).
 
-    Default uses heterogeneous v1.1 quotas (legacy ≥8; A3–A5/A8/A9 floor 5).
-    Pass ``min_per_capability`` only for flat-floor audits.
+    Args:
+        cases: 用例列表。
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        compile_plan: compile_plan 参数。
     """
     from core.apps.eval.service.capability_coverage_fill import resolve_coverage_context
 

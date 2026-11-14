@@ -1,3 +1,5 @@
+"""memory：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -28,7 +30,14 @@ def _memory_mgr(rt: RuntimeDep):
 
 @router.get("/memory/sessions", response_model=Dict[str, Any])
 async def list_sessions(http_request: Request, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """List memory sessions"""
+    """List memory sessions。
+
+    Args:
+        http_request: http_request 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         tenant_id = None
@@ -72,7 +81,13 @@ async def list_sessions(http_request: Request, limit: int = 100, offset: int = 0
 
 @router.post("/memory/sessions", response_model=Dict[str, Any])
 async def create_session(request: SessionCreateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Create memory session"""
+    """Create memory session。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     meta = request.metadata or {}
     store = _store(rt)
     if store:
@@ -109,7 +124,13 @@ async def create_session(request: SessionCreateRequest, http_request: Request, r
 
 @router.get("/memory/sessions/{session_id}", response_model=Dict[str, Any])
 async def get_session(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get session details"""
+    """Get session details。
+
+    Args:
+        session_id: 会话 ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         actor0 = actor_from_http(http_request, None)
@@ -153,7 +174,13 @@ async def get_session(session_id: str, http_request: Request, rt: RuntimeDep = D
 
 @router.delete("/memory/sessions/{session_id}", response_model=Dict[str, Any])
 async def delete_session(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Delete session"""
+    """Delete session。
+
+    Args:
+        session_id: 会话 ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         actor0 = actor_from_http(http_request, None)
@@ -174,7 +201,13 @@ async def delete_session(session_id: str, http_request: Request, rt: RuntimeDep 
 
 @router.get("/memory/sessions/{session_id}/context", response_model=Dict[str, Any])
 async def get_session_context(session_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get session context"""
+    """Get session context。
+
+    Args:
+        session_id: 会话 ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         actor0 = actor_from_http(http_request, None)
@@ -196,7 +229,14 @@ async def get_session_context(session_id: str, http_request: Request, rt: Runtim
 
 @router.post("/memory/sessions/{session_id}/messages", response_model=Dict[str, Any])
 async def add_message(session_id: str, request: MessageCreateRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Add message to session"""
+    """Add message to session。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         actor0 = actor_from_http(http_request, None)
@@ -226,7 +266,13 @@ async def add_message(session_id: str, request: MessageCreateRequest, http_reque
 
 @router.post("/memory/search", response_model=Dict[str, Any])
 async def search_memory(request: SearchRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Search memory"""
+    """Search memory。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         actor0 = actor_from_http(http_request, None)
@@ -253,7 +299,13 @@ async def get_team_brain(
     limit: int = 20,
     http_request: Request = None,
 ):
-    """Team Brain：跨 Agent 共享解法列表 / Auto-Recall 预览（Hivemind 对齐薄聚合）。"""
+    """Team Brain：跨 Agent 共享解法列表 / Auto-Recall 预览（Hivemind 对齐薄聚合）。
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+        http_request: http_request 参数。
+    """
     from core.api.core_facade import recall_team_brain, team_brain_status
 
     q = (query or "").strip()
@@ -269,7 +321,12 @@ async def get_team_brain(
 
 @router.post("/memory/team-brain", response_model=Dict[str, Any])
 async def post_team_brain_solution(request: dict, http_request: Request = None):
-    """登记一条人工团队解法（供其他 Agent Auto-Recall）。"""
+    """登记一条人工团队解法（供其他 Agent Auto-Recall）。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     from core.api.core_facade import publish_team_brain_manual
 
     body = request if isinstance(request, dict) else {}
@@ -289,7 +346,12 @@ async def post_team_brain_solution(request: dict, http_request: Request = None):
 
 @router.post("/memory/ide-capture", response_model=Dict[str, Any])
 async def post_ide_capture(request: dict, http_request: Request = None):
-    """IDE/Cursor/CC 旁路捕获：{prompt,tools,result,success,tags} → Team Brain（可选 Wiki）。"""
+    """IDE/Cursor/CC 旁路捕获：{prompt,tools,result,success,tags} → Team Brain（可选 Wiki）。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     from core.api.core_facade import ingest_ide_capture
 
     body = request if isinstance(request, dict) else {}
@@ -317,6 +379,15 @@ async def post_ide_capture(request: dict, http_request: Request = None):
 
 @router.get("/memory/pins", response_model=Dict[str, Any])
 async def list_memory_pins(http_request: Request, session_id: Optional[str] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """列出 memory_pins。
+
+    Args:
+        http_request: http_request 参数。
+        session_id: 会话 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -330,6 +401,13 @@ async def list_memory_pins(http_request: Request, session_id: Optional[str] = No
 
 @router.post("/memory/pins", response_model=Dict[str, Any])
 async def pin_memory(request: dict, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """pin_memory。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -352,6 +430,13 @@ async def pin_memory(request: dict, http_request: Request, rt: RuntimeDep = Depe
 
 @router.delete("/memory/pins/{message_id}", response_model=Dict[str, Any])
 async def unpin_memory(message_id: str, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """unpin_memory。
+
+    Args:
+        message_id: message 标识。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -365,7 +450,11 @@ async def unpin_memory(message_id: str, http_request: Request, rt: RuntimeDep = 
 
 @router.get("/memory/stats", response_model=Dict[str, Any])
 async def get_memory_stats(rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get memory statistics"""
+    """Get memory statistics。
+
+    Args:
+        rt: rt 参数。
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
@@ -384,7 +473,12 @@ async def get_memory_stats(rt: RuntimeDep = Depends(get_kernel_runtime)):
 
 @router.post("/memory/cleanup", response_model=Dict[str, Any])
 async def cleanup_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Cleanup memory"""
+    """Cleanup memory。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
@@ -397,8 +491,8 @@ async def cleanup_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runt
 async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Export complete memory snapshot for migration or backup.
 
-    Returns all layers: Episodic, Semantic, TaskSkills (L3), Sessions.
-    Replaces the old session-count-only export.
+    Args:
+        rt: rt 参数。
     """
     mm = _memory_mgr(rt)
     if not mm:
@@ -420,8 +514,9 @@ async def export_memory(rt: RuntimeDep = Depends(get_kernel_runtime)):
 async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Import memory from a previously exported JSON snapshot.
 
-    Body: {data: <memory json>, merge: false}
-    Use merge=true to add to existing memory; merge=false (default) replaces.
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     mm = _memory_mgr(rt)
     if not mm:
@@ -443,7 +538,9 @@ async def import_memory(request: dict, rt: RuntimeDep = Depends(get_kernel_runti
 async def validate_import(request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Dry-run validate a memory import without applying it.
 
-    Returns what would be restored: semantic_count, task_skills_count, version check.
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
     """
     data = request.get("data")
     if not data or not isinstance(data, dict):
@@ -470,8 +567,9 @@ async def validate_import(request: dict, rt: RuntimeDep = Depends(get_kernel_run
 async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Inspect memory contents for diagnostics.
 
-    Returns human-readable snapshot of all memory layers.
-    Optional namespace filter for per-agent inspection.
+    Args:
+        namespace: namespace 参数。
+        rt: rt 参数。
     """
     mm = _memory_mgr(rt)
     if not mm:
@@ -489,6 +587,12 @@ async def inspect_memory(namespace: str = "", rt: RuntimeDep = Depends(get_kerne
 
 @router.post("/memory/longterm", response_model=Dict[str, Any])
 async def add_long_term_memory(request: LongTermMemoryAddRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """add_long_term_memory。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -503,6 +607,12 @@ async def add_long_term_memory(request: LongTermMemoryAddRequest, rt: RuntimeDep
 
 @router.post("/memory/longterm/search", response_model=Dict[str, Any])
 async def search_long_term_memory(request: LongTermMemorySearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """search_long_term_memory。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -525,10 +635,15 @@ async def list_long_term_memories(
 ):
     """Phase 40: List all long-term memories for a user.
 
-    Structured filters (no SQL injection risk):
-      - source_tag: filter by source label
-      - min_trust: filter by minimum trust_weight (0-1)
-      - date_from/date_to: timestamp range on created_at
+    Args:
+        user_id: 用户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        source_tag: source_tag 参数。
+        min_trust: min_trust 参数。
+        date_from: date_from 参数。
+        date_to: date_to 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -546,7 +661,13 @@ async def update_long_term_memory(
     memory_id: str, request: LongTermMemoryUpdateRequest,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """Phase 40: Update a long-term memory entry."""
+    """Phase 40: Update a long-term memory entry.
+
+    Args:
+        memory_id: memory 标识。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -565,7 +686,12 @@ async def update_long_term_memory(
 async def delete_long_term_memory(
     memory_id: str, rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
-    """Phase 40: Delete a long-term memory entry."""
+    """Phase 40: Delete a long-term memory entry.
+
+    Args:
+        memory_id: memory 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -578,7 +704,12 @@ async def delete_long_term_memory(
 
 @router.delete("/memory/semantic/{key}", response_model=Dict[str, Any])
 async def forget_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Phase 40: Soft-delete a semantic memory entry."""
+    """Phase 40: Soft-delete a semantic memory entry.
+
+    Args:
+        key: key 参数。
+        rt: rt 参数。
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
@@ -588,7 +719,12 @@ async def forget_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime)
 
 @router.post("/memory/semantic/{key}/recover", response_model=Dict[str, Any])
 async def recover_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Phase 40: Recover a soft-deleted semantic memory entry."""
+    """Phase 40: Recover a soft-deleted semantic memory entry.
+
+    Args:
+        key: key 参数。
+        rt: rt 参数。
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
@@ -598,7 +734,12 @@ async def recover_semantic(key: str, rt: RuntimeDep = Depends(get_kernel_runtime
 
 @router.post("/memory/semantic/search", response_model=Dict[str, Any])
 async def search_semantic(request: SearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Phase 40: Search semantic memories with provenance fields."""
+    """Phase 40: Search semantic memories with provenance fields.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mm = _memory_mgr(rt)
     if not mm:
         raise HTTPException(status_code=503, detail="MemoryManager not initialized")
@@ -618,7 +759,11 @@ async def get_memory_rules():
 
 @router.put("/memory/rules", response_model=Dict[str, Any])
 async def update_memory_rules(request: Dict[str, Any]):
-    """Phase 40: Save user memory rules. Accepts partial updates."""
+    """Phase 40: Save user memory rules. Accepts partial updates.
+
+    Args:
+        request: FastAPI Request。
+    """
     from core.harness.memory.manager import MemoryManager
     MemoryManager.save_memory_rules(request)
     return MemoryManager.load_memory_rules()

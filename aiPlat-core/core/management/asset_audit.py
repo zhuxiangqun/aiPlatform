@@ -90,9 +90,10 @@ def _collapse_audit_appendices(body: str) -> str:
 def upsert_sop_appendix(body: str, heading: str, appendix: str) -> str:
     """Idempotently append/replace a ## appendix block; leaves prior steps unchanged.
 
-    Removes *all* prior copies of ``heading`` (repeat apply / stacked drafts) before
-    writing a single appendix. Adjacent audit skeletons without a blank line before
-    the next ``##`` are still matched.
+    Args:
+        body: 请求体。
+        heading: heading 参数。
+        appendix: appendix 参数。
     """
     heading = str(heading or "").strip()
     appendix = str(appendix or "").strip()
@@ -191,7 +192,11 @@ def _strip_orphan_audit_skeleton(text: str, heading: str) -> str:
 
 
 def build_sop_skill_refs_appendix(skills: List[str]) -> str:
-    """Markdown section listing bound skill ids in backticks (audit-clearable)."""
+    """Markdown section listing bound skill ids in backticks (audit-clearable).
+
+    Args:
+        skills: skills 参数。
+    """
     ids = [str(s).strip() for s in (skills or []) if str(s).strip()]
     if not ids:
         return ""
@@ -207,7 +212,12 @@ def build_sop_skill_refs_appendix(skills: List[str]) -> str:
 
 
 def upsert_sop_skill_refs_appendix(body: str, skills: List[str]) -> str:
-    """Idempotently append/replace the skill-refs appendix; leaves prior steps unchanged."""
+    """Idempotently append/replace the skill-refs appendix; leaves prior steps unchanged.
+
+    Args:
+        body: 请求体。
+        skills: skills 参数。
+    """
     appendix = build_sop_skill_refs_appendix(skills)
     if not appendix:
         return (body or "").rstrip()
@@ -254,6 +264,8 @@ def build_sop_handoff_appendix() -> str:
 
 
 def fix_append_sop_quality() -> Dict[str, Any]:
+    """fix_append_sop_quality。
+    """
     return {
         "type": "append_sop_appendix",
         "section_heading": SOP_QUALITY_HEADING,
@@ -263,6 +275,8 @@ def fix_append_sop_quality() -> Dict[str, Any]:
 
 
 def fix_append_sop_handoff() -> Dict[str, Any]:
+    """fix_append_sop_handoff。
+    """
     return {
         "type": "append_sop_appendix",
         "section_heading": SOP_HANDOFF_HEADING,
@@ -272,6 +286,8 @@ def fix_append_sop_handoff() -> Dict[str, Any]:
 
 
 def build_sop_role_appendix() -> str:
+    """build_sop_role_appendix。
+    """
     return "\n".join(
         [
             SOP_ROLE_HEADING,
@@ -285,6 +301,8 @@ def build_sop_role_appendix() -> str:
 
 
 def build_sop_flow_appendix() -> str:
+    """build_sop_flow_appendix。
+    """
     return "\n".join(
         [
             SOP_FLOW_HEADING,
@@ -301,6 +319,8 @@ def build_sop_flow_appendix() -> str:
 
 
 def build_sop_goal_appendix() -> str:
+    """build_sop_goal_appendix。
+    """
     return "\n".join(
         [
             SOP_GOAL_HEADING,
@@ -318,6 +338,8 @@ def build_sop_goal_appendix() -> str:
 
 
 def fix_append_sop_role() -> Dict[str, Any]:
+    """fix_append_sop_role。
+    """
     return {
         "type": "append_sop_appendix",
         "section_heading": SOP_ROLE_HEADING,
@@ -327,6 +349,8 @@ def fix_append_sop_role() -> Dict[str, Any]:
 
 
 def fix_append_sop_flow() -> Dict[str, Any]:
+    """fix_append_sop_flow。
+    """
     return {
         "type": "append_sop_appendix",
         "section_heading": SOP_FLOW_HEADING,
@@ -336,6 +360,8 @@ def fix_append_sop_flow() -> Dict[str, Any]:
 
 
 def fix_append_sop_goal() -> Dict[str, Any]:
+    """fix_append_sop_goal。
+    """
     return {
         "type": "append_sop_appendix",
         "section_heading": SOP_GOAL_HEADING,
@@ -347,7 +373,8 @@ def fix_append_sop_goal() -> Dict[str, Any]:
 def summarize_audit_issues(issues: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Compute errors/warnings/info counts and letter health grade.
 
-    Info-only tips must not downgrade health (A = no errors/warnings).
+    Args:
+        issues: issues 参数。
     """
     severity_count = {"error": 0, "warning": 0, "info": 0}
     for i in issues:
@@ -396,8 +423,8 @@ def _fix_has_ops(fix: Dict[str, Any]) -> bool:
 def index_skill_lint_fixes(fixes: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Map lint issue codes → best applyable fix.
 
-    Previously only auto_applicable fixes were linked, so UI showed「建议修复」
-    with no Apply button even when propose_skill_fixes already had patch ops.
+    Args:
+        fixes: fixes 参数。
     """
     fix_by_code: Dict[str, Dict[str, Any]] = {}
 
@@ -445,6 +472,17 @@ def issue(
     current: Any = None,
     fix: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """issue。
+
+    Args:
+        severity: severity 参数。
+        category: category 参数。
+        field: field 参数。
+        message: message 参数。
+        suggestion: suggestion 参数。
+        current: current 参数。
+        fix: fix 参数。
+    """
     out: Dict[str, Any] = {
         "severity": severity,
         "category": category,
@@ -535,7 +573,12 @@ def _schema_from_dict_gets(src: str) -> Optional[Dict[str, Any]]:
 
 
 def infer_tool_parameters_schema(tool: Any, *, source: str = "") -> Optional[Dict[str, Any]]:
-    """Build parameters JSON Schema from TOOL_DEF / execute signature / input_schema. No fake input."""
+    """Build parameters JSON Schema from TOOL_DEF / execute signature / input_schema. No fake input.
+
+    Args:
+        tool: tool 参数。
+        source: source 参数。
+    """
     import ast
 
     def _as_schema(raw: Any) -> Optional[Dict[str, Any]]:
@@ -693,7 +736,11 @@ def _mcp_evidence_metadata(server: Any, yaml_data: Any = None) -> Dict[str, Any]
 
 
 def infer_http_url_from_text(*blobs: Any) -> Optional[str]:
-    """First non-placeholder http(s) URL in free text. Empty if none."""
+    """First non-placeholder http(s) URL in free text. Empty if none.
+
+    Args:
+        blobs: blobs 参数。
+    """
     text = " ".join(str(b or "") for b in blobs)
     for m in re.finditer(r"https?://[^\s\"'<>]+", text, re.I):
         cand = m.group(0).rstrip(".,);")
@@ -714,7 +761,13 @@ def infer_id_from_label(
     ids: Any,
     aliases: Optional[Dict[str, str]] = None,
 ) -> Optional[str]:
-    """Map a canvas label to exactly one catalog id. Empty if ambiguous or none."""
+    """Map a canvas label to exactly one catalog id. Empty if ambiguous or none.
+
+    Args:
+        label: label 参数。
+        ids: ids 参数。
+        aliases: aliases 参数。
+    """
     raw = str(label or "").strip()
     if not raw:
         return None
@@ -758,7 +811,11 @@ def infer_id_from_label(
 
 
 def list_workspace_agent_catalog(home: Any = None) -> Dict[str, str]:
-    """Workspace agent id → display_name (disk)."""
+    """Workspace agent id → display_name (disk).
+
+    Args:
+        home: home 参数。
+    """
     import os
     from pathlib import Path
 
@@ -792,7 +849,11 @@ def list_workspace_agent_catalog(home: Any = None) -> Dict[str, str]:
 
 
 def list_workspace_tool_names(home: Any = None) -> List[str]:
-    """Workspace tool ids from ~/.aiplat/tools (filename + TOOL_DEF name)."""
+    """Workspace tool ids from ~/.aiplat/tools (filename + TOOL_DEF name).
+
+    Args:
+        home: home 参数。
+    """
     import json
     import os
     from pathlib import Path
@@ -864,7 +925,13 @@ def infer_mcp_allowed_tools(
     yaml_data: Any = None,
     policy_data: Any = None,
 ) -> List[str]:
-    """Whitelist from policy.yaml / declared tools / last tools/list cache. Never invent names."""
+    """Whitelist from policy.yaml / declared tools / last tools/list cache. Never invent names.
+
+    Args:
+        metadata: metadata 参数。
+        yaml_data: yaml_data 参数。
+        policy_data: policy_data 参数。
+    """
     md = metadata if isinstance(metadata, dict) else {}
     yaml_data = yaml_data if isinstance(yaml_data, dict) else {}
     policy_data = policy_data if isinstance(policy_data, dict) else {}
@@ -886,7 +953,17 @@ def infer_mcp_allowed_tools(
 
 
 def infer_mcp_endpoint(*, name: str, transport: str, url: str, command: str, metadata: Any = None, env: Optional[Dict[str, str]] = None, description: str = "") -> Dict[str, str]:
-    """Evidence-only MCP fill. Never returns placeholder localhost:8080."""
+    """Evidence-only MCP fill. Never returns placeholder localhost:8080.
+
+    Args:
+        name: name 参数。
+        transport: transport 参数。
+        url: url 参数。
+        command: command 参数。
+        metadata: metadata 参数。
+        env: env 参数。
+        description: description 参数。
+    """
     import os
 
     out: Dict[str, str] = {}

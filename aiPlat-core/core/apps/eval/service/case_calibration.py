@@ -72,7 +72,12 @@ def apply_difficulty_labels(
     cases: Sequence[Mapping[str, Any]],
     labels: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Apply human difficulty labels; mark engineering-calibrated (claim closed)."""
+    """Apply human difficulty labels; mark engineering-calibrated (claim closed).
+
+    Args:
+        cases: 用例列表。
+        labels: labels 参数。
+    """
     by_id: Dict[str, str] = {}
     for i, lab in enumerate(labels or []):
         if not isinstance(lab, Mapping):
@@ -120,7 +125,16 @@ def save_difficulty_calibration_record(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Persist label record under workspace calibration store."""
+    """Persist label record under workspace calibration store.
+
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        labels: labels 参数。
+        rater: rater 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     assert_pack_acl(
         scope="workspace",
@@ -155,7 +169,16 @@ def create_judge_ticket(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Create + persist an open judge calibration ticket."""
+    """Create + persist an open judge calibration ticket.
+
+    Args:
+        workspace_id: workspace 标识。
+        pack_id: pack 标识。
+        version: 版本号。
+        sample_case_ids: sample_case_ids 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     pid = str(pack_id or "").strip()
     ver = str(version or "").strip()
@@ -202,6 +225,13 @@ def load_judge_ticket(
     ticket_id: str,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """加载 judge_ticket。
+
+    Args:
+        workspace_id: workspace 标识。
+        ticket_id: ticket 标识。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     assert_pack_acl(
         scope="workspace",
@@ -224,7 +254,11 @@ def load_judge_ticket(
 def compute_rating_agreement(
     ratings: Sequence[Mapping[str, Any]],
 ) -> Dict[str, Any]:
-    """Pairwise same-score agreement per case_id (engineering metric)."""
+    """Pairwise same-score agreement per case_id (engineering metric).
+
+    Args:
+        ratings: ratings 参数。
+    """
     by_case: Dict[str, List[Any]] = {}
     for i, r in enumerate(ratings or []):
         if not isinstance(r, Mapping):
@@ -282,7 +316,15 @@ def record_judge_ratings(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Append ratings to an open/in_progress ticket; recompute agreement."""
+    """Append ratings to an open/in_progress ticket; recompute agreement.
+
+    Args:
+        workspace_id: workspace 标识。
+        ticket_id: ticket 标识。
+        ratings: ratings 参数。
+        rater: rater 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     assert_pack_acl(
         scope="workspace",
@@ -337,7 +379,14 @@ def close_judge_ticket(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Close ticket after ratings; still claim closed (engineering only)."""
+    """Close ticket after ratings; still claim closed (engineering only).
+
+    Args:
+        workspace_id: workspace 标识。
+        ticket_id: ticket 标识。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     wid = str(workspace_id or "").strip()
     assert_pack_acl(
         scope="workspace",

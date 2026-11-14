@@ -1,3 +1,5 @@
+"""server：模块接口。"""
+
 import logging
 """
 aiPlat-management 服务器 - FastAPI 应用
@@ -31,6 +33,12 @@ _management_ready = False
 class ServerReadinessMiddleware(BaseHTTPMiddleware):
     """Reject requests until core service is confirmed reachable."""
     async def dispatch(self, request, call_next):
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         if request.url.path == "/health":
             return await call_next(request)
         if not _management_ready:

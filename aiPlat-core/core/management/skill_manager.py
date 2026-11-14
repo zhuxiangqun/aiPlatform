@@ -218,6 +218,13 @@ class SkillManager:
 
     ):
 
+        """初始化。
+
+        Args:
+            seed: seed 参数。
+            scope: scope 参数。
+            reserved_ids: reserved_ids 参数。
+        """
         self._skills: Dict[str, SkillInfo] = {}
 
         self._stats: Dict[str, SkillStats] = {}
@@ -796,10 +803,11 @@ class SkillManager:
 
     def compute_skill_signature_verification(self, skill: "SkillInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
 
-        """
+        """Compute verification info and return a provenance dict (does not persist).
 
-        Compute verification info and return a provenance dict (does not persist).
-
+        Args:
+            skill: skill 参数。
+            trusted_keys: trusted_keys 参数。
         """
 
         if not isinstance(getattr(skill, "metadata", None), dict):
@@ -1073,7 +1081,22 @@ class SkillManager:
 
     ) -> SkillInfo:
 
-        """Create a new skill"""
+        """Create a new skill。
+
+        Args:
+            name: name 参数。
+            skill_type: skill_type 参数。
+            description: description 参数。
+            input_schema: input_schema 参数。
+            output_schema: output_schema 参数。
+            config: config 参数。
+            dependencies: dependencies 参数。
+            created_by: created_by 参数。
+            metadata: metadata 参数。
+            skill_id: Skill ID。
+            version: version 参数。
+            status: status 参数。
+        """
 
         # -------------------- Template support (workspace) --------------------
 
@@ -1480,12 +1503,18 @@ class SkillManager:
 
     ) -> Dict[str, Any]:
 
-        """
+        """Install third-party skills into filesystem (workspace scope only).
 
-        Install third-party skills into filesystem (workspace scope only).
-
-        This is intentionally management-plane only; runtime execution still goes through SkillRegistry/Executor.
-
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
         """
 
         scope = (self._scope or "engine").strip().lower()
@@ -1626,10 +1655,17 @@ class SkillManager:
 
     ) -> Dict[str, Any]:
 
-        """
+        """Dry-run plan for installer (no filesystem writes).
 
-        Dry-run plan for installer (no filesystem writes).
-
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            skill_id: Skill ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
         """
 
         scope = (self._scope or "engine").strip().lower()
@@ -1688,10 +1724,10 @@ class SkillManager:
 
     async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
 
-        """
+        """Resolve the current HEAD SHA for a git URL (workspace scope).
 
-        Resolve the current HEAD SHA for a git URL (workspace scope).
-
+        Args:
+            url: url 参数。
         """
 
         scope = (self._scope or "engine").strip().lower()
@@ -1730,10 +1766,12 @@ class SkillManager:
 
     ) -> Dict[str, Any]:
 
-        """
+        """Update an installed skill from its provenance manifest (git only for now).
 
-        Update an installed skill from its provenance manifest (git only for now).
-
+        Args:
+            skill_id: Skill ID。
+            ref: ref 参数。
+            metadata: metadata 参数。
         """
 
         scope = (self._scope or "engine").strip().lower()
@@ -1816,10 +1854,11 @@ class SkillManager:
 
     async def installer_uninstall(self, *, skill_id: str, delete_files: bool = True) -> Dict[str, Any]:
 
-        """
+        """Uninstall skill from workspace by deleting filesystem directory (best-effort).
 
-        Uninstall skill from workspace by deleting filesystem directory (best-effort).
-
+        Args:
+            skill_id: Skill ID。
+            delete_files: delete_files 参数。
         """
 
         scope = (self._scope or "engine").strip().lower()
@@ -2148,7 +2187,11 @@ class SkillManager:
 
     async def get_skill(self, skill_id: str) -> Optional[SkillInfo]:
 
-        """Get skill by ID"""
+        """Get skill by ID。
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         return self._skills.get(skill_id)
 
@@ -2156,7 +2199,11 @@ class SkillManager:
 
     async def get_skill_sop(self, skill_id: str) -> Optional[dict]:
 
-        """Get skill SOP content from SKILL.md."""
+        """Get skill SOP content from SKILL.md.
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         md = self._find_skill_md(skill_id)
 
@@ -2192,7 +2239,14 @@ class SkillManager:
 
     ) -> List[SkillInfo]:
 
-        """List skills with filters"""
+        """List skills with filters。
+
+        Args:
+            skill_type: skill_type 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
 
         skills = list(self._skills.values())
 
@@ -2238,7 +2292,19 @@ class SkillManager:
 
     ) -> Optional[SkillInfo]:
 
-        """Update skill configuration"""
+        """Update skill configuration。
+
+        Args:
+            skill_id: Skill ID。
+            name: name 参数。
+            description: description 参数。
+            category: category 参数。
+            input_schema: input_schema 参数。
+            output_schema: output_schema 参数。
+            config: config 参数。
+            metadata: metadata 参数。
+            status: status 参数。
+        """
 
         skill = self._skills.get(skill_id)
 
@@ -2673,24 +2739,11 @@ class SkillManager:
 
     async def delete_skill(self, skill_id: str, *, delete_files: bool = False) -> bool:
 
-        """
+        """Delete skill from management plane.
 
-        Delete skill from management plane.
-
-
-
-        Default behavior is **soft delete**:
-
-        - keep skills/<skill_id>/ on disk
-
-        - mark SKILL.md frontmatter status=deprecated, add deprecated_at
-
-
-
-        If delete_files=True:
-
-        - recursively remove skills/<skill_id>/ directory (hard delete)
-
+        Args:
+            skill_id: Skill ID。
+            delete_files: delete_files 参数。
         """
 
         skill = self._skills.get(skill_id)
@@ -2796,7 +2849,11 @@ class SkillManager:
     
 
     async def enable_skill_result(self, skill_id: str) -> Dict[str, Any]:
-        """Enable skill. On scan block return reason + SARIF, not a silent False."""
+        """Enable skill. On scan block return reason + SARIF, not a silent False.
+
+        Args:
+            skill_id: Skill ID。
+        """
         skill = self._skills.get(skill_id)
         if not skill:
             return {"ok": False, "reason": "not_found", "skill_id": skill_id}
@@ -2831,7 +2888,11 @@ class SkillManager:
         return {"ok": True, "skill_id": skill_id}
 
     async def enable_skill(self, skill_id: str) -> bool:
-        """Enable skill. Prefer enable_skill_result when the caller needs the block reason."""
+        """Enable skill. Prefer enable_skill_result when the caller needs the block reason.
+
+        Args:
+            skill_id: Skill ID。
+        """
         result = await self.enable_skill_result(skill_id)
         return bool(result.get("ok"))
 
@@ -2839,7 +2900,11 @@ class SkillManager:
 
     async def disable_skill(self, skill_id: str) -> bool:
 
-        """Disable skill"""
+        """Disable skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         skill = self._skills.get(skill_id)
 
@@ -2873,7 +2938,11 @@ class SkillManager:
 
     async def restore_skill(self, skill_id: str) -> bool:
 
-        """Restore a deprecated skill (status -> enabled) and re-enable runtime registry."""
+        """Restore a deprecated skill (status -> enabled) and re-enable runtime registry.
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         skill = self._skills.get(skill_id)
 
@@ -3028,24 +3097,10 @@ class SkillManager:
 
     async def get_skill_execution_help(self, skill_id: str) -> Optional[Dict[str, Any]]:
 
-        """
+        """Get execution input help/examples/schema for a skill.
 
-        Get execution input help/examples/schema for a skill.
-
-
-
-        Priority:
-
-        1) SKILL.md frontmatter:
-
-           - execution_help (markdown string)
-
-           - execution_examples (list of {title, content})
-
-           - execution_input_schema (object)
-
-        2) Generate defaults based on skill input_schema (auto test cases).
-
+        Args:
+            skill_id: Skill ID。
         """
 
         skill = self._skills.get(skill_id)
@@ -3272,7 +3327,12 @@ class SkillManager:
         skill_id: str,
         examples: List[Dict[str, Any]],
     ) -> bool:
-        """Write execution_examples into SKILL.md frontmatter (best-effort)."""
+        """Write execution_examples into SKILL.md frontmatter (best-effort).
+
+        Args:
+            skill_id: Skill ID。
+            examples: examples 参数。
+        """
         skill = self._skills.get(skill_id)
         if not skill:
             return False
@@ -3329,7 +3389,15 @@ class SkillManager:
 
     ) -> SkillExecution:
 
-        """Execute skill via SkillExecutor and record audit trail."""
+        """Execute skill via SkillExecutor and record audit trail.
+
+        Args:
+            skill_id: Skill ID。
+            input_data: input_data 参数。
+            context: context 参数。
+            mode: mode 参数。
+            execution_id: execution 标识。
+        """
 
         import time
 
@@ -3653,16 +3721,16 @@ class SkillManager:
 
     ) -> SkillInfo:
 
-        """
+        """Create/update a directory-based workspace skill using an explicit id.
 
-        Create/update a directory-based workspace skill using an explicit id.
-
-
-
-        This is intended for Skill Pack installation where the pack defines stable ids.
-
-        Engine scope is forbidden.
-
+        Args:
+            skill_id: Skill ID。
+            display_name: display_name 参数。
+            category: category 参数。
+            description: description 参数。
+            version: version 参数。
+            sop_markdown: sop_markdown 参数。
+            pack_metadata: pack_metadata 参数。
         """
 
         if (self._scope or "engine").strip().lower() != "workspace":
@@ -3859,7 +3927,14 @@ class SkillManager:
 
     ) -> bool:
 
-        """Complete execution"""
+        """Complete execution。
+
+        Args:
+            execution_id: execution 标识。
+            output_data: output_data 参数。
+            duration_ms: duration_ms 参数。
+            metadata: metadata 参数。
+        """
 
         for skill_id, executions in self._executions.items():
 
@@ -3921,7 +3996,14 @@ class SkillManager:
 
     ) -> bool:
 
-        """Fail execution"""
+        """Fail execution。
+
+        Args:
+            execution_id: execution 标识。
+            error: error 参数。
+            duration_ms: duration_ms 参数。
+            metadata: metadata 参数。
+        """
 
         for skill_id, executions in self._executions.items():
 
@@ -3961,7 +4043,11 @@ class SkillManager:
 
     async def get_execution(self, execution_id: str) -> Optional[SkillExecution]:
 
-        """Get execution by ID"""
+        """Get execution by ID。
+
+        Args:
+            execution_id: execution 标识。
+        """
 
         for executions in self._executions.values():
 
@@ -3987,7 +4073,13 @@ class SkillManager:
 
     ) -> List[SkillExecution]:
 
-        """Get execution history for skill"""
+        """Get execution history for skill。
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
 
         history = self._executions.get(skill_id, [])
 
@@ -3997,7 +4089,11 @@ class SkillManager:
 
     async def get_stats(self, skill_id: str) -> Optional[SkillStats]:
 
-        """Get skill statistics"""
+        """Get skill statistics。
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         return self._stats.get(skill_id)
 
@@ -4005,7 +4101,11 @@ class SkillManager:
 
     async def get_versions(self, skill_id: str) -> List[SkillVersion]:
 
-        """Get skill versions"""
+        """Get skill versions。
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         return self._versions.get(skill_id, [])
 
@@ -4021,7 +4121,12 @@ class SkillManager:
 
     ) -> Optional[SkillVersion]:
 
-        """Create new version"""
+        """Create new version。
+
+        Args:
+            skill_id: Skill ID。
+            changes: changes 参数。
+        """
 
         skill = self._skills.get(skill_id)
 
@@ -4085,7 +4190,12 @@ class SkillManager:
 
     async def rollback_version(self, skill_id: str, version: str) -> bool:
 
-        """Rollback to specific version"""
+        """Rollback to specific version。
+
+        Args:
+            skill_id: Skill ID。
+            version: version 参数。
+        """
 
         skill = self._skills.get(skill_id)
 
@@ -4135,7 +4245,11 @@ class SkillManager:
 
     async def get_bound_agents(self, skill_id: str) -> List[str]:
 
-        """Get agents bound to this skill"""
+        """Get agents bound to this skill。
+
+        Args:
+            skill_id: Skill ID。
+        """
 
         return self._bound_agents.get(skill_id, [])
 

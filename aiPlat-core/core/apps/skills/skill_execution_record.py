@@ -13,6 +13,7 @@ import time
 
 @dataclass
 class SkillExecutionRecord:
+    """SkillExecutionRecord。"""
     execution_id: str
     skill_name: str
     domain_id: str = ""
@@ -27,6 +28,8 @@ class SkillExecutionRecord:
             self.created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "execution_id": self.execution_id,
             "skill_name": self.skill_name,
@@ -45,6 +48,11 @@ class SkillExecutionStore:
 
     @classmethod
     def ensure_table(cls, db_path: str):
+        """ensure_table。
+
+        Args:
+            db_path: db_path 参数。
+        """
         import sqlite3
         conn = sqlite3.connect(db_path)
         conn.execute(f"""
@@ -67,6 +75,12 @@ class SkillExecutionStore:
 
     @classmethod
     def insert(cls, db_path: str, record: SkillExecutionRecord):
+        """insert。
+
+        Args:
+            db_path: db_path 参数。
+            record: record 参数。
+        """
         import sqlite3
         conn = sqlite3.connect(db_path)
         conn.execute(f"""
@@ -87,7 +101,13 @@ class SkillExecutionStore:
 
     @classmethod
     def get_recent_pass_rate(cls, db_path: str, skill_name: str, limit: int = 20) -> float:
-        """Return pass_rate over the last N executions."""
+        """Return pass_rate over the last N executions.
+
+        Args:
+            db_path: db_path 参数。
+            skill_name: skill_name 参数。
+            limit: 返回条数上限。
+        """
         import sqlite3
         conn = sqlite3.connect(db_path)
         row = conn.execute(f"""
@@ -102,7 +122,13 @@ class SkillExecutionStore:
 
     @classmethod
     def get_adopted_count(cls, db_path: str, domain_id: str, limit: int = 50) -> int:
-        """Return number of adopted executions for a domain (last N)."""
+        """Return number of adopted executions for a domain (last N).
+
+        Args:
+            db_path: db_path 参数。
+            domain_id: domain 标识。
+            limit: 返回条数上限。
+        """
         import sqlite3
         conn = sqlite3.connect(db_path)
         row = conn.execute(f"""

@@ -47,6 +47,13 @@ class ToolEvolutionEngine:
 
                  deprecation_threshold: float = 0.1):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+            success_threshold: success_threshold 参数。
+            deprecation_threshold: deprecation_threshold 参数。
+        """
         self.db_path = os.path.expanduser(db_path)
 
         self.success_threshold = success_threshold
@@ -135,6 +142,15 @@ class ToolEvolutionEngine:
 
                     error_type: str = "", error_message: str = ""):
 
+        """record_call。
+
+        Args:
+            tool_name: tool_name 参数。
+            success: success 参数。
+            latency_ms: latency_ms 参数。
+            error_type: error_type 参数。
+            error_message: error_message 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -187,6 +203,12 @@ class ToolEvolutionEngine:
 
     def record_gap(self, gap_type: str, context: str = ""):
 
+        """record_gap。
+
+        Args:
+            gap_type: gap_type 参数。
+            context: context 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -251,6 +273,11 @@ class ToolEvolutionEngine:
 
     def get_frequent_gaps(self, min_frequency: int = 3) -> list[dict]:
 
+        """获取 frequent_gaps。
+
+        Args:
+            min_frequency: min_frequency 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -271,6 +298,11 @@ class ToolEvolutionEngine:
 
     def mark_deprecated(self, tool_name: str):
 
+        """mark_deprecated。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -285,6 +317,11 @@ class ToolEvolutionEngine:
 
     def mark_gap_resolved(self, gap_id: int):
 
+        """mark_gap_resolved。
+
+        Args:
+            gap_id: gap 标识。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -299,6 +336,8 @@ class ToolEvolutionEngine:
 
     def get_tool_stats(self) -> dict:
 
+        """获取 tool_stats。
+        """
         with self._lock:
 
             conn = sqlite3.connect(self.db_path)
@@ -327,6 +366,11 @@ class AutoToolRegenerator:
 
     def __init__(self, evolution: ToolEvolutionEngine):
 
+        """初始化。
+
+        Args:
+            evolution: evolution 参数。
+        """
         self.evolution = evolution
 
 
@@ -412,6 +456,8 @@ _regenerator: Optional[AutoToolRegenerator] = None
 
 def get_tool_evolution() -> ToolEvolutionEngine:
 
+    """获取 tool_evolution。
+    """
     global _evolution
 
     if _evolution is None:
@@ -426,6 +472,8 @@ def get_tool_evolution() -> ToolEvolutionEngine:
 
 def get_regenerator() -> AutoToolRegenerator:
 
+    """获取 regenerator。
+    """
     global _regenerator
 
     if _regenerator is None:

@@ -92,7 +92,19 @@ def record(event_type: str, *,
            tokens_out: int = 0,
            latency_ms: float = 0,
            status: str = "success") -> None:
-    u"""Record a usage event. Batched writes for performance."""
+    """Record a usage event. Batched writes for performance.
+
+    Args:
+        event_type: event_type 参数。
+        domain_id: domain 标识。
+        agent_id: Agent ID。
+        tenant_id: 租户 ID。
+        session_id: 会话 ID。
+        tokens_in: tokens_in 参数。
+        tokens_out: tokens_out 参数。
+        latency_ms: latency_ms 参数。
+        status: status 参数。
+    """
     global _event_queue, _last_flush
     _event_queue.append({
         "timestamp": time.time(),
@@ -159,7 +171,14 @@ def aggregate_daily() -> None:
 
 def update_domain_assets(domain_id: str, entity_count: int = 0, edge_count: int = 0,
                           wiki_page_count: int = 0) -> None:
-    u"""Update domain asset counts (entities, edges, wiki pages)."""
+    """Update domain asset counts (entities, edges, wiki pages).
+
+    Args:
+        domain_id: domain 标识。
+        entity_count: entity_count 参数。
+        edge_count: edge_count 参数。
+        wiki_page_count: wiki_page_count 参数。
+    """
     try:
         conn = _get_conn()
         conn.execute(
@@ -173,7 +192,12 @@ def update_domain_assets(domain_id: str, entity_count: int = 0, edge_count: int 
 
 
 def get_domain_stats(domain_id: str = "", days: int = 7) -> List[Dict[str, Any]]:
-    u"""Get usage stats per domain for the last N days."""
+    """Get usage stats per domain for the last N days.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     try:
         conn = _get_conn()
         _init_db()
@@ -198,7 +222,12 @@ def get_domain_stats(domain_id: str = "", days: int = 7) -> List[Dict[str, Any]]
 
 
 def get_agent_stats(agent_id: str = "", days: int = 7) -> List[Dict[str, Any]]:
-    u"""Get usage stats per agent for the last N days."""
+    """Get usage stats per agent for the last N days.
+
+    Args:
+        agent_id: Agent ID。
+        days: days 参数。
+    """
     try:
         conn = _get_conn()
         _init_db()

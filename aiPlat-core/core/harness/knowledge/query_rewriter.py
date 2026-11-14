@@ -20,7 +20,12 @@ _ANAPHORA = re.compile(
 
 
 def needs_rewrite(query: str, history: List[dict]) -> bool:
-    """DEPRECATED: unused in production. Use rewrite_with_history() instead."""
+    """DEPRECATED: unused in production. Use rewrite_with_history() instead.
+
+    Args:
+        query: 查询。
+        history: history 参数。
+    """
     if not _ANAPHORA.search(query or ""):
         return False
     if len(query or "") > 30:
@@ -30,7 +35,12 @@ def needs_rewrite(query: str, history: List[dict]) -> bool:
 
 async def rewrite(query: str, history: List[dict], model) -> str:
     """DEPRECATED: unused in production. Use rewrite_with_history() instead.
-    Rewrite anaphoric follow-up into standalone query (single-shot LLM call)."""
+
+    Args:
+        query: 查询。
+        history: history 参数。
+        model: 模型名。
+    """
     if not history or not model:
         return query
     hist_lines = _format_history(history, max_msgs=6)
@@ -46,10 +56,11 @@ async def rewrite(query: str, history: List[dict], model) -> str:
 
 async def rewrite_with_history(query: str, history: List[dict], model) -> str:
     """Full conversational rewrite: use up to 10 rounds of history to produce a self-contained query.
-    
-    Conversational RAG (§03): when users ask follow-up questions in a multi-turn dialogue,
-    each query must be rewritten into a standalone form before retrieval, so that the 
-    retriever sees a complete question with full context.
+
+    Args:
+        query: 查询。
+        history: history 参数。
+        model: 模型名。
     """
     if not history or not model:
         return query

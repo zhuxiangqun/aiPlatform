@@ -199,7 +199,11 @@ def _merge_tree(main: list, sub: list) -> None:
 
 @router.get("/tree")
 async def get_docs_tree(exclude_archive: bool = Query(True)) -> Dict[str, Any]:
-    """Return the docs/ directory tree, plus extra workspace-level key docs."""
+    """Return the docs/ directory tree, plus extra workspace-level key docs.
+
+    Args:
+        exclude_archive: exclude_archive 参数。
+    """
     global _tree_cache, _tree_cache_ts
     _now = time.time()
 
@@ -244,9 +248,9 @@ async def get_doc_content(
 ) -> Response | Dict[str, Any]:
     """Return a document's content. Returns JSON for text, raw binary for images.
 
-    For workspace-level docs (like CLAUDE.md, AIPLAT_CAPABILITIES.md),
-    path resolves from the workspace root.
-    For standard docs, path resolves from docs/.
+    Args:
+        path: 路径。
+        base64_encode: base64_encode 参数。
     """
     if not _is_safe(path):
         raise HTTPException(status_code=400, detail="Invalid path")
@@ -308,8 +312,8 @@ async def get_doc_content(
 async def download_doc(path: str = Query("README.md")):
     """Return a document as a file download with Content-Disposition attachment.
 
-    Resolves path identically to /content: workspace-level files from
-    workspace root, standard docs from docs/ directory.
+    Args:
+        path: 路径。
     """
     if not _is_safe(path):
         raise HTTPException(status_code=400, detail="Invalid path")

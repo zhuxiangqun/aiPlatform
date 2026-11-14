@@ -23,7 +23,15 @@ import asyncio
 
 
 class EmbeddingProvider:
+    """EmbeddingProvider。"""
     def __init__(self, *, backend: str = "", model_name: str = "", cache_size: int = 1000):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            model_name: model_name 参数。
+            cache_size: cache_size 参数。
+        """
         self._backend = backend or os.getenv("AIPLAT_EMBEDDING_BACKEND", "transform")
         if model_name:
             self._model_name = model_name
@@ -41,6 +49,11 @@ class EmbeddingProvider:
         self._api_url = os.getenv("AIPLAT_EMBEDDING_API_URL", "")
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
+        """embed。
+
+        Args:
+            texts: texts 参数。
+        """
         results: List[List[float]] = []
         to_embed: List[str] = []
         to_embed_indices: List[int] = []
@@ -69,6 +82,11 @@ class EmbeddingProvider:
         return results
 
     async def embed_single(self, text: str) -> List[float]:
+        """embed_single。
+
+        Args:
+            text: text 参数。
+        """
         results = await self.embed([text])
         return results[0] if results else []
 
@@ -187,6 +205,12 @@ class EmbeddingProvider:
 
     @staticmethod
     def cosine_similarity(a: List[float], b: List[float]) -> float:
+        """cosine_similarity。
+
+        Args:
+            a: a 参数。
+            b: b 参数。
+        """
         if not a or not b or len(a) != len(b):
             return 0.0
         dot = sum(x * y for x, y in zip(a, b))
@@ -202,6 +226,13 @@ class EmbeddingProvider:
         candidates: List[tuple],
         k: int = 5,
     ) -> List[tuple]:
+        """top_k_similar。
+
+        Args:
+            query_vec: query_vec 参数。
+            candidates: candidates 参数。
+            k: k 参数。
+        """
         scored = []
         for item in candidates:
             sim = EmbeddingProvider.cosine_similarity(query_vec, item[1])
@@ -214,6 +245,8 @@ _embedding_provider: Optional[EmbeddingProvider] = None
 
 
 def get_embedding_provider() -> EmbeddingProvider:
+    """获取 embedding_provider。
+    """
     global _embedding_provider
     if _embedding_provider is None:
         _embedding_provider = EmbeddingProvider()

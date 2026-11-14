@@ -27,6 +27,8 @@ class ConvergenceEngine:
     """C→I layer: atom convergence → system behavior adjustment."""
 
     def __init__(self):
+        """初始化。
+        """
         self._graph = None
         self._config = None
         self._initialized = False

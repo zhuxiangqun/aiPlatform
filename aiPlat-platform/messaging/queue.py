@@ -1,3 +1,5 @@
+"""queue：模块接口。"""
+
 import logging
 """
 Message Queue - 消息队列服务
@@ -13,6 +15,7 @@ from threading import Lock
 
 
 class MessagePriority(str, Enum):
+    """MessagePriority。"""
     HIGH = "high"
     NORMAL = "normal"
     LOW = "low"
@@ -38,19 +41,30 @@ class MessageQueue:
     """消息队列服务"""
 
     def __init__(self):
+        """初始化。
+        """
         self._queues: dict = {}
         self._subscribers: dict = {}
         self._lock = Lock()
 
     def create_topic(self, topic: str) -> None:
-        """创建主题"""
+        """创建主题。
+
+        Args:
+            topic: topic 参数。
+        """
         with self._lock:
             if topic not in self._queues:
                 self._queues[topic] = PyQueue()
                 self._subscribers[topic] = []
 
     def publish(self, topic: str, message: Message) -> str:
-        """发布消息"""
+        """发布消息。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+        """
         with self._lock:
             if topic not in self._queues:
                 self.create_topic(topic)
@@ -64,14 +78,24 @@ class MessageQueue:
         return message.message_id
 
     def subscribe(self, topic: str, callback: Callable) -> None:
-        """订阅主题"""
+        """订阅主题。
+
+        Args:
+            topic: topic 参数。
+            callback: callback 参数。
+        """
         with self._lock:
             if topic not in self._subscribers:
                 self._subscribers[topic] = []
             self._subscribers[topic].append(callback)
 
     def unsubscribe(self, topic: str, callback: Callable) -> bool:
-        """取消订阅"""
+        """取消订阅。
+
+        Args:
+            topic: topic 参数。
+            callback: callback 参数。
+        """
         with self._lock:
             if topic in self._subscribers and callback in self._subscribers[topic]:
                 self._subscribers[topic].remove(callback)
@@ -79,7 +103,12 @@ class MessageQueue:
         return False
 
     def consume(self, topic: str, timeout: Optional[float] = None) -> Optional[Message]:
-        """消费消息"""
+        """消费消息。
+
+        Args:
+            topic: topic 参数。
+            timeout: 超时秒数。
+        """
         if topic not in self._queues:
             return None
         import queue as _queue
@@ -98,7 +127,11 @@ class MessageQueue:
                 logging.debug(str(e), exc_info=True)
 
     def get_queue_size(self, topic: str) -> int:
-        """获取队列大小"""
+        """获取队列大小。
+
+        Args:
+            topic: topic 参数。
+        """
         return self._queues.get(topic, PyQueue()).qsize()
 
     def list_topics(self) -> List[str]:

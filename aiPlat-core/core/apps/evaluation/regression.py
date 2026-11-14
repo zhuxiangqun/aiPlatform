@@ -16,6 +16,13 @@ class RegressionDetector:
         token_increase_threshold: float = 0.20,
         latency_increase_threshold: float = 0.20
     ):
+        """初始化。
+
+        Args:
+            pass_rate_threshold: pass_rate_threshold 参数。
+            token_increase_threshold: token_increase_threshold 参数。
+            latency_increase_threshold: latency_increase_threshold 参数。
+        """
         self.pass_rate_threshold = pass_rate_threshold
         self.token_increase_threshold = token_increase_threshold
         self.latency_increase_threshold = latency_increase_threshold
@@ -25,7 +32,12 @@ class RegressionDetector:
         current: BenchmarkResult,
         baseline: BenchmarkResult
     ) -> RegressionResult:
-        """Detect regression between current and baseline"""
+        """Detect regression between current and baseline。
+
+        Args:
+            current: current 参数。
+            baseline: baseline 参数。
+        """
         has_regression = False
         changes = {}
         recommendations = []
@@ -81,7 +93,12 @@ async def check_regression(
     current: BenchmarkResult,
     baseline_path: str
 ) -> RegressionResult:
-    """Check for regression against saved baseline"""
+    """Check for regression against saved baseline。
+
+    Args:
+        current: current 参数。
+        baseline_path: baseline_path 参数。
+    """
     import json
     
     try:

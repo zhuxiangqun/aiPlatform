@@ -41,6 +41,8 @@ EXCLUDE_DIRS = {
 # ── Main ────────────────────────────────────────────────
 
 async def main():
+    """main。
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-wiki", action="store_true")
     parser.add_argument("--skip-ontology", action="store_true")

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class BudgetSpec:
+    """BudgetSpec。"""
     token_budget: int = 100_000
     compact_threshold: float = 0.90
     max_steps: int = 20
@@ -26,6 +27,7 @@ class BudgetSpec:
 
 @dataclass
 class ContextSource:
+    """ContextSource。"""
     key: str
     origin: str = ""          # "memory", "artifact", "tool", "skill", "system"
     token_estimate: int = 0
@@ -34,6 +36,7 @@ class ContextSource:
 
 @dataclass
 class PromptContext:
+    """PromptContext。"""
     messages: List[Dict[str, Any]] = field(default_factory=list)
     system_instructions: str = ""
     tool_schemas: List[Dict[str, Any]] = field(default_factory=list)
@@ -46,6 +49,8 @@ class PromptContext:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def estimated_tokens(self) -> int:
+        """estimated_tokens。
+        """
         total_chars = 0
         for m in self.messages:
             c = str(m.get("content", ""))
@@ -60,20 +65,26 @@ class PromptContext:
         return int(total_chars / 4) + 1
 
     def is_over_budget(self) -> bool:
+        """is_over_budget。
+        """
         return self.estimated_tokens() > self.budgets.token_budget
 
     def compact_needed(self) -> bool:
+        """compact_needed。
+        """
         return self.estimated_tokens() > int(self.budgets.token_budget * self.budgets.compact_threshold)
 
 
 @dataclass
 class ContextAssemblyResult:
+    """ContextAssemblyResult。"""
     context: PromptContext = field(default_factory=PromptContext)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class TokenBudgetManager:
 
+    """TokenBudgetManager。"""
     def assemble(
         self,
         messages: List[Dict[str, Any]],
@@ -88,6 +99,20 @@ class TokenBudgetManager:
         sources: Optional[List[ContextSource]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> ContextAssemblyResult:
+        """assemble。
+
+        Args:
+            messages: messages 参数。
+            session_id: 会话 ID。
+            user_id: 用户 ID。
+            system_instructions: system_instructions 参数。
+            tool_schemas: tool_schemas 参数。
+            skill_schemas: skill_schemas 参数。
+            artifacts: artifacts 参数。
+            budgets: budgets 参数。
+            sources: sources 参数。
+            metadata: metadata 参数。
+        """
         ctx = PromptContext(
             messages=list(messages),
             system_instructions=system_instructions,

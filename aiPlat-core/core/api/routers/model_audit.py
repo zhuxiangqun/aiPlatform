@@ -17,7 +17,11 @@ router = APIRouter(prefix="/model-audit", tags=["model-audit"])
 
 @router.post("/probe", response_model=Dict[str, Any])
 async def probe_model(body: Dict[str, Any]):
-    """Run fingerprint probe against a target model."""
+    """Run fingerprint probe against a target model.
+
+    Args:
+        body: 请求体 dict。
+    """
     model_name = body.get("model_name", "")
     if not model_name:
         return {"error": "model_name is required"}
@@ -33,7 +37,11 @@ async def probe_model(body: Dict[str, Any]):
 
 @router.post("/report", response_model=Dict[str, Any])
 async def generate_report(body: Dict[str, Any]):
-    """Generate a full model identity audit report."""
+    """Generate a full model identity audit report.
+
+    Args:
+        body: 请求体 dict。
+    """
     model_name = body.get("model_name", "")
     if not model_name:
         return {"error": "model_name is required"}
@@ -48,7 +56,11 @@ async def generate_report(body: Dict[str, Any]):
 
 @router.post("/compare", response_model=Dict[str, Any])
 async def compare_models(body: Dict[str, Any]):
-    """Compare two model fingerprints to detect cloning or derivation."""
+    """Compare two model fingerprints to detect cloning or derivation.
+
+    Args:
+        body: 请求体 dict。
+    """
     model_a = body.get("model_a", "")
     model_b = body.get("model_b", "")
     if not model_a or not model_b:

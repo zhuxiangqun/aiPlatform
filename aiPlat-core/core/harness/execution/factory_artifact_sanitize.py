@@ -28,7 +28,11 @@ _AGENT_DEF_FILE = re.compile(
 
 
 def strip_reasoning_preamble(text: str) -> str:
-    """Drop leading step/scheme analysis so the first payload is the artifact."""
+    """Drop leading step/scheme analysis so the first payload is the artifact.
+
+    Args:
+        text: text 参数。
+    """
     s = str(text or "")
     if not s.strip():
         return s
@@ -92,7 +96,17 @@ def ensure_dual_component_stages(
     secondary_title: str = "Additional input",
     secondary_field_name: str = "input_value",
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """If ui_bindings declares both components but page only has primary, add secondary."""
+    """If ui_bindings declares both components but page only has primary, add secondary.
+
+    Args:
+        page: page 参数。
+        ui_bindings: ui_bindings 参数。
+        primary_component: primary_component 参数。
+        secondary_component: secondary_component 参数。
+        secondary_stage_id: secondary_stage 标识。
+        secondary_title: secondary_title 参数。
+        secondary_field_name: secondary_field_name 参数。
+    """
     meta: Dict[str, Any] = {"added_secondary": False, "ok": True}
     if not isinstance(page, dict):
         return page, {**meta, "ok": False}
@@ -158,7 +172,13 @@ def ensure_dual_ingest_stages(
     prd_src: Any = None,  # noqa: ARG001 — ignored (legacy API)
     ui_bindings: Optional[Dict[str, str]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Compatibility wrapper: dual file_upload + data_form from ui_bindings only."""
+    """Compatibility wrapper: dual file_upload + data_form from ui_bindings only.
+
+    Args:
+        page: page 参数。
+        prd_src: prd_src 参数。
+        ui_bindings: ui_bindings 参数。
+    """
     out, meta = ensure_dual_component_stages(
         page,
         ui_bindings=ui_bindings,
@@ -227,11 +247,9 @@ def ensure_wizard_stage_io(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Kernel-generic wizard I/O repair for factory ``app_page.json``.
 
-    - data_form: URL-like fields get ``show_when`` when a source_type selector exists
-    - progress_poller: wire ``task_id``/``video_path`` from prior upload/source;
-      if skill is still the ingest/download skill, remap to result_dashboard skill
-      (sync analysis pipeline returns terminal ``status`` for ProgressPoller)
-    - result_dashboard: wire ``task_id``/``video_path`` from progress
+    Args:
+        page: page 参数。
+        ui_bindings: ui_bindings 参数。
     """
     meta: Dict[str, Any] = {
         "ok": True,
@@ -407,8 +425,8 @@ def canonicalize_app_page_media_skills(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Rewrite app_page stage.skill aliases to platform media catalog canonical names.
 
-    ``report_assembly`` → ``report_json_export`` so routing/ui_bindings/page stay aligned.
-    Non-media skills are left unchanged.
+    Args:
+        page: page 参数。
     """
     meta: Dict[str, Any] = {"ok": True, "remapped": {}}
     if not isinstance(page, dict):
@@ -474,10 +492,9 @@ def ensure_result_dashboard_sections(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Remap unknown result_dashboard section types to platform-supported ones.
 
-    Factory must emit types the platform ResultDashboard can render; this is the
-    deterministic repair when generation invents aliases (e.g. ``gallery``).
-    When ``speech_pipeline`` is asr/hybrid (or inferred), ensure a transcript panel;
-    when audio_features_only, do not inject transcript.
+    Args:
+        page: page 参数。
+        speech_pipeline: speech_pipeline 参数。
     """
     from core.harness.execution.true_test_runtime import (
         RESULT_DASHBOARD_SECTION_TYPES,
@@ -596,7 +613,13 @@ def repair_frontend_pages_with_prd(
     agent_app_src: Any,
     prd_src: Any = None,
 ) -> Tuple[str, Dict[str, Any]]:
-    """Skill inject + dual-component + wizard I/O + section-type repair."""
+    """Skill inject + dual-component + wizard I/O + section-type repair.
+
+    Args:
+        raw: raw 参数。
+        agent_app_src: agent_app_src 参数。
+        prd_src: prd_src 参数。
+    """
     from core.harness.execution.app_page_skill_inject import (
         extract_ui_bindings,
         repair_frontend_pages_raw,
@@ -624,6 +647,13 @@ def repair_frontend_pages_with_prd(
 
 
 def resolve_architecture_mode(stage: Any, state: Dict[str, Any], stages: Any = None) -> str:
+    """resolve_architecture_mode。
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        stages: stages 参数。
+    """
     mode = str(getattr(stage, "architecture_mode", "") or "").strip()
     if mode:
         return mode
@@ -638,6 +668,11 @@ def resolve_architecture_mode(stage: Any, state: Dict[str, Any], stages: Any = N
 
 
 def extract_real_http_routes(*blobs: Any) -> List[str]:
+    """extract_real_http_routes。
+
+    Args:
+        blobs: blobs 参数。
+    """
     routes: List[str] = []
     seen = set()
     for blob in blobs:
@@ -661,6 +696,12 @@ def extract_real_http_routes(*blobs: Any) -> List[str]:
 def sanitize_architecture_artifact(
     raw: str, *, architecture_mode: str
 ) -> Tuple[str, Dict[str, Any]]:
+    """sanitize_architecture_artifact。
+
+    Args:
+        raw: raw 参数。
+        architecture_mode: architecture_mode 参数。
+    """
     meta: Dict[str, Any] = {"ok": True}
     text = strip_reasoning_preamble(raw)
     mode = (architecture_mode or "").strip().lower()
@@ -782,8 +823,9 @@ def ensure_manifest_ui_binding_pair(
 ) -> Tuple[str, Dict[str, Any]]:
     """If quality_gate declares a component pair and one binding exists, fill the other.
 
-    Also normalizes ui_bindings values to skill_routing keys (not agent ids).
-    No PRD / domain text sniffing — only completes an incomplete declared pair.
+    Args:
+        raw: raw 参数。
+        pair: pair 参数。
     """
     meta: Dict[str, Any] = {"patched_ui_bindings": False, "normalized_ui_bindings": False}
     text = strip_reasoning_preamble(raw)
@@ -861,7 +903,13 @@ def ensure_manifest_ui_binding_pair(
 def ensure_manifest_dual_ui_bindings(
     raw: str, *, prd_src: Any = None, pair: Optional[Sequence[str]] = None  # noqa: ARG001
 ) -> Tuple[str, Dict[str, Any]]:
-    """Legacy name — completes file_upload/data_form pair when one side exists."""
+    """Legacy name — completes file_upload/data_form pair when one side exists.
+
+    Args:
+        raw: raw 参数。
+        prd_src: prd_src 参数。
+        pair: pair 参数。
+    """
     return ensure_manifest_ui_binding_pair(
         raw, pair=pair or ("file_upload", "data_form")
     )
@@ -1400,8 +1448,8 @@ output_schema:
 def ensure_platform_media_skill_contracts(raw: str) -> Tuple[str, Dict[str, Any]]:
     """Rewrite catalog SKILL.md bodies that violate platform handler contracts.
 
-    Blocks LLM redefining ``video_downloader`` as import-only or
-    ``report_json_export`` as progress-only.
+    Args:
+        raw: raw 参数。
     """
     meta: Dict[str, Any] = {"ok": True, "rewritten": [], "unchanged": 0}
     text = _repair_glued_file_headers(strip_reasoning_preamble(raw))
@@ -1541,10 +1589,8 @@ def _apply_media_skill_remap_to_manifest(
 def normalize_media_skill_names(raw: str) -> Tuple[str, Dict[str, Any]]:
     """Remap media skill aliases + invented names onto the platform catalog.
 
-    Promotes aliases (``report_assembly`` → ``report_json_export``) and invented
-    names via ``suggest_platform_media_skill``. Updates skill_routing /
-    ui_bindings / agents[*].skills and ``## FILE: …/skills/<name>/`` headers.
-    Also accepts plain JSON agent_manifest (no FILE blocks).
+    Args:
+        raw: raw 参数。
     """
     meta: Dict[str, Any] = {"ok": True, "remapped": {}, "unchanged": 0}
     text = _repair_glued_file_headers(strip_reasoning_preamble(raw))
@@ -1881,11 +1927,8 @@ _NON_PLATFORM_LIFECYCLE_SKILLS = frozenset(
 def ensure_agent_app_skill_consistency(raw: str) -> Tuple[str, Dict[str, Any]]:
     """Triple consistency: skill_routing key ≡ skills/<stem>/ ≡ frontmatter name.
 
-    - Rename Q&A body mis-filed as ``video_downloader`` → ``video_qa`` (prompt-only)
-    - Align frontmatter ``name:`` with directory stem
-    - Deduplicate FILE blocks that share the same ``skills/<stem>/SKILL.md`` (merge speech)
-    - Drop duplicate frontmatter names across stems by merging onto first stem
-    - Drop invented lifecycle skills (``task_lifecycle`` etc.) — Path0 handlers own task_id
+    Args:
+        raw: raw 参数。
     """
     meta: Dict[str, Any] = {
         "ok": True,
@@ -2182,7 +2225,8 @@ def ensure_agent_app_skill_consistency(raw: str) -> Tuple[str, Dict[str, Any]]:
 def ensure_result_dashboard_skill(raw: str) -> Tuple[str, Dict[str, Any]]:
     """Ensure a report/export skill exists and ui_bindings.result_dashboard points to it.
 
-    Config-driven sanitizer (platform component ``result_dashboard``), no product names.
+    Args:
+        raw: raw 参数。
     """
     meta: Dict[str, Any] = {"ok": True, "added_skill": False, "bound": False}
     text = strip_reasoning_preamble(raw)
@@ -2334,7 +2378,9 @@ def enrich_media_true_test_questions(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Fill missing invoke/asserts for media true-test stubs (FR-AC / conversation).
 
-    Driven by question text + skill_routing catalog resolve — not product names.
+    Args:
+        questions: questions 参数。
+        routing_src: routing_src 参数。
     """
     meta: Dict[str, Any] = {"enriched": 0, "skipped": 0}
     routing: Dict[str, str] = {}
@@ -2618,8 +2664,11 @@ def ensure_wizard_io_true_test_case(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Inject structural ``page_smoke`` + ``stage.wizard_io_ok`` for any wizard app.
 
-    Domain-agnostic: triggers from app_page stage graph or ui_bindings shape,
-    not from media/product skill names.
+    Args:
+        questions: questions 参数。
+        routing_src: routing_src 参数。
+        frontend_pages_src: frontend_pages_src 参数。
+        ui_bindings: ui_bindings 参数。
     """
     meta: Dict[str, Any] = {"injected_wizard_io": False, "ok": True}
     out = [q for q in (questions or []) if isinstance(q, dict)]
@@ -2793,7 +2842,10 @@ def ensure_true_test_suite_quality(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Normalize categories, cap SSRF spam, ensure ASR transcript happy-paths.
 
-    Kernel-generic: uses decisions.speech_pipeline + skill_routing catalog resolve.
+    Args:
+        questions: questions 参数。
+        speech_pipeline: speech_pipeline 参数。
+        routing_src: routing_src 参数。
     """
     meta: Dict[str, Any] = {
         "ok": True,
@@ -2942,6 +2994,19 @@ def sanitize_test_cases_artifact(
     agent_app_src: Any = None,
     frontend_pages_src: Any = None,
 ) -> Tuple[str, Dict[str, Any]]:
+    """sanitize_test_cases_artifact。
+
+    Args:
+        raw: raw 参数。
+        architecture_mode: architecture_mode 参数。
+        test_execution_mode: test_execution_mode 参数。
+        requirements_src: requirements_src 参数。
+        routing_src: routing_src 参数。
+        code_blobs: code_blobs 参数。
+        prd_src: prd_src 参数。
+        agent_app_src: agent_app_src 参数。
+        frontend_pages_src: frontend_pages_src 参数。
+    """
     meta: Dict[str, Any] = {"ok": True, "mode": "passthrough"}
     text = strip_reasoning_preamble(raw)
     mode = (architecture_mode or "").strip().lower()
@@ -3040,6 +3105,12 @@ def sanitize_test_cases_artifact(
 
 
 def collect_upstream_blobs(state: Dict[str, Any], stage: Any) -> List[Any]:
+    """collect_upstream_blobs。
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+    """
     keys = getattr(stage, "input_artifacts", None) or []
     out: List[Any] = []
     for k in keys:
@@ -3049,6 +3120,12 @@ def collect_upstream_blobs(state: Dict[str, Any], stage: Any) -> List[Any]:
 
 
 def find_structured_requirements(state: Dict[str, Any], stage: Any) -> Any:
+    """find_structured_requirements。
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+    """
     gate = getattr(stage, "quality_gate", None) or {}
     key = gate.get("requirements_artifact")
     if key and isinstance(state, dict) and state.get(key) is not None:
@@ -3060,6 +3137,12 @@ def find_structured_requirements(state: Dict[str, Any], stage: Any) -> Any:
 
 
 def pick_routing_blob(state: Dict[str, Any], stage: Any) -> Any:
+    """pick_routing_blob。
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+    """
     gate = getattr(stage, "quality_gate", None) or {}
     key = gate.get("routing_artifact")
     if key and isinstance(state, dict) and state.get(key) is not None:
@@ -3087,8 +3170,11 @@ def apply_stage_output_sanitizers(
 ) -> Tuple[str, Dict[str, Any], Dict[str, Any]]:
     """Config-driven post-process. Returns (result, artifact_dict, meta).
 
-    Only quality_gate / architecture_mode / test_execution_mode trigger work —
-    never skill_name or output_artifact string matching.
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        result: result 参数。
+        elapsed_sec: elapsed_sec 参数。
     """
     gate = getattr(stage, "quality_gate", None) or {}
     out = result

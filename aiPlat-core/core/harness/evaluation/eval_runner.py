@@ -108,7 +108,11 @@ def _eval_task_from_dict(raw: Dict[str, Any]) -> Optional[EvalTask]:
 
 def load_eval_set(set_id: str) -> Optional[EvalSet]:
 
-    """Load an eval set from disk."""
+    """Load an eval set from disk.
+
+    Args:
+        set_id: set 标识。
+    """
 
     ensure_builtin_sets()
 
@@ -152,7 +156,11 @@ def load_eval_set(set_id: str) -> Optional[EvalSet]:
 
 def save_eval_set(evalset: EvalSet) -> str:
 
-    """Save an eval set to disk. Returns file path."""
+    """Save an eval set to disk. Returns file path.
+
+    Args:
+        evalset: evalset 参数。
+    """
 
     _ensure_dirs()
 
@@ -255,6 +263,11 @@ def list_eval_sets() -> List[Dict[str, Any]]:
 
 def delete_eval_set(set_id: str) -> bool:
 
+    """删除 eval_set。
+
+    Args:
+        set_id: set 标识。
+    """
     path = _eval_dir() / f"{set_id}.json"
 
     if path.exists():
@@ -288,14 +301,8 @@ def serialize_eval_result(result: AgentEvalResult) -> Dict[str, Any]:
 
     """Serialize AgentEvalResult into the persisted dict (legacy_7dim + honesty).
 
-
-
-    `composite_score` / `grade` are properties (not fields), so they are added
-
-    explicitly. Single source of truth — used by both the eval-set API and the
-
-    runtime auto-scorer (CLAUDE.md §10 API 入口唯一 / §5.6 复用优先).
-
+    Args:
+        result: result 参数。
     """
 
     return {
@@ -497,9 +504,13 @@ def serialize_eval_result(result: AgentEvalResult) -> Dict[str, Any]:
 
 def persist_runtime_eval(agent_id: str, data: Dict[str, Any], keep: int = 50) -> str:
 
-    """Write an eval-result dict to the eval_results dir, pruning to the newest
+    """Write an eval-result dict to the eval_results dir, pruning to the newest。
 
-    `keep` files per agent to bound disk growth from runtime auto-scoring."""
+    Args:
+        agent_id: agent 标识。
+        data: data 参数。
+        keep: keep 参数。
+    """
 
     d = _eval_results_dir()
 
@@ -524,7 +535,12 @@ def persist_runtime_eval(agent_id: str, data: Dict[str, Any], keep: int = 50) ->
 
 
 def load_agent_eval_results(agent_id: str, *, limit: int = 50) -> List[Dict[str, Any]]:
-    """Load persisted eval_results for one agent (newest first)."""
+    """Load persisted eval_results for one agent (newest first).
+
+    Args:
+        agent_id: agent 标识。
+        limit: 返回条数上限。
+    """
     aid = (agent_id or "").strip()
     if not aid:
         return []
@@ -547,7 +563,11 @@ _load_results = load_agent_eval_results
 
 
 def list_agents_with_eval_results(*, limit: int = 100) -> List[Dict[str, Any]]:
-    """Aggregate per-agent latest score from eval_results (dashboard scoreboard)."""
+    """Aggregate per-agent latest score from eval_results (dashboard scoreboard).
+
+    Args:
+        limit: 返回条数上限。
+    """
     d = _eval_results_dir()
     lim = max(1, min(int(limit or 100), 500))
     by_agent: Dict[str, List[Dict[str, Any]]] = {}
@@ -604,11 +624,21 @@ class EvalRunner:
 
     def __init__(self, metrics_engine: Optional[EvalMetricsEngine] = None):
 
+        """初始化。
+
+        Args:
+            metrics_engine: metrics_engine 参数。
+        """
         self._metrics = metrics_engine or EvalMetricsEngine()
 
 
     async def run(self, prompt: str, state: Dict[str, Any]) -> str:
-        """Single eval prompt execution. Used by pipeline engine's _tri_evaluate."""
+        """Single eval prompt execution. Used by pipeline engine's _tri_evaluate.
+
+        Args:
+            prompt: prompt 参数。
+            state: state 参数。
+        """
         try:
             from core.harness.llm.llm import llm_generate
             resp = await llm_generate([{"role": "user", "content": prompt}])
@@ -616,6 +646,11 @@ class EvalRunner:
         except Exception:
             return ""
 
+        """__init__。
+
+        Args:
+            metrics_engine: metrics_engine 参数。
+        """
 
     async def run_eval_set(
 
@@ -633,10 +668,10 @@ class EvalRunner:
 
         """Run all tasks in an eval set. Results grouped by agent.
 
-
-
-        If dry_run=True, only validates tasks without executing them.
-
+        Args:
+            evalset: evalset 参数。
+            max_tasks: max_tasks 参数。
+            dry_run: 是否仅演练。
         """
 
         tasks = evalset.tasks[:max_tasks] if max_tasks > 0 else evalset.tasks
@@ -738,9 +773,8 @@ class EvalRunner:
     async def run_task(self, case: dict):
         """Execute a single eval case (gold-dataset regression API).
 
-        case: {agent_id, user_input/input, expected_tool(s)} or an EvalTask dict.
-        Returns a lightweight result with .syscall_events (and .level) for
-        tool-quality checks.
+        Args:
+            case: case 参数。
         """
         from core.harness.evaluation.eval_types import EvalTask, TaskResultLevel
 

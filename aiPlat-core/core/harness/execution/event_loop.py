@@ -33,6 +33,7 @@ _RUNNING: List[asyncio.Task] = []
 
 @dataclass
 class Trigger:
+    """Trigger。"""
     trigger_id: str
     mode: str                         # "cron" | "webhook" | "goal"
     scene_id: str                     # which OntologyScene to instantiate
@@ -54,6 +55,8 @@ class Trigger:
     created_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "trigger_id": self.trigger_id,
             "mode": self.mode,
@@ -71,6 +74,11 @@ class Trigger:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Trigger":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(
             trigger_id=d.get("trigger_id", ""),
             mode=d.get("mode", "cron"),
@@ -90,6 +98,8 @@ class Trigger:
 # ── Trigger Storage ──────────────────────────────────────────────
 
 def load_triggers() -> List[Trigger]:
+    """load_triggers。
+    """
     if not _os.path.exists(_TRIGGERS_PATH):
         return []
     try:
@@ -100,6 +110,11 @@ def load_triggers() -> List[Trigger]:
 
 
 def save_triggers(triggers: List[Trigger]) -> None:
+    """save_triggers。
+
+    Args:
+        triggers: triggers 参数。
+    """
     _os.makedirs(_os.path.dirname(_TRIGGERS_PATH), exist_ok=True)
     with open(_TRIGGERS_PATH, "w", encoding="utf-8") as f:
         _json.dump({
@@ -110,6 +125,11 @@ def save_triggers(triggers: List[Trigger]) -> None:
 
 
 def register_trigger(trigger: Trigger) -> Trigger:
+    """register_trigger。
+
+    Args:
+        trigger: trigger 参数。
+    """
     triggers = load_triggers()
     for i, t in enumerate(triggers):
         if t.trigger_id == trigger.trigger_id:
@@ -123,6 +143,11 @@ def register_trigger(trigger: Trigger) -> Trigger:
 
 
 def remove_trigger(trigger_id: str) -> bool:
+    """remove_trigger。
+
+    Args:
+        trigger_id: trigger 标识。
+    """
     triggers = load_triggers()
     before = len(triggers)
     triggers = [t for t in triggers if t.trigger_id != trigger_id]
@@ -200,7 +225,12 @@ async def _check_webhook_match(source: str, payload: Dict[str, Any], trigger: Tr
 
 
 async def dispatch_webhook(source: str, payload: Dict[str, Any]) -> int:
-    u"""Dispatch a webhook event to matching triggers. Returns count of triggered pipelines."""
+    """Dispatch a webhook event to matching triggers. Returns count of triggered pipelines.
+
+    Args:
+        source: source 参数。
+        payload: 载荷 dict。
+    """
     triggers = load_triggers()
     count = 0
     for t in triggers:
@@ -359,9 +389,10 @@ async def _judge_goal_condition(trigger: "Trigger") -> bool:
 
 
 async def run_loop_scheduler(interval: int = 60) -> None:
-    u"""Background loop: check triggers every N seconds.
+    """Background loop: check triggers every N seconds.
 
-    Start with `asyncio.create_task(run_loop_scheduler())` in server startup.
+    Args:
+        interval: interval 参数。
     """
     logger.info("Loop scheduler started (interval=%ds)", interval)
     while True:
@@ -403,7 +434,11 @@ async def run_loop_scheduler(interval: int = 60) -> None:
 
 
 def start_loop_scheduler(interval: int = 60) -> None:
-    u"""Start the loop scheduler in the background. Safe to call multiple times."""
+    """Start the loop scheduler in the background. Safe to call multiple times.
+
+    Args:
+        interval: interval 参数。
+    """
     try:
         loop = asyncio.get_running_loop()
         task = loop.create_task(run_loop_scheduler(interval))

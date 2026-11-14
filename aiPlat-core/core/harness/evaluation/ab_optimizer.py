@@ -25,6 +25,7 @@ _log = logging.getLogger("pipeline_engine.ab_optimizer")
 
 
 class EvalABOptimizer:
+    """EvalABOptimizer。"""
     MIN_EVALS_PER_VERSION = int(os.getenv("AIPLAT_AB_MIN_EVALS", "5"))
     WINNER_WEIGHT_BOOST = float(os.getenv("AIPLAT_AB_WINNER_BOOST", "0.1"))
 
@@ -39,6 +40,8 @@ class EvalABOptimizer:
 
     @classmethod
     def ensure_tables(cls) -> None:
+        """确保 tables。
+        """
         store = cls._get_store()
         if not store or not hasattr(store, "_conn"):
             return
@@ -74,6 +77,16 @@ class EvalABOptimizer:
         recommendation: str = "",
         session_id: str = "",
     ) -> None:
+        """record_score。
+
+        Args:
+            template_id: template 标识。
+            version: 版本号。
+            overall_score: overall_score 参数。
+            pass_rate: pass_rate 参数。
+            recommendation: recommendation 参数。
+            session_id: session 标识。
+        """
         store = cls._get_store()
         if not store or not template_id or not version:
             return
@@ -91,6 +104,12 @@ class EvalABOptimizer:
     def get_version_scores(
         cls, template_id: str, limit: int = 200
     ) -> Dict[str, Dict[str, Any]]:
+        """获取 version_scores。
+
+        Args:
+            template_id: template 标识。
+            limit: 返回条数上限。
+        """
         store = cls._get_store()
         if not store:
             return {}
@@ -117,6 +136,12 @@ class EvalABOptimizer:
         current_rollout: List[Dict[str, Any]],
         template_id: str,
     ) -> Tuple[Optional[List[Dict[str, Any]]], Dict[str, Any]]:
+        """计算 optimized_rollout。
+
+        Args:
+            current_rollout: current_rollout 参数。
+            template_id: template 标识。
+        """
         if not current_rollout:
             return None, {"reason": "no_rollout_configured"}
         scores = cls.get_version_scores(template_id)

@@ -31,6 +31,7 @@ _LEARNINGS_PATH = _os.path.join(_SHARED_DIR, "learnings.json")
 
 @dataclass
 class SharedLearning:
+    """SharedLearning。"""
     key: str
     value: Any
     source_agent: str = ""
@@ -39,6 +40,8 @@ class SharedLearning:
     timestamp: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "key": self.key,
             "value": self.value,
@@ -52,6 +55,11 @@ class SharedLearning:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "SharedLearning":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(
             key=d.get("key", ""),
             value=d.get("value", ""),
@@ -93,13 +101,14 @@ def record_learning(
     source_session: str = "",
     confidence: str = "medium",
 ) -> SharedLearning:
-    u"""Record a shared learning, with confidence-based dedup.
+    """Record a shared learning, with confidence-based dedup.
 
-    Rules:
-      - high confidence overwrites medium/low for the same key
-      - medium overwrites low
-      - low never overwrites anything
-      - Same key + same value → skip (no duplicate)
+    Args:
+        key: key 参数。
+        value: value 参数。
+        source_agent: source_agent 参数。
+        source_session: source_session 参数。
+        confidence: confidence 参数。
     """
     entries = _load_all()
     learning = SharedLearning(
@@ -128,9 +137,10 @@ def record_learning(
 
 
 def get_learnings_context(max_entries: int = 15) -> str:
-    u"""Get shared learnings formatted as Agent prompt context.
+    """Get shared learnings formatted as Agent prompt context.
 
-    Returns empty string if no learnings exist.
+    Args:
+        max_entries: max_entries 参数。
     """
     entries = _load_all()
     if not entries:
@@ -155,12 +165,12 @@ def extract_learnings_from_state(
     source_agent: str = "",
     source_session: str = "",
 ) -> List[SharedLearning]:
-    u"""Extract learnings from pipeline state after execution.
+    """Extract learnings from pipeline state after execution.
 
-    Scans for:
-      - _assess_* results that passed (confidence=high)
-      - _shared_state_board entries marked as done
-      - error patterns worth remembering
+    Args:
+        state: state 参数。
+        source_agent: source_agent 参数。
+        source_session: source_session 参数。
     """
     results = []
 

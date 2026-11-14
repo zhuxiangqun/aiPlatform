@@ -60,10 +60,17 @@ def get_builtin_paths() -> Dict[str, List[ChapterContent]]:
 
 
 def get_path(path_id: str) -> Optional[List[ChapterContent]]:
+    """获取 path。
+
+    Args:
+        path_id: path 标识。
+    """
     return get_builtin_paths().get(path_id)
 
 
 def get_path_summary() -> List[Dict[str, Any]]:
+    """获取 path_summary。
+    """
     paths = get_builtin_paths()
     summaries = []
     for pid, chapters in paths.items():
@@ -473,7 +480,11 @@ async def compile_chapter_body(chapter: ChapterContent, *, force: bool = False) 
 
 
 def get_chapter_body_sync(chapter: ChapterContent) -> str:
-    u"""Synchronous wrapper to get cached chapter body, or return skeleton if not compiled."""
+    """Synchronous wrapper to get cached chapter body, or return skeleton if not compiled.
+
+    Args:
+        chapter: chapter 参数。
+    """
     cached = load_chapter_content(chapter.chapter_id)
     if cached and cached.ai_generated_body:
         return cached.ai_generated_body

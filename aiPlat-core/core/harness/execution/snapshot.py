@@ -45,6 +45,8 @@ class ExecutionSnapshot:
 
     @property
     def full_state(self) -> Optional[Dict[str, Any]]:
+        """full_state。
+        """
         if self._state_path and os.path.exists(self._state_path):
             try:
                 with open(self._state_path, "r", encoding="utf-8") as f:
@@ -54,6 +56,8 @@ class ExecutionSnapshot:
         return None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d = asdict(self)
         d.pop("_state_path", None)
         d["has_full_state"] = bool(self._state_path and os.path.exists(self._state_path))
@@ -106,7 +110,14 @@ def save_execution_snapshot(
     session_id: str = "",
     stage_id: str = "",
 ) -> Optional[str]:
-    """Save a full execution snapshot to disk. Returns snapshot_id or None."""
+    """Save a full execution snapshot to disk. Returns snapshot_id or None.
+
+    Args:
+        state: state 参数。
+        strategy_name: strategy_name 参数。
+        session_id: 会话 ID。
+        stage_id: stage 标识。
+    """
     if not session_id:
         session_id = state.get("session_id", "") or state.get("_last_error_stage", "")
     if not session_id:
@@ -158,7 +169,12 @@ def save_execution_snapshot(
 
 
 def load_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[ExecutionSnapshot]:
-    """Load a snapshot by ID."""
+    """Load a snapshot by ID.
+
+    Args:
+        snapshot_id: snapshot 标识。
+        session_id: 会话 ID。
+    """
     header_path = os.path.join(_snapshot_dir(session_id), f"{snapshot_id}.header.json")
     if not os.path.exists(header_path):
         logger.warning("ExecutionSnapshot: header not found: %s", header_path)
@@ -185,7 +201,11 @@ def load_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Execu
 
 
 def list_execution_snapshots(session_id: str) -> List[Dict[str, Any]]:
-    """List all snapshots for a session, newest first."""
+    """List all snapshots for a session, newest first.
+
+    Args:
+        session_id: 会话 ID。
+    """
     dstdir = _snapshot_dir(session_id)
     if not os.path.isdir(dstdir):
         return []
@@ -209,23 +229,10 @@ def compare_execution_snapshots(
 ) -> Dict[str, Any]:
     """Compare two execution snapshots and return a diff.
 
-    Returns:
-        {
-            "snapshot_a": {id, strategy, timestamp},
-            "snapshot_b": {id, strategy, timestamp},
-            "changes": {
-                "tokens_used": {"before": N, "after": M, "delta": +X},
-                "phase": {"before": "executing", "after": "done"},
-                "artifacts": {"added": [...], "removed": [...], "changed": [...]},
-                "classified_error": {"before": ..., "after": ...},
-            },
-            "strategy_effect": {
-                "strategy": name,
-                "phase_transition": "executing→done",
-                "tokens_spent": N,
-                "error_resolved": True/False,
-            },
-        }
+    Args:
+        snapshot_a_id: snapshot_a 标识。
+        snapshot_b_id: snapshot_b 标识。
+        session_id: 会话 ID。
     """
     snap_a = load_execution_snapshot(snapshot_a_id, session_id)
     snap_b = load_execution_snapshot(snapshot_b_id, session_id)
@@ -303,7 +310,14 @@ def snapshot_before_after(
     session_id: str = "",
     stage_id: str = "",
 ) -> str:
-    """Convenience: snapshot current state before a strategy executes. Returns snapshot_id."""
+    """Convenience: snapshot current state before a strategy executes. Returns snapshot_id.
+
+    Args:
+        state: state 参数。
+        strategy_name: strategy_name 参数。
+        session_id: 会话 ID。
+        stage_id: stage 标识。
+    """
     sid = save_execution_snapshot(
         state, f"pre_{strategy_name}", session_id=session_id, stage_id=stage_id
     )
@@ -317,7 +331,14 @@ def snapshot_after_heal(
     session_id: str = "",
     stage_id: str = "",
 ) -> Tuple[str, str]:
-    """Save post-healing snapshot and return (pre_id, post_id) pair."""
+    """Save post-healing snapshot and return (pre_id, post_id) pair.
+
+    Args:
+        state: state 参数。
+        strategy_name: strategy_name 参数。
+        session_id: 会话 ID。
+        stage_id: stage 标识。
+    """
     # Get pre snapshot ID from state
     pre_id = state.get("_last_snapshot_id", "")
     post_id = save_execution_snapshot(
@@ -355,8 +376,8 @@ def _prune_session_snapshots(session_id: str, max_keep: int = 50) -> None:
 def get_reproducible_context_hash(state: Dict[str, Any]) -> str:
     """Generate a hash representing the reproducible execution context.
 
-    This hash captures the environment in which a strategy was tried.
-    Two runs with the same hash are reproducible peers for comparison.
+    Args:
+        state: state 参数。
     """
     context = {
         "session_id": state.get("session_id", ""),

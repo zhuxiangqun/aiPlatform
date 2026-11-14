@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class Citation:
+    """Citation。"""
     claim: str
     source_type: str = "wiki"
     source_page: str = ""
@@ -29,6 +30,7 @@ class Citation:
 @dataclass
 # disposition: internal data type — used within provenance module
 class AnswerProvenance:
+    """AnswerProvenance。"""
     run_id: str
     answer: str
     citations: List[Citation] = field(default_factory=list)
@@ -39,11 +41,21 @@ class AnswerProvenance:
 
 class ProvenanceTracker:
 
+    """ProvenanceTracker。"""
     def __init__(self):
+        """初始化。
+        """
         self._store: Dict[str, AnswerProvenance] = {}
         self._stale_source_ids: set[str] = set()
 
     def extract_citations(self, answer: str, retrieved_context: List[Dict[str, Any]], *, domain_id: str = "default") -> List[Citation]:
+        """extract_citations。
+
+        Args:
+            answer: answer 参数。
+            retrieved_context: retrieved_context 参数。
+            domain_id: domain 标识。
+        """
         citations = []
         sentences = re.split(r'(?<=[。！？\n])\s*', answer)
         for sentence in sentences:
@@ -63,15 +75,30 @@ class ProvenanceTracker:
         return citations
 
     def link_answer_to_sources(self, run_id: str, answer: str, citations: List[Citation], *, dataset_version: str = ""):
+        """link_answer_to_sources。
+
+        Args:
+            run_id: 运行 ID。
+            answer: answer 参数。
+            citations: citations 参数。
+            dataset_version: dataset_version 参数。
+        """
         self._store[run_id] = AnswerProvenance(
             run_id=run_id, answer=answer, citations=citations,
             dataset_version=dataset_version,
             generated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 
     def get_provenance(self, run_id: str) -> Optional[AnswerProvenance]:
+        """获取 provenance。
+
+        Args:
+            run_id: 运行 ID。
+        """
         return self._store.get(run_id)
 
     def get_stale_answers(self) -> List[AnswerProvenance]:
+        """获取 stale_answers。
+        """
         return [p for p in self._store.values() if p.stale_count > 0]
 
     def get_stale_source_ids(self) -> set[str]:
@@ -79,7 +106,11 @@ class ProvenanceTracker:
         return self._stale_source_ids
 
     def is_source_stale(self, source_page_id: str) -> bool:
-        """Check if a given source page/document ID is known stale."""
+        """Check if a given source page/document ID is known stale.
+
+        Args:
+            source_page_id: source_page 标识。
+        """
         return source_page_id in self._stale_source_ids
 
     def _similarity(self, a: str, b: str) -> float:
@@ -91,10 +122,22 @@ class ProvenanceTracker:
 
 class ProvenanceScanner:
 
+    """ProvenanceScanner。"""
     def __init__(self, tracker: Optional[ProvenanceTracker] = None):
+        """初始化。
+
+        Args:
+            tracker: tracker 参数。
+        """
         self._tracker = tracker or ProvenanceTracker()
 
     async def on_source_updated(self, page_id: str, new_version: str):
+        """on_source_updated。
+
+        Args:
+            page_id: page 标识。
+            new_version: new_version 参数。
+        """
         self._tracker._stale_source_ids.add(page_id)
         count = 0
         for run_id, prov in list(self._tracker._store.items()):
@@ -109,10 +152,17 @@ class ProvenanceScanner:
             logging.getLogger("aiplat.provenance").info(f"Source '{page_id}' updated: {count} answers stale")
 
     async def scan_stale_answers(self) -> List[Dict[str, Any]]:
+        """scan_stale_answers。
+        """
         return [{"run_id": p.run_id, "generated_at": p.generated_at, "stale_count": p.stale_count,
                  "total_citations": len(p.citations)} for p in self._tracker.get_stale_answers()[:50]]
 
     def get_frontend_badge(self, run_id: str) -> Dict[str, Any]:
+        """获取 frontend_badge。
+
+        Args:
+            run_id: 运行 ID。
+        """
         prov = self._tracker.get_provenance(run_id)
         if not prov: return {"status": "unknown"}
         if prov.stale_count == 0: badge = "current ✅"
@@ -127,6 +177,8 @@ class ProvenanceScanner:
 _provenance_tracker: Optional[ProvenanceTracker] = None
 
 def get_provenance_tracker() -> ProvenanceTracker:
+    """获取 provenance_tracker。
+    """
     global _provenance_tracker
     if _provenance_tracker is None: _provenance_tracker = ProvenanceTracker()
     return _provenance_tracker

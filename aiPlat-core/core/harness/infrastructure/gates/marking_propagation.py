@@ -44,8 +44,10 @@ def get_entity_max_marking_level(
 ) -> int:
     """获取实体及其关联数据链的**最高**标记级别 (快速检查，best-effort).
 
-    Returns:
-        MarkingLevel 数值 (1-4), 或 PUBLIC(1) 表示无限制
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+        max_depth: max_depth 参数。
     """
     try:
         from core.harness.knowledge.knowledge_markings import (
@@ -103,7 +105,10 @@ def check_tool_args_markings(
 ) -> Tuple[bool, str]:
     """检查工具参数中引用的数据是否在标记允许范围内.
 
-    扫描 tool_args 中的 entity_uri / collection_id / domain_id 等字段.
+    Args:
+        tool_args: tool_args 参数。
+        max_allowed_level: max_allowed_level 参数。
+        collection_id: collection 标识。
     """
     if not tool_args or max_allowed_level >= RESTRICTED:
         return True, "no restrictions"
@@ -130,7 +135,10 @@ def inject_marking_context(
 ) -> None:
     """将标记上下文注入 trace_context，供 downstream 的 PolicyGate 3D 评估使用.
 
-    在 MemoryManager.build_context() 或 sys_tool_call 前调用.
+    Args:
+        trace_context: trace_context 参数。
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
     """
     try:
         level = get_entity_max_marking_level(entity_uri, collection_id=collection_id)

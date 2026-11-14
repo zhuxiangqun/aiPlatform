@@ -17,7 +17,15 @@ def resolve_strategy(
     default_skill: str,
     doc_count: int = 1,
 ) -> Tuple[str, List[str]]:
-    """Map route + intent to effective strategy and required skill IDs."""
+    """Map route + intent to effective strategy and required skill IDs.
+
+    Args:
+        intent: intent 参数。
+        mode: mode 参数。
+        route: route 参数。
+        default_skill: default_skill 参数。
+        doc_count: doc_count 参数。
+    """
     mode0 = str(mode or "").strip().lower()
     route0 = str(route or "").strip().lower()
 

@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class ConfigDiff:
+    """ConfigDiff。"""
     added: Dict[str, Any] = field(default_factory=dict)
     removed: Dict[str, Any] = field(default_factory=dict)
     changed: Dict[str, Dict[str, Any]] = field(default_factory=dict)
@@ -37,7 +38,12 @@ class AgentConfigDiffer:
     HIGH_RISK_FIELDS = {"model", "auto_hitl", "status", "agent_type"}
 
     def diff_versions(self, old_fm: Dict[str, Any], new_fm: Dict[str, Any]) -> ConfigDiff:
-        """Compare two frontmatter dicts and produce structured diff."""
+        """Compare two frontmatter dicts and produce structured diff.
+
+        Args:
+            old_fm: old_fm 参数。
+            new_fm: new_fm 参数。
+        """
         diff = ConfigDiff()
 
         for field in self.DIFFABLE_FIELDS:
@@ -80,7 +86,12 @@ class AgentConfigDiffer:
         return diff
 
     def diff_from_files(self, old_content: str, new_content: str) -> ConfigDiff:
-        """Parse AGENT.md content strings and diff their frontmatter."""
+        """Parse AGENT.md content strings and diff their frontmatter.
+
+        Args:
+            old_content: old_content 参数。
+            new_content: new_content 参数。
+        """
         import yaml
 
         def _parse_frontmatter(text: str) -> Dict[str, Any]:
@@ -109,8 +120,12 @@ def compute_agent_diff(
 ) -> Dict[str, Any]:
     """Convenience function for calling from API endpoints.
 
-    High-risk diffs (e.g. model change) attach same-profile gold_gate
-    (ReviewBench discipline) when AIPLAT_GOLD_PROFILE_GATE≠off.
+    Args:
+        old_content: old_content 参数。
+        new_content: new_content 参数。
+        tenant_id: 租户 ID。
+        gold_profile: gold_profile 参数。
+        attach_gold_gate: attach_gold_gate 参数。
     """
     differ = AgentConfigDiffer()
     diff = differ.diff_from_files(old_content, new_content)

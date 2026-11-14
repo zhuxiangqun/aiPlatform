@@ -85,7 +85,11 @@ def _filter_hot_paths(
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Build filtered security plan digest for downstream trace/critique."""
+    """Build filtered security plan digest for downstream trace/critique.
+
+    Args:
+        params: params 参数。
+    """
     from core.harness.knowledge.security_view import (
         build_security_view,
         compact_security_digest,

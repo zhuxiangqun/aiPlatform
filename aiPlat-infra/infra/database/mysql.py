@@ -1,3 +1,5 @@
+"""mysql：模块接口。"""
+
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from .base import DatabaseClient
@@ -8,7 +10,13 @@ import logging
 
 
 class MySQLConnectionPool(ConnectionPool):
+    """MySQLConnectionPool。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         pool_config = config.pool
         self._pool = None
@@ -29,14 +37,23 @@ class MySQLConnectionPool(ConnectionPool):
         return self._pool
 
     async def acquire(self):
+        """acquire。
+        """
         pool = await self._get_pool()
         return await pool.acquire()
 
     async def release(self, conn):
+        """release。
+
+        Args:
+            conn: conn 参数。
+        """
         pool = await self._get_pool()
         pool.release(conn)
 
     def get_stats(self) -> PoolStats:
+        """获取 stats。
+        """
         if self._pool is None:
             return PoolStats()
         return PoolStats(
@@ -46,22 +63,38 @@ class MySQLConnectionPool(ConnectionPool):
         )
 
     async def resize(self, min_size: int, max_size: int) -> None:
+        """resize。
+
+        Args:
+            min_size: min_size 参数。
+            max_size: max_size 参数。
+        """
         self._min_size = min_size
         self._max_size = max_size
 
     async def close(self):
+        """close。
+        """
         if self._pool:
             self._pool.close()
             await self._pool.wait_closed()
 
 
 class MySqlClient(DatabaseClient):
+    """MySqlClient。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._pool: Optional[MySQLConnectionPool] = None
         self._connection = None
 
     async def connect(self):
+        """connect。
+        """
         self._pool = MySQLConnectionPool(self.config)
         # 获取一个连接用于执行查询
         self._connection = await self._pool.acquire()
@@ -83,6 +116,12 @@ class MySqlClient(DatabaseClient):
         return self._connection
 
     async def execute(self, query: str, params=None) -> List[Dict]:
+        """execute。
+
+        Args:
+            query: 查询。
+            params: params 参数。
+        """
         conn = await self._get_connection()
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             # aiomysql支持字典或位置参数
@@ -97,6 +136,12 @@ class MySqlClient(DatabaseClient):
             return await cursor.fetchall()
 
     async def execute_one(self, query: str, params=None) -> Optional[Dict]:
+        """execute_one。
+
+        Args:
+            query: 查询。
+            params: params 参数。
+        """
         conn = await self._get_connection()
         async with conn.cursor(aiomysql.DictCursor) as cursor:
             if params is None:
@@ -110,6 +155,12 @@ class MySqlClient(DatabaseClient):
             return await cursor.fetchone()
 
     async def execute_many(self, query: str, params_list=None) -> List[Any]:
+        """execute_many。
+
+        Args:
+            query: 查询。
+            params_list: params_list 参数。
+        """
         conn = await self._get_connection()
         async with conn.cursor() as cursor:
             results = []
@@ -128,21 +179,31 @@ class MySqlClient(DatabaseClient):
 
     @asynccontextmanager
     async def transaction(self):
+        """transaction。
+        """
         conn = await self._get_connection()
         async with conn.begin():
             yield conn
 
     async def begin(self):
+        """begin。
+        """
         pass
 
     async def commit(self):
+        """commit。
+        """
         pass
 
     async def rollback(self):
+        """rollback。
+        """
         pass
 
     async def close(self):
         # 释放连接回连接池
+        """close。
+        """
         if self._connection and self._pool:
             try:
                 await self._pool.release(self._connection)
@@ -165,8 +226,12 @@ class MySqlClient(DatabaseClient):
             self._pool = None
 
     def is_connected(self) -> bool:
+        """is_connected。
+        """
         return self._connection is not None
 
     @property
     def pool(self) -> Optional[ConnectionPool]:
+        """pool。
+        """
         return self._pool

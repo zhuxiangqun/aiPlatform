@@ -1,3 +1,5 @@
+"""anthropic：模块接口。"""
+
 import time
 from typing import List, AsyncIterator
 from ..base import LLMClient
@@ -5,7 +7,13 @@ from ..schemas import ChatRequest, ChatResponse, StreamChunk, LLMConfig
 
 
 class AnthropicClient(LLMClient):
+    """AnthropicClient。"""
     def __init__(self, config: LLMConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._cost_stats = {
@@ -15,9 +23,19 @@ class AnthropicClient(LLMClient):
         }
 
     def chat(self, request: ChatRequest) -> ChatResponse:
+        """chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         raise NotImplementedError("Use achat for async")
 
     async def achat(self, request: ChatRequest) -> ChatResponse:
+        """achat。
+
+        Args:
+            request: FastAPI Request。
+        """
         import anthropic
 
         client = anthropic.Anthropic(api_key=self.config.api_key)
@@ -42,6 +60,11 @@ class AnthropicClient(LLMClient):
         )
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[StreamChunk]:
+        """stream_chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         import anthropic
 
         client = anthropic.Anthropic(api_key=self.config.api_key)
@@ -58,10 +81,22 @@ class AnthropicClient(LLMClient):
                 yield StreamChunk(content=chunk, delta=chunk)
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
+        """embed。
+
+        Args:
+            texts: texts 参数。
+        """
         raise NotImplementedError("Anthropic doesn't support embeddings API")
 
     def count_tokens(self, text: str) -> int:
+        """count_tokens。
+
+        Args:
+            text: text 参数。
+        """
         return len(text) // 4
 
     def get_metrics(self) -> dict:
+        """获取 metrics。
+        """
         return self._cost_stats

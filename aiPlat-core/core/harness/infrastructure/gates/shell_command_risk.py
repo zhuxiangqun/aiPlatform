@@ -83,19 +83,26 @@ _SHELL_TOOL_NAMES = frozenset({"shell_exec", "code_execution", "process", "bash"
 
 @dataclass(frozen=True)
 class ShellRiskReport:
+    """ShellRiskReport。"""
     forces_hard_floor: bool
     reasons: List[str] = field(default_factory=list)
     segments: List[str] = field(default_factory=list)
 
     @property
     def summary(self) -> str:
+        """summary。
+        """
         if not self.reasons:
             return ""
         return "; ".join(self.reasons)
 
 
 def extract_command_text(tool_args: Optional[dict]) -> str:
-    """Pull a command/script string from common tool arg shapes."""
+    """Pull a command/script string from common tool arg shapes.
+
+    Args:
+        tool_args: tool_args 参数。
+    """
     if not isinstance(tool_args, dict):
         return ""
     for key in ("command", "cmd", "script", "code", "shell", "argv"):
@@ -108,8 +115,11 @@ def extract_command_text(tool_args: Optional[dict]) -> str:
 
 
 def split_command_segments(command: str) -> List[str]:
-    """Split on shell separators (longest first). Quoted separators are *not*
-    respected — deliberate over-split toward caution (OpenWorker parity)."""
+    """Split on shell separators (longest first). Quoted separators are *not*。
+
+    Args:
+        command: command 参数。
+    """
     text = str(command or "").strip()
     if not text:
         return []
@@ -134,7 +144,11 @@ def _tokens(segment: str) -> List[str]:
 
 
 def analyze_shell_command(command: str) -> ShellRiskReport:
-    """Return whether *command* must escalate past any prefix allowlist."""
+    """Return whether *command* must escalate past any prefix allowlist.
+
+    Args:
+        command: command 参数。
+    """
     text = str(command or "").strip()
     if not text:
         return ShellRiskReport(forces_hard_floor=False)
@@ -180,6 +194,11 @@ def analyze_shell_command(command: str) -> ShellRiskReport:
 
 
 def shell_tool_needs_command_check(tool_name: str) -> bool:
+    """shell_tool_needs_command_check。
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     name = str(tool_name or "").strip().lower()
     return name in _SHELL_TOOL_NAMES or name.endswith("_shell")
 
@@ -188,7 +207,12 @@ def evaluate_tool_shell_risk(
     tool_name: str,
     tool_args: Optional[dict] = None,
 ) -> Optional[ShellRiskReport]:
-    """If tool carries a shell/code command that escalates, return the report."""
+    """If tool carries a shell/code command that escalates, return the report.
+
+    Args:
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
+    """
     if not shell_tool_needs_command_check(tool_name):
         return None
     cmd = extract_command_text(tool_args)

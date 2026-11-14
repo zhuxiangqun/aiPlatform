@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 import logging
 """
 Dependency Injection Module
@@ -32,12 +34,22 @@ class IDIContainer(ABC):
     
     @abstractmethod
     def register(self, service_type: Type, implementation: Any, lifetime: Lifetime = Lifetime.TRANSIENT) -> None:
-        """Register a service"""
+        """Register a service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+            lifetime: lifetime 参数。
+        """
         pass
     
     @abstractmethod
     def resolve(self, service_type: Type) -> Any:
-        """Resolve a service"""
+        """Resolve a service。
+
+        Args:
+            service_type: service_type 参数。
+        """
         pass
     
     @abstractmethod
@@ -52,13 +64,24 @@ class DIContainer(IDIContainer):
     """
     
     def __init__(self, parent: Optional["DIContainer"] = None):
+        """初始化。
+
+        Args:
+            parent: parent 参数。
+        """
         self._services: Dict[Type, ServiceDescriptor] = {}
         self._factories: Dict[Type, Callable] = {}
         self._parent = parent
         self._instances: Dict[Type, Any] = {}
     
     def register(self, service_type: Type, implementation: Any, lifetime: Lifetime = Lifetime.TRANSIENT) -> None:
-        """Register a service"""
+        """Register a service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+            lifetime: lifetime 参数。
+        """
         if callable(implementation) and not isinstance(implementation, type):
             self._factories[service_type] = implementation
         else:
@@ -69,15 +92,29 @@ class DIContainer(IDIContainer):
             )
     
     def register_singleton(self, service_type: Type, implementation: Any) -> None:
-        """Register a singleton service"""
+        """Register a singleton service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+        """
         self.register(service_type, implementation, Lifetime.SINGLETON)
     
     def register_scoped(self, service_type: Type, implementation: Any) -> None:
-        """Register a scoped service"""
+        """Register a scoped service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+        """
         self.register(service_type, implementation, Lifetime.SCOPED)
     
     def resolve(self, service_type: Type) -> Any:
-        """Resolve a service"""
+        """Resolve a service。
+
+        Args:
+            service_type: service_type 参数。
+        """
         # Check if already instantiated (for singleton/scoped)
         if service_type in self._instances:
             return self._instances[service_type]
@@ -164,24 +201,46 @@ class ContainerBuilder:
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._container = DIContainer()
         self._registrations: List[Callable] = []
     
     def register(self, service_type: Type, implementation: Any, lifetime: Lifetime = Lifetime.TRANSIENT) -> "ContainerBuilder":
-        """Register a service"""
+        """Register a service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+            lifetime: lifetime 参数。
+        """
         self._container.register(service_type, implementation, lifetime)
         return self
     
     def register_singleton(self, service_type: Type, implementation: Any) -> "ContainerBuilder":
-        """Register a singleton"""
+        """Register a singleton。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+        """
         return self.register(service_type, implementation, Lifetime.SINGLETON)
     
     def register_scoped(self, service_type: Type, implementation: Any) -> "ContainerBuilder":
-        """Register a scoped service"""
+        """Register a scoped service。
+
+        Args:
+            service_type: service_type 参数。
+            implementation: implementation 参数。
+        """
         return self.register(service_type, implementation, Lifetime.SCOPED)
     
     def add_registration(self, registration: Callable) -> "ContainerBuilder":
-        """Add a registration function"""
+        """Add a registration function。
+
+        Args:
+            registration: registration 参数。
+        """
         self._registrations.append(registration)
         return self
     

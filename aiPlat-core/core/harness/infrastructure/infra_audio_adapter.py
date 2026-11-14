@@ -21,9 +21,15 @@ def _normalize_language(language: Optional[str]) -> Optional[str]:
 
 
 class InfraAudioAdapter(BaseModelAdapter):
+    """InfraAudioAdapter。"""
     capability = "audio"
 
     def __init__(self, *, model_name: str = ""):
+        """初始化。
+
+        Args:
+            model_name: model_name 参数。
+        """
         super().__init__(model_name=model_name)
         self._device = os.getenv("AIPLAT_WHISPER_DEVICE", "cpu")
         self._compute_type = os.getenv("AIPLAT_WHISPER_COMPUTE_TYPE", "int8")
@@ -34,7 +40,8 @@ class InfraAudioAdapter(BaseModelAdapter):
     def detect_language(self, audio_path: str) -> Dict[str, Any]:
         """Language-id via Whisper; transcript text is discarded.
 
-        Returns ``{language_code, language_probability?}``.
+        Args:
+            audio_path: audio_path 参数。
         """
         try:
             from faster_whisper import WhisperModel
@@ -68,6 +75,12 @@ class InfraAudioAdapter(BaseModelAdapter):
             return {"language_code": "unknown", "error": type(e).__name__}
 
     def transcribe(self, audio_path: str, language: Optional[str] = None) -> List[Dict[str, Any]]:
+        """transcribe。
+
+        Args:
+            audio_path: audio_path 参数。
+            language: language 参数。
+        """
         lang = _normalize_language(language)
         try:
             from faster_whisper import WhisperModel
@@ -101,11 +114,10 @@ class InfraAudioAdapter(BaseModelAdapter):
     async def synthesize(self, text: str, *, voice: str = "huayan", output_dir: str = "") -> str:
         """文本→语音 (Piper TTS 本地, 零网络零API Key).
 
-        通过 ModelManager.select("tts") 从 llm_profile.yaml 读取配置,
-        调用本地 piper 命令行生成 WAV 文件。
-
-        Returns:
-            生成的 WAV 文件路径
+        Args:
+            text: text 参数。
+            voice: voice 参数。
+            output_dir: output_dir 参数。
         """
         import uuid as _uuid, tempfile as _tempfile_
 
@@ -155,6 +167,11 @@ class InfraAudioAdapter(BaseModelAdapter):
 
 
 def create_infra_audio_adapter(**kwargs) -> InfraAudioAdapter:
+    """创建 infra_audio_adapter。
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return InfraAudioAdapter(**kwargs)
 
 

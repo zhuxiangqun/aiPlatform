@@ -1,3 +1,5 @@
+"""config_loader：模块接口。"""
+
 import logging
 """
 Config Loader — discovers models from adapters table + YAML config.
@@ -220,6 +222,11 @@ class ConfigLoader:
     """Model discovery loader — env vars + YAML config."""
 
     def __init__(self, config_path: str = None):
+        """初始化。
+
+        Args:
+            config_path: config_path 参数。
+        """
         if config_path is None:
             config_path = self._find_config_file()
         self.config_path = config_path

@@ -92,16 +92,32 @@ def _get_job_mgr() -> JobManager:
 
 @router.get("/datasets", response_model=DatasetListResponse)
 async def list_datasets(limit: int = 100, offset: int = 0):
+    """列出 datasets。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     return _get_dataset_mgr().list_all(limit=limit, offset=offset)
 
 
 @router.post("/datasets", response_model=DatasetResponse)
 async def create_dataset(req: DatasetCreateRequest):
+    """创建 dataset。
+
+    Args:
+        req: req 参数。
+    """
     return _get_dataset_mgr().create(req)
 
 
 @router.get("/datasets/{dataset_id}", response_model=DatasetResponse)
 async def get_dataset(dataset_id: str):
+    """获取 dataset。
+
+    Args:
+        dataset_id: dataset 标识。
+    """
     ds = _get_dataset_mgr().get(dataset_id)
     if not ds:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
@@ -110,6 +126,12 @@ async def get_dataset(dataset_id: str):
 
 @router.put("/datasets/{dataset_id}", response_model=DatasetResponse)
 async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
+    """update_dataset。
+
+    Args:
+        dataset_id: dataset 标识。
+        req: req 参数。
+    """
     updates = {}
     if req.name is not None:
         updates["name"] = req.name
@@ -123,6 +145,11 @@ async def update_dataset(dataset_id: str, req: DatasetUpdateRequest):
 
 @router.delete("/datasets/{dataset_id}", response_model=Dict[str, Any])
 async def delete_dataset(dataset_id: str):
+    """删除 dataset。
+
+    Args:
+        dataset_id: dataset 标识。
+    """
     ok = _get_dataset_mgr().delete(dataset_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
@@ -131,6 +158,12 @@ async def delete_dataset(dataset_id: str):
 
 @router.post("/datasets/{dataset_id}/import", response_model=DatasetResponse)
 async def import_dataset(dataset_id: str, req: DatasetImportRequest):
+    """import_dataset。
+
+    Args:
+        dataset_id: dataset 标识。
+        req: req 参数。
+    """
     try:
         return _get_dataset_mgr().import_jsonl(dataset_id, req.content)
     except ValueError as e:
@@ -139,6 +172,12 @@ async def import_dataset(dataset_id: str, req: DatasetImportRequest):
 
 @router.get("/datasets/{dataset_id}/preview", response_model=DatasetPreviewResponse)
 async def preview_dataset(dataset_id: str, limit: int = 100):
+    """preview_dataset。
+
+    Args:
+        dataset_id: dataset 标识。
+        limit: 返回条数上限。
+    """
     try:
         return _get_dataset_mgr().preview(dataset_id, limit=limit)
     except ValueError as e:
@@ -149,11 +188,22 @@ async def preview_dataset(dataset_id: str, limit: int = 100):
 
 @router.get("/jobs", response_model=JobListResponse)
 async def list_jobs(limit: int = 100, offset: int = 0):
+    """列出 jobs。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     return _get_job_mgr().list_all(limit=limit, offset=offset)
 
 
 @router.post("/jobs", response_model=JobResponse)
 async def create_job(req: JobCreateRequest):
+    """创建 job。
+
+    Args:
+        req: req 参数。
+    """
     try:
         return _get_job_mgr().create(req)
     except ValueError as e:
@@ -162,6 +212,11 @@ async def create_job(req: JobCreateRequest):
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
 async def get_job(job_id: str):
+    """获取 job。
+
+    Args:
+        job_id: job 标识。
+    """
     job = _get_job_mgr().get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
@@ -170,6 +225,11 @@ async def get_job(job_id: str):
 
 @router.delete("/jobs/{job_id}", response_model=Dict[str, Any])
 async def cancel_job(job_id: str):
+    """cancel_job。
+
+    Args:
+        job_id: job 标识。
+    """
     ok = _get_job_mgr().cancel(job_id)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found or already completed")
@@ -180,6 +240,8 @@ async def cancel_job(job_id: str):
 
 @router.get("/providers", response_model=ProviderListResponse)
 async def list_providers():
+    """列出 providers。
+    """
     from core.apps.finetune.providers.deepseek import DeepSeekFineTuneProvider
     providers = []
     for prov_cls, name in [
@@ -215,11 +277,8 @@ async def list_providers():
 async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start an RL training job.
 
-    Body:
-      - base_model: str (e.g. "qwen2.5-coder:7b")
-      - dataset_id: str
-      - num_iterations: int (default: 1)
-      - episodes_per_iter: int (default: 8)
+    Args:
+        body: 请求体 dict。
     """
     try:
         from core.api.core_facade import get_rl_trainer  # P0-A2: 经 CoreFacade
@@ -248,7 +307,11 @@ async def start_training(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/train/{job_id}", response_model=TrainingJobResponse)
 async def get_training_status(job_id: str) -> Dict[str, Any]:
-    """Get RL training job status."""
+    """Get RL training job status.
+
+    Args:
+        job_id: job 标识。
+    """
     try:
         from core.api.core_facade import get_rl_trainer  # P0-A2: 经 CoreFacade
         trainer = get_rl_trainer(base_model="")
@@ -272,14 +335,8 @@ async def get_training_status(job_id: str) -> Dict[str, Any]:
 async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start a knowledge distillation job (Teacher→Student).
 
-    Body:
-      - teacher_model: str (e.g. "qwen2.5-coder:32b")
-      - student_model: str (e.g. "qwen2.5-coder:7b")
-      - dataset_id: str
-      - temperature: float (default: 2.0)
-      - alpha: float (default: 0.5, hard target weight)
-      - mode: str (default: "lora", "lora"|"full")
-      - epochs: int (default: 3)
+    Args:
+        body: 请求体 dict。
     """
     try:
         from core.api.core_facade import get_distillation_engine  # P0-A2: 经 CoreFacade
@@ -302,7 +359,11 @@ async def start_distillation(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/distill/{job_id}", response_model=Dict[str, Any])  # dynamic delegate output, keep Dict
 async def get_distillation_status(job_id: str) -> DistillJobResult:
-    """Get knowledge distillation job status."""
+    """Get knowledge distillation job status.
+
+    Args:
+        job_id: job 标识。
+    """
     try:
         from core.api.core_facade import get_distillation_engine  # P0-A2: 经 CoreFacade
         engine = get_distillation_engine()
@@ -334,13 +395,8 @@ async def list_distillation_jobs() -> Dict[str, Any]:
 async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
     """Start a from-scratch model training job (random initialization).
 
-    Body:
-      - model_architecture: str (e.g. "gpt2", "pythia-160m")
-      - dataset_id: str
-      - output_model_name: str (optional)
-      - epochs: int (default: 3)
-      - batch_size: int (default: 4)
-      - learning_rate: float (default: 5e-5)
+    Args:
+        body: 请求体 dict。
     """
     try:
         from core.api.core_facade import get_full_training_engine, FullTrainingConfig  # P0-A2: 经 CoreFacade
@@ -363,7 +419,11 @@ async def start_scratch_training(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/scratch/{job_id}", response_model=Dict[str, Any])  # dynamic delegate output, keep Dict
 async def get_scratch_status(job_id: str) -> ScratchJobResult:
-    """Get from-scratch training job status."""
+    """Get from-scratch training job status.
+
+    Args:
+        job_id: job 标识。
+    """
     try:
         from core.api.core_facade import get_full_training_engine  # P0-A2: 经 CoreFacade
         engine = get_full_training_engine()

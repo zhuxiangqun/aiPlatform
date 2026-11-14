@@ -232,3 +232,10 @@ reasoning|OK|generic react graph node field
 refactor_sop|OK|generic pipeline (stage refactor_sop config mirror)
 tdd_enforce|OK|generic pipeline (stage tdd_enforce config mirror)
 uses_file_output|OK|generic pipeline (stage uses_file_output config mirror)
+# -- Docstring tranche: langgraph / e2e / evox keys (scanned on any execution touch) --
+_atom_executions|OK|engine-internal (e2e/evox atom execution map)
+_final_output|OK|engine-internal (evox aggregated output)
+agent_results|OK|generic langgraph multi_agent round results
+converged|OK|generic langgraph/debate convergence flag
+current_round|OK|generic langgraph multi_agent round counter
+final_result|OK|generic langgraph planning/multi_agent aggregate

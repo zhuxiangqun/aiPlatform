@@ -108,7 +108,12 @@ _FP_SCHEMA = "code_graph_fp_v1"
 
 
 def compute_source_fingerprint(nodes: Dict[str, Dict[str, Any]], repo_root: Optional[str] = None) -> str:
-    """Stable fingerprint from sorted file ids (+ optional repo root). Not mtime alone."""
+    """Stable fingerprint from sorted file ids (+ optional repo root). Not mtime alone.
+
+    Args:
+        nodes: nodes 参数。
+        repo_root: repo_root 参数。
+    """
     import hashlib
     parts = [f"root={repo_root or ''}"]
     for nid in sorted(nodes.keys()):
@@ -118,6 +123,11 @@ def compute_source_fingerprint(nodes: Dict[str, Dict[str, Any]], repo_root: Opti
 
 
 def get_meta(key: str) -> Optional[str]:
+    """获取 meta。
+
+    Args:
+        key: key 参数。
+    """
     if not os.path.exists(_db_path()):
         return None
     conn = _get_conn()
@@ -132,7 +142,12 @@ def evaluate_freshness(
     nodes: Optional[Dict[str, Dict[str, Any]]] = None,
     repo_root: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Missing meta / unreadable / calc fail → stale=True. generated_at ≠ freshness proof."""
+    """Missing meta / unreadable / calc fail → stale=True. generated_at ≠ freshness proof.
+
+    Args:
+        nodes: nodes 参数。
+        repo_root: repo_root 参数。
+    """
     stored = get_meta("source_fingerprint")
     if not stored:
         return {"stale": True, "reason": "missing_fingerprint_meta", "stored": None, "computed": None}
@@ -265,7 +280,13 @@ def load_edges() -> List[Dict[str, str]]:
 
 
 def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], repo_root: Path = None):
-    """Persist the full graph to SQLite (replace existing). Stores mtime for incremental sync."""
+    """Persist the full graph to SQLite (replace existing). Stores mtime for incremental sync.
+
+    Args:
+        nodes: nodes 参数。
+        edges: edges 参数。
+        repo_root: repo_root 参数。
+    """
     import sqlite3
     path = _db_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -328,7 +349,12 @@ def save_graph(nodes: Dict[str, Dict[str, Any]], edges: List[Dict[str, str]], re
 
 
 def search_fts(query: str, limit: int = 20) -> List[str]:
-    """Full-text search file paths and symbol names."""
+    """Full-text search file paths and symbol names.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+    """
     conn = _get_conn()
     try:
         rows = conn.execute(
@@ -374,7 +400,11 @@ def clear_cross_edges_cache():
 
 
 def save_cross_edges(edges: List[Dict[str, str]]):
-    """Persist computed cross-call/cross-language edges to SQLite."""
+    """Persist computed cross-call/cross-language edges to SQLite.
+
+    Args:
+        edges: edges 参数。
+    """
     import sqlite3
     conn = sqlite3.connect(_db_path(), timeout=5.0)
     try:

@@ -70,6 +70,7 @@ _log = logging.getLogger("aiplat.crisis_gate")
 
 class CrisisGateDecision(str, Enum):
 
+    """CrisisGateDecision。"""
     ALLOW = "allow"
 
     WARN = "warn"
@@ -88,6 +89,7 @@ class CrisisGateDecision(str, Enum):
 
 class CrisisGateResult:
 
+    """CrisisGateResult。"""
     decision: CrisisGateDecision = CrisisGateDecision.ALLOW
 
     crisis_result: Optional[CrisisResult] = None
@@ -100,6 +102,8 @@ class CrisisGateResult:
 
     def to_dict(self) -> dict:
 
+        """to_dict。
+        """
         return {
 
             "decision": self.decision.value,
@@ -124,6 +128,11 @@ class CrisisGate:
 
     def __init__(self, mode: Optional[CrisisMode] = None):
 
+        """初始化。
+
+        Args:
+            mode: mode 参数。
+        """
         self.mode = mode or CrisisMode(os.getenv("AIPLAT_CRISIS_MODE", "warn"))
 
         self._detector = get_crisis_detector()
@@ -134,6 +143,13 @@ class CrisisGate:
 
     def check(self, text: str, session_id: str = "", user_id: str = "") -> CrisisGateResult:
 
+        """check。
+
+        Args:
+            text: text 参数。
+            session_id: 会话 ID。
+            user_id: 用户 ID。
+        """
         if not text or not text.strip():
 
             return CrisisGateResult(session_id=session_id)
@@ -287,12 +303,22 @@ class CrisisGate:
 
     def is_escalated(self, session_id: str) -> bool:
 
+        """is_escalated。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return session_id in self._escalated_sessions
 
 
 
     def clear_session(self, session_id: str):
 
+        """clear_session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         self._escalated_sessions.discard(session_id)
 
 
@@ -307,6 +333,8 @@ _crisis_gate: Optional[CrisisGate] = None
 
 def get_crisis_gate() -> CrisisGate:
 
+    """获取 crisis_gate。
+    """
     global _crisis_gate
 
     if _crisis_gate is None:

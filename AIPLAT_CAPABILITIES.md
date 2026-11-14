@@ -1,6 +1,6 @@
 ---
-total_capabilities: 3438
-last_updated: 2026-11-09
+total_capabilities: 3443
+last_updated: 2026-11-14
 version: "30.14"
 auto_sync: true
 core_guarantees:
@@ -241,7 +241,7 @@ core_guarantees:
         - aiPlat-core/core/harness/knowledge/seci_engine.py::568
         - aiPlat-core/core/harness/knowledge/seci_engine.py::571
         - aiPlat-core/core/harness/knowledge/seci_engine.py::571
-        - aiPlat-core/core/harness/knowledge/seci_engine.py::574
+        - aiPlat-core/core/harness/knowledge/seci_engine.py::573
     - id: skill_crystalization
       description: "Skill 晶体化（pipeline完成→TaskSkill→SkillRegistry）"
       paths:
@@ -550,7 +550,7 @@ scan_hash: 8f9548ec24f4
 
 > 代码即真相。每个条目必须有可验证的代码位置。
 > 更新：任何能力变更时同步更新本文档。
-> 评分：98/100（2026-07-20 — 1863✅）
+> 评分：98/100（2026-07-20 — 3457✅）
 
 ---
 
@@ -2240,6 +2240,7 @@ scan_hash: 8f9548ec24f4
 | register_with_report | `core/apps/tools/discovery.py` | ✅ | 热加载 + skipped/assets[] | 本批 |
 | tool_discovery_register_with_report | `core/api/core_facade.py` | ✅ | CoreFacade Phase D 入口 | 本批 |
 | Phase D wrap：COMPAT 守卫 + discovery report | `scripts/check_asset_compat_gates.py` §98 + server lifespan + diagnostics/workspace endpoints | ✅ | 静态防回归；启动缓存 last report；只读诊断；生成物适用：已接线 | 本批 |
+| Python 可读性注释守卫（全平台） | `scripts/check_python_docstring_guard.py` + `architecture_guard.sh` §99 + `pre-commit-hook.sh`；规约：工作区 `CLAUDE.md` 3a | ✅ | 触及面强制：模块 docstring / public+Args / 安全控制流「为什么」/ 禁废话注释；生成物适用：不适用（平台横切工程规范守卫） | 本批 |
 | get_last_discovery_report / last_report_or_refresh | `core/apps/tools/discovery.py` | ✅ | 缓存/刷新 discovery report | 本批 |
 | tool_discovery_last_report | `core/api/core_facade.py` | ✅ | CoreFacade 只读 last report | 本批 |
 | review_report | engine/skills/autoreview/review_report.py | ✅ | 自动同步 | 已合入 |
@@ -2286,7 +2287,7 @@ scan_hash: 8f9548ec24f4
 | **Drift Status API** | api/routers/diagnostics.py:2498-2585 | ✅ | v2.9: GET /diagnostics/drift-status + POST /diagnostics/drift-rebuild — 漂移报告+自动重建 | 已合入 |
 | **wiki_retriever authority** | aiPlat-core/core/harness/knowledge/wiki_retriever.py:589-634 | ✅ | v2.9: 检索评分增加authority维度(15%)，source_priority≥8强制置顶 | 已合入 |
 | **GrillingGate 运行时注入** | loop/base.py:247-340 | ✅ | v2.9: ReActLoop推理前自动检测输入歧义，无需Agent声明required_skills | 已合入 |
-| **docs/ watch_directory** | api/rest/routes.py:3282 | ✅ | v2.9: /platform/kb/watch端点修复+docs/目录已配置30s轮询自动同步 | 已合入 |
+| **docs/ watch_directory** | ⚠️ deprecated api/rest/routes.py:3282 | ✅ | v2.9: /platform/kb/watch端点修复+docs/目录已配置30s轮询自动同步 | 已合入 |
 | **SystemHealth Index** | aiPlat-core/core/harness/evaluation/system_health.py(planned)` + `api/routers/diagnostics.py | ✅ | v2.9: EWMA加权聚合4子系统(OntologyAudit+Staleness+ConfigDrift+EvalMetrics)→0-100指数 | 已合入 |
 | **SelfHealGate** | harness/evaluation/self_heal_gate.py | ✅ | v2.9: 3级自愈门控(AUTO/SUGGEST/REJECT)+业务重要性加权(production降级) | 已合入 |
 | **ConstraintValidator** | harness/evaluation/constraint_validator.py | ✅ | v2.9: 4种过期检测(file/model/phase/skill)→CRITICAL/HIGH/WARNING | 已合入 |
@@ -2373,7 +2374,7 @@ scan_hash: 8f9548ec24f4
 | resolve_policy_fail_mode | harness/infrastructure/gates/policy_gate.py | ✅ | 权限 infra 降级 open/ask/closed；**P0-2**：profile 默认（prod/staging→closed，dev→ask，未设→open）；prod open 须 `AIPLAT_POLICY_FAIL_OPEN_UNTIL`；非关键固定 open+审计；生成物不适用（平台横切） | 已合入 |
 | default_fail_mode_for_profile / audit_policy_fail_mode_config | harness/infrastructure/gates/policy_gate.py | ✅ | P0-2 灰度默认与漂移快照；architecture_health 接线；生成物不适用 | 已合入 |
 | is_hard_floor_escape_active / audit_hard_floor_escape | harness/infrastructure/gates/approval_gate.py | ✅ | P0-2：hard-floor 逃生须 `DISABLED`+未来 `UNTIL`，过期自动恢复；健康检查漂移；生成物不适用 | 已合入 |
-| apply_architecture_profile | core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
+| apply_architecture_profile | ⚠️ deprecated core/schemas_builder.py | ✅ | 阶段 architecture_profile（oneshot/react_tools/plan_execute/reflect_loop）覆盖 backend+agent_type；upgrade_policy=off\|signals\|aggressive；code_split 后端编码试点 plan_execute；生成物适用（team YAML） | 已合入 |
 | ApprovalGate | harness/infrastructure/approval/manager.py | ✅ | approve/deny/pending，双门禁 | 已合入 |
 | Prompt 注入防护 | harness/syscalls/llm.py:125 | ✅ | 6条正则+特殊token过滤+覆盖防护指令 | 已合入 |
 | 记忆投毒防御 | harness/memory/base.py:39 | ✅ | source_tag/trust_weight/provenance | 已合入 |
@@ -2849,7 +2850,7 @@ scan_hash: 8f9548ec24f4
 | 工厂媒体 Skill Handler | harness/media_skill_handlers.py + media_ops.py | ✅ | video_downloader/frame_analyzer/subtitle_extractor/speech_analyzer/report_json_export；关键帧 10s + 启发式画面描述；**ASR 转写默认开**（faster-whisper → `transcript`/`transcript_segments`，`AIPLAT_MEDIA_ASR=0` 可关）；VAD 合并；语种/情绪；生成物适用：**已接线** | 已合入 |
 | 一键修复断言针别名对齐 | factory_fix_plan.align_result_assert_needles + true_test contains 同义 | ✅ | `missing:export_format` → 断言对齐 `export_json` / 同义匹配，避免 remap 空转；生成物适用：**已接线** | 已合入 |
 | 确定性 handler 平台副作用桥 | builder_project_service._platform_effects_after_deterministic_skill + `AIPLAT_FACTORY_FORCE_AGENT_SKILL` | ✅ | Path0 媒体 handler 成功后补 memory + local_feedback（不完全替代 ReAct）；可选 env 强制走 Agent+ReAct；生成物适用：**已接线** | 已合入 |
-| 前端代理 HTML/JSON no-cache | aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
+| 前端代理 HTML/JSON no-cache | ⚠️ deprecated aiPlat-management/frontend/proxy_server.py | ✅ | `index.html`/`*.json`/`非 hash 静态` no-store；hash 资源 immutable——预览少依赖强刷；生成物不适用（平台 FE 横切） | 已合入 |
 | 前端代理兼容路径改写 | `apply_path_rewrite` + `_platform_upstream_path` + `_apps_yaml_platform_routes` | ✅ | Doctor/eval-observability 改写；mgmt `/api/platform/apps/*` 保留前缀；**apps.yaml `api_prefix`/`proxy_prefixes`→platform:8003**（硬 fallback 仅兜底）；POST body 404 可重试；生成物不适用（平台 FE 横切） | 已合入 |
 | SPA 陈旧 chunk 自动重载 | `proxy_server._serve_spa` 注入 `aiplat.chunk_reload` + `lazyWithRetry` | ✅ | 构建哈希失效时 session 内最多硬刷一次；生成物不适用（平台 FE 横切） | 已合入 |
 | Code 模式平台能力接线规约 | engine/skills/code_generation/SKILL.md | ✅ | 托管≠自动继承；强制经平台 API/hybrid；`rollback_available: true`（落盘经 sys_file_write→file_checkpoint，恢复走 restore_file_checkpoint / FileCheckpoints UI）；生成物适用：**已接线**（生成 SOP） | 已合入 |
@@ -3913,6 +3914,10 @@ scan_hash: 8f9548ec24f4
 | ModelManager | `aiPlat-infra/infra/management/model/manager.py` + `config/providers.yaml` | ✅ | 自动同步；provider 生态 30 家族（2026-08-24 一批 8 + 2026-08-25 二批 8 + 三批 8：gemini/nvidia/huggingface/upstage/arcee/zai/xiaomi/nous，YAML 驱动零代码） | 已合入 |
 | infra_api_token | `aiPlat-infra/infra/management/api/auth.py` | ✅ | 管理 API token；非 loopback 无 token 拒绝启动 | 已合入 |
 | is_loopback_host | `aiPlat-infra/infra/management/api/auth.py` | ✅ | 127.0.0.1/localhost/::1 判定 | 已合入 |
+| sensitive_data | `aiPlat-infra/infra/logging/filters/sensitive_data.py` | ✅ | 自动同步 | 已合入 |
+| console_formatter | `aiPlat-infra/infra/logging/formatters/console_formatter.py` | ✅ | 自动同步 | 已合入 |
+| json_formatter | `aiPlat-infra/infra/logging/formatters/json_formatter.py` | ✅ | 自动同步 | 已合入 |
+| text_formatter | `aiPlat-infra/infra/logging/formatters/text_formatter.py` | ✅ | 自动同步 | 已合入 |
 |------|------|:---:|------|------|
 | Model Health Checker | infra/management/model/health_checker.py | ✅ | 模型可用性/延迟/质量健康监控 | 已合入 |
 | Local Model Scanner | infra/management/model/local_model_scanner.py | ✅ | 自动发现 Ollama/LM Studio/vLLM/oMLX 本地模型 | 已合入 |
@@ -4343,7 +4348,7 @@ scan_hash: 8f9548ec24f4
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 199 | 0 | 199 |
+| Skill 系统 | 200 | 0 | 200 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -4360,7 +4365,7 @@ scan_hash: 8f9548ec24f4
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 149 | 0 | 149 |
-| Infra 基础设施 | 16 | 0 | 16 |
+| Infra 基础设施 | 20 | 0 | 20 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
 | 管理 & 质量 | 116 | 0 | 116 |
@@ -4382,7 +4387,7 @@ scan_hash: 8f9548ec24f4
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3428** | **10** | **3438** |
+| **总计** | **3433** | **10** | **3443** |
 <!-- AUTO-STATS:END -->
 
 > 口径说明：上表为 `AIPLAT_CAPABILITIES.md` 产品能力统计（章节 ✅/⚠️ 行计数）。

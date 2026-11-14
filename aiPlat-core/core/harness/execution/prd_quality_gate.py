@@ -134,7 +134,11 @@ _SCOPE_BLOCK_RE = re.compile(
 
 
 def normalize_constraints(prd: Dict[str, Any]) -> Dict[str, Any]:
-    """Ensure prd['constraints'] is a structured dict; lift bullets from scope when needed."""
+    """Ensure prd['constraints'] is a structured dict; lift bullets from scope when needed.
+
+    Args:
+        prd: prd 参数。
+    """
     out = dict(prd)
     cons = out.get("constraints")
     if not isinstance(cons, dict):
@@ -269,11 +273,9 @@ def matched_domain_packs(
 ) -> List[Dict[str, Any]]:
     """Return gate packs that match this PRD.
 
-    When ``input_text`` is provided, non-``always`` packs match against the
-    *caller input* (user requirement / chat), not the PRD body. This prevents
-    invented FR wording (e.g.「转写」on an inspection app) from activating
-    vertical packs. Negated out-of-scope mentions in input are scrubbed before
-    trigger match. Without ``input_text``, behavior is unchanged (match PRD).
+    Args:
+        prd: prd 参数。
+        input_text: input_text 参数。
     """
     prd_text = _domain_blob(prd)
     in_text = str(input_text or "").strip()
@@ -292,7 +294,11 @@ def matched_domain_packs(
 
 
 def matched_packs_for_text(text: str) -> List[Dict[str, Any]]:
-    """Match gate packs against free text (chat history / user requirement)."""
+    """Match gate packs against free text (chat history / user requirement).
+
+    Args:
+        text: text 参数。
+    """
     blob = str(text or "")
     if not blob.strip():
         return [p for p in load_prd_gate_packs() if p.get("always")]
@@ -302,9 +308,9 @@ def matched_packs_for_text(text: str) -> List[Dict[str, Any]]:
 def format_pm_gate_guidance(text: str, *, max_hints: int = 20) -> str:
     """Build generation-time constraints from matched packs' ``pm_hints``.
 
-    Injected into PM chat *before* the model writes PRD_READY so drafts avoid
-    domain contradictions, instead of relying only on post-hoc finalize wash.
-    Domain-agnostic: hints live in YAML packs, not in Agent markdown.
+    Args:
+        text: text 参数。
+        max_hints: max_hints 参数。
     """
     packs = matched_packs_for_text(text)
     if not packs:
@@ -350,8 +356,8 @@ def format_pm_gate_guidance(text: str, *, max_hints: int = 20) -> str:
 def collect_decision_enum_catalog(text: str = "") -> Dict[str, List[str]]:
     """Collect allowed decision enums from matched packs (checks + normalize repairs).
 
-    Domain-agnostic: new vertical packs declare enums in YAML; no core hardcoding
-    of business keys beyond reading pack structure.
+    Args:
+        text: text 参数。
     """
     packs = matched_packs_for_text(text) if text else load_prd_gate_packs()
     catalog: Dict[str, List[str]] = {}
@@ -397,7 +403,11 @@ def collect_decision_enum_catalog(text: str = "") -> Dict[str, List[str]]:
 
 
 def format_decision_enum_catalog(text: str = "") -> str:
-    """Human-readable enum catalog for PM / auto-repair prompts."""
+    """Human-readable enum catalog for PM / auto-repair prompts.
+
+    Args:
+        text: text 参数。
+    """
     catalog = collect_decision_enum_catalog(text)
     if not catalog:
         return ""
@@ -411,7 +421,11 @@ def format_decision_enum_catalog(text: str = "") -> str:
 
 
 def is_media_prd(prd: Dict[str, Any]) -> bool:
-    """True when the workspace-seeded ``media`` pack triggers (not a core builtin)."""
+    """True when the workspace-seeded ``media`` pack triggers (not a core builtin).
+
+    Args:
+        prd: prd 参数。
+    """
     return any(p.get("domain_id") == "media" for p in matched_domain_packs(prd))
 
 
@@ -922,12 +936,10 @@ def assess_prd(
 ) -> Dict[str, Any]:
     """Assess PRD via matched gate packs. Does not mutate input.
 
-    ``assessment_round``:
-      - ``finalize`` (default): open_questions hard-fail; pack ``*_open`` stay errors
-      - ``draft``: open_questions allowed; open/encryption pack misses downgraded to warning
-
-    ``input_text``: when set, vertical packs match against caller input (not invented
-    PRD wording). Factory/confirm paths may omit it to keep PRD-body matching.
+    Args:
+        prd: prd 参数。
+        assessment_round: assessment_round 参数。
+        input_text: input_text 参数。
     """
     if not isinstance(prd, dict):
         return {
@@ -1052,7 +1064,11 @@ def assess_prd(
 
 
 def enrich_prd(prd: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
-    """Apply matched pack repairs deterministically."""
+    """Apply matched pack repairs deterministically.
+
+    Args:
+        prd: prd 参数。
+    """
     if not isinstance(prd, dict):
         return {}, ["invalid_prd"]
 
@@ -1184,9 +1200,8 @@ def _reapply_wash_blocks(
 def factory_finalize_prd(prd: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Factory generation post-process: enrich → optional structural repair → assess.
 
-    ``block_finalize_wash`` codes: word scrub alone must not green-pass. Packs may
-    declare ``structural_repairs`` (full FR/US template rewrite); after those run,
-    codes that no longer fire on re-assess are cleared so the factory can READY.
+    Args:
+        prd: prd 参数。
     """
     raw_src = prd if isinstance(prd, dict) else {}
     raw_report = assess_prd(raw_src)
@@ -1265,6 +1280,11 @@ def factory_finalize_prd(prd: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str,
 
 
 def looks_like_prd(obj: Any) -> bool:
+    """looks_like_prd。
+
+    Args:
+        obj: obj 参数。
+    """
     if not isinstance(obj, dict):
         return False
     frs = obj.get("functional_requirements")
@@ -1277,7 +1297,11 @@ _prd_markdown_parser: Optional[Callable[[str], Dict[str, Any]]] = None
 
 
 def set_prd_markdown_parser(fn: Optional[Callable[[str], Dict[str, Any]]]) -> None:
-    """Register/clear platform Markdown PRD parser for pipeline materialize."""
+    """Register/clear platform Markdown PRD parser for pipeline materialize.
+
+    Args:
+        fn: fn 参数。
+    """
     global _prd_markdown_parser
     _prd_markdown_parser = fn
 
@@ -1312,9 +1336,9 @@ def materialize_prd_artifact(
 ) -> Optional[Dict[str, Any]]:
     """Parse LLM PRD text (JSON or Markdown) → finalize → structured stage artifact.
 
-    Returns None when text is not a PRD (leave caller raw_output untouched).
-    Structured fields sit at the top level; ``raw_output`` is JSON so Factory UI
-    can count FRs; ``markdown`` mirrors chat display.
+    Args:
+        raw: raw 参数。
+        elapsed_sec: elapsed_sec 参数。
     """
     text = _strip_llm_fences(raw)
     if not text or len(text) < 40:
@@ -1369,9 +1393,9 @@ def materialize_prd_artifact(
 def seed_confirmed_prd_into_state(state: Dict[str, Any], prd_data: Any) -> bool:
     """Attach confirmed PRD as ``prd_data`` baseline for rebuild regeneration.
 
-    Does **not** pre-fill the PM stage output artifact — rebuild must re-run PM and overwrite.
-    The skill context builder injects ``prd_data`` + ``pm_chat_history`` so the
-    regenerated PRD stays scoped to the dialogue (no invented capabilities).
+    Args:
+        state: state 参数。
+        prd_data: prd_data 参数。
     """
     if not isinstance(state, dict) or not isinstance(prd_data, dict):
         return False
@@ -1391,7 +1415,13 @@ def apply_gate_to_prd(
     force: bool = False,
     enrich: bool = True,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Enrich (factory default) then assess. Raises ValueError if still failing."""
+    """Enrich (factory default) then assess. Raises ValueError if still failing.
+
+    Args:
+        prd: prd 参数。
+        force: 是否强制。
+        enrich: enrich 参数。
+    """
     if enrich:
         normalized, report = factory_finalize_prd(prd if isinstance(prd, dict) else {})
     else:
@@ -1422,8 +1452,9 @@ def apply_gate_to_prd(
 def followup_questions_from_report(report: Dict[str, Any], *, context_text: str = "") -> str:
     """Render remaining gate errors as PM follow-up questions.
 
-    For missing/open decisions, append pack-driven enum catalog so the next turn
-    (or factory finalize) can close without a hand-written gold PRD.
+    Args:
+        report: report 参数。
+        context_text: context_text 参数。
     """
     errs = [i for i in (report.get("issues") or []) if i.get("severity") == "error"]
     if not errs:
@@ -1456,8 +1487,9 @@ def followup_questions_from_report(report: Dict[str, Any], *, context_text: str 
 def render_prd_markdown(prd: Dict[str, Any], *, include_ready_marker: bool = True) -> str:
     """Render a structured PRD dict as Markdown matching pm_agent output format.
 
-    Used after factory_finalize so chat reply shows the repaired PRD, not the
-    contradictory LLM draft.
+    Args:
+        prd: prd 参数。
+        include_ready_marker: include_ready_marker 参数。
     """
     if not isinstance(prd, dict):
         return ""

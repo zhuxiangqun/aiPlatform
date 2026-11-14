@@ -46,6 +46,15 @@ class ConversationalAgent(BaseAgent):
         memory: Optional[IMemory] = None,
         **kwargs
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            agent_config: agent_config 参数。
+            memory: memory 参数。
+            kwargs: kwargs 参数。
+        """
         self._conv_config = agent_config or ConversationalAgentConfig()
         self._memory = memory
         self._turn_count = 0
@@ -76,7 +85,11 @@ class ConversationalAgent(BaseAgent):
             self._memory = create_memory(mem_config)
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        """Execute via shared ReAct loop (§5.22: delegates to BaseAgent)."""
+        """Execute via shared ReAct loop (§5.22: delegates to BaseAgent).
+
+        Args:
+            context: context 参数。
+        """
         self._status = AgentStatus.RUNNING
         
         try:
@@ -140,11 +153,19 @@ class ConversationalAgent(BaseAgent):
         return self._conversation_history.copy()
 
     def add_tool(self, tool: Any) -> None:
-        """Add tool to agent (for skill/tool binding by core_chat)"""
+        """Add tool to agent (for skill/tool binding by core_chat)。
+
+        Args:
+            tool: tool 参数。
+        """
         self._tools.append(tool)
 
     def add_skill(self, skill: Any) -> None:
-        """Add skill to agent (for required_skills binding by core_chat)"""
+        """Add skill to agent (for required_skills binding by core_chat)。
+
+        Args:
+            skill: skill 参数。
+        """
         self._skills.append(skill)
 
     def get_turn_count(self) -> int:
@@ -158,6 +179,13 @@ def create_conversational_agent(
     system_prompt: str = "Helpful assistant.",
     **kwargs
 ) -> ConversationalAgent:
-    """Create conversational agent"""
+    """Create conversational agent。
+
+    Args:
+        config: config 参数。
+        model: 模型名。
+        system_prompt: system_prompt 参数。
+        kwargs: kwargs 参数。
+    """
     agent_config = ConversationalAgentConfig(system_prompt=system_prompt)
     return ConversationalAgent(config=config, model=model, agent_config=agent_config, **kwargs)

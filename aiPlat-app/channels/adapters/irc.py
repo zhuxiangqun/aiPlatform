@@ -18,6 +18,11 @@ class IRCAdapter(ChannelAdapter):
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # IRC 消息：{"prefix": "nick!user@host", "command": "PRIVMSG",
         #           "params": ["#channel", "message text"]}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         params = raw_data.get("params") or []
         channel = params[0] if params else ""
         text = params[1] if len(params) > 1 else ""
@@ -38,6 +43,11 @@ class IRCAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "command": "PRIVMSG",
             "message": response.text,

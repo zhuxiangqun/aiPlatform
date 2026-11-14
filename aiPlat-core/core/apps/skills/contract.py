@@ -13,6 +13,11 @@ from typing import Any, Dict, List, Tuple
 
 
 def normalize_permissions(perms: Any) -> List[str]:
+    """normalize_permissions。
+
+    Args:
+        perms: perms 参数。
+    """
     if perms is None:
         return []
     if isinstance(perms, str):
@@ -36,6 +41,12 @@ def normalize_permissions(perms: Any) -> List[str]:
 
 
 def derive_risk_level(*, permissions: List[str], explicit: str | None = None) -> str:
+    """derive_risk_level。
+
+    Args:
+        permissions: permissions 参数。
+        explicit: explicit 参数。
+    """
     e = str(explicit or "").strip().lower()
     if e in {"low", "medium", "high"}:
         return e
@@ -54,6 +65,16 @@ def derive_risk_level(*, permissions: List[str], explicit: str | None = None) ->
 
 
 def build_contract_and_digest(*, name: str, version: str, kind: str, input_schema: Dict[str, Any], output_schema: Dict[str, Any], metadata: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+    """build_contract_and_digest。
+
+    Args:
+        name: name 参数。
+        version: version 参数。
+        kind: kind 参数。
+        input_schema: input_schema 参数。
+        output_schema: output_schema 参数。
+        metadata: metadata 参数。
+    """
     perms = normalize_permissions(metadata.get("permissions") or metadata.get("permission"))
     risk_level = derive_risk_level(permissions=perms, explicit=metadata.get("risk_level"))
 

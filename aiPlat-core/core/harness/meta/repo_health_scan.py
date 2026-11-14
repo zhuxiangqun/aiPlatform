@@ -89,6 +89,8 @@ def repo_health_dir() -> Path:
 
 
 def repo_health_jsonl_path() -> Path:
+    """repo_health_jsonl_path。
+    """
     return repo_health_dir() / "snapshots.jsonl"
 
 
@@ -102,6 +104,11 @@ def _now_iso() -> str:
 
 
 def workspace_root(explicit: Optional[str] = None) -> Path:
+    """workspace_root。
+
+    Args:
+        explicit: explicit 参数。
+    """
     env = (explicit or os.getenv("AIPLAT_WORKSPACE_ROOT") or "").strip()
     if env:
         return Path(env).expanduser().resolve()
@@ -114,6 +121,11 @@ def workspace_root(explicit: Optional[str] = None) -> Path:
 
 
 def default_scan_roots(root: Optional[Path] = None) -> List[Path]:
+    """default_scan_roots。
+
+    Args:
+        root: root 参数。
+    """
     base = root or workspace_root()
     out: List[Path] = []
     for rel in _DEFAULT_ROOTS:
@@ -256,7 +268,15 @@ def scan_repo_health(
     god_loc: Optional[int] = None,
     high_fanout_imports: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Full-tree metrics snapshot (deterministic; no LLM)."""
+    """Full-tree metrics snapshot (deterministic; no LLM).
+
+    Args:
+        roots: roots 参数。
+        workspace: workspace 参数。
+        max_files: max_files 参数。
+        god_loc: god_loc 参数。
+        high_fanout_imports: high_fanout_imports 参数。
+    """
     ws = workspace or workspace_root()
     scan_roots = list(roots) if roots is not None else default_scan_roots(ws)
     mf = int(max_files if max_files is not None else _DEFAULT_THRESHOLDS["repo_health_max_files"])
@@ -352,7 +372,11 @@ def scan_repo_health(
 
 
 def append_health_snapshot(metrics: Mapping[str, Any]) -> Optional[str]:
-    """Append one snapshot. Returns path or None on skip/failure."""
+    """Append one snapshot. Returns path or None on skip/failure.
+
+    Args:
+        metrics: metrics 参数。
+    """
     if not _persist_enabled():
         return None
     row = {k: v for k, v in dict(metrics).items() if v is not None}
@@ -372,6 +396,11 @@ def append_health_snapshot(metrics: Mapping[str, Any]) -> Optional[str]:
 
 
 def list_health_snapshots(*, limit: int = 50) -> List[Dict[str, Any]]:
+    """列出 health_snapshots。
+
+    Args:
+        limit: 返回条数上限。
+    """
     path = repo_health_jsonl_path()
     if not path.is_file():
         return []
@@ -399,6 +428,11 @@ def list_health_snapshots(*, limit: int = 50) -> List[Dict[str, Any]]:
 def load_repo_health_thresholds_from_duty(
     duty_thr: Optional[Mapping[str, float]] = None,
 ) -> Dict[str, float]:
+    """load_repo_health_thresholds_from_duty。
+
+    Args:
+        duty_thr: duty_thr 参数。
+    """
     out = dict(_DEFAULT_THRESHOLDS)
     if isinstance(duty_thr, Mapping):
         for k in out:
@@ -423,7 +457,14 @@ def assess_repo_health(
     run_scan: bool = False,
     persist: bool = False,
 ) -> Dict[str, Any]:
-    """Fold snapshots → absolute + delta severity (go|watch|block|unavailable)."""
+    """Fold snapshots → absolute + delta severity (go|watch|block|unavailable).
+
+    Args:
+        snapshots: snapshots 参数。
+        thresholds: thresholds 参数。
+        run_scan: run_scan 参数。
+        persist: persist 参数。
+    """
     thr = load_repo_health_thresholds_from_duty(thresholds)
     rows = list(snapshots) if snapshots is not None else list_health_snapshots(limit=50)
     latest: Optional[Dict[str, Any]] = None

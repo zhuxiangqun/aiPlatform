@@ -106,8 +106,8 @@ _ENTITY_PATTERNS: List[Tuple[str, str, int]] = [
 def classify(ctx: RoutingContext) -> RoutingResult:
     """Classify user intent and produce routing suggestions.
 
-    Uses rule-based keyword matching as the primary path (fast, 0 LLM cost).
-    For ambiguous cases (confidence < 0.5), returns should_clarify=True.
+    Args:
+        ctx: ctx 参数。
     """
     message = ctx.user_message or ""
     message_lower = message.lower()
@@ -294,8 +294,8 @@ def _build_clarification_prompt(message: str, ctx: RoutingContext) -> str:
 async def classify_with_llm(ctx: RoutingContext) -> RoutingResult:
     """LLM-based classification fallback for ambiguous cases.
 
-    Uses the agent_creation model via a lightweight prompt.
-    Should only be called when rule-based confidence < 0.50.
+    Args:
+        ctx: ctx 参数。
     """
     result = classify(ctx)
     if result.confidence >= _RULE_CONFIDENCE_MEDIUM:

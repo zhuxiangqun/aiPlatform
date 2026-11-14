@@ -57,6 +57,7 @@ def resolve_live_canary_ok() -> tuple[bool, Dict[str, Any]]:
 
 
 class SecurityPreflightRequest(BaseModel):
+    """SecurityPreflightRequest。"""
     force: bool = False
     max_paths: int = 20
     phase_c_enabled: bool = False
@@ -64,6 +65,7 @@ class SecurityPreflightRequest(BaseModel):
 
 
 class EvolveProposalRequest(BaseModel):
+    """EvolveProposalRequest。"""
     keys: List[str] = Field(default_factory=list)
     proposed_changes: Dict[str, Any] = Field(default_factory=dict)
     actor: str = "agent"
@@ -74,13 +76,18 @@ class EvolveProposalRequest(BaseModel):
 
 
 class EvolveReviewRequest(BaseModel):
+    """EvolveReviewRequest。"""
     actor: str = "approver"
     reason: str = ""
 
 
 @router.post("/security-preflight/run", response_model=FdeItemResponse)
 async def run_security_preflight(req: SecurityPreflightRequest) -> Dict[str, Any]:
-    """FDE 4A = security B/C. Default Phase B; Phase C only when phase_c_enabled=true."""
+    """FDE 4A = security B/C. Default Phase B; Phase C only when phase_c_enabled=true.
+
+    Args:
+        req: req 参数。
+    """
     try:
         from core.api.core_facade import (
             run_security_review_dry,
@@ -115,6 +122,8 @@ async def run_security_preflight(req: SecurityPreflightRequest) -> Dict[str, Any
 
 @router.get("/security-preflight/latest", response_model=FdeItemResponse)
 async def latest_security_preflight() -> Dict[str, Any]:
+    """latest_security_preflight。
+    """
     from core.api.core_facade import get_fde_security_preflight_latest
 
     latest = get_fde_security_preflight_latest()
@@ -125,6 +134,11 @@ async def latest_security_preflight() -> Dict[str, Any]:
 
 @router.get("/security-preflight", response_model=FdeListResponse)
 async def list_security_preflight(limit: int = 10) -> Dict[str, Any]:
+    """列出 security_preflight。
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_fde_security_preflight_runs
 
     items = list_fde_security_preflight_runs(limit=min(limit, 30))
@@ -133,7 +147,11 @@ async def list_security_preflight(limit: int = 10) -> Dict[str, Any]:
 
 @router.post("/evolve-proposals/evaluate", response_model=FdeItemResponse)
 async def evaluate_evolve(req: EvolveProposalRequest) -> Dict[str, Any]:
-    """Phase 4B: evolve_proposal gate only — does not apply mutations."""
+    """Phase 4B: evolve_proposal gate only — does not apply mutations.
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import evaluate_fde_evolve_proposal
 
     return evaluate_fde_evolve_proposal(
@@ -148,6 +166,11 @@ async def evaluate_evolve(req: EvolveProposalRequest) -> Dict[str, Any]:
 
 @router.post("/evolve-proposals", response_model=FdeStatusResponse)
 async def enqueue_evolve(req: EvolveProposalRequest) -> Dict[str, Any]:
+    """enqueue_evolve。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import enqueue_fde_evolve_proposal
 
     result = enqueue_fde_evolve_proposal(
@@ -165,6 +188,11 @@ async def enqueue_evolve(req: EvolveProposalRequest) -> Dict[str, Any]:
 
 @router.get("/evolve-proposals", response_model=FdeListResponse)
 async def list_evolve(limit: int = 20) -> Dict[str, Any]:
+    """列出 evolve。
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_fde_evolve_proposals
 
     items = list_fde_evolve_proposals(limit=min(limit, 50))
@@ -173,6 +201,8 @@ async def list_evolve(limit: int = 20) -> Dict[str, Any]:
 
 @router.get("/evolve-proposals/metrics", response_model=FdeItemResponse)
 async def evolve_metrics() -> Dict[str, Any]:
+    """evolve_metrics。
+    """
     from core.api.core_facade import get_fde_evolve_metrics
 
     return get_fde_evolve_metrics()
@@ -180,6 +210,11 @@ async def evolve_metrics() -> Dict[str, Any]:
 
 @router.get("/evolve-proposals/applied", response_model=FdeListResponse)
 async def list_evolve_applied(limit: int = 20) -> Dict[str, Any]:
+    """列出 evolve_applied。
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_fde_evolve_applied
 
     items = list_fde_evolve_applied(limit=min(limit, 50))
@@ -188,6 +223,8 @@ async def list_evolve_applied(limit: int = 20) -> Dict[str, Any]:
 
 @router.get("/evolve-proposals/applied-config", response_model=FdeItemResponse)
 async def evolve_applied_config() -> Dict[str, Any]:
+    """evolve_applied_config。
+    """
     from core.api.core_facade import get_fde_evolve_applied_config
 
     return {"config": get_fde_evolve_applied_config()}
@@ -213,7 +250,11 @@ class EvolveOpsSyncRequest(BaseModel):
 
 @router.post("/evolve-proposals/sync-ops", response_model=FdeItemResponse)
 async def sync_evolve_ops(req: EvolveOpsSyncRequest) -> Dict[str, Any]:
-    """Push Quality Bus + canary into observing patches (auto-rollback on breach)."""
+    """Push Quality Bus + canary into observing patches (auto-rollback on breach).
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import sync_fde_evolve_ops_signals
 
     quality_score = req.quality_score
@@ -246,6 +287,12 @@ async def sync_evolve_ops(req: EvolveOpsSyncRequest) -> Dict[str, Any]:
 
 @router.post("/evolve-proposals/{proposal_id}/approve", response_model=FdeStatusResponse)
 async def approve_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    """approve_evolve。
+
+    Args:
+        proposal_id: proposal 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import approve_fde_evolve_proposal
 
     try:
@@ -259,6 +306,12 @@ async def approve_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str
 
 @router.post("/evolve-proposals/{proposal_id}/reject", response_model=FdeStatusResponse)
 async def reject_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    """reject_evolve。
+
+    Args:
+        proposal_id: proposal 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import reject_fde_evolve_proposal
 
     try:
@@ -272,7 +325,12 @@ async def reject_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str,
 
 @router.post("/evolve-proposals/{proposal_id}/apply", response_model=FdeStatusResponse)
 async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
-    """Controlled apply → observing window (whitelist config only)."""
+    """Controlled apply → observing window (whitelist config only).
+
+    Args:
+        proposal_id: proposal 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import apply_fde_evolve_proposal
 
     try:
@@ -285,6 +343,7 @@ async def apply_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, 
 
 
 class EvolveObserveRequest(BaseModel):
+    """EvolveObserveRequest。"""
     actor: str = "system"
     metric_name: str = "quality_score"
     metric_value: float = 0.0
@@ -293,7 +352,12 @@ class EvolveObserveRequest(BaseModel):
 
 @router.post("/evolve-proposals/{proposal_id}/observe", response_model=FdeStatusResponse)
 async def observe_evolve(proposal_id: str, req: EvolveObserveRequest) -> Dict[str, Any]:
-    """Record observation sample; quality_score breach may auto-rollback."""
+    """Record observation sample; quality_score breach may auto-rollback.
+
+    Args:
+        proposal_id: proposal 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import record_fde_evolve_observation
 
     try:
@@ -314,6 +378,12 @@ async def observe_evolve(proposal_id: str, req: EvolveObserveRequest) -> Dict[st
 
 @router.post("/evolve-proposals/{proposal_id}/rollback", response_model=FdeStatusResponse)
 async def rollback_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[str, Any]:
+    """rollback_evolve。
+
+    Args:
+        proposal_id: proposal 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import rollback_fde_evolve_proposal
 
     try:
@@ -327,7 +397,11 @@ async def rollback_evolve(proposal_id: str, req: EvolveReviewRequest) -> Dict[st
 
 @router.get("/usage-signal", response_model=FdeItemResponse)
 async def usage_signal(domain_id: str = "") -> Dict[str, Any]:
-    """S1–S4 usage signals from action_audit (not customer ROI)."""
+    """S1–S4 usage signals from action_audit (not customer ROI).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import get_fde_usage_signal
 
     payload = await get_fde_usage_signal(domain_id or "")
@@ -336,7 +410,12 @@ async def usage_signal(domain_id: str = "") -> Dict[str, Any]:
 
 @router.get("/usage-trend", response_model=FdeItemResponse)
 async def usage_trend(domain_id: str = "", days: int = 30) -> Dict[str, Any]:
-    """Per-day usage trend for Tab⑧."""
+    """Per-day usage trend for Tab⑧.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     from core.api.core_facade import get_fde_usage_trend
 
     payload = await get_fde_usage_trend(domain_id or "", days=days)
@@ -344,6 +423,11 @@ async def usage_trend(domain_id: str = "", days: int = 30) -> Dict[str, Any]:
 
 @router.get("/usage-baseline", response_model=FdeItemResponse)
 async def usage_baseline(domain_id: str = "") -> Dict[str, Any]:
+    """usage_baseline。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import get_fde_usage_baseline
 
     row = await get_fde_usage_baseline(domain_id or "")
@@ -351,6 +435,7 @@ async def usage_baseline(domain_id: str = "") -> Dict[str, Any]:
 
 
 class UsageBaselineCaptureRequest(BaseModel):
+    """UsageBaselineCaptureRequest。"""
     domain_id: str = ""
     days: int = 30
     captured_by: str = "fde_engineer"
@@ -358,6 +443,11 @@ class UsageBaselineCaptureRequest(BaseModel):
 
 @router.post("/usage-baseline/capture", response_model=FdeItemResponse)
 async def usage_baseline_capture(req: UsageBaselineCaptureRequest) -> Dict[str, Any]:
+    """usage_baseline_capture。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import capture_fde_usage_baseline
 
     payload = await capture_fde_usage_baseline(
@@ -368,12 +458,18 @@ async def usage_baseline_capture(req: UsageBaselineCaptureRequest) -> Dict[str, 
 
 @router.get("/metric-handover", response_model=FdeItemResponse)
 async def metric_handover_get(domain_id: str = "") -> Dict[str, Any]:
+    """metric_handover_get。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import get_fde_metric_handover
 
     return {"data": get_fde_metric_handover(domain_id or "")}
 
 
 class MetricHandoverSaveRequest(BaseModel):
+    """MetricHandoverSaveRequest。"""
     domain_id: str = ""
     patch: Dict[str, Any] = {}
     actor: str = "fde_engineer"
@@ -383,6 +479,11 @@ class MetricHandoverSaveRequest(BaseModel):
 
 @router.post("/metric-handover", response_model=FdeItemResponse)
 async def metric_handover_save(req: MetricHandoverSaveRequest) -> Dict[str, Any]:
+    """metric_handover_save。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import refresh_fde_metric_handover, save_fde_metric_handover
 
     if req.refresh_usage:
@@ -397,12 +498,18 @@ async def metric_handover_save(req: MetricHandoverSaveRequest) -> Dict[str, Any]
 
 @router.get("/escort-exit", response_model=FdeItemResponse)
 async def escort_exit_get(domain_id: str = "") -> Dict[str, Any]:
+    """escort_exit_get。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import get_fde_escort_exit
 
     return {"data": get_fde_escort_exit(domain_id or "")}
 
 
 class EscortExitSaveRequest(BaseModel):
+    """EscortExitSaveRequest。"""
     domain_id: str = ""
     patch: Dict[str, Any] = {}
     actor: str = "fde_engineer"
@@ -414,6 +521,11 @@ class EscortExitSaveRequest(BaseModel):
 
 @router.post("/escort-exit", response_model=FdeItemResponse)
 async def escort_exit_save(req: EscortExitSaveRequest) -> Dict[str, Any]:
+    """escort_exit_save。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import evaluate_fde_escort_exit, save_fde_escort_exit
 
     if req.evaluate:
@@ -432,7 +544,11 @@ async def escort_exit_save(req: EscortExitSaveRequest) -> Dict[str, Any]:
 
 @router.get("/domain-peers", response_model=FdeItemResponse)
 async def domain_peers(limit: int = 30) -> Dict[str, Any]:
-    """Domain-level peer baselines for Tab⑧ (not ROI; unit=domain_id)."""
+    """Domain-level peer baselines for Tab⑧ (not ROI; unit=domain_id).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_fde_domain_peers
 
     return {"data": await list_fde_domain_peers(limit=min(max(limit, 1), 50))}

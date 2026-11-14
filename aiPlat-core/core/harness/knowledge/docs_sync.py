@@ -59,7 +59,11 @@ def _needs_sync(md_file: Path, title: str, collection: str) -> bool:
 
 
 def sync_docs_to_wiki(collection: str = "system_docs") -> dict:
-    """差分同步：仅导入有变更的文档。首次运行全量，后续仅增量。"""
+    """差分同步：仅导入有变更的文档。首次运行全量，后续仅增量。
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import write_page
 
     docs_root = _get_docs_dir()
@@ -97,7 +101,11 @@ def sync_docs_to_wiki(collection: str = "system_docs") -> dict:
 
 
 def start_docs_watcher(collection: str = "system_docs"):
-    """启动文档目录的变更监视（文件增删改 → 增量同步 Wiki）。"""
+    """启动文档目录的变更监视（文件增删改 → 增量同步 Wiki）。
+
+    Args:
+        collection: collection 参数。
+    """
     docs_root = _get_docs_dir()
     if not docs_root.is_dir():
         return

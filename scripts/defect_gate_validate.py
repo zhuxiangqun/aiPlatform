@@ -55,6 +55,11 @@ def _git_sha(ref: str = "HEAD") -> str:
 
 
 def merge_base_with(base_ref: str) -> str:
+    """merge_base_with。
+
+    Args:
+        base_ref: base_ref 参数。
+    """
     return subprocess.check_output(
         ["git", "merge-base", "HEAD", base_ref],
         stderr=subprocess.DEVNULL,
@@ -63,7 +68,12 @@ def merge_base_with(base_ref: str) -> str:
 
 
 def reviewed_diff_sha(merge_base: str, rev: str = "HEAD") -> str:
-    """SHA-256 of the merge diff, excluding the receipt file itself."""
+    """SHA-256 of the merge diff, excluding the receipt file itself.
+
+    Args:
+        merge_base: merge_base 参数。
+        rev: rev 参数。
+    """
     blob = subprocess.check_output(
         [
             "git",
@@ -88,8 +98,8 @@ def reviewed_diff_sha(merge_base: str, rev: str = "HEAD") -> str:
 def command_needs_gate(command: str) -> bool:
     """True when the shell command itself pushes or opens a PR.
 
-    Words inside quotes or a heredoc (for example a commit message that
-    mentions ``git push``) do not count.
+    Args:
+        command: command 参数。
     """
     visible = _unquoted_shell(command or "")
     if re.search(r"(?:^|[;&|\n])\s*gh\s+pr\s+create(?:\s|$)", visible):
@@ -167,6 +177,14 @@ def validate_receipt(
     expect_merge_base: str,
     allow_fail: bool = False,
 ) -> Tuple[bool, List[str]]:
+    """validate_receipt。
+
+    Args:
+        data: data 参数。
+        expect_diff: expect_diff 参数。
+        expect_merge_base: expect_merge_base 参数。
+        allow_fail: allow_fail 参数。
+    """
     errors: List[str] = []
     if data.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA!r}, got {data.get('schema')!r}")
@@ -236,6 +254,11 @@ def validate_receipt(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--receipt",

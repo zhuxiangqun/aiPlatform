@@ -32,17 +32,31 @@ _LIST_SORT_KEYS = frozenset({"tags", "expected_tools", "forbidden_tools"})
 
 
 def canonical_json_bytes(obj: Any) -> bytes:
+    """canonical_json_bytes。
+
+    Args:
+        obj: obj 参数。
+    """
     return json.dumps(
         obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")
     ).encode("utf-8")
 
 
 def sha256_hex(data: bytes) -> str:
+    """sha256_hex。
+
+    Args:
+        data: data 参数。
+    """
     return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
 def case_hash_payload(case: Mapping[str, Any]) -> Dict[str, Any]:
-    """Build the exact object that is hashed (review/agent_id excluded)."""
+    """Build the exact object that is hashed (review/agent_id excluded).
+
+    Args:
+        case: case 参数。
+    """
     out: Dict[str, Any] = {}
     for key in CASE_HASH_KEYS:
         val = case.get(key)
@@ -70,6 +84,11 @@ def case_hash_payload(case: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def compute_case_hash(case: Mapping[str, Any]) -> str:
+    """计算 case_hash。
+
+    Args:
+        case: case 参数。
+    """
     return sha256_hex(canonical_json_bytes(case_hash_payload(case)))
 
 
@@ -83,6 +102,17 @@ def compute_pack_hash(
     object_types: Sequence[str],
     cases: Sequence[Mapping[str, Any]],
 ) -> str:
+    """计算 pack_hash。
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        kind: kind 参数。
+        claim_eligible: claim_eligible 参数。
+        scope: scope 参数。
+        object_types: object_types 参数。
+        cases: 用例列表。
+    """
     case_hashes = sorted(
         (
             {
@@ -106,7 +136,11 @@ def compute_pack_hash(
 
 
 def compute_manifest_hash(manifest: Sequence[Mapping[str, Any]]) -> str:
-    """Hash sample_manifest entries sorted by case_id (stable execution fingerprint input)."""
+    """Hash sample_manifest entries sorted by case_id (stable execution fingerprint input).
+
+    Args:
+        manifest: 清单 dict。
+    """
     rows: List[Dict[str, Any]] = []
     for item in manifest:
         if not isinstance(item, Mapping):
@@ -133,6 +167,16 @@ def compute_plan_id_v2(
     manifest_hash: str,
     plan_schema: str,
 ) -> str:
+    """计算 plan_id_v2。
+
+    Args:
+        contract: contract 参数。
+        purpose: purpose 参数。
+        selection: selection 参数。
+        pack_refs: pack_refs 参数。
+        manifest_hash: manifest_hash 参数。
+        plan_schema: plan_schema 参数。
+    """
     blob = {
         "manifest_hash": manifest_hash,
         "object_id": contract.get("object_id"),
@@ -157,6 +201,16 @@ def compute_execution_fingerprint(
     model: Optional[str] = None,
     run_key: str = "",
 ) -> str:
+    """计算 execution_fingerprint。
+
+    Args:
+        plan_id: plan 标识。
+        manifest_hash: manifest_hash 参数。
+        runner_id: runner 标识。
+        judge_oracle_version: judge_oracle_version 参数。
+        model: 模型名。
+        run_key: run_key 参数。
+    """
     payload = {
         "judge_oracle_version": judge_oracle_version,
         "manifest_hash": manifest_hash,

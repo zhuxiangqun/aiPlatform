@@ -39,6 +39,11 @@ def _iter_contract_md_files(repo_root: Path) -> list[Path]:
 
 
 def cmd_links(repo_root: Path) -> int:
+    """cmd_links。
+
+    Args:
+        repo_root: repo_root 参数。
+    """
     files = _iter_contract_md_files(repo_root)
     if not files:
         print("contracts: no files found, skip")
@@ -85,6 +90,13 @@ def cmd_links(repo_root: Path) -> int:
 
 
 def cmd_binding(repo_root: Path, base: str, head: str) -> int:
+    """cmd_binding。
+
+    Args:
+        repo_root: repo_root 参数。
+        base: base 参数。
+        head: head 参数。
+    """
     if not base or not head:
         print("contracts: binding check requires --base/--head")
         return 2
@@ -121,6 +133,8 @@ def cmd_binding(repo_root: Path, base: str, head: str) -> int:
 
 
 def main() -> int:
+    """main。
+    """
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="cmd", required=True)
 

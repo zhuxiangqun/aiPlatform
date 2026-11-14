@@ -61,6 +61,16 @@ async def sys_tool_call(
     timeout_seconds: Optional[float] = None,
     trace_context: Optional[Dict[str, Any]] = None,
 ) -> Any:
+    """sys_tool_call。
+
+    Args:
+        tool: tool 参数。
+        tool_args: tool_args 参数。
+        user_id: 用户 ID。
+        session_id: 会话 ID。
+        timeout_seconds: timeout_seconds 参数。
+        trace_context: trace_context 参数。
+    """
     from ._trace import trace_syscall_entry
     trace_syscall_entry("sys_tool_call")
     """

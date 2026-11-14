@@ -81,7 +81,11 @@ FINGERPRINT_TIMEOUT = 2.0  # seconds
 
 def parse_subnet(subnet: str) -> List[str]:
 
-    """Parse subnet string like '192.168.1.0/24' into IP list."""
+    """Parse subnet string like '192.168.1.0/24' into IP list.
+
+    Args:
+        subnet: subnet 参数。
+    """
 
     try:
 
@@ -101,7 +105,13 @@ def parse_subnet(subnet: str) -> List[str]:
 
 def scan_port(host: str, port: int, timeout: float = FINGERPRINT_TIMEOUT) -> bool:
 
-    """Check if a TCP port is open on the given host."""
+    """Check if a TCP port is open on the given host.
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+        timeout: 超时秒数。
+    """
 
     try:
 
@@ -125,7 +135,12 @@ def scan_port(host: str, port: int, timeout: float = FINGERPRINT_TIMEOUT) -> boo
 
 def fingerprint_service(host: str, port: int) -> str:
 
-    """Attempt to identify the service type by banner grab."""
+    """Attempt to identify the service type by banner grab.
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
 
     try:
 
@@ -193,7 +208,13 @@ def generate_config(
 
 ) -> Optional[Dict[str, Any]]:
 
-    """Generate a DataSourceConfig dict from discovery results."""
+    """Generate a DataSourceConfig dict from discovery results.
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+        service_type: service_type 参数。
+    """
 
     if service_type in ("skip", "unknown"):
 
@@ -255,10 +276,9 @@ def scan_network(subnet: str, ports: Optional[List[int]] = None) -> List[Dict[st
 
     """Scan a subnet for open ports and fingerprint services.
 
-
-
-    Returns list of DataSourceConfig dicts (without credentials).
-
+    Args:
+        subnet: subnet 参数。
+        ports: ports 参数。
     """
 
     if ports is None:
@@ -305,7 +325,13 @@ def save_and_report(
 
 ) -> int:
 
-    """Save results as YAML files and optionally report to aiPlat API."""
+    """Save results as YAML files and optionally report to aiPlat API.
+
+    Args:
+        results: results 参数。
+        output_dir: output_dir 参数。
+        api_url: api_url 参数。
+    """
 
     import json as _json
 
@@ -376,6 +402,8 @@ def save_and_report(
 
 def main():
 
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Network Discovery Agent")
 
     parser.add_argument("--scan-once", action="store_true", help="Single scan")

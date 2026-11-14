@@ -49,6 +49,11 @@ def _scripted_workspace_allowed() -> bool:
 
 
 def default_a1_evidence_dir(*, repo_root: Optional[Path] = None) -> Path:
+    """default_a1_evidence_dir。
+
+    Args:
+        repo_root: repo_root 参数。
+    """
     root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[5]
     return root / EVIDENCE_REL
 
@@ -69,7 +74,15 @@ async def run_a1_intersection_track_a(
     model_fingerprint: str = "unresolved",
     repo_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Per-mode create_agent runs on A1 intersection cases; persist optional evidence."""
+    """Per-mode create_agent runs on A1 intersection cases; persist optional evidence.
+
+    Args:
+        live: 是否 live（非 fixture）路径。
+        seed_dir: 种子目录；None 用默认。
+        persist_dir: 目录路径。
+        model_fingerprint: model_fingerprint 参数。
+        repo_root: repo_root 参数。
+    """
     cases = load_intersection_cases(seed_dir=seed_dir)
     parity = load_parity_sample(
         path=(Path(seed_dir) / "intersection" / "parity_sample.v1.json")
@@ -215,6 +228,11 @@ async def run_a1_intersection_track_a(
 
 
 def load_a1_track_a_evidence(path: Path) -> Dict[str, Any]:
+    """加载 a1_track_a_evidence。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path)
     if p.is_dir():
         p = p / "track_a.json"
@@ -235,7 +253,16 @@ def run_a1_intersection_compare(
     min_n_per_capability: int = MIN_N_INTERSECTION_ENGINEERING,
     track_a_complete: bool = True,
 ) -> Dict[str, Any]:
-    """Build Track B report from columns or persisted Track A evidence."""
+    """Build Track B report from columns or persisted Track A evidence.
+
+    Args:
+        mode_columns: mode_columns 参数。
+        evidence_dir: 目录路径。
+        parity: parity 参数。
+        signoff: signoff 参数。
+        min_n_per_capability: min_n_per_capability 参数。
+        track_a_complete: track_a_complete 参数。
+    """
     cols: Dict[str, Any]
     if mode_columns is not None:
         cols = {k: dict(v) for k, v in mode_columns.items() if isinstance(v, Mapping)}
@@ -276,7 +303,15 @@ async def eval_run_a1_intersection_compare(
     model_fingerprint: str = "unresolved",
     min_n_per_capability: int = MIN_N_INTERSECTION_ENGINEERING,
 ) -> Dict[str, Any]:
-    """Track A then Track B in one call. rank_claim always false."""
+    """Track A then Track B in one call. rank_claim always false.
+
+    Args:
+        live: 是否 live（非 fixture）路径。
+        persist: persist 参数。
+        signoff: signoff 参数。
+        model_fingerprint: model_fingerprint 参数。
+        min_n_per_capability: min_n_per_capability 参数。
+    """
     track = await run_a1_intersection_track_a(
         live=bool(live),
         persist_dir=default_a1_evidence_dir() if persist else None,
@@ -305,7 +340,12 @@ def a1_intersection_status_report(
     evidence_dir: Optional[Path] = None,
     repo_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Read-only A1 intersection gate/Pareto snapshot for UI. Never certifies."""
+    """Read-only A1 intersection gate/Pareto snapshot for UI. Never certifies.
+
+    Args:
+        evidence_dir: 目录路径。
+        repo_root: repo_root 参数。
+    """
     parity = load_parity_sample()
     eligible = list_rank_eligible_cases(parity)
     sig = parity.get("signoff") if isinstance(parity.get("signoff"), Mapping) else {}

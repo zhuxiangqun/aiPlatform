@@ -157,6 +157,12 @@ _DIAGRAMS_DIR = Path(get_aiplat_home()) / "diagrams"
 
 
 def save_diagram(xml: str, diagram_id: Optional[str] = None) -> str:
+    """save_diagram。
+
+    Args:
+        xml: xml 参数。
+        diagram_id: diagram 标识。
+    """
     _DIAGRAMS_DIR.mkdir(parents=True, exist_ok=True)
     did = diagram_id or _uuid.uuid4().hex[:8]
     (_DIAGRAMS_DIR / f"{did}.xml").write_text(xml, encoding="utf-8")
@@ -164,11 +170,18 @@ def save_diagram(xml: str, diagram_id: Optional[str] = None) -> str:
 
 
 def load_diagram(diagram_id: str) -> Optional[str]:
+    """load_diagram。
+
+    Args:
+        diagram_id: diagram 标识。
+    """
     path = _DIAGRAMS_DIR / f"{diagram_id}.xml"
     return path.read_text(encoding="utf-8") if path.exists() else None
 
 
 def list_diagrams() -> List[Dict[str, Any]]:
+    """列出 diagrams。
+    """
     result = []
     for fp in sorted(_DIAGRAMS_DIR.glob("*.xml"), key=lambda f: f.stat().st_mtime, reverse=True):
         s = fp.stat()
@@ -178,6 +191,11 @@ def list_diagrams() -> List[Dict[str, Any]]:
 
 
 def delete_diagram(diagram_id: str) -> bool:
+    """删除 diagram。
+
+    Args:
+        diagram_id: diagram 标识。
+    """
     path = _DIAGRAMS_DIR / f"{diagram_id}.xml"
     if path.exists():
         path.unlink()
@@ -186,9 +204,11 @@ def delete_diagram(diagram_id: str) -> bool:
 
 
 def sys_drawio_generate(description: str, modify_id: str = "") -> Dict[str, Any]:
-    u"""Syscall: generate or modify a draw.io diagram.
+    """Syscall: generate or modify a draw.io diagram.
 
-    Returns {diagram_id, viewer_url, xml_preview}.
+    Args:
+        description: description 参数。
+        modify_id: modify 标识。
     """
     import asyncio
     context = load_diagram(modify_id) if modify_id else None

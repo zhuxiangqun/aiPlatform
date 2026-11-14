@@ -27,6 +27,8 @@ class ReviewIssue:
     evidence_envelope: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         d: Dict[str, Any] = {
             "file": self.file, "line": self.line,
             "severity": self.severity, "category": self.category,
@@ -40,6 +42,8 @@ class ReviewIssue:
 
     @property
     def fix_size(self) -> int:
+        """fix_size。
+        """
         return self.additions - self.deletions
 
 
@@ -69,18 +73,26 @@ class ReviewReport:
 
     @property
     def p0_count(self) -> int:
+        """p0_count。
+        """
         return sum(1 for i in self.issues if i.severity == "P0")
 
     @property
     def p1_count(self) -> int:
+        """p1_count。
+        """
         return sum(1 for i in self.issues if i.severity == "P1")
 
     @property
     def p2_count(self) -> int:
+        """p2_count。
+        """
         return sum(1 for i in self.issues if i.severity == "P2")
 
     @property
     def issue_count(self) -> int:
+        """issue_count。
+        """
         return len(self.issues)
 
     @property
@@ -89,15 +101,23 @@ class ReviewReport:
         return max(0, 100 - self.p0_count * 20 - self.p1_count * 5 - self.p2_count)
 
     def is_clean(self) -> bool:
+        """is_clean。
+        """
         return self.p0_count == 0 and self.p1_count < 3
 
     def has_p2_only(self) -> bool:
+        """has_p2_only。
+        """
         return self.p0_count == 0 and self.p1_count == 0 and self.p2_count > 0
 
     def all_files(self) -> List[str]:
+        """all_files。
+        """
         return list(dict.fromkeys(i.file for i in self.issues if i.file))
 
     def fixable_p2_issues(self) -> List[ReviewIssue]:
+        """fixable_p2_issues。
+        """
         return [i for i in self.issues
                 if i.severity == "P2" and i.fix_suggestion.strip()]
 
@@ -187,9 +207,19 @@ class ReviewReport:
     # ── scope governor interface ──
 
     def add_scope_violation(self, reason: str):
+        """add_scope_violation。
+
+        Args:
+            reason: reason 参数。
+        """
         self.scope_violations.append(reason)
 
     def mark_abandoned(self, reason: str) -> "ReviewReport":
+        """mark_abandoned。
+
+        Args:
+            reason: reason 参数。
+        """
         self.abandoned = True
         self.abandoned_reason = reason
         return self
@@ -198,7 +228,11 @@ class ReviewReport:
 
     @staticmethod
     def parse(json_str: str) -> "ReviewReport":
-        """Parse LLM JSON output into ReviewReport. Falls back to regex if non-JSON."""
+        """Parse LLM JSON output into ReviewReport. Falls back to regex if non-JSON.
+
+        Args:
+            json_str: json_str 参数。
+        """
         report = ReviewReport()
         try:
             match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', json_str, re.DOTALL)
@@ -244,7 +278,12 @@ class ReviewReport:
 
     @staticmethod
     def merge(p0_json: str, p2_json: str) -> "ReviewReport":
-        """Merge reasoning(P0/P1) + code_gen(P2) outputs."""
+        """Merge reasoning(P0/P1) + code_gen(P2) outputs.
+
+        Args:
+            p0_json: p0_json 参数。
+            p2_json: p2_json 参数。
+        """
         r = ReviewReport()
         r.issues = ReviewReport.parse(p0_json).issues + ReviewReport.parse(p2_json).issues
         return r
@@ -277,6 +316,8 @@ class ReviewReport:
         }
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         if not self.evidence_envelope_summary and self.issues:
             self._attach_evidence_envelopes()
         out: Dict[str, Any] = {
@@ -297,6 +338,8 @@ class ReviewReport:
         return out
 
     def to_markdown(self) -> str:
+        """to_markdown。
+        """
         lines = [
             f"# Autoreview Report",
             f"**Score**: {self.score}/100  |  **Clean**: {'✅' if self.is_clean() else '❌'}",

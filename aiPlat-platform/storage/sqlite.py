@@ -1,3 +1,5 @@
+"""sqlite：模块接口。"""
+
 import json
 import os
 import time
@@ -26,6 +28,8 @@ def _connect():
 
 
 def init_db() -> None:
+    """init_db。
+    """
     global _INITED
     if _INITED:
         return
@@ -193,6 +197,11 @@ def _row_to_obj(row: Any) -> Dict[str, Any]:
 
 
 def list_gateway_routes(*, enabled: Optional[bool] = None) -> List[Dict[str, Any]]:
+    """列出 gateway_routes。
+
+    Args:
+        enabled: 是否启用。
+    """
     init_db()
     conn = _connect()
     try:
@@ -208,6 +217,11 @@ def list_gateway_routes(*, enabled: Optional[bool] = None) -> List[Dict[str, Any
 
 
 def get_gateway_route(route_id: str) -> Optional[Dict[str, Any]]:
+    """获取 gateway_route。
+
+    Args:
+        route_id: route 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -218,6 +232,11 @@ def get_gateway_route(route_id: str) -> Optional[Dict[str, Any]]:
 
 
 def upsert_gateway_route(route: Dict[str, Any]) -> Dict[str, Any]:
+    """upsert_gateway_route。
+
+    Args:
+        route: route 参数。
+    """
     init_db()
     now = float(time.time())
     rid = str(route.get("id"))
@@ -256,6 +275,11 @@ def upsert_gateway_route(route: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def delete_gateway_route(route_id: str) -> None:
+    """删除 gateway_route。
+
+    Args:
+        route_id: route 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -269,6 +293,12 @@ def delete_gateway_route(route_id: str) -> None:
 
 
 def list_auth_users(*, role: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """列出 auth_users。
+
+    Args:
+        role: role 参数。
+        status: status 参数。
+    """
     init_db()
     conn = _connect()
     try:
@@ -288,6 +318,11 @@ def list_auth_users(*, role: Optional[str] = None, status: Optional[str] = None)
 
 
 def get_auth_user(user_id: str) -> Optional[Dict[str, Any]]:
+    """获取 auth_user。
+
+    Args:
+        user_id: 用户 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -298,6 +333,11 @@ def get_auth_user(user_id: str) -> Optional[Dict[str, Any]]:
 
 
 def upsert_auth_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    """upsert_auth_user。
+
+    Args:
+        user: user 参数。
+    """
     init_db()
     now = float(time.time())
     uid = str(user.get("id"))
@@ -335,6 +375,11 @@ def upsert_auth_user(user: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def delete_auth_user(user_id: str) -> None:
+    """删除 auth_user。
+
+    Args:
+        user_id: 用户 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -348,6 +393,13 @@ def delete_auth_user(user_id: str) -> None:
 
 
 def list_tenants(*, status: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+    """列出 tenants。
+
+    Args:
+        status: status 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     init_db()
     conn = _connect()
     try:
@@ -367,6 +419,11 @@ def list_tenants(*, status: Optional[str] = None, limit: int = 100, offset: int 
 
 
 def get_tenant(tenant_id: str) -> Optional[Dict[str, Any]]:
+    """获取 tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -377,6 +434,11 @@ def get_tenant(tenant_id: str) -> Optional[Dict[str, Any]]:
 
 
 def upsert_tenant(tenant: Dict[str, Any]) -> Dict[str, Any]:
+    """upsert_tenant。
+
+    Args:
+        tenant: tenant 参数。
+    """
     init_db()
     now = float(time.time())
     tid = str(tenant.get("id"))
@@ -410,6 +472,11 @@ def upsert_tenant(tenant: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def delete_tenant(tenant_id: str) -> None:
+    """删除 tenant。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -421,7 +488,12 @@ def delete_tenant(tenant_id: str) -> None:
 
 def upsert_tenant_by_id(*, tenant_id: str, name: str = "", metadata: Any = None) -> Dict[str, Any]:
     """Convenience wrapper — accepts keyword args like execution_store.upsert_tenant.
-    Delegates to upsert_tenant() with a constructed dict."""
+
+    Args:
+        tenant_id: 租户 ID。
+        name: name 参数。
+        metadata: metadata 参数。
+    """
     t = {"id": tenant_id, "name": name or tenant_id, "status": "active"}
     if metadata:
         t["metadata"] = metadata
@@ -432,6 +504,8 @@ def upsert_tenant_by_id(*, tenant_id: str, name: str = "", metadata: Any = None)
 
 
 def list_workflows() -> List[Dict[str, Any]]:
+    """列出 workflows。
+    """
     init_db()
     conn = _connect()
     try:
@@ -450,6 +524,11 @@ def list_workflows() -> List[Dict[str, Any]]:
 
 
 def get_workflow(workflow_id: str) -> Optional[Dict[str, Any]]:
+    """获取 workflow。
+
+    Args:
+        workflow_id: workflow 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -468,6 +547,15 @@ def get_workflow(workflow_id: str) -> Optional[Dict[str, Any]]:
 
 
 def create_workflow(workflow_id: str, name: str, description: str, nodes: List[Any], edges: List[Any]) -> Dict[str, Any]:
+    """创建 workflow。
+
+    Args:
+        workflow_id: workflow 标识。
+        name: name 参数。
+        description: description 参数。
+        nodes: nodes 参数。
+        edges: edges 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -486,6 +574,15 @@ def create_workflow(workflow_id: str, name: str, description: str, nodes: List[A
 
 
 def update_workflow(workflow_id: str, name: Optional[str] = None, description: Optional[str] = None, nodes: Optional[List[Any]] = None, edges: Optional[List[Any]] = None) -> Optional[Dict[str, Any]]:
+    """更新 workflow。
+
+    Args:
+        workflow_id: workflow 标识。
+        name: name 参数。
+        description: description 参数。
+        nodes: nodes 参数。
+        edges: edges 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -513,6 +610,11 @@ def update_workflow(workflow_id: str, name: Optional[str] = None, description: O
 
 
 def delete_workflow(workflow_id: str) -> bool:
+    """删除 workflow。
+
+    Args:
+        workflow_id: workflow 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -527,6 +629,13 @@ def delete_workflow(workflow_id: str) -> bool:
 
 
 def record_workflow_run(workflow_id: str, project_id: str, run_name: str = "") -> None:
+    """record_workflow_run。
+
+    Args:
+        workflow_id: workflow 标识。
+        project_id: project 标识。
+        run_name: run_name 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -541,6 +650,12 @@ def record_workflow_run(workflow_id: str, project_id: str, run_name: str = "") -
 
 
 def update_workflow_run_phase(project_id: str, phase: str) -> None:
+    """更新 workflow_run_phase。
+
+    Args:
+        project_id: project 标识。
+        phase: phase 参数。
+    """
     init_db()
     conn = _connect()
     try:
@@ -551,6 +666,11 @@ def update_workflow_run_phase(project_id: str, phase: str) -> None:
 
 
 def list_workflow_runs(workflow_id: str) -> list:
+    """列出 workflow_runs。
+
+    Args:
+        workflow_id: workflow 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -570,6 +690,8 @@ def list_workflow_runs(workflow_id: str) -> list:
 
 
 def list_apps() -> list:
+    """列出 apps。
+    """
     init_db()
     conn = _connect()
     try:
@@ -580,6 +702,11 @@ def list_apps() -> list:
 
 
 def get_app(app_id: str) -> Optional[Dict[str, Any]]:
+    """获取 app。
+
+    Args:
+        app_id: app 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -591,6 +718,15 @@ def get_app(app_id: str) -> Optional[Dict[str, Any]]:
 
 
 def create_app(app_id: str, name: str, workflow_id: str, mode: str = "chat", description: str = "") -> Dict[str, Any]:
+    """创建 app。
+
+    Args:
+        app_id: app 标识。
+        name: name 参数。
+        workflow_id: workflow 标识。
+        mode: mode 参数。
+        description: description 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -603,7 +739,14 @@ def create_app(app_id: str, name: str, workflow_id: str, mode: str = "chat", des
 
 
 def create_studio_app(app_id: str, name: str, project_id: str, app_url: str = "") -> Dict[str, Any]:
-    """Register a Studio-generated app (不需要 workflow_id)。"""
+    """Register a Studio-generated app (不需要 workflow_id)。
+
+    Args:
+        app_id: app 标识。
+        name: name 参数。
+        project_id: project 标识。
+        app_url: app_url 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -620,6 +763,11 @@ def create_studio_app(app_id: str, name: str, project_id: str, app_url: str = ""
 
 
 def delete_app(app_id: str) -> bool:
+    """删除 app。
+
+    Args:
+        app_id: app 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -632,6 +780,12 @@ def delete_app(app_id: str) -> bool:
 
 
 def create_webhook_secret(app_id: str, secret: str) -> None:
+    """创建 webhook_secret。
+
+    Args:
+        app_id: app 标识。
+        secret: secret 参数。
+    """
     init_db()
     conn = _connect()
     try:
@@ -642,6 +796,11 @@ def create_webhook_secret(app_id: str, secret: str) -> None:
 
 
 def get_webhook_secret(app_id: str) -> Optional[str]:
+    """获取 webhook_secret。
+
+    Args:
+        app_id: app 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -654,6 +813,11 @@ def get_webhook_secret(app_id: str) -> Optional[str]:
 
 
 def toggle_workflow_enabled(workflow_id: str) -> Optional[bool]:
+    """toggle_workflow_enabled。
+
+    Args:
+        workflow_id: workflow 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -672,6 +836,16 @@ def toggle_workflow_enabled(workflow_id: str) -> Optional[bool]:
 
 def insert_pipeline_event(run_id: str, event_type: str, node_id: str = "",
                           state_json: str = "{}", elapsed: float = 0, output: str = "") -> None:
+    """insert_pipeline_event。
+
+    Args:
+        run_id: 运行 ID。
+        event_type: event_type 参数。
+        node_id: node 标识。
+        state_json: state_json 参数。
+        elapsed: elapsed 参数。
+        output: output 参数。
+    """
     init_db()
     conn = _connect()
     try:
@@ -685,6 +859,11 @@ def insert_pipeline_event(run_id: str, event_type: str, node_id: str = "",
 
 
 def get_latest_event(run_id: str) -> Optional[Dict[str, Any]]:
+    """获取 latest_event。
+
+    Args:
+        run_id: 运行 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -705,6 +884,11 @@ def get_latest_event(run_id: str) -> Optional[Dict[str, Any]]:
 
 
 def list_pipeline_events(run_id: str) -> list:
+    """列出 pipeline_events。
+
+    Args:
+        run_id: 运行 ID。
+    """
     init_db()
     conn = _connect()
     try:
@@ -726,6 +910,14 @@ def list_pipeline_events(run_id: str) -> list:
 
 
 def publish_workflow_version(workflow_id, name, nodes, edges):
+    """publish_workflow_version。
+
+    Args:
+        workflow_id: workflow 标识。
+        name: name 参数。
+        nodes: nodes 参数。
+        edges: edges 参数。
+    """
     init_db()
     conn = _connect()
     now = time.time()
@@ -743,6 +935,11 @@ def publish_workflow_version(workflow_id, name, nodes, edges):
 
 
 def list_workflow_versions(workflow_id):
+    """列出 workflow_versions。
+
+    Args:
+        workflow_id: workflow 标识。
+    """
     init_db()
     conn = _connect()
     try:
@@ -757,6 +954,11 @@ def list_workflow_versions(workflow_id):
 
 
 def get_workflow_version(version_id):
+    """获取 workflow_version。
+
+    Args:
+        version_id: version 标识。
+    """
     init_db()
     conn = _connect()
     try:

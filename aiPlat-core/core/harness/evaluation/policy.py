@@ -70,6 +70,7 @@ DEFAULT_POLICY = {
 
 @dataclass
 class EvaluationPolicy:
+    """EvaluationPolicy。"""
     schema_version: str = "0.1"
     thresholds: Dict[str, Any] = None  # type: ignore[assignment]
     weights: Dict[str, float] = None  # type: ignore[assignment]
@@ -81,6 +82,11 @@ class EvaluationPolicy:
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> "EvaluationPolicy":
+        """from_dict。
+
+        Args:
+            obj: obj 参数。
+        """
         src = obj or {}
         out = DEFAULT_POLICY.copy()
         if isinstance(src.get("schema_version"), str):
@@ -118,6 +124,8 @@ class EvaluationPolicy:
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "schema_version": self.schema_version,
             "thresholds": self.thresholds or {},
@@ -131,8 +139,11 @@ class EvaluationPolicy:
 
 
 def merge_policy(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Deep merge override onto base (dict-only). Lists are replaced.
+    """Deep merge override onto base (dict-only). Lists are replaced.
+
+    Args:
+        base: base 参数。
+        override: override 参数。
     """
     if not isinstance(base, dict):
         base = {}

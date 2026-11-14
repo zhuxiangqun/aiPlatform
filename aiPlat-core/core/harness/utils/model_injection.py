@@ -503,7 +503,11 @@ def _log_model_selection(purpose: str, selected: str, entry: str = "best_model_f
 
 def get_default_model(purpose: str = "default") -> str:
 
-    """Centralized default model selection — pure delegation to infra ModelManager."""
+    """Centralized default model selection — pure delegation to infra ModelManager.
+
+    Args:
+        purpose: purpose 参数。
+    """
 
     try:
 
@@ -693,7 +697,11 @@ def _load_adapter_from_store(adapter_id: str) -> Optional[dict]:
 
 def create_selected_adapter(*, model_name: str) -> Any:
 
-    """Create adapter for a model. Delegates to infra ModelManager for model info."""
+    """Create adapter for a model. Delegates to infra ModelManager for model info.
+
+    Args:
+        model_name: model_name 参数。
+    """
 
     _log = logging.getLogger("aiplat.model_injection")
 
@@ -920,14 +928,12 @@ def _bind_model(obj: Any, adapter: Any) -> None:
 
 def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> Any:
 
-    """
+    """Ensure agent has a usable model. If openai has no api key, will use mock.
 
-    Ensure agent has a usable model. If openai has no api key, will use mock.
-
-
-
-    force=True: regardless of current model, override to selected adapter.
-
+    Args:
+        agent: agent 参数。
+        model_name: model_name 参数。
+        force: 是否强制。
     """
 
     adapter = create_selected_adapter(model_name=model_name)
@@ -976,6 +982,13 @@ def ensure_agent_model(agent: Any, *, model_name: str, force: bool = False) -> A
 
 def ensure_skill_model(skill: Any, *, model_name: str, force: bool = False) -> Any:
 
+    """ensure_skill_model。
+
+    Args:
+        skill: skill 参数。
+        model_name: model_name 参数。
+        force: 是否强制。
+    """
     adapter = create_selected_adapter(model_name=model_name)
 
     cur = getattr(skill, "_model", None)
@@ -1051,28 +1064,11 @@ async def generate_with_fallback(purpose: str,
 
     """Generate with automatic model fallback on timeout.
 
-
-
-    Returns (LLMResponse, model_name). Tries each candidate model; on timeout
-
-    or error, moves to the next automatically. The caller gets the response
-
-    from the first model that succeeds within timeout.
-
-
-
-    Usage:
-
-        resp, model = await generate_with_fallback(
-
-            "wiki_curation",
-
-            messages=[{"role": "user", "content": "hello"}],
-
-            timeout=60
-
-        )
-
+    Args:
+        purpose: purpose 参数。
+        messages: messages 参数。
+        timeout: 超时秒数。
+        config: config 参数。
     """
 
     import asyncio as _asyncio, logging as _logging, time as _time
@@ -1616,6 +1612,7 @@ def _local_only_requested(purpose: str, profile: Optional[dict] = None) -> bool:
     """
     data = profile if isinstance(profile, dict) else _load_llm_profile()
     pprof = (data.get("purpose_profiles") or {}).get(purpose) or {}
+    # 为什么：敏感/离线场景必须锁本地 runner，禁止外发候选进入选模
     if bool(pprof.get("local_only")):
         return True
     return os.getenv("AIPLAT_LOCAL_ONLY", "").strip().lower() in (
@@ -1643,10 +1640,9 @@ def _build_preferences(purpose: str) -> dict:
 def best_model_for_purpose(purpose: str, messages: list = None) -> str:
     """选择最优 LLM 模型。所有路径收敛到 unified_pipeline 统一评分。
 
-    Resolution chain:
-      0. Session-level override (/model command)
-      0.5 Non-LLM capability shortcuts (tts, stt, ocr)
-      1. unified_pipeline: hard filter → soft filter → score → safe model
+    Args:
+        purpose: purpose 参数。
+        messages: messages 参数。
     """
     # Step 0: Session-level model override (/model command)
     override = _get_session_model_override()
@@ -1710,7 +1706,12 @@ def best_model_for_purpose(purpose: str, messages: list = None) -> str:
 
 
 def best_model_for_purpose_with_meta(purpose: str, messages: list = None) -> dict:
-    """Model metadata from the single source of truth: ModelManager."""
+    """Model metadata from the single source of truth: ModelManager.
+
+    Args:
+        purpose: purpose 参数。
+        messages: messages 参数。
+    """
     model = best_model_for_purpose(purpose, messages)
     profile = _load_llm_profile()
     pprof = profile.get("purpose_profiles", {}).get(purpose, {})
@@ -1739,10 +1740,8 @@ def best_model_for_agent_type(agent_type: str) -> str:
 
     """Resolve best model for a given agent type (e.g. 'rag', 'react', 'conversational').
 
-
-
-    Maps agent types to purposes for centralized model resolution.
-
+    Args:
+        agent_type: agent_type 参数。
     """
 
     _AMT = {
@@ -1890,7 +1889,12 @@ def _get_session_model_override() -> Optional[str]:
 
 def set_model_override(model_name: str, session_id: str = "_global") -> None:
 
-    """Set a session-level model override."""
+    """Set a session-level model override.
+
+    Args:
+        model_name: model_name 参数。
+        session_id: 会话 ID。
+    """
 
     _bounded_override_write(session_id, model_name)
 
@@ -1902,7 +1906,11 @@ def set_model_override(model_name: str, session_id: str = "_global") -> None:
 
 def clear_model_override(session_id: str = "_global") -> None:
 
-    """Clear session-level model override."""
+    """Clear session-level model override.
+
+    Args:
+        session_id: 会话 ID。
+    """
 
     _model_overrides.pop(session_id, None)
 

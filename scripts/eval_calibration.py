@@ -21,6 +21,11 @@ BINS = [(0.0, 0.6), (0.6, 0.8), (0.8, 0.9), (0.9, 1.0)]
 
 
 def load_queries(path: str) -> list:
+    """load_queries。
+
+    Args:
+        path: 路径。
+    """
     queries = []
     with open(path) as f:
         for line in f:
@@ -31,6 +36,11 @@ def load_queries(path: str) -> list:
 
 
 def evaluate_calibration(queries: list) -> dict:
+    """evaluate_calibration。
+
+    Args:
+        queries: queries 参数。
+    """
     from core.harness.knowledge.ontology_query_mapper import map_query_to_ontology
 
     bin_counts = {b: {"total": 0, "correct": 0} for b in BINS}
@@ -91,6 +101,11 @@ def evaluate_calibration(queries: list) -> dict:
 
 
 def print_report(report: dict):
+    """print_report。
+
+    Args:
+        report: report 参数。
+    """
     print(f"  {'Bin':12s} {'Samples':>8s} {'Expected':>8s} {'Actual':>8s} {'Gap':>8s}")
     print("  " + "-" * 50)
     for b in report["bins"]:
@@ -103,6 +118,8 @@ def print_report(report: dict):
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Confidence calibration evaluation")
     parser.add_argument("--queries", default=str(_Path.home() / ".aiplat" / "test_docs" / "calibration_queries.jsonl"))
     args = parser.parse_args()

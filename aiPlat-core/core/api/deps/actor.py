@@ -1,3 +1,5 @@
+"""actor：模块接口。"""
+
 from __future__ import annotations
 
 import hmac
@@ -14,9 +16,8 @@ def _flag(name: str) -> bool:
 def header_identity_allowed(presented_secret: str | None) -> bool:
     """True when spoofable identity headers / payload context may be trusted.
 
-    Same env contract as ``auth.request_identity.header_identity_allowed``
-    (duplicated here so core RBAC stays free of a cross-layer dependency):
-    ``AIPLAT_PLATFORM_DEV_MODE`` or matching ``AIPLAT_PLATFORM_IDENTITY_SECRET``.
+    Args:
+        presented_secret: presented_secret 参数。
     """
     if _flag("AIPLAT_PLATFORM_DEV_MODE"):
         return True
@@ -30,8 +31,9 @@ def header_identity_allowed(presented_secret: str | None) -> bool:
 def actor_from_http(http_request: Request, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Extract actor identity for RBAC.
 
-    Client headers and ``payload.context`` role/id/tenant are spoofable.
-    Accept them only when ``header_identity_allowed`` (dev mode or identity secret).
+    Args:
+        http_request: http_request 参数。
+        payload: 载荷 dict。
     """
     ctx0 = None
     try:

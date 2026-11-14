@@ -76,6 +76,8 @@ class SkillDraft:
         return f"---\n{yaml.dump(fm, allow_unicode=True, default_flow_style=False)}---\n\n{self.sop_body}\n"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "name": self.name,
             "display_name": self.display_name,
@@ -101,6 +103,11 @@ class AutoLearner:
     """
 
     def __init__(self, *, draft_dir: str = ""):
+        """初始化。
+
+        Args:
+            draft_dir: draft_dir 参数。
+        """
         home = os.path.expanduser("~")
         self._draft_dir = Path(draft_dir or os.path.join(home, ".aiplat", "skill_drafts"))
         self._draft_dir.mkdir(parents=True, exist_ok=True)
@@ -243,7 +250,11 @@ class AutoLearner:
         ).hexdigest()[:16]
 
     def record_rejection(self, draft: SkillDraft) -> None:
-        """Record a rejected draft pattern to prevent future similar edits."""
+        """Record a rejected draft pattern to prevent future similar edits.
+
+        Args:
+            draft: draft 参数。
+        """
         h = self._hash_edit_pattern(draft)
         self._rejected_buffer.add(h)
         if len(self._rejected_buffer) > self._buffer_max_size:
@@ -253,7 +264,11 @@ class AutoLearner:
         )
 
     def is_rejected_before(self, draft: SkillDraft) -> bool:
-        """Check if a similar draft pattern was previously rejected."""
+        """Check if a similar draft pattern was previously rejected.
+
+        Args:
+            draft: draft 参数。
+        """
         return self._hash_edit_pattern(draft) in self._rejected_buffer
 
     async def _enrich_with_history(self, draft: SkillDraft, error: str) -> None:
@@ -275,7 +290,11 @@ class AutoLearner:
             logging.getLogger(__name__).debug('_enrich_with_history failed', exc_info=True)
 
     def is_suspended(self, agent_id: str) -> bool:
-        """检查 Agent 是否因低质量而被暂停。"""
+        """检查 Agent 是否因低质量而被暂停。
+
+        Args:
+            agent_id: Agent ID。
+        """
         if agent_id not in self._agent_suspended:
             return False
         return time.time() < self._agent_suspended[agent_id]
@@ -283,7 +302,9 @@ class AutoLearner:
     def record_failure_quality(self, agent_id: str, quality: float):
         """记录 Agent 的 SkillDraft 质量评分。
 
-        连续 3 次 < 0.5 → 暂停 24h
+        Args:
+            agent_id: Agent ID。
+            quality: quality 参数。
         """
         now = time.time()
         if agent_id not in self._agent_failure_count:
@@ -301,7 +322,11 @@ class AutoLearner:
                 )
 
     async def simulate(self, draft: SkillDraft) -> float:
-        """在 Docker 沙盒中用历史 run 回放 Skill，返回模拟通过率。"""
+        """在 Docker 沙盒中用历史 run 回放 Skill，返回模拟通过率。
+
+        Args:
+            draft: draft 参数。
+        """
         try:
             from .skill_simulator import SkillSimulator
             simulator = SkillSimulator()
@@ -321,15 +346,19 @@ class AutoLearner:
     def submit_for_review(self, draft: SkillDraft) -> str:
         """提交 SkillDraft 到审核队列。
 
-        Returns:
-            draft_id
+        Args:
+            draft: draft 参数。
         """
         draft_path = self._draft_dir / f"{draft.name}.yaml"
         draft_path.write_text(draft.to_yaml(), encoding="utf-8")
         return draft.name
 
     async def approve(self, draft_name: str) -> bool:
-        """审批通过 → 注册到 SkillRegistry。"""
+        """审批通过 → 注册到 SkillRegistry。
+
+        Args:
+            draft_name: draft_name 参数。
+        """
         draft = self._storage.get(draft_name)
         if not draft:
             return False
@@ -361,7 +390,12 @@ class AutoLearner:
             return False
 
     def reject(self, draft_name: str, reason: str = "") -> bool:
-        """拒绝 SkillDraft。"""
+        """拒绝 SkillDraft。
+
+        Args:
+            draft_name: draft_name 参数。
+            reason: reason 参数。
+        """
         draft = self._storage.get(draft_name)
         if not draft:
             return False
@@ -372,8 +406,9 @@ class AutoLearner:
 
     async def process_pending(self, *, min_confidence: float = 0.9) -> Dict[str, Any]:
         """处理待审核 Draft — 自动审批高置信度 (>threshold) 的 Draft。
-        
-        Phase 5.5: EvolutionEngine 夜间调用。
+
+        Args:
+            min_confidence: min_confidence 参数。
         """
         auto_approved = 0
         total_pending = 0
@@ -398,7 +433,11 @@ class AutoLearner:
         return {"pending": total_pending, "auto_approved": auto_approved}
 
     def list_drafts(self, status: str = "") -> List[Dict[str, Any]]:
-        """列出所有草稿。"""
+        """列出所有草稿。
+
+        Args:
+            status: status 参数。
+        """
         drafts = list(self._storage.values())
         if status:
             drafts = [d for d in drafts if d.status == status]
@@ -436,6 +475,8 @@ _auto_learner: Optional[AutoLearner] = None
 
 
 def get_auto_learner() -> AutoLearner:
+    """获取 auto_learner。
+    """
     global _auto_learner
     if _auto_learner is None:
         _auto_learner = AutoLearner()

@@ -25,8 +25,11 @@ async def sys_tts_generate(
 ) -> bytes:
     """Generate speech audio from text via local Piper TTS.
 
-    Returns raw audio bytes (WAV format).
-    Zero network dependency — all local CPU execution.
+    Args:
+        text: text 参数。
+        voice: voice 参数。
+        format: format 参数。
+        trace_context: trace_context 参数。
     """
     from ._trace import trace_syscall_entry
     trace_syscall_entry("sys_tts_generate")

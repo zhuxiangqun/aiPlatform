@@ -1,14 +1,25 @@
+"""factory：模块接口。"""
+
 from typing import Optional
 from .schemas import StorageConfig
 from .base import StorageClient, FileStorage, ObjectStorage
 
 
 def create(config: Optional[StorageConfig] = None) -> StorageClient:
-    """创建存储客户端（便捷函数）"""
+    """创建存储客户端（便捷函数）。
+
+    Args:
+        config: config 参数。
+    """
     return create_storage_client(config)
 
 
 def create_storage_client(config: Optional[StorageConfig] = None) -> StorageClient:
+    """创建 storage_client。
+
+    Args:
+        config: config 参数。
+    """
     config = config or StorageConfig()
 
     if config.type == "file":

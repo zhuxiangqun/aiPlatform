@@ -38,6 +38,7 @@ logger = logging.getLogger("semantic_gateway")
 
 class GatewayRequest:
 
+    """GatewayRequest。"""
     action: str                 # "tool_call" | "skill_call" | "knowledge_retrieve" | "llm_generate"
 
     domain_id: str = ""         # domain hint (optional, will auto-classify)
@@ -56,6 +57,7 @@ class GatewayRequest:
 
 class GatewayResponse:
 
+    """GatewayResponse。"""
     allowed: bool = True
 
     reason: str = ""
@@ -78,7 +80,11 @@ class GatewayResponse:
 
 async def route(request: GatewayRequest) -> GatewayResponse:
 
-    u"""Unified gateway routing — the single entry point for all Agent→system calls."""
+    """Unified gateway routing — the single entry point for all Agent→system calls.
+
+    Args:
+        request: FastAPI Request。
+    """
 
     t0 = time.time()
 

@@ -1,3 +1,8 @@
+"""tools：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -122,7 +127,13 @@ def _tool_category(tool: Any) -> str:
 
 @router.get("/tools", response_model=Dict[str, Any])
 async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = False):
-    """List all tools"""
+    """List all tools。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        available_only: available_only 参数。
+    """
     registry = get_tool_registry()
     tools = registry.list_tools()
     # Always try workspace import (registry may be empty at startup)
@@ -193,7 +204,11 @@ async def list_tools(limit: int = 100, offset: int = 0, available_only: bool = F
 
 @router.get("/tools/{tool_name}", response_model=Dict[str, Any])
 async def get_tool(tool_name: str):
-    """Get a single tool's info."""
+    """Get a single tool's info.
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     registry = get_tool_registry()
     tool = registry.get(tool_name)
     if not tool:
@@ -228,7 +243,12 @@ async def get_tool(tool_name: str):
 
 @router.delete("/tools/{tool_name}", response_model=Dict[str, Any])
 async def delete_workspace_tool(tool_name: str, http_request: Request):
-    """Delete a workspace tool — removes .py file and unregisters from ToolRegistry."""
+    """Delete a workspace tool — removes .py file and unregisters from ToolRegistry.
+
+    Args:
+        tool_name: tool_name 参数。
+        http_request: http_request 参数。
+    """
     registry = get_tool_registry()
     tool = registry.get(tool_name)
     if not tool:
@@ -263,7 +283,9 @@ async def delete_workspace_tool(tool_name: str, http_request: Request):
 async def update_tool_config(tool_name: str, request: dict):
     """Update tool lifecycle status (approval center) or refuse config edits.
 
-    Engine tools are code-defined; only ``status`` may be changed via API.
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
     """
     from core.apps.tools.base import get_tool_registry
     from core.apps.tools.lifecycle import get_tool_status, set_tool_status
@@ -292,7 +314,11 @@ async def update_tool_config(tool_name: str, request: dict):
 
 @router.post("/tools/{tool_name}/audit", response_model=Dict[str, Any])
 async def audit_tool_config(tool_name: str):
-    """AI 审核：工具配置健康检查（规则驱动，无需 LLM）。"""
+    """AI 审核：工具配置健康检查（规则驱动，无需 LLM）。
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     from core.management.asset_audit import issue, summarize_audit_issues
     from core.apps.tools.base import get_tool_registry
     from core.apps.tools.lifecycle import get_tool_status
@@ -436,7 +462,11 @@ async def audit_tool_config(tool_name: str):
 
 @router.post("/tools/{tool_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_tool_for_review(tool_name: str):
-    """draft/enabled → ready so the tool appears in 资产审批「待审核」."""
+    """draft/enabled → ready so the tool appears in 资产审批「待审核」.
+
+    Args:
+        tool_name: tool_name 参数。
+    """
     from core.apps.tools.base import get_tool_registry
     from core.apps.tools.lifecycle import get_tool_status, set_tool_status
 
@@ -458,7 +488,13 @@ async def submit_tool_for_review(tool_name: str):
 
 @router.post("/tools", response_model=Dict[str, Any])
 async def create_workspace_tool(request: dict, http_request: Request, rt: RuntimeDep = None):
-    """Create a new workspace tool. Writes a .py file to ~/.aiplat/tools/ and registers it."""
+    """Create a new workspace tool. Writes a .py file to ~/.aiplat/tools/ and registers it.
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
     code = str(request.get("code") or "").strip()
@@ -520,7 +556,11 @@ async def create_workspace_tool(request: dict, http_request: Request, rt: Runtim
 
 @router.post("/tools/auto-fill", response_model=Dict[str, Any])
 async def tool_auto_fill(request: dict):
-    """AI 生成：根据名称和描述，自动生成 TOOL_DEF 代码。"""
+    """AI 生成：根据名称和描述，自动生成 TOOL_DEF 代码。
+
+    Args:
+        request: request 参数。
+    """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
     if not name or not description:
@@ -601,7 +641,11 @@ async def tool_auto_fill(request: dict):
 
 @router.post("/tools/create-dialog", response_model=Dict[str, Any])
 async def tool_create_dialog(request: dict):
-    """Conversational Tool creation: clarify → draft (auto-fill). Create still via POST /tools."""
+    """Conversational Tool creation: clarify → draft (auto-fill). Create still via POST /tools.
+
+    Args:
+        request: request 参数。
+    """
     text = str(request.get("text") or "").strip()
     history = request.get("history") if isinstance(request.get("history"), list) else []
     try:
@@ -617,7 +661,14 @@ async def tool_create_dialog(request: dict):
 
 @router.post("/tools/{tool_name}/execute", response_model=Dict[str, Any])
 async def execute_tool(tool_name: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """Execute a tool with given parameters"""
+    """Execute a tool with given parameters。
+
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     harness = get_harness()
     payload = _inject_http_request_context(dict(request or {}), http_request, entrypoint="api")
     deny = await rbac_guard(http_request=http_request, payload=payload, action="execute", resource_type="tool", resource_id=str(tool_name))
@@ -659,14 +710,13 @@ async def execute_tool(tool_name: str, request: dict, http_request: Request, rt:
 
 @router.post("/tools/{tool_name}/sign", response_model=Dict[str, Any])
 async def sign_tool(tool_name: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    Sign a workspace tool's .py file with an Ed25519 private key.
-    Writes a companion TOOL.manifest.json next to the .py file.
+    """Sign a workspace tool's .py file with an Ed25519 private key.
 
-    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
-
-    Only workspace tools (those discovered from ~/.aiplat/tools/) are signable.
-    Engine tools are code-defined and protected.
+    Args:
+        tool_name: tool_name 参数。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     registry = get_tool_registry()
     tool = registry.get(tool_name)

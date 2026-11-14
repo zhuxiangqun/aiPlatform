@@ -11,6 +11,7 @@ from .base_model_adapter import BaseModelAdapter, get_cached_model
 
 
 class InfraEmbeddingAdapter(BaseModelAdapter):
+    """InfraEmbeddingAdapter。"""
     capability = "embedding"
 
     def _load_model(self, name: str) -> Any:  # noqa: boundary — legitimate adapter override
@@ -23,6 +24,11 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
             return None  # Network errors, huggingface unreachable
 
     def embed_sync(self, text: str) -> List[float]:
+        """embed_sync。
+
+        Args:
+            text: text 参数。
+        """
         model = self._get_model()
         if model is None:
             raise RuntimeError("No embedding model available")
@@ -30,6 +36,11 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
         return [float(v) for v in embedding[0]]
 
     def embed_batch_sync(self, texts: List[str]) -> List[List[float]]:
+        """embed_batch_sync。
+
+        Args:
+            texts: texts 参数。
+        """
         model = self._get_model()
         if model is None:
             raise RuntimeError("No embedding model available")
@@ -37,15 +48,30 @@ class InfraEmbeddingAdapter(BaseModelAdapter):
         return [[float(v) for v in emb] for emb in embeddings]
 
     async def embed(self, text: str) -> List[float]:
+        """embed。
+
+        Args:
+            text: text 参数。
+        """
         import asyncio
         return await asyncio.to_thread(self.embed_sync, text)
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """embed_batch。
+
+        Args:
+            texts: texts 参数。
+        """
         import asyncio
         return await asyncio.to_thread(self.embed_batch_sync, texts)
 
 
 def create_infra_embedding_adapter(**kwargs) -> InfraEmbeddingAdapter:
+    """创建 infra_embedding_adapter。
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return InfraEmbeddingAdapter(**kwargs)
 
 

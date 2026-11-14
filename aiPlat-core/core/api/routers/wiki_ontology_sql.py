@@ -10,7 +10,11 @@ router = APIRouter(tags=["wiki-ontology-sql"])
 
 @router.get("/mappings", response_model=Dict[str, Any])
 async def list_sql_mappings(domain_id: str = "default"):
-    """List all ontology classes with SQL data source mappings."""
+    """List all ontology classes with SQL data source mappings.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.sql_ontology import get_sql_ontology
     translator = get_sql_ontology(domain_id)
     return {"domain_id": domain_id, "mappings": translator.list_mappings(),
@@ -25,20 +29,14 @@ async def query_sql_ontology(
     filters: str = "",
     limit: int = 100,
 ):
-    """
-    Translate an ontology concept query to SQL and execute it.
-    
-    Example:
-      POST /ontology/sql/query
-      {
-        "class_name": "Customer",
-        "domain_id": "sales-domain", 
-        "columns": "name,region",
-        "filters": "region=华东",
-        "limit": 50
-      }
-    
-    Returns: { "sql": "SELECT ...", "concept": "Customer", "results": [...], "count": 0 }
+    """Translate an ontology concept query to SQL and execute it.
+
+    Args:
+        class_name: class_name 参数。
+        domain_id: domain 标识。
+        columns: columns 参数。
+        filters: filters 参数。
+        limit: 返回条数上限。
     """
     if not class_name:
         raise HTTPException(status_code=400, detail="class_name is required")
@@ -63,7 +61,13 @@ async def preview_sql_query(
     domain_id: str = "default",
     limit: int = 10,
 ):
-    """Preview SQL for a concept query (SELECT * equivalent, no execution)."""
+    """Preview SQL for a concept query (SELECT * equivalent, no execution).
+
+    Args:
+        class_name: class_name 参数。
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     if not class_name:
         raise HTTPException(status_code=400, detail="class_name is required")
     from core.harness.knowledge.sql_ontology import get_sql_ontology

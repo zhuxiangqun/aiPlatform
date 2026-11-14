@@ -10,8 +10,8 @@ from core.utils.json_utils import parse_json
 def extract_json_object(text: str) -> Dict[str, Any]:
     """Parse LLM JSON object via canonical ``extract_json_safe`` / ``parse_json``.
 
-    Handles markdown fences, trailing commentary, and balanced braces.
-    Non-object JSON (arrays/scalars) → {}.
+    Args:
+        text: text 参数。
     """
     obj = parse_json(str(text or ""))
     return obj if isinstance(obj, dict) else {}
@@ -23,6 +23,13 @@ def trim_history(
     limit: int = 16,
     max_chars: int = 2000,
 ) -> List[Dict[str, str]]:
+    """trim_history。
+
+    Args:
+        history: history 参数。
+        limit: 返回条数上限。
+        max_chars: max_chars 参数。
+    """
     hist = history if isinstance(history, list) else []
     trimmed: List[Dict[str, str]] = []
     for m in hist[-limit:]:
@@ -36,11 +43,20 @@ def trim_history(
 
 
 def history_as_text(trimmed: List[Dict[str, str]]) -> str:
+    """history_as_text。
+
+    Args:
+        trimmed: trimmed 参数。
+    """
     return "\n".join(f"{m['role']}: {m['content']}" for m in trimmed) or "(无)"
 
 
 def parse_clarify_payload(parsed: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize clarify LLM JSON into next/reply/questions/name fields."""
+    """Normalize clarify LLM JSON into next/reply/questions/name fields.
+
+    Args:
+        parsed: parsed 参数。
+    """
     next_state = str(parsed.get("next") or "").strip().lower()
     reply = str(parsed.get("reply") or "").strip()
     questions = parsed.get("questions") if isinstance(parsed.get("questions"), list) else []
@@ -75,6 +91,15 @@ def is_draft_ready(
     name: str,
     min_desc: int = 40,
 ) -> bool:
+    """is_draft_ready。
+
+    Args:
+        next_state: next_state 参数。
+        description: description 参数。
+        display_name: display_name 参数。
+        name: name 参数。
+        min_desc: min_desc 参数。
+    """
     return next_state == "draft" or (
         bool(description)
         and len(description) >= min_desc
@@ -83,7 +108,12 @@ def is_draft_ready(
 
 
 def join_user_corpus(latest: str, history: Optional[List[Dict[str, str]]] = None) -> str:
-    """Concatenate user turns + latest for readiness heuristics."""
+    """Concatenate user turns + latest for readiness heuristics.
+
+    Args:
+        latest: latest 参数。
+        history: history 参数。
+    """
     parts: List[str] = []
     for m in trim_history(history):
         if m.get("role") == "user":
@@ -97,8 +127,8 @@ def join_user_corpus(latest: str, history: Optional[List[Dict[str, str]]] = None
 def agent_create_corpus_ready(corpus: str) -> bool:
     """True when user text already has goal + I/O + enough execution policy to draft.
 
-    Prevents clarify LLM from re-asking questions already answered in the same
-    message or prior turns (e.g. 停下来问用户 / 保存下载 / 自动判断).
+    Args:
+        corpus: corpus 参数。
     """
     text = str(corpus or "").strip()
     if len(text) < 40:
@@ -149,6 +179,11 @@ def agent_create_corpus_ready(corpus: str) -> bool:
 
 
 def guess_agent_display_name(corpus: str) -> str:
+    """guess_agent_display_name。
+
+    Args:
+        corpus: corpus 参数。
+    """
     text = str(corpus or "")
     if any(k in text.lower() for k in ("ppt", "pptx")) or "演示文稿" in text:
         if "数字员工" in text or "制作" in text:

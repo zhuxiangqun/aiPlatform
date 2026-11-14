@@ -73,11 +73,11 @@ def _parse_cron_field(field: str, *, min_v: int, max_v: int) -> Set[int]:
 
 
 def next_run_from_cron(cron: str, *, from_ts: float) -> float:
-    """
-    Compute next run time (unix ts) from a 5-field cron spec.
+    """Compute next run time (unix ts) from a 5-field cron spec.
 
-    Resolution: 60 seconds (minute).
-    Timezone: treated as local time (Phase-1). The job record stores timezone for future extension.
+    Args:
+        cron: cron 参数。
+        from_ts: from_ts 参数。
     """
     cron = (cron or "* * * * *").strip()
     parts = [p for p in cron.split() if p.strip()]
@@ -114,6 +114,7 @@ def next_run_from_cron(cron: str, *, from_ts: float) -> float:
 
 @dataclass
 class SchedulerConfig:
+    """SchedulerConfig。"""
     poll_interval_seconds: float = 2.0
     batch_size: int = 20
     delivery_timeout_seconds: float = 10.0
@@ -122,7 +123,15 @@ class SchedulerConfig:
 
 
 class JobScheduler:
+    """JobScheduler。"""
     def __init__(self, *, execution_store: Any, harness: Any, config: Optional[SchedulerConfig] = None) -> None:
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+            harness: harness 参数。
+            config: config 参数。
+        """
         self._store = execution_store
         self._harness = harness
         self._cfg = config or SchedulerConfig()
@@ -130,12 +139,16 @@ class JobScheduler:
         self._task: Optional[asyncio.Task] = None
 
     async def start(self) -> None:
+        """start。
+        """
         if self._task and not self._task.done():
             return
         self._stop.clear()
         self._task = asyncio.create_task(self._run_loop(), name="aiplat.job_scheduler")
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._stop.set()
         if self._task:
             try:
@@ -144,6 +157,11 @@ class JobScheduler:
                 logging.debug(str(e), exc_info=True)
 
     async def run_job_once(self, job_id: str) -> Dict[str, Any]:
+        """run_job_once。
+
+        Args:
+            job_id: job 标识。
+        """
         job = await self._store.get_job(job_id)
         if not job:
             raise ValueError(f"Job not found: {job_id}")
@@ -554,9 +572,10 @@ class JobScheduler:
         return {"ok": False, "error": last_err or "delivery_failed"} 
 
     async def retry_dlq_delivery(self, dlq_id: str) -> Dict[str, Any]:
-        """
-        Retry a delivery from DLQ (webhook only).
-        On success, marks DLQ item as resolved.
+        """Retry a delivery from DLQ (webhook only).
+
+        Args:
+            dlq_id: dlq 标识。
         """
         item = await self._store.get_job_delivery_dlq_item(dlq_id)
         if not item:

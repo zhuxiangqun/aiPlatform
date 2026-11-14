@@ -39,7 +39,14 @@ def classify_ide_coding_handoff(
     tools: Optional[Sequence[str]] = None,
     tags: Optional[Sequence[str]] = None,
 ) -> Optional[Dict[str, str]]:
-    """Return handoff if text/tools look like a coding delivery ask."""
+    """Return handoff if text/tools look like a coding delivery ask.
+
+    Args:
+        prompt: prompt 参数。
+        result: result 参数。
+        tools: tools 参数。
+        tags: tags 参数。
+    """
     blob = " ".join(
         [
             str(prompt or ""),
@@ -65,7 +72,14 @@ def ide_coding_handoff_payload(
     tools: Optional[Sequence[str]] = None,
     tags: Optional[Sequence[str]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Structured payload for ingest/API/CLI (kind + route + label)."""
+    """Structured payload for ingest/API/CLI (kind + route + label).
+
+    Args:
+        prompt: prompt 参数。
+        result: result 参数。
+        tools: tools 参数。
+        tags: tags 参数。
+    """
     info = classify_ide_coding_handoff(
         prompt, result=result, tools=tools, tags=tags
     )

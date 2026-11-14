@@ -35,7 +35,12 @@ def derive_capability_hints(
     skills: Optional[Sequence[Any]] = None,
     tools: Optional[Sequence[Any]] = None,
 ) -> List[str]:
-    """Map declared skill/tool names to capability tags via substring hints."""
+    """Map declared skill/tool names to capability tags via substring hints.
+
+    Args:
+        skills: skills 参数。
+        tools: tools 参数。
+    """
     blob = " ".join(_norm_tokens(list(skills or []) + list(tools or [])))
     found: List[str] = []
     for cap, needles in _CAPABILITY_HINTS:
@@ -53,7 +58,16 @@ def build_eval_profile_from_declarations(
     config: Optional[Mapping[str, Any]] = None,
     object_version: str = "",
 ) -> Dict[str, Any]:
-    """Build a profile dict. Explicit config.eval_profile short-circuits derivation."""
+    """Build a profile dict. Explicit config.eval_profile short-circuits derivation.
+
+    Args:
+        skills: skills 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        config: 配置 dict。
+        object_version: object_version 参数。
+    """
     cfg = dict(config or {})
     explicit = cfg.get("eval_profile")
     if isinstance(explicit, dict) and explicit:
@@ -93,7 +107,11 @@ def build_eval_profile_from_declarations(
 
 
 async def resolve_agent_eval_profile(agent_id: str) -> Dict[str, Any]:
-    """Load AgentInfo and return eval_profile (explicit or derived)."""
+    """Load AgentInfo and return eval_profile (explicit or derived).
+
+    Args:
+        agent_id: agent 标识。
+    """
     aid = (agent_id or "").strip()
     if not aid:
         raise ValueError("agent_id required")

@@ -27,6 +27,13 @@ def _as_item(out: Any) -> Dict[str, Any]:
 
 @router.get("/prompts/eval/test-cases", response_model=ItemResponse)
 async def list_test_cases(template_id: str = "", limit: int = 100, offset: int = 0):
+    """列出 test_cases。
+
+    Args:
+        template_id: template 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.api.core_facade import prompt_eval_list_test_cases
 
     try:
@@ -41,6 +48,11 @@ async def list_test_cases(template_id: str = "", limit: int = 100, offset: int =
 
 @router.post("/prompts/eval/test-cases", response_model=StatusResponse)
 async def create_test_case(req: PromptTestCaseCreate):
+    """创建 test_case。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import prompt_eval_create_test_case
 
     try:
@@ -56,6 +68,12 @@ async def create_test_case(req: PromptTestCaseCreate):
 
 @router.put("/prompts/eval/test-cases/{case_id}", response_model=StatusResponse)
 async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
+    """update_test_case。
+
+    Args:
+        case_id: 用例 ID。
+        req: req 参数。
+    """
     from core.api.core_facade import prompt_eval_update_test_case
 
     try:
@@ -73,6 +91,11 @@ async def update_test_case(case_id: str, req: PromptTestCaseUpdate):
 
 @router.delete("/prompts/eval/test-cases/{case_id}", response_model=StatusResponse)
 async def delete_test_case(case_id: str):
+    """删除 test_case。
+
+    Args:
+        case_id: 用例 ID。
+    """
     from core.api.core_facade import prompt_eval_delete_test_case
 
     try:
@@ -83,6 +106,11 @@ async def delete_test_case(case_id: str):
 
 @router.post("/prompts/eval/runs", response_model=StatusResponse)
 async def create_eval_run(req: PromptEvalRunCreate):
+    """创建 eval_run。
+
+    Args:
+        req: req 参数。
+    """
     from core.api.core_facade import prompt_eval_start_run
 
     try:
@@ -103,6 +131,13 @@ async def create_eval_run(req: PromptEvalRunCreate):
 
 @router.get("/prompts/eval/runs", response_model=ItemResponse)
 async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0):
+    """列出 eval_runs。
+
+    Args:
+        template_id: template 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.api.core_facade import prompt_eval_list_runs
 
     try:
@@ -117,6 +152,11 @@ async def list_eval_runs(template_id: str = "", limit: int = 20, offset: int = 0
 
 @router.get("/prompts/eval/runs/{run_id}", response_model=ItemResponse)
 async def get_eval_run(run_id: str):
+    """获取 eval_run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import prompt_eval_get_run
 
     try:

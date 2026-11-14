@@ -18,6 +18,11 @@ class LineAdapter(ChannelAdapter):
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # LINE webhook: {"events":[{"type":"message","replyToken":"...",
         #   "source":{"userId":"..."},"message":{"id":"...","type":"text","text":"..."}}]}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         events = raw_data.get("events") or []
         event = events[0] if events else raw_data
         message = event.get("message") or {}
@@ -36,6 +41,11 @@ class LineAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "replyToken": response.message_id,
             "messages": [{"type": "text", "text": response.text}],

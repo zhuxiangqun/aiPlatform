@@ -42,6 +42,7 @@ logger = logging.getLogger("aiplat.cross_validation_gate")
 
 @dataclass
 class CrossViolation:
+    """CrossViolation。"""
     layer: str       # "equipment_process" | "process_quality" | "equipment_quality"
     detail: str
     severity: str    # "low" | "medium" | "high"
@@ -49,6 +50,7 @@ class CrossViolation:
 
 @dataclass
 class CrossValidationResult:
+    """CrossValidationResult。"""
     valid: bool
     cross_violations: List[CrossViolation] = field(default_factory=list)
     layers_checked: List[str] = field(default_factory=list)
@@ -95,7 +97,12 @@ class CrossValidationGate:
             return False
 
     def verify(self, output: dict, *, domain_id: str = "default") -> CrossValidationResult:
-        """Run cross-domain validation across all three layers."""
+        """Run cross-domain validation across all three layers.
+
+        Args:
+            output: output 参数。
+            domain_id: domain 标识。
+        """
         if not self.is_ready():
             return CrossValidationResult(
                 valid=True, layers_checked=[],

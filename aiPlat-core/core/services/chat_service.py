@@ -18,7 +18,13 @@ _CHAT_REPLY_PROMPT = os.getenv(
 
 class ChatService:
 
+    """ChatService。"""
     def __init__(self, model: Any = None):
+        """初始化。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
         self._sessions: Dict[str, Dict[str, Any]] = {}
 
@@ -28,6 +34,13 @@ class ChatService:
         system_prompt: str = "",
         initial_context: Optional[Dict[str, Any]] = None,
     ) -> str:
+        """创建 session。
+
+        Args:
+            agent_id: Agent ID。
+            system_prompt: system_prompt 参数。
+            initial_context: initial_context 参数。
+        """
         session_id = f"chat_{uuid.uuid4().hex[:8]}"
         self._sessions[session_id] = {
             "session_id": session_id,
@@ -40,6 +53,12 @@ class ChatService:
         return session_id
 
     async def chat(self, session_id: str, message: str) -> Dict[str, Any]:
+        """chat。
+
+        Args:
+            session_id: 会话 ID。
+            message: message 参数。
+        """
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError("Session not found")
@@ -73,4 +92,9 @@ class ChatService:
         return {"reply": reply, "session_id": session_id, "messages": session["messages"]}
 
     async def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """获取 session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return self._sessions.get(session_id)

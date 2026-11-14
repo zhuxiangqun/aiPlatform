@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ScenarioResult:
+    """ScenarioResult。"""
     scenario_id: str
     stage_id: str = ""
     passed: bool = False
@@ -48,6 +49,7 @@ class ScenarioResult:
 
 @dataclass
 class SandboxReport:
+    """SandboxReport。"""
     total_scenarios: int
     passed: int
     failed: int
@@ -247,15 +249,19 @@ def _validate_params(
 # ══════════════════════════════════════════════════════════════
 
 def is_deployment_blocked(report: SandboxReport) -> bool:
-    u"""Quick check: should deployment be blocked based on sandbox results?"""
+    """Quick check: should deployment be blocked based on sandbox results?
+
+    Args:
+        report: report 参数。
+    """
     return report.blocked
 
 
 def evaluate_canary_readiness(report: SandboxReport) -> Dict[str, Any]:
     """Phase 40: Evaluate whether a sandbox report supports canary rollout.
 
-    Returns:
-        {"level": "ready"|"caution"|"blocked", "score": 0-100, "detail": "..."}
+    Args:
+        report: report 参数。
     """
     if report.total_scenarios == 0:
         return {"level": "caution", "score": 50, "detail": "no scenarios"}

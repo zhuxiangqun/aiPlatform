@@ -81,6 +81,12 @@ class EvolutionRunner:
 
     def __init__(self, collection_id: str = "default",
                  max_mutations: int = 5):
+        """初始化。
+
+        Args:
+            collection_id: collection 标识。
+            max_mutations: max_mutations 参数。
+        """
         self.collection_id = collection_id
         self.max_mutations = max_mutations
         self.generation_id = self._load_last_generation_id()
@@ -92,10 +98,8 @@ class EvolutionRunner:
     def can_evolve(self, *, force: bool = False) -> bool:
         """Check if evolution should proceed — event-driven, not timer-driven.
 
-        Triggers:
-          1. New pages since last generation >= 3 (new knowledge injected)
-          2. Golden pass_rate dropped >= 10% (quality degradation)
-          3. force=True (manual trigger from frontend)
+        Args:
+            force: 是否强制。
         """
         if force:
             return True
@@ -617,13 +621,21 @@ class EvolutionRunner:
 # ── Phase 21: Champion management + accept/reject ──────────────────
 
 def get_current_champion(agent_id: str) -> Optional[str]:
-    """Return champion prompt from latest generation record."""
+    """Return champion prompt from latest generation record.
+
+    Args:
+        agent_id: Agent ID。
+    """
     record = _load_latest_generation(agent_id)
     return record.get("champion_prompt") if record else None
 
 
 def get_champion_score(agent_id: str) -> float:
-    """Return champion score from latest generation record."""
+    """Return champion score from latest generation record.
+
+    Args:
+        agent_id: Agent ID。
+    """
     record = _load_latest_generation(agent_id)
     return float(record.get("champion_score", 0)) if record else 0.0
 
@@ -636,10 +648,10 @@ def accept_or_reject(
 ) -> str:
     """Determine if challenger should replace champion.
 
-    When train_val_split < 1.0, this is a placeholder — full train/val
-    separation requires per-split score tracking in a future update.
-    For now, applies a stricter threshold when split is enabled to
-    prevent reward hacking via overfitting.
+    Args:
+        challenger_score: challenger_score 参数。
+        champion_score: champion_score 参数。
+        train_val_split: train_val_split 参数。
     """
     if train_val_split == 1.0:
         return "accept" if challenger_score > champion_score else "reject"

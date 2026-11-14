@@ -33,7 +33,11 @@ logger = logging.getLogger("fde_report_generator")
 
 def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
-    u"""Auto-fill weekly report data fields."""
+    """Auto-fill weekly report data fields.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     data = {}
 
@@ -171,7 +175,11 @@ def auto_fill_weekly_report(domain_id: str) -> Dict[str, Any]:
 
 def auto_fill_monthly_report(domain_id: str) -> Dict[str, Any]:
 
-    u"""Auto-fill monthly report data fields (richer than weekly)."""
+    """Auto-fill monthly report data fields (richer than weekly).
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     data = auto_fill_weekly_report(domain_id)
 

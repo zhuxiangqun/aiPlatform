@@ -15,20 +15,36 @@ _disable_dynamic_spawn: contextvars.ContextVar[bool] = contextvars.ContextVar(
 
 
 def is_dynamic_spawn_disabled() -> bool:
+    """is_dynamic_spawn_disabled。
+    """
     return bool(_disable_dynamic_spawn.get())
 
 
 def set_dynamic_spawn_disabled(disabled: bool = True) -> contextvars.Token:
+    """set_dynamic_spawn_disabled。
+
+    Args:
+        disabled: disabled 参数。
+    """
     return _disable_dynamic_spawn.set(bool(disabled))
 
 
 def reset_dynamic_spawn(token: contextvars.Token) -> None:
+    """reset_dynamic_spawn。
+
+    Args:
+        token: token 参数。
+    """
     _disable_dynamic_spawn.reset(token)
 
 
 @contextmanager
 def disable_dynamic_spawn(disabled: bool = True) -> Iterator[None]:
-    """Context manager: temporarily disable DynamicOrchestrator spawn + sys_agent_call."""
+    """Context manager: temporarily disable DynamicOrchestrator spawn + sys_agent_call.
+
+    Args:
+        disabled: disabled 参数。
+    """
     tok = set_dynamic_spawn_disabled(disabled)
     try:
         yield
@@ -37,7 +53,11 @@ def disable_dynamic_spawn(disabled: bool = True) -> Iterator[None]:
 
 
 def stage_allows_dynamic_spawn(stage: Any) -> bool:
-    """PipelineStageConfig.allow_dynamic_spawn (default True)."""
+    """PipelineStageConfig.allow_dynamic_spawn (default True).
+
+    Args:
+        stage: stage 参数。
+    """
     if stage is None:
         return True
     if isinstance(stage, dict):
@@ -46,6 +66,12 @@ def stage_allows_dynamic_spawn(stage: Any) -> bool:
 
 
 def should_skip_dynamic_spawn(stage: Optional[Any] = None, state: Optional[dict] = None) -> bool:
+    """should_skip_dynamic_spawn。
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+    """
     if is_dynamic_spawn_disabled():
         return True
     if state and state.get("_disable_dynamic_spawn"):

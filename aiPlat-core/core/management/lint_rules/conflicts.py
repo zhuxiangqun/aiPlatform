@@ -15,11 +15,17 @@ def _norm_text(s: str) -> str:
 
 
 class ConflictPairCheck(LintRule):
+    """ConflictPairCheck。"""
     code = "conflict_pair_high_overlap"
     level = "warning"
     category = "trigger"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         sid = str(getattr(skill, "id", "") or (skill.get("id") if isinstance(skill, dict) else "") or "").strip()
         meta = self._get_meta(skill)
         confs = meta.get("_conflicts") if isinstance(meta.get("_conflicts"), list) else []

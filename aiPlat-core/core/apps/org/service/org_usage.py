@@ -23,6 +23,8 @@ def _home() -> Path:
 
 
 def ledger_path() -> Path:
+    """ledger_path。
+    """
     return _home() / "org" / "usage.jsonl"
 
 
@@ -38,6 +40,15 @@ def events_from_run(
     actor_id: str = "",
     tokens: int = 0,
 ) -> List[Dict[str, Any]]:
+    """events_from_run。
+
+    Args:
+        run: run 参数。
+        channel: channel 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        tokens: tokens 参数。
+    """
     run_id = str(run.get("run_id") or "")
     trace = str(run.get("trace_id") or run_id)
     base = {
@@ -94,6 +105,11 @@ def events_from_run(
 
 
 def append_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """append_events。
+
+    Args:
+        events: events 参数。
+    """
     path = ledger_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     seen = set()
@@ -118,7 +134,12 @@ def append_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def schedule_run_usage(run: Dict[str, Any], **meta: Any) -> Dict[str, Any]:
-    """Queue ledger write. Never raises to the OrgRun caller."""
+    """Queue ledger write. Never raises to the OrgRun caller.
+
+    Args:
+        run: run 参数。
+        meta: meta 参数。
+    """
     events = events_from_run(
         run,
         channel=str(meta.get("channel") or ""),
@@ -142,7 +163,12 @@ def schedule_run_usage(run: Dict[str, Any], **meta: Any) -> Dict[str, Any]:
 
 
 def weekly_usage(domain_id: str = "", week: str = "") -> Dict[str, Any]:
-    """Replay ledger into a weekly rollup. No prices."""
+    """Replay ledger into a weekly rollup. No prices.
+
+    Args:
+        domain_id: domain 标识。
+        week: week 参数。
+    """
     path = ledger_path()
     rows: List[Dict[str, Any]] = []
     if path.is_file():

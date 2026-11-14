@@ -13,6 +13,7 @@ router = APIRouter(tags=["fde-delivery"])
 
 
 class FdeDeliveryFeedbackRequest(_PydanticBaseModel):
+    """FdeDeliveryFeedbackRequest。"""
     session_id: str
     status: str = ""       # delivered | in_progress | completed | blocked | abandoned
     action_name: str = ""  # optional: target a specific DeliveryAction
@@ -20,10 +21,10 @@ class FdeDeliveryFeedbackRequest(_PydanticBaseModel):
 
 @router.post("/delivery/feedback", response_model=FdeStatusResponse)
 async def fde_delivery_feedback(req: FdeDeliveryFeedbackRequest):
-    """Mark delivery status for a diagnosis session or its actions. (L: Action bridge)
+    """Mark delivery status for a diagnosis session or its actions. (L: Action bridge)。
 
-    Creates StateTransition entities to track the full lifecycle.
-    Returns updated session stats + transition timeline.
+    Args:
+        req: req 参数。
     """
     import time as _time_df
 

@@ -66,6 +66,7 @@ _EXEC_PREFIXES = frozenset(
 
 @dataclass
 class OriginRecord:
+    """OriginRecord。"""
     path: str
     origin: str
     step: int
@@ -76,6 +77,8 @@ class SessionWriteProvenance:
     """In-process store keyed by session_id (best-effort, not cross-host)."""
 
     def __init__(self) -> None:
+        """初始化。
+        """
         self._lock = threading.RLock()
         self._by_session: Dict[str, Dict[str, OriginRecord]] = {}
         self._steps: Dict[str, int] = {}
@@ -96,6 +99,13 @@ class SessionWriteProvenance:
         *,
         origin: str = ORIGIN_WRITTEN,
     ) -> None:
+        """record。
+
+        Args:
+            session_id: 会话 ID。
+            path: 路径。
+            origin: origin 参数。
+        """
         if not path:
             return
         sid = self._sid(session_id)
@@ -107,6 +117,12 @@ class SessionWriteProvenance:
             bucket[norm] = OriginRecord(path=norm, origin=origin, step=step)
 
     def lookup(self, session_id: str, path: str) -> Optional[OriginRecord]:
+        """lookup。
+
+        Args:
+            session_id: 会话 ID。
+            path: 路径。
+        """
         if not path:
             return None
         sid = self._sid(session_id)
@@ -115,6 +131,11 @@ class SessionWriteProvenance:
             return self._by_session.get(sid, {}).get(norm)
 
     def clear(self, session_id: Optional[str] = None) -> None:
+        """clear。
+
+        Args:
+            session_id: 会话 ID。
+        """
         with self._lock:
             if session_id is None:
                 self._by_session.clear()
@@ -125,6 +146,11 @@ class SessionWriteProvenance:
                 self._steps.pop(sid, None)
 
     def known_paths(self, session_id: str) -> Set[str]:
+        """known_paths。
+
+        Args:
+            session_id: 会话 ID。
+        """
         sid = self._sid(session_id)
         with self._lock:
             return set(self._by_session.get(sid, {}).keys())
@@ -135,6 +161,8 @@ _store_lock = threading.Lock()
 
 
 def get_session_write_provenance() -> SessionWriteProvenance:
+    """获取 session_write_provenance。
+    """
     global _store
     with _store_lock:
         if _store is None:
@@ -156,7 +184,14 @@ def record_session_write(
     trace_context: Optional[dict] = None,
     origin: str = ORIGIN_WRITTEN,
 ) -> None:
-    """Best-effort record from sys_file_* / tool wrappers."""
+    """Best-effort record from sys_file_* / tool wrappers.
+
+    Args:
+        path: 路径。
+        session_id: 会话 ID。
+        trace_context: trace_context 参数。
+        origin: origin 参数。
+    """
     sid = session_id
     if not sid and isinstance(trace_context, dict):
         sid = str(
@@ -202,7 +237,11 @@ def _tokenize(command: str) -> List[str]:
 
 
 def extract_executable_paths(command: str) -> List[str]:
-    """Heuristic: script-like tokens and interpreter-following paths."""
+    """Heuristic: script-like tokens and interpreter-following paths.
+
+    Args:
+        command: command 参数。
+    """
     text = str(command or "").strip()
     if not text:
         return []
@@ -237,7 +276,12 @@ def provenance_forces_hard_floor(
     session_id: str,
     command: str,
 ) -> Optional[OriginRecord]:
-    """If command executes a path written this session, return that origin."""
+    """If command executes a path written this session, return that origin.
+
+    Args:
+        session_id: 会话 ID。
+        command: command 参数。
+    """
     store = get_session_write_provenance()
     for raw in extract_executable_paths(command):
         # Resolve relative to cwd best-effort

@@ -36,8 +36,11 @@ def bootstrap_e3_gold(
 ) -> Dict[str, Any]:
     """Import code-review-gold → EvalStore and open a solo review label per task.
 
-    Idempotent: re-import replaces tasks; labels are created only when missing
-    for (task_id, annotator).
+    Args:
+        tenant_id: 租户 ID。
+        gold_dir: 目录路径。
+        annotator: annotator 参数。
+        db_path: 路径。
     """
     root = Path(gold_dir).expanduser() if gold_dir else _workspace_gold_dir()
     imported = import_code_review_gold(
@@ -100,10 +103,22 @@ def _labels_for_task(store, task_id: str, annotator: str) -> List[Dict[str, Any]
 
 
 def e3_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> Dict[str, Any]:
+    """e3_status。
+
+    Args:
+        tenant_id: 租户 ID。
+        db_path: 路径。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     sets = [s for s in store.list_sets(limit=50) if "gold" in (s.get("name") or "").lower() or "crg" in (s.get("id") or "")]
     # Prefer set_crg_* from import
     set_id = None
+    """e3_status。
+
+    Args:
+        tenant_id: 租户 ID。
+        db_path: 路径。
+    """
     for s in store.list_sets(limit=100):
         if str(s.get("id", "")).startswith("set_crg_"):
             set_id = s["id"]

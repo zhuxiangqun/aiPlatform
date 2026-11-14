@@ -405,7 +405,14 @@ async def generate_skill_autofill(
     refine_hint: str = "",
     skills_catalog: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Generate Skill frontmatter + SOP from name/description via LLM."""
+    """Generate Skill frontmatter + SOP from name/description via LLM.
+
+    Args:
+        name: name 参数。
+        description: description 参数。
+        refine_hint: refine_hint 参数。
+        skills_catalog: skills_catalog 参数。
+    """
     name = str(name or "").strip()
     description = str(description or "").strip()
     refine_hint = str(refine_hint or "").strip()

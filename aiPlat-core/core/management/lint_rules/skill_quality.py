@@ -98,6 +98,11 @@ class SkillNoOpPhrasesCheck(LintRule):
 
     def check(self, skill: Any) -> List[LintIssue]:
         # Only SOP goal/criterion/body — skip_when may legitimately mention 最佳实践
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         blob = " ".join(
             [
                 str(_meta(skill).get("sop_goal") or ""),
@@ -131,6 +136,11 @@ class MisplacedFileCompletionCheck(LintRule):
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         if _uses_file_output(skill):
             return []
         crit = str(_meta(skill).get("completion_criterion") or "")
@@ -157,6 +167,11 @@ class InvocationModeCheck(LintRule):
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = _meta(skill)
         mode = str(meta.get("invocation_mode") or (skill.get("invocation_mode") if isinstance(skill, dict) else "") or "").strip().lower()
         if not mode:
@@ -205,6 +220,11 @@ class UserModeTriggerSoftPass(LintRule):
     scope = ["skill"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         if _invocation_mode(skill) != "user":
             return []
         meta = _meta(skill)

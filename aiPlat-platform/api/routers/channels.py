@@ -31,6 +31,12 @@ def _now() -> float:
 
 @router.get("/channels", response_model=StatusResponse)
 async def list_channels(status: Optional[str] = None, _auth: str = Depends(require_auth)):
+    """列出 channels。
+
+    Args:
+        status: status 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     items = list(_channels.values())
     if status:
         items = [c for c in items if c.get("status") == status]
@@ -40,6 +46,12 @@ async def list_channels(status: Optional[str] = None, _auth: str = Depends(requi
 
 @router.post("/channels", response_model=StatusResponse)
 async def create_channel(body: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """创建 channel。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     cid = str(body.get("id") or body.get("name") or "")
     if not cid:
         from core.utils.ids import new_prefixed_id
@@ -63,6 +75,12 @@ async def create_channel(body: Dict[str, Any], _auth: str = Depends(require_auth
 
 @router.get("/channels/{channel_id}", response_model=StatusResponse)
 async def get_channel(channel_id: str, _auth: str = Depends(require_auth)):
+    """获取 channel。
+
+    Args:
+        channel_id: channel 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -71,6 +89,13 @@ async def get_channel(channel_id: str, _auth: str = Depends(require_auth)):
 
 @router.put("/channels/{channel_id}", response_model=StatusResponse)
 async def update_channel(channel_id: str, patch: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """更新 channel。
+
+    Args:
+        channel_id: channel 标识。
+        patch: patch 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -81,12 +106,24 @@ async def update_channel(channel_id: str, patch: Dict[str, Any], _auth: str = De
 
 @router.delete("/channels/{channel_id}", response_model=StatusResponse)
 async def delete_channel(channel_id: str, _auth: str = Depends(require_auth)):
+    """删除 channel。
+
+    Args:
+        channel_id: channel 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     _channels.pop(channel_id, None)
     return {"status": "ok"}
 
 
 @router.post("/channels/{channel_id}/test", response_model=StatusResponse)
 async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
+    """test_channel。
+
+    Args:
+        channel_id: channel 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     ch = _channels.get(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="channel_not_found")
@@ -106,6 +143,12 @@ async def test_channel(channel_id: str, _auth: str = Depends(require_auth)):
 
 @router.get("/sessions", response_model=StatusResponse)
 async def list_sessions(status: Optional[str] = None, _auth: str = Depends(require_auth)):
+    """列出 sessions。
+
+    Args:
+        status: status 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     items = list(_sessions.values())
     if status:
         items = [s for s in items if s.get("status") == status]
@@ -115,6 +158,12 @@ async def list_sessions(status: Optional[str] = None, _auth: str = Depends(requi
 
 @router.get("/sessions/{session_id}", response_model=StatusResponse)
 async def get_session(session_id: str, _auth: str = Depends(require_auth)):
+    """获取 session。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     s = _sessions.get(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")
@@ -123,6 +172,12 @@ async def get_session(session_id: str, _auth: str = Depends(require_auth)):
 
 @router.post("/sessions", response_model=StatusResponse)
 async def create_session(body: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """创建 session。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     sid = str(body.get("id") or "")
     if not sid:
         from core.utils.ids import new_prefixed_id
@@ -144,6 +199,12 @@ async def create_session(body: Dict[str, Any], _auth: str = Depends(require_auth
 
 @router.post("/sessions/{session_id}/end", response_model=StatusResponse)
 async def end_session(session_id: str, _auth: str = Depends(require_auth)):
+    """end_session。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     s = _sessions.get(session_id)
     if not s:
         raise HTTPException(status_code=404, detail="session_not_found")

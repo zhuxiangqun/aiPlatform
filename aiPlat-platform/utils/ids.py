@@ -1,3 +1,5 @@
+"""ids：模块接口。"""
+
 import secrets
 import time
 
@@ -26,7 +28,11 @@ def new_ulid() -> str:
 
 
 def new_prefixed_id(prefix: str) -> str:
-    """Generate a stable prefixed id like 'req_<ulid>'."""
+    """Generate a stable prefixed id like 'req_<ulid>'.
+
+    Args:
+        prefix: prefix 参数。
+    """
     prefix = (prefix or "").strip().rstrip("_")
     return f"{prefix}_{new_ulid()}"
 

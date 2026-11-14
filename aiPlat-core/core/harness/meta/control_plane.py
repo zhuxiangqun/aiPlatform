@@ -21,6 +21,14 @@ def to_control_plane_v0(
     tenant_id: str = "",
     refs: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """to_control_plane_v0。
+
+    Args:
+        kind: kind 参数。
+        payload: 载荷 dict。
+        tenant_id: 租户 ID。
+        refs: refs 参数。
+    """
     k = str(kind or "status").strip().lower()
     if k not in _KINDS:
         k = "status"
@@ -37,6 +45,11 @@ def to_control_plane_v0(
 
 
 def normalize_health_status(raw: Any) -> str:
+    """normalize_health_status。
+
+    Args:
+        raw: raw 参数。
+    """
     s = str(raw or "").strip().lower()
     if s in {"ok", "healthy", "up", "pass", "passed", "success"}:
         return "ok"
@@ -54,7 +67,14 @@ def to_aiplat_healthz(
     hosted: Optional[List[str]] = None,
     checks: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Central host healthz shape (aiPlat A1)."""
+    """Central host healthz shape (aiPlat A1).
+
+    Args:
+        status: status 参数。
+        version: version 参数。
+        hosted: hosted 参数。
+        checks: checks 参数。
+    """
     out: Dict[str, Any] = {
         "status": normalize_health_status(status),
         "version": str(version or "0.0.0"),
@@ -72,5 +92,11 @@ def attach_control_plane(
     response: MutableMapping[str, Any],
     envelope: Mapping[str, Any],
 ) -> MutableMapping[str, Any]:
+    """attach_control_plane。
+
+    Args:
+        response: FastAPI Response。
+        envelope: envelope 参数。
+    """
     response["control_plane"] = dict(envelope)
     return response

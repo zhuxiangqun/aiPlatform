@@ -91,6 +91,13 @@ class WakeScheduler:
 
     ):
 
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+            idle_minutes: idle_minutes 参数。
+            check_interval_seconds: check_interval_seconds 参数。
+        """
         self._enabled = enabled
 
         self._idle_seconds = idle_minutes * 60
@@ -109,6 +116,8 @@ class WakeScheduler:
 
     def enabled(self) -> bool:
 
+        """enabled。
+        """
         return self._enabled
 
 
@@ -123,6 +132,8 @@ class WakeScheduler:
 
     async def start(self):
 
+        """start。
+        """
         if self._running:
 
             return
@@ -406,6 +417,8 @@ _wake_scheduler: Optional[WakeScheduler] = None
 
 def get_wake_scheduler() -> WakeScheduler:
 
+    """获取 wake_scheduler。
+    """
     global _wake_scheduler
 
     if _wake_scheduler is None:

@@ -27,11 +27,8 @@ async def get_arena_leaderboard() -> Dict[str, Any]:
 async def run_arena(payload: dict = Body(...)) -> Dict[str, Any]:
     """Manually trigger a round-robin tournament.
 
-    Body:
-      - contenders: list of {"name": str, "fn": str} (fn is an opaque
-        function identifier used by the deterministic fallback scorer;
-        a real benchmark_fn may be injected server-side)
-      - matches_per_pair: int (default 3)
+    Args:
+        payload: 载荷 dict。
     """
     contenders_raw = payload.get("contenders", [])
     contenders = [(str(c.get("name", "")), str(c.get("fn", "")))
@@ -71,8 +68,8 @@ async def get_wake_agent_status() -> Dict[str, Any]:
 async def start_wake_agent(payload: dict = Body(...)) -> Dict[str, Any]:
     """Start WakeAgent watching (zero-token checksum polling).
 
-    Body:
-      - paths: optional list of paths to watch (default from env)
+    Args:
+        payload: 载荷 dict。
     """
     return {"status": await wake_agent_start(paths=payload.get("paths"))}
 

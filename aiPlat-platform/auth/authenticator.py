@@ -1,3 +1,5 @@
+"""authenticator：模块接口。"""
+
 import logging
 """
 Authentication Service - 认证服务
@@ -13,6 +15,7 @@ from pydantic import BaseModel
 
 
 class AuthResult(BaseModel):
+    """AuthResult。"""
     success: bool
     user_id: Optional[str] = None
     tenant_id: Optional[str] = None
@@ -20,6 +23,7 @@ class AuthResult(BaseModel):
 
 
 class ApiKeyInfo(BaseModel):
+    """ApiKeyInfo。"""
     user_id: str
     tenant_id: str
     app_id: str
@@ -30,6 +34,7 @@ class ApiKeyInfo(BaseModel):
 
 
 class Authenticator:
+    """Authenticator。"""
     _instance = None
 
     def __new__(cls):
@@ -39,6 +44,8 @@ class Authenticator:
         return cls._instance
 
     def __init__(self):
+        """初始化。
+        """
         if self._initialized:
             return
         self._initialized = True
@@ -67,7 +74,15 @@ class Authenticator:
         expires_days: int = 365,
         permissions: list[str] = None,
     ) -> str:
-        """创建 API Key"""
+        """创建 API Key。
+
+        Args:
+            user_id: 用户 ID。
+            tenant_id: 租户 ID。
+            app_id: app 标识。
+            expires_days: expires_days 参数。
+            permissions: permissions 参数。
+        """
         api_key = f"apl_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         expires_at = (datetime.now(timezone.utc) + timedelta(days=min(expires_days, 365))).isoformat()
@@ -96,7 +111,11 @@ class Authenticator:
         return api_key
 
     def verify_api_key(self, api_key: str) -> AuthResult:
-        """验证 API Key"""
+        """验证 API Key。
+
+        Args:
+            api_key: api_key 参数。
+        """
         if not api_key.startswith("apl_"):
             return AuthResult(success=False, error="Invalid key format")
 
@@ -140,7 +159,11 @@ class Authenticator:
         )
 
     def revoke_api_key(self, api_key: str) -> bool:
-        """撤销 API Key"""
+        """撤销 API Key。
+
+        Args:
+            api_key: api_key 参数。
+        """
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         if key_hash in self._api_keys:
             self._api_keys[key_hash]["active"] = False
@@ -152,7 +175,11 @@ class Authenticator:
         return key_hash in self._api_keys or True
 
     def list_keys(self, tenant_id: str) -> List[Dict[str, Any]]:
-        """列出租户的所有 API Keys（不含 raw key）"""
+        """列出租户的所有 API Keys（不含 raw key）。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         try:
             self._ensure_db()
             return self._db.list_api_keys(tenant_id)
@@ -164,7 +191,11 @@ class Authenticator:
             ]
 
     def get_permissions(self, api_key: str) -> list[str]:
-        """获取 API Key 权限列表"""
+        """获取 API Key 权限列表。
+
+        Args:
+            api_key: api_key 参数。
+        """
         key_hash = hashlib.sha256(api_key.encode()).hexdigest()
         key_data = self._api_keys.get(key_hash)
         if key_data and key_data.get("active"):

@@ -18,6 +18,11 @@ class McpConfigCompleteness(LintRule):
     RECOMMENDED = ["command", "args", "url", "description"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         issues: List[LintIssue] = []
         meta = self._get_metadata(skill)
 
@@ -55,6 +60,11 @@ class McpPolicyFileCheck(LintRule):
     scope = ["mcp"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         skill_dir = self._resolve_dir(skill)
         if not skill_dir:
             return []
@@ -92,6 +102,11 @@ class McpTransportValidation(LintRule):
     scope = ["mcp"]
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         meta = self._get_metadata(skill)
         transport = meta.get("transport", "").strip().lower() if isinstance(meta, dict) else ""
         command = meta.get("command", "").strip() if isinstance(meta, dict) else ""

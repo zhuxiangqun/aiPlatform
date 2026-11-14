@@ -7,6 +7,8 @@ from typing import Any, Dict
 
 
 async def check_pipeline_latency() -> Dict[str, Any]:
+    """check_pipeline_latency。
+    """
     try:
         from core.harness.observability.metrics import metrics_collector
         aggregator = metrics_collector.aggregator

@@ -114,6 +114,12 @@ class BaseLLMAdapter(ILLMAdapter):
         metadata: AdapterMetadata,
         config: Optional[LLMConfig] = None
     ):
+        """初始化。
+
+        Args:
+            metadata: metadata 参数。
+            config: config 参数。
+        """
         self._metadata = metadata
         self._config = config or LLMConfig(model="")
 
@@ -127,7 +133,12 @@ class BaseLLMAdapter(ILLMAdapter):
         messages: List[Dict[str, str]],
         config: Optional[LLMConfig] = None
     ) -> LLMResponse:
-        """Generate response - to be implemented by subclass"""
+        """Generate response - to be implemented by subclass。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         raise NotImplementedError("Subclass must implement generate")
 
     async def stream_generate(
@@ -135,7 +146,12 @@ class BaseLLMAdapter(ILLMAdapter):
         messages: List[Dict[str, str]],
         config: Optional[LLMConfig] = None
     ) -> AsyncIterator[str]:
-        """Stream generate - to be implemented by subclass"""
+        """Stream generate - to be implemented by subclass。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         raise NotImplementedError("Subclass must implement stream_generate")
 
     async def validate_connection(self) -> bool:
@@ -202,16 +218,14 @@ def create_adapter(
     base_url: Optional[str] = None,
     **kwargs
 ) -> ILLMAdapter:
-    """
-    Factory function to create LLM adapter.
+    """Factory function to create LLM adapter.
 
-    Uses aiPlat-infra LLM client as the primary implementation (via
-    InfraLLMAdapter wrapper). Falls back to core's adapters only when:
-    - AIPLAT_ENABLE_CORE_ADAPTER_FALLBACK env var is set to "true"
-    - Or provider is "mock" / "scripted" (not available in infra)
-
-    Supported infra providers: openai, deepseek, anthropic, local.
-    Core-only providers: mock, scripted.
+    Args:
+        provider: provider 参数。
+        api_key: api_key 参数。
+        model: 模型名。
+        base_url: base_url 参数。
+        kwargs: kwargs 参数。
     """
     import importlib
     import os

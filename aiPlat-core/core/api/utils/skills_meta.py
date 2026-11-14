@@ -1,3 +1,5 @@
+"""skills_meta：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -10,7 +12,11 @@ import logging
 
 
 def permission_detail(p: str) -> Dict[str, Any]:
-    """Centralized permission explanation model for wizard UX."""
+    """Centralized permission explanation model for wizard UX.
+
+    Args:
+        p: p 参数。
+    """
     pl = (p or "").strip().lower()
     detail: Dict[str, Any] = {
         "permission": str(p),
@@ -76,7 +82,11 @@ def permission_detail(p: str) -> Dict[str, Any]:
 
 
 def permission_catalog(*, scope: str) -> Dict[str, Any]:
-    """Predefined permissions catalog for UI. Can be extended/overridden in the future."""
+    """Predefined permissions catalog for UI. Can be extended/overridden in the future.
+
+    Args:
+        scope: scope 参数。
+    """
     scope0 = (scope or "workspace").strip().lower()
     base = ["llm:generate", "tool:websearch", "tool:webfetch", "tool:run_command", "tool:workspace_fs_write"]
     items = []
@@ -98,6 +108,8 @@ def permission_catalog(*, scope: str) -> Dict[str, Any]:
 
 
 def load_skill_spec_v2_schema() -> Dict[str, Any]:
+    """load_skill_spec_v2_schema。
+    """
     try:
         # repo layout: core/api/utils/skills_meta.py -> core/resources/skillSpecV2.schema.json
         p = Path(__file__).resolve().parents[2] / "resources" / "skillSpecV2.schema.json"
@@ -108,6 +120,11 @@ def load_skill_spec_v2_schema() -> Dict[str, Any]:
 
 
 def schema_version(schema_obj: Dict[str, Any]) -> str:
+    """schema_version。
+
+    Args:
+        schema_obj: schema_obj 参数。
+    """
     try:
         raw = json.dumps(schema_obj, sort_keys=True, ensure_ascii=False).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()[:12]
@@ -117,6 +134,13 @@ def schema_version(schema_obj: Dict[str, Any]) -> str:
 
 def req_tenant_channel(http_request: Optional[Request], *, tenant_id: Optional[str] = None, channel: Optional[str] = None) -> Dict[str, str]:
     # tenant: query param > header > default
+    """req_tenant_channel。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     tid = (tenant_id or "").strip()
     if not tid and http_request is not None:
         tid = str(http_request.headers.get("X-AIPLAT-TENANT-ID") or "").strip()
@@ -133,11 +157,12 @@ def req_tenant_channel(http_request: Optional[Request], *, tenant_id: Optional[s
 
 
 def skill_governance_preview(*, scope: str, payload: Dict[str, Any], approval_manager: Any | None = None) -> Dict[str, Any]:
-    """
-    Governance preview for "product-level wizard" UX.
-    Combines:
-    - deterministic heuristics (risk_level, confirmation suggestion)
-    - server-side approval rules evaluation (ApprovalManager), when available
+    """Governance preview for "product-level wizard" UX.
+
+    Args:
+        scope: scope 参数。
+        payload: 载荷 dict。
+        approval_manager: approval_manager 参数。
     """
     scope0 = (scope or "workspace").strip().lower()
     skill_kind = str(payload.get("skill_kind") or payload.get("kind") or "rule").strip().lower()

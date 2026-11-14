@@ -20,6 +20,8 @@ SCRIPT = REPO / "scripts" / "slice_e2e.sh"
 
 def main() -> int:
     # Forward CLI args; env SLICE_E2E_INJECT only fills --inject when absent.
+    """main。
+    """
     args = list(sys.argv[1:])
     if "--scenario" not in args:
         args = ["--scenario", "lock-service", *args]

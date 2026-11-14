@@ -16,6 +16,11 @@ class HomeAssistantAdapter(ChannelAdapter):
     """Home Assistant 适配器 (REST API / WebSocket)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         event = raw_data.get("event") or raw_data
         data = event.get("data") or {}
         # HA 事件：event_type=call_service / state_changed 等
@@ -37,6 +42,11 @@ class HomeAssistantAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "message": response.text,
             "type": "notify",

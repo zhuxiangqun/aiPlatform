@@ -1,3 +1,5 @@
+"""redis_backend：模块接口。"""
+
 import asyncio
 import json
 import os
@@ -11,7 +13,13 @@ import logging
 
 
 class RedisClient(MessageClient):
+    """RedisClient。"""
     def __init__(self, config: MessagingConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._redis = None
         self._connected = False
@@ -82,6 +90,13 @@ class RedisClient(MessageClient):
         )
 
     async def publish(self, topic: str, message: bytes, **kwargs) -> None:
+        """publish。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+            kwargs: kwargs 参数。
+        """
         await self._connect()
 
         stream_name = self._get_channel_name(topic)
@@ -103,6 +118,13 @@ class RedisClient(MessageClient):
         handler: Callable[[Message], None],
         config: Optional[ConsumerConfig] = None,
     ) -> None:
+        """subscribe。
+
+        Args:
+            topic: topic 参数。
+            handler: handler 参数。
+            config: config 参数。
+        """
         await self._connect()
 
         stream_name = self._get_channel_name(topic)
@@ -187,6 +209,11 @@ class RedisClient(MessageClient):
             pass  # noqa: normal-cancellation
 
     async def unsubscribe(self, topic: str) -> None:
+        """unsubscribe。
+
+        Args:
+            topic: topic 参数。
+        """
         stream_name = self._get_channel_name(topic)
 
         if stream_name in self._handlers:
@@ -204,6 +231,11 @@ class RedisClient(MessageClient):
             del self._consumer_groups[stream_name]
 
     async def ack(self, message_id: str) -> None:
+        """ack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id not in self._pending_messages:
             return
         
@@ -215,6 +247,11 @@ class RedisClient(MessageClient):
             print(f"Error acknowledging message: {e}")
 
     async def nack(self, message_id: str) -> None:
+        """nack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id not in self._pending_messages:
             return
         
@@ -226,6 +263,8 @@ class RedisClient(MessageClient):
             print(f"Error nacking message: {e}")
 
     async def close(self) -> None:
+        """close。
+        """
         self._running = False
 
         for task in list(self._running_tasks.values()):

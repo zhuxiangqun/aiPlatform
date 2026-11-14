@@ -28,11 +28,13 @@ CATALOG_PATH = os.path.join(SKILLS_HOME, "catalog.yaml")
 
 
 class InstallRequest(BaseModel):
+    """InstallRequest。"""
     source: str  # "git+https://..." | "local+/path/to/skill" | "npm+package-name"
     skill_name: str = ""
 
 
 class SkillInfo(BaseModel):
+    """SkillInfo。"""
     name: str
     source: str = "installed"
     version: str = ""
@@ -94,7 +96,11 @@ def _scan_catalog() -> List[Dict[str, Any]]:
 
 @router.get("/marketplace", response_model=StatusResponse)
 async def list_marketplace(_auth: str = Depends(require_auth)):
-    """List installed and available skills."""
+    """List installed and available skills.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     installed = _scan_installed()
     available = _scan_catalog()
     installed_names = {s["name"] for s in installed}
@@ -115,8 +121,10 @@ async def discover_external_skills(source: str = "agentskills.io",
                                    _auth: str = Depends(require_auth)):
     """Discover skills from an external open standard source (agentskills.io).
 
-    Wires SkillMarketplace.discover_external（P1-A5 对接的 HTTP 入口）。
-    Best-effort：外部源不可达时返回 error 列表（不阻断本地 marketplace）。
+    Args:
+        source: source 参数。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     from core.api.core_facade import get_skill_marketplace
     m = get_skill_marketplace()
@@ -131,7 +139,12 @@ async def discover_external_skills(source: str = "agentskills.io",
 
 @router.post("/install", response_model=StatusResponse)
 async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)):
-    """Install a skill from source URL or local path."""
+    """Install a skill from source URL or local path.
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     source = req.source.strip()
     skill_name = req.skill_name.strip()
     os.makedirs(SKILLS_HOME, exist_ok=True)
@@ -182,7 +195,12 @@ async def install_skill(req: InstallRequest, _auth: str = Depends(require_admin)
 
 @router.delete("/uninstall/{skill_name}", response_model=StatusResponse)
 async def uninstall_skill(skill_name: str, _auth: str = Depends(require_admin)):
-    """Remove an installed skill."""
+    """Remove an installed skill.
+
+    Args:
+        skill_name: skill_name 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     dst = os.path.join(SKILLS_HOME, skill_name)
     if not os.path.isdir(dst):
         raise HTTPException(404, f"Skill '{skill_name}' not found")

@@ -1,3 +1,5 @@
+"""retriever：模块接口。"""
+
 from core.utils.math_utils import cosine_similarity
 """
 Knowledge Retriever Module
@@ -30,10 +32,20 @@ class IRetriever(ABC):
 
     @abstractmethod
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
+        """retrieve。
+
+        Args:
+            query: 查询。
+        """
         pass
 
     @abstractmethod
     async def get_by_id(self, entry_id: str) -> Optional[KnowledgeEntry]:
+        """获取 by_id。
+
+        Args:
+            entry_id: entry 标识。
+        """
         pass
 
     @abstractmethod
@@ -42,14 +54,30 @@ class IRetriever(ABC):
         entry: KnowledgeEntry,
         limit: int = 10,
     ) -> List[KnowledgeResult]:
+        """获取 similar。
+
+        Args:
+            entry: entry 参数。
+            limit: 返回条数上限。
+        """
         pass
 
     @abstractmethod
     async def add(self, entry: KnowledgeEntry) -> None:
+        """add。
+
+        Args:
+            entry: entry 参数。
+        """
         pass
 
     @abstractmethod
     async def add_batch(self, entries: List[KnowledgeEntry]) -> None:
+        """add_batch。
+
+        Args:
+            entries: entries 参数。
+        """
         pass
 
 
@@ -58,10 +86,20 @@ class IEmbedder(ABC):
 
     @abstractmethod
     async def embed(self, text: str) -> List[float]:
+        """embed。
+
+        Args:
+            text: text 参数。
+        """
         pass
 
     @abstractmethod
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """embed_batch。
+
+        Args:
+            texts: texts 参数。
+        """
         pass
 
 
@@ -73,13 +111,28 @@ class HashEmbedder(IEmbedder):
     """
 
     def __init__(self, dimension: int = 128):
+        """初始化。
+
+        Args:
+            dimension: dimension 参数。
+        """
         self._dimension = dimension
 
     async def embed(self, text: str) -> List[float]:
+        """embed。
+
+        Args:
+            text: text 参数。
+        """
         from .embedder import hash_embed as _hash_embed
         return _hash_embed(text, dim=self._dimension)
 
     async def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """embed_batch。
+
+        Args:
+            texts: texts 参数。
+        """
         from .embedder import hash_embed as _hash_embed
         return [_hash_embed(t, dim=self._dimension) for t in texts]
 
@@ -92,6 +145,11 @@ class InMemoryRetriever(IRetriever):
     """In-memory knowledge retriever"""
 
     def __init__(self, embedder: Optional[IEmbedder] = None):
+        """初始化。
+
+        Args:
+            embedder: embedder 参数。
+        """
         if embedder is not None:
             self._embedder = embedder
         else:
@@ -101,6 +159,11 @@ class InMemoryRetriever(IRetriever):
         self._embeddings: Dict[str, List[float]] = {}
 
     async def add(self, entry: KnowledgeEntry):
+        """add。
+
+        Args:
+            entry: entry 参数。
+        """
         self._entries[entry.id] = entry
         if entry.embedding:
             self._embeddings[entry.id] = entry.embedding
@@ -108,10 +171,20 @@ class InMemoryRetriever(IRetriever):
             self._embeddings[entry.id] = await self._embedder.embed(entry.content)
 
     async def add_batch(self, entries: List[KnowledgeEntry]):
+        """add_batch。
+
+        Args:
+            entries: entries 参数。
+        """
         for entry in entries:
             await self.add(entry)
 
     async def remove(self, entry_id: str) -> bool:
+        """remove。
+
+        Args:
+            entry_id: entry 标识。
+        """
         if entry_id in self._entries:
             del self._entries[entry_id]
             self._embeddings.pop(entry_id, None)
@@ -119,6 +192,11 @@ class InMemoryRetriever(IRetriever):
         return False
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
+        """retrieve。
+
+        Args:
+            query: 查询。
+        """
         results: List[Tuple[float, KnowledgeEntry]] = []
 
         query_embedding = query.query_embedding
@@ -149,6 +227,11 @@ class InMemoryRetriever(IRetriever):
         ]
 
     async def get_by_id(self, entry_id: str) -> Optional[KnowledgeEntry]:
+        """获取 by_id。
+
+        Args:
+            entry_id: entry 标识。
+        """
         return self._entries.get(entry_id)
 
     async def get_similar(
@@ -156,6 +239,12 @@ class InMemoryRetriever(IRetriever):
         entry: KnowledgeEntry,
         limit: int = 10,
     ) -> List[KnowledgeResult]:
+        """获取 similar。
+
+        Args:
+            entry: entry 参数。
+            limit: 返回条数上限。
+        """
         if entry.id not in self._embeddings:
             return []
 
@@ -179,9 +268,13 @@ class InMemoryRetriever(IRetriever):
         return dot_product / (norm_a * norm_b)
 
     def count(self) -> int:
+        """count。
+        """
         return len(self._entries)
 
     def clear(self):
+        """clear。
+        """
         self._entries.clear()
         self._embeddings.clear()
 
@@ -190,6 +283,20 @@ class KnowledgeRetriever:
     """High-level knowledge retriever"""
 
     def __init__(self, retriever: Optional[IRetriever] = None, retrieval_strategy: str = "hybrid", rerank_enabled: bool = False, rerank_method: str = "bm25", rerank_top_k: int = 5, quality_gate_enabled: bool = False, quality_threshold: float = 0.3, hyde_enabled: bool = False, hyde_model: Any = None, adaptive_routing: bool = False):
+        """初始化。
+
+        Args:
+            retriever: retriever 参数。
+            retrieval_strategy: retrieval_strategy 参数。
+            rerank_enabled: rerank_enabled 参数。
+            rerank_method: rerank_method 参数。
+            rerank_top_k: rerank_top_k 参数。
+            quality_gate_enabled: quality_gate_enabled 参数。
+            quality_threshold: quality_threshold 参数。
+            hyde_enabled: hyde_enabled 参数。
+            hyde_model: hyde_model 参数。
+            adaptive_routing: adaptive_routing 参数。
+        """
         self._retriever = retriever or InMemoryRetriever()
         self._retrieval_strategy = retrieval_strategy  # "hybrid" | "vector_only" | "keyword_only"
         self._rerank_enabled = rerank_enabled
@@ -204,6 +311,13 @@ class KnowledgeRetriever:
     async def search(self, query: str, limit: int = 10,
                          tenant_id: str = "") -> List[KnowledgeResult]:
         # Adaptive routing: adjust strategy based on query complexity (P1)
+        """search。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+            tenant_id: 租户 ID。
+        """
         effective_strategy = self._retrieval_strategy
         effective_rerank = self._rerank_enabled
         effective_qgate = self._quality_gate_enabled
@@ -335,6 +449,14 @@ class KnowledgeRetriever:
         limit: int = 10,
         tenant_id: str = "",
     ) -> List[KnowledgeResult]:
+        """search_by_type。
+
+        Args:
+            query: 查询。
+            knowledge_type: knowledge_type 参数。
+            limit: 返回条数上限。
+            tenant_id: 租户 ID。
+        """
         knowledge_query = KnowledgeQuery(
             query=query,
             types=[knowledge_type],
@@ -344,6 +466,11 @@ class KnowledgeRetriever:
         return await self._retriever.retrieve(knowledge_query)
 
     async def get(self, entry_id: str) -> Optional[KnowledgeEntry]:
+        """get。
+
+        Args:
+            entry_id: entry 标识。
+        """
         return await self._retriever.get_by_id(entry_id)
 
     async def find_similar(
@@ -351,6 +478,12 @@ class KnowledgeRetriever:
         entry_id: str,
         limit: int = 10,
     ) -> List[KnowledgeResult]:
+        """find_similar。
+
+        Args:
+            entry_id: entry 标识。
+            limit: 返回条数上限。
+        """
         entry = await self._retriever.get_by_id(entry_id)
         if not entry:
             return []
@@ -364,6 +497,15 @@ class KnowledgeRetriever:
         source: KnowledgeSource = KnowledgeSource.USER,
         tags: Optional[List[str]] = None,
     ) -> KnowledgeEntry:
+        """add_knowledge。
+
+        Args:
+            content: content 参数。
+            title: title 参数。
+            knowledge_type: knowledge_type 参数。
+            source: source 参数。
+            tags: tags 参数。
+        """
         entry = KnowledgeEntry(
             id=str(uuid.uuid4()),
             type=knowledge_type,
@@ -381,7 +523,11 @@ class KnowledgeRetriever:
 def create_retriever(
     embedder: Optional[IEmbedder] = None,
 ) -> KnowledgeRetriever:
-    """Create a KnowledgeRetriever with InMemoryRetriever backend."""
+    """Create a KnowledgeRetriever with InMemoryRetriever backend.
+
+    Args:
+        embedder: embedder 参数。
+    """
     return KnowledgeRetriever(InMemoryRetriever(embedder))
 
 
@@ -389,8 +535,10 @@ def create_vector_retriever(
     *, backend: str = "faiss", embedder: Optional[IEmbedder] = None,
 ) -> KnowledgeRetriever:
     """Create a KnowledgeRetriever backed by infra vector store (FAISS/Milvus/Chroma/Pinecone).
-    
-    Falls back to InMemoryRetriever if infra is unavailable.
+
+    Args:
+        backend: backend 参数。
+        embedder: embedder 参数。
     """
     try:
         retriever = VectorStoreRetriever(backend=backend, embedder=embedder)
@@ -407,6 +555,12 @@ class VectorStoreRetriever(IRetriever):
     """
 
     def __init__(self, *, backend: str = "faiss", embedder: Optional[IEmbedder] = None):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            embedder: embedder 参数。
+        """
         from .embedder import create_default_embedder
         self._backend_name = backend
         self._embedder = embedder or create_default_embedder()
@@ -427,6 +581,11 @@ class VectorStoreRetriever(IRetriever):
         self._initialized = True
 
     async def add(self, entry: KnowledgeEntry):
+        """add。
+
+        Args:
+            entry: entry 参数。
+        """
         await self._ensure_client()
         vec = entry.embedding or await self._embedder.embed(entry.content)
         import uuid
@@ -448,10 +607,20 @@ class VectorStoreRetriever(IRetriever):
         await self._client.add([vector])
 
     async def add_batch(self, entries: List[KnowledgeEntry]):
+        """add_batch。
+
+        Args:
+            entries: entries 参数。
+        """
         for entry in entries:
             await self.add(entry)
 
     async def retrieve(self, query: KnowledgeQuery) -> List[KnowledgeResult]:
+        """retrieve。
+
+        Args:
+            query: 查询。
+        """
         await self._ensure_client()
         qvec = query.query_embedding or await self._embedder.embed(query.query)
         try:
@@ -482,6 +651,11 @@ class VectorStoreRetriever(IRetriever):
         return results[:query.limit]
 
     async def get_by_id(self, entry_id: str) -> Optional[KnowledgeEntry]:
+        """获取 by_id。
+
+        Args:
+            entry_id: entry 标识。
+        """
         await self._ensure_client()
         try:
             vec = await self._client.get(entry_id)
@@ -498,6 +672,12 @@ class VectorStoreRetriever(IRetriever):
     async def get_similar(
         self, entry: KnowledgeEntry, limit: int = 10,
     ) -> List[KnowledgeResult]:
+        """获取 similar。
+
+        Args:
+            entry: entry 参数。
+            limit: 返回条数上限。
+        """
         q = KnowledgeQuery(
             query=entry.content,
             query_embedding=entry.embedding,

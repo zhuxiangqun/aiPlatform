@@ -14,10 +14,14 @@ from fastapi.responses import JSONResponse
 
 
 def eval_service_base_url() -> str:
+    """eval_service_base_url。
+    """
     return (os.getenv("AIPLAT_EVAL_SERVICE_URL") or "").strip().rstrip("/")
 
 
 def eval_proxy_enabled() -> bool:
+    """eval_proxy_enabled。
+    """
     return bool(eval_service_base_url())
 
 
@@ -29,7 +33,10 @@ async def proxy_eval_store(
 ) -> Optional[Response]:
     """Forward to standalone if AIPLAT_EVAL_SERVICE_URL set; else return None (cohost).
 
-    path is relative to /api/platform/apps/eval (e.g. /store/sets).
+    Args:
+        request: request 参数。
+        path: 文件或目录路径。
+        method: method 参数。
     """
     base = eval_service_base_url()
     if not base:

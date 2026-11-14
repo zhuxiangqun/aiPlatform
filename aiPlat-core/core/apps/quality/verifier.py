@@ -20,6 +20,8 @@ class ResultVerifier:
     """Result Verifier - Validates execution results"""
 
     def __init__(self):
+        """初始化。
+        """
         pass
 
     async def verify(
@@ -27,7 +29,12 @@ class ResultVerifier:
         result: Any,
         spec: VerificationSpec
     ) -> VerificationResult:
-        """Verify result against specification"""
+        """Verify result against specification。
+
+        Args:
+            result: result 参数。
+            spec: spec 参数。
+        """
         if spec.type == VerificationType.ASSERTION:
             return await self._verify_assertion(result, spec.spec)
         elif spec.type == VerificationType.SCHEMA:

@@ -312,6 +312,8 @@ def _build_bundle_dir_for_package(pkg_info: dict, bundle_dir: Path):
 
 async def list_packages():
 
+    """列出 packages。
+    """
     store = _store()
 
     if not store:
@@ -352,6 +354,13 @@ async def list_packages():
 
 async def list_package_versions(pkg_name: str, limit: int = 100, offset: int = 0):
 
+    """列出 package_versions。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
 
     if not store:
@@ -368,6 +377,12 @@ async def list_package_versions(pkg_name: str, limit: int = 100, offset: int = 0
 
 async def get_package_version(pkg_name: str, version: str):
 
+    """获取 package_version。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        version: 版本号。
+    """
     store = _store()
 
     if not store:
@@ -390,6 +405,13 @@ async def get_package_version(pkg_name: str, version: str):
 
 async def publish_package(pkg_name: str, http_request: Request, request: PackagePublishRequest):
 
+    """publish_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        http_request: http_request 参数。
+        request: request 参数。
+    """
     store = _store()
 
     if not store:
@@ -636,6 +658,13 @@ async def publish_package(pkg_name: str, http_request: Request, request: Package
 
 async def install_package(pkg_name: str, http_request: Request, request: PackageInstallRequest):
 
+    """install_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        http_request: http_request 参数。
+        request: request 参数。
+    """
     rt = _rt()
 
     store = _store()
@@ -990,6 +1019,13 @@ async def install_package(pkg_name: str, http_request: Request, request: Package
 
 async def list_package_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
 
+    """列出 package_installs。
+
+    Args:
+        scope: scope 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
 
     if not store:
@@ -1006,6 +1042,13 @@ async def list_package_installs(scope: Optional[str] = None, limit: int = 100, o
 
 async def uninstall_package(pkg_name: str, http_request: Request, request: PackageUninstallRequest):
 
+    """uninstall_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        http_request: http_request 参数。
+        request: request 参数。
+    """
     store = _store()
 
     rt = _rt()

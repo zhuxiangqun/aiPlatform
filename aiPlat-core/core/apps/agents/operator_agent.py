@@ -37,6 +37,12 @@ class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genui
     """
 
     def __init__(self, config: AgentConfig, **kwargs):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            kwargs: kwargs 参数。
+        """
         cfg = dict(config.__dict__) if hasattr(config, '__dict__') else {}
         cfg.setdefault("name", "operator_agent")
         cfg.setdefault("agent_type", "operator")
@@ -50,6 +56,11 @@ class OperatorAgent(BaseAgent):  # noqa: agent-subclass-approved — §55: genui
         )
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        """execute。
+
+        Args:
+            context: context 参数。
+        """
         try:
             return await self._execute_impl(context)
         except Exception as e:
@@ -268,5 +279,11 @@ def _default_decision_prompt() -> str:
 
 
 def create_operator_agent(config: AgentConfig, **kwargs) -> OperatorAgent:
+    """创建 operator_agent。
+
+    Args:
+        config: config 参数。
+        kwargs: kwargs 参数。
+    """
     return OperatorAgent(config=config, **kwargs)
 

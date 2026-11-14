@@ -66,7 +66,12 @@ def _core(request: Request):
 
 @router.post("/sessions")
 async def create_session(request: Request, body: Dict[str, Any]):
-    """创建新的 App Studio 会话。用户用自然语言描述需求。"""
+    """创建新的 App Studio 会话。用户用自然语言描述需求。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     requirement = str(body.get("requirement", "") or body.get("message", "") or "")
     if not requirement:
@@ -76,7 +81,13 @@ async def create_session(request: Request, body: Dict[str, Any]):
 
 @router.post("/sessions/{session_id}/chat")
 async def chat_session(session_id: str, request: Request, body: Dict[str, Any]):
-    """与 AI PM 对话，澄清需求。"""
+    """与 AI PM 对话，澄清需求。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     message = str(body.get("message", "") or "")
     if not message:
@@ -86,21 +97,36 @@ async def chat_session(session_id: str, request: Request, body: Dict[str, Any]):
 
 @router.post("/sessions/{session_id}/confirm")
 async def confirm_session(session_id: str, request: Request):
-    """确认 PRD，准备进入构建阶段。"""
+    """确认 PRD，准备进入构建阶段。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return _adapt_session_response(await client.builder_confirm(session_id))
 
 
 @router.post("/sessions/{session_id}/start")
 async def start_pipeline(session_id: str, request: Request):
-    """启动 Builder Pipeline。"""
+    """启动 Builder Pipeline。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.builder_start(session_id)
 
 
 @router.get("/sessions/{session_id}")
 async def get_session(session_id: str, request: Request):
-    """获取会话状态。"""
+    """获取会话状态。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return _adapt_session_response(await client.get_builder_session(session_id))
 
@@ -110,14 +136,25 @@ async def get_session(session_id: str, request: Request):
 
 @router.get("/projects")
 async def list_projects(request: Request, limit: int = 100, offset: int = 0):
-    """列出所有 App Studio 项目。"""
+    """列出所有 App Studio 项目。
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     client = _core(request)
     return await client.list_projects(limit=limit, offset=offset)
 
 
 @router.post("/projects")
 async def create_project(request: Request, body: Dict[str, Any]):
-    """创建新项目（带团队选择和需求描述）。"""
+    """创建新项目（带团队选择和需求描述）。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     name = str(body.get("name", "")).strip()
     if not name:
@@ -127,28 +164,48 @@ async def create_project(request: Request, body: Dict[str, Any]):
 
 @router.get("/projects/{project_id}")
 async def get_project(project_id: str, request: Request):
-    """获取项目详情。"""
+    """获取项目详情。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.get_project(project_id)
 
 
 @router.delete("/projects/{project_id}")
 async def delete_project(project_id: str, request: Request):
-    """删除项目。"""
+    """删除项目。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.delete_project(project_id)
 
 
 @router.get("/projects/{project_id}/state")
 async def get_project_state(project_id: str, request: Request):
-    """获取项目 Pipeline 执行状态。"""
+    """获取项目 Pipeline 执行状态。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.get_project_state(project_id)
 
 
 @router.get("/projects/{project_id}/stream")
 async def project_stream(project_id: str, request: Request):
-    """SSE 实时推送 Pipeline 进度事件。"""
+    """SSE 实时推送 Pipeline 进度事件。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     from sse_starlette.sse import EventSourceResponse
     import json as _json
 
@@ -170,7 +227,13 @@ async def project_stream(project_id: str, request: Request):
 
 @router.post("/projects/{project_id}/chat")
 async def project_chat(project_id: str, request: Request, body: Dict[str, Any]):
-    """在项目上下文中与 AI PM 对话。"""
+    """在项目上下文中与 AI PM 对话。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     message = str(body.get("message", "") or "")
     if not message:
@@ -180,28 +243,49 @@ async def project_chat(project_id: str, request: Request, body: Dict[str, Any]):
 
 @router.post("/projects/{project_id}/confirm")
 async def project_confirm(project_id: str, request: Request):
-    """确认项目 PRD。"""
+    """确认项目 PRD。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.project_confirm(project_id)
 
 
 @router.post("/projects/{project_id}/start")
 async def project_start(project_id: str, request: Request):
-    """启动项目 Pipeline。"""
+    """启动项目 Pipeline。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.project_start(project_id)
 
 
 @router.post("/projects/{project_id}/approve")
 async def project_approve(project_id: str, request: Request):
-    """HITL：审批当前阶段。"""
+    """HITL：审批当前阶段。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.project_approve(project_id)
 
 
 @router.post("/projects/{project_id}/reject")
 async def project_reject(project_id: str, request: Request, body: Dict[str, Any] = {}):
-    """HITL：驳回当前阶段（带反馈）。"""
+    """HITL：驳回当前阶段（带反馈）。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     feedback = str(body.get("feedback", "") or "")
     return await client.project_reject(project_id, feedback)
@@ -209,14 +293,25 @@ async def project_reject(project_id: str, request: Request, body: Dict[str, Any]
 
 @router.post("/projects/{project_id}/rollback/{stage_id}")
 async def project_rollback(project_id: str, stage_id: str, request: Request):
-    """回滚指定阶段。"""
+    """回滚指定阶段。
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.project_rollback(project_id, stage_id)
 
 
 @router.post("/projects/{project_id}/fix")
 async def project_fix(project_id: str, request: Request):
-    """启动自动修复 Pipeline。"""
+    """启动自动修复 Pipeline。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.project_fix(project_id)
 
@@ -226,7 +321,12 @@ async def project_fix(project_id: str, request: Request):
 
 @router.post("/projects/{project_id}/test")
 async def project_test(project_id: str, request: Request):
-    """运行项目测试（调用 core 的 repo tests + E2E smoke）。"""
+    """运行项目测试（调用 core 的 repo tests + E2E smoke）。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     results: Dict[str, Any] = {"project_id": project_id}
 
@@ -254,28 +354,47 @@ async def project_test(project_id: str, request: Request):
 
 @router.get("/agents")
 async def list_agents(request: Request):
-    """列出可用 Agent 目录（供组装团队时选择）。"""
+    """列出可用 Agent 目录（供组装团队时选择）。
+
+    Args:
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.list_workspace_agents()
 
 
 @router.get("/teams")
 async def list_teams(request: Request):
-    """列出已有团队。"""
+    """列出已有团队。
+
+    Args:
+        request: FastAPI Request。
+    """
     client = _core(request)
     return await client.list_teams()
 
 
 @router.post("/teams")
 async def create_team(request: Request, body: Dict[str, Any]):
-    """创建新团队。"""
+    """创建新团队。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     return await client.create_team(body)
 
 
 @router.post("/teams/{team_id}/run")
 async def run_team(team_id: str, request: Request, body: Dict[str, Any] = {}):
-    """运行团队 Pipeline。"""
+    """运行团队 Pipeline。
+
+    Args:
+        team_id: team 标识。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     client = _core(request)
     description = str(body.get("description", "") or "")
     return await client.run_team(team_id, description)
@@ -286,7 +405,12 @@ async def run_team(team_id: str, request: Request, body: Dict[str, Any] = {}):
 
 @router.get("/projects/{project_id}/deploy")
 async def download_deploy_package(project_id: str, request: Request):
-    """下载部署包（zip 文件）。"""
+    """下载部署包（zip 文件）。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     client = _core(request)
     url = await client.get_project_deploy_url(project_id)
     try:
@@ -307,10 +431,11 @@ async def download_deploy_package(project_id: str, request: Request):
 @router.post("/projects/{project_id}/deploy-to-app")
 async def deploy_to_app(project_id: str, request: Request, body: Dict[str, Any] = {}):
     """部署项目到 aiPlat-app。
-    1) 从 core 下载部署 zip
-    2) 解压 → 注入到 app 的部署目录（符号链接版本管理）
-    3) 异步健康检查 → 失败自动回滚
-    4) 返回部署状态 + health_check_pending
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+        body: 请求体。
     """
     client = _core(request)
     url = await client.get_project_deploy_url(project_id)
@@ -446,7 +571,12 @@ def _rollback(current_link: Path, previous_link: Path, project_base: Path):
 
 @router.get("/projects/{project_id}/deploy-stream")
 async def project_deploy_stream(project_id: str, request: Request):
-    """SSE 实时推送部署健康检查进度和日志。"""
+    """SSE 实时推送部署健康检查进度和日志。
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+    """
     from sse_starlette.sse import EventSourceResponse
     import json as _json
 

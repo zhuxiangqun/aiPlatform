@@ -23,6 +23,8 @@ _ADAPTER_MODES = {
 
 
 def fixture_root() -> Path:
+    """fixture_root。
+    """
     for p in _FIXTURE_ROOT_CANDIDATES:
         if p.is_dir():
             return p
@@ -31,6 +33,11 @@ def fixture_root() -> Path:
 
 
 def resolve_fixture_id(subject_ref: str) -> Optional[str]:
+    """resolve_fixture_id。
+
+    Args:
+        subject_ref: subject_ref 参数。
+    """
     s = (subject_ref or "").strip()
     if not s:
         return None
@@ -47,6 +54,11 @@ def resolve_fixture_id(subject_ref: str) -> Optional[str]:
 
 
 def load_fixture(case_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """load_fixture。
+
+    Args:
+        case_id: case 标识。
+    """
     d = fixture_root() / case_id
     if not d.is_dir():
         raise FileNotFoundError(f"fixture_not_found:{case_id}")
@@ -60,7 +72,12 @@ def read_evaluation_refs(
     subject_ref: str,
     baseline_ref: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """C2: deeper Evaluation adapter — CoreFacade read-only snapshot (no writes)."""
+    """C2: deeper Evaluation adapter — CoreFacade read-only snapshot (no writes).
+
+    Args:
+        subject_ref: subject_ref 参数。
+        baseline_ref: baseline_ref 参数。
+    """
     captured = "1970-01-01T00:00:00+00:00"
     meta: Dict[str, Any] = {
         "adapter": "evaluation",
@@ -98,7 +115,11 @@ def read_evaluation_refs(
 
 
 def read_ontology_refs(*, subject_ref: str) -> List[Dict[str, Any]]:
-    """C2: Ontology adapter — healthz/domain count only (read_only)."""
+    """C2: Ontology adapter — healthz/domain count only (read_only).
+
+    Args:
+        subject_ref: subject_ref 参数。
+    """
     captured = "1970-01-01T00:00:00+00:00"
     meta: Dict[str, Any] = {
         "adapter": "ontology",
@@ -135,6 +156,11 @@ def read_ontology_refs(*, subject_ref: str) -> List[Dict[str, Any]]:
 
 
 def collect_from_fixture(case_id: str) -> Dict[str, Any]:
+    """collect_from_fixture。
+
+    Args:
+        case_id: case 标识。
+    """
     evidence_doc, expected = load_fixture(case_id)
     refs = list(evidence_doc.get("evidence") or [])
     return {
@@ -153,7 +179,13 @@ def collect_live_stubs(
     subject_ref: str,
     baseline_ref: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Read-only refs when no fixture pack match — never invents root cause."""
+    """Read-only refs when no fixture pack match — never invents root cause.
+
+    Args:
+        scenario: scenario 参数。
+        subject_ref: subject_ref 参数。
+        baseline_ref: baseline_ref 参数。
+    """
     captured = "1970-01-01T00:00:00+00:00"
     refs: List[Dict[str, Any]] = [
         {
@@ -212,6 +244,13 @@ def collect_evidence(
     subject_ref: str,
     baseline_ref: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """collect_evidence。
+
+    Args:
+        scenario: scenario 参数。
+        subject_ref: subject_ref 参数。
+        baseline_ref: baseline_ref 参数。
+    """
     fid = resolve_fixture_id(subject_ref)
     if fid:
         return collect_from_fixture(fid)

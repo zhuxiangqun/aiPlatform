@@ -41,6 +41,8 @@ class IsolationT12Error(ValueError):
 
 
 def default_t12_probes_path() -> Path:
+    """default_t12_probes_path。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -52,6 +54,11 @@ def default_t12_probes_path() -> Path:
 
 
 def load_t12_escape_probes(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 t12_escape_probes。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_t12_probes_path()
     if not p.is_file():
         raise IsolationT12Error(f"t12_probes_missing:{p}")
@@ -84,9 +91,9 @@ def run_escape_probes(
 ) -> Dict[str, Any]:
     """Execute or dry-run T12 probes. Never claims isolation_covered.
 
-    Default (no AIPLAT_EVAL_T12_PROBES): dry inventory only (status=not_run).
-    live=True + opt-in on Linux: marks deferred_guest_exec (P0b interface only).
-    Completed probed evidence is SEC-P4 ``run_linux_microvm_probes(guest_sim)``.
+    Args:
+        catalog: catalog 参数。
+        live: 是否 live（非 fixture）路径。
     """
     cat = dict(catalog) if catalog is not None else load_t12_escape_probes()
     probes = [dict(x) for x in (cat.get("probes") or []) if isinstance(x, Mapping)]
@@ -200,7 +207,14 @@ def evaluate_isolation_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Derive T12 isolation_* status. Never auto-covered from admit alone."""
+    """Derive T12 isolation_* status. Never auto-covered from admit alone.
+
+    Args:
+        admit: admit 参数。
+        probe_run: probe_run 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.mode_aware_exam import probe_linux_microvm_host
 
     adm = dict(admit) if admit is not None else probe_linux_microvm_host()
@@ -331,7 +345,13 @@ def security_t12_p0b_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P0b snapshot."""
+    """Facade-friendly SEC-P0b snapshot.
+
+    Args:
+        live_probes: live_probes 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.mode_aware_exam import probe_linux_microvm_host
 
     catalog = load_t12_escape_probes()

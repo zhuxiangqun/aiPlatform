@@ -45,6 +45,8 @@ class OrchestrationEvent:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "event_id": self.event_id,
             "request_type": self.request_type,
@@ -88,6 +90,8 @@ class DynamicOrchestrator:
     _capability_map: Dict[str, List[str]]
 
     def __init__(self):
+        """初始化。
+        """
         import json as _json_om, os as _os_om
         self._history: List[OrchestrationEvent] = []
         self._spawned_count: int = 0
@@ -105,7 +109,9 @@ class DynamicOrchestrator:
     ) -> Optional[Dict[str, Any]]:
         """Detect if the agent output indicates it needs help.
 
-        Returns dict with {capability, confidence, match} or None.
+        Args:
+            agent_output: agent_output 参数。
+            source_agent_id: source_agent 标识。
         """
         if not agent_output or len(agent_output) < 4:
             return None
@@ -142,7 +148,12 @@ class DynamicOrchestrator:
     ) -> Optional[Dict[str, Any]]:
         """Dynamically spawn a sub-agent for a detected capability gap.
 
-        Returns dict with {target_agent, result_text, status} or None.
+        Args:
+            capability: capability 参数。
+            task: task 参数。
+            session_id: 会话 ID。
+            source_agent_id: source_agent 标识。
+            isolate_context: isolate_context 参数。
         """
         import uuid
 
@@ -228,7 +239,11 @@ class DynamicOrchestrator:
     ) -> List[Optional[Dict[str, Any]]]:
         """Spawn multiple sub-agents in parallel for different capabilities.
 
-        Each task dict: {capability, task_description}
+        Args:
+            tasks: tasks 参数。
+            session_id: 会话 ID。
+            source_agent_id: source_agent 标识。
+            max_concurrent: max_concurrent 参数。
         """
         semaphore = asyncio.Semaphore(max_concurrent)
 
@@ -251,10 +266,9 @@ class DynamicOrchestrator:
     ) -> List[Dict[str, str]]:
         """Phase 35: LLM-based task decomposition.
 
-        When agent output is complex (multi-domain), use LLM to break it into
-        subtasks that can be handled by different sub-agents.
-
-        Returns list of {capability, task_description} dicts.
+        Args:
+            complex_output: complex_output 参数。
+            source_agent_id: source_agent 标识。
         """
         if not complex_output or len(complex_output) < 20:
             return []
@@ -336,8 +350,12 @@ Return ONLY a JSON array of these objects. Maximum 5 subtasks."""
     ) -> List[Dict[str, Any]]:
         """Full pipeline — decompose + spawn + aggregate.
 
-        Returns list of {capability, target_agent, result, status} per subtask.
-        When swarm_mode=True, uses Contract Net Protocol (Phase 37).
+        Args:
+            complex_output: complex_output 参数。
+            session_id: 会话 ID。
+            source_agent_id: source_agent 标识。
+            max_concurrent: max_concurrent 参数。
+            swarm_mode: swarm_mode 参数。
         """
         if swarm_mode:
             try:
@@ -396,6 +414,8 @@ _orchestrator: Optional[DynamicOrchestrator] = None
 
 
 def get_dynamic_orchestrator() -> DynamicOrchestrator:
+    """获取 dynamic_orchestrator。
+    """
     global _orchestrator
     if _orchestrator is None:
         _orchestrator = DynamicOrchestrator()

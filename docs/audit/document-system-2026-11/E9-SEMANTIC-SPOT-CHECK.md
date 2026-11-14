@@ -13,7 +13,7 @@ doc_type: Report
 | # | 文档 | 检查点 | 证据 | 结果 |
 |---|---|---|---|---|
 | 1 | `DOCUMENT_SYSTEM.md` | docs 一级目录数 | `verify_document_system.py` | ✅ 10 |
-| 2 | `DOCUMENT_SYSTEM.md` | Engine Skills / HookPhase / Arch Guard / 本体模块 / 行数 | 同一自检 | ✅ 13 / 21 / 195 / 32 / 12423 |
+| 2 | `DOCUMENT_SYSTEM.md` | Engine Skills / HookPhase / Arch Guard / 本体模块 / 行数 | 同一自检 | ✅ 13 / 21 / 195 / 32 / 13201 |
 | 3 | `docs/architecture/overview.md` | 四层架构入口 | 文档结构 + 目录 | ✅ 一致 |
 | 4 | `docs/products/five-products/modules/` | 五产品模块数 | `find ... -maxdepth 1 -type d` | ✅ 6 |
 | 5 | `reports/framework/` | framework 报告数 | `find ... -type f` | ✅ 3 |

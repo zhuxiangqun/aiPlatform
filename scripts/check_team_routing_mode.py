@@ -59,6 +59,11 @@ def _scan_file(path: Path) -> List[str]:
 
 
 def check(paths: List[Path] | None = None) -> Tuple[List[str], int]:
+    """check。
+
+    Args:
+        paths: paths 参数。
+    """
     files: List[Path] = []
     for d in paths or SEED_DIRS:
         if d.is_dir():
@@ -71,6 +76,11 @@ def check(paths: List[Path] | None = None) -> Tuple[List[str], int]:
 
 
 def main(argv: List[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ci", action="store_true")
     args = ap.parse_args(argv)

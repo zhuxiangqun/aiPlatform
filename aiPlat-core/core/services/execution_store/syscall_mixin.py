@@ -92,7 +92,11 @@ class SyscallMixin:
         await run_store_io(_sync)
 
     async def add_syscall_event(self, event: Dict[str, Any]) -> None:
-        """Append a syscall audit event (best-effort)."""
+        """Append a syscall audit event (best-effort).
+
+        Args:
+            event: event 参数。
+        """
         # Reject EventBus SSE ghosts: graph_done / graph_upsert envelopes have no
         # kind/name — persisting them shows as UI「event / unknown」(run-5fc64fbf7c96).
         if isinstance(event, dict):
@@ -266,8 +270,13 @@ class SyscallMixin:
     ) -> int:
         """Flip still-running syscall rows to a terminal status (orphan / cancel).
 
-        Optional ``kind`` / ``name`` filter (e.g. kind=llm, name=generate) so a nested
-        LLM finish does not prematurely close the parent skill/agent running row.
+        Args:
+            run_id: 运行 ID。
+            status: status 参数。
+            error: error 参数。
+            error_code: error_code 参数。
+            kind: kind 参数。
+            name: name 参数。
         """
         await self.init()
         rid = str(run_id or "").strip()
@@ -477,7 +486,18 @@ class SyscallMixin:
         lint_warnings: int = 0,
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Record an import audit event for skill compliance tracking."""
+        """Record an import audit event for skill compliance tracking.
+
+        Args:
+            skill_id: Skill ID。
+            skill_name: skill_name 参数。
+            source_type: source_type 参数。
+            pattern: pattern 参数。
+            adapted: adapted 参数。
+            lint_errors: lint_errors 参数。
+            lint_warnings: lint_warnings 参数。
+            details: details 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -525,7 +545,24 @@ class SyscallMixin:
         approval_request_id: Optional[str] = None,
         span_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """List syscall events with basic filters (best-effort; no FTS)."""
+        """List syscall events with basic filters (best-effort; no FTS).
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+            kind: kind 参数。
+            name: name 参数。
+            status: status 参数。
+            error_contains: error_contains 参数。
+            error_code: error_code 参数。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            approval_request_id: approval_request 标识。
+            span_id: span 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -631,11 +668,12 @@ class SyscallMixin:
         offset: int = 0,
         tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        List change controls (grouped by change_id) from syscall_events.
+        """List change controls (grouped by change_id) from syscall_events.
 
-        Source of truth:
-          syscall_events(kind='changeset', target_type='change', target_id=change_id)
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
         """
         await self.init()
         db_path = self._config.db_path
@@ -698,7 +736,14 @@ class SyscallMixin:
         offset: int = 0,
         tenant_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Return a change control detail: latest + events."""
+        """Return a change control detail: latest + events.
+
+        Args:
+            change_id: change 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+            tenant_id: 租户 ID。
+        """
         items = await self.list_syscall_events(
             limit=int(limit),
             offset=int(offset),

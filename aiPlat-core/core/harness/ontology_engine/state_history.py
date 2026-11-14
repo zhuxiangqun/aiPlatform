@@ -103,7 +103,20 @@ def record_transition(
     chunk_id: str = "",
     tags: Optional[List[str]] = None,
 ) -> None:
-    """Record a single state transition."""
+    """Record a single state transition.
+
+    Args:
+        domain_id: domain 标识。
+        entity_name: entity_name 参数。
+        class_name: class_name 参数。
+        from_state: from_state 参数。
+        to_state: to_state 参数。
+        trigger_type: trigger_type 参数。
+        transition_desc: transition_desc 参数。
+        doc_id: doc 标识。
+        chunk_id: chunk 标识。
+        tags: tags 参数。
+    """
     with _lock:
         get_conn().execute(
             """INSERT INTO state_changes
@@ -120,7 +133,12 @@ def record_transition(
 
 
 def get_entity_history(domain_id: str, entity_name: str) -> List[Dict[str, Any]]:
-    """Get all state changes for a specific entity in a domain."""
+    """Get all state changes for a specific entity in a domain.
+
+    Args:
+        domain_id: domain 标识。
+        entity_name: entity_name 参数。
+    """
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
@@ -134,7 +152,12 @@ def get_entity_history(domain_id: str, entity_name: str) -> List[Dict[str, Any]]
 
 
 def get_domain_history(domain_id: str, limit: int = 200) -> List[Dict[str, Any]]:
-    """Get recent state changes for a domain."""
+    """Get recent state changes for a domain.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     with _lock:
         rows = get_conn().execute(
             """SELECT id, entity_name, class_name, from_state, to_state,
@@ -182,8 +205,11 @@ def get_entity_window_stats(
 ) -> Dict[str, Any]:
     """Compute sliding window statistics for state transitions.
 
-    Returns per-entity metrics: transition count, rate, state distribution,
-    most recent state, velocity (transitions per hour).
+    Args:
+        domain_id: domain 标识。
+        entity_name: entity_name 参数。
+        window_hours: window_hours 参数。
+        class_name: class_name 参数。
     """
     with _lock:
         cutoff = _time.time() - window_hours * 3600
@@ -256,7 +282,10 @@ def get_domain_transition_rate(
 ) -> List[Dict[str, Any]]:
     """Compute transition rate over time, bucketed by interval.
 
-    Useful for: detecting acceleration, mutation points, burst periods.
+    Args:
+        domain_id: domain 标识。
+        window_hours: window_hours 参数。
+        bucket_minutes: bucket_minutes 参数。
     """
     with _lock:
         cutoff = _time.time() - window_hours * 3600
@@ -295,7 +324,12 @@ def get_state_distribution(
     *,
     class_name: str = "",
 ) -> Dict[str, Any]:
-    """Get current state distribution across all entities in a domain."""
+    """Get current state distribution across all entities in a domain.
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+    """
     with _lock:
         where = "domain_id = ?"
         params: list = [domain_id]
@@ -335,7 +369,15 @@ def record_feedback(
     is_helpful: Optional[bool] = None,
     domain_id: str = "default",
 ) -> None:
-    """Record user feedback on an answer."""
+    """Record user feedback on an answer.
+
+    Args:
+        session_id: 会话 ID。
+        query_text: query_text 参数。
+        rating: rating 参数。
+        is_helpful: is_helpful 参数。
+        domain_id: domain 标识。
+    """
     with _lock:
         get_conn().execute(
             """INSERT INTO feedback (session_id, query_text, rating, is_helpful, domain_id, timestamp)
@@ -347,7 +389,11 @@ def record_feedback(
 
 
 def get_feedback_stats(domain_id: str = "default") -> Dict[str, Any]:
-    """Get aggregated feedback statistics."""
+    """Get aggregated feedback statistics.
+
+    Args:
+        domain_id: domain 标识。
+    """
     with _lock:
         total = get_conn().execute(
             "SELECT COUNT(*) FROM feedback WHERE domain_id=?", (domain_id,)
@@ -383,8 +429,10 @@ def get_feedback_driven_thresholds(
 ) -> Dict[str, float]:
     """L5 continuous learning: adjust thresholds based on feedback.
 
-    High satisfaction (>0.8) → more permissive (lower threshold)
-    Low satisfaction (<0.4) → more strict (higher threshold)
+    Args:
+        domain_id: domain 标识。
+        base_threshold: base_threshold 参数。
+        min_samples: min_samples 参数。
     """
     with _lock:
         rows = get_conn().execute(

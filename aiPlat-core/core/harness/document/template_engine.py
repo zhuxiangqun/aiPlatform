@@ -32,6 +32,7 @@ ALLOWED_EXTENSIONS: Set[str] = {".docx", ".xlsx", ".md", ".txt", ".csv"}
 
 @dataclass
 class Template:
+    """Template。"""
     template_id: str
     path: str
     format: str                    # docx | xlsx | md
@@ -40,6 +41,8 @@ class Template:
     registered_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "template_id": self.template_id,
             "path": self.path,
@@ -58,6 +61,8 @@ class TemplateRegistry:
     _instance: Optional["TemplateRegistry"] = None
 
     def __init__(self):
+        """初始化。
+        """
         self._templates: Dict[str, Template] = {}
         self._scan()
 
@@ -93,7 +98,10 @@ class TemplateRegistry:
     def register(self, template_id: str, path: str, description: str = "") -> Template:
         """注册模板.
 
-        安全: 拒绝含宏的文件类型 (.docm, .xlsm)
+        Args:
+            template_id: template 标识。
+            path: 路径。
+            description: description 参数。
         """
         ext = _Path(path).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
@@ -120,9 +128,16 @@ class TemplateRegistry:
         return template
 
     def get(self, template_id: str) -> Optional[Template]:
+        """get。
+
+        Args:
+            template_id: template 标识。
+        """
         return self._templates.get(template_id)
 
     def list_all(self) -> List[Dict[str, Any]]:
+        """列出 all。
+        """
         return [t.to_dict() for t in self._templates.values()]
 
 

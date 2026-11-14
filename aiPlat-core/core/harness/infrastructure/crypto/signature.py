@@ -15,6 +15,13 @@ from typing import Any, Dict, Optional, Tuple
 
 
 def canonical_skill_payload(*, skill_id: str, version: str, bundle_sha256: str) -> bytes:
+    """canonical_skill_payload。
+
+    Args:
+        skill_id: Skill ID。
+        version: version 参数。
+        bundle_sha256: bundle_sha256 参数。
+    """
     payload = {
         "skill_id": str(skill_id),
         "version": str(version),
@@ -33,11 +40,10 @@ def _b64decode_maybe(s: str) -> bytes:
 
 
 def parse_ed25519_public_key(public_key: str):
-    """
-    Accept formats:
-    - PEM (-----BEGIN PUBLIC KEY----- ...)
-    - "ed25519:<base64-raw-32-bytes>"
-    - raw base64 (32 bytes)
+    """Accept formats:。
+
+    Args:
+        public_key: public_key 参数。
     """
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     from cryptography.hazmat.primitives import serialization
@@ -55,11 +61,10 @@ def parse_ed25519_public_key(public_key: str):
 
 
 def parse_ed25519_private_key(private_key: str):
-    """
-    Accept formats:
-    - PEM (-----BEGIN PRIVATE KEY----- ...)
-    - "ed25519:base64-raw-32-bytes"
-    - raw base64 (32 bytes)
+    """Accept formats:。
+
+    Args:
+        private_key: private_key 参数。
     """
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     from cryptography.hazmat.primitives import serialization
@@ -101,10 +106,10 @@ generate_keypair = generate_ed25519_key_pair
 
 
 def parse_ed25519_signature(signature: str) -> bytes:
-    """
-    Accept formats:
-    - "base64:...."
-    - raw base64
+    """Accept formats:。
+
+    Args:
+        signature: signature 参数。
     """
     sig = (signature or "").strip()
     if not sig:
@@ -113,8 +118,12 @@ def parse_ed25519_signature(signature: str) -> bytes:
 
 
 def verify_ed25519(*, public_key: str, message: bytes, signature: str) -> Tuple[bool, Optional[str]]:
-    """
-    Returns: (ok, error_reason)
+    """Returns: (ok, error_reason)。
+
+    Args:
+        public_key: public_key 参数。
+        message: message 参数。
+        signature: signature 参数。
     """
     try:
         pk = parse_ed25519_public_key(public_key)
@@ -126,8 +135,10 @@ def verify_ed25519(*, public_key: str, message: bytes, signature: str) -> Tuple[
 
 
 def key_id_for_public_key(public_key: str) -> str:
-    """
-    Deterministic key id for display/audit.
+    """Deterministic key id for display/audit.
+
+    Args:
+        public_key: public_key 参数。
     """
     h = hashlib.sha256((public_key or "").strip().encode("utf-8")).hexdigest()
     return h[:12]
@@ -141,8 +152,14 @@ def verify_skill_signature(
     signature: str,
     trusted_keys: Dict[str, str],
 ) -> Dict[str, Any]:
-    """
-    trusted_keys: {key_id: public_key_str}
+    """trusted_keys: {key_id: public_key_str}。
+
+    Args:
+        skill_id: Skill ID。
+        version: version 参数。
+        bundle_sha256: bundle_sha256 参数。
+        signature: signature 参数。
+        trusted_keys: trusted_keys 参数。
     """
     msg = canonical_skill_payload(skill_id=skill_id, version=version, bundle_sha256=bundle_sha256)
     for kid, pk in (trusted_keys or {}).items():
@@ -159,11 +176,13 @@ def sign_skill(
     version: str,
     bundle_sha256: str,
 ) -> str:
-    """
-    Sign a skill's canonical payload with an Ed25519 private key.
+    """Sign a skill's canonical payload with an Ed25519 private key.
 
-    Returns base64-encoded signature string (without "base64:" prefix).
-    Raises ValueError on key parse or sign failure.
+    Args:
+        private_key: private_key 参数。
+        skill_id: Skill ID。
+        version: version 参数。
+        bundle_sha256: bundle_sha256 参数。
     """
     sk = parse_ed25519_private_key(private_key)
     msg = canonical_skill_payload(skill_id=skill_id, version=version, bundle_sha256=bundle_sha256)

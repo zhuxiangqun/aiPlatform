@@ -5,11 +5,21 @@ from typing import Any
 
 
 def create_chat_service(model: Any = None) -> Any:
+    """创建 chat_service。
+
+    Args:
+        model: 模型名。
+    """
     from core.services.chat_service import ChatService
     return ChatService(model=model)
 
 
 def create_conversation_service(store: Any = None) -> Any:
+    """创建 conversation_service。
+
+    Args:
+        store: store 参数。
+    """
     from core.services.conversations import ConversationService
     if store is not None:
         return ConversationService(store)
@@ -32,19 +42,35 @@ def get_default_model() -> Any:
 
 
 def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:
-    """Call LLM through the syscall boundary."""
+    """Call LLM through the syscall boundary.
+
+    Args:
+        model: 模型名。
+        prompt: prompt 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.llm import sys_llm_generate
     return sys_llm_generate(model, prompt, **kwargs)
 
 
 def llm_generate_stream(*args: Any, **kwargs: Any):
-    """Streaming LLM generation."""
+    """Streaming LLM generation.
+
+    Args:
+        args: args 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.llm import sys_llm_generate_stream
     return sys_llm_generate_stream(*args, **kwargs)
 
 
 def normalize_conversation_scope(scope: Any, *, fallback: Any = None) -> Any:
-    """Normalize conversation scope values, with optional fallback."""
+    """Normalize conversation scope values, with optional fallback.
+
+    Args:
+        scope: scope 参数。
+        fallback: fallback 参数。
+    """
     result = None
     if isinstance(scope, dict):
         result = scope
@@ -61,5 +87,9 @@ def normalize_conversation_scope(scope: Any, *, fallback: Any = None) -> Any:
 
 
 def cancel_pipeline(run_id: str) -> Any:
-    """Cancel a running pipeline."""
+    """Cancel a running pipeline.
+
+    Args:
+        run_id: 运行 ID。
+    """
     return {"ok": True, "run_id": run_id, "status": "cancelled"}

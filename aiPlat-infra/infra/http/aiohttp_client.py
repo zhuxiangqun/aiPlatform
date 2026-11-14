@@ -1,3 +1,5 @@
+"""aiohttp_client：模块接口。"""
+
 import time
 from typing import Optional, Dict, Any
 import aiohttp
@@ -7,7 +9,13 @@ from .response import Response
 
 
 class AioHttpClient(AsyncHTTPClient):
+    """AioHttpClient。"""
     def __init__(self, config: Optional[HTTPConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or HTTPConfig()
         self._client: Optional[aiohttp.ClientSession] = None
 
@@ -63,23 +71,62 @@ class AioHttpClient(AsyncHTTPClient):
         raise last_exception
 
     async def get(self, url: str, **kwargs: Any) -> Response:
+        """get。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("GET", url, **kwargs)
 
     async def post(self, url: str, **kwargs: Any) -> Response:
+        """post。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("POST", url, **kwargs)
 
     async def put(self, url: str, **kwargs: Any) -> Response:
+        """put。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("PUT", url, **kwargs)
 
     async def patch(self, url: str, **kwargs: Any) -> Response:
+        """patch。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("PATCH", url, **kwargs)
 
     async def delete(self, url: str, **kwargs: Any) -> Response:
+        """delete。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("DELETE", url, **kwargs)
 
     async def request(self, method: str, url: str, **kwargs: Any) -> Response:
+        """request。
+
+        Args:
+            method: method 参数。
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request(method, url, **kwargs)
 
     async def aclose(self) -> None:
+        """aclose。
+        """
         if self._client and not self._client.closed:
             await self._client.close()

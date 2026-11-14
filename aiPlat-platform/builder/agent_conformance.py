@@ -28,7 +28,11 @@ HANDOFF_FIELDS = ["做了什么", "产出物在哪", "如何验证", "已知问�
 
 
 def validate_agent_md(path: str) -> List[str]:
-    """校验单个 AGENT.md，返回违规消息列表（空 = 通过）。"""
+    """校验单个 AGENT.md，返回违规消息列表（空 = 通过）。
+
+    Args:
+        path: 路径。
+    """
     violations: List[str] = []
     try:
         text = Path(path).read_text(encoding="utf-8")
@@ -66,7 +70,11 @@ def validate_agent_md(path: str) -> List[str]:
 
 
 def validate_agents_dir(agents_dir: str | None = None) -> Dict[str, List[str]]:
-    """扫描 agents 目录下所有 AGENT.md，返回 {agent_name: [违规]}（空 dict = 全部通过）。"""
+    """扫描 agents 目录下所有 AGENT.md，返回 {agent_name: [违规]}（空 dict = 全部通过）。
+
+    Args:
+        agents_dir: agents_dir 参数。
+    """
     base = agents_dir or get_aiplat_data_dir("agents")
     result: Dict[str, List[str]] = {}
     if not os.path.isdir(base):
@@ -119,7 +127,11 @@ def load_baseline() -> Dict[str, List[str]]:
 
 
 def save_baseline(violations: Dict[str, List[str]]) -> None:
-    """把当前违规写为基线（治理一批后更新）。"""
+    """把当前违规写为基线（治理一批后更新）。
+
+    Args:
+        violations: violations 参数。
+    """
     import json
     with open(_BASELINE_PATH, "w", encoding="utf-8") as f:
         json.dump(violations, f, ensure_ascii=False, indent=2, sort_keys=True)
@@ -127,7 +139,12 @@ def save_baseline(violations: Dict[str, List[str]]) -> None:
 
 
 def ratchet_diff(current: Dict[str, List[str]], baseline: Dict[str, List[str]]) -> Dict[str, List[str]]:
-    """返回"新增违规"（基线里没有的违规 + 基线里没有的 agent 的全部违规）。"""
+    """返回"新增违规"（基线里没有的违规 + 基线里没有的 agent 的全部违规）。
+
+    Args:
+        current: current 参数。
+        baseline: baseline 参数。
+    """
     new: Dict[str, List[str]] = {}
     for agent, viols in current.items():
         base_viols = set(baseline.get(agent, []))

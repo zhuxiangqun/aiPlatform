@@ -9,6 +9,7 @@ from enum import Enum
 
 
 class HttpMethod(str, Enum):
+    """HttpMethod。"""
     GET = "GET"
     POST = "POST"
     PUT = "PUT"
@@ -31,6 +32,8 @@ class GatewayRouter:
     """API网关路由器"""
 
     def __init__(self):
+        """初始化。
+        """
         self._routes: list[Route] = []
         self._path_patterns: dict[str, re.Pattern] = {}
 
@@ -43,7 +46,16 @@ class GatewayRouter:
         rate_limit: int = 100,
         timeout: int = 30,
     ) -> None:
-        """注册路由"""
+        """注册路由。
+
+        Args:
+            path: 路径。
+            method: method 参数。
+            handler: handler 参数。
+            endpoint: endpoint 参数。
+            rate_limit: rate_limit 参数。
+            timeout: 超时秒数。
+        """
         route = Route(
             path=path,
             method=method,
@@ -55,7 +67,12 @@ class GatewayRouter:
         self._routes.append(route)
 
     def match_route(self, path: str, method: str) -> Optional[Route]:
-        """匹配路由"""
+        """匹配路由。
+
+        Args:
+            path: 路径。
+            method: method 参数。
+        """
         for route in self._routes:
             if route.method.value != method:
                 continue
@@ -79,7 +96,11 @@ class GatewayRouter:
         return self._routes.copy()
 
     def get_routes_by_endpoint(self, endpoint: str) -> list[Route]:
-        """获取指定端点的路由"""
+        """获取指定端点的路由。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         return [r for r in self._routes if r.endpoint == endpoint]
 
 

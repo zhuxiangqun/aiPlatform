@@ -86,6 +86,11 @@ def _aggregate(snaps: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--base",

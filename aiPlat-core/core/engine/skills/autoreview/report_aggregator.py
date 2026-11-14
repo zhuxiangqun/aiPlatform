@@ -15,7 +15,12 @@ def aggregate_reports(
     reports: List[ReviewReport],
     engine_names: List[str],
 ) -> ReviewReport:
-    """Vote-aggregate three engine reports into a single panel report."""
+    """Vote-aggregate three engine reports into a single panel report.
+
+    Args:
+        reports: reports 参数。
+        engine_names: engine_names 参数。
+    """
     all_issues = []
     for i, eng in enumerate(engine_names):
         for issue in reports[i].issues:
@@ -76,7 +81,12 @@ Output ONLY a valid JSON object:
 
 
 def build_aggregator_prompt(raw_reports, engine_names) -> str:
-    """Build Aggregator prompt from 2-3 engine reports, handling variable engine count."""
+    """Build Aggregator prompt from 2-3 engine reports, handling variable engine count.
+
+    Args:
+        raw_reports: raw_reports 参数。
+        engine_names: engine_names 参数。
+    """
     report_sections = []
     for name, report in zip(engine_names, raw_reports):
         report_sections.append(f"--- Engine: {name} ---\n{compact_report(report)}")
@@ -85,9 +95,9 @@ def build_aggregator_prompt(raw_reports, engine_names) -> str:
 
 def compact_report(report) -> str:
     """Compress a ReviewReport to compact evidence cards (<300 tokens total).
-    
-    Each issue is summarized in one line: [severity] file:line (category) description.
-    If no issues found, returns a clear empty marker to avoid prompt format damage.
+
+    Args:
+        report: report 参数。
     """
     if not report.issues:
         return "No issues found in this review."

@@ -32,12 +32,10 @@ logger = logging.getLogger("canary_runner")
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
 
-    u"""Run canary quality gates with dynamic thresholds.
+    """Run canary quality gates with dynamic thresholds.
 
-
-
-    Input: { domain_id, canary_data: { error_rate, latency_p95, golden_pass_rate } }
-
+    Args:
+        params: params 参数。
     """
 
     domain_id = params.get("domain_id", "")

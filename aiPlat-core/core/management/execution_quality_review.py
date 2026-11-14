@@ -446,7 +446,10 @@ def apply_quality_sop_to_skill_md(
 ) -> Dict[str, Any]:
     """Append selected quality SOP snippets into SKILL.md / AGENT.md body (idempotent).
 
-    Returns ``{status, applied, skipped, path, markers}``.
+    Args:
+        skill_md_path: skill_md_path 参数。
+        issue_codes: issue_codes 参数。
+        fix_ids: fix_ids 参数。
     """
     return apply_quality_sop_to_markdown(
         skill_md_path, issue_codes=issue_codes, fix_ids=fix_ids
@@ -459,7 +462,13 @@ def apply_quality_sop_to_markdown(
     issue_codes: Optional[Sequence[str]] = None,
     fix_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Append selected quality SOP snippets into a frontmatter markdown body (idempotent)."""
+    """Append selected quality SOP snippets into a frontmatter markdown body (idempotent).
+
+    Args:
+        md_path: md_path 参数。
+        issue_codes: issue_codes 参数。
+        fix_ids: fix_ids 参数。
+    """
     path = Path(md_path)
     if not path.is_file():
         return {"status": "error", "error": f"markdown not found: {path}", "applied": [], "skipped": []}
@@ -532,7 +541,12 @@ def candidate_agent_md_paths(
     *,
     primary: Optional[Path] = None,
 ) -> List[Path]:
-    """~/.aiplat (+ AIPLAT_HOME) + engine/workspace seed AGENT.md mirrors."""
+    """~/.aiplat (+ AIPLAT_HOME) + engine/workspace seed AGENT.md mirrors.
+
+    Args:
+        agent_id: Agent ID。
+        primary: primary 参数。
+    """
     import os
 
     aid = str(agent_id or "").strip()
@@ -573,8 +587,12 @@ def apply_quality_sop_for_agent_id(
 ) -> Dict[str, Any]:
     """Write quality SOP into AGENT.md (LLM path) and bound Skill SKILL.md mirrors.
 
-    Agent execute often does ReAct LLM without calling the Skill — Skill-only
-    patches would never affect the next run. Always prefer AGENT.md first.
+    Args:
+        agent_id: Agent ID。
+        primary_path: primary_path 参数。
+        issue_codes: issue_codes 参数。
+        fix_ids: fix_ids 参数。
+        bound_skill_ids: bound_skill_ids 参数。
     """
     paths = candidate_agent_md_paths(agent_id, primary=primary_path)
     results: List[Dict[str, Any]] = []
@@ -659,7 +677,11 @@ def apply_quality_sop_for_agent_id(
 
 
 def resolve_skill_md_path(skill: Any) -> Optional[Path]:
-    """Best-effort SKILL.md path from skill object / metadata."""
+    """Best-effort SKILL.md path from skill object / metadata.
+
+    Args:
+        skill: skill 参数。
+    """
     if skill is None:
         return None
     md = getattr(skill, "metadata", None)
@@ -681,7 +703,12 @@ def candidate_skill_md_paths(
     *,
     primary: Optional[Path] = None,
 ) -> List[Path]:
-    """Engine + ~/.aiplat (+ AIPLAT_HOME) mirrors for the same skill_id."""
+    """Engine + ~/.aiplat (+ AIPLAT_HOME) mirrors for the same skill_id.
+
+    Args:
+        skill_id: Skill ID。
+        primary: primary 参数。
+    """
     import os
 
     sid = str(skill_id or "").strip()
@@ -764,7 +791,14 @@ def resolve_quality_fix_skill_id(
     hints: str = "",
     issues: Optional[Sequence[Dict[str, Any]]] = None,
 ) -> str:
-    """Best-effort Skill id that owns SOP iron for these quality issues."""
+    """Best-effort Skill id that owns SOP iron for these quality issues.
+
+    Args:
+        kind: kind 参数。
+        asset_id: asset 标识。
+        hints: hints 参数。
+        issues: issues 参数。
+    """
     if str(kind or "").lower() == "skill":
         return str(asset_id or "").strip()
     codes = {str(i.get("code") or "") for i in (issues or [])}
@@ -792,8 +826,12 @@ def probe_quality_sop_markers(
 ) -> Dict[str, Any]:
     """Probe AGENT.md / SKILL.md for eq_fix markers of given issue codes.
 
-    ``all_present`` is True when every catalogued code already has its marker
-    in at least one checked markdown (idempotent one-click would be noop).
+    Args:
+        kind: kind 参数。
+        asset_id: asset 标识。
+        hints: hints 参数。
+        issue_codes: issue_codes 参数。
+        bound_skill_ids: bound_skill_ids 参数。
     """
     codes: List[str] = []
     seen_c = set()
@@ -866,8 +904,8 @@ def probe_quality_sop_markers(
 def build_fail_constraint_overlay(issues: Optional[Sequence[Dict[str, Any]]] = None) -> str:
     """Compact fail-point constraints to prepend on the next same-case run.
 
-    Keep short: long overlays stall local LLMs and invite echo (run-30e631 / run-2ebd).
-    Never include a copyable lone-endpoint JSON/dict example.
+    Args:
+        issues: issues 参数。
     """
     lines: List[str] = [FAIL_CONSTRAINT_BANNER]
     n = 0
@@ -970,7 +1008,14 @@ def apply_quality_sop_for_skill_id(
     issue_codes: Optional[Sequence[str]] = None,
     fix_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Apply quality SOP patches to all known SKILL.md mirrors (idempotent)."""
+    """Apply quality SOP patches to all known SKILL.md mirrors (idempotent).
+
+    Args:
+        skill_id: Skill ID。
+        primary_path: primary_path 参数。
+        issue_codes: issue_codes 参数。
+        fix_ids: fix_ids 参数。
+    """
     paths = candidate_skill_md_paths(skill_id, primary=primary_path)
     if not paths:
         return {
@@ -2495,11 +2540,13 @@ def is_non_deliverable_coding_output(
 ) -> bool:
     """True when a coding task's skill/agent output is clarify-only, thin stub, or off-contract.
 
-    ``scope``:
-    - ``full`` (default): post-run / loop veto — includes off_spec + autoreview_incomplete
-    - ``skill``: inside ``code_generation`` only — substance + language; do **not** fail the
-      skill on path-split / follow-up contracts (that force false retries + nested LLM,
-      see run-054f7ace3a17). Those stay for post-run QR.
+    Args:
+        input_text: input_text 参数。
+        output_text: output_text 参数。
+        raw_out: raw_out 参数。
+        hints: hints 参数。
+        skill_trace: skill_trace 参数。
+        scope: scope 参数。
     """
     envelope: Any = raw_out if raw_out is not None else {"text": str(output_text or "")}
     try:
@@ -2630,8 +2677,8 @@ _HARD_CODING_FAIL_CODES = frozenset(
 def quality_review_blocks_success(review: Any) -> bool:
     """True when quality review has hard coding failures — UI must not stay green completed.
 
-    Soft architecture/PRD warnings stay advisory (status may remain completed + warn).
-    Thin stubs / clarify-only / empty output flip the run to failed.
+    Args:
+        review: review 参数。
     """
     if not isinstance(review, dict):
         return False
@@ -2660,9 +2707,14 @@ def attach_quality_review_to_execute_response(
 ) -> Any:
     """Attach ``review_execution_output``; demote completed→failed on hard QR.
 
-    Shared by engine agent / workspace agent / engine skill HTTP execute paths.
-    On QR crash: coding / review-bound / ``## FILE:`` / skill_delivery=once still
-    fail-closed (same rule as ``orphan_seal_requires_quality_review``).
+    Args:
+        resp: resp 参数。
+        kind: kind 参数。
+        asset_id: asset 标识。
+        asset_name: asset_name 参数。
+        input_payload: input_payload 参数。
+        hints: hints 参数。
+        fail_closed_on_exception: fail_closed_on_exception 参数。
     """
     if not isinstance(resp, dict):
         return resp
@@ -2909,9 +2961,8 @@ def _architecture_output_is_lone_api(output: Any) -> bool:
 def ensure_architecture_section_fields(output: Any) -> Any:
     """Fill missing review-critical architecture keys from local-LLM aliases.
 
-    Small local models often put 上下文 into ``overview`` and security into
-    ``security_and_compliance``. Without this normalize, quality review keeps
-    failing ``architecture_sections_thin`` even after SOP 一键修复 + re-run.
+    Args:
+        output: output 参数。
     """
     if not isinstance(output, dict):
         return output
@@ -2976,8 +3027,9 @@ def sanitize_architecture_third_party(
 ) -> Any:
     """Rewrite invented DingTalk / third-party claims when input forbids inventing.
 
-    Local models often echo「对接钉钉开放平台」despite「暂无 API 文档」. Normalize
-    to the SOP-approved pending placeholder so delivery + quality review stay aligned.
+    Args:
+        output: output 参数。
+        input_text: input_text 参数。
     """
     if not isinstance(output, dict) or not input_text:
         return output
@@ -4045,10 +4097,9 @@ def _architecture_rollout_thin(input_text: str, output: Any) -> bool:
 def ensure_architecture_rollout_weeks(output: Any, input_text: str = "") -> Any:
     """When input asks for a 6-week pilot but rollout lacks W1–W6, fill a deterministic plan.
 
-    Local models often emit ``phase: 1 / 试点一个车间`` without week slices
-    (run-4c35b853ce52). Delivery + quality review share this normalize so
-    re-runs are not stuck on ``architecture_sections_thin`` after SOP already
-    requires weekly slices.
+    Args:
+        output: output 参数。
+        input_text: input_text 参数。
     """
     if not isinstance(output, dict):
         return output
@@ -4278,9 +4329,16 @@ def review_execution_output(
 ) -> Dict[str, Any]:
     """Rule-based review of a finished skill/agent run.
 
-    Returns AssetAudit-compatible ``issues`` + ``summary``, plus ``fix_guide``.
-    Does not fail the run — advisory only (callers use ``quality_review_blocks_success``
-    to flip completed→failed for hard coding fails).
+    Args:
+        kind: kind 参数。
+        asset_id: asset 标识。
+        asset_name: asset_name 参数。
+        input_payload: input_payload 参数。
+        output: output 参数。
+        status: status 参数。
+        hints: hints 参数。
+        skill_trace: skill_trace 参数。
+        execution_id: execution 标识。
     """
     issues: List[Dict[str, Any]] = []
     label = (asset_name or asset_id or "当前资产").strip()
@@ -5276,7 +5334,11 @@ _PIPELINE_SKIP_NODE_TYPES = frozenset(
 
 
 def resolve_pipeline_stage_review_binding(stage: Any) -> Optional[Dict[str, str]]:
-    """Map a PipelineStageConfig-like object to review kind/asset (or None to skip)."""
+    """Map a PipelineStageConfig-like object to review kind/asset (or None to skip).
+
+    Args:
+        stage: stage 参数。
+    """
     if stage is None:
         return None
     node_type = str(getattr(stage, "node_type", None) or "").strip().lower() or "agent"
@@ -5336,8 +5398,11 @@ def review_pipeline_stage(
 ) -> Optional[Dict[str, Any]]:
     """Advisory product-quality review for one pipeline/workflow stage.
 
-    PRD-specific rules stay gated by ``_looks_prd_skill`` on this stage's output —
-    not applied to the whole workflow. Returns None when the stage should be skipped.
+    Args:
+        stage: stage 参数。
+        artifact: artifact 参数。
+        input_payload: input_payload 参数。
+        status: status 参数。
     """
     binding = resolve_pipeline_stage_review_binding(stage)
     if not binding:
@@ -5418,9 +5483,11 @@ def pick_embedded_quality_review(
 ) -> Optional[Dict[str, Any]]:
     """Return stored quality_review when safe; None → caller should re-review.
 
-    Race fix: frontend often POSTs ``output: ""`` / ``{"text":""}`` after graph-done
-    before the agent row upserts. Prefer metadata.quality_review (or re-review with
-    store-restored output) instead of a false empty_output.
+    Args:
+        embedded: embedded 参数。
+        body_output: body_output 参数。
+        resolved_output: resolved_output 参数。
+        prefer_embedded: prefer_embedded 参数。
     """
     if not isinstance(embedded, dict):
         return None
@@ -5540,8 +5607,12 @@ async def resolve_review_io_from_store(
 ) -> Tuple[Any, Any, str, Optional[Dict[str, Any]]]:
     """Prefer body fields; fill gaps from skill/agent execution row.
 
-    Returns ``(input, output, status, embedded_quality_review)``.
-    Embedded review comes from ``metadata.quality_review`` when present (stream path).
+    Args:
+        execution_id: execution 标识。
+        kind: kind 参数。
+        body_input: body_input 参数。
+        body_output: body_output 参数。
+        body_status: body_status 参数。
     """
     inp = body_input
     out = body_output

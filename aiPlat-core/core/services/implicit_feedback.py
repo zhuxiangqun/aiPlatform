@@ -24,6 +24,7 @@ _log = logging.getLogger("aiplat.implicit_feedback")
 @dataclass
 # disposition: internal data type — used by ImplicitFeedbackCollector; wired from agents.py
 class ImplicitSignal:
+    """ImplicitSignal。"""
     run_id: str
     signal_type: str     # copy_full / select_text / re_query / abandon / repeat_query
     value: float = 1.0   # 信号强度 [-0.5, +0.5]
@@ -53,6 +54,8 @@ class ImplicitFeedbackCollector:
     """隐式反馈收集器 — 批量聚合 + 多目标权重自适应 (EMA 平滑)"""
 
     def __init__(self):
+        """初始化。
+        """
         self._buffer: List[ImplicitSignal] = []
         self._run_signals: Dict[str, List[ImplicitSignal]] = {}  # run_id → signals
         self._enabled = os.getenv("AIPLAT_IMPLICIT_FEEDBACK_ENABLED", "true").lower() not in ("0", "false", "no")
@@ -71,7 +74,14 @@ class ImplicitFeedbackCollector:
         value: float = 0.0,
         session_id: str = "",
     ):
-        """记录单个隐式反馈信号"""
+        """记录单个隐式反馈信号。
+
+        Args:
+            run_id: 运行 ID。
+            signal_type: signal_type 参数。
+            value: value 参数。
+            session_id: 会话 ID。
+        """
         if not self._enabled or not run_id:
             return
 
@@ -236,6 +246,8 @@ class ImplicitFeedbackCollector:
 _collector: Optional[ImplicitFeedbackCollector] = None
 
 def get_implicit_feedback_collector() -> ImplicitFeedbackCollector:
+    """获取 implicit_feedback_collector。
+    """
     global _collector
     if _collector is None:
         _collector = ImplicitFeedbackCollector()

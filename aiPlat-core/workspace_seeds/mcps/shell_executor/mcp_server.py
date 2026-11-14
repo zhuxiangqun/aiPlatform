@@ -59,10 +59,18 @@ TOOLS = _build_tools()
 
 
 def handle_list_tools():
+    """handle_list_tools。
+    """
     return {"tools": TOOLS}
 
 
 def handle_call_tool(name: str, arguments: dict):
+    """handle_call_tool。
+
+    Args:
+        name: name 参数。
+        arguments: arguments 参数。
+    """
     if name not in ALLOWED_CMDS:
         return {"content": f"Command not allowed: {name}. Available: {', '.join(sorted(ALLOWED_CMDS))}", "is_error": True}
 
@@ -88,6 +96,8 @@ def handle_call_tool(name: str, arguments: dict):
 
 
 def main():
+    """main。
+    """
     for line in sys.stdin:
         line = line.strip()
         if not line:

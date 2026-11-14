@@ -43,6 +43,8 @@ class PraxisSession:
     status: str = "recording"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "session_id": self.session_id,
             "run_id": self.run_id,
@@ -67,6 +69,13 @@ class PraxisRecorder:
     """
 
     def __init__(self, *, session_id: str = "", run_id: str = "", agent_id: str = ""):
+        """初始化。
+
+        Args:
+            session_id: 会话 ID。
+            run_id: 运行 ID。
+            agent_id: Agent ID。
+        """
         self._session = PraxisSession(
             session_id=session_id or f"praxis-{int(time.time())}",
             run_id=run_id,
@@ -75,11 +84,18 @@ class PraxisRecorder:
         self._active = False
 
     def start(self) -> None:
+        """start。
+        """
         self._active = True
         self._session.status = "recording"
         log.debug("Praxis recording started: %s", self._session.session_id)
 
     def record_step(self, step: PraxisStep) -> None:
+        """record_step。
+
+        Args:
+            step: step 参数。
+        """
         if not self._active:
             return
         self._session.steps.append(step)
@@ -91,6 +107,18 @@ class PraxisRecorder:
         input_tokens: int = 0, output_tokens: int = 0,
         duration_ms: float = 0.0, status: str = "unknown", error: str = "",
     ) -> None:
+        """record_llm。
+
+        Args:
+            seq: seq 参数。
+            prompt: prompt 参数。
+            response: FastAPI Response。
+            input_tokens: input_tokens 参数。
+            output_tokens: output_tokens 参数。
+            duration_ms: duration_ms 参数。
+            status: status 参数。
+            error: error 参数。
+        """
         self.record_step(PraxisStep(
             seq=seq, kind="llm", status=status, duration_ms=duration_ms,
             input={"prompt": prompt[:500], "input_tokens": input_tokens},
@@ -103,6 +131,17 @@ class PraxisRecorder:
         tool_result: Any = None, duration_ms: float = 0.0,
         status: str = "unknown", error: str = "",
     ) -> None:
+        """record_tool。
+
+        Args:
+            seq: seq 参数。
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            tool_result: tool_result 参数。
+            duration_ms: duration_ms 参数。
+            status: status 参数。
+            error: error 参数。
+        """
         self.record_step(PraxisStep(
             seq=seq, kind="tool", status=status, duration_ms=duration_ms,
             input={"tool": tool_name, "args": str(tool_args or {})[:500]},
@@ -111,6 +150,11 @@ class PraxisRecorder:
         ))
 
     def finish(self, status: str = "completed") -> PraxisSession:
+        """finish。
+
+        Args:
+            status: status 参数。
+        """
         self._active = False
         self._session.finished_at = time.time()
         self._session.status = status
@@ -121,6 +165,8 @@ class PraxisRecorder:
 
     @property
     def session(self) -> PraxisSession:
+        """session。
+        """
         return self._session
 
     def to_dict(self) -> Dict[str, Any]:

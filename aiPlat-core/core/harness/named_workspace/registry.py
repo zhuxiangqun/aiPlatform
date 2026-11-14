@@ -24,6 +24,8 @@ _DEFAULT_ENTRY: Dict[str, Any] = {
 
 
 def registry_path() -> Path:
+    """registry_path。
+    """
     return Path(get_aiplat_home()) / "workspaces" / "registry.yaml"
 
 
@@ -32,6 +34,11 @@ def _lock_path() -> Path:
 
 
 def validate_workspace_id(workspace_id: str) -> str:
+    """validate_workspace_id。
+
+    Args:
+        workspace_id: 工作区 ID。
+    """
     wid = (workspace_id or "").strip()
     if not wid or not _ID_RE.match(wid):
         raise ValueError(f"invalid workspace_id: {workspace_id!r}")
@@ -85,6 +92,8 @@ def load_registry() -> Dict[str, Any]:
 
 
 def list_registry_entries() -> List[Dict[str, Any]]:
+    """列出 registry_entries。
+    """
     doc = load_registry()
     out: List[Dict[str, Any]] = []
     for row in doc.get("workspaces") or []:
@@ -112,6 +121,11 @@ def list_registry_entries() -> List[Dict[str, Any]]:
 
 
 def get_registry_entry(workspace_id: str) -> Optional[Dict[str, Any]]:
+    """获取 registry_entry。
+
+    Args:
+        workspace_id: 工作区 ID。
+    """
     wid = validate_workspace_id(workspace_id)
     for row in list_registry_entries():
         if row["id"] == wid:
@@ -134,7 +148,13 @@ def create_local_workspace(
     label: str = "",
     allowed_tenants: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Idempotent create of a local empty workspace entry + dirs."""
+    """Idempotent create of a local empty workspace entry + dirs.
+
+    Args:
+        workspace_id: 工作区 ID。
+        label: label 参数。
+        allowed_tenants: allowed_tenants 参数。
+    """
     wid = validate_workspace_id(workspace_id)
     if wid == "default":
         ensure_registry()
@@ -169,7 +189,16 @@ def create_remote_workspace(
     allowed_routes: Optional[List[str]] = None,
     allowed_tenants: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Idempotent create of a remote Core profile (no local disk partition)."""
+    """Idempotent create of a remote Core profile (no local disk partition).
+
+    Args:
+        workspace_id: 工作区 ID。
+        label: label 参数。
+        base_url: base_url 参数。
+        auth_secret_env: auth_secret_env 参数。
+        allowed_routes: allowed_routes 参数。
+        allowed_tenants: allowed_tenants 参数。
+    """
     from core.harness.named_workspace.remote_proxy import normalize_remote_base_url
 
     wid = validate_workspace_id(workspace_id)

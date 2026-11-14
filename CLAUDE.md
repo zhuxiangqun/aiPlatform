@@ -15,6 +15,7 @@ language: zh-CN
 - 新的公共函数要同时写入 `AIPLAT_CAPABILITIES.md` 和 `core/capability_registry.yaml`，并有非测试调用方。
 - 改动保持最小。规则要能在一次 review 里判断有没有遵守。
 - 宣称完成 / 开 PR / push 前：独立缺陷门禁（`.cursor/skills/defect-gate`）→ 本地零发现回执 → `python3 scripts/defect_gate_validate.py`。CI 解锁另需非作者 GitHub Approve（`defect_gate_independence.py`）；作者自签回执不能过 required check。架构守卫绿 ≠ 门禁通过。
+- Python 可读性注释（全仓）：公共模块 docstring；public 符号一句话 + `Args:`；安全/诚实锁/绕过写「为什么」；禁废话注释。守卫：`scripts/check_python_docstring_guard.py`。
 - 历史债务、已修复清单、长架构叙述在本标记之后，不进常驻提示词。改 harness / 模型 / 工具时再读 `aiPlat-core/CLAUDE.md` 对应节。
 
 ## 场景（按需读文件，不要整篇背进对话）
@@ -241,6 +242,16 @@ scripts/ruff_f821_baseline.json        ← F821 基线快照（ratchet 对比基
 1. **不确定先问**：需求/边界不清晰先澄清，列选项与推荐默认方案。
 2. **最小改动面**：只改需求相关代码；不顺手重构/格式化/改无关注释。
 3. **简单优先**：不引入未要求的新抽象、新依赖、新框架层。
+3a. **Python 可读性注释（强制——全平台，2026-11）**：默认中文 docstring / 「为什么」注释；标识符、异常码、字段名保持英文。示范：`aiPlat-core/core/apps/eval/service/runs_eval_ops.py`。
+
+    | # | 要求 | 说明 |
+    |---|------|------|
+    | 1 | 公共模块必须有模块 docstring | 职责 + 非目标 + 关键入口/读序 |
+    | 2 | 对外 public 符号必须有 docstring | 至少一句话；**参数必须说明**（`Args:` / `参数:` 逐形参；有返回写 `Returns:`；非显然失败写 `Raises:`） |
+    | 3 | 安全 / 诚实锁 / 绕过 / 非直观算法 | 必须有「为什么」行内注释 |
+    | 4 | 禁止复述代码的注释 | 如 `# 自增 i`、`# 返回结果` |
+
+    存量随改动面补齐（不要求一次刷全仓）。守卫：`python3 scripts/check_python_docstring_guard.py --staged`（pre-commit）/ `--changed`（`architecture_guard.sh` §99）。豁免：`# docstring-guard: allow` 或文件头 `# docstring-guard: skip-file`。
 4. **验收闭环**：交付必须包含可验证证据（后端 pytest/py_compile，前端 npm build）。
 4a. **路由文件修改后必须跑路由可达性验证**（2026-07 新增）：凡修改 `routers/*.py` 文件（新增/修改/删除路由），必须在验证步骤中额外跑：
    - `bash scripts/architecture_guard.sh`（§77 路由重复检测）— 检测同一路径重复注册

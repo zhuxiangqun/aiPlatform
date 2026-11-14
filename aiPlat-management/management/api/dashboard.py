@@ -37,21 +37,33 @@ async def dashboard_root():
 
 @router.get("/status")
 async def get_status(request: Request):
-    """获取各层状态"""
+    """获取各层状态。
+
+    Args:
+        request: FastAPI Request。
+    """
     status = await request.app.state.aggregator.aggregate()
     return status
 
 
 @router.get("/health")
 async def get_health(request: Request):
-    """获取健康检查结果"""
+    """获取健康检查结果。
+
+    Args:
+        request: FastAPI Request。
+    """
     health = await request.app.state.aggregator.get_health()
     return health
 
 
 @router.get("/metrics")
 async def get_metrics(request: Request):
-    """获取所有层级指标"""
+    """获取所有层级指标。
+
+    Args:
+        request: FastAPI Request。
+    """
     metrics = await request.app.state.aggregator.get_metrics()
     return metrics
 
@@ -61,7 +73,11 @@ async def get_metrics(request: Request):
 @router.get("/config")
 @router.get("/config/")
 async def get_all_configs(request: Request):
-    """获取所有组件配置"""
+    """获取所有组件配置。
+
+    Args:
+        request: FastAPI Request。
+    """
     client = getattr(request.app.state, "infra_client", None)
     if not client:
         raise HTTPException(status_code=503, detail="Infra client not initialized")
@@ -73,7 +89,12 @@ async def get_all_configs(request: Request):
 
 @router.get("/config/{component}")
 async def get_component_config(component: str, request: Request):
-    """获取指定组件配置"""
+    """获取指定组件配置。
+
+    Args:
+        component: component 参数。
+        request: FastAPI Request。
+    """
     client = getattr(request.app.state, "infra_client", None)
     if not client:
         raise HTTPException(status_code=503, detail="Infra client not initialized")
@@ -82,7 +103,13 @@ async def get_component_config(component: str, request: Request):
 
 @router.put("/config/{component}")
 async def update_component_config(component: str, config: dict, request: Request):
-    """更新指定组件配置"""
+    """更新指定组件配置。
+
+    Args:
+        component: component 参数。
+        config: config 参数。
+        request: FastAPI Request。
+    """
     client = getattr(request.app.state, "infra_client", None)
     if not client:
         raise HTTPException(status_code=503, detail="Infra client not initialized")

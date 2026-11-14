@@ -1,6 +1,15 @@
-"""KB eval sample/report ops — used by platform thin /kb-eval routes via CoreFacade.
+"""KB 评测样本/报告读写：供 platform 薄路由经 CoreFacade 调用。
 
-Honesty: accuracy_claim stays caller-side; this module is storage + RagEvaluator glue.
+职责
+----
+把 KB eval 样本 CRUD、批量跑分、报告列表/时序/对比、CSV 导入收敛到本模块；
+持久化走租户 ``kb.sqlite3``，跑分委托 ``RagEvaluator``。
+
+非目标
+------
+- 不翻 ``accuracy_claim``（诚实声明由调用方决定）
+- 不做 HTTP；样本缺失抛 ``LookupError``，由路由映射
+- 不实现检索/RAG 本体逻辑（仅胶水 + 存储）
 """
 from __future__ import annotations
 
@@ -37,6 +46,16 @@ def kb_eval_list_samples(
     offset: int = 0,
     tag: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """分页列出 KB 评测样本。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tag: 可选标签过滤（匹配 ``tags`` JSON 子串）。
+
+    Returns:
+        ``{"items": [...], "total": N}``。
+    """
     conn = _connect()
     try:
         if tag:
@@ -68,6 +87,15 @@ def kb_eval_list_samples(
 
 
 def kb_eval_create_sample(body: Dict[str, Any]) -> Dict[str, Any]:
+    """创建或覆盖一条 KB 评测样本。
+
+    Args:
+        body: 请求体。可选 ``id``；须含 ``question`` / ``ground_truth``；
+            可选 ``doc_ids`` / ``tags``。
+
+    Returns:
+        ``{"id": ..., "status": "created"}``。
+    """
     conn = _connect()
     try:
         sid = body.get("id") or f"evs_{int(time.time())}"
@@ -89,6 +117,14 @@ def kb_eval_create_sample(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def kb_eval_delete_sample(sample_id: str) -> Dict[str, Any]:
+    """按 id 删除一条评测样本。
+
+    Args:
+        sample_id: 样本主键。
+
+    Returns:
+        ``{"status": "deleted"}``。
+    """
     conn = _connect()
     try:
         conn.execute("DELETE FROM kb_eval_samples WHERE id=?", (sample_id,))
@@ -99,6 +135,17 @@ def kb_eval_delete_sample(sample_id: str) -> Dict[str, Any]:
 
 
 async def kb_eval_run(body: Dict[str, Any]) -> Dict[str, Any]:
+    """按 tag / sample_ids / 默认最近 20 条跑 RagEvaluator 并落报告。
+
+    Args:
+        body: 请求体。可选 ``sample_ids``（list）或 ``tag``；皆空则取最新 20 条。
+
+    Returns:
+        含 ``avg_metrics`` / ``failure_distribution`` 的结果，并挂 eval protocol。
+
+    Raises:
+        LookupError: 无可用样本时码为 ``no_samples_found``。
+    """
     from core.harness.evaluation.rag_evaluator import EvalSample, get_rag_evaluator
     from core.harness.evaluation.eval_protocol import (
         attach_protocol as attach_eval_protocol,
@@ -218,6 +265,15 @@ async def kb_eval_run(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def kb_eval_list_reports(*, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+    """分页列出已落盘的 KB 评测报告摘要。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+
+    Returns:
+        ``{"items": [...], "total": N}``；answer 截断至 300 字。
+    """
     conn = _connect()
     try:
         rows = conn.execute(
@@ -246,6 +302,18 @@ def kb_eval_list_reports(*, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
 
 
 def kb_eval_import_csv_text(text: str) -> Dict[str, Any]:
+    """从 CSV 文本导入评测样本（表头 + 至少一行）。
+
+    Args:
+        text: 整段 CSV。首行表头，列名小写；支持 ``question`` /
+            ``ground_truth`` / ``doc_ids``（分号分隔）/ ``tags``。
+
+    Returns:
+        ``{"imported": N, "total_lines": M}``。
+
+    Raises:
+        ValueError: 缺表头或无数据行。
+    """
     lines = text.strip().split("\n")
     if len(lines) < 2:
         raise ValueError("CSV must have header + at least 1 row")
@@ -277,6 +345,14 @@ def kb_eval_import_csv_text(text: str) -> Dict[str, Any]:
 
 
 def kb_eval_reports_series(*, days: int = 30) -> Dict[str, Any]:
+    """按日聚合最近 N 天的评测指标时序。
+
+    Args:
+        days: 回溯天数（按 ``created_at`` unix epoch）。
+
+    Returns:
+        含 ``days`` / 各指标均值 / ``sample_counts`` / ``failure_counts`` 的序列 dict。
+    """
     conn = _connect()
     try:
         cutoff = time.time() - days * 86400
@@ -324,6 +400,15 @@ def kb_eval_compare_reports(
     session_a: str = "",
     session_b: str = "",
 ) -> Dict[str, Any]:
+    """对比两个报告日（或最近两天）的平均指标。
+
+    Args:
+        session_a: 日字符串 ``YYYY-MM-DD``；空则取最新有报告日。
+        session_b: 同上；空则取次新有报告日。
+
+    Returns:
+        ``session_a/b`` 与各自 ``metrics_*``（f/ar/cp/cr）。
+    """
     conn = _connect()
     try:
 

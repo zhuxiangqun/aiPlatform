@@ -78,6 +78,11 @@ class AdaptiveContextRouter:
 
     def __init__(self, tracker=None):
 
+        """初始化。
+
+        Args:
+            tracker: tracker 参数。
+        """
         self._tracker = tracker  # Phase 26 StrategyEffectivenessTracker
 
         self._selection_history: List[Dict[str, Any]] = []
@@ -107,20 +112,9 @@ class AdaptiveContextRouter:
 
         """Select optimal data sources and compression level for a query.
 
-
-
-        Returns:
-
-            {
-
-                "sources": ["caller", "graph_index", "fts5"],
-
-                "compression_level": "balanced",
-
-                "confidence": 0.82
-
-            }
-
+        Args:
+            query: 查询。
+            task_type: task_type 参数。
         """
 
         self._ensure_tracker()
@@ -237,7 +231,14 @@ class AdaptiveContextRouter:
 
     ) -> None:
 
-        """Record context selection outcome for continuous learning."""
+        """Record context selection outcome for continuous learning.
+
+        Args:
+            query: 查询。
+            task_type: task_type 参数。
+            sources_used: sources_used 参数。
+            helpfulness: helpfulness 参数。
+        """
 
         self._ensure_tracker()
 
@@ -307,6 +308,8 @@ class AdaptiveContextRouter:
 
     def stats(self) -> Dict[str, Any]:
 
+        """stats。
+        """
         self._ensure_tracker()
 
         top_pairs = {}
@@ -351,6 +354,8 @@ _router: Optional[AdaptiveContextRouter] = None
 
 def get_adaptive_context_router() -> AdaptiveContextRouter:
 
+    """获取 adaptive_context_router。
+    """
     global _router
 
     if _router is None:

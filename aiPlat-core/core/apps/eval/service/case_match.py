@@ -56,6 +56,11 @@ def _draft_path() -> Path:
 
 @lru_cache(maxsize=1)
 def load_applicability_draft() -> Dict[str, Any]:
+    """加载 applicability_draft.json（缓存）；缺失则返回空 sets 骨架。
+
+    Returns:
+        draft dict（含 ``schema`` / ``sets``）。
+    """
     path = _draft_path()
     if not path.is_file():
         return {"schema": APPLICABILITY_SCHEMA, "sets": {}}
@@ -66,11 +71,18 @@ def load_applicability_draft() -> Dict[str, Any]:
 
 
 def clear_applicability_draft_cache() -> None:
+    """clear_applicability_draft_cache。
+    """
     load_applicability_draft.cache_clear()
 
 
 def case_spec_for_set(set_id: str, *, draft: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
-    """Resolve set-level applicability draft into a case-like spec."""
+    """Resolve set-level applicability draft into a case-like spec.
+
+    Args:
+        set_id: set 标识。
+        draft: draft 参数。
+    """
     sid = (set_id or "").strip()
     blob = dict(draft or load_applicability_draft())
     sets = blob.get("sets") if isinstance(blob.get("sets"), dict) else {}
@@ -171,7 +183,9 @@ def match_case(
 ) -> Dict[str, Any]:
     """Match one case/set spec against a target contract.
 
-    Returns decision ``selected`` | ``not_applicable`` with reasons.
+    Args:
+        contract: contract 参数。
+        case_spec: case_spec 参数。
     """
     c = normalize_target_contract(contract)
     spec = dict(case_spec or {})
@@ -282,7 +296,12 @@ def build_match_report(
     contract: Mapping[str, Any],
     case_specs: Sequence[Mapping[str, Any]],
 ) -> Dict[str, Any]:
-    """Compile MatchReport for a list of case/set specs."""
+    """Compile MatchReport for a list of case/set specs.
+
+    Args:
+        contract: contract 参数。
+        case_specs: case_specs 参数。
+    """
     c = normalize_target_contract(contract)
     selected: List[Dict[str, Any]] = []
     excluded: List[Dict[str, Any]] = []
@@ -329,7 +348,13 @@ def match_eval_sets_for_target(
     *,
     draft: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Match multiple builtin set_ids using applicability_draft defaults."""
+    """Match multiple builtin set_ids using applicability_draft defaults.
+
+    Args:
+        contract: contract 参数。
+        set_ids: set_ids 参数。
+        draft: draft 参数。
+    """
     specs = [case_spec_for_set(sid, draft=draft) for sid in set_ids]
     report = build_match_report(contract, specs)
     report["draft_schema"] = str((draft or load_applicability_draft()).get("schema") or "")

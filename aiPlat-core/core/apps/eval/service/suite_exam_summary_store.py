@@ -55,7 +55,12 @@ def _atomic_write(path: Path, payload: Mapping[str, Any]) -> None:
 def record_suite_exam_summary(
     exam: Mapping[str, Any], *, workspace_id: str = ""
 ) -> Dict[str, Any]:
-    """Upsert last exam summary for profile_id (callers wrap fail-soft)."""
+    """Upsert last exam summary for profile_id (callers wrap fail-soft).
+
+    Args:
+        exam: exam 参数。
+        workspace_id: workspace 标识。
+    """
     profile_id = str(exam.get("profile_id") or "").strip()
     if not profile_id:
         return {}
@@ -97,6 +102,12 @@ def record_suite_exam_summary(
 def get_suite_exam_summary(
     profile_id: str, *, workspace_id: str = ""
 ) -> Optional[Dict[str, Any]]:
+    """获取 suite_exam_summary。
+
+    Args:
+        profile_id: profile 标识。
+        workspace_id: workspace 标识。
+    """
     pid = str(profile_id or "").strip()
     if not pid:
         return None

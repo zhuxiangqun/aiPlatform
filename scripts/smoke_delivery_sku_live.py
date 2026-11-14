@@ -65,6 +65,8 @@ def _get(path: str) -> Tuple[int, Dict[str, Any]]:
 
 
 def main() -> int:
+    """main。
+    """
     checks: List[Tuple[str, str]] = [
         ("cost-report", "/platform/delivery/cost-report?window_hours=24"),
         ("kb-health", "/platform/delivery/kb-health?window_hours=24"),

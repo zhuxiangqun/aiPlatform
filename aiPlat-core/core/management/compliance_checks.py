@@ -48,6 +48,8 @@ def compliance_check(
 
 
 def get_checks() -> List[Dict[str, Any]]:
+    """获取 checks。
+    """
     return _checks
 
 
@@ -57,6 +59,12 @@ def get_checks() -> List[Dict[str, Any]]:
 
 @compliance_check(name="任务规格", penalty_on_fail=5)
 async def check_task_spec(rt, repo_root) -> Dict[str, Any]:
+    """check_task_spec。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         from core.apps.agents import get_agent_registry
         reg = get_agent_registry()
@@ -69,6 +77,12 @@ async def check_task_spec(rt, repo_root) -> Dict[str, Any]:
 
 @compliance_check(name="MemoryManager", penalty_on_fail=5)
 async def check_memory_manager(rt, repo_root) -> Dict[str, Any]:
+    """check_memory_manager。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         store = getattr(rt, "execution_store", None) if rt else None
         return {"check": "MemoryManager", "result": "✅", "detail": "Available" if store else "No ExecutionStore"}
@@ -78,27 +92,57 @@ async def check_memory_manager(rt, repo_root) -> Dict[str, Any]:
 
 @compliance_check(name="_snapshot", penalty_on_fail=5)
 async def check_snapshot(rt, repo_root) -> Dict[str, Any]:
+    """check_snapshot。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     return {"check": "_snapshot", "result": "✅", "detail": "PipelineEngine snapshot available"}
 
 
 @compliance_check(name="PolicyGate", penalty_on_fail=5)
 async def check_policy_gate(rt, repo_root) -> Dict[str, Any]:
+    """check_policy_gate。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     return {"check": "PolicyGate", "result": "✅", "detail": "sys_tool_call / sys_skill_call gated"}
 
 
 @compliance_check(name="trace_id+span_id", penalty_on_fail=5)
 async def check_trace_context(rt, repo_root) -> Dict[str, Any]:
+    """check_trace_context。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     return {"check": "trace_id+span_id", "result": "✅",
             "detail": "sys_llm_generate / sys_tool_call / sys_skill_call produce trace context"}
 
 
 @compliance_check(name="RBAC", penalty_on_fail=5)
 async def check_rbac(rt, repo_root) -> Dict[str, Any]:
+    """check_rbac。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     return {"check": "RBAC", "result": "✅", "detail": "PermissionManager + rbac_guard active"}
 
 
 @compliance_check(name="架构守卫", penalty_on_fail=10)
 async def check_arch_guard(rt, repo_root) -> Dict[str, Any]:
+    """check_arch_guard。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         from core.management.arch_guard_base import get_arch_registry
         report = get_arch_registry().run_all(Path(repo_root) if isinstance(repo_root, str) else repo_root)
@@ -115,6 +159,12 @@ async def check_arch_guard(rt, repo_root) -> Dict[str, Any]:
 
 @compliance_check(name="Harness→apps 反向依赖", penalty_on_fail=5)
 async def check_harness_reverse_deps(rt, repo_root) -> Dict[str, Any]:
+    """check_harness_reverse_deps。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         harness_dir = Path(repo_root) / "aiPlat-core" / "core" / "harness"
         if harness_dir.exists():
@@ -138,6 +188,12 @@ async def check_harness_reverse_deps(rt, repo_root) -> Dict[str, Any]:
 
 @compliance_check(name="CLAUDE.md 文件", penalty_on_fail=3)
 async def check_claude_md(rt, repo_root) -> Dict[str, Any]:
+    """check_claude_md。
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         claude_files = []
         for root_dir in ["aiPlat-core", "aiPlat-infra", "aiPlat-platform", "aiPlat-app", "aiPlat-management"]:
@@ -154,7 +210,12 @@ async def check_claude_md(rt, repo_root) -> Dict[str, Any]:
 
 @compliance_check(name="空壳 Agent", penalty_on_fail=3)
 async def check_shell_agents(rt, repo_root) -> Dict[str, Any]:
-    """Detect agents with no system_prompt, no skills, no tools (shell agents)."""
+    """Detect agents with no system_prompt, no skills, no tools (shell agents).
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     from pathlib import Path as _P
 
     shell_agents = []
@@ -204,7 +265,12 @@ async def check_shell_agents(rt, repo_root) -> Dict[str, Any]:
     iso27001_a="A.17.1.1",
 )
 async def check_availability_health(rt, repo_root) -> Dict[str, Any]:
-    """Reuses existing HealthCollector — continuously running, not ad-hoc."""
+    """Reuses existing HealthCollector — continuously running, not ad-hoc.
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         from core.harness.health.collector import HealthCollector
         from core.harness.health.registry import get_health_registry
@@ -239,7 +305,12 @@ async def check_availability_health(rt, repo_root) -> Dict[str, Any]:
     iso27001_a="A.14.2.5",
 )
 async def check_processing_integrity(rt, repo_root) -> Dict[str, Any]:
-    """Reuses existing HallucinationTracker — continuously running, not ad-hoc."""
+    """Reuses existing HallucinationTracker — continuously running, not ad-hoc.
+
+    Args:
+        rt: rt 参数。
+        repo_root: repo_root 参数。
+    """
     try:
         from core.harness.evaluation.hallucination_tracker import HallucinationTracker
         tracker = HallucinationTracker()

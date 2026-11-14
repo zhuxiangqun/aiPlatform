@@ -68,6 +68,13 @@ def _discover_project_ids(apps_root: Path) -> List[str]:
 
 
 def seed_project(hm, project_id: str, n: int) -> Dict[str, Any]:
+    """seed_project。
+
+    Args:
+        hm: hm 参数。
+        project_id: project 标识。
+        n: n 参数。
+    """
     record_hop = hm.record_hop
     # N-1 success + 1 attributed failure → rate=(n-1)/n
     for i in range(max(0, n - 1)):
@@ -100,6 +107,8 @@ def seed_project(hm, project_id: str, n: int) -> Dict[str, Any]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Seed real-project hop metrics")
     ap.add_argument("--project-id", action="append", default=[])
     ap.add_argument("--n", type=int, default=20)

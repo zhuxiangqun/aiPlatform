@@ -1,3 +1,5 @@
+"""collector：模块接口。"""
+
 import os
 import time
 from typing import Dict, List, Optional
@@ -16,7 +18,13 @@ from .schemas import MonitoringConfig
 
 
 class PrometheusMetricsCollector(MetricsCollector):
+    """PrometheusMetricsCollector。"""
     def __init__(self, config: MonitoringConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._counters: Dict[str, Counter] = {}
         self._gauges: Dict[str, Gauge] = {}
@@ -24,6 +32,12 @@ class PrometheusMetricsCollector(MetricsCollector):
         self._prefix = os.getenv("AIPLAT_METRICS_PREFIX", "")
 
     def counter(self, name: str, **kwargs) -> Counter:
+        """counter。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         full_name = f"{self._prefix}_{name}"
         labels = kwargs.get("labels", {})
         key = f"{full_name}_{labels}"
@@ -32,6 +46,12 @@ class PrometheusMetricsCollector(MetricsCollector):
         return self._counters[key]
 
     def gauge(self, name: str, **kwargs) -> Gauge:
+        """gauge。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         full_name = f"{self._prefix}_{name}"
         labels = kwargs.get("labels", {})
         key = f"{full_name}_{labels}"
@@ -40,6 +60,12 @@ class PrometheusMetricsCollector(MetricsCollector):
         return self._gauges[key]
 
     def histogram(self, name: str, **kwargs) -> Histogram:
+        """histogram。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         full_name = f"{self._prefix}_{name}"
         labels = kwargs.get("labels", {})
         key = f"{full_name}_{labels}"
@@ -48,9 +74,18 @@ class PrometheusMetricsCollector(MetricsCollector):
         return self._histograms[key]
 
     def record(self, name: str, value: float, labels: Dict = None) -> None:
+        """record。
+
+        Args:
+            name: name 参数。
+            value: value 参数。
+            labels: labels 参数。
+        """
         self.gauge(name).set(value)
 
     def get_metrics(self) -> List[Metric]:
+        """获取 metrics。
+        """
         metrics = []
         for c in self._counters.values():
             metrics.append(Metric(c.name, c._value, c.labels))
@@ -59,6 +94,8 @@ class PrometheusMetricsCollector(MetricsCollector):
         return metrics
 
     def export(self) -> str:
+        """export。
+        """
         lines = []
         for m in self.get_metrics():
             labels = ",".join(f'{k}="{v}"' for k, v in m.labels.items())
@@ -70,11 +107,19 @@ class PrometheusMetricsCollector(MetricsCollector):
 
 
 class SimpleHealthChecker(HealthChecker):
+    """SimpleHealthChecker。"""
     def __init__(self, config: MonitoringConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._checks: Dict[str, callable] = {}
 
     def check(self) -> HealthStatus:
+        """check。
+        """
         for name, check_fn in self._checks.items():
             try:
                 if not check_fn():
@@ -84,22 +129,47 @@ class SimpleHealthChecker(HealthChecker):
         return HealthStatus(True, "All checks passed")
 
     def register_check(self, name: str, check_fn) -> None:
+        """register_check。
+
+        Args:
+            name: name 参数。
+            check_fn: check_fn 参数。
+        """
         self._checks[name] = check_fn
 
 
 class SimpleAlertManager(AlertManager):
+    """SimpleAlertManager。"""
     def __init__(self, config: MonitoringConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._active_alerts: List[Alert] = []
 
     def trigger(self, alert: Alert) -> None:
+        """trigger。
+
+        Args:
+            alert: alert 参数。
+        """
         alert.timestamp = time.time()
         self._active_alerts.append(alert)
 
     def get_active_alerts(self) -> List[Alert]:
+        """获取 active_alerts。
+        """
         return self._active_alerts
 
     def silence(self, alert_id: str, duration: int) -> bool:
+        """silence。
+
+        Args:
+            alert_id: alert 标识。
+            duration: duration 参数。
+        """
         for alert in self._active_alerts:
             if alert.id == alert_id:
                 self._active_alerts.remove(alert)

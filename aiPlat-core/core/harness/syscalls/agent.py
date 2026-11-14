@@ -40,28 +40,13 @@ async def sys_agent_call(
 
 ) -> Dict[str, Any]:
 
-    """
+    """Spawn a sub-agent to execute a delegated task.
 
-    Spawn a sub-agent to execute a delegated task.
-
-
-
-    Returns:
-
-        {
-
-            "success": bool,
-
-            "output": str,          # summarized result (max 800 chars per §5.26)
-
-            "error": str | None,
-
-            "duration_ms": int,
-
-            "subagent_name": str,
-
-        }
-
+    Args:
+        subagent_name: subagent_name 参数。
+        task: task 参数。
+        context: context 参数。
+        trace_context: trace_context 参数。
     """
 
     try:

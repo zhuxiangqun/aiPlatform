@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -7,6 +9,7 @@ import time
 
 
 class MetricSource(Enum):
+    """MetricSource。"""
     AGENT = "agent"
     LOOP = "loop"
     TOOL = "tool"
@@ -17,6 +20,7 @@ class MetricSource(Enum):
 
 
 class MetricCategory(Enum):
+    """MetricCategory。"""
     PERFORMANCE = "performance"
     QUALITY = "quality"
     RELIABILITY = "reliability"
@@ -25,6 +29,7 @@ class MetricCategory(Enum):
 
 @dataclass
 class MetricData:
+    """MetricData。"""
     name: str
     value: float
     source: MetricSource
@@ -36,6 +41,7 @@ class MetricData:
 
 @dataclass
 class AggregatedMetric:
+    """AggregatedMetric。"""
     name: str
     count: int
     sum: float
@@ -48,17 +54,34 @@ class AggregatedMetric:
 
 
 class MetricsAggregator:
+    """MetricsAggregator。"""
     def __init__(self, window_size: int = 1000):
+        """初始化。
+
+        Args:
+            window_size: window_size 参数。
+        """
         self.window_size = window_size
         self._metrics: Dict[str, List[MetricData]] = defaultdict(list)
 
     def add(self, metric: MetricData):
+        """add。
+
+        Args:
+            metric: metric 参数。
+        """
         key = f"{metric.source.value}:{metric.name}"
         self._metrics[key].append(metric)
         if len(self._metrics[key]) > self.window_size:
             self._metrics[key] = self._metrics[key][-self.window_size:]
 
     def get_aggregated(self, name: str, source: MetricSource) -> Optional[AggregatedMetric]:
+        """获取 aggregated。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+        """
         key = f"{source.value}:{name}"
         metrics = self._metrics.get(key, [])
         if not metrics:
@@ -79,14 +102,24 @@ class MetricsAggregator:
         )
 
     def get_recent(self, name: str, source: MetricSource, limit: int = 100) -> List[MetricData]:
+        """获取 recent。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+            limit: 返回条数上限。
+        """
         key = f"{source.value}:{name}"
         return self._metrics.get(key, [])[-limit:]
 
 
 class MetricsCollector:
+    """MetricsCollector。"""
     _instance: Optional["MetricsCollector"] = None
 
     def __init__(self):
+        """初始化。
+        """
         self.aggregator = MetricsAggregator()
         self._counters: Dict[str, float] = defaultdict(float)
         self._gauges: Dict[str, float] = {}
@@ -94,6 +127,8 @@ class MetricsCollector:
 
     @classmethod
     def get_instance(cls) -> "MetricsCollector":
+        """获取 instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -107,6 +142,16 @@ class MetricsCollector:
         labels: Optional[Dict[str, str]] = None,
         **metadata,
     ):
+        """record。
+
+        Args:
+            name: name 参数。
+            value: value 参数。
+            source: source 参数。
+            category: category 参数。
+            labels: labels 参数。
+            metadata: metadata 参数。
+        """
         metric = MetricData(
             name=name,
             value=value,
@@ -118,16 +163,40 @@ class MetricsCollector:
         self.aggregator.add(metric)
 
     def increment(self, name: str, source: MetricSource, delta: float = 1.0, **labels):
+        """increment。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+            delta: delta 参数。
+            labels: labels 参数。
+        """
         key = f"{source.value}:{name}"
         self._counters[key] += delta
         self.record(name, self._counters[key], source, MetricCategory.PERFORMANCE, labels)
 
     def gauge(self, name: str, source: MetricSource, value: float, **labels):
+        """gauge。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+            value: value 参数。
+            labels: labels 参数。
+        """
         key = f"{source.value}:{name}"
         self._gauges[key] = value
         self.record(name, value, source, MetricCategory.RESOURCE, labels)
 
     def timer(self, name: str, source: MetricSource, duration_ms: float, **labels):
+        """timer。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+            duration_ms: duration_ms 参数。
+            labels: labels 参数。
+        """
         key = f"{source.value}:{name}"
         self._timers[key].append(duration_ms)
         if len(self._timers[key]) > 100:
@@ -135,26 +204,59 @@ class MetricsCollector:
         self.record(name, duration_ms, source, MetricCategory.PERFORMANCE, labels)
 
     def timing_context(self, name: str, source: MetricSource):
+        """timing_context。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+        """
         return TimerContext(self, name, source)
 
     def get_counter(self, name: str, source: MetricSource) -> float:
+        """获取 counter。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+        """
         key = f"{source.value}:{name}"
         return self._counters.get(key, 0.0)
 
     def get_gauge(self, name: str, source: MetricSource) -> Optional[float]:
+        """获取 gauge。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+        """
         key = f"{source.value}:{name}"
         return self._gauges.get(key)
 
     def get_aggregated(self, name: str, source: MetricSource) -> Optional[AggregatedMetric]:
+        """获取 aggregated。
+
+        Args:
+            name: name 参数。
+            source: source 参数。
+        """
         return self.aggregator.get_aggregated(name, source)
 
     def get_all_counters(self) -> Dict[str, float]:
+        """获取 all_counters。
+        """
         return dict(self._counters)
 
     def get_all_gauges(self) -> Dict[str, float]:
+        """获取 all_gauges。
+        """
         return dict(self._gauges)
 
     def get_metrics_by_source(self, source: MetricSource) -> Dict[str, AggregatedMetric]:
+        """获取 metrics_by_source。
+
+        Args:
+            source: source 参数。
+        """
         result = {}
         for key in self._counters:
             if key.startswith(source.value + ":"):
@@ -165,6 +267,8 @@ class MetricsCollector:
         return result
 
     def reset(self):
+        """reset。
+        """
         self._counters.clear()
         self._gauges.clear()
         self._timers.clear()
@@ -172,7 +276,15 @@ class MetricsCollector:
 
 
 class TimerContext:
+    """TimerContext。"""
     def __init__(self, collector: MetricsCollector, name: str, source: MetricSource):
+        """初始化。
+
+        Args:
+            collector: collector 参数。
+            name: name 参数。
+            source: source 参数。
+        """
         self.collector = collector
         self.name = name
         self.source = source
@@ -187,14 +299,16 @@ class TimerContext:
 
 
 def create_metrics_collector() -> MetricsCollector:
+    """创建 metrics_collector。
+    """
     return MetricsCollector()
 
 
 def get_top_endpoints(limit: int = 5) -> list:
     """Return the most frequently called endpoints in the past hour.
 
-    Reads from the module-level MetricsCollector singleton (metrics_collector).
-    Returns a list of endpoint path strings, sorted desc by call count.
+    Args:
+        limit: 返回条数上限。
     """
     collector = metrics_collector
     endpoint_calls: dict = {}

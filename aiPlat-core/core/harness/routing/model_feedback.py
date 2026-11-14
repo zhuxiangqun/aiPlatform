@@ -60,11 +60,9 @@ def _write_quality(model_name: str, purpose: str, quality: float, samples: int =
 
 def compute_raw_quality(audit_issues: List[Dict[str, Any]]) -> float:
     """Compute raw quality score from audit issues (0.0 ~ 1.0).
-    
-    Weights (configurable, not hardcoded for specific categories):
-      - severity=error:    0.4 penalty
-      - severity=warning:  0.2 penalty
-      - severity=info:     0.05 penalty
+
+    Args:
+        audit_issues: audit_issues 参数。
     """
     penalty = 0.0
     for issue in audit_issues:
@@ -81,10 +79,9 @@ def compute_raw_quality(audit_issues: List[Dict[str, Any]]) -> float:
 
 def raw_to_normalized(raw: float) -> float:
     """Convert raw quality (0-1) to normalized score (-1 to 1).
-    
-    0.5 = neutral → 0.0
-    1.0 = perfect → +1.0
-    0.0 = worst   → -1.0
+
+    Args:
+        raw: raw 参数。
     """
     sign = 1.0 if raw >= 0.5 else -1.0
     return sign * abs(raw - 0.5) * 2.0
@@ -92,9 +89,11 @@ def raw_to_normalized(raw: float) -> float:
 
 def record_model_quality(model_name: str, purpose: str, audit_issues: List[Dict[str, Any]]) -> float:
     """Record model quality feedback from audit results.
-    
-    Uses exponential moving average: new = old * 0.7 + fresh * 0.3
-    Returns the new quality score.
+
+    Args:
+        model_name: model_name 参数。
+        purpose: purpose 参数。
+        audit_issues: audit_issues 参数。
     """
     if not model_name or not purpose:
         return 0.0

@@ -54,6 +54,12 @@ def _extract_snapshot_title(snapshot: Any) -> str:
 
 
 def compute_evidence_diff(base: Dict[str, Any], cur: Dict[str, Any]) -> Dict[str, Any]:
+    """计算 evidence_diff。
+
+    Args:
+        base: base 参数。
+        cur: cur 参数。
+    """
     base0 = _as_dict(base)
     cur0 = _as_dict(cur)
 
@@ -164,10 +170,12 @@ def compute_evidence_diff(base: Dict[str, Any], cur: Dict[str, Any]) -> Dict[str
 
 
 def evaluate_regression(diff: Dict[str, Any], gate: Dict[str, Any], *, executed_tags: Optional[List[str]] = None) -> Tuple[bool, List[str]]:
-    """
-    Return (is_regression, reasons).
-    gate example:
-      { "max_new_console_errors": 0, "max_new_network_5xx": 0, "max_new_network_4xx": 5 }
+    """Return (is_regression, reasons).
+
+    Args:
+        diff: diff 参数。
+        gate: gate 参数。
+        executed_tags: executed_tags 参数。
     """
     d = _as_dict(diff)
     m = _as_dict(d.get("metrics"))

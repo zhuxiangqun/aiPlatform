@@ -29,8 +29,13 @@ def run_mineru_parse(
     parse_method: str = "auto", heartbeat_cb: Any = None,
 ) -> Any:
     """DEPRECATED: Use CoreFacade.kb_parse_document() instead.
-    
-    CoreFacade routes through PdfConverter which includes MinerU as Tier 3.
+
+    Args:
+        pdf_path: pdf_path 参数。
+        out_dir: out_dir 参数。
+        max_pages: max_pages 参数。
+        parse_method: parse_method 参数。
+        heartbeat_cb: heartbeat_cb 参数。
     """
     import warnings
     warnings.warn(
@@ -51,7 +56,11 @@ def run_mineru_parse(
 def extract_tables_from_content_list(
     content_list: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """DEPRECATED: Use CoreFacade output directly (DocumentElement.cells)."""
+    """DEPRECATED: Use CoreFacade output directly (DocumentElement.cells).
+
+    Args:
+        content_list: content_list 参数。
+    """
     import warnings
     warnings.warn(
         "extract_tables_from_content_list is deprecated. "

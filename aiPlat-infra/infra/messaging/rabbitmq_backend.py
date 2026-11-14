@@ -1,3 +1,5 @@
+"""rabbitmq_backend：模块接口。"""
+
 import asyncio
 import uuid
 from typing import Callable, Dict, Optional
@@ -8,7 +10,13 @@ from .schemas import Message, ConsumerConfig, MessagingConfig
 
 
 class RabbitMQClient(MessageClient):
+    """RabbitMQClient。"""
     def __init__(self, config: MessagingConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._connection = None
         self._channel = None
@@ -76,6 +84,13 @@ class RabbitMQClient(MessageClient):
         )
 
     async def publish(self, topic: str, message: bytes, **kwargs) -> None:
+        """publish。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+            kwargs: kwargs 参数。
+        """
         await self._connect()
 
         import aio_pika
@@ -108,6 +123,13 @@ class RabbitMQClient(MessageClient):
         handler: Callable[[Message], None],
         config: Optional[ConsumerConfig] = None,
     ) -> None:
+        """subscribe。
+
+        Args:
+            topic: topic 参数。
+            handler: handler 参数。
+            config: config 参数。
+        """
         await self._connect()
 
         import aio_pika
@@ -159,6 +181,11 @@ class RabbitMQClient(MessageClient):
         self._running = True
 
     async def unsubscribe(self, topic: str) -> None:
+        """unsubscribe。
+
+        Args:
+            topic: topic 参数。
+        """
         queue_name = self._get_queue_name(topic)
         
         if queue_name in self._handlers:
@@ -168,6 +195,11 @@ class RabbitMQClient(MessageClient):
             del self._queues[queue_name]
 
     async def ack(self, message_id: str) -> None:
+        """ack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id not in self._pending_messages:
             return
         
@@ -179,6 +211,11 @@ class RabbitMQClient(MessageClient):
             print(f"Error acknowledging message: {e}")
 
     async def nack(self, message_id: str) -> None:
+        """nack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id not in self._pending_messages:
             return
         
@@ -190,6 +227,8 @@ class RabbitMQClient(MessageClient):
             print(f"Error nacking message: {e}")
 
     async def close(self) -> None:
+        """close。
+        """
         self._running = False
         
         if self._connection:

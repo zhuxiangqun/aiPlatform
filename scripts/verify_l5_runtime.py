@@ -20,9 +20,12 @@ CAPS_FILE = WORKSPACE / "AIPLAT_CAPABILITIES.md"
 
 @dataclass
 class CapEntry:
+    """CapEntry。"""
     name: str; file_ref: str; subsystem: str; description: str = ""
 
 def parse_capabilities() -> List[CapEntry]:
+    """parse_capabilities。
+    """
     text = CAPS_FILE.read_text() if CAPS_FILE.exists() else ""
     entries = []
     subsystem = "未知"; in_table = False
@@ -45,6 +48,7 @@ def parse_capabilities() -> List[CapEntry]:
 
 @dataclass
 class Verdict:
+    """Verdict。"""
     name: str; file_ref: str; subsystem: str; description: str
     d1: bool = False; d2: bool = False; d3: bool = False
     d4: bool = False; d5: bool = False; d7: bool = False
@@ -54,6 +58,8 @@ class Verdict:
     @property
     def status(self) -> str:
         # Conceptual/documentation/API entries — no code file needed
+        """status。
+        """
         if any(marker in self.file_ref for marker in ['[概念]', '规划中', '[API]', '[配置]']):
             return "CONCEPT"
         if not self.d1: return "MISSING"
@@ -79,6 +85,8 @@ class Verdict:
 
     @property
     def score(self) -> int:
+        """score。
+        """
         pts = sum(1 for d in [self.d1,self.d2,self.d3,self.d5,self.d7] if d)
         if self.d4: pts -= 2
         return max(0, pts)
@@ -87,12 +95,17 @@ class Verdict:
 # ═══════════════ Verifier ═══════════════
 
 class Verifier:
+    """Verifier。"""
     def __init__(self):
+        """初始化。
+        """
         self._sc: Optional[str] = None
         self._fc: Optional[str] = None
 
     @property
     def server(self) -> str:
+        """server。
+        """
         if self._sc is None:
             p = WORKSPACE / "aiPlat-core/core/server.py"
             self._sc = p.read_text() if p.exists() else ""
@@ -100,6 +113,8 @@ class Verifier:
 
     @property
     def facade(self) -> str:
+        """facade。
+        """
         if self._fc is None:
             p = WORKSPACE / "aiPlat-core/core/api/core_facade.py"
             self._fc = p.read_text() if p.exists() else ""
@@ -115,6 +130,11 @@ class Verifier:
         return stems
 
     def verify(self, e: CapEntry) -> Verdict:
+        """verify。
+
+        Args:
+            e: e 参数。
+        """
         v = Verdict(name=e.name, file_ref=e.file_ref, subsystem=e.subsystem, description=e.description)
         self._check_file(v)
         if not v.d1: return v
@@ -258,6 +278,11 @@ class Verifier:
 # ═══════════════ Report ═══════════════
 
 def report(verdicts: List[Verdict]) -> str:
+    """report。
+
+    Args:
+        verdicts: verdicts 参数。
+    """
     by_status = defaultdict(list)
     by_subsys = defaultdict(list)
     for v in verdicts:
@@ -304,6 +329,8 @@ def report(verdicts: List[Verdict]) -> str:
 
 
 def main():
+    """main。
+    """
     p = argparse.ArgumentParser()
     p.add_argument("--json", action="store_true")
     args = p.parse_args()

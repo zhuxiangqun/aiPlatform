@@ -15,7 +15,11 @@ _TOKEN = re.compile(r"[a-zA-Z0-9_\u4e00-\u9fff]{2,}")
 
 
 def governance_quality_snapshot(domain_id: str = "data-gov") -> Dict[str, Any]:
-    """Step ⑥: OCS + action surface + deep links (read-only)."""
+    """Step ⑥: OCS + action surface + deep links (read-only).
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "data-gov").strip() or "data-gov"
     ocs: Dict[str, Any] = {}
     try:
@@ -103,7 +107,10 @@ def locate_via_ontology(
 ) -> Dict[str, Any]:
     """Step ⑦: locate GraphIndex entities by query tokens (ontology-first locate).
 
-    Does not execute SQL against customer DBs. Returns graph hits + optional paths.
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        top_k: top_k 参数。
     """
     did = (domain_id or "data-gov").strip() or "data-gov"
     q = (query or "").strip()
@@ -198,7 +205,14 @@ async def locate_via_ontology_async(
     top_k: int = 8,
     with_graphrag: bool = False,
 ) -> Dict[str, Any]:
-    """Locate + optional GraphRAG overlay (best-effort)."""
+    """Locate + optional GraphRAG overlay (best-effort).
+
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        top_k: top_k 参数。
+        with_graphrag: with_graphrag 参数。
+    """
     base = locate_via_ontology(domain_id, query, top_k=top_k)
     if not with_graphrag or not base.get("hits"):
         return base

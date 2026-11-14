@@ -105,6 +105,11 @@ def _ingest_local(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def main(argv: list | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="IDE capture → Team Brain")
     parser.add_argument("--from-hook", action="store_true", help="normalize Cursor/CC hook stdin JSON")
     parser.add_argument("--write-wiki", action="store_true", help="also write session wiki page")

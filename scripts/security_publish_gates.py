@@ -40,6 +40,11 @@ def _run(mode: str) -> subprocess.CompletedProcess:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="Security publish gates wrapper")
     parser.add_argument(
         "--mode",

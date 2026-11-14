@@ -16,7 +16,11 @@ _log = logging.getLogger("aiplat.prompt_optimize")
 
 @router.post("/prompts/optimize", response_model=StatusResponse)
 async def optimize_prompt(req: PromptOptimizeRequest):
-    """## platform:allowed — Optimize a prompt template with context-aware analysis."""
+    """## platform:allowed — Optimize a prompt template with context-aware analysis.
+
+    Args:
+        req: req 参数。
+    """
     if not req.prompt:
         raise HTTPException(status_code=400, detail="prompt is required")
 

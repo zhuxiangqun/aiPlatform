@@ -14,6 +14,8 @@ if str(PLATFORM) not in sys.path:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Render delivery KB health markdown")
     ap.add_argument("--out", type=Path, default=Path("KB_HEALTH.md"))
     ap.add_argument("--tenant-id", default="default")

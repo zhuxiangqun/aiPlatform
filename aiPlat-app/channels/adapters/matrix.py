@@ -18,6 +18,11 @@ class MatrixAdapter(ChannelAdapter):
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # Matrix event: {"type":"m.room.message","content":{"msgtype":"m.text","body":"..."},
         #   "sender":"@user:server","event_id":"$...","room_id":"!..."}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         content = raw_data.get("content") or {}
         event_type = raw_data.get("type", "")
         text = str(content.get("body", "") or "")
@@ -34,6 +39,11 @@ class MatrixAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "msgtype": "m.text",
             "body": response.text,

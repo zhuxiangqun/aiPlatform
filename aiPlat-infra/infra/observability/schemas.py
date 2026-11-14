@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
@@ -5,6 +7,7 @@ from typing import List, Optional, Dict, Any
 
 @dataclass
 class TracingConfig:
+    """TracingConfig。"""
     enabled: bool = True
     service_name: str = os.getenv("AIPLAT_SERVICE_NAME", "")
     exporter: str = "otlp"
@@ -15,6 +18,7 @@ class TracingConfig:
 
 @dataclass
 class MetricsConfig:
+    """MetricsConfig。"""
     enabled: bool = True
     exporter: str = "otlp"
     endpoint: str = "http://localhost:4317"
@@ -23,6 +27,7 @@ class MetricsConfig:
 
 @dataclass
 class LoggingConfig:
+    """LoggingConfig。"""
     enabled: bool = True
     exporter: str = "otlp"
     level: str = "INFO"
@@ -31,6 +36,7 @@ class LoggingConfig:
 
 @dataclass
 class ResourceConfig:
+    """ResourceConfig。"""
     service_name: str = os.getenv("AIPLAT_SERVICE_NAME", "")
     service_version: str = "1.0.0"
     deployment_environment: str = "development"
@@ -38,6 +44,7 @@ class ResourceConfig:
 
 @dataclass
 class ObservabilityConfig:
+    """ObservabilityConfig。"""
     enabled: bool = True
     # Provider: "otel" uses opentelemetry-sdk; "simple" uses in-memory Simple* implementation
     provider: str = "otel"

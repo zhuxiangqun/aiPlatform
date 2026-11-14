@@ -46,6 +46,16 @@ class Invocation:
         chain: Optional["InterceptorChain"] = None,
         index: int = 0,
     ):
+        """初始化。
+
+        Args:
+            method: method 参数。
+            instance: instance 参数。
+            args: args 参数。
+            kwargs: kwargs 参数。
+            chain: chain 参数。
+            index: index 参数。
+        """
         self._method = method
         self._instance = instance
         self._args = args
@@ -74,10 +84,14 @@ class Invocation:
 
     @property
     def method(self) -> Callable:
+        """method。
+        """
         return self._method
 
     @property
     def instance(self) -> Any:
+        """instance。
+        """
         return self._instance
 
 
@@ -85,13 +99,24 @@ class InterceptorChain:
     """拦截器链"""
 
     def __init__(self):
+        """初始化。
+        """
         self._interceptors: List[Interceptor] = []
 
     def add(self, interceptor: Interceptor) -> None:
+        """add。
+
+        Args:
+            interceptor: interceptor 参数。
+        """
         self._interceptors.append(interceptor)
 
     def invoke(self, invocation: Invocation) -> Any:
-        """执行拦截器链（标准 around 语义）"""
+        """执行拦截器链（标准 around 语义）。
+
+        Args:
+            invocation: invocation 参数。
+        """
         if not self._interceptors:
             return invocation.proceed()
         invocation._chain = self
@@ -103,9 +128,19 @@ class LoggingInterceptor(Interceptor):
     """日志拦截器"""
 
     def __init__(self, logger=None):
+        """初始化。
+
+        Args:
+            logger: logger 参数。
+        """
         self._logger = logger
 
     def intercept(self, invocation: Invocation) -> Any:
+        """intercept。
+
+        Args:
+            invocation: invocation 参数。
+        """
         method_name = getattr(invocation.method, "__name__", "unknown")
         if self._logger:
             self._logger.debug(f"Calling {method_name}")
@@ -119,9 +154,16 @@ class TimingInterceptor(Interceptor):
     """计时拦截器"""
 
     def __init__(self):
+        """初始化。
+        """
         self._timings: dict = {}
 
     def intercept(self, invocation: Invocation) -> Any:
+        """intercept。
+
+        Args:
+            invocation: invocation 参数。
+        """
         import time
 
         method_name = getattr(invocation.method, "__name__", "unknown")
@@ -132,6 +174,11 @@ class TimingInterceptor(Interceptor):
         return result
 
     def get_timing(self, method_name: str) -> float:
+        """获取 timing。
+
+        Args:
+            method_name: method_name 参数。
+        """
         return self._timings.get(method_name, 0.0)
 
 
@@ -139,9 +186,19 @@ class CachingInterceptor(Interceptor):
     """缓存拦截器"""
 
     def __init__(self, cache: dict = None):
+        """初始化。
+
+        Args:
+            cache: cache 参数。
+        """
         self._cache = cache or {}
 
     def intercept(self, invocation: Invocation) -> Any:
+        """intercept。
+
+        Args:
+            invocation: invocation 参数。
+        """
         method_name = getattr(invocation.method, "__name__", "unknown")
         key = f"{method_name}:{invocation._args}"
         if key in self._cache:
@@ -155,14 +212,26 @@ class MetricsInterceptor(Interceptor):
     """简单指标拦截器：统计方法调用次数"""
 
     def __init__(self):
+        """初始化。
+        """
         self._counts: Dict[str, int] = {}
 
     def intercept(self, invocation: Invocation) -> Any:
+        """intercept。
+
+        Args:
+            invocation: invocation 参数。
+        """
         method_name = getattr(invocation.method, "__name__", "unknown")
         self._counts[method_name] = self._counts.get(method_name, 0) + 1
         return invocation.proceed()
 
     def get_count(self, method_name: str) -> int:
+        """获取 count。
+
+        Args:
+            method_name: method_name 参数。
+        """
         return self._counts.get(method_name, 0)
 
 
@@ -170,9 +239,19 @@ class ErrorHandlingInterceptor(Interceptor):
     """错误处理拦截器：记录异常并抛出"""
 
     def __init__(self, logger=None):
+        """初始化。
+
+        Args:
+            logger: logger 参数。
+        """
         self._logger = logger
 
     def intercept(self, invocation: Invocation) -> Any:
+        """intercept。
+
+        Args:
+            invocation: invocation 参数。
+        """
         try:
             return invocation.proceed()
         except Exception as e:
@@ -185,6 +264,12 @@ class Proxy:
     """Dynamic proxy that applies interceptor chain to method calls."""
 
     def __init__(self, target: Any, chain: InterceptorChain):
+        """初始化。
+
+        Args:
+            target: target 参数。
+            chain: chain 参数。
+        """
         self.__dict__["_target"] = target
         self.__dict__["_chain"] = chain
 

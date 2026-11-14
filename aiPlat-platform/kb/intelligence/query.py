@@ -1,3 +1,5 @@
+"""query：模块接口。"""
+
 from __future__ import annotations
 
 import re
@@ -29,11 +31,16 @@ async def query_elements(
     top_k: int = 8,
     retrieval_policy: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """
-    MVP query:
-    - Prefer semantic retrieval via kb_embeddings (if available).
-    - Fallback to keyword overlap on kb_elements.text.
-    - Return items + lightweight citations (doc_id, page_idx, asset_path if available).
+    """MVP query:。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        doc_id: doc 标识。
+        doc_ids: doc_ids 参数。
+        question: question 参数。
+        top_k: top_k 参数。
+        retrieval_policy: retrieval_policy 参数。
     """
     if not tenant_id:
         tenant_id = "default"

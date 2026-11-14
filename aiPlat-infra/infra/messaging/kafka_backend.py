@@ -1,3 +1,5 @@
+"""kafka_backend：模块接口。"""
+
 import asyncio
 import uuid
 from typing import Callable, Dict, Optional
@@ -9,7 +11,13 @@ import logging
 
 
 class KafkaClient(MessageClient):
+    """KafkaClient。"""
     def __init__(self, config: MessagingConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._producer = None
         self._consumers: Dict[str, any] = {}
@@ -85,6 +93,13 @@ class KafkaClient(MessageClient):
         )
 
     async def publish(self, topic: str, message: bytes, **kwargs) -> None:
+        """publish。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+            kwargs: kwargs 参数。
+        """
         await self._connect()
 
         topic_name = self._get_topic_name(topic)
@@ -104,6 +119,13 @@ class KafkaClient(MessageClient):
         handler: Callable[[Message], None],
         config: Optional[ConsumerConfig] = None,
     ) -> None:
+        """subscribe。
+
+        Args:
+            topic: topic 参数。
+            handler: handler 参数。
+            config: config 参数。
+        """
         await self._connect()
 
         topic_name = self._get_topic_name(topic)
@@ -172,6 +194,11 @@ class KafkaClient(MessageClient):
             pass  # noqa: normal-cancellation
 
     async def unsubscribe(self, topic: str) -> None:
+        """unsubscribe。
+
+        Args:
+            topic: topic 参数。
+        """
         topic_name = self._get_topic_name(topic)
 
         if topic_name in self._consumers:
@@ -182,6 +209,11 @@ class KafkaClient(MessageClient):
             del self._handlers[topic_name]
 
     async def ack(self, message_id: str) -> None:
+        """ack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id not in self._message_offsets:
             return
         
@@ -207,10 +239,17 @@ class KafkaClient(MessageClient):
             print(f"Error committing offset: {e}")
 
     async def nack(self, message_id: str) -> None:
+        """nack。
+
+        Args:
+            message_id: message 标识。
+        """
         if message_id in self._message_offsets:
             del self._message_offsets[message_id]
 
     async def close(self) -> None:
+        """close。
+        """
         self._running = False
 
         for topic, consumer in list(self._consumers.items()):

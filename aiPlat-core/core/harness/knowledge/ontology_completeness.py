@@ -183,7 +183,12 @@ def compute_domain_ocs(
     *,
     credit_test_evidence: bool = True,
 ) -> Dict[str, Any]:
-    """Return OCS breakdown for one domain."""
+    """Return OCS breakdown for one domain.
+
+    Args:
+        domain_id: domain 标识。
+        credit_test_evidence: credit_test_evidence 参数。
+    """
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
 
     path = _home() / "ontologies" / f"{domain_id}.yaml"
@@ -239,6 +244,11 @@ def compute_domain_ocs(
 
 
 def compute_all_ocs(*, domain_ids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """compute_all_ocs。
+
+    Args:
+        domain_ids: domain_ids 参数。
+    """
     from core.harness.knowledge.ontology_loader import list_domain_files
 
     ids = domain_ids or list_domain_files(str(_home()))

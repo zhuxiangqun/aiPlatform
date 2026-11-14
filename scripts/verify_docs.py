@@ -37,17 +37,29 @@ DRAFT_EXPIRY_DAYS = int(os.environ.get("AIPLAT_DOC_DRAFT_EXPIRY_DAYS", "180"))
 
 
 def log_error(msg: str) -> None:
+    """log_error。
+
+    Args:
+        msg: msg 参数。
+    """
     errors.append(f"\u274c {msg}")
     print(f"[ERROR] {msg}")
 
 
 def log_warning(msg: str) -> None:
+    """log_warning。
+
+    Args:
+        msg: msg 参数。
+    """
     warnings.append(f"\u26a0\ufe0f {msg}")
     print(f"[WARN] {msg}")
 
 
 # ── 检查 1：by-role 链接有效性（阻断） ──
 def check_role_links() -> None:
+    """check_role_links。
+    """
     if not ROLE_DIR.exists():
         log_warning(f"by-role 目录不存在: {ROLE_DIR}")
         return
@@ -86,6 +98,8 @@ def check_role_links() -> None:
 
 # ── 检查 2：报告头部声明（阻断） ──
 def check_report_headers() -> None:
+    """check_report_headers。
+    """
     if not REPORTS_DIR.exists():
         log_warning(f"reports 目录不存在: {REPORTS_DIR}")
         return
@@ -104,6 +118,8 @@ def check_report_headers() -> None:
 
 # ── 检查 3：归档免责声明（阻断） ──
 def check_archive_disclaimer() -> None:
+    """check_archive_disclaimer。
+    """
     if not ARCHIVE_README.exists():
         log_error(f"归档说明文件缺失: {ARCHIVE_README.relative_to(REPO_ROOT)}")
         return
@@ -115,6 +131,8 @@ def check_archive_disclaimer() -> None:
 
 # ── 检查 4：数字硬编码（告警） ──
 def check_hardcoded_numbers() -> None:
+    """check_hardcoded_numbers。
+    """
     if not CAPABILITIES_FILE.exists():
         log_warning("能力清单文件不存在，跳过硬编码检查")
         return
@@ -154,6 +172,8 @@ def check_hardcoded_numbers() -> None:
 
 # ── 检查 5：重复的"唯一真相源"声明（告警） ──
 def check_duplicate_authority() -> None:
+    """check_duplicate_authority。
+    """
     if not DOCS_ROOT.exists():
         return
 
@@ -673,6 +693,8 @@ def check_claude_debt_verification() -> None:
 
 
 def main():
+    """main。
+    """
     print(f"\U0001f50d 文档系统验证开始 (REPO_ROOT: {REPO_ROOT})")
     print("=" * 60)
 

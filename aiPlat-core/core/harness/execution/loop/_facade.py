@@ -126,6 +126,16 @@ class ReActLoop(BaseLoop):
 
     ):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+            hook_manager: hook_manager 参数。
+            model: 模型名。
+            skills: skills 参数。
+            tools: tools 参数。
+            approval_manager: approval_manager 参数。
+        """
         super().__init__(config, hook_manager)
 
         self._model = model
@@ -713,24 +723,44 @@ class ReActLoop(BaseLoop):
 
     def set_model(self, model: Any) -> None:
 
+        """set_model。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
 
 
 
     def set_skills(self, skills: List[Any]) -> None:
 
+        """set_skills。
+
+        Args:
+            skills: skills 参数。
+        """
         self._skills = skills
 
 
 
     def set_tools(self, tools: List[Any]) -> None:
 
+        """set_tools。
+
+        Args:
+            tools: tools 参数。
+        """
         self._tools = tools
 
     
 
     def set_approval_manager(self, manager: Any) -> None:
 
+        """set_approval_manager。
+
+        Args:
+            manager: manager 参数。
+        """
         self._approval_manager = manager
 
     
@@ -827,7 +857,11 @@ class ReActLoop(BaseLoop):
 
     async def step(self, state: LoopState) -> LoopState:
 
-        """Execute single ReAct step: reason -> act -> observe."""
+        """Execute single ReAct step: reason -> act -> observe.
+
+        Args:
+            state: state 参数。
+        """
 
         state.step_count += 1
 
@@ -5745,6 +5779,15 @@ class PlanExecuteLoop(BaseLoop):
 
     ):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+            hook_manager: hook_manager 参数。
+            model: 模型名。
+            skills: skills 参数。
+            tools: tools 参数。
+        """
         super().__init__(config, hook_manager)
 
         self._model = model
@@ -5761,18 +5804,33 @@ class PlanExecuteLoop(BaseLoop):
 
     def set_model(self, model: Any) -> None:
 
+        """set_model。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
 
 
 
     def set_skills(self, skills: List[Any]) -> None:
 
+        """set_skills。
+
+        Args:
+            skills: skills 参数。
+        """
         self._skills = skills
 
 
 
     def set_tools(self, tools: List[Any]) -> None:
 
+        """set_tools。
+
+        Args:
+            tools: tools 参数。
+        """
         self._tools = tools
 
     def _plan_done_verify_reason(self, state: LoopState) -> Optional[str]:
@@ -5913,7 +5971,11 @@ class PlanExecuteLoop(BaseLoop):
 
     async def step(self, state: LoopState) -> LoopState:
 
-        """Execute Plan-Execute step"""
+        """Execute Plan-Execute step。
+
+        Args:
+            state: state 参数。
+        """
 
         state.step_count += 1
 

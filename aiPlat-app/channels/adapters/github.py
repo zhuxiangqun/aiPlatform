@@ -17,6 +17,11 @@ class GitHubAdapter(ChannelAdapter):
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # GitHub webhook: {"action":"opened","issue":{...},"comment":{...},"repository":{"full_name":"..."}}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         action = str(raw_data.get("action", ""))
         repo = str((raw_data.get("repository") or {}).get("full_name", ""))
         comment = raw_data.get("comment") or {}
@@ -50,6 +55,11 @@ class GitHubAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "body": response.text,
         }

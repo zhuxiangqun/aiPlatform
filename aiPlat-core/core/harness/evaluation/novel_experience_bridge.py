@@ -41,7 +41,12 @@ def register_novel_as_experience(
     *,
     source: str = "code_review_gold",
 ) -> List[Dict[str, Any]]:
-    """Append novel P0/P1 as pending experience gotchas (idempotent by rule_id)."""
+    """Append novel P0/P1 as pending experience gotchas (idempotent by rule_id).
+
+    Args:
+        novels: novels 参数。
+        source: source 参数。
+    """
     recorded: List[Dict[str, Any]] = []
     if not novels:
         return recorded

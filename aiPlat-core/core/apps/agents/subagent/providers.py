@@ -53,26 +53,46 @@ class SubagentProvider(ABC):
     name: str = "abstract"
 
     def __init__(self):
+        """初始化。
+        """
         self._capabilities = ProviderCapabilities()
 
     @property
     def capabilities(self) -> ProviderCapabilities:
+        """capabilities。
+        """
         return self._capabilities
 
     @abstractmethod
     async def start(self, name: str, task: str,
                     context: Optional[List[Dict]] = None,
                     config: Optional[Any] = None) -> ProviderResult:
-        """Start a fresh subagent execution."""
+        """Start a fresh subagent execution.
+
+        Args:
+            name: name 参数。
+            task: task 参数。
+            context: context 参数。
+            config: config 参数。
+        """
 
     async def continuation(self, instance_id: str, message: str) -> ProviderResult:
-        """Resume a settled subagent (default: unsupported → fail-loud)."""
+        """Resume a settled subagent (default: unsupported → fail-loud).
+
+        Args:
+            instance_id: instance 标识。
+            message: message 参数。
+        """
         raise NotImplementedError(
             f"Provider '{self.name}' does not support continuation "
             f"(capabilities.continuation=False)")
 
     async def interrupt(self, instance_id: str) -> bool:
-        """Request cancellation (default: no-op false)."""
+        """Request cancellation (default: no-op false).
+
+        Args:
+            instance_id: instance 标识。
+        """
         return False
 
     async def close(self) -> None:
@@ -85,6 +105,11 @@ class InProcessProvider(SubagentProvider):
     name = "in_process"
 
     def __init__(self, coordinator: Any = None):
+        """初始化。
+
+        Args:
+            coordinator: coordinator 参数。
+        """
         super().__init__()
         self._coordinator = coordinator
         self._capabilities = ProviderCapabilities(
@@ -95,6 +120,14 @@ class InProcessProvider(SubagentProvider):
     async def start(self, name: str, task: str,
                     context: Optional[List[Dict]] = None,
                     config: Optional[Any] = None) -> ProviderResult:
+        """start。
+
+        Args:
+            name: name 参数。
+            task: task 参数。
+            context: context 参数。
+            config: config 参数。
+        """
         if self._coordinator is None:
             return ProviderResult(ok=False, error="coordinator not wired")
         try:
@@ -116,6 +149,12 @@ class InProcessProvider(SubagentProvider):
     async def continuation(self, instance_id: str, message: str) -> ProviderResult:
         # In-process instances resume via the retained agent (DSH continuable):
         # coordinator 保留 execute_single 创建的 agent，向同一会话追加消息重执行。
+        """continuation。
+
+        Args:
+            instance_id: instance 标识。
+            message: message 参数。
+        """
         if self._coordinator is None:
             return ProviderResult(ok=False, error="coordinator not wired",
                                   instance_id=instance_id, can_continue=False)
@@ -146,6 +185,11 @@ class ACPProvider(SubagentProvider):
     name = "acp"
 
     def __init__(self, endpoint: str = ""):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         super().__init__()
         self._endpoint = endpoint or os.getenv("AIPLAT_ACP_ENDPOINT", "ws://localhost:8002/acp")
         self._capabilities = ProviderCapabilities(
@@ -156,6 +200,14 @@ class ACPProvider(SubagentProvider):
     async def start(self, name: str, task: str,
                     context: Optional[List[Dict]] = None,
                     config: Optional[Any] = None) -> ProviderResult:
+        """start。
+
+        Args:
+            name: name 参数。
+            task: task 参数。
+            context: context 参数。
+            config: config 参数。
+        """
         try:
             from core.acp.client import ACPClient
             client = ACPClient(self._endpoint)
@@ -194,6 +246,12 @@ class ProcessProvider(SubagentProvider):
     name = "process"
 
     def __init__(self, runner_module: str = "", timeout: float = 0.0):
+        """初始化。
+
+        Args:
+            runner_module: runner_module 参数。
+            timeout: 超时秒数。
+        """
         super().__init__()
         self._runner_module = (runner_module or os.getenv(
             "AIPLAT_SUBAGENT_PROCESS_RUNNER",
@@ -207,6 +265,14 @@ class ProcessProvider(SubagentProvider):
     async def start(self, name: str, task: str,
                     context: Optional[List[Dict]] = None,
                     config: Optional[Any] = None) -> ProviderResult:
+        """start。
+
+        Args:
+            name: name 参数。
+            task: task 参数。
+            context: context 参数。
+            config: config 参数。
+        """
         import asyncio
         import json
         import sys
@@ -265,8 +331,12 @@ _PROVIDER_FACTORIES = {
 
 
 def get_provider_factories() -> Dict[str, Any]:
+    """获取 provider_factories。
+    """
     return dict(_PROVIDER_FACTORIES)
 
 
 def default_provider_name() -> str:
+    """default_provider_name。
+    """
     return os.getenv("AIPLAT_SUBAGENT_PROVIDER", "in_process").strip().lower()

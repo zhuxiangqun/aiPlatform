@@ -50,10 +50,14 @@ def build_auto_eval_prompt(
     browser_evidence: Optional[Dict[str, Any]] = None,
     scoring_dimensions: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, str]]:
-    """
-    Returns a chat message list for LLMAdapter.generate().
+    """Returns a chat message list for LLMAdapter.generate().
 
-    scoring_dimensions: optional overrides from PipelineStageConfig.scoring_dimensions
+    Args:
+        run: run 参数。
+        events: events 参数。
+        extra: extra 参数。
+        browser_evidence: browser_evidence 参数。
+        scoring_dimensions: scoring_dimensions 参数。
     """
     extra = extra or {}
     dims = get_scoring_dimensions(scoring_dimensions)
@@ -95,8 +99,10 @@ def build_auto_eval_prompt(
 
 
 def parse_json_report(text: str) -> Tuple[Optional[Dict[str, Any]], str]:
-    """
-    Best-effort parse the model output into JSON report.
+    """Best-effort parse the model output into JSON report.
+
+    Args:
+        text: 文本内容。
     """
     raw = str(text or "").strip()
     if not raw:
@@ -122,8 +128,10 @@ def parse_json_report(text: str) -> Tuple[Optional[Dict[str, Any]], str]:
 
 
 def try_parse_json(text: Any) -> Any:
-    """
-    Best-effort: parse a JSON string; otherwise return original.
+    """Best-effort: parse a JSON string; otherwise return original.
+
+    Args:
+        text: 文本内容。
     """
     if not isinstance(text, str):
         return text

@@ -13,6 +13,7 @@ from __future__ import annotations
 # ── Engine Skills (shipped with core) ──
 
 class Skills:
+    """Skills。"""
     CODE_GENERATION = "code_generation"
     CODE_REVIEW = "code_review"
     TEXT_GENERATION = "text_generation"
@@ -34,6 +35,7 @@ class Skills:
 # ── Agent IDs (team pipeline roles) ──
 
 class Agents:
+    """Agents。"""
     PM = "pm_agent"
     ARCHITECT = "architect_agent"
     PROGRAMMER = "programmer_agent"
@@ -48,6 +50,7 @@ class Agents:
 # ── GraphIndex / Domain IDs ──
 
 class Domains:
+    """Domains。"""
     DEFAULT = "default"
 
 

@@ -29,30 +29,10 @@ router = APIRouter(tags=["wiki-ontology-domains"])
 
 async def discover_domain_assets(domain_id: str):
 
-    """
+    """Agent discoverability API — returns all Object Types, Link Types, Action Types,。
 
-    Agent discoverability API — returns all Object Types, Link Types, Action Types, 
-
-    and Interfaces available in a domain. Agent can query this at runtime to discover
-
-    what it can operate on, without pre-programmed tool descriptions.
-
-
-
-    Response:
-
-    {
-
-      "objects": [{"name": "Customer", "label": "客户", "properties": [...], "implements": ["Diagnosable"]}],
-
-      "links": [{"name": "places_order", "label": "下订单", "source": "Customer", "target": "Order"}],
-
-      "actions": [<registered skills for this domain>],
-
-      "interfaces": [{"name": "Diagnosable", "properties": [...], "implemented_by": [...]}]
-
-    }
-
+    Args:
+        domain_id: domain 标识。
     """
 
     from core.harness.knowledge.ontology_loader import list_domain_files
@@ -201,7 +181,11 @@ async def discover_domain_assets(domain_id: str):
 
 async def get_domain_interfaces(domain_id: str):
 
-    """Return all Interface definitions and their implementations in a domain."""
+    """Return all Interface definitions and their implementations in a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     from core.harness.knowledge.ontology_loader import list_domain_files
     from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
@@ -242,7 +226,12 @@ async def get_domain_interfaces(domain_id: str):
 
 async def save_ontology_domain(domain_id: str = "", yaml_content: str = ""):
 
-    """Save a validated ontology YAML to disk (auto-aligns name with domain_id)."""
+    """Save a validated ontology YAML to disk (auto-aligns name with domain_id).
+
+    Args:
+        domain_id: domain 标识。
+        yaml_content: yaml_content 参数。
+    """
 
     if not domain_id or not yaml_content:
 
@@ -368,7 +357,11 @@ async def list_ontology_domains():
 
 async def get_ontology_domain(domain_id: str):
 
-    """Get full domain ontology including classes + properties."""
+    """Get full domain ontology including classes + properties.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     from core.api.core_facade import load_ontology_from_yaml  # P0-A2: 经 CoreFacade
 
@@ -516,12 +509,9 @@ async def validate_ontology_domain(domain_id: str, collection: str = ""):
 
     """Cross-check existing data (Wiki pages + Graph nodes) against current ontology schema.
 
-
-
-    Returns validation report with orphan pages, missing required fields,
-
-    orphan graph nodes, and state mismatches.
-
+    Args:
+        domain_id: domain 标识。
+        collection: collection 参数。
     """
 
     from core.harness.knowledge.ontology_validator import validate_domain, validate_report_to_dict
@@ -548,10 +538,9 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
 
     """Unified verification: classification coverage + graph stats + anomalies.
 
-    
-
-    Results cached for 60s to reduce filesystem scan load.
-
+    Args:
+        domain_id: domain 标识。
+        collection: collection 参数。
     """
 
     import time as _time
@@ -692,7 +681,11 @@ async def verify_ontology_domain(domain_id: str, collection: str = ""):
 
 async def get_scoring_config(domain_id: str):
 
-    """Get current retrieval scoring weights for a domain."""
+    """Get current retrieval scoring weights for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
 
     try:
 
@@ -730,7 +723,12 @@ async def get_scoring_config(domain_id: str):
 
 async def update_scoring_config(domain_id: str, config: dict):
 
-    """Update retrieval scoring weights. Changes take effect immediately."""
+    """Update retrieval scoring weights. Changes take effect immediately.
+
+    Args:
+        domain_id: domain 标识。
+        config: 配置 dict。
+    """
 
     import yaml, os
 
@@ -810,12 +808,9 @@ async def list_instances_by_class(domain_id: str, class_label: str = ""):
 
     """List all ontology instances (Wiki pages) for a given class_label.
 
-
-
-    Maps class_label → domain YAML categories → searches Wiki pages by category.
-
-    Wiki pages ARE the ontology instances — no separate graph node store needed.
-
+    Args:
+        domain_id: domain 标识。
+        class_label: class_label 参数。
     """
 
     from core.api.core_facade import search_pages, read_page  # P0-A2: 经 CoreFacade
@@ -944,12 +939,9 @@ async def get_ontology_class_by_category(category: str = "entities", collection:
 
     """Return the OntologyClass matching a category name, with required/optional/template fields.
 
-    
-
-    Used by Wiki creation form to dynamically render fields.
-
-    Checks all loaded domain ontologies + built-in classes.
-
+    Args:
+        category: category 参数。
+        collection: collection 参数。
     """
 
     from core.harness.knowledge.ontology_loader import load_all_domains
@@ -1040,12 +1032,10 @@ async def classify_all_pages(domain_id: str, collection: str = "", limit: int = 
 
     """Auto-classify unclassified wiki pages using LLM (reads body content), then auto-trigger build-instances.
 
-
-
-    Reads first 300 chars of each page body to improve classification accuracy.
-
-    After classification, auto-calls build-instances to populate the knowledge graph.
-
+    Args:
+        domain_id: domain 标识。
+        collection: collection 参数。
+        limit: 返回条数上限。
     """
 
     from core.harness.knowledge.wiki_engine import search_pages, read_page, write_page

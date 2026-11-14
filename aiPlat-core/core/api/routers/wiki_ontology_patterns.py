@@ -16,12 +16,8 @@ router = APIRouter(tags=["wiki-ontology-patterns"])
 async def detect_patterns(collection: str = "default"):
     """Scan wiki data and detect patterns not yet covered by T-Box.
 
-    Returns:
-    - undefined_categories: categories used in wiki but not in any T-Box class
-    - tag_clusters: high-frequency tags that may warrant new ontology classes
-    - dangling_references: pages referencing titles that don't exist (with variant suggestions)
-    - category_gaps: T-Box classes with zero wiki pages
-    - undefined_relations: relationship types in pages not in OBJECT_PROPERTIES
+    Args:
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.knowledge_validator import detect_ontology_patterns
@@ -46,15 +42,9 @@ async def detect_patterns(collection: str = "default"):
 async def get_ontology_metrics(collection: str = "default", refresh: bool = False):
     """Four-dimension ontology health metrics (cache-backed).
 
-    Dimensions:
-    1. Coverage: % wiki pages covered by T-Box classes
-    2. Consistency: validator errors / warnings / score
-    3. Inference gain: transitive + source_chain edges inferred
-    4. Maintenance cost: pending suggestions + last review time
-    Class usage: per-class wiki page counts
-
-    Cache is auto-invalidated when wiki pages are created/updated/deleted,
-    then rebuilt in a background subprocess. refresh=true shows cache age.
+    Args:
+        collection: collection 参数。
+        refresh: refresh 参数。
     """
     try:
         from core.harness.knowledge.knowledge_validator import load_metrics_cache
@@ -86,7 +76,11 @@ async def get_ontology_metrics(collection: str = "default", refresh: bool = Fals
 
 @router.get("/metrics/history", response_model=Dict[str, Any])
 async def get_metrics_history(collection: str = "default"):
-    """Return historical metrics snapshots for trend analysis (last 30 days)."""
+    """Return historical metrics snapshots for trend analysis (last 30 days).
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_validator import load_metrics_history
         history = load_metrics_history(collection)

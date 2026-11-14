@@ -23,7 +23,11 @@ def _get_conn():
 
 
 def state_distribution(domain_id: str) -> List[Dict[str, Any]]:
-    u"""Count instances per class per state. Returns [{class_name, state_name, count}]."""
+    """Count instances per class per state. Returns [{class_name, state_name, count}].
+
+    Args:
+        domain_id: domain 标识。
+    """
     if not _os.path.exists(DB_PATH):
         return []
     conn = _get_conn()
@@ -38,7 +42,12 @@ def state_distribution(domain_id: str) -> List[Dict[str, Any]]:
 
 
 def bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-    u"""Find entities stuck in their current state the longest."""
+    """Find entities stuck in their current state the longest.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     if not _os.path.exists(DB_PATH):
         return []
     conn = _get_conn()
@@ -62,7 +71,11 @@ def bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]
 
 
 def sla_violations(domain_id: str) -> List[Dict[str, Any]]:
-    u"""Find instances with time_elapsed transitions that have triggered (from state_history)."""
+    """Find instances with time_elapsed transitions that have triggered (from state_history).
+
+    Args:
+        domain_id: domain 标识。
+    """
     if not _os.path.exists(DB_PATH):
         return []
     conn = _get_conn()
@@ -87,7 +100,12 @@ def sla_violations(domain_id: str) -> List[Dict[str, Any]]:
 
 
 def trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
-    u"""Daily state transition counts for the last N days."""
+    """Daily state transition counts for the last N days.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     if not _os.path.exists(DB_PATH):
         return []
     conn = _get_conn()
@@ -111,7 +129,11 @@ def trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
 
 
 def state_transition_stats(domain_id: str) -> Dict[str, Any]:
-    u"""Get summary stats: total transitions, most common transitions."""
+    """Get summary stats: total transitions, most common transitions.
+
+    Args:
+        domain_id: domain 标识。
+    """
     if not _os.path.exists(DB_PATH):
         return {"total_transitions": 0, "top_transitions": []}
     conn = _get_conn()

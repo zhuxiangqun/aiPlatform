@@ -37,7 +37,9 @@ def seal_answer_with_receipts(
 ) -> Tuple[str, str]:
     """Bind fix/path claims to tool receipts. Returns ``(text, seal_status)``.
 
-    ``seal_status`` is ``ok`` | ``unverified`` | ``failed``.
+    Args:
+        text: text 参数。
+        context: context 参数。
     """
     from core.harness.execution.completion_receipt import bind_completion_to_receipts
 
@@ -46,7 +48,11 @@ def seal_answer_with_receipts(
 
 
 def check_done_verify(context: Optional[Dict[str, Any]] = None) -> Optional[str]:
-    """Run ``run_done_verify``; coding/review paths fail-closed on exceptions."""
+    """Run ``run_done_verify``; coding/review paths fail-closed on exceptions.
+
+    Args:
+        context: context 参数。
+    """
     ctx = context if isinstance(context, dict) else {}
     try:
         from core.harness.execution.done_verify import run_done_verify
@@ -65,7 +71,11 @@ def check_done_verify(context: Optional[Dict[str, Any]] = None) -> Optional[str]
 
 
 def is_coding_seal_context(context: Optional[Dict[str, Any]] = None) -> bool:
-    """True when missing review / file delivery must not soft-pass."""
+    """True when missing review / file delivery must not soft-pass.
+
+    Args:
+        context: context 参数。
+    """
     from core.harness.execution.done_verify import done_verify_exception_is_hard
 
     return done_verify_exception_is_hard(context if isinstance(context, dict) else {})
@@ -79,9 +89,10 @@ def pending_coding_followup(
 ) -> Optional[str]:
     """Next review/hygiene skill after a substantial primary coding delivery.
 
-    Driven by required_skills / done_verify (not agent_id). Prefer
-    autoreview → code_review → code-hygiene. When ``require_review`` is on,
-    schedule ``autoreview`` first — hygiene peers do not substitute.
+    Args:
+        context: context 参数。
+        bound_skill_ids: bound_skill_ids 参数。
+        ensure_skill: ensure_skill 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     if bound_skill_ids is None:
@@ -119,8 +130,11 @@ def coding_deliverable_veto(
 ) -> Optional[str]:
     """Reject premature DONE for clarify-only / thin stubs / missing follow-up.
 
-    After repeated coding vetoes, fail-open (return None) so eager finalize can
-    seal; ``quality_review_blocks_success`` then flips status to failed.
+    Args:
+        context: context 参数。
+        bound_skill_ids: bound_skill_ids 参数。
+        skills: skills 参数。
+        ensure_skill: ensure_skill 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     try:
@@ -244,8 +258,9 @@ def settle_repair_prediction(
 ) -> str:
     """Write predicted-vs-actual once, then re-seal if the measurement failed.
 
-    No world model. ``blocked`` is a coding/done_verify veto. A failed seal
-    or forced failure also counts as actual_pass false.
+    Args:
+        context: context 参数。
+        blocked: blocked 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     seal = str(ctx.get("_completion_seal") or "ok")
@@ -286,8 +301,12 @@ def seal_before_finish(
 ) -> Tuple[str, Optional[str]]:
     """Seal answer text and return ``(seal_status, block_reason)``.
 
-    ``block_reason`` non-None means the loop must not FINISHED as success.
-    Mutates ``context['output']`` when binding receipts.
+    Args:
+        context: context 参数。
+        bound_skill_ids: bound_skill_ids 参数。
+        skills: skills 参数。
+        ensure_skill: ensure_skill 参数。
+        bind_receipts: bind_receipts 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     seal = "ok"

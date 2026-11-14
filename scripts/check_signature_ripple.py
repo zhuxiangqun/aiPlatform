@@ -40,6 +40,7 @@ APP_DIR = WORKSPACE / "aiPlat-app"
 
 @dataclass
 class Param:
+    """Param。"""
     name: str
     has_default: bool = False
     is_kw_only: bool = False
@@ -47,29 +48,39 @@ class Param:
 
 @dataclass
 class Signature:
+    """Signature。"""
     name: str
     params: List[Param] = field(default_factory=list)
     lineno: int = 0
 
     @property
     def required_params(self) -> List[str]:
+        """required_params。
+        """
         return [p.name for p in self.params
                 if not p.has_default and p.name not in ("self", "cls")]
 
     @property
     def kw_only_params(self) -> List[str]:
+        """kw_only_params。
+        """
         return [p.name for p in self.params if p.is_kw_only]
 
 
 @dataclass
 class Breakage:
+    """Breakage。"""
     func_name: str
     change_type: str  # added_required | removed_param | renamed_param | removed_function
     detail: str
 
 
 def extract_signatures(filepath: Path) -> Dict[str, Signature]:
-    """解析 Python 文件，提取所有非 _ 前缀的 def 函数签名。"""
+    """解析 Python 文件，提取所有非 _ 前缀的 def 函数签名。
+
+    Args:
+        filepath: filepath 参数。
+    """
     tree = ast.parse(filepath.read_text(encoding="utf-8"))
     sigs: Dict[str, Signature] = {}
 
@@ -103,7 +114,12 @@ def extract_signatures(filepath: Path) -> Dict[str, Signature]:
 
 def compare_signatures(old: Dict[str, Signature],
                        new: Dict[str, Signature]) -> List[Breakage]:
-    """比对旧签名和新签名，找出破坏性变更。"""
+    """比对旧签名和新签名，找出破坏性变更。
+
+    Args:
+        old: old 参数。
+        new: new 参数。
+    """
     breakages: List[Breakage] = []
     all_names = set(old.keys()) | set(new.keys())
 
@@ -145,7 +161,9 @@ def compare_signatures(old: Dict[str, Signature],
 def scan_callers(target_dir: Path, func_names: Set[str]) -> List[Dict[str, Any]]:
     """扫描目录中所有对指定函数的调用点。
 
-    Only scans platform/app layers — core internal callers are NOT checked.
+    Args:
+        target_dir: target_dir 参数。
+        func_names: func_names 参数。
     """
     callers: List[Dict] = []
     if not target_dir.exists():
@@ -185,7 +203,13 @@ def scan_callers(target_dir: Path, func_names: Set[str]) -> List[Dict[str, Any]]
 
 def check_call_sites(breakages: List[Breakage], callers: List[Dict],
                      new_sigs: Dict[str, Signature]) -> List[Dict]:
-    """检查调用点是否兼容新签名，返回不兼容的调用点列表。"""
+    """检查调用点是否兼容新签名，返回不兼容的调用点列表。
+
+    Args:
+        breakages: breakages 参数。
+        callers: callers 参数。
+        new_sigs: new_sigs 参数。
+    """
     violations: List[Dict] = []
     affected_funcs = {b.func_name for b in breakages}
 
@@ -222,6 +246,8 @@ def check_call_sites(breakages: List[Breakage], callers: List[Dict],
 
 
 def load_baseline() -> Optional[Dict]:
+    """load_baseline。
+    """
     if BASELINE_PATH.exists():
         with open(BASELINE_PATH) as f:
             return json.load(f)
@@ -229,6 +255,11 @@ def load_baseline() -> Optional[Dict]:
 
 
 def save_baseline(data: Dict):
+    """save_baseline。
+
+    Args:
+        data: data 参数。
+    """
     import datetime
     data["created_at"] = datetime.datetime.now().isoformat()
     data["source"] = str(FACADE_PATH.relative_to(WORKSPACE))
@@ -238,6 +269,8 @@ def save_baseline(data: Dict):
 
 
 def main():
+    """main。
+    """
     import argparse
     parser = argparse.ArgumentParser(description="CoreFacade signature ripple detector")
     parser.add_argument("--check", action="store_true", help="Compare current vs baseline")

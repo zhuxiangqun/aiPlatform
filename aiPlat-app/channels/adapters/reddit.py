@@ -18,6 +18,11 @@ class RedditAdapter(ChannelAdapter):
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # Reddit: {"data": {"name": "t1_...", "author": "...", "subreddit": "...",
         #                   "body": "...", "link_title": "..."}}（comment 或 mention）
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         data = raw_data.get("data") or raw_data
         text = str(data.get("body", "") or data.get("selftext", "") or "")
         author = str(data.get("author", ""))
@@ -34,6 +39,11 @@ class RedditAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "parent_id": response.message_id,
             "body": response.text,

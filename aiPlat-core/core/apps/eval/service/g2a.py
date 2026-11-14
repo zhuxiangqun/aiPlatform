@@ -26,6 +26,15 @@ def _is_v0_locked(store) -> bool:
 
 
 def g2a_status(*, tenant_id: str = "eval-v1", db_path: Optional[str] = None) -> Dict[str, Any]:
+    """汇总 G2a 锁金状态（任务数 / 已裁决 / v0_locked）；永不宣称 accuracy。
+
+    Args:
+        tenant_id: 评测租户。
+        db_path: 可选 EvalStore 路径；空则默认。
+
+    Returns:
+        含 ``v0_lock_ready`` / ``g2a_ready`` / ``accuracy_claim=False`` 的状态 dict。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     st = e3_status(tenant_id=tenant_id, db_path=db_path)
     locked = _is_v0_locked(store)
@@ -63,6 +72,17 @@ def list_review_queue(
     limit: int = 100,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """列出尚未裁决的人工复核队列条目。
+
+    Args:
+        tenant_id: 评测租户。
+        annotator: 标注者标识。
+        limit: 最多返回条数。
+        db_path: 可选 EvalStore 路径。
+
+    Returns:
+        含 ``pending`` 列表与 ``total`` 的 dict。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     st = e3_status(tenant_id=tenant_id, db_path=db_path)
     set_id = str(st.get("set_id") or "")
@@ -85,7 +105,17 @@ def preannotate_review_queue(
     limit: int = 500,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """AI pre-annotation only: suggest pass from deterministic judge; does NOT adjudicate."""
+    """仅 AI 预标注：用确定性 judge 建议 pass；不裁决、不锁金。
+
+    Args:
+        tenant_id: 评测租户。
+        annotator: 标注者标识。
+        limit: 待处理标签上限。
+        db_path: 可选 EvalStore 路径。
+
+    Returns:
+        含 ``updated``；``adjudicated`` 恒为 False。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     st = e3_status(tenant_id=tenant_id, db_path=db_path)
     set_id = str(st.get("set_id") or "")
@@ -137,6 +167,19 @@ def adjudicate_label(
     tenant_id: str = "eval-v1",
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """单人裁决一条标签（D5；κ 不适用）。
+
+    Args:
+        label_id: 标签 ID。
+        passed: 人工判定是否通过。
+        notes: 可选备注。
+        rationale: 裁决理由；空则写默认 D5 说明。
+        tenant_id: 评测租户。
+        db_path: 可选 EvalStore 路径。
+
+    Returns:
+        含更新后 ``label``；``kappa`` 恒为 None。
+    """
     store = get_eval_store(tenant_id=tenant_id, db_path=db_path)
     row = store.adjudicate_label(
         label_id,
@@ -154,9 +197,15 @@ def lock_v0(
     force: bool = False,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Lock gold v0 when ≥30 tasks and ≥30 solo-adjudicated labels.
+    """在 ≥30 任务且 ≥30 单人裁决后锁定 gold v0；只写 store meta，不宣称 accuracy。
 
-    Does not claim accuracy. Sets store meta only.
+    Args:
+        tenant_id: 评测租户。
+        force: 诚实锁禁止：未就绪时 force 仍失败。
+        db_path: 可选 EvalStore 路径。
+
+    Returns:
+        成功时 ``v0_locked=True``；未就绪或非法 force 返回 error。
     """
     from datetime import datetime, timezone
 
@@ -204,7 +253,18 @@ def run_g2a_gate(
     limit: Optional[int] = None,
     db_path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Run local gate after v0 lock; may set gate_claim=true, never accuracy_claim."""
+    """v0 锁定后跑本地门禁；可设 ``gate_claim``，永不设 ``accuracy_claim``。
+
+    Args:
+        mode: 门禁模式（如 nightly）。
+        tenant_id: 评测租户。
+        set_id: 金标集；空则取状态中的 set_id。
+        limit: 可选任务上限。
+        db_path: 可选 EvalStore 路径。
+
+    Returns:
+        E5 门禁结果并附 ``g2a`` 状态；``accuracy_claim`` 恒 False。
+    """
     status = g2a_status(tenant_id=tenant_id, db_path=db_path)
     if not status.get("v0_locked"):
         return {

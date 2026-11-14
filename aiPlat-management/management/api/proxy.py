@@ -1,3 +1,5 @@
+"""proxy：模块接口。"""
+
 import os
 from typing import Optional
 
@@ -42,6 +44,8 @@ def _platform_upstream_path(path: str) -> str:
 
 
 def build_platform_proxy_router() -> APIRouter:
+    """build_platform_proxy_router。
+    """
     router = APIRouter(prefix="/platform", tags=["platform"])
     upstream = _base_url("AIPLAT_PLATFORM_ENDPOINT", "http://localhost:8003")
 
@@ -53,6 +57,8 @@ def build_platform_proxy_router() -> APIRouter:
 
 
 def build_app_proxy_router() -> APIRouter:
+    """build_app_proxy_router。
+    """
     router = APIRouter(prefix="/app", tags=["app"])
     upstream = _base_url("AIPLAT_APP_ENDPOINT", "http://localhost:8004")
 

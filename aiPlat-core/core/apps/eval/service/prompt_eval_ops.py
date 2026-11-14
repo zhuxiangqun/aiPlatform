@@ -1,4 +1,17 @@
-"""Prompt eval ops — test cases + A/B runs (platform thin HTTP via CoreFacade)."""
+"""
+Prompt 评测运维：测试用例 CRUD + A/B 评测 run（经 CoreFacade 薄 HTTP）。
+
+职责
+----
+在 ExecutionStore 绑定的 SQLite 上管理 ``prompt_test_cases`` /
+``prompt_eval_runs``；启动后台评测并挂 eval protocol。
+
+非目标
+------
+- 不做 Case Pack / intersection rank
+- 不实现完整双版本 A/B 裁决（当前侧重单模板跑分落库）
+- 不做 HTTP 路由本身
+"""
 from __future__ import annotations
 
 import asyncio
@@ -44,6 +57,18 @@ def prompt_eval_list_test_cases(
     limit: int = 100,
     offset: int = 0,
 ) -> Dict[str, Any]:
+    """
+    分页列出 prompt 测试用例。
+
+    Args:
+        db_path: SQLite 路径。
+        template_id: 可选按模板过滤。
+        limit: 返回条数上限。
+        offset: 偏移。
+
+    Returns:
+        ``{total, items}``。
+    """
     from core.api.core_facade import get_db_connection
 
     with get_db_connection(db_path) as conn:
@@ -69,6 +94,19 @@ def prompt_eval_create_test_case(
     variables: Any,
     expected_keys: str,
 ) -> Dict[str, Any]:
+    """
+    新建一条 prompt 测试用例。
+
+    Args:
+        db_path: SQLite 路径。
+        template_id: 所属模板 ID。
+        name: 用例名。
+        variables: 变量 dict（落库为 JSON）。
+        expected_keys: 期望关键词串（逗号分隔）。
+
+    Returns:
+        新建行 dict。
+    """
     from core.api.core_facade import get_db_connection
 
     case_id = f"tc-{_new_id().split('-')[1]}"
@@ -101,6 +139,22 @@ def prompt_eval_update_test_case(
     variables: Any,
     expected_keys: Optional[str],
 ) -> Dict[str, Any]:
+    """
+    更新已有测试用例字段（None 表示保持原值）。
+
+    Args:
+        db_path: SQLite 路径。
+        case_id: 用例 ID。
+        name: 新名称；None 不改。
+        variables: 新变量；None 不改。
+        expected_keys: 新期望键；None 不改。
+
+    Returns:
+        ``{status: updated}``。
+
+    Raises:
+        LookupError: 用例不存在。
+    """
     from core.api.core_facade import get_db_connection
 
     with get_db_connection(db_path) as conn:
@@ -125,6 +179,16 @@ def prompt_eval_update_test_case(
 
 
 def prompt_eval_delete_test_case(*, db_path: str, case_id: str) -> Dict[str, Any]:
+    """
+    删除一条测试用例。
+
+    Args:
+        db_path: SQLite 路径。
+        case_id: 用例 ID。
+
+    Returns:
+        ``{status: deleted}``。
+    """
     from core.api.core_facade import get_db_connection
 
     with get_db_connection(db_path) as conn:
@@ -140,6 +204,18 @@ def prompt_eval_list_runs(
     limit: int = 20,
     offset: int = 0,
 ) -> List[Dict[str, Any]]:
+    """
+    列出 prompt 评测 run。
+
+    Args:
+        db_path: SQLite 路径。
+        template_id: 可选按模板过滤。
+        limit: 条数上限。
+        offset: 偏移。
+
+    Returns:
+        run 行 dict 列表。
+    """
     from core.api.core_facade import get_db_connection
 
     with get_db_connection(db_path) as conn:
@@ -155,6 +231,19 @@ def prompt_eval_list_runs(
 
 
 def prompt_eval_get_run(*, db_path: str, run_id: str) -> Dict[str, Any]:
+    """
+    按 ID 读取一条评测 run。
+
+    Args:
+        db_path: SQLite 路径。
+        run_id: run ID。
+
+    Returns:
+        run 行 dict。
+
+    Raises:
+        LookupError: 不存在。
+    """
     from core.api.core_facade import get_db_connection
 
     with get_db_connection(db_path) as conn:
@@ -284,7 +373,24 @@ async def prompt_eval_start_run(
     model: str,
     case_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Create run row and schedule background evaluation. Returns protocol-ready dict."""
+    """
+    创建 run 行并调度后台评测；返回挂好 protocol 的 dict。
+
+    Args:
+        template_id: 模板 ID。
+        version_a: A 版本标识（落库）。
+        version_b: B 版本标识（落库）。
+        model: 评测用模型名。
+        case_ids: 限定用例；空则取该模板最多 20 条。
+
+    Returns:
+        含 ``run_id`` / ``status=running``，并附 eval protocol。
+
+    Raises:
+        ValueError: 无测试用例。
+        LookupError: 模板不存在。
+        RuntimeError: ExecutionStore 未初始化。
+    """
     from core.api.core_facade import (
         attach_eval_protocol,
         eval_protocol_from_generic,
@@ -362,6 +468,17 @@ async def prompt_eval_start_run(
 async def prompt_eval_list_test_cases_async(
     *, template_id: str = "", limit: int = 100, offset: int = 0
 ) -> Dict[str, Any]:
+    """
+    异步门面：解析 store 后列出测试用例。
+
+    Args:
+        template_id: 可选模板过滤。
+        limit: 条数上限。
+        offset: 偏移。
+
+    Returns:
+        ``{total, items}``。
+    """
     store = await _require_store()
     db_path = _db_path_from_store(store)
     return await asyncio.to_thread(
@@ -380,6 +497,18 @@ async def prompt_eval_create_test_case_async(
     variables: Any,
     expected_keys: str,
 ) -> Dict[str, Any]:
+    """
+    异步门面：新建测试用例。
+
+    Args:
+        template_id: 模板 ID。
+        name: 用例名。
+        variables: 变量。
+        expected_keys: 期望关键词。
+
+    Returns:
+        新建行 dict。
+    """
     store = await _require_store()
     db_path = _db_path_from_store(store)
     return await asyncio.to_thread(
@@ -399,6 +528,18 @@ async def prompt_eval_update_test_case_async(
     variables: Any,
     expected_keys: Optional[str],
 ) -> Dict[str, Any]:
+    """
+    异步门面：更新测试用例。
+
+    Args:
+        case_id: 用例 ID。
+        name: 新名称；None 不改。
+        variables: 新变量；None 不改。
+        expected_keys: 新期望键；None 不改。
+
+    Returns:
+        ``{status: updated}``。
+    """
     store = await _require_store()
     db_path = _db_path_from_store(store)
     return await asyncio.to_thread(
@@ -412,6 +553,15 @@ async def prompt_eval_update_test_case_async(
 
 
 async def prompt_eval_delete_test_case_async(*, case_id: str) -> Dict[str, Any]:
+    """
+    异步门面：删除测试用例。
+
+    Args:
+        case_id: 用例 ID。
+
+    Returns:
+        ``{status: deleted}``。
+    """
     store = await _require_store()
     db_path = _db_path_from_store(store)
     return await asyncio.to_thread(
@@ -422,6 +572,17 @@ async def prompt_eval_delete_test_case_async(*, case_id: str) -> Dict[str, Any]:
 async def prompt_eval_list_runs_async(
     *, template_id: str = "", limit: int = 20, offset: int = 0
 ) -> List[Dict[str, Any]]:
+    """
+    异步门面：列出评测 run。
+
+    Args:
+        template_id: 可选模板过滤。
+        limit: 条数上限。
+        offset: 偏移。
+
+    Returns:
+        run 列表。
+    """
     store = await _require_store()
     db_path = _db_path_from_store(store)
     return await asyncio.to_thread(
@@ -434,6 +595,15 @@ async def prompt_eval_list_runs_async(
 
 
 async def prompt_eval_get_run_async(*, run_id: str) -> Dict[str, Any]:
+    """
+    异步门面：读取 run 并挂 eval protocol。
+
+    Args:
+        run_id: run ID。
+
+    Returns:
+        带 protocol 的 run dict。
+    """
     from core.api.core_facade import attach_eval_protocol, eval_protocol_from_generic
 
     store = await _require_store()

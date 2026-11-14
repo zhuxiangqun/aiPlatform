@@ -37,6 +37,7 @@ class ChatSessionDetailResponse(BaseModel):
 # ── Conversations ──
 
 class ConversationScope(BaseModel):
+    """ConversationScope。"""
     collection_id: str = "default"
     doc_ids: List[str] = Field(default_factory=list)
     version: int = 0
@@ -44,6 +45,7 @@ class ConversationScope(BaseModel):
 
 
 class ConversationProfile(BaseModel):
+    """ConversationProfile。"""
     citation_required: bool = False
     answer_style: str = "detailed"
     language: str = "zh-CN"
@@ -63,6 +65,7 @@ class ConversationResponse(BaseModel):
 
 
 class ConversationListItem(BaseModel):
+    """ConversationListItem。"""
     session_id: str
     title: str = ""
     scope: ConversationScope = Field(default_factory=ConversationScope)
@@ -96,6 +99,7 @@ class ConversationQueryResponse(BaseModel):
 # ── Approvals ──
 
 class ApprovalListItem(BaseModel):
+    """ApprovalListItem。"""
     request_id: str = ""
     user_id: str = ""
     operation: str = ""

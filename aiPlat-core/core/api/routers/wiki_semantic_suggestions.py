@@ -14,6 +14,7 @@ router = APIRouter(tags=["wiki-semantic-suggestions"])
 
 
 class SemanticSuggestRequest(BaseModel):
+    """SemanticSuggestRequest。"""
     collection: str = "default"
     max_suggestions: int = 5
     confidence_threshold: float = 0.7
@@ -22,11 +23,10 @@ class SemanticSuggestRequest(BaseModel):
 
 @router.get("/suggestions", response_model=Dict[str, Any])
 async def list_pending_suggestions(collection: str = "default"):
-    """List pending ontology learning suggestions (new_class / new_property /
-    new_subclass / merge_classes) for the management UI panel.
+    """List pending ontology learning suggestions (new_class / new_property /。
 
-    (P-补全) Reads the same suggestions tracking file that
-    add_suggestions_from_patterns / generate_semantic_suggestions write.
+    Args:
+        collection: collection 参数。
     """
     from core.harness.knowledge.knowledge_ontology import load_pending_suggestions
 
@@ -36,10 +36,10 @@ async def list_pending_suggestions(collection: str = "default"):
 
 @router.post("/suggestions/semantic", response_model=Dict[str, Any])
 async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = Body(default=None)):
-    u"""Generate semantic ontology evolution suggestions via LLM (Tier 2).
+    """Generate semantic ontology evolution suggestions via LLM (Tier 2).
 
-    Dimensions: semantic merge detection, field gap analysis, relation inference.
-    Set include_llm=False to get only Tier 1 (rule-based) suggestions.
+    Args:
+        req: req 参数。
     """
     if req is None:
         req = SemanticSuggestRequest()
@@ -67,7 +67,12 @@ async def generate_semantic_suggestions_endpoint(req: SemanticSuggestRequest = B
 
 @router.post("/suggestions/{suggestion_id}/impact", response_model=Dict[str, Any])
 async def predict_suggestion_impact(suggestion_id: str, collection: str = "default"):
-    u"""Predict the impact scope of accepting an evolution suggestion."""
+    """Predict the impact scope of accepting an evolution suggestion.
+
+    Args:
+        suggestion_id: suggestion 标识。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_ontology import load_pending_suggestions  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.knowledge_ontology import get_ontology  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.knowledge_evolution_llm import predict_evolution_impact

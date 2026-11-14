@@ -11,7 +11,12 @@ from typing import Any, Optional
 
 
 def is_leading_token(text: Any, token: str) -> bool:
-    """True when ``token`` starts the text (optional ``:`` / fullwidth colon / space)."""
+    """True when ``token`` starts the text (optional ``:`` / fullwidth colon / space).
+
+    Args:
+        text: text 参数。
+        token: token 参数。
+    """
     raw = str(text or "").strip()
     tok = str(token or "").strip()
     if not raw or not tok:
@@ -27,7 +32,11 @@ def is_leading_token(text: Any, token: str) -> bool:
 
 
 def is_approved_evaluation(text: Any) -> bool:
-    """Tri-agent style: leading APPROVED (not REJECTED / mid-string APPROVED)."""
+    """Tri-agent style: leading APPROVED (not REJECTED / mid-string APPROVED).
+
+    Args:
+        text: text 参数。
+    """
     raw = str(text or "").strip()
     if not raw:
         return False
@@ -41,7 +50,12 @@ def parse_status_line_pass(
     *,
     pass_keyword: str = "PASS",
 ) -> Optional[bool]:
-    """Read ``STATUS:`` line if present. None when no STATUS line."""
+    """Read ``STATUS:`` line if present. None when no STATUS line.
+
+    Args:
+        text: text 参数。
+        pass_keyword: pass_keyword 参数。
+    """
     keyword = str(pass_keyword or "PASS").strip().upper() or "PASS"
     for line in str(text or "").splitlines():
         s = line.strip()
@@ -65,7 +79,12 @@ def parse_status_line_pass(
 
 
 def is_pass_keyword_verdict(text: Any, pass_keyword: str = "PASS") -> bool:
-    """Reflection critic: STATUS line wins; else leading pass keyword only."""
+    """Reflection critic: STATUS line wins; else leading pass keyword only.
+
+    Args:
+        text: text 参数。
+        pass_keyword: pass_keyword 参数。
+    """
     status = parse_status_line_pass(text, pass_keyword=pass_keyword)
     if status is not None:
         return status
@@ -73,7 +92,11 @@ def is_pass_keyword_verdict(text: Any, pass_keyword: str = "PASS") -> bool:
 
 
 def is_yes_review(text: Any) -> bool:
-    """Producer–reviewer: leading YES only (not mid-string YES / leading NO)."""
+    """Producer–reviewer: leading YES only (not mid-string YES / leading NO).
+
+    Args:
+        text: text 参数。
+    """
     raw = str(text or "").strip()
     if not raw:
         return False
@@ -94,8 +117,8 @@ def _coerce_complete_flag(value: Any) -> bool:
 def is_complete_evaluation(text: Any) -> bool:
     """LLM completeness judge: JSON ``complete`` wins; else leading COMPLETE.
 
-    ``{"complete": false}`` contains the substring COMPLETE and must not pass.
-    ``COMPLETELY`` / ``NOT COMPLETE`` / mid-string COMPLETE are not a pass.
+    Args:
+        text: text 参数。
     """
     raw = str(text or "").strip()
     if not raw:
@@ -117,8 +140,8 @@ def is_complete_evaluation(text: Any) -> bool:
 def is_same_task_verdict(text: Any) -> bool:
     """Continuity classifier: JSON ``same_task`` wins; else leading SAME.
 
-    ``{"same_task": false}`` contains the substring SAME and must not match.
-    Leading NEW / mid-string SAME / ``SAMENESS`` are not the same task.
+    Args:
+        text: text 参数。
     """
     raw = str(text or "").strip()
     if not raw:

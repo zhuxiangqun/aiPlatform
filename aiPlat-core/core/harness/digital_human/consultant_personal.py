@@ -61,6 +61,11 @@ _STYLE_LINE = "偏好：回答先结论、尽量短，不要套模板。"
 
 
 def sanitize_tenant_id(tenant_id: Optional[str]) -> str:
+    """sanitize_tenant_id。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     tid = str(tenant_id or "").strip() or "default"
     if not _SAFE_TENANT.match(tid):
         return "default"
@@ -82,9 +87,9 @@ def _tenant_memory_path(tenant_id: str) -> Path:
 def memory_path(tenant_id: Optional[str] = None, *, for_write: bool = False) -> Path:
     """Resolve notes path for tenant.
 
-    Read: default may fall back to legacy ``memory/xiaozhu.md``.
-    Write: always ``memory/tenants/{tid}/xiaozhu.md``; first default write
-    copies legacy content once so old notes are not stranded.
+    Args:
+        tenant_id: 租户 ID。
+        for_write: for_write 参数。
     """
     tid = sanitize_tenant_id(tenant_id)
     tenant_path = _tenant_memory_path(tid)
@@ -111,6 +116,11 @@ def _contains_secret(text: str) -> bool:
 
 
 def looks_like_lasting_note(text: str) -> bool:
+    """looks_like_lasting_note。
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     if len(t) < 4 or len(t) > 400:
         return False
@@ -129,6 +139,11 @@ def looks_like_lasting_note(text: str) -> bool:
 
 
 def looks_like_short_style(text: str) -> bool:
+    """looks_like_short_style。
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     if not t or _contains_secret(t):
         return False
@@ -140,6 +155,12 @@ def load_personal_notes(
     tenant_id: Optional[str] = None,
     max_chars: int = 1800,
 ) -> str:
+    """load_personal_notes。
+
+    Args:
+        tenant_id: 租户 ID。
+        max_chars: max_chars 参数。
+    """
     path = memory_path(tenant_id)
     if not path.is_file():
         return ""
@@ -182,6 +203,12 @@ def _append_line(line: str, *, tenant_id: Optional[str] = None) -> bool:
 
 
 def remember_from_user(text: str, *, tenant_id: Optional[str] = None) -> bool:
+    """remember_from_user。
+
+    Args:
+        text: text 参数。
+        tenant_id: 租户 ID。
+    """
     t = (text or "").strip()
     if not looks_like_lasting_note(t):
         return False
@@ -190,6 +217,12 @@ def remember_from_user(text: str, *, tenant_id: Optional[str] = None) -> bool:
 
 
 def remember_style_pref(text: str, *, tenant_id: Optional[str] = None) -> bool:
+    """remember_style_pref。
+
+    Args:
+        text: text 参数。
+        tenant_id: 租户 ID。
+    """
     if not looks_like_short_style(text):
         return False
     path = memory_path(tenant_id)
@@ -209,7 +242,13 @@ def remember_from_turn(
     *,
     tenant_id: Optional[str] = None,
 ) -> bool:
-    """Grow notes from explicit 记住, identity, and repeated style — not from page audit."""
+    """Grow notes from explicit 记住, identity, and repeated style — not from page audit.
+
+    Args:
+        user_text: user_text 参数。
+        assistant_text: assistant_text 参数。
+        tenant_id: 租户 ID。
+    """
     del assistant_text  # reserved; do not store model dumps as biography
     wrote = remember_from_user(user_text, tenant_id=tenant_id)
     wrote = remember_style_pref(user_text, tenant_id=tenant_id) or wrote

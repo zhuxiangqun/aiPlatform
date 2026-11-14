@@ -124,15 +124,11 @@ async def run_skill_lint_scan(
     payload: Optional[Dict[str, Any]],
     execution_store: Any,
 ) -> Dict[str, Any]:
-    """
-    Execute a lint scan.
+    """Execute a lint scan.
 
-    payload:
-      - scopes: ["workspace","engine"]  (default ["workspace"])
-      - category: optional
-      - status: optional
-      - include_full: bool (default False)
-      - max_items: int (default 500)
+    Args:
+        payload: 载荷 dict。
+        execution_store: execution_store 参数。
     """
     p = payload if isinstance(payload, dict) else {}
     scopes = _as_list(p.get("scopes") or p.get("scope")) or ["workspace"]

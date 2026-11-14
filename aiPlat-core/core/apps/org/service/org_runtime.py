@@ -86,7 +86,11 @@ def _default_seed(domain_id: str) -> Dict[str, Any]:
 
 
 def ensure_pilot_goal(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Install seed OrgGoal into AIPLAT_HOME when missing for domain."""
+    """Install seed OrgGoal into AIPLAT_HOME when missing for domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "it-ops").strip() or "it-ops"
     goals = _read_json(_goals_path(), {"goals": []})
     existing = [g for g in goals.get("goals") or [] if g.get("domain_id") == did]
@@ -111,6 +115,11 @@ def ensure_pilot_goal(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def list_goals(domain_id: str = "") -> Dict[str, Any]:
+    """列出 goals。
+
+    Args:
+        domain_id: domain 标识。
+    """
     if domain_id:
         ensure_pilot_goal(domain_id)
     else:
@@ -122,6 +131,11 @@ def list_goals(domain_id: str = "") -> Dict[str, Any]:
 
 
 def get_goal(goal_id: str) -> Dict[str, Any]:
+    """获取 goal。
+
+    Args:
+        goal_id: goal 标识。
+    """
     gid = (goal_id or "").strip()
     for g in _read_json(_goals_path(), {"goals": []}).get("goals") or []:
         if g.get("goal_id") == gid:
@@ -130,6 +144,12 @@ def get_goal(goal_id: str) -> Dict[str, Any]:
 
 
 def set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
+    """set_goal_status。
+
+    Args:
+        goal_id: goal 标识。
+        status: status 参数。
+    """
     st = (status or "").strip().lower()
     if st not in _GOAL_STATUSES:
         return {"status": "invalid_status", "allowed": sorted(_GOAL_STATUSES)}
@@ -148,7 +168,12 @@ def set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
 
 
 def patch_goal(goal_id: str, fields: Dict[str, Any]) -> Dict[str, Any]:
-    """Patch allowlisted OrgGoal fields (Phase 4 fleet flag etc.)."""
+    """Patch allowlisted OrgGoal fields (Phase 4 fleet flag etc.).
+
+    Args:
+        goal_id: goal 标识。
+        fields: fields 参数。
+    """
     allow = {"allow_fleet", "title", "schedule", "owner_role", "query_open", "exception_policy"}
     store = _read_json(_goals_path(), {"goals": []})
     found = None
@@ -167,6 +192,12 @@ def patch_goal(goal_id: str, fields: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def list_runs(goal_id: str = "", limit: int = 20) -> Dict[str, Any]:
+    """列出 runs。
+
+    Args:
+        goal_id: goal 标识。
+        limit: 返回条数上限。
+    """
     runs = _read_json(_runs_path(), {"runs": []}).get("runs") or []
     if goal_id:
         runs = [r for r in runs if r.get("goal_id") == goal_id]
@@ -175,6 +206,11 @@ def list_runs(goal_id: str = "", limit: int = 20) -> Dict[str, Any]:
 
 
 def get_run(run_id: str) -> Dict[str, Any]:
+    """获取 run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     rid = (run_id or "").strip()
     for r in _read_json(_runs_path(), {"runs": []}).get("runs") or []:
         if r.get("run_id") == rid:
@@ -217,7 +253,17 @@ def run_org_goal(
     usage_tenant: str = "",
     usage_actor: str = "",
 ) -> Dict[str, Any]:
-    """Execute one OrgRun: locate → fetch → triage_gate (HITL when dry / policy)."""
+    """Execute one OrgRun: locate → fetch → triage_gate (HITL when dry / policy).
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        dry_actions: dry_actions 参数。
+        week_label: week_label 参数。
+        usage_channel: usage_channel 参数。
+        usage_tenant: usage_tenant 参数。
+        usage_actor: usage_actor 参数。
+    """
     from core.apps.fde.service.v_wave_guard import edge_auto_apply_block
 
     blocked = edge_auto_apply_block()
@@ -404,7 +450,13 @@ def resume_run(
     approve: bool = True,
     resolution: str = "",
 ) -> Dict[str, Any]:
-    """Resume needs_hitl run after human decision (W4)."""
+    """Resume needs_hitl run after human decision (W4).
+
+    Args:
+        run_id: 运行 ID。
+        approve: approve 参数。
+        resolution: resolution 参数。
+    """
     got = get_run(run_id)
     if got.get("status") != "ok":
         return got

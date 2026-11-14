@@ -43,6 +43,11 @@ class SecretsManager:
     """
 
     def __init__(self, key_path: Optional[Path] = None):
+        """初始化。
+
+        Args:
+            key_path: key_path 参数。
+        """
         self._store_path = _derive_store_path()
         self._key = self._load_or_create_key(key_path or _derive_key_path())
         self._cache: Dict[str, str] = {}
@@ -94,7 +99,11 @@ class SecretsManager:
         os.chmod(self._store_path, 0o600)
 
     def get(self, name: str) -> Optional[str]:
-        """Get a secret by name. Falls back to env var if not in store."""
+        """Get a secret by name. Falls back to env var if not in store.
+
+        Args:
+            name: name 参数。
+        """
         self._load_store()
         if name in self._cache:
             self._audit("access", name)
@@ -106,14 +115,23 @@ class SecretsManager:
         return None
 
     def set(self, name: str, value: str) -> None:
-        """Store a secret (encrypted at rest)."""
+        """Store a secret (encrypted at rest).
+
+        Args:
+            name: name 参数。
+            value: value 参数。
+        """
         self._load_store()
         self._cache[name] = value
         self._save_store()
         self._audit("store", name)
 
     def delete(self, name: str) -> bool:
-        """Delete a secret from the store."""
+        """Delete a secret from the store.
+
+        Args:
+            name: name 参数。
+        """
         self._load_store()
         existed = self._cache.pop(name, None) is not None
         if existed:

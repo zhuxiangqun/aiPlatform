@@ -32,15 +32,21 @@ class PipelineGraph:
     """Execute a pipeline subset as a named graph for trace observability."""
 
     def __init__(self, stages: List[PipelineStageConfig], name: str = "pipeline"):
+        """初始化。
+
+        Args:
+            stages: stages 参数。
+            name: name 参数。
+        """
         self._stages = list(stages)
         self._name = name
 
     @staticmethod
     def get_condition(name: str) -> Optional[Callable]:
         """Resolve a named condition function from the CONDITION_REGISTRY.
-        
-        Used by graph builders for conditional edge routing:
-            builder.add_conditional_edge(from_node, condition=get_condition('phase_check'), ...)
+
+        Args:
+            name: name 参数。
         """
         return _condition_registry.get(name)
 
@@ -50,6 +56,13 @@ class PipelineGraph:
         start_idx: int = 0,
         exec_fn: Optional[Callable] = None,
     ) -> PipelineState:
+        """execute。
+
+        Args:
+            state: state 参数。
+            start_idx: start_idx 参数。
+            exec_fn: exec_fn 参数。
+        """
         if exec_fn is None:
             raise ValueError("exec_fn is required")
 

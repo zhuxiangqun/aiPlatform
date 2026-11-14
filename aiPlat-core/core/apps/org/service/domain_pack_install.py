@@ -22,10 +22,14 @@ def _home() -> Path:
 
 
 def packs_root() -> Path:
+    """packs_root。
+    """
     return Path(__file__).resolve().parents[4] / "workspace_seeds" / "domain_packs"
 
 
 def list_domain_packs() -> Dict[str, Any]:
+    """列出 domain_packs。
+    """
     root = packs_root()
     items: List[Dict[str, Any]] = []
     if root.is_dir():
@@ -66,6 +70,14 @@ def install_domain_pack(
     domain_id: str,
     display_name: str = "",
 ) -> Dict[str, Any]:
+    """install_domain_pack。
+
+    Args:
+        role: role 参数。
+        template_id: template 标识。
+        domain_id: domain 标识。
+        display_name: display_name 参数。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing"}

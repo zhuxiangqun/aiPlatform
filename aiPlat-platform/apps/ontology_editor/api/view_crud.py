@@ -1,3 +1,5 @@
+"""view_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""Ontology Editor — Role View CRUD endpoints (v2.6)."""
 from fastapi import APIRouter, HTTPException
@@ -20,7 +22,11 @@ def _cf():
 
 @router.get("/domains/{domain_id}/views", response_model=StatusResponse)
 async def list_views(domain_id: str):
-    u"""List all role-based views for a domain."""
+    """List all role-based views for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         (list_views_for_domain, *_) = _cf()
         views = list_views_for_domain(domain_id)
@@ -33,7 +39,12 @@ async def list_views(domain_id: str):
 
 @router.get("/domains/{domain_id}/views/{role}", response_model=StatusResponse)
 async def get_view(domain_id: str, role: str):
-    u"""Get a single role view definition."""
+    """Get a single role view definition.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+    """
     try:
         (_, get_view_for_domain, *_) = _cf()
         view = get_view_for_domain(domain_id, role)
@@ -50,7 +61,11 @@ async def get_view(domain_id: str, role: str):
 
 @router.post("/domains/{domain_id}/views/validate", response_model=StatusResponse)
 async def validate_views(domain_id: str):
-    u"""Validate all role views for a domain."""
+    """Validate all role views for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         (*_, validate_views_for_domain) = _cf()
         return validate_views_for_domain(domain_id)
@@ -62,7 +77,12 @@ async def validate_views(domain_id: str):
 
 @router.post("/domains/{domain_id}/views", response_model=StatusResponse)
 async def upsert_view(domain_id: str, data: Dict[str, Any]):
-    u"""Create or update a role view in a domain YAML."""
+    """Create or update a role view in a domain YAML.
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         role = data.get("role") or data.get("name", "")
         view_data = data.get("view") or data.get("data", {})
@@ -83,7 +103,12 @@ async def upsert_view(domain_id: str, data: Dict[str, Any]):
 
 @router.delete("/domains/{domain_id}/views/{role}", response_model=StatusResponse)
 async def delete_view(domain_id: str, role: str):
-    u"""Delete a role view from a domain YAML."""
+    """Delete a role view from a domain YAML.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+    """
     try:
         (_, _, _, delete_view_for_domain, *_) = _cf()
         result = delete_view_for_domain(domain_id, role)
@@ -96,7 +121,13 @@ async def delete_view(domain_id: str, role: str):
 
 @router.get("/domains/{domain_id}/views/{role}/resolve-term", response_model=StatusResponse)
 async def resolve_term(domain_id: str, role: str, term: str = ""):
-    u"""Resolve a term's meaning for a specific role's perspective."""
+    """Resolve a term's meaning for a specific role's perspective.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+        term: term 参数。
+    """
     if not term:
         raise HTTPException(status_code=400, detail="term query parameter required")
     try:

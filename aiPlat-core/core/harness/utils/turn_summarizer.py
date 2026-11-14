@@ -5,7 +5,12 @@ Extracted from MaterialsChatAgent. Chinese locale by default.
 
 
 def build_turn_summary(question: str, answer: str) -> str:
-    """Format a conversation turn into a compact summary string."""
+    """Format a conversation turn into a compact summary string.
+
+    Args:
+        question: question 参数。
+        answer: answer 参数。
+    """
     q = str(question or "").strip()
     a = str(answer or "").strip()
     if not a:

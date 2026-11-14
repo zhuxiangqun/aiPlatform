@@ -19,7 +19,11 @@ _cache: Dict[str, AgentManager] = {}
 
 
 def agent_manager_for(ctx: NamedWorkspaceContext) -> AgentManager:
-    """Return AgentManager loaded from ctx.agents_dir (cached by workspace_id)."""
+    """Return AgentManager loaded from ctx.agents_dir (cached by workspace_id).
+
+    Args:
+        ctx: ctx 参数。
+    """
     wid = ctx.workspace_id
     with _lock:
         mgr = _cache.get(wid)
@@ -36,6 +40,11 @@ def agent_manager_for(ctx: NamedWorkspaceContext) -> AgentManager:
 
 
 def invalidate_agent_manager(workspace_id: str | None = None) -> None:
+    """invalidate_agent_manager。
+
+    Args:
+        workspace_id: 工作区 ID。
+    """
     with _lock:
         if workspace_id:
             _cache.pop(workspace_id, None)

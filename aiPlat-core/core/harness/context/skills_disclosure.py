@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SkillsDisclosureBudget:
+    """SkillsDisclosureBudget。"""
     per_skill_desc_max_chars: int
     skills_desc_total_max_chars: int
     skill_sop_recommended_max_chars: int
@@ -28,11 +29,13 @@ def compute_skills_disclosure_budget(
     default_skills_desc_total_max_chars: int,
     default_skill_sop_max_chars: int,
 ) -> SkillsDisclosureBudget:
-    """
-    根据上下文压力计算预算：
-    - normal: 使用默认预算
-    - pressured: 中度收缩，避免 desc 过长，同时建议 SOP 降到 4k
-    - critical: 强收缩，建议 SOP 降到 2k
+    """根据上下文压力计算预算：。
+
+    Args:
+        context_pressure: context_pressure 参数。
+        default_per_skill_desc_max_chars: default_per_skill_desc_max_chars 参数。
+        default_skills_desc_total_max_chars: default_skills_desc_total_max_chars 参数。
+        default_skill_sop_max_chars: default_skill_sop_max_chars 参数。
     """
     p = float(context_pressure or 0.0)
 

@@ -1,3 +1,5 @@
+"""table_extract：模块接口。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -179,10 +181,10 @@ def _to_amount(s: str) -> Optional[float]:
 
 
 def extract_budget_table(tokens: List[OCRToken]) -> List[Dict[str, Any]]:
-    """
-    从一页 OCR tokens 中抽取“投资预算”类表格（PoC）。
-    输出 rows: [{item, y2026, y2027, total, cells:{...}}]
-    cells: 每个字段带 bbox 与 raw text，便于引用/高亮。
+    """从一页 OCR tokens 中抽取“投资预算”类表格（PoC）。
+
+    Args:
+        tokens: tokens 参数。
     """
     # Adaptive y tolerance: fixed 20 often merges multiple table rows on high-DPI renders.
     try:

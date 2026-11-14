@@ -67,6 +67,7 @@ logger = logging.getLogger("aiplat.goal_generator")
 
 class GoalType(Enum):
 
+    """GoalType。"""
     HEALING_GAP = "healing_gap"
 
     STRATEGY_OPTIMIZE = "strategy_optimize"
@@ -91,6 +92,7 @@ class GoalType(Enum):
 
 class Priority(Enum):
 
+    """Priority。"""
     CRITICAL = 4  # immediate action needed
 
     HIGH = 3
@@ -135,6 +137,8 @@ class Goal:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         d = asdict(self)
 
         d["goal_type"] = self.goal_type.value
@@ -1023,6 +1027,8 @@ _generator: Optional[GoalGenerator] = None
 
 def get_goal_generator() -> GoalGenerator:
 
+    """获取 goal_generator。
+    """
     global _generator
 
     if _generator is None:

@@ -61,7 +61,8 @@ def _safe_case_id(case_id: str) -> str:
 def default_gold_dir(tenant_id: str = "") -> Path:
     """Runtime gold cases dir. Tenant-scoped under eval/tenants/{id}/code_review_gold/.
 
-    Empty tenant_id → legacy ``eval/code_review_gold`` (backward compatible).
+    Args:
+        tenant_id: 租户 ID。
     """
     from core.utils.paths import get_aiplat_data_dir
 
@@ -71,7 +72,11 @@ def default_gold_dir(tenant_id: str = "") -> Path:
 
 
 def reports_dir(tenant_id: str = "") -> Path:
-    """Append-only JSONL eval runs (ReviewBench regression history)."""
+    """Append-only JSONL eval runs (ReviewBench regression history).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.utils.paths import get_aiplat_data_dir
 
     tid = _safe_tenant(tenant_id) if (tenant_id or "").strip() else "default"
@@ -79,7 +84,12 @@ def reports_dir(tenant_id: str = "") -> Path:
 
 
 def resolve_gold_dir(gold_dir: Optional[str] = None, tenant_id: str = "") -> Path:
-    """Resolve gold_dir; reject paths outside allowed eval / workspace seed roots."""
+    """Resolve gold_dir; reject paths outside allowed eval / workspace seed roots.
+
+    Args:
+        gold_dir: 黄金集目录。
+        tenant_id: 租户 ID。
+    """
     if not gold_dir:
         return default_gold_dir(tenant_id)
     from core.utils.paths import get_aiplat_data_dir
@@ -107,7 +117,11 @@ def resolve_gold_dir(gold_dir: Optional[str] = None, tenant_id: str = "") -> Pat
 
 
 def profile_to_autoreview_args(profile: str) -> Dict[str, Any]:
-    """Map noise tier → autoreview execute() kwargs (copy)."""
+    """Map noise tier → autoreview execute() kwargs (copy).
+
+    Args:
+        profile: 评测 profile。
+    """
     key = (profile or "balanced").strip().lower()
     if key not in PROFILE_ARGS:
         raise ValueError(f"unknown profile '{profile}'; choose {sorted(PROFILE_ARGS)}")
@@ -124,6 +138,7 @@ def _norm_path(p: str) -> str:
 
 @dataclass
 class GoldFinding:
+    """GoldFinding。"""
     file: str = ""
     line: int = 0
     severity: str = "P1"
@@ -133,6 +148,11 @@ class GoldFinding:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "GoldFinding":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         kws = d.get("keywords") or []
         if isinstance(kws, str):
             kws = [x.strip() for x in kws.split(",") if x.strip()]
@@ -148,6 +168,7 @@ class GoldFinding:
 
 @dataclass
 class GoldCase:
+    """GoldCase。"""
     id: str
     gold_findings: List[GoldFinding]
     target: str = ""
@@ -160,6 +181,12 @@ class GoldCase:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any], *, default_id: str = "") -> "GoldCase":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+            default_id: default 标识。
+        """
         findings = [
             GoldFinding.from_dict(x)
             for x in (d.get("gold_findings") or d.get("findings") or [])
@@ -184,7 +211,12 @@ class GoldCase:
 
 
 def persist_eval_report(result: Dict[str, Any], *, tenant_id: str = "") -> Optional[str]:
-    """Append one eval run as JSONL. Never mutates gold cases."""
+    """Append one eval run as JSONL. Never mutates gold cases.
+
+    Args:
+        result: result 参数。
+        tenant_id: 租户 ID。
+    """
     try:
         out_dir = reports_dir(tenant_id)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -202,6 +234,12 @@ def persist_eval_report(result: Dict[str, Any], *, tenant_id: str = "") -> Optio
 
 
 def list_eval_reports(*, tenant_id: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+    """列出 eval_reports。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     path = reports_dir(tenant_id) / "runs.jsonl"
     if not path.is_file():
         return []
@@ -221,7 +259,11 @@ def list_eval_reports(*, tenant_id: str = "", limit: int = 20) -> List[Dict[str,
 
 
 def novel_findings_from_case(scored: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """P0/P1 unmatched predictions — candidates, never auto-written into gold."""
+    """P0/P1 unmatched predictions — candidates, never auto-written into gold.
+
+    Args:
+        scored: scored 参数。
+    """
     out: List[Dict[str, Any]] = []
     for fp in scored.get("false_positives") or []:
         if not isinstance(fp, dict):
@@ -327,9 +369,9 @@ def _workspace_seed_gold_dir() -> Optional[Path]:
 def load_gold_cases(gold_dir: Optional[str] = None, *, tenant_id: str = "") -> List[GoldCase]:
     """Load ``*.yaml`` / ``*.yml`` / ``*.json`` from gold directory.
 
-    When ``gold_dir`` is omitted and the tenant runtime dir is empty, fall back to
-    workspace_seeds then the legacy non-tenant dir so Eval Center match-only works
-    before ``--install-seeds``.
+    Args:
+        gold_dir: 黄金集目录。
+        tenant_id: 租户 ID。
     """
     root = resolve_gold_dir(gold_dir, tenant_id)
     cases = _read_gold_cases_from_dir(root)
@@ -363,7 +405,13 @@ def finding_matches_issue(
     *,
     line_window: int = 5,
 ) -> bool:
-    """True if predicted issue covers this gold finding (file + keywords + soft line)."""
+    """True if predicted issue covers this gold finding (file + keywords + soft line).
+
+    Args:
+        gold: gold 参数。
+        issue: issue 参数。
+        line_window: line_window 参数。
+    """
     gfile = _norm_path(gold.file)
     ifile = _norm_path(str(issue.get("file") or ""))
     if gfile and ifile:
@@ -398,7 +446,13 @@ def match_review_findings(
     *,
     line_window: int = 5,
 ) -> Dict[str, Any]:
-    """Greedy 1:1 match → precision / recall / P0 recall / comment_count."""
+    """Greedy 1:1 match → precision / recall / P0 recall / comment_count.
+
+    Args:
+        predicted: predicted 参数。
+        gold_findings: gold_findings 参数。
+        line_window: line_window 参数。
+    """
     preds = [dict(p) for p in predicted if isinstance(p, dict)]
     golds = list(gold_findings)
     matched_gold: set = set()
@@ -459,6 +513,12 @@ def score_case(
     case: GoldCase,
     predicted: Sequence[Dict[str, Any]],
 ) -> Dict[str, Any]:
+    """score_case。
+
+    Args:
+        case: case 参数。
+        predicted: predicted 参数。
+    """
     metrics = match_review_findings(
         predicted,
         case.gold_findings,
@@ -492,8 +552,16 @@ async def run_code_review_gold_eval(
 ) -> Dict[str, Any]:
     """Run gold eval: match_only uses embedded ``predicted``; else live autoreview.
 
-    Returns aggregate precision/recall/p0_recall + per-case breakdown.
-    Novel (unmatched P0/P1) findings are listed; gold files are never rewritten.
+    Args:
+        profile: 评测 profile。
+        gold_dir: 黄金集目录。
+        case_ids: case_ids 参数。
+        match_only: match_only 参数。
+        execute_fn: execute_fn 参数。
+        limit: 返回条数上限。
+        tenant_id: 租户 ID。
+        persist: persist 参数。
+        record_novel: record_novel 参数。
     """
     t0 = time.time()
     cases = load_gold_cases(gold_dir, tenant_id=tenant_id)
@@ -632,6 +700,8 @@ async def run_code_review_gold_eval(
 
 
 def list_profiles() -> Dict[str, Dict[str, Any]]:
+    """列出 profiles。
+    """
     return {k: dict(v) for k, v in PROFILE_ARGS.items()}
 
 
@@ -648,7 +718,12 @@ def compare_gold_reports(
     current: Mapping[str, Any],
     previous: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Before/after deltas for the same gold set. Missing previous → no baseline."""
+    """Before/after deltas for the same gold set. Missing previous → no baseline.
+
+    Args:
+        current: current 参数。
+        previous: previous 参数。
+    """
     cur = current if isinstance(current, Mapping) else {}
     prev = previous if isinstance(previous, Mapping) else None
     keys = ("precision", "recall", "p0_recall", "avg_comment_count", "novel_count")
@@ -698,8 +773,17 @@ async def reevaluate_code_review_gold(
 ) -> Dict[str, Any]:
     """Run gold eval again and attach delta vs last report (or ``baseline``).
 
-    Persist happens after ``comparison`` is attached so the JSONL row keeps the
-    before/after verdict (not only the bare metrics).
+    Args:
+        profile: 评测 profile。
+        gold_dir: 黄金集目录。
+        case_ids: case_ids 参数。
+        match_only: match_only 参数。
+        execute_fn: execute_fn 参数。
+        limit: 返回条数上限。
+        tenant_id: 租户 ID。
+        persist: persist 参数。
+        record_novel: record_novel 参数。
+        baseline: baseline 参数。
     """
     previous = dict(baseline) if isinstance(baseline, Mapping) else None
     if previous is None:

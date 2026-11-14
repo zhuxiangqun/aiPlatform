@@ -1,9 +1,12 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
 
 @dataclass
 class PoolConfig:
+    """PoolConfig。"""
     max_connections: int = 50
     retry_on_timeout: bool = True
     socket_timeout: int = 5
@@ -12,6 +15,7 @@ class PoolConfig:
 
 @dataclass
 class StrategyConfig:
+    """StrategyConfig。"""
     default_ttl: int = 3600
     max_entries: int = 10000
     eviction_policy: str = "lru"
@@ -19,6 +23,7 @@ class StrategyConfig:
 
 @dataclass
 class CacheConfig:
+    """CacheConfig。"""
     type: str = "redis"
     host: str = "localhost"
     port: int = 6379
@@ -32,6 +37,7 @@ class CacheConfig:
 
 @dataclass
 class CacheStats:
+    """CacheStats。"""
     hits: int = 0
     misses: int = 0
     keys: int = 0

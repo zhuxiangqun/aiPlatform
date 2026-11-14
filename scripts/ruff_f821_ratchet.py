@@ -198,6 +198,8 @@ def cmd_check() -> int:
 
 
 def main() -> None:
+    """main。
+    """
     parser = argparse.ArgumentParser(description="ruff F821 ratchet checker")
     parser.add_argument("--rebuild", action="store_true", help="Rebuild baseline from current state")
     parser.add_argument("--check", action="store_true", help="Check against baseline (default)")

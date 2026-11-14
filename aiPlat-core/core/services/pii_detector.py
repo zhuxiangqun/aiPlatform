@@ -79,6 +79,11 @@ class PIIDetector:
     ALLOWED_UNMASK_ROLES: set = {"admin", "data_owner"}
 
     def __init__(self, *, use_presidio: bool = False):
+        """初始化。
+
+        Args:
+            use_presidio: use_presidio 参数。
+        """
         self._use_presidio = use_presidio and self._presidio_available()
         self._records: Dict[str, PIIRecord] = {}
         self._counter: Dict[str, int] = {}
@@ -93,8 +98,8 @@ class PIIDetector:
     def mask(self, text: str) -> Tuple[str, Dict[str, str]]:
         """脱敏文本。
 
-        Returns:
-            (masked_text, mapping) — mapping 键为 masked_id，值为原始明文
+        Args:
+            text: text 参数。
         """
         if not text or not text.strip():
             return text, {}
@@ -171,8 +176,8 @@ class PIIDetector:
     def get_audit_info(self, mapping: Dict[str, str]) -> Dict[str, Any]:
         """获取审计信息 (用于 audit_log)。
 
-        Returns:
-            {"pii_count": N, "pii_types": ["PHONE", "EMAIL", ...]}
+        Args:
+            mapping: mapping 参数。
         """
         types = set()
         for masked_id in mapping:
@@ -190,6 +195,8 @@ _pii_detector: Optional[PIIDetector] = None
 
 
 def get_pii_detector() -> PIIDetector:
+    """获取 pii_detector。
+    """
     global _pii_detector
     if _pii_detector is None:
         use_presidio = os.getenv("AIPLAT_PII_PRESIDIO_ENABLED", "false").lower() in ("1", "true", "yes")

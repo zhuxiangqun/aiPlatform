@@ -105,7 +105,11 @@ def run_standalone():
 
 
 def run_server(host="http://localhost:8002"):
-    """Run evaluation via API (requires core running)."""
+    """Run evaluation via API (requires core running).
+
+    Args:
+        host: host 参数。
+    """
     import urllib.request
 
     verbose = "--verbose" in sys.argv or "-v" in sys.argv

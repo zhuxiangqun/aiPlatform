@@ -19,6 +19,8 @@ from pathlib import Path
 
 
 def main() -> int:
+    """main。
+    """
     root = Path(__file__).resolve().parent.parent
     for p in (root / "aiPlat-platform", root / "aiPlat-core", root):
         s = str(p)

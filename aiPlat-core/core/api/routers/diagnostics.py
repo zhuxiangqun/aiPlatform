@@ -1,3 +1,8 @@
+"""diagnostics：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -291,6 +296,8 @@ class DiagnosticCheck:
     
     @staticmethod
     def get_repo_info():
+        """获取 repo_info。
+        """
         from core.api.core_facade import repo_root, default_roots
         return repo_root(), default_roots()
 
@@ -1026,7 +1033,11 @@ def _store():
 
 @router.post("/diagnostics/run-single", response_model=Dict[str, Any], include_in_schema=False)
 async def run_single_diagnostic(request: Dict[str, Any]):
-    """Run a single diagnostic category by key. Frontend integration endpoint."""
+    """Run a single diagnostic category by key. Frontend integration endpoint.
+
+    Args:
+        request: request 参数。
+    """
     category = str(request.get("category", "")).strip()
     if not category:
         return {"status": "error", "error": "category is required"}
@@ -1045,10 +1056,10 @@ async def run_single_diagnostic(request: Dict[str, Any]):
 
 @router.post("/diagnostics/e2e/smoke", response_model=Dict[str, Any])
 async def run_e2e_smoke(request: Dict[str, Any]):
-    """
-    Production-grade full-chain smoke.
-    - DeepSeek key read from ENV (DEEPSEEK_API_KEY / AIPLAT_LLM_API_KEY)
-    - Best-effort cleanup of created resources
+    """Production-grade full-chain smoke.
+
+    Args:
+        request: request 参数。
     """
     harness = get_harness()
     run_id = new_prefixed_id("run")
@@ -1119,9 +1130,11 @@ async def get_context_config():
 
 @router.post("/diagnostics/prompt/assemble", response_model=Dict[str, Any])
 async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest, http_request: Request):
-    """
-    Assemble prompt + context and return metadata for debugging.
-    NOTE: diagnostics only (do not use on hot paths).
+    """Assemble prompt + context and return metadata for debugging.
+
+    Args:
+        request: request 参数。
+        http_request: http_request 参数。
     """
     from core.harness.assembly.prompt_assembler import PromptAssembler
     from core.harness.kernel.execution_context import ActiveRequestContext  # P0-A2 修复: 恢复原模块(定义处)
@@ -1252,7 +1265,14 @@ async def diagnostics_prompt_assemble(request: DiagnosticsPromptAssembleRequest,
 
 @router.get("/diagnostics/context/metrics/recent", response_model=Dict[str, Any])
 async def diagnostics_context_metrics_recent(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, session_id: Optional[str] = None):
-    """Recent context assembly metrics (syscall_events kind=metric, name=context_assemble)."""
+    """Recent context assembly metrics (syscall_events kind=metric, name=context_assemble).
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+        session_id: session 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -1261,7 +1281,13 @@ async def diagnostics_context_metrics_recent(limit: int = 50, offset: int = 0, t
 
 @router.get("/diagnostics/context/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_context_metrics_summary(window_hours: int = 24, top_n: int = 8, tenant_id: Optional[str] = None):
-    """Aggregate context metrics for trends/regression (diagnostics use)."""
+    """Aggregate context metrics for trends/regression (diagnostics use).
+
+    Args:
+        window_hours: window_hours 参数。
+        top_n: top_n 参数。
+        tenant_id: 租户 ID。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -1378,7 +1404,12 @@ async def diagnostics_tool_discovery_report():
 
 @router.get("/diagnostics/exec/metrics/summary", response_model=Dict[str, Any])
 async def diagnostics_exec_backend_metrics_summary(window_hours: int = 24, limit: int = 20):
-    """Exec backend metrics summary (uses run_events aggregated in ExecutionStore)."""
+    """Exec backend metrics summary (uses run_events aggregated in ExecutionStore).
+
+    Args:
+        window_hours: window_hours 参数。
+        limit: 返回条数上限。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -1418,9 +1449,8 @@ _DIAG_RUNNING = False  # guard against concurrent diagnostic runs
 async def run_all_diagnostics(quick: bool = False) -> Dict[str, Any]:
     """Return the most recent cached diagnostic result.
 
-    The cache is populated by the persisted diagnostics file from
-    previous successful diagnostic runs. This endpoint is read-only
-    to keep the server responsive at all times.
+    Args:
+        quick: quick 参数。
     """
     global _DIAG_CACHE
     if _DIAG_CACHE is not None:
@@ -1629,9 +1659,8 @@ async def list_repair_goals():
 async def execute_repair_goal(goal_id: str):
     """Human-approved execution of ONE reversible goal (closes the ACT half).
 
-    Double-gated for safety: (1) AIPLAT_GOAL_EXECUTE_ENABLED must be opted in;
-    (2) only auto_executable (reversible) goals may run. There is NO autonomous
-    background loop — every execution is an explicit, per-goal human action.
+    Args:
+        goal_id: goal 标识。
     """
     if not _goal_execute_enabled():
         raise HTTPException(
@@ -1877,8 +1906,11 @@ async def start_llm_review(
     focus: str = "comprehensive",
 ):
     """启动异步 LLM审查 — 立即返回 run_id，进度写入 SQLite（跨 worker 共享）。
-    
-    ~150K tokens/次。审查在后台并行执行，每完成一个文件更新进度。
+
+    Args:
+        max_files: max_files 参数。
+        max_chars: max_chars 参数。
+        focus: focus 参数。
     """
     import uuid, time
     _llm_cleanup_old(max_keep=10)
@@ -1895,11 +1927,9 @@ async def start_llm_review(
 @router.get("/diagnostics/llm-review/status", response_model=Dict[str, Any])
 async def llm_review_status(run_id: str = ""):
     """查询 LLM审查进度（读取 SQLite，所有 worker 可见）。
-    
-    Returns:
-        status: running | done | error | not_found
-        files_done, files_total, current_file (running)
-        score, p0_count, p1_count, results (done)
+
+    Args:
+        run_id: 运行 ID。
     """
     if not run_id:
         return {"status": "not_found", "detail": "run_id required"}
@@ -1937,13 +1967,23 @@ async def run_llm_review_sync(
     max_chars: int = 12000,
     focus: str = "comprehensive",
 ):
-    """同步 LLM审查（兼容旧调用）"""
+    """同步 LLM审查（兼容旧调用）。
+
+    Args:
+        max_files: max_files 参数。
+        max_chars: max_chars 参数。
+        focus: focus 参数。
+    """
     return await _run_llm_review(max_files=max_files, max_chars=max_chars, focus=focus)
 
 
 @router.get("/diagnostics/llm-review/history", response_model=Dict[str, Any])
 async def llm_review_history(limit: int = 10):
-    """列出最近 N 次 LLM审查历史记录（从 SQLite 读取）。"""
+    """列出最近 N 次 LLM审查历史记录（从 SQLite 读取）。
+
+    Args:
+        limit: 返回条数上限。
+    """
     import time, json
     conn = _llm_get_db()
     try:
@@ -2038,10 +2078,11 @@ async def get_tenant_usage_summary(
     tenant_id: str = "",
     days: int = 7,
 ):
-    """
-    Read aggregated LLM token usage from execution_store.tenant_usage_ledger.
+    """Read aggregated LLM token usage from execution_store.tenant_usage_ledger.
 
-    Returns per-day token counts for the given tenant (default: all).
+    Args:
+        tenant_id: 租户 ID。
+        days: days 参数。
     """
     from collections import defaultdict as _dd
     try:
@@ -2085,10 +2126,10 @@ async def get_tenant_usage_summary(
 
 @router.get("/diagnostics/doc-quality", response_model=Dict[str, Any])
 async def get_doc_quality(limit: int = 20):
-    """
-    Returns document quality baseline, alerts, and per-doc health status.
+    """Returns document quality baseline, alerts, and per-doc health status.
 
-    Response: { "baseline": {...}, "alerts": [...], "doc_health": [...], "stats": {...} }
+    Args:
+        limit: 返回条数上限。
     """
     try:
         from core.harness.knowledge.doc_quality_monitor import get_doc_quality_monitor
@@ -2104,10 +2145,11 @@ async def get_doc_quality(limit: int = 20):
 
 @router.get("/diagnostics/wiki-quality", response_model=Dict[str, Any])
 async def get_wiki_content_quality(limit: int = 20, collection: str = "default"):
-    """
-    Returns Wiki page content quality vs original source documents.
+    """Returns Wiki page content quality vs original source documents.
 
-    Response: { "alerts": [...], "trends": [...], "stats": {...} }
+    Args:
+        limit: 返回条数上限。
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.wiki_quality_monitor import get_wiki_quality_monitor
@@ -2207,10 +2249,10 @@ async def get_entropy_trends():
 @router.get("/diagnostics/entropy/alerts", response_model=Dict[str, Any])
 @router.get("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
 async def get_entropy_alerts(limit: int = 20):
-    """
-    Returns recent entropy alert records from SQLite.
+    """Returns recent entropy alert records from SQLite.
 
-    Response: {"alerts": [...], "total": N}
+    Args:
+        limit: 返回条数上限。
     """
     try:
         from core.harness.infrastructure.trend_detector import get_trend_detector
@@ -2232,8 +2274,9 @@ def _empty_obs_stats(error: str = "") -> dict:
 @router.get("/diagnostics/observability/stats", response_model=Dict[str, Any])
 async def get_observability_stats(project_id: str = None):
     """Return LLM call stats from syscall_events (persistent, survives restart).
-    
-    Optional project_id filter: WHERE run_id LIKE 'prj_{project_id}%'
+
+    Args:
+        project_id: project 标识。
     """
     try:
         import sqlite3, time, os
@@ -2373,7 +2416,11 @@ async def get_observability_stats(project_id: str = None):
 
 @router.put("/diagnostics/observability/alerts", response_model=Dict[str, Any], include_in_schema=False)
 async def put_observability_alerts(body: dict):
-    """Save alert configuration (observability dashboard)."""
+    """Save alert configuration (observability dashboard).
+
+    Args:
+        body: 请求体 dict。
+    """
     try:
         from core.harness.observability.alerts import get_alert_manager
         mgr = get_alert_manager()
@@ -2553,7 +2600,8 @@ async def get_decision_shadow_status():
 async def post_decision_shadow_try_enqueue(body: Dict[str, Any] = None):
     """Ops probe for ShadowDispatcher.try_enqueue (still honors enabled=false).
 
-    Not a DomainRouter hook. Default config drops with reason=disabled.
+    Args:
+        body: 请求体 dict。
     """
     try:
         from core.api.core_facade import decision_shadow_status, decision_shadow_try_enqueue
@@ -2722,7 +2770,11 @@ async def get_profile_status():
 
 @router.post("/diagnostics/profile/switch", response_model=Dict[str, Any])
 async def switch_profile(name: str = "default"):
-    """Switch active ControlProfile at session level."""
+    """Switch active ControlProfile at session level.
+
+    Args:
+        name: 名称。
+    """
     try:
         from core.harness.meta.profile_registry import ProfileRegistry  # P0-A2 修复: 恢复原模块(定义处)
         from core.harness.meta.profile_registry import set_profile_override  # P0-A2 修复: 恢复原模块(定义处)
@@ -2745,8 +2797,8 @@ async def switch_profile(name: str = "default"):
 async def get_code_entropy(directory: str = ""):
     """Scan code directory for high-entropy files (AI slop detection).
 
-    Inspect by OpenAI's weekly code cleanup practice — identifies files
-    that need refactoring due to accumulated AI-generated code degradation.
+    Args:
+        directory: directory 参数。
     """
     try:
         from core.harness.knowledge.code_entropy_detector import CodeEntropyDetector
@@ -3075,8 +3127,9 @@ def _build_markdown_report(data: dict, collection: str, days: int = 30) -> str:
 def get_drift_status(collection: str = "", refresh: bool = False):
     """Knowledge drift scanner — reports which Wiki pages have stale source documents.
 
-    Returns per-collection drift ratio, stale page lists, and suggested actions.
-    Pass ?refresh=true to force a fresh scan (otherwise uses cached last result).
+    Args:
+        collection: collection 参数。
+        refresh: refresh 参数。
     """
     import time as _time
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
@@ -3148,8 +3201,8 @@ def get_drift_status(collection: str = "", refresh: bool = False):
 async def trigger_drift_rebuild(max_pages: int = 10):
     """Auto-rebuild stale pages by re-running the ontology engine on drifted sources.
 
-    Iterates stale pages, extracts their source KB doc_ids, and runs
-    auto_ontology_pipeline_for_doc on each. Limited to max_pages for safety.
+    Args:
+        max_pages: max_pages 参数。
     """
     from core.harness.knowledge.staleness_monitor import StalenessMonitor
     from core.api.core_facade import read_page
@@ -3257,7 +3310,11 @@ def get_system_health():
 
 @router.get("/diagnostics/self-heal-log", response_model=Dict[str, Any])
 async def get_self_heal_log(limit: int = 20):
-    """Recent self-healing actions taken by the SelfHealGate."""
+    """Recent self-healing actions taken by the SelfHealGate.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     gate = SelfHealGate()
     logs = gate.get_heal_log(limit)
@@ -3268,7 +3325,12 @@ async def get_self_heal_log(limit: int = 20):
 
 @router.get("/diagnostics/awareness-log", response_model=Dict[str, Any])
 async def get_awareness_log(days: int = 7, severity: str = "all"):
-    """Signals that the system detected but chose not to auto-fix (SUGGEST/REJECT decisions)."""
+    """Signals that the system detected but chose not to auto-fix (SUGGEST/REJECT decisions).
+
+    Args:
+        days: days 参数。
+        severity: severity 参数。
+    """
     from core.harness.evaluation.self_heal_gate import _get_awareness_logs
     entries = _get_awareness_logs(days, severity)
     return {"status": "completed", "total": len(entries), "entries": entries}  # noqa: F821 — endpoint defined above
@@ -3288,7 +3350,11 @@ async def get_pending_heal_fixes():
 
 @router.post("/diagnostics/self-heal/approve/{fix_id}", response_model=Dict[str, Any])
 async def approve_heal_fix(fix_id: str):
-    """Approve and execute a pending self-heal fix."""
+    """Approve and execute a pending self-heal fix.
+
+    Args:
+        fix_id: fix 标识。
+    """
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     gate = SelfHealGate()
     result = gate.approve_fix(fix_id)
@@ -3297,7 +3363,12 @@ async def approve_heal_fix(fix_id: str):
 
 @router.post("/diagnostics/self-heal/reject/{fix_id}", response_model=Dict[str, Any])
 async def reject_heal_fix(fix_id: str, reason: str = ""):
-    """Reject a pending self-heal fix with optional reason."""
+    """Reject a pending self-heal fix with optional reason.
+
+    Args:
+        fix_id: fix 标识。
+        reason: reason 参数。
+    """
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     gate = SelfHealGate()
     result = gate.reject_fix(fix_id, reason)
@@ -3366,7 +3437,11 @@ def get_adoption_metrics():
 
 @router.get("/diagnostics/ontology-audit", response_model=Dict[str, Any])
 def get_ontology_audit(domain_id: str = "ai-knowledge"):
-    """Ontology domain audit: class coverage, relation density, state machine activity."""
+    """Ontology domain audit: class coverage, relation density, state machine activity.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.ontology_audit import OntologyAuditor
     auditor = OntologyAuditor()
     if domain_id == "all":
@@ -3400,7 +3475,14 @@ async def get_audit_trail(
     limit: int = 100,
     days: int = 30,
 ):
-    """List audit trail steps, filterable by domain and agent."""
+    """List audit trail steps, filterable by domain and agent.
+
+    Args:
+        domain: domain 参数。
+        agent: agent 参数。
+        limit: 返回条数上限。
+        days: days 参数。
+    """
     import os as _os
     import sqlite3 as _sq
     import json as _json
@@ -3440,7 +3522,12 @@ async def get_audit_trail(
 
 @router.get("/diagnostics/audit-trail/{step_id}/tree", response_model=Dict[str, Any])
 async def get_audit_tree(step_id: int, days: int = 30):
-    """Recursively build complete reasoning tree from a root step."""
+    """Recursively build complete reasoning tree from a root step.
+
+    Args:
+        step_id: step 标识。
+        days: days 参数。
+    """
     import os as _os
     import sqlite3 as _sq
     import json as _json
@@ -3490,8 +3577,8 @@ def _build_audit_tree(step_id: int, all_steps: List[dict]) -> dict:
 async def start_optimization(agent_id: str):
     """Start iterative prompt optimization for an agent.
 
-    Loads config from ~/.aiplat/optimizations/{agent_id}.yaml
-    and runs the champion-challenger loop autonomously.
+    Args:
+        agent_id: agent 标识。
     """
     try:
         from core.harness.optimization.prompt_optimizer import PromptOptimizer
@@ -3678,9 +3765,8 @@ except ImportError:
 async def run_cross_validation(payload: dict):
     """CrossValidationGate semantic verification (equipment/process/quality).
 
-    Body: {"output": {...}, "domain_id": "default"}
-    Returns readiness + violations (framework stub — below activation
-    threshold returns ready=false with note).
+    Args:
+        payload: 载荷 dict。
     """
     from core.api.core_facade import cross_validation_verify
     output = (payload or {}).get("output", {})

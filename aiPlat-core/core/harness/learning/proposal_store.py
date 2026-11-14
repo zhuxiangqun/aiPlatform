@@ -68,6 +68,7 @@ def _init_table():
 
 @dataclass
 class Proposal:
+    """Proposal。"""
     proposal_id: str
     title: str
     proposal_type: str = "skill_registration"
@@ -81,6 +82,8 @@ class Proposal:
     updated_at: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "proposal_id": self.proposal_id, "title": self.title,
             "proposal_type": self.proposal_type, "status": self.status,
@@ -97,10 +100,16 @@ class ProposalStore:
     """Manage AI-generated change proposals with review/approve workflow."""
 
     def __init__(self):
+        """初始化。
+        """
         _init_table()
 
     def create(self, proposal: Proposal) -> str:
-        """Create a new proposal. Returns proposal_id."""
+        """Create a new proposal. Returns proposal_id.
+
+        Args:
+            proposal: proposal 参数。
+        """
         proposal.updated_at = time.time()
         conn = _get_db()
         try:
@@ -121,11 +130,20 @@ class ProposalStore:
             conn.close()
 
     def submit(self, proposal_id: str) -> bool:
-        """Submit a draft proposal for review."""
+        """Submit a draft proposal for review.
+
+        Args:
+            proposal_id: proposal 标识。
+        """
         return self._update_status(proposal_id, "pending_approval")
 
     def approve(self, proposal_id: str, approved_by: str = "admin") -> bool:
-        """Approve a proposal. Triggers auto-merge."""
+        """Approve a proposal. Triggers auto-merge.
+
+        Args:
+            proposal_id: proposal 标识。
+            approved_by: approved_by 参数。
+        """
         now = time.time()
         conn = _get_db()
         try:
@@ -146,7 +164,12 @@ class ProposalStore:
             conn.close()
 
     def reject(self, proposal_id: str, reason: str = "") -> bool:
-        """Reject a proposal with a reason."""
+        """Reject a proposal with a reason.
+
+        Args:
+            proposal_id: proposal 标识。
+            reason: reason 参数。
+        """
         return self._update_status(proposal_id, "rejected", rejected_reason=reason)
 
     def _update_status(self, proposal_id: str, status: str, **extra) -> bool:
@@ -208,6 +231,12 @@ class ProposalStore:
             logger.warning("Skill merge failed: %s", e)
 
     def list(self, status: Optional[str] = None, limit: int = 50) -> list:
+        """list。
+
+        Args:
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         conn = _get_db()
         try:
             conn.row_factory = sqlite3.Row
@@ -225,6 +254,11 @@ class ProposalStore:
             conn.close()
 
     def get(self, proposal_id: str) -> Optional[dict]:
+        """get。
+
+        Args:
+            proposal_id: proposal 标识。
+        """
         conn = _get_db()
         try:
             conn.row_factory = sqlite3.Row
@@ -236,6 +270,8 @@ class ProposalStore:
             conn.close()
 
     def get_stats(self) -> dict:
+        """获取 stats。
+        """
         conn = _get_db()
         try:
             stats = {}
@@ -254,6 +290,8 @@ _proposal_store: Optional[ProposalStore] = None
 
 
 def get_proposal_store() -> ProposalStore:
+    """获取 proposal_store。
+    """
     global _proposal_store
     if _proposal_store is None:
         _proposal_store = ProposalStore()

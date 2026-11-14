@@ -22,10 +22,17 @@ class DashboardAggregator:
     """Dashboard 数据聚合器"""
     
     def __init__(self):
+        """初始化。
+        """
         self.adapters: Dict[str, Any] = {}
         
     def register_adapter(self, layer: str, adapter: Any):
-        """注册层级适配器"""
+        """注册层级适配器。
+
+        Args:
+            layer: layer 参数。
+            adapter: adapter 参数。
+        """
         self.adapters[layer] = adapter
         
     async def aggregate(self) -> Dict[str, Any]:

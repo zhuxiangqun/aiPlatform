@@ -42,6 +42,7 @@ logger = logging.getLogger("ontology_agent")
 
 class ReasoningTrace:
 
+    """ReasoningTrace。"""
     step: int
 
     action: str
@@ -62,6 +63,7 @@ class ReasoningTrace:
 
 class OntologyAgentResult:
 
+    """OntologyAgentResult。"""
     task: str
 
     domain_id: str = ""
@@ -96,12 +98,13 @@ async def sys_ontology_reason(
 
 ) -> Dict[str, Any]:
 
-    u"""System call: run the 5-step ontology reasoning pipeline.
+    """System call: run the 5-step ontology reasoning pipeline.
 
-
-
-    Returns structured result with reasoning_trace for auditability.
-
+    Args:
+        task: task 参数。
+        domain_id: domain 标识。
+        max_paths: max_paths 参数。
+        timeout_seconds: timeout_seconds 参数。
     """
 
     result = OntologyAgentResult(task=task)

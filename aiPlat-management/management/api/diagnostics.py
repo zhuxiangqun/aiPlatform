@@ -1,3 +1,5 @@
+"""diagnostics：模块接口。"""
+
 from fastapi import APIRouter, HTTPException, Request, Response
 import httpx
 import logging
@@ -125,10 +127,10 @@ async def get_layer_health(layer: str, request: Request) -> Dict[str, Any]:
 
 @router.get("/health/all")
 async def get_all_health(request: Request) -> Dict[str, Dict[str, Any]]:
-    """获取所有层级健康状态
-    
-    Returns:
-        所有层级的健康状态
+    """获取所有层级健康状态。
+
+    Args:
+        request: FastAPI Request。
     """
     health_checkers = request.app.state.health_checkers
     all_health = {}
@@ -142,9 +144,11 @@ async def get_all_health(request: Request) -> Dict[str, Dict[str, Any]]:
 
 @router.post("/repo/changeset/record")
 async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Record repo changeset into core syscall_events(kind=changeset).
-    Security: repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """Record repo changeset into core syscall_events(kind=changeset).
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -172,9 +176,11 @@ async def record_repo_changeset(request: Request, body: Dict[str, Any]) -> Dict[
 
 @router.post("/repo/git/branch")
 async def repo_git_branch(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create/switch branch in repo (proxy to core).
-    repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """Create/switch branch in repo (proxy to core).
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -190,9 +196,11 @@ async def repo_git_branch(request: Request, body: Dict[str, Any]) -> Dict[str, A
 
 @router.post("/repo/git/commit")
 async def repo_git_commit(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Commit staged changes in repo (proxy to core).
-    repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """Commit staged changes in repo (proxy to core).
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -214,6 +222,15 @@ async def context_metrics_recent(
     tenant_id: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """context_metrics_recent。
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+        session_id: 会话 ID。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -227,6 +244,14 @@ async def context_metrics_summary(
     top_n: int = 8,
     tenant_id: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """context_metrics_summary。
+
+    Args:
+        request: FastAPI Request。
+        window_hours: window_hours 参数。
+        top_n: top_n 参数。
+        tenant_id: 租户 ID。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -235,9 +260,10 @@ async def context_metrics_summary(
 
 @router.get("/repo/changeset/patch")
 async def get_repo_changeset_patch(request: Request) -> Dict[str, Any]:
-    """
-    Fetch repo diff patch (best-effort) for review.
-    Security: repo_root is server-controlled via AIPLAT_REPO_ROOT.
+    """Fetch repo diff patch (best-effort) for review.
+
+    Args:
+        request: FastAPI Request。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -256,8 +282,11 @@ async def get_repo_changeset_patch(request: Request) -> Dict[str, Any]:
 
 @router.post("/repo/tests/run")
 async def run_repo_tests(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Run repo tests via core allowlisted command (AIPLAT_REPO_TEST_CMD).
+    """Run repo tests via core allowlisted command (AIPLAT_REPO_TEST_CMD).
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -275,8 +304,10 @@ async def run_repo_tests(request: Request, body: Dict[str, Any]) -> Dict[str, An
 
 @router.get("/repo/staged/preview")
 async def get_repo_staged_preview(request: Request) -> Dict[str, Any]:
-    """
-    Preview staged diff and suggested commit message.
+    """Preview staged diff and suggested commit message.
+
+    Args:
+        request: FastAPI Request。
     """
     repo_root = os.getenv("AIPLAT_REPO_ROOT", "").strip()
     if not repo_root:
@@ -289,6 +320,14 @@ async def get_repo_staged_preview(request: Request) -> Dict[str, Any]:
 
 @router.get("/prompts/{template_id}/diff")
 async def get_prompt_template_diff(template_id: str, request: Request, from_version: Optional[str] = None, to_version: Optional[str] = None) -> Dict[str, Any]:
+    """获取 prompt_template_diff。
+
+    Args:
+        template_id: template 标识。
+        request: FastAPI Request。
+        from_version: from_version 参数。
+        to_version: to_version 参数。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -302,6 +341,11 @@ async def get_prompt_template_diff(template_id: str, request: Request, from_vers
 
 @router.get("/context/config")
 async def get_context_config(request: Request) -> Dict[str, Any]:
+    """获取 context_config。
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -310,7 +354,11 @@ async def get_context_config(request: Request) -> Dict[str, Any]:
 
 @router.get("/model-tier")
 async def get_model_tier(request: Request) -> Dict[str, Any]:
-    """Proxy model tier status to core server."""
+    """Proxy model tier status to core server.
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -319,6 +367,12 @@ async def get_model_tier(request: Request) -> Dict[str, Any]:
 
 @router.post("/prompt/assemble")
 async def diagnostics_prompt_assemble(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """diagnostics_prompt_assemble。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -327,8 +381,10 @@ async def diagnostics_prompt_assemble(request: Request, body: Dict[str, Any]) ->
 
 @router.get("/exec/backends")
 async def diagnostics_exec_backends(request: Request) -> Dict[str, Any]:
-    """
-    Exec backend health + current backend (proxy to core).
+    """Exec backend health + current backend (proxy to core).
+
+    Args:
+        request: FastAPI Request。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
@@ -338,8 +394,12 @@ async def diagnostics_exec_backends(request: Request) -> Dict[str, Any]:
 
 @router.get("/exec/metrics/summary")
 async def diagnostics_exec_backend_metrics_summary(request: Request, window_hours: int = 24, limit: int = 20) -> Dict[str, Any]:
-    """
-    Exec backend metrics summary (proxy to core).
+    """Exec backend metrics summary (proxy to core).
+
+    Args:
+        request: FastAPI Request。
+        window_hours: window_hours 参数。
+        limit: 返回条数上限。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
@@ -349,10 +409,10 @@ async def diagnostics_exec_backend_metrics_summary(request: Request, window_hour
 
 @router.get("/health")
 async def list_available_checks(request: Request) -> Dict[str, Any]:
-    """列出可用的健康检查
-    
-    Returns:
-        可用的健康检查列表
+    """列出可用的健康检查。
+
+    Args:
+        request: FastAPI Request。
     """
     health_checkers = request.app.state.health_checkers
     return {
@@ -469,10 +529,10 @@ async def get_layer_trace(
 
 @router.get("/system")
 async def get_system_overview(request: Request) -> Dict[str, Any]:
-    """获取系统概览
-    
-    Returns:
-        系统概览
+    """获取系统概览。
+
+    Args:
+        request: FastAPI Request。
     """
     health_checkers = request.app.state.health_checkers
     overview = {
@@ -507,11 +567,11 @@ async def get_system_overview(request: Request) -> Dict[str, Any]:
 
 @router.post("/e2e/smoke")
 async def run_e2e_smoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Trigger a production-grade full-chain smoke test.
+    """Trigger a production-grade full-chain smoke test.
 
-    - For CI: call this endpoint and fail the pipeline if ok=false.
-    - For ops: can be triggered manually; schedule is handled by core Jobs (kind=smoke_e2e).
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
@@ -588,13 +648,10 @@ async def _get_learning_stats(core_client) -> Dict[str, Any]:
 
 @router.get("/doctor")
 async def doctor_report(request: Request) -> Dict[str, Any]:
-    """
-    One-shot diagnostics report (MVP).
+    """One-shot diagnostics report (MVP).
 
-    Aggregates:
-    - health (infra/core/platform/app)
-    - core adapters summary
-    - autosmoke env hints (best-effort)
+    Args:
+        request: FastAPI Request。
     """
     import os
     import time
@@ -1154,10 +1211,15 @@ async def list_layer_graph_runs(
     limit: int = 50,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    """
-    获取图执行列表（管理面聚合入口）。
+    """获取图执行列表（管理面聚合入口）。
 
-    目前仅支持 core 层（aiPlat-core ExecutionStore）。
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        graph_name: graph_name 参数。
+        status: status 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
     """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
@@ -1191,7 +1253,24 @@ async def list_layer_syscalls(
     limit: int = 100,
     offset: int = 0,
 ) -> Dict[str, Any]:
-    """List syscall events (core layer only for now)."""
+    """List syscall events (core layer only for now).
+
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        kind: kind 参数。
+        name: name 参数。
+        status: status 参数。
+        error_contains: error_contains 参数。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        approval_request_id: approval_request 标识。
+        span_id: span 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1228,7 +1307,15 @@ async def get_layer_syscall_stats(
     top_n: int = 10,
     kind: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Aggregated syscall stats (core layer only for now)."""
+    """Aggregated syscall stats (core layer only for now).
+
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        window_hours: window_hours 参数。
+        top_n: top_n 参数。
+        kind: kind 参数。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1246,7 +1333,15 @@ async def get_layer_syscall_stats(
 
 @router.get("/change-control/{layer}")
 async def list_layer_change_controls(layer: str, request: Request, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
-    """List Change Control items (core layer only for now)."""
+    """List Change Control items (core layer only for now).
+
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1264,7 +1359,16 @@ async def list_layer_change_controls(layer: str, request: Request, limit: int = 
 
 @router.get("/change-control/{layer}/{change_id}")
 async def get_layer_change_control(layer: str, change_id: str, request: Request, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None) -> Dict[str, Any]:
-    """Get Change Control detail (core layer only for now)."""
+    """Get Change Control detail (core layer only for now).
+
+    Args:
+        layer: layer 参数。
+        change_id: change 标识。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1282,7 +1386,13 @@ async def get_layer_change_control(layer: str, change_id: str, request: Request,
 
 @router.post("/change-control/{layer}/{change_id}/autosmoke")
 async def autosmoke_layer_change_control(layer: str, change_id: str, request: Request) -> Dict[str, Any]:
-    """Trigger autosmoke for targets referenced by change_id (core layer only)."""
+    """Trigger autosmoke for targets referenced by change_id (core layer only).
+
+    Args:
+        layer: layer 参数。
+        change_id: change 标识。
+        request: FastAPI Request。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1300,7 +1410,15 @@ async def autosmoke_layer_change_control(layer: str, change_id: str, request: Re
 
 @router.get("/change-control/{layer}/{change_id}/evidence")
 async def export_layer_change_control_evidence(layer: str, change_id: str, request: Request, format: str = "zip", limit: int = 500):
-    """Proxy evidence export for change_id (core layer only)."""
+    """Proxy evidence export for change_id (core layer only).
+
+    Args:
+        layer: layer 参数。
+        change_id: change 标识。
+        request: FastAPI Request。
+        format: format 参数。
+        limit: 返回条数上限。
+    """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
         raise HTTPException(status_code=404, detail=f"Layer '{layer}' not found")
@@ -1334,8 +1452,15 @@ async def get_layer_graph_run(
     checkpoints_limit: int = 50,
     checkpoints_offset: int = 0,
 ) -> Dict[str, Any]:
-    """
-    获取单次图执行与 checkpoints（管理面聚合入口）。
+    """获取单次图执行与 checkpoints（管理面聚合入口）。
+
+    Args:
+        layer: layer 参数。
+        run_id: 运行 ID。
+        request: FastAPI Request。
+        include_checkpoints: include_checkpoints 参数。
+        checkpoints_limit: checkpoints_limit 参数。
+        checkpoints_offset: checkpoints_offset 参数。
     """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
@@ -1365,11 +1490,13 @@ async def get_layer_graph_run(
 
 @router.post("/graphs/{layer}/{run_id}/resume")
 async def resume_layer_graph_run(layer: str, run_id: str, request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    从 checkpoint 恢复（仅建档，不继续执行）。
+    """从 checkpoint 恢复（仅建档，不继续执行）。
 
-    目前仅支持 core 层，透传到：
-    POST /api/core/graphs/runs/{run_id}/resume
+    Args:
+        layer: layer 参数。
+        run_id: 运行 ID。
+        request: FastAPI Request。
+        body: 请求体。
     """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
@@ -1389,11 +1516,13 @@ async def resume_layer_graph_run(layer: str, run_id: str, request: Request, body
 
 @router.post("/graphs/{layer}/{run_id}/resume/execute")
 async def resume_and_execute_layer_graph_run(layer: str, run_id: str, request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    从 checkpoint 恢复并继续执行（闭环）。
+    """从 checkpoint 恢复并继续执行（闭环）。
 
-    目前仅支持 core 层，透传到：
-    POST /api/core/graphs/runs/{run_id}/resume/execute
+    Args:
+        layer: layer 参数。
+        run_id: 运行 ID。
+        request: FastAPI Request。
+        body: 请求体。
     """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
@@ -1424,13 +1553,19 @@ async def get_layer_links(
     lineage_depth: int = 3,
     include_spans: bool = False,
 ) -> Dict[str, Any]:
-    """
-    联动查询入口（设计正确：management 聚合展示）。
+    """联动查询入口（设计正确：management 聚合展示）。
 
-    core 支持：
-    - execution_id -> trace -> executions -> graph_runs(trace_id)（若存在）
-    - trace_id -> trace -> executions -> graph_runs(trace_id)
-    - run_id -> graph_run(trace_id) -> trace -> executions
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        trace_id: trace 标识。
+        execution_id: execution 标识。
+        run_id: 运行 ID。
+        graph_run_id: graph_run 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        lineage_depth: lineage_depth 参数。
+        include_spans: include_spans 参数。
     """
     health_checkers = request.app.state.health_checkers
     if layer not in health_checkers:
@@ -1676,9 +1811,19 @@ async def get_layer_links_ui(
     lineage_depth: int = 3,
     include_spans: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Frontend/UI 友好版本：字段裁剪 + 汇总 + 行为提示。
-    - 仍保持设计原则：management 仅做聚合/转发，不实现业务逻辑。
+    """Frontend/UI 友好版本：字段裁剪 + 汇总 + 行为提示。
+
+    Args:
+        layer: layer 参数。
+        request: FastAPI Request。
+        trace_id: trace 标识。
+        execution_id: execution 标识。
+        run_id: 运行 ID。
+        graph_run_id: graph_run 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        lineage_depth: lineage_depth 参数。
+        include_spans: include_spans 参数。
     """
     full = await get_layer_links(  # type: ignore[misc]
         layer=layer,
@@ -1713,7 +1858,11 @@ async def get_layer_links_ui(
 
 @router.get("/observability/stats")
 async def observability_stats(request: Request):
-    """Proxy to core /api/core/diagnostics/observability/stats"""
+    """Proxy to core /api/core/diagnostics/observability/stats。
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -1725,7 +1874,11 @@ async def observability_stats(request: Request):
 
 @router.get("/eval/summary")
 async def eval_summary(request: Request):
-    """Proxy to core /api/core/diagnostics/eval/summary"""
+    """Proxy to core /api/core/diagnostics/eval/summary。
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -1737,7 +1890,13 @@ async def eval_summary(request: Request):
 
 @router.get("/eval/ab-scores")
 async def eval_ab_scores(request: Request, template_id: Optional[str] = None, limit: int = 50):
-    """Proxy to core /api/core/diagnostics/eval/ab-scores"""
+    """Proxy to core /api/core/diagnostics/eval/ab-scores。
+
+    Args:
+        request: FastAPI Request。
+        template_id: template 标识。
+        limit: 返回条数上限。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -1752,7 +1911,14 @@ async def eval_ab_scores(request: Request, template_id: Optional[str] = None, li
 
 @router.get("/code-intel/scan")
 async def code_intel_scan(request: Request, path: Optional[str] = None, limit: int = 50, offset: int = 0):
-    """Proxy to core /api/core/diagnostics/code-intel/scan"""
+    """Proxy to core /api/core/diagnostics/code-intel/scan。
+
+    Args:
+        request: FastAPI Request。
+        path: 路径。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")

@@ -22,6 +22,7 @@ os.makedirs(_MANUALS_DIR, exist_ok=True)
 
 
 class FdeManualRequest(_PydanticBaseModel):
+    """FdeManualRequest。"""
     project_name: str = ""
     industry: str = ""
     company_name: str = ""
@@ -197,6 +198,11 @@ def _get_manual_path(project_id: str, version: str = "current") -> str:
 
 @router.post("/manuals", response_model=FdeStatusResponse)
 async def fde_create_manual(req: FdeManualRequest):
+    """fde_create_manual。
+
+    Args:
+        req: req 参数。
+    """
     pid = (f"{req.industry}_{req.company_name}" if req.industry else req.company_name or "未命名项目").replace(" ", "_")[:60]
     content = _generate_manual_content(req)
     with open(_get_manual_path(pid), "w", encoding="utf-8") as f:
@@ -210,6 +216,11 @@ async def fde_create_manual(req: FdeManualRequest):
 
 @router.get("/manuals/{project_id}", response_model=FdeItemResponse)
 async def fde_get_manual(project_id: str):
+    """fde_get_manual。
+
+    Args:
+        project_id: project 标识。
+    """
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
@@ -220,6 +231,13 @@ async def fde_get_manual(project_id: str):
 
 @router.put("/manuals/{project_id}", response_model=FdeStatusResponse)
 async def fde_update_manual(project_id: str, section: str = "", new_content: str = ""):
+    """fde_update_manual。
+
+    Args:
+        project_id: project 标识。
+        section: section 参数。
+        new_content: new_content 参数。
+    """
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
@@ -244,6 +262,11 @@ async def fde_update_manual(project_id: str, section: str = "", new_content: str
 
 @router.post("/manuals/{project_id}/regenerate", response_model=FdeStatusResponse)
 async def fde_regenerate_manual(project_id: str):
+    """fde_regenerate_manual。
+
+    Args:
+        project_id: project 标识。
+    """
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
@@ -276,6 +299,11 @@ async def fde_regenerate_manual(project_id: str):
 
 @router.get("/manuals/{project_id}/versions", response_model=FdeItemResponse)
 async def fde_manual_versions(project_id: str):
+    """fde_manual_versions。
+
+    Args:
+        project_id: project 标识。
+    """
     safe_id = project_id.replace("/", "_")[:80]
     versions = []
     for fname in sorted(os.listdir(_MANUALS_DIR)):
@@ -324,7 +352,12 @@ async def fde_list_manuals():
 
 @router.patch("/manuals/{project_id}", response_model=FdeStatusResponse)
 async def fde_update_manual_status(project_id: str, status: str = "active"):
-    """Update a manual's status: draft | active | archived."""
+    """Update a manual's status: draft | active | archived.
+
+    Args:
+        project_id: project 标识。
+        status: status 参数。
+    """
     path = _get_manual_path(project_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail=f"Manual not found for {project_id}")
@@ -339,9 +372,8 @@ async def fde_update_manual_status(project_id: str, status: str = "active"):
 async def fde_manual_start_delivery(project_id: str):
     """Create a delivery tracking session from a project manual.
 
-    Reads the manual's project config, creates a DiagnosisSession
-    in fde-delivery GraphIndex with DeliveryActions for each solution archetype.
-    Closes the manual→delivery loop.
+    Args:
+        project_id: project 标识。
     """
     path = _get_manual_path(project_id)
     if not os.path.exists(path):

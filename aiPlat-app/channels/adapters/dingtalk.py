@@ -16,6 +16,11 @@ class DingTalkAdapter(ChannelAdapter):
     """钉钉适配器 (机器人)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         text = raw_data.get("text", {})
         sender = raw_data.get("senderId", "")
         return ChannelMessage(
@@ -29,6 +34,11 @@ class DingTalkAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "msgtype": "text",
             "text": {"content": response.text},

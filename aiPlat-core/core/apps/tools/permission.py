@@ -13,6 +13,7 @@ from core.harness.interfaces.types import Permission  # canonical location
 
 @dataclass
 class PermissionEntry:
+    """PermissionEntry。"""
     user_id: str
     tool_name: str
     permissions: Set[Permission] = field(default_factory=set)
@@ -29,6 +30,8 @@ class PermissionManager:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._permissions: Dict[str, Dict[str, PermissionEntry]] = {}
         self._lock = threading.RLock()
 
@@ -39,7 +42,14 @@ class PermissionManager:
         permission: Permission,
         granted_by: Optional[str] = None
     ) -> None:
-        """Grant a permission to a user for a tool"""
+        """Grant a permission to a user for a tool。
+
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+            permission: permission 参数。
+            granted_by: granted_by 参数。
+        """
         with self._lock:
             if user_id not in self._permissions:
                 self._permissions[user_id] = {}
@@ -57,7 +67,13 @@ class PermissionManager:
         tool_name: str,
         permission: Optional[Permission] = None
     ) -> None:
-        """Revoke a permission from a user for a tool. If permission is None, revoke all."""
+        """Revoke a permission from a user for a tool. If permission is None, revoke all.
+
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+            permission: permission 参数。
+        """
         with self._lock:
             if user_id in self._permissions and tool_name in self._permissions[user_id]:
                 if permission is None:
@@ -71,7 +87,13 @@ class PermissionManager:
         tool_name: str,
         permission: Permission = Permission.EXECUTE
     ) -> bool:
-        """Check if a user has a specific permission for a tool"""
+        """Check if a user has a specific permission for a tool。
+
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+            permission: permission 参数。
+        """
         with self._lock:
             if user_id not in self._permissions:
                 return False
@@ -80,14 +102,23 @@ class PermissionManager:
             return permission in self._permissions[user_id][tool_name].permissions
 
     def get_permissions(self, user_id: str, tool_name: str) -> Set[Permission]:
-        """Get all permissions for a user on a tool"""
+        """Get all permissions for a user on a tool。
+
+        Args:
+            user_id: 用户 ID。
+            tool_name: tool_name 参数。
+        """
         with self._lock:
             if user_id in self._permissions and tool_name in self._permissions[user_id]:
                 return self._permissions[user_id][tool_name].permissions.copy()
             return set()
 
     def get_user_tools(self, user_id: str) -> Dict[str, Set[Permission]]:
-        """Get all tools and permissions for a user"""
+        """Get all tools and permissions for a user。
+
+        Args:
+            user_id: 用户 ID。
+        """
         with self._lock:
             if user_id not in self._permissions:
                 return {}
@@ -97,7 +128,11 @@ class PermissionManager:
             }
 
     def get_tool_users(self, tool_name: str) -> Dict[str, Set[Permission]]:
-        """Get all users and their permissions for a tool"""
+        """Get all users and their permissions for a tool。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         with self._lock:
             result = {}
             for user_id, tools in self._permissions.items():
@@ -106,7 +141,11 @@ class PermissionManager:
             return result
 
     def revoke_all_permissions(self, user_id: str) -> None:
-        """Revoke all permissions for a user"""
+        """Revoke all permissions for a user。
+
+        Args:
+            user_id: 用户 ID。
+        """
         with self._lock:
             self._permissions.pop(user_id, None)
 
@@ -183,11 +222,18 @@ class RoleBasedAccess:
     }
     
     def __init__(self):
+        """初始化。
+        """
         self._user_roles: Dict[str, List[str]] = {}  # user_id -> [role_names]
         self._custom_roles: Dict[str, Role] = {}
         
     def assign_role(self, user_id: str, role_name: str) -> bool:
-        """Assign role to user"""
+        """Assign role to user。
+
+        Args:
+            user_id: 用户 ID。
+            role_name: role_name 参数。
+        """
         if role_name not in self.ROLES and role_name not in self._custom_roles:
             return False
         if user_id not in self._user_roles:
@@ -197,7 +243,12 @@ class RoleBasedAccess:
         return True
         
     def revoke_role(self, user_id: str, role_name: str) -> bool:
-        """Revoke role from user"""
+        """Revoke role from user。
+
+        Args:
+            user_id: 用户 ID。
+            role_name: role_name 参数。
+        """
         if user_id in self._user_roles and role_name in self._user_roles[user_id]:
             self._user_roles[user_id].remove(role_name)
             return True
@@ -210,7 +261,14 @@ class RoleBasedAccess:
         resource_pattern: str,
         permission: Permission
     ) -> bool:
-        """Check if user has permission for resource"""
+        """Check if user has permission for resource。
+
+        Args:
+            user_id: 用户 ID。
+            resource_type: resource_type 参数。
+            resource_pattern: resource_pattern 参数。
+            permission: permission 参数。
+        """
         if user_id not in self._user_roles:
             return False
             
@@ -230,7 +288,11 @@ class RoleBasedAccess:
         return False
         
     def get_user_roles(self, user_id: str) -> List[str]:
-        """Get all roles for user"""
+        """Get all roles for user。
+
+        Args:
+            user_id: 用户 ID。
+        """
         return self._user_roles.get(user_id, [])
 
 

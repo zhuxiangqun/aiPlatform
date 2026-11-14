@@ -59,7 +59,11 @@ _PATH_REWRITES: tuple[tuple[str, str, str], ...] = (
 
 
 def apply_path_rewrite(path: str):
-    """Return (override_target, upstream_path) when a compatibility rewrite applies."""
+    """Return (override_target, upstream_path) when a compatibility rewrite applies.
+
+    Args:
+        path: 路径。
+    """
     path_only, sep, qs = (path or "").partition("?")
     for src, dest, target in _PATH_REWRITES:
         if path_only == src or path_only.startswith(src + "/"):
@@ -178,9 +182,16 @@ STATIC_EXTENSIONS = {'.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '
 
 class ProxyHandler(http.server.SimpleHTTPRequestHandler):
     # browsers / websockets clients expect HTTP/1.1 for Upgrade: websocket
+    """ProxyHandler。"""
     protocol_version = "HTTP/1.1"
 
     def __init__(self, *args, **kwargs):
+        """初始化。
+
+        Args:
+            args: args 参数。
+            kwargs: kwargs 参数。
+        """
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
     def _get_target(self, path):
@@ -533,6 +544,8 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     pass
 
     def do_GET(self):
+        """do_GET。
+        """
         path_only = (self.path or "").split("?", 1)[0]
         if self._is_websocket_upgrade() and path_only.startswith("/ws"):
             self._proxy_websocket(CORE_DIRECT_URL)
@@ -546,18 +559,32 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_spa()
 
     def do_POST(self):
+        """do_POST。
+        """
         self._proxy("POST")
 
     def do_PUT(self):
+        """do_PUT。
+        """
         self._proxy("PUT")
 
     def do_DELETE(self):
+        """do_DELETE。
+        """
         self._proxy("DELETE")
 
     def do_PATCH(self):
+        """do_PATCH。
+        """
         self._proxy("PATCH")
 
     def log_message(self, fmt, *args):
+        """log_message。
+
+        Args:
+            fmt: fmt 参数。
+            args: args 参数。
+        """
         pass
 
 

@@ -24,7 +24,14 @@ from .base import BaseLLMAdapter, LLMResponse, AdapterMetadata, LLMConfig
 
 
 class ScriptedAdapter(BaseLLMAdapter):
+    """ScriptedAdapter。"""
     def __init__(self, model: str = "scripted", **kwargs):
+        """初始化。
+
+        Args:
+            model: 模型名。
+            kwargs: kwargs 参数。
+        """
         metadata = AdapterMetadata(
             name="scripted",
             provider="scripted",
@@ -40,6 +47,12 @@ class ScriptedAdapter(BaseLLMAdapter):
         self._default_usage = _load_default_usage()
 
     async def generate(self, messages: List[Dict[str, str]], config: Optional[LLMConfig] = None) -> LLMResponse:
+        """generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         merged = self._merge_config(config)
         item = None
         if self._idx < len(self._responses):
@@ -57,11 +70,19 @@ class ScriptedAdapter(BaseLLMAdapter):
         return LLMResponse(content=content, model=merged.model, usage=usage)
 
     async def stream_generate(self, messages: List[Dict[str, str]], config: Optional[LLMConfig] = None) -> AsyncIterator[str]:
+        """stream_generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         r = await self.generate(messages, config=config)
         for ch in r.content:
             yield ch
 
     async def validate_connection(self) -> bool:
+        """validate_connection。
+        """
         return True
 
 

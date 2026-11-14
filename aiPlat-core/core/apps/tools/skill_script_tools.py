@@ -56,6 +56,11 @@ class SkillRunScriptTool(BaseTool):
     """
 
     def __init__(self, *, timeout: int = 20000):
+        """初始化。
+
+        Args:
+            timeout: 超时秒数。
+        """
         config = ToolConfig(
             name="skill_run_script",
             description="运行某个 Skill 的 scripts/ 脚本（高风险；受权限/审批治理）",
@@ -76,6 +81,11 @@ class SkillRunScriptTool(BaseTool):
         self._timeout_ms = int(timeout or 20000)
 
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
+        """execute。
+
+        Args:
+            params: params 参数。
+        """
         async def handler() -> ToolResult:
             reg = get_skill_registry()
             skill = str(params.get("skill") or "").strip()

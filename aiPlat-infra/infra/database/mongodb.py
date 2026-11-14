@@ -1,3 +1,5 @@
+"""mongodb：模块接口。"""
+
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from .base import DatabaseClient
@@ -6,7 +8,13 @@ from .schemas import DatabaseConfig, PoolStats
 
 
 class MongoConnectionPool(ConnectionPool):
+    """MongoConnectionPool。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         pool_config = config.pool
         self._client = None
@@ -33,31 +41,56 @@ class MongoConnectionPool(ConnectionPool):
         return self._client
 
     async def acquire(self):
+        """acquire。
+        """
         return await self._get_client()
 
     async def release(self, conn):
+        """release。
+
+        Args:
+            conn: conn 参数。
+        """
         pass
 
     def get_stats(self) -> PoolStats:
+        """获取 stats。
+        """
         return PoolStats()
 
     async def resize(self, min_size: int, max_size: int) -> None:
+        """resize。
+
+        Args:
+            min_size: min_size 参数。
+            max_size: max_size 参数。
+        """
         self._min_size = min_size
         self._max_size = max_size
 
     async def close(self):
+        """close。
+        """
         if self._client:
             self._client.close()
 
 
 class MongoClient(DatabaseClient):
+    """MongoClient。"""
     def __init__(self, config: DatabaseConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._pool: Optional[MongoConnectionPool] = None
         self._client = None
         self._session = None
 
     async def connect(self):
+        """connect。
+        """
         self._pool = MongoConnectionPool(self.config)
         self._client = await self._pool.acquire()
 
@@ -346,6 +379,8 @@ class MongoClient(DatabaseClient):
             self._session = None
 
     async def close(self):
+        """close。
+        """
         if self._session:
             await self._session.end_session()
             self._session = None
@@ -355,10 +390,14 @@ class MongoClient(DatabaseClient):
             await self._pool.close()
 
     def is_connected(self) -> bool:
+        """is_connected。
+        """
         return self._client is not None
 
     @property
     def pool(self) -> Optional[ConnectionPool]:
+        """pool。
+        """
         return self._pool
     
     @staticmethod

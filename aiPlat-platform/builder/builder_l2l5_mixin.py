@@ -22,6 +22,14 @@ from typing import Any, Dict, List
 class BuilderL2L5Mixin:
     """L2 导入 / L3 合并 / L4 模块 / L4.5 迁移 / L5 发布 — 从 BuilderProjectService 拆出。"""
     async def import_repo(self, project_id: str, *, zip_bytes: bytes = b"", existing_path: str = "", module_id: str = "default") -> Dict[str, Any]:
+        """import_repo。
+
+        Args:
+            project_id: project 标识。
+            zip_bytes: zip_bytes 参数。
+            existing_path: existing_path 参数。
+            module_id: module 标识。
+        """
         from builder.builder_project_service import _log, _safe_extract_zip, _copy_existing_path, _scan_imported, _detect_tests, _detect_missing_deps, _L2_IMPORT_MAX_FILES  # noqa: E501
         """L2: import existing code into the project (zip upload or local path).
 
@@ -97,7 +105,11 @@ class BuilderL2L5Mixin:
             "missing_deps": missing_deps,
         }
     async def list_imported_files(self, project_id: str) -> Dict[str, Any]:
-        """L2: return imported manifest for frontend file selection."""
+        """L2: return imported manifest for frontend file selection.
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         imp = proj.get("imported_repo") or {}
         manifest = imp.get("manifest") or []
@@ -138,7 +150,12 @@ class BuilderL2L5Mixin:
         return os.path.isdir(self._module_root(project_id, "default")) and any(
             os.scandir(self._module_root(project_id, "default")))
     async def create_modules(self, project_id: str, modules: List[Dict]) -> Dict[str, Any]:
-        """L4: declare project modules (modules.json semantics, stored on project)."""
+        """L4: declare project modules (modules.json semantics, stored on project).
+
+        Args:
+            project_id: project 标识。
+            modules: modules 参数。
+        """
         self._reload_if_stale()
         proj = self._projects.get(project_id) or {}
         if not proj:
@@ -161,7 +178,11 @@ class BuilderL2L5Mixin:
         self._save_projects()
         return {"status": "ok", "modules": cleaned, "total": len(cleaned)}
     async def list_modules(self, project_id: str) -> Dict[str, Any]:
-        """L4: module list — declared modules + implicit default when legacy import exists."""
+        """L4: module list — declared modules + implicit default when legacy import exists.
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         modules = []
         if self._has_legacy_import(project_id):
@@ -179,7 +200,12 @@ class BuilderL2L5Mixin:
             })
         return {"status": "ok", "modules": modules, "total": len(modules)}
     async def cross_module_impact(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
-        """L4 §3.3: cross-module impact analysis for a changed module."""
+        """L4 §3.3: cross-module impact analysis for a changed module.
+
+        Args:
+            project_id: project 标识。
+            module_id: module 标识。
+        """
         from builder.cross_module import analyze_cross_module, impact_closure
         roots = self._module_roots(project_id)
         if not roots:
@@ -200,8 +226,9 @@ class BuilderL2L5Mixin:
     async def module_orchestrate(self, project_id: str, module_ids: List[str]) -> Dict[str, Any]:
         """L4 §3.4: orchestrate pipelines for changed modules in dependency order.
 
-        Affected set = changed modules + everything that depends on them.
-        Sequential (v1) topological order — dependency first, then dependents.
+        Args:
+            project_id: project 标识。
+            module_ids: module_ids 参数。
         """
         from builder.cross_module import analyze_cross_module, impact_closure, topological_order
         roots = self._module_roots(project_id)
@@ -268,7 +295,12 @@ class BuilderL2L5Mixin:
                     continue
         return out
     async def migration_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
-        """L4.5: extract old (imported) vs new (post-merge) schema → migration (up/down)."""
+        """L4.5: extract old (imported) vs new (post-merge) schema → migration (up/down).
+
+        Args:
+            project_id: project 标识。
+            module_id: module 标识。
+        """
         from builder.schema_migration import extract_schema, diff_schema, generate_migration
         proj = self._projects.get(project_id) or {}
         old_files = self._module_code_files(project_id, module_id)
@@ -314,7 +346,11 @@ class BuilderL2L5Mixin:
                         hits.append({"module": mid, "file": rel, "field": field})
         return hits[:20]
     async def list_migrations(self, project_id: str) -> Dict[str, Any]:
-        """L4.5: migration history + pending."""
+        """L4.5: migration history + pending.
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         history = proj.get("migrations") or []
         pending = proj.get("pending_migrations") or []
@@ -322,7 +358,13 @@ class BuilderL2L5Mixin:
                 "total_applied": len(history), "total_pending": len(pending)}
     async def apply_migration(self, project_id: str, migration_ids: List[str],
                               confirmed: bool = False) -> Dict[str, Any]:
-        """L4.5: apply pending migrations. Destructive requires explicit confirmation."""
+        """L4.5: apply pending migrations. Destructive requires explicit confirmation.
+
+        Args:
+            project_id: project 标识。
+            migration_ids: migration_ids 参数。
+            confirmed: confirmed 参数。
+        """
         proj = self._projects.get(project_id, {})
         pending = proj.get("pending_migrations") or []
         applied = []
@@ -343,7 +385,12 @@ class BuilderL2L5Mixin:
         return {"status": "ok", "applied": applied,
                 "note": "迁移状态已记录；AIPLAT_DB_EXECUTE=true 时执行真实 SQL（默认仅记录）"}
     async def rollback_migration(self, project_id: str, migration_id: str) -> Dict[str, Any]:
-        """L4.5: apply down script + mark rolled_back (history append-only)."""
+        """L4.5: apply down script + mark rolled_back (history append-only).
+
+        Args:
+            project_id: project 标识。
+            migration_id: migration 标识。
+        """
         proj = self._projects.get(project_id, {})
         mig = next((m for m in (proj.get("migrations") or [])
                     if m.get("id") == migration_id and m.get("status") == "applied"), None)
@@ -355,7 +402,12 @@ class BuilderL2L5Mixin:
         return {"status": "ok", "migration_id": migration_id, "down_sql": mig.get("down_sql", ""),
                 "note": "down 脚本已应用（AIPLAT_DB_EXECUTE=true 时执行真实 SQL）；历史保留"}
     async def create_release(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
-        """L5: merge post-merge code into a versioned artifact (building → ready)."""
+        """L5: merge post-merge code into a versioned artifact (building → ready).
+
+        Args:
+            project_id: project 标识。
+            module_id: module 标识。
+        """
         from builder.release_engine import create_release as _engine_release, release_root
         proj = self._projects.get(project_id) or {}
         src_dir = self._module_root(project_id, module_id)
@@ -413,7 +465,11 @@ class BuilderL2L5Mixin:
             _log.warning("L5 infra deploy via facade skipped: %s", str(e)[:200])
             return False
     async def list_releases(self, project_id: str) -> Dict[str, Any]:
-        """L5: release history + current pointer target."""
+        """L5: release history + current pointer target.
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.release_engine import current_dir
         proj = self._projects.get(project_id, {})
         releases = proj.get("releases") or []
@@ -423,7 +479,15 @@ class BuilderL2L5Mixin:
     async def set_release_status(self, project_id: str, version: str,
                                  status: str, target_version: str = "",
                                  canary_weight: int = 0) -> Dict[str, Any]:
-        """L5: canary / full / rollback state transitions (canary_weight for routing)."""
+        """L5: canary / full / rollback state transitions (canary_weight for routing).
+
+        Args:
+            project_id: project 标识。
+            version: version 参数。
+            status: status 参数。
+            target_version: target_version 参数。
+            canary_weight: canary_weight 参数。
+        """
         from builder.release_engine import set_release_status as _engine_set
         proj = self._projects.get(project_id, {})
         releases = proj.get("releases") or []
@@ -437,6 +501,12 @@ class BuilderL2L5Mixin:
         self._save_projects()
         return {"status": "ok", "release": rel}
     async def merge_preview(self, project_id: str, module_id: str = "default") -> Dict[str, Any]:
+        """merge_preview。
+
+        Args:
+            project_id: project 标识。
+            module_id: module 标识。
+        """
         from builder.builder_project_service import _log, _parse_file_blocks
         """L3: build per-file merge previews — new versions from pipeline output vs
         imported originals, plus impact analysis, syntax + interface checks.
@@ -506,7 +576,11 @@ class BuilderL2L5Mixin:
         return {"status": "ok", "previews": previews, "impact": impact,
                 "module_id": module_id, "cross_contracts": cross_contracts}
     async def list_merge_previews(self, project_id: str) -> Dict[str, Any]:
-        """L3: return stored merge previews + impact analysis."""
+        """L3: return stored merge previews + impact analysis.
+
+        Args:
+            project_id: project 标识。
+        """
         proj = self._projects.get(project_id, {})
         previews = proj.get("merge_previews") or []
         impact = proj.get("merge_impact") or {}
@@ -515,10 +589,9 @@ class BuilderL2L5Mixin:
     async def merge_apply(self, project_id: str, decisions: Dict[str, str]) -> Dict[str, Any]:
         """L3: apply approved previews after human review (design §3.5/§3.7).
 
-        L3-P0-01 atomic gate: every preview path must be approved; any missing or
-        rejected path → 422-style error (rejected = regenerate, never partial apply).
-        L3-P0-02 concurrency guard: imported originals must match the pre-generation
-        sha256 snapshot, otherwise the merge is refused (409 semantics).
+        Args:
+            project_id: project 标识。
+            decisions: decisions 参数。
         """
         from builder.merge_engine import apply_merge, verify_snapshot
         proj = self._projects.get(project_id, {})
@@ -584,8 +657,12 @@ class BuilderL2L5Mixin:
             self._save_projects()
         return result
     async def analyze_impact_for(self, project_id: str, modify_files: List[Dict]) -> Dict[str, Any]:
-        """L3-P1-05 backend: impact analysis on demand (frontend shows auto-added
-        files with reasons + uncheck confirmation)."""
+        """L3-P1-05 backend: impact analysis on demand (frontend shows auto-added。
+
+        Args:
+            project_id: project 标识。
+            modify_files: modify_files 参数。
+        """
         from builder.merge_engine import analyze_impact
         proj = self._projects.get(project_id, {})
         imp = proj.get("imported_repo") or {}

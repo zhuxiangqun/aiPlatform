@@ -207,8 +207,35 @@ else echo "⚠️ baseline file not found"; fi
 # ── §78b: PRINCIPLE-BASED — any CJK text in engine (not just 4 prefixes) ──
 echo -n "§78b: CJK characters in engine: "
 CJK_COUNT=$(python3 -c "
-import os, re
+import ast, os
 found = set()
+
+def _doc_lines(tree):
+    lines = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not node.body:
+            continue
+        first = node.body[0]
+        if not isinstance(first, ast.Expr):
+            continue
+        val = first.value
+        doc = None
+        if isinstance(val, ast.Constant) and isinstance(val.value, str):
+            doc = val
+        else:
+            ast_str = getattr(ast, 'Str', None)
+            if ast_str is not None and isinstance(val, ast_str):
+                doc = val
+        if doc is None:
+            continue
+        start = getattr(first, 'lineno', None) or getattr(doc, 'lineno', None)
+        end = getattr(first, 'end_lineno', None) or getattr(doc, 'end_lineno', None) or start
+        if start:
+            lines.update(range(start, (end or start) + 1))
+    return lines
+
 for root, dirs, files in os.walk('aiPlat-core/core/harness/execution/'):
     for fname in sorted(files):
         if not fname.endswith('.py'): continue
@@ -224,14 +251,29 @@ for root, dirs, files in os.walk('aiPlat-core/core/harness/execution/'):
         if 'app_page_skill_inject' in fname: continue
         if 'factory_fix_plan' in fname: continue
         if 'prd_markdown' in fname: continue
-        for i, line in enumerate(open(fpath), 1):
+        try:
+            src = open(fpath, errors='ignore').read()
+            tree = ast.parse(src)
+        except SyntaxError:
+            continue
+        skip = _doc_lines(tree)
+        for i, line in enumerate(src.splitlines(), 1):
+            if i in skip:
+                continue
             stripped = line.strip()
             if not stripped or stripped.startswith('#'): continue
+            hash_idx = stripped.find('#')
+            if hash_idx > 0:
+                before = stripped[:hash_idx]
+                if before.count('\"') % 2 == 0 and before.count(\"'\") % 2 == 0:
+                    stripped = before.strip()
+                    if not stripped:
+                        continue
             if 'prompt_loader' in stripped or '_sync_resolve' in stripped: continue
             if 'from ' in stripped and 'import ' in stripped: continue
             # Skip string literals that are pure data (inside JSON/dict values, not code logic)
-            if stripped.startswith(('\"',\"'\")) and ':' in stripped and len(stripped) < 200: continue
-            has_cjk = any('\u4e00' <= ch <= '\u9fff' or '\u3040' <= ch <= '\u309f' for ch in line)
+            if stripped.startswith(('\"', \"'\")) and ':' in stripped and len(stripped) < 200: continue
+            has_cjk = any('\u4e00' <= ch <= '\u9fff' or '\u3040' <= ch <= '\u309f' for ch in stripped)
             if has_cjk:
                 found.add(f'{os.path.relpath(fpath)}:{i}')
 lines = sorted(found)
@@ -574,6 +616,18 @@ if python3 scripts/check_asset_compat_gates.py --ci >/dev/null 2>&1; then
 else
     echo "❌ COMPAT discovery/listing/syscall gates missing or regresssed"
     echo "   Run: python3 scripts/check_asset_compat_gates.py --ci"
+    FAIL=1
+fi
+
+# ── §99: Python 可读性注释（全平台 docstring / Args / 为什么 / 禁废话）──
+# 只检查触及的 .py（相对 main 的变更）；存量随改动面补齐。
+echo -n "§99: python docstring readability: "
+if python3 scripts/check_python_docstring_guard.py --changed >/tmp/aiplat_docstring_s99.txt 2>&1; then
+    echo "✅"
+else
+    echo "❌ 触及的 .py 缺少模块/public docstring、Args、或「为什么」注释"
+    echo "   Run: python3 scripts/check_python_docstring_guard.py --changed"
+    head -20 /tmp/aiplat_docstring_s99.txt 2>/dev/null | sed 's/^/   /'
     FAIL=1
 fi
 

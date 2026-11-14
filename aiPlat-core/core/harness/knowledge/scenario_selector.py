@@ -27,6 +27,7 @@ QUADRANT_LABELS = {
 
 @dataclass
 class Scenario:
+    """Scenario。"""
     name: str
     domain_id: str = ""
     pain: str = ""
@@ -50,14 +51,10 @@ def _discrete_to_score(value: str, mapping: Dict[str, float]) -> float:
 
 
 def evaluate_scenario_5_criteria(scenario: Scenario) -> Dict[str, Any]:
-    u"""Evaluate a scenario against 5 high-value criteria. Returns 0-100 score + breakdown.
+    """Evaluate a scenario against 5 high-value criteria. Returns 0-100 score + breakdown.
 
-    Criteria weights:
-      1. Business pain clarity:  impact×urgency → discrete mapping (20pts)
-      2. Process closure:        clear=20, partial=12, unknown=4 (20pts)
-      3. Data availability:      available=20, partial=12, unavailable=4 (20pts)
-      4. Value verifiability:    verifiable=20, estimated=12, unknown=4 (20pts)
-      5. Semantic asset reuse:   high=20, medium=12, low=4 (20pts)
+    Args:
+        scenario: scenario 参数。
     """
     impact_map = {"high": 20, "medium": 14, "low": 8}
     urgency_map = {"high": 20, "medium": 14, "low": 8}
@@ -85,9 +82,10 @@ def evaluate_scenario_5_criteria(scenario: Scenario) -> Dict[str, Any]:
 
 
 def prioritize_scenarios(scenarios: List[Scenario]) -> List[Scenario]:
-    u"""Apply 4-quadrant priority + 5 criteria scoring → return sorted list.
+    """Apply 4-quadrant priority + 5 criteria scoring → return sorted list.
 
-    priority_score = 0.6 × criteria_score + 0.4 × maturity_score
+    Args:
+        scenarios: scenarios 参数。
     """
     for s in scenarios:
         criteria = evaluate_scenario_5_criteria(s)
@@ -103,9 +101,10 @@ def prioritize_scenarios(scenarios: List[Scenario]) -> List[Scenario]:
 
 
 def value_opportunity_formula(scenario: Scenario) -> str:
-    u"""Generate the value opportunity formula.
+    """Generate the value opportunity formula.
 
-    Format: By [doing X] + help [who] + in [scenario] + achieve [A→B] = deliver [value]
+    Args:
+        scenario: scenario 参数。
     """
     return (
         f"通过 {scenario.name} 的语义建模 + "
@@ -122,7 +121,14 @@ def recommend_order(
     ontologies_dir: str = "",
     limit: int = 5,
 ) -> List[Dict[str, Any]]:
-    u"""Recommend which domains to build first, with computed scores."""
+    """Recommend which domains to build first, with computed scores.
+
+    Args:
+        industry: industry 参数。
+        pain_points: pain_points 参数。
+        ontologies_dir: ontologies_dir 参数。
+        limit: 返回条数上限。
+    """
     import json, os
 
     base = os.path.expanduser(ontologies_dir or os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))

@@ -22,6 +22,13 @@ class EmlConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
+        """accepts。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         return self._accepts_by_format(stream_info)
 
     def convert(
@@ -30,6 +37,13 @@ class EmlConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> List[DocumentElement]:
+        """convert。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         data = file_stream.read()
         text = data.decode("utf-8", errors="replace")
         try:

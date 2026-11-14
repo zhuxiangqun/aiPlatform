@@ -67,28 +67,50 @@ class MemoryBase(ABC):
     """记忆系统基类"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or {}
         self.max_size = self.config.get("max_size", 1000)
         self.ttl = self.config.get("ttl", 3600)           # 默认1小时过期
     
     @abstractmethod
     async def store(self, entry: MemoryEntry) -> str:
-        """存储记忆"""
+        """存储记忆。
+
+        Args:
+            entry: entry 参数。
+        """
         pass
     
     @abstractmethod
     async def retrieve(self, query: str, limit: int = 10) -> List[MemoryEntry]:
-        """检索记忆"""
+        """检索记忆。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         pass
     
     @abstractmethod
     async def delete(self, entry_id: str) -> bool:
-        """删除记忆"""
+        """删除记忆。
+
+        Args:
+            entry_id: entry 标识。
+        """
         pass
     
     @abstractmethod
     async def clear(self, scope: MemoryScope = MemoryScope.SESSION) -> int:
-        """清除记忆"""
+        """清除记忆。
+
+        Args:
+            scope: scope 参数。
+        """
         pass
     
     async def get_stats(self) -> Dict[str, Any]:

@@ -1,3 +1,5 @@
+"""ssh：模块接口。"""
+
 from __future__ import annotations
 
 import base64
@@ -27,6 +29,8 @@ class SSHExecDriver(ExecDriver):
     driver_id = "ssh"
 
     def capabilities(self) -> Dict[str, object]:
+        """capabilities。
+        """
         return {
             "driver_id": self.driver_id,
             "supported_languages": ["python"],
@@ -62,6 +66,13 @@ class SSHExecDriver(ExecDriver):
         return args
 
     async def run_code(self, *, language: str, code: str, timeout_s: float) -> ExecResult:
+        """run_code。
+
+        Args:
+            language: language 参数。
+            code: code 参数。
+            timeout_s: timeout_s 参数。
+        """
         if str(language or "").lower() not in {"python", "py"}:
             return ExecResult(ok=False, exit_code=1, error="ssh_exec_driver_only_supports_python")
 
@@ -122,6 +133,8 @@ class SSHExecDriver(ExecDriver):
             return ExecResult(ok=False, exit_code=1, error=str(e), duration_ms=int((time.time() - start) * 1000))
 
     async def health(self) -> Dict[str, object]:
+        """health。
+        """
         target = self._build_target()
         if not target:
             return {

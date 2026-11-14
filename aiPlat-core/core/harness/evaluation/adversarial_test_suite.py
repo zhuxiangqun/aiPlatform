@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AttackScenario:
+    """AttackScenario。"""
     scenario_id: str
     category: str          # internal_tag_leak | self_ref_loop | recursive_frame | cognitive_assimilation
     input_text: str         # 注入的对抗文本
@@ -35,6 +36,7 @@ class AttackScenario:
 
 @dataclass
 class AdversarialReport:
+    """AdversarialReport。"""
     total_scenarios: int
     passed: int             # 防线成功拦截
     missed: int             # 防线未能拦截
@@ -178,8 +180,8 @@ class AdversarialTestSuite:
     def export_training_data(self, report: AdversarialReport) -> str:
         """导出失败案例为训练数据 (ShareGPT 兼容 JSONL).
 
-        Returns:
-            输出文件路径
+        Args:
+            report: 报告 dict。
         """
         if not report.training_samples:
             return ""

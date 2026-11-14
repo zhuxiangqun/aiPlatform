@@ -1,3 +1,5 @@
+"""changeset：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -22,7 +24,21 @@ async def record_changeset(
 ) -> None:
     """Record a governance 'changeset' event (best-effort).
 
-    IMPORTANT: Do not store secrets; pass hashes/lengths instead.
+    Args:
+        store: store 参数。
+        name: name 参数。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        status: status 参数。
+        args: args 参数。
+        result: result 参数。
+        error: error 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        user_id: 用户 ID。
+        session_id: 会话 ID。
+        approval_request_id: approval_request 标识。
+        tenant_id: 租户 ID。
     """
     try:
         if not store:

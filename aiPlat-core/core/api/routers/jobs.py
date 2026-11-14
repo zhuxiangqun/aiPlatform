@@ -1,3 +1,8 @@
+"""jobs：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 import time
@@ -32,6 +37,13 @@ def _scheduler():
 
 @router.get("/jobs", response_model=Dict[str, Any])
 async def list_jobs(limit: int = 100, offset: int = 0, enabled: Optional[bool] = None):
+    """列出 jobs。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        enabled: 是否启用。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -40,6 +52,11 @@ async def list_jobs(limit: int = 100, offset: int = 0, enabled: Optional[bool] =
 
 @router.post("/jobs", response_model=Dict[str, Any])
 async def create_job(request: JobCreateRequest):
+    """创建 job。
+
+    Args:
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -69,6 +86,11 @@ async def create_job(request: JobCreateRequest):
 
 @router.get("/jobs/{job_id}", response_model=Dict[str, Any])
 async def get_job(job_id: str):
+    """获取 job。
+
+    Args:
+        job_id: job 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -80,6 +102,12 @@ async def get_job(job_id: str):
 
 @router.put("/jobs/{job_id}", response_model=Dict[str, Any])
 async def update_job(job_id: str, request: JobUpdateRequest):
+    """update_job。
+
+    Args:
+        job_id: job 标识。
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -107,6 +135,11 @@ async def update_job(job_id: str, request: JobUpdateRequest):
 
 @router.delete("/jobs/{job_id}", response_model=Dict[str, Any])
 async def delete_job(job_id: str):
+    """删除 job。
+
+    Args:
+        job_id: job 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -118,6 +151,11 @@ async def delete_job(job_id: str):
 
 @router.post("/jobs/{job_id}/enable", response_model=Dict[str, Any])
 async def enable_job(job_id: str):
+    """enable_job。
+
+    Args:
+        job_id: job 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -131,6 +169,11 @@ async def enable_job(job_id: str):
 
 @router.post("/jobs/{job_id}/disable", response_model=Dict[str, Any])
 async def disable_job(job_id: str):
+    """disable_job。
+
+    Args:
+        job_id: job 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -142,6 +185,11 @@ async def disable_job(job_id: str):
 
 @router.post("/jobs/{job_id}/run", response_model=Dict[str, Any])
 async def run_job_now(job_id: str):
+    """执行 job_now。
+
+    Args:
+        job_id: job 标识。
+    """
     scheduler = _scheduler()
     if not scheduler:
         raise HTTPException(status_code=503, detail="JobScheduler not running")
@@ -155,6 +203,12 @@ async def run_job_now(job_id: str):
 
 @router.get("/jobs/{job_id}/runs/{run_id}", response_model=Dict[str, Any])
 async def get_job_run(job_id: str, run_id: str):
+    """获取 job_run。
+
+    Args:
+        job_id: job 标识。
+        run_id: 运行 ID。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -166,6 +220,13 @@ async def get_job_run(job_id: str, run_id: str):
 
 @router.get("/jobs/{job_id}/runs", response_model=Dict[str, Any])
 async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
+    """列出 job_runs。
+
+    Args:
+        job_id: job 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -174,6 +235,14 @@ async def list_job_runs(job_id: str, limit: int = 100, offset: int = 0):
 
 @router.get("/jobs/dlq", response_model=Dict[str, Any])
 async def list_job_delivery_dlq(status: Optional[str] = None, job_id: Optional[str] = None, limit: int = 100, offset: int = 0):
+    """列出 job_delivery_dlq。
+
+    Args:
+        status: 状态。
+        job_id: job 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -182,6 +251,11 @@ async def list_job_delivery_dlq(status: Optional[str] = None, job_id: Optional[s
 
 @router.post("/jobs/dlq/{dlq_id}/retry", response_model=Dict[str, Any])
 async def retry_job_delivery_dlq(dlq_id: str):
+    """retry_job_delivery_dlq。
+
+    Args:
+        dlq_id: dlq 标识。
+    """
     scheduler = _scheduler()
     if not scheduler:
         raise HTTPException(status_code=503, detail="JobScheduler not running")
@@ -195,6 +269,11 @@ async def retry_job_delivery_dlq(dlq_id: str):
 
 @router.delete("/jobs/dlq/{dlq_id}", response_model=Dict[str, Any])
 async def delete_job_delivery_dlq(dlq_id: str):
+    """删除 job_delivery_dlq。
+
+    Args:
+        dlq_id: dlq 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

@@ -17,6 +17,8 @@ from typing import Any, Optional
 
 
 def management_api_token() -> Optional[str]:
+    """management_api_token。
+    """
     tok = (
         os.getenv("AIPLAT_MANAGEMENT_API_TOKEN")
         or os.getenv("AIPLAT_MANAGEMENT_API_KEY")
@@ -26,6 +28,11 @@ def management_api_token() -> Optional[str]:
 
 
 def is_loopback_host(host: str) -> bool:
+    """is_loopback_host。
+
+    Args:
+        host: host 参数。
+    """
     h = (host or "").strip().lower()
     if h.startswith("[") and h.endswith("]"):
         h = h[1:-1]
@@ -33,7 +40,11 @@ def is_loopback_host(host: str) -> bool:
 
 
 def assert_bind_allowed(host: str) -> None:
-    """Refuse 0.0.0.0 / public binds unless a management API token is set."""
+    """Refuse 0.0.0.0 / public binds unless a management API token is set.
+
+    Args:
+        host: host 参数。
+    """
     if is_loopback_host(host) or management_api_token():
         return
     raise SystemExit(
@@ -43,6 +54,11 @@ def assert_bind_allowed(host: str) -> None:
 
 
 def extract_request_token(request: Any) -> Optional[str]:
+    """extract_request_token。
+
+    Args:
+        request: FastAPI Request。
+    """
     header = (request.headers.get("x-aiplat-management-token") or "").strip()
     if header:
         return header
@@ -53,6 +69,12 @@ def extract_request_token(request: Any) -> Optional[str]:
 
 
 def tokens_match(expected: str, provided: Optional[str]) -> bool:
+    """tokens_match。
+
+    Args:
+        expected: expected 参数。
+        provided: provided 参数。
+    """
     if not provided:
         return False
     try:
@@ -76,6 +98,12 @@ class ManagementTokenMiddleware(BaseHTTPMiddleware):
     """Require the management API token when one is configured."""
 
     async def dispatch(self, request: Any, call_next) -> Any:
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         if not _HAS_ASGI:
             raise RuntimeError("starlette required for ManagementTokenMiddleware")
 

@@ -34,6 +34,12 @@ _DEFAULT_PROMPT = (
 
 
 def get_compaction_prompt(identifiers: List[str], history_lines: List[str]) -> str:
+    """获取 compaction_prompt。
+
+    Args:
+        identifiers: identifiers 参数。
+        history_lines: history_lines 参数。
+    """
     prompt_template = os.getenv("AIPLAT_COMPACTION_PROMPT", "").strip()
     if not prompt_template:
         try:

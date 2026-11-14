@@ -37,6 +37,15 @@ class HttpHealthChecker(HealthChecker):
         timeout: float = 30.0,
         transport: Optional[httpx.BaseTransport] = None,
     ):
+        """初始化。
+
+        Args:
+            layer: layer 参数。
+            endpoint: endpoint 参数。
+            health_path: health_path 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         super().__init__(layer=layer, endpoint=endpoint)
         self._health_path = health_path
         self._timeout = timeout

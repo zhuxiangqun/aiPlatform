@@ -75,6 +75,17 @@ async def sys_skill_call(
 
 ) -> Any:
 
+    """sys_skill_call。
+
+    Args:
+        skill: skill 参数。
+        params: params 参数。
+        context: context 参数。
+        user_id: 用户 ID。
+        session_id: 会话 ID。
+        timeout_seconds: timeout_seconds 参数。
+        trace_context: trace_context 参数。
+    """
     from ._trace import trace_syscall_entry
 
     trace_syscall_entry("sys_skill_call")
@@ -2139,7 +2150,17 @@ async def sys_skill_call_stream(
 
 ) -> AsyncGenerator[SkillStreamEvent, None]:
 
-    """Execute a skill call with streaming output."""
+    """Execute a skill call with streaming output.
+
+    Args:
+        skill: skill 参数。
+        params: params 参数。
+        context: context 参数。
+        user_id: 用户 ID。
+        session_id: 会话 ID。
+        timeout_seconds: timeout_seconds 参数。
+        trace_context: trace_context 参数。
+    """
 
     from ..interfaces import SkillStreamEvent
 

@@ -30,19 +30,10 @@ def _env_dimensions() -> Optional[List[Dict[str, Any]]]:
 def get_scoring_dimensions(
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Return the active scoring dimensions list.
+    """Return the active scoring dimensions list.
 
-    Priority: overrides > AIPLAT_EVAL_DIMENSIONS env var > empty list.
-
-    Do **not** fall back to release_scorecard dimensions: a workbench
-    regression without task dims would invent release keys as score 0 and
-    can falsely trip auto_rollback.
-
-    Each dimension is a dict with:
-        name: str           dimension name
-        weight: float       relative weight in overall score
-        threshold_min: float optional minimum threshold
+    Args:
+        overrides: overrides 参数。
     """
     if overrides:
         return overrides
@@ -55,37 +46,76 @@ def get_scoring_dimensions(
 def get_dimension_names(
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> List[str]:
+    """获取 dimension_names。
+
+    Args:
+        overrides: overrides 参数。
+    """
     return [d["name"] for d in get_scoring_dimensions(overrides)]
 
 
 def get_dimension_weights(
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, float]:
+    """获取 dimension_weights。
+
+    Args:
+        overrides: overrides 参数。
+    """
     return {d["name"]: d.get("weight", 0.0) for d in get_scoring_dimensions(overrides)}
 
 
 def get_dimension_thresholds(
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, float]:
+    """获取 dimension_thresholds。
+
+    Args:
+        overrides: overrides 参数。
+    """
     return {d["name"]: d.get("threshold_min", 0.0) for d in get_scoring_dimensions(overrides)}
+    """获取 dimension_names。
+
+    Args:
+        overrides: overrides 参数。
+    """
 
 
 def build_default_score_schema(
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Build a score schema dict like {name: 0, name: 0, ..., overall: 0}."""
+    """Build a score schema dict like {name: 0, name: 0, ..., overall: 0}.
+
+    Args:
+        overrides: overrides 参数。
+    """
+    """获取 dimension_weights。
+
+    Args:
+        overrides: overrides 参数。
+    """
     dims = get_scoring_dimensions(overrides)
     score: Dict[str, Any] = {"overall": 0}
     for d in dims:
         score[d["name"]] = d.get("threshold_min", 0.0)
     return score
 
+    """获取 dimension_thresholds。
+
+    Args:
+        overrides: overrides 参数。
+    """
 
 def compute_overall_score(
     score_obj: Dict[str, Any],
     overrides: Optional[List[Dict[str, Any]]] = None,
 ) -> float:
-    """Weighted average of dimension scores."""
+    """Weighted average of dimension scores.
+
+    Args:
+        score_obj: score_obj 参数。
+        overrides: overrides 参数。
+    """
     dims = get_scoring_dimensions(overrides)
     total_weight = 0.0
     weighted_sum = 0.0

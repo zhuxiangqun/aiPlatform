@@ -17,6 +17,8 @@ sys.path.insert(0, str(ROOT / "aiPlat-core"))
 
 
 def main() -> int:
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Ontology Completeness Score report")
     parser.add_argument("--domain", default="", help="Single domain_id")
     parser.add_argument(

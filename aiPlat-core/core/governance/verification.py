@@ -1,3 +1,5 @@
+"""verification：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -5,6 +7,12 @@ from typing import Any, Dict, Optional
 
 
 def autosmoke_job_id(resource_type: str, resource_id: str) -> str:
+    """autosmoke_job_id。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+    """
     return f"autosmoke-{str(resource_type).strip().lower()}:{str(resource_id).strip()}"
 
 
@@ -17,6 +25,16 @@ async def set_resource_verification(
     workspace_skill_manager: Any = None,
     workspace_mcp_manager: Any = None,
 ) -> None:
+    """set_resource_verification。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        verification: verification 参数。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+    """
     rtype = str(resource_type or "").strip().lower()
     rid = str(resource_id or "").strip()
     if not rtype or not rid:
@@ -40,6 +58,15 @@ async def mark_resource_pending(
     workspace_skill_manager: Any = None,
     workspace_mcp_manager: Any = None,
 ) -> None:
+    """mark_resource_pending。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+    """
     await set_resource_verification(
         resource_type=resource_type,
         resource_id=resource_id,
@@ -59,6 +86,16 @@ async def apply_autosmoke_result(
     workspace_skill_manager: Any = None,
     workspace_mcp_manager: Any = None,
 ) -> None:
+    """apply_autosmoke_result。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        job_run: job_run 参数。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+    """
     st = str((job_run or {}).get("status") or "")
     jid = autosmoke_job_id(resource_type, resource_id)
     ver = {
@@ -87,6 +124,15 @@ async def get_resource_verification(
     workspace_skill_manager: Any = None,
     workspace_mcp_manager: Any = None,
 ) -> Optional[Dict[str, Any]]:
+    """获取 resource_verification。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+    """
     rtype = str(resource_type or "").strip().lower()
     rid = str(resource_id or "").strip()
     if not rtype or not rid:

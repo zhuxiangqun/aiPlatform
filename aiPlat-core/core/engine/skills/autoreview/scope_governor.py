@@ -13,12 +13,18 @@ from core.engine.skills.autoreview.review_report import ReviewReport
 
 @dataclass
 class ScopeGovernor:
+    """ScopeGovernor。"""
     initial_files: set
     initial_lines: int
     fix_rounds: int = field(default=0)
     prev_issue_count: int = field(default=0)
 
     def check(self, report: ReviewReport) -> bool:
+        """check。
+
+        Args:
+            report: report 参数。
+        """
         self.fix_rounds += 1
 
         # 1. File boundary

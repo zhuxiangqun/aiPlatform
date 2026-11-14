@@ -1,3 +1,5 @@
+"""prod_policy：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -20,20 +22,14 @@ def prod_stdio_policy_check(
     args: List[str] | None,
     metadata: Dict[str, Any] | None,
 ) -> Tuple[bool, str]:
-    """
-    Policy: allow stdio MCP in prod only when explicitly allowlisted.
+    """Policy: allow stdio MCP in prod only when explicitly allowlisted.
 
-    Requirements (all must pass) when AIPLAT_ENV=prod and transport=stdio:
-    1) server metadata contains prod_allowed=true
-    2) server_name is in AIPLAT_PROD_STDIO_MCP_ALLOWLIST (comma-separated)
-    3) command path is absolute and starts with one of AIPLAT_STDIO_ALLOWED_COMMAND_PREFIXES
-       - prefixes separated by os.pathsep (:) or comma
-    4) basic hardening:
-       - deny risky interpreter basenames in prod (configurable)
-       - command exists and is executable (best-effort)
-       - args count/length sanity (avoid abuse)
-    5) optional hardening (recommended):
-       - force launcher in prod (AIPLAT_STDIO_FORCE_LAUNCHER_IN_PROD=true)
+    Args:
+        server_name: server_name 参数。
+        transport: transport 参数。
+        command: command 参数。
+        args: args 参数。
+        metadata: metadata 参数。
     """
     if runtime_env() != "prod":
         return True, ""

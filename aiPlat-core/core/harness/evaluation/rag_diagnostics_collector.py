@@ -58,6 +58,7 @@ logger = logging.getLogger("aiplat.rag_diagnostics")
 
 class BadCase:
 
+    """BadCase。"""
     run_id: str
 
     question: str
@@ -74,6 +75,8 @@ class BadCase:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "run_id": self.run_id,
@@ -98,6 +101,7 @@ class BadCase:
 
 class RAGQualityDashboard:
 
+    """RAGQualityDashboard。"""
     period: str = "24h"
 
     overview: Dict[str, Any] = field(default_factory=dict)
@@ -114,6 +118,8 @@ class RAGQualityDashboard:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "overview": self.overview,
@@ -140,6 +146,8 @@ class RAGDiagnosticsCollector:
 
     def __init__(self):
 
+        """__init__。
+        """
         self._thresholds: Dict[str, Any] = {}
 
         self._load_thresholds()
@@ -201,7 +209,12 @@ class RAGDiagnosticsCollector:
 
     ) -> RAGQualityDashboard:
 
-        """Collect unified RAG quality dashboard from all sources."""
+        """Collect unified RAG quality dashboard from all sources.
+
+        Args:
+            domain_id: domain 标识。
+            lookback_hours: lookback_hours 参数。
+        """
 
         dash = RAGQualityDashboard(period=f"{lookback_hours}h")
 
@@ -373,12 +386,8 @@ class RAGDiagnosticsCollector:
 
         """Collect user retention stats from execution_store.
 
-
-
-        Returns empty dict if execution_store doesn't have user-level data.
-
-        This is a reserved interface for future implementation.
-
+        Args:
+            domain_id: domain 标识。
         """
 
         try:
@@ -499,14 +508,8 @@ class RAGDiagnosticsCollector:
 
         """Compute composite 0-100 score from all metrics.
 
-
-
-        Formula:
-
-          faithfulness * 35 + relevancy * 25 + quality_gate_rate * 20
-
-          + (1 - abandon_rate) * 10 + (1 - repeat_rate) * 10
-
+        Args:
+            dash: dash 参数。
         """
 
         h = dash.hallucination

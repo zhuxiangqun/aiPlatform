@@ -32,6 +32,7 @@ logger = logging.getLogger("aiplat.code_entropy")
 
 @dataclass
 class EntropyScore:
+    """EntropyScore。"""
     file_path: str
     lines: int
     functions: int
@@ -40,6 +41,8 @@ class EntropyScore:
     reasons: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "file_path": self.file_path,
             "lines": self.lines,
@@ -56,6 +59,11 @@ class CodeEntropyDetector:
     _ACTIVATION_THRESHOLD = 1000  # minimum total lines to activate
 
     def __init__(self, db_path: str = None):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path or get_aiplat_data_dir("code_entropy.sqlite3")
         self._ensure_schema()
 
@@ -79,12 +87,9 @@ class CodeEntropyDetector:
     def scan(self, directory: str, *, extensions: tuple = ('.py', '.js', '.ts', '.tsx')) -> Dict:
         """Scan a code directory for high-entropy files.
 
-        Returns {
-            "files_scanned": int,
-            "total_lines": int,
-            "high_entropy": [EntropyScore, ...],
-            "avg_score": float,
-        }
+        Args:
+            directory: directory 参数。
+            extensions: extensions 参数。
         """
         import json
         import uuid

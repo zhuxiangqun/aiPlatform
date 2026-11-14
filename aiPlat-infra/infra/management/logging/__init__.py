@@ -14,14 +14,22 @@ logger = logging.getLogger("infra.logging")
 class LoggingManager:
     """Manages logging configuration and health for the infra layer."""
     def __init__(self):
+        """初始化。
+        """
         self._initialized = True
         self._default_level = logging.getLevelName(logging.root.level)
 
     def health(self) -> Dict[str, Any]:
+        """health。
+        """
         return {"status": "healthy", "default_level": self._default_level}
 
     def status(self) -> Dict[str, Any]:
+        """status。
+        """
         return {"initialized": self._initialized, "handlers": len(logging.root.handlers)}
 
     def diagnostics(self) -> Dict[str, Any]:
+        """diagnostics。
+        """
         return {"root_logger": logging.root.name, "effective_level": self._default_level}

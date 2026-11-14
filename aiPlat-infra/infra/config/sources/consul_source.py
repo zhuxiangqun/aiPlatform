@@ -1,3 +1,5 @@
+"""consul_source：模块接口。"""
+
 import logging
 """
 ConsulSource - Consul 配置源实现

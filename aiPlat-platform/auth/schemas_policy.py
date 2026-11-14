@@ -17,6 +17,7 @@ from typing import Dict, List
 
 
 class SystemRole(str, Enum):
+    """SystemRole。"""
     ADMIN = "admin"
     DEVELOPER = "developer"
     OPERATOR = "operator"
@@ -132,6 +133,15 @@ class ManagedPolicy:
     def __init__(self, scope: str = "tenant", key: str = "",
                  value: object = None, managed: bool = True,
                  source: str = "enterprise-admin"):
+        """初始化。
+
+        Args:
+            scope: scope 参数。
+            key: key 参数。
+            value: value 参数。
+            managed: managed 参数。
+            source: source 参数。
+        """
         self.scope = scope
         self.key = key
         self.value = value
@@ -140,9 +150,13 @@ class ManagedPolicy:
 
     @property
     def is_managed(self) -> bool:
+        """is_managed。
+        """
         return self.managed
 
     def to_dict(self) -> Dict:
+        """to_dict。
+        """
         return {
             "scope": self.scope,
             "key": self.key,
@@ -153,6 +167,11 @@ class ManagedPolicy:
 
     @classmethod
     def from_dict(cls, data: Dict) -> "ManagedPolicy":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             scope=str(data.get("scope", "tenant")),
             key=str(data.get("key", "")),
@@ -165,7 +184,9 @@ class ManagedPolicy:
 def merge_managed_policy(local: Dict, managed: Dict) -> Dict:
     """Merge managed policy over local policy — managed keys win.
 
-    Local policy may only relax keys NOT marked managed.
+    Args:
+        local: local 参数。
+        managed: managed 参数。
     """
     merged = dict(local or {})
     for key, val in (managed or {}).items():

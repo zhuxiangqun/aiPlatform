@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import logging
 """
 Tenant Manager - 租户管理
@@ -14,6 +16,7 @@ from pydantic import BaseModel
 
 
 class TenantStatus(str, Enum):
+    """TenantStatus。"""
     ACTIVE = "active"
     SUSPENDED = "suspended"
     DELETED = "deleted"
@@ -21,6 +24,7 @@ class TenantStatus(str, Enum):
 
 
 class TenantPlan(str, Enum):
+    """TenantPlan。"""
     FREE = "free"
     PRO = "pro"
     ENTERPRISE = "enterprise"
@@ -34,6 +38,7 @@ PLAN_DEFAULTS = {
 
 
 class TenantQuota(BaseModel):
+    """TenantQuota。"""
     max_agents: int = 10
     max_skills: int = 50
     max_api_keys: int = 10
@@ -42,6 +47,7 @@ class TenantQuota(BaseModel):
 
 
 class TenantConfig(BaseModel):
+    """TenantConfig。"""
     allow_public_skill_deployment: bool = True
     allow_external_tools: bool = False
     enable_mcp: bool = True
@@ -50,6 +56,7 @@ class TenantConfig(BaseModel):
 
 
 class Tenant(BaseModel):
+    """Tenant。"""
     tenant_id: str
     name: str
     plan: str = "free"
@@ -61,6 +68,7 @@ class Tenant(BaseModel):
 
 
 class TenantStats(BaseModel):
+    """TenantStats。"""
     agent_count: int = 0
     skill_count: int = 0
     api_key_count: int = 0
@@ -69,6 +77,7 @@ class TenantStats(BaseModel):
 
 
 class TenantManager:
+    """TenantManager。"""
     _instance = None
 
     def __new__(cls):
@@ -78,6 +87,8 @@ class TenantManager:
         return cls._instance
 
     def __init__(self):
+        """初始化。
+        """
         if self._initialized:
             return
         self._initialized = True
@@ -131,7 +142,13 @@ class TenantManager:
             logging.debug(str(e), exc_info=True)
 
     def create_tenant(self, tenant_id: str, name: str, **kwargs) -> Tenant:
-        """创建租户"""
+        """创建租户。
+
+        Args:
+            tenant_id: 租户 ID。
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         quota = kwargs.get("quota")
         config = kwargs.get("config")
 
@@ -148,11 +165,20 @@ class TenantManager:
         return tenant
 
     def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
-        """获取租户"""
+        """获取租户。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return self._tenants.get(tenant_id)
 
     def update_tenant(self, tenant_id: str, **kwargs) -> Optional[Tenant]:
-        """更新租户"""
+        """更新租户。
+
+        Args:
+            tenant_id: 租户 ID。
+            kwargs: kwargs 参数。
+        """
         tenant = self._tenants.get(tenant_id)
         if not tenant:
             return None
@@ -165,7 +191,11 @@ class TenantManager:
         return tenant
 
     def delete_tenant(self, tenant_id: str) -> bool:
-        """删除租户"""
+        """删除租户。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         if tenant_id in self._tenants:
             self._tenants[tenant_id].status = TenantStatus.DELETED
             self._persist(self._tenants[tenant_id])
@@ -178,7 +208,11 @@ class TenantManager:
         return False
 
     def suspend_tenant(self, tenant_id: str) -> bool:
-        """停用租户"""
+        """停用租户。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         tenant = self._tenants.get(tenant_id)
         if tenant:
             tenant.status = TenantStatus.SUSPENDED
@@ -187,7 +221,11 @@ class TenantManager:
         return False
 
     def activate_tenant(self, tenant_id: str) -> bool:
-        """激活租户"""
+        """激活租户。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         tenant = self._tenants.get(tenant_id)
         if tenant:
             tenant.status = TenantStatus.ACTIVE
@@ -196,7 +234,12 @@ class TenantManager:
         return False
 
     def set_verification_token(self, tenant_id: str, token: str) -> bool:
-        """设置邮箱验证 token"""
+        """设置邮箱验证 token。
+
+        Args:
+            tenant_id: 租户 ID。
+            token: token 参数。
+        """
         try:
             self._ensure_db()
             self._db.upsert_tenant({
@@ -209,7 +252,12 @@ class TenantManager:
             return False
 
     def verify_token(self, tenant_id: str, token: str) -> bool:
-        """验证邮箱验证 token"""
+        """验证邮箱验证 token。
+
+        Args:
+            tenant_id: 租户 ID。
+            token: token 参数。
+        """
         try:
             self._ensure_db()
             row = self._db.get_tenant(tenant_id)
@@ -218,7 +266,11 @@ class TenantManager:
             return False
 
     def find_by_email(self, email: str) -> Optional[Tenant]:
-        """通过邮箱查找租户（用于重复注册检测）"""
+        """通过邮箱查找租户（用于重复注册检测）。
+
+        Args:
+            email: email 参数。
+        """
         try:
             self._ensure_db()
             row = self._db.find_by_email(email)
@@ -229,20 +281,34 @@ class TenantManager:
         return None
 
     def get_plan_quota(self, tenant_id: str) -> dict:
-        """获取 plan 级别默认配额"""
+        """获取 plan 级别默认配额。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         tenant = self._tenants.get(tenant_id)
         plan = getattr(tenant, "plan", "free") if tenant else "free"
         return PLAN_DEFAULTS.get(plan, PLAN_DEFAULTS["free"])
 
     def list_tenants(self, status: Optional[TenantStatus] = None) -> list[Tenant]:
-        """列出租户"""
+        """列出租户。
+
+        Args:
+            status: status 参数。
+        """
         tenants = list(self._tenants.values())
         if status:
             tenants = [t for t in tenants if t.status == status]
         return tenants
 
     def check_quota(self, tenant_id: str, resource: str, value: int = 1) -> bool:
-        """检查配额"""
+        """检查配额。
+
+        Args:
+            tenant_id: 租户 ID。
+            resource: resource 参数。
+            value: value 参数。
+        """
         tenant = self._tenants.get(tenant_id)
         if not tenant:
             return True

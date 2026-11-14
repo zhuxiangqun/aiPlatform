@@ -105,6 +105,11 @@ class ProfileRegistry:
 
     def __init__(self, config_path: Optional[str] = None):
 
+        """初始化。
+
+        Args:
+            config_path: config_path 参数。
+        """
         self._presets: Dict[str, ControlProfile] = {}
 
         self._task_hints: Dict[str, str] = {}
@@ -125,6 +130,8 @@ class ProfileRegistry:
 
     def instance(cls) -> "ProfileRegistry":
 
+        """instance。
+        """
         if cls._instance is None:
 
             cls._instance = cls()
@@ -251,18 +258,27 @@ class ProfileRegistry:
 
     def get_preset(self, name: str) -> Optional[ControlProfile]:
 
+        """获取 preset。
+
+        Args:
+            name: name 参数。
+        """
         return self._presets.get(name)
 
 
 
     def list_presets(self) -> List[str]:
 
+        """列出 presets。
+        """
         return sorted(self._presets.keys())
 
 
 
     def get_default(self) -> ControlProfile:
 
+        """获取 default。
+        """
         return self._presets.get("default", _DEFAULT_PROFILE)
 
 
@@ -285,20 +301,10 @@ class ProfileRegistry:
 
         """解析当前任务的活跃画像。
 
-
-
-        优先级链:
-
-          1. profile_name 显式指定 → 返回对应预设
-
-          2. task_type 命中 task_hints → 返回对应预设
-
-          3. task_type 名直接匹配预设名 → 返回该预设
-
-          4. priority 调权（elevated/critical → 混合 safety_critical）
-
-          5. 兜底 → 返回 default
-
+        Args:
+            task_type: task_type 参数。
+            priority: priority 参数。
+            profile_name: profile_name 参数。
         """
 
         if profile_name:
@@ -393,16 +399,11 @@ class ProfileRegistry:
 
         """基于语义向量的画像解析（PR #2 中使用）。
 
-
-
-        策略:
-
-          1. 先用 task_type 做精确匹配（显式预设或 task_hints）
-
-          2. 精确匹配命中（且不是 default）→ 直接返回
-
-          3. 精确匹配未命中 → 降级到语义插值
-
+        Args:
+            task_embedding: task_embedding 参数。
+            task_type: task_type 参数。
+            priority: priority 参数。
+            k: k 参数。
         """
 
         # Step 1: 尝试精确匹配（不应用 priority，仅获取 base）
@@ -554,7 +555,12 @@ class ProfileRegistry:
 
     def register_preset(self, name: str, profile: ControlProfile) -> None:
 
-        """运行时注册/覆盖自定义画像。"""
+        """运行时注册/覆盖自定义画像。
+
+        Args:
+            name: name 参数。
+            profile: 评测 profile。
+        """
 
         self._presets[name] = profile
 
@@ -724,12 +730,8 @@ def set_failure_domain(domain: str) -> None:
 
     """设置当前请求的主要故障域。
 
-
-
-    在 Gate 拦截、Hook 触发、Circuit Breaker 跳闸时调用。
-
-    SECI Engine 在提取知识原子时读取此字段做聚合归因。
-
+    Args:
+        domain: domain 参数。
     """
 
     global _last_failure_domain
@@ -774,7 +776,12 @@ _auto_bump_profiles: Dict[str, ControlProfile] = {}  # session_id → bumped pro
 
 def set_profile_override(name: str, session_id: str = "_global") -> None:
 
-    """Set a session-level profile override. /profile code_generation"""
+    """Set a session-level profile override. /profile code_generation。
+
+    Args:
+        name: name 参数。
+        session_id: 会话 ID。
+    """
 
     _profile_overrides[session_id] = name
 
@@ -782,7 +789,11 @@ def set_profile_override(name: str, session_id: str = "_global") -> None:
 
 def get_profile_override(session_id: str = "_global") -> Optional[str]:
 
-    """Get session-level profile override, or None."""
+    """Get session-level profile override, or None.
+
+    Args:
+        session_id: 会话 ID。
+    """
 
     return _profile_overrides.get(session_id)
 
@@ -790,12 +801,19 @@ def get_profile_override(session_id: str = "_global") -> Optional[str]:
 
 def clear_profile_override(session_id: str = "_global") -> None:
 
+    """clear_profile_override。
+
+    Args:
+        session_id: 会话 ID。
+    """
     _profile_overrides.pop(session_id, None)
 
 
 
 def list_profile_overrides() -> Dict[str, str]:
 
+    """列出 profile_overrides。
+    """
     return dict(_profile_overrides)
 
 

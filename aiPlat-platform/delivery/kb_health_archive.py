@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def reports_dir() -> Path:
+    """reports_dir。
+    """
     raw = (os.getenv("AIPLAT_KB_HEALTH_REPORT_DIR") or "").strip()
     if raw:
         return Path(raw).expanduser()
@@ -28,12 +30,22 @@ def reports_dir() -> Path:
 
 
 def iso_week_tag(now: Optional[datetime] = None) -> str:
+    """iso_week_tag。
+
+    Args:
+        now: now 参数。
+    """
     dt = now or datetime.now(timezone.utc)
     iso = dt.isocalendar()
     return f"{iso.year}-W{iso.week:02d}"
 
 
 def archive_filename(week: Optional[str] = None) -> str:
+    """archive_filename。
+
+    Args:
+        week: week 参数。
+    """
     return f"kb-health-{week or iso_week_tag()}.md"
 
 
@@ -48,7 +60,13 @@ def archive_kb_health_report(
 ) -> Dict[str, Any]:
     """Build live KB health markdown and persist under reports_dir().
 
-    Skips rewrite when the week file already exists unless ``force``.
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        force: 是否强制。
+        week: week 参数。
     """
     from delivery.kb_health import build_kb_health_report, render_kb_health_markdown
 
@@ -88,6 +106,11 @@ def archive_kb_health_report(
 
 
 def list_kb_health_archives(limit: int = 52) -> Dict[str, Any]:
+    """列出 kb_health_archives。
+
+    Args:
+        limit: 返回条数上限。
+    """
     d = reports_dir()
     if not d.is_dir():
         return {"ok": True, "items": [], "dir": str(d)}
@@ -109,6 +132,11 @@ def list_kb_health_archives(limit: int = 52) -> Dict[str, Any]:
 
 
 def read_kb_health_archive(week: str) -> Dict[str, Any]:
+    """read_kb_health_archive。
+
+    Args:
+        week: week 参数。
+    """
     tag = str(week or "").strip()
     if not tag:
         return {"ok": False, "error": "week_required"}
@@ -127,6 +155,8 @@ def read_kb_health_archive(week: str) -> Dict[str, Any]:
 
 
 def archive_interval_hours() -> float:
+    """archive_interval_hours。
+    """
     raw = (os.getenv("AIPLAT_KB_HEALTH_ARCHIVE_HOURS", "168") or "168").strip()
     try:
         return float(raw)

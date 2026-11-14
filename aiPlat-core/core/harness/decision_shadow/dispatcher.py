@@ -29,6 +29,11 @@ class ShadowDispatcher:
     """Process-local dispatcher with drop counters (Phase 1 skeleton)."""
 
     def __init__(self, config: Optional[DecisionShadowConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or load_decision_shadow_config()
         self._client = DecisionClient(self._config)
         self._queue: Deque[Dict[str, Any]] = deque()
@@ -45,12 +50,15 @@ class ShadowDispatcher:
 
     @property
     def config(self) -> DecisionShadowConfig:
+        """config。
+        """
         return self._config
 
     def try_enqueue(self, payload: Dict[str, Any]) -> bool:
         """Non-blocking enqueue. Returns True only if accepted into the queue.
 
-        Never raises to callers. Does not await decision HTTP.
+        Args:
+            payload: 载荷 dict。
         """
         with self._lock:
             self._enqueue_attempts += 1
@@ -90,10 +98,14 @@ class ShadowDispatcher:
                 return False
 
     def queue_depth(self) -> int:
+        """queue_depth。
+        """
         with self._lock:
             return len(self._queue)
 
     def status(self) -> Dict[str, Any]:
+        """status。
+        """
         cfg = self._config
         with self._lock:
             drops = dict(self._drops)
@@ -126,6 +138,8 @@ class ShadowDispatcher:
 
 
 def get_shadow_dispatcher() -> ShadowDispatcher:
+    """获取 shadow_dispatcher。
+    """
     global _DISPATCHER
     with _DISPATCHER_LOCK:
         if _DISPATCHER is None:
@@ -136,7 +150,11 @@ def get_shadow_dispatcher() -> ShadowDispatcher:
 def reset_shadow_dispatcher_for_tests(
     config: Optional[DecisionShadowConfig] = None,
 ) -> ShadowDispatcher:
-    """Replace process singleton (unit tests only)."""
+    """Replace process singleton (unit tests only).
+
+    Args:
+        config: config 参数。
+    """
     global _DISPATCHER
     with _DISPATCHER_LOCK:
         _DISPATCHER = ShadowDispatcher(config=config)

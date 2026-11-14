@@ -72,6 +72,7 @@ logger = logging.getLogger("aiplat.wiki_quality")
 
 class WikiQualityScore:
 
+    """WikiQualityScore。"""
     page_title: str
 
     collection_id: str
@@ -92,6 +93,8 @@ class WikiQualityScore:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "page_title": self.page_title,
@@ -506,6 +509,8 @@ class WikiQualityMonitor:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._cron_hour = int(os.getenv("AIPLAT_WIKI_QUALITY_CRON_HOUR", "3"))
 
         self._sample_size = int(os.getenv("AIPLAT_WIKI_QUALITY_SAMPLE_SIZE", "10"))
@@ -626,7 +631,12 @@ class WikiQualityMonitor:
 
     ) -> List[WikiQualityScore]:
 
-        """Run a full quality check cycle. Pass force=True to skip cooldown."""
+        """Run a full quality check cycle. Pass force=True to skip cooldown.
+
+        Args:
+            collection_id: collection 标识。
+            force: 是否强制。
+        """
 
         if self._running:
 
@@ -761,6 +771,12 @@ class WikiQualityMonitor:
 
     def get_alerts(self, *, limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
 
+        """获取 alerts。
+
+        Args:
+            limit: 返回条数上限。
+            collection_id: collection 标识。
+        """
         conn = _get_conn()
 
         try:
@@ -787,6 +803,13 @@ class WikiQualityMonitor:
 
     def get_trends(self, *, page_title: str = "", collection_id: str = "default", limit: int = 10) -> List[Dict[str, Any]]:
 
+        """获取 trends。
+
+        Args:
+            page_title: page_title 参数。
+            collection_id: collection 标识。
+            limit: 返回条数上限。
+        """
         conn = _get_conn()
 
         try:
@@ -829,6 +852,8 @@ class WikiQualityMonitor:
 
     def get_stats(self) -> Dict[str, Any]:
 
+        """获取 stats。
+        """
         conn = _get_conn()
 
         try:
@@ -871,6 +896,12 @@ class WikiQualityMonitor:
 
     def mark_reviewed(self, page_title: str, collection_id: str = "default") -> None:
 
+        """mark_reviewed。
+
+        Args:
+            page_title: page_title 参数。
+            collection_id: collection 标识。
+        """
         conn = _get_conn()
 
         try:
@@ -911,6 +942,8 @@ _enabled = os.getenv("AIPLAT_WIKI_QUALITY_ENABLED", "true").lower() in ("1", "tr
 
 def get_wiki_quality_monitor() -> WikiQualityMonitor:
 
+    """获取 wiki_quality_monitor。
+    """
     global _monitor
 
     if _monitor is None:

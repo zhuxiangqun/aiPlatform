@@ -17,7 +17,12 @@ from ...restatement.run_state import (
 )
 
 async def persist_run_state(state: LoopState, **kwargs):
-    """Original: _persist_run_state (loop.py:705)"""
+    """Original: _persist_run_state (loop.py:705)。
+
+    Args:
+        state: state 参数。
+        kwargs: kwargs 参数。
+    """
     source = kwargs.get("source", "auto")
     extra = kwargs.get("extra")
     runtime = get_kernel_runtime()
@@ -60,7 +65,12 @@ async def persist_run_state(state: LoopState, **kwargs):
 
 
 async def apply_todo_done_markers(state: LoopState, **kwargs):
-    """Original: _apply_todo_done_markers (loop.py:744)"""
+    """Original: _apply_todo_done_markers (loop.py:744)。
+
+    Args:
+        state: state 参数。
+        kwargs: kwargs 参数。
+    """
     text = kwargs.get("text", "")
     source = kwargs.get("source", "auto")
     if os.getenv("AIPLAT_RUN_STATE_PARSE_TODO_DONE", "true").lower() not in ("1", "true", "yes", "y"):
@@ -81,7 +91,12 @@ async def apply_todo_done_markers(state: LoopState, **kwargs):
 
 
 async def load_run_state_for_prompt(state: LoopState, **kwargs):
-    """Original: _load_run_state_for_prompt (loop.py:1077)"""
+    """Original: _load_run_state_for_prompt (loop.py:1077)。
+
+    Args:
+        state: state 参数。
+        kwargs: kwargs 参数。
+    """
     """
     Load latest run_state artifact (if any) into state.context["run_state"].
     """
@@ -113,7 +128,12 @@ async def load_run_state_for_prompt(state: LoopState, **kwargs):
 
 
 async def restate_and_persist_run_state(state: LoopState, **kwargs):
-    """Original: _maybe_restate_and_persist_run_state (loop.py:1107)"""
+    """Original: _maybe_restate_and_persist_run_state (loop.py:1107)。
+
+    Args:
+        state: state 参数。
+        kwargs: kwargs 参数。
+    """
     """
     Periodically refresh run_state.next_step and persist (debounced).
     - restate: append run_event every N steps

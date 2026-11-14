@@ -41,6 +41,8 @@ class AtomicTaskDefinition:
     estimated_tokens: int = 0           # estimated token consumption
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "atom_id": self.atom_id,
             "boundary": self.boundary,
@@ -86,6 +88,11 @@ class AtomicTaskSplitter:
     """
 
     def __init__(self, *, max_atoms: int = 100):
+        """初始化。
+
+        Args:
+            max_atoms: max_atoms 参数。
+        """
         self._max_atoms = max_atoms
 
     async def split(
@@ -286,8 +293,8 @@ class AtomicTaskSplitter:
     def validate(self, atoms: List[AtomicTaskDefinition]) -> Dict[str, Any]:
         """Validate the quality of the atom list (non-LLM deterministic check).
 
-        Returns:
-            {"valid": bool, "issues": [...]}
+        Args:
+            atoms: atoms 参数。
         """
         issues = []
         ids: Set[str] = set()

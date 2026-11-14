@@ -30,6 +30,11 @@ NEGATE = ("误报", "消除", "复核", "非未", "非空", "非待", "残余", 
 
 
 def code_files(workspace: str) -> list:
+    """code_files。
+
+    Args:
+        workspace: workspace 参数。
+    """
     roots = [
         os.path.join(workspace, "aiPlat-core/core"),
         os.path.join(workspace, "aiPlat-core/engine"),
@@ -56,7 +61,11 @@ def code_files(workspace: str) -> list:
 
 
 def build_matchers(files: list) -> tuple:
-    """预构建 O(1) 查询索引：basename 集合 + 内容缓存（前 300 文件）。"""
+    """预构建 O(1) 查询索引：basename 集合 + 内容缓存（前 300 文件）。
+
+    Args:
+        files: files 参数。
+    """
     basenames = {os.path.basename(p) for p in files}
     contents: dict = {}
     # 惰性缓存：类名匹配时按需全量读取（首次读后缓存）
@@ -64,7 +73,15 @@ def build_matchers(files: list) -> tuple:
 
 
 def symbol_exists(base: str, basenames: set, contents: dict, workspace: str, files: list = None) -> bool:
-    """判断代码引用是否真实存在。返回 False = 疑似文档过时。"""
+    """判断代码引用是否真实存在。返回 False = 疑似文档过时。
+
+    Args:
+        base: base 参数。
+        basenames: basenames 参数。
+        contents: contents 参数。
+        workspace: workspace 参数。
+        files: files 参数。
+    """
     if not base or len(base) < 3:
         return True
     # 用户级配置路径 / 文档间引用 → 非代码对账对象
@@ -141,6 +158,8 @@ def symbol_exists(base: str, basenames: set, contents: dict, workspace: str, fil
 
 
 def main() -> int:
+    """main。
+    """
     workspace = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     research_dir = os.path.join(workspace, "docs/reference/research")
     if not os.path.isdir(research_dir):

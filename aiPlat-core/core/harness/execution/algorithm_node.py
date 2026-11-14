@@ -39,12 +39,21 @@ _ALGORITHM_REGISTRY: Dict[str, Callable] = {}
 
 
 def register_algorithm(name: str, func: Callable) -> None:
-    u"""Register a deterministic algorithm function."""
+    """Register a deterministic algorithm function.
+
+    Args:
+        name: name 参数。
+        func: func 参数。
+    """
     _ALGORITHM_REGISTRY[name] = func
 
 
 def get_algorithm(name: str) -> Optional[Callable]:
-    u"""Get a registered algorithm by name."""
+    """Get a registered algorithm by name.
+
+    Args:
+        name: name 参数。
+    """
     return _ALGORITHM_REGISTRY.get(name)
 
 

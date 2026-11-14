@@ -71,12 +71,25 @@ class Hook(Callable):
         phase: HookPhase,
         priority: int = 0
     ):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            callback: callback 参数。
+            phase: phase 参数。
+            priority: priority 参数。
+        """
         self.name = name
         self.callback = callback
         self.phase = phase
         self.priority = priority
     
     async def __call__(self, context: HookContext) -> Any:
+        """__call__。
+
+        Args:
+            context: context 参数。
+        """
         import asyncio
         if asyncio.iscoroutinefunction(self.callback):
             return await self.callback(context)
@@ -90,22 +103,39 @@ class IHookManager(ABC):
     
     @abstractmethod
     def register(self, hook: Hook) -> None:
-        """Register a hook"""
+        """Register a hook。
+
+        Args:
+            hook: hook 参数。
+        """
         pass
     
     @abstractmethod
     def unregister(self, name: str) -> None:
-        """Unregister a hook"""
+        """Unregister a hook。
+
+        Args:
+            name: name 参数。
+        """
         pass
     
     @abstractmethod
     async def trigger(self, phase: HookPhase, context: HookContext) -> List[Any]:
-        """Trigger hooks for a phase"""
+        """Trigger hooks for a phase。
+
+        Args:
+            phase: phase 参数。
+            context: context 参数。
+        """
         pass
     
     @abstractmethod
     def get_hooks(self, phase: HookPhase) -> List[Hook]:
-        """Get hooks for a phase"""
+        """Get hooks for a phase。
+
+        Args:
+            phase: phase 参数。
+        """
         pass
 
 
@@ -115,6 +145,8 @@ class HookManager(IHookManager):
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._hooks: Dict[HookPhase, List[Hook]] = {phase: [] for phase in HookPhase}
         # Register default hooks
         try:
@@ -138,12 +170,20 @@ class HookManager(IHookManager):
             logging.debug(str(e), exc_info=True)
     
     def register(self, hook: Hook) -> None:
-        """Register a hook"""
+        """Register a hook。
+
+        Args:
+            hook: hook 参数。
+        """
         self._hooks[hook.phase].append(hook)
         self._hooks[hook.phase].sort(key=lambda h: h.priority, reverse=True)
     
     def unregister(self, name: str) -> None:
-        """Unregister a hook by name"""
+        """Unregister a hook by name。
+
+        Args:
+            name: name 参数。
+        """
         for hooks in self._hooks.values():
             for i, hook in enumerate(hooks):
                 if hook.name == name:
@@ -151,7 +191,12 @@ class HookManager(IHookManager):
                     return
     
     async def trigger(self, phase: HookPhase, context: HookContext) -> List[Any]:
-        """Trigger hooks for a phase"""
+        """Trigger hooks for a phase。
+
+        Args:
+            phase: phase 参数。
+            context: context 参数。
+        """
         results = []
         
         for hook in self._hooks[phase]:
@@ -165,7 +210,11 @@ class HookManager(IHookManager):
         return results
     
     def get_hooks(self, phase: HookPhase) -> List[Hook]:
-        """Get hooks for a phase"""
+        """Get hooks for a phase。
+
+        Args:
+            phase: phase 参数。
+        """
         return self._hooks[phase].copy()
 
 
@@ -175,7 +224,14 @@ def create_hook(
     phase: HookPhase,
     priority: int = 0
 ) -> Hook:
-    """Create a hook"""
+    """Create a hook。
+
+    Args:
+        name: name 参数。
+        callback: callback 参数。
+        phase: phase 参数。
+        priority: priority 参数。
+    """
     return Hook(name=name, callback=callback, phase=phase, priority=priority)
 
 

@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 
 class Verdict(str, Enum):
+    """Verdict。"""
     PASS = "pass"
     REJECT = "reject"
     WARN = "warn"
@@ -29,6 +30,7 @@ class Verdict(str, Enum):
 
 @dataclass
 class SandboxResult:
+    """SandboxResult。"""
     verdict: Verdict
     reason: str = ""
     checks_passed: int = 0
@@ -91,8 +93,10 @@ class SandboxGate:
 
     def passes(self, stage=None, **kwargs) -> bool:
         """Synchronous pre-check: returns True if the stage/operation is safe.
-        
-        Lightweight check that doesn't require async. For full async checks, use check().
+
+        Args:
+            stage: stage 参数。
+            kwargs: kwargs 参数。
         """
         import asyncio as _asyncio
         try:
@@ -117,8 +121,13 @@ class SandboxGate:
         tool_args: Dict[str, Any] = None,
         file_path: str = "",
     ) -> SandboxResult:
-        """
-        Run all safety checks. Returns PASS/REJECT/WARN with details.
+        """Run all safety checks. Returns PASS/REJECT/WARN with details.
+
+        Args:
+            kind: kind 参数。
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            file_path: file_path 参数。
         """
         tool_args = tool_args or {}
         checks: List[Tuple[str, Callable[[], Tuple[bool, str]]]] = [
@@ -316,6 +325,8 @@ _sandbox_instance: Optional[SandboxGate] = None
 
 
 def get_sandbox() -> SandboxGate:
+    """获取 sandbox。
+    """
     global _sandbox_instance
     if _sandbox_instance is None:
         _sandbox_instance = SandboxGate()

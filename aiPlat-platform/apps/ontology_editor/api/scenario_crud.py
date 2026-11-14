@@ -1,3 +1,5 @@
+"""scenario_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""Ontology Editor — Scenario Selection API (v2.7)."""
 from fastapi import APIRouter, HTTPException, Query
@@ -23,10 +25,12 @@ async def recommend_scenarios(
     pain_points: str = Query(""),
     mode: str = Query("maturity"),
 ):
-    u"""Recommend which domains to build first.
+    """Recommend which domains to build first.
 
-    mode=maturity: rank by computed maturity scores
-    mode=scenario: rank by scenario fitness (5 criteria + quadrant)
+    Args:
+        industry: industry 参数。
+        pain_points: pain_points 参数。
+        mode: mode 参数。
     """
     try:
         if mode == "scenario":
@@ -47,7 +51,11 @@ async def recommend_scenarios(
 
 @router.get("/scenarios/report", response_model=StatusResponse)
 async def export_report(domain_ids: str = Query("")):
-    u"""Export domain comparison report (markdown)."""
+    """Export domain comparison report (markdown).
+
+    Args:
+        domain_ids: domain_ids 参数。
+    """
     try:
         from core.api.core_facade import export_comparison_report
         ids = [d.strip() for d in domain_ids.split(",") if d.strip()] if domain_ids else None
@@ -59,7 +67,12 @@ async def export_report(domain_ids: str = Query("")):
 
 @router.post("/scenarios/{domain_id}", response_model=StatusResponse)
 async def upsert_scenario(domain_id: str, data: Dict[str, Any]):
-    u"""Create or update a scenario definition for a domain (writes to registry.json)."""
+    """Create or update a scenario definition for a domain (writes to registry.json).
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         import json, os
 
@@ -105,7 +118,11 @@ async def upsert_scenario(domain_id: str, data: Dict[str, Any]):
 
 @router.post("/scenarios/refresh-maturity/{domain_id}", response_model=StatusResponse)
 async def refresh_maturity(domain_id: str):
-    u"""Refresh maturity scores for a domain."""
+    """Refresh maturity scores for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import DomainRouter
         router = DomainRouter()

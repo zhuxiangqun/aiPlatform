@@ -33,12 +33,14 @@ from .browser import _BrowserSession
 
 @dataclass
 class Account:
+    """Account。"""
     username: str
     password: str
     label: str = ""
 
 @dataclass
 class TestConfig:
+    """TestConfig。"""
     base_url: str = "https://8.216.36.35"
     login_url: str = ""
     accounts: List[Account] = field(default_factory=list)
@@ -60,6 +62,7 @@ class TestConfig:
 
 @dataclass
 class ActionResult:
+    """ActionResult。"""
     step_id: int
     page_url: str
     depth: int
@@ -78,6 +81,7 @@ class ActionResult:
 
 @dataclass
 class PageResult:
+    """PageResult。"""
     url: str
     depth: int
     loaded: bool = False
@@ -88,6 +92,7 @@ class PageResult:
 
 @dataclass
 class TestReport:
+    """TestReport。"""
     started_at: str = ""
     finished_at: str = ""
     total_pages: int = 0
@@ -107,6 +112,12 @@ class SessionManager:
     """多账号登录管理 + cookie/session 复用"""
 
     def __init__(self, session: _BrowserSession, config: TestConfig):
+        """初始化。
+
+        Args:
+            session: session 参数。
+            config: config 参数。
+        """
         self._session = session
         self._config = config
         self._accounts = config.accounts
@@ -115,9 +126,13 @@ class SessionManager:
 
     @property
     def is_logged_in(self) -> bool:
+        """is_logged_in。
+        """
         return self._logged_in
 
     async def ensure_login(self) -> bool:
+        """ensure_login。
+        """
         if self._logged_in:
             return True
         if not self._accounts:
@@ -179,11 +194,15 @@ class SessionManager:
         return False
 
     async def switch_account(self) -> bool:
+        """switch_account。
+        """
         self._logged_in = False
         self._current_idx = min(self._current_idx + 1, len(self._accounts) - 1)
         return await self.ensure_login()
 
     def current_account(self) -> Optional[Account]:
+        """current_account。
+        """
         if 0 <= self._current_idx < len(self._accounts):
             return self._accounts[self._current_idx]
         return None
@@ -197,6 +216,12 @@ class ActionGenerator:
     SKIP_TEXT = ["删除", "移除", "清空", "销毁", "卸载", "delete", "remove", "destroy"]
 
     def __init__(self, allow_writes: bool = False, allow_delete: bool = False):
+        """初始化。
+
+        Args:
+            allow_writes: allow_writes 参数。
+            allow_delete: allow_delete 参数。
+        """
         self._allow_writes = allow_writes
         self._allow_delete = allow_delete
 
@@ -276,6 +301,11 @@ class ActionGenerator:
         return "test"
 
     def should_skip(self, element: Dict[str, Any]) -> Tuple[bool, str]:
+        """should_skip。
+
+        Args:
+            element: element 参数。
+        """
         text = (element.get("visible_text") or element.get("name") or "").lower()
         for kw in self.SKIP_TEXT:
             if kw.lower() in text:
@@ -284,6 +314,12 @@ class ActionGenerator:
         return False, ""
 
     def generate(self, elements: List[Dict[str, Any]], skip_links: bool = False) -> List[Dict[str, Any]]:
+        """generate。
+
+        Args:
+            elements: elements 参数。
+            skip_links: skip_links 参数。
+        """
         actions: List[Dict[str, Any]] = []
         for el in elements:
             role = el.get("role", "")
@@ -358,11 +394,22 @@ class PageDiscoverer:
     """页面 BFS 遍历 + 弹窗递归检测"""
 
     def __init__(self, session: _BrowserSession, config: TestConfig):
+        """初始化。
+
+        Args:
+            session: session 参数。
+            config: config 参数。
+        """
         self._session = session
         self._config = config
         self._visited: Set[str] = set()
 
     def normalize_url(self, url: str) -> str:
+        """normalize_url。
+
+        Args:
+            url: url 参数。
+        """
         base = url.split("?")[0]
         if "#" in base:
             parts = base.split("#", 1)
@@ -370,6 +417,11 @@ class PageDiscoverer:
         return base.rstrip("/")
 
     async def discover(self, url: str) -> PageResult:
+        """discover。
+
+        Args:
+            url: url 参数。
+        """
         norm = self.normalize_url(url)
         result = PageResult(url=norm, depth=0)
 
@@ -395,6 +447,8 @@ class PageDiscoverer:
         return result
 
     async def detect_modal(self) -> Optional[Dict[str, Any]]:
+        """detect_modal。
+        """
         try:
             js = """(() => {
                 const modals = document.querySelectorAll('[role=dialog], .modal, .ant-modal, .el-dialog, .MuiDialog-root, [data-modal]');
@@ -422,6 +476,8 @@ class PageDiscoverer:
         return None
 
     async def close_modal(self) -> bool:
+        """close_modal。
+        """
         try:
             js = """(() => {
                 const closeBtn = document.querySelector('[aria-label=Close], .ant-modal-close, .modal .close, [data-close]');
@@ -437,12 +493,19 @@ class PageDiscoverer:
             return False
 
     async def get_current_url(self) -> str:
+        """获取 current_url。
+        """
         try:
             return self._session._page.url if self._session._page else ""
         except Exception:
             return ""
 
     def is_new_page(self, previous_url: str) -> bool:
+        """is_new_page。
+
+        Args:
+            previous_url: previous_url 参数。
+        """
         current = self.normalize_url(self.get_current_url())
         previous = self.normalize_url(previous_url)
         return current != previous
@@ -466,11 +529,24 @@ class ActionExecutor:
     """单步操作执行 + 截图对比 + 错误处理"""
 
     def __init__(self, session: _BrowserSession, config: TestConfig):
+        """初始化。
+
+        Args:
+            session: session 参数。
+            config: config 参数。
+        """
         self._session = session
         self._config = config
         self._step_counter = 0
 
     async def execute(self, action: Dict[str, Any], page_url: str, depth: int) -> ActionResult:
+        """execute。
+
+        Args:
+            action: action 参数。
+            page_url: page_url 参数。
+            depth: depth 参数。
+        """
         self._step_counter += 1
         step_id = self._step_counter
         el = action.get("element", {})
@@ -634,6 +710,11 @@ class BrowserTestEngine:
     """全功能浏览器自动化测试引擎"""
 
     def __init__(self, config: TestConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         self._session: Optional[_BrowserSession] = None
         self._session_mgr: Optional[SessionManager] = None
@@ -644,12 +725,21 @@ class BrowserTestEngine:
         self._progress_callback: Optional[callable] = None
 
     def on_progress(self, callback: callable):
+        """on_progress。
+
+        Args:
+            callback: callback 参数。
+        """
         self._progress_callback = callback
 
     def stop(self):
+        """stop。
+        """
         self._stop_requested = True
 
     async def run(self) -> TestReport:
+        """run。
+        """
         self._report.started_at = datetime.now(timezone.utc).isoformat()
         t0 = time.time()
 
@@ -1039,17 +1129,26 @@ _engine_lock = threading.Lock()
 
 
 def register_engine(engine):
+    """register_engine。
+
+    Args:
+        engine: engine 参数。
+    """
     global _active_engine
     with _engine_lock:
         _active_engine = engine
 
 
 def unregister_engine():
+    """unregister_engine。
+    """
     global _active_engine
     with _engine_lock:
         _active_engine = None
 
 
 def get_active_engine():
+    """获取 active_engine。
+    """
     with _engine_lock:
         return _active_engine

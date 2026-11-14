@@ -1,3 +1,5 @@
+"""storage：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -8,15 +10,20 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class TenantStorage:
+    """TenantStorage。"""
     tenant_id: str
     root_dir: str
 
     @property
     def db_path(self) -> str:
+        """db_path。
+        """
         return str(Path(self.root_dir) / "kb.sqlite3")
 
     @property
     def assets_dir(self) -> str:
+        """assets_dir。
+        """
         return str(Path(self.root_dir) / "assets")
 
     @property
@@ -42,12 +49,10 @@ def get_aiplat_home() -> Path:
 
 
 def get_tenant_storage(tenant_id: str) -> TenantStorage:
-    """
-    多租户隔离：每个 tenant 一个目录。
-    结构：
-      ~/.aiplat/kb/tenants/<tenant_id>/
-        kb.sqlite3
-        assets/...
+    """多租户隔离：每个 tenant 一个目录。
+
+    Args:
+        tenant_id: 租户 ID。
     """
     tid = str(tenant_id or "").strip() or "default"
     base = get_aiplat_home() / "kb" / "tenants" / tid
@@ -75,7 +80,13 @@ def get_object_store():
 
 
 def save_file(tenant_id: str, file_path: str, data: bytes) -> str:
-    """Save file: MinIO if configured, else filesystem."""
+    """Save file: MinIO if configured, else filesystem.
+
+    Args:
+        tenant_id: 租户 ID。
+        file_path: file_path 参数。
+        data: data 参数。
+    """
     store = get_object_store()
     if store:
         bucket = os.getenv("AIPLAT_OBJ_STORE_BUCKET", "aiplat-kb")

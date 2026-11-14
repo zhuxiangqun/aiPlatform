@@ -10,13 +10,10 @@ from typing import Any, Dict, Tuple
 
 
 def recommend_action(report: Any) -> Tuple[str, str]:
-    """
-    Return (action, reason).
+    """Return (action, reason).
 
-    action:
-      - "block": should block rollout / require manual intervention
-      - "investigate": requires investigation but may not be a hard block
-      - "continue": no action needed
+    Args:
+        report: report 参数。
     """
     if not isinstance(report, dict):
         return ("investigate", "missing_report")

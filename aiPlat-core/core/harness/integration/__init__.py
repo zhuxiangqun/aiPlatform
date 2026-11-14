@@ -371,6 +371,11 @@ class HarnessIntegration:
     _instance: Optional["HarnessIntegration"] = None
     
     def __init__(self, config: Optional[HarnessConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or HarnessConfig()
         self._initialized = False
         
@@ -393,12 +398,19 @@ class HarnessIntegration:
     
     @classmethod
     def get_instance(cls) -> "HarnessIntegration":
+        """获取 instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
     
     @classmethod
     def initialize(cls, config: Optional[HarnessConfig] = None) -> "HarnessIntegration":
+        """initialize。
+
+        Args:
+            config: config 参数。
+        """
         instance = cls.get_instance()
         instance._config = config or HarnessConfig()
         instance._setup()
@@ -433,7 +445,11 @@ class HarnessIntegration:
     # ------------------------------
 
     def attach_runtime(self, runtime: "KernelRuntime") -> None:
-        """Attach runtime dependencies (managers/stores/tracing) from application layer."""
+        """Attach runtime dependencies (managers/stores/tracing) from application layer.
+
+        Args:
+            runtime: runtime 参数。
+        """
         self._runtime = runtime
         try:
             from core.harness.kernel.runtime import set_kernel_runtime
@@ -443,11 +459,10 @@ class HarnessIntegration:
             logging.debug(str(e), exc_info=True)
 
     async def execute(self, request: ExecutionRequest) -> ExecutionResult:
-        """
-        Unified execution entry point (Phase 1).
+        """Unified execution entry point (Phase 1).
 
-        This method is intentionally minimal: it preserves existing API behavior while
-        routing execution through a single kernel entry point.
+        Args:
+            request: FastAPI Request。
         """
         # PR-04: per-session serialization + queueing (best-effort, can be disabled)
         runtime = getattr(self, "_runtime", None)
@@ -1808,6 +1823,7 @@ class HarnessIntegration:
             except Exception as e:
                 logging.debug(str(e), exc_info=True)
 
+        # 为什么：canary 门禁开启时未完成 run 不得伪装成功，防止绕过质量闸
         if enforce_gate and status != "completed":
             return ExecutionResult(ok=False, error="canary_failed", payload={"run_id": run_id, "status": status, "artifact_id": eval_artifact_id, "report": gated_report}, trace_id=trace_id, run_id=run_id)
         return ExecutionResult(ok=True, payload={"run_id": run_id, "status": status, "artifact_id": eval_artifact_id, "report": gated_report}, trace_id=trace_id, run_id=run_id)
@@ -2057,46 +2073,68 @@ class HarnessIntegration:
 
     @property
     def config(self) -> HarnessConfig:
+        """config。
+        """
         return self._config
 
     @property
     def monitoring(self) -> Optional[MonitoringSystem]:
+        """monitoring。
+        """
         return self._monitoring
 
     @property
     def metrics(self) -> Optional[MetricsCollector]:
+        """metrics。
+        """
         return self._metrics
 
     @property
     def event_bus(self) -> Optional[EventBus]:
+        """event_bus。
+        """
         return self._event_bus
 
     @property
     def alert_manager(self) -> Optional[AlertManager]:
+        """alert_manager。
+        """
         return self._alert_manager
 
     @property
     def feedback(self) -> Optional[LocalFeedbackLoop]:
+        """feedback。
+        """
         return self._feedback
 
     @property
     def push_manager(self) -> Optional[PushManager]:
+        """push_manager。
+        """
         return self._push_manager
 
     @property
     def prod_feedback(self) -> Optional[ProductionFeedbackLoop]:
+        """prod_feedback。
+        """
         return self._prod_feedback
 
     @property
     def evolution(self) -> Optional[EvolutionEngine]:
+        """evolution。
+        """
         return self._evolution
 
     @property
     def memory(self) -> Optional[MemoryBase]:
+        """memory。
+        """
         return self._memory
 
     @property
     def session_manager(self) -> Optional[SessionManager]:
+        """session_manager。
+        """
         return self._session_manager
 
     def create_agent_loop(
@@ -2106,6 +2144,13 @@ class HarnessIntegration:
         **kwargs,
     ) -> ILoop:
         # ReActLoop no longer takes agent=; bind happens at execute time.
+        """创建 agent_loop。
+
+        Args:
+            agent: agent 参数。
+            loop_type: loop_type 参数。
+            kwargs: kwargs 参数。
+        """
         _ = agent
         config = kwargs.pop("config", None)
         return create_loop(loop_type, config=config, **kwargs)
@@ -2115,11 +2160,19 @@ class HarnessIntegration:
         pattern_type: str = "pipeline",
         **kwargs,
     ):
+        """创建 coordinator_pattern。
+
+        Args:
+            pattern_type: pattern_type 参数。
+            kwargs: kwargs 参数。
+        """
         _ = kwargs
         return create_pattern(pattern_type)
 
     async def start(self):
         # start_monitoring() is a forever loop — schedule it; never await inline.
+        """start。
+        """
         if self._config.enable_observability and self._monitoring:
             import asyncio
             task = getattr(self, "_monitor_task", None)
@@ -2131,6 +2184,8 @@ class HarnessIntegration:
             await self._push_manager.start()
 
     async def stop(self):
+        """stop。
+        """
         import asyncio
         if self._config.enable_observability and self._monitoring:
             self._monitoring.stop_monitoring()
@@ -2148,6 +2203,8 @@ class HarnessIntegration:
             await self._push_manager.stop()
 
     async def reset(self):
+        """reset。
+        """
         if self._metrics:
             self._metrics.reset()
         if self._feedback:
@@ -2183,10 +2240,17 @@ class KernelRuntime:
 
 
 def create_harness(config: Optional[HarnessConfig] = None) -> HarnessIntegration:
+    """创建 harness。
+
+    Args:
+        config: config 参数。
+    """
     return HarnessIntegration.initialize(config)
 
 
 def get_harness() -> HarnessIntegration:
+    """获取 harness。
+    """
     return HarnessIntegration.get_instance()
 
 

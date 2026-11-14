@@ -5,11 +5,15 @@ import logging
 
 
 def get_skill_registry() -> Any:
+    """获取 skill_registry。
+    """
     from core.apps.skills import get_skill_registry as _get
     return _get()
 
 
 def get_tool_registry() -> Any:
+    """获取 tool_registry。
+    """
     from core.apps.tools.base import get_tool_registry as _get
     return _get()
 

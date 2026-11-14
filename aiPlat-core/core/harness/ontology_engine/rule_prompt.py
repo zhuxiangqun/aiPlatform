@@ -34,13 +34,9 @@ def _load_domain(domain_id: str) -> Optional[Dict[str, Any]]:
 def build_rule_design_prompt(domain_id: str, *, user_input: str = "") -> Dict[str, Any]:
     """Build a domain-aware system prompt for rule generation.
 
-    Returns:
-        {
-            "system_prompt": str,
-            "user_prompt": str,
-            "domain": domain_name,
-            "context": {classes_count, relations_count, existing_rules_count}
-        }
+    Args:
+        domain_id: domain 标识。
+        user_input: user_input 参数。
     """
     domain = _load_domain(domain_id)
     if not domain:

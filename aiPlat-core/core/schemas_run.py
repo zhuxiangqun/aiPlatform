@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 
 class RunStatus(str, Enum):
+    """RunStatus。"""
     accepted = "accepted"
     running = "running"
     waiting_approval = "waiting_approval"
@@ -21,12 +22,14 @@ class RunStatus(str, Enum):
 
 
 class RunError(BaseModel):
+    """RunError。"""
     code: str
     message: str
     detail: Optional[Dict[str, Any]] = None
 
 
 class RunSummary(BaseModel):
+    """RunSummary。"""
     ok: bool
     run_id: str
     trace_id: Optional[str] = None

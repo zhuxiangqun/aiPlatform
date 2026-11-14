@@ -26,6 +26,11 @@ def _workspace_data_gov_yaml() -> Path:
 
 
 def ensure_data_gov_ontology(*, force: bool = False) -> Dict[str, Any]:
+    """ensure_data_gov_ontology。
+
+    Args:
+        force: 是否强制。
+    """
     src = _workspace_data_gov_yaml()
     dest_dir = _aiplat_home() / "ontologies"
     dest = dest_dir / "data-gov.yaml"
@@ -59,7 +64,14 @@ def seed_data_gov_demo_graph(
     ensure_ontology: bool = True,
     seed_acl: bool = True,
 ) -> Dict[str, Any]:
-    """B4.3 teaching subset: mainline asset + ghost + wrong catalog + draft."""
+    """B4.3 teaching subset: mainline asset + ghost + wrong catalog + draft.
+
+    Args:
+        g: g 参数。
+        source_doc_id: source_doc 标识。
+        ensure_ontology: ensure_ontology 参数。
+        seed_acl: seed_acl 参数。
+    """
     onto_meta: Dict[str, Any] = {}
     if ensure_ontology:
         onto_meta = ensure_data_gov_ontology()

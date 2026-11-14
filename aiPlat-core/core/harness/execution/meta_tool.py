@@ -49,7 +49,11 @@ _INTENT_PATTERNS: Tuple[Tuple[re.Pattern, str], ...] = (
 
 
 def meta_tool_enabled(context: Optional[Dict[str, Any]] = None) -> bool:
-    """Master switch. Context ``_prefer_code_meta_tool`` overrides env."""
+    """Master switch. Context ``_prefer_code_meta_tool`` overrides env.
+
+    Args:
+        context: context 参数。
+    """
     ctx = context if isinstance(context, dict) else {}
     if "_prefer_code_meta_tool" in ctx:
         return bool(ctx.get("_prefer_code_meta_tool"))
@@ -64,8 +68,8 @@ def meta_tool_enabled(context: Optional[Dict[str, Any]] = None) -> bool:
 def meta_tool_auto_bind_enabled(context: Optional[Dict[str, Any]] = None) -> bool:
     """Bind CodeExecutionTool when missing.
 
-    Default ``auto``: on in AIPLAT_PROFILE=production, off in dev (PolicyGate surface).
-    Explicit true/false still wins.
+    Args:
+        context: context 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     if "_meta_tool_auto_bind" in ctx:
@@ -80,7 +84,11 @@ def meta_tool_auto_bind_enabled(context: Optional[Dict[str, Any]] = None) -> boo
 
 
 def detect_meta_tool_intent(task: str) -> Optional[str]:
-    """Return reason tag if task should prefer code meta-tool; else None."""
+    """Return reason tag if task should prefer code meta-tool; else None.
+
+    Args:
+        task: task 参数。
+    """
     text = (task or "").strip()
     if len(text) < 4:
         return None
@@ -91,7 +99,11 @@ def detect_meta_tool_intent(task: str) -> Optional[str]:
 
 
 def resolve_meta_tool_name(available: Sequence[str]) -> Optional[str]:
-    """Pick the bound meta-tool name present in ``available``."""
+    """Pick the bound meta-tool name present in ``available``.
+
+    Args:
+        available: available 参数。
+    """
     names = {str(n).strip() for n in available if str(n).strip()}
     for alias in META_TOOL_ALIASES:
         if alias in names:
@@ -100,6 +112,11 @@ def resolve_meta_tool_name(available: Sequence[str]) -> Optional[str]:
 
 
 def tool_names_from_tools(tools: Sequence[Any]) -> List[str]:
+    """tool_names_from_tools。
+
+    Args:
+        tools: tools 参数。
+    """
     out: List[str] = []
     for t in tools or []:
         n = getattr(t, "name", None) or getattr(getattr(t, "config", None), "name", None)
@@ -114,7 +131,13 @@ def meta_tool_pin_names(
     task: str = "",
     context: Optional[Dict[str, Any]] = None,
 ) -> Set[str]:
-    """Names to pin in tool ordering (always_include) when intent matches."""
+    """Names to pin in tool ordering (always_include) when intent matches.
+
+    Args:
+        available: available 参数。
+        task: task 参数。
+        context: context 参数。
+    """
     if not meta_tool_enabled(context):
         return set()
     intent = detect_meta_tool_intent(task)
@@ -133,7 +156,13 @@ def build_meta_tool_hint(
     *,
     context: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
-    """Ephemeral overlay hint — does not reorder tools (prompt-cache safe)."""
+    """Ephemeral overlay hint — does not reorder tools (prompt-cache safe).
+
+    Args:
+        task: task 参数。
+        available: available 参数。
+        context: context 参数。
+    """
     if not meta_tool_enabled(context):
         return None
     intent = detect_meta_tool_intent(task)
@@ -163,7 +192,9 @@ def apply_meta_tool_config(
 ) -> Dict[str, Any]:
     """Merge PipelineStageConfig / AGENT.md ``meta_tool`` into loop context flags.
 
-    Returns the same context dict (mutated). Empty overlay is a no-op.
+    Args:
+        context: context 参数。
+        meta_tool: meta_tool 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     ov = meta_tool if isinstance(meta_tool, dict) else {}
@@ -186,7 +217,10 @@ def ensure_code_meta_tool(
 ) -> List[Any]:
     """Optionally append CodeExecutionTool when missing and auto-bind is on.
 
-    Returns a new list (or the same list if unchanged). Marks context when bound.
+    Args:
+        tools: tools 参数。
+        task: task 参数。
+        context: context 参数。
     """
     if not meta_tool_enabled(context) or not meta_tool_auto_bind_enabled(context):
         return list(tools or [])

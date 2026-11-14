@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -6,6 +8,7 @@ import os
 
 @dataclass
 class Message:
+    """Message。"""
     id: str
     topic: str
     body: bytes
@@ -16,6 +19,7 @@ class Message:
 
 @dataclass
 class Topic:
+    """Topic。"""
     name: str
     partitions: int = 1
     retention: int = 86400
@@ -23,6 +27,7 @@ class Topic:
 
 @dataclass
 class ConsumerConfig:
+    """ConsumerConfig。"""
     group_id: str
     auto_commit: bool = True
     prefetch: int = 10
@@ -31,6 +36,7 @@ class ConsumerConfig:
 
 @dataclass
 class ProducerConfig:
+    """ProducerConfig。"""
     acks: str = "all"
     retries: int = 3
     batch_size: int = 16384
@@ -39,6 +45,7 @@ class ProducerConfig:
 
 @dataclass
 class KafkaOptions:
+    """KafkaOptions。"""
     consumer_group: str = os.getenv("AIPLAT_KAFKA_CONSUMER_GROUP", "")
     auto_offset_reset: str = "latest"
     enable_auto_commit: bool = True
@@ -48,6 +55,7 @@ class KafkaOptions:
 
 @dataclass
 class RabbitMQOptions:
+    """RabbitMQOptions。"""
     username: str = "guest"
     password: str = "guest"
     vhost: str = "/"
@@ -57,6 +65,7 @@ class RabbitMQOptions:
 
 @dataclass
 class RedisOptions:
+    """RedisOptions。"""
     db: int = 0
     password: Optional[str] = None
     pool_size: int = 10
@@ -64,6 +73,7 @@ class RedisOptions:
 
 @dataclass
 class MessagingConfig:
+    """MessagingConfig。"""
     backend: str
     hosts: List[str] = field(default_factory=lambda: ["localhost"])
     topic_prefix: str = ""

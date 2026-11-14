@@ -1,3 +1,5 @@
+"""local：模块接口。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -12,9 +14,12 @@ import logging
 
 
 class LocalExecDriver(ExecDriver):
+    """LocalExecDriver。"""
     driver_id = "local"
 
     def capabilities(self) -> Dict[str, object]:
+        """capabilities。
+        """
         return {
             "driver_id": self.driver_id,
             "supported_languages": ["python", "javascript"],
@@ -29,6 +34,13 @@ class LocalExecDriver(ExecDriver):
         }
 
     async def run_code(self, *, language: str, code: str, timeout_s: float) -> ExecResult:
+        """run_code。
+
+        Args:
+            language: language 参数。
+            code: code 参数。
+            timeout_s: timeout_s 参数。
+        """
         t0 = time.time()
         language = (language or "").strip().lower()
         if language not in {"python", "javascript"}:
@@ -89,6 +101,8 @@ class LocalExecDriver(ExecDriver):
 
     async def health(self) -> Dict[str, object]:
         # best-effort: check interpreters exist
+        """health。
+        """
         ok_py = True
         ok_node = True
         try:

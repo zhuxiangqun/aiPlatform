@@ -19,7 +19,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 class ToolSelector:
+    """ToolSelector。"""
     def __init__(self, max_tools: int = None, threshold: int = None):
+        """初始化。
+
+        Args:
+            max_tools: max_tools 参数。
+            threshold: threshold 参数。
+        """
         self._max = max_tools or int(os.getenv("AIPLAT_TOOL_SELECTOR_MAX", "10"))
         self._threshold = threshold or int(os.getenv("AIPLAT_TOOL_SELECTOR_THRESHOLD", "5"))
         self._use_embedding = os.getenv("AIPLAT_TOOL_SELECTOR_EMBEDDING", "0") in ("1", "true", "yes")
@@ -40,7 +47,12 @@ class ToolSelector:
                 self._embedder = False  # tried, failed
 
     def select(self, prompt: str, tools: List[Any]) -> List[Any]:
-        """Return top-K most relevant tools for the given prompt."""
+        """Return top-K most relevant tools for the given prompt.
+
+        Args:
+            prompt: prompt 参数。
+            tools: tools 参数。
+        """
         if len(tools) <= self._threshold:
             return list(tools)
 
@@ -129,4 +141,6 @@ class ToolSelector:
 
 # Global singleton
 def get_tool_selector() -> ToolSelector:
+    """获取 tool_selector。
+    """
     return ToolSelector()

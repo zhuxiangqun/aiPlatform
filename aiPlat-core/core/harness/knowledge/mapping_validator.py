@@ -19,6 +19,7 @@ logger = logging.getLogger("mapping_validator")
 
 @dataclass
 class MappingIssue:
+    """MappingIssue。"""
     source_id: str
     source_field: str
     target_field: str
@@ -29,6 +30,7 @@ class MappingIssue:
 
 @dataclass
 class MappingValidationResult:
+    """MappingValidationResult。"""
     source_id: str
     domain_id: str
     total_mappings: int
@@ -38,7 +40,11 @@ class MappingValidationResult:
 
 
 def validate_source(source_id: str) -> MappingValidationResult:
-    u"""Validate a single DataSource's field mappings."""
+    """Validate a single DataSource's field mappings.
+
+    Args:
+        source_id: source 标识。
+    """
     base = get_aiplat_data_dir("datasources")
     yaml_path = _os.path.join(base, f"{source_id}.yaml")
     if not _os.path.exists(yaml_path):
@@ -109,7 +115,11 @@ def validate_source(source_id: str) -> MappingValidationResult:
 
 
 def validate_all_sources(domain_id: str = "") -> List[MappingValidationResult]:
-    u"""Validate all data sources (filtered by domain if provided)."""
+    """Validate all data sources (filtered by domain if provided).
+
+    Args:
+        domain_id: domain 标识。
+    """
     base = get_aiplat_data_dir("datasources")
     if not _os.path.isdir(base):
         return []
@@ -126,7 +136,11 @@ def validate_all_sources(domain_id: str = "") -> List[MappingValidationResult]:
 
 
 def generate_mapping_report(domain_ids: List[str] = None) -> str:
-    u"""Generate a markdown mapping coverage report."""
+    """Generate a markdown mapping coverage report.
+
+    Args:
+        domain_ids: domain_ids 参数。
+    """
     results = []
     if domain_ids:
         for did in domain_ids:

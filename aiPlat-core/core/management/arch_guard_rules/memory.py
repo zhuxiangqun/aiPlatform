@@ -51,6 +51,11 @@ class GlobalDictNoCleanupCheck(ArchRule):
     section_name = "Memory Anti-Pattern Detection"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         violations = []
         for py_file in _iter_py_files(repo_root):
             try:
@@ -153,6 +158,11 @@ class UnboundedAppendCheck(ArchRule):
     section_name = "Memory Anti-Pattern Detection"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         violations = []
         for py_file in _iter_py_files(repo_root):
             try:
@@ -253,6 +263,11 @@ class LRUCacheNoClearCheck(ArchRule):
     section_name = "Memory Anti-Pattern Detection"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         violations = []
         for py_file in _iter_py_files(repo_root):
             try:

@@ -28,10 +28,14 @@ def _home() -> Path:
 
 
 def rules_path() -> Path:
+    """rules_path。
+    """
     return _home() / "org" / "approval_rules.yaml"
 
 
 def audit_path() -> Path:
+    """audit_path。
+    """
     return _home() / "org" / "h4_audit.jsonl"
 
 
@@ -45,6 +49,8 @@ def sandbox_switch_on() -> bool:
 
 
 def default_rules() -> Dict[str, Any]:
+    """default_rules。
+    """
     return {
         "enabled": sandbox_switch_on(),
         "sandbox_only": True,
@@ -59,6 +65,8 @@ def default_rules() -> Dict[str, Any]:
 
 
 def load_rules() -> Dict[str, Any]:
+    """load_rules。
+    """
     path = rules_path()
     base = default_rules()
     if not path.is_file():
@@ -143,7 +151,11 @@ def _rate(stats: Dict[str, int]) -> float:
 
 
 def sandbox_live_delta(stats: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
-    """Read-only sandbox vs live pass comparison. Never enables live auto-pass."""
+    """Read-only sandbox vs live pass comparison. Never enables live auto-pass.
+
+    Args:
+        stats: stats 参数。
+    """
     st = stats if isinstance(stats, dict) else _today_stats()
     sandbox_seen = int(st.get("auto") or 0) + int(st.get("skip") or 0)
     live_refused = int(st.get("live_refused") or 0)
@@ -184,6 +196,11 @@ def _disable(rules: Dict[str, Any], reason: str) -> None:
 
 
 def h4_rules_view(*, role: str) -> Dict[str, Any]:
+    """h4_rules_view。
+
+    Args:
+        role: role 参数。
+    """
     if not (role or "").strip():
         return {"ok": False, "reason": "identity_missing", "writable": False}
     try:
@@ -223,6 +240,12 @@ def h4_rules_view(*, role: str) -> Dict[str, Any]:
 
 
 def h4_auto_audit(*, role: str, limit: int = 50) -> Dict[str, Any]:
+    """h4_auto_audit。
+
+    Args:
+        role: role 参数。
+        limit: 返回条数上限。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}
@@ -294,7 +317,12 @@ async def _eligible_extraction(row: Dict[str, Any], rules: Dict[str, Any]) -> st
 
 
 async def run_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Pass eligible queue items. Does not write live YAML or edges."""
+    """Pass eligible queue items. Does not write live YAML or edges.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "writable": False}

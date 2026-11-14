@@ -1401,7 +1401,11 @@ def _team_stages_summary() -> str:
 
 
 def refers_to_current_screen(text: str) -> bool:
-    """User is pointing at the open page; omit workspace-wide inventory from the brief."""
+    """User is pointing at the open page; omit workspace-wide inventory from the brief.
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     return any(
         k in t
@@ -1410,6 +1414,11 @@ def refers_to_current_screen(text: str) -> bool:
 
 
 def asks_app_vs_agent(text: str) -> bool:
+    """asks_app_vs_agent。
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     if not t:
         return False
@@ -1419,12 +1428,22 @@ def asks_app_vs_agent(text: str) -> bool:
 
 
 def page_data_has_live_facts(page_data: str) -> bool:
+    """page_data_has_live_facts。
+
+    Args:
+        page_data: page_data 参数。
+    """
     fields = _parse_page_data_fields(page_data)
     keys = {k.strip().lower() for k in fields}
     return bool(keys & {"issue0", "skillid", "toolid", "mcpid", "agentid", "auditsummary"})
 
 
 def is_page_followup(text: str) -> bool:
+    """is_page_followup。
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     return any(
         k in t
@@ -1433,6 +1452,11 @@ def is_page_followup(text: str) -> bool:
 
 
 def asks_open_item_audit(text: str) -> bool:
+    """asks_open_item_audit。
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     if not t or asks_app_vs_agent(t):
         return False
@@ -1440,7 +1464,12 @@ def asks_open_item_audit(text: str) -> bool:
 
 
 def use_page_only_brief(question: str, page_data: str = "") -> bool:
-    """Omit workspace inventory only when the question is about the open page/item."""
+    """Omit workspace inventory only when the question is about the open page/item.
+
+    Args:
+        question: question 参数。
+        page_data: page_data 参数。
+    """
     if refers_to_current_screen(question):
         return True
     if page_data_has_live_facts(page_data) and (
@@ -1451,7 +1480,11 @@ def use_page_only_brief(question: str, page_data: str = "") -> bool:
 
 
 def is_inventory_question(text: str) -> bool:
-    """True when the user wants the full workspace asset list."""
+    """True when the user wants the full workspace asset list.
+
+    Args:
+        text: text 参数。
+    """
     t = (text or "").strip()
     if not t:
         return False
@@ -1567,6 +1600,11 @@ _EN_AUDIT_NOISE = re.compile(
 
 
 def scrub_audit_english(text: str) -> str:
+    """scrub_audit_english。
+
+    Args:
+        text: text 参数。
+    """
     t = _EN_AUDIT_NOISE.sub("", text or "")
     return re.sub(r"\s+", " ", t).strip()
 
@@ -1629,9 +1667,12 @@ def build_platform_status_brief(
 ) -> str:
     """Build a short Chinese brief of live platform inventory + menus + team.
 
-    Cached ~60s unless force_refresh (still re-reads page context each call).
-    When include_inventory is False (user pointing at the open page), skip the
-    workspace-wide asset list so the model sees page chrome + live fields only.
+    Args:
+        page_context: page_context 参数。
+        page_data: page_data 参数。
+        force_refresh: force_refresh 参数。
+        include_inventory: include_inventory 参数。
+        name_limit: name_limit 参数。
     """
     import time
 
@@ -1972,6 +2013,8 @@ def build_platform_status_brief(
 
 
 def clear_brief_cache() -> None:
+    """clear_brief_cache。
+    """
     global _BRIEF_CACHE, _BRIEF_CACHE_TS
     _BRIEF_CACHE = None
     _BRIEF_CACHE_TS = 0.0

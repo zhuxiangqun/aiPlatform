@@ -86,9 +86,11 @@ def assess_web_results(results: list[dict[str, Any]], query: str,
                        min_results: int = 2) -> dict[str, Any]:
     """评估结构化 web 结果可信度。
 
-    单条 score = 0.4*域名权威 + 0.4*查询相关性 + 0.2*多源一致性（后续统一注入）。
-    多源一致性：同 host 的重复条目仅计一次（去重已由 web_search 完成，此处对
-    同 claim 多源出现的信号做轻量奖励——按 source 字段多样性）。
+    Args:
+        results: results 参数。
+        query: 查询。
+        threshold: threshold 参数。
+        min_results: min_results 参数。
     """
     if not results or len(results) < min_results:
         return {"pass": False, "action": "flag_for_human", "per_result": [],
@@ -133,7 +135,12 @@ def assess_web_results(results: list[dict[str, Any]], query: str,
 
 
 def annotate_results(results: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
-    """原地标注 quality_score/reason 到每条结果（供调用方直接消费）。"""
+    """原地标注 quality_score/reason 到每条结果（供调用方直接消费）。
+
+    Args:
+        results: results 参数。
+        query: 查询。
+    """
     assessment = assess_web_results(results, query)
     by_url = {p["source_url"]: p for p in assessment.get("per_result", [])}
     out = []

@@ -34,7 +34,9 @@ def generate_cases_from_template(
 ) -> List[Dict[str, Any]]:
     """Deterministic template expansion (no LLM).
 
-    ``template`` provides base fields; each variant overlays prompt/case_id/tags.
+    Args:
+        template: template 参数。
+        variants: variants 参数。
     """
     base = dict(template or {})
     rows = list(variants or [{}])
@@ -65,7 +67,11 @@ def generate_cases_from_template(
 
 
 def validate_case_dict(case: Mapping[str, Any]) -> None:
-    """Fail closed if required Case Pack fields missing/empty."""
+    """Fail closed if required Case Pack fields missing/empty.
+
+    Args:
+        case: case 参数。
+    """
     if not isinstance(case, Mapping):
         raise CaseFactoryError("case must be object")
     for k in _REQUIRED_CASE_KEYS:
@@ -88,7 +94,11 @@ def _content_dedupe_hash(case: Mapping[str, Any]) -> str:
 def dedupe_cases_by_hash(
     cases: Sequence[Mapping[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Keep first case per content hash (stable by input order; ignores case_id)."""
+    """Keep first case per content hash (stable by input order; ignores case_id).
+
+    Args:
+        cases: 用例列表。
+    """
     seen: set = set()
     out: List[Dict[str, Any]] = []
     for c in cases:
@@ -111,7 +121,17 @@ def publish_draft_workspace_pack(
     object_types: Optional[Sequence[str]] = None,
     kind: str = "curated",
 ) -> Dict[str, Any]:
-    """Validate + dedupe + register workspace draft pack (claim_eligible=false)."""
+    """Validate + dedupe + register workspace draft pack (claim_eligible=false).
+
+    Args:
+        pack_id: pack 标识。
+        version: 版本号。
+        cases: 用例列表。
+        workspace_id: workspace 标识。
+        caller_workspace_id: caller_workspace 标识。
+        object_types: object_types 参数。
+        kind: kind 参数。
+    """
     wid = str(workspace_id or "").strip()
     if not wid:
         raise CaseFactoryError("workspace_id required for draft publish")

@@ -17,6 +17,7 @@ router = APIRouter(tags=["wiki-markings"])
 # ══════════════════════════════════════════════════════════════
 
 class MarkingSetRequest(BaseModel):
+    """MarkingSetRequest。"""
     entity_uri: str
     label: str
     level: int = 2  # 1=public, 2=internal, 3=confidential, 4=restricted
@@ -24,6 +25,7 @@ class MarkingSetRequest(BaseModel):
 
 
 class MarkingDeleteRequest(BaseModel):
+    """MarkingDeleteRequest。"""
     entity_uri: str
     label: str = ""
 
@@ -34,7 +36,12 @@ class MarkingDeleteRequest(BaseModel):
 
 @router.put("/markings", response_model=Dict[str, Any])
 async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"):
-    u"""Set a marking on an ontology entity."""
+    """Set a marking on an ontology entity.
+
+    Args:
+        req: req 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_markings import set_marking, MarkingLevel
     try:
         level = MarkingLevel(max(1, min(4, req.level)))
@@ -53,7 +60,12 @@ async def set_entity_marking(req: MarkingSetRequest, collection: str = "default"
 
 @router.delete("/markings", response_model=Dict[str, Any])
 async def remove_entity_marking(req: MarkingDeleteRequest, collection: str = "default"):
-    u"""Remove a marking from an entity (or all if label is empty)."""
+    """Remove a marking from an entity (or all if label is empty).
+
+    Args:
+        req: req 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_markings import remove_marking
     ok = remove_marking(
         entity_uri=req.entity_uri,
@@ -69,7 +81,13 @@ async def get_entity_marking_info(
     collection: str = "default",
     resolve_effective: bool = True,
 ):
-    u"""Get explicit + effective markings for an entity, with propagation traces."""
+    """Get explicit + effective markings for an entity, with propagation traces.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection: collection 参数。
+        resolve_effective: resolve_effective 参数。
+    """
     from core.api.core_facade import (
         get_entity_markings,
     )
@@ -92,7 +110,14 @@ async def grant_entity_permission(
     actions: List[str] = Body(...),
     collection: str = "default",
 ):
-    u"""Grant per-object permission on an ontology entity."""
+    """Grant per-object permission on an ontology entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        role: role 参数。
+        actions: actions 参数。
+        collection: collection 参数。
+    """
     from core.policy.object_permission import grant_object_permission
     perm = grant_object_permission(
         entity_uri=entity_uri,
@@ -110,7 +135,14 @@ async def revoke_entity_permission(
     action: str = Body(default=""),
     collection: str = "default",
 ):
-    u"""Revoke a per-object permission."""
+    """Revoke a per-object permission.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        role: role 参数。
+        action: action 参数。
+        collection: collection 参数。
+    """
     from core.policy.object_permission import revoke_object_permission
     ok = revoke_object_permission(
         entity_uri=entity_uri,
@@ -126,7 +158,12 @@ async def list_entity_permissions(
     entity_uri: str,
     collection: str = "default",
 ):
-    u"""List all effective permissions for an ontology entity."""
+    """List all effective permissions for an ontology entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection: collection 参数。
+    """
     from core.policy.object_permission import get_effective_permissions
     perms = get_effective_permissions(entity_uri, collection_id=collection)
     return {"entity_uri": entity_uri, "permissions": perms}

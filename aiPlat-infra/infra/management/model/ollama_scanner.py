@@ -1,3 +1,5 @@
+"""ollama_scanner：模块接口。"""
+
 import logging
 """
 Ollama Scanner - 扫描本地 Ollama 模型
@@ -16,10 +18,19 @@ class OllamaScanner:
     """Ollama 模型扫描器"""
     
     def __init__(self, endpoint: str = "http://localhost:11434"):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint
     
     def set_endpoint(self, endpoint: str):
-        """设置 Ollama 端点"""
+        """设置 Ollama 端点。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint
     
     async def is_available(self) -> bool:
@@ -97,7 +108,11 @@ class OllamaScanner:
         return capabilities
     
     async def get_model_info(self, model_name: str) -> dict:
-        """获取模型详细信息"""
+        """获取模型详细信息。
+
+        Args:
+            model_name: model_name 参数。
+        """
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(

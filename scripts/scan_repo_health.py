@@ -24,6 +24,8 @@ def _ensure_path() -> None:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Scan repo health (post-merge boiling-frog metrics)")
     ap.add_argument("--summary", action="store_true", help="assess existing JSONL only")
     ap.add_argument("--no-persist", action="store_true", help="scan without appending JSONL")

@@ -163,8 +163,8 @@ def _try_workspace_seed(rel: str) -> Optional[Path]:
 def resolve_path_detailed(rel: str) -> Tuple[Optional[Path], str]:
     """Return (path_or_None, resolve_mode).
 
-    resolve_mode includes runtime_home when the declaration is a home-install path
-    not present in the repo (soft in --ci; repo seeds are preferred when available).
+    Args:
+        rel: rel 参数。
     """
     # Repo seed first (source of truth for CI / clean checkouts)
     seed = _try_workspace_seed(rel)
@@ -225,6 +225,11 @@ def resolve_path_detailed(rel: str) -> Tuple[Optional[Path], str]:
 
 
 def resolve_path(rel: str) -> Optional[Path]:
+    """resolve_path。
+
+    Args:
+        rel: rel 参数。
+    """
     p, _mode = resolve_path_detailed(rel)
     return p
 
@@ -249,7 +254,11 @@ def _grep_field_in_engine(field: str) -> int:
 
 
 def audit(doc_path: Path) -> Dict[str, Any]:
-    """Audit CAPABILITIES path declarations against the filesystem (source of truth)."""
+    """Audit CAPABILITIES path declarations against the filesystem (source of truth).
+
+    Args:
+        doc_path: doc_path 参数。
+    """
     text = doc_path.read_text(encoding="utf-8")
 
     total_declared = None
@@ -415,6 +424,11 @@ def audit(doc_path: Path) -> Dict[str, Any]:
 
 
 def render_markdown(r: Dict[str, Any]) -> str:
+    """render_markdown。
+
+    Args:
+        r: r 参数。
+    """
     L = []
     L.append("# aiPlat 能力审计报告")
     L.append("")
@@ -475,6 +489,11 @@ def render_markdown(r: Dict[str, Any]) -> str:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     ci = "--ci" in argv
     write = "--write" in argv

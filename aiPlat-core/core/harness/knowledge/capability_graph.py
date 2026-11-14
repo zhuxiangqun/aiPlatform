@@ -111,6 +111,7 @@ def _extract_syscalls_from_sop(body: str) -> List[str]:
 
 @dataclass
 class CapabilityGraphResult:
+    """CapabilityGraphResult。"""
     created_at: float
     nodes: Dict[str, Dict[str, Any]]   # id -> node
     edges: List[Dict[str, str]]         # [{from, to, relation}]

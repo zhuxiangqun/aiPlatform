@@ -38,6 +38,12 @@ def _load():
 
 
 def cmd_status(authz, args: argparse.Namespace) -> int:
+    """cmd_status。
+
+    Args:
+        authz: authz 参数。
+        args: args 参数。
+    """
     path = Path(args.path) if args.path else None
     state = authz.load_pilot_state(path)
     ev = authz.evaluate_pilot_exit(state)
@@ -57,7 +63,12 @@ def cmd_status(authz, args: argparse.Namespace) -> int:
 
 
 def cmd_dry_run_exit(authz, _args: argparse.Namespace) -> int:
-    """Fixture ledger proving exit math; never touches real AIPLAT_AUTHZ_PILOT_PATH."""
+    """Fixture ledger proving exit math; never touches real AIPLAT_AUTHZ_PILOT_PATH.
+
+    Args:
+        authz: authz 参数。
+        _args: _args 参数。
+    """
     with tempfile.TemporaryDirectory() as td:
         path = Path(td) / "authz_pilot.json"
         state = authz.PilotState(started_at="2026-01-01")
@@ -105,6 +116,12 @@ def cmd_dry_run_exit(authz, _args: argparse.Namespace) -> int:
 
 
 def cmd_probe(authz, args: argparse.Namespace) -> int:
+    """cmd_probe。
+
+    Args:
+        authz: authz 参数。
+        args: args 参数。
+    """
     smoke = authz.run_authz_smoke(
         base_url=args.base_url,
         app_type=args.app_type,
@@ -146,6 +163,12 @@ def cmd_probe(authz, args: argparse.Namespace) -> int:
 
 
 def cmd_approve(authz, args: argparse.Namespace) -> int:
+    """cmd_approve。
+
+    Args:
+        authz: authz 参数。
+        args: args 参数。
+    """
     path = Path(args.path) if args.path else None
     result = authz.approve_pilot_exit(
         owner_name=args.owner,
@@ -167,6 +190,11 @@ def cmd_approve(authz, args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="P0-3b authz pilot Ops CLI")
     parser.add_argument("--path", default="", help="Override ledger JSON path")
     g = parser.add_mutually_exclusive_group(required=True)

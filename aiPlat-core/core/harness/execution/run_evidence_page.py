@@ -38,7 +38,11 @@ def _iso(dt: datetime) -> str:
 
 
 def resolve_ttl_hours(source: Optional[Mapping[str, Any]] = None) -> int:
-    """TTL hours from state/env; clamp 1..168 (7d). Default 24."""
+    """TTL hours from state/env; clamp 1..168 (7d). Default 24.
+
+    Args:
+        source: source 参数。
+    """
     raw = None
     if source:
         raw = source.get("evidence_ttl_hours") or source.get("_evidence_ttl_hours")
@@ -52,6 +56,12 @@ def resolve_ttl_hours(source: Optional[Mapping[str, Any]] = None) -> int:
 
 
 def is_evidence_expired(payload: Mapping[str, Any], *, now: Optional[datetime] = None) -> bool:
+    """is_evidence_expired。
+
+    Args:
+        payload: 载荷 dict。
+        now: now 参数。
+    """
     exp = str(payload.get("expires_at") or "").strip()
     if not exp:
         return False
@@ -87,7 +97,12 @@ def collect_evidence_data(
     *,
     stages: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
-    """Build tool_result JSON for the fixed template (no LLM)."""
+    """Build tool_result JSON for the fixed template (no LLM).
+
+    Args:
+        state: state 参数。
+        stages: stages 参数。
+    """
     st = state if isinstance(state, Mapping) else {}
     stage_seq: Sequence[Any] = stages or ()
     if not stage_seq:
@@ -507,7 +522,11 @@ _TEMPLATE = """<!DOCTYPE html>
 
 
 def render_evidence_html(payload: Mapping[str, Any]) -> str:
-    """Inject JSON into fixed template. Never executes LLM-authored script."""
+    """Inject JSON into fixed template. Never executes LLM-authored script.
+
+    Args:
+        payload: 载荷 dict。
+    """
     safe = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     # Prevent breaking out of <script>
     safe = safe.replace("<", "\\u003c").replace(">", "\\u003e").replace("</", "<\\/")
@@ -521,7 +540,14 @@ def build_run_evidence_page(
     ttl_hours: Optional[int] = None,
     now: Optional[datetime] = None,
 ) -> Dict[str, Any]:
-    """Return evidence page payload — deterministic, discardable oversight UI."""
+    """Return evidence page payload — deterministic, discardable oversight UI.
+
+    Args:
+        state: state 参数。
+        stages: stages 参数。
+        ttl_hours: ttl_hours 参数。
+        now: now 参数。
+    """
     st = state if isinstance(state, Mapping) else {}
     hours = int(ttl_hours) if ttl_hours is not None else resolve_ttl_hours(st)
     hours = max(1, min(168, hours))
@@ -558,13 +584,21 @@ def write_evidence_page(
     stages: Optional[Sequence[Any]] = None,
     ttl_hours: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Persist under state[_evidence_page] (best-effort like structure diagram)."""
+    """Persist under state[_evidence_page] (best-effort like structure diagram).
+
+    Args:
+        state: state 参数。
+        stages: stages 参数。
+        ttl_hours: ttl_hours 参数。
+    """
     payload = build_run_evidence_page(state, stages=stages, ttl_hours=ttl_hours)
     state[STATE_EVIDENCE_KEY] = payload
     return payload
 
 
 def empty_evidence_metrics() -> Dict[str, Any]:
+    """empty_evidence_metrics。
+    """
     return {
         "schema_version": METRICS_SCHEMA_VERSION,
         "counts": {k: 0 for k in METRIC_EVENTS},
@@ -583,8 +617,10 @@ def merge_evidence_metrics(
 ) -> Dict[str, Any]:
     """Accumulate oversight verification metrics (read-only; no coding/deploy).
 
-    ``events`` items may be event name strings or ``{"event": name, ...}`` dicts.
-    Unknown events are ignored. ``verified`` flips true when any allowed count > 0.
+    Args:
+        store: store 参数。
+        events: events 参数。
+        now: now 参数。
     """
     if not isinstance(store, MutableMapping):
         raise TypeError("store must be a mutable mapping")
@@ -641,7 +677,11 @@ def merge_evidence_metrics(
 
 
 def verification_success(metrics: Optional[Mapping[str, Any]]) -> bool:
-    """True when oversight UI recorded at least one verification signal."""
+    """True when oversight UI recorded at least one verification signal.
+
+    Args:
+        metrics: metrics 参数。
+    """
     if not isinstance(metrics, Mapping):
         return False
     if metrics.get("verified") is True:

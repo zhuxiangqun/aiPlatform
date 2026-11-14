@@ -1,3 +1,8 @@
+"""executions_trace：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 import logging
@@ -145,7 +150,12 @@ async def _heal_or_synthesize_trace(
 
 @router.get("/executions/{execution_id}/trace", response_model=Dict[str, Any])
 async def get_trace_by_execution(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """Get trace (with spans) by execution_id (agent/skill)."""
+    """Get trace (with spans) by execution_id (agent/skill).
+
+    Args:
+        execution_id: execution 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -176,9 +186,9 @@ async def get_trace_by_execution(execution_id: str, rt: RuntimeDep = Depends(get
 async def get_execution_status(execution_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
     """Get agent/skill/run_graph execution status (for frontend polling).
 
-    Lookup order: agent_executions → skill_executions → run_graph_meta → run_events.
-    Missing records return 200 + ``not_found`` (not 404) so live pollers do not spam
-    console errors for short-lived or graph-only runs.
+    Args:
+        execution_id: execution 标识。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -1232,8 +1242,10 @@ async def cancel_execution(
 ):
     """User/UI stop for agent or skill executions stuck in running.
 
-    Marks the row cancelled immediately, then best-effort closes syscall/graph
-    and unloads local Ollama (non-blocking). Idempotent for already-terminal rows.
+    Args:
+        execution_id: execution 标识。
+        body: 请求体 dict。
+        rt: rt 参数。
     """
     import asyncio as _aio
     import time as _time

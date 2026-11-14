@@ -10,6 +10,12 @@ class SettingsMixin:
     """Extracted from ExecutionStore."""
     # ==================== Global Settings & Tenants ====================
     async def upsert_global_setting(self, *, key: str, value: Dict[str, Any]) -> Dict[str, Any]:
+        """upsert_global_setting。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -36,6 +42,11 @@ class SettingsMixin:
         return {"key": row.get("key"), "value": _json_loads(row.get("value_json")) or {}, "updated_at": row.get("updated_at")}
 
     async def get_global_setting(self, *, key: str) -> Optional[Dict[str, Any]]:
+        """获取 global_setting。
+
+        Args:
+            key: key 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -56,7 +67,8 @@ class SettingsMixin:
     def get_global_setting_sync(self, *, key: str) -> Optional[Dict[str, Any]]:
         """Synchronous helper; mirrors get_global_setting() SQL.
 
-        NOTE: Assumes init() has been called during startup (normal server flow).
+        Args:
+            key: key 参数。
         """
         db_path = self._config.db_path
         conn = self._connect()

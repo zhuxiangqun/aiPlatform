@@ -70,6 +70,7 @@ def _read_frontmatter() -> Dict[str, Any]:
 
 
 class GuaranteeUpdate(BaseModel):
+    """GuaranteeUpdate。"""
     auto: Optional[List[Dict[str, Any]]] = None
     configurable: Optional[List[Dict[str, Any]]] = None
 
@@ -105,8 +106,8 @@ async def trigger_rescan():
 async def update_guarantees(payload: GuaranteeUpdate):
     """Update core_guarantees in AIPLAT_CAPABILITIES.md frontmatter.
 
-    Accepts {auto: [...], configurable: [...]}. Replaces the existing
-    core_guarantees block in the frontmatter with the new values.
+    Args:
+        payload: 载荷 dict。
     """
     caps_path = os.path.join(SCRIPTS_DIR, "..", "AIPLAT_CAPABILITIES.md")
     

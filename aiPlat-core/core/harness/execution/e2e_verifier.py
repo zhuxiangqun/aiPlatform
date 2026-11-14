@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SubsystemResult:
+    """SubsystemResult。"""
     name: str
     pass_: bool = False
     evidence: str = ""
@@ -36,6 +37,8 @@ class SubsystemResult:
     error: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "name": self.name,
             "pass": self.pass_,
@@ -47,6 +50,7 @@ class SubsystemResult:
 
 @dataclass
 class E2EReport:
+    """E2EReport。"""
     verification_id: str
     overall_pass: bool = False
     subsystems: List[SubsystemResult] = field(default_factory=list)
@@ -57,6 +61,8 @@ class E2EReport:
     roi_saved_tokens: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "verification_id": self.verification_id,
             "overall_pass": self.overall_pass,
@@ -91,9 +97,12 @@ class E2EVerifier:
     ) -> E2EReport:
         """Run end-to-end verification.
 
-        Default test task (if not provided):
-          "Analyze the following three subjects: Math (physics formula derivation), Physics (mechanics and electromagnetism), Chemistry (organic synthesis pathways).
-           For each subject generate 3 typical problems with detailed solution steps. Output all problems and answers as structured JSON."
+        Args:
+            task: task 参数。
+            max_atoms: max_atoms 参数。
+            verify_lineage: verify_lineage 参数。
+            verify_roi: verify_roi 参数。
+            verify_ingestor: verify_ingestor 参数。
         """
         vid = f"e2e_{_time.strftime('%H%M%S')}_{_uuid.uuid4().hex[:6]}"
         report = E2EReport(verification_id=vid)

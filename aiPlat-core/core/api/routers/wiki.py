@@ -102,6 +102,7 @@ except ImportError:
 # ── Request Models ──────────────────────────────────────────────
 
 class ConvertKbRequest(BaseModel):
+    """ConvertKbRequest。"""
     tenant_id: str = "default"
     collection_id: str = "default"
     limit: int = 50
@@ -109,6 +110,7 @@ class ConvertKbRequest(BaseModel):
 
 
 class WikiPageWrite(BaseModel):
+    """WikiPageWrite。"""
     title: str
     body: str
     category: str = "entities"
@@ -120,12 +122,14 @@ class WikiPageWrite(BaseModel):
 
 
 class WikiIngest(BaseModel):
+    """WikiIngest。"""
     source_text: str
     source_title: str = ""
     source_url: str = ""
 
 
 class AtomizeRequest(BaseModel):
+    """AtomizeRequest。"""
     doc_text: str
     doc_id: str = ""
     max_atoms: int = 20
@@ -133,6 +137,7 @@ class AtomizeRequest(BaseModel):
 
 
 class CollectionCreate(BaseModel):
+    """CollectionCreate。"""
     collection_id: str
 
 
@@ -146,6 +151,17 @@ async def list_pages(
     offset: int = 0,
     collection: str = "default",
 ):
+    """列出 pages。
+
+    Args:
+        category: category 参数。
+        tag: tag 参数。
+        query: 查询。
+        source: source 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        collection: collection 参数。
+    """
     from core.api.core_facade import attach_ontology_api, ontology_api_from_wiki_pages
     from core.harness.knowledge.wiki_engine import search_pages, list_all_pages
     if query or tag:
@@ -170,6 +186,13 @@ async def list_pages(
 
 @router.get("/pages/{title}", response_model=Dict[str, Any])
 async def read_page(title: str, category: str = "entities", collection: str = "default"):
+    """read_page。
+
+    Args:
+        title: title 参数。
+        category: category 参数。
+        collection: collection 参数。
+    """
     from core.api.core_facade import read_page
     page = read_page(title, category=category, collection_id=collection)
     if not page:
@@ -208,6 +231,12 @@ async def read_page(title: str, category: str = "entities", collection: str = "d
 
 @router.delete("/pages/{title}", response_model=DeleteResponse)
 async def delete_page(title: str, collection: str = "default"):
+    """删除 page。
+
+    Args:
+        title: title 参数。
+        collection: collection 参数。
+    """
     from core.api.core_facade import delete_page as _del
     ok = _del(title, collection_id=collection)
     if not ok:
@@ -217,6 +246,11 @@ async def delete_page(title: str, collection: str = "default"):
 
 @router.delete("/pages-all", response_model=WikiDeleteAllResponse)
 async def delete_all_pages(collection: str = "default"):
+    """删除 all_pages。
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import delete_all_pages
     result = delete_all_pages(collection_id=collection)
     return {"deleted": result["deleted"], "message": f"已清空 {result['deleted']} 个 Wiki 页面"}
@@ -226,13 +260,9 @@ async def delete_all_pages(collection: str = "default"):
 async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True):
     """Batch-clean ghost pages (search index entries with no stored page data).
 
-    Ghost pages exist in the search index but have no real content.
-    They are removed from disk and the FTS index. A single cache invalidation
-    round runs at the end (instead of per-page O(n²) similarity checks).
-
-    Query params:
-        collection: Wiki collection ID (default: "default")
-        dry_run: If true (default), only scan and report. Set false to actually delete.
+    Args:
+        collection: collection 参数。
+        dry_run: 是否仅演练。
     """
     from core.harness.knowledge.wiki_engine import cleanup_ghost_pages as _cleanup
     result = _cleanup(collection_id=collection, dry_run=dry_run)
@@ -241,10 +271,11 @@ async def cleanup_ghost_pages(collection: str = "default", dry_run: bool = True)
 
 @router.get("/unprocessed-docs", response_model=Dict[str, Any])
 async def get_unprocessed_docs(tenant_id: str = "default", collection: str = "default"):
-    u"""Return KB documents that don't have corresponding wiki pages.
-    
-    Cross-references wiki page source_articles (kb:doc_id) with
-    KB documents table. No platform auth required.
+    """Return KB documents that don't have corresponding wiki pages.
+
+    Args:
+        tenant_id: 租户 ID。
+        collection: collection 参数。
     """
     import os, json as _json, sqlite3 as _sq
     from core.api.core_facade import search_pages
@@ -304,7 +335,11 @@ async def get_skill_deps():
 
 @router.get("/skill-impact/{skill_id}", response_model=Dict[str, Any])
 async def get_skill_impact(skill_id: str):
-    u"""Return agents and skills affected by a given skill."""
+    """Return agents and skills affected by a given skill.
+
+    Args:
+        skill_id: Skill ID。
+    """
     from core.harness.knowledge.skill_deps import skill_impact
     result = skill_impact(skill_id)
     if not result.get("exists"):
@@ -314,11 +349,10 @@ async def get_skill_impact(skill_id: str):
 
 @router.post("/skills/install-from-directory", response_model=Dict[str, Any])
 async def install_skills_from_directory(search_path: str = Body(..., embed=True)):
-    u"""Install SKILL.md files from a directory (e.g. cloned agent-skills repo).
+    """Install SKILL.md files from a directory (e.g. cloned agent-skills repo).
 
-    Scans path/skills/*/SKILL.md, copies to ~/.aiplat/skills/<name>/.
-    Auto-fills trigger_keywords and execution_type defaults.
-    Compatible with Google agent-skills (addyosmani/agent-skills) format.
+    Args:
+        search_path: search_path 参数。
     """
     import glob as _glob, os as _os, shutil as _shutil
 
@@ -384,6 +418,7 @@ async def install_skills_from_directory(search_path: str = Body(..., embed=True)
 
 
 class ShipRequest(BaseModel):
+    """ShipRequest。"""
     pipeline_id: str = ""
     stage_id: str = ""
     assess_report: Dict[str, Any] = {}
@@ -396,10 +431,10 @@ class ShipRequest(BaseModel):
 
 @router.post("/pipeline/ship", response_model=Dict[str, Any])
 async def ship_pipeline(req: ShipRequest):
-    u"""Final deployment gate. Requires all assessments PASS before allowing ship.
+    """Final deployment gate. Requires all assessments PASS before allowing ship.
 
-    Runs security-auditor and web-perf-auditor checks (if available).
-    Returns ship decision: ALLOW | BLOCKED | NEEDS_APPROVAL.
+    Args:
+        req: req 参数。
     """
     gates = []
     blocked = False
@@ -501,17 +536,17 @@ async def run_self_harness_cycle():
 
 
 class SandboxRequest(BaseModel):
+    """SandboxRequest。"""
     seed_params: Dict[str, Any] = {}
     scenario_count: int = 10
 
 
 @router.post("/pipeline/sandbox", response_model=Dict[str, Any])
 async def run_pipeline_sandbox(req: SandboxRequest):
-    u"""Run Pipeline Sandbox — generate variant scenarios and validate.
+    """Run Pipeline Sandbox — generate variant scenarios and validate.
 
-    Takes a seed parameter set (from a successful run) and generates
-    N variant scenarios with boundary values, empty injections, field swaps.
-    Returns per-scenario pass/fail results and a deployment-block decision.
+    Args:
+        req: req 参数。
     """
     from core.harness.execution.pipeline_sandbox import run_sandbox_validation
     report = await run_sandbox_validation(
@@ -534,14 +569,10 @@ async def run_pipeline_sandbox(req: SandboxRequest):
 
 @router.get("/pipeline/diagnose/{run_id}", response_model=Dict[str, Any])
 async def diagnose_pipeline_run(run_id: str):
-    u"""Diagnostic report for a single pipeline run.
+    """Diagnostic report for a single pipeline run.
 
-    Combines failure attribution, assessment results, and execution trace
-    to produce a structured diagnostic report with blame distribution.
-
-    Returns:
-      {run_id, status, failure: {...}, blame: {prompt, retrieval, tool, model},
-       stages: [...], suggestion: "..."}
+    Args:
+        run_id: 运行 ID。
     """
     from core.api.core_facade import get_kernel_runtime
     runtime = get_kernel_runtime()
@@ -712,7 +743,12 @@ def _check_session_notes(pipeline_id: str) -> bool:
 
 @router.get("/proposals", response_model=Dict[str, Any])
 async def get_proposals(status: str = "", collection: str = "default"):
-    u"""List pending wiki knowledge proposals (merge/update/supplement/contradict)."""
+    """List pending wiki knowledge proposals (merge/update/supplement/contradict).
+
+    Args:
+        status: status 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import load_proposals
     proposals = load_proposals(collection_id=collection)
     if status:
@@ -722,7 +758,13 @@ async def get_proposals(status: str = "", collection: str = "default"):
 
 @router.put("/proposals/{proposal_id}", response_model=Dict[str, Any])
 async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: str = "default"):
-    u"""Approve/reject a proposal. Body: {status: 'approved'|'rejected'}."""
+    """Approve/reject a proposal. Body: {status: 'approved'|'rejected'}.
+
+    Args:
+        proposal_id: proposal 标识。
+        body: 请求体。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import update_proposal_status, apply_proposal
     status = body.get("status", "")
     if status not in ("approved", "rejected"):
@@ -739,6 +781,12 @@ async def handle_proposal(proposal_id: str, body: Dict[str, Any], collection: st
 
 @router.post("/pages", response_model=Dict[str, Any])
 async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
+    """创建 wiki_page。
+
+    Args:
+        body: 请求体。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import auto_link_page
     from core.harness.knowledge.wiki_engine import write_page, auto_link_page, search_pages, update_page
     try:
@@ -813,6 +861,13 @@ async def create_wiki_page(body: WikiPageWrite, collection: str = "default"):
 
 @router.get("/traverse/{title}", response_model=Dict[str, Any])
 async def traverse_links(title: str, depth: int = 2, collection: str = "default"):
+    """traverse_links。
+
+    Args:
+        title: title 参数。
+        depth: depth 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import traverse_links
     pages = traverse_links(title, depth=depth, collection_id=collection)
     return {"root": title, "depth": depth, "pages": len(pages), "items": pages}
@@ -820,6 +875,11 @@ async def traverse_links(title: str, depth: int = 2, collection: str = "default"
 
 @router.get("/lint", response_model=Dict[str, Any])
 async def lint_wiki(collection: str = "default"):
+    """lint_wiki。
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import wiki_health_report
     return wiki_health_report()
 
@@ -833,6 +893,15 @@ async def wiki_graph(
     collection: str = "default",
 ):
     # core_facade.build_graph is the code-symbol graph (repo roots), not this view.
+    """wiki_graph。
+
+    Args:
+        category: category 参数。
+        keyword: keyword 参数。
+        source: source 参数。
+        max_nodes: max_nodes 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import build_graph
     return build_graph(
         category=category,
@@ -845,7 +914,11 @@ async def wiki_graph(
 
 @router.post("/ingest", response_model=Dict[str, Any])
 async def ingest_text(body: WikiIngest):
-    """Submit text for wiki processing. The wiki_curator agent handles this asynchronously."""
+    """Submit text for wiki processing. The wiki_curator agent handles this asynchronously.
+
+    Args:
+        body: 请求体。
+    """
     import uuid, time
     from core.harness.knowledge.wiki_engine import write_page, _wiki_root
     # Store raw source for later processing
@@ -886,7 +959,8 @@ async def ingest_text(body: WikiIngest):
 async def ingest_url(body: dict):
     """Phase 42: One-click URL import — fetch URL, convert to Markdown, save to raw inbox.
 
-    Body: {"url": "https://...", "collection": "default", "tags": ["ai", "research"]}
+    Args:
+        body: 请求体。
     """
     import uuid, time, json as _json
     url = str(body.get("url", "")).strip()
@@ -940,8 +1014,9 @@ async def ingest_url(body: dict):
 async def trigger_reparse(doc_id: str = "", source_path: str = ""):
     """HITL reparse: submit a document for re-processing through the ontology pipeline.
 
-    The document is added to a queue and processed one-at-a-time by a background worker.
-    Status can be checked via GET /ingest/reparse/{doc_id}/status.
+    Args:
+        doc_id: doc 标识。
+        source_path: source_path 参数。
     """
     if not doc_id:
         return {"success": False, "message": "doc_id is required"}
@@ -951,7 +1026,11 @@ async def trigger_reparse(doc_id: str = "", source_path: str = ""):
 
 @router.get("/ingest/reparse/{doc_id}/status", response_model=Dict[str, Any])
 async def get_reparse_status(doc_id: str):
-    """Check the reparse status for a document."""
+    """Check the reparse status for a document.
+
+    Args:
+        doc_id: doc 标识。
+    """
     from core.harness.knowledge.reparse_queue import get_reparse_status
     return await get_reparse_status(doc_id)
 
@@ -967,9 +1046,9 @@ async def get_reparse_queue_stats():
 async def atomize_document(body: AtomizeRequest, collection: str = "default"):
     """Ontology-driven atom extraction: raw document → KnowledgeAtoms with evidence.
 
-    Uses T-Box schema to guide LLM extraction of claims with precise source positions.
-    Each atom includes: evidence_start, evidence_end, evidence_text, confidence.
-    Automatically detects contradictions and creates ContradictionPages.
+    Args:
+        body: 请求体。
+        collection: collection 参数。
     """
     import asyncio
     from core.harness.knowledge.wiki_engine import atomize_document as _atomize
@@ -999,9 +1078,9 @@ async def atomize_document(body: AtomizeRequest, collection: str = "default"):
 @router.post("/import-docs-dir", response_model=Dict[str, Any])
 async def import_docs_directory(collection: str = "system_docs"):
     """导入 docs/ 目录下所有 .md 文件到 Wiki 知识库。
-    
-    遍历项目 docs/ 目录，将每个 .md 文件作为 Wiki 页面写入指定集合。
-    已存在的页面会自动更新（upsert）。
+
+    Args:
+        collection: collection 参数。
     """
     import os
     from pathlib import Path
@@ -1046,9 +1125,9 @@ async def import_docs_directory(collection: str = "system_docs"):
 @router.post("/suggest-domain", response_model=Dict[str, Any])
 async def suggest_domain(body: Dict[str, Any]):
     """推荐匹配的领域（用于数据源入库时选择目标领域）。
-    
-    返回 top-3 候选领域及余弦相似度。
-    即使未达路由阈值也返回，供用户手动选择。
+
+    Args:
+        body: 请求体。
     """
     query = str(body.get("query", "")).strip()
     if not query:
@@ -1070,9 +1149,11 @@ async def generate_domain(
     domain_id: str = "aiplat-system",
 ):
     """从指定集合的实体中自动生成领域 YAML。
-    
-    读取集合中的 entities 和 topics，提取类定义、属性和关系，
-    输出到 ~/.aiplat/ontologies/{domain_id}.yaml。
+
+    Args:
+        collection: collection 参数。
+        domain_name: domain_name 参数。
+        domain_id: domain 标识。
     """
     import os, re, yaml, time, logging
     from pathlib import Path
@@ -1173,10 +1254,11 @@ async def generate_domain(
 
 @router.post("/convert-from-kb", response_model=Dict[str, Any])
 async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection: str = "default"):
-    u"""Convert existing KB documents into Wiki pages.
-    
-    If doc_ids is provided, only those specific documents are converted.
-    Otherwise all documents matching tenant/collection are processed.
+    """Convert existing KB documents into Wiki pages.
+
+    Args:
+        req: req 参数。
+        collection: collection 参数。
     """
     tenant_id = req.tenant_id if req else "default"
     collection_id = req.collection_id if req else "default"
@@ -1472,12 +1554,10 @@ async def convert_from_kb(req: ConvertKbRequest = Body(default=None), collection
 
 @router.post("/curate", response_model=Dict[str, Any])
 async def curate_wiki(collection: str = "default"):
-    u"""LLM 深度策展：遍历所有 Wiki 页面，用 LLM 重写标题/分类/标签/摘要/关联。
+    """LLM 深度策展：遍历所有 Wiki 页面，用 LLM 重写标题/分类/标签/摘要/关联。
 
-    返回: {processed, links_added, titles_updated, errors[]}
-    如果 LLM 不可用，降级到嵌入自动关联。
-
-    Phase: parallelized — batch llm_curate_page via asyncio.gather (BATCH=5).
+    Args:
+        collection: collection 参数。
     """
     import asyncio as _asyncio
     from core.harness.knowledge.wiki_engine import auto_link_page
@@ -1567,7 +1647,11 @@ async def curate_wiki(collection: str = "default"):
 
 @router.post("/index-md", response_model=Dict[str, Any])
 async def regenerate_wiki_index(collection: str = "default"):
-    """Generate a human-readable wiki index page (index.md) from index.json."""
+    """Generate a human-readable wiki index page (index.md) from index.json.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.wiki_engine import generate_index_md
         content = generate_index_md(collection_id=collection)
@@ -1619,7 +1703,8 @@ async def run_golden_tests():
 async def wiki_structured_query(q: str = ""):
     """Deterministic structured query — same question, same answer.
 
-    Response keeps legacy fields and adds ``ontology_api`` (ontology.api.v0).
+    Args:
+        q: q 参数。
     """
     if not q:
         return {"error": "Missing query parameter ?q=", 
@@ -1636,7 +1721,11 @@ async def wiki_structured_query(q: str = ""):
 
 @router.post("/ontology/rebuild", response_model=Dict[str, Any])
 async def ontology_rebuild(collection: str = "default"):
-    """Full rebuild of the knowledge ontology A-Box from current Wiki+KB data."""
+    """Full rebuild of the knowledge ontology A-Box from current Wiki+KB data.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_abox_builder import rebuild_full
         onto = rebuild_full(collection_id=collection)
@@ -1649,7 +1738,11 @@ async def ontology_rebuild(collection: str = "default"):
 
 @router.get("/ontology/validate", response_model=Dict[str, Any])
 async def ontology_validate(collection: str = "default"):
-    """Run all ontology axioms (A1-A7) against the current A-Box."""
+    """Run all ontology axioms (A1-A7) against the current A-Box.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_validator import validate as onto_validate
@@ -1678,7 +1771,12 @@ async def ontology_validate(collection: str = "default"):
 
 @router.get("/ontology/network/{title:path}", response_model=Dict[str, Any])
 async def ontology_network(title: str, collection: str = "default"):
-    """Get the transitive knowledge network from a starting Wiki page."""
+    """Get the transitive knowledge network from a starting Wiki page.
+
+    Args:
+        title: title 参数。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_validator import query_transitive_network
@@ -1694,7 +1792,11 @@ async def ontology_network(title: str, collection: str = "default"):
 
 @router.get("/ontology/source-impact", response_model=Dict[str, Any])
 async def ontology_source_impact(collection: str = "default"):
-    """Rank KB documents by how many Wiki pages cite them."""
+    """Rank KB documents by how many Wiki pages cite them.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_validator import query_source_impact
@@ -1710,7 +1812,13 @@ async def ontology_source_impact(collection: str = "default"):
 
 @router.get("/changelog", response_model=Dict[str, Any])
 async def get_wiki_changelog(title: str = "", limit: int = 20, collection: str = "default"):
-    """Get wiki changelog entries, optionally filtered by page title."""
+    """Get wiki changelog entries, optionally filtered by page title.
+
+    Args:
+        title: title 参数。
+        limit: 返回条数上限。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.wiki_engine import _wiki_root
     import json as _json
     root = _wiki_root(collection)
@@ -1747,7 +1855,12 @@ async def wiki_rollback(title: str, index: int = -1, collection: str = "default"
 
 @router.get("/page/{page_id}", response_model=Dict[str, Any])
 async def wiki_page_by_id(page_id: str, collection: str = "default"):
-    """Get a wiki page by its stable page_id (UUID). Survives title renames."""
+    """Get a wiki page by its stable page_id (UUID). Survives title renames.
+
+    Args:
+        page_id: page 标识。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.wiki_engine import read_page_by_id
         page = read_page_by_id(page_id, collection_id=collection)
@@ -1762,7 +1875,11 @@ async def wiki_page_by_id(page_id: str, collection: str = "default"):
 
 @router.get("/duplicates", response_model=Dict[str, Any])
 async def detect_wiki_duplicates(collection: str = "default"):
-    """Detect potentially duplicate wiki pages using embedding similarity."""
+    """Detect potentially duplicate wiki pages using embedding similarity.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.wiki_engine import detect_duplicate_pages
         duplicates = detect_duplicate_pages(collection_id=collection)
@@ -1794,7 +1911,11 @@ async def list_wiki_collections():
 
 @router.post("/collections", response_model=Dict[str, Any])
 async def create_wiki_collection(body: CollectionCreate):
-    """Create a new wiki collection."""
+    """Create a new wiki collection.
+
+    Args:
+        body: 请求体。
+    """
     try:
         from core.harness.knowledge.wiki_engine import create_collection
         result = create_collection(body.collection_id)
@@ -1809,7 +1930,11 @@ async def create_wiki_collection(body: CollectionCreate):
 
 @router.delete("/collections/{collection_id}", response_model=DeleteResponse)
 async def delete_wiki_collection(collection_id: str):
-    """Delete a wiki collection and all its pages."""
+    """Delete a wiki collection and all its pages.
+
+    Args:
+        collection_id: collection 标识。
+    """
     try:
         from core.harness.knowledge.wiki_engine import delete_collection
         result = delete_collection(collection_id)
@@ -1828,7 +1953,12 @@ async def delete_wiki_collection(collection_id: str):
 
 @router.get("/schema", response_model=Dict[str, Any])
 async def get_wiki_schema(collection: str = "default", domain: str = ""):
-    """Return T-Box class schemas, with per-collection extensions + domain ontologies applied."""
+    """Return T-Box class schemas, with per-collection extensions + domain ontologies applied.
+
+    Args:
+        collection: collection 参数。
+        domain: domain 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import OBJECT_PROPERTIES  # P0-A2 修复: 恢复原模块(定义处)
         from core.harness.knowledge.knowledge_ontology import get_classes_with_templates
@@ -1946,8 +2076,14 @@ async def generate_ontology_domain(
 ):
     """LLM-assisted 6-step ontology generation from Vault markdown files.
 
-    Steps: GatherContent → EntityScan → ConceptCluster → RelationExtract → RuleRefine → AssembleYAML.
-    Each step's output is cached to ~/.aiplat/ontology_gen/{domain_id}/ for debugging.
+    Args:
+        id: id 参数。
+        name: name 参数。
+        description: description 参数。
+        vault_path: vault_path 参数。
+        vault_subdir: vault_subdir 参数。
+        keywords: keywords 参数。
+        sample_limit: sample_limit 参数。
     """
     import json as _json, yaml as _yaml, re as _re, hashlib as _hashlib, asyncio
     from pathlib import Path as _Path
@@ -2107,8 +2243,12 @@ async def evolve_ontology_domain(
 ):
     """Delta analysis: detect new vault files → suggest ontology changes.
 
-    Compares current vault file hashes against cached hashes from last generate run.
-    Returns suggestions for new classes, relations, and state machine changes.
+    Args:
+        domain_id: domain 标识。
+        vault_path: vault_path 参数。
+        vault_subdir: vault_subdir 参数。
+        keywords: keywords 参数。
+        sample_limit: sample_limit 参数。
     """
     import json as _json, asyncio, os as _os
     from pathlib import Path as _Path
@@ -2228,8 +2368,12 @@ async def repair_ontology_domain(
 ):
     """Audit existing ontology against full Vault content. Returns repair suggestions.
 
-    Checks: missing classes, missing fields, missing synonyms, weak relations,
-    weak state machines (states without transitions), and uncovered entities.
+    Args:
+        domain_id: domain 标识。
+        vault_path: vault_path 参数。
+        vault_subdir: vault_subdir 参数。
+        keywords: keywords 参数。
+        sample_limit: sample_limit 参数。
     """
     import json as _json, asyncio, os as _os
     from pathlib import Path as _Path
@@ -2593,7 +2737,11 @@ def _assemble_yaml(domain_id, name, description, classes_data, relations_data, s
 
 @router.post("/ontology/domains", response_model=Dict[str, Any])
 async def create_ontology_domain(req: OntologyDomainCreate):
-    """Create a new domain ontology (YAML file)."""
+    """Create a new domain ontology (YAML file).
+
+    Args:
+        req: req 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -2632,7 +2780,12 @@ async def create_ontology_domain(req: OntologyDomainCreate):
 
 @router.put("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
-    """Update domain metadata (name, description, version)."""
+    """Update domain metadata (name, description, version).
+
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
+    """
     from core.api.core_facade import load_ontology_from_yaml
     from pathlib import Path as _Path
     import os as _os
@@ -2740,7 +2893,11 @@ async def update_ontology_domain(domain_id: str, req: OntologyDomainCreate):
 
 @router.delete("/ontology/domains/{domain_id}", response_model=Dict[str, Any])
 async def delete_ontology_domain(domain_id: str):
-    """Delete a domain ontology file + cascade cleanup."""
+    """Delete a domain ontology file + cascade cleanup.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home())
@@ -2799,7 +2956,12 @@ async def delete_ontology_domain(domain_id: str):
 
 @router.post("/ontology/domains/{domain_id}/classes", response_model=Dict[str, Any])
 async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
-    """Add a class to a domain ontology."""
+    """Add a class to a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -2824,7 +2986,13 @@ async def add_ontology_class(domain_id: str, req: OntologyClassCreate):
 
 @router.put("/ontology/domains/{domain_id}/classes/{class_name}", response_model=Dict[str, Any])
 async def update_ontology_class(domain_id: str, class_name: str, req: OntologyClassCreate):
-    """Update an existing class in a domain ontology."""
+    """Update an existing class in a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+        req: req 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -2872,7 +3040,13 @@ async def update_ontology_class(domain_id: str, class_name: str, req: OntologyCl
 
 @router.put("/ontology/domains/{domain_id}/properties/{prop_name}", response_model=Dict[str, Any])
 async def update_ontology_property(domain_id: str, prop_name: str, req: OntologyPropertyCreate):
-    """Update an existing object property in a domain ontology."""
+    """Update an existing object property in a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+        prop_name: prop_name 参数。
+        req: req 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -2903,7 +3077,13 @@ async def update_ontology_property(domain_id: str, prop_name: str, req: Ontology
 
 @router.delete("/ontology/domains/{domain_id}/classes/{class_name}", response_model=Dict[str, Any])
 async def delete_ontology_class(domain_id: str, class_name: str, force: bool = False):
-    """Delete a class from a domain ontology. Use ?force=true for cascade cleanup."""
+    """Delete a class from a domain ontology. Use ?force=true for cascade cleanup.
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+        force: 是否强制。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -2968,6 +3148,7 @@ async def delete_ontology_class(domain_id: str, class_name: str, force: bool = F
 
 
 class MigrateClassifyRequest(BaseModel):
+    """MigrateClassifyRequest。"""
     old_class_name: str
     new_class_name: str
     migrate_graph: bool = True
@@ -2977,9 +3158,9 @@ class MigrateClassifyRequest(BaseModel):
 async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
     """Migrate all GraphIndex nodes from old_class_name to new_class_name and update YAML.
 
-    Use this after renaming a class in the ontology YAML to preserve existing knowledge graph data.
-    Without this migration, old-class nodes become orphaned and invisible to state machines and
-    class-based retrieval.
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
     """
     from pathlib import Path as _Path
     import os as _os
@@ -3030,7 +3211,12 @@ async def migrate_classify(domain_id: str, req: MigrateClassifyRequest):
 
 @router.post("/ontology/domains/{domain_id}/properties", response_model=Dict[str, Any])
 async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
-    """Add an object property to a domain ontology."""
+    """Add an object property to a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+        req: req 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -3053,7 +3239,12 @@ async def add_ontology_property(domain_id: str, req: OntologyPropertyCreate):
 
 @router.delete("/ontology/domains/{domain_id}/properties/{prop_name}", response_model=Dict[str, Any])
 async def delete_ontology_property(domain_id: str, prop_name: str):
-    """Delete an object property from a domain ontology."""
+    """Delete an object property from a domain ontology.
+
+    Args:
+        domain_id: domain 标识。
+        prop_name: prop_name 参数。
+    """
     from pathlib import Path as _Path
     import os as _os
     d = _Path(get_aiplat_home()) / "ontologies"
@@ -3090,7 +3281,11 @@ async def list_inference_rules():
 
 @router.post("/ontology/rules", response_model=Dict[str, Any])
 async def register_inference_rule(body: Dict[str, Any]):
-    """Register a custom inference rule."""
+    """Register a custom inference rule.
+
+    Args:
+        body: 请求体。
+    """
     try:
         from core.harness.knowledge.knowledge_validator import InferenceRule  # P0-A2 修复: 恢复原模块(定义处)
         from core.harness.knowledge.knowledge_validator import RuleTrigger  # P0-A2 修复: 恢复原模块(定义处)
@@ -3123,7 +3318,12 @@ async def register_inference_rule(body: Dict[str, Any]):
 
 @router.get("/ontology/suggestions", response_model=Dict[str, Any])
 async def list_suggestions(status: str = "", collection: str = "default"):
-    """List ontology evolution suggestions."""
+    """List ontology evolution suggestions.
+
+    Args:
+        status: status 参数。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import load_pending_suggestions
         suggestions = load_pending_suggestions(collection)
@@ -3138,7 +3338,11 @@ async def list_suggestions(status: str = "", collection: str = "default"):
 
 @router.post("/ontology/suggestions", response_model=Dict[str, Any])
 async def generate_suggestions(collection: str = "default"):
-    """Scan wiki data and generate ontology evolution suggestions."""
+    """Scan wiki data and generate ontology evolution suggestions.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
         suggestions = add_suggestions_from_patterns(collection_id=collection)
@@ -3152,7 +3356,13 @@ async def generate_suggestions(collection: str = "default"):
 
 @router.post("/ontology/suggestions/{suggestion_id}/accept", response_model=Dict[str, Any])
 async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: str = "default"):
-    """Accept an ontology evolution suggestion (marks for implementation)."""
+    """Accept an ontology evolution suggestion (marks for implementation).
+
+    Args:
+        suggestion_id: suggestion 标识。
+        reviewer: reviewer 参数。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import accept_suggestion
         result = accept_suggestion(suggestion_id, reviewer=reviewer, collection_id=collection)
@@ -3167,7 +3377,14 @@ async def accept_suggestion(suggestion_id: str, reviewer: str = "", collection: 
 
 @router.post("/ontology/suggestions/{suggestion_id}/reject", response_model=Dict[str, Any])
 async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str = "", collection: str = "default"):
-    """Reject an ontology evolution suggestion."""
+    """Reject an ontology evolution suggestion.
+
+    Args:
+        suggestion_id: suggestion 标识。
+        reason: reason 参数。
+        reviewer: reviewer 参数。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import reject_suggestion
         result = reject_suggestion(suggestion_id, reason=reason, reviewer=reviewer, collection_id=collection)
@@ -3182,7 +3399,12 @@ async def reject_suggestion(suggestion_id: str, reason: str = "", reviewer: str 
 
 @router.post("/ontology/suggestions/{suggestion_id}/generate-code", response_model=Dict[str, Any])
 async def generate_code(suggestion_id: str, collection: str = "default"):
-    """Generate implementation code for an accepted suggestion."""
+    """Generate implementation code for an accepted suggestion.
+
+    Args:
+        suggestion_id: suggestion 标识。
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_ontology import generate_code_for_suggestion
         result = generate_code_for_suggestion(suggestion_id, collection_id=collection)
@@ -3197,8 +3419,8 @@ async def generate_code(suggestion_id: str, collection: str = "default"):
 async def check_schema_readiness(collection: str = "default"):
     """Check how many wiki pages would pass ERROR-mode schema validation.
 
-    Returns readiness percentage and list of failing pages with missing fields.
-    Use this before enabling AIPLAT_WIKI_SCHEMA_MODE=error.
+    Args:
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.knowledge_ontology import check_schema_readiness
@@ -3213,8 +3435,8 @@ async def check_schema_readiness(collection: str = "default"):
 async def clean_stale_references_endpoint(collection: str = "default"):
     """Scan wiki pages, move stale kb: references from source_articles to stale_references.
 
-    A reference is stale when the kb:doc_id does not exist in the KB database.
-    After cleanup, the A-Box is rebuilt to refresh validator consistency scores.
+    Args:
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.wiki_engine import clean_stale_references
@@ -3237,8 +3459,8 @@ async def clean_stale_references_endpoint(collection: str = "default"):
 async def seed_instances_endpoint(collection: str = "default"):
     """Create seed instances for empty T-Box categories (atoms, contradictions).
 
-    Scans topic pages for sub-concepts (→ atom pages) and contradictory
-    page pairs (→ contradiction pages). Uses LLM for content analysis.
+    Args:
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.wiki_engine import seed_instances
@@ -3259,8 +3481,9 @@ async def seed_instances_endpoint(collection: str = "default"):
 async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default"):
     """Backfill evidence annotations for wiki pages without them.
 
-    Extracts the first 1-2 sentences from each page as evidence_text,
-    embedding them as HTML comments for the evidence-chain API.
+    Args:
+        limit: 返回条数上限。
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.wiki_engine import backfill_evidence_batch_sync
@@ -3281,8 +3504,10 @@ async def backfill_evidence_endpoint(limit: int = 50, collection: str = "default
 async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", collection: str = "default"):
     """Batch atomize pages of a given category using LLM sub-concept extraction.
 
-    Rate limited to 1 request/second. Creates KnowledgeAtom pages from
-    topic page content.
+    Args:
+        limit: 返回条数上限。
+        category: category 参数。
+        collection: collection 参数。
     """
     import asyncio
     try:
@@ -3316,7 +3541,11 @@ async def batch_atomize_endpoint(limit: int = 10, category: str = "topics", coll
 
 @router.post("/maintain/fts-rebuild", response_model=Dict[str, Any])
 async def rebuild_fts_index(collection: str = "default"):
-    """Rebuild FTS5 full-text search index for wiki pages."""
+    """Rebuild FTS5 full-text search index for wiki pages.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.wiki_fts import fts_index_pages
         count = fts_index_pages()
@@ -3332,12 +3561,11 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
                             max_mutations: int = 5, force: bool = False):
     """Run knowledge evolution — event-driven, not timer-driven.
 
-    Triggers:
-      - New pages >= 3 since last gen (auto, from wiki_auto_update)
-      - Golden pass_rate dropped >= 10% (auto, from metrics)
-      - force=True (manual, from frontend)
-    
-    Uses local LLM (qwen2.5:7b) for zero API cost.
+    Args:
+        collection: collection 参数。
+        generations: generations 参数。
+        max_mutations: max_mutations 参数。
+        force: 是否强制。
     """
     try:
         from core.harness.knowledge.evolution_runner import EvolutionRunner
@@ -3361,7 +3589,11 @@ async def evolve_knowledge(collection: str = "default", generations: int = 1,
 
 @router.get("/evolution-history", response_model=Dict[str, Any])
 async def get_evolution_history(collection: str = "default"):
-    """Get evolution generation history."""
+    """Get evolution generation history.
+
+    Args:
+        collection: collection 参数。
+    """
     import json as _json, os as _os
     hist_path = _os.path.join(
         get_aiplat_home(),
@@ -3404,12 +3636,11 @@ async def run_active_synthesis(
 ):
     """Run active knowledge synthesis — detect gaps → research → draft → propose.
 
-    Trigger modes:
-      - Manual: set auto_submit=true to automatically create proposals
-      - Preview: set auto_submit=false (default) to see drafts without submitting
-
-    This is the STORM-style 'Compiler Mode': AI actively scans for knowledge
-    gaps and proposes new wiki pages, rather than passively waiting for uploads.
+    Args:
+        domain: domain 参数。
+        collection: collection 参数。
+        max_gaps: max_gaps 参数。
+        auto_submit: auto_submit 参数。
     """
     try:
         from core.harness.knowledge.active_synthesis import run_active_synthesis as do_synthesis

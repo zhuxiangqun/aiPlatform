@@ -26,6 +26,8 @@ OUTCOME_GATE_FAIL = "schema_gate_fail_pipeline"
 
 
 def stage_outcome_samples_path() -> Path:
+    """stage_outcome_samples_path。
+    """
     home = Path(get_aiplat_home())
     return home / "wiki" / _SAMPLES_FILENAME
 
@@ -74,7 +76,18 @@ def record_stage_outcome_sample(
     gate_errors: Optional[Sequence[str]] = None,
     source: str = "",
 ) -> Dict[str, Any]:
-    """Append one stage outcome sample. Best-effort; never raises to callers."""
+    """Append one stage outcome sample. Best-effort; never raises to callers.
+
+    Args:
+        outcome: outcome 参数。
+        stage: stage 参数。
+        state: state 参数。
+        artifact_key: artifact_key 参数。
+        error: error 参数。
+        handoff: handoff 参数。
+        gate_errors: gate_errors 参数。
+        source: source 参数。
+    """
     st = state if isinstance(state, Mapping) else {}
     sid = str(getattr(stage, "id", "") or "")[:128] if stage is not None else ""
     skill = (
@@ -125,7 +138,16 @@ def record_from_handoff(
     status: str = "ok",
     error: str = "",
 ) -> Dict[str, Any]:
-    """C4 hook from write_stage_handoff (success/fail envelope)."""
+    """C4 hook from write_stage_handoff (success/fail envelope).
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+        artifact_key: artifact_key 参数。
+        handoff: handoff 参数。
+        status: status 参数。
+        error: error 参数。
+    """
     st = str(status or "ok").strip().lower()
     outcome = OUTCOME_FAILED if st in ("failed", "error") or error else OUTCOME_OK
     return record_stage_outcome_sample(
@@ -145,7 +167,13 @@ def record_from_gate_failure(
     stage: Any,
     gate_result: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """C4 hook from apply_gate_failure (schema gate pause/fail)."""
+    """C4 hook from apply_gate_failure (schema gate pause/fail).
+
+    Args:
+        state: state 参数。
+        stage: stage 参数。
+        gate_result: gate_result 参数。
+    """
     action = str(gate_result.get("action") or "").strip().lower()
     if action == "hitl":
         outcome = OUTCOME_GATE_HITL
@@ -175,7 +203,15 @@ def query_stage_outcome_samples(
     project_id: Optional[str] = None,
     skill_name: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Query recent samples (newest last). Does not alter topology."""
+    """Query recent samples (newest last). Does not alter topology.
+
+    Args:
+        limit: 返回条数上限。
+        outcome: outcome 参数。
+        stage_id: stage 标识。
+        project_id: project 标识。
+        skill_name: skill_name 参数。
+    """
     samples = _load_samples(stage_outcome_samples_path())
     out: List[Dict[str, Any]] = []
     for row in samples:
@@ -197,7 +233,11 @@ def query_stage_outcome_samples(
 def summarize_stage_outcome_samples(
     samples: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Aggregate counts by outcome (for diagnostics)."""
+    """Aggregate counts by outcome (for diagnostics).
+
+    Args:
+        samples: samples 参数。
+    """
     rows = list(samples) if samples is not None else query_stage_outcome_samples(limit=_SAMPLES_MAX)
     by_outcome: Dict[str, int] = {}
     for row in rows:

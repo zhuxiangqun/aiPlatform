@@ -1,3 +1,5 @@
+"""mcp_admin：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 
@@ -133,7 +135,11 @@ async def list_mcp_servers():
 
 @router.post("/mcp/servers/{server_name}/enable", response_model=Dict[str, Any])
 async def enable_mcp_server(server_name: str):
-    """Enable an MCP server in filesystem config."""
+    """Enable an MCP server in filesystem config.
+
+    Args:
+        server_name: server_name 参数。
+    """
     store = _store()
     mgr = _mcp_manager()
     if not mgr:
@@ -187,11 +193,11 @@ async def enable_mcp_server(server_name: str):
 
 @router.post("/mcp/servers/{server_name}/sign", response_model=Dict[str, Any])
 async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
-    """
-    Sign an MCP server directory with an Ed25519 private key.
-    Writes MCP.manifest.json alongside server.yaml.
+    """Sign an MCP server directory with an Ed25519 private key.
 
-    Body: { "private_key": "-----BEGIN PRIVATE KEY-----..." }
+    Args:
+        server_name: server_name 参数。
+        request: FastAPI Request。
     """
     mgr = _mcp_manager()
     if not mgr:
@@ -263,7 +269,11 @@ async def sign_mcp_server(server_name: str, request: Dict[str, Any]):
 
 @router.post("/mcp/servers/{server_name}/disable", response_model=Dict[str, Any])
 async def disable_mcp_server(server_name: str):
-    """Disable an MCP server in filesystem config."""
+    """Disable an MCP server in filesystem config.
+
+    Args:
+        server_name: server_name 参数。
+    """
     mgr = _mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="MCP manager not available")
@@ -345,7 +355,11 @@ async def list_workspace_mcp_servers():
 
 @router.get("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def get_workspace_mcp_server(server_name: str):
-    """Get workspace MCP server details."""
+    """Get workspace MCP server details.
+
+    Args:
+        server_name: server_name 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -369,7 +383,11 @@ async def get_workspace_mcp_server(server_name: str):
 
 @router.get("/workspace/mcp/servers/{server_name}/policy-check", response_model=Dict[str, Any])
 async def check_workspace_mcp_server_policy(server_name: str):
-    """Check whether a workspace MCP server can be enabled/discovered under current policy."""
+    """Check whether a workspace MCP server can be enabled/discovered under current policy.
+
+    Args:
+        server_name: server_name 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -428,7 +446,12 @@ async def check_workspace_mcp_server_policy(server_name: str):
 
 @router.post("/workspace/mcp/servers", response_model=Dict[str, Any])
 async def upsert_workspace_mcp_server(request: dict, http_request: Request):
-    """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml)."""
+    """Create or update a workspace MCP server (writes to ~/.aiplat/mcps/<name>/server.yaml + policy.yaml).
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -511,7 +534,11 @@ async def upsert_workspace_mcp_server(request: dict, http_request: Request):
 
 @router.post("/workspace/mcp/servers/auto-fill", response_model=Dict[str, Any])
 async def mcp_auto_fill(request: dict):
-    """AI 智能填充：根据名称和描述，自动推荐 MCP 服务器配置。"""
+    """AI 智能填充：根据名称和描述，自动推荐 MCP 服务器配置。
+
+    Args:
+        request: FastAPI Request。
+    """
     name = str(request.get("name") or "").strip()
     description = str(request.get("description") or "").strip()
     if not name or not description:
@@ -576,7 +603,11 @@ async def mcp_auto_fill(request: dict):
 
 @router.post("/workspace/mcp/servers/create-dialog", response_model=Dict[str, Any])
 async def mcp_create_dialog(request: dict):
-    """Conversational MCP creation: clarify → draft (auto-fill). Create still via POST /workspace/mcp/servers."""
+    """Conversational MCP creation: clarify → draft (auto-fill). Create still via POST /workspace/mcp/servers.
+
+    Args:
+        request: FastAPI Request。
+    """
     text = str(request.get("text") or "").strip()
     history = request.get("history") if isinstance(request.get("history"), list) else []
     try:
@@ -592,7 +623,13 @@ async def mcp_create_dialog(request: dict):
 
 @router.put("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def update_workspace_mcp_server(server_name: str, request: dict, http_request: Request):
-    """Update workspace MCP server (upsert semantics)."""
+    """Update workspace MCP server (upsert semantics).
+
+    Args:
+        server_name: server_name 参数。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     payload = dict(request or {})
     payload["name"] = server_name
     return await upsert_workspace_mcp_server(payload, http_request)
@@ -600,6 +637,12 @@ async def update_workspace_mcp_server(server_name: str, request: dict, http_requ
 
 @router.post("/workspace/mcp/servers/{server_name}/enable", response_model=Dict[str, Any])
 async def enable_workspace_mcp_server(server_name: str, http_request: Request):
+    """enable_workspace_mcp_server。
+
+    Args:
+        server_name: server_name 参数。
+        http_request: http_request 参数。
+    """
     mgr = _workspace_mcp_manager()
     store = _store()
     if not mgr:
@@ -675,6 +718,11 @@ async def enable_workspace_mcp_server(server_name: str, http_request: Request):
 
 @router.post("/workspace/mcp/servers/{server_name}/disable", response_model=Dict[str, Any])
 async def disable_workspace_mcp_server(server_name: str):
+    """disable_workspace_mcp_server。
+
+    Args:
+        server_name: server_name 参数。
+    """
     mgr = _workspace_mcp_manager()
     store = _store()
     if not mgr:
@@ -689,7 +737,12 @@ async def disable_workspace_mcp_server(server_name: str):
 
 @router.post("/workspace/mcp/templates/{template}/create", response_model=Dict[str, Any])
 async def create_mcp_from_template(template: str, data: dict):
-    """Create a new MCP server from a seed template, copying config + script files."""
+    """Create a new MCP server from a seed template, copying config + script files.
+
+    Args:
+        template: template 参数。
+        data: data 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -731,7 +784,11 @@ async def create_mcp_from_template(template: str, data: dict):
 
 @router.delete("/workspace/mcp/servers/{server_name}", response_model=Dict[str, Any])
 async def delete_workspace_mcp_server(server_name: str):
-    """Delete a workspace MCP server config + directory."""
+    """Delete a workspace MCP server config + directory.
+
+    Args:
+        server_name: server_name 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -744,7 +801,12 @@ async def delete_workspace_mcp_server(server_name: str):
 
 @router.get("/workspace/mcp/servers/{server_name}/tools", response_model=Dict[str, Any])
 async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
-    """Lightweight tools/list — connect to MCP server and return tool definitions (with inputSchema)."""
+    """Lightweight tools/list — connect to MCP server and return tool definitions (with inputSchema).
+
+    Args:
+        server_name: server_name 参数。
+        timeout_seconds: timeout_seconds 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -805,7 +867,12 @@ async def list_mcp_server_tools(server_name: str, timeout_seconds: int = 25):
 
 @router.post("/workspace/mcp/servers/{server_name}/test-invoke", response_model=Dict[str, Any])
 async def test_invoke_mcp_server(server_name: str, data: dict = None):
-    """Test an MCP server — connect, list tools, invoke a tool. Set sync=true for inline result."""
+    """Test an MCP server — connect, list tools, invoke a tool. Set sync=true for inline result.
+
+    Args:
+        server_name: server_name 参数。
+        data: data 参数。
+    """
     import uuid
 
     mgr = _workspace_mcp_manager()
@@ -1120,6 +1187,12 @@ async def reload_workspace_mcp_servers():
 
 @router.post("/workspace/mcps/installer/plan", response_model=Dict[str, Any])
 async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):  # noqa: F821
+    """workspace_mcps_installer_plan。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1142,6 +1215,12 @@ async def workspace_mcps_installer_plan(request: dict, rt: RuntimeDep = None):  
 
 @router.post("/workspace/mcps/installer/install", response_model=Dict[str, Any])
 async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None):  # noqa: F821
+    """workspace_mcps_installer_install。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1165,6 +1244,12 @@ async def workspace_mcps_installer_install(request: dict, rt: RuntimeDep = None)
 
 @router.post("/workspace/mcps/installer/resolve-head", response_model=Dict[str, Any])
 async def workspace_mcps_installer_resolve_head(request: dict, rt: RuntimeDep = None):  # noqa: F821
+    """workspace_mcps_installer_resolve_head。
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1181,6 +1266,14 @@ async def workspace_mcps_installer_upload_plan(
     auto_detect_subdir: str = Form("true"),
     rt: RuntimeDep = None,  # noqa: F821
 ):
+    """workspace_mcps_installer_upload_plan。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        rt: rt 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1214,6 +1307,16 @@ async def workspace_mcps_installer_upload_install(
     plan_id: str = Form(""),
     rt: RuntimeDep = None,  # noqa: F821
 ):
+    """workspace_mcps_installer_upload_install。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        allow_overwrite: allow_overwrite 参数。
+        plan_id: plan 标识。
+        rt: rt 参数。
+    """
     mgr = _workspace_mcp_manager()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workspace MCP manager not available")
@@ -1241,7 +1344,11 @@ async def workspace_mcps_installer_upload_install(
 
 @router.post("/workspace/mcp/servers/{server_name}/audit", response_model=Dict[str, Any])
 async def audit_mcp_server_config(server_name: str):
-    """AI 审核：MCP server.yaml / 运行时配置（规则驱动）。"""
+    """AI 审核：MCP server.yaml / 运行时配置（规则驱动）。
+
+    Args:
+        server_name: server_name 参数。
+    """
     from pathlib import Path as _Path
     from core.management.asset_audit import (
         _mcp_evidence_metadata,
@@ -1514,7 +1621,11 @@ async def audit_mcp_server_config(server_name: str):
 
 @router.post("/workspace/mcp/servers/{server_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_mcp_for_review(server_name: str):
-    """提交 MCP 服务器进入审批流水线。"""
+    """提交 MCP 服务器进入审批流水线。
+
+    Args:
+        server_name: server_name 参数。
+    """
     import time as _time
     from pathlib import Path as _Path
 
@@ -1633,7 +1744,11 @@ async def list_mcp_seeds():
 
 @router.post("/mcp/servers/seeds/{seed_id}/install", response_model=Dict[str, Any])
 async def install_mcp_seed(seed_id: str):
-    """Install an MCP server seed template into ~/.aiplat/mcps/."""
+    """Install an MCP server seed template into ~/.aiplat/mcps/.
+
+    Args:
+        seed_id: seed 标识。
+    """
     import shutil as _shutil
 
     seeds_dir = Path(__file__).resolve().parents[3] / "core" / "workspace_seeds" / "mcps"

@@ -1,6 +1,15 @@
-"""Legacy EvalSet/EvalTask ↔ Case Pack mapping + sample_manifest expand (P0).
+"""
+遗留 EvalSet/EvalTask ↔ Case Pack 映射与 sample_manifest 展开（P0）。
 
-Appendix A set_id→pack_id; nail 6 field map. Does not open accuracy_claim.
+职责
+----
+Appendix A 的 set_id→pack_id、字段互转、manifest 展开/抽样/哈希校验/
+session_group 整组约束，以及 claim_eligible 诚实守卫。
+
+非目标
+------
+- 不打开 ``accuracy_claim``
+- Plan v2 无有效 sample_manifest 时不回退全包执行
 """
 from __future__ import annotations
 
@@ -26,14 +35,27 @@ DEFAULT_PACK_VERSION = "1.0.0"
 
 
 class ClaimEligibilityError(ValueError):
-    """generated/exploratory packs cannot be claim_eligible."""
+    """
+    generated/exploratory 等 kind 不得 ``claim_eligible=true``。
+    """
 
 
 class ManifestValidationError(ValueError):
-    """Fail-closed: Plan v2 must not execute without a valid sample_manifest."""
+    """
+    失败关闭：Plan v2 无有效 sample_manifest 不得执行。
+    """
 
 
 def pack_ref_for_set_id(set_id: str) -> Dict[str, str]:
+    """
+    将遗留 set_id 映射为 ``{pack_id, version}``。
+
+    Args:
+        set_id: 如 ``default/normal`` 或 ``prompt/foo``。
+
+    Returns:
+        含 pack_id 与 version 的 dict。
+    """
     sid = str(set_id or "").strip()
     if sid in LEGACY_SET_TO_PACK:
         pack_id, version = LEGACY_SET_TO_PACK[sid]
@@ -52,6 +74,15 @@ def pack_ref_for_set_id(set_id: str) -> Dict[str, str]:
 
 
 def success_criteria_to_rubric(criteria: Any) -> Dict[str, Any]:
+    """
+    把 success_criteria 规范为 rubric（缺 type 时补 lexical）。
+
+    Args:
+        criteria: 原始 criteria / mapping。
+
+    Returns:
+        带 ``type`` 的 rubric dict。
+    """
     if isinstance(criteria, Mapping) and criteria.get("type"):
         return dict(criteria)
     if isinstance(criteria, Mapping):
@@ -60,6 +91,15 @@ def success_criteria_to_rubric(criteria: Any) -> Dict[str, Any]:
 
 
 def rubric_to_success_criteria(rubric: Any) -> Dict[str, Any]:
+    """
+    从 rubric 投影回 success_criteria（去掉 type）。
+
+    Args:
+        rubric: rubric mapping。
+
+    Returns:
+        无 type 字段的 dict；非 mapping 则 ``{}``。
+    """
     if not isinstance(rubric, Mapping):
         return {}
     out = dict(rubric)
@@ -73,7 +113,17 @@ def task_dict_to_case(
     set_id: str = "",
     session_group: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Map EvalTask-shaped dict → EvalCase-shaped dict (hash inputs)."""
+    """
+    将 EvalTask 形 dict 映射为 EvalCase 形（供 hash 输入）。
+
+    Args:
+        task: 任务 dict。
+        set_id: 来源 set；multi_turn 时可用于 session_group。
+        session_group: 显式会话组；优先于推断。
+
+    Returns:
+        case dict（含非 hash 投影字段）。
+    """
     prompt = task.get("prompt")
     if prompt is None or prompt == "":
         prompt = task.get("user_input") or ""
@@ -124,6 +174,16 @@ def task_dict_to_case(
 def case_to_eval_task_dict(
     case: Mapping[str, Any], *, agent_id: str = ""
 ) -> Dict[str, Any]:
+    """
+    将 EvalCase 投影回 EvalTask 形 dict。
+
+    Args:
+        case: case mapping。
+        agent_id: 覆盖/补全 agent_id。
+
+    Returns:
+        task 形 dict。
+    """
     prompt = case.get("prompt")
     if prompt is None or prompt == "":
         prompt = case.get("user_input") or ""
@@ -145,11 +205,14 @@ def case_to_eval_task_dict(
 
 
 def load_set_tasks(set_id: str) -> List[Dict[str, Any]]:
-    """Load raw task dicts for a legacy set_id (user overlay or engine).
+    """
+    按遗留 set_id 加载原始 task dict（用户覆盖或引擎模板）。
 
-    Prefer ``~/.aiplat/eval_sets`` after ``ensure_builtin_sets`` (never overwrites
-    user-modified files). Fall back to engine templates when disk load fails.
-    Reads JSON directly so typed extras (e.g. ``fixture_table``) are preserved.
+    Args:
+        set_id: 集合 ID。
+
+    Returns:
+        task dict 列表；找不到则 ``[]``。
     """
     import json
     from pathlib import Path
@@ -304,10 +367,22 @@ def expand_sets_to_manifest(
     caller_workspace_id: str = "",
     caller_tenant_id: str = "",
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
-    """Expand selected legacy set_ids → sample_manifest + pack_refs + coverage.
+    """
+    将选中的遗留 set_ids 展开为 sample_manifest + pack_refs + coverage。
 
-    session_group: multi_turn sets share set_id as group (整组入选).
-    Workspace/tenant scopes sync pack_refs into the scoped registry (nail 5).
+    Args:
+        set_ids: 集合 ID 序列。
+        claim_eligible: 是否声明可 claim（受 kind 守卫）。
+        scope: ``global`` / ``workspace`` / ``tenant``。
+        kind: pack kind（如 frozen）。
+        object_types: 对象类型；默认 ``[agent]``。
+        workspace_id: workspace 作用域 ID。
+        tenant_id: tenant 作用域 ID。
+        caller_workspace_id: ACL 调用方工作区。
+        caller_tenant_id: ACL 调用方租户。
+
+    Returns:
+        ``(manifest, pack_refs, coverage)``。
     """
     ots = list(object_types or ["agent"])
     manifest: List[Dict[str, Any]] = []
@@ -403,10 +478,23 @@ def apply_manifest_sampling(
     on_insufficient: str = "error",
     stratum_key: str = "category",
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Sample ``sample_manifest`` (T12 / §3.1–3.2).
+    """
+    对 sample_manifest 抽样（T12 / §3.1–3.2）；尊重 session_group 整组。
 
-    Units honor ``session_group`` (整组). Stratified shortfalls never silently
-    rewrite quotas — ``error`` raises, ``degrade`` records ``selection.degraded``.
+    Args:
+        manifest: manifest 行序列。
+        strategy: ``all`` / ``random`` / ``stratified``。
+        sample_n: 目标条数；``all`` 或 None 时全取。
+        seed: 随机种子。
+        min_per_stratum: 分层最小条数。
+        on_insufficient: ``error`` 抛错 / ``degrade`` 记录降级。
+        stratum_key: 分层字段名；默认 category。
+
+    Returns:
+        ``(sampled_rows, meta)``；meta 含 quota_trace。
+
+    Raises:
+        ManifestValidationError: 策略非法或分层不足且 fail-closed。
     """
     rows = [dict(r) for r in manifest if isinstance(r, Mapping)]
     strat = str(strategy or "all").strip().lower() or "all"
@@ -570,7 +658,16 @@ def apply_manifest_sampling(
 
 
 def assert_claim_eligible_allowed(*, kind: str, claim_eligible: bool) -> None:
-    """CI/runtime guard: generated + claim_eligible=true is rejected."""
+    """
+    CI/运行时守卫：generated/trace/exploratory 禁止 ``claim_eligible=true``。
+
+    Args:
+        kind: pack kind。
+        claim_eligible: 是否声明可 claim。
+
+    Raises:
+        ClaimEligibilityError: 组合非法。
+    """
     k = str(kind or "").strip().lower()
     if bool(claim_eligible) and k in ("generated", "trace", "exploratory"):
         raise ClaimEligibilityError(
@@ -581,10 +678,14 @@ def assert_claim_eligible_allowed(*, kind: str, claim_eligible: bool) -> None:
 def verify_manifest_case_hashes(
     manifest: Sequence[Mapping[str, Any]],
 ) -> None:
-    """Fail closed if any manifest case hash ≠ live canonical hash (nail 2/4).
+    """
+    失败关闭：manifest 中 case hash 须等于现场规范 hash。
 
-    Reloads tasks by ``set_id`` (legacy path). Missing set/case → fail closed.
-    Does **not** fall back to running the full pack.
+    Args:
+        manifest: sample_manifest 行。
+
+    Raises:
+        ManifestValidationError: 缺字段、缺 case 或 hash 不一致。
     """
     by_set: Dict[str, List[Mapping[str, Any]]] = {}
     for row in manifest:
@@ -632,10 +733,14 @@ def verify_manifest_case_hashes(
 def assert_session_groups_intact(
     manifest: Sequence[Mapping[str, Any]],
 ) -> None:
-    """Fail closed if any ``session_group`` is only partially present (T4 / §3.1).
+    """
+    失败关闭：任一 session_group 不得只出现一部分（整组入选）。
 
-    For each non-null group, every case in the source set that maps to that
-    group must appear in the manifest (整组入选). Partial groups → error.
+    Args:
+        manifest: sample_manifest 行。
+
+    Raises:
+        ManifestValidationError: 组被拆分。
     """
     by_group: Dict[str, List[Mapping[str, Any]]] = {}
     for row in manifest:
@@ -680,10 +785,17 @@ def assert_session_groups_intact(
 
 
 def require_sample_manifest(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    """Runner entry: only sample_manifest is executable (nail 2).
+    """
+    Runner 入口：仅 sample_manifest 可执行（钉子 2）。
 
-    v1 plans: synthesize from selected_cases set_ids (migration expand).
-    v2 plans: empty/missing → fail closed (no full-pack fallback).
+    Args:
+        plan: EvaluationPlan mapping（v1/v2）。
+
+    Returns:
+        可执行的 manifest 行列表。
+
+    Raises:
+        ManifestValidationError: v2 缺失/空，或 v1 无法展开。
     """
     schema = str(plan.get("schema") or "")
     raw = plan.get("sample_manifest")

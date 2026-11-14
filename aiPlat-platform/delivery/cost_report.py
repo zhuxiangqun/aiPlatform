@@ -260,7 +260,8 @@ def _cache_stats() -> Dict[str, Any]:
 def kb_cache_stats(*, tenant_id: str = "default") -> Dict[str, Any]:
     """Public cache stats for ``GET /platform/kb/cache-stats`` (KB_HEALTH §3.2.3).
 
-    ``tenant_id`` reserved for future tenancy; semantic_cache is process-local today.
+    Args:
+        tenant_id: 租户 ID。
     """
     _ = tenant_id
     raw = _cache_stats()
@@ -447,6 +448,13 @@ def build_delivery_cost_report(
     window_hours: int = 720,
     project_id: str = "",
 ) -> Dict[str, Any]:
+    """build_delivery_cost_report。
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+    """
     cache = _cache_stats()
     kb = _kb_metrics(tenant_id=tenant_id, hours=window_hours)
     billing = _billing_snapshot(tenant_id=tenant_id)
@@ -513,7 +521,11 @@ def build_delivery_cost_report(
 
 
 def render_cost_report_markdown(report: Dict[str, Any]) -> str:
-    """Customer-facing cost page (Chinese narrative; no fake ¥)."""
+    """Customer-facing cost page (Chinese narrative; no fake ¥).
+
+    Args:
+        report: report 参数。
+    """
     cache = report.get("cache") or {}
     api = report.get("api_calls") or {}
     routing = report.get("model_routing") or {}

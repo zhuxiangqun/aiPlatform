@@ -274,8 +274,8 @@ def _reconstruct_engine(project_id: str, run_id: str, store, stages_raw=None):
 async def pipeline_run(request: Request) -> Dict[str, Any]:
     """Trigger a pipeline run. Returns 202 with run_id immediately.
 
-    The pipeline executes asynchronously — this endpoint only enqueues.
-    Poll GET /{project_id}/state for progress.
+    Args:
+        request: request 参数。
     """
     try:
         body = await request.json()
@@ -409,7 +409,11 @@ async def pipeline_run(request: Request) -> Dict[str, Any]:
 
 @router.get("/{project_id}/state")
 async def pipeline_state(project_id: str) -> Dict[str, Any]:
-    """Return aggregated pipeline state for frontend polling."""
+    """Return aggregated pipeline state for frontend polling.
+
+    Args:
+        project_id: project 标识。
+    """
     store = get_pipeline_run_store()
     state = store.get_full_state(project_id)
 
@@ -436,7 +440,12 @@ async def pipeline_state(project_id: str) -> Dict[str, Any]:
 
 @router.post("/{project_id}/hitl-resolve")
 async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, Any]:
-    """v3.3: Resolve a HITL pause — approve or reject. Works cross-worker via DB fallback."""
+    """v3.3: Resolve a HITL pause — approve or reject. Works cross-worker via DB fallback.
+
+    Args:
+        project_id: project 标识。
+        request: request 参数。
+    """
     try:
         body = await request.json()
     except Exception:
@@ -468,7 +477,11 @@ async def pipeline_hitl_resolve(project_id: str, request: Request) -> Dict[str, 
 
 @router.post("/{project_id}/cancel")
 async def pipeline_cancel(project_id: str) -> Dict[str, Any]:
-    """Cancel a running pipeline."""
+    """Cancel a running pipeline.
+
+    Args:
+        project_id: project 标识。
+    """
     store = get_pipeline_run_store()
     run = store.get_run_by_project(project_id)
 
@@ -486,11 +499,9 @@ async def pipeline_cancel(project_id: str) -> Dict[str, Any]:
 async def pipeline_stage_operation(project_id: str, request: Request) -> Dict[str, Any]:
     """Non-blocking stage-level restart on Core (single authority).
 
-    ops: regenerate (inject feedback + clear target~downstream + re-run)
-         rollback   (clear target~downstream + re-run)
-         resume     (re-run from target WITHOUT clearing artifacts)
-
-    Returns immediately; the pipeline executes in a background task.
+    Args:
+        project_id: project 标识。
+        request: request 参数。
     """
     try:
         body = await request.json()
@@ -604,9 +615,9 @@ async def pipeline_stage_operation(project_id: str, request: Request) -> Dict[st
 async def resume_pipeline_run(run_id: str, body: dict = Body(default_factory=dict)):
     """Restart a failed/interrupted pipeline from its last completed stage.
 
-    Uses the v4.0 resume_from_checkpoint with intelligent recovery:
-    - Context length errors → auto-compress before retry
-    - Other errors → retry from failed stage
+    Args:
+        run_id: 运行 ID。
+        body: 请求体 dict。
     """
     from core.api.core_facade import get_pipeline_run_store
 
@@ -635,9 +646,9 @@ async def resume_pipeline_run(run_id: str, body: dict = Body(default_factory=dic
 async def fork_pipeline_run(run_id: str, body: dict = Body(default_factory=dict)):
     """Fork a new run from an existing run's append-only event log.
 
-    事件源纯度对齐（DSH fork / Codex thread-fork）：源 run 事件折叠为派生状态，
-    新 run 继承分叉点进度/通过率并从 executing 继续；fork 血缘（parent_run_id）
-    写入新 run 的事件日志，源事件日志不被污染。子 run 状态可纯从自身事件重建。
+    Args:
+        run_id: 运行 ID。
+        body: 请求体 dict。
     """
     from core.api.core_facade import get_pipeline_run_store
 
@@ -659,7 +670,12 @@ async def fork_pipeline_run(run_id: str, body: dict = Body(default_factory=dict)
 
 @router.get("/pipelines/runs/{run_id}/forks", response_model=Dict[str, Any])
 async def list_pipeline_forks(run_id: str, limit: int = 50):
-    """List run_ids forked from the given parent (fork lineage 血缘查询)."""
+    """List run_ids forked from the given parent (fork lineage 血缘查询).
+
+    Args:
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import get_pipeline_run_store
 
     store = get_pipeline_run_store()

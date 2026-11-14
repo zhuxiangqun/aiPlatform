@@ -17,6 +17,7 @@ logger = logging.getLogger("aiplat.audit.prompt")
 
 @dataclass
 class PromptAuditRecord:
+    """PromptAuditRecord。"""
     agent_id: str
     audit_timestamp: float
     sop_body_chars: int = 0
@@ -32,6 +33,8 @@ class PromptAuditRecord:
 
     @property
     def has_issues(self) -> bool:
+        """has_issues。
+        """
         return bool(self.compliance_issues or self.anti_patterns_found)
 
     @property
@@ -57,7 +60,8 @@ class PromptAuditRecord:
 def parse_agent_md(path: str) -> Dict[str, Any]:
     """Canonical AGENT.md parser. Replace all 4 duplicate implementations.
 
-    Returns dict with all frontmatter fields + _sop_body (Markdown body after ---).
+    Args:
+        path: 路径。
     """
     with open(path, "r", encoding="utf-8") as f:
         raw = f.read()
@@ -78,7 +82,13 @@ def parse_agent_md(path: str) -> Dict[str, Any]:
 
 
 def audit_agent_md(agent_id: str, sop_body: str, frontmatter: Dict = None) -> PromptAuditRecord:
-    """Static audit of AGENT.md prompt quality at load time."""
+    """Static audit of AGENT.md prompt quality at load time.
+
+    Args:
+        agent_id: Agent ID。
+        sop_body: sop_body 参数。
+        frontmatter: frontmatter 参数。
+    """
     import re
     import time
     fm = frontmatter or {}
@@ -157,13 +167,9 @@ def prompt_audit_to_issues(
 ) -> List[Dict[str, Any]]:
     """Map PromptAuditRecord → AssetAudit issue dicts for Edit Agent「AI 审核」.
 
-    Severity policy (avoid flooding standalone trial agents):
-    - vague adjectives → warning
-    - pipeline frontmatter gaps → warning
-    - handoff fields → warning only when ``output_artifact`` set (pipeline);
-      otherwise skipped (trial/chat agents rarely need 5-way handoff)
-    - instruction_dispatch → info (many code agents intentionally use numbered SOP)
-    - body >100 lines → info
+    Args:
+        record: record 参数。
+        frontmatter: frontmatter 参数。
     """
     from core.management.asset_audit import issue
 

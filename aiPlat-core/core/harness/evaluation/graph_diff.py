@@ -22,8 +22,8 @@ from typing import Any, Dict, List, Optional, Set
 def parse_code_to_graph(code: str) -> Dict[str, Any]:
     """Parse Python source code into a structural graph representation.
 
-    Returns dict with: nodes (list of {type, name, line, children}),
-    edges (list of {from, to, relation}), functions, classes, imports.
+    Args:
+        code: code 参数。
     """
     try:
         tree = ast.parse(code)
@@ -89,12 +89,9 @@ def diff_graphs(
 ) -> Dict[str, Any]:
     """Compute semantic diff between two code graph representations.
 
-    Returns changes organized by category:
-    - added_functions, removed_functions, changed_functions
-    - added_imports, removed_imports
-    - added_classes, removed_classes
-    - structural_changes: loop/try/raise nodes added/removed
-    - verdict: "unchanged" | "minor" | "structural" | "major"
+    Args:
+        before: before 参数。
+        after: after 参数。
     """
     b_funcs = set(before.get("functions", []))
     a_funcs = set(after.get("functions", []))

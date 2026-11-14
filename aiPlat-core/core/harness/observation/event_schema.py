@@ -31,5 +31,7 @@ class SyscallEvent(BaseModel):
     created_at: Optional[float] = None
 
     class Config:
+        """Pydantic 配置：允许别名填充并保留额外字段。"""
+
         populate_by_name = True
         extra = "allow"

@@ -31,7 +31,15 @@ def build_capability_heatmap(
     profile_id: str = "",
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """§8.4 coverage heatmap: capability → bank/selected/pass/fail/gap/unknown."""
+    """§8.4 coverage heatmap: capability → bank/selected/pass/fail/gap/unknown.
+
+    Args:
+        cases: 用例列表。
+        exam: exam 参数。
+        profile: profile 参数。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+    """
     pid = str(profile_id or "").strip()
     if not pid and exam and isinstance(exam, Mapping):
         plan = exam.get("evaluation_plan")
@@ -165,7 +173,12 @@ def build_suite_profile_report(
     *,
     cases: Optional[Sequence[Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """Compose heatmap + §11 disclosure from an exam payload."""
+    """Compose heatmap + §11 disclosure from an exam payload.
+
+    Args:
+        exam: exam 参数。
+        cases: 用例列表。
+    """
     plan = (
         exam.get("evaluation_plan")
         if isinstance(exam.get("evaluation_plan"), Mapping)

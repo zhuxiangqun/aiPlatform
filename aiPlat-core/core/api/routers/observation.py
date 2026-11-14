@@ -51,7 +51,12 @@ def _sweep_stale_diag_buffers() -> None:
 
 
 def store_diag_event(run_id: str, event: Dict[str, Any]) -> None:
-    """Store a diagnostics event in the buffer."""
+    """Store a diagnostics event in the buffer.
+
+    Args:
+        run_id: 运行 ID。
+        event: event 参数。
+    """
     _sweep_stale_diag_buffers()
     if run_id not in _diag_buffers:
         _diag_buffers[run_id] = []
@@ -60,20 +65,32 @@ def store_diag_event(run_id: str, event: Dict[str, Any]) -> None:
 
 
 def get_diag_events(run_id: str) -> List[Dict[str, Any]]:
-    """Get buffered diagnostics events for a run_id."""
+    """Get buffered diagnostics events for a run_id.
+
+    Args:
+        run_id: 运行 ID。
+    """
     return _diag_buffers.get(run_id, [])
 
 
 @router.get("/runs/{run_id}/graph", response_model=Dict[str, Any])
 async def get_run_graph(run_id: str):
-    """Authoritative RunGraph projection for ExecutionViewer."""
+    """Authoritative RunGraph projection for ExecutionViewer.
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.harness.observation.run_graph import get_graph
     return await get_graph(run_id)
 
 
 @router.get("/runs/{run_id}/stream", response_model=Dict[str, Any])
 async def stream_events(run_id: str):
-    """SSE 实时事件流。先回放历史事件，再推送新事件。"""
+    """SSE 实时事件流。先回放历史事件，再推送新事件。
+
+    Args:
+        run_id: 运行 ID。
+    """
 
     async def event_generator():
         # Phase 0: replay diagnostics events from buffer (if any)

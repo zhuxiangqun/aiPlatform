@@ -66,6 +66,11 @@ class SchedulerManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._quotas: Dict[str, QuotaInfo] = {}
         self._policies: Dict[str, PolicyInfo] = {}
@@ -246,7 +251,11 @@ class SchedulerManager(ManagementBase):
         }
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update scheduler configuration."""
+        """Update scheduler configuration.
+
+        Args:
+            config: config 参数。
+        """
         if "kubernetes_api" in config:
             self.config["kubernetes_api"] = config["kubernetes_api"]
         if "default_scheduler" in config:
@@ -520,7 +529,11 @@ class SchedulerManager(ManagementBase):
         return task
     
     async def create_task(self, config: Dict[str, Any]) -> TaskInfo:
-        """Alias for submit_task."""
+        """Alias for submit_task.
+
+        Args:
+            config: config 参数。
+        """
         return await self.submit_task(config)
     
     async def cancel_task(self, task_id: str) -> bool:
@@ -612,11 +625,19 @@ class SchedulerManager(ManagementBase):
         return policy
     
     async def create_autoscaling_policy(self, config: Dict[str, Any]) -> AutoscalingPolicy:
-        """Alias for create_autoscaling."""
+        """Alias for create_autoscaling.
+
+        Args:
+            config: config 参数。
+        """
         return await self.create_autoscaling(config)
     
     async def pause_autoscaling(self, policy_id: str) -> bool:
-        """Pause an autoscaling policy."""
+        """Pause an autoscaling policy.
+
+        Args:
+            policy_id: policy 标识。
+        """
         policy = self._autoscaling_policies.get(policy_id)
         if policy is None:
             return False
@@ -624,7 +645,11 @@ class SchedulerManager(ManagementBase):
         return True
 
     async def resume_autoscaling(self, policy_id: str) -> bool:
-        """Resume an autoscaling policy."""
+        """Resume an autoscaling policy.
+
+        Args:
+            policy_id: policy 标识。
+        """
         policy = self._autoscaling_policies.get(policy_id)
         if policy is None:
             return False

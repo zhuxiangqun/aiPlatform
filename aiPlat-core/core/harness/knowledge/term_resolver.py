@@ -28,17 +28,10 @@ def _ensure_dir() -> Path:
 
 
 def scan_ambiguities(ontologies_dir: str = "") -> Dict[str, List[Dict[str, Any]]]:
-    u"""扫描所有域 YAML，检测术语歧义。
+    """扫描所有域 YAML，检测术语歧义。
 
-    Returns:
-        {
-            "same_name_different_domain": [
-                {"label": "客户", "domains": {"sales": "...", "delivery": "..."}, ...},
-            ],
-            "similar_label_different_name": [
-                {"labels": ["采购合同", "供货合同"], "domains": {...}, "similarity": 0.88},
-            ],
-        }
+    Args:
+        ontologies_dir: ontologies_dir 参数。
     """
     base = _os.path.expanduser(ontologies_dir or _os.getenv("AIPLAT_ONTOLOGY_DIR", "~/.aiplat/ontologies"))
     base_path = Path(base)
@@ -115,15 +108,12 @@ def scan_ambiguities(ontologies_dir: str = "") -> Dict[str, List[Dict[str, Any]]
 
 
 def resolve_term(term: str, *, domain_id: str = "", ontologies_dir: str = "") -> Dict[str, Any]:
-    u"""查询某术语在所有域的消歧信息。
+    """查询某术语在所有域的消歧信息。
 
-    Returns:
-        {
-            "term": "...",
-            "matches": [{"domain_id": "...", "class_name": "...", "description": "...", "synonyms": [...]}],
-            "same_name_ambiguity": bool,
-            "suggested_domain": "..." or null,
-        }
+    Args:
+        term: term 参数。
+        domain_id: domain 标识。
+        ontologies_dir: ontologies_dir 参数。
     """
     ambiguities = scan_ambiguities(ontologies_dir)
     matches: List[Dict] = []
@@ -166,7 +156,11 @@ def resolve_term(term: str, *, domain_id: str = "", ontologies_dir: str = "") ->
 
 
 def persist_ambiguities(ontologies_dir: str = "") -> str:
-    u"""扫描并持久化歧义结果到 ~/.aiplat/terms/ambiguities.json。"""
+    """扫描并持久化歧义结果到 ~/.aiplat/terms/ambiguities.json。
+
+    Args:
+        ontologies_dir: ontologies_dir 参数。
+    """
     result = scan_ambiguities(ontologies_dir)
     path = _ensure_dir() / "ambiguities.json"
     path.write_text(_json.dumps(result, indent=2, ensure_ascii=False))

@@ -36,6 +36,7 @@ BYPASS_RE = re.compile(r"#\s*bypass-ok:\s*([A-Za-z0-9_.-]+)")
 
 @dataclass
 class CallSite:
+    """CallSite。"""
     lineno: int
     stack: List[str]
     bypass_id: Optional[str]
@@ -43,6 +44,7 @@ class CallSite:
 
 @dataclass
 class AllowEntry:
+    """AllowEntry。"""
     id: str
     method: str
     disposition: str
@@ -118,7 +120,12 @@ def check(
     allowlist: Dict[str, AllowEntry],
     target: Path,
 ) -> Tuple[List[str], List[str], List[CallSite]]:
-    """Returns (violations, warnings, sites)."""
+    """Returns (violations, warnings, sites).
+
+    Args:
+        allowlist: allowlist 参数。
+        target: target 参数。
+    """
     src = target.read_text(encoding="utf-8")
     sites = _collect_calls(src)
     violations: List[str] = []
@@ -171,6 +178,11 @@ def _print_inventory(sites: List[CallSite], allowlist: Dict[str, AllowEntry]) ->
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ci", action="store_true", help="exit 1 on violations")
     ap.add_argument("--inventory", action="store_true", help="print call-site table")

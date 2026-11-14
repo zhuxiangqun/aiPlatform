@@ -11,6 +11,7 @@ from .base_model_adapter import BaseModelAdapter
 
 
 class InfraRerankerAdapter(BaseModelAdapter):
+    """InfraRerankerAdapter。"""
     capability = "reranker"
 
     def _load_model(self, name: str) -> Any:
@@ -21,6 +22,13 @@ class InfraRerankerAdapter(BaseModelAdapter):
             return None
 
     def rerank(self, query: str, candidates: List[Dict[str, Any]], top_k: int = 8) -> Optional[List[Dict[str, Any]]]:
+        """rerank。
+
+        Args:
+            query: 查询。
+            candidates: candidates 参数。
+            top_k: top_k 参数。
+        """
         model = self._get_model()
         if model is None:
             return None
@@ -35,6 +43,11 @@ class InfraRerankerAdapter(BaseModelAdapter):
 
 
 def create_infra_reranker_adapter(**kwargs) -> InfraRerankerAdapter:
+    """创建 infra_reranker_adapter。
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return InfraRerankerAdapter(**kwargs)
 
 

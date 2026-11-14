@@ -14,7 +14,12 @@ class RunsMixin:
     # ==================== Runs / Run events (platform contract) ====================
 
     async def get_run_id_for_request(self, *, request_id: str, tenant_id: Optional[str] = None) -> Optional[str]:
-        """Return existing run_id for a (tenant_id, request_id) pair."""
+        """Return existing run_id for a (tenant_id, request_id) pair.
+
+        Args:
+            request_id: request 标识。
+            tenant_id: 租户 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -32,7 +37,13 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def remember_request_run_id(self, *, request_id: str, run_id: str, tenant_id: Optional[str] = None) -> None:
-        """Insert request_id -> run_id mapping (best-effort, idempotent)."""
+        """Insert request_id -> run_id mapping (best-effort, idempotent).
+
+        Args:
+            request_id: request 标识。
+            run_id: 运行 ID。
+            tenant_id: 租户 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -62,7 +73,15 @@ class RunsMixin:
         trace_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> int:
-        """Append an event and return its seq."""
+        """Append an event and return its seq.
+
+        Args:
+            run_id: 运行 ID。
+            event_type: event_type 参数。
+            payload: 载荷 dict。
+            trace_id: trace 标识。
+            tenant_id: 租户 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -101,6 +120,13 @@ class RunsMixin:
         after_seq: int = 0,
         limit: int = 200,
     ) -> Dict[str, Any]:
+        """列出 run_events。
+
+        Args:
+            run_id: 运行 ID。
+            after_seq: after_seq 参数。
+            limit: 返回条数上限。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -139,7 +165,11 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_run_start_event(self, *, run_id: str) -> Optional[Dict[str, Any]]:
-        """Return the first run_start event payload (best-effort)."""
+        """Return the first run_start event payload (best-effort).
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -166,7 +196,11 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def has_run_end(self, *, run_id: str) -> bool:
-        """Check if run has any run_end event."""
+        """Check if run has any run_end event.
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -184,7 +218,11 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def is_cancel_requested(self, *, run_id: str) -> bool:
-        """Check if run has a cancel_requested marker."""
+        """Check if run has a cancel_requested marker.
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -202,7 +240,11 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_session_queue_item(self, *, run_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch a session_queue row by run_id (queued/dequeued/cancelled)."""
+        """Fetch a session_queue row by run_id (queued/dequeued/cancelled).
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -239,7 +281,11 @@ class RunsMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def cancel_queued_run(self, *, run_id: str) -> bool:
-        """Mark a queued session_queue item as cancelled (best-effort)."""
+        """Mark a queued session_queue item as cancelled (best-effort).
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 

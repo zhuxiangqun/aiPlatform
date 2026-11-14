@@ -5,10 +5,11 @@ from typing import Any, Dict
 
 
 def get_agent_frontmatter(agent_id: str) -> Dict[str, Any]:
-    """Load AGENT.md frontmatter for an agent. Looks in:
-    1. ~/.aiplat/agents/{agent_id}/AGENT.md
-    2. AIPLAT_WORKSPACE_SEEDS/agents/{agent_id}/AGENT.md
-    Returns dict with all frontmatter fields + '_sop_body' (the SOP text after ---)."""
+    """Load AGENT.md frontmatter for an agent. Looks in:。
+
+    Args:
+        agent_id: Agent ID。
+    """
     import os
     import yaml
 

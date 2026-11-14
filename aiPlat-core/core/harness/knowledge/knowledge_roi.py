@@ -57,6 +57,8 @@ class ROIEntry:
     cache_hit: bool = False                 # 是否命中 SemanticCache
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "query_id": self.query_id,
             "domain_id": self.domain_id,
@@ -132,7 +134,16 @@ class KnowledgeROI:
         wiki_tokens: int = 0,
         cache_hit: bool = False,
     ) -> str:
-        """记录一次查询的 ROI 数据."""
+        """记录一次查询的 ROI 数据.
+
+        Args:
+            query_id: query 标识。
+            domain_id: domain 标识。
+            query_text: query_text 参数。
+            rag_tokens: rag_tokens 参数。
+            wiki_tokens: wiki_tokens 参数。
+            cache_hit: cache_hit 参数。
+        """
         saved = max(0, rag_tokens - wiki_tokens)
         saved_pct = (saved / max(rag_tokens, 1)) * 100
 
@@ -161,7 +172,15 @@ class KnowledgeROI:
         wiki_tokens: int,
         cache_hit: bool = False,
     ) -> str:
-        """从 syscall 层快速记录 (自动生成 query_id)."""
+        """从 syscall 层快速记录 (自动生成 query_id).
+
+        Args:
+            query_text: query_text 参数。
+            domain_id: domain 标识。
+            rag_tokens: rag_tokens 参数。
+            wiki_tokens: wiki_tokens 参数。
+            cache_hit: cache_hit 参数。
+        """
         qid = f"q_{_uuid.uuid4().hex[:12]}"
         return self.record(qid, domain_id, query_text=query_text[:200], rag_tokens=rag_tokens, wiki_tokens=wiki_tokens, cache_hit=cache_hit)
 
@@ -253,7 +272,11 @@ class KnowledgeROI:
             return ROISummary(total_queries=0, total_rag_tokens=0, total_wiki_tokens=0, total_saved_tokens=0, avg_saved_percent=0.0, estimated_cost_saved=0.0)
 
     def get_recent(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """获取最近的 ROI 记录."""
+        """获取最近的 ROI 记录.
+
+        Args:
+            limit: 返回条数上限。
+        """
         try:
             conn = self._get_conn()
             self._ensure_schema(conn)

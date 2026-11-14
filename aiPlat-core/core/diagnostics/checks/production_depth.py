@@ -9,6 +9,8 @@ from typing import Any, Dict
 
 
 async def check_production_depth() -> Dict[str, Any]:
+    """check_production_depth。
+    """
     from core.harness.observability.production_depth import build_production_depth_report
 
     report = build_production_depth_report()

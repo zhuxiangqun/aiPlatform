@@ -70,7 +70,11 @@ REGISTERED_PIPELINES: Dict[str, Callable] = {}
 
 def get_pipeline_builder(name: str) -> Callable:
 
-    """Get a registered pipeline builder by name."""
+    """Get a registered pipeline builder by name.
+
+    Args:
+        name: name 参数。
+    """
 
     return REGISTERED_PIPELINES.get(name)
 
@@ -86,7 +90,11 @@ _PIPELINE_TOPOLOGY: Dict[str, dict] = {}  # populated via register_pipeline_from
 
 def pipeline_to_dict(name: str) -> Optional[dict]:
 
-    """Export a registered pipeline's topology as a JSON-safe dict (v2)."""
+    """Export a registered pipeline's topology as a JSON-safe dict (v2).
+
+    Args:
+        name: name 参数。
+    """
 
     topo = _PIPELINE_TOPOLOGY.get(name)
 
@@ -104,7 +112,11 @@ def pipeline_to_dict(name: str) -> Optional[dict]:
 
 def register_pipeline_from_desc(topo: dict) -> str:
 
-    """Register a pipeline from a serialized topology description (v2)."""
+    """Register a pipeline from a serialized topology description (v2).
+
+    Args:
+        topo: topo 参数。
+    """
 
     import importlib.metadata as _meta
 
@@ -314,13 +326,19 @@ class PipelineEventBus:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._listeners: List[Any] = []
 
 
 
     def on(self, listener: Any) -> None:
 
-        """Register a callable(project_id, event_type, data)."""
+        """Register a callable(project_id, event_type, data).
+
+        Args:
+            listener: listener 参数。
+        """
 
         self._listeners.append(listener)
 
@@ -328,7 +346,13 @@ class PipelineEventBus:
 
     def emit(self, project_id: str, event_type: str, data: dict) -> None:
 
-        """Fire event to listeners + write to SQLite pipeline_events (single source of truth)."""
+        """Fire event to listeners + write to SQLite pipeline_events (single source of truth).
+
+        Args:
+            project_id: project 标识。
+            event_type: event_type 参数。
+            data: data 参数。
+        """
 
         incoming = dict(data.get("state", data))
 
@@ -376,6 +400,8 @@ _event_bus = PipelineEventBus()
 
 def get_event_bus() -> PipelineEventBus:
 
+    """获取 event_bus。
+    """
     return _event_bus
 
 
@@ -540,17 +566,30 @@ _running_pipelines: Dict[str, "PipelineEngine"] = {}
 
 
 def get_running_pipeline(project_id: str) -> Optional["PipelineEngine"]:
-    """Look up the active engine instance for HITL resolution."""
+    """Look up the active engine instance for HITL resolution.
+
+    Args:
+        project_id: project 标识。
+    """
     return _running_pipelines.get(project_id)
 
 
 def register_pipeline(project_id: str, engine: "PipelineEngine") -> None:
-    """Register an engine as active for a project."""
+    """Register an engine as active for a project.
+
+    Args:
+        project_id: project 标识。
+        engine: engine 参数。
+    """
     _running_pipelines[project_id] = engine
 
 
 def unregister_pipeline(project_id: str) -> None:
-    """Remove a completed/failed engine from the registry."""
+    """Remove a completed/failed engine from the registry.
+
+    Args:
+        project_id: project 标识。
+    """
     _running_pipelines.pop(project_id, None)
 
 
@@ -568,9 +607,18 @@ from core.harness.execution.pipeline_stage import PipelineStageMixin
 
 class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin, PipelineStateMixin, PipelineHealingMixin):
 
+    """PipelineEngine。"""
     def __init__(self, config: PipelineConfig, model: Any = None, skill_loader: Any = None,
                  persist_callback: Any = None):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            skill_loader: skill_loader 参数。
+            persist_callback: persist_callback 参数。
+        """
         self._config = config
 
         self._model = model
@@ -1988,6 +2036,14 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
                          prd_data: Optional[Dict] = None, project_name: str = "") -> PipelineState:
 
+        """initialize。
+
+        Args:
+            project_id: project 标识。
+            requirement: requirement 参数。
+            prd_data: prd_data 参数。
+            project_name: project_name 参数。
+        """
         output_dir = self._output_root(project_id, project_name)
 
         os.makedirs(output_dir, exist_ok=True)
@@ -2040,6 +2096,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     async def approve_session(self, state: PipelineState, feedback: str = "") -> PipelineState:
 
+        """approve_session。
+
+        Args:
+            state: state 参数。
+            feedback: feedback 参数。
+        """
         state = dict(state)
 
         self._audit_hitl(state, "hitl_approved", detail=feedback[:200] if feedback else "")
@@ -2342,6 +2404,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     async def reject_session(self, state: PipelineState, feedback: str) -> PipelineState:
 
+        """reject_session。
+
+        Args:
+            state: state 参数。
+            feedback: feedback 参数。
+        """
         state = dict(state)
 
         state["_reject_feedback"] = feedback
@@ -2383,7 +2451,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
     # ── v3.1: Event-driven HITL methods ──────────────────────────────
 
     async def run(self, project_id: str, initial_state: Dict[str, Any]) -> None:
-        """Event-driven pipeline main loop — the entire lifecycle runs here."""
+        """Event-driven pipeline main loop — the entire lifecycle runs here.
+
+        Args:
+            project_id: project 标识。
+            initial_state: initial_state 参数。
+        """
         register_pipeline(project_id, self)
         self._state = initial_state
         self._state.setdefault("phase", "executing")
@@ -2656,9 +2729,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     def approve(self, feedback: str = "") -> None:
         """Synchronous: approve HITL and wake the engine.
-        
-        Must write DB BEFORE setting the event — ensures GET /state returns
-        consistent data (phase=executing + HITL fields cleared) immediately.
+
+        Args:
+            feedback: feedback 参数。
         """
         # ① Idempotency guard
         if self._state.get("phase") != "paused":
@@ -2682,8 +2755,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     def reject(self, feedback: str) -> None:
         """Synchronous: reject HITL and wake the engine for re-run.
-        
-        Same DB-before-event ordering as approve().
+
+        Args:
+            feedback: feedback 参数。
         """
         if self._state.get("phase") != "paused":
             return
@@ -2843,6 +2917,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     async def rollback(self, state: PipelineState, stage_id: str) -> PipelineState:
 
+        """rollback。
+
+        Args:
+            state: state 参数。
+            stage_id: stage 标识。
+        """
         state = dict(state)
 
         target_idx = -1
@@ -2895,7 +2975,11 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     def assemble_deploy(self, state: Dict[str, Any]) -> str:
 
-        """Assemble a deploy directory from pipeline output artifacts. Returns path."""
+        """Assemble a deploy directory from pipeline output artifacts. Returns path.
+
+        Args:
+            state: state 参数。
+        """
 
         import os as _os
 
@@ -2925,9 +3009,12 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
     async def resume_from(self, start_idx: int, state: PipelineState) -> PipelineState:
 
-        """Public wrapper for _run_stages_from. Platform uses this instead of
+        """Public wrapper for _run_stages_from. Platform uses this instead of。
 
-        calling the private method directly."""
+        Args:
+            start_idx: start_idx 参数。
+            state: state 参数。
+        """
 
         return await self._run_stages_from(start_idx, state)
 
@@ -2936,16 +3023,9 @@ class PipelineEngine(PipelineStageMixin, PipelineEvalMixin, PipelinePromptMixin,
 
         """v4.0: cross-session intelligent resume — continue from the last completed stage.
 
-        Priority:
-
-          1. Read stage status from pipeline_run_store → locate the failed/incomplete stage
-
-          2. Restore PipelineState from the on-disk checkpoint JSON
-
-          3. Analyze the failure cause → decide whether to retry / compress context / fall back to the previous stage
-
-          4. Continue execution from the resume point
-
+        Args:
+            run_id: 运行 ID。
+            session_id: 会话 ID。
         """
 
         state = self._load_pipeline_state(session_id, run_id)
@@ -9146,12 +9226,9 @@ def export_otel_trace(graph_trace: list, output_path: str = None) -> str:
 
     """Export pipeline _graph_trace as OpenTelemetry-compatible JSON.
 
-    
-
-    Can be consumed by otelcol-contrib → Langfuse / LangSmith / Jaeger.
-
-    Returns JSON string if output_path is None, else writes to file.
-
+    Args:
+        graph_trace: graph_trace 参数。
+        output_path: output_path 参数。
     """
 
     import json, time, os

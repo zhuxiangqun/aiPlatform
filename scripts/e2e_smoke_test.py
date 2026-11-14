@@ -108,6 +108,8 @@ async def test_throttle():
 
 
 async def main():
+    """main。
+    """
     print("\n═══════════════════════════════════════")
     print("  E2E Integration Smoke Test")
     print("═══════════════════════════════════════\n")

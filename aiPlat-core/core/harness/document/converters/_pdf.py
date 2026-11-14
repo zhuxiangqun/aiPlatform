@@ -36,6 +36,13 @@ class PdfConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> bool:
+        """accepts。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         return self._accepts_by_format(stream_info)
 
     def convert(
@@ -44,6 +51,13 @@ class PdfConverter(DocumentConverter):
         stream_info: StreamInfo,
         **kwargs: Any,
     ) -> List[DocumentElement]:
+        """convert。
+
+        Args:
+            file_stream: file_stream 参数。
+            stream_info: stream_info 参数。
+            kwargs: kwargs 参数。
+        """
         file_path = stream_info.local_path
         if not file_path:
             raise MissingDependencyException("PdfConverter requires local_path in stream_info")

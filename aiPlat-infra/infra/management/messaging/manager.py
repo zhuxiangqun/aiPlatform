@@ -19,6 +19,11 @@ class MessagingManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._queues: Dict[str, Dict] = {}
         self._messages: Dict[str, List[Dict]] = {}
@@ -175,7 +180,11 @@ class MessagingManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     # Messaging-specific methods

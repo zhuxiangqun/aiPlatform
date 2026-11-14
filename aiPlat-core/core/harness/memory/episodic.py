@@ -1,3 +1,5 @@
+"""episodic：模块接口。"""
+
 import logging
 """
 Episodic Memory
@@ -32,6 +34,14 @@ class EpisodicMemory:
         max_messages: int = 200,
         ttl_seconds: float = 86400 * 7.0,  # 7 days default TTL
     ):
+        """初始化。
+
+        Args:
+            update_interval: update_interval 参数。
+            max_summary_length: max_summary_length 参数。
+            max_messages: max_messages 参数。
+            ttl_seconds: ttl_seconds 参数。
+        """
         self._update_interval = update_interval
         self._max_summary_length = max_summary_length
         self._max_messages = max_messages
@@ -136,7 +146,10 @@ class EpisodicMemory:
 
     def get_critical_episodes(self, limit: int = 10) -> List[Dict]:
         """Get critical episodes for injection into context (never compressed).
-        Phase 18.5: archived episodes are excluded."""
+
+        Args:
+            limit: 返回条数上限。
+        """
         active = [ep for ep in self._critical_episodes if ep.get("status") != "archived"]
         return active[-limit:]
 
@@ -207,7 +220,11 @@ class EpisodicMemory:
         return self._message_count >= self._update_interval
     
     async def update_summary(self, llm_callable=None) -> SessionSummary:
-        """Generate new summary using LLM (primary) or rule-based (fallback)."""
+        """Generate new summary using LLM (primary) or rule-based (fallback).
+
+        Args:
+            llm_callable: llm_callable 参数。
+        """
         if not self._full_messages:
             result = SessionSummary(summary="No interactions yet")
         elif llm_callable is not None:

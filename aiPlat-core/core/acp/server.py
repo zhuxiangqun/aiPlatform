@@ -32,8 +32,11 @@ _active_ws_connections = 0
 
 class ACPHandler:
 
+    """ACPHandler。"""
     def __init__(self):
 
+        """初始化。
+        """
         self._adapter = None
 
         self._model_name = None
@@ -78,6 +81,11 @@ class ACPHandler:
 
     async def handle_chat(self, data: dict) -> str:
 
+        """handle_chat。
+
+        Args:
+            data: data 参数。
+        """
         content = data.get("content", "").strip()
 
         session_id = data.get("session_id", str(uuid.uuid4())[:8])
@@ -142,6 +150,11 @@ class ACPHandler:
 
     async def handle_diff(self, data: dict) -> str:
 
+        """handle_diff。
+
+        Args:
+            data: data 参数。
+        """
         code = data.get("content", "").strip()
 
         language = data.get("language", "python")
@@ -204,6 +217,11 @@ Code: ```\n{code[:8000]}\n```"""
 
     async def handle_exec(self, data: dict) -> str:
 
+        """handle_exec。
+
+        Args:
+            data: data 参数。
+        """
         command = data.get("command", "").strip()
 
         cwd = data.get("cwd", os.getcwd())
@@ -254,6 +272,11 @@ Code: ```\n{code[:8000]}\n```"""
 
     async def handle_status(self, data: dict) -> str:
 
+        """handle_status。
+
+        Args:
+            data: data 参数。
+        """
         return json.dumps({
 
             "type": "status_response",
@@ -276,6 +299,11 @@ Code: ```\n{code[:8000]}\n```"""
 
     async def dispatch(self, message: str) -> str:
 
+        """dispatch。
+
+        Args:
+            message: message 参数。
+        """
         try:
 
             data = json.loads(message)
@@ -336,6 +364,11 @@ Code: ```\n{code[:8000]}\n```"""
 
 async def acp_websocket(ws: WebSocket):
 
+    """acp_websocket。
+
+    Args:
+        ws: ws 参数。
+    """
     global _active_ws_connections
 
     # 协议级背压（对齐 stdio -32001 语义）：活跃连接数超限时拒绝新连接
@@ -397,6 +430,8 @@ async def acp_websocket(ws: WebSocket):
 
 async def health():
 
+    """health。
+    """
     return {"status": "ok", "service": "acp", "version": "1.0.0"}
 
 
@@ -405,6 +440,8 @@ async def health():
 
 def start():
 
+    """start。
+    """
     port = int(os.environ.get("AIPLAT_ACP_PORT", 8005))
 
     host = os.environ.get("AIPLAT_ACP_HOST", "127.0.0.1")

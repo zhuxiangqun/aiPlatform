@@ -23,16 +23,17 @@ _YAML_BLOCK_RE = re.compile(r"```yaml\s*\n(.*?)```", flags=re.DOTALL | re.IGNORE
 
 @dataclass
 class SkillMDParseResult:
+    """SkillMDParseResult。"""
     front_matter: Optional[Dict[str, Any]]
     body: str
     format: str  # front_matter | yaml_block | none
 
 
 def parse_skill_md(content: str) -> SkillMDParseResult:
-    """
-    解析 SKILL.md 内容，返回 YAML front matter（若存在）与正文 body。
-    - 若 YAML 无法解析，front_matter 返回 {}（而不是抛异常）
-    - 若找不到 YAML，front_matter 为 None，body 为原文
+    """解析 SKILL.md 内容，返回 YAML front matter（若存在）与正文 body。
+
+    Args:
+        content: content 参数。
     """
     raw = content or ""
 
@@ -72,9 +73,12 @@ def _safe_load_yaml_dict(yaml_text: str) -> Dict[str, Any]:
 
 
 def truncate_text(text: str, max_chars: int, *, suffix: str = " …(truncated)") -> Tuple[str, bool]:
-    """
-    截断文本并返回 (new_text, truncated)。
-    max_chars<=0 表示不截断。
+    """截断文本并返回 (new_text, truncated)。
+
+    Args:
+        text: text 参数。
+        max_chars: max_chars 参数。
+        suffix: suffix 参数。
     """
     s = str(text or "")
     if max_chars <= 0:

@@ -84,6 +84,12 @@ def _parse_expires_at(raw: str) -> Optional[datetime]:
 
 
 def acceptance_valid(acc: Optional[Dict[str, Any]], *, now: Optional[datetime] = None) -> Tuple[bool, str]:
+    """acceptance_valid。
+
+    Args:
+        acc: acc 参数。
+        now: now 参数。
+    """
     if not acc:
         return False, "missing"
     owner = str(acc.get("owner") or "").strip()
@@ -101,20 +107,35 @@ def acceptance_valid(acc: Optional[Dict[str, Any]], *, now: Optional[datetime] =
 
 
 def default_release_blocking(status: str, gap_open: bool) -> bool:
-    """P0 defaults: E+empty gap → false; else true."""
+    """P0 defaults: E+empty gap → false; else true.
+
+    Args:
+        status: status 参数。
+        gap_open: gap_open 参数。
+    """
     if status == "E" and not gap_open:
         return False
     return True
 
 
 def resolve_release_blocking(d: Dict[str, Any], status: str) -> bool:
+    """resolve_release_blocking。
+
+    Args:
+        d: d 参数。
+        status: status 参数。
+    """
     if "release_blocking" in d and d.get("release_blocking") is not None:
         return bool(d.get("release_blocking"))
     return default_release_blocking(status, _gap_open(d))
 
 
 def validate_document(doc: Dict[str, Any]) -> Tuple[bool, List[str], List[Dict[str, Any]]]:
-    """Return ledger_ok, errors, normalized dimension summaries (raw dims attached)."""
+    """Return ledger_ok, errors, normalized dimension summaries (raw dims attached).
+
+    Args:
+        doc: doc 参数。
+    """
     errors: List[str] = []
     dims = doc.get("dimensions")
     if not isinstance(dims, list):
@@ -202,7 +223,11 @@ def validate_document(doc: Dict[str, Any]) -> Tuple[bool, List[str], List[Dict[s
 
 
 def accounted_ok_from(summaries: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
-    """P0 must be owned; G must have owner+gap+next (already schema-checked for G fields)."""
+    """P0 must be owned; G must have owner+gap+next (already schema-checked for G fields).
+
+    Args:
+        summaries: summaries 参数。
+    """
     bad: List[str] = []
     for s in summaries:
         if not s.get("p0"):
@@ -225,7 +250,12 @@ def accounted_ok_from(summaries: List[Dict[str, Any]]) -> Tuple[bool, List[str]]
 def release_ok_from(
     summaries: List[Dict[str, Any]], *, now: Optional[datetime] = None
 ) -> Tuple[bool, List[str], List[str]]:
-    """Return release_ok, release_blocking_ids, expired_risk_ids."""
+    """Return release_ok, release_blocking_ids, expired_risk_ids.
+
+    Args:
+        summaries: summaries 参数。
+        now: now 参数。
+    """
     blocking_ids: List[str] = []
     expired: List[str] = []
     now = now or datetime.now(timezone.utc)
@@ -266,7 +296,11 @@ def release_ok_from(
 
 
 def coverage_ok_from(summaries: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
-    """All P0 must be E with empty gap."""
+    """All P0 must be E with empty gap.
+
+    Args:
+        summaries: summaries 参数。
+    """
     open_ids: List[str] = []
     for s in summaries:
         if not s.get("p0"):
@@ -277,6 +311,11 @@ def coverage_ok_from(summaries: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
 
 
 def open_gap_ids_from(summaries: List[Dict[str, Any]]) -> List[str]:
+    """open_gap_ids_from。
+
+    Args:
+        summaries: summaries 参数。
+    """
     ids: List[str] = []
     for s in summaries:
         if not s.get("p0"):
@@ -287,6 +326,12 @@ def open_gap_ids_from(summaries: List[Dict[str, Any]]) -> List[str]:
 
 
 def build_report(path: Path, *, now: Optional[datetime] = None) -> Dict[str, Any]:
+    """build_report。
+
+    Args:
+        path: 路径。
+        now: now 参数。
+    """
     try:
         doc = _load_yaml(path)
     except Exception as e:
@@ -387,6 +432,11 @@ def build_report(path: Path, *, now: Optional[datetime] = None) -> Dict[str, Any
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     parser = argparse.ArgumentParser(description="26-dim security ledger/release/claim report")
     parser.add_argument("--path", default=str(DEFAULT_YAML))
     parser.add_argument(

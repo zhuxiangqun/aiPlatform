@@ -75,10 +75,17 @@ def registry_symbols() -> list[tuple[str, str, str]]:
 
 
 def section_for(domain: str) -> str:
+    """section_for。
+
+    Args:
+        domain: domain 参数。
+    """
     return SECTION_ALIASES.get(domain, "")
 
 
 def main() -> int:
+    """main。
+    """
     fix = "--fix" in sys.argv
     caps_text = CAPS.read_text(encoding="utf-8")
     symbols = registry_symbols()

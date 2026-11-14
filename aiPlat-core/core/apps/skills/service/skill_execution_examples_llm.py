@@ -70,8 +70,13 @@ async def generate_skill_execution_examples_llm(
 ) -> Dict[str, Any]:
     """Generate 2–4 realistic smoke test cases for a Skill via LLM.
 
-    Returns:
-      {examples: [{title, content}], model: str, source: "llm"|heuristic_fallback, warning?}
+    Args:
+        skill_id: Skill ID。
+        skill_name: skill_name 参数。
+        description: description 参数。
+        input_schema: input_schema 参数。
+        refine_hint: refine_hint 参数。
+        sop_excerpt: sop_excerpt 参数。
     """
     skill_id = str(skill_id or "").strip()
     if not skill_id:
@@ -192,7 +197,13 @@ def _parse_skill_md_frontmatter(raw: str, mgr: Any = None) -> Dict[str, Any]:
 
 
 def skill_md_frontmatter_and_excerpt(mgr: Any, skill: Any, skill_id: str) -> Tuple[Dict[str, Any], str]:
-    """Load SKILL.md YAML + SOP body excerpt for generate/help."""
+    """Load SKILL.md YAML + SOP body excerpt for generate/help.
+
+    Args:
+        mgr: mgr 参数。
+        skill: skill 参数。
+        skill_id: Skill ID。
+    """
     fm: Dict[str, Any] = {}
     excerpt = ""
     try:
@@ -222,7 +233,15 @@ async def run_generate_skill_execution_examples(
     persist: bool = False,
     refine_hint: str = "",
 ) -> Dict[str, Any]:
-    """Shared Skill LLM generate + persist gate (workspace and engine)."""
+    """Shared Skill LLM generate + persist gate (workspace and engine).
+
+    Args:
+        mgr: mgr 参数。
+        skill: skill 参数。
+        skill_id: Skill ID。
+        persist: persist 参数。
+        refine_hint: refine_hint 参数。
+    """
     from core.management.execution_examples import resolve_skill_example_schema
 
     fm, sop_excerpt = skill_md_frontmatter_and_excerpt(mgr, skill, skill_id)

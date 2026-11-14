@@ -159,6 +159,7 @@ def _ontology_routing_hint(query: str, domain_id: str = "ai-knowledge") -> Optio
 
 class EngineRouter:
 
+    """EngineRouter。"""
     MAX_FALLBACK_ATTEMPTS = 3
 
 
@@ -171,6 +172,8 @@ class EngineRouter:
 
     def __init__(self) -> None:
 
+        """初始化。
+        """
         self._loop_engine = LoopEngine()
 
         from .engines.plan_engine import PlanEngine
@@ -199,6 +202,13 @@ class EngineRouter:
 
     ) -> Tuple[Any, EngineDecision]:
 
+        """route_agent。
+
+        Args:
+            agent_id: Agent ID。
+            payload: 载荷 dict。
+            plan: plan 参数。
+        """
         now = time.time()
 
         fallback_enabled = os.getenv("AIPLAT_ENABLE_ENGINE_FALLBACK", "").lower() in ("1", "true", "yes")
@@ -355,7 +365,13 @@ class EngineRouter:
 
     ) -> Any:
 
-        """Execute agent with fallback chain. Returns AgentResult or raises."""
+        """Execute agent with fallback chain. Returns AgentResult or raises.
+
+        Args:
+            agent: agent 参数。
+            context: context 参数。
+            decision: decision 参数。
+        """
 
         engines: Dict[str, Any] = {
 

@@ -46,10 +46,10 @@ def _pragma_wal(conn: sqlite3.Connection, *, attempts: int = 8) -> None:
 
 
 def ensure_wal_enabled(db_path: Optional[str] = None) -> None:
-    """
-    Ensure WAL mode for a SQLite file. Called once at startup.
-    Does nothing if the file doesn't exist yet (avoids premature creation
-    that could cause permission/ownership issues).
+    """Ensure WAL mode for a SQLite file. Called once at startup.
+
+    Args:
+        db_path: db_path 参数。
     """
     path = db_path or _DEFAULT_DB_PATH
     if not os.path.exists(path):
@@ -70,15 +70,12 @@ def get_db_connection(
     wal: bool = True,
     busy_timeout: int = 3000,
 ) -> Generator[sqlite3.Connection, None, None]:
-    """
-    Unified SQLite connection context manager.
+    """Unified SQLite connection context manager.
 
-    Usage:
-        with get_db_connection() as conn:
-            rows = conn.execute("SELECT ...").fetchall()
-
-        with get_db_connection("/path/to/kb.sqlite3") as conn:
-            conn.execute("INSERT ...")
+    Args:
+        db_path: db_path 参数。
+        wal: wal 参数。
+        busy_timeout: busy_timeout 参数。
     """
     path = db_path or _DEFAULT_DB_PATH
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -106,20 +103,12 @@ def create_persistent_conn(
     wal: bool = True,
     busy_timeout: int = 3000,
 ) -> sqlite3.Connection:
-    """
-    Create a persistent connection for hot-path modules.
+    """Create a persistent connection for hot-path modules.
 
-    The caller manages the connection lifecycle (typically held as a module-level
-    singleton and closed on process shutdown). Use asyncio.Lock to serialize writes.
-
-    Usage:
-        _conn = create_persistent_conn()
-        _lock = asyncio.Lock()
-
-        async def record_state(...):
-            async with _lock:
-                _conn.execute("INSERT ...")
-                _conn.commit()
+    Args:
+        db_path: db_path 参数。
+        wal: wal 参数。
+        busy_timeout: busy_timeout 参数。
     """
     path = db_path or _DEFAULT_DB_PATH
     os.makedirs(os.path.dirname(path), exist_ok=True)

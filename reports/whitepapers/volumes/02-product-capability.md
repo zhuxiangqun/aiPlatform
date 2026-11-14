@@ -4,19 +4,19 @@ volume_id: product-capability
 type: whitepaper-volume
 doc_type: Report
 status: generated
-generated_at: "2026-11-14T03:17:14Z"
+generated_at: "2026-11-14T03:55:07Z"
 audience: "产品负责人、技术评估者、客户技术链"
 core_question: "能解决什么问题？能力边界在哪？"
 priority: P1
 source_status: ready
 suite: docs/reference/explanatory/whitepaper-suite.yaml
 suite_sha256: "917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c"
-caps_sha256: "3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da"
+caps_sha256: "aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20"
 scores_sha256: "96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687"
 language: zh-CN
 ---
 
-<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=3a996019412cca5ed8b399f12d5a529519e5015ee2f58f7cfc8af2e498a200da scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
+<!-- volume_stamp id=product-capability suite_sha256=917aa76340b4d2b2d6f40ff4f227007cd89f4eb79748529df30513bf43abbc8c caps_sha256=aadffd17b9cc740332a1664d9611627f13d83fec94fced259f78303da4d4ee20 scores_sha256=96d06b3ea6cd57e5d99085afc78c7877694e8d77b24575577d1537e20a46e687 -->
 
 # aiPlat 产品能力白皮书
 
@@ -33,8 +33,8 @@ language: zh-CN
 | 核心问题 | 能解决什么问题？能力边界在哪？ |
 | 优先级 | P1 |
 | 材料完备度（suite） | `ready` |
-| 生成时间 (UTC) | `2026-11-14T03:17:14Z` |
-| CAPABILITIES sha256 | `3a996019412c…` |
+| 生成时间 (UTC) | `2026-11-14T03:55:07Z` |
+| CAPABILITIES sha256 | `aadffd17b9cc…` |
 | assessment-scores sha256 | `96d06b3ea6cd…` |
 
 ## 1. 本卷论证目标
@@ -92,7 +92,7 @@ language: zh-CN
 | RAG 检索 | 58 | 0 | 58 |
 | 知识基础设施 | 30 | 0 | 30 |
 | Agent 系统 | 315 | 0 | 315 |
-| Skill 系统 | 199 | 0 | 199 |
+| Skill 系统 | 200 | 0 | 200 |
 | 安全与治理 | 92 | 0 | 92 |
 | 可观测性 | 43 | 0 | 43 |
 | 模型基础设施 | 46 | 0 | 46 |
@@ -109,7 +109,7 @@ language: zh-CN
 | 运行时干预 | 44 | 0 | 44 |
 | Arena & 调度 | 7 | 0 | 7 |
 | 平台治理 | 149 | 0 | 149 |
-| Infra 基础设施 | 16 | 0 | 16 |
+| Infra 基础设施 | 20 | 0 | 20 |
 | 核心API统一入口 | 7 | 0 | 7 |
 | 编排系统 | 10 | 0 | 10 |
 | 管理 & 质量 | 116 | 0 | 116 |
@@ -131,7 +131,7 @@ language: zh-CN
 | Skill 目录标准化 | 7 | 0 | 7 |
 | Web 工具归并 | 4 | 0 | 4 |
 | E2E 端到端验证 | 18 | 0 | 18 |
-| **总计** | **3428** | **10** | **3438** |
+| **总计** | **3433** | **10** | **3443** |
 
 ### 3.2 上手路径（节选）
 

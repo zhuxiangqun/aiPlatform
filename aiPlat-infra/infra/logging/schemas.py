@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 import os
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
@@ -6,6 +8,7 @@ from datetime import datetime
 
 @dataclass
 class FileConfig:
+    """FileConfig。"""
     path: str = os.getenv("AIPLAT_LOG_PATH", "")
     max_size: str = "100MB"
     backup_count: int = 10
@@ -14,6 +17,7 @@ class FileConfig:
 
 @dataclass
 class StructuredConfig:
+    """StructuredConfig。"""
     include_trace_id: bool = True
     include_request_id: bool = True
     include_user_id: bool = True
@@ -24,6 +28,7 @@ class StructuredConfig:
 
 @dataclass
 class LoggingConfig:
+    """LoggingConfig。"""
     level: str = "INFO"
     format: str = "json"
     output: List[str] = field(default_factory=lambda: ["console"])
@@ -34,6 +39,7 @@ class LoggingConfig:
 
 @dataclass
 class LogEvent:
+    """LogEvent。"""
     timestamp: datetime
     level: str
     message: str
@@ -46,6 +52,7 @@ class LogEvent:
 
 @dataclass
 class LogRecord:
+    """LogRecord。"""
     level: str
     message: str
     timestamp: datetime

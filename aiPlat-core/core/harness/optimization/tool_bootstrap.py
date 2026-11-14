@@ -51,6 +51,8 @@ class BootstrapResult:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "request_id": self.request_id,
             "skill_name": self.skill_name,
@@ -80,6 +82,8 @@ class ToolBootstrapEngine:
     SKILLS_DIR = get_aiplat_data_dir("skills/bootstrap")
 
     def __init__(self):
+        """初始化。
+        """
         os.makedirs(self.SKILLS_DIR, exist_ok=True)
         self._history: List[BootstrapResult] = []
 
@@ -95,7 +99,13 @@ class ToolBootstrapEngine:
     ) -> BootstrapResult:
         """End-to-end bootstrap a new tool from a capability gap.
 
-        Pipeline: generate → validate → classify → register.
+        Args:
+            capability_name: capability_name 参数。
+            description: description 参数。
+            auto_approve: auto_approve 参数。
+            tools: tools 参数。
+            with_handler: with_handler 参数。
+            deploy: deploy 参数。
         """
         t0 = time.time()
         request_id = f"bootstrap-{uuid.uuid4().hex[:12]}"
@@ -544,6 +554,8 @@ _bootstrap: Optional[ToolBootstrapEngine] = None
 
 
 def get_tool_bootstrap() -> ToolBootstrapEngine:
+    """获取 tool_bootstrap。
+    """
     global _bootstrap
     if _bootstrap is None:
         _bootstrap = ToolBootstrapEngine()

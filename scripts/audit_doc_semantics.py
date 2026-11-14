@@ -17,6 +17,11 @@ STALE_NUM = {"954": "旧文档总数", "225": "旧 archive 断链数"}
 PATH_RE = re.compile(r"`([^`\s]+\.(?:md|py|yaml|yml|json|sh|toml|ts|tsx|html|pdf|svg))`")
 
 def active(p: Path) -> bool:
+    """active。
+
+    Args:
+        p: p 参数。
+    """
     return not any(x in p.parts for x in ("archive", "_archive", ".git", "node_modules", "__pycache__"))
 
 files = [p for r in ROOTS for p in r.rglob("*.md") if active(p)]

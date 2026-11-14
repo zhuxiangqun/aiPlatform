@@ -68,6 +68,8 @@ class PatternCache:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._patterns: Dict[str, ExecutionPattern] = {}
         self._max_size = int(os.getenv("AIPLAT_PATTERN_CACHE_SIZE", "1000"))
         self._enabled = os.getenv("AIPLAT_PATTERN_CACHE_ENABLED", "true").lower() not in ("0", "false", "no")
@@ -155,10 +157,9 @@ class PatternCache:
     ) -> Optional[Dict[str, Any]]:
         """Match an execution pattern.
 
-        Only returns patterns with hits ≥ hit_threshold (patterns already verified as reliable).
-
-        Returns:
-            None (no match) or {"skip_stages": [...], "use_tools": [...], ...}
+        Args:
+            domain_id: domain 标识。
+            query: 查询。
         """
         if not self._enabled:
             return None
@@ -192,7 +193,10 @@ class PatternCache:
     ) -> List[Dict[str, Any]]:
         """Fuzzy match (nearest patterns in the same domain + same task type).
 
-        When exact matching fails, returns the nearest patterns of the same domain and type as a reference.
+        Args:
+            domain_id: domain 标识。
+            query: 查询。
+            top_k: top_k 参数。
         """
         if not self._enabled:
             return []
@@ -215,7 +219,11 @@ class PatternCache:
         ]
 
     async def prune_low_success(self, min_success_rate: float = 0.5) -> Dict[str, Any]:
-        """Evict execution patterns whose success rate is below the threshold. Phase 5.5: called nightly by EvolutionEngine."""
+        """Evict execution patterns whose success rate is below the threshold. Phase 5.5: called nightly by EvolutionEngine.
+
+        Args:
+            min_success_rate: min_success_rate 参数。
+        """
         removed = 0
         for pid in list(self._patterns.keys()):
             p = self._patterns[pid]
@@ -227,6 +235,8 @@ class PatternCache:
         return {"removed": removed, "remaining": len(self._patterns)}
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         active = sum(1 for p in self._patterns.values() if p.hit_count >= self._hit_threshold)
         return {
             "total_patterns": len(self._patterns),
@@ -246,6 +256,8 @@ class PatternCache:
 _cache: Optional[PatternCache] = None
 
 def get_pattern_cache() -> PatternCache:
+    """获取 pattern_cache。
+    """
     global _cache
     if _cache is None:
         _cache = PatternCache()

@@ -60,7 +60,14 @@ def looks_like_local_llm(
     provider: str = "",
     base_url: str = "",
 ) -> bool:
-    """Heuristic: local Ollama / LM Studio / oMLX / loopback OpenAI-compatible."""
+    """Heuristic: local Ollama / LM Studio / oMLX / loopback OpenAI-compatible.
+
+    Args:
+        model_name: model_name 参数。
+        model: 模型名。
+        provider: provider 参数。
+        base_url: base_url 参数。
+    """
     prov = (provider or "").strip().lower()
     if not prov and model is not None:
         cfg = getattr(model, "_config", None) or getattr(model, "config", None)
@@ -111,10 +118,12 @@ async def local_llm_inflight(
 ) -> AsyncIterator[None]:
     """Serialize local LLM generates across event loops; no-op for remote APIs.
 
-    Acquire MUST NOT block a thread-pool worker (``sem.acquire(blocking=True)`` in
-    ``asyncio.to_thread``). Status polling uses ``anyio.to_thread`` for SQLite; a
-    180s blocked acquire starves that pool → status API hangs while Agent is in
-    pre_llm / generate (run-c604da8f129e + wiki_curation auto_atomize contention).
+    Args:
+        model_name: model_name 参数。
+        model: 模型名。
+        provider: provider 参数。
+        base_url: base_url 参数。
+        acquire_timeout: acquire_timeout 参数。
     """
     if not looks_like_local_llm(
         model_name=model_name, model=model, provider=provider, base_url=base_url

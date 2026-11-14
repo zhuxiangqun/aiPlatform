@@ -11,6 +11,12 @@ from pathlib import Path
 
 
 def check_baseline(root: Path, baseline: Path) -> int:
+    """check_baseline。
+
+    Args:
+        root: root 参数。
+        baseline: baseline 参数。
+    """
     text = baseline.read_text(encoding="utf-8")
     try:
         import yaml  # type: ignore
@@ -59,6 +65,11 @@ def check_baseline(root: Path, baseline: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     args = list(sys.argv[1:] if argv is None else argv)
     if len(args) != 2:
         print(

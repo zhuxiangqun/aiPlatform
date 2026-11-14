@@ -36,6 +36,11 @@ def _mgrs():
 
 @router.get("/workspace/packages", response_model=Dict[str, Any])
 async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]:
+    """列出 workspace_packages。
+
+    Args:
+        include_engine: include_engine 参数。
+    """
     workspace_pkg_mgr, engine_pkg_mgr = _mgrs()
     items: List[Dict[str, Any]] = []
     if workspace_pkg_mgr:
@@ -49,6 +54,11 @@ async def list_workspace_packages(include_engine: bool = True) -> Dict[str, Any]
 
 @router.get("/workspace/packages/{pkg_name}", response_model=Dict[str, Any])
 async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
+    """获取 workspace_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+    """
     workspace_pkg_mgr, engine_pkg_mgr = _mgrs()
     p = workspace_pkg_mgr.get_package(pkg_name) if workspace_pkg_mgr else None
     if not p and engine_pkg_mgr:
@@ -69,7 +79,11 @@ async def get_workspace_package(pkg_name: str) -> Dict[str, Any]:
 
 @router.post("/workspace/packages/{pkg_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_workspace_package_for_review(pkg_name: str):
-    """Submit a workspace package for review. Requires draft or enabled status."""
+    """Submit a workspace package for review. Requires draft or enabled status.
+
+    Args:
+        pkg_name: pkg_name 参数。
+    """
     workspace_pkg_mgr, _ = _mgrs()
     if not workspace_pkg_mgr:
         raise HTTPException(status_code=503, detail="Workspace package manager not available")
@@ -125,7 +139,11 @@ async def submit_workspace_package_for_review(pkg_name: str):
 
 @router.post("/workspace/packages/export", response_model=Dict[str, Any])
 async def export_workspace_package(data: Dict[str, Any]):
-    """Export workspace assets as a redistributable plugin zip."""
+    """Export workspace assets as a redistributable plugin zip.
+
+    Args:
+        data: data 参数。
+    """
     from pathlib import Path
     import shutil
     import tempfile
@@ -225,6 +243,11 @@ async def export_workspace_package(data: Dict[str, Any]):
 
 @router.post("/workspace/packages", response_model=Dict[str, Any])
 async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
+    """创建 workspace_package。
+
+    Args:
+        request: request 参数。
+    """
     workspace_pkg_mgr, _ = _mgrs()
     if not workspace_pkg_mgr:
         raise HTTPException(status_code=503, detail="Workspace package manager not available")
@@ -314,6 +337,11 @@ async def create_workspace_package(request: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.delete("/workspace/packages/{pkg_name}", response_model=Dict[str, Any])
 async def delete_workspace_package(pkg_name: str) -> Dict[str, Any]:
+    """删除 workspace_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+    """
     workspace_pkg_mgr, _ = _mgrs()
     if not workspace_pkg_mgr:
         raise HTTPException(status_code=503, detail="Workspace package manager not available")
@@ -325,6 +353,13 @@ async def delete_workspace_package(pkg_name: str) -> Dict[str, Any]:
 
 @router.post("/workspace/packages/{pkg_name}/install", response_model=Dict[str, Any])
 async def install_workspace_package(pkg_name: str, http_request: Request, request: Dict[str, Any]) -> Dict[str, Any]:
+    """install_workspace_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        http_request: http_request 参数。
+        request: request 参数。
+    """
     rt = _rt()
     if not rt:
         raise HTTPException(status_code=503, detail="Kernel runtime not available")
@@ -374,6 +409,12 @@ async def install_workspace_package(pkg_name: str, http_request: Request, reques
 
 @router.post("/workspace/packages/{pkg_name}/uninstall", response_model=Dict[str, Any])
 async def uninstall_workspace_package(pkg_name: str, request: Dict[str, Any]) -> Dict[str, Any]:
+    """uninstall_workspace_package。
+
+    Args:
+        pkg_name: pkg_name 参数。
+        request: request 参数。
+    """
     rt = _rt()
     if not rt:
         raise HTTPException(status_code=503, detail="Kernel runtime not available")

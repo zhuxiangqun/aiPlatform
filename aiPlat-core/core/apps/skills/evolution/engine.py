@@ -35,7 +35,11 @@ _predictions_lock = threading.Lock()
 
 
 def get_latest_predictions(skill_id: str = "") -> Dict[str, Any]:
-    """Read predictions from the most recent evolution for cross-round verification."""
+    """Read predictions from the most recent evolution for cross-round verification.
+
+    Args:
+        skill_id: Skill ID。
+    """
     with _predictions_lock:
         if skill_id and skill_id in _latest_predictions:
             return dict(_latest_predictions[skill_id])
@@ -48,6 +52,11 @@ class EvolutionEngine:
     """Skill evolution engine"""
     
     def __init__(self, config: Optional[EvolutionConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or EvolutionConfig()
         self._lineage: VersionLineage = get_version_lineage()
         self._pending_triggers: Dict[str, EvolutionTrigger] = {}
@@ -71,7 +80,13 @@ class EvolutionEngine:
         trigger_type: TriggerType,
         context: Dict[str, Any]
     ) -> EvolutionResult:
-        """Trigger evolution for a skill"""
+        """Trigger evolution for a skill。
+
+        Args:
+            skill_id: Skill ID。
+            trigger_type: trigger_type 参数。
+            context: context 参数。
+        """
         # Check cooldown
         if not self._can_evolution(skill_id):
             return EvolutionResult(
@@ -205,7 +220,12 @@ class EvolutionEngine:
         skill_id: str,
         execution_result: Dict[str, Any]
     ) -> List[EvolutionSuggestion]:
-        """Analyze execution result and generate evolution suggestions"""
+        """Analyze execution result and generate evolution suggestions。
+
+        Args:
+            skill_id: Skill ID。
+            execution_result: execution_result 参数。
+        """
         suggestions = []
         
         # Check if execution failed
@@ -241,7 +261,12 @@ class EvolutionEngine:
         skill_id: str,
         context: Dict[str, Any]
     ) -> bool:
-        """Determine if skill should be derived"""
+        """Determine if skill should be derived。
+
+        Args:
+            skill_id: Skill ID。
+            context: context 参数。
+        """
         mismatch = context.get("output_mismatch", False)
         unique_scenario = context.get("unique_scenario", False)
         
@@ -251,7 +276,11 @@ class EvolutionEngine:
         self,
         execution_record: Dict[str, Any]
     ) -> bool:
-        """Determine if execution should be captured as new skill"""
+        """Determine if execution should be captured as new skill。
+
+        Args:
+            execution_record: execution_record 参数。
+        """
         if not execution_record.get("success", False):
             return False
         
@@ -267,7 +296,12 @@ class EvolutionEngine:
         skill_id: str,
         error: Dict[str, Any]
     ) -> bool:
-        """Determine if skill should be fixed"""
+        """Determine if skill should be fixed。
+
+        Args:
+            skill_id: Skill ID。
+            error: error 参数。
+        """
         is_recoverable = error.get("is_recoverable", True)
         root_cause_in_skill = error.get("root_cause_in_skill", True)
         
@@ -279,7 +313,13 @@ class EvolutionEngine:
         current_metrics: Dict[str, float],
         baseline_metrics: Dict[str, float]
     ) -> bool:
-        """Auto rollback if performance degraded too much"""
+        """Auto rollback if performance degraded too much。
+
+        Args:
+            skill_id: Skill ID。
+            current_metrics: current_metrics 参数。
+            baseline_metrics: baseline_metrics 参数。
+        """
         if not self._config.auto_rollback_on_degradation:
             return False
         
@@ -355,7 +395,11 @@ _engine: Optional[EvolutionEngine] = None
 
 
 def get_evolution_engine(config: Optional[EvolutionConfig] = None) -> EvolutionEngine:
-    """Get global evolution engine"""
+    """Get global evolution engine。
+
+    Args:
+        config: config 参数。
+    """
     global _engine
     if _engine is None:
         _engine = EvolutionEngine(config)

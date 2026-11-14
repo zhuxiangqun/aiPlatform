@@ -60,6 +60,7 @@ logger = __import__("logging").getLogger(__name__)
 
 class SourceStatus:
 
+    """SourceStatus。"""
     name: str
 
     type: str  # "sql" | "api" | "file"
@@ -78,6 +79,8 @@ class SourceStatus:
 
     def to_dict(self) -> Dict[str, Any]:
 
+        """to_dict。
+        """
         return {
 
             "name": self.name,
@@ -273,7 +276,14 @@ def record_sync_event(
 
 ) -> None:
 
-    """Record a sync event for a specific data source (best-effort, idempotent)."""
+    """Record a sync event for a specific data source (best-effort, idempotent).
+
+    Args:
+        source_name: source_name 参数。
+        status: status 参数。
+        row_count: row_count 参数。
+        error: error 参数。
+    """
 
     history = {}
 

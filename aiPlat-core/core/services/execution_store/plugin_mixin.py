@@ -24,6 +24,17 @@ class PluginMixin:
         manifest: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """upsert_plugin。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            name: name 参数。
+            version: version 参数。
+            enabled: 是否启用。
+            manifest: manifest 参数。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -96,6 +107,14 @@ class PluginMixin:
         return {**row, "manifest": _json_loads(row.get("manifest_json")) or {}, "metadata": _json_loads(row.get("metadata_json")) or {}}
 
     async def list_plugin_versions(self, *, tenant_id: Optional[str], plugin_id: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """列出 plugin_versions。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -130,6 +149,13 @@ class PluginMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def get_plugin_version(self, *, tenant_id: Optional[str], plugin_id: str, version: str) -> Optional[Dict[str, Any]]:
+        """获取 plugin_version。
+
+        Args:
+            tenant_id: 租户 ID。
+            plugin_id: plugin 标识。
+            version: version 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 

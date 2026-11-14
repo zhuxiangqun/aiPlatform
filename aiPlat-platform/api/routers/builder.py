@@ -57,42 +57,98 @@ def _legacy_response(data: dict) -> JSONResponse:
 
 @router.post("/sessions", response_model=StatusResponse)
 async def create_builder_session(req: BuilderSessionCreateRequest, _auth: str = Depends(require_builder_access)):
-    """Legacy: auto-create project from requirement and return session info."""
+    """Legacy: auto-create project from requirement and return session info.
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     proj = await _get_svc().create_project(ProjectCreateRequest(name=req.requirement[:30] or "新项目", description=req.requirement))
     return _legacy_response({"session_id": proj.project_id, "phase": "dialogue"})
 
 @router.post("/sessions/{session_id}/chat", response_model=StatusResponse)
 async def builder_chat(session_id: str, req: BuilderChatRequest, _auth: str = Depends(require_builder_access)):
+    """builder_chat。
+
+    Args:
+        session_id: 会话 ID。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().chat(session_id, req.message))
 
 @router.post("/sessions/{session_id}/confirm", response_model=StatusResponse)
 async def session_confirm(session_id: str, _auth: str = Depends(require_builder_access)):
+    """session_confirm。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().confirm_prd(session_id))
 
 @router.post("/sessions/{session_id}/start", response_model=StatusResponse)
 async def session_start(session_id: str, _auth: str = Depends(require_builder_access)):
+    """session_start。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().start_pipeline(session_id))
 
 @router.get("/sessions/{session_id}", response_model=StatusResponse)
 async def get_session(session_id: str, _auth: str = Depends(require_builder_access)):
+    """获取 session。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().get_project_state(session_id))
 
 # ---- Session HITL (legacy, forward to projects) ----
 
 @router.post("/sessions/{session_id}/approve-architecture", response_model=StatusResponse)
 async def session_approve_architecture(session_id: str, _auth: str = Depends(require_builder_access)):
+    """session_approve_architecture。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().approve_stage(session_id))
 
 @router.post("/sessions/{session_id}/reject-architecture", response_model=StatusResponse)
 async def session_reject_architecture(session_id: str, feedback: str = "", _auth: str = Depends(require_builder_access)):
+    """session_reject_architecture。
+
+    Args:
+        session_id: 会话 ID。
+        feedback: feedback 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().reject_stage(session_id, feedback))
 
 @router.post("/sessions/{session_id}/approve-test-plan", response_model=StatusResponse)
 async def session_approve_test_plan(session_id: str, _auth: str = Depends(require_builder_access)):
+    """session_approve_test_plan。
+
+    Args:
+        session_id: 会话 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().approve_stage(session_id))
 
 @router.post("/sessions/{session_id}/reject-test-plan", response_model=StatusResponse)
 async def session_reject_test_plan(session_id: str, feedback: str = "", _auth: str = Depends(require_builder_access)):
+    """session_reject_test_plan。
+
+    Args:
+        session_id: 会话 ID。
+        feedback: feedback 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _legacy_response(await _get_svc().reject_stage(session_id, feedback))
 
 
@@ -100,29 +156,57 @@ async def session_reject_test_plan(session_id: str, feedback: str = "", _auth: s
 
 @router.get("/projects", response_model=ProjectListResponse)
 async def list_projects(_auth: str = Depends(require_builder_access)):
+    """列出 projects。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     projects = await _get_svc().list_projects()
     result = [p.model_dump() if hasattr(p, 'model_dump') else p for p in projects]
     return {"projects": result, "total": len(result)}
 
 @router.post("/projects", response_model=StatusResponse)
 async def create_project(req: ProjectCreateRequest, _auth: str = Depends(require_admin_access)):
+    """创建 project。
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     project = await _get_svc().create_project(req)
     return project.model_dump() if hasattr(project, 'model_dump') else project
 
 @router.get("/projects/{project_id}", response_model=StatusResponse)
 async def get_project(project_id: str, _auth: str = Depends(require_builder_access)):
+    """获取 project。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_project(project_id)
 
 @router.delete("/projects/{project_id}", response_model=StatusResponse)
 async def delete_project(project_id: str, _auth: str = Depends(require_admin_access)):
     # 审计 P1-3 修复（2026-08-25）：create 需 admin 但破坏性 delete 仅 builder —— 授权反向。
     # 删除不可逆，升级为 require_admin_access 与 create 对齐。
+    """删除 project。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     ok = await _get_svc().delete_project(project_id)
     return {"status": "ok" if ok else "error", "detail": "" if ok else "项目不存在"}
 
 @router.post("/projects/batch-delete", response_model=StatusResponse)
 async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(require_admin_access)):
-    """Batch delete projects. Body: { "project_ids": ["prj_xxx", ...], "pass_rate_below": 0.01 }"""
+    """Batch delete projects. Body: { "project_ids": ["prj_xxx", ...], "pass_rate_below": 0.01 }。
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     project_ids = req.get("project_ids")
     pass_rate_below = req.get("pass_rate_below")
     deleted = await _get_svc().batch_delete(
@@ -133,31 +217,66 @@ async def batch_delete_projects(req: Dict[str, Any], _auth: str = Depends(requir
 
 @router.get("/projects/{project_id}/state", response_model=ProjectStateResponse)
 async def get_project_state(project_id: str, _auth: str = Depends(require_builder_access)):
+    """获取 project_state。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_project_state(project_id)
 
 @router.get("/projects/{project_id}/messages", response_model=StatusResponse)
 async def get_project_messages(project_id: str, _auth: str = Depends(require_builder_access)):
+    """获取 project_messages。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_messages(project_id)
 
 @router.post("/projects/{project_id}/chat", response_model=StatusResponse)
 async def project_chat(project_id: str, req: BuilderChatRequest, _auth: str = Depends(require_builder_access)):
+    """project_chat。
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().chat(project_id, req.message)
 
 @router.post("/projects/{project_id}/execute/{skill_name:path}", response_model=StatusResponse)
 async def project_execute_skill(project_id: str, skill_name: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    """Frontend page calls this to execute a skill through the Agent (not direct)."""
+    """Frontend page calls this to execute a skill through the Agent (not direct).
+
+    Args:
+        project_id: project 标识。
+        skill_name: skill_name 参数。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     params = body if isinstance(body, dict) else {}
     return await _get_svc().execute_skill(project_id, skill_name, params)
 
 @router.get("/projects/{project_id}/promotion", response_model=StatusResponse)
 async def project_promotion_status(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Phase C W5: hop metrics + run-through promotion gate snapshot."""
+    """Phase C W5: hop metrics + run-through promotion gate snapshot.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return _get_svc().get_promotion_status(project_id)
 
 
 @router.get("/security/authz-pilot", response_model=StatusResponse)
 async def authz_pilot_status(_auth: str = Depends(require_builder_access)):
-    """P0-3b: authz/IDOR/SSRF pilot ledger + exit evaluation."""
+    """P0-3b: authz/IDOR/SSRF pilot ledger + exit evaluation.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from builder.artifact_authz_smoke import evaluate_pilot_exit, load_pilot_state
 
     state = load_pilot_state()
@@ -177,7 +296,12 @@ async def authz_pilot_approve(
     body: dict = None,
     _auth: str = Depends(require_builder_access),
 ):
-    """P0-3b: Dual-sign exit (security_owner + product_security)."""
+    """P0-3b: Dual-sign exit (security_owner + product_security).
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from builder.artifact_authz_smoke import approve_pilot_exit
 
     payload = body if isinstance(body, dict) else {}
@@ -200,7 +324,13 @@ async def project_file_upload(
     file: UploadFile = File(...),
     _auth: str = Depends(require_builder_access),
 ):
-    """Upload a file for an App Factory project. Returns file reference for skill execution."""
+    """Upload a file for an App Factory project. Returns file reference for skill execution.
+
+    Args:
+        project_id: project 标识。
+        file: file 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     import re as _re
     import time as _time
 
@@ -232,6 +362,13 @@ async def project_file_upload(
 
 @router.post("/projects/{project_id}/confirm", response_model=StatusResponse)
 async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """project_confirm。
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     result = await _get_svc().confirm_prd(
         project_id,
         prd_data=body.get("prd"),
@@ -251,7 +388,13 @@ async def project_confirm(project_id: str, body: Dict[str, Any] = {}, _auth: str
 async def project_confirm_and_build(
     project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)
 ):
-    """One-click: confirm PRD → recommend team → start pipeline (F1)."""
+    """One-click: confirm PRD → recommend team → start pipeline (F1).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     result = await _get_svc().confirm_and_build(
         project_id,
         prd_data=body.get("prd"),
@@ -266,20 +409,45 @@ async def project_confirm_and_build(
 
 @router.post("/projects/{project_id}/recommend-team", response_model=StatusResponse)
 async def recommend_team(project_id: str, _auth: str = Depends(require_builder_access)):
-    """AI analyzes PRD and recommends a team configuration."""
+    """AI analyzes PRD and recommends a team configuration.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().recommend_team(project_id)
 
 @router.post("/projects/{project_id}/start", response_model=PipelineStartResponse)
 async def project_start(project_id: str, _auth: str = Depends(require_builder_access)):
+    """project_start。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().start_pipeline(project_id)
 
 @router.post("/projects/{project_id}/approve", response_model=StatusResponse)
 async def project_approve(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """project_approve。
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     feedback = str(body.get("feedback", "") or "")
     return await _get_svc().approve_stage(project_id, feedback=feedback)
 
 @router.post("/projects/{project_id}/reject", response_model=StatusResponse)
 async def project_reject(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
+    """project_reject。
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     feedback = str(body.get("feedback", "") or "")
     return await _get_svc().reject_stage(project_id, feedback)
 
@@ -290,7 +458,13 @@ async def project_friction_share(
     body: Dict[str, Any] = {},
     _auth: str = Depends(require_builder_access),
 ):
-    """F-T4: confirm T4a friction share → local learning draft (not team Git)."""
+    """F-T4: confirm T4a friction share → local learning draft (not team Git).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     stage_id = str((body or {}).get("stage_id") or "")
     signal = str((body or {}).get("signal") or "regenerate_count")
     detail = str((body or {}).get("detail") or "")
@@ -304,7 +478,12 @@ async def project_friction_share(
 
 @router.get("/projects/{project_id}/digest", response_model=StatusResponse)
 async def project_team_digest(project_id: str, _auth: str = Depends(require_builder_access)):
-    """F-T5: metrics-only digest slice for completion panel."""
+    """F-T5: metrics-only digest slice for completion panel.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import build_team_digest, record_digest_view
 
     st = await _get_svc().get_project_state(project_id)
@@ -333,7 +512,12 @@ async def project_team_digest(project_id: str, _auth: str = Depends(require_buil
 async def project_structure_diagram(
     project_id: str, _auth: str = Depends(require_builder_access)
 ):
-    """Oversight: deterministic stage Mermaid (tool_result facts; no LLM)."""
+    """Oversight: deterministic stage Mermaid (tool_result facts; no LLM).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import STATE_STRUCTURE_KEY, build_run_structure_diagram
 
     st = await _get_svc().get_project_state(project_id)
@@ -378,8 +562,10 @@ async def project_evidence_metrics(
 ):
     """Oversight P1: record verification metrics from sandboxed evidence UI.
 
-    Body: ``{"events": ["source_click", {"event": "input_change", ...}]}``.
-    Read-only — never triggers coding or deploy.
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     raw = (body or {}).get("events")
     events: list = []
@@ -396,7 +582,12 @@ async def project_evidence_metrics(
 async def project_evidence_page(
     project_id: str, _auth: str = Depends(require_builder_access)
 ):
-    """Oversight P1: discardable evidence page (template+JSON; TTL; read-only)."""
+    """Oversight P1: discardable evidence page (template+JSON; TTL; read-only).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import (
         STATE_EVIDENCE_KEY,
         build_run_evidence_page,
@@ -463,7 +654,12 @@ async def team_harness_push(
     body: Dict[str, Any] = {},
     _auth: str = Depends(require_admin_access),
 ):
-    """T1c: push contribute branch + MR template (never pushes main)."""
+    """T1c: push contribute branch + MR template (never pushes main).
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import push_team_harness
 
     return push_team_harness(
@@ -481,7 +677,12 @@ async def team_harness_sources_apply(
     body: Dict[str, Any] = {},
     _auth: str = Depends(require_admin_access),
 ):
-    """T3b: merge configured secondary sources under team/sources/{ns}/."""
+    """T3b: merge configured secondary sources under team/sources/{ns}/.
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import apply_configured_sources, configure_sources, merge_source_tree
 
     if isinstance(body.get("sources"), list) and body["sources"]:
@@ -501,7 +702,12 @@ async def team_harness_export_seed(
     body: Dict[str, Any] = {},
     _auth: str = Depends(require_admin_access),
 ):
-    """T6': export TeamAI-compatible seed (never writes .cursor/.claude)."""
+    """T6': export TeamAI-compatible seed (never writes .cursor/.claude).
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import export_teamai_seed
 
     return export_teamai_seed(
@@ -514,17 +720,36 @@ async def team_harness_export_seed(
 
 @router.post("/projects/{project_id}/rollback/{stage_id:path}", response_model=StatusResponse)
 async def project_rollback(project_id: str, stage_id: str, _auth: str = Depends(require_builder_access)):
+    """project_rollback。
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().rollback_stage(project_id, stage_id)
 
 
 @router.post("/projects/{project_id}/rollback-prd", response_model=StatusResponse)
 async def project_rollback_prd(project_id: str, _auth: str = Depends(require_builder_access)):
+    """project_rollback_prd。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().rollback_prd(project_id)
 
 
 @router.post("/projects/{project_id}/update-prd", response_model=StatusResponse)
 async def project_update_prd(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Update PRD directly without going through PM chat again."""
+    """Update PRD directly without going through PM chat again.
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     prd = body.get("prd", body)
     result = await _get_svc().update_prd(
         project_id, prd,
@@ -546,7 +771,15 @@ async def project_import_repo(
     existing_path: str = Form(default=""),
     _auth: str = Depends(require_builder_access),
 ):
-    """L2: import existing code (zip upload or AIPLAT_HOME path) → manifest → state."""
+    """L2: import existing code (zip upload or AIPLAT_HOME path) → manifest → state.
+
+    Args:
+        project_id: project 标识。
+        request: FastAPI Request。
+        file: file 参数。
+        existing_path: existing_path 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     if file is not None:
         zip_bytes = await file.read()
         if not zip_bytes:
@@ -559,13 +792,22 @@ async def project_import_repo(
 
 @router.get("/projects/{project_id}/imported-files", response_model=StatusResponse)
 async def project_imported_files(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L2: imported manifest for frontend file selection (勾选 + 修改意图)."""
+    """L2: imported manifest for frontend file selection (勾选 + 修改意图).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_imported_files(project_id)
 
 
 @router.get("/import-stats", response_model=StatusResponse)
 async def import_stats(_auth: str = Depends(require_builder_access)):
-    """L2 telemetry: skip_pytest_gate ratio — >40% triggers L3 priority alert."""
+    """L2 telemetry: skip_pytest_gate ratio — >40% triggers L3 priority alert.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_import_stats()
 
 
@@ -574,27 +816,49 @@ async def import_stats(_auth: str = Depends(require_builder_access)):
 @router.post("/projects/{project_id}/merge-preview", response_model=StatusResponse)
 async def project_merge_preview(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
     """L3: build per-file merge previews (pipeline output vs imported originals).
-    L4 v1.5: optional module_id scopes the imported repo + cross-module contract check."""
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     module_id = str(body.get("module_id") or "default")
     return await _get_svc().merge_preview(project_id, module_id=module_id)
 
 
 @router.get("/projects/{project_id}/merge-previews", response_model=StatusResponse)
 async def project_merge_previews(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L3: stored merge previews + impact analysis."""
+    """L3: stored merge previews + impact analysis.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_merge_previews(project_id)
 
 
 @router.post("/projects/{project_id}/merge-apply", response_model=StatusResponse)
 async def project_merge_apply(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L3: apply approved merge previews (human review gate)."""
+    """L3: apply approved merge previews (human review gate).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     decisions = body.get("decisions") or {}
     return await _get_svc().merge_apply(project_id, decisions)
 
 
 @router.post("/projects/{project_id}/analyze-impact", response_model=StatusResponse)
 async def project_analyze_impact(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L3-P1-05: impact analysis on demand (auto-added files with reasons)."""
+    """L3-P1-05: impact analysis on demand (auto-added files with reasons).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     modify_files = body.get("modify_files") or []
     return await _get_svc().analyze_impact_for(project_id, modify_files)
 
@@ -603,14 +867,25 @@ async def project_analyze_impact(project_id: str, body: Dict[str, Any], _auth: s
 
 @router.post("/projects/{project_id}/modules", response_model=StatusResponse)
 async def project_create_modules(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L4: declare project modules (modules.json semantics)."""
+    """L4: declare project modules (modules.json semantics).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     modules = body.get("modules") or []
     return await _get_svc().create_modules(project_id, modules)
 
 
 @router.get("/projects/{project_id}/modules", response_model=StatusResponse)
 async def project_list_modules(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L4: module list (declared + implicit default)."""
+    """L4: module list (declared + implicit default).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_modules(project_id)
 
 
@@ -621,7 +896,15 @@ async def project_module_import_repo(
     existing_path: str = Form(default=""),
     _auth: str = Depends(require_builder_access),
 ):
-    """L4: import code into a named module (L2 import-repo reuse)."""
+    """L4: import code into a named module (L2 import-repo reuse).
+
+    Args:
+        project_id: project 标识。
+        module_id: module 标识。
+        file: file 参数。
+        existing_path: existing_path 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     if file is not None:
         zip_bytes = await file.read()
         if not zip_bytes:
@@ -634,14 +917,26 @@ async def project_module_import_repo(
 
 @router.post("/projects/{project_id}/cross-module-impact", response_model=StatusResponse)
 async def project_cross_module_impact(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L4 §3.3: cross-module impact analysis for a changed module."""
+    """L4 §3.3: cross-module impact analysis for a changed module.
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     module_id = str(body.get("module_id") or "default")
     return await _get_svc().cross_module_impact(project_id, module_id)
 
 
 @router.post("/projects/{project_id}/module-orchestrate", response_model=StatusResponse)
 async def project_module_orchestrate(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L4 §3.4: orchestrate pipelines for changed modules in dependency order."""
+    """L4 §3.4: orchestrate pipelines for changed modules in dependency order.
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     module_ids = body.get("module_ids") or []
     return await _get_svc().module_orchestrate(project_id, module_ids)
 
@@ -650,20 +945,37 @@ async def project_module_orchestrate(project_id: str, body: Dict[str, Any], _aut
 
 @router.post("/projects/{project_id}/migration-preview", response_model=StatusResponse)
 async def project_migration_preview(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    """L4.5: schema diff (imported vs post-merge) → migration up/down preview."""
+    """L4.5: schema diff (imported vs post-merge) → migration up/down preview.
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     module_id = str(body.get("module_id") or "default")
     return await _get_svc().migration_preview(project_id, module_id=module_id)
 
 
 @router.get("/projects/{project_id}/migrations", response_model=StatusResponse)
 async def project_list_migrations(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L4.5: migration history + pending."""
+    """L4.5: migration history + pending.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_migrations(project_id)
 
 
 @router.post("/projects/{project_id}/migrations/apply", response_model=StatusResponse)
 async def project_apply_migrations(project_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """L4.5: apply pending migrations (destructive requires confirmed=true)."""
+    """L4.5: apply pending migrations (destructive requires confirmed=true).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     migration_ids = body.get("migration_ids") or []
     confirmed = bool(body.get("confirmed", False))
     return await _get_svc().apply_migration(project_id, migration_ids, confirmed=confirmed)
@@ -671,7 +983,13 @@ async def project_apply_migrations(project_id: str, body: Dict[str, Any], _auth:
 
 @router.post("/projects/{project_id}/migrations/{migration_id}/rollback", response_model=StatusResponse)
 async def project_rollback_migration(project_id: str, migration_id: str, _auth: str = Depends(require_builder_access)):
-    """L4.5: apply down script + mark rolled_back."""
+    """L4.5: apply down script + mark rolled_back.
+
+    Args:
+        project_id: project 标识。
+        migration_id: migration 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().rollback_migration(project_id, migration_id)
 
 
@@ -679,33 +997,64 @@ async def project_rollback_migration(project_id: str, migration_id: str, _auth: 
 
 @router.post("/projects/{project_id}/release", response_model=StatusResponse)
 async def project_create_release(project_id: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    """L5: create versioned release from merge post-code (building → ready)."""
+    """L5: create versioned release from merge post-code (building → ready).
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     module_id = str(body.get("module_id") or "default")
     return await _get_svc().create_release(project_id, module_id=module_id)
 
 
 @router.get("/projects/{project_id}/releases", response_model=StatusResponse)
 async def project_list_releases(project_id: str, _auth: str = Depends(require_builder_access)):
-    """L5: release history + current pointer."""
+    """L5: release history + current pointer.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_releases(project_id)
 
 
 @router.post("/projects/{project_id}/releases/{version}/canary", response_model=StatusResponse)
 async def project_release_canary(project_id: str, version: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    """L5: ready → canary (golden-ratio validation marker; canary_weight sets routing %)."""
+    """L5: ready → canary (golden-ratio validation marker; canary_weight sets routing %).
+
+    Args:
+        project_id: project 标识。
+        version: version 参数。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     weight = int(body.get("canary_weight") or 0)
     return await _get_svc().set_release_status(project_id, version, "canary", canary_weight=weight)
 
 
 @router.post("/projects/{project_id}/releases/{version}/full", response_model=StatusResponse)
 async def project_release_full(project_id: str, version: str, _auth: str = Depends(require_builder_access)):
-    """L5: canary → full (promote, current pointer switches)."""
+    """L5: canary → full (promote, current pointer switches).
+
+    Args:
+        project_id: project 标识。
+        version: version 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().set_release_status(project_id, version, "full")
 
 
 @router.post("/projects/{project_id}/releases/{version}/rollback", response_model=StatusResponse)
 async def project_release_rollback(project_id: str, version: str, body: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
-    """L5: roll back — current pointer switches to target_version (or latest active)."""
+    """L5: roll back — current pointer switches to target_version (or latest active).
+
+    Args:
+        project_id: project 标识。
+        version: version 参数。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     target_version = str(body.get("target_version") or "")
     return await _get_svc().set_release_status(project_id, version, "rolled_back",
                                                target_version=target_version)
@@ -713,20 +1062,43 @@ async def project_release_rollback(project_id: str, version: str, body: Dict[str
 
 @router.post("/projects/{project_id}/rebuild", response_model=StatusResponse)
 async def project_rebuild(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Re-run pipeline with existing PRD data (e.g., after editing PRD)."""
+    """Re-run pipeline with existing PRD data (e.g., after editing PRD).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().rebuild_project(project_id)
 
 @router.post("/projects/{project_id}/fix", response_model=StatusResponse)
 async def project_fix(project_id: str, _auth: str = Depends(require_builder_access)):
+    """project_fix。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().start_fix(project_id)
 
 @router.post("/projects/{project_id}/resume/{stage_id:path}", response_model=StatusResponse)
 async def project_resume(project_id: str, stage_id: str, _auth: str = Depends(require_builder_access)):
-    """Resume pipeline from a specific stage (rollback without clearing artifacts)."""
+    """Resume pipeline from a specific stage (rollback without clearing artifacts).
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().resume_from_stage(project_id, stage_id)
 
 @router.get("/projects/{project_id}/deploy", response_model=StatusResponse)
 async def project_deploy(project_id: str, _auth: str = Depends(require_builder_access)):
+    """project_deploy。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     deploy_dir = await _get_svc().get_deploy_dir(project_id)
     if not deploy_dir:
         raise HTTPException(404, detail="Deploy package not ready. Run pipeline first.")
@@ -737,12 +1109,23 @@ async def project_deploy(project_id: str, _auth: str = Depends(require_builder_a
 
 @router.post("/teams", response_model=StatusResponse)
 async def create_team(req: TeamAssembleRequest, _auth: str = Depends(require_builder_access)):
+    """创建 team。
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _team_get_svc().create_team(req)
 
 
 @router.post("/teams/create-dialog", response_model=StatusResponse)
 async def team_create_dialog(body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Conversational team assembly: clarify → stage draft. Apply to canvas then POST /teams to save."""
+    """Conversational team assembly: clarify → stage draft. Apply to canvas then POST /teams to save.
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     text = str(body.get("text") or "").strip()
     history = body.get("history") if isinstance(body.get("history"), list) else []
     agents = body.get("agents") if isinstance(body.get("agents"), list) else []
@@ -756,6 +1139,11 @@ async def team_create_dialog(body: Dict[str, Any], _auth: str = Depends(require_
 
 @router.get("/teams", response_model=TeamListResponse)
 async def list_teams(_auth: str = Depends(require_builder_access)):
+    """列出 teams。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     teams = await _team_get_svc().list_teams()
     return {"teams": [t.model_dump() if hasattr(t, 'model_dump') else t for t in teams], "total": len(teams)}
 
@@ -764,17 +1152,31 @@ async def list_teams(_auth: str = Depends(require_builder_access)):
 async def dedupe_teams(_auth: str = Depends(require_builder_access)):
     """Remove duplicate teams that share the same name + agent stage list.
 
-    Keeps the newest copy. Safe after factory recommend-team flooded defaults.
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     return _team_get_svc().dedupe_teams()
 
 
 @router.get("/teams/{team_id}", response_model=StatusResponse)
 async def get_team(team_id: str, _auth: str = Depends(require_builder_access)):
+    """获取 team。
+
+    Args:
+        team_id: team 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _team_get_svc().get_team(team_id)
 
 @router.put("/teams/{team_id}", response_model=StatusResponse)
 async def update_team(team_id: str, req: TeamAssembleRequest, _auth: str = Depends(require_builder_access)):
+    """更新 team。
+
+    Args:
+        team_id: team 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     result = await _team_get_svc().update_team(team_id, req)
     if not result:
         raise HTTPException(404, detail="Team not found")
@@ -782,6 +1184,12 @@ async def update_team(team_id: str, req: TeamAssembleRequest, _auth: str = Depen
 
 @router.delete("/teams/{team_id}", response_model=StatusResponse)
 async def delete_team(team_id: str, _auth: str = Depends(require_admin_access)):
+    """删除 team。
+
+    Args:
+        team_id: team 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     ok = await _team_get_svc().delete_team(team_id)
     if not ok:
         raise HTTPException(404, detail="Team not found")
@@ -789,18 +1197,35 @@ async def delete_team(team_id: str, _auth: str = Depends(require_admin_access)):
 
 @router.post("/teams/{team_id}/run", response_model=StatusResponse)
 async def run_team(team_id: str, body: Dict[str, Any], _auth: str = Depends(require_builder_access)):
+    """run_team。
+
+    Args:
+        team_id: team 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _team_get_svc().run_team(team_id, body.get("description", ""))
 
 
 @router.get("/projects/{project_id}/graph", response_model=StatusResponse)
 async def get_pipeline_graph(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Return pipeline execution graph data for visualization."""
+    """Return pipeline execution graph data for visualization.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_graph(project_id)
 
 
 @router.post("/projects/{project_id}/test", response_model=StatusResponse)
 async def run_project_tests(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Run E2E smoke + repo tests for a completed project pipeline."""
+    """Run E2E smoke + repo tests for a completed project pipeline.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().run_tests(project_id)
 
 
@@ -808,8 +1233,9 @@ async def run_project_tests(project_id: str, _auth: str = Depends(require_builde
 async def get_last_test_report(project_id: str, _auth: str = Depends(require_builder_access)):
     """最近一次真实测试报告（含 bug_summary/suggested_fix）。
 
-    未跑过真实测试时返回 200 + ``status=empty``（勿用 404：列表页会 N+1 拉取，
-    浏览器会把 404 打成 Failed to load resource 刷屏）。
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     report = await _get_svc().get_last_test_report(project_id)
     if report is None:
@@ -823,7 +1249,13 @@ async def get_last_test_report(project_id: str, _auth: str = Depends(require_bui
 
 @router.post("/projects/{project_id}/regenerate", response_model=StatusResponse)
 async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Regenerate a specific stage with human feedback, then resume pipeline."""
+    """Regenerate a specific stage with human feedback, then resume pipeline.
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     stage_id = str(req.get("stage_id") or "")
     feedback = str(req.get("feedback") or "")
     if not stage_id or not feedback:
@@ -849,9 +1281,10 @@ async def regenerate_project_stage(project_id: str, req: Dict[str, Any], _auth: 
 async def project_fix_from_report(project_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_builder_access)):
     """Deterministic one-click fix from test_report (no ReAct orchestrator agent).
 
-    Body optional:
-    - ``test_report``: if omitted, loads from pipeline state
-    - ``regenerate_test_cases``: default false — freeze exam suite across fix runs
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     test_report = str((req or {}).get("test_report") or "")
     regen_tc = bool((req or {}).get("regenerate_test_cases") or False)
@@ -862,14 +1295,26 @@ async def project_fix_from_report(project_id: str, req: Dict[str, Any] = {}, _au
 
 @router.post("/projects/{project_id}/locate-max-error", response_model=StatusResponse)
 async def locate_project_max_error(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Locate the max error-contribution node from the decision trace graph."""
+    """Locate the max error-contribution node from the decision trace graph.
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     failed_stage_ids = req.get("failed_stage_ids") or []
     return await _get_svc().locate_max_error_node(project_id, failed_stage_ids)
 
 
 @router.post("/projects/{project_id}/generate-hypotheses", response_model=StatusResponse)
 async def generate_project_hypotheses(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Generate root-cause hypotheses from the decision trace graph."""
+    """Generate root-cause hypotheses from the decision trace graph.
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     failed_stage_ids = req.get("failed_stage_ids") or []
     test_report = str(req.get("test_report") or "")
     return await _get_svc().generate_fix_hypotheses(project_id, failed_stage_ids, test_report)
@@ -877,7 +1322,13 @@ async def generate_project_hypotheses(project_id: str, req: Dict[str, Any], _aut
 
 @router.post("/projects/{project_id}/run-report", response_model=StatusResponse)
 async def build_project_run_report(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_builder_access)):
-    """Build a governance/explainability report for a pipeline run."""
+    """Build a governance/explainability report for a pipeline run.
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     failed_stage_ids = req.get("failed_stage_ids") or []
     test_report = str(req.get("test_report") or "")
     cost_used_usd = float(req.get("cost_used_usd") or 0.0)
@@ -889,7 +1340,14 @@ async def build_project_run_report(project_id: str, req: Dict[str, Any], _auth: 
 @router.put("/projects/{project_id}/stages/{stage_id}/artifact", response_model=StatusResponse)
 async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, Any],
                                  _auth: str = Depends(require_builder_access)):
-    """Manually edit a stage's output artifact — user edits content, then can rebuild from this stage."""
+    """Manually edit a stage's output artifact — user edits content, then can rebuild from this stage.
+
+    Args:
+        project_id: project 标识。
+        stage_id: stage 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     content = str(req.get("content") or req.get("raw_output") or "")
     if not content.strip():
         raise HTTPException(400, detail="content is required")
@@ -910,8 +1368,9 @@ async def update_stage_artifact(project_id: str, stage_id: str, req: Dict[str, A
 async def export_project_pi_bundle(project_id: str, _auth: str = Depends(require_builder_access)):
     """Export deployed Agent app (~/.aiplat/apps/{id}/current) as a Pi Package.
 
-    One-click user-side Runtime bundle (Scheme A skills + extension). Also runs
-    automatically (best-effort) after deploy-to-app when agent_manifest.json exists.
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     result = await _get_svc().export_pi_bundle(project_id)
     if not result.get("ok") and not result.get("skipped"):
@@ -923,7 +1382,12 @@ async def export_project_pi_bundle(project_id: str, _auth: str = Depends(require
 async def download_project_pi_bundle_zip(
     project_id: str, _auth: str = Depends(require_builder_access)
 ):
-    """Download Pi Package as a zip for user-side delivery (pi -e / thin HTTP)."""
+    """Download Pi Package as a zip for user-side delivery (pi -e / thin HTTP).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from builder.pi_bundle_export import zip_pi_bundle_for_project
 
     zip_path, meta = zip_pi_bundle_for_project(project_id)
@@ -943,7 +1407,12 @@ async def download_project_pi_bundle_zip(
 
 @router.post("/projects/{project_id}/deploy-to-app", response_model=StatusResponse)
 async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Deploy pipeline output to aiPlat-app (port 8004)."""
+    """Deploy pipeline output to aiPlat-app (port 8004).
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     # Verify project signature before deploy
     try:
         proj = _get_svc()._projects.get(project_id)
@@ -972,26 +1441,47 @@ async def deploy_project_to_app(project_id: str, _auth: str = Depends(require_bu
 # ---- Generated-app runtime (2026-08-27, artifact-side wiring: daemon_jobs 生成物适用 已接线) ----
 @router.post("/projects/{project_id}/runtime/launch", response_model=StatusResponse)
 async def launch_generated_app(project_id: str, _auth: str = Depends(require_builder_access)):
-    """检测生成 app 入口并经 daemon_jobs 托管启动（生成 app 运行能力，自动测试前置）。"""
+    """检测生成 app 入口并经 daemon_jobs 托管启动（生成 app 运行能力，自动测试前置）。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().runtime_launch(project_id)
 
 
 @router.get("/projects/{project_id}/runtime", response_model=StatusResponse)
 async def get_generated_app_runtime(project_id: str, _auth: str = Depends(require_builder_access)):
-    """生成 app 运行状态（daemon job 存活 + 端口 + 入口类型）。"""
+    """生成 app 运行状态（daemon job 存活 + 端口 + 入口类型）。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().runtime_status(project_id)
 
 
 @router.post("/projects/{project_id}/runtime/stop", response_model=StatusResponse)
 async def stop_generated_app(project_id: str, _auth: str = Depends(require_builder_access)):
-    """停止生成 app（daemon_jobs kill 会话组 + 清理运行记录）。"""
+    """停止生成 app（daemon_jobs kill 会话组 + 清理运行记录）。
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().runtime_stop(project_id)
 
 
 @router.post("/projects/{project_id}/runtime/smoke", response_model=StatusResponse)
 async def smoke_test_generated_app(project_id: str, body: Dict[str, Any] = {},
                                    _auth: str = Depends(require_builder_access)):
-    """生成 app 冒烟测试：detect → launch → HTTP 健康探测 → 报告（keep_alive=false 默认测试后停止）。"""
+    """生成 app 冒烟测试：detect → launch → HTTP 健康探测 → 报告（keep_alive=false 默认测试后停止）。
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     keep_alive = bool((body or {}).get("keep_alive", False))
     return await _get_svc().runtime_smoke(project_id, keep_alive=keep_alive)
 
@@ -999,8 +1489,13 @@ async def smoke_test_generated_app(project_id: str, body: Dict[str, Any] = {},
 @router.post("/projects/{project_id}/runtime/real-tests", response_model=StatusResponse)
 async def real_tests_generated_app(project_id: str, body: Dict[str, Any] = {},
                                    _auth: str = Depends(require_builder_access)):
-    """测试经理真实测试：递归发现生成物测试用例（backend/tests/ 等）→ 可写临时目录跑 pytest
-    → test_report（含 bug_summary）。install_deps 默认 true（自动装缺失依赖）。"""
+    """测试经理真实测试：递归发现生成物测试用例（backend/tests/ 等）→ 可写临时目录跑 pytest。
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     install_deps = bool((body or {}).get("install_deps", True))
     return await _get_svc().runtime_real_tests(project_id, install_deps=install_deps)
 
@@ -1009,7 +1504,12 @@ async def real_tests_generated_app(project_id: str, body: Dict[str, Any] = {},
 async def auto_repair_generated_app(project_id: str, body: Dict[str, Any] = {},
                                     _auth: str = Depends(require_builder_access)):
     """自动修复闭环：真实测试失败 → LLM 修复生成代码 → 写回部署目录 → 重跑验证。
-    F4: max_rounds 硬上限 2；超限返回 repair_exhausted + next=hitl。"""
+
+    Args:
+        project_id: project 标识。
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from builder.app_runtime import MAX_REPAIR_ATTEMPTS
     raw = int((body or {}).get("max_rounds", MAX_REPAIR_ATTEMPTS))
     max_rounds = max(1, min(raw, MAX_REPAIR_ATTEMPTS))
@@ -1018,31 +1518,54 @@ async def auto_repair_generated_app(project_id: str, body: Dict[str, Any] = {},
 
 @router.get("/agent-insight/{agent_id}", response_model=StatusResponse)
 async def get_agent_insight(agent_id: str, _auth: str = Depends(require_builder_access)):
-    """Get insight metrics for a single agent."""
+    """Get insight metrics for a single agent.
+
+    Args:
+        agent_id: Agent ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_agent_insight(agent_id)
 
 
 @router.get("/agent-insights", response_model=StatusResponse)
 async def list_agent_insights(_auth: str = Depends(require_builder_access)):
-    """Get insight metrics for all agents."""
+    """Get insight metrics for all agents.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().list_agent_insights()
 
 
 @router.post("/agent-insights/refresh", response_model=StatusResponse)
 async def refresh_agent_insights(_auth: str = Depends(require_builder_access)):
-    """Refresh agent insight metrics."""
+    """Refresh agent insight metrics.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().refresh_agent_insights()
 
 
 @router.get("/projects/{project_id}/health-report", response_model=StatusResponse)
 async def get_project_health_report(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Get pipeline health report with per-stage dimensional scores."""
+    """Get pipeline health report with per-stage dimensional scores.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _get_svc().get_health_report(project_id)
 
 
 @router.get("/projects/{project_id}/export", response_model=StatusResponse)
 async def export_project_state(project_id: str, _auth: str = Depends(require_builder_access)):
-    """Export full project execution state as downloadable JSON."""
+    """Export full project execution state as downloadable JSON.
+
+    Args:
+        project_id: project 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     state = await _get_svc().get_project_state(project_id)
     return JSONResponse(
         content=state,
@@ -1052,9 +1575,12 @@ async def export_project_state(project_id: str, _auth: str = Depends(require_bui
 
 @router.post("/projects/{project_id}/sign", response_model=StatusResponse)
 async def sign_project(project_id: str, req: Dict[str, Any], _auth: str = Depends(require_admin_access)):
-    """
-    Sign a project directory with an Ed25519 private key.
-    Writes PROJECT.manifest.json into the project directory.
+    """Sign a project directory with an Ed25519 private key.
+
+    Args:
+        project_id: project 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     private_key = str(req.get("private_key") or "").strip()
     if not private_key:

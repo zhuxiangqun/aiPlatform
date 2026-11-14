@@ -40,8 +40,11 @@ def _security_preflight_checklist_item() -> dict:
 
 @router.get("/acceptance/checklist", response_model=FdeListResponse)
 async def acceptance_checklist(spec_id: str = Query("")):
-    """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA + 安全预检，
-    可选 Agent 驱动验收分析 (v2.4: fde_delivery_manager)."""
+    """生成交付验收 Checklist。聚合 KPI + 反馈 + SLA + 安全预检，。
+
+    Args:
+        spec_id: spec 标识。
+    """
     checklist = []
 
     # 0) Security preflight — hard gate for signoff
@@ -161,8 +164,8 @@ async def acceptance_checklist(spec_id: str = Query("")):
 async def acceptance_signoff(body: Dict[str, Any]):
     """记录交付验收签收。
 
-    Body: {"spec_id": "...", "signed_by": "fde_name", "notes": "..."}
-    Blocks with 409 if ⑥b preflight missing or has high/critical findings.
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import fde_preflight_signoff_gate
 

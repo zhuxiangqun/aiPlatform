@@ -1,3 +1,5 @@
+"""long_term：模块接口。"""
+
 from core.utils.math_utils import cosine_similarity
 """
 Long-term Memory - 长期记忆
@@ -15,6 +17,11 @@ class LongTermMemory(MemoryBase):
     """长期记忆 - 持久化存储、语义检索"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self.max_size = self.config.get("max_size", 10000)
         self.ttl = self.config.get("ttl", 86400 * 30)   # 30天
@@ -23,7 +30,11 @@ class LongTermMemory(MemoryBase):
         self._lock = asyncio.Lock()
     
     async def store(self, entry: MemoryEntry) -> str:
-        """存储长期记忆"""
+        """存储长期记忆。
+
+        Args:
+            entry: entry 参数。
+        """
         async with self._lock:
             entry.id = entry.id or str(uuid.uuid4())
             if entry.expires_at is None:
@@ -41,7 +52,12 @@ class LongTermMemory(MemoryBase):
             return entry.id
     
     async def retrieve(self, query: str, limit: int = 10) -> List[MemoryEntry]:
-        """检索长期记忆（基于关键词匹配）"""
+        """检索长期记忆（基于关键词匹配）。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         async with self._lock:
             query_keywords = self._extract_keywords(query)
             if not query_keywords:
@@ -69,7 +85,12 @@ class LongTermMemory(MemoryBase):
             ]
     
     async def retrieve_by_type(self, memory_type: MemoryType, limit: int = 10) -> List[MemoryEntry]:
-        """按类型检索"""
+        """按类型检索。
+
+        Args:
+            memory_type: memory_type 参数。
+            limit: 返回条数上限。
+        """
         async with self._lock:
             entries = [
                 e for e in self._storage.values()
@@ -78,7 +99,11 @@ class LongTermMemory(MemoryBase):
             return sorted(entries, key=lambda e: e.importance, reverse=True)[:limit]
     
     async def delete(self, entry_id: str) -> bool:
-        """删除记忆"""
+        """删除记忆。
+
+        Args:
+            entry_id: entry 标识。
+        """
         async with self._lock:
             if entry_id in self._storage:
                 entry = self._storage[entry_id]
@@ -94,7 +119,11 @@ class LongTermMemory(MemoryBase):
             return False
     
     async def clear(self, scope: MemoryScope = MemoryScope.SESSION) -> int:
-        """清除长期记忆"""
+        """清除长期记忆。
+
+        Args:
+            scope: scope 参数。
+        """
         async with self._lock:
             count = len(self._storage)
             
@@ -139,6 +168,11 @@ class SemanticMemory(LongTermMemory):
     """语义记忆 - 基于向量相似度的记忆"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         config = config or {}
         config.setdefault("max_size", 5000)
         config.setdefault("ttl", 86400 * 90)  # 90天
@@ -148,7 +182,14 @@ class SemanticMemory(LongTermMemory):
     async def store_with_embedding(self, content: str, embedding: List[float], 
                                    memory_type: MemoryType = MemoryType.SEMANTIC,
                                    metadata: Dict[str, Any] = None) -> str:
-        """存储带嵌入向量的记忆"""
+        """存储带嵌入向量的记忆。
+
+        Args:
+            content: content 参数。
+            embedding: embedding 参数。
+            memory_type: memory_type 参数。
+            metadata: metadata 参数。
+        """
         entry = MemoryEntry(
             id=str(uuid.uuid4()),
             content=content,
@@ -163,7 +204,13 @@ class SemanticMemory(LongTermMemory):
     
     async def retrieve_similar(self, query_embedding: List[float], 
                               limit: int = 5, threshold: float = 0.8) -> List[MemoryEntry]:
-        """基于向量相似度检索"""
+        """基于向量相似度检索。
+
+        Args:
+            query_embedding: query_embedding 参数。
+            limit: 返回条数上限。
+            threshold: threshold 参数。
+        """
         async with self._lock:
             results = []
             

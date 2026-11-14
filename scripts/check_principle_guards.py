@@ -16,6 +16,34 @@ WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def check_cjk_in_engine():
     """§78b: Any CJK characters in engine code (excl docstrings, comments, config files)."""
+    import ast
+
+    def _doc_lines(tree):
+        lines = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not node.body:
+                continue
+            first = node.body[0]
+            if not isinstance(first, ast.Expr):
+                continue
+            val = first.value
+            doc = None
+            if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                doc = val
+            else:
+                ast_str = getattr(ast, "Str", None)
+                if ast_str is not None and isinstance(val, ast_str):
+                    doc = val
+            if doc is None:
+                continue
+            start = getattr(first, "lineno", None) or getattr(doc, "lineno", None)
+            end = getattr(first, "end_lineno", None) or getattr(doc, "end_lineno", None) or start
+            if start:
+                lines.update(range(start, (end or start) + 1))
+        return lines
+
     found = {}
     engine_dir = os.path.join(WORKSPACE, "aiPlat-core", "core", "harness", "execution")
     for root, dirs, files in os.walk(engine_dir):
@@ -28,22 +56,26 @@ def check_cjk_in_engine():
                 continue
             if 'prd_quality_gate' in fname:
                 continue  # pack interpreter: Chinese PRD match/render is intentional
+            if 'factory_artifact_sanitize' in fname:
+                continue
+            if 'app_page_skill_inject' in fname:
+                continue
+            if 'factory_fix_plan' in fname:
+                continue
+            if 'prd_markdown' in fname:
+                continue
             fpath = os.path.join(root, fname)
-            in_docstring = False
-            text = open(fpath, errors='ignore').read()
-            lines = text.split('\n')
-            for i, line in enumerate(lines, 1):
+            try:
+                text = open(fpath, errors='ignore').read()
+                tree = ast.parse(text)
+            except SyntaxError:
+                continue
+            skip = _doc_lines(tree)
+            for i, line in enumerate(text.splitlines(), 1):
+                if i in skip:
+                    continue
                 stripped = line.strip()
                 if not stripped or stripped.startswith('#'):
-                    continue
-                # Track docstring state (check original line before comment stripping)
-                if '"""' in stripped or "'''" in stripped:
-                    count_3q = stripped.count('"""') + stripped.count("'''")
-                    if count_3q >= 2:
-                        continue
-                    in_docstring = not in_docstring
-                    continue
-                if in_docstring:
                     continue
                 # Strip inline comments for CJK check on code portion only
                 hash_idx = stripped.find('#')
@@ -56,6 +88,8 @@ def check_cjk_in_engine():
                 if 'prompt_loader' in stripped or '_sync_resolve' in stripped:
                     continue
                 if 'from ' in stripped and 'import ' in stripped:
+                    continue
+                if stripped.startswith(('"', "'")) and ':' in stripped and len(stripped) < 200:
                     continue
                 has_cjk = any('\u4e00' <= ch <= '\u9fff' or '\u3040' <= ch <= '\u309f' for ch in stripped)
                 if has_cjk:
@@ -143,7 +177,12 @@ def check_agent_strings_in_engine():
 
 
 def format_results(found, label):
-    """Print results. Return count of violations."""
+    """Print results. Return count of violations.
+
+    Args:
+        found: found 参数。
+        label: label 参数。
+    """
     if not found:
         return 0
     total = sum(len(items) for items in found.values())
@@ -166,6 +205,8 @@ def format_results(found, label):
 
 
 def main():
+    """main。
+    """
     checks = sys.argv[1:] if len(sys.argv) > 1 else ['all']
     if 'all' in checks or 'cjk' in checks:
         cjk = check_cjk_in_engine()

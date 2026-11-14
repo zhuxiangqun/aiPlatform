@@ -26,6 +26,11 @@ def _enabled() -> bool:
 
 
 def load_workspace_hooks(*, hook_manager: Any) -> Dict[str, Any]:
+    """load_workspace_hooks。
+
+    Args:
+        hook_manager: hook_manager 参数。
+    """
     if not _enabled():
         return {"enabled": False, "loaded": 0, "errors": []}
     base = Path(get_aiplat_home()) / "hooks"

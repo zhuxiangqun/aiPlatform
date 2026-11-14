@@ -143,6 +143,8 @@ class CandidateKnowledgePool:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._pool: Dict[str, CandidateEntry] = {}
 
         self._embedding_model = None  # Lazy-loaded
@@ -155,6 +157,8 @@ class CandidateKnowledgePool:
 
     def instance(cls) -> "CandidateKnowledgePool":
 
+        """instance。
+        """
         if cls._instance is None:
 
             cls._instance = cls()
@@ -571,12 +575,8 @@ class CandidateKnowledgePool:
 
         """Submit a knowledge gap from FDE field feedback.
 
-
-
-        Returns status: "pending" | "conflict" | "triggered" | "ready"
-
-        - "ready": count>=3, no conflict, but ActiveSynthesis disabled or GraphIndex unavailable
-
+        Args:
+            gap: gap 参数。
         """
 
         key = self._normalize(gap)
@@ -816,6 +816,8 @@ class CandidateKnowledgePool:
 
 def get_candidate_pool() -> CandidateKnowledgePool:
 
+    """获取 candidate_pool。
+    """
     return CandidateKnowledgePool.instance()
 
 

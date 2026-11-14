@@ -104,7 +104,14 @@ def get_in_memory_span_exporter():
 
 
 class OTelSpan(Span):
+    """OTelSpan。"""
     def __init__(self, cm, otel_span):
+        """初始化。
+
+        Args:
+            cm: cm 参数。
+            otel_span: otel_span 参数。
+        """
         self._cm = cm
         self._span = otel_span
 
@@ -125,18 +132,36 @@ class OTelSpan(Span):
         return self.__exit__(exc_type, exc, tb)
 
     def set_attribute(self, key: str, value: Any) -> None:
+        """set_attribute。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+        """
         try:
             self._span.set_attribute(key, value)
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
     def add_event(self, name: str, attributes: Dict = None) -> None:
+        """add_event。
+
+        Args:
+            name: name 参数。
+            attributes: attributes 参数。
+        """
         try:
             self._span.add_event(name, attributes=attributes or {})
         except Exception as e:
             logging.debug(str(e), exc_info=True)
 
     def set_status(self, code: str, message: str = "") -> None:
+        """set_status。
+
+        Args:
+            code: code 参数。
+            message: message 参数。
+        """
         try:
             from opentelemetry.trace.status import Status, StatusCode
 
@@ -146,6 +171,8 @@ class OTelSpan(Span):
             logging.debug(str(e), exc_info=True)
 
     def end(self) -> None:
+        """end。
+        """
         try:
             self._span.end()
         except Exception as e:
@@ -153,11 +180,23 @@ class OTelSpan(Span):
 
 
 class OTelTracer(Tracer):
+    """OTelTracer。"""
     def __init__(self, config: ObservabilityConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         _ensure_sdk(config)
 
     def start_span(self, name: str, context: Optional[SpanContext] = None) -> Span:
+        """start_span。
+
+        Args:
+            name: name 参数。
+            context: context 参数。
+        """
         from opentelemetry import trace
 
         tracing_cfg = self._config.tracing or TracingConfig()
@@ -167,6 +206,8 @@ class OTelTracer(Tracer):
         return OTelSpan(cm=cm, otel_span=None)
 
     def get_current_span(self) -> Optional[Span]:
+        """获取 current_span。
+        """
         try:
             from opentelemetry import trace
 
@@ -186,7 +227,13 @@ class _NoopCM:
 
 
 class OTelMetricsImpl(OTelMetrics):
+    """OTelMetricsImpl。"""
     def __init__(self, config: ObservabilityConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         _ensure_sdk(config)
         from opentelemetry import metrics
@@ -195,6 +242,12 @@ class OTelMetricsImpl(OTelMetrics):
         self._meter = metrics.get_meter(res_cfg.service_name)
 
     def counter(self, name: str, **kwargs):
+        """counter。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         c = self._meter.create_counter(name, unit=kwargs.get("unit"), description=kwargs.get("description"))
 
         class _C:
@@ -204,6 +257,12 @@ class OTelMetricsImpl(OTelMetrics):
         return _C()
 
     def up_down_counter(self, name: str, **kwargs):
+        """up_down_counter。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         c = self._meter.create_up_down_counter(name, unit=kwargs.get("unit"), description=kwargs.get("description"))
 
         class _C:
@@ -213,6 +272,12 @@ class OTelMetricsImpl(OTelMetrics):
         return _C()
 
     def histogram(self, name: str, **kwargs):
+        """histogram。
+
+        Args:
+            name: name 参数。
+            kwargs: kwargs 参数。
+        """
         h = self._meter.create_histogram(name, unit=kwargs.get("unit"), description=kwargs.get("description"))
 
         class _H:
@@ -229,6 +294,11 @@ class OTelLoggerImpl(OTelLogger):
     """
 
     def __init__(self, config: ObservabilityConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         _ensure_sdk(config)
         import logging
@@ -238,6 +308,11 @@ class OTelLoggerImpl(OTelLogger):
         self._logger.setLevel(getattr(logging, str(lvl).upper(), logging.INFO))
 
     def log(self, record: LogRecord) -> None:
+        """log。
+
+        Args:
+            record: record 参数。
+        """
         import logging
 
         msg = record.message

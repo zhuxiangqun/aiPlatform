@@ -23,6 +23,13 @@ class WebFetchTool(BaseTool):
         max_content_size: int = MAX_CONTENT_SIZE,
         user_agent: str = "aiplat-core/1.0"
     ):
+        """初始化。
+
+        Args:
+            timeout: 超时秒数。
+            max_content_size: max_content_size 参数。
+            user_agent: user_agent 参数。
+        """
         self._timeout = timeout / 1000
         self._max_content_size = max_content_size
         self._user_agent = user_agent
@@ -56,7 +63,11 @@ class WebFetchTool(BaseTool):
         super().__init__(config)
         
     async def execute(self, params: Dict[str, Any]) -> ToolResult:
-        """Fetch web content"""
+        """Fetch web content。
+
+        Args:
+            params: params 参数。
+        """
         import aiohttp
         
         url = params.get("url", "")

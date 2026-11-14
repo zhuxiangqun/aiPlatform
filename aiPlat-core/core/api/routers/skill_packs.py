@@ -80,6 +80,12 @@ def _normalize_skill_pack_manifest(manifest: Any) -> Dict[str, Any]:
 
 @router.get("/skill-packs", response_model=Dict[str, Any])
 async def list_skill_packs(limit: int = 100, offset: int = 0):
+    """列出 skill_packs。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -88,6 +94,11 @@ async def list_skill_packs(limit: int = 100, offset: int = 0):
 
 @router.post("/skill-packs", response_model=Dict[str, Any])
 async def create_skill_pack(request: SkillPackCreateRequest):
+    """创建 skill_pack。
+
+    Args:
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -97,6 +108,11 @@ async def create_skill_pack(request: SkillPackCreateRequest):
 
 @router.get("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def get_skill_pack(pack_id: str):
+    """获取 skill_pack。
+
+    Args:
+        pack_id: pack 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -108,6 +124,12 @@ async def get_skill_pack(pack_id: str):
 
 @router.put("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
+    """update_skill_pack。
+
+    Args:
+        pack_id: pack 标识。
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -122,6 +144,11 @@ async def update_skill_pack(pack_id: str, request: SkillPackUpdateRequest):
 
 @router.delete("/skill-packs/{pack_id}", response_model=Dict[str, Any])
 async def delete_skill_pack(pack_id: str):
+    """删除 skill_pack。
+
+    Args:
+        pack_id: pack 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -133,6 +160,12 @@ async def delete_skill_pack(pack_id: str):
 
 @router.post("/skill-packs/{pack_id}/publish", response_model=Dict[str, Any])
 async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
+    """publish_skill_pack。
+
+    Args:
+        pack_id: pack 标识。
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -197,6 +230,13 @@ async def publish_skill_pack(pack_id: str, request: SkillPackPublishRequest):
 
 @router.get("/skill-packs/{pack_id}/versions", response_model=Dict[str, Any])
 async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int = 0):
+    """列出 skill_pack_versions。
+
+    Args:
+        pack_id: pack 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -205,6 +245,12 @@ async def list_skill_pack_versions(pack_id: str, limit: int = 100, offset: int =
 
 @router.post("/skill-packs/{pack_id}/install", response_model=Dict[str, Any])
 async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
+    """install_skill_pack。
+
+    Args:
+        pack_id: pack 标识。
+        request: request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -321,6 +367,13 @@ async def install_skill_pack(pack_id: str, request: SkillPackInstallRequest):
 
 @router.get("/skill-packs/installs", response_model=Dict[str, Any])
 async def list_skill_pack_installs(scope: Optional[str] = None, limit: int = 100, offset: int = 0):
+    """列出 skill_pack_installs。
+
+    Args:
+        scope: scope 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

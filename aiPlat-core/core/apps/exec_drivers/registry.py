@@ -1,3 +1,5 @@
+"""registry：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -61,14 +63,23 @@ async def get_exec_backend() -> str:
 
 
 def get_exec_driver(backend: str) -> ExecDriver:
+    """获取 exec_driver。
+
+    Args:
+        backend: backend 参数。
+    """
     return _DRIVERS.get(str(backend or "").strip(), _DRIVERS["local"])
 
 
 def list_exec_backends() -> List[str]:
+    """列出 exec_backends。
+    """
     return list(_DRIVERS.keys())
 
 
 async def healthcheck_backends() -> Dict[str, object]:
+    """healthcheck_backends。
+    """
     out: Dict[str, object] = {"backends": []}
     for k, drv in _DRIVERS.items():
         try:

@@ -81,6 +81,7 @@ def _normalize_one_view(name: str, view: Dict[str, Any]) -> Dict[str, Any]:
 
 @dataclass
 class CrossDomainCandidate:
+    """CrossDomainCandidate。"""
     left: Dict[str, Any]   # {domain, class, id, name}
     right: Dict[str, Any]  # {domain, class, id, name}
     score: float = 0.0
@@ -114,6 +115,11 @@ class CrossDomainResolver:
 
     def __init__(self, registry_path: Optional[str] = None):
         # Resolve at call time so AIPLAT_HOME / monkeypatches are visible.
+        """初始化。
+
+        Args:
+            registry_path: registry_path 参数。
+        """
         self.registry_path = (
             os.path.expanduser(registry_path)
             if registry_path
@@ -147,7 +153,11 @@ class CrossDomainResolver:
 
     def find_candidates(self, view_name: str, tenant_id: str = "default") -> List[CrossDomainCandidate]:
         """Find cross-domain merge candidates for a registered view.
-        tenant_id scopes the search to a specific tenant partition."""
+
+        Args:
+            view_name: view_name 参数。
+            tenant_id: 租户 ID。
+        """
         views = self._load_views()
         view_def = views.get(view_name)
         if not view_def:
@@ -282,8 +292,13 @@ class CrossDomainResolver:
                 confidence: float = 1.0) -> bool:
         """Create a cross-domain edge between two entities.
 
-        Phase K2: production HTTP must not call this directly. Use
-        ``k_wave_arbit.apply_ticket`` after an approved merge ticket.
+        Args:
+            view_name: view_name 参数。
+            left_id: left 标识。
+            right_id: right 标识。
+            left_domain: left_domain 参数。
+            right_domain: right_domain 参数。
+            confidence: confidence 参数。
         """
         try:
             from core.harness.ontology_engine.graph_index import GraphIndex

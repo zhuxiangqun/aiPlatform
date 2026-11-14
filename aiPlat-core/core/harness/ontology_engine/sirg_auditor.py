@@ -25,11 +25,20 @@ class SirgAuditor:
     """Audit actual reasoning against the ontology's required rule chain."""
 
     def __init__(self, rules: List[Dict[str, Any]]):
+        """初始化。
+
+        Args:
+            rules: rules 参数。
+        """
         self._rules = rules or []
 
     @classmethod
     def from_inference(cls, inference: Any) -> "SirgAuditor":
-        """Build from a GraphInference instance (its runtime rule set)."""
+        """Build from a GraphInference instance (its runtime rule set).
+
+        Args:
+            inference: inference 参数。
+        """
         try:
             rules = inference.list_rules() if hasattr(inference, "list_rules") else []
         except Exception:
@@ -37,8 +46,11 @@ class SirgAuditor:
         return cls(rules)
 
     def rule_chain_for(self, conclusion_relation: str) -> List[str]:
-        """Required rule chain: every rule whose conclusion produces the given
-        relation (the standard axiom path the reasoning MUST cover)."""
+        """Required rule chain: every rule whose conclusion produces the given。
+
+        Args:
+            conclusion_relation: conclusion_relation 参数。
+        """
         chain = []
         for rule in self._rules:
             concl = rule.get("conclusion") or {}
@@ -53,13 +65,9 @@ class SirgAuditor:
     ) -> Dict[str, Any]:
         """Compare actual fired rules vs the required chain for a conclusion.
 
-        Returns a structured report:
-          - required_chain: rule names that must be covered
-          - fired:          rules actually fired (deduplicated)
-          - missing:        required but not fired → violation ("跳过了 XXX")
-          - extra:          fired but not required (informational)
-          - consistent:     True when no required rule is missing
-          - violation_report: human-readable message
+        Args:
+            actual_rule_ids: actual_rule_ids 参数。
+            conclusion_relation: conclusion_relation 参数。
         """
         required = self.rule_chain_for(conclusion_relation)
         fired = list(dict.fromkeys(actual_rule_ids or []))
@@ -89,6 +97,12 @@ def audit_trace_rules(
     fired_rule_ids: List[str],
     conclusion_relation: str,
 ) -> Dict[str, Any]:
-    """Convenience: audit against a live GraphInference's rule set."""
+    """Convenience: audit against a live GraphInference's rule set.
+
+    Args:
+        inference: inference 参数。
+        fired_rule_ids: fired_rule_ids 参数。
+        conclusion_relation: conclusion_relation 参数。
+    """
     auditor = SirgAuditor.from_inference(inference)
     return auditor.audit_reasoning(fired_rule_ids, conclusion_relation)

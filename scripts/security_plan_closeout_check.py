@@ -128,6 +128,8 @@ OPS_PENDING: List[Dict[str, str]] = [
 
 
 def check_engineering() -> Dict[str, Any]:
+    """check_engineering。
+    """
     missing: List[Dict[str, str]] = []
     present: List[Dict[str, str]] = []
     for item_id, rel in ENGINEERING:
@@ -164,6 +166,8 @@ def p0_ir_contacts_filled() -> Dict[str, Any]:
 
 
 def main() -> int:
+    """main。
+    """
     eng = check_engineering()
     contacts = p0_ir_contacts_filled()
     report = {

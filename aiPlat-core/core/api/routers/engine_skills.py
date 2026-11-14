@@ -1,3 +1,8 @@
+"""engine_skills：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 import json
@@ -238,7 +243,16 @@ async def list_skills(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
-    """List all skills (engine scope)."""
+    """List all skills (engine scope).
+
+    Args:
+        category: category 参数。
+        enabled_only: enabled_only 参数。
+        status: 状态。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -283,7 +297,12 @@ async def list_skills(
 
 @router.post("/skills", response_model=Dict[str, Any])
 async def create_skill(request: SkillCreateRequest, rt: RuntimeDep = None):
-    """Create a new skill (engine scope)."""
+    """Create a new skill (engine scope).
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -336,7 +355,12 @@ async def create_skill(request: SkillCreateRequest, rt: RuntimeDep = None):
 
 @router.get("/skills/{skill_id}", response_model=Dict[str, Any])
 async def get_skill(skill_id: str, rt: RuntimeDep = None):
-    """Get skill details (engine scope)."""
+    """Get skill details (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -447,7 +471,15 @@ async def lint_conflicts_engine_skills(
     limit: int = 100,
     rt: RuntimeDep = None,
 ):
-    """Detect likely routing conflicts among engine skills."""
+    """Detect likely routing conflicts among engine skills.
+
+    Args:
+        tenant_id: 租户 ID。
+        threshold: threshold 参数。
+        min_overlap: min_overlap 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     _ = tenant_id
     mgr = _skill_mgr(rt)
     if not mgr:
@@ -532,13 +564,25 @@ async def _skill_routing_funnel(rt: Optional[KernelRuntime], *, tenant_id: Optio
 
 @router.get("/skills/observability/skill-metrics", response_model=Dict[str, Any])
 async def engine_skill_metrics(tenant_id: Optional[str] = None, since_hours: int = 24, limit: int = 5000, rt: RuntimeDep = None):
-    """Aggregate syscall_events(kind=skill) into a skill-level metrics view (engine scope)."""
+    """Aggregate syscall_events(kind=skill) into a skill-level metrics view (engine scope).
+
+    Args:
+        tenant_id: 租户 ID。
+        since_hours: since_hours 参数。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     return {"status": "ok", **(await _skill_invocation_metrics(rt, tenant_id=tenant_id, since_hours=since_hours, limit=limit))}
 
 
 @router.get("/skills/{skill_id}/lint", response_model=Dict[str, Any])
 async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
-    """Lint an engine skill (read-only)."""
+    """Lint an engine skill (read-only).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -591,12 +635,12 @@ async def lint_engine_skill(skill_id: str, rt: RuntimeDep = None):
 
 @router.post("/skills/{skill_id}/apply-lint-fix", response_model=Dict[str, Any])
 async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str, Any]] = None, rt: RuntimeDep = None):
-    """
-    Apply lint fixes to an engine skill (Phase-1: markdown/schema fixes only).
-    High-level behavior:
-    - compute lint + fixes
-    - filter to requested issue_codes/fix_ids (or auto_applicable=true by default)
-    - apply frontmatter_merge ops via SkillManager.update_skill (output_schema only in Phase-1)
+    """Apply lint fixes to an engine skill (Phase-1: markdown/schema fixes only).
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
     """
     mgr = _skill_mgr(rt)
     if not mgr:
@@ -820,7 +864,13 @@ async def apply_lint_fix_engine_skill(skill_id: str, request: Optional[Dict[str,
 
 @router.put("/skills/{skill_id}", response_model=Dict[str, Any])
 async def update_skill(skill_id: str, request: dict, rt: RuntimeDep = None):
-    """Update skill (engine scope)."""
+    """Update skill (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -854,7 +904,13 @@ async def update_skill(skill_id: str, request: dict, rt: RuntimeDep = None):
 
 @router.delete("/skills/{skill_id}", response_model=Dict[str, Any])
 async def delete_skill(skill_id: str, delete_files: bool = False, rt: RuntimeDep = None):
-    """Delete skill (default: soft delete; delete_files=true for hard delete)."""
+    """Delete skill (default: soft delete; delete_files=true for hard delete).
+
+    Args:
+        skill_id: skill 标识。
+        delete_files: delete_files 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -869,7 +925,12 @@ async def delete_skill(skill_id: str, delete_files: bool = False, rt: RuntimeDep
 
 @router.post("/skills/{skill_id}/enable", response_model=Dict[str, Any])
 async def enable_skill(skill_id: str, rt: RuntimeDep = None):
-    """Enable skill (engine scope)."""
+    """Enable skill (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -912,7 +973,12 @@ async def enable_skill(skill_id: str, rt: RuntimeDep = None):
 
 @router.post("/skills/{skill_id}/disable", response_model=Dict[str, Any])
 async def disable_skill(skill_id: str, rt: RuntimeDep = None):
-    """Disable skill (engine scope)."""
+    """Disable skill (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -924,7 +990,12 @@ async def disable_skill(skill_id: str, rt: RuntimeDep = None):
 
 @router.post("/skills/{skill_id}/restore", response_model=Dict[str, Any])
 async def restore_skill(skill_id: str, rt: RuntimeDep = None):
-    """Restore a deprecated skill (status -> enabled)."""
+    """Restore a deprecated skill (status -> enabled).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -936,7 +1007,12 @@ async def restore_skill(skill_id: str, rt: RuntimeDep = None):
 
 @router.post("/skills/governance-preview", response_model=Dict[str, Any])
 async def preview_engine_skill_governance(request: Dict[str, Any], rt: RuntimeDep = None):
-    """Preview governance/risk/approval hints for wizard UX (engine scope)."""
+    """Preview governance/risk/approval hints for wizard UX (engine scope).
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     req = dict(request or {})
     req.setdefault("actor_id", "admin")
     req.setdefault("tenant_id", "ops")
@@ -945,7 +1021,13 @@ async def preview_engine_skill_governance(request: Dict[str, Any], rt: RuntimeDe
 
 @router.get("/skills/meta/permissions-catalog", response_model=Dict[str, Any])
 async def engine_permissions_catalog(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """Permissions catalog for UI (engine scope)."""
+    """Permissions catalog for UI (engine scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
@@ -968,7 +1050,13 @@ async def engine_permissions_catalog(http_request: Request, tenant_id: Optional[
 
 @router.get("/skills/meta/skill-spec-v2-schema", response_model=Dict[str, Any])
 async def engine_skill_spec_v2_schema(http_request: Request, tenant_id: Optional[str] = None, channel: Optional[str] = None):
-    """SkillSpec v2 schema registry endpoint (engine scope)."""
+    """SkillSpec v2 schema registry endpoint (engine scope).
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        channel: channel 参数。
+    """
     from core.services.config_registry_store import ConfigRegistryKey, get_config_registry_store
 
     ctx = req_tenant_channel(http_request, tenant_id=tenant_id, channel=channel)
@@ -985,7 +1073,12 @@ async def engine_skill_spec_v2_schema(http_request: Request, tenant_id: Optional
 
 @router.get("/skills/{skill_id}/agents", response_model=Dict[str, Any])
 async def get_skill_agents(skill_id: str, rt: RuntimeDep = None):
-    """Get agents bound to skill (engine scope)."""
+    """Get agents bound to skill (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -995,7 +1088,11 @@ async def get_skill_agents(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/skills/{skill_id}/binding-stats", response_model=Dict[str, Any])
 async def get_skill_binding_stats(skill_id: str):
-    """Get skill binding statistics."""
+    """Get skill binding statistics.
+
+    Args:
+        skill_id: skill 标识。
+    """
     registry = get_skill_registry()
     stats = registry.get_binding_stats(skill_id)
     if not stats:
@@ -1005,7 +1102,11 @@ async def get_skill_binding_stats(skill_id: str):
 
 @router.get("/skills/{skill_id}/versions", response_model=Dict[str, Any])
 async def get_skill_versions(skill_id: str):
-    """Get skill versions."""
+    """Get skill versions.
+
+    Args:
+        skill_id: skill 标识。
+    """
     registry = get_skill_registry()
     versions = registry.get_versions(skill_id)
     return {"versions": [{"version": v.version, "is_active": v.is_active} for v in versions]}
@@ -1013,7 +1114,12 @@ async def get_skill_versions(skill_id: str):
 
 @router.get("/skills/{skill_id}/versions/{version}", response_model=Dict[str, Any])
 async def get_skill_version(skill_id: str, version: str):
-    """Get specific skill version."""
+    """Get specific skill version.
+
+    Args:
+        skill_id: skill 标识。
+        version: 版本号。
+    """
     registry = get_skill_registry()
     config = registry.get_version(skill_id, version)
     if not config:
@@ -1036,7 +1142,12 @@ async def get_skill_version(skill_id: str, version: str):
 
 @router.post("/skills/{skill_id}/versions/{version}/rollback", response_model=Dict[str, Any])
 async def rollback_skill_version(skill_id: str, version: str):
-    """Rollback skill version."""
+    """Rollback skill version.
+
+    Args:
+        skill_id: skill 标识。
+        version: 版本号。
+    """
     registry = get_skill_registry()
     ok = registry.rollback_version(skill_id, version)
     if not ok:
@@ -1056,7 +1167,11 @@ async def rollback_skill_version(skill_id: str, version: str):
 
 @router.get("/skills/{skill_id}/active-version", response_model=Dict[str, Any])
 async def get_skill_active_version(skill_id: str):
-    """Get currently active version for a skill."""
+    """Get currently active version for a skill.
+
+    Args:
+        skill_id: skill 标识。
+    """
     registry = get_skill_registry()
     if not registry.get(skill_id):
         raise HTTPException(status_code=404, detail=f"Skill {skill_id} not found")
@@ -1066,7 +1181,12 @@ async def get_skill_active_version(skill_id: str):
 
 @router.get("/skills/{skill_id}/execution-help", response_model=Dict[str, Any])
 async def get_engine_skill_execution_help(skill_id: str, rt: RuntimeDep = None):
-    """Get execution input help/examples for an engine skill."""
+    """Get execution input help/examples for an engine skill.
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1086,7 +1206,14 @@ async def generate_engine_skill_execution_examples(
     http_request: Request = None,
     rt: RuntimeDep = None,
 ):
-    """Optional LLM generation of smoke cases for Core Skills execute UI."""
+    """Optional LLM generation of smoke cases for Core Skills execute UI.
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1144,7 +1271,14 @@ async def generate_engine_skill_execution_examples(
 
 @router.post("/skills/{skill_id}/execute", response_model=Dict[str, Any])
 async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_request: Request, rt: RuntimeDep = None):
-    """Execute skill (engine scope)."""
+    """Execute skill (engine scope).
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     ctx_for_user: Dict[str, Any] = dict(request.context or {}) if isinstance(request.context, dict) else {}
     try:
         tmp = _inject_http_request_context({"context": dict(ctx_for_user)}, http_request, entrypoint="api")
@@ -1220,8 +1354,9 @@ async def execute_skill(skill_id: str, request: SkillExecuteRequest, http_reques
 async def review_engine_skill_output(skill_id: str, request: dict):
     """Post-run product-quality review for engine skills (stream complete / re-check).
 
-    Runtime completed ≠ content acceptable. Returns issues + where/how to fix SOP.
-    When body.input is empty, restores from execution store via execution_id.
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
     """
     registry = get_skill_registry()
     if not registry or not registry.get(skill_id):
@@ -1267,7 +1402,13 @@ async def review_engine_skill_output(skill_id: str, request: dict):
 
 @router.post("/skills/{skill_id}/apply-quality-fix", response_model=Dict[str, Any])
 async def apply_engine_skill_quality_fix(skill_id: str, request: dict, rt: RuntimeDep = None):
-    """Append quality SOP iron-laws into engine + workspace SKILL.md mirrors (idempotent)."""
+    """Append quality SOP iron-laws into engine + workspace SKILL.md mirrors (idempotent).
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     primary = None
     if mgr:
@@ -1305,7 +1446,12 @@ async def apply_engine_skill_quality_fix(skill_id: str, request: dict, rt: Runti
 
 @router.get("/skills/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_skill_execution(execution_id: str, rt: RuntimeDep = None):
-    """Get skill execution."""
+    """Get skill execution.
+
+    Args:
+        execution_id: execution 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     mgr = _skill_mgr(rt)
     record = await store.get_skill_execution(execution_id) if store else None
@@ -1345,7 +1491,14 @@ async def get_skill_execution(execution_id: str, rt: RuntimeDep = None):
 
 @router.get("/skills/{skill_id}/executions", response_model=Dict[str, Any])
 async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
-    """List skill executions."""
+    """List skill executions.
+
+    Args:
+        skill_id: skill 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if store:
         items, total = await store.list_skill_executions(skill_id, limit=limit, offset=offset)
@@ -1370,7 +1523,12 @@ async def list_skill_executions(skill_id: str, limit: int = 100, offset: int = 0
 
 @router.get("/skills/{skill_id}/trigger-conditions", response_model=Dict[str, Any])
 async def get_skill_trigger_conditions(skill_id: str, rt: RuntimeDep = None):
-    """Get skill trigger conditions (routing rules)."""
+    """Get skill trigger conditions (routing rules).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1382,7 +1540,13 @@ async def get_skill_trigger_conditions(skill_id: str, rt: RuntimeDep = None):
 
 @router.put("/skills/{skill_id}/trigger-conditions", response_model=Dict[str, Any])
 async def update_skill_trigger_conditions(skill_id: str, request: dict, rt: RuntimeDep = None):
-    """Update skill trigger conditions."""
+    """Update skill trigger conditions.
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1396,7 +1560,13 @@ async def update_skill_trigger_conditions(skill_id: str, request: dict, rt: Runt
 
 @router.post("/skills/{skill_id}/test-trigger", response_model=Dict[str, Any])
 async def test_skill_trigger(skill_id: str, request: dict, rt: RuntimeDep = None):
-    """Test if skill would be triggered by given input."""
+    """Test if skill would be triggered by given input.
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1415,7 +1585,12 @@ async def test_skill_trigger(skill_id: str, request: dict, rt: RuntimeDep = None
 
 @router.get("/skills/{skill_id}/evolution", response_model=Dict[str, Any])
 async def get_skill_evolution_status(skill_id: str, rt: RuntimeDep = None):
-    """Get skill evolution status (CAPTURED/FIX/DERIVED)."""
+    """Get skill evolution status (CAPTURED/FIX/DERIVED).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1435,7 +1610,13 @@ async def get_skill_evolution_status(skill_id: str, rt: RuntimeDep = None):
 
 @router.post("/skills/{skill_id}/evolution", response_model=Dict[str, Any])
 async def trigger_skill_evolution(skill_id: str, request: dict, rt: RuntimeDep = None):
-    """Manually trigger skill evolution."""
+    """Manually trigger skill evolution.
+
+    Args:
+        skill_id: skill 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1453,7 +1634,12 @@ async def trigger_skill_evolution(skill_id: str, request: dict, rt: RuntimeDep =
 
 @router.get("/skills/{skill_id}/lineage", response_model=Dict[str, Any])
 async def get_skill_lineage(skill_id: str, rt: RuntimeDep = None):
-    """Get skill lineage (evolution history)."""
+    """Get skill lineage (evolution history).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1466,13 +1652,26 @@ async def get_skill_lineage(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/skills/{skill_id}/captures", response_model=Dict[str, Any])
 async def get_skill_captures(skill_id: str, limit: int = 100, offset: int = 0):
-    """Get captured interactions for skill (placeholder)."""
+    """Get captured interactions for skill (placeholder).
+
+    Args:
+        skill_id: skill 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     return {"captures": [], "total": 0, "note": "Captures are stored in skill evolution module"}
 
 
 @router.get("/skills/{skill_id}/fixes", response_model=Dict[str, Any])
 async def get_skill_fixes(skill_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
-    """Get applied fixes for skill."""
+    """Get applied fixes for skill.
+
+    Args:
+        skill_id: skill 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1486,7 +1685,12 @@ async def get_skill_fixes(skill_id: str, limit: int = 100, offset: int = 0, rt: 
 
 @router.get("/skills/{skill_id}/derived", response_model=Dict[str, Any])
 async def get_skill_derived(skill_id: str, rt: RuntimeDep = None):
-    """Get derived skills (children) from this skill."""
+    """Get derived skills (children) from this skill.
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")
@@ -1500,7 +1704,12 @@ async def get_skill_derived(skill_id: str, rt: RuntimeDep = None):
 
 @router.get("/skills/{skill_id}/sop", response_model=Dict[str, Any])
 async def get_skill_sop(skill_id: str, rt: RuntimeDep = None):
-    """Get skill SOP (SKILL.md body content)."""
+    """Get skill SOP (SKILL.md body content).
+
+    Args:
+        skill_id: skill 标识。
+        rt: rt 参数。
+    """
     mgr = _skill_mgr(rt)
     if not mgr:
         raise HTTPException(status_code=503, detail="Skill manager not available")

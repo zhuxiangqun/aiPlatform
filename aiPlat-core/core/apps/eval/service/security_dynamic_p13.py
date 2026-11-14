@@ -33,6 +33,14 @@ def default_http_transport(
     body: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, str]:
+    """default_http_transport。
+
+    Args:
+        method: method 参数。
+        url: url 参数。
+        body: 请求体 dict。
+        headers: headers 参数。
+    """
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method=method)
     for k, v in (headers or {}).items():
@@ -183,7 +191,13 @@ def evaluate_cross_tenant(
     transport: Optional[Transport] = None,
     repeats: int = 1,
 ) -> Dict[str, Any]:
-    """Cross-tenant probes must reject 100% across repeats."""
+    """Cross-tenant probes must reject 100% across repeats.
+
+    Args:
+        base_url: base_url 参数。
+        transport: transport 参数。
+        repeats: repeats 参数。
+    """
     xport = transport or default_http_transport
     repeats = max(1, int(repeats))
     rows: List[Dict[str, Any]] = []
@@ -217,8 +231,9 @@ def evaluate_injection_asr(
 ) -> Dict[str, Any]:
     """Record baseline attack success rate for injection probes.
 
-    Attack success = HTTP not in expect_reject AND body matches leak regex,
-    OR HTTP 200 with leak regex. Reject/guard without leak → attack failed (good).
+    Args:
+        base_url: base_url 参数。
+        transport: transport 参数。
     """
     xport = transport or default_http_transport
     rows: List[Dict[str, Any]] = []
@@ -272,7 +287,12 @@ def evaluate_output_encoding(
     base_url: str,
     transport: Optional[Transport] = None,
 ) -> Dict[str, Any]:
-    """Fail if unsafe raw payload echoed unescaped in response body."""
+    """Fail if unsafe raw payload echoed unescaped in response body.
+
+    Args:
+        base_url: base_url 参数。
+        transport: transport 参数。
+    """
     xport = transport or default_http_transport
     rows: List[Dict[str, Any]] = []
     for probe in OUTPUT_ENCODING_PROBES:
@@ -312,7 +332,13 @@ def run_security_dynamic_p13(
     transport: Optional[Transport] = None,
     cross_tenant_repeats: int = 2,
 ) -> Dict[str, Any]:
-    """Aggregate P1-3 dynamic suites."""
+    """Aggregate P1-3 dynamic suites.
+
+    Args:
+        base_url: base_url 参数。
+        transport: transport 参数。
+        cross_tenant_repeats: cross_tenant_repeats 参数。
+    """
     base = (base_url or os.getenv("AIPLAT_DYNAMIC_SECURITY_BASE") or "").strip()
     if not base:
         return {

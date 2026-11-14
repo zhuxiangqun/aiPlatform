@@ -23,7 +23,16 @@ _logger = logging.getLogger("aiplat.platform.app_service")
 
 class AppService:
 
+    """AppService。"""
     async def publish(self, workflow_id: str, name: str, mode: str = "chat", description: str = "") -> Dict[str, Any]:
+        """publish。
+
+        Args:
+            workflow_id: workflow 标识。
+            name: name 参数。
+            mode: mode 参数。
+            description: description 参数。
+        """
         wf = get_workflow(workflow_id)
         if not wf:
             raise ValueError(f"workflow not found: {workflow_id}")
@@ -38,11 +47,20 @@ class AppService:
         return app
 
     def register_studio(self, app_id: str, name: str, project_id: str, app_url: str = "") -> Dict[str, Any]:
-        """注册 Studio 生成的应用。不要求 workflow_id，写入 capability_type='studio'。"""
+        """注册 Studio 生成的应用。不要求 workflow_id，写入 capability_type='studio'。
+
+        Args:
+            app_id: app 标识。
+            name: name 参数。
+            project_id: project 标识。
+            app_url: app_url 参数。
+        """
         import time
         return create_studio_app(app_id, name or project_id, project_id, app_url)
 
     async def list(self) -> List[Dict[str, Any]]:
+        """list。
+        """
         apps = list_apps()
         for a in apps:
             try:
@@ -56,6 +74,11 @@ class AppService:
         return apps
 
     async def get(self, app_id: str) -> Optional[Dict[str, Any]]:
+        """get。
+
+        Args:
+            app_id: app 标识。
+        """
         app = get_app(app_id)
         if not app:
             return None
@@ -74,6 +97,11 @@ class AppService:
 
     async def delete(self, app_id: str) -> bool:
         # ── Cascade cleanup for factory-deployed apps ──
+        """delete。
+
+        Args:
+            app_id: app 标识。
+        """
         if app_id.startswith("factory_"):
             import json, os, shutil
             project_id = app_id.replace("factory_", "", 1)
@@ -118,7 +146,12 @@ class AppService:
         return WorkflowService()._nodes_to_stages(nodes, edges)
 
     async def run_api(self, app_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """API mode: sync execute and return output."""
+        """API mode: sync execute and return output.
+
+        Args:
+            app_id: app 标识。
+            inputs: inputs 参数。
+        """
         app = get_app(app_id)
         if not app:
             raise ValueError(f"app not found: {app_id}")
@@ -146,7 +179,12 @@ class AppService:
         return {"run_id": proj.project_id, "app_id": app_id, "mode": "api"}
 
     async def run_chat(self, app_id: str, message: str) -> Dict[str, Any]:
-        """Chat mode: execute workflow with conversation context."""
+        """Chat mode: execute workflow with conversation context.
+
+        Args:
+            app_id: app 标识。
+            message: message 参数。
+        """
         app = get_app(app_id)
         if not app:
             raise ValueError(f"app not found: {app_id}")
@@ -175,7 +213,13 @@ class AppService:
         return {"run_id": proj.project_id, "app_id": app_id, "input": message, "mode": "chat"}
 
     async def run_webhook(self, app_id: str, secret: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        """Webhook mode: verify secret, execute async."""
+        """Webhook mode: verify secret, execute async.
+
+        Args:
+            app_id: app 标识。
+            secret: secret 参数。
+            body: 请求体。
+        """
         stored = get_webhook_secret(app_id)
         if not stored or not hmac.compare_digest(stored, secret):
             raise ValueError("invalid webhook secret")

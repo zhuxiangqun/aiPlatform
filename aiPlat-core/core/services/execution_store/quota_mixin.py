@@ -31,6 +31,19 @@ class QuotaMixin:
         error: Optional[str] = None,
         payload: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """add_connector_delivery_attempt。
+
+        Args:
+            connector: connector 参数。
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            attempt: attempt 参数。
+            url: url 参数。
+            status: status 参数。
+            response_status: response_status 参数。
+            error: error 参数。
+            payload: 载荷 dict。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -90,6 +103,16 @@ class QuotaMixin:
         limit: int = 200,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 connector_delivery_attempts。
+
+        Args:
+            connector: connector 参数。
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -142,6 +165,17 @@ class QuotaMixin:
         attempts: int,
         error: str,
     ) -> Dict[str, Any]:
+        """enqueue_connector_delivery_dlq。
+
+        Args:
+            connector: connector 参数。
+            tenant_id: 租户 ID。
+            run_id: 运行 ID。
+            url: url 参数。
+            payload: 载荷 dict。
+            attempts: attempts 参数。
+            error: error 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -192,6 +226,11 @@ class QuotaMixin:
         return {**row, "payload": _json_loads(row.get("payload_json")) or {}}
 
     async def get_connector_delivery_dlq_item(self, dlq_id: str) -> Optional[Dict[str, Any]]:
+        """获取 connector_delivery_dlq_item。
+
+        Args:
+            dlq_id: dlq 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -218,6 +257,15 @@ class QuotaMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 connector_delivery_dlq。
+
+        Args:
+            status: status 参数。
+            tenant_id: 租户 ID。
+            connector: connector 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -255,6 +303,11 @@ class QuotaMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def resolve_connector_delivery_dlq_item(self, dlq_id: str) -> bool:
+        """resolve_connector_delivery_dlq_item。
+
+        Args:
+            dlq_id: dlq 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -274,6 +327,11 @@ class QuotaMixin:
         return bool(await anyio.to_thread.run_sync(_sync))
 
     async def delete_connector_delivery_dlq_item(self, dlq_id: str) -> bool:
+        """删除 connector_delivery_dlq_item。
+
+        Args:
+            dlq_id: dlq 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 

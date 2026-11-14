@@ -51,6 +51,11 @@ class ReActGraph:
     """
 
     def __init__(self, config: Optional[ReActGraphConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or ReActGraphConfig()
         # Keep compatibility: external StateGraph may exist, but run() uses internal compiled graph by default.
         self._graph = None

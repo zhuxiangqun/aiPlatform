@@ -1,3 +1,5 @@
+"""service_detector：模块接口。"""
+
 import logging
 """
 Service Detector - 检测本地服务状态
@@ -12,7 +14,13 @@ import subprocess
 
 
 async def check_port(host: str, port: int, timeout: float = 1.0) -> bool:
-    """检查端口是否可连接"""
+    """检查端口是否可连接。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+        timeout: 超时秒数。
+    """
     try:
         _, writer = await asyncio.wait_for(
             asyncio.open_connection(host, port),
@@ -26,7 +34,12 @@ async def check_port(host: str, port: int, timeout: float = 1.0) -> bool:
 
 
 async def check_postgresql(host: str = "localhost", port: int = 5432) -> Dict[str, Any]:
-    """检查 PostgreSQL 状态"""
+    """检查 PostgreSQL 状态。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     result = {
         "running": False,
         "host": host,
@@ -62,7 +75,12 @@ async def check_postgresql(host: str = "localhost", port: int = 5432) -> Dict[st
 
 
 async def check_redis(host: str = "localhost", port: int = 6379) -> Dict[str, Any]:
-    """检查 Redis 状态"""
+    """检查 Redis 状态。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     result = {
         "running": False,
         "host": host,
@@ -100,7 +118,12 @@ async def check_redis(host: str = "localhost", port: int = 6379) -> Dict[str, An
 
 
 async def check_milvus(host: str = "localhost", port: int = 19530) -> Dict[str, Any]:
-    """检查 Milvus 状态"""
+    """检查 Milvus 状态。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     result = {
         "running": False,
         "host": host,
@@ -120,7 +143,12 @@ async def check_milvus(host: str = "localhost", port: int = 19530) -> Dict[str, 
 
 
 async def check_rabbitmq(host: str = "localhost", port: int = 5672) -> Dict[str, Any]:
-    """检查 RabbitMQ 状态"""
+    """检查 RabbitMQ 状态。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     result = {
         "running": False,
         "host": host,
@@ -139,7 +167,12 @@ async def check_rabbitmq(host: str = "localhost", port: int = 5672) -> Dict[str,
 
 
 async def check_ollama(host: str = "localhost", port: int = 11434) -> Dict[str, Any]:
-    """检查 Ollama 状态"""
+    """检查 Ollama 状态。
+
+    Args:
+        host: host 参数。
+        port: port 参数。
+    """
     result = {
         "running": False,
         "host": host,

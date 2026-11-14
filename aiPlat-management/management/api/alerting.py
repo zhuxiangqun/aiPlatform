@@ -88,10 +88,10 @@ async def resolve_alert(alert_id: str, request: Request) -> Dict[str, Any]:
 
 @router.get("/rules")
 async def get_alert_rules(request: Request) -> Dict[str, Any]:
-    """获取告警规则列表
-    
-    Returns:
-        告警规则列表
+    """获取告警规则列表。
+
+    Args:
+        request: FastAPI Request。
     """
     alert_engine = request.app.state.alert_engine
     rules = [
@@ -171,17 +171,32 @@ async def delete_alert_rule(rule_name: str, request: Request) -> Dict[str, Any]:
 
 @alias_router.get("")
 async def get_alerts_alias(request: Request, severity: Optional[str] = None) -> Dict[str, Any]:
-    """获取告警列表（别名路由）"""
+    """获取告警列表（别名路由）。
+
+    Args:
+        request: FastAPI Request。
+        severity: severity 参数。
+    """
     return await get_alerts(request, severity)
 
 
 @alias_router.post("/{alert_id}/acknowledge")
 async def acknowledge_alert_alias(alert_id: str, request: Request) -> Dict[str, Any]:
-    """确认告警（别名路由）"""
+    """确认告警（别名路由）。
+
+    Args:
+        alert_id: alert 标识。
+        request: FastAPI Request。
+    """
     return await acknowledge_alert(alert_id, request)
 
 
 @alias_router.post("/{alert_id}/resolve")
 async def resolve_alert_alias(alert_id: str, request: Request) -> Dict[str, Any]:
-    """解决告警（别名路由）"""
+    """解决告警（别名路由）。
+
+    Args:
+        alert_id: alert 标识。
+        request: FastAPI Request。
+    """
     return await resolve_alert(alert_id, request)

@@ -87,6 +87,11 @@ class ToolDiscovery:
     """Scans user tool directories and registers discovered tools."""
 
     def __init__(self, tools_dir: Optional[Path] = None):
+        """初始化。
+
+        Args:
+            tools_dir: tools_dir 参数。
+        """
         self._tools_dir = tools_dir or _default_tools_dir()
 
     def scan(self) -> List[Dict[str, Any]]:
@@ -289,16 +294,26 @@ class ToolDiscovery:
 
 
 def get_tool_discovery() -> ToolDiscovery:
+    """获取 tool_discovery。
+    """
     return ToolDiscovery()
 
 
 def register_with_report(tools_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """Module-level Phase D entry (also ToolDiscovery.register_with_report)."""
+    """Module-level Phase D entry (also ToolDiscovery.register_with_report).
+
+    Args:
+        tools_dir: tools_dir 参数。
+    """
     return ToolDiscovery(tools_dir).register_with_report()
 
 
 def last_report_or_refresh(tools_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """Diagnostics: return cached report, or run register_with_report once."""
+    """Diagnostics: return cached report, or run register_with_report once.
+
+    Args:
+        tools_dir: tools_dir 参数。
+    """
     cached = get_last_discovery_report()
     if cached is not None:
         return cached

@@ -37,6 +37,11 @@ class InfraAdapter:
     """
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint or "http://localhost:8001"
         self.layer_name = "infra"
         self._init_configs()

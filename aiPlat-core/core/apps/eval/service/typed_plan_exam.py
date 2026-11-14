@@ -1,9 +1,15 @@
-"""Shared Plan-chain exam for typed packs (prompt / workflow / model / dataset).
+"""类型化 Plan 链考试：prompt / workflow / model / dataset。
 
-Object Contract §0.8: versioned ``{type}/*`` JSON + oracle + executable entry.
-prompt/workflow/model: lexical oracle; dry fixture stub / live optional LLM.
-dataset: deterministic fixture_table asserts (≠ KB retrieval path).
-accuracy_claim=false.
+职责
+----
+按 Object Contract §0.8 加载版本化 ``{type}/*`` JSON，编译 Plan 后执行
+选中样本。prompt/workflow/model 走词法 oracle（dry 夹具 stub / 可选 live LLM）；
+dataset 走确定性 ``fixture_table`` 断言（≠ KB 检索路径）。
+
+非目标
+------
+- 不翻 ``accuracy_claim``（恒为 false）
+- 不做 HTTP；不做 KB sample 评测路径
 """
 from __future__ import annotations
 
@@ -31,7 +37,19 @@ def _engine_eval_sets_dir() -> Path:
 
 
 def load_typed_set_json(set_id: str, *, object_type: str) -> Dict[str, Any]:
-    """Load ``{object_type}/<stem>`` from engine eval_sets."""
+    """从 engine eval_sets 加载 ``{object_type}/<stem>.json``。
+
+    Args:
+        set_id: 形如 ``{object_type}/<stem>`` 的集合 ID。
+        object_type: 对象类型（prompt/workflow/model/dataset）。
+
+    Returns:
+        集合 JSON dict。
+
+    Raises:
+        ValueError: 类型不支持或 set_id 非法。
+        FileNotFoundError: 文件不存在。
+    """
     ot = str(object_type or "").strip()
     if ot not in _SUPPORTED:
         raise ValueError(f"unsupported typed plan object_type: {ot!r}")
@@ -71,7 +89,15 @@ def _path_ok(output: str, path: Mapping[str, Any]) -> bool:
 def score_lexical_output(
     output: str, criteria: Mapping[str, Any] | None
 ) -> Dict[str, Any]:
-    """Lexical oracle: must_contain / must_not_contain / paths (OR)."""
+    """词法 oracle：``must_contain`` / ``must_not_contain`` / ``paths``（OR）。
+
+    Args:
+        output: 待判文本。
+        criteria: 成功准则；可含 paths 或 must_* 字段；非 Mapping 视为空。
+
+    Returns:
+        含 ``status``（pass/fail/inconclusive）与 ``summary`` 的评分 dict。
+    """
     crit = criteria if isinstance(criteria, Mapping) else {}
     out = output or ""
     paths = crit.get("paths")
@@ -127,7 +153,14 @@ def score_lexical_output(
 
 
 def dry_stub_output(task: Mapping[str, Any]) -> str:
-    """Deterministic fixture reply for dry runs (≠ live subject claim)."""
+    """dry 跑确定性夹具回复（≠ live 主体声明）。
+
+    Args:
+        task: 任务 dict（``category`` / ``task_id`` / ``success_criteria`` 等）。
+
+    Returns:
+        可被词法 oracle 命中的 stub 文本。
+    """
     cat = str(task.get("category") or "").lower()
     tid = str(task.get("task_id") or "")
     crit = task.get("success_criteria") if isinstance(task.get("success_criteria"), dict) else {}
@@ -151,6 +184,12 @@ def dry_stub_output(task: Mapping[str, Any]) -> str:
 
 
 async def live_llm_output(user_input: str, *, model_name: str) -> str:
+    """live_llm_output。
+
+    Args:
+        user_input: user_input 参数。
+        model_name: model_name 参数。
+    """
     from core.api.core_facade import create_selected_adapter, sys_llm_generate
     from core.harness.utils.model_injection import best_model_for_purpose
 
@@ -162,7 +201,11 @@ async def live_llm_output(user_input: str, *, model_name: str) -> str:
 
 
 def score_dataset_task(task: Mapping[str, Any]) -> Dict[str, Any]:
-    """Deterministic asserts on embedded fixture_table (≠ KB sample eval)."""
+    """Deterministic asserts on embedded fixture_table (≠ KB sample eval).
+
+    Args:
+        task: task 参数。
+    """
     table = task.get("fixture_table") if isinstance(task.get("fixture_table"), dict) else {}
     crit = task.get("success_criteria") if isinstance(task.get("success_criteria"), dict) else {}
     spec = crit.get("dataset_assert") if isinstance(crit.get("dataset_assert"), dict) else {}
@@ -230,7 +273,12 @@ def score_dataset_task(task: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def annotate_typed_plan_runtime(*, object_type: str, live: bool) -> Dict[str, Any]:
-    """Actual plane stays fixture; target_runtime + execution_mode record intent."""
+    """Actual plane stays fixture; target_runtime + execution_mode record intent.
+
+    Args:
+        object_type: object_type 参数。
+        live: 是否 live（非 fixture）路径。
+    """
     ot = str(object_type or "").strip()
     if ot not in _SUPPORTED:
         raise ValueError(f"unsupported typed plan object_type: {ot!r}")
@@ -279,7 +327,20 @@ async def run_typed_plan_exam(
     source_refs: Optional[Sequence[str]] = None,
     run_key: str = "",
 ) -> Dict[str, Any]:
-    """Compile Plan for typed object + execute selected ``{type}/*`` sets."""
+    """Compile Plan for typed object + execute selected ``{type}/*`` sets.
+
+    Args:
+        object_type: object_type 参数。
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: 是否 live（非 fixture）路径。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+        source_refs: source_refs 参数。
+        run_key: run_key 参数。
+    """
     from core.apps.eval.service.eval_plan import (
         attach_evaluation_plan,
         compile_plan_for_object,
@@ -472,10 +533,21 @@ async def run_typed_plan_exam(
 
 # Back-compat aliases used by prompt_plan_ops / tests
 def load_prompt_set_json(set_id: str) -> Dict[str, Any]:
+    """加载 prompt_set_json。
+
+    Args:
+        set_id: set 标识。
+    """
     return load_typed_set_json(set_id, object_type="prompt")
 
 
 def score_prompt_output(
     output: str, criteria: Mapping[str, Any] | None
 ) -> Dict[str, Any]:
+    """score_prompt_output。
+
+    Args:
+        output: output 参数。
+        criteria: criteria 参数。
+    """
     return score_lexical_output(output, criteria)

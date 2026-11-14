@@ -50,7 +50,10 @@ def _verify_workflow_signature(mgr, wf) -> None:
 
 class WorkflowService:
 
+    """WorkflowService。"""
     async def list(self) -> List[Dict[str, Any]]:
+        """list。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             return mgr.list_workflow_dicts()
@@ -62,6 +65,11 @@ class WorkflowService:
         return wfs
 
     async def get(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+        """get。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             return mgr.get_workflow_dict(workflow_id)
@@ -69,6 +77,15 @@ class WorkflowService:
         return get_workflow(workflow_id)
 
     async def create(self, name: str, description: str = "", nodes: List[Any] = None, edges: List[Any] = None, *, reuse_equivalent: bool = True) -> Dict[str, Any]:
+        """create。
+
+        Args:
+            name: name 参数。
+            description: description 参数。
+            nodes: nodes 参数。
+            edges: edges 参数。
+            reuse_equivalent: reuse_equivalent 参数。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             wf = mgr.create_workflow(
@@ -91,11 +108,19 @@ class WorkflowService:
         return create_workflow(wid, name.strip(), description.strip(), nodes or [], edges or [])
 
     async def dedupe(self) -> Dict[str, Any]:
+        """dedupe。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             return mgr.dedupe_workflows()
         return {"kept": 0, "removed": [], "removed_count": 0, "note": "sqlite_fallback_no_dedupe"}
     async def update(self, workflow_id: str, **kwargs: Any) -> Optional[Dict[str, Any]]:
+        """update。
+
+        Args:
+            workflow_id: workflow 标识。
+            kwargs: kwargs 参数。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             result = mgr.update_workflow(workflow_id, **kwargs)
@@ -109,6 +134,11 @@ class WorkflowService:
         return result
 
     async def delete(self, workflow_id: str) -> bool:
+        """delete。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         mgr = _get_wf_mgr()
         if mgr:
             return mgr.delete_workflow(workflow_id)
@@ -116,11 +146,21 @@ class WorkflowService:
         return delete_workflow(workflow_id)
 
     async def list_runs(self, workflow_id: str) -> List[Dict[str, Any]]:
+        """列出 runs。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         from storage.sqlite import list_workflow_runs
         return list_workflow_runs(workflow_id)
 
     async def execute(self, workflow_id: str, launch_name: str = "") -> Dict[str, Any]:
-        """## platform:allowed — Execute workflow with agent discovery."""
+        """## platform:allowed — Execute workflow with agent discovery.
+
+        Args:
+            workflow_id: workflow 标识。
+            launch_name: launch_name 参数。
+        """
         # Resolve workflow from manager or SQLite
         mgr = _get_wf_mgr()
         if mgr:
@@ -245,6 +285,11 @@ class WorkflowService:
         return stages
 
     async def list_runs(self, workflow_id: str) -> list:
+        """列出 runs。
+
+        Args:
+            workflow_id: workflow 标识。
+        """
         return list_workflow_runs(workflow_id)  # noqa: F821
 
 

@@ -84,7 +84,16 @@ def evaluate_evolve_proposal(
     touches_abox: bool = False,
     touches_ontology: bool = False,
 ) -> Dict[str, Any]:
-    """Run evolve_proposal gate. Whitelist violations → require HITL / reject."""
+    """Run evolve_proposal gate. Whitelist violations → require HITL / reject.
+
+    Args:
+        keys: keys 参数。
+        proposed_changes: proposed_changes 参数。
+        actor: 操作者身份。
+        domain_id: domain 标识。
+        touches_abox: touches_abox 参数。
+        touches_ontology: touches_ontology 参数。
+    """
     from core.api.core_facade import check_change_surface, load_audit_schema
 
     schema = load_audit_schema()
@@ -157,6 +166,17 @@ def enqueue_evolve_proposal(
     touches_ontology: bool = False,
     summary: str = "",
 ) -> Dict[str, Any]:
+    """enqueue_evolve_proposal。
+
+    Args:
+        keys: keys 参数。
+        proposed_changes: proposed_changes 参数。
+        actor: 操作者身份。
+        domain_id: domain 标识。
+        touches_abox: touches_abox 参数。
+        touches_ontology: touches_ontology 参数。
+        summary: summary 参数。
+    """
     gate = evaluate_evolve_proposal(
         keys=keys,
         proposed_changes=proposed_changes,
@@ -192,6 +212,11 @@ def enqueue_evolve_proposal(
 
 
 def list_evolve_proposals(limit: int = 20) -> List[Dict[str, Any]]:
+    """列出 evolve_proposals。
+
+    Args:
+        limit: 返回条数上限。
+    """
     rows: List[Dict[str, Any]] = []
     for fp in sorted(_queue_dir().glob("evo_*.json"), reverse=True):
         try:
@@ -204,6 +229,11 @@ def list_evolve_proposals(limit: int = 20) -> List[Dict[str, Any]]:
 
 
 def get_evolve_proposal(proposal_id: str) -> Optional[Dict[str, Any]]:
+    """获取 evolve_proposal。
+
+    Args:
+        proposal_id: proposal 标识。
+    """
     fp = _queue_dir() / f"{proposal_id}.json"
     if not fp.is_file():
         return None
@@ -218,6 +248,12 @@ def _save(record: Dict[str, Any]) -> None:
 
 
 def approve_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str, Any]:
+    """approve_evolve_proposal。
+
+    Args:
+        proposal_id: proposal 标识。
+        actor: 操作者身份。
+    """
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -235,6 +271,13 @@ def approve_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[s
 
 
 def reject_evolve_proposal(proposal_id: str, actor: str = "approver", reason: str = "") -> Dict[str, Any]:
+    """reject_evolve_proposal。
+
+    Args:
+        proposal_id: proposal 标识。
+        actor: 操作者身份。
+        reason: reason 参数。
+    """
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -250,7 +293,12 @@ def reject_evolve_proposal(proposal_id: str, actor: str = "approver", reason: st
 
 
 def apply_evolve_proposal(proposal_id: str, actor: str = "approver") -> Dict[str, Any]:
-    """Apply whitelist config keys, then enter observation window (status=observing)."""
+    """Apply whitelist config keys, then enter observation window (status=observing).
+
+    Args:
+        proposal_id: proposal 标识。
+        actor: 操作者身份。
+    """
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -295,7 +343,13 @@ def rollback_evolve_proposal(
     *,
     reason: str = "manual",
 ) -> Dict[str, Any]:
-    """Rollback active patch (observing / applied / stable). Records survival for D6."""
+    """Rollback active patch (observing / applied / stable). Records survival for D6.
+
+    Args:
+        proposal_id: proposal 标识。
+        actor: 操作者身份。
+        reason: reason 参数。
+    """
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -325,7 +379,11 @@ def rollback_evolve_proposal(
 
 
 def list_evolve_applied(limit: int = 20) -> List[Dict[str, Any]]:
-    """Proposals that entered apply (observing / stable / applied / rolled_back)."""
+    """Proposals that entered apply (observing / stable / applied / rolled_back).
+
+    Args:
+        limit: 返回条数上限。
+    """
     want = _ACTIVE_PATCH | {"rolled_back"}
     rows = [p for p in list_evolve_proposals(max(limit * 3, 50)) if p.get("review_status") in want]
     return rows[:limit]
@@ -339,7 +397,15 @@ def record_evolve_observation(
     baseline_value: Optional[float] = None,
     actor: str = "system",
 ) -> Dict[str, Any]:
-    """Append observation sample; auto-rollback on quality_score breach."""
+    """Append observation sample; auto-rollback on quality_score breach.
+
+    Args:
+        proposal_id: proposal 标识。
+        metric_name: metric_name 参数。
+        metric_value: metric_value 参数。
+        baseline_value: baseline_value 参数。
+        actor: 操作者身份。
+    """
     rec = get_evolve_proposal(proposal_id)
     if not rec:
         raise FileNotFoundError(proposal_id)
@@ -378,7 +444,11 @@ def record_evolve_observation(
 
 
 def tick_evolve_observations(actor: str = "system") -> Dict[str, Any]:
-    """Promote observing → stable when observation_until elapsed; record survival."""
+    """Promote observing → stable when observation_until elapsed; record survival.
+
+    Args:
+        actor: 操作者身份。
+    """
     now = time.time()
     promoted: List[str] = []
     still: List[str] = []
@@ -423,9 +493,11 @@ def sync_evolve_ops_signals(
 ) -> Dict[str, Any]:
     """Push Quality Bus / canary signals into observing patches (design §5/§6).
 
-    - quality_score: recorded per observing proposal; breach may auto-rollback
-    - canary_ok=False: rollback all observing with reason=canary_anomaly
-    Core stays free of platform imports — caller gathers scores.
+    Args:
+        quality_score: quality_score 参数。
+        quality_baseline: quality_baseline 参数。
+        canary_ok: canary_ok 参数。
+        actor: 操作者身份。
     """
     observing = [p for p in list_evolve_proposals(100) if p.get("review_status") == "observing"]
     observed: List[str] = []
@@ -536,6 +608,8 @@ def get_evolve_metrics() -> Dict[str, Any]:
 
 
 def get_evolve_applied_config() -> Dict[str, Any]:
+    """获取 evolve_applied_config。
+    """
     return _load_config()
 
 

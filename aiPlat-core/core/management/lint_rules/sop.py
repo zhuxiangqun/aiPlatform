@@ -57,11 +57,17 @@ def _has_checklist_signal(sop: str, skill: Any) -> bool:
 
 
 class SopGoalCheck(LintRule):
+    """SopGoalCheck。"""
     code = "sop_missing_goal"
     level = "warning"
     category = "sop"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         sop = _read_skill_md_body(skill)
         if sop and not _has_goal_signal(sop, skill):
             return [LintIssue(
@@ -89,11 +95,17 @@ def _has_flow_signal(sop: str) -> bool:
 
 
 class SopFlowCheck(LintRule):
+    """SopFlowCheck。"""
     code = "sop_missing_flow"
     level = "warning"
     category = "sop"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         sop = _read_skill_md_body(skill)
         if sop and not _has_flow_signal(sop):
             return [LintIssue(
@@ -105,11 +117,17 @@ class SopFlowCheck(LintRule):
 
 
 class SopChecklistCheck(LintRule):
+    """SopChecklistCheck。"""
     code = "sop_missing_checklist"
     level = "warning"
     category = "sop"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         sop = _read_skill_md_body(skill)
         if sop and not _has_checklist_signal(sop, skill):
             return [LintIssue(
@@ -121,11 +139,17 @@ class SopChecklistCheck(LintRule):
 
 
 class SopBodyCheck(LintRule):
+    """SopBodyCheck。"""
     code = "missing_sop_body"
     level = "warning"
     category = "sop"
 
     def check(self, skill: Any) -> List[LintIssue]:
+        """check。
+
+        Args:
+            skill: skill 参数。
+        """
         sop = _read_skill_md_body(skill)
         if not sop:
             return [LintIssue(

@@ -62,9 +62,11 @@ def get_code_graph(
     depth: int = Query(2),
 ) -> Dict[str, Any]:
     """Return code dependency graph in ECharts force-layout format.
-    
-    When center is provided, extracts a subgraph centered on matching nodes
-    with BFS depth=depth (default 2). Otherwise returns the full graph.
+
+    Args:
+        layer: layer 参数。
+        center: center 参数。
+        depth: depth 参数。
     """
     try:
         from core.harness.knowledge.code_graph import effective_cycles
@@ -316,7 +318,14 @@ def get_wiki_graph(
     source: str = Query(""),
     max_nodes: int = Query(300),
 ) -> Dict[str, Any]:
-    """Return wiki knowledge graph in ECharts force-layout format (3rd tab)."""
+    """Return wiki knowledge graph in ECharts force-layout format (3rd tab).
+
+    Args:
+        category: category 参数。
+        keyword: keyword 参数。
+        source: source 参数。
+        max_nodes: max_nodes 参数。
+    """
     try:
         from core.api.core_facade import build_graph as build_wiki_graph
         data = build_wiki_graph(category=category, keyword=keyword, source=source, max_nodes=max_nodes)
@@ -338,7 +347,11 @@ def get_wiki_graph(
 
 @router.get("/node/{node_id:path}", response_model=Dict[str, Any])
 def get_node_detail(node_id: str) -> Dict[str, Any]:
-    """Return details for a graph node: code, capability, or wiki."""
+    """Return details for a graph node: code, capability, or wiki.
+
+    Args:
+        node_id: node 标识。
+    """
     try:
         from core.api.core_facade import build_graph, default_roots, repo_root, blast
 
@@ -433,7 +446,12 @@ def get_node_detail(node_id: str) -> Dict[str, Any]:
 
 @router.get("/search", response_model=Dict[str, Any])
 def search_nodes(q: str = Query(...), limit: int = Query(20)) -> List[Dict[str, Any]]:
-    """Fuzzy search nodes by name/path."""
+    """Fuzzy search nodes by name/path.
+
+    Args:
+        q: q 参数。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import build_graph, default_roots, repo_root
 
@@ -465,7 +483,11 @@ def search_nodes(q: str = Query(...), limit: int = Query(20)) -> List[Dict[str, 
 
 @router.get("/global-search", response_model=Dict[str, Any])
 def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
-    """Search across code, capability, and wiki graphs (read-only SQLite — no rebuild)."""
+    """Search across code, capability, and wiki graphs (read-only SQLite — no rebuild).
+
+    Args:
+        q: q 参数。
+    """
     try:
         from core.harness.knowledge.code_graph_persist import has_cache, load_nodes, search_fts, init_db
         from core.harness.knowledge.cap_graph_persist import load_nodes as load_cap_nodes
@@ -544,7 +566,11 @@ def global_search(q: str = Query("", min_length=2)) -> Dict[str, Any]:
 
 @router.post("/ask", response_model=Dict[str, Any])
 async def graph_ask(req: Dict[str, Any]) -> Dict[str, Any]:
-    """Translate a natural language question into a sysgraph query using a local or configured model."""
+    """Translate a natural language question into a sysgraph query using a local or configured model.
+
+    Args:
+        req: req 参数。
+    """
     question = str(req.get("question", "")).strip()
     if not question:
         raise HTTPException(status_code=400, detail="question is required")
@@ -811,7 +837,11 @@ def _describe_layer(layer: str = "core", question_type: str = "capabilities") ->
 
 @router.post("/chat", response_model=Dict[str, Any])
 async def graph_chat(req: Dict[str, Any]) -> StreamingResponse:
-    """SSE-streamed AI chat with knowledge graph context injection."""
+    """SSE-streamed AI chat with knowledge graph context injection.
+
+    Args:
+        req: req 参数。
+    """
     question = req.get("question", "")
     history = req.get("history", [])
     if not question:
@@ -902,8 +932,9 @@ async def get_codebase_stats() -> Dict[str, Any]:
 async def design_rule(domain_id: str = "ai-knowledge", text: str = ""):
     """Translate natural language business requirement into an inference rule.
 
-    POST body: {"domain_id": "ai-knowledge", "text": "当客户合同金额超过100万时标记为高价值"}
-    Returns: {"rule": {...}, "validation": {...}, "existing_related": [...]}
+    Args:
+        domain_id: domain 标识。
+        text: 文本内容。
     """
     from core.harness.ontology_engine.rule_designer import design_rule as _design
     if not text:
@@ -915,8 +946,9 @@ async def design_rule(domain_id: str = "ai-knowledge", text: str = ""):
 async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = None):
     """Deploy an inference rule to the domain.
 
-    POST body: {"domain_id": "ai-knowledge", "rule": {"name": "...", "premises": [...], "conclusion": {...}}}
-    Returns: {"deployed": true, "rule_name": "...", "total_rules": N}
+    Args:
+        domain_id: domain 标识。
+        rule: rule 参数。
     """
     from core.harness.ontology_engine.rule_designer import deploy_rule as _deploy
     from core.harness.knowledge.ontology_yaml_gate import LiveYamlDirectWriteDenied
@@ -938,7 +970,8 @@ async def deploy_rule(domain_id: str = "ai-knowledge", rule: Dict[str, Any] = No
 async def list_domain_rules(domain_id: str = "ai-knowledge"):
     """List all inference rules for a domain.
 
-    Returns: {"domain": "ai-knowledge", "count": N, "rules": [...]}
+    Args:
+        domain_id: domain 标识。
     """
     from core.harness.ontology_engine.rule_designer import list_rules as _list
     return _list(domain_id)

@@ -23,6 +23,13 @@ class McpClient:
     """Lightweight MCP client using JSON-RPC over stdio subprocess."""
 
     def __init__(self, command: str, args: List[str], cwd: Optional[str] = None):
+        """初始化。
+
+        Args:
+            command: command 参数。
+            args: args 参数。
+            cwd: cwd 参数。
+        """
         self._command = command
         self._args = args
         self._cwd = cwd
@@ -33,6 +40,8 @@ class McpClient:
         self._initialized = False
 
     async def start(self) -> bool:
+        """start。
+        """
         try:
             # All MCP servers share the same Python as the server (.venv)
             command = sys.executable if self._command == "python3" else self._command
@@ -61,6 +70,8 @@ class McpClient:
             return False
 
     async def stop(self) -> None:
+        """stop。
+        """
         if self._process:
             try:
                 self._process.terminate()
@@ -73,12 +84,20 @@ class McpClient:
             self._process = None
 
     async def list_tools(self) -> List[Dict[str, Any]]:
+        """列出 tools。
+        """
         result = await self._call("tools/list", {})
         if isinstance(result, dict):
             return result.get("tools", [])
         return []
 
     async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
+        """call_tool。
+
+        Args:
+            name: name 参数。
+            arguments: arguments 参数。
+        """
         return await self._call("tools/call", {"name": name, "arguments": arguments})
 
     async def _call(self, method: str, params: Dict[str, Any]) -> Any:
@@ -146,13 +165,15 @@ class McpAdapter:
     """Adapter that discovers tools from MCP servers and registers them."""
 
     def __init__(self):
+        """初始化。
+        """
         self._servers: Dict[str, McpClient] = {}
 
     async def connect_all(self, servers: List[Dict[str, Any]]) -> int:
         """Connect to all configured MCP servers.
 
-        Each server dict should have: name, command, args (optional).
-        Returns number of successfully connected servers.
+        Args:
+            servers: servers 参数。
         """
         count = 0
         for srv in servers:
@@ -170,6 +191,8 @@ class McpAdapter:
         return count
 
     async def disconnect_all(self) -> None:
+        """disconnect_all。
+        """
         for client in self._servers.values():
             await client.stop()
         self._servers.clear()
@@ -202,6 +225,13 @@ class McpAdapter:
         return all_tools
 
     async def call_tool(self, server_name: str, tool_name: str, arguments: Dict[str, Any]) -> Any:
+        """call_tool。
+
+        Args:
+            server_name: server_name 参数。
+            tool_name: tool_name 参数。
+            arguments: arguments 参数。
+        """
         client = self._servers.get(server_name)
         if client is None:
             raise RuntimeError(f"MCP server '{server_name}' not connected")
@@ -212,6 +242,8 @@ _mcp_adapter: Optional[McpAdapter] = None
 
 
 async def get_mcp_adapter() -> McpAdapter:
+    """获取 mcp_adapter。
+    """
     global _mcp_adapter
     if _mcp_adapter is None:
         _mcp_adapter = McpAdapter()

@@ -35,6 +35,8 @@ class BillingService:
     """计费服务"""
 
     def __init__(self):
+        """初始化。
+        """
         self._pricing: Dict[str, float] = {
             "agent": 0.001,
             "skill": 0.0005,
@@ -48,11 +50,20 @@ class BillingService:
         self._monthly_cost: Dict[str, float] = {}
 
     def set_price(self, capability_type: str, price_per_request: float) -> None:
-        """设置价格"""
+        """设置价格。
+
+        Args:
+            capability_type: capability_type 参数。
+            price_per_request: price_per_request 参数。
+        """
         self._pricing[capability_type] = price_per_request
 
     def get_price(self, capability_type: str) -> float:
-        """获取价格"""
+        """获取价格。
+
+        Args:
+            capability_type: capability_type 参数。
+        """
         return self._pricing.get(capability_type, 0.001)
 
     def record_usage(
@@ -63,7 +74,15 @@ class BillingService:
         input_tokens: int = 0,
         output_tokens: int = 0,
     ) -> Usage:
-        """记录用量"""
+        """记录用量。
+
+        Args:
+            tenant_id: 租户 ID。
+            capability_type: capability_type 参数。
+            capability_name: capability_name 参数。
+            input_tokens: input_tokens 参数。
+            output_tokens: output_tokens 参数。
+        """
         price = self.get_price(capability_type)
         cost = price * (1 + input_tokens / 1000 + output_tokens / 1000)
 
@@ -88,22 +107,41 @@ class BillingService:
         return usage
 
     def get_monthly_usage(self, tenant_id: str) -> Dict[str, int]:
-        """获取月度用量"""
+        """获取月度用量。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return self._monthly_usage.get(tenant_id, {"requests": 0, "tokens": 0})
 
     def get_monthly_cost(self, tenant_id: str) -> float:
-        """获取月度费用"""
+        """获取月度费用。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return self._monthly_cost.get(tenant_id, 0.0)
 
     def get_usage_by_type(self, tenant_id: str, capability_type: str) -> Dict[str, int]:
-        """按类型获取用量"""
+        """按类型获取用量。
+
+        Args:
+            tenant_id: 租户 ID。
+            capability_type: capability_type 参数。
+        """
         filtered = [r for r in self._records if r.tenant_id == tenant_id and r.capability_type == capability_type]
         requests = len(filtered)
         tokens = sum(r.input_tokens + r.output_tokens for r in filtered)
         return {"requests": requests, "tokens": tokens}
 
     def generate_bill(self, tenant_id: str, period_start: datetime, period_end: datetime) -> Bill:
-        """生成账单"""
+        """生成账单。
+
+        Args:
+            tenant_id: 租户 ID。
+            period_start: period_start 参数。
+            period_end: period_end 参数。
+        """
         usage = self._monthly_usage.get(tenant_id, {"requests": 0, "tokens": 0})
         cost = self._monthly_cost.get(tenant_id, 0.0)
 

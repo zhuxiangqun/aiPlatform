@@ -61,7 +61,12 @@ async def list_releases():
 
 @router.post("/releases")
 async def create_release(version: str = Query(...), message: str = Query("")):
-    """打 git tag 并 push"""
+    """打 git tag 并 push。
+
+    Args:
+        version: version 参数。
+        message: message 参数。
+    """
     if not version:
         raise HTTPException(status_code=400, detail="version is required")
 
@@ -149,7 +154,11 @@ async def deploy_status():
 
 @router.get("/deploy/download")
 async def download_build(path: str = Query("")):
-    """下载构建产物 zip 文件"""
+    """下载构建产物 zip 文件。
+
+    Args:
+        path: 路径。
+    """
     if not path or not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path, filename=os.path.basename(path), media_type="application/zip")
@@ -174,7 +183,11 @@ async def deploy_history():
 
 @router.delete("/deploy/delete")
 async def delete_build(path: str = Query("")):
-    """删除指定的部署包 zip 文件"""
+    """删除指定的部署包 zip 文件。
+
+    Args:
+        path: 路径。
+    """
     if not path or not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
     if "deploy-kit-" not in path or not path.endswith(".zip"):

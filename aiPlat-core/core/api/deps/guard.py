@@ -1,3 +1,5 @@
+"""guard：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -26,7 +28,13 @@ async def rbac_guard(
 ) -> Optional[JSONResponse]:
     """Return JSONResponse when denied, otherwise None.
 
-    Uses the same semantics as core.server._rbac_guard but without importing server.
+    Args:
+        http_request: http_request 参数。
+        payload: 载荷 dict。
+        action: action 参数。
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        run_id: 运行 ID。
     """
     actor = actor_from_http(http_request, payload)
     decision = rbac_check_permission(actor_role=actor.get("actor_role"), action=action, resource_type=resource_type)
@@ -82,7 +90,13 @@ def rate_limit_check(
     max_requests: int = None,
     window_seconds: int = 60,
 ) -> bool:
-    u"""Simple sliding-window rate limiter. Returns True if within limit."""
+    """Simple sliding-window rate limiter. Returns True if within limit.
+
+    Args:
+        client_id: client 标识。
+        max_requests: max_requests 参数。
+        window_seconds: window_seconds 参数。
+    """
     limit = max_requests or int(os.getenv("AIPLAT_RATE_LIMIT_PER_MINUTE", "120"))
     now = time.time()
     window = _rate_limit_store[client_id]

@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 class ObjectAction(str, Enum):
+    """ObjectAction。"""
     READ = "read"
     READ_BODY = "read_body"
     CITE = "cite"
@@ -40,6 +41,7 @@ class ObjectAction(str, Enum):
 
 @dataclass
 class ObjectPermission:
+    """ObjectPermission。"""
     entity_uri: str
     role: str
     tenant_id: str
@@ -49,6 +51,8 @@ class ObjectPermission:
     expires_at: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "entity_uri": self.entity_uri,
             "role": self.role,
@@ -61,6 +65,11 @@ class ObjectPermission:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ObjectPermission":
+        """from_dict。
+
+        Args:
+            data: data 参数。
+        """
         return cls(
             entity_uri=data.get("entity_uri", ""),
             role=data.get("role", ""),
@@ -109,6 +118,16 @@ def grant_object_permission(
     *,
     collection_id: str = "default",
 ) -> ObjectPermission:
+    """grant_object_permission。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        role: role 参数。
+        actions: actions 参数。
+        tenant_id: 租户 ID。
+        granted_by: granted_by 参数。
+        collection_id: collection 标识。
+    """
     action_set = {ObjectAction(a) for a in actions if a in {x.value for x in ObjectAction}}
     if not action_set:
         raise ValueError(f"No valid actions in {actions}")
@@ -138,6 +157,14 @@ def revoke_object_permission(
     *,
     collection_id: str = "default",
 ) -> bool:
+    """revoke_object_permission。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        role: role 参数。
+        action: action 参数。
+        collection_id: collection 标识。
+    """
     perms = _load(collection_id)
     removed = False
 
@@ -170,11 +197,14 @@ def check_object_permission(
     *,
     collection_id: str = "default",
 ) -> bool:
-    u"""Check if a role has a specific action on a specific entity.
+    """Check if a role has a specific action on a specific entity.
 
-    Includes inheritance:
-      - parentOf(P, C): C inherits P's READ
-      - cites(A, B): B's READ extends to A's direct readers (not implemented yet)
+    Args:
+        entity_uri: entity_uri 参数。
+        role: role 参数。
+        action: action 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
     """
     act = ObjectAction(action) if action in {x.value for x in ObjectAction} else None
     if act is None:
@@ -214,9 +244,12 @@ def get_effective_permissions(
     *,
     collection_id: str = "default",
 ) -> Dict[str, List[str]]:
-    u"""Get all effective permissions for an entity, grouped by role.
+    """Get all effective permissions for an entity, grouped by role.
 
-    Includes inherited permissions from parent entities.
+    Args:
+        entity_uri: entity_uri 参数。
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
     """
     perms = _load(collection_id)
     result: Dict[str, Set[str]] = {}

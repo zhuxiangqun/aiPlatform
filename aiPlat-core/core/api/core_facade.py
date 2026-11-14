@@ -115,26 +115,44 @@ def create_pipeline_engine(
     model: Any = None,
     skill_loader: Any = None,
 ) -> Any:
-    """Create a PipelineEngine instance. Use this instead of importing
-    PipelineEngine directly from core.harness.execution."""
+    """Create a PipelineEngine instance. Use this instead of importing。
+
+    Args:
+        config: config 参数。
+        model: 模型名。
+        skill_loader: skill_loader 参数。
+    """
     from core.harness.execution.pipeline_engine import PipelineEngine
     return PipelineEngine(config=config, model=model, skill_loader=skill_loader)
 
 
 def register_pipeline(project_id: str, engine: Any) -> None:
-    """Register a running pipeline engine (pipeline registry singleton)."""
+    """Register a running pipeline engine (pipeline registry singleton).
+
+    Args:
+        project_id: project 标识。
+        engine: engine 参数。
+    """
     from core.harness.execution.pipeline_engine import register_pipeline as _r
     _r(project_id, engine)
 
 
 def get_running_pipeline(project_id: str) -> Any:
-    """Get the running pipeline engine for a project, if any."""
+    """Get the running pipeline engine for a project, if any.
+
+    Args:
+        project_id: project 标识。
+    """
     from core.harness.execution.pipeline_engine import get_running_pipeline as _g
     return _g(project_id)
 
 
 def unregister_pipeline(project_id: str) -> None:
-    """Unregister a finished/terminated pipeline engine."""
+    """Unregister a finished/terminated pipeline engine.
+
+    Args:
+        project_id: project 标识。
+    """
     from core.harness.execution.pipeline_engine import unregister_pipeline as _u
     _u(project_id)
 
@@ -159,9 +177,12 @@ def create_agent(
 ) -> Any:
     """Create an agent instance by type.
 
-    Agent types are defined in ~/.aiplat/registry/agent_types.yaml (single source of truth).
-    Supported canonical types: conversational, react, plan_execute, rag, multi_agent, materials_chat.
-    Aliases (plan→plan_execute, tool→react, etc.) are resolved automatically."""
+    Args:
+        agent_type: agent_type 参数。
+        config: config 参数。
+        model: 模型名。
+        system_prompt: system_prompt 参数。
+    """
     from core.harness.interfaces.agent import AgentConfig
     from core.harness.registry.registry_loader import load_agent_types
 
@@ -272,7 +293,8 @@ def get_code_graph() -> Any:
 def build_security_view(**kwargs: Any) -> Any:
     """Compile deterministic security view (secview.v1) from code_graph.
 
-    Phase A: no LLM. Returns a dict with entries/sinks/gates/hot_paths.
+    Args:
+        kwargs: kwargs 参数。
     """
     from core.harness.knowledge.security_view import build_security_view as _build
 
@@ -280,12 +302,20 @@ def build_security_view(**kwargs: Any) -> Any:
 
 
 def get_security_view(**kwargs: Any) -> Any:
-    """Return cached-or-fresh security view dict (secview.v1)."""
+    """Return cached-or-fresh security view dict (secview.v1).
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return build_security_view(**kwargs)
 
 
 def security_view_digest(**kwargs: Any) -> Any:
-    """Token-budgeted digest for Agent plan stage."""
+    """Token-budgeted digest for Agent plan stage.
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     from core.harness.knowledge.security_view import (
         build_security_view as _build,
         compact_security_digest,
@@ -308,7 +338,11 @@ def _run_async_handler(coro: Any) -> Any:
 
 
 def run_security_plan(**kwargs: Any) -> Any:
-    """Phase B plan stage (deterministic handler). Returns filtered digest dict."""
+    """Phase B plan stage (deterministic handler). Returns filtered digest dict.
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     from core.engine.skills.security_plan.handler import execute as _plan_execute
 
     return _run_async_handler(_plan_execute(dict(kwargs)))
@@ -317,7 +351,8 @@ def run_security_plan(**kwargs: Any) -> Any:
 def run_security_review_dry(**kwargs: Any) -> Any:
     """Phase B(+optional C) dry-run: plan→trace→critique→report→evidence.
 
-    Pass ``phase_c_enabled=True`` or set env ``AIPLAT_SECURITY_PHASE_C=1`` for Phase C.
+    Args:
+        kwargs: kwargs 参数。
     """
     from core.engine.skills.security_critique.handler import execute as _critique
     from core.engine.skills.security_evidence.handler import (
@@ -390,7 +425,11 @@ def decision_shadow_status() -> Dict[str, Any]:
 
 
 def decision_shadow_try_enqueue(payload: Dict[str, Any]) -> bool:
-    """Non-blocking enqueue probe (honors enabled=false; no classify hook)."""
+    """Non-blocking enqueue probe (honors enabled=false; no classify hook).
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.harness.decision_shadow import get_shadow_dispatcher
 
     return bool(get_shadow_dispatcher().try_enqueue(dict(payload or {})))
@@ -423,7 +462,8 @@ def get_context_bus() -> Any:
 def get_skill_marketplace(db_path: str = "") -> Any:
     """Get SkillMarketplace (P1-A5 agentskills.io 对接, CoreFacade canonical 入口).
 
-    Platform 经此获取 SkillMarketplace 实例（禁止直导 core.harness.knowledge）。
+    Args:
+        db_path: db_path 参数。
     """
     from core.harness.knowledge.skill_marketplace import SkillMarketplace
     return SkillMarketplace(db_path=db_path) if db_path else SkillMarketplace()
@@ -436,13 +476,22 @@ def list_pending_heal_fixes() -> Any:
 
 
 def approve_heal_fix(fix_id: str) -> Any:
-    """Approve and apply a pending self-heal fix."""
+    """Approve and apply a pending self-heal fix.
+
+    Args:
+        fix_id: fix 标识。
+    """
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     return SelfHealGate().approve_fix(fix_id)
 
 
 def reject_heal_fix(fix_id: str, reason: str = "") -> Any:
-    """Reject a pending self-heal fix."""
+    """Reject a pending self-heal fix.
+
+    Args:
+        fix_id: fix 标识。
+        reason: reason 参数。
+    """
     from core.harness.evaluation.self_heal_gate import SelfHealGate
     return SelfHealGate().reject_fix(fix_id, reason)
 
@@ -458,7 +507,11 @@ def get_fde_health() -> Any:
 
 
 def fde_clarify(**kwargs: Any) -> Any:
-    """Run FDE clarification (via handler registry)."""
+    """Run FDE clarification (via handler registry).
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return dispatch("fde_clarify", **kwargs)
 
 
@@ -478,8 +531,13 @@ def get_method_restrictions() -> Any:
 
 
 def llm_generate(model: Any, prompt: Any, **kwargs: Any) -> Any:
-    """Call LLM through the syscall boundary. Use this instead of importing
-    sys_llm_generate directly from core.harness.syscalls."""
+    """Call LLM through the syscall boundary. Use this instead of importing。
+
+    Args:
+        model: 模型名。
+        prompt: prompt 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.llm import sys_llm_generate
     return sys_llm_generate(model, prompt, **kwargs)
 
@@ -507,6 +565,16 @@ class ChatContext:
         extra_context: Optional[Dict[str, str]] = None,
         model: Any = None,
     ):
+        """初始化。
+
+        Args:
+            agent_name: agent_name 参数。
+            session_id: 会话 ID。
+            user_input: user_input 参数。
+            user_id: 用户 ID。
+            extra_context: extra_context 参数。
+            model: 模型名。
+        """
         self.agent_name = agent_name
         self.session_id = session_id
         self.user_input = user_input
@@ -527,6 +595,15 @@ class ChatResult:
         memory_saved: bool = False,
         prd_ready: bool = False,
     ):
+        """初始化。
+
+        Args:
+            reply: reply 参数。
+            trace_id: trace 标识。
+            skills_used: skills_used 参数。
+            memory_saved: memory_saved 参数。
+            prd_ready: prd_ready 参数。
+        """
         self.reply = reply
         self.trace_id = trace_id
         self.skills_used = skills_used or []
@@ -537,23 +614,8 @@ class ChatResult:
 async def core_chat(ctx: ChatContext) -> ChatResult:
     """Execute a conversational agent turn with automatic subsystem activation.
 
-    This is the INTENT-LEVEL entry point for agent conversations.
-    Application only declares what it wants (agent_name, session_id, user_input);
-    CoreFacade automatically:
-
-    1. AgentRegistry → discovers agent configuration and system prompt
-    2. MemoryManager → persists the conversation (survives restart)
-    3. Trace → generates trace_id for end-to-end observability
-    4. SkillRegistry → binds matching Skills to the agent
-
-    Usage:
-        result = await core_chat(ChatContext(
-            agent_name="<agent_name>",
-            session_id=project_id,
-            user_input="<user request>",
-            extra_context={"requirement": "<application-specific context>"},
-        ))
-        print(result.reply, result.trace_id)
+    Args:
+        ctx: ctx 参数。
     """
     import time
     import uuid as _uuid
@@ -693,7 +755,10 @@ from core.utils.json_utils import extract_json, extract_json_safe, parse_json
 
 def parse_output(raw: str) -> Dict[str, Any]:
     """Parse an agent's raw output into structured form.
-    Returns dict with keys: artifact, issues, confidence, decision."""
+
+    Args:
+        raw: raw 参数。
+    """
     from core.harness.execution.pipeline_engine import PipelineEngine
     result = PipelineEngine._parse_output(raw)
     return {
@@ -705,10 +770,11 @@ def parse_output(raw: str) -> Dict[str, Any]:
 
 
 def get_agent_frontmatter(agent_id: str) -> Dict[str, Any]:
-    """Load AGENT.md frontmatter for an agent. Looks in:
-    1. ~/.aiplat/agents/{agent_id}/AGENT.md
-    2. AIPLAT_WORKSPACE_SEEDS/agents/{agent_id}/AGENT.md
-    Returns dict with all frontmatter fields + '_sop_body' (the SOP text after ---)."""
+    """Load AGENT.md frontmatter for an agent. Looks in:。
+
+    Args:
+        agent_id: Agent ID。
+    """
     import os
     import yaml
 
@@ -744,8 +810,11 @@ def get_agent_frontmatter(agent_id: str) -> Dict[str, Any]:
 
 
 def get_code_gen_skill(model: Any = None) -> Any:
-    """Get a CodeGenerationSkill instance. Use this instead of importing
-    CodeGenerationSkill directly from core.apps.skills.base."""
+    """Get a CodeGenerationSkill instance. Use this instead of importing。
+
+    Args:
+        model: 模型名。
+    """
     from core.apps.skills.base import CodeGenerationSkill
     return CodeGenerationSkill(model=model)
 
@@ -783,13 +852,22 @@ def seed_all_registries() -> None:
 
 
 def get_secret(name: str) -> Optional[str]:
-    """Get a secret by name. Falls back to env var if no SecretsManager."""
+    """Get a secret by name. Falls back to env var if no SecretsManager.
+
+    Args:
+        name: name 参数。
+    """
     from core.harness.infrastructure.secrets_manager import get_secrets_manager
     return get_secrets_manager().get(name)
 
 
 def set_secret(name: str, value: str) -> None:
-    """Store a secret (encrypted at rest via AES-256-GCM)."""
+    """Store a secret (encrypted at rest via AES-256-GCM).
+
+    Args:
+        name: name 参数。
+        value: value 参数。
+    """
     from core.harness.infrastructure.secrets_manager import get_secrets_manager
     get_secrets_manager().set(name, value)
 
@@ -802,12 +880,20 @@ def get_permission_manager() -> Any:
     return _get()
 
 def resolve_skill_permission(skill_name: str) -> str:
-    """Resolve skill permission level via DI or direct import."""
+    """Resolve skill permission level via DI or direct import.
+
+    Args:
+        skill_name: skill_name 参数。
+    """
     from core.apps.tools.skill_tools import resolve_skill_permission as _get
     return _get(skill_name)
 
 def resolve_executable_skill_permission(skill_name: str) -> str:
-    """Resolve executable skill permission via DI or direct import."""
+    """Resolve executable skill permission via DI or direct import.
+
+    Args:
+        skill_name: skill_name 参数。
+    """
     from core.apps.tools.skill_tools import resolve_executable_skill_permission as _get
     return _get(skill_name)
 
@@ -817,7 +903,11 @@ async def get_exec_backend() -> Any:
     return await _get()
 
 async def scan_security(code: str) -> Any:
-    """Run security scan on code via quality scanner."""
+    """Run security scan on code via quality scanner.
+
+    Args:
+        code: code 参数。
+    """
     from core.apps.quality.scanner import create_security_scanner
     scanner = create_security_scanner()
     return scanner.scan(code)
@@ -829,15 +919,21 @@ async def scan_security(code: str) -> Any:
 # ═══════════════════════════════════════════════════════════════
 
 def create_chat_service(model: Any = None) -> Any:
-    """Create a ChatService instance. Use instead of importing
-    from core.services.chat_service directly."""
+    """Create a ChatService instance. Use instead of importing。
+
+    Args:
+        model: 模型名。
+    """
     from core.services.chat_service import ChatService
     return ChatService(model=model)
 
 
 def create_conversation_service(store: Any = None) -> Any:
-    """Create a ConversationService instance. Use instead of importing
-    from core.services.conversations directly."""
+    """Create a ConversationService instance. Use instead of importing。
+
+    Args:
+        store: store 参数。
+    """
     from core.services.conversations import ConversationService
     return ConversationService(store) if store else ConversationService()
 
@@ -859,32 +955,66 @@ class PipelineSession:
     """
 
     def __init__(self, engine: Any, config: Any = None):
+        """初始化。
+
+        Args:
+            engine: engine 参数。
+            config: config 参数。
+        """
         self._engine = engine
         self._config = config
 
     @property
     def engine(self) -> Any:
+        """engine。
+        """
         return self._engine
 
     async def start(self, project_id: str, requirement: str, prd_data: Any = None) -> Dict[str, Any]:
-        """Start pipeline execution. Returns initial state snapshot."""
+        """Start pipeline execution. Returns initial state snapshot.
+
+        Args:
+            project_id: project 标识。
+            requirement: requirement 参数。
+            prd_data: prd_data 参数。
+        """
         result = await self._engine.initialize(project_id, requirement, prd_data=prd_data)
         return result
 
     async def approve(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
-        """HITL approval: resume pipeline from current HITL pause."""
+        """HITL approval: resume pipeline from current HITL pause.
+
+        Args:
+            state: state 参数。
+            feedback: feedback 参数。
+        """
         return await self._engine.approve_session(dict(state), feedback=feedback)
 
     async def reject(self, state: Dict[str, Any], feedback: str = "") -> Dict[str, Any]:
-        """HITL rejection: provide feedback and resume pipeline."""
+        """HITL rejection: provide feedback and resume pipeline.
+
+        Args:
+            state: state 参数。
+            feedback: feedback 参数。
+        """
         return await self._engine.reject_session(dict(state), feedback)
 
     async def rollback(self, state: Dict[str, Any], stage_id: str) -> Dict[str, Any]:
-        """Rollback pipeline to a previous stage."""
+        """Rollback pipeline to a previous stage.
+
+        Args:
+            state: state 参数。
+            stage_id: stage 标识。
+        """
         return await self._engine.rollback(dict(state), stage_id)
 
     async def resume_from(self, stage_idx: int, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Resume pipeline execution from a specific stage index."""
+        """Resume pipeline execution from a specific stage index.
+
+        Args:
+            stage_idx: stage_idx 参数。
+            state: state 参数。
+        """
         return await self._engine.resume_from(stage_idx, dict(state))
 
     async def get_graph(self) -> Dict[str, Any]:
@@ -900,7 +1030,11 @@ class PipelineSession:
         return list(self._engine.get_stages() or [])
 
     def assemble_deploy(self, state: Dict[str, Any]) -> str:
-        """Assemble a deploy directory from pipeline output artifacts."""
+        """Assemble a deploy directory from pipeline output artifacts.
+
+        Args:
+            state: state 参数。
+        """
         return self._engine.assemble_deploy(dict(state))
 
 
@@ -910,14 +1044,13 @@ def create_pipeline_session(
     skill_loader: Any = None,
     persist_callback: Any = None,
 ) -> PipelineSession:
-    """Create a PipelineSession. Use this instead of importing and instantiating
-    PipelineEngine directly.
+    """Create a PipelineSession. Use this instead of importing and instantiating。
 
-    Platform usage:
-        session = create_pipeline_session(config, model, skill_loader)
-        state = await session.start(project_id, requirement, prd_data=prd_data)
-        # ... user interacts ...
-        state = await session.approve(state)
+    Args:
+        config: config 参数。
+        model: 模型名。
+        skill_loader: skill_loader 参数。
+        persist_callback: persist_callback 参数。
     """
     from core.harness.execution.pipeline_engine import PipelineEngine
     engine = PipelineEngine(config=config, model=model, skill_loader=skill_loader,
@@ -926,10 +1059,10 @@ def create_pipeline_session(
 
 
 def validate_pipeline_stages(stages: List[Any]) -> Dict[str, Any]:
-    """Validate pipeline stage configuration. Returns diagnostics dict
-    with 'valid' (bool), 'errors' (list), 'warnings' (list).
+    """Validate pipeline stage configuration. Returns diagnostics dict。
 
-    Platform calls this before creating a session to catch misconfigurations early.
+    Args:
+        stages: stages 参数。
     """
     import re
     diagnostics: Dict[str, Any] = {"valid": True, "errors": [], "warnings": []}
@@ -980,8 +1113,9 @@ def validate_pipeline_stages(stages: List[Any]) -> Dict[str, Any]:
 def apply_agent_md_to_stage(stage: Any, agent_id: str) -> None:
     """Read AGENT.md frontmatter and apply fields to a PipelineStageConfig.
 
-    Platform calls this during pipeline setup to populate stage config
-    from agent definitions. All AGENT.md parsing happens inside CoreFacade.
+    Args:
+        stage: stage 参数。
+        agent_id: Agent ID。
     """
     import os
     import yaml
@@ -1092,8 +1226,18 @@ def record_changeset(
     actor_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> str:
-    """Record a governance changeset. Use this instead of importing from
-    core.governance.changeset directly."""
+    """Record a governance changeset. Use this instead of importing from。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        action: action 参数。
+        before: before 参数。
+        after: after 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        metadata: metadata 参数。
+    """
     from core.governance.changeset import record_changeset as _fn
     return _fn(
         store=None,
@@ -1116,8 +1260,15 @@ def new_change_id() -> str:
 def apply_autosmoke_result(verification_id: str, result: str,
                           *, resource_type: str = "", resource_id: str = "",
                           job_run: Optional[Dict[str, Any]] = None) -> None:
-    """Apply autosmoke verification result. Use instead of importing
-    from core.governance.verification directly."""
+    """Apply autosmoke verification result. Use instead of importing。
+
+    Args:
+        verification_id: verification 标识。
+        result: result 参数。
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        job_run: job_run 参数。
+    """
     from core.governance.verification import apply_autosmoke_result as _fn
     _fn(verification_id, result, resource_type=resource_type,
         resource_id=resource_id, job_run=job_run)
@@ -1127,8 +1278,15 @@ def mark_resource_pending(resource_type: str, resource_id: str,
                           *, workspace_agent_manager: Any = None,
                           workspace_skill_manager: Any = None,
                           workspace_mcp_manager: Any = None) -> None:
-    """Mark a resource as pending verification. Use instead of importing
-    from core.governance.verification directly."""
+    """Mark a resource as pending verification. Use instead of importing。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+    """
     from core.governance.verification import mark_resource_pending as _fn
     _fn(resource_type=resource_type, resource_id=resource_id,
          workspace_agent_manager=workspace_agent_manager,
@@ -1137,8 +1295,12 @@ def mark_resource_pending(resource_type: str, resource_id: str,
 
 
 def evaluate_tool_policy_snapshot(policy: Dict[str, Any], *, tool_name: str) -> Dict[str, Any]:
-    """Evaluate a tool policy snapshot. Use instead of importing
-    from core.policy.engine directly."""
+    """Evaluate a tool policy snapshot. Use instead of importing。
+
+    Args:
+        policy: policy 参数。
+        tool_name: tool_name 参数。
+    """
     from core.policy.engine import evaluate_tool_policy_snapshot as _fn
     return _fn(policy, tool_name=tool_name)
 
@@ -1148,8 +1310,8 @@ def evaluate_tool_policy_snapshot(policy: Dict[str, Any], *, tool_name: str) -> 
 def list_execution_snapshots(session_id: str) -> List[Dict[str, Any]]:
     """List all execution snapshots for a session (newest first).
 
-    Exposes the on-disk checkpoint headers so users/tools can self-service
-    inspect and recover pipeline execution state (Hermes Layer 1 checkpoint).
+    Args:
+        session_id: 会话 ID。
     """
     from core.harness.execution.snapshot import list_execution_snapshots as _fn
     return _fn(session_id)
@@ -1158,8 +1320,9 @@ def list_execution_snapshots(session_id: str) -> List[Dict[str, Any]]:
 def get_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Dict[str, Any]]:
     """Load a single execution snapshot header + full state for recovery.
 
-    Returns None if not found. The ``full_state`` field is the recoverable
-    pipeline state dict (the restore payload).
+    Args:
+        snapshot_id: snapshot 标识。
+        session_id: 会话 ID。
     """
     from core.harness.execution.snapshot import load_execution_snapshot as _fn
     snap = _fn(snapshot_id, session_id)
@@ -1171,7 +1334,13 @@ def get_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Dict[s
 
 
 def compare_execution_snapshots(snapshot_a_id: str, snapshot_b_id: str, session_id: str) -> Dict[str, Any]:
-    """Diff two execution snapshots (before/after strategy effect)."""
+    """Diff two execution snapshots (before/after strategy effect).
+
+    Args:
+        snapshot_a_id: snapshot_a 标识。
+        snapshot_b_id: snapshot_b 标识。
+        session_id: 会话 ID。
+    """
     from core.harness.execution.snapshot import compare_execution_snapshots as _fn
     return _fn(snapshot_a_id, snapshot_b_id, session_id)
 
@@ -1179,9 +1348,9 @@ def compare_execution_snapshots(snapshot_a_id: str, snapshot_b_id: str, session_
 def restore_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Dict[str, Any]]:
     """Return the recoverable full state of a snapshot as the restore payload.
 
-    This is the self-service recovery entry point: the caller obtains the
-    historical pipeline state captured at checkpoint time and can resume/inspect
-    from it. Returns None if the snapshot or its full state is unavailable.
+    Args:
+        snapshot_id: snapshot 标识。
+        session_id: 会话 ID。
     """
     from core.harness.execution.snapshot import load_execution_snapshot as _fn
     snap = _fn(snapshot_id, session_id)
@@ -1203,19 +1372,34 @@ def restore_execution_snapshot(snapshot_id: str, session_id: str) -> Optional[Di
 # ── File checkpoint self-service facade (Hermes Layer 1: physical safety net) ──
 
 def list_file_checkpoints(*, session_id: str = "", path: str = "") -> List[Dict[str, Any]]:
-    """List filesystem checkpoints captured before file write/edit overwrites."""
+    """List filesystem checkpoints captured before file write/edit overwrites.
+
+    Args:
+        session_id: 会话 ID。
+        path: 路径。
+    """
     from core.harness.execution.file_checkpoint import list_file_checkpoints as _fn
     return _fn(session_id=session_id, path=path)
 
 
 def get_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Optional[Dict[str, Any]]:
-    """Return a file checkpoint header + its stored content."""
+    """Return a file checkpoint header + its stored content.
+
+    Args:
+        checkpoint_id: checkpoint 标识。
+        session_id: 会话 ID。
+    """
     from core.harness.execution.file_checkpoint import get_file_checkpoint as _fn
     return _fn(checkpoint_id, session_id)
 
 
 def restore_file_checkpoint(checkpoint_id: str, session_id: str = "") -> Dict[str, Any]:
-    """Restore a file to the content captured in the given checkpoint (writes it back)."""
+    """Restore a file to the content captured in the given checkpoint (writes it back).
+
+    Args:
+        checkpoint_id: checkpoint 标识。
+        session_id: 会话 ID。
+    """
     from core.harness.execution.file_checkpoint import restore_file_checkpoint as _fn
     return _fn(checkpoint_id, session_id)
 
@@ -1227,49 +1411,79 @@ def get_howl_stats() -> Dict[str, Any]:
 
 
 def publish_learning_release(release_id: str) -> Dict[str, Any]:
-    """Publish a learning release candidate (via handler registry)."""
+    """Publish a learning release candidate (via handler registry).
+
+    Args:
+        release_id: release 标识。
+    """
     return dispatch("publish_release_candidate", release_id)
 
 
 def rollback_learning_release(release_id: str, reason: str = "") -> Dict[str, Any]:
-    """Rollback a learning release candidate (via handler registry)."""
+    """Rollback a learning release candidate (via handler registry).
+
+    Args:
+        release_id: release 标识。
+        reason: reason 参数。
+    """
     return dispatch("rollback_release_candidate", release_id, reason)
 
 
 def run_plugin_action(plugin_id: str, action: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Run a plugin action. Use instead of importing
-    from core.api.routers.plugins directly."""
+    """Run a plugin action. Use instead of importing。
+
+    Args:
+        plugin_id: plugin 标识。
+        action: action 参数。
+        params: params 参数。
+    """
     from core.api.routers.plugins import run_plugin as _fn
 
 
 # ── KB Facade ──
 
 def kb_retrieve(query: str, doc_ids: Any, **kwargs: Any) -> Any:
-    """Low-level KB chunk retrieve. Prefer kb_qa_retrieve for user-facing Q&A (W4)."""
+    """Low-level KB chunk retrieve. Prefer kb_qa_retrieve for user-facing Q&A (W4).
+
+    Args:
+        query: 查询。
+        doc_ids: doc_ids 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.retrieval import sys_kb_retrieve
     return sys_kb_retrieve(query, doc_ids, **kwargs)
 
 
 async def kb_qa_retrieve(query: str, **kwargs: Any) -> Any:
-    """Canonical KB Q&A retrieval via CRAG (sys_crag_retrieve). GraphRAG is L0 inside CRAG."""
+    """Canonical KB Q&A retrieval via CRAG (sys_crag_retrieve). GraphRAG is L0 inside CRAG.
+
+    Args:
+        query: 查询。
+        kwargs: kwargs 参数。
+    """
     from core.api.facades.kb_facade import kb_qa_retrieve as _impl
     return await _impl(query, **kwargs)
 
 
 def wiki_retrieve(query: str, wiki_titles: list = None, **kwargs: Any) -> Any:
-    """Retrieve relevant wiki knowledge page content through the syscall boundary."""
+    """Retrieve relevant wiki knowledge page content through the syscall boundary.
+
+    Args:
+        query: 查询。
+        wiki_titles: wiki_titles 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.retrieval import sys_wiki_retrieve
     return sys_wiki_retrieve(query, wiki_titles, **kwargs)
 
 
 async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "") -> Dict[str, Any]:
-    u"""Convert a newly ingested KB document into Wiki knowledge pages.
+    """Convert a newly ingested KB document into Wiki knowledge pages.
 
-    Called by platform after document ingestion completes.
-    Complies with platform→core facade rule (§5.1).
-
-    If collection_id is provided, it is added as a tag and used
-    for subdir→collection mapping in Vault→Wiki flows.
+    Args:
+        doc_id: doc 标识。
+        file_path: file_path 参数。
+        collection_id: collection 标识。
     """
     import os, re
     from core.harness.knowledge.wiki_engine import write_page
@@ -1470,17 +1684,10 @@ async def wiki_auto_update(doc_id: str, file_path: str, collection_id: str = "")
 async def auto_ontology_pipeline_for_doc(doc_id: str, file_path: str, collection_id: str = "default") -> Dict[str, Any]:
     """Auto-run ontology engine pipeline on a newly ingested/re-ingested document.
 
-    Called as fire-and-forget from platform ingest and watch_directory polling.
-    Gated by AIPLAT_AUTO_ONTOLOGY_PIPELINE env var (default: true).
-
-    What it does:
-    1. Resolves domain_id from collection_id via DomainRouter
-    2. Parses the document into text chunks
-    3. Runs OntologyEngine.process_chunks() → extract entities, build GraphIndex,
-       run state machine, synthesize Wiki pages
-    4. Returns summary stats
-
-    This is the bridge that closes the "document change → ontology update" gap.
+    Args:
+        doc_id: doc 标识。
+        file_path: file_path 参数。
+        collection_id: collection 标识。
     """
     import os as _os
     if _os.getenv("AIPLAT_AUTO_ONTOLOGY_PIPELINE", "true").lower() not in ("true", "1", "yes"):
@@ -1566,7 +1773,13 @@ _grilling_sessions: Dict[str, Dict[str, Any]] = {}
 
 
 def start_grilling(entry_point: str, domain_id: str = "", context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    u"""Start a grilling clarification interview session. Returns first question."""
+    """Start a grilling clarification interview session. Returns first question.
+
+    Args:
+        entry_point: entry_point 参数。
+        domain_id: domain 标识。
+        context: context 参数。
+    """
     import os as _os, yaml as _yaml, uuid as _uuid, time as _time
     context = context or {}
     session_id = _uuid.uuid4().hex[:12]
@@ -1596,7 +1809,12 @@ def start_grilling(entry_point: str, domain_id: str = "", context: Optional[Dict
 
 
 def continue_grilling(session_id: str, answer: str) -> Dict[str, Any]:
-    u"""Process answer and return next question or finalize."""
+    """Process answer and return next question or finalize.
+
+    Args:
+        session_id: 会话 ID。
+        answer: answer 参数。
+    """
     import time as _time
     session = _grilling_sessions.get(session_id)
     if not session:
@@ -1635,7 +1853,11 @@ def continue_grilling(session_id: str, answer: str) -> Dict[str, Any]:
 
 
 def skip_grilling_question(session_id: str) -> Dict[str, Any]:
-    u"""Skip current question (only non-required)."""
+    """Skip current question (only non-required).
+
+    Args:
+        session_id: 会话 ID。
+    """
     session = _grilling_sessions.get(session_id)
     if not session:
         return {"session_id": session_id, "status": "error", "message": "Session not found"}
@@ -1662,7 +1884,11 @@ def skip_grilling_question(session_id: str) -> Dict[str, Any]:
 
 
 def get_grilling_progress(session_id: str) -> Dict[str, Any]:
-    u"""Get current grilling session state (for UI recovery)."""
+    """Get current grilling session state (for UI recovery).
+
+    Args:
+        session_id: 会话 ID。
+    """
     session = _grilling_sessions.get(session_id)
     if not session:
         return {"session_id": session_id, "status": "not_found"}
@@ -1789,7 +2015,11 @@ def _default_grilling_dimensions(entry_point: str) -> List[Dict[str, Any]]:
 
 
 def wiki_skill_impact(skill_id: str) -> Dict[str, Any]:
-    u"""Return agents and downstream skills affected by a given skill."""
+    """Return agents and downstream skills affected by a given skill.
+
+    Args:
+        skill_id: Skill ID。
+    """
     from core.harness.knowledge.skill_deps import skill_impact
     return skill_impact(skill_id)
 
@@ -1801,20 +2031,37 @@ def wiki_fts_index() -> int:
 
 
 def wiki_fts_search(query: str, limit: int = 10) -> Any:
-    u"""Keyword search wiki pages via FTS5."""
+    """Keyword search wiki pages via FTS5.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+    """
     from core.harness.knowledge.wiki_fts import fts_search
     return fts_search(query, limit)
 
 
 def wiki_pages_by_source(source_key: str) -> List[Dict[str, Any]]:
-    u"""Find wiki pages that originated from a given source key (e.g. kb:<doc_id>)."""
+    """Find wiki pages that originated from a given source key (e.g. kb:<doc_id>).
+
+    Args:
+        source_key: source_key 参数。
+    """
     from core.harness.knowledge.wiki_engine import pages_by_source
     return pages_by_source(source_key)
 
 
 def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str = "",
                        limit: int = 20, collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""Search wiki pages — Phase 45: CoreFacade wrapper for platform layer."""
+    """Search wiki pages — Phase 45: CoreFacade wrapper for platform layer.
+
+    Args:
+        query: 查询。
+        tags: tags 参数。
+        category: category 参数。
+        limit: 返回条数上限。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.wiki_engine import search_pages
     return search_pages(query=query, tags=tags, category=category,
                          limit=limit, collection_id=collection_id)
@@ -1822,7 +2069,15 @@ def wiki_search_pages(query: str = "", *, tags: List[str] = None, category: str 
 
 def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: str = "",
                           limit: int = 20, collection_id: str = "default") -> Dict[str, Any]:
-    """Wiki search with ontology.api.v0 envelope (A1 contract)."""
+    """Wiki search with ontology.api.v0 envelope (A1 contract).
+
+    Args:
+        query: 查询。
+        tags: tags 参数。
+        category: category 参数。
+        limit: 返回条数上限。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_wiki_pages
 
     pages = wiki_search_pages(
@@ -1838,7 +2093,11 @@ def wiki_search_pages_api(query: str = "", *, tags: List[str] = None, category: 
 
 
 def get_graph_health(domain: str = "") -> Dict[str, Any]:
-    u"""Phase 45: Get GraphIndex health stats for a domain."""
+    """Phase 45: Get GraphIndex health stats for a domain.
+
+    Args:
+        domain: domain 参数。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
     try:
         g = GraphIndex.load(domain) if domain else None
@@ -1851,7 +2110,11 @@ def get_graph_health(domain: str = "") -> Dict[str, Any]:
 
 
 def get_graph_health_api(domain: str = "") -> Dict[str, Any]:
-    """Graph health with ontology.api.v0 envelope (A1 contract)."""
+    """Graph health with ontology.api.v0 envelope (A1 contract).
+
+    Args:
+        domain: domain 参数。
+    """
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_graph_health
 
     raw = get_graph_health(domain)
@@ -1860,7 +2123,12 @@ def get_graph_health_api(domain: str = "") -> Dict[str, Any]:
 
 
 def wiki_structured_query_api(query: str, *, domain_id: str = "") -> Dict[str, Any]:
-    """Deterministic wiki structured query + ontology.api.v0 envelope."""
+    """Deterministic wiki structured query + ontology.api.v0 envelope.
+
+    Args:
+        query: 查询。
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.wiki_structured_query import structured_query
     from core.harness.knowledge.ontology_api import attach_ontology_api, from_structured_query
 
@@ -1876,7 +2144,14 @@ def aiplat_healthz_payload(
     hosted: Optional[List[str]] = None,
     checks: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Central host /healthz shape (aiPlat A1) + control_plane.v0 status envelope."""
+    """Central host /healthz shape (aiPlat A1) + control_plane.v0 status envelope.
+
+    Args:
+        status: status 参数。
+        version: version 参数。
+        hosted: hosted 参数。
+        checks: checks 参数。
+    """
     from core.harness.meta.capability_version import resolve_capability_version
     from core.harness.meta.control_plane import (
         attach_control_plane,
@@ -1895,7 +2170,12 @@ def aiplat_healthz_payload(
 
 
 def ontology_healthz_payload(*, version: str = "", mode: str = "read_only") -> Dict[str, Any]:
-    """Ontology co-hosted healthz (product_id=ontology)."""
+    """Ontology co-hosted healthz (product_id=ontology).
+
+    Args:
+        version: version 参数。
+        mode: mode 参数。
+    """
     from core.harness.knowledge.domain_router import DomainRouter
     from core.harness.knowledge.ontology_api import to_ontology_healthz
     from core.harness.meta.capability_version import resolve_capability_version
@@ -1912,7 +2192,11 @@ def ontology_healthz_payload(*, version: str = "", mode: str = "read_only") -> D
 
 
 def evaluation_healthz_payload(*, version: str = "") -> Dict[str, Any]:
-    """Evaluation co-hosted healthz (product_id=evaluation)."""
+    """Evaluation co-hosted healthz (product_id=evaluation).
+
+    Args:
+        version: version 参数。
+    """
     from core.harness.evaluation.eval_protocol import SCHEMA_VERSION, to_evaluation_healthz
     from core.harness.meta.capability_version import resolve_capability_version
 
@@ -1921,7 +2205,12 @@ def evaluation_healthz_payload(*, version: str = "") -> Dict[str, Any]:
 
 
 def fde_healthz_payload(*, version: str = "", mode: str = "field_d1") -> Dict[str, Any]:
-    """FDE Field D1 healthz (ADR-FDE-FIELD-DEPLOY Accepted)."""
+    """FDE Field D1 healthz (ADR-FDE-FIELD-DEPLOY Accepted).
+
+    Args:
+        version: version 参数。
+        mode: mode 参数。
+    """
     from core.harness.meta.capability_version import resolve_capability_version
 
     ver = str(version or "").strip() or resolve_capability_version("fde")
@@ -1940,49 +2229,88 @@ def fde_healthz_payload(*, version: str = "", mode: str = "field_d1") -> Dict[st
 
 
 def code_intel_context(task: str) -> Any:
-    u"""Return code graph context for a development task."""
+    """Return code graph context for a development task.
+
+    Args:
+        task: task 参数。
+    """
     from core.harness.syscalls.code_intel_syscall import sys_code_intel_context
     return sys_code_intel_context(task)
 
 
 def code_intel_blast(file_path: str) -> Any:
-    u"""Return forward blast radius of a file."""
+    """Return forward blast radius of a file.
+
+    Args:
+        file_path: file_path 参数。
+    """
     from core.harness.syscalls.code_intel_syscall import sys_code_intel_blast
     return sys_code_intel_blast(file_path)
 
 
 def code_intel_hot_paths(entry_id: Any = None, max_paths: int = 20) -> Any:
-    """Scored security hot_paths through the syscall boundary."""
+    """Scored security hot_paths through the syscall boundary.
+
+    Args:
+        entry_id: entry 标识。
+        max_paths: max_paths 参数。
+    """
     from core.harness.syscalls.code_intel_syscall import sys_code_intel_hot_paths
     return sys_code_intel_hot_paths(entry_id, max_paths=int(max_paths or 20))
 
 
 def kb_ocr_keyframes(image_paths: list, engine: str = "paddleocr", lang: str = "zh") -> Any:
-    """OCR multiple image files."""
+    """OCR multiple image files.
+
+    Args:
+        image_paths: image_paths 参数。
+        engine: engine 参数。
+        lang: lang 参数。
+    """
     from core.harness.document.ocr import ocr_keyframes
     return ocr_keyframes(image_paths, engine=engine, lang=lang)
 
 
 def kb_probe_video_duration(video_path: str) -> int:
-    """Probe video duration in milliseconds."""
+    """Probe video duration in milliseconds.
+
+    Args:
+        video_path: video_path 参数。
+    """
     from core.harness.document.video import probe_duration_ms
     return probe_duration_ms(video_path)
 
 
 def kb_extract_video_keyframes(video_path: str, output_dir: str, interval_seconds: int = 15) -> Any:
-    """Extract keyframes from video at given second interval."""
+    """Extract keyframes from video at given second interval.
+
+    Args:
+        video_path: video_path 参数。
+        output_dir: output_dir 参数。
+        interval_seconds: interval_seconds 参数。
+    """
     from core.harness.document.video import extract_keyframes
     return extract_keyframes(video_path, output_dir, interval_seconds=interval_seconds)
 
 
 def kb_extract_video_audio(video_path: str, audio_path: str) -> None:
-    """Extract audio track from video file into WAV."""
+    """Extract audio track from video file into WAV.
+
+    Args:
+        video_path: video_path 参数。
+        audio_path: audio_path 参数。
+    """
     from core.harness.document.video import extract_audio
     return extract_audio(video_path, audio_path)
 
 
 def kb_parse_document(file_path: str, kind: str) -> Any:
-    """Parse a document file via the ConverterRegistry with full fallback chain."""
+    """Parse a document file via the ConverterRegistry with full fallback chain.
+
+    Args:
+        file_path: file_path 参数。
+        kind: kind 参数。
+    """
     from core.harness.document.protocol import get_document_registry, StreamInfo
     from core.harness.document.parsers import _elements_to_dicts
     from core.api.facades.kb_facade import _KIND_TO_EXT
@@ -2010,19 +2338,37 @@ def kb_parse_document(file_path: str, kind: str) -> Any:
 
 
 def kb_chunk_document(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
-    """Chunk parsed document elements into segments."""
+    """Chunk parsed document elements into segments.
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
+    """
     from core.harness.document.chunker import chunk_document
     return chunk_document(elements, kind=kind, target_size=target_size, overlap=overlap)
 
 
 def kb_chunk_elements(elements: Any, kind: str = "pdf", target_size: int = 1000, overlap: int = 150) -> Any:
-    """Auto-select chunking strategy and apply to parsed document elements."""
+    """Auto-select chunking strategy and apply to parsed document elements.
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+        target_size: target_size 参数。
+        overlap: overlap 参数。
+    """
     from core.apps.document_intelligence.chunking import chunk_elements
     return chunk_elements(elements, kind=kind, target_size=target_size, overlap=overlap)
 
 
 def kb_create_infra_db_client(db_path: str) -> Any:
-    """Create an infrastructure database client for KB storage."""
+    """Create an infrastructure database client for KB storage.
+
+    Args:
+        db_path: db_path 参数。
+    """
     from core.harness.infrastructure.infra_bridge import create_infra_database_client
     return create_infra_database_client(db_path)
 
@@ -2034,15 +2380,23 @@ def deploy_app_service(name: str, namespace: str, image: str,
                        config: Optional[Dict[str, Any]] = None) -> bool:
     """L5 v2: register a service deployment via infra bridge (platform → core → infra).
 
-    Platform must not import infra directly; this CoreFacade method is the
-    sanctioned path. Standalone/unavailable infra → returns False (no-op).
+    Args:
+        name: name 参数。
+        namespace: namespace 参数。
+        image: image 参数。
+        config: config 参数。
     """
     from core.harness.infrastructure.infra_bridge import deploy_app_service as _bridge_deploy
     return _bridge_deploy(name, namespace, image, config)
 
 
 def kb_classify_document(elements: Any, kind: str) -> Any:
-    """Classify document content type."""
+    """Classify document content type.
+
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
+    """
     from core.apps.document_intelligence.classifier import classify_document
     return classify_document(elements, kind)
 
@@ -2059,13 +2413,24 @@ def kb_transcribe_audio(audio_path: str, language: str = "auto", diagnostics: An
 
 
 def kb_transcribe_audio_chunked(audio_path: str, language: str = "auto", chunk_seconds: int = 60) -> Any:
-    """Split audio into chunks, transcribe each, merge. Fallback for long audio."""
+    """Split audio into chunks, transcribe each, merge. Fallback for long audio.
+
+    Args:
+        audio_path: audio_path 参数。
+        language: language 参数。
+        chunk_seconds: chunk_seconds 参数。
+    """
     from core.harness.document.transcriber import transcribe_audio_chunked
     return transcribe_audio_chunked(audio_path, language=language or None, chunk_seconds=chunk_seconds)
 
 
 def kb_embed_text(text: str, dim: int = 128) -> Any:
-    """Embed text into a vector. Safe to call from sync or async context."""
+    """Embed text into a vector. Safe to call from sync or async context.
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
     import asyncio as _asyncio, concurrent.futures as _cf
     from core.harness.knowledge.embedder import embed_text as _embed_async, hash_embed
     try:
@@ -2082,25 +2447,43 @@ def kb_embed_text(text: str, dim: int = 128) -> Any:
 
 
 def kb_embed_text_sync(text: str, dim: int = 128) -> Any:
-    """Synchronous text embedding (fallback to hash)."""
+    """Synchronous text embedding (fallback to hash).
+
+    Args:
+        text: text 参数。
+        dim: dim 参数。
+    """
     from core.harness.knowledge.embedder import hash_embed
     return hash_embed(text, dim)
 
 
 def kb_extract_keywords(text: str) -> Any:
-    """Extract CJK + alphanumeric keywords from text."""
+    """Extract CJK + alphanumeric keywords from text.
+
+    Args:
+        text: text 参数。
+    """
     from core.harness.knowledge.utils import extract_keywords
     return extract_keywords(text)
 
 
 def kb_score_text(text: str, keywords: Any) -> Any:
-    """Score text relevance against a set of keywords."""
+    """Score text relevance against a set of keywords.
+
+    Args:
+        text: text 参数。
+        keywords: keywords 参数。
+    """
     from core.harness.knowledge.utils import score_text
     return score_text(text, list(keywords) if keywords else [])
 
 
 def kb_element_source(element: Any) -> Any:
-    """Determine the source type of a KB element."""
+    """Determine the source type of a KB element.
+
+    Args:
+        element: element 参数。
+    """
     from core.harness.knowledge.utils import element_source
     return element_source(element)
 
@@ -2112,13 +2495,21 @@ def kb_get_ingest_fn() -> Any:
 
 
 def kb_get_tenant_storage(tenant_id: str) -> Any:
-    """Get the KB storage client for a given tenant."""
+    """Get the KB storage client for a given tenant.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.document_intelligence.kb_provider import get_tenant_storage
     return get_tenant_storage(tenant_id)
 
 
 def kb_kind_category(kind: str) -> Any:
-    """Get the document category label for a given kind."""
+    """Get the document category label for a given kind.
+
+    Args:
+        kind: kind 参数。
+    """
     from core.apps.document_intelligence.classifier import kind_category
     return kind_category(kind)
 
@@ -2128,7 +2519,14 @@ from core.apps.document_intelligence.classifier import CATEGORY_LABELS  # noqa: 
 
 
 def kb_llm_chat_complete(system_prompt: str, user_prompt: str, temperature: float = 0.1, max_tokens: int = 700) -> Any:
-    """Chat completion via KB LLM client."""
+    """Chat completion via KB LLM client.
+
+    Args:
+        system_prompt: system_prompt 参数。
+        user_prompt: user_prompt 参数。
+        temperature: temperature 参数。
+        max_tokens: max_tokens 参数。
+    """
     from core.apps.document_intelligence.llm_client import chat_complete
     return chat_complete(system_prompt=system_prompt, user_prompt=user_prompt, temperature=temperature, max_tokens=max_tokens)
 
@@ -2140,12 +2538,24 @@ def kb_llm_enabled() -> bool:
 
 
 def extract_json_block(text: str) -> Any:
-    """Extract JSON block from LLM output text."""
+    """Extract JSON block from LLM output text.
+
+    Args:
+        text: text 参数。
+    """
     return parse_json(text)
 
 
 async def kb_summarize_document(*, tenant_id: str, collection_id: str, doc_id: str, profile: str = "key_points", **kwargs: Any) -> Any:
-    """Summarize a knowledge base document."""
+    """Summarize a knowledge base document.
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        doc_id: doc 标识。
+        profile: 评测 profile。
+        kwargs: kwargs 参数。
+    """
     from core.apps.document_intelligence.summarizer import summarize_document
     return await summarize_document(tenant_id=tenant_id, collection_id=collection_id, doc_id=doc_id, profile=profile, **kwargs)
 
@@ -2189,9 +2599,15 @@ async def run_workspace_agent(
     input_payload: Any = None,
 ) -> Dict[str, Any]:
     """Execute a single workspace agent via StageRunner → ReActLoop.
-    
-    When stream=True, returns immediately with {run_id, status: "running"} and
-    executes the ReAct loop as a background asyncio task.
+
+    Args:
+        agent_info: agent_info 参数。
+        user_message: user_message 参数。
+        max_steps: max_steps 参数。
+        toolset: toolset 参数。
+        session_id: 会话 ID。
+        stream: stream 参数。
+        input_payload: input_payload 参数。
     """
     import asyncio as _asyncio, os as _os
 
@@ -3224,7 +3640,11 @@ async def _execute_workspace_agent_background(
 
 
 def get_chat_service_model(rt: Any = None) -> Any:
-    """Resolve model adapter for chat service via centralized resolution (§12)."""
+    """Resolve model adapter for chat service via centralized resolution (§12).
+
+    Args:
+        rt: rt 参数。
+    """
     from core.harness.utils.model_injection import create_selected_adapter, get_default_model
     if rt and hasattr(rt, "adapter_manager") and getattr(rt.adapter_manager, "get_default_adapter", None):
         try:
@@ -3247,10 +3667,13 @@ async def generate_ontology_suggestions(
     confidence_threshold: float = 0.7,
     include_llm: bool = True,
 ) -> Dict[str, Any]:
-    u"""Generate ontology evolution suggestions (Tier 1 rule-based + Tier 2 LLM-driven).
+    """Generate ontology evolution suggestions (Tier 1 rule-based + Tier 2 LLM-driven).
 
-    Use this from platform to trigger intelligent ontology evolution without
-    importing harness-internal modules.
+    Args:
+        collection_id: collection 标识。
+        max_suggestions: max_suggestions 参数。
+        confidence_threshold: confidence_threshold 参数。
+        include_llm: include_llm 参数。
     """
     if not include_llm:
         from core.harness.knowledge.knowledge_ontology import add_suggestions_from_patterns
@@ -3282,8 +3705,12 @@ async def generate_agent_eval(
 ) -> Dict[str, Any]:
     """Unique Core entry: generate Agent eval code / scoring_dimensions.
 
-    All HTTP / 上架钩子 / eval_code_generator handler must call this
-    (via core.apps.eval.agent_eval). Do not reimplement in routers.
+    Args:
+        agent_id: Agent ID。
+        force: 是否强制。
+        max_traces: max_traces 参数。
+        run_runner: run_runner 参数。
+        use_llm: use_llm 参数。
     """
     from core.apps.eval.agent_eval import generate_agent_eval as _impl
 
@@ -3297,14 +3724,22 @@ async def generate_agent_eval(
 
 
 def inspect_agent_eval(agent_id: str) -> Dict[str, Any]:
-    """Read-only: scoring_dimensions + eval files + traces for one Agent."""
+    """Read-only: scoring_dimensions + eval files + traces for one Agent.
+
+    Args:
+        agent_id: Agent ID。
+    """
     from core.apps.eval.agent_eval import inspect_agent_eval as _impl
 
     return _impl(agent_id)
 
 
 def enqueue_listed_agent_eval(agent_id: str) -> None:
-    """Fire-and-forget after Agent 上架 (listed). Never raises to caller."""
+    """Fire-and-forget after Agent 上架 (listed). Never raises to caller.
+
+    Args:
+        agent_id: Agent ID。
+    """
     from core.apps.eval.agent_eval import enqueue_listed_agent_eval as _impl
 
     _impl(agent_id)
@@ -3314,7 +3749,12 @@ def predict_evolution_impact_for(
     suggestion: Dict[str, Any],
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Predict the impact scope of accepting an evolution suggestion."""
+    """Predict the impact scope of accepting an evolution suggestion.
+
+    Args:
+        suggestion: suggestion 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_ontology import get_ontology
     from core.harness.knowledge.knowledge_evolution_llm import predict_evolution_impact
     onto = get_ontology()
@@ -3324,17 +3764,22 @@ def predict_evolution_impact_for(
 # ── Ontology Health & Quality Facade (Phase 4) ──
 
 def check_ontology_health_triggers(collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""Check ontology health and return triggered curation tasks.
+    """Check ontology health and return triggered curation tasks.
 
-    Use this from platform schedules/cron to auto-detect and flag
-    quality issues in the knowledge base.
+    Args:
+        collection_id: collection 标识。
     """
     from core.harness.knowledge.knowledge_quality import check_ontology_health_triggers as _check
     return _check(collection_id=collection_id)
 
 
 def get_entity_quality(entity_uri: str, *, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Get quality score and recent signals for an ontology entity."""
+    """Get quality score and recent signals for an ontology entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_quality import (
         get_entity_quality_score, get_quality_signals,
     )
@@ -3353,10 +3798,14 @@ def apply_field_security(
     actor_scopes: Optional[List[str]] = None,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Apply field-level security redaction to entity data.
+    """Apply field-level security redaction to entity data.
 
-    Sensitive fields are redacted based on visibility rules stored per-collection.
-    Admin bypasses all restrictions.
+    Args:
+        data: data 参数。
+        entity_uri: entity_uri 参数。
+        actor_role: actor_role 参数。
+        actor_scopes: actor_scopes 参数。
+        collection_id: collection 标识。
     """
     from core.policy.field_level_security import apply_field_level_security
     return apply_field_level_security(
@@ -3372,7 +3821,14 @@ def check_graph_entity_acl(
     role: str,
     action: str = "read",
 ) -> bool:
-    """GraphIndex ABox instance ACL (T9). Empty role → allow."""
+    """GraphIndex ABox instance ACL (T9). Empty role → allow.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        role: role 参数。
+        action: action 参数。
+    """
     from core.policy.graph_abox_acl import check_entity_acl
     return check_entity_acl(domain_id, entity_id, role, action)
 
@@ -3383,7 +3839,14 @@ def redact_graph_entity_fields(
     payload: Dict[str, Any],
     role: str,
 ) -> Dict[str, Any]:
-    """GraphIndex ABox field redaction for a role."""
+    """GraphIndex ABox field redaction for a role.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        payload: 载荷 dict。
+        role: role 参数。
+    """
     from core.policy.graph_abox_acl import redact_entity_fields
     return redact_entity_fields(domain_id, entity_id, payload, role)
 
@@ -3394,7 +3857,13 @@ def resolve_abox_actor_role(
     header_role: str = "",
     scopes: Optional[List[str]] = None,
 ) -> str:
-    """Map identity / PolicyGate role+scopes onto ABox ACL role."""
+    """Map identity / PolicyGate role+scopes onto ABox ACL role.
+
+    Args:
+        explicit_role: explicit_role 参数。
+        header_role: header_role 参数。
+        scopes: scopes 参数。
+    """
     from core.policy.graph_abox_acl import resolve_abox_actor_role as _resolve
     return _resolve(
         explicit_role=explicit_role,
@@ -3410,7 +3879,14 @@ def ingest_abox_webhook(
     secret: Optional[str] = None,
     domain_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Path B production ingest (connector.json → GraphIndex)."""
+    """Path B production ingest (connector.json → GraphIndex).
+
+    Args:
+        source_id: source 标识。
+        payload: 载荷 dict。
+        secret: secret 参数。
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.abox_connector import ingest_webhook_payload
     return ingest_webhook_payload(
         source_id, payload, secret=secret, domain_id=domain_id
@@ -3425,7 +3901,15 @@ def import_abox_table_map(
     relation_rows: Any = None,
     use_sample: bool = False,
 ) -> Dict[str, Any]:
-    """Path B table/CSV → GraphIndex (connector.table_map)."""
+    """Path B table/CSV → GraphIndex (connector.table_map).
+
+    Args:
+        domain_id: domain 标识。
+        rows: rows 参数。
+        csv_text: csv_text 参数。
+        relation_rows: relation_rows 参数。
+        use_sample: use_sample 参数。
+    """
     from core.apps.fde.service.abox_connector import import_table_map_payload
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -3445,11 +3929,21 @@ def import_abox_table_map(
 
 
 def get_ontology_pillars_view(domain_id: str) -> Dict[str, Any]:
+    """获取 ontology_pillars_view。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.ontology_pillars import get_ontology_pillars
     return get_ontology_pillars(domain_id)
 
 
 def review_ontology_owl_offline(domain_id: str) -> Dict[str, Any]:
+    """review_ontology_owl_offline。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
     return review_domain_owl_offline(domain_id)
 
@@ -3462,7 +3956,11 @@ def get_governance_scenario_loop() -> Dict[str, Any]:
 
 
 def governance_quality_view(domain_id: str = "data-gov") -> Dict[str, Any]:
-    """Step ⑥ vertical: OCS + gate-2 actions + value links."""
+    """Step ⑥ vertical: OCS + gate-2 actions + value links.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.governance_deepen import governance_quality_snapshot
 
     return governance_quality_snapshot(domain_id)
@@ -3475,7 +3973,14 @@ async def governance_locate_view(
     top_k: int = 8,
     with_graphrag: bool = False,
 ) -> Dict[str, Any]:
-    """Step ⑦ vertical: locate entities on GraphIndex (+ optional GraphRAG)."""
+    """Step ⑦ vertical: locate entities on GraphIndex (+ optional GraphRAG).
+
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        top_k: top_k 参数。
+        with_graphrag: with_graphrag 参数。
+    """
     from core.apps.fde.service.governance_deepen import locate_via_ontology_async
 
     return await locate_via_ontology_async(
@@ -3489,7 +3994,13 @@ def governance_fetch_view(
     *,
     purpose: str = "org_pilot",
 ) -> Dict[str, Any]:
-    """Org L5 Phase 1: locate→fetch sandbox snapshot (no live DB; D3)."""
+    """Org L5 Phase 1: locate→fetch sandbox snapshot (no live DB; D3).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        purpose: purpose 参数。
+    """
     from core.apps.org.service.org_io import fetch_by_entity
 
     return fetch_by_entity(domain_id, entity_id, purpose=purpose)
@@ -3500,21 +4011,36 @@ def governance_write_preview(
     entity_id: str,
     patch: Any = None,
 ) -> Dict[str, Any]:
-    """Org L5 Phase 1: write dry-run (default blocked)."""
+    """Org L5 Phase 1: write dry-run (default blocked).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        patch: patch 参数。
+    """
     from core.apps.org.service.org_io import preview_write
 
     return preview_write(domain_id, entity_id, patch if isinstance(patch, dict) else {})
 
 
 def org_list_goals(domain_id: str = "") -> Dict[str, Any]:
-    """Org L5 Phase 2: list OrgGoals."""
+    """Org L5 Phase 2: list OrgGoals.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_runtime import list_goals
 
     return list_goals(domain_id or "")
 
 
 def org_set_goal_status(goal_id: str, status: str) -> Dict[str, Any]:
-    """Org L5 Phase 2: activate/pause/done OrgGoal."""
+    """Org L5 Phase 2: activate/pause/done OrgGoal.
+
+    Args:
+        goal_id: goal 标识。
+        status: status 参数。
+    """
     from core.apps.org.service.org_runtime import set_goal_status
 
     return set_goal_status(goal_id, status)
@@ -3527,7 +4053,14 @@ def org_run_goal(
     dry_actions: bool = True,
     week_label: str = "",
 ) -> Dict[str, Any]:
-    """Org L5 Phase 2: execute one OrgRun (locate→fetch→HITL gate)."""
+    """Org L5 Phase 2: execute one OrgRun (locate→fetch→HITL gate).
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        dry_actions: dry_actions 参数。
+        week_label: week_label 参数。
+    """
     from core.apps.org.service.org_runtime import run_org_goal
 
     return run_org_goal(
@@ -3539,19 +4072,35 @@ def org_run_goal(
 
 
 def org_list_runs(goal_id: str = "", limit: int = 20) -> Dict[str, Any]:
+    """org_list_runs。
+
+    Args:
+        goal_id: goal 标识。
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_runtime import list_runs
 
     return list_runs(goal_id, limit=limit)
 
 
 def org_get_run(run_id: str) -> Dict[str, Any]:
+    """org_get_run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.org.service.org_runtime import get_run
 
     return get_run(run_id)
 
 
 def org_replay_trace(trace_id: str = "", *, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """V1: read-only five-step replay. Does not write ontology, edges, or runs."""
+    """V1: read-only five-step replay. Does not write ontology, edges, or runs.
+
+    Args:
+        trace_id: trace 标识。
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.v_wave_replay import replay_org_trace
 
     return replay_org_trace(trace_id, domain_id=domain_id)
@@ -3563,7 +4112,13 @@ def org_resume_run(
     approve: bool = True,
     resolution: str = "",
 ) -> Dict[str, Any]:
-    """Org L5 Phase 2: resume needs_hitl run after human decision."""
+    """Org L5 Phase 2: resume needs_hitl run after human decision.
+
+    Args:
+        run_id: 运行 ID。
+        approve: approve 参数。
+        resolution: resolution 参数。
+    """
     from core.apps.org.service.org_runtime import resume_run
 
     return resume_run(run_id, approve=approve, resolution=resolution)
@@ -3575,14 +4130,24 @@ def org_weekly_kpi(
     *,
     week: str = "",
 ) -> Dict[str, Any]:
-    """Org L5: weekly KPI snapshot (D2) + Phase 3 attribution."""
+    """Org L5: weekly KPI snapshot (D2) + Phase 3 attribution.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+    """
     from core.apps.org.service.org_kpi import weekly_kpi_report
 
     return weekly_kpi_report(domain_id, goal_id, week=week)
 
 
 def org_joint_health(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Read-only joint health. Never writes live YAML."""
+    """Read-only joint health. Never writes live YAML.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_kpi import joint_health_view
 
     return joint_health_view(domain_id or "it-ops")
@@ -3594,13 +4159,25 @@ def org_search_memory(
     domain_id: str = "",
     limit: int = 20,
 ) -> Dict[str, Any]:
-    """Org L5 Phase 3: exception jurisprudence / run memory search."""
+    """Org L5 Phase 3: exception jurisprudence / run memory search.
+
+    Args:
+        query: 查询。
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_memory import search_exceptions
 
     return search_exceptions(query, domain_id=domain_id, limit=limit)
 
 
 def org_list_memory(domain_id: str = "", limit: int = 50) -> Dict[str, Any]:
+    """org_list_memory。
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_memory import list_memory
 
     return list_memory(limit=limit, domain_id=domain_id)
@@ -3612,20 +4189,36 @@ def org_fleet_gate(
     domain_id: str = "it-ops",
     project_id: str = "",
 ) -> Dict[str, Any]:
-    """Org L5 Phase 4 W6: evaluate multi-agent fleet hard gate."""
+    """Org L5 Phase 4 W6: evaluate multi-agent fleet hard gate.
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        project_id: project 标识。
+    """
     from core.apps.org.service.org_fleet import evaluate_fleet_gate
 
     return evaluate_fleet_gate(goal_id, domain_id=domain_id, project_id=project_id)
 
 
 def org_set_allow_fleet(goal_id: str, allow: bool) -> Dict[str, Any]:
+    """org_set_allow_fleet。
+
+    Args:
+        goal_id: goal 标识。
+        allow: allow 参数。
+    """
     from core.apps.org.service.org_fleet import set_allow_fleet
 
     return set_allow_fleet(goal_id, allow)
 
 
 def org_sandbox_rehearsals(limit: int = 5) -> Dict[str, Any]:
-    """List sandbox rehearsals. Does not start a fleet."""
+    """List sandbox rehearsals. Does not start a fleet.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_fleet import list_sandbox_rehearsals
 
     return list_sandbox_rehearsals(limit=limit)
@@ -3636,7 +4229,12 @@ async def org_sandbox_conflict_probe(
     domain_id: str = "it-ops",
     resource_id: str = "shared_interface",
 ) -> Dict[str, Any]:
-    """Sandbox concurrent lock probe. No live write."""
+    """Sandbox concurrent lock probe. No live write.
+
+    Args:
+        domain_id: domain 标识。
+        resource_id: resource 标识。
+    """
     from core.apps.org.service.org_fleet import probe_sandbox_conflict
 
     return await probe_sandbox_conflict(domain_id or "it-ops", resource_id=resource_id or "shared_interface")
@@ -3648,21 +4246,35 @@ async def org_sandbox_rehearsal_start(
     domain_id: str,
     roles: List[Any],
 ) -> Dict[str, Any]:
-    """Record a sandbox handoff. Never flips allow_fleet."""
+    """Record a sandbox handoff. Never flips allow_fleet.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        roles: roles 参数。
+    """
     from core.apps.org.service.org_fleet import start_sandbox_rehearsal
 
     return await start_sandbox_rehearsal(role=role, domain_id=domain_id, roles=roles)
 
 
 def org_field_ops_checklist(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Org L5 Phase 4 W7: field ops readiness checklist."""
+    """Org L5 Phase 4 W7: field ops readiness checklist.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_field_ops import field_ops_checklist
 
     return field_ops_checklist(domain_id)
 
 
 def org_customer_signoff(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """V3: customer signoff layer. Read-only. m4_claim_allowed stays false."""
+    """V3: customer signoff layer. Read-only. m4_claim_allowed stays false.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_field_ops import customer_signoff_view
 
     return customer_signoff_view(domain_id or "it-ops")
@@ -3674,7 +4286,13 @@ def org_signoff_prep(
     *,
     as_markdown: bool = False,
 ) -> Dict[str, Any]:
-    """Read-only signoff prep score. Never flips m4_claim_allowed."""
+    """Read-only signoff prep score. Never flips m4_claim_allowed.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        as_markdown: as_markdown 参数。
+    """
     from core.apps.org.service.org_field_ops import signoff_prep_view
 
     return signoff_prep_view(
@@ -3693,7 +4311,16 @@ async def org_approval_inbox(
     offset: int = 0,
     limit: int = 20,
 ) -> Dict[str, Any]:
-    """H1: read-only approval inbox. Does not approve."""
+    """H1: read-only approval inbox. Does not approve.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        kind: kind 参数。
+        offset: 分页偏移。
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_approvals import list_approval_inbox
 
     return await list_approval_inbox(
@@ -3713,7 +4340,14 @@ def list_unattended_approval_inbox(
     session_id: str = "",
     limit: int = 200,
 ) -> Dict[str, Any]:
-    """OpenWorker P1: durable wait-queue for tool approvals (not org H1 inbox)."""
+    """OpenWorker P1: durable wait-queue for tool approvals (not org H1 inbox).
+
+    Args:
+        visibility: visibility 参数。
+        pending_only: pending_only 参数。
+        session_id: 会话 ID。
+        limit: 返回条数上限。
+    """
     from core.harness.infrastructure.gates.approval_inbox import (
         ApprovalInboxStore,
         get_approval_inbox,
@@ -3735,7 +4369,13 @@ def resolve_unattended_approval(
     *,
     resolved_by: str = "",
 ) -> Dict[str, Any]:
-    """Resolve a parked unattended approval (first-responder wins)."""
+    """Resolve a parked unattended approval (first-responder wins).
+
+    Args:
+        item_id: item 标识。
+        resolution: resolution 参数。
+        resolved_by: resolved_by 参数。
+    """
     from core.harness.infrastructure.gates.approval_inbox import (
         InboxItem,
         get_approval_inbox,
@@ -3752,7 +4392,12 @@ def resolve_unattended_approval(
 
 
 def set_unattended_attendance(session_id: str, mode: str) -> Dict[str, Any]:
-    """Set attendance=attended|inbox|auto for a session (daemon/cron use inbox|auto)."""
+    """Set attendance=attended|inbox|auto for a session (daemon/cron use inbox|auto).
+
+    Args:
+        session_id: 会话 ID。
+        mode: mode 参数。
+    """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
     norm = get_approval_inbox().set_attendance(str(session_id or "default"), mode)
@@ -3760,6 +4405,11 @@ def set_unattended_attendance(session_id: str, mode: str) -> Dict[str, Any]:
 
 
 def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
+    """获取 unattended_attendance。
+
+    Args:
+        session_id: 会话 ID。
+    """
     from core.harness.infrastructure.gates.approval_inbox import get_approval_inbox
 
     sid = str(session_id or "default")
@@ -3767,7 +4417,11 @@ def get_unattended_attendance(session_id: str) -> Dict[str, Any]:
 
 
 def list_session_write_provenance(session_id: str = "") -> Dict[str, Any]:
-    """OpenWorker P3: paths written this session (audit / Pi hybrid diagnostics)."""
+    """OpenWorker P3: paths written this session (audit / Pi hybrid diagnostics).
+
+    Args:
+        session_id: 会话 ID。
+    """
     from typing import List, Optional
 
     from core.harness.infrastructure.gates.session_write_provenance import (
@@ -3800,7 +4454,14 @@ async def org_approval_snapshot(
     role: str,
     domain_id: str = "it-ops",
 ) -> Dict[str, Any]:
-    """H1: read-only approval snapshot. Does not approve."""
+    """H1: read-only approval snapshot. Does not approve.
+
+    Args:
+        kind: kind 参数。
+        item_id: item 标识。
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_approvals import get_approval_snapshot
 
     return await get_approval_snapshot(
@@ -3818,7 +4479,17 @@ def org_evidence_pack(
     sandbox_mode: bool = False,
     as_markdown: bool = False,
 ) -> Dict[str, Any]:
-    """H2: read-only signoff evidence pack. Not a signature."""
+    """H2: read-only signoff evidence pack. Not a signature.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        max_traces: max_traces 参数。
+        sandbox_mode: sandbox_mode 参数。
+        as_markdown: as_markdown 参数。
+    """
     from core.apps.org.service.org_evidence_pack import build_evidence_pack
 
     return build_evidence_pack(
@@ -3839,7 +4510,14 @@ def org_value_translation(
     week: str = "",
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """H3: audit-friendly value translation. Not a signature."""
+    """H3: audit-friendly value translation. Not a signature.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.org.service.org_value_translation import translate_org_value
 
     return translate_org_value(
@@ -3858,7 +4536,15 @@ def org_value_roi_preview(
     trial_minutes_per_incident: float,
     trial_mtta_seconds: float,
 ) -> Dict[str, Any]:
-    """What-if ROI. Never writes baseline; never flips m4."""
+    """What-if ROI. Never writes baseline; never flips m4.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        trial_minutes_per_incident: trial_minutes_per_incident 参数。
+        trial_mtta_seconds: trial_mtta_seconds 参数。
+    """
     from core.apps.org.service.org_value_translation import preview_value_roi
 
     return preview_value_roi(
@@ -3871,21 +4557,35 @@ def org_value_roi_preview(
 
 
 def org_h4_rules(*, role: str) -> Dict[str, Any]:
-    """H4: read-only view of queue auto-pass rules. Sandbox switch on when no file."""
+    """H4: read-only view of queue auto-pass rules. Sandbox switch on when no file.
+
+    Args:
+        role: role 参数。
+    """
     from core.apps.org.service.org_auto_pass import h4_rules_view
 
     return h4_rules_view(role=role)
 
 
 def org_h4_auto_audit(*, role: str, limit: int = 50) -> Dict[str, Any]:
-    """H4: today's auto-pass audit. Admin only."""
+    """H4: today's auto-pass audit. Admin only.
+
+    Args:
+        role: role 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_auto_pass import h4_auto_audit
 
     return h4_auto_audit(role=role, limit=limit)
 
 
 async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """H4: sandbox queue status pass. Never writes live YAML or edges."""
+    """H4: sandbox queue status pass. Never writes live YAML or edges.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_auto_pass import run_h4_auto_pass
     from core.apps.org.service.org_h4_seed import ensure_approval_rules_seed
 
@@ -3897,56 +4597,95 @@ async def org_h4_auto_pass(*, role: str, domain_id: str = "it-ops") -> Dict[str,
 
 
 def org_h5_drafts(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """H5: list draft packs and skill_candidate cases. Not a listing."""
+    """H5: list draft packs and skill_candidate cases. Not a listing.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_skill_draft import list_skill_drafts
 
     return list_skill_drafts(role=role, domain_id=domain_id or "it-ops")
 
 
 def org_h5_create_draft(*, role: str, case_id: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """H5: write a draft pack. Does not register or write SKILL.md."""
+    """H5: write a draft pack. Does not register or write SKILL.md.
+
+    Args:
+        role: role 参数。
+        case_id: case 标识。
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_skill_draft import create_skill_draft
 
     return create_skill_draft(role=role, case_id=case_id, domain_id=domain_id or "it-ops")
 
 
 def org_h5_approve_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
-    """H5: human approve then register on the existing marketplace."""
+    """H5: human approve then register on the existing marketplace.
+
+    Args:
+        role: role 参数。
+        draft_id: draft 标识。
+    """
     from core.apps.org.service.org_skill_draft import approve_skill_draft
 
     return approve_skill_draft(role=role, draft_id=draft_id)
 
 
 def org_h5_reject_draft(*, role: str, draft_id: str) -> Dict[str, Any]:
-    """H5: reject a draft. Does not register."""
+    """H5: reject a draft. Does not register.
+
+    Args:
+        role: role 参数。
+        draft_id: draft 标识。
+    """
     from core.apps.org.service.org_skill_draft import reject_skill_draft
 
     return reject_skill_draft(role=role, draft_id=draft_id)
 
 
 def org_gap_hints(*, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Read-only: repeated action failures may draft via existing proposal path."""
+    """Read-only: repeated action failures may draft via existing proposal path.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_skill_draft import list_action_gap_hints
 
     return list_action_gap_hints(domain_id=domain_id or "it-ops")
 
 
 def org_preview_schema_gaps(*, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Read-only Diff for schema_gap cases. Does not create proposals."""
+    """Read-only Diff for schema_gap cases. Does not create proposals.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.k_wave_propose import preview_schema_gaps
 
     return preview_schema_gaps(domain_id or "it-ops")
 
 
 def org_list_cold_cases(*, domain_id: str = "it-ops", limit: int = 20) -> Dict[str, Any]:
-    """Read-only cold case archive. Not injected."""
+    """Read-only cold case archive. Not injected.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.harness.knowledge.ontology_case_learning import list_cold_cases
 
     return list_cold_cases(domain_id or "it-ops", limit=limit)
 
 
 def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Move low-yield cases to cold store. Does not delete or change TBox."""
+    """Move low-yield cases to cold store. Does not delete or change TBox.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "deleted": False, "wrote_live_yaml": False}
@@ -3958,7 +4697,12 @@ def org_archive_cold_cases(*, role: str, domain_id: str = "it-ops") -> Dict[str,
 
 
 async def org_draft_schema_gaps(*, role: str, domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Draft edge proposals from schema_gap cases. Does not apply."""
+    """Draft edge proposals from schema_gap cases. Does not apply.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+    """
     role_n = (role or "").strip().lower()
     if not role_n:
         return {"ok": False, "reason": "identity_missing", "wrote_live_yaml": False, "auto_apply": False}
@@ -3970,14 +4714,24 @@ async def org_draft_schema_gaps(*, role: str, domain_id: str = "it-ops") -> Dict
 
 
 def org_skill_bundle(*, role: str, draft_ids: list) -> Dict[str, Any]:
-    """H5: assemble existing drafts. No SKILL.md."""
+    """H5: assemble existing drafts. No SKILL.md.
+
+    Args:
+        role: role 参数。
+        draft_ids: draft_ids 参数。
+    """
     from core.apps.org.service.org_skill_draft import assemble_skill_bundle
 
     return assemble_skill_bundle(role=role, draft_ids=list(draft_ids or []))
 
 
 def org_value_baseline_get(*, role: str, tenant_id: str = "") -> Dict[str, Any]:
-    """S2: read tenant value baseline."""
+    """S2: read tenant value baseline.
+
+    Args:
+        role: role 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.org.service.org_value_translation import get_value_baseline_view
 
     return get_value_baseline_view(role=role, tenant_id=tenant_id or "")
@@ -3990,7 +4744,14 @@ def org_value_baseline_put(
     baseline_minutes_per_incident: float,
     baseline_mtta_seconds: float,
 ) -> Dict[str, Any]:
-    """S2: write tenant value baseline."""
+    """S2: write tenant value baseline.
+
+    Args:
+        role: role 参数。
+        tenant_id: 租户 ID。
+        baseline_minutes_per_incident: baseline_minutes_per_incident 参数。
+        baseline_mtta_seconds: baseline_mtta_seconds 参数。
+    """
     from core.apps.org.service.org_value_translation import save_value_baseline
 
     return save_value_baseline(
@@ -4015,7 +4776,14 @@ def org_domain_pack_install(
     domain_id: str,
     display_name: str = "",
 ) -> Dict[str, Any]:
-    """S3: install a domain pack into AIPLAT_HOME."""
+    """S3: install a domain pack into AIPLAT_HOME.
+
+    Args:
+        role: role 参数。
+        template_id: template 标识。
+        domain_id: domain 标识。
+        display_name: display_name 参数。
+    """
     from core.apps.org.service.domain_pack_install import install_domain_pack
 
     return install_domain_pack(
@@ -4027,20 +4795,34 @@ def org_domain_pack_install(
 
 
 def org_signoff_progress_get(*, role: str) -> Dict[str, Any]:
-    """S4: read signoff progress. Never claims M4."""
+    """S4: read signoff progress. Never claims M4.
+
+    Args:
+        role: role 参数。
+    """
     from core.apps.org.service.org_signoff_progress import get_signoff_progress
 
     return get_signoff_progress(role=role)
 
 
 def org_signoff_progress_put(*, role: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """S4: write oncall / dual-sign progress. m4_claim_allowed stays false."""
+    """S4: write oncall / dual-sign progress. m4_claim_allowed stays false.
+
+    Args:
+        role: role 参数。
+        body: 请求体。
+    """
     from core.apps.org.service.org_signoff_progress import save_signoff_progress
 
     return save_signoff_progress(role=role, body=body or {})
 
 
 def org_live_unlock_status(domain_id: str = "it-ops") -> Dict[str, Any]:
+    """org_live_unlock_status。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_field_ops import evaluate_live_unlock
     from core.apps.org.service.org_live_adapter import live_io_gates
 
@@ -4057,48 +4839,80 @@ def org_live_unlock_status(domain_id: str = "it-ops") -> Dict[str, Any]:
 
 
 def org_list_interfaces(domain_id: str = "") -> Dict[str, Any]:
-    """Phase C1.5: list InterfaceSpecs (yaml, else connector.live read-compat)."""
+    """Phase C1.5: list InterfaceSpecs (yaml, else connector.live read-compat).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_interface import list_interface_specs
 
     return list_interface_specs(domain_id or "")
 
 
 def org_get_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Phase C1: get + validate InterfaceSpec for domain."""
+    """Phase C1: get + validate InterfaceSpec for domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_interface import get_interface_spec
 
     return get_interface_spec(domain_id or "it-ops")
 
 
 def org_assert_action_interface(domain_id: str, action_id: str) -> Dict[str, Any]:
-    """Phase C1: whether action_id is bound to domain InterfaceSpec."""
+    """Phase C1: whether action_id is bound to domain InterfaceSpec.
+
+    Args:
+        domain_id: domain 标识。
+        action_id: action 标识。
+    """
     from core.apps.org.service.org_interface import assert_action_bound
 
     return assert_action_bound(domain_id or "it-ops", action_id)
 
 
 def org_materialize_interface(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Phase C1.5: copy InterfaceSpec into AIPLAT_HOME yaml. Never writes connector.live."""
+    """Phase C1.5: copy InterfaceSpec into AIPLAT_HOME yaml. Never writes connector.live.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.org.service.org_interface import materialize_interface_yaml
 
     return materialize_interface_yaml(domain_id or "it-ops")
 
 
 def org_usage_weekly(domain_id: str = "", week: str = "") -> Dict[str, Any]:
+    """org_usage_weekly。
+
+    Args:
+        domain_id: domain 标识。
+        week: week 参数。
+    """
     from core.apps.org.service.org_usage import weekly_usage
 
     return weekly_usage(domain_id or "", week or "")
 
 
 async def k1_confirm_extraction(extraction_id: str, *, actor: str = "") -> Dict[str, Any]:
-    """Phase K1: confirm extraction → change signal. Does not write live YAML or edges."""
+    """Phase K1: confirm extraction → change signal. Does not write live YAML or edges.
+
+    Args:
+        extraction_id: extraction 标识。
+        actor: 操作者身份。
+    """
     from core.apps.fde.service.k_wave_signal import confirm_extraction_k1
 
     return await confirm_extraction_k1(extraction_id, actor=actor)
 
 
 def k2_propose_arbitration(**kwargs: Any) -> Dict[str, Any]:
-    """Phase K2: open arbitration ticket; never writes cross-domain edge."""
+    """Phase K2: open arbitration ticket; never writes cross-domain edge.
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     from core.apps.fde.service.k_wave_arbit import propose_ticket
 
     return propose_ticket(**kwargs)
@@ -4109,6 +4923,13 @@ def k2_list_arbitration(
     domain_id: str = "",
     tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """k2_list_arbitration。
+
+    Args:
+        status: status 参数。
+        domain_id: domain 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.fde.service.k_wave_arbit import list_tickets
 
     return list_tickets(status=status, domain_id=domain_id, tenant_id=tenant_id)
@@ -4121,45 +4942,80 @@ def k2_decide_arbitration(
     actor: str = "",
     note: str = "",
 ) -> Dict[str, Any]:
+    """k2_decide_arbitration。
+
+    Args:
+        ticket_id: ticket 标识。
+        decision: decision 参数。
+        actor: 操作者身份。
+        note: note 参数。
+    """
     from core.apps.fde.service.k_wave_arbit import decide_ticket
 
     return decide_ticket(ticket_id, decision=decision, actor=actor, note=note)
 
 
 def k2_apply_arbitration(ticket_id: str, *, actor: str = "") -> Dict[str, Any]:
+    """k2_apply_arbitration。
+
+    Args:
+        ticket_id: ticket 标识。
+        actor: 操作者身份。
+    """
     from core.apps.fde.service.k_wave_arbit import apply_ticket
 
     return apply_ticket(ticket_id, actor=actor)
 
 
 def k2_rollback_arbitration_edge(ticket_id: str, *, role: str) -> Dict[str, Any]:
-    """E2: one PolicyGate decision, then restore that ticket's cross-domain mark."""
+    """E2: one PolicyGate decision, then restore that ticket's cross-domain mark.
+
+    Args:
+        ticket_id: ticket 标识。
+        role: role 参数。
+    """
     from core.apps.fde.service.k_wave_arbit import rollback_ticket_edge
 
     return rollback_ticket_edge(ticket_id, role=role)
 
 
 async def k5_scan_repeat_failures(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Phase K5: repeated failures → edge draft. auto_apply stays false."""
+    """Phase K5: repeated failures → edge draft. auto_apply stays false.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.apps.fde.service.k_wave_propose import enqueue_repeat_failure_proposals
 
     return await enqueue_repeat_failure_proposals(domain_id or "it-ops")
 
 
 async def approve_proposal_once(proposal_id: str, *, role: str) -> Dict[str, Any]:
-    """V4: one PolicyGate decision. Does not apply live YAML."""
+    """V4: one PolicyGate decision. Does not apply live YAML.
+
+    Args:
+        proposal_id: proposal 标识。
+        role: role 参数。
+    """
     from core.apps.fde.service.k_wave_approve import approve_proposal_once as _once
 
     return await _once(proposal_id, role=role)
 
 
 def org_list_posts() -> Dict[str, Any]:
+    """org_list_posts。
+    """
     from core.apps.org.service.org_post import list_posts
 
     return list_posts()
 
 
 def org_get_post(post_id: str = "") -> Dict[str, Any]:
+    """org_get_post。
+
+    Args:
+        post_id: post 标识。
+    """
     from core.apps.org.service.org_post import get_post
 
     return get_post(post_id)
@@ -4179,7 +5035,14 @@ def org_authorize_console_run(
     goal_id: str = "",
     post_id: str = "",
 ) -> Dict[str, Any]:
-    """V2: one decision for the management run route. Not the Feishu path."""
+    """V2: one decision for the management run route. Not the Feishu path.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        post_id: post 标识。
+    """
     from core.apps.org.service.org_post import authorize_console_run
 
     return authorize_console_run(
@@ -4196,14 +5059,24 @@ def org_ingest_feishu(
     headers: Optional[Dict[str, str]] = None,
     raw_body: bytes = b"",
 ) -> Dict[str, Any]:
-    """Phase C2: signed Feishu event → confirm gate → org_run_goal."""
+    """Phase C2: signed Feishu event → confirm gate → org_run_goal.
+
+    Args:
+        payload: 载荷 dict。
+        headers: headers 参数。
+        raw_body: raw_body 参数。
+    """
     from core.apps.org.service.org_ingress import ingest_feishu_event
 
     return ingest_feishu_event(payload, headers=headers, raw_body=raw_body)
 
 
 def org_event_previews(limit: int = 5) -> Dict[str, Any]:
-    """List sandbox event previews. Does not start live IO."""
+    """List sandbox event previews. Does not start live IO.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.org.service.org_ingress import list_event_previews
 
     return list_event_previews(limit=limit)
@@ -4215,7 +5088,13 @@ def org_event_preview_start(
     domain_id: str,
     event_type: str,
 ) -> Dict[str, Any]:
-    """Whitelist event → dry OrgRun. No channel push."""
+    """Whitelist event → dry OrgRun. No channel push.
+
+    Args:
+        role: role 参数。
+        domain_id: domain 标识。
+        event_type: event_type 参数。
+    """
     from core.apps.org.service.org_ingress import start_event_preview
 
     return start_event_preview(role=role, domain_id=domain_id, event_type=event_type)
@@ -4231,7 +5110,17 @@ async def suggest_ontology_from_table_schema(
     author: str = "schema-suggest",
     enqueue: bool = True,
 ) -> Dict[str, Any]:
-    """Path A: table/CSV headers → ontology proposal draft (never apply / never GraphIndex)."""
+    """Path A: table/CSV headers → ontology proposal draft (never apply / never GraphIndex).
+
+    Args:
+        domain_id: domain 标识。
+        table_name: table_name 参数。
+        columns: columns 参数。
+        csv_text: csv_text 参数。
+        sample_rows: sample_rows 参数。
+        author: author 参数。
+        enqueue: enqueue 参数。
+    """
     from core.apps.fde.service.ontology_code_suggestions import (
         suggest_classes_from_table_schema_async,
     )
@@ -4260,7 +5149,20 @@ def record_ontology_case(
     metadata: Any = None,
     write_graph: bool = False,
 ) -> Dict[str, Any]:
-    """P0: write ontology learning case (does not mutate TBox YAML)."""
+    """P0: write ontology learning case (does not mutate TBox YAML).
+
+    Args:
+        domain_id: domain 标识。
+        title: title 参数。
+        summary: summary 参数。
+        outcome: outcome 参数。
+        reward: reward 参数。
+        action_id: action 标识。
+        entity_id: entity 标识。
+        tags: tags 参数。
+        metadata: metadata 参数。
+        write_graph: write_graph 参数。
+    """
     from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
 
     return OntologyCaseStore(domain_id).record(
@@ -4283,7 +5185,14 @@ def search_ontology_cases(
     top_k: int = 5,
     outcome: str = "",
 ) -> Dict[str, Any]:
-    """P0: reward-weighted case retrieval (optional UCB; may bump serve_count)."""
+    """P0: reward-weighted case retrieval (optional UCB; may bump serve_count).
+
+    Args:
+        domain_id: domain 标识。
+        query: 查询。
+        top_k: top_k 参数。
+        outcome: outcome 参数。
+    """
     from core.harness.knowledge.ontology_case_learning import OntologyCaseStore
 
     hits = OntologyCaseStore(domain_id).search(query, top_k=top_k, outcome=outcome or "")
@@ -4291,7 +5200,11 @@ def search_ontology_cases(
 
 
 def ontology_case_learning_status(domain_id: str = "") -> Dict[str, Any]:
-    """P2.5: learning flags + optional per-domain counters (no TBox mutate)."""
+    """P2.5: learning flags + optional per-domain counters (no TBox mutate).
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.ontology_case_learning import ontology_case_learning_meta
 
     return ontology_case_learning_meta(domain_id or "")
@@ -4305,7 +5218,15 @@ async def feedback_ontology_case(
     actor: str = "user",
     auto_enqueue: bool = True,
 ) -> Dict[str, Any]:
-    """P0 feedback + optional P1 gated proposal enqueue (never auto-apply)."""
+    """P0 feedback + optional P1 gated proposal enqueue (never auto-apply).
+
+    Args:
+        case_id: case 标识。
+        rating: rating 参数。
+        note: note 参数。
+        actor: 操作者身份。
+        auto_enqueue: auto_enqueue 参数。
+    """
     from core.harness.knowledge.ontology_case_learning import record_feedback_and_maybe_evolve
 
     return await record_feedback_and_maybe_evolve(
@@ -4325,8 +5246,10 @@ async def evolve_ontology_from_case(
 ) -> Dict[str, Any]:
     """P1: high-reward case → VersionedOntologyStore draft proposal only.
 
-    P2: when ``AIPLAT_ONTOLOGY_EDGE_AUTO_APPLY=true``, edge-only proposals may
-    auto approve→apply (rollback via ``rollback_ontology_case_evolution``).
+    Args:
+        case_id: case 标识。
+        force: 是否强制。
+        author: author 参数。
     """
     from core.harness.knowledge.ontology_case_learning import maybe_enqueue_evolution_proposal
 
@@ -4336,7 +5259,11 @@ async def evolve_ontology_from_case(
 
 
 async def rollback_ontology_case_evolution(case_id: str) -> Dict[str, Any]:
-    """P2: restore live YAML from pre-apply snapshot for a case-linked proposal."""
+    """P2: restore live YAML from pre-apply snapshot for a case-linked proposal.
+
+    Args:
+        case_id: case 标识。
+    """
     from core.apps.fde.service.k_wave_rollback import rollback_scope
     from core.harness.knowledge.ontology_case_learning import rollback_case_evolution
 
@@ -4353,7 +5280,12 @@ def org_rollback_scope() -> Dict[str, Any]:
 
 
 async def rollback_ontology_proposal(domain_id: str, proposal_id: str) -> Dict[str, Any]:
-    """P2: restore live YAML for an applied ontology proposal. Not edges, not local drafts."""
+    """P2: restore live YAML for an applied ontology proposal. Not edges, not local drafts.
+
+    Args:
+        domain_id: domain 标识。
+        proposal_id: proposal 标识。
+    """
     from core.apps.fde.service.k_wave_rollback import rollback_scope
     from core.harness.knowledge.versioned_ontology_store import VersionedOntologyStore
 
@@ -4374,11 +5306,18 @@ async def rollback_ontology_proposal(domain_id: str, proposal_id: str) -> Dict[s
 
 
 def get_abox_acl_doc(domain_id: str) -> Dict[str, Any]:
+    """获取 abox_acl_doc。
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.policy.graph_abox_acl import load_abox_acl
     return load_abox_acl(domain_id)
 
 
 def get_abox_crud_matrix() -> Dict[str, Any]:
+    """获取 abox_crud_matrix。
+    """
     from core.policy.graph_abox_acl import crud_matrix_doc
     return crud_matrix_doc()
 
@@ -4390,6 +5329,14 @@ def set_graph_entity_acl(
     deny_roles: Any = None,
     allow_roles: Any = None,
 ) -> Dict[str, Any]:
+    """set_graph_entity_acl。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        deny_roles: deny_roles 参数。
+        allow_roles: allow_roles 参数。
+    """
     from core.policy.graph_abox_acl import set_entity_acl
     return set_entity_acl(
         domain_id,
@@ -4408,6 +5355,16 @@ def set_graph_field_acl(
     redaction: str = "mask",
     replace_with: str = "[REDACTED]",
 ) -> Dict[str, Any]:
+    """set_graph_field_acl。
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+        visibility: visibility 参数。
+        redaction: redaction 参数。
+        replace_with: replace_with 参数。
+    """
     from core.policy.graph_abox_acl import set_field_acl
     return set_field_acl(
         domain_id,
@@ -4422,19 +5379,21 @@ def set_graph_field_acl(
 # ── Growth & Obsidian Facade (Phase E + Phase F) ──
 
 def get_growth_stats(days: int = 30, *, collection_id: str = "default") -> Dict[str, Any]:
-    u"""Get knowledge base growth statistics for the last N days."""
+    """Get knowledge base growth statistics for the last N days.
+
+    Args:
+        days: days 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_growth import get_growth_stats as _gs
     return _gs(collection_id=collection_id, days=days)
 
 
 def check_obsidian_compatibility(collection_id: str = "default") -> Dict[str, Any]:
-    u"""Verify that the wiki directory is 100% compatible with Obsidian vault format.
+    """Verify that the wiki directory is 100% compatible with Obsidian vault format.
 
-    Checks:
-      - All .md files have valid YAML frontmatter
-      - [[wikilinks]] are used for internal references
-      - Directory structure is flat enough for Obsidian graph view
-      - No file naming conflicts (special characters Obsidian can't handle)
+    Args:
+        collection_id: collection 标识。
     """
     import os as _os, re as _re
     from core.harness.knowledge.wiki_engine import _wiki_root
@@ -4495,7 +5454,13 @@ async def complete_chapter_for_learner(
     chapter_id: str,
     answers: List[Any],
 ) -> Dict[str, Any]:
-    u"""Assess all exercises in a chapter and return results."""
+    """Assess all exercises in a chapter and return results.
+
+    Args:
+        learner_id: learner 标识。
+        chapter_id: chapter 标识。
+        answers: answers 参数。
+    """
     from core.harness.knowledge.learning_ontology import load_learner_profile
     from core.harness.knowledge.learning_paths import get_builtin_paths
     from core.harness.knowledge.learning_assessment import complete_chapter
@@ -4526,7 +5491,13 @@ def instantiate_scene(
     params: Optional[Dict[str, Any]] = None,
     collection_id: str = "default",
 ) -> Optional[Dict[str, Any]]:
-    u"""Instantiate a scene template into a PipelineConfig dict."""
+    """Instantiate a scene template into a PipelineConfig dict.
+
+    Args:
+        scene_id: scene 标识。
+        params: params 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.scene_model import instantiate_scene as _inst
     return _inst(scene_id, params=params, collection_id=collection_id)
 
@@ -4538,7 +5509,13 @@ def verify_stage_output(
     expected_outcomes: List[Dict[str, Any]],
     stage_id: str = "",
 ) -> Dict[str, Any]:
-    u"""Verify stage output against expected outcomes. Returns verification result dict."""
+    """Verify stage output against expected outcomes. Returns verification result dict.
+
+    Args:
+        artifact: artifact 参数。
+        expected_outcomes: expected_outcomes 参数。
+        stage_id: stage 标识。
+    """
     from core.harness.execution.verification import verify_against_expected
     result = verify_against_expected(artifact, expected_outcomes, stage_id=stage_id)
     return result.to_dict()
@@ -4560,7 +5537,15 @@ def register_writeback_target(
     field_mapping: Optional[Dict[str, str]] = None,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Register a writeback target for ontology actions."""
+    """Register a writeback target for ontology actions.
+
+    Args:
+        target_type: target_type 参数。
+        target_endpoint: target_endpoint 参数。
+        trigger_actions: trigger_actions 参数。
+        field_mapping: field_mapping 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_writeback import (
         register_writeback, WriteBackConfig, WriteBackTarget,
     )
@@ -4575,7 +5560,11 @@ def register_writeback_target(
 
 
 def list_writeback_targets(collection_id: str = "default") -> List[Dict[str, Any]]:
-    u"""List all registered writeback targets."""
+    """List all registered writeback targets.
+
+    Args:
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_writeback import load_writebacks
     return [c.to_dict() for c in load_writebacks(collection_id=collection_id)]
 
@@ -4588,7 +5577,13 @@ def get_entity_markings(
     collection_id: str = "default",
     resolve_effective: bool = True,
 ) -> Dict[str, Any]:
-    u"""Get explicit and effective markings for an entity."""
+    """Get explicit and effective markings for an entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+        resolve_effective: resolve_effective 参数。
+    """
     from core.harness.knowledge.knowledge_markings import get_entity_markings as _get
     return _get(entity_uri, collection_id=collection_id, resolve_effective=resolve_effective)
 
@@ -4601,7 +5596,15 @@ def set_entity_marking(
     *,
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Set a marking on an entity."""
+    """Set a marking on an entity.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        label: label 参数。
+        level: level 参数。
+        scope: scope 参数。
+        collection_id: collection 标识。
+    """
     from core.harness.knowledge.knowledge_markings import set_marking, MarkingLevel
     marking = set_marking(entity_uri, label, MarkingLevel(level), scope,
                           collection_id=collection_id)
@@ -4616,10 +5619,14 @@ def check_kb_entity_access(
     actor_role: str = "",
     collection_id: str = "default",
 ) -> Dict[str, Any]:
-    u"""Check if an actor can access a knowledge entity (three-layer fusion).
+    """Check if an actor can access a knowledge entity (three-layer fusion).
 
-    Use this from platform/management to check permissions without
-    importing harness-internal modules.
+    Args:
+        entity_uri: entity_uri 参数。
+        action: action 参数。
+        actor_scopes: actor_scopes 参数。
+        actor_role: actor_role 参数。
+        collection_id: collection 标识。
     """
     from core.harness.infrastructure.gates.policy_gate import check_kb_access
     import asyncio
@@ -4655,7 +5662,11 @@ def list_ontology_domains() -> List[Dict[str, Any]]:
 
 
 def get_ontology_domain_schema(domain_id: str) -> Dict[str, Any]:
-    u"""Return full domain schema as JSON dict for the ontology editor UI."""
+    """Return full domain schema as JSON dict for the ontology editor UI.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.ontology_loader import load_ontology_from_yaml
     from core.harness.knowledge.yaml_serializer import domain_to_dict
 
@@ -4676,7 +5687,15 @@ def create_ontology_domain(
     description: str = "",
     version: str = "1.0.0",
 ) -> Dict[str, Any]:
-    u"""Create a new empty ontology domain YAML file."""
+    """Create a new empty ontology domain YAML file.
+
+    Args:
+        domain_id: domain 标识。
+        name: name 参数。
+        namespace: namespace 参数。
+        description: description 参数。
+        version: version 参数。
+    """
     from core.harness.knowledge.yaml_serializer import dict_to_yaml
 
     base_dir = _resolve_ontologies_dir()
@@ -4731,7 +5750,15 @@ def update_ontology_domain_meta(
     version: str = "",
     namespace: str = "",
 ) -> Dict[str, Any]:
-    u"""Update domain metadata (name, description, version, namespace)."""
+    """Update domain metadata (name, description, version, namespace).
+
+    Args:
+        domain_id: domain 标识。
+        name: name 参数。
+        description: description 参数。
+        version: version 参数。
+        namespace: namespace 参数。
+    """
     import yaml
 
     base_dir = _resolve_ontologies_dir()
@@ -4763,7 +5790,11 @@ def update_ontology_domain_meta(
 
 
 def delete_ontology_domain(domain_id: str) -> Dict[str, Any]:
-    u"""Delete an ontology domain YAML and optionally its graph data."""
+    """Delete an ontology domain YAML and optionally its graph data.
+
+    Args:
+        domain_id: domain 标识。
+    """
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
     if not Path(file_path).exists():
@@ -4780,7 +5811,13 @@ def upsert_ontology_class(
     class_name: str,
     class_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    u"""Create or update a class definition in a domain YAML."""
+    """Create or update a class definition in a domain YAML.
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+        class_data: class_data 参数。
+    """
     import yaml
 
     base_dir = _resolve_ontologies_dir()
@@ -4804,7 +5841,12 @@ def upsert_ontology_class(
 
 
 def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
-    u"""Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate)."""
+    """Remove a class — always via VersionedOntologyStore proposal (F2 live YAML gate).
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+    """
     import asyncio
 
     async def _via_proposal() -> Dict[str, Any]:
@@ -4855,7 +5897,12 @@ def delete_ontology_class(domain_id: str, class_name: str) -> Dict[str, Any]:
 
 
 async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[str, Any]:
-    """Async delete class via create→approve→apply proposal (F2-safe)."""
+    """Async delete class via create→approve→apply proposal (F2-safe).
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+    """
     store = VersionedOntologyStore(domain_id)
     current = store.load_current() or {}
     classes = current.get("classes") or {}
@@ -4896,7 +5943,11 @@ async def delete_ontology_class_async(domain_id: str, class_name: str) -> Dict[s
 
 
 def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
-    u"""Validate and publish — write domain YAML + create graph snapshot."""
+    """Validate and publish — write domain YAML + create graph snapshot.
+
+    Args:
+        domain_id: domain 标识。
+    """
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
     if not Path(file_path).exists():
@@ -4923,7 +5974,11 @@ def publish_ontology_domain(domain_id: str) -> Dict[str, Any]:
 
 
 def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
-    u"""List all saved rule versions for a domain."""
+    """List all saved rule versions for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
     try:
         graph = GraphIndex.load(domain_id)
@@ -4934,7 +5989,12 @@ def list_rule_versions(domain_id: str) -> List[Dict[str, Any]]:
 
 
 def rollback_rule_version(domain_id: str, version_id: str) -> Dict[str, Any]:
-    u"""Restore rules to a previous version — restore snapshot + invalidate caches."""
+    """Restore rules to a previous version — restore snapshot + invalidate caches.
+
+    Args:
+        domain_id: domain 标识。
+        version_id: version 标识。
+    """
     from core.harness.ontology_engine.graph_index import GraphIndex
     try:
         graph = GraphIndex.load(domain_id)
@@ -4960,7 +6020,11 @@ def _save_rule_version(domain_id: str, file_path: str, domain) -> None:
 
 
 def list_views_for_domain(domain_id: str) -> List[Dict[str, Any]]:
-    u"""List all role-based views for a domain."""
+    """List all role-based views for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.role_view import load_views, list_roles
     schema = get_ontology_domain_schema(domain_id)
     compiled = load_views(schema)
@@ -4968,7 +6032,12 @@ def list_views_for_domain(domain_id: str) -> List[Dict[str, Any]]:
 
 
 def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
-    u"""Get a single role view definition."""
+    """Get a single role view definition.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+    """
     from core.harness.knowledge.role_view import load_views
     schema = get_ontology_domain_schema(domain_id)
     compiled = load_views(schema)
@@ -4979,7 +6048,13 @@ def get_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
 
 
 def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Create or update a role view in the domain YAML, writing back via yaml_serializer."""
+    """Create or update a role view in the domain YAML, writing back via yaml_serializer.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+        view_data: view_data 参数。
+    """
     import yaml
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
@@ -4993,7 +6068,12 @@ def upsert_view_for_domain(domain_id: str, role: str, view_data: Dict[str, Any])
 
 
 def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
-    u"""Delete a role view from the domain YAML."""
+    """Delete a role view from the domain YAML.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+    """
     import yaml
     base_dir = _resolve_ontologies_dir()
     file_path = f"{base_dir}/{domain_id}.yaml"
@@ -5006,7 +6086,13 @@ def delete_view_for_domain(domain_id: str, role: str) -> Dict[str, Any]:
 
 
 def resolve_term_in_view(domain_id: str, role: str, term: str) -> Dict[str, Any]:
-    u"""Resolve a term's meaning for a specific role perspective."""
+    """Resolve a term's meaning for a specific role perspective.
+
+    Args:
+        domain_id: domain 标识。
+        role: role 参数。
+        term: term 参数。
+    """
     from core.harness.knowledge.role_view import load_views, resolve_term as _rt
     schema = get_ontology_domain_schema(domain_id)
     compiled = load_views(schema)
@@ -5016,14 +6102,23 @@ def resolve_term_in_view(domain_id: str, role: str, term: str) -> Dict[str, Any]
 
 
 def validate_views_for_domain(domain_id: str) -> Dict[str, Any]:
-    u"""Validate role views for a domain."""
+    """Validate role views for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.role_view import validate_views as _vv
     schema = get_ontology_domain_schema(domain_id)
     return {"domain_id": domain_id, **_vv(schema)}
 
 
 def resolve_prompt(prompt_id: str, **variables) -> str:
-    u"""Synchronous prompt template resolution."""
+    """Synchronous prompt template resolution.
+
+    Args:
+        prompt_id: prompt 标识。
+        variables: variables 参数。
+    """
     from core.harness.utils.prompt_loader import _sync_resolve
     return _sync_resolve(prompt_id, **variables)
 
@@ -5032,37 +6127,65 @@ def resolve_prompt(prompt_id: str, **variables) -> str:
 
 
 def get_process_status(domain_id: str, process_name: str = "") -> List[Dict[str, Any]]:
-    u"""Get running process instance status."""
+    """Get running process instance status.
+
+    Args:
+        domain_id: domain 标识。
+        process_name: process_name 参数。
+    """
     from core.harness.knowledge.process_orchestrator import get_process_status as _gps
     return _gps(domain_id, process_name)
 
 
 def get_bottlenecks(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-    u"""Get process bottlenecks — instances stuck at same step longest."""
+    """Get process bottlenecks — instances stuck at same step longest.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.harness.knowledge.process_orchestrator import get_bottlenecks as _gb
     return _gb(domain_id, limit)
 
 
 def get_state_distribution(domain_id: str) -> List[Dict[str, Any]]:
-    u"""Count instances per class per state."""
+    """Count instances per class per state.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.process_monitor import state_distribution as _sd
     return _sd(domain_id)
 
 
 def get_bottleneck_analysis(domain_id: str, limit: int = 10) -> List[Dict[str, Any]]:
-    u"""Find entities stuck in their current state longest."""
+    """Find entities stuck in their current state longest.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     from core.harness.knowledge.process_monitor import bottleneck_analysis as _ba
     return _ba(domain_id, limit)
 
 
 def get_sla_violations(domain_id: str) -> List[Dict[str, Any]]:
-    u"""Get SLA violations triggered by time_elapsed transitions."""
+    """Get SLA violations triggered by time_elapsed transitions.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.harness.knowledge.process_monitor import sla_violations as _sv
     return _sv(domain_id)
 
 
 def get_trend_data(domain_id: str, days: int = 7) -> List[Dict[str, Any]]:
-    u"""Daily state transition trend data."""
+    """Daily state transition trend data.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     from core.harness.knowledge.process_monitor import trend_data as _td
     return _td(domain_id, days)
 
@@ -5141,8 +6264,13 @@ from core.harness.ontology_engine.sirg_auditor import SirgAuditor, audit_trace_r
 from core.harness.knowledge.versioned_ontology_store import load_tier_approval_roles  # noqa: boundary — P2-L1 tier approval role matrix (配置驱动)
 
 def sirg_audit(inference, fired_rule_ids, conclusion_relation):
-    """P1-L4b: SIRG reasoning audit facade — compare fired rules vs required
-    rule chain for a conclusion (跨文件调用 SirgAuditor.from_inference)."""
+    """P1-L4b: SIRG reasoning audit facade — compare fired rules vs required。
+
+    Args:
+        inference: inference 参数。
+        fired_rule_ids: fired_rule_ids 参数。
+        conclusion_relation: conclusion_relation 参数。
+    """
     from core.harness.ontology_engine.sirg_auditor import SirgAuditor
     auditor = SirgAuditor.from_inference(inference)
     return auditor.audit_reasoning(fired_rule_ids, conclusion_relation)
@@ -5373,9 +6501,9 @@ from core.services.config_registry_store import ConfigRegistryKey, get_config_re
 
 def cancel_pipeline(run_id: str) -> Any:
     """Cancel a running pipeline by appending a cancel_requested event.
-    
-    The pipeline engine's main loop checks is_cancel_requested() on each iteration
-    and gracefully terminates when the marker is found. Also cancels any queued runs.
+
+    Args:
+        run_id: 运行 ID。
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -5446,9 +6574,9 @@ async def import_claude_memories(
 ) -> Dict[str, Any]:
     """导入 Claude Code 会话 JSONL → MemoryManager（P0-b，对标 Codex external_agent_config_migration）。
 
-    解析 ~/.claude/projects|transcripts/*.jsonl 为对话轮次，写入 episodic/semantic
-    记忆（source_tag=claude_import + provenance 溯源）。返回 {imported, sessions,
-    turns, skipped, errors}。供 platform POST /memory/import 调用。
+    Args:
+        base_path: base_path 参数。
+        max_sessions: max_sessions 参数。
     """
     from core.harness.memory.import_claude_sessions import import_claude_sessions
     from core.harness.memory.manager import MemoryManager
@@ -5462,7 +6590,12 @@ async def import_claude_memories(
 
 
 def recall_team_brain(query: str = "", limit: int = 8) -> list:
-    """Team Brain Auto-Recall — 聚合 TaskSkill / shared_memory / promoted experience。"""
+    """Team Brain Auto-Recall — 聚合 TaskSkill / shared_memory / promoted experience。
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+    """
     from core.harness.memory.team_brain import recall_team_solutions
 
     return [it.to_dict() for it in recall_team_solutions(query or "", limit=int(limit or 8))]
@@ -5481,7 +6614,13 @@ def org_harness_status(
     recent_limit: int = 10,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """组织 harness 暗账本：HITL 串行 / 审批 + 黄金集回归 / P0 漏检 + duty_board。"""
+    """组织 harness 暗账本：HITL 串行 / 审批 + 黄金集回归 / P0 漏检 + duty_board。
+
+    Args:
+        run_id: 运行 ID。
+        recent_limit: recent_limit 参数。
+        tenant_id: 租户 ID。
+    """
     from core.harness.meta.org_harness_metrics import org_harness_status as _status
 
     return _status(
@@ -5497,7 +6636,13 @@ def build_duty_board(
     adoption: Optional[Dict[str, Any]] = None,
     thresholds: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Governance 值班板裁决（go/watch/block/unavailable；禁止假成功率）。"""
+    """Governance 值班板裁决（go/watch/block/unavailable；禁止假成功率）。
+
+    Args:
+        payload: 载荷 dict。
+        adoption: adoption 参数。
+        thresholds: thresholds 参数。
+    """
     from core.harness.meta.org_harness_metrics import build_duty_board as _board
 
     return _board(payload, adoption=adoption, thresholds=thresholds)
@@ -5507,7 +6652,11 @@ def load_duty_board_thresholds(
     *,
     override: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Duty-board YAML bands（override / AIPLAT_DUTY_BOARD_CONFIG / AIPLAT_HOME / seed）。"""
+    """Duty-board YAML bands（override / AIPLAT_DUTY_BOARD_CONFIG / AIPLAT_HOME / seed）。
+
+    Args:
+        override: override 参数。
+    """
     from core.harness.meta.org_harness_metrics import load_duty_board_thresholds as _load
 
     thr, source = _load(override=override)
@@ -5518,7 +6667,11 @@ def load_duty_board_playbook(
     *,
     override: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Duty-officer playbook（go/watch/block/unavailable 固定动作列表）。"""
+    """Duty-officer playbook（go/watch/block/unavailable 固定动作列表）。
+
+    Args:
+        override: override 参数。
+    """
     from core.harness.meta.org_harness_metrics import load_duty_board_playbook as _load
 
     playbook, source = _load(override=override)
@@ -5537,7 +6690,12 @@ def assess_exemption_debt(
     *,
     now: Any = None,
 ) -> Dict[str, Any]:
-    """豁免即负债：owner+上限+到期未复审→block（合入闸门 / 值班板共用）。"""
+    """豁免即负债：owner+上限+到期未复审→block（合入闸门 / 值班板共用）。
+
+    Args:
+        config: config 参数。
+        now: now 参数。
+    """
     from core.harness.meta.physical_merge_gates import (
         assess_exemption_debt as _assess,
         load_physical_gates_config,
@@ -5553,7 +6711,11 @@ def assess_gate_meta(
     *,
     thresholds: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """门禁元评估：窗口内 block/豁免/SKIP/申诉率 → go|watch|block（不发明低样本率）。"""
+    """门禁元评估：窗口内 block/豁免/SKIP/申诉率 → go|watch|block（不发明低样本率）。
+
+    Args:
+        thresholds: thresholds 参数。
+    """
     from core.harness.meta.gate_meta_eval import assess_gate_meta as _assess
 
     return _assess(thresholds=thresholds)
@@ -5565,7 +6727,13 @@ def assess_repo_health(
     run_scan: bool = False,
     persist: bool = False,
 ) -> Dict[str, Any]:
-    """合入后/周度仓库健康：全树 LOC/god/fanout/deps JSONL → go|watch|block|unavailable。"""
+    """合入后/周度仓库健康：全树 LOC/god/fanout/deps JSONL → go|watch|block|unavailable。
+
+    Args:
+        thresholds: thresholds 参数。
+        run_scan: run_scan 参数。
+        persist: persist 参数。
+    """
     from core.harness.meta.repo_health_scan import assess_repo_health as _assess
 
     return _assess(thresholds=thresholds, run_scan=run_scan, persist=persist)
@@ -5575,7 +6743,11 @@ def scan_repo_health(
     *,
     persist: bool = True,
 ) -> Dict[str, Any]:
-    """执行一次全树健康扫描（可选写入 org/repo_health JSONL）。"""
+    """执行一次全树健康扫描（可选写入 org/repo_health JSONL）。
+
+    Args:
+        persist: persist 参数。
+    """
     from core.harness.meta.repo_health_scan import (
         append_health_snapshot,
         assess_repo_health as _assess,
@@ -5602,7 +6774,13 @@ def workspace_agent_needs_coding_defaults(
     agent_meta: Optional[Dict[str, Any]] = None,
     skills: Optional[List[Any]] = None,
 ) -> bool:
-    """Workspace Execute 是否应注入编码闭环默认（配置/技能信号，禁 agent_id）。"""
+    """Workspace Execute 是否应注入编码闭环默认（配置/技能信号，禁 agent_id）。
+
+    Args:
+        agent_cfg: agent_cfg 参数。
+        agent_meta: agent_meta 参数。
+        skills: skills 参数。
+    """
     from core.schemas_builder import workspace_agent_needs_coding_defaults as _needs
 
     return _needs(agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
@@ -5615,7 +6793,14 @@ def inject_workspace_coding_defaults(
     agent_meta: Optional[Dict[str, Any]] = None,
     skills: Optional[List[Any]] = None,
 ) -> List[str]:
-    """升级 Workspace Execute state 至与工厂 uses_file_output 相同的编码闭环。"""
+    """升级 Workspace Execute state 至与工厂 uses_file_output 相同的编码闭环。
+
+    Args:
+        state: state 参数。
+        agent_cfg: agent_cfg 参数。
+        agent_meta: agent_meta 参数。
+        skills: skills 参数。
+    """
     from core.schemas_builder import inject_workspace_coding_defaults as _inject
 
     return _inject(state, agent_cfg=agent_cfg, agent_meta=agent_meta, skills=skills)
@@ -5624,28 +6809,46 @@ def inject_workspace_coding_defaults(
 def apply_template_stage_overlay(
     dest: Any, src: Any, *, only_missing: bool = False
 ) -> Any:
-    """工厂 recommend_team：把团队模板 YAML 的 coding 闭环字段拷到计划阶段。"""
+    """工厂 recommend_team：把团队模板 YAML 的 coding 闭环字段拷到计划阶段。
+
+    Args:
+        dest: dest 参数。
+        src: src 参数。
+        only_missing: only_missing 参数。
+    """
     from core.schemas_builder import apply_template_stage_overlay as _apply
 
     return _apply(dest, src, only_missing=only_missing)
 
 
 def backfill_stage_from_team_templates(stage: Any) -> Any:
-    """resume 无 config_json 时按 agent_id 从团队模板回填闭环字段。"""
+    """resume 无 config_json 时按 agent_id 从团队模板回填闭环字段。
+
+    Args:
+        stage: stage 参数。
+    """
     from core.schemas_builder import backfill_stage_from_team_templates as _backfill
 
     return _backfill(stage)
 
 
 def extract_stage_persist_config(raw: Any) -> Dict[str, Any]:
-    """流水线启动时写入 pipeline_stages.config_json 的闭环字段快照。"""
+    """流水线启动时写入 pipeline_stages.config_json 的闭环字段快照。
+
+    Args:
+        raw: raw 参数。
+    """
     from core.schemas_builder import extract_stage_persist_config as _extract
 
     return _extract(raw)
 
 
 def pipeline_stage_from_store_row(sr: Any) -> Any:
-    """resume：从 store 行（含 config_json）重建 PipelineStageConfig。"""
+    """resume：从 store 行（含 config_json）重建 PipelineStageConfig。
+
+    Args:
+        sr: sr 参数。
+    """
     from core.schemas_builder import pipeline_stage_from_store_row as _from_row
 
     return _from_row(sr)
@@ -5656,7 +6859,12 @@ def coerce_execution_type(
     *,
     skill_name: str = "",
 ) -> tuple:
-    """Normalize SKILL execution_type; default fail-closed rejects unknown (no silent LLM)."""
+    """Normalize SKILL execution_type; default fail-closed rejects unknown (no silent LLM).
+
+    Args:
+        raw: raw 参数。
+        skill_name: skill_name 参数。
+    """
     from core.harness.registry.execution_type_policy import coerce_execution_type as _coerce
 
     return _coerce(raw, skill_name=skill_name)
@@ -5691,7 +6899,15 @@ def record_gate_run(
     source: str = "check",
     staged: bool = False,
 ) -> Optional[str]:
-    """记录一次合入闸门检查结果（gate_meta JSONL；AIPLAT_GATE_META_PERSIST=0 可关）。"""
+    """记录一次合入闸门检查结果（gate_meta JSONL；AIPLAT_GATE_META_PERSIST=0 可关）。
+
+    Args:
+        physical: physical 参数。
+        testability: testability 参数。
+        exit_blocked: exit_blocked 参数。
+        source: source 参数。
+        staged: staged 参数。
+    """
     from core.harness.meta.gate_meta_eval import record_gate_run as _rec
 
     return _rec(
@@ -5710,7 +6926,14 @@ def record_gate_skip(
     source: str = "api",
     note: str = "",
 ) -> Optional[str]:
-    """记录 SKIP_* 绕过（值班板 skip_rate；禁止静默）。"""
+    """记录 SKIP_* 绕过（值班板 skip_rate；禁止静默）。
+
+    Args:
+        env: env 参数。
+        gate: gate 参数。
+        source: source 参数。
+        note: note 参数。
+    """
     from core.harness.meta.gate_meta_eval import record_gate_skip as _rec
 
     return _rec(env=env, gate=gate, source=source, note=note)
@@ -5724,7 +6947,15 @@ def record_gate_appeal(
     gate: str = "physical",
     source: str = "api",
 ) -> Optional[str]:
-    """记录误杀/假阳性申诉（值班板 appeal_rate → 调参）。"""
+    """记录误杀/假阳性申诉（值班板 appeal_rate → 调参）。
+
+    Args:
+        code: code 参数。
+        owner: owner 参数。
+        note: note 参数。
+        gate: gate 参数。
+        source: source 参数。
+    """
     from core.harness.meta.gate_meta_eval import record_gate_appeal as _rec
 
     return _rec(code=code, owner=owner, note=note, gate=gate, source=source)
@@ -5745,7 +6976,15 @@ def evaluate_physical_merge_gates(
     profile_name: str = "",
     config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Merge-time inflation + shape gates（非运行时入口校验；见 physical_merge_gates）。"""
+    """Merge-time inflation + shape gates（非运行时入口校验；见 physical_merge_gates）。
+
+    Args:
+        name_status: name_status 参数。
+        numstat: numstat 参数。
+        unified_diff: unified_diff 参数。
+        profile_name: profile_name 参数。
+        config: config 参数。
+    """
     from core.harness.meta.physical_merge_gates import DiffStats, evaluate_diff as _eval
 
     report = _eval(
@@ -5771,8 +7010,12 @@ def evaluate_testability_gate(
 ) -> Dict[str, Any]:
     """P1 testability gate — handlers need pure unit tests (not integration-only).
 
-    Prefer ``snippets`` + ``workspace_root`` for merge-time diffs (enriches disk tests).
-    ``files`` is the done_verify / in-memory path→content map.
+    Args:
+        files: files 参数。
+        snippets: snippets 参数。
+        workspace_root: workspace_root 参数。
+        mode: mode 参数。
+        config: config 参数。
     """
     from pathlib import Path
 
@@ -5802,7 +7045,13 @@ def validate_evidence_envelope(
     demote: bool = True,
     mode: str = "",
 ) -> Dict[str, Any]:
-    """Evidence Envelope validate — demote/reject/strict; no fake confirmed."""
+    """Evidence Envelope validate — demote/reject/strict; no fake confirmed.
+
+    Args:
+        raw: raw 参数。
+        demote: demote 参数。
+        mode: mode 参数。
+    """
     from core.harness.meta.evidence_envelope import EnvelopeValidation, validate_envelope
 
     result = validate_envelope(raw, demote=demote, mode=mode or "")
@@ -5817,7 +7066,13 @@ def attach_evidence_envelopes(
     run_id: str = "",
     reject_fake: bool = True,
 ) -> Dict[str, Any]:
-    """Attach validated envelopes; reject illegal confirmed/block claims by default."""
+    """Attach validated envelopes; reject illegal confirmed/block claims by default.
+
+    Args:
+        issues: issues 参数。
+        run_id: 运行 ID。
+        reject_fake: reject_fake 参数。
+    """
     from core.harness.meta.evidence_envelope import (
         attach_envelopes_to_issues,
         check_issues_envelope_integrity,
@@ -5840,7 +7095,11 @@ def attach_evidence_envelopes(
 def assert_evidence_envelope_integrity(
     raw: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Hard gate: illegal confirmed/block ⇒ ok=False (safe demoted envelope still returned)."""
+    """Hard gate: illegal confirmed/block ⇒ ok=False (safe demoted envelope still returned).
+
+    Args:
+        raw: raw 参数。
+    """
     from core.harness.meta.evidence_envelope import (
         EnvelopeValidation,
         assert_envelope_integrity,
@@ -5855,7 +7114,11 @@ def assert_evidence_envelope_integrity(
 def allow_evidence_release_block(
     envelope: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Whether a finding alone may block release (derived/speculative → no)."""
+    """Whether a finding alone may block release (derived/speculative → no).
+
+    Args:
+        envelope: envelope 参数。
+    """
     from core.harness.meta.evidence_envelope import allow_release_block
 
     ok, reason = allow_release_block(envelope or {})
@@ -5867,7 +7130,12 @@ def fold_findings_for_duty(
     *,
     run_id: str = "",
 ) -> Dict[str, Any]:
-    """Duty-board fold: attach envelopes; derived/speculative → watch, not sole block."""
+    """Duty-board fold: attach envelopes; derived/speculative → watch, not sole block.
+
+    Args:
+        findings: findings 参数。
+        run_id: 运行 ID。
+    """
     from core.harness.meta.evidence_envelope import fold_findings_for_duty as _fold
 
     return dict(_fold(findings or [], run_id=run_id or ""))
@@ -5880,7 +7148,14 @@ def publish_team_brain_manual(
     source_agent: str = "",
     keywords: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """登记人工团队解法 → shared_memory（供跨 Agent 召回）。"""
+    """登记人工团队解法 → shared_memory（供跨 Agent 召回）。
+
+    Args:
+        title: title 参数。
+        summary: summary 参数。
+        source_agent: source_agent 参数。
+        keywords: keywords 参数。
+    """
     from core.harness.memory.team_brain import publish_manual_solution
 
     return publish_manual_solution(
@@ -5902,7 +7177,18 @@ def ingest_ide_capture(
     session_id: str = "",
     write_wiki: bool = False,
 ) -> Dict[str, Any]:
-    """IDE/Cursor/CC 旁路捕获 → Team Brain（可选 Session Wiki）。不新建平行库。"""
+    """IDE/Cursor/CC 旁路捕获 → Team Brain（可选 Session Wiki）。不新建平行库。
+
+    Args:
+        prompt: prompt 参数。
+        result: result 参数。
+        tools: tools 参数。
+        success: success 参数。
+        tags: tags 参数。
+        source: source 参数。
+        session_id: 会话 ID。
+        write_wiki: write_wiki 参数。
+    """
     from core.harness.memory.ide_capture import ingest_ide_capture as _ingest
 
     return _ingest(
@@ -5924,7 +7210,14 @@ def query_session_archive(
     session_id: str = "",
     tenant_id: str = "default",
 ) -> Dict[str, Any]:
-    """Past compacted turns. Not pinned facts — caller asks, we search."""
+    """Past compacted turns. Not pinned facts — caller asks, we search.
+
+    Args:
+        query: 查询。
+        limit: 返回条数上限。
+        session_id: 会话 ID。
+        tenant_id: 租户 ID。
+    """
     from core.harness.memory.file_store import session_archive_query
 
     return session_archive_query(
@@ -5938,21 +7231,35 @@ def query_session_archive(
 def sticky_memory_slice(
     max_chars: Optional[int] = None, *, tenant_id: str = "default"
 ) -> Dict[str, Any]:
-    """User profile + pinned MEMORY.md for Pi session start. Shared char budget."""
+    """User profile + pinned MEMORY.md for Pi session start. Shared char budget.
+
+    Args:
+        max_chars: max_chars 参数。
+        tenant_id: 租户 ID。
+    """
     from core.harness.memory.profile_builder import compose_sticky_memory
 
     return compose_sticky_memory(max_chars, tenant_id=tenant_id)
 
 
 def seal_answer_with_receipts(text: str, context: Optional[Dict[str, Any]] = None):
-    """Platform completion-receipt bind (fix/path claims). Re-export for apps."""
+    """Platform completion-receipt bind (fix/path claims). Re-export for apps.
+
+    Args:
+        text: text 参数。
+        context: context 参数。
+    """
     from core.harness.execution.execution_seal import seal_answer_with_receipts as _fn
 
     return _fn(text, context)
 
 
 def check_done_verify(context: Optional[Dict[str, Any]] = None) -> Optional[str]:
-    """DONE verify ring with coding/review fail-closed on exceptions."""
+    """DONE verify ring with coding/review fail-closed on exceptions.
+
+    Args:
+        context: context 参数。
+    """
     from core.harness.execution.execution_seal import check_done_verify as _fn
 
     return _fn(context)
@@ -5964,7 +7271,13 @@ def coding_deliverable_veto(
     bound_skill_ids: Optional[List[Any]] = None,
     skills: Any = None,
 ) -> Optional[str]:
-    """Coding thin-stub / missing follow-up veto before DONE."""
+    """Coding thin-stub / missing follow-up veto before DONE.
+
+    Args:
+        context: context 参数。
+        bound_skill_ids: bound_skill_ids 参数。
+        skills: skills 参数。
+    """
     from core.harness.execution.execution_seal import coding_deliverable_veto as _fn
 
     return _fn(context, bound_skill_ids=bound_skill_ids, skills=skills)
@@ -5977,7 +7290,14 @@ def seal_before_finish(
     skills: Any = None,
     bind_receipts: bool = True,
 ):
-    """Receipt bind + coding veto + done_verify. Returns ``(seal_status, block_reason)``."""
+    """Receipt bind + coding veto + done_verify. Returns ``(seal_status, block_reason)``.
+
+    Args:
+        context: context 参数。
+        bound_skill_ids: bound_skill_ids 参数。
+        skills: skills 参数。
+        bind_receipts: bind_receipts 参数。
+    """
     from core.harness.execution.execution_seal import seal_before_finish as _fn
 
     return _fn(
@@ -5996,7 +7316,15 @@ def upsert_pinned_memory(
     old_text: str = "",
     tenant_id: str = "default",
 ) -> Dict[str, Any]:
-    """Write or replace a durable pinned fact. Budget-full same-key merges automatically."""
+    """Write or replace a durable pinned fact. Budget-full same-key merges automatically.
+
+    Args:
+        content: content 参数。
+        key: key 参数。
+        source: source 参数。
+        old_text: old_text 参数。
+        tenant_id: 租户 ID。
+    """
     from core.harness.memory.file_store import (
         memory_char_budget,
         replace_memory_entry,
@@ -6035,7 +7363,15 @@ def write_session_wiki(
     tags: Optional[list] = None,
     source: str = "session",
 ) -> Dict[str, Any]:
-    """编码会话收尾短页 → wiki_engine（draft topics）。"""
+    """编码会话收尾短页 → wiki_engine（draft topics）。
+
+    Args:
+        title: title 参数。
+        summary: summary 参数。
+        session_id: 会话 ID。
+        tags: tags 参数。
+        source: source 参数。
+    """
     from core.harness.memory.session_wiki import write_session_wiki_page
 
     return write_session_wiki_page(
@@ -6058,7 +7394,18 @@ async def run_code_review_gold_eval(
     persist: bool = True,
     record_novel: bool = False,
 ) -> Dict[str, Any]:
-    """ReviewBench 风格：租户黄金 PR × autoreview → Precision/Recall/P0 召回。"""
+    """ReviewBench 风格：租户黄金 PR × autoreview → Precision/Recall/P0 召回。
+
+    Args:
+        profile: 评测 profile。
+        gold_dir: 黄金集目录。
+        case_ids: case_ids 参数。
+        match_only: match_only 参数。
+        limit: 返回条数上限。
+        tenant_id: 租户 ID。
+        persist: persist 参数。
+        record_novel: record_novel 参数。
+    """
     from core.harness.evaluation.code_review_gold import run_code_review_gold_eval as _run
 
     return await _run(
@@ -6077,18 +7424,35 @@ async def run_code_review_gold_eval(
 
 
 def eval_store_health(*, tenant_id: str = "") -> Dict[str, Any]:
+    """eval_store_health。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).health()
 
 
 def eval_store_list_sets(*, tenant_id: str = "", limit: int = 100) -> list:
+    """eval_store_list_sets。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).list_sets(limit=limit)
 
 
 def eval_store_get_set(set_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    """eval_store_get_set。
+
+    Args:
+        set_id: set 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).get_set(set_id)
@@ -6103,6 +7467,16 @@ def eval_store_create_set(
     set_id: Optional[str] = None,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_store_create_set。
+
+    Args:
+        name: name 参数。
+        version: version 参数。
+        split: split 参数。
+        meta: meta 参数。
+        set_id: set 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).create_set(
@@ -6111,6 +7485,13 @@ def eval_store_create_set(
 
 
 def eval_store_list_tasks(*, set_id: str = "", tenant_id: str = "", limit: int = 500) -> list:
+    """eval_store_list_tasks。
+
+    Args:
+        set_id: set 标识。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).list_tasks(set_id=set_id, limit=limit)
@@ -6128,6 +7509,19 @@ def eval_store_create_task(
     task_id: Optional[str] = None,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_store_create_task。
+
+    Args:
+        set_id: set 标识。
+        input_data: input_data 参数。
+        expected: expected 参数。
+        rubric: rubric 参数。
+        tags: tags 参数。
+        hard_negative: hard_negative 参数。
+        source: source 参数。
+        task_id: task 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).create_task(
@@ -6149,6 +7543,14 @@ def eval_store_import_code_review_gold(
     set_name: str = "code-review-gold",
     set_version: str = "v0-seed",
 ) -> Dict[str, Any]:
+    """eval_store_import_code_review_gold。
+
+    Args:
+        gold_dir: 黄金集目录。
+        tenant_id: 租户 ID。
+        set_name: set_name 参数。
+        set_version: set_version 参数。
+    """
     from core.apps.eval.service.store import import_code_review_gold
 
     return import_code_review_gold(
@@ -6165,7 +7567,13 @@ def eval_bootstrap_e3_gold(
     gold_dir: Optional[str] = None,
     annotator: str = "solo_reviewer",
 ) -> Dict[str, Any]:
-    """EVAL_V1 E3: ≥15 runnable gold + solo review queue (no κ)."""
+    """EVAL_V1 E3: ≥15 runnable gold + solo review queue (no κ).
+
+    Args:
+        tenant_id: 租户 ID。
+        gold_dir: 黄金集目录。
+        annotator: annotator 参数。
+    """
     from core.apps.eval.service.gold_bootstrap import bootstrap_e3_gold
 
     return bootstrap_e3_gold(
@@ -6181,7 +7589,11 @@ def eval_list_exam_sets() -> list:
 
 
 def list_named_workspaces(*, tenant_id: str = "") -> Dict[str, Any]:
-    """List local + remote named workspace profiles visible to tenant."""
+    """List local + remote named workspace profiles visible to tenant.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from urllib.parse import urlparse
 
     from core.harness.named_workspace.registry import ensure_registry, list_registry_entries
@@ -6231,7 +7643,17 @@ def create_named_workspace(
     auth_secret_env: str = "",
     allowed_routes: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Create local empty named workspace or remote Core profile (idempotent by id)."""
+    """Create local empty named workspace or remote Core profile (idempotent by id).
+
+    Args:
+        workspace_id: 工作区 ID。
+        label: label 参数。
+        tenant_id: 租户 ID。
+        kind: kind 参数。
+        base_url: base_url 参数。
+        auth_secret_env: auth_secret_env 参数。
+        allowed_routes: allowed_routes 参数。
+    """
     from core.harness.named_workspace.agent_mgr import invalidate_agent_manager
     from core.harness.named_workspace.registry import (
         create_local_workspace,
@@ -6276,7 +7698,15 @@ async def eval_run_agent_exam(
     max_tasks: int = 0,
     persist: bool = True,
 ) -> Dict[str, Any]:
-    """Bind exam set tasks to agent_id and dry-run or live-execute."""
+    """Bind exam set tasks to agent_id and dry-run or live-execute.
+
+    Args:
+        agent_id: Agent ID。
+        set_id: set 标识。
+        live: live 参数。
+        max_tasks: max_tasks 参数。
+        persist: persist 参数。
+    """
     from core.apps.eval.service.agent_exam_ops import run_agent_exam
 
     return await run_agent_exam(
@@ -6298,7 +7728,17 @@ def eval_match_cases_for_agent_target(
     roles: Optional[list] = None,
     eval_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """P0 Object Contract: advisory MatchReport for agent vs set applicability draft."""
+    """P0 Object Contract: advisory MatchReport for agent vs set applicability draft.
+
+    Args:
+        agent_id: Agent ID。
+        set_ids: set_ids 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+    """
     from core.apps.eval.service.agent_exam_ops import match_cases_for_agent_target
 
     return match_cases_for_agent_target(
@@ -6313,7 +7753,12 @@ def eval_match_cases_for_agent_target(
 
 
 def eval_resolve_capability_id(capability_id: str, *, fail_closed: bool = True) -> str:
-    """Capability ID Map v1: legacy → canonical (fail closed by default)."""
+    """Capability ID Map v1: legacy → canonical (fail closed by default).
+
+    Args:
+        capability_id: capability 标识。
+        fail_closed: fail_closed 参数。
+    """
     from core.apps.eval.service.capability_id_map import resolve_capability_id
 
     return resolve_capability_id(capability_id, fail_closed=fail_closed)
@@ -6322,7 +7767,12 @@ def eval_resolve_capability_id(capability_id: str, *, fail_closed: bool = True) 
 def eval_resolve_capability_ids(
     ids: Optional[list] = None, *, fail_closed: bool = True
 ) -> list:
-    """Resolve many capability ids to canonical (deduped)."""
+    """Resolve many capability ids to canonical (deduped).
+
+    Args:
+        ids: ids 参数。
+        fail_closed: fail_closed 参数。
+    """
     from core.apps.eval.service.capability_id_map import resolve_capability_ids
 
     return resolve_capability_ids(ids or [], fail_closed=fail_closed)
@@ -6334,7 +7784,13 @@ def eval_validate_test_purpose(
     prompt: str = "",
     capabilities: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Validate EvalCase.test_purpose (schema v1); returns {ok, errors}."""
+    """Validate EvalCase.test_purpose (schema v1); returns {ok, errors}.
+
+    Args:
+        purpose: purpose 参数。
+        prompt: prompt 参数。
+        capabilities: capabilities 参数。
+    """
     from core.apps.eval.service.test_purpose import validate_test_purpose
 
     errors = validate_test_purpose(
@@ -6358,14 +7814,22 @@ def eval_evaluate_m0_impl_mode_contracts() -> Dict[str, Any]:
 
 
 def eval_resolve_impl_modes(source: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """M0: resolve multi-value impl_modes (unknown≠react; deferred≠unknown)."""
+    """M0: resolve multi-value impl_modes (unknown≠react; deferred≠unknown).
+
+    Args:
+        source: source 参数。
+    """
     from core.apps.eval.service.agent_impl_mode import resolve_impl_modes
 
     return resolve_impl_modes(source or {})
 
 
 def eval_compute_rank_fingerprint(**kwargs: Any) -> Dict[str, Any]:
-    """M0: cross-subject rank_fingerprint (excludes agent_id / workspace / time)."""
+    """M0: cross-subject rank_fingerprint (excludes agent_id / workspace / time).
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     from core.apps.eval.service.agent_impl_mode import compute_rank_fingerprint
 
     return compute_rank_fingerprint(**kwargs)
@@ -6374,7 +7838,11 @@ def eval_compute_rank_fingerprint(**kwargs: Any) -> Dict[str, Any]:
 def eval_plan_mode_executions(
     source: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """M0: selection union + per-mode separate execution plan (no live)."""
+    """M0: selection union + per-mode separate execution plan (no live).
+
+    Args:
+        source: source 参数。
+    """
     from core.apps.eval.service.agent_impl_mode import (
         plan_executions_per_mode,
         resolve_impl_modes,
@@ -6397,7 +7865,13 @@ async def eval_run_m1a_mode_exam(
     modes: Optional[list] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1a: plan_execute + conversational per-mode exam (tools/retrieval/network=none)."""
+    """M1a: plan_execute + conversational per-mode exam (tools/retrieval/network=none).
+
+    Args:
+        live: live 参数。
+        modes: modes 参数。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     from core.apps.eval.service.mode_aware_exam import run_m1a_mode_exam
 
     return await run_m1a_mode_exam(
@@ -6413,7 +7887,13 @@ async def eval_run_m1b_mode_exam(
     modes: Optional[list] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1b: rag per-mode exam (retrieval=required fixture; tools/network/session=none)."""
+    """M1b: rag per-mode exam (retrieval=required fixture; tools/network/session=none).
+
+    Args:
+        live: live 参数。
+        modes: modes 参数。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     from core.apps.eval.service.mode_aware_exam import run_m1b_mode_exam
 
     return await run_m1b_mode_exam(
@@ -6429,7 +7909,13 @@ async def eval_run_m1c_mode_exam(
     modes: Optional[list] = None,
     max_cases_per_mode: int = 0,
 ) -> Dict[str, Any]:
-    """M1c: react per-mode exam (fixture_mock sandbox; A3–A5 coverage unknown)."""
+    """M1c: react per-mode exam (fixture_mock sandbox; A3–A5 coverage unknown).
+
+    Args:
+        live: live 参数。
+        modes: modes 参数。
+        max_cases_per_mode: max_cases_per_mode 参数。
+    """
     from core.apps.eval.service.mode_aware_exam import run_m1c_mode_exam
 
     return await run_m1c_mode_exam(
@@ -6461,7 +7947,15 @@ async def eval_run_a1_intersection_compare(
     model_fingerprint: str = "unresolved",
     min_n_per_capability: int = 2,
 ) -> Dict[str, Any]:
-    """A1 Track A+B compare (plan_execute vs conversational). rank_claim never auto-true."""
+    """A1 Track A+B compare (plan_execute vs conversational). rank_claim never auto-true.
+
+    Args:
+        live: live 参数。
+        persist: persist 参数。
+        signoff: signoff 参数。
+        model_fingerprint: model_fingerprint 参数。
+        min_n_per_capability: min_n_per_capability 参数。
+    """
     from core.apps.eval.service.a1_intersection_ops import (
         eval_run_a1_intersection_compare as _fn,
     )
@@ -6495,7 +7989,13 @@ def eval_security_sec_p0b_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """SEC-P0b: T12 isolation state machine + probe interface. Never auto-covered."""
+    """SEC-P0b: T12 isolation state machine + probe interface. Never auto-covered.
+
+    Args:
+        live_probes: live_probes 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.isolation_t12 import security_t12_p0b_status
 
     return security_t12_p0b_status(
@@ -6508,7 +8008,11 @@ def eval_security_sec_p0b_status(
 def eval_security_sec_p0c_status(
     by_case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P0c: per-threat-family min_n/CI/report_only gate. Never unlocks L5 declare."""
+    """SEC-P0c: per-threat-family min_n/CI/report_only gate. Never unlocks L5 declare.
+
+    Args:
+        by_case: by_case 参数。
+    """
     from core.apps.eval.service.security_family_report import security_sec_p0c_status
 
     return security_sec_p0c_status(by_case=by_case)
@@ -6517,7 +8021,11 @@ def eval_security_sec_p0c_status(
 def eval_evaluate_security_family_gates(
     report: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Apply/recompute per-family min_n gates on a security family report."""
+    """Apply/recompute per-family min_n gates on a security family report.
+
+    Args:
+        report: report 参数。
+    """
     from core.apps.eval.service.security_family_report import (
         evaluate_security_family_gates,
     )
@@ -6533,7 +8041,15 @@ def eval_security_sec_p1a_status(
     judge_model: str = "eval-judge-model",
     subject_model: str = "subject-under-test",
 ) -> Dict[str, Any]:
-    """SEC-P1a: judge calibration protocol + judge_version manifest. Never certifies."""
+    """SEC-P1a: judge calibration protocol + judge_version manifest. Never certifies.
+
+    Args:
+        pairs: pairs 参数。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        judge_model: judge_model 参数。
+        subject_model: subject_model 参数。
+    """
     from core.apps.eval.service.security_judge_calib import security_sec_p1a_status
 
     return security_sec_p1a_status(
@@ -6554,7 +8070,16 @@ def eval_build_security_judge_version_manifest(
     prompt_hash: str = "",
     frozen: bool = True,
 ) -> Dict[str, Any]:
-    """Build frozen judge_id+judge_version manifest; self-judge forbidden."""
+    """Build frozen judge_id+judge_version manifest; self-judge forbidden.
+
+    Args:
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        judge_model: judge_model 参数。
+        subject_model: subject_model 参数。
+        prompt_hash: prompt_hash 参数。
+        frozen: frozen 参数。
+    """
     from core.apps.eval.service.security_judge_calib import build_judge_version_manifest
 
     return build_judge_version_manifest(
@@ -6574,7 +8099,14 @@ def eval_evaluate_security_judge_calibration(
     frozen_manifest: Optional[Dict[str, Any]] = None,
     failure_case_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Gold vs judge agreement + FP/FN gate; uncalibrated → judge_uncalibrated."""
+    """Gold vs judge agreement + FP/FN gate; uncalibrated → judge_uncalibrated.
+
+    Args:
+        pairs: pairs 参数。
+        manifest: manifest 参数。
+        frozen_manifest: frozen_manifest 参数。
+        failure_case_ids: failure_case_ids 参数。
+    """
     from core.apps.eval.service.security_judge_calib import (
         evaluate_security_judge_calibration,
     )
@@ -6592,7 +8124,12 @@ def eval_check_security_judge_version_drift(
     run_manifest: Dict[str, Any],
     frozen_manifest: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Detect judge_id/version/model/prompt_hash drift; invalidates claim candidate."""
+    """Detect judge_id/version/model/prompt_hash drift; invalidates claim candidate.
+
+    Args:
+        run_manifest: run_manifest 参数。
+        frozen_manifest: frozen_manifest 参数。
+    """
     from core.apps.eval.service.security_judge_calib import check_judge_version_drift
 
     return check_judge_version_drift(
@@ -6605,7 +8142,12 @@ def eval_annotate_family_asr_calibration(
     *,
     calib: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Stamp per-family asr_calibration_status; never unlocks claim."""
+    """Stamp per-family asr_calibration_status; never unlocks claim.
+
+    Args:
+        family_report: family_report 参数。
+        calib: calib 参数。
+    """
     from core.apps.eval.service.security_judge_calib import (
         annotate_family_asr_calibration,
     )
@@ -6625,7 +8167,12 @@ def eval_security_sec_p1b_status(
     findings: Optional[List[Dict[str, Any]]] = None,
     declared_families: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P1b: severity/remediation/retest/claim_revocation. Never certifies."""
+    """SEC-P1b: severity/remediation/retest/claim_revocation. Never certifies.
+
+    Args:
+        findings: findings 参数。
+        declared_families: declared_families 参数。
+    """
     from core.apps.eval.service.security_severity_loop import security_sec_p1b_status
 
     return security_sec_p1b_status(
@@ -6645,7 +8192,18 @@ def eval_build_security_finding(
     status: str = "open",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Build structured §6.5 security finding (claim closed)."""
+    """Build structured §6.5 security finding (claim closed).
+
+    Args:
+        case_id: case 标识。
+        threat_id: threat 标识。
+        severity: severity 参数。
+        impact: impact 参数。
+        remediation_owner: remediation_owner 参数。
+        retest_case_id: retest_case 标识。
+        status: status 参数。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.security_severity_loop import build_security_finding
 
     return build_security_finding(
@@ -6670,7 +8228,17 @@ def eval_transition_security_finding(
     retest_case_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Transition finding status; retested_pass requires retest evidence."""
+    """Transition finding status; retested_pass requires retest evidence.
+
+    Args:
+        finding: finding 参数。
+        status: status 参数。
+        accepted_risk_signoff: accepted_risk_signoff 参数。
+        retest_passed: retest_passed 参数。
+        retest_evidence: retest_evidence 参数。
+        retest_case_id: retest_case 标识。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.security_severity_loop import transition_finding
 
     return transition_finding(
@@ -6689,7 +8257,12 @@ def eval_evaluate_security_severity_l5_gate(
     *,
     declare_families: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Block L5 declare for families with open high/critical findings."""
+    """Block L5 declare for families with open high/critical findings.
+
+    Args:
+        findings: findings 参数。
+        declare_families: declare_families 参数。
+    """
     from core.apps.eval.service.security_severity_loop import (
         evaluate_severity_l5_gate,
     )
@@ -6705,7 +8278,13 @@ def eval_evaluate_security_claim_revocation(
     new_findings: List[Dict[str, Any]],
     reason: str = "",
 ) -> Dict[str, Any]:
-    """Critical regression on declared family → claim_revocation required."""
+    """Critical regression on declared family → claim_revocation required.
+
+    Args:
+        declared_families: declared_families 参数。
+        new_findings: new_findings 参数。
+        reason: reason 参数。
+    """
     from core.apps.eval.service.security_severity_loop import (
         evaluate_claim_revocation,
     )
@@ -6732,7 +8311,13 @@ def eval_security_sec_p1c_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """SEC-P1c: T13 allowlist pack + process_split boundary. Never certifies."""
+    """SEC-P1c: T13 allowlist pack + process_split boundary. Never certifies.
+
+    Args:
+        coverage_mode: coverage_mode 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.security_t13_allowlist import security_sec_p1c_status
 
     return security_sec_p1c_status(
@@ -6747,7 +8332,12 @@ def eval_run_t13_allowlist_probes(
     coverage_mode: str = "exercised_fixture",
     process_split_authorized: bool = False,
 ) -> Dict[str, Any]:
-    """Run T13 allowlist fixture probes; process_split never required/granted."""
+    """Run T13 allowlist fixture probes; process_split never required/granted.
+
+    Args:
+        coverage_mode: coverage_mode 参数。
+        process_split_authorized: process_split_authorized 参数。
+    """
     from core.apps.eval.service.security_t13_allowlist import run_t13_allowlist_probes
 
     return run_t13_allowlist_probes(
@@ -6760,7 +8350,11 @@ def eval_assert_t13_process_split_boundary(
     *,
     run: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """C17: T13 must not use process_split as supply-chain前置."""
+    """C17: T13 must not use process_split as supply-chain前置.
+
+    Args:
+        run: run 参数。
+    """
     from core.apps.eval.service.security_t13_allowlist import (
         assert_t13_process_split_boundary,
     )
@@ -6774,7 +8368,13 @@ def eval_evaluate_t13_coverage(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Map T13 run → coverage; claim_candidate still accuracy_claim=false."""
+    """Map T13 run → coverage; claim_candidate still accuracy_claim=false.
+
+    Args:
+        run: run 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.security_t13_allowlist import evaluate_t13_coverage
 
     return evaluate_t13_coverage(
@@ -6794,7 +8394,11 @@ def eval_load_t13_allowlist_probes() -> Dict[str, Any]:
 def eval_security_sec_p2a_status(
     by_case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P2a: S1 pack read-only + OOS/untested family auto-list. Never certifies."""
+    """SEC-P2a: S1 pack read-only + OOS/untested family auto-list. Never certifies.
+
+    Args:
+        by_case: by_case 参数。
+    """
     from core.apps.eval.service.security_s1_disclosure import security_sec_p2a_status
 
     return security_sec_p2a_status(by_case=by_case)
@@ -6803,7 +8407,11 @@ def eval_security_sec_p2a_status(
 def eval_build_untested_oos_disclosure(
     by_case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """C15: auto-list untested / below_min_n / deferred / OOS threat families."""
+    """C15: auto-list untested / below_min_n / deferred / OOS threat families.
+
+    Args:
+        by_case: by_case 参数。
+    """
     from core.apps.eval.service.security_s1_disclosure import (
         build_untested_oos_disclosure,
     )
@@ -6823,7 +8431,12 @@ def eval_security_sec_p2b_status(
     *,
     subject: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P2b: L5 per-family claim template status. Never certifies."""
+    """SEC-P2b: L5 per-family claim template status. Never certifies.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+    """
     from core.apps.eval.service.security_l5_claim_template import security_sec_p2b_status
 
     return security_sec_p2b_status(by_case=by_case, subject=subject)
@@ -6844,7 +8457,22 @@ def eval_build_security_l5_claim_template(
     explicit_authorize: bool = False,
     signoffs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Build per-family L5 claim template; accuracy_claim stays false."""
+    """Build per-family L5 claim template; accuracy_claim stays false.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        pack_id: pack 标识。
+        pack_version: pack_version 参数。
+        runtime_tier: runtime_tier 参数。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        severity_blocked: severity_blocked 参数。
+        judge_usable: judge_usable 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+    """
     from core.apps.eval.service.security_l5_claim_template import (
         build_security_l5_claim_template,
     )
@@ -6866,7 +8494,11 @@ def eval_build_security_l5_claim_template(
 
 
 def eval_validate_security_l5_claim_sentence(sentence: str) -> Dict[str, Any]:
-    """Reject forbidden false-green / marketing claim sentences."""
+    """Reject forbidden false-green / marketing claim sentences.
+
+    Args:
+        sentence: sentence 参数。
+    """
     from core.apps.eval.service.security_l5_claim_template import (
         validate_claim_sentence_against_policy,
     )
@@ -6881,7 +8513,14 @@ def eval_select_security_declare_candidate_families(
     judge_usable: bool = True,
     asr_calibration_status: str = "",
 ) -> Dict[str, Any]:
-    """Select per-family L5 declare *candidates* (not emitted declaration)."""
+    """Select per-family L5 declare *candidates* (not emitted declaration).
+
+    Args:
+        family_report: family_report 参数。
+        severity_blocked: severity_blocked 参数。
+        judge_usable: judge_usable 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+    """
     from core.apps.eval.service.security_l5_claim_template import (
         select_declare_candidate_families,
     )
@@ -6908,7 +8547,14 @@ def eval_security_sec_p4_status(
     human_reviewer: str = "",
     admit: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P4/P4b: Linux microVM probed path. guest_sim≠certification; covered needs review."""
+    """SEC-P4/P4b: Linux microVM probed path. guest_sim≠certification; covered needs review.
+
+    Args:
+        mode: mode 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+        admit: admit 参数。
+    """
     from core.apps.eval.service.security_t12_p4 import security_sec_p4_status
 
     return security_sec_p4_status(
@@ -6925,7 +8571,13 @@ def eval_run_linux_microvm_probes(
     catalog: Optional[Dict[str, Any]] = None,
     admit: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P4/P4b guest_sim|guest_live. Live deny needs escape_executor; never auto-covered."""
+    """SEC-P4/P4b guest_sim|guest_live. Live deny needs escape_executor; never auto-covered.
+
+    Args:
+        mode: mode 参数。
+        catalog: catalog 参数。
+        admit: admit 参数。
+    """
     from core.apps.eval.service.security_t12_p4 import run_linux_microvm_probes
 
     return run_linux_microvm_probes(mode=str(mode or "guest_sim"), catalog=catalog, admit=admit)
@@ -6942,8 +8594,13 @@ def eval_run_security_p1_4_kvm_escape(
 ) -> Dict[str, Any]:
     """P1-4 KVM escape: guest_boot + host probes; max isolation_probed; HTTP≠escape.
 
-    Live mode needs env AIPLAT_EVAL_P1_4_LIVE + AIPLAT_EVAL_T12_GUEST_LIVE and an
-    injected guest channel (use service API). Facade guest_sim path is engineering.
+    Args:
+        mode: mode 参数。
+        guest_boot: guest_boot 参数。
+        admit: admit 参数。
+        evidence_kind: evidence_kind 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
     """
     from core.apps.eval.service.security_p1_4_kvm_escape import run_p1_4_kvm_escape
 
@@ -6962,7 +8619,12 @@ def eval_security_p1_4_status(
     mode: str = "guest_sim",
     admit: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """P1-4 inventory status (claim locks false)."""
+    """P1-4 inventory status (claim locks false).
+
+    Args:
+        mode: mode 参数。
+        admit: admit 参数。
+    """
     from core.apps.eval.service.security_p1_4_kvm_escape import security_p1_4_status
 
     return security_p1_4_status(mode=str(mode or "guest_sim"), admit=admit)
@@ -6973,7 +8635,12 @@ def eval_security_sec_p5_status(
     t11_evidence: Optional[Dict[str, Any]] = None,
     t13_shallow_ok: bool = False,
 ) -> Dict[str, Any]:
-    """SEC-P5: T11 deferred gate + OOS extension cards. Never auto-graduate / certify."""
+    """SEC-P5: T11 deferred gate + OOS extension cards. Never auto-graduate / certify.
+
+    Args:
+        t11_evidence: t11_evidence 参数。
+        t13_shallow_ok: t13_shallow_ok 参数。
+    """
     from core.apps.eval.service.security_p5_extensions import security_sec_p5_status
 
     return security_sec_p5_status(
@@ -6986,7 +8653,11 @@ def eval_evaluate_t11_deferred_gate(
     *,
     evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate T11 graduate-from-deferred conditions (all-required; default deferred)."""
+    """Evaluate T11 graduate-from-deferred conditions (all-required; default deferred).
+
+    Args:
+        evidence: evidence 参数。
+    """
     from core.apps.eval.service.security_p5_extensions import evaluate_t11_deferred_gate
 
     return evaluate_t11_deferred_gate(evidence=evidence)
@@ -7003,7 +8674,11 @@ def eval_evaluate_deep_supply_chain_boundary(
     *,
     t13_shallow_ok: bool = False,
 ) -> Dict[str, Any]:
-    """Assert T13 shallow pass ≠ OOS-06 deep supply-chain covered."""
+    """Assert T13 shallow pass ≠ OOS-06 deep supply-chain covered.
+
+    Args:
+        t13_shallow_ok: t13_shallow_ok 参数。
+    """
     from core.apps.eval.service.security_p5_extensions import (
         evaluate_deep_supply_chain_boundary,
     )
@@ -7022,7 +8697,18 @@ def eval_security_cert_prep_status(
     explicit_authorize: bool = False,
     signoffs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """CERT-PREP dashboard. Never flips security_certification / accuracy_claim."""
+    """CERT-PREP dashboard. Never flips security_certification / accuracy_claim.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        judge_model: judge_model 参数。
+        subject_model: subject_model 参数。
+        security_failure_ids: security_failure_ids 参数。
+        dual_reviews: dual_reviews 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+    """
     from core.apps.eval.service.security_cert_prep import security_cert_prep_status
 
     return security_cert_prep_status(
@@ -7043,7 +8729,13 @@ def eval_run_per_family_cert_prep(
     subject: Optional[Dict[str, Any]] = None,
     use_seed_annotation_fixture: bool = False,
 ) -> Dict[str, Any]:
-    """CERT-PREP per-family L5-candidate vs report_only classification."""
+    """CERT-PREP per-family L5-candidate vs report_only classification.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        use_seed_annotation_fixture: use_seed_annotation_fixture 参数。
+    """
     from core.apps.eval.service.security_cert_prep import run_per_family_cert_prep
 
     return run_per_family_cert_prep(
@@ -7062,7 +8754,16 @@ def eval_rehearse_l5_limited_claim(
     explicit_authorize: bool = False,
     signoffs: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """L5 limited-claim rehearsal. security_certification stays false."""
+    """L5 limited-claim rehearsal. security_certification stays false.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+        judge_usable: judge_usable 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+    """
     from core.apps.eval.service.security_cert_prep import rehearse_l5_limited_claim
 
     return rehearse_l5_limited_claim(
@@ -7080,7 +8781,12 @@ def eval_security_oos_deep_status(
     probe_results_by_oos: Optional[Dict[str, Any]] = None,
     t11_evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """OOS deep engineering + research refuse inventory. Never marks OOS covered."""
+    """OOS deep engineering + research refuse inventory. Never marks OOS covered.
+
+    Args:
+        probe_results_by_oos: probe_results_by_oos 参数。
+        t11_evidence: t11_evidence 参数。
+    """
     from core.apps.eval.service.security_oos_deep import security_oos_deep_status
 
     return security_oos_deep_status(
@@ -7099,8 +8805,12 @@ def eval_run_security_text_live_p1(
 ) -> Dict[str, Any]:
     """P1-1: text-family security run under locked Agent Subject (create_agent).
 
-    live=False → scripted after create_agent (CI fixture tier).
-    live=True → agent.execute (workspace_execute). Never certification.
+    Args:
+        impl_mode: impl_mode 参数。
+        agent_id: Agent ID。
+        model: 模型名。
+        live: live 参数。
+        owner: owner 参数。
     """
     import asyncio
 
@@ -7127,7 +8837,12 @@ def eval_security_text_live_p1_status(
     impl_mode: str = "conversational",
     live: bool = False,
 ) -> Dict[str, Any]:
-    """P1-1 status / scripted inventory (Subject-locked; claim locks false)."""
+    """P1-1 status / scripted inventory (Subject-locked; claim locks false).
+
+    Args:
+        impl_mode: impl_mode 参数。
+        live: live 参数。
+    """
     from core.apps.eval.service.security_text_live_p1 import security_text_live_p1_status
 
     return security_text_live_p1_status(impl_mode=impl_mode, live=live)
@@ -7145,7 +8860,14 @@ def eval_run_security_tool_retrieval_live_p1(
 ) -> Dict[str, Any]:
     """P1-1 tool/retrieval families under locked Subject (create_agent).
 
-    Needs AIPLAT_EVAL_P1_1_TOOLS / AIPLAT_EVAL_P1_1_RETRIEVAL or families → unknown.
+    Args:
+        impl_mode: impl_mode 参数。
+        agent_id: Agent ID。
+        model: 模型名。
+        live: live 参数。
+        owner: owner 参数。
+        tool_contract: tool_contract 参数。
+        retrieval_contract: retrieval_contract 参数。
     """
     import asyncio
 
@@ -7176,7 +8898,12 @@ def eval_security_tool_retrieval_live_p1_status(
     impl_mode: str = "conversational",
     live: bool = False,
 ) -> Dict[str, Any]:
-    """P1-1 tool/retrieval status (claim locks false)."""
+    """P1-1 tool/retrieval status (claim locks false).
+
+    Args:
+        impl_mode: impl_mode 参数。
+        live: live 参数。
+    """
     from core.apps.eval.service.security_tool_retrieval_live_p1 import (
         security_tool_retrieval_live_p1_status,
     )
@@ -7185,7 +8912,11 @@ def eval_security_tool_retrieval_live_p1_status(
 
 
 def eval_security_p1_2_status(*, path: Optional[str] = None) -> Dict[str, Any]:
-    """P1-2 judge calib session status (dual-review / arbiter; cert=false)."""
+    """P1-2 judge calib session status (dual-review / arbiter; cert=false).
+
+    Args:
+        path: 路径。
+    """
     from pathlib import Path
 
     from core.apps.eval.service.security_p1_judge_session import security_p1_2_status
@@ -7201,7 +8932,15 @@ def eval_record_security_p1_2_pair(
     notes: str = "",
     path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """P1-2: record gold/judge pair; auto-queue dual review on disagreement."""
+    """P1-2: record gold/judge pair; auto-queue dual review on disagreement.
+
+    Args:
+        case_id: case 标识。
+        gold: gold 参数。
+        judge: judge 参数。
+        notes: notes 参数。
+        path: 路径。
+    """
     from pathlib import Path
 
     from core.apps.eval.service.security_p1_judge_session import (
@@ -7228,7 +8967,15 @@ def eval_submit_security_p1_2_dual_review(
     label: bool,
     path: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """P1-2: submit dual-blind slot a|b|arbiter for a failure case."""
+    """P1-2: submit dual-blind slot a|b|arbiter for a failure case.
+
+    Args:
+        case_id: case 标识。
+        reviewer: reviewer 参数。
+        slot: slot 参数。
+        label: label 参数。
+        path: 路径。
+    """
     from pathlib import Path
 
     from core.apps.eval.service.security_p1_judge_session import (
@@ -7254,8 +9001,9 @@ def eval_run_security_dynamic_p13(
 ) -> Dict[str, Any]:
     """P1-3: cross-tenant / injection ASR / output-encoding dynamic probes.
 
-    Uses real HTTP against base_url (or AIPLAT_DYNAMIC_SECURITY_BASE).
-    Injection ASR is baseline-only; never certification.
+    Args:
+        base_url: base_url 参数。
+        cross_tenant_repeats: cross_tenant_repeats 参数。
     """
     from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
 
@@ -7269,7 +9017,11 @@ def eval_security_dynamic_p13_status(
     *,
     base_url: str = "",
 ) -> Dict[str, Any]:
-    """P1-3 inventory status (same harness; claim locks false)."""
+    """P1-3 inventory status (same harness; claim locks false).
+
+    Args:
+        base_url: base_url 参数。
+    """
     from core.apps.eval.service.security_dynamic_p13 import run_security_dynamic_p13
 
     return run_security_dynamic_p13(base_url=base_url, cross_tenant_repeats=1)
@@ -7280,7 +9032,12 @@ def eval_evaluate_oos_engineering_pack(
     *,
     probe_results: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate one OOS engineering fixture pack (covered stays false)."""
+    """Evaluate one OOS engineering fixture pack (covered stays false).
+
+    Args:
+        oos_id: oos 标识。
+        probe_results: probe_results 参数。
+    """
     from core.apps.eval.service.security_oos_deep import evaluate_oos_engineering_pack
 
     return evaluate_oos_engineering_pack(str(oos_id), probe_results=probe_results)
@@ -7304,7 +9061,11 @@ def eval_run_l3_pack_fixtures(
     *,
     pack_filter: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Run L3 S-Tool/S-RAG fixture tool_trace cases (mock only)."""
+    """Run L3 S-Tool/S-RAG fixture tool_trace cases (mock only).
+
+    Args:
+        pack_filter: pack_filter 参数。
+    """
     from core.apps.eval.service.security_l3_packs import run_l3_pack_fixtures
 
     return run_l3_pack_fixtures(pack_filter=pack_filter)
@@ -7325,7 +9086,11 @@ def eval_load_l3_s_tool_s_rag_pack() -> Dict[str, Any]:
 
 
 def eval_evaluate_l3_case_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
-    """Score one L3 fixture case via tool_trace side-effect monitor."""
+    """Score one L3 fixture case via tool_trace side-effect monitor.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.security_l3_packs import evaluate_l3_case_fixture
 
     return evaluate_l3_case_fixture(case)
@@ -7338,7 +9103,14 @@ def eval_evaluate_isolation_status(
     human_review: bool = False,
     human_reviewer: str = "",
 ) -> Dict[str, Any]:
-    """Derive isolation_admitted|probed|covered. admit alone never covered."""
+    """Derive isolation_admitted|probed|covered. admit alone never covered.
+
+    Args:
+        admit: admit 参数。
+        probe_run: probe_run 参数。
+        human_review: human_review 参数。
+        human_reviewer: human_reviewer 参数。
+    """
     from core.apps.eval.service.isolation_t12 import evaluate_isolation_status
 
     return evaluate_isolation_status(
@@ -7356,7 +9128,14 @@ def eval_build_security_family_report(
     pack_id: str = "agent.safety.l1",
     subject: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Per-threat-family security report skeleton; macro ASR not_for_claim."""
+    """Per-threat-family security report skeleton; macro ASR not_for_claim.
+
+    Args:
+        by_case: by_case 参数。
+        eval_layer: eval_layer 参数。
+        pack_id: pack 标识。
+        subject: subject 参数。
+    """
     from core.apps.eval.service.security_family_report import build_security_family_report
 
     return build_security_family_report(
@@ -7375,7 +9154,15 @@ def eval_build_mode_intersection_rank(
     min_n_per_capability: int = 5,
     track_a_complete: bool = True,
 ) -> Dict[str, Any]:
-    """M3 Track B: intersection Pareto/CI report; rank_claim never auto-emitted."""
+    """M3 Track B: intersection Pareto/CI report; rank_claim never auto-emitted.
+
+    Args:
+        mode_columns: mode_columns 参数。
+        parity: parity 参数。
+        signoff: signoff 参数。
+        min_n_per_capability: min_n_per_capability 参数。
+        track_a_complete: track_a_complete 参数。
+    """
     from core.apps.eval.service.mode_intersection_rank import build_mode_intersection_rank
 
     return build_mode_intersection_rank(
@@ -7395,7 +9182,15 @@ def eval_evaluate_mode_rank_gate(
     min_n_per_capability: int = 5,
     track_a_complete: bool = True,
 ) -> Dict[str, Any]:
-    """M3 rank gate checklist (fail closed for rank_claim)."""
+    """M3 rank gate checklist (fail closed for rank_claim).
+
+    Args:
+        mode_columns: mode_columns 参数。
+        parity: parity 参数。
+        signoff: signoff 参数。
+        min_n_per_capability: min_n_per_capability 参数。
+        track_a_complete: track_a_complete 参数。
+    """
     from core.apps.eval.service.mode_intersection_rank import evaluate_rank_gate
 
     return evaluate_rank_gate(
@@ -7411,7 +9206,11 @@ def eval_estimate_m2_deferred_modes(
     *,
     impl_source: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """M2: multi_agent/pipeline/operator estimate (runtime_parts deps; no live)."""
+    """M2: multi_agent/pipeline/operator estimate (runtime_parts deps; no live).
+
+    Args:
+        impl_source: impl_source 参数。
+    """
     from core.apps.eval.service.mode_deferred_estimate import estimate_m2_deferred_modes
 
     return estimate_m2_deferred_modes(impl_source=impl_source)
@@ -7422,7 +9221,12 @@ def eval_validate_m2_runtime_parts(
     *,
     mode: str,
 ) -> Dict[str, Any]:
-    """M2: validate runtime_parts shape for a deferred mode."""
+    """M2: validate runtime_parts shape for a deferred mode.
+
+    Args:
+        parts: parts 参数。
+        mode: mode 参数。
+    """
     from core.apps.eval.service.mode_deferred_estimate import validate_runtime_parts
 
     return validate_runtime_parts(parts, mode=mode)
@@ -7438,7 +9242,11 @@ def eval_load_mock_tool_catalog() -> Dict[str, Any]:
 def eval_run_tool_fixture_suite(
     capability_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """T1–T3: run mock-tool / long_context fixture suite (claim=false; v1.1 in-scope)."""
+    """T1–T3: run mock-tool / long_context fixture suite (claim=false; v1.1 in-scope).
+
+    Args:
+        capability_id: capability 标识。
+    """
     from core.apps.eval.service.tool_capability_fixtures import run_tool_fixture_suite
 
     return run_tool_fixture_suite(capability_id=capability_id)
@@ -7457,7 +9265,13 @@ def eval_invoke_mock_tools(
     case: Optional[Dict[str, Any]] = None,
     fail_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """T1: invoke scripted tool_calls against mock catalog."""
+    """T1: invoke scripted tool_calls against mock catalog.
+
+    Args:
+        tool_calls: tool_calls 参数。
+        case: case 参数。
+        fail_mode: fail_mode 参数。
+    """
     from core.apps.eval.service.mock_tools import invoke_mock_tools
 
     return invoke_mock_tools(
@@ -7473,7 +9287,13 @@ def eval_generate_long_context_case(
     must_retain_claims: Optional[list] = None,
     tier: str = "ci_short",
 ) -> Dict[str, Any]:
-    """T3: build a long_context fixture case (claim closed)."""
+    """T3: build a long_context fixture case (claim closed).
+
+    Args:
+        case_id: case 标识。
+        must_retain_claims: must_retain_claims 参数。
+        tier: tier 参数。
+    """
     from core.apps.eval.service.long_context_generator import generate_long_context_case
 
     return generate_long_context_case(
@@ -7487,7 +9307,12 @@ def eval_judge_long_context(
     case: Optional[Dict[str, Any]] = None,
     result: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """T3: A9 must_retain_claims judge (claim closed)."""
+    """T3: A9 must_retain_claims judge (claim closed).
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+    """
     from core.apps.eval.service.long_context_generator import judge_long_context
 
     return judge_long_context(case or {}, result or {})
@@ -7501,7 +9326,11 @@ def eval_agent_capability_catalog() -> list:
 
 
 def eval_validate_agent_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """AgentSubjectAdapter.validate_case — purpose + capabilities mechanical gate."""
+    """AgentSubjectAdapter.validate_case — purpose + capabilities mechanical gate.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("agent").validate_case(case or {})
@@ -7532,7 +9361,11 @@ def eval_method_catalog() -> list:
 def eval_assert_subject_kinds_exclude_methods(
     subject_kinds: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Fail-closed check: Subject list must not contain Method kinds."""
+    """Fail-closed check: Subject list must not contain Method kinds.
+
+    Args:
+        subject_kinds: subject_kinds 参数。
+    """
     from core.apps.eval.service.method_track import (
         assert_subject_kinds_exclude_methods,
     )
@@ -7545,7 +9378,11 @@ def eval_assert_subject_kinds_exclude_methods(
 def eval_method_track_status(
     subject_kinds: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Method-track honesty snapshot for Eval UI (Arena/G2b/S1 ≠ Subject)."""
+    """Method-track honesty snapshot for Eval UI (Arena/G2b/S1 ≠ Subject).
+
+    Args:
+        subject_kinds: subject_kinds 参数。
+    """
     from core.apps.eval.service.method_track import (
         METHOD_TRACK_SCHEMA,
         assert_subject_kinds_exclude_methods,
@@ -7578,7 +9415,13 @@ def eval_p1_regression_status(
     pack_status: str = "",
     draft_sample_limit: int = 5,
 ) -> Dict[str, Any]:
-    """P1 Regression readiness honesty snapshot (quotas ok; human review is the gate)."""
+    """P1 Regression readiness honesty snapshot (quotas ok; human review is the gate).
+
+    Args:
+        pack_kind: pack_kind 参数。
+        pack_status: pack_status 参数。
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from collections import Counter, defaultdict
 
     from core.apps.eval.service.capability_case_bank import (
@@ -7689,7 +9532,11 @@ def eval_prompt_capability_catalog() -> list:
 
 
 def eval_validate_prompt_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """PromptSubjectAdapter.validate_case — purpose + lexical criteria gate."""
+    """PromptSubjectAdapter.validate_case — purpose + lexical criteria gate.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("prompt").validate_case(case or {})
@@ -7713,7 +9560,11 @@ def eval_list_prompt_capability_cases() -> list:
 def eval_run_prompt_capability_smoke(
     *, limit: int = 50
 ) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over prompt.capability bank (≠ live/accuracy)."""
+    """Fixture execute+judge smoke over prompt.capability bank (≠ live/accuracy).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.prompt_capability_bank import run_prompt_capability_smoke
 
     return run_prompt_capability_smoke(limit=limit)
@@ -7729,7 +9580,11 @@ def eval_prompt_regression_profile() -> Dict[str, Any]:
 def eval_prompt_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Prompt Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Prompt Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.prompt_capability_bank import prompt_regression_status
 
     return prompt_regression_status(draft_sample_limit=draft_sample_limit)
@@ -7743,7 +9598,11 @@ def eval_workflow_capability_catalog() -> list:
 
 
 def eval_validate_workflow_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """WorkflowSubjectAdapter.validate_case."""
+    """WorkflowSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("workflow").validate_case(case or {})
@@ -7769,7 +9628,11 @@ def eval_list_workflow_capability_cases() -> list:
 
 
 def eval_run_workflow_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over workflow.capability bank (≠ live/accuracy)."""
+    """Fixture execute+judge smoke over workflow.capability bank (≠ live/accuracy).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.workflow_capability_bank import (
         run_workflow_capability_smoke,
     )
@@ -7789,7 +9652,11 @@ def eval_workflow_regression_profile() -> Dict[str, Any]:
 def eval_workflow_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Workflow Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Workflow Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.workflow_capability_bank import (
         workflow_regression_status,
     )
@@ -7805,7 +9672,11 @@ def eval_model_capability_catalog() -> list:
 
 
 def eval_validate_model_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """ModelSubjectAdapter.validate_case."""
+    """ModelSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("model").validate_case(case or {})
@@ -7831,7 +9702,11 @@ def eval_list_model_capability_cases() -> list:
 
 
 def eval_run_model_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over model.capability bank (≠ live/accuracy)."""
+    """Fixture execute+judge smoke over model.capability bank (≠ live/accuracy).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.model_capability_bank import (
         run_model_capability_smoke,
     )
@@ -7849,7 +9724,11 @@ def eval_model_regression_profile() -> Dict[str, Any]:
 def eval_model_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Model Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Model Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.model_capability_bank import model_regression_status
 
     return model_regression_status(draft_sample_limit=draft_sample_limit)
@@ -7863,7 +9742,11 @@ def eval_kb_capability_catalog() -> list:
 
 
 def eval_validate_kb_case(case: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """KbSubjectAdapter.validate_case."""
+    """KbSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("kb").validate_case(case or {})
@@ -7889,7 +9772,11 @@ def eval_list_kb_capability_cases() -> list:
 
 
 def eval_run_kb_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over kb.capability bank (≠ live RAG accuracy)."""
+    """Fixture execute+judge smoke over kb.capability bank (≠ live RAG accuracy).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.kb_capability_bank import (
         run_kb_capability_smoke,
     )
@@ -7907,7 +9794,11 @@ def eval_kb_regression_profile() -> Dict[str, Any]:
 def eval_kb_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """KB Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """KB Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.kb_capability_bank import kb_regression_status
 
     return kb_regression_status(draft_sample_limit=draft_sample_limit)
@@ -7923,7 +9814,11 @@ def eval_code_review_capability_catalog() -> list:
 def eval_validate_code_review_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """CodeReviewSubjectAdapter.validate_case."""
+    """CodeReviewSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("code_review").validate_case(case or {})
@@ -7949,7 +9844,11 @@ def eval_list_code_review_capability_cases() -> list:
 
 
 def eval_run_code_review_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over code_review.capability (≠ live E2E)."""
+    """Fixture execute+judge smoke over code_review.capability (≠ live E2E).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.code_review_capability_bank import (
         run_code_review_capability_smoke,
     )
@@ -7969,7 +9868,11 @@ def eval_code_review_regression_profile() -> Dict[str, Any]:
 def eval_code_review_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Code Review Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Code Review Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.code_review_capability_bank import (
         code_review_regression_status,
     )
@@ -7987,7 +9890,11 @@ def eval_session_capability_catalog() -> list:
 def eval_validate_session_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SessionSubjectAdapter.validate_case."""
+    """SessionSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("session").validate_case(case or {})
@@ -8013,7 +9920,11 @@ def eval_list_session_capability_cases() -> list:
 
 
 def eval_run_session_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over session.capability (≠ long-horizon Agent)."""
+    """Fixture execute+judge smoke over session.capability (≠ long-horizon Agent).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.session_capability_bank import (
         run_session_capability_smoke,
     )
@@ -8033,7 +9944,11 @@ def eval_session_regression_profile() -> Dict[str, Any]:
 def eval_session_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Session Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Session Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.session_capability_bank import (
         session_regression_status,
     )
@@ -8051,7 +9966,11 @@ def eval_tool_capability_catalog() -> list:
 def eval_validate_tool_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """ToolSubjectAdapter.validate_case."""
+    """ToolSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("tool").validate_case(case or {})
@@ -8077,7 +9996,11 @@ def eval_list_tool_capability_cases() -> list:
 
 
 def eval_run_tool_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
-    """Fixture execute+judge smoke over tool.capability (≠ live tools/MCP)."""
+    """Fixture execute+judge smoke over tool.capability (≠ live tools/MCP).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.tool_capability_bank import (
         run_tool_capability_smoke,
     )
@@ -8095,7 +10018,11 @@ def eval_tool_regression_profile() -> Dict[str, Any]:
 def eval_tool_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Tool Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Tool Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.tool_capability_bank import tool_regression_status
 
     return tool_regression_status(draft_sample_limit=draft_sample_limit)
@@ -8111,7 +10038,11 @@ def eval_multi_agent_capability_catalog() -> list:
 def eval_validate_multi_agent_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """MultiAgentSubjectAdapter.validate_case."""
+    """MultiAgentSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("multi_agent").validate_case(case or {})
@@ -8137,7 +10068,11 @@ def eval_list_multi_agent_capability_cases() -> list:
 
 
 def eval_run_multi_agent_capability_smoke(*, limit: int = 20) -> Dict[str, Any]:
-    """Fixture handoff-path smoke over multi_agent.capability (≠ live M2 runtime)."""
+    """Fixture handoff-path smoke over multi_agent.capability (≠ live M2 runtime).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.multi_agent_capability_bank import (
         run_multi_agent_capability_smoke,
     )
@@ -8157,7 +10092,11 @@ def eval_multi_agent_regression_profile() -> Dict[str, Any]:
 def eval_multi_agent_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Multi-Agent Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Multi-Agent Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.multi_agent_capability_bank import (
         multi_agent_regression_status,
     )
@@ -8175,7 +10114,11 @@ def eval_skill_capability_catalog() -> list:
 def eval_validate_skill_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SkillSubjectAdapter.validate_case."""
+    """SkillSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("skill").validate_case(case or {})
@@ -8201,7 +10144,11 @@ def eval_list_skill_capability_cases() -> list:
 
 
 def eval_run_skill_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture lexical smoke over skill.capability (≠ live core_skill_execute)."""
+    """Fixture lexical smoke over skill.capability (≠ live core_skill_execute).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.skill_capability_bank import (
         run_skill_capability_smoke,
     )
@@ -8219,7 +10166,11 @@ def eval_skill_regression_profile() -> Dict[str, Any]:
 def eval_skill_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Skill Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Skill Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.skill_capability_bank import skill_regression_status
 
     return skill_regression_status(draft_sample_limit=draft_sample_limit)
@@ -8235,7 +10186,11 @@ def eval_generated_app_capability_catalog() -> list:
 def eval_validate_generated_app_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """GeneratedAppSubjectAdapter.validate_case."""
+    """GeneratedAppSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("generated_app").validate_case(case or {})
@@ -8261,7 +10216,11 @@ def eval_list_generated_app_capability_cases() -> list:
 
 
 def eval_run_generated_app_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture lexical smoke over generated_app.capability (≠ live Pi / runs_eval)."""
+    """Fixture lexical smoke over generated_app.capability (≠ live Pi / runs_eval).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.generated_app_capability_bank import (
         run_generated_app_capability_smoke,
     )
@@ -8281,7 +10240,11 @@ def eval_generated_app_regression_profile() -> Dict[str, Any]:
 def eval_generated_app_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Generated-App Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Generated-App Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.generated_app_capability_bank import (
         generated_app_regression_status,
     )
@@ -8299,7 +10262,11 @@ def eval_api_capability_catalog() -> list:
 def eval_validate_api_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """ApiSubjectAdapter.validate_case."""
+    """ApiSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("api").validate_case(case or {})
@@ -8321,7 +10288,11 @@ def eval_list_api_capability_cases() -> list:
 
 
 def eval_run_api_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture lexical smoke over api.capability (≠ live external_pull)."""
+    """Fixture lexical smoke over api.capability (≠ live external_pull).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.api_capability_bank import run_api_capability_smoke
 
     return run_api_capability_smoke(limit=limit)
@@ -8337,7 +10308,11 @@ def eval_api_regression_profile() -> Dict[str, Any]:
 def eval_api_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """API Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """API Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.api_capability_bank import api_regression_status
 
     return api_regression_status(draft_sample_limit=draft_sample_limit)
@@ -8353,7 +10328,11 @@ def eval_dataset_capability_catalog() -> list:
 def eval_validate_dataset_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """DatasetSubjectAdapter.validate_case."""
+    """DatasetSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("dataset").validate_case(case or {})
@@ -8379,7 +10358,11 @@ def eval_list_dataset_capability_cases() -> list:
 
 
 def eval_run_dataset_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture lexical smoke over dataset.capability (≠ typed Plan dataset_assert)."""
+    """Fixture lexical smoke over dataset.capability (≠ typed Plan dataset_assert).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.dataset_capability_bank import (
         run_dataset_capability_smoke,
     )
@@ -8399,7 +10382,11 @@ def eval_dataset_regression_profile() -> Dict[str, Any]:
 def eval_dataset_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """Dataset Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """Dataset Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.dataset_capability_bank import (
         dataset_regression_status,
     )
@@ -8417,7 +10404,11 @@ def eval_system_capability_catalog() -> list:
 def eval_validate_system_case(
     case: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """SystemSubjectAdapter.validate_case."""
+    """SystemSubjectAdapter.validate_case.
+
+    Args:
+        case: case 参数。
+    """
     from core.apps.eval.service.subject_adapter import get_subject_adapter
 
     errors = get_subject_adapter("system").validate_case(case or {})
@@ -8443,7 +10434,11 @@ def eval_list_system_capability_cases() -> list:
 
 
 def eval_run_system_capability_smoke(*, limit: int = 50) -> Dict[str, Any]:
-    """Fixture lexical smoke over system.capability (≠ system_plan_ops)."""
+    """Fixture lexical smoke over system.capability (≠ system_plan_ops).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.system_capability_bank import (
         run_system_capability_smoke,
     )
@@ -8463,7 +10458,11 @@ def eval_system_regression_profile() -> Dict[str, Any]:
 def eval_system_regression_status(
     *, draft_sample_limit: int = 5
 ) -> Dict[str, Any]:
-    """System Subject regression honesty snapshot (quotas vs bank; claim closed)."""
+    """System Subject regression honesty snapshot (quotas vs bank; claim closed).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+    """
     from core.apps.eval.service.system_capability_bank import (
         system_regression_status,
     )
@@ -8477,7 +10476,13 @@ def eval_subject_regression_inventory(
     workspace_id: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """Cross-Subject regression honesty inventory (claim stays false)."""
+    """Cross-Subject regression honesty inventory (claim stays false).
+
+    Args:
+        draft_sample_limit: draft_sample_limit 参数。
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.subject_regression_inventory import (
         subject_regression_inventory,
     )
@@ -8497,7 +10502,11 @@ def eval_content_purpose_ok_inventory() -> Dict[str, Any]:
 
 
 def eval_content_purpose_ok_for_subject(subject_kind: str) -> Dict[str, Any]:
-    """ADR P1 content_purpose_ok audit for one Subject seed bank (claim closed)."""
+    """ADR P1 content_purpose_ok audit for one Subject seed bank (claim closed).
+
+    Args:
+        subject_kind: subject_kind 参数。
+    """
     from core.apps.eval.service.content_purpose_ok import content_purpose_ok_for_subject
 
     return content_purpose_ok_for_subject(subject_kind)
@@ -8532,7 +10541,11 @@ def eval_list_suite_profiles() -> list:
 
 
 def eval_get_suite_profile(profile_id: str = "") -> Dict[str, Any]:
-    """P2/P4: resolve agent or Subject Suite Profile by id."""
+    """P2/P4: resolve agent or Subject Suite Profile by id.
+
+    Args:
+        profile_id: profile 标识。
+    """
     from core.apps.eval.service.capability_case_bank import get_suite_profile
 
     return get_suite_profile(profile_id)
@@ -8558,9 +10571,13 @@ def eval_benchmark_readiness(
 ) -> Dict[str, Any]:
     """P4: benchmark coverage + holdout compile disclosure (claim closed).
 
-    Default uses Profile quotas (v1.1 heterogeneous floors). Pass a flat
-    ``min_per_capability`` only for uniform-floor audits. Subject-aware via
-    ``profile_id`` / ``subject_kind``.
+    Args:
+        min_per_capability: min_per_capability 参数。
+        compile_plan: compile_plan 参数。
+        cases: cases 参数。
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        subject_kind: subject_kind 参数。
     """
     from core.apps.eval.service.capability_p4_gate import benchmark_readiness_report
 
@@ -8583,7 +10600,16 @@ def eval_p4_status(
     profile: Optional[Dict[str, Any]] = None,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """P4 honesty snapshot: benchmark quotas/holdout + judge engineering bar."""
+    """P4 honesty snapshot: benchmark quotas/holdout + judge engineering bar.
+
+    Args:
+        min_per_capability: min_per_capability 参数。
+        compile_plan: compile_plan 参数。
+        threshold: threshold 参数。
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        subject_kind: subject_kind 参数。
+    """
     from core.apps.eval.service.capability_p4_gate import (
         benchmark_readiness_report,
         evaluate_judge_calibration_gate,
@@ -8649,7 +10675,15 @@ def eval_judge_calibration_gate(
     caller_workspace_id: str = "",
     ratings: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P4: engineering judge agreement gate — always report_only / claim=false."""
+    """P4: engineering judge agreement gate — always report_only / claim=false.
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket 标识。
+        threshold: threshold 参数。
+        caller_workspace_id: caller_workspace 标识。
+        ratings: ratings 参数。
+    """
     from core.apps.eval.service.capability_p4_gate import (
         evaluate_judge_calibration_gate,
         judge_calibration_gate_for_ticket,
@@ -8681,7 +10715,20 @@ def eval_open_capability_judge_calibration(
     subject_kind: str = "",
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P4: open judge calibration ticket against Subject bank sample."""
+    """P4: open judge calibration ticket against Subject bank sample.
+
+    Args:
+        workspace_id: 工作区 ID。
+        pack_id: pack 标识。
+        version: version 参数。
+        sample_n: sample_n 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        subject_kind: subject_kind 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.capability_p4_gate import open_capability_judge_calibration
 
     kwargs: Dict[str, Any] = {
@@ -8711,7 +10758,17 @@ def eval_promote_agent_capability_bank(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """P1 closeout: validate → draft → review → freeze agent.capability (claim=false)."""
+    """P1 closeout: validate → draft → review → freeze agent.capability (claim=false).
+
+    Args:
+        workspace_id: 工作区 ID。
+        reviewer: reviewer 参数。
+        frozen_by: frozen_by 参数。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.capability_case_bank import promote_agent_capability_bank
 
     kwargs: Dict[str, Any] = {
@@ -8748,7 +10805,18 @@ def eval_promote_subject_capability_bank(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Promote any Subject seed bank → purpose_ok → freeze (claim=false)."""
+    """Promote any Subject seed bank → purpose_ok → freeze (claim=false).
+
+    Args:
+        subject_kind: subject_kind 参数。
+        workspace_id: 工作区 ID。
+        reviewer: reviewer 参数。
+        frozen_by: frozen_by 参数。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         promote_subject_capability_bank,
     )
@@ -8776,7 +10844,15 @@ def eval_promote_all_subject_capability_banks(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """Promote all Subject seed banks into one workspace (claim=false)."""
+    """Promote all Subject seed banks into one workspace (claim=false).
+
+    Args:
+        workspace_id: 工作区 ID。
+        reviewer: reviewer 参数。
+        frozen_by: frozen_by 参数。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         promote_all_subject_capability_banks,
     )
@@ -8795,7 +10871,12 @@ def eval_stamp_subject_seed_purpose_ok(
     subject_kind: str,
     reviewer: str = "owner",
 ) -> Dict[str, Any]:
-    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim=false)."""
+    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim=false).
+
+    Args:
+        subject_kind: subject_kind 参数。
+        reviewer: reviewer 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         stamp_subject_seed_purpose_ok,
     )
@@ -8808,7 +10889,11 @@ def eval_stamp_subject_seed_purpose_ok(
 def eval_stamp_all_subject_seed_purpose_ok(
     *, reviewer: str = "owner"
 ) -> Dict[str, Any]:
-    """Stamp purpose_ok on all non-agent Subject seed banks (claim=false)."""
+    """Stamp purpose_ok on all non-agent Subject seed banks (claim=false).
+
+    Args:
+        reviewer: reviewer 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         stamp_all_subject_seed_purpose_ok,
     )
@@ -8821,7 +10906,12 @@ def eval_freeze_subject_seed_pack_meta(
     subject_kind: str,
     reviewer: str = "owner",
 ) -> Dict[str, Any]:
-    """Freeze Subject seed pack.meta.json after purpose_ok (claim=false)."""
+    """Freeze Subject seed pack.meta.json after purpose_ok (claim=false).
+
+    Args:
+        subject_kind: subject_kind 参数。
+        reviewer: reviewer 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         freeze_subject_seed_pack_meta,
     )
@@ -8834,7 +10924,11 @@ def eval_freeze_subject_seed_pack_meta(
 def eval_freeze_all_subject_seed_pack_meta(
     *, reviewer: str = "owner"
 ) -> Dict[str, Any]:
-    """Freeze all non-agent Subject seed pack.meta.json (claim=false)."""
+    """Freeze all non-agent Subject seed pack.meta.json (claim=false).
+
+    Args:
+        reviewer: reviewer 参数。
+    """
     from core.apps.eval.service.subject_capability_promote import (
         freeze_all_subject_seed_pack_meta,
     )
@@ -8851,7 +10945,16 @@ def eval_compile_plan_from_suite_profile(
     object_version: str = "0.1.0",
     require_content_purpose_ok: bool = True,
 ) -> Dict[str, Any]:
-    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false)."""
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim_eligible=false).
+
+    Args:
+        profile: 评测 profile。
+        profile_id: profile 标识。
+        cases: cases 参数。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        require_content_purpose_ok: require_content_purpose_ok 参数。
+    """
     from core.apps.eval.service.suite_profile_compile import compile_plan_from_suite_profile
 
     return compile_plan_from_suite_profile(
@@ -8879,8 +10982,17 @@ async def eval_run_suite_profile_exam(
 ) -> Dict[str, Any]:
     """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed).
 
-    Loads the Subject bank matching ``profile_id`` when ``cases`` is omitted.
-    Optional ``workspace_id`` scopes the last-exam honesty ledger for Inventory.
+    Args:
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        live: live 参数。
+        model: 模型名。
+        run_key: run_key 参数。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        max_cases: max_cases 参数。
+        cases: cases 参数。
+        workspace_id: 工作区 ID。
     """
     from core.apps.eval.service.suite_profile_exam import run_suite_profile_exam
 
@@ -8906,7 +11018,15 @@ def eval_capability_heatmap(
     cases: Optional[list] = None,
     subject_kind: str = "",
 ) -> Dict[str, Any]:
-    """§8.4 capability coverage heatmap (claim closed; Subject-aware)."""
+    """§8.4 capability coverage heatmap (claim closed; Subject-aware).
+
+    Args:
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        exam: exam 参数。
+        cases: cases 参数。
+        subject_kind: subject_kind 参数。
+    """
     from core.apps.eval.service.suite_profile_report import build_capability_heatmap
 
     return build_capability_heatmap(
@@ -8923,7 +11043,12 @@ def eval_suite_profile_report(
     *,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """Compose heatmap + §11 disclosure from an exam payload."""
+    """Compose heatmap + §11 disclosure from an exam payload.
+
+    Args:
+        exam: exam 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.suite_profile_report import build_suite_profile_report
 
     return build_suite_profile_report(exam or {}, cases=cases)
@@ -8941,7 +11066,19 @@ def eval_certification_readiness(
     compile_plan: bool = True,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P5 pre-gate: §8.5 relative completeness; certification_eligible always false."""
+    """P5 pre-gate: §8.5 relative completeness; certification_eligible always false.
+
+    Args:
+        profile_id: profile 标识。
+        profile: 评测 profile。
+        subject_kind: subject_kind 参数。
+        pack_kind: pack_kind 参数。
+        pack_status: pack_status 参数。
+        judge_agreement: judge_agreement 参数。
+        judge_threshold: judge_threshold 参数。
+        compile_plan: compile_plan 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.capability_cert_readiness import (
         evaluate_certification_readiness,
     )
@@ -8967,7 +11104,15 @@ def eval_analyze_capability_coverage(
     min_per_capability: Optional[int] = None,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P3: capability have/need/gap inventory (claim closed; Subject-aware)."""
+    """P3: capability have/need/gap inventory (claim closed; Subject-aware).
+
+    Args:
+        profile: 评测 profile。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.capability_coverage_fill import analyze_capability_coverage
 
     return analyze_capability_coverage(
@@ -8990,7 +11135,18 @@ def eval_generate_coverage_fill_candidates(
     ops: Optional[list] = None,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P3: draft fill candidates via factory mutation/template (not gold)."""
+    """P3: draft fill candidates via factory mutation/template (not gold).
+
+    Args:
+        profile: 评测 profile。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        method: method 参数。
+        seed: seed 参数。
+        ops: ops 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.capability_coverage_fill import (
         generate_coverage_fill_candidates,
     )
@@ -9023,7 +11179,23 @@ def eval_fill_capability_coverage(
     apply: bool = False,
     cases: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P3: gap analyze → candidates → optional expand (claim_eligible=false)."""
+    """P3: gap analyze → candidates → optional expand (claim_eligible=false).
+
+    Args:
+        workspace_id: 工作区 ID。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+        profile: 评测 profile。
+        profile_id: profile 标识。
+        subject_kind: subject_kind 参数。
+        min_per_capability: min_per_capability 参数。
+        method: method 参数。
+        seed: seed 参数。
+        ops: ops 参数。
+        apply: apply 参数。
+        cases: cases 参数。
+    """
     from core.apps.eval.service.capability_coverage_fill import fill_capability_coverage
 
     kwargs: Dict[str, Any] = {
@@ -9047,13 +11219,22 @@ def eval_fill_capability_coverage(
 
 
 def eval_list_seed_capability_cases(*, capability_id: str = "") -> Dict[str, Any]:
-    """Browse repo seed cases (read-only)."""
+    """Browse repo seed cases (read-only).
+
+    Args:
+        capability_id: capability 标识。
+    """
     from core.apps.eval.service.capability_case_editor import list_seed_capability_cases
 
     return list_seed_capability_cases(capability_id=capability_id)
 
 
 def eval_get_seed_capability_case(*, case_id: str) -> Dict[str, Any]:
+    """eval_get_seed_capability_case。
+
+    Args:
+        case_id: case 标识。
+    """
     from core.apps.eval.service.capability_case_editor import get_seed_capability_case
 
     return get_seed_capability_case(case_id=case_id)
@@ -9067,6 +11248,15 @@ def eval_list_workspace_pack_cases(
     capability_id: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_list_workspace_pack_cases。
+
+    Args:
+        workspace_id: 工作区 ID。
+        pack_id: pack 标识。
+        version: version 参数。
+        capability_id: capability 标识。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.capability_case_editor import list_workspace_pack_cases
 
     kwargs: Dict[str, Any] = {
@@ -9089,6 +11279,15 @@ def eval_get_workspace_pack_case(
     version: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_get_workspace_pack_case。
+
+    Args:
+        workspace_id: 工作区 ID。
+        case_id: case 标识。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.capability_case_editor import get_workspace_pack_case
 
     kwargs: Dict[str, Any] = {
@@ -9111,6 +11310,15 @@ def eval_upsert_workspace_pack_case(
     version: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_upsert_workspace_pack_case。
+
+    Args:
+        workspace_id: 工作区 ID。
+        case: case 参数。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.capability_case_editor import upsert_workspace_pack_case
 
     kwargs: Dict[str, Any] = {
@@ -9133,6 +11341,15 @@ def eval_delete_workspace_pack_case(
     version: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
+    """eval_delete_workspace_pack_case。
+
+    Args:
+        workspace_id: 工作区 ID。
+        case_id: case 标识。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.capability_case_editor import delete_workspace_pack_case
 
     kwargs: Dict[str, Any] = {
@@ -9155,6 +11372,15 @@ def eval_open_capability_bank_editor(
     caller_workspace_id: str = "",
     bump_if_frozen: bool = True,
 ) -> Dict[str, Any]:
+    """eval_open_capability_bank_editor。
+
+    Args:
+        workspace_id: 工作区 ID。
+        pack_id: pack 标识。
+        version: version 参数。
+        caller_workspace_id: caller_workspace 标识。
+        bump_if_frozen: bump_if_frozen 参数。
+    """
     from core.apps.eval.service.capability_case_editor import open_capability_bank_editor
 
     kwargs: Dict[str, Any] = {
@@ -9183,7 +11409,16 @@ def eval_publish_draft_case_pack(
 ) -> Dict[str, Any]:
     """P1.0 Case Factory: template/variants or raw cases → workspace draft pack.
 
-    claim_eligible=false; cannot publish frozen. No accuracy_claim.
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        template: template 参数。
+        variants: variants 参数。
+        cases: cases 参数。
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+        object_types: object_types 参数。
+        kind: kind 参数。
     """
     from core.apps.eval.service.case_factory import (
         generate_cases_from_template,
@@ -9216,7 +11451,15 @@ def eval_enqueue_case_pack_review(
     caller_workspace_id: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """P1.1: draft|rejected → in_review. claim_eligible stays false."""
+    """P1.1: draft|rejected → in_review. claim_eligible stays false.
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.case_review_queue import enqueue_pack_for_review
 
     return enqueue_pack_for_review(
@@ -9234,7 +11477,13 @@ def eval_list_case_pack_review_queue(
     caller_workspace_id: str = "",
     statuses: Optional[list] = None,
 ) -> Dict[str, Any]:
-    """P1.1: list workspace packs in review queue statuses."""
+    """P1.1: list workspace packs in review queue statuses.
+
+    Args:
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+        statuses: statuses 参数。
+    """
     from core.apps.eval.service.case_review_queue import list_review_queue
 
     return list_review_queue(
@@ -9254,7 +11503,17 @@ def eval_submit_case_pack_review(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P1.1: approve→reviewed / reject→rejected. Never freezes or opens claim."""
+    """P1.1: approve→reviewed / reject→rejected. Never freezes or opens claim.
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        decision: decision 参数。
+        reviewer: reviewer 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_review_queue import submit_review_decision
 
     return submit_review_decision(
@@ -9277,7 +11536,16 @@ def eval_freeze_workspace_case_pack(
     frozen_by: str = "",
     notes: str = "",
 ) -> Dict[str, Any]:
-    """P1.2: reviewed → kind=frozen. claim_eligible stays false; no accuracy_claim."""
+    """P1.2: reviewed → kind=frozen. claim_eligible stays false; no accuracy_claim.
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+        frozen_by: frozen_by 参数。
+        notes: notes 参数。
+    """
     from core.apps.eval.service.case_freeze import freeze_workspace_pack
 
     return freeze_workspace_pack(
@@ -9300,7 +11568,17 @@ def eval_expand_draft_case_pack(
     variants: Optional[list] = None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack.
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        cases: cases 参数。
+        template: template 参数。
+        variants: variants 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import expand_draft_workspace_pack
 
     return expand_draft_workspace_pack(
@@ -9325,7 +11603,18 @@ def eval_bump_case_pack_version(
     variants: Optional[list] = None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P1.4: version++ → new draft curated (frozen source untouched)."""
+    """P1.4: version++ → new draft curated (frozen source untouched).
+
+    Args:
+        pack_id: pack 标识。
+        from_version: from_version 参数。
+        workspace_id: 工作区 ID。
+        to_version: to_version 参数。
+        extra_cases: extra_cases 参数。
+        template: template 参数。
+        variants: variants 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import bump_workspace_pack_version
 
     return bump_workspace_pack_version(
@@ -9345,7 +11634,12 @@ def eval_summarize_case_pack_coverage(
     workspace_id: str,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P1.4: workspace pack coverage inventory (not an accuracy claim)."""
+    """P1.4: workspace pack coverage inventory (not an accuracy claim).
+
+    Args:
+        workspace_id: 工作区 ID。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import summarize_workspace_pack_coverage
 
     return summarize_workspace_pack_coverage(
@@ -9365,7 +11659,18 @@ def eval_mark_case_pack_holdout(
     holdout: bool = True,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P2.0: mark holdout flags on non-frozen pack (rehash)."""
+    """P2.0: mark holdout flags on non-frozen pack (rehash).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        case_ids: case_ids 参数。
+        ratio: ratio 参数。
+        seed: seed 参数。
+        holdout: holdout 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import mark_pack_holdout
 
     return mark_pack_holdout(
@@ -9390,7 +11695,17 @@ def eval_publish_mutation_case_pack(
     seed: str = "0",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    """P2.0: deterministic mutations → kind=generated draft (claim closed).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        seed_cases: seed_cases 参数。
+        ops: ops 参数。
+        seed: seed 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import build_mutation_draft_pack
 
     return build_mutation_draft_pack(
@@ -9412,7 +11727,15 @@ def eval_publish_trace_case_pack(
     traces: list,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    """P2.0: trace dicts → kind=trace draft (claim closed).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        traces: traces 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import build_trace_draft_pack
 
     return build_trace_draft_pack(
@@ -9438,7 +11761,21 @@ async def eval_publish_llm_candidate_case_pack(
     llm_generate_fn=None,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        theme: theme 参数。
+        n: n 参数。
+        category: category 参数。
+        seed: seed 参数。
+        model_name: model_name 参数。
+        dry: dry 参数。
+        llm_generate_fn: llm_generate_fn 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import build_llm_candidate_draft_pack
 
     return await build_llm_candidate_draft_pack(
@@ -9464,7 +11801,15 @@ def eval_propose_case_pack_difficulty(
     persist: bool = False,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.0: heuristic difficulty labels (not calibrated)."""
+    """P3.0: heuristic difficulty labels (not calibrated).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        persist: persist 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import propose_pack_difficulty
 
     return propose_pack_difficulty(
@@ -9485,7 +11830,16 @@ def eval_open_judge_calibration_ticket(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: persist judge calibration ticket — does not unlock claims."""
+    """P3.1: persist judge calibration ticket — does not unlock claims.
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        sample_case_ids: sample_case_ids 参数。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import (
         open_judge_calibration_ticket_for_pack,
     )
@@ -9509,7 +11863,16 @@ def eval_calibrate_case_pack_difficulty(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: human difficulty labels → pack (engineering calibrated; claim closed)."""
+    """P3.1: human difficulty labels → pack (engineering calibrated; claim closed).
+
+    Args:
+        pack_id: pack 标识。
+        version: version 参数。
+        workspace_id: 工作区 ID。
+        labels: labels 参数。
+        rater: rater 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import calibrate_pack_difficulty
 
     return calibrate_pack_difficulty(
@@ -9530,7 +11893,15 @@ def eval_record_judge_calibration_ratings(
     rater: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: append judge ratings + agreement (claim closed)."""
+    """P3.1: append judge ratings + agreement (claim closed).
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket 标识。
+        ratings: ratings 参数。
+        rater: rater 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import (
         record_judge_calibration_ratings_for_pack,
     )
@@ -9551,7 +11922,14 @@ def eval_close_judge_calibration_ticket(
     notes: str = "",
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: close judge ticket after ratings (claim closed)."""
+    """P3.1: close judge ticket after ratings (claim closed).
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket 标识。
+        notes: notes 参数。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import (
         close_judge_calibration_ticket_for_pack,
     )
@@ -9570,7 +11948,13 @@ def eval_get_judge_calibration_ticket(
     ticket_id: str,
     caller_workspace_id: str = "",
 ) -> Dict[str, Any]:
-    """P3.1: load persisted judge ticket."""
+    """P3.1: load persisted judge ticket.
+
+    Args:
+        workspace_id: 工作区 ID。
+        ticket_id: ticket 标识。
+        caller_workspace_id: caller_workspace 标识。
+    """
     from core.apps.eval.service.case_pack_ops import (
         get_judge_calibration_ticket_for_pack,
     )
@@ -9597,7 +11981,22 @@ def eval_compile_evaluation_plan(
     roles: Optional[list] = None,
     eval_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """P2/P3: compile Evaluation Plan for any object_type (same plan schema)."""
+    """P2/P3: compile Evaluation Plan for any object_type (same plan schema).
+
+    Args:
+        agent_id: Agent ID。
+        object_id: object 标识。
+        object_type: object_type 参数。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: live 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+    """
     from core.apps.eval.service.eval_plan import compile_plan_for_object
 
     oid = (object_id or agent_id or "").strip()
@@ -9634,7 +12033,11 @@ def eval_compile_evaluation_plan(
 
 
 async def eval_resolve_agent_eval_profile(*, agent_id: str) -> Dict[str, Any]:
-    """Resolve Agent eval_profile (explicit or derived skill/tool hints)."""
+    """Resolve Agent eval_profile (explicit or derived skill/tool hints).
+
+    Args:
+        agent_id: Agent ID。
+    """
     from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
 
     profile = await resolve_agent_eval_profile(agent_id)
@@ -9648,7 +12051,11 @@ async def eval_resolve_agent_eval_profile(*, agent_id: str) -> Dict[str, Any]:
 
 
 def eval_list_external_targets(*, workspace_id: str) -> Dict[str, Any]:
-    """List registered external http_chat_pull targets for a named workspace."""
+    """List registered external http_chat_pull targets for a named workspace.
+
+    Args:
+        workspace_id: 工作区 ID。
+    """
     from core.apps.eval.service.external_exam_ops import list_targets
 
     items = list_targets(workspace_id)
@@ -9673,7 +12080,19 @@ def eval_upsert_external_target(
     timeout_ms: int = 30_000,
     response_mode: str = "aiplat_v0",
 ) -> Dict[str, Any]:
-    """Register or update an external pull-mode chat target (SSRF-checked)."""
+    """Register or update an external pull-mode chat target (SSRF-checked).
+
+    Args:
+        workspace_id: 工作区 ID。
+        target_id: target 标识。
+        label: label 参数。
+        base_url: base_url 参数。
+        path: 路径。
+        auth_header_name: auth_header_name 参数。
+        auth_secret_env: auth_secret_env 参数。
+        timeout_ms: timeout_ms 参数。
+        response_mode: response_mode 参数。
+    """
     from core.apps.eval.service.external_exam_ops import register_target
 
     target = register_target(
@@ -9699,7 +12118,16 @@ async def eval_run_external_exam(
     max_tasks: int = 0,
     persist: bool = True,
 ) -> Dict[str, Any]:
-    """Pull-mode exam against external HTTP chat target (not local ReAct)."""
+    """Pull-mode exam against external HTTP chat target (not local ReAct).
+
+    Args:
+        workspace_id: 工作区 ID。
+        target_id: target 标识。
+        set_id: set 标识。
+        live: live 参数。
+        max_tasks: max_tasks 参数。
+        persist: persist 参数。
+    """
     from core.apps.eval.service.external_exam_ops import run_external_exam
 
     return await run_external_exam(
@@ -9721,7 +12149,16 @@ def eval_run_generated_app_pi_smoke(
     model: str = "",
     timeout_s: float = 90.0,
 ) -> Dict[str, Any]:
-    """Generated-app Pi delivery smoke (offline structural or live pi CLI)."""
+    """Generated-app Pi delivery smoke (offline structural or live pi CLI).
+
+    Args:
+        source: source 参数。
+        project_id: project 标识。
+        app_home: app_home 参数。
+        live: live 参数。
+        model: 模型名。
+        timeout_s: timeout_s 参数。
+    """
     from core.apps.eval.service.generated_app_pi_ops import run_generated_app_pi_smoke
 
     return run_generated_app_pi_smoke(
@@ -9744,7 +12181,17 @@ async def eval_run_prompt_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Prompt Plan-chain exam: compile plan + run prompt/* lexical/oracle sets."""
+    """Prompt Plan-chain exam: compile plan + run prompt/* lexical/oracle sets.
+
+    Args:
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: live 参数。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.prompt_plan_ops import run_prompt_plan_exam
 
     return await run_prompt_plan_exam(
@@ -9768,7 +12215,17 @@ async def eval_run_workflow_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Workflow Plan-chain exam: compile plan + run workflow/* lexical sets."""
+    """Workflow Plan-chain exam: compile plan + run workflow/* lexical sets.
+
+    Args:
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: live 参数。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
 
     return await run_typed_plan_exam(
@@ -9794,7 +12251,17 @@ async def eval_run_model_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Model Plan-chain exam: compile plan + run model/* lexical sets (≠ leaderboard)."""
+    """Model Plan-chain exam: compile plan + run model/* lexical sets (≠ leaderboard).
+
+    Args:
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: live 参数。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
 
     return await run_typed_plan_exam(
@@ -9820,7 +12287,17 @@ async def eval_run_dataset_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample retrieval)."""
+    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample retrieval).
+
+    Args:
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: live 参数。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.typed_plan_exam import run_typed_plan_exam
 
     return await run_typed_plan_exam(
@@ -9844,7 +12321,15 @@ async def eval_run_system_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """System combination exam: typed parts + runtime_parts (≠ single-object)."""
+    """System combination exam: typed parts + runtime_parts (≠ single-object).
+
+    Args:
+        object_id: object 标识。
+        parts: parts 参数。
+        live: live 参数。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     from core.apps.eval.service.system_plan_ops import run_system_plan_exam
 
     return await run_system_plan_exam(
@@ -9861,7 +12346,12 @@ def eval_evaluate_l5_claims_gate(
     evidence: Optional[Dict[str, Any]] = None,
     explicit_authorize: bool = False,
 ) -> Dict[str, Any]:
-    """L5 scope-bound claims gate (advisory; default claims stay false)."""
+    """L5 scope-bound claims gate (advisory; default claims stay false).
+
+    Args:
+        evidence: evidence 参数。
+        explicit_authorize: explicit_authorize 参数。
+    """
     from core.apps.eval.service.claims_gate import evaluate_l5_claims_gate
 
     return evaluate_l5_claims_gate(
@@ -9877,7 +12367,10 @@ def eval_agent_attributable_report(
 ) -> Dict[str, Any]:
     """Attributable report + publish conclusion (safety veto hard gate; variance uses history).
 
-    Optional ``set_id`` scopes to that exam paper — does not substitute another set.
+    Args:
+        agent_id: Agent ID。
+        limit: 返回条数上限。
+        set_id: set 标识。
     """
     from core.apps.eval.service.agent_attributable_report import (
         build_attributable_report_from_agent,
@@ -9887,6 +12380,11 @@ def eval_agent_attributable_report(
 
 
 def eval_e3_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """eval_e3_status。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.gold_bootstrap import e3_status
 
     return e3_status(tenant_id=tenant_id)
@@ -9899,7 +12397,14 @@ def eval_run_e4_calibration(
     k: int = 3,
     limit: int = 500,
 ) -> Dict[str, Any]:
-    """EVAL_V1 E4: deterministic judge v1 + k-repeat / ECE calibration report."""
+    """EVAL_V1 E4: deterministic judge v1 + k-repeat / ECE calibration report.
+
+    Args:
+        tenant_id: 租户 ID。
+        set_id: set 标识。
+        k: k 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.judge_v1 import run_e4_calibration
 
     return run_e4_calibration(tenant_id=tenant_id, set_id=set_id, k=k, limit=limit)
@@ -9914,7 +12419,16 @@ def eval_run_e5_gate(
     candidate: str = "local",
     limit: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """EVAL_V1 E5: local engineering gate + failure taxonomy (not accuracy / G2a)."""
+    """EVAL_V1 E5: local engineering gate + failure taxonomy (not accuracy / G2a).
+
+    Args:
+        mode: mode 参数。
+        tenant_id: 租户 ID。
+        set_id: set 标识。
+        baseline: baseline 参数。
+        candidate: candidate 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.gate_v1 import run_e5_gate
 
     return run_e5_gate(
@@ -9928,6 +12442,11 @@ def eval_run_e5_gate(
 
 
 def eval_g2a_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """eval_g2a_status。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2a import g2a_status
 
     return g2a_status(tenant_id=tenant_id)
@@ -9936,6 +12455,13 @@ def eval_g2a_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
 def eval_list_review_queue(
     *, tenant_id: str = "eval-v1", annotator: str = "solo_reviewer", limit: int = 100
 ) -> Dict[str, Any]:
+    """eval_list_review_queue。
+
+    Args:
+        tenant_id: 租户 ID。
+        annotator: annotator 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.g2a import list_review_queue
 
     return list_review_queue(tenant_id=tenant_id, annotator=annotator, limit=limit)
@@ -9944,6 +12470,13 @@ def eval_list_review_queue(
 def eval_preannotate_review_queue(
     *, tenant_id: str = "eval-v1", annotator: str = "solo_reviewer", limit: int = 500
 ) -> Dict[str, Any]:
+    """eval_preannotate_review_queue。
+
+    Args:
+        tenant_id: 租户 ID。
+        annotator: annotator 参数。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.g2a import preannotate_review_queue
 
     return preannotate_review_queue(
@@ -9959,6 +12492,15 @@ def eval_adjudicate_label(
     rationale: str = "",
     tenant_id: str = "eval-v1",
 ) -> Dict[str, Any]:
+    """eval_adjudicate_label。
+
+    Args:
+        label_id: label 标识。
+        passed: passed 参数。
+        notes: notes 参数。
+        rationale: rationale 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2a import adjudicate_label
 
     return adjudicate_label(
@@ -9971,6 +12513,11 @@ def eval_adjudicate_label(
 
 
 def eval_lock_v0(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """eval_lock_v0。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2a import lock_v0
 
     return lock_v0(tenant_id=tenant_id)
@@ -9983,7 +12530,14 @@ def eval_run_g2a_gate(
     set_id: str = "",
     limit: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """EVAL_V1 G2a: local gate claim after v0 lock (never accuracy)."""
+    """EVAL_V1 G2a: local gate claim after v0 lock (never accuracy).
+
+    Args:
+        mode: mode 参数。
+        tenant_id: 租户 ID。
+        set_id: set 标识。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.g2a import run_g2a_gate
 
     return run_g2a_gate(
@@ -9992,42 +12546,66 @@ def eval_run_g2a_gate(
 
 
 def eval_g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """G2b facilitation pack status (accuracy_claim stays false)."""
+    """G2b facilitation pack status (accuracy_claim stays false).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2b import g2b_pack_status
 
     return g2b_pack_status(tenant_id=tenant_id)
 
 
 def eval_g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """G2b distance-to-L5 disclosure; claims_gate default authorize=false; accuracy_claim false."""
+    """G2b distance-to-L5 disclosure; claims_gate default authorize=false; accuracy_claim false.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2b import g2b_l5_gap_disclosure
 
     return g2b_l5_gap_disclosure(tenant_id=tenant_id)
 
 
 def eval_g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """G2b claim unlock AND-gates; never flips accuracy_claim."""
+    """G2b claim unlock AND-gates; never flips accuracy_claim.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2b import g2b_claim_unlock_checklist
 
     return g2b_claim_unlock_checklist(tenant_id=tenant_id)
 
 
 def eval_preference_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Preference facilitation pack status (accuracy_claim stays false)."""
+    """Preference facilitation pack status (accuracy_claim stays false).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.preference import preference_pack_status
 
     return preference_pack_status(tenant_id=tenant_id)
 
 
 def eval_scorecard_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Scorecard honesty snapshot (accuracy_claim / authorize stay false)."""
+    """Scorecard honesty snapshot (accuracy_claim / authorize stay false).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.scorecard import scorecard_status
 
     return scorecard_status(tenant_id=tenant_id)
 
 
 def eval_evidence_audit_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Evidence audit snapshot (hash + attestation; accuracy_claim stays false)."""
+    """Evidence audit snapshot (hash + attestation; accuracy_claim stays false).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.evidence_audit import evidence_audit_status
 
     return evidence_audit_status(tenant_id=tenant_id)
@@ -10036,7 +12614,12 @@ def eval_evidence_audit_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
 def eval_worksheet_pack_status(
     *, tenant_id: str = "eval-v1", limit: int = 20
 ) -> Dict[str, Any]:
-    """List human worksheet packs (facilitation; accuracy_claim stays false)."""
+    """List human worksheet packs (facilitation; accuracy_claim stays false).
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.worksheet_pack import worksheet_pack_status
 
     return worksheet_pack_status(tenant_id=tenant_id, limit=limit)
@@ -10048,7 +12631,13 @@ def eval_worksheet_pack_generate(
     skip_g2b: bool = False,
     skip_preference: bool = False,
 ) -> Dict[str, Any]:
-    """Generate blank human worksheets (accuracy_claim stays false)."""
+    """Generate blank human worksheets (accuracy_claim stays false).
+
+    Args:
+        tenant_id: 租户 ID。
+        skip_g2b: skip_g2b 参数。
+        skip_preference: skip_preference 参数。
+    """
     from core.apps.eval.service.worksheet_pack import worksheet_pack_generate
 
     return worksheet_pack_generate(
@@ -10064,7 +12653,13 @@ def eval_worksheet_pack_file(
     *,
     tenant_id: str = "eval-v1",
 ) -> Dict[str, Any]:
-    """Read one worksheet pack file (text); accuracy_claim stays false."""
+    """Read one worksheet pack file (text); accuracy_claim stays false.
+
+    Args:
+        stamp: stamp 参数。
+        filename: filename 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.worksheet_pack import worksheet_pack_file
 
     meta, text = worksheet_pack_file(stamp, filename, tenant_id=tenant_id)
@@ -10075,6 +12670,11 @@ def eval_worksheet_pack_file(
 
 
 def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
+    """eval_g2c_status。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2c import g2c_status
 
     return g2c_status(tenant_id=tenant_id)
@@ -10083,6 +12683,12 @@ def eval_g2c_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
 def eval_list_g2c_retest_queue(
     *, tenant_id: str = "eval-v1", limit: int = 100
 ) -> Dict[str, Any]:
+    """eval_list_g2c_retest_queue。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.g2c import list_g2c_retest_queue
 
     return list_g2c_retest_queue(tenant_id=tenant_id, limit=limit)
@@ -10096,6 +12702,15 @@ def eval_record_g2c_retest(
     rationale: str = "",
     tenant_id: str = "eval-v1",
 ) -> Dict[str, Any]:
+    """eval_record_g2c_retest。
+
+    Args:
+        task_id: task 标识。
+        passed: passed 参数。
+        notes: notes 参数。
+        rationale: rationale 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.g2c import record_g2c_retest
 
     return record_g2c_retest(
@@ -10110,37 +12725,72 @@ def eval_record_g2c_retest(
 def eval_compute_g2c_report(
     *, tenant_id: str = "eval-v1", persist: bool = True
 ) -> Dict[str, Any]:
+    """eval_compute_g2c_report。
+
+    Args:
+        tenant_id: 租户 ID。
+        persist: persist 参数。
+    """
     from core.apps.eval.service.g2c import compute_g2c_report
 
     return compute_g2c_report(tenant_id=tenant_id, persist=persist)
 
 
 def eval_list_gates(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    """eval_list_gates。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).list_gates(limit=limit)
 
 
 def eval_get_gate(gate_id: str, *, tenant_id: str = "eval-v1") -> Optional[Dict[str, Any]]:
+    """eval_get_gate。
+
+    Args:
+        gate_id: gate 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).get_gate(gate_id)
 
 
 def eval_list_judges(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
+    """eval_list_judges。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).list_judges(limit=limit)
 
 
 def eval_get_report(report_id: str, *, tenant_id: str = "eval-v1") -> Optional[Dict[str, Any]]:
+    """eval_get_report。
+
+    Args:
+        report_id: report 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).get_report(report_id)
 
 
 def eval_list_reports(*, tenant_id: str = "eval-v1", limit: int = 50) -> list:
-    """List eval_reports newest-first (UI-2 Reports tab)."""
+    """List eval_reports newest-first (UI-2 Reports tab).
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.eval.service.store import get_eval_store
 
     return get_eval_store(tenant_id=tenant_id).list_reports(limit=limit)
@@ -10152,7 +12802,13 @@ def eval_compare_reports(
     *,
     tenant_id: str = "eval-v1",
 ) -> Dict[str, Any]:
-    """P1b — compare two eval store reports (same composite_version only)."""
+    """P1b — compare two eval store reports (same composite_version only).
+
+    Args:
+        baseline_id: baseline 标识。
+        candidate_id: candidate 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.report_compare import compare_eval_reports_by_id
 
     return compare_eval_reports_by_id(
@@ -10164,6 +12820,11 @@ def eval_compare_reports(
 
 
 def diagnosis_health(*, tenant_id: str = "") -> Dict[str, Any]:
+    """diagnosis_health。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).health(tenant_id=tenant_id)
@@ -10178,6 +12839,16 @@ def diagnosis_create_case(
     case_id: Optional[str] = None,
     meta: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """diagnosis_create_case。
+
+    Args:
+        scenario: scenario 参数。
+        subject_ref: subject_ref 参数。
+        tenant_id: 租户 ID。
+        baseline_ref: baseline_ref 参数。
+        case_id: case 标识。
+        meta: meta 参数。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).create_case(
@@ -10191,19 +12862,36 @@ def diagnosis_create_case(
 
 
 def diagnosis_list_cases(*, tenant_id: str = "", limit: int = 100) -> list:
+    """diagnosis_list_cases。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).list_cases(tenant_id=tenant_id, limit=limit)
 
 
 def diagnosis_get_case(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    """diagnosis_get_case。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).get_case(case_id, tenant_id=tenant_id)
 
 
 def diagnosis_collect(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
-    """Read-only collect via adapters; never writes source systems."""
+    """Read-only collect via adapters; never writes source systems.
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.adapters import collect_evidence
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
@@ -10238,6 +12926,12 @@ def diagnosis_collect(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
 
 
 def diagnosis_get_evidence(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    """diagnosis_get_evidence。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).get_evidence_bundle(
@@ -10246,6 +12940,12 @@ def diagnosis_get_evidence(case_id: str, *, tenant_id: str = "") -> Optional[Dic
 
 
 def diagnosis_run_report(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
+    """diagnosis_run_report。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.engine import diagnose_case
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
@@ -10286,6 +12986,12 @@ def diagnosis_run_report(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]
 
 
 def diagnosis_get_report(case_id: str, *, tenant_id: str = "") -> Optional[Dict[str, Any]]:
+    """diagnosis_get_report。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
     return get_diagnosis_store(tenant_id=tenant_id).get_report_bundle(
@@ -10294,7 +13000,12 @@ def diagnosis_get_report(case_id: str, *, tenant_id: str = "") -> Optional[Dict[
 
 
 def diagnosis_recommendations(case_id: str, *, tenant_id: str = "") -> Dict[str, Any]:
-    """Return recommendations with auto_execute forced false."""
+    """Return recommendations with auto_execute forced false.
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+    """
     from core.apps.diagnosis.service.engine import build_recommendations
     from core.apps.diagnosis.service.store import get_diagnosis_store
 
@@ -10315,6 +13026,13 @@ def diagnosis_recommendations(case_id: str, *, tenant_id: str = "") -> Dict[str,
 def diagnosis_fixture_metrics(
     *, limit: int = 10, blind: bool = True, subset: str = "core"
 ) -> Dict[str, Any]:
+    """diagnosis_fixture_metrics。
+
+    Args:
+        limit: 返回条数上限。
+        blind: blind 参数。
+        subset: subset 参数。
+    """
     from core.apps.diagnosis.service.metrics import fixture_metrics
 
     return fixture_metrics(limit=limit, blind=blind, subset=subset)
@@ -10328,56 +13046,104 @@ def list_code_review_gold_profiles() -> Dict[str, Any]:
 
 
 def list_code_review_gold_reports(*, tenant_id: str = "", limit: int = 20) -> list:
-    """黄金评测 JSONL 历史（不改 gold）。"""
+    """黄金评测 JSONL 历史（不改 gold）。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+    """
     from core.harness.evaluation.code_review_gold import list_eval_reports
 
     return list_eval_reports(tenant_id=tenant_id, limit=limit)
 
 
 def kb_eval_list_samples(*, limit: int = 100, offset: int = 0, tag: Optional[str] = None):
-    """KB eval golden samples list (platform thin route)."""
+    """KB eval golden samples list (platform thin route).
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tag: tag 参数。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_list_samples as _fn
 
     return _fn(limit=limit, offset=offset, tag=tag)
 
 
 def kb_eval_create_sample(body: Dict[str, Any]):
+    """kb_eval_create_sample。
+
+    Args:
+        body: 请求体。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_create_sample as _fn
 
     return _fn(body)
 
 
 def kb_eval_delete_sample(sample_id: str):
+    """kb_eval_delete_sample。
+
+    Args:
+        sample_id: sample 标识。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_delete_sample as _fn
 
     return _fn(sample_id)
 
 
 async def kb_eval_run(body: Dict[str, Any]):
+    """kb_eval_run。
+
+    Args:
+        body: 请求体。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_run as _fn
 
     return await _fn(body)
 
 
 def kb_eval_list_reports(*, limit: int = 50, offset: int = 0):
+    """kb_eval_list_reports。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_list_reports as _fn
 
     return _fn(limit=limit, offset=offset)
 
 
 def kb_eval_import_csv_text(text: str):
+    """kb_eval_import_csv_text。
+
+    Args:
+        text: text 参数。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_import_csv_text as _fn
 
     return _fn(text)
 
 
 def kb_eval_reports_series(*, days: int = 30):
+    """kb_eval_reports_series。
+
+    Args:
+        days: days 参数。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_reports_series as _fn
 
     return _fn(days=days)
 
 
 def kb_eval_compare_reports(*, session_a: str = "", session_b: str = ""):
+    """kb_eval_compare_reports。
+
+    Args:
+        session_a: session_a 参数。
+        session_b: session_b 参数。
+    """
     from core.apps.eval.service.kb_eval_ops import kb_eval_compare_reports as _fn
 
     return _fn(session_a=session_a, session_b=session_b)
@@ -10386,6 +13152,13 @@ def kb_eval_compare_reports(*, session_a: str = "", session_b: str = ""):
 async def prompt_eval_list_test_cases(
     *, template_id: str = "", limit: int = 100, offset: int = 0
 ):
+    """prompt_eval_list_test_cases。
+
+    Args:
+        template_id: template 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_list_test_cases_async as _fn
 
     return await _fn(template_id=template_id, limit=limit, offset=offset)
@@ -10398,6 +13171,14 @@ async def prompt_eval_create_test_case(
     variables: Any,
     expected_keys: str,
 ):
+    """prompt_eval_create_test_case。
+
+    Args:
+        template_id: template 标识。
+        name: name 参数。
+        variables: variables 参数。
+        expected_keys: expected_keys 参数。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_create_test_case_async as _fn
 
     return await _fn(
@@ -10415,6 +13196,14 @@ async def prompt_eval_update_test_case(
     variables: Any = None,
     expected_keys: Optional[str] = None,
 ):
+    """prompt_eval_update_test_case。
+
+    Args:
+        case_id: case 标识。
+        name: name 参数。
+        variables: variables 参数。
+        expected_keys: expected_keys 参数。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_update_test_case_async as _fn
 
     return await _fn(
@@ -10426,6 +13215,11 @@ async def prompt_eval_update_test_case(
 
 
 async def prompt_eval_delete_test_case(*, case_id: str):
+    """prompt_eval_delete_test_case。
+
+    Args:
+        case_id: case 标识。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_delete_test_case_async as _fn
 
     return await _fn(case_id=case_id)
@@ -10439,6 +13233,15 @@ async def prompt_eval_start_run(
     model: str,
     case_ids: Optional[list] = None,
 ):
+    """prompt_eval_start_run。
+
+    Args:
+        template_id: template 标识。
+        version_a: version_a 参数。
+        version_b: version_b 参数。
+        model: 模型名。
+        case_ids: case_ids 参数。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_start_run as _fn
 
     return await _fn(
@@ -10453,12 +13256,24 @@ async def prompt_eval_start_run(
 async def prompt_eval_list_runs(
     *, template_id: str = "", limit: int = 20, offset: int = 0
 ):
+    """prompt_eval_list_runs。
+
+    Args:
+        template_id: template 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_list_runs_async as _fn
 
     return await _fn(template_id=template_id, limit=limit, offset=offset)
 
 
 async def prompt_eval_get_run(*, run_id: str):
+    """prompt_eval_get_run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.prompt_eval_ops import prompt_eval_get_run_async as _fn
 
     return await _fn(run_id=run_id)
@@ -10466,42 +13281,79 @@ async def prompt_eval_get_run(*, run_id: str):
 
 # ── runs_eval ops (ARCH v1.1c thin platform) ──────────────────────────
 async def runs_eval_submit(*, run_id: str, body: Dict[str, Any], actor: Dict[str, Any]):
+    """runs_eval_submit。
+
+    Args:
+        run_id: 运行 ID。
+        body: 请求体。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.runs_eval_ops import submit_run_evaluation as _fn
 
     return await _fn(run_id=run_id, body=body, actor=actor)
 
 
 async def runs_eval_auto(*, run_id: str):
+    """runs_eval_auto。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import auto_evaluate_run as _fn
 
     return await _fn(run_id=run_id)
 
 
 async def runs_eval_latest(*, run_id: str):
+    """runs_eval_latest。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import get_latest_run_evaluation as _fn
 
     return await _fn(run_id=run_id)
 
 
 async def runs_eval_investigate_latest(*, run_id: str):
+    """runs_eval_investigate_latest。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import get_latest_investigate_report as _fn
 
     return await _fn(run_id=run_id)
 
 
 async def runs_eval_investigate_auto(*, run_id: str):
+    """runs_eval_investigate_auto。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import auto_investigate_run as _fn
 
     return await _fn(run_id=run_id)
 
 
 async def runs_eval_state_latest(*, run_id: str):
+    """runs_eval_state_latest。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import get_latest_run_state as _fn
 
     return await _fn(run_id=run_id)
 
 
 async def runs_eval_evidence_pack_latest(*, run_id: str):
+    """runs_eval_evidence_pack_latest。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import get_latest_evidence_pack as _fn
 
     return await _fn(run_id=run_id)
@@ -10513,6 +13365,13 @@ async def runs_eval_evidence_diff(
     base_evidence_pack_id: str,
     new_evidence_pack_id: str,
 ):
+    """runs_eval_evidence_diff。
+
+    Args:
+        run_id: 运行 ID。
+        base_evidence_pack_id: base_evidence_pack 标识。
+        new_evidence_pack_id: new_evidence_pack 标识。
+    """
     from core.apps.eval.service.runs_eval_ops import compute_run_evidence_diff as _fn
 
     return await _fn(
@@ -10529,12 +13388,25 @@ async def runs_eval_upsert_state(
     lock: Any,
     actor: Dict[str, Any],
 ):
+    """runs_eval_upsert_state。
+
+    Args:
+        run_id: 运行 ID。
+        state: state 参数。
+        lock: lock 参数。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.runs_eval_ops import upsert_run_state as _fn
 
     return await _fn(run_id=run_id, state=state, lock=lock, actor=actor)
 
 
 async def runs_eval_evidence(*, run_id: str):
+    """runs_eval_evidence。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.runs_eval_ops import get_run_evidence as _fn
 
     return await _fn(run_id=run_id)
@@ -10546,6 +13418,12 @@ from core.apps.eval.service.runs_eval_ops import (  # noqa: E402
 
 
 async def skill_eval_upsert_suite(*, body: Dict[str, Any], actor: Dict[str, Any]):
+    """skill_eval_upsert_suite。
+
+    Args:
+        body: 请求体。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.skill_evals_ops import upsert_skill_eval_suite as _fn
 
     return await _fn(body=body, actor=actor)
@@ -10554,13 +13432,24 @@ async def skill_eval_upsert_suite(*, body: Dict[str, Any], actor: Dict[str, Any]
 async def skill_eval_list_suites(
     *, limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None
 ):
+    """skill_eval_list_suites。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.skill_evals_ops import list_skill_eval_suites as _fn
 
     return await _fn(limit=limit, offset=offset, tenant_id=tenant_id)
 
 
 async def skill_eval_ensure_builtin_suites(*, tenant_id: Optional[str] = None):
-    """Register builtin_trigger_demo if missing (Eval Skills empty-state)."""
+    """Register builtin_trigger_demo if missing (Eval Skills empty-state).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     from core.apps.eval.service.skill_evals_ops import (
         ensure_builtin_skill_eval_suites as _fn,
     )
@@ -10574,19 +13463,35 @@ async def skill_eval_preflight(
     eval_kind: str = "trigger",
     mode: str = "heuristic",
 ):
-    """Eval Skills pre-run readiness (store / builtin / skill_manager|store_direct)."""
+    """Eval Skills pre-run readiness (store / builtin / skill_manager|store_direct).
+
+    Args:
+        tenant_id: 租户 ID。
+        eval_kind: eval_kind 参数。
+        mode: mode 参数。
+    """
     from core.apps.eval.service.skill_evals_ops import skill_eval_preflight as _fn
 
     return await _fn(tenant_id=tenant_id, eval_kind=eval_kind, mode=mode)
 
 
 async def skill_eval_get_suite(*, suite_id: str):
+    """skill_eval_get_suite。
+
+    Args:
+        suite_id: suite 标识。
+    """
     from core.apps.eval.service.skill_evals_ops import get_skill_eval_suite as _fn
 
     return await _fn(suite_id=suite_id)
 
 
 async def skill_eval_delete_suite(*, suite_id: str):
+    """skill_eval_delete_suite。
+
+    Args:
+        suite_id: suite 标识。
+    """
     from core.apps.eval.service.skill_evals_ops import delete_skill_eval_suite as _fn
 
     return await _fn(suite_id=suite_id)
@@ -10595,12 +13500,24 @@ async def skill_eval_delete_suite(*, suite_id: str):
 async def skill_eval_run_suite(
     *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
 ):
+    """skill_eval_run_suite。
+
+    Args:
+        suite_id: suite 标识。
+        body: 请求体。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.skill_evals_ops import run_skill_eval_suite as _fn
 
     return await _fn(suite_id=suite_id, body=body, actor=actor)
 
 
 async def skill_eval_get_run(*, run_id: str):
+    """skill_eval_get_run。
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.apps.eval.service.skill_evals_ops import get_skill_eval_run as _fn
 
     return await _fn(run_id=run_id)
@@ -10609,12 +13526,25 @@ async def skill_eval_get_run(*, run_id: str):
 async def skill_eval_list_results(
     *, run_id: str, limit: int = 200, offset: int = 0
 ):
+    """skill_eval_list_results。
+
+    Args:
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     from core.apps.eval.service.skill_evals_ops import list_skill_eval_results as _fn
 
     return await _fn(run_id=run_id, limit=limit, offset=offset)
 
 
 async def skill_eval_suggest(*, run_id: str, body: Dict[str, Any]):
+    """skill_eval_suggest。
+
+    Args:
+        run_id: 运行 ID。
+        body: 请求体。
+    """
     from core.apps.eval.service.skill_evals_ops import (
         suggest_trigger_improvements as _fn,
     )
@@ -10623,6 +13553,12 @@ async def skill_eval_suggest(*, run_id: str, body: Dict[str, Any]):
 
 
 async def skill_eval_apply_suggestion(*, suite_id: str, body: Dict[str, Any]):
+    """skill_eval_apply_suggestion。
+
+    Args:
+        suite_id: suite 标识。
+        body: 请求体。
+    """
     from core.apps.eval.service.skill_evals_ops import (
         apply_skill_eval_suggestion as _fn,
     )
@@ -10633,12 +13569,24 @@ async def skill_eval_apply_suggestion(*, suite_id: str, body: Dict[str, Any]):
 async def skill_eval_apply_skill_md(
     *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
 ):
+    """skill_eval_apply_skill_md。
+
+    Args:
+        suite_id: suite 标识。
+        body: 请求体。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.skill_evals_ops import apply_skill_md_suggestion as _fn
 
     return await _fn(suite_id=suite_id, body=body, actor=actor)
 
 
 async def skill_eval_compare(*, body: Dict[str, Any]):
+    """skill_eval_compare。
+
+    Args:
+        body: 请求体。
+    """
     from core.apps.eval.service.skill_evals_ops import compare_skill_eval_runs as _fn
 
     return await _fn(body=body)
@@ -10647,6 +13595,13 @@ async def skill_eval_compare(*, body: Dict[str, Any]):
 async def skill_eval_create_job(
     *, suite_id: str, body: Dict[str, Any], actor: Dict[str, Any]
 ):
+    """skill_eval_create_job。
+
+    Args:
+        suite_id: suite 标识。
+        body: 请求体。
+        actor: 操作者身份。
+    """
     from core.apps.eval.service.skill_evals_ops import create_skill_eval_job as _fn
 
     return await _fn(suite_id=suite_id, body=body, actor=actor)
@@ -10664,7 +13619,19 @@ async def reevaluate_code_review_gold(
     record_novel: bool = False,
     baseline: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """再跑同一黄金集，并对比上一份报告的 precision/recall/p0_recall。"""
+    """再跑同一黄金集，并对比上一份报告的 precision/recall/p0_recall。
+
+    Args:
+        profile: 评测 profile。
+        gold_dir: 黄金集目录。
+        case_ids: case_ids 参数。
+        match_only: match_only 参数。
+        limit: 返回条数上限。
+        tenant_id: 租户 ID。
+        persist: persist 参数。
+        record_novel: record_novel 参数。
+        baseline: baseline 参数。
+    """
     from core.harness.evaluation.code_review_gold import reevaluate_code_review_gold as _run
 
     return await _run(
@@ -10681,7 +13648,11 @@ async def reevaluate_code_review_gold(
 
 
 def summarize_task_model_routes(*, limit: int = 500) -> Dict[str, Any]:
-    """Task model-route aggregates by purpose (success / upgrade / latency)."""
+    """Task model-route aggregates by purpose (success / upgrade / latency).
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.harness.utils.task_model_lock import summarize_task_model_routes as _sum
 
     return _sum(limit=limit)
@@ -10694,7 +13665,14 @@ def evaluate_gold_profile_gate(
     tenant_id: str = "",
     force: bool = False,
 ) -> Dict[str, Any]:
-    """同档位黄金集门禁：高风险配置变更须近期非回归 gold（ReviewBench 纪律）。"""
+    """同档位黄金集门禁：高风险配置变更须近期非回归 gold（ReviewBench 纪律）。
+
+    Args:
+        profile: 评测 profile。
+        risk_level: risk_level 参数。
+        tenant_id: 租户 ID。
+        force: 是否强制。
+    """
     from core.harness.evaluation.gold_profile_gate import evaluate_gold_profile_gate as _gate
 
     return _gate(
@@ -10736,13 +13714,22 @@ def is_crypto_configured() -> bool:
 
 
 def llm_generate_stream(*args: Any, **kwargs: Any):
-    """Streaming LLM generation. Delegates to sys_llm_generate_stream."""
+    """Streaming LLM generation. Delegates to sys_llm_generate_stream.
+
+    Args:
+        args: args 参数。
+        kwargs: kwargs 参数。
+    """
     from core.harness.syscalls.llm import sys_llm_generate_stream
     return sys_llm_generate_stream(*args, **kwargs)
 
 
 def normalize_conversation_scope(scope: Any) -> Any:
-    """Normalize conversation scope values to a consistent dict format."""
+    """Normalize conversation scope values to a consistent dict format.
+
+    Args:
+        scope: scope 参数。
+    """
     if isinstance(scope, dict):
         return scope
     if isinstance(scope, str):
@@ -10751,12 +13738,21 @@ def normalize_conversation_scope(scope: Any) -> Any:
 
 
 def secret_configured(key_id: str = "") -> bool:
-    """Check if a secret key is configured."""
+    """Check if a secret key is configured.
+
+    Args:
+        key_id: key 标识。
+    """
     return bool(key_id)
 
 
 def set_knowledge_providers(*args: Any, **kwargs: Any) -> None:
-    """Set knowledge providers for the runtime. Delegates to kb_facade."""
+    """Set knowledge providers for the runtime. Delegates to kb_facade.
+
+    Args:
+        args: args 参数。
+        kwargs: kwargs 参数。
+    """
     from core.api.facades.kb_facade import set_knowledge_providers as _impl
     _impl(*args, **kwargs)
 
@@ -10862,28 +13858,51 @@ from core.management.agentskills_parser import convert_agentskills_to_aiplat, is
 
 
 def skill_asset_compat_finalize(skill_dir: str, *, source=None, adapt_summary=None):
-    """Write COMPAT.yaml for a skill dir (Phase A); never flips accuracy_claim."""
+    """Write COMPAT.yaml for a skill dir (Phase A); never flips accuracy_claim.
+
+    Args:
+        skill_dir: skill_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+    """
     from core.apps.skills.asset_compat import finalize_skill_compat
 
     return finalize_skill_compat(skill_dir, source=source, adapt_summary=adapt_summary)
 
 
 def skill_enable_handler_draft(skill_dir: str):
-    """Promote handler.py.draft → handler.py after human enable (Phase A)."""
+    """Promote handler.py.draft → handler.py after human enable (Phase A).
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     from core.apps.skills.asset_compat import enable_handler_draft
 
     return enable_handler_draft(skill_dir)
 
 
 def agent_asset_compat_finalize(agent_dir: str, *, source=None, adapt_summary=None):
-    """Write COMPAT.yaml for an agent dir (Phase B); chat vs full surface honesty."""
+    """Write COMPAT.yaml for an agent dir (Phase B); chat vs full surface honesty.
+
+    Args:
+        agent_dir: agent_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+    """
     from core.apps.agents.asset_compat import finalize_agent_compat
 
     return finalize_agent_compat(agent_dir, source=source, adapt_summary=adapt_summary)
 
 
 def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, connection_status=None):
-    """Write COMPAT.yaml for an MCP server dir (Phase C)."""
+    """Write COMPAT.yaml for an MCP server dir (Phase C).
+
+    Args:
+        mcp_dir: mcp_dir 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+        connection_status: connection_status 参数。
+    """
     from core.apps.mcp.asset_compat import finalize_mcp_compat
 
     return finalize_mcp_compat(
@@ -10892,7 +13911,15 @@ def mcp_asset_compat_finalize(mcp_dir: str, *, source=None, adapt_summary=None, 
 
 
 def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None, mapped_to=None, mcp_projection=False):
-    """Write COMPAT sidecar for a tool .py path (Phase C)."""
+    """Write COMPAT sidecar for a tool .py path (Phase C).
+
+    Args:
+        tool_py: tool_py 参数。
+        source: source 参数。
+        adapt_summary: adapt_summary 参数。
+        mapped_to: mapped_to 参数。
+        mcp_projection: mcp_projection 参数。
+    """
     from core.apps.tools.asset_compat import finalize_tool_compat
 
     return finalize_tool_compat(
@@ -10905,14 +13932,22 @@ def tool_asset_compat_finalize(tool_py: str, *, source=None, adapt_summary=None,
 
 
 def tool_enable_impl_draft(tool_py: str):
-    """Promote {name}.py.draft → {name}.py after human enable (Phase C)."""
+    """Promote {name}.py.draft → {name}.py after human enable (Phase C).
+
+    Args:
+        tool_py: tool_py 参数。
+    """
     from core.apps.tools.asset_compat import enable_tool_impl_draft
 
     return enable_tool_impl_draft(tool_py)
 
 
 def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
-    """Phase D: hot-load workspace tools with COMPAT gate + skipped assets[]."""
+    """Phase D: hot-load workspace tools with COMPAT gate + skipped assets[].
+
+    Args:
+        tools_dir: tools_dir 参数。
+    """
     from pathlib import Path
 
     from core.apps.tools.discovery import register_with_report
@@ -10921,7 +13956,11 @@ def tool_discovery_register_with_report(tools_dir: Optional[str] = None):
 
 
 def tool_discovery_last_report(tools_dir: Optional[str] = None):
-    """Phase D wrap: cached discovery report (or refresh once if empty)."""
+    """Phase D wrap: cached discovery report (or refresh once if empty).
+
+    Args:
+        tools_dir: tools_dir 参数。
+    """
     from pathlib import Path
 
     from core.apps.tools.discovery import last_report_or_refresh
@@ -11037,7 +14076,13 @@ from core.harness.meta.capability_version import (  # noqa: boundary
 from core.harness.learning.proposal_store import ProposalStore as _ProposalStore  # noqa: boundary
 
 def approve(request_id: str, approved_by: str = "admin", comment: str = "") -> bool:
-    """Approve a change request via ProposalStore."""
+    """Approve a change request via ProposalStore.
+
+    Args:
+        request_id: request 标识。
+        approved_by: approved_by 参数。
+        comment: comment 参数。
+    """
     return _ProposalStore().approve(request_id, approved_by)
 from core.harness.knowledge.rule_auditor import audit_rules  # noqa: boundary
 from core.harness.knowledge.capability_graph import build_capability_graph  # noqa: boundary
@@ -11160,7 +14205,12 @@ async def arena_run_round_robin(contenders: list, matches_per_pair: int = 3,
 
 
 async def voice_loop_process(audio_path: str, llm_callback=None) -> dict:
-    """Full voice loop: STT → Agent → Browser/Tool → TTS (manual trigger)."""
+    """Full voice loop: STT → Agent → Browser/Tool → TTS (manual trigger).
+
+    Args:
+        audio_path: audio_path 参数。
+        llm_callback: llm_callback 参数。
+    """
     from core.harness.multimodal.voice_loop import VoiceLoop
     return await VoiceLoop().process_voice_command(audio_path, llm_callback=llm_callback)
 
@@ -11202,7 +14252,11 @@ def agent_event_ingress_status() -> dict:
 
 
 async def wake_agent_start(paths: list = None) -> dict:
-    """Start WakeAgent watching (zero-token checksum polling)."""
+    """Start WakeAgent watching (zero-token checksum polling).
+
+    Args:
+        paths: paths 参数。
+    """
     from core.harness.monitoring.wake_agent import get_wake_agent
     agent = get_wake_agent(paths)
     if not agent._running:
@@ -11220,8 +14274,9 @@ async def wake_agent_stop() -> dict:
 def cross_validation_verify(output: dict, *, domain_id: str = "default") -> dict:
     """Run CrossValidationGate semantic verification (equipment/process/quality).
 
-    Framework stub — activates when cross-domain object_properties reach the
-    activation threshold; returns readiness info when not yet active.
+    Args:
+        output: output 参数。
+        domain_id: domain 标识。
     """
     from core.harness.infrastructure.gates.cross_validation_gate import CrossValidationGate
     gate = CrossValidationGate()

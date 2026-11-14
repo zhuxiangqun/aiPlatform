@@ -1,3 +1,5 @@
+"""adapter_manager：模块接口。"""
+
 import logging
 """
 Adapter Manager - Manages LLM adapters
@@ -78,6 +80,11 @@ class AdapterManager:
     """
     
     def __init__(self, execution_store: Optional[Any] = None):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._adapters: Dict[str, AdapterInfo] = {}
         self._call_stats: Dict[str, CallStats] = {}
         self._call_history: Dict[str, List[CallRecord]] = {}
@@ -137,7 +144,19 @@ class AdapterManager:
         rate_limit: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> AdapterInfo:
-        """Create a new adapter"""
+        """Create a new adapter。
+
+        Args:
+            name: name 参数。
+            provider: provider 参数。
+            api_key: api_key 参数。
+            api_base_url: api_base_url 参数。
+            description: description 参数。
+            organization_id: organization 标识。
+            models: models 参数。
+            rate_limit: rate_limit 参数。
+            metadata: metadata 参数。
+        """
         adapter_id = f"adapter-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -195,7 +214,11 @@ class AdapterManager:
         return adapter
     
     async def get_adapter(self, adapter_id: str) -> Optional[AdapterInfo]:
-        """Get adapter by ID"""
+        """Get adapter by ID。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return self._adapters.get(adapter_id)
     
     async def list_adapters(
@@ -205,7 +228,14 @@ class AdapterManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[AdapterInfo]:
-        """List adapters with filters"""
+        """List adapters with filters。
+
+        Args:
+            provider: provider 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         adapters = list(self._adapters.values())
         
         if provider:
@@ -225,7 +255,17 @@ class AdapterManager:
         rate_limit: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Optional[AdapterInfo]:
-        """Update adapter configuration"""
+        """Update adapter configuration。
+
+        Args:
+            adapter_id: adapter 标识。
+            name: name 参数。
+            description: description 参数。
+            api_key: api_key 参数。
+            api_base_url: api_base_url 参数。
+            rate_limit: rate_limit 参数。
+            metadata: metadata 参数。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return None
@@ -268,7 +308,11 @@ class AdapterManager:
         return adapter
     
     async def delete_adapter(self, adapter_id: str) -> bool:
-        """Delete adapter"""
+        """Delete adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         if adapter_id not in self._adapters:
             return False
         
@@ -284,7 +328,11 @@ class AdapterManager:
         return True
     
     async def enable_adapter(self, adapter_id: str) -> bool:
-        """Enable adapter"""
+        """Enable adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return False
@@ -298,7 +346,11 @@ class AdapterManager:
         return True
     
     async def disable_adapter(self, adapter_id: str) -> bool:
-        """Disable adapter"""
+        """Disable adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return False
@@ -312,7 +364,11 @@ class AdapterManager:
         return True
     
     async def test_connection(self, adapter_id: str) -> Dict[str, Any]:
-        """Test adapter connection"""
+        """Test adapter connection。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return {"success": False, "error": "Adapter not found"}
@@ -332,7 +388,15 @@ class AdapterManager:
         temperature: float = 0.7,
         enabled: bool = True
     ) -> bool:
-        """Add model to adapter"""
+        """Add model to adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+            model_name: model_name 参数。
+            max_tokens: max_tokens 参数。
+            temperature: temperature 参数。
+            enabled: 是否启用。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return False
@@ -355,7 +419,12 @@ class AdapterManager:
         return True
     
     async def remove_model(self, adapter_id: str, model_name: str) -> bool:
-        """Remove model from adapter"""
+        """Remove model from adapter。
+
+        Args:
+            adapter_id: adapter 标识。
+            model_name: model_name 参数。
+        """
         adapter = self._adapters.get(adapter_id)
         if not adapter:
             return False
@@ -379,7 +448,16 @@ class AdapterManager:
         tokens: Dict[str, int],
         error: Optional[str] = None
     ) -> str:
-        """Record call"""
+        """Record call。
+
+        Args:
+            adapter_id: adapter 标识。
+            model: 模型名。
+            status: status 参数。
+            duration_ms: duration_ms 参数。
+            tokens: tokens 参数。
+            error: error 参数。
+        """
         call_id = f"call-{uuid.uuid4().hex[:8]}"
         
         call = CallRecord(
@@ -407,7 +485,11 @@ class AdapterManager:
         return call_id
     
     async def get_call_stats(self, adapter_id: str) -> Optional[CallStats]:
-        """Get call statistics"""
+        """Get call statistics。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         return self._call_stats.get(adapter_id)
     
     async def get_call_history(
@@ -416,12 +498,22 @@ class AdapterManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[CallRecord]:
-        """Get call history"""
+        """Get call history。
+
+        Args:
+            adapter_id: adapter 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         history = self._call_history.get(adapter_id, [])
         return history[offset:offset + limit]
     
     async def get_model_distribution(self, adapter_id: str) -> Dict[str, Dict[str, Any]]:
-        """Get model call distribution"""
+        """Get model call distribution。
+
+        Args:
+            adapter_id: adapter 标识。
+        """
         history = self._call_history.get(adapter_id, [])
         distribution: Dict[str, Dict[str, Any]] = {}
         

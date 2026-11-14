@@ -28,6 +28,20 @@ class ReleaseMixin:
         enabled: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """upsert_release_rollout。
+
+        Args:
+            tenant_id: 租户 ID。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            candidate_id: candidate 标识。
+            mode: mode 参数。
+            percentage: percentage 参数。
+            include_actor_ids: include_actor_ids 参数。
+            exclude_actor_ids: exclude_actor_ids 参数。
+            enabled: 是否启用。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -96,6 +110,13 @@ class ReleaseMixin:
         }
 
     async def get_release_rollout(self, *, tenant_id: Optional[str], target_type: str, target_id: str) -> Optional[Dict[str, Any]]:
+        """获取 release_rollout。
+
+        Args:
+            tenant_id: 租户 ID。
+            target_type: target_type 参数。
+            target_id: target 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -130,6 +151,15 @@ class ReleaseMixin:
         limit: int = 100,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 release_rollouts。
+
+        Args:
+            tenant_id: 租户 ID。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -166,6 +196,13 @@ class ReleaseMixin:
         return await anyio.to_thread.run_sync(_sync)
 
     async def delete_release_rollout(self, *, tenant_id: Optional[str], target_type: str, target_id: str) -> bool:
+        """删除 release_rollout。
+
+        Args:
+            tenant_id: 租户 ID。
+            target_type: target_type 参数。
+            target_id: target 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -194,6 +231,17 @@ class ReleaseMixin:
         window_end: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """add_release_metric_snapshot。
+
+        Args:
+            tenant_id: 租户 ID。
+            candidate_id: candidate 标识。
+            metric_key: metric_key 参数。
+            value: value 参数。
+            window_start: window_start 参数。
+            window_end: window_end 参数。
+            metadata: metadata 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -248,6 +296,15 @@ class ReleaseMixin:
         limit: int = 200,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 release_metric_snapshots。
+
+        Args:
+            tenant_id: 租户 ID。
+            candidate_id: candidate 标识。
+            metric_key: metric_key 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

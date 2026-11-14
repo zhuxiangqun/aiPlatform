@@ -76,10 +76,12 @@ def translate_denial(reason: str, tool_name: str = "", user_id: str = "") -> Age
 
 
 def translate_approval_required(reason: str, tool_name: str = "", approval_id: str = "") -> AgentFeedback:
-    """
-    Translate a PolicyGate APPROVAL_REQUIRED decision into Agent-actionable feedback.
+    """Translate a PolicyGate APPROVAL_REQUIRED decision into Agent-actionable feedback.
 
-    The Agent should WAIT for the human approval, not retry immediately.
+    Args:
+        reason: reason 参数。
+        tool_name: tool_name 参数。
+        approval_id: approval 标识。
     """
     # ApprovalGate requirements
     if "approval_gate:ask" in reason:
@@ -102,7 +104,12 @@ def translate_approval_required(reason: str, tool_name: str = "", approval_id: s
 
 
 def translate_rate_limit(wait_seconds: float, model_name: str = "") -> AgentFeedback:
-    """Translate a rate limit into actionable feedback."""
+    """Translate a rate limit into actionable feedback.
+
+    Args:
+        wait_seconds: wait_seconds 参数。
+        model_name: model_name 参数。
+    """
     wait_str = f"{wait_seconds:.0f}秒" if wait_seconds < 60 else f"{wait_seconds / 60:.1f}分钟"
     model_hint = f"（模型: {model_name}）" if model_name else ""
     return AgentFeedback(
@@ -115,7 +122,12 @@ def translate_rate_limit(wait_seconds: float, model_name: str = "") -> AgentFeed
 
 
 def translate_error(error_type: str, message: str = "") -> AgentFeedback:
-    """Translate a generic error into feedback."""
+    """Translate a generic error into feedback.
+
+    Args:
+        error_type: error_type 参数。
+        message: message 参数。
+    """
     return AgentFeedback(
         decision="denied",
         message=f"操作执行失败（{error_type}）：{message}",
@@ -125,11 +137,10 @@ def translate_error(error_type: str, message: str = "") -> AgentFeedback:
 
 
 def format_for_agent(feedback: AgentFeedback) -> str:
-    """
-    Format feedback into a single string for injection into the Agent's
-    observation stream (ReAct loop context).
+    """Format feedback into a single string for injection into the Agent's。
 
-    Returns a compact, parseable format that the LLM can understand.
+    Args:
+        feedback: feedback 参数。
     """
     parts = [f"[{feedback.decision.upper()}] {feedback.message}"]
     if feedback.next_action:

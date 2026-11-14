@@ -1,3 +1,5 @@
+"""governance_crud：模块接口。"""
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from api.schemas_response import StatusResponse
 u"""Governance API — 治理管线 + 审批 + 映射验证 + 仪表盘 (v2.8)."""
@@ -21,7 +23,12 @@ async def governance_dashboard():
 
 @router.get("/dashboard/audit-log")
 async def audit_log(days: int = Query(7), domain: str = Query("")):
-    u"""Governance audit log."""
+    """Governance audit log.
+
+    Args:
+        days: days 参数。
+        domain: domain 参数。
+    """
     try:
         import sqlite3, os, time
         db = get_aiplat_data_dir("usage_metrics.db")
@@ -57,7 +64,11 @@ async def mapping_coverage_report():
 
 @router.post("/run-cycle", response_model=StatusResponse)
 async def run_cycle(data: Dict[str, Any]):
-    u"""Run 6-step governance cycle for a domain."""
+    """Run 6-step governance cycle for a domain.
+
+    Args:
+        data: data 参数。
+    """
     try:
         domain_id = data.get("domain_id", "")
         if not domain_id:
@@ -97,7 +108,12 @@ async def run_all_cycles():
 
 @router.get("/cycle-history")
 async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
-    u"""Governance cycle history."""
+    """Governance cycle history.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import get_cycle_history
         history = get_cycle_history(domain_id, limit)
@@ -110,7 +126,11 @@ async def cycle_history(domain_id: str = Query(""), limit: int = Query(10)):
 
 @router.get("/change-requests/pending")
 async def pending_requests(domain_id: str = Query("")):
-    u"""List pending change requests."""
+    """List pending change requests.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import list_pending  # P0-A2 修复: CoreFacade 已补 re-export
         pending = list_pending(domain_id)
@@ -121,7 +141,12 @@ async def pending_requests(domain_id: str = Query("")):
 
 @router.post("/change-requests/{request_id}/approve", response_model=StatusResponse)
 async def approve_request(request_id: str, data: Dict[str, Any]):
-    u"""Approve a change request."""
+    """Approve a change request.
+
+    Args:
+        request_id: request 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import approve
         approved_by = data.get("approved_by", "governance_admin")
@@ -133,7 +158,12 @@ async def approve_request(request_id: str, data: Dict[str, Any]):
 
 @router.post("/change-requests/{request_id}/reject", response_model=StatusResponse)
 async def reject_request(request_id: str, data: Dict[str, Any]):
-    u"""Reject a change request."""
+    """Reject a change request.
+
+    Args:
+        request_id: request 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import reject  # P0-A2 修复: CoreFacade 已补 re-export
         rejected_by = data.get("rejected_by", "governance_admin")
@@ -145,7 +175,12 @@ async def reject_request(request_id: str, data: Dict[str, Any]):
 
 @router.get("/change-requests/history")
 async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
-    u"""Approval history."""
+    """Approval history.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import get_history  # P0-A2 修复: CoreFacade 已补 re-export
         history = get_history(domain_id, limit)
@@ -158,7 +193,11 @@ async def approval_history(domain_id: str = Query(""), limit: int = Query(50)):
 
 @router.post("/validate-mappings/{domain_id}", response_model=StatusResponse)
 async def validate_mappings(domain_id: str):
-    u"""Validate all data source mappings for a domain."""
+    """Validate all data source mappings for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import validate_all_sources
         results = validate_all_sources(domain_id)
@@ -174,7 +213,11 @@ async def validate_mappings(domain_id: str):
 
 @router.get("/mapping-report/{domain_id}")
 async def mapping_report(domain_id: str):
-    u"""Mapping coverage markdown report."""
+    """Mapping coverage markdown report.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import generate_mapping_report
         report = generate_mapping_report([domain_id])

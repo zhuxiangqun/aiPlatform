@@ -13,6 +13,7 @@ router = APIRouter(tags=["wiki-writeback"])
 
 
 class WritebackRegisterRequest(BaseModel):
+    """WritebackRegisterRequest。"""
     target_type: str = "rest_webhook"
     target_endpoint: str
     trigger_actions: List[str] = ["create", "update"]
@@ -22,7 +23,11 @@ class WritebackRegisterRequest(BaseModel):
 
 @router.get("/writebacks", response_model=Dict[str, Any])
 async def list_writebacks(collection: str = "default"):
-    u"""List all registered writeback configurations."""
+    """List all registered writeback configurations.
+
+    Args:
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_writeback import load_writebacks
     configs = load_writebacks(collection_id=collection)
     return {"writebacks": [c.to_dict() for c in configs], "total": len(configs)}
@@ -30,7 +35,12 @@ async def list_writebacks(collection: str = "default"):
 
 @router.post("/writebacks", response_model=Dict[str, Any])
 async def register_writeback_endpoint(req: WritebackRegisterRequest, collection: str = "default"):
-    u"""Register a new writeback target."""
+    """Register a new writeback target.
+
+    Args:
+        req: req 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_writeback import register_writeback  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.knowledge_writeback import WriteBackConfig  # P0-A2 修复: 恢复原模块(定义处)
     from core.harness.knowledge.knowledge_writeback import WriteBackTarget  # P0-A2 修复: 恢复原模块(定义处)
@@ -52,7 +62,12 @@ async def register_writeback_endpoint(req: WritebackRegisterRequest, collection:
 
 @router.delete("/writebacks", response_model=Dict[str, Any])
 async def unregister_writeback_endpoint(target_endpoint: str, collection: str = "default"):
-    u"""Remove a writeback target."""
+    """Remove a writeback target.
+
+    Args:
+        target_endpoint: target_endpoint 参数。
+        collection: collection 参数。
+    """
     from core.harness.knowledge.knowledge_writeback import unregister_writeback
     ok = unregister_writeback(target_endpoint, collection_id=collection)
     return {"status": "ok" if ok else "not_found"}

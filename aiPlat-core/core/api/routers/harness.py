@@ -1,3 +1,8 @@
+"""harness：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from typing import Dict, Annotated, Optional, Any
@@ -22,7 +27,11 @@ def _mgr(rt: Optional[KernelRuntime]):
 
 @router.get("/harness/status", response_model=Dict[str, Any])
 async def get_harness_status(rt: RuntimeDep = None):
-    """Get harness status"""
+    """Get harness status。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -32,7 +41,11 @@ async def get_harness_status(rt: RuntimeDep = None):
 
 @router.get("/harness/config", response_model=Dict[str, Any])
 async def get_harness_config(rt: RuntimeDep = None):
-    """Get harness config"""
+    """Get harness config。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -47,7 +60,12 @@ async def get_harness_config(rt: RuntimeDep = None):
 
 @router.put("/harness/config", response_model=Dict[str, Any])
 async def update_harness_config(request: dict, rt: RuntimeDep = None):
-    """Update harness config"""
+    """Update harness config。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -62,7 +80,11 @@ async def update_harness_config(request: dict, rt: RuntimeDep = None):
 
 @router.get("/harness/metrics", response_model=Dict[str, Any])
 async def get_harness_metrics(rt: RuntimeDep = None):
-    """Get harness metrics"""
+    """Get harness metrics。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -72,7 +94,12 @@ async def get_harness_metrics(rt: RuntimeDep = None):
 
 @router.get("/harness/logs", response_model=Dict[str, Any])
 async def get_harness_logs(limit: int = 100, rt: RuntimeDep = None):
-    """Get harness logs"""
+    """Get harness logs。
+
+    Args:
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -94,7 +121,11 @@ async def get_harness_logs(limit: int = 100, rt: RuntimeDep = None):
 
 @router.get("/harness/hooks", response_model=Dict[str, Any])
 async def list_hooks(rt: RuntimeDep = None):
-    """List hooks"""
+    """List hooks。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -106,7 +137,12 @@ async def list_hooks(rt: RuntimeDep = None):
 
 @router.post("/harness/hooks", response_model=Dict[str, Any])
 async def create_hook(request: HookCreateRequest, rt: RuntimeDep = None):
-    """Create hook"""
+    """Create hook。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -116,7 +152,12 @@ async def create_hook(request: HookCreateRequest, rt: RuntimeDep = None):
 
 @router.delete("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def delete_hook(hook_id: str, rt: RuntimeDep = None):
-    """Delete hook"""
+    """Delete hook。
+
+    Args:
+        hook_id: hook 标识。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -128,7 +169,13 @@ async def delete_hook(hook_id: str, rt: RuntimeDep = None):
 
 @router.put("/harness/hooks/{hook_id}", response_model=Dict[str, Any])
 async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep = None):
-    """Update hook"""
+    """Update hook。
+
+    Args:
+        hook_id: hook 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -140,7 +187,12 @@ async def update_hook(hook_id: str, request: HookUpdateRequest, rt: RuntimeDep =
 
 @router.get("/harness/executions/{execution_id}", response_model=Dict[str, Any])
 async def get_harness_execution(execution_id: str, rt: RuntimeDep = None):
-    """Get harness execution"""
+    """Get harness execution。
+
+    Args:
+        execution_id: execution 标识。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -152,7 +204,11 @@ async def get_harness_execution(execution_id: str, rt: RuntimeDep = None):
 
 @router.get("/harness/coordinators", response_model=Dict[str, Any])
 async def list_coordinators(rt: RuntimeDep = None):
-    """List coordinators"""
+    """List coordinators。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -167,7 +223,12 @@ async def list_coordinators(rt: RuntimeDep = None):
 
 @router.post("/harness/coordinators", response_model=Dict[str, Any])
 async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep = None):
-    """Create coordinator"""
+    """Create coordinator。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -177,7 +238,12 @@ async def create_coordinator(request: CoordinatorCreateRequest, rt: RuntimeDep =
 
 @router.get("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def get_coordinator(coordinator_id: str, rt: RuntimeDep = None):
-    """Get coordinator"""
+    """Get coordinator。
+
+    Args:
+        coordinator_id: coordinator 标识。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -189,13 +255,24 @@ async def get_coordinator(coordinator_id: str, rt: RuntimeDep = None):
 
 @router.put("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def update_coordinator(coordinator_id: str, request: dict, rt: RuntimeDep = None):
-    """Update coordinator"""
+    """Update coordinator。
+
+    Args:
+        coordinator_id: coordinator 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
     return {"status": "updated"}
 
 
 @router.delete("/harness/coordinators/{coordinator_id}", response_model=Dict[str, Any])
 async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = None):
-    """Delete coordinator"""
+    """Delete coordinator。
+
+    Args:
+        coordinator_id: coordinator 标识。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -207,7 +284,11 @@ async def delete_coordinator(coordinator_id: str, rt: RuntimeDep = None):
 
 @router.get("/harness/feedback/config", response_model=Dict[str, Any])
 async def get_feedback_config(rt: RuntimeDep = None):
-    """Get feedback config"""
+    """Get feedback config。
+
+    Args:
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")
@@ -217,7 +298,12 @@ async def get_feedback_config(rt: RuntimeDep = None):
 
 @router.put("/harness/feedback/config", response_model=Dict[str, Any])
 async def update_feedback_config(request: FeedbackConfigUpdateRequest, rt: RuntimeDep = None):
-    """Update feedback config"""
+    """Update feedback config。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
     hm = _mgr(rt)
     if not hm:
         raise HTTPException(status_code=503, detail="HarnessManager not initialized")

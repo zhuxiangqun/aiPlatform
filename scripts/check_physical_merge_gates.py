@@ -57,6 +57,8 @@ def _resolve_base(base: str) -> str:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Physical merge gates (inflation + shape)")
     ap.add_argument("--base", default="", help="git base ref (default: origin/main)")
     ap.add_argument("--staged", action="store_true", help="check staged diff only")

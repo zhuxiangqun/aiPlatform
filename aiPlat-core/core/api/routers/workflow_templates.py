@@ -24,6 +24,7 @@ router = APIRouter()
 
 
 class TemplateSave(BaseModel):
+    """TemplateSave。"""
     name: str
     description: str = ""
     stages: List[Dict[str, Any]] = []
@@ -84,7 +85,11 @@ async def list_templates():
 
 @router.post("/workflow/templates", response_model=Dict[str, Any])
 async def save_template(body: TemplateSave):
-    """Save workflow as a named template."""
+    """Save workflow as a named template.
+
+    Args:
+        body: 请求体 dict。
+    """
     name = _sanitize(body.name)
     if not name:
         raise HTTPException(status_code=400, detail="Invalid template name")
@@ -111,7 +116,11 @@ async def save_template(body: TemplateSave):
 
 @router.get("/workflow/templates/{name}", response_model=Dict[str, Any])
 async def load_template(name: str):
-    """Load a workflow template by name (.json or directory workflow.yaml)."""
+    """Load a workflow template by name (.json or directory workflow.yaml).
+
+    Args:
+        name: 名称。
+    """
     name = _sanitize(name)
     d = _templates_dir()
     fp = d / f"{name}.json"
@@ -126,7 +135,11 @@ async def load_template(name: str):
 
 @router.delete("/workflow/templates/{name}", response_model=Dict[str, Any])
 async def delete_template(name: str):
-    """Delete a workflow template."""
+    """Delete a workflow template.
+
+    Args:
+        name: 名称。
+    """
     name = _sanitize(name)
     d = _templates_dir()
     fp = d / f"{name}.json"
@@ -140,6 +153,11 @@ async def delete_template(name: str):
 
 @router.post("/workflows/installer/plan", response_model=Dict[str, Any])
 async def workflow_installer_plan(request: dict):
+    """workflow_installer_plan。
+
+    Args:
+        request: request 参数。
+    """
     try:
         from core.management.asset_installer import WorkflowInstaller
         inst = WorkflowInstaller(target_base_dir=_templates_dir())
@@ -163,6 +181,11 @@ async def workflow_installer_plan(request: dict):
 
 @router.post("/workflows/installer/install", response_model=Dict[str, Any])
 async def workflow_installer_install(request: dict):
+    """workflow_installer_install。
+
+    Args:
+        request: request 参数。
+    """
     try:
         from core.management.asset_installer import WorkflowInstaller
         inst = WorkflowInstaller(target_base_dir=_templates_dir())
@@ -192,6 +215,13 @@ async def workflow_installer_upload_plan(
     subdir: str = Form(""),
     auto_detect_subdir: str = Form("true"),
 ):
+    """workflow_installer_upload_plan。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        auto_detect_subdir: auto_detect_subdir 参数。
+    """
     from core.management.asset_installer import WorkflowInstaller
     inst = WorkflowInstaller(target_base_dir=_templates_dir())
     tmp_path = None
@@ -218,6 +248,14 @@ async def workflow_installer_upload_install(
     auto_detect_subdir: str = Form("true"),
     allow_overwrite: str = Form("false"),
 ):
+    """workflow_installer_upload_install。
+
+    Args:
+        file: file 参数。
+        subdir: subdir 参数。
+        auto_detect_subdir: auto_detect_subdir 参数。
+        allow_overwrite: allow_overwrite 参数。
+    """
     from core.management.asset_installer import WorkflowInstaller
     inst = WorkflowInstaller(target_base_dir=_templates_dir())
     tmp_path = None
@@ -239,7 +277,11 @@ async def workflow_installer_upload_install(
 
 @router.post("/workflow/templates/{template_name}/submit-for-review", response_model=Dict[str, Any])
 async def submit_workflow_for_review(template_name: str):
-    """提交 Workflow 进入审批流水线。"""
+    """提交 Workflow 进入审批流水线。
+
+    Args:
+        template_name: template_name 参数。
+    """
     import time as _time
 
     d = _templates_dir()

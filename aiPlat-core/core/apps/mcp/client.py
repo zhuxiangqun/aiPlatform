@@ -35,6 +35,12 @@ class MCPCircuitBreaker(BaseCircuitBreaker):
     Inherits the standard closed/open/half_open state machine from BaseCircuitBreaker.
     """
     def __init__(self, failure_threshold: int = 3, recovery_timeout: float = 30.0):
+        """初始化。
+
+        Args:
+            failure_threshold: failure_threshold 参数。
+            recovery_timeout: recovery_timeout 参数。
+        """
         super().__init__(
             failure_threshold=failure_threshold,
             recovery_timeout=recovery_timeout,
@@ -46,6 +52,11 @@ class MCPClient:
     """MCP Client - connects to external MCP servers"""
     
     def __init__(self, config: MCPClientConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         self._protocol = MCPProtocolHandler()
         self._transport: Optional[SSEHandler | StdioHandler] = None
@@ -62,14 +73,20 @@ class MCPClient:
         
     @property
     def is_connected(self) -> bool:
+        """is_connected。
+        """
         return self._connected
         
     @property
     def capabilities(self) -> Optional[MCPServerCapabilities]:
+        """capabilities。
+        """
         return self._capabilities
         
     @property
     def tools(self) -> Dict[str, MCPTool]:
+        """tools。
+        """
         return self._tools
         
     async def connect(self) -> None:
@@ -203,7 +220,12 @@ class MCPClient:
         name: str, 
         arguments: Optional[Dict[str, Any]] = None
     ) -> MCPToolResult:
-        """Call a tool on the MCP server"""
+        """Call a tool on the MCP server。
+
+        Args:
+            name: name 参数。
+            arguments: arguments 参数。
+        """
         if not self._connected:
             raise RuntimeError("Not connected to MCP server")
 
@@ -290,6 +312,8 @@ class MCPClientManager:
     """Manages multiple MCP client connections"""
     
     def __init__(self):
+        """初始化。
+        """
         self._clients: Dict[str, MCPClient] = {}
         
     async def add_server(
@@ -297,7 +321,12 @@ class MCPClientManager:
         name: str,
         config: MCPClientConfig
     ) -> MCPClient:
-        """Add and connect to an MCP server"""
+        """Add and connect to an MCP server。
+
+        Args:
+            name: name 参数。
+            config: config 参数。
+        """
         client = MCPClient(config)
         await client.connect()
         await client.list_tools()
@@ -307,7 +336,11 @@ class MCPClientManager:
         return client
         
     def get_client(self, name: str) -> Optional[MCPClient]:
-        """Get MCP client by name"""
+        """Get MCP client by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._clients.get(name)
         
     def list_servers(self) -> List[str]:
@@ -315,7 +348,11 @@ class MCPClientManager:
         return list(self._clients.keys())
         
     async def remove_server(self, name: str) -> None:
-        """Remove an MCP server"""
+        """Remove an MCP server。
+
+        Args:
+            name: name 参数。
+        """
         if name in self._clients:
             await self._clients[name].disconnect()
             del self._clients[name]

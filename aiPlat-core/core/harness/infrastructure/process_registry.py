@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class ProcessStatus(Enum):
+    """ProcessStatus。"""
     STARTING = "starting"
     RUNNING = "running"
     HEALTHY = "healthy"
@@ -91,6 +92,8 @@ class ProcessRegistry:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._processes: Dict[int, ProcessInfo] = {}
         self._name_index: Dict[str, int] = {}  # name → pid
         self._role_index: Dict[ProcessRole, Set[int]] = {}
@@ -102,7 +105,16 @@ class ProcessRegistry:
     async def register(self, pid: int, role: ProcessRole, name: str,
                        max_restarts: int = 3, tags: Optional[Dict[str, str]] = None,
                        metadata: Optional[Dict[str, Any]] = None) -> ProcessInfo:
-        """Register a new process in the registry."""
+        """Register a new process in the registry.
+
+        Args:
+            pid: pid 参数。
+            role: role 参数。
+            name: name 参数。
+            max_restarts: max_restarts 参数。
+            tags: tags 参数。
+            metadata: metadata 参数。
+        """
         async with self._lock:
             info = ProcessInfo(
                 pid=pid,
@@ -119,7 +131,12 @@ class ProcessRegistry:
             return info
 
     async def unregister(self, pid: int, status: ProcessStatus = ProcessStatus.STOPPED):
-        """Remove a process from the registry."""
+        """Remove a process from the registry.
+
+        Args:
+            pid: pid 参数。
+            status: status 参数。
+        """
         async with self._lock:
             info = self._processes.pop(pid, None)
             if info:
@@ -132,7 +149,11 @@ class ProcessRegistry:
                 logger.info("ProcessRegistry: unregistered %s (pid=%d, status=%s)", info.name, pid, status.value)
 
     async def heartbeat(self, pid: int):
-        """Record a heartbeat from a process."""
+        """Record a heartbeat from a process.
+
+        Args:
+            pid: pid 参数。
+        """
         async with self._lock:
             info = self._processes.get(pid)
             if info:
@@ -141,7 +162,12 @@ class ProcessRegistry:
                     info.status = ProcessStatus.HEALTHY
 
     async def mark_degraded(self, pid: int, reason: str = ""):
-        """Mark a process as degraded."""
+        """Mark a process as degraded.
+
+        Args:
+            pid: pid 参数。
+            reason: reason 参数。
+        """
         async with self._lock:
             info = self._processes.get(pid)
             if info and info.status not in (ProcessStatus.STOPPING, ProcessStatus.STOPPED):
@@ -150,7 +176,12 @@ class ProcessRegistry:
                 logger.warning("ProcessRegistry: %s (pid=%d) degraded: %s", info.name, pid, reason)
 
     async def mark_crashed(self, pid: int, reason: str = ""):
-        """Mark a process as crashed and attempt restart if within limits."""
+        """Mark a process as crashed and attempt restart if within limits.
+
+        Args:
+            pid: pid 参数。
+            reason: reason 参数。
+        """
         async with self._lock:
             info = self._processes.get(pid)
             if info:
@@ -159,13 +190,21 @@ class ProcessRegistry:
                 logger.error("ProcessRegistry: %s (pid=%d) crashed: %s", info.name, pid, reason)
 
     async def get_by_role(self, role: ProcessRole) -> List[ProcessInfo]:
-        """Get all processes for a given role."""
+        """Get all processes for a given role.
+
+        Args:
+            role: role 参数。
+        """
         async with self._lock:
             pids = self._role_index.get(role, set())
             return [self._processes[pid] for pid in pids if pid in self._processes]
 
     async def get_by_name(self, name: str) -> Optional[ProcessInfo]:
-        """Get process info by name."""
+        """Get process info by name.
+
+        Args:
+            name: name 参数。
+        """
         async with self._lock:
             pid = self._name_index.get(name)
             if pid and pid in self._processes:
@@ -254,7 +293,11 @@ class ProcessRegistry:
         logger.info("ProcessRegistry: health monitor stopped")
 
     async def shutdown_all(self, grace_period: float = 10.0):
-        """Gracefully shut down all registered processes."""
+        """Gracefully shut down all registered processes.
+
+        Args:
+            grace_period: grace_period 参数。
+        """
         async with self._lock:
             processes = list(self._processes.items())
 

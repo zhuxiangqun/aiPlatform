@@ -67,6 +67,11 @@ class CredentialPool:
     """
 
     def __init__(self, provider: str):
+        """初始化。
+
+        Args:
+            provider: provider 参数。
+        """
         self.provider = provider
         keys = self._load_keys(provider)
         self._keys: List[KeyState] = []
@@ -172,7 +177,12 @@ class CredentialPool:
         return earliest.key
 
     def mark_rate_limited(self, key: str, retry_after: float = 0.0) -> None:
-        """Mark a key as rate-limited. Puts it in cooldown."""
+        """Mark a key as rate-limited. Puts it in cooldown.
+
+        Args:
+            key: key 参数。
+            retry_after: retry_after 参数。
+        """
         wait = max(5.0, min(60.0, retry_after or 10.0))  # clamp [5, 60]
         for ks in self._keys:
             if ks.key == key:
@@ -181,7 +191,11 @@ class CredentialPool:
                 return
 
     def mark_success(self, key: str) -> None:
-        """Reset cooldown for a key after successful call."""
+        """Reset cooldown for a key after successful call.
+
+        Args:
+            key: key 参数。
+        """
         for ks in self._keys:
             if ks.key == key:
                 ks.cooldown_until = 0.0
@@ -190,10 +204,14 @@ class CredentialPool:
 
     @property
     def key_count(self) -> int:
+        """key_count。
+        """
         return len(self._keys)
 
     @property
     def available_count(self) -> int:
+        """available_count。
+        """
         now = time.time()
         return sum(1 for ks in self._keys if ks.cooldown_until <= now)
 
@@ -226,7 +244,11 @@ _pools: Dict[str, CredentialPool] = {}
 
 
 def get_credential_pool(provider: str) -> CredentialPool:
-    """Get or create a credential pool for a provider (singleton per provider)."""
+    """Get or create a credential pool for a provider (singleton per provider).
+
+    Args:
+        provider: provider 参数。
+    """
     key = provider.lower()
     if key not in _pools:
         if len(_pools) >= _MAX_POOLS:

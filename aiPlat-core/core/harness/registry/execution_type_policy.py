@@ -95,8 +95,8 @@ def _fail_open_sidecar_path() -> Path:
 def record_fail_open_audit(*, source: str = "runtime") -> Dict[str, Any]:
     """Persist E5 audit sidecar under AIPLAT_HOME/ops/. Returns governance status.
 
-    For execution_store audit_log use :func:`record_fail_open_audit_async` from
-    async startup (server lifespan).
+    Args:
+        source: source 参数。
     """
     status = fail_open_governance_status()
     payload = {
@@ -135,7 +135,11 @@ def record_fail_open_audit(*, source: str = "runtime") -> Dict[str, Any]:
 
 
 async def record_fail_open_audit_async(*, source: str = "startup") -> Dict[str, Any]:
-    """Sidecar + async execution_store audit_log (call from server lifespan)."""
+    """Sidecar + async execution_store audit_log (call from server lifespan).
+
+    Args:
+        source: source 参数。
+    """
     status = record_fail_open_audit(source=source)
     if not status.get("flag"):
         return status
@@ -212,9 +216,9 @@ def coerce_execution_type(
 ) -> Tuple[Optional[str], Optional[str]]:
     """Normalize ``execution_type`` or reject.
 
-    Returns ``(normalized, None)`` on success, or ``(None, error)`` when hard-fail.
-    Empty input → ``("", None)`` so callers may auto-detect.
-    Unknown: fail-closed (default) → error; soft opt-in → WARNING and ``\"prompt\"``.
+    Args:
+        raw: raw 参数。
+        skill_name: skill_name 参数。
     """
     et = str(raw or "").strip().lower()
     if not et:

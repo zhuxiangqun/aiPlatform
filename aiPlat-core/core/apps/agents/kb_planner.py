@@ -19,11 +19,22 @@ class KBPlannerAgent:
     """
 
     def __init__(self, config: AgentConfig, **kwargs):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            kwargs: kwargs 参数。
+        """
         self._config = config
         self._model = kwargs.get("model")
         self._status = AgentStatus.IDLE
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        """execute。
+
+        Args:
+            context: context 参数。
+        """
         try:
             vars0 = dict(context.variables or {})
             scope = dict(vars0.get("scope") or {})

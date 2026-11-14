@@ -1,3 +1,8 @@
+"""audit_ops_export：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 from typing import Dict, Annotated, Optional, Any
@@ -35,6 +40,25 @@ async def list_audit_logs(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
+    """列出 audit_logs。
+
+    Args:
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        action: action 参数。
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        request_id: request 标识。
+        change_id: change 标识。
+        run_id: 运行 ID。
+        trace_id: trace 标识。
+        status: 状态。
+        created_after: created_after 参数。
+        created_before: created_before 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -63,8 +87,9 @@ async def verify_audit_chain(
 ):
     """Verify the tamper-evidence hash chain of the audit log for a tenant.
 
-    Returns {ok, total, verified, unverifiable, broken_at}. ok=False (with broken_at
-    = the offending row id) indicates an audit row was modified/deleted out of band.
+    Args:
+        tenant_id: 租户 ID。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -79,6 +104,14 @@ async def export_audit_logs_csv(
     limit: int = 1000,
     rt: RuntimeDep = None,
 ):
+    """export_audit_logs_csv。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

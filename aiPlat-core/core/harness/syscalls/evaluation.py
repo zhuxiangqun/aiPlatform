@@ -21,15 +21,12 @@ async def sys_evaluate_answer(
 ) -> Dict[str, Any]:
     """Unified evaluation gateway for all agents.
 
-    Modes:
-      - self_review: check answer quality (relevance, completeness, faithfulness)
-      - rag_diagnosis: check retrieval quality (coverage, noise)
-      - hallucination: check factual accuracy against retrieved context
-      - all: run all three modes and aggregate
-
-    Returns:
-      {score: float, quality: str, issues: list, mode: str}
-      quality: "good" | "acceptable" | "needs_improvement"
+    Args:
+        answer: answer 参数。
+        question: question 参数。
+        retrieved_docs: retrieved_docs 参数。
+        domain_id: domain 标识。
+        mode: mode 参数。
     """
     result: Dict[str, Any] = {"score": 0.8, "quality": "good", "issues": [], "mode": mode}
 

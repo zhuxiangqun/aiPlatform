@@ -17,6 +17,11 @@ class QQAdapter(ChannelAdapter):
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
         # QQ 机器人回调：{"event":{"message":{"id":"...","content":"...","chat_id":"...","from_id":"..."}}}
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         event = raw_data.get("event") or raw_data
         message = event.get("message") or raw_data
         text = str(message.get("content", "") or message.get("text", ""))
@@ -33,6 +38,11 @@ class QQAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "msg_type": "text",
             "content": response.text,

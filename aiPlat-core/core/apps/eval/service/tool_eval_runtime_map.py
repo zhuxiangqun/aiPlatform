@@ -23,7 +23,12 @@ def validate_tool_backend_runtime(
     tool_backend: str,
     runtime_tier: str,
 ) -> List[str]:
-    """Return error codes if backend/tier pair is disallowed."""
+    """Return error codes if backend/tier pair is disallowed.
+
+    Args:
+        tool_backend: tool_backend 参数。
+        runtime_tier: runtime_tier 参数。
+    """
     errors: List[str] = []
     backend = str(tool_backend or "").strip().lower()
     tier = str(runtime_tier or "").strip().lower()
@@ -44,7 +49,12 @@ def assert_mock_not_claimed_as_live(
     tool_backend: str,
     runtime_claim_reason: Optional[str] = None,
 ) -> List[str]:
-    """Fail closed if mock backend reason text claims production/live tools."""
+    """Fail closed if mock backend reason text claims production/live tools.
+
+    Args:
+        tool_backend: tool_backend 参数。
+        runtime_claim_reason: runtime_claim_reason 参数。
+    """
     backend = str(tool_backend or "").strip().lower()
     if backend != "mock":
         return []

@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class KBMetrics:
+    """KBMetrics。"""
     no_answer_rate: float = 0.0
     citation_coverage: float = 0.0
     error_correction_rate: float = 0.0
@@ -40,6 +41,8 @@ class KBMetrics:
     window_hours: int = 24
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "no_answer_rate_pct": round(self.no_answer_rate * 100, 1),
             "citation_coverage_pct": round(self.citation_coverage * 100, 1),

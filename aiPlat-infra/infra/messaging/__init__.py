@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import MessageClient
 from .factory import create_messaging_client
 from .schemas import (

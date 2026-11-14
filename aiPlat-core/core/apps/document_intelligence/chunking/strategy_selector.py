@@ -27,6 +27,11 @@ def _heading_level(el: Dict[str, Any]) -> int:
 
 
 def detect_features(elements: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """detect_features。
+
+    Args:
+        elements: elements 参数。
+    """
     if not elements:
         return {
             "structure_density": 0.0,
@@ -67,14 +72,11 @@ def select_strategy(
     elements: List[Dict[str, Any]],
     kind: str = "pdf",
 ) -> str:
-    """
-    Returns one of: structured, recursive, semantic, fixed_size, late.
+    """Returns one of: structured, recursive, semantic, fixed_size, late.
 
-    Decision tree:
-    1. structured: has >= 1 heading AND structure_density > 0.02
-    2. semantic: large variance in paragraph lengths (mixed content)
-    3. recursive: default for most document types
-    4. fixed_size: fallback for very simple text
+    Args:
+        elements: elements 参数。
+        kind: kind 参数。
     """
     feats = detect_features(elements)
     n = feats["element_count"]

@@ -31,6 +31,8 @@ class SecurityP5ExtensionError(ValueError):
 
 
 def default_p5_gates_path() -> Path:
+    """default_p5_gates_path。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -42,6 +44,11 @@ def default_p5_gates_path() -> Path:
 
 
 def load_p5_extension_gates(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载 p5_extension_gates。
+
+    Args:
+        path: 文件或目录路径。
+    """
     p = Path(path) if path else default_p5_gates_path()
     if not p.is_file():
         raise SecurityP5ExtensionError(f"p5_gates_missing:{p}")
@@ -67,12 +74,9 @@ def evaluate_t11_deferred_gate(
 ) -> Dict[str, Any]:
     """Evaluate T11 graduate conditions. Default: remains deferred.
 
-    ``evidence`` optional keys (all default false/empty):
-      multi_agent_runtime_wired: bool
-      handoff_session_trace_harness: bool
-      fixture_count: int
-      human_authorize_graduate: bool
-      human_reviewer: str
+    Args:
+        gates: gates 参数。
+        evidence: evidence 参数。
     """
     g = dict(gates) if gates is not None else load_p5_extension_gates()
     t11 = dict(g.get("t11_deferred") or {})
@@ -140,7 +144,11 @@ def build_oos_extension_disclosure(
     *,
     gates: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Structured OOS extension cards for model poison + deep supply chain + T11."""
+    """Structured OOS extension cards for model poison + deep supply chain + T11.
+
+    Args:
+        gates: gates 参数。
+    """
     g = dict(gates) if gates is not None else load_p5_extension_gates()
     cards: List[Dict[str, Any]] = []
 
@@ -238,7 +246,12 @@ def evaluate_deep_supply_chain_boundary(
     gates: Optional[Mapping[str, Any]] = None,
     t13_shallow_ok: bool = False,
 ) -> Dict[str, Any]:
-    """T13 shallow pass must not imply OOS-06 deep supply-chain coverage."""
+    """T13 shallow pass must not imply OOS-06 deep supply-chain coverage.
+
+    Args:
+        gates: gates 参数。
+        t13_shallow_ok: t13_shallow_ok 参数。
+    """
     g = dict(gates) if gates is not None else load_p5_extension_gates()
     dsc = dict(g.get("deep_supply_chain") or {})
     return {
@@ -264,7 +277,12 @@ def security_sec_p5_status(
     t11_evidence: Optional[Mapping[str, Any]] = None,
     t13_shallow_ok: bool = False,
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P5 status card."""
+    """Facade-friendly SEC-P5 status card.
+
+    Args:
+        t11_evidence: t11_evidence 参数。
+        t13_shallow_ok: t13_shallow_ok 参数。
+    """
     gates = load_p5_extension_gates()
     catalog = load_threat_family_catalog()
     families = catalog.get("families") if isinstance(catalog.get("families"), Mapping) else {}

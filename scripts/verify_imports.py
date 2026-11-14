@@ -71,7 +71,11 @@ KNOWN_PACKAGES = {
 
 
 def get_module_file(import_path: str) -> Path | None:
-    """Check if import_path corresponds to an existing .py file."""
+    """Check if import_path corresponds to an existing .py file.
+
+    Args:
+        import_path: import_path 参数。
+    """
     parts = import_path.split(".")
     for root in SCAN_ROOTS:
         if not root.exists():
@@ -98,7 +102,11 @@ def get_module_file(import_path: str) -> Path | None:
 
 
 def extract_imports(filepath: Path) -> list:
-    """Extract all 'from X import Y' statements from a Python file."""
+    """Extract all 'from X import Y' statements from a Python file.
+
+    Args:
+        filepath: filepath 参数。
+    """
     try:
         tree = ast.parse(filepath.read_text(encoding="utf-8", errors="ignore"))
     except (SyntaxError, UnicodeDecodeError):
@@ -113,6 +121,8 @@ def extract_imports(filepath: Path) -> list:
 
 
 def main():
+    """main。
+    """
     quick = "--quick" in sys.argv
     missing = []
     checked = 0

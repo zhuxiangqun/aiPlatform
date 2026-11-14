@@ -21,6 +21,11 @@ class ExternalModelStorage:
     """
     
     def __init__(self, file_path: str = None):
+        """初始化。
+
+        Args:
+            file_path: file_path 参数。
+        """
         if file_path is None:
             data_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
             file_path = os.path.join(data_dir, "models.json")
@@ -97,7 +102,11 @@ class ExternalModelStorage:
         return models
     
     def save(self, models: List[ModelInfo]):
-        """保存所有模型（仅保存 external 来源）"""
+        """保存所有模型（仅保存 external 来源）。
+
+        Args:
+            models: models 参数。
+        """
         external_models = [m for m in models if m.source == ModelSource.EXTERNAL]
         
         data = []

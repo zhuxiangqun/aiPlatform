@@ -68,6 +68,11 @@ class DaemonJobStore:
     """JSON 持久化的后台任务注册表。"""
 
     def __init__(self, path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            path: 路径。
+        """
         self.path = path or _default_path()
         self._jobs_dir = Path(self.path).parent / "jobs"
 
@@ -94,7 +99,13 @@ class DaemonJobStore:
 
     # ── 状态机 ──
     def start(self, name: str, command: str, cwd: Optional[str] = None) -> Dict[str, Any]:
-        """启动后台任务：新会话组 + 输出重定向文件 + 注册。"""
+        """启动后台任务：新会话组 + 输出重定向文件 + 注册。
+
+        Args:
+            name: name 参数。
+            command: command 参数。
+            cwd: cwd 参数。
+        """
         if not command or not command.strip():
             return {"error": "command 不能为空"}
         job_id = f"job-{int(time.time()*1000)}-{uuid.uuid4().hex[:6]}"
@@ -156,12 +167,19 @@ class DaemonJobStore:
         return data
 
     def list(self) -> List[Dict[str, Any]]:
+        """list。
+        """
         data = self._sync()
         jobs = list(data["jobs"].values())
         jobs.sort(key=lambda j: j.get("started_at", ""), reverse=True)
         return jobs
 
     def status(self, job_id: str) -> Dict[str, Any]:
+        """status。
+
+        Args:
+            job_id: job 标识。
+        """
         data = self._sync()
         rec = data["jobs"].get(job_id)
         if not rec:
@@ -169,6 +187,12 @@ class DaemonJobStore:
         return rec
 
     def attach(self, job_id: str, lines: int = 50) -> Dict[str, Any]:
+        """attach。
+
+        Args:
+            job_id: job 标识。
+            lines: lines 参数。
+        """
         rec = self.status(job_id)
         if "error" in rec:
             return rec
@@ -184,6 +208,11 @@ class DaemonJobStore:
         return {"id": job_id, "status": rec["status"], "output": content}
 
     def kill(self, job_id: str) -> Dict[str, Any]:
+        """kill。
+
+        Args:
+            job_id: job 标识。
+        """
         data = self._load()
         rec = data["jobs"].get(job_id)
         if not rec:

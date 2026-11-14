@@ -26,7 +26,11 @@ def _str_list(v: Any) -> List[str]:
 
 
 def validate_long_context_fixture(fixture: Mapping[str, Any] | None) -> List[str]:
-    """Return error codes; empty = pass."""
+    """Return error codes; empty = pass.
+
+    Args:
+        fixture: fixture 参数。
+    """
     if not isinstance(fixture, Mapping):
         return ["missing_field:long_context_fixture"]
     errors: List[str] = []
@@ -67,7 +71,11 @@ def validate_long_context_fixture(fixture: Mapping[str, Any] | None) -> List[str
 
 
 def validate_case_long_context_fields(case: Mapping[str, Any] | None) -> List[str]:
-    """If case has long_context_fixture or capability long_context, validate fixture."""
+    """If case has long_context_fixture or capability long_context, validate fixture.
+
+    Args:
+        case: case 参数。
+    """
     if not isinstance(case, Mapping):
         return ["missing_field:case"]
     fixture = case.get("long_context_fixture")

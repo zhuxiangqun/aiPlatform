@@ -16,17 +16,32 @@ def now_utc() -> datetime:
 
 
 def format_timestamp(dt: datetime, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
-    """格式化时间戳"""
+    """格式化时间戳。
+
+    Args:
+        dt: dt 参数。
+        fmt: fmt 参数。
+    """
     return dt.strftime(fmt)
 
 
 def parse_timestamp(ts: str, fmt: str = "%Y-%m-%d %H:%M:%S") -> datetime:
-    """解析时间戳"""
+    """解析时间戳。
+
+    Args:
+        ts: ts 参数。
+        fmt: fmt 参数。
+    """
     return datetime.strptime(ts, fmt)
 
 
 def safe_json_loads(data: str, default: Any = None) -> Any:
-    """安全的 JSON 解析"""
+    """安全的 JSON 解析。
+
+    Args:
+        data: data 参数。
+        default: default 参数。
+    """
     try:
         return json.loads(data)
     except (json.JSONDecodeError, TypeError):
@@ -34,7 +49,12 @@ def safe_json_loads(data: str, default: Any = None) -> Any:
 
 
 def safe_json_dumps(obj: Any, default: str = "{}") -> str:
-    """安全的 JSON 序列化"""
+    """安全的 JSON 序列化。
+
+    Args:
+        obj: obj 参数。
+        default: default 参数。
+    """
     try:
         return json.dumps(obj)
     except (TypeError, ValueError):
@@ -42,7 +62,11 @@ def safe_json_dumps(obj: Any, default: str = "{}") -> str:
 
 
 def parse_url(url: str) -> Dict[str, Optional[str]]:
-    """解析URL"""
+    """解析URL。
+
+    Args:
+        url: url 参数。
+    """
     parsed = urlparse(url)
     return {
         "scheme": parsed.scheme,
@@ -55,14 +79,25 @@ def parse_url(url: str) -> Dict[str, Optional[str]]:
 
 
 def truncate(text: str, max_length: int, suffix: str = "...") -> str:
-    """截断文本"""
+    """截断文本。
+
+    Args:
+        text: text 参数。
+        max_length: max_length 参数。
+        suffix: suffix 参数。
+    """
     if len(text) <= max_length:
         return text
     return text[: max_length - len(suffix)] + suffix
 
 
 def deep_merge(base: Dict, override: Dict) -> Dict:
-    """深度合并字典"""
+    """深度合并字典。
+
+    Args:
+        base: base 参数。
+        override: override 参数。
+    """
     result = base.copy()
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):

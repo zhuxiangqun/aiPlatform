@@ -21,7 +21,12 @@ def judge_tool_selection(
     case: Mapping[str, Any],
     result: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """A3: expected tools present; forbidden absent; optional exact-set."""
+    """A3: expected tools present; forbidden absent; optional exact-set.
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+    """
     calls = result.get("tool_calls") if isinstance(result.get("tool_calls"), list) else []
     got = _names(calls)
     expected = [
@@ -80,7 +85,13 @@ def judge_tool_args(
     *,
     catalog: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """A4: each call args valid vs catalog schema and optional expected_args."""
+    """A4: each call args valid vs catalog schema and optional expected_args.
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+        catalog: catalog 参数。
+    """
     calls = result.get("tool_calls") if isinstance(result.get("tool_calls"), list) else []
     cat = dict(catalog) if catalog is not None else load_mock_tool_catalog()
     index = _tool_index(cat)
@@ -157,7 +168,12 @@ def judge_tool_result_use(
     case: Mapping[str, Any],
     result: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """A5: final answer must incorporate tool result signals / must_contain."""
+    """A5: final answer must incorporate tool result signals / must_contain.
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+    """
     answer = str(
         result.get("answer")
         or result.get("scripted_answer")
@@ -214,7 +230,12 @@ def judge_tool_trace(
     case: Mapping[str, Any],
     result: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Dispatch A3/A4/A5 judges for capabilities on the case."""
+    """Dispatch A3/A4/A5 judges for capabilities on the case.
+
+    Args:
+        case: case 参数。
+        result: result 参数。
+    """
     caps = resolve_capability_ids(
         list(case.get("capabilities") or []), fail_closed=False
     )

@@ -16,6 +16,11 @@ class DiscordAdapter(ChannelAdapter):
     """Discord 适配器 (bot + webhook)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         message = raw_data.get("message", raw_data)
         author = message.get("author", {})
         channel = message.get("channel", {})
@@ -31,6 +36,11 @@ class DiscordAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "type": 4,  # CHANNEL_MESSAGE_WITH_SOURCE
             "data": {"content": response.text},

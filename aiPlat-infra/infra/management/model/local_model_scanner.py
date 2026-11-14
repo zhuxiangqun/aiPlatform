@@ -1,3 +1,5 @@
+"""local_model_scanner：模块接口。"""
+
 import logging
 """
 Local model scanner — discovers models from local inference servers.
@@ -111,7 +113,11 @@ async def _scan_ollama(endpoint: str) -> List[ModelInfo]:
 
 
 async def scan_local_models(endpoints: List[str]) -> List[ModelInfo]:
-    """Scan all configured local endpoints for available models."""
+    """Scan all configured local endpoints for available models.
+
+    Args:
+        endpoints: endpoints 参数。
+    """
     all_models: List[ModelInfo] = []
     for ep in endpoints:
         ep = ep.strip()

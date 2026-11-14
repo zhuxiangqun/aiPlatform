@@ -38,6 +38,13 @@ class OIDCProvider:
         client_id: str = "",
         client_secret: str = "",
     ):
+        """初始化。
+
+        Args:
+            discovery_url: discovery_url 参数。
+            client_id: client 标识。
+            client_secret: client_secret 参数。
+        """
         self._discovery_url = discovery_url or os.getenv("AIPLAT_OIDC_DISCOVERY_URL", "")
         self._client_id = client_id or os.getenv("AIPLAT_OIDC_CLIENT_ID", "")
         self._client_secret = client_secret or os.getenv("AIPLAT_OIDC_CLIENT_SECRET", "")
@@ -48,6 +55,8 @@ class OIDCProvider:
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled and bool(self._discovery_url)
 
     async def _ensure_discovery(self):
@@ -68,7 +77,8 @@ class OIDCProvider:
     async def verify_token(self, id_token: str) -> Optional[Dict[str, Any]]:
         """验证 id_token 并返回 claims。
 
-        返回 None 表示验证失败。
+        Args:
+            id_token: id_token 参数。
         """
         if not self.enabled or not id_token:
             return None
@@ -124,10 +134,8 @@ class OIDCProvider:
     def extract_identity(self, claims: Dict[str, Any]) -> Dict[str, Any]:
         """从 OIDC claims 提取 aiPlat Identity 信息。
 
-        映射规则（可被环境变量覆盖）:
-            preferred_username → actor_id
-            realm / tid          → tenant_id
-            realm_access.roles   → scopes
+        Args:
+            claims: claims 参数。
         """
         actor_id = claims.get(
             os.getenv("AIPLAT_OIDC_CLAIM_USERNAME", "preferred_username"),
@@ -150,7 +158,12 @@ class OIDCProvider:
         }
 
     async def exchange_code(self, code: str, redirect_uri: str) -> Optional[str]:
-        """授权码 → id_token（Authorization Code Flow）。"""
+        """授权码 → id_token（Authorization Code Flow）。
+
+        Args:
+            code: code 参数。
+            redirect_uri: redirect_uri 参数。
+        """
         if not self.enabled:
             return None
         await self._ensure_discovery()
@@ -177,7 +190,12 @@ class OIDCProvider:
             return data.get("id_token") or data.get("access_token")
 
     def get_authorization_url(self, redirect_uri: str, state: str = "") -> str:
-        """生成 IdP 授权页面 URL（用于前端重定向）。"""
+        """生成 IdP 授权页面 URL（用于前端重定向）。
+
+        Args:
+            redirect_uri: redirect_uri 参数。
+            state: state 参数。
+        """
         if not self._config:
             return ""
         auth_endpoint = self._config.get("authorization_endpoint", "")
@@ -212,6 +230,8 @@ _oidc_provider: Optional[OIDCProvider] = None
 
 
 def get_oidc_provider() -> OIDCProvider:
+    """获取 oidc_provider。
+    """
     global _oidc_provider
     if _oidc_provider is None:
         _oidc_provider = OIDCProvider()

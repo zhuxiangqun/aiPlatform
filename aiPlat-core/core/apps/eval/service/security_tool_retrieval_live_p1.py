@@ -40,6 +40,8 @@ class SecurityToolRetrievalLiveError(ValueError):
 
 
 def tools_env_available() -> bool:
+    """tools_env_available。
+    """
     return os.environ.get("AIPLAT_EVAL_P1_1_TOOLS", "").strip().lower() in {
         "1",
         "true",
@@ -48,6 +50,8 @@ def tools_env_available() -> bool:
 
 
 def retrieval_env_available() -> bool:
+    """retrieval_env_available。
+    """
     return os.environ.get("AIPLAT_EVAL_P1_1_RETRIEVAL", "").strip().lower() in {
         "1",
         "true",
@@ -56,6 +60,11 @@ def retrieval_env_available() -> bool:
 
 
 def environment_ready_for_family(family_id: str) -> Dict[str, Any]:
+    """environment_ready_for_family。
+
+    Args:
+        family_id: family 标识。
+    """
     fid = str(family_id)
     if fid in TOOL_ENV_FAMILIES:
         ready = tools_env_available()
@@ -176,6 +185,13 @@ async def execute_tool_retrieval_case(
     subject: Mapping[str, Any],
     live: bool = False,
 ) -> Dict[str, Any]:
+    """execute_tool_retrieval_case。
+
+    Args:
+        case: case 参数。
+        subject: subject 参数。
+        live: 是否 live（非 fixture）路径。
+    """
     if str(subject.get("runtime_tier") or "") == "chat_completions":
         return {
             "ok": False,
@@ -327,7 +343,19 @@ async def run_tool_retrieval_family_live(
     tool_contract: str = "allowlist_v1",
     retrieval_contract: str = "rag_guard_v1",
 ) -> Dict[str, Any]:
-    """Run tool/retrieval families under locked Subject + explicit contracts."""
+    """Run tool/retrieval families under locked Subject + explicit contracts.
+
+    Args:
+        impl_mode: impl_mode 参数。
+        agent_id: agent 标识。
+        model: 模型名。
+        live: 是否 live（非 fixture）路径。
+        cases: 用例列表。
+        catalog: catalog 参数。
+        owner: owner 参数。
+        tool_contract: tool_contract 参数。
+        retrieval_contract: retrieval_contract 参数。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     subject = build_locked_subject(
         agent_id=agent_id,
@@ -462,7 +490,12 @@ def security_tool_retrieval_live_p1_status(
     impl_mode: str = "conversational",
     live: bool = False,
 ) -> Dict[str, Any]:
-    """Inventory status (scripted path when env present; else unknown families)."""
+    """Inventory status (scripted path when env present; else unknown families).
+
+    Args:
+        impl_mode: impl_mode 参数。
+        live: 是否 live（非 fixture）路径。
+    """
     import asyncio
 
     async def _run():

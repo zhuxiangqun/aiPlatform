@@ -42,8 +42,9 @@ _BINARY_EXTS = {
 def file_bytes_to_text(raw: bytes, filename: str = "uploaded_doc") -> Dict[str, Any]:
     """Parse uploaded bytes into plain text for entity extraction.
 
-    Historical bug: route did ``raw.decode("utf-8", errors="replace")`` on PPTX/PDF,
-    feeding megabytes of binary garbage into the LLM (thousands of sequential chunks).
+    Args:
+        raw: raw 参数。
+        filename: filename 参数。
     """
     name = filename or "uploaded_doc"
     ext = os.path.splitext(name)[1].lower()
@@ -127,6 +128,7 @@ def file_bytes_to_text(raw: bytes, filename: str = "uploaded_doc") -> Dict[str, 
 
 @dataclass
 class ExtractedEntity:
+    """ExtractedEntity。"""
     name: str
     class_type: str  # 人物|组织|产品|地点|时间|事件|文档|概念|方法
     attributes: Dict[str, Any] = field(default_factory=dict)
@@ -139,6 +141,7 @@ class ExtractedEntity:
 
 @dataclass
 class ExtractedRelation:
+    """ExtractedRelation。"""
     source_entity: str
     relation_type: str  # 属于|参与|负责|包含|依赖|导致|演化为|部署于|开始于|结束于
     target_entity: str
@@ -149,6 +152,7 @@ class ExtractedRelation:
 
 @dataclass
 class ExtractionResult:
+    """ExtractionResult。"""
     extraction_id: str
     domain_id: str
     source_doc: str
@@ -212,7 +216,13 @@ class DocumentIngestor:
     MAX_CHUNK_SIZE = 2000
 
     def ingest(self, text: str, doc_name: str = "unknown", *, max_chunks: int | None = None) -> List[Dict[str, Any]]:
-        """Return list of {offset, text, doc_name} chunks (capped for factory speed)."""
+        """Return list of {offset, text, doc_name} chunks (capped for factory speed).
+
+        Args:
+            text: text 参数。
+            doc_name: doc_name 参数。
+            max_chunks: max_chunks 参数。
+        """
         limit = max_chunks if max_chunks is not None else _extract_max_chunks()
         chunks = []
         offset = 0
@@ -269,7 +279,12 @@ class EntityExtractor:
         return self._domain_class_types(domain_id) or self.VALID_CLASS_TYPES
 
     async def extract(self, chunk: Dict[str, Any], domain_id: str = "") -> Dict[str, Any]:
-        """Extract entities + relations from one chunk via LLM."""
+        """Extract entities + relations from one chunk via LLM.
+
+        Args:
+            chunk: chunk 参数。
+            domain_id: domain 标识。
+        """
         # P2-3：提示词经 prompt_loader 解析（模板治理），域类清单注入
         class_types = self._effective_class_types(domain_id)
         class_list = ", ".join(sorted(class_types))
@@ -465,13 +480,22 @@ class DraftYamlWriter:
     """Write extracted entities/relations as draft YAML for expert review."""
 
     def __init__(self, draft_dir: Optional[str] = None):
+        """初始化。
+
+        Args:
+            draft_dir: draft_dir 参数。
+        """
         from core.utils.paths import get_ontologies_dir
 
         self.DRAFT_DIR = draft_dir or os.path.join(get_ontologies_dir(), "drafts")
         os.makedirs(self.DRAFT_DIR, exist_ok=True)
 
     def write(self, result: ExtractionResult) -> str:
-        """Write the extraction result to a draft YAML file. Returns file path."""
+        """Write the extraction result to a draft YAML file. Returns file path.
+
+        Args:
+            result: result 参数。
+        """
         import yaml
 
         safe_name = re.sub(r'[^\w\-]', '_', result.source_doc)[:40]
@@ -532,13 +556,21 @@ class ExtractionPipeline:
     """Full pipeline: ingest → extract → route → write."""
 
     def __init__(self):
+        """初始化。
+        """
         self.ingestor = DocumentIngestor()
         self.extractor = EntityExtractor()
         self.writer = DraftYamlWriter()
 
     async def run(self, text: str, doc_name: str = "uploaded_doc",
                   domain_id: str = "default") -> List[ExtractionResult]:
-        """Run full extraction pipeline on a document. Returns results by confidence tier."""
+        """Run full extraction pipeline on a document. Returns results by confidence tier.
+
+        Args:
+            text: text 参数。
+            doc_name: doc_name 参数。
+            domain_id: domain 标识。
+        """
         max_chunks = _extract_max_chunks()
         chunks = self.ingestor.ingest(text, doc_name, max_chunks=max_chunks)
         truncated_chunks = len(text) > max_chunks * self.ingestor.MAX_CHUNK_SIZE
@@ -699,8 +731,11 @@ def write_extraction_to_graph_index(
 ) -> Dict[str, Any]:
     """Path B (doc confirm): write extracted entities/relations into GraphIndex.
 
-    Returns a receipt: created_entities / relations / skipped / primary_entity_id.
-    Unknown domain classes log warnings (GraphIndex behavior) but still write.
+    Args:
+        domain_id: domain 标识。
+        entities: entities 参数。
+        relations: relations 参数。
+        source_doc_id: source_doc 标识。
     """
     from core.harness.ontology_engine.graph_index import GraphIndex
 
@@ -775,6 +810,11 @@ class PendingExtractionStore:
 
     def __init__(self, db_path: Optional[str] = None):
         # Same resolution as ActionStore — never hardcode cwd ./data under pytest.
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         if db_path is None:
             from core.harness.infrastructure.action_store import default_action_db_path
 
@@ -782,6 +822,8 @@ class PendingExtractionStore:
         self.db_path = db_path
 
     async def initialize(self) -> None:
+        """initialize。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
@@ -811,6 +853,11 @@ class PendingExtractionStore:
             await db.commit()
 
     async def save(self, result: ExtractionResult) -> None:
+        """save。
+
+        Args:
+            result: result 参数。
+        """
         import aiosqlite
         import json as _json
         ents = [_entity_to_dict(e) for e in (result.entities or [])]
@@ -837,6 +884,11 @@ class PendingExtractionStore:
             await db.commit()
 
     async def get_row(self, extraction_id: str) -> Optional[Dict[str, Any]]:
+        """获取 row。
+
+        Args:
+            extraction_id: extraction 标识。
+        """
         import aiosqlite
 
         eid = (extraction_id or "").strip()
@@ -852,6 +904,11 @@ class PendingExtractionStore:
         return dict(row) if row else None
 
     async def list_pending(self, domain_id: str = "") -> List[Dict[str, Any]]:
+        """列出 pending。
+
+        Args:
+            domain_id: domain 标识。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -876,7 +933,10 @@ class PendingExtractionStore:
     ) -> Dict[str, Any]:
         """Confirm extraction: optional GraphIndex ABox write + ontology proposal enqueue.
 
-        Returns receipt dict with ``ok`` (bool), ``graph_write``, ``proposal_id``.
+        Args:
+            extraction_id: extraction 标识。
+            enqueue_proposal: enqueue_proposal 参数。
+            write_graph: write_graph 参数。
         """
         import aiosqlite
         import json as _json
@@ -1021,6 +1081,11 @@ class PendingExtractionStore:
         return proposal_id
 
     async def reject(self, extraction_id: str) -> bool:
+        """reject。
+
+        Args:
+            extraction_id: extraction 标识。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(

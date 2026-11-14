@@ -36,8 +36,8 @@ _TOOL_SCAN_PATTERNS: Dict[str, str] = {
 def check_tool_compatibility(skill_body: str) -> Dict[str, Dict[str, Any]]:
     """Scan Skill SOP body for referenced tools and return availability via ToolRegistry.
 
-    Dynamically queries ToolRegistry for each detected tool name — no hardcoded
-    availability map. Unknown tools show as unavailable with a hint.
+    Args:
+        skill_body: skill_body 参数。
     """
     body_lower = skill_body.lower()
     result: Dict[str, Dict[str, Any]] = {}
@@ -65,6 +65,7 @@ def check_tool_compatibility(skill_body: str) -> Dict[str, Dict[str, Any]]:
 
 @dataclass
 class SkillVersion:
+    """SkillVersion。"""
     version: str
     config: SkillConfig
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -73,6 +74,7 @@ class SkillVersion:
 
 @dataclass
 class SkillBindingStats:
+    """SkillBindingStats。"""
     skill_id: str
     bound_agents: List[str] = field(default_factory=list)
     total_executions: int = 0
@@ -86,6 +88,8 @@ class SkillBindingStats:
 
     @property
     def recent_pass_rate(self) -> float:
+        """recent_pass_rate。
+        """
         if not self.recent_results:
             return self.success_count / max(1, self.total_executions)
         return sum(1 for r in self.recent_results if r) / max(1, len(self.recent_results))
@@ -97,6 +101,14 @@ class SkillBindingStats:
 
     def adjust_weight(self, delta: float, *, damping: float = 0.3,
                       clamp_min: float = 0.05, clamp_max: float = 0.95) -> float:
+        """adjust_weight。
+
+        Args:
+            delta: delta 参数。
+            damping: damping 参数。
+            clamp_min: clamp_min 参数。
+            clamp_max: clamp_max 参数。
+        """
         actual = delta * damping
         current = self.recent_pass_rate
         target = current + actual
@@ -115,6 +127,8 @@ class SkillRegistry:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._skills: Dict[str, BaseSkill] = {}
         self._categories: Dict[str, List[str]] = {}
         self._versions: Dict[str, List[SkillVersion]] = {}
@@ -138,9 +152,8 @@ class SkillRegistry:
     def seed_data(self, data: Dict[str, Dict[str, Any]] = None) -> None:
         """Seed the registry with built-in skill instances from engine skills dir.
 
-        Skill metadata (name, display_name, category, description, enabled)
-        is loaded from SKILL.md files under core/engine/skills/<name>/,
-        NOT hardcoded in Python lists. See CLAUDE.md §5.29.
+        Args:
+            data: data 参数。
         """
         import os as _os
         import yaml as _yaml
@@ -446,7 +459,11 @@ class SkillRegistry:
                 )
 
     def register(self, skill: BaseSkill) -> None:
-        """Register a skill"""
+        """Register a skill。
+
+        Args:
+            skill: skill 参数。
+        """
         self._pre_register_validate(skill)
 
         # P2-20: SkillsGuard — threat scan before registration
@@ -520,18 +537,26 @@ class SkillRegistry:
             self._invalidate_body_vectors()
 
     def get(self, name: str) -> Optional[BaseSkill]:
-        """Get skill by name"""
+        """Get skill by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._skills.get(name)
 
     def get_body(self, name: str) -> str:
-        """Get cached SKILL.md body content for a skill."""
+        """Get cached SKILL.md body content for a skill.
+
+        Args:
+            name: name 参数。
+        """
         return self._body_cache.get(name, "")
 
     def get_stub(self, name: str) -> str:
-        u"""Get a one-line stub for Agent prompt injection (progressive disclosure).
+        """Get a one-line stub for Agent prompt injection (progressive disclosure).
 
-        Returns: '<name>: <one-line description>' — ~50 tokens per skill.
-        Full body is injected only when the skill is actually called via sys_skill_call.
+        Args:
+            name: name 参数。
         """
         body = self._body_cache.get(name, "")
         if body:
@@ -554,10 +579,11 @@ class SkillRegistry:
     # ── Agentic Skill Router: search → inspect → select ─────
 
     def search_corpus(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        u"""Agentic search: find ALL skills (incl disabled) by keyword matching.
+        """Agentic search: find ALL skills (incl disabled) by keyword matching.
 
-        Returns candidates with ref, name, description snippet, score, and
-        truncated flag so Agent knows when results are cut off.
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
         """
         query_lower = query.lower()
         terms = [t.strip() for t in query_lower.split() if len(t.strip()) >= 2]
@@ -699,10 +725,10 @@ class SkillRegistry:
             return None
 
     def inspect_corpus(self, ref: str) -> Optional[Dict[str, Any]]:
-        u"""Agentic inspect: return full metadata (NOT body) for a candidate.
+        """Agentic inspect: return full metadata (NOT body) for a candidate.
 
-        Gives Agent enough detail to decide without loading the full SKILL.md.
-        Tracks inspect count for β coefficient amplification.
+        Args:
+            ref: ref 参数。
         """
         name = ref.replace("corpus-", "", 1) if ref.startswith("corpus-") else ref
         skill = self._skills.get(name)
@@ -732,9 +758,13 @@ class SkillRegistry:
     def select_corpus(
         self, ref: str, query: str, reason: str, confidence: str = "medium"
     ) -> Dict[str, Any]:
-        u"""Agentic select: record audit + return body. Enables skill if auto-threshold met.
+        """Agentic select: record audit + return body. Enables skill if auto-threshold met.
 
-        This is the commit point — Agent confirms "I want this skill".
+        Args:
+            ref: ref 参数。
+            query: 查询。
+            reason: reason 参数。
+            confidence: confidence 参数。
         """
         name = ref.replace("corpus-", "", 1) if ref.startswith("corpus-") else ref
         skill = self._skills.get(name)
@@ -1043,7 +1073,12 @@ class SkillRegistry:
         return result
 
     def get_version(self, name: str, version: str) -> Optional[SkillConfig]:
-        """Get a specific version of a skill's config"""
+        """Get a specific version of a skill's config。
+
+        Args:
+            name: name 参数。
+            version: version 参数。
+        """
         versions = self._versions.get(name, [])
         for v in versions:
             if v.version == version:
@@ -1051,11 +1086,19 @@ class SkillRegistry:
         return None
 
     def get_versions(self, name: str) -> List[SkillVersion]:
-        """Get all versions of a skill"""
+        """Get all versions of a skill。
+
+        Args:
+            name: name 参数。
+        """
         return self._versions.get(name, [])
 
     def get_active_version(self, name: str) -> Optional[str]:
-        """Get currently active version for a skill."""
+        """Get currently active version for a skill.
+
+        Args:
+            name: name 参数。
+        """
         versions = self._versions.get(name, [])
         for v in versions:
             if v.is_active:
@@ -1063,7 +1106,12 @@ class SkillRegistry:
         return versions[-1].version if versions else None
 
     def rollback_version(self, name: str, version: str) -> bool:
-        """Rollback skill to a specific version"""
+        """Rollback skill to a specific version。
+
+        Args:
+            name: name 参数。
+            version: version 参数。
+        """
         with self._lock:
             versions = self._versions.get(name, [])
             target = None
@@ -1119,7 +1167,12 @@ class SkillRegistry:
         return config.metadata.get("category", "general") if hasattr(config, 'metadata') else "general"
 
     def list_skills(self, category: Optional[str] = None, enabled_only: bool = False) -> List[str]:
-        """List skills, optionally filtered by category and enabled status"""
+        """List skills, optionally filtered by category and enabled status。
+
+        Args:
+            category: category 参数。
+            enabled_only: enabled_only 参数。
+        """
         with self._lock:
             if category:
                 names = self._categories.get(category, [])
@@ -1130,7 +1183,11 @@ class SkillRegistry:
             return names
 
     def unregister(self, name: str) -> None:
-        """Unregister a skill"""
+        """Unregister a skill。
+
+        Args:
+            name: name 参数。
+        """
         with self._lock:
             if name in self._skills:
                 skill = self._skills[name]
@@ -1143,7 +1200,11 @@ class SkillRegistry:
             self._binding_stats.pop(name, None)
 
     def enable(self, name: str) -> bool:
-        """Enable a skill"""
+        """Enable a skill。
+
+        Args:
+            name: name 参数。
+        """
         with self._lock:
             if name in self._skills:
                 self._enabled[name] = True
@@ -1151,7 +1212,11 @@ class SkillRegistry:
             return False
 
     def disable(self, name: str) -> bool:
-        """Disable a skill"""
+        """Disable a skill。
+
+        Args:
+            name: name 参数。
+        """
         with self._lock:
             if name in self._skills:
                 self._enabled[name] = False
@@ -1159,11 +1224,20 @@ class SkillRegistry:
             return False
 
     def is_enabled(self, name: str) -> bool:
-        """Check if a skill is enabled"""
+        """Check if a skill is enabled。
+
+        Args:
+            name: name 参数。
+        """
         return self._enabled.get(name, False)
 
     def bind_agent(self, skill_name: str, agent_id: str) -> None:
-        """Bind a skill to an agent"""
+        """Bind a skill to an agent。
+
+        Args:
+            skill_name: skill_name 参数。
+            agent_id: Agent ID。
+        """
         with self._lock:
             if skill_name in self._binding_stats:
                 stats = self._binding_stats[skill_name]
@@ -1171,7 +1245,12 @@ class SkillRegistry:
                     stats.bound_agents.append(agent_id)
 
     def unbind_agent(self, skill_name: str, agent_id: str) -> None:
-        """Unbind a skill from an agent"""
+        """Unbind a skill from an agent。
+
+        Args:
+            skill_name: skill_name 参数。
+            agent_id: Agent ID。
+        """
         with self._lock:
             if skill_name in self._binding_stats:
                 stats = self._binding_stats[skill_name]
@@ -1179,11 +1258,22 @@ class SkillRegistry:
                     stats.bound_agents.remove(agent_id)
 
     def get_binding_stats(self, name: str) -> Optional[SkillBindingStats]:
-        """Get binding statistics for a skill"""
+        """Get binding statistics for a skill。
+
+        Args:
+            name: name 参数。
+        """
         return self._binding_stats.get(name)
 
     def apply_convergence(self, skill_name: str, delta: float,
                           *, damping: float = 0.3) -> Dict[str, Any]:
+        """apply_convergence。
+
+        Args:
+            skill_name: skill_name 参数。
+            delta: delta 参数。
+            damping: damping 参数。
+        """
         stats = self._binding_stats.get(skill_name)
         if not stats:
             return {"skill": skill_name, "error": "not_found"}
@@ -1197,7 +1287,11 @@ class SkillRegistry:
         }
 
     def filter_by_role(self, role_name: str) -> List[str]:
-        """Return enabled skill names matching a digital employee role."""
+        """Return enabled skill names matching a digital employee role.
+
+        Args:
+            role_name: role_name 参数。
+        """
         try:
             from core.harness.knowledge.ontology_bus import load_role_skills
             return [s for s in load_role_skills(role_name) if s in self._skills]
@@ -1205,12 +1299,22 @@ class SkillRegistry:
             return []
 
     def get_bound_agents(self, name: str) -> List[str]:
-        """Get agents bound to a skill"""
+        """Get agents bound to a skill。
+
+        Args:
+            name: name 参数。
+        """
         stats = self._binding_stats.get(name)
         return stats.bound_agents if stats else []
 
     def record_execution(self, name: str, success: bool, latency: float = 0.0) -> None:
-        """Record a skill execution with sliding window for decay detection."""
+        """Record a skill execution with sliding window for decay detection.
+
+        Args:
+            name: name 参数。
+            success: success 参数。
+            latency: latency 参数。
+        """
         with self._lock:
             if name in self._binding_stats:
                 stats = self._binding_stats[name]
@@ -1266,7 +1370,11 @@ class SkillRegistry:
         return result
 
     def get_domain_skills(self, domain_id: str) -> List[Dict[str, Any]]:
-        """Return all skills bound to a domain with their pass rates."""
+        """Return all skills bound to a domain with their pass rates.
+
+        Args:
+            domain_id: domain 标识。
+        """
         result = []
         for name, skill in self._skills.items():
             cfg = getattr(skill, "_config", None)
@@ -1287,7 +1395,11 @@ class SkillRegistry:
         return result
 
     def get_domain_adopted_count(self, domain_id: str) -> int:
-        """Return adopted_count from execution_store for a domain."""
+        """Return adopted_count from execution_store for a domain.
+
+        Args:
+            domain_id: domain 标识。
+        """
         try:
             import os as _os
             from core.apps.skills.skill_execution_record import SkillExecutionStore
@@ -1351,11 +1463,9 @@ class SkillRegistry:
     def get_candidates(self, query: str, limit: int = 10) -> List[str]:
         """Get top-K skill candidates for a query, adaptive to skill pool size.
 
-        ≤ SKILL_EMBED_THRESHOLD skills → metadata-based (name + description)
-        > SKILL_EMBED_THRESHOLD  skills → body TF-IDF cosine similarity
-
-        The body-based path is zero-dependency TF-IDF (pure Python math) and
-        activates automatically when the pool crosses the threshold.
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
         """
         self._ensure_body_vectors()
 
@@ -1500,7 +1610,11 @@ async def _bg_curator_scan(interval_hours: int = 6):
 
 
 def start_bg_curator(interval_hours: int = 6):
-    u"""Start the background curator task. Safe to call multiple times."""
+    """Start the background curator task. Safe to call multiple times.
+
+    Args:
+        interval_hours: interval_hours 参数。
+    """
     import asyncio
     try:
         loop = asyncio.get_running_loop()

@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class MarkingLevel(IntEnum):
+    """MarkingLevel。"""
     PUBLIC = 1
     INTERNAL = 2
     CONFIDENTIAL = 3
@@ -40,6 +41,7 @@ class MarkingLevel(IntEnum):
 
 @dataclass
 class Marking:
+    """Marking。"""
     label: str
     level: MarkingLevel
     scope: str = ""
@@ -47,6 +49,8 @@ class Marking:
     propagated_via: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "label": self.label,
             "level": self.level.value,
@@ -59,12 +63,15 @@ class Marking:
 
 @dataclass
 class MarkingTrace:
+    """MarkingTrace。"""
     marking_label: str
     level: MarkingLevel
     origin_entity_uri: str
     propagation_path: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "marking_label": self.marking_label,
             "level": self.level.name,
@@ -75,6 +82,7 @@ class MarkingTrace:
 
 @dataclass
 class MarkingConfig:
+    """MarkingConfig。"""
     collection_id: str
     markings: Dict[str, List[Marking]] = field(default_factory=dict)
     propagation_rules: Dict[str, bool] = field(default_factory=lambda: {
@@ -92,6 +100,11 @@ class MarkingConfig:
 
     @classmethod
     def default(cls, collection_id: str = "default") -> "MarkingConfig":
+        """default。
+
+        Args:
+            collection_id: collection 标识。
+        """
         return cls(collection_id=collection_id)
 
 
@@ -101,6 +114,11 @@ def _markings_path(collection_id: str = "default") -> str:
 
 
 def load_markings_config(collection_id: str = "default") -> MarkingConfig:
+    """load_markings_config。
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _markings_path(collection_id)
     config = MarkingConfig(collection_id=collection_id)
     if not _os.path.exists(path):
@@ -131,6 +149,11 @@ def load_markings_config(collection_id: str = "default") -> MarkingConfig:
 
 
 def save_markings_config(config: MarkingConfig) -> None:
+    """save_markings_config。
+
+    Args:
+        config: config 参数。
+    """
     path = _markings_path(config.collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
 
@@ -155,6 +178,15 @@ def set_marking(
     *,
     collection_id: str = "default",
 ) -> Marking:
+    """set_marking。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        label: label 参数。
+        level: level 参数。
+        scope: scope 参数。
+        collection_id: collection 标识。
+    """
     config = load_markings_config(collection_id)
     marking = Marking(label=label, level=level, scope=scope)
 
@@ -179,6 +211,13 @@ def remove_marking(
     *,
     collection_id: str = "default",
 ) -> bool:
+    """remove_marking。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        label: label 参数。
+        collection_id: collection 标识。
+    """
     config = load_markings_config(collection_id)
     if entity_uri not in config.markings:
         return False
@@ -206,6 +245,13 @@ def get_entity_markings(
     collection_id: str = "default",
     resolve_effective: bool = True,
 ) -> Dict[str, Any]:
+    """获取 entity_markings。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+        resolve_effective: resolve_effective 参数。
+    """
     config = load_markings_config(collection_id)
     explicit = config.markings.get(entity_uri, [])
 
@@ -234,13 +280,13 @@ def resolve_effective_markings(
     onto_triples: List[Any],
     max_depth: int = 5,
 ) -> Tuple[List[Marking], List[MarkingTrace]]:
-    u"""BFS along reversed ontology edges to compute all inherited markings.
+    """BFS along reversed ontology edges to compute all inherited markings.
 
-    For each entity that points TO entity_uri (incoming edges), check if
-    the relation type propagates markings. If so, inherit and continue BFS.
-
-    Returns:
-      (effective_markings, traces) — highest-level marking per label + audit trails.
+    Args:
+        entity_uri: entity_uri 参数。
+        config: config 参数。
+        onto_triples: onto_triples 参数。
+        max_depth: max_depth 参数。
     """
     effective: Dict[str, Marking] = {}
     traces: Dict[str, MarkingTrace] = {}
@@ -298,6 +344,13 @@ def compute_marking_diff(
     explicit_markings: List[Marking],
     effective_markings: List[Marking],
 ) -> List[Dict[str, Any]]:
+    """compute_marking_diff。
+
+    Args:
+        entity_uri: entity_uri 参数。
+        explicit_markings: explicit_markings 参数。
+        effective_markings: effective_markings 参数。
+    """
     explicit_labels = {m.label for m in explicit_markings}
     diff = []
     for m in effective_markings:
@@ -317,7 +370,13 @@ def get_propagation_tree(
     collection_id: str = "default",
     max_depth: int = 4,
 ) -> Dict[str, Any]:
-    u"""Return full propagation tree showing all inherited markings + their sources."""
+    """Return full propagation tree showing all inherited markings + their sources.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+        max_depth: max_depth 参数。
+    """
     config = load_markings_config(collection_id)
     from core.harness.knowledge.knowledge_ontology import get_ontology
     onto = get_ontology()

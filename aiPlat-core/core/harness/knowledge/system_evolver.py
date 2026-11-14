@@ -33,6 +33,8 @@ class SystemEvolver:
     STRONG_EVIDENCE_RATE = 80      # delivery rate for strong marking
 
     def __init__(self):
+        """初始化。
+        """
         self._kg = None
 
     def _ensure_loaded(self):

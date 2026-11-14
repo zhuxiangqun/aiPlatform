@@ -20,6 +20,11 @@ _TRACE_FILE = get_aiplat_data_dir("traces/syscall_calls.jsonl")
 
 
 def trace_syscall_entry(name: str) -> None:
+    """trace_syscall_entry。
+
+    Args:
+        name: name 参数。
+    """
     if not _TRACE_ENABLED:
         return
     try:

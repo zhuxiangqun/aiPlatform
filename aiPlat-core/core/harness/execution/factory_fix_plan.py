@@ -93,7 +93,10 @@ def filter_fix_plan_freeze_test_cases(
 ) -> List[str]:
     """Drop qa/test_cases stages from one-click fix_plan unless explicitly opted in.
 
-    Prevents LLM from rewriting the exam suite on every fix (unstable pass rates).
+    Args:
+        fix_plan: fix_plan 参数。
+        team_stages: team_stages 参数。
+        regenerate_test_cases: regenerate_test_cases 参数。
     """
     plan = [str(x).strip() for x in (fix_plan or []) if str(x).strip()]
     if regenerate_test_cases:
@@ -141,11 +144,9 @@ def derive_failed_stages_from_report(
 ) -> List[str]:
     """Return agent_ids that should be regenerated for this report.
 
-    Priority by bug execution kind:
-    - pytest / failed_tests → code stage
-    - page_smoke / ui_bindings → frontend (+ agent_app when bindings mismatch)
-    - skill_invoke / conversation → agent_app
-    - platform_check → usually not auto-fixable via regenerate (skip)
+    Args:
+        test_report: test_report 参数。
+        team_stages: team_stages 参数。
     """
     report = _parse_report(test_report)
     agents = _resolve_team_agents(list(team_stages or []))
@@ -234,7 +235,12 @@ def derive_failed_stages_from_report(
 
 
 def build_feedback_from_report(test_report: Any, *, max_chars: int = 12000) -> str:
-    """Compact feedback string for regenerate (prefer bug_summary JSON)."""
+    """Compact feedback string for regenerate (prefer bug_summary JSON).
+
+    Args:
+        test_report: test_report 参数。
+        max_chars: max_chars 参数。
+    """
     report = _parse_report(test_report)
     bs = report.get("bug_summary")
     if isinstance(bs, dict) and bs:
@@ -249,7 +255,11 @@ def build_feedback_from_report(test_report: Any, *, max_chars: int = 12000) -> s
 
 
 def extract_media_skill_remaps_from_report(test_report: Any) -> Dict[str, str]:
-    """Collect invented→catalog remaps from true_test diagnostics / bugs."""
+    """Collect invented→catalog remaps from true_test diagnostics / bugs.
+
+    Args:
+        test_report: test_report 参数。
+    """
     report = _parse_report(test_report)
     remaps: Dict[str, str] = {}
 
@@ -312,7 +322,12 @@ def extract_media_skill_remaps_from_report(test_report: Any) -> Dict[str, str]:
 
 
 def remap_skill_names_in_test_cases(test_cases: Any, remaps: Dict[str, str]) -> Tuple[Any, int]:
-    """Rewrite invoke.skill / target_skill in agent_true_test cases. Returns (obj, count)."""
+    """Rewrite invoke.skill / target_skill in agent_true_test cases. Returns (obj, count).
+
+    Args:
+        test_cases: test_cases 参数。
+        remaps: remaps 参数。
+    """
     if not remaps:
         return test_cases, 0
     obj = test_cases
@@ -406,7 +421,9 @@ _ASSERT_NEEDLE_ALIASES: Dict[str, str] = {
 def align_result_assert_needles(test_cases: Any, test_report: Any = None) -> Tuple[Any, int]:
     """Rewrite result.contains needles that drift from platform handler field names.
 
-    Example: FR asserts ``export_format`` while handler historically emitted ``export_json``.
+    Args:
+        test_cases: test_cases 参数。
+        test_report: test_report 参数。
     """
     missing = set(_extract_missing_assert_needles(test_report))
     if not missing:
@@ -473,7 +490,11 @@ def apply_no_platform_handler_fixes(
 ) -> Dict[str, Any]:
     """Deterministic remap for no_platform_handler (no LLM).
 
-    Returns dict with patched artifacts + meta.
+    Args:
+        agent_app_raw: agent_app_raw 参数。
+        test_cases: test_cases 参数。
+        test_report: test_report 参数。
+        remaps: remaps 参数。
     """
     from core.harness.execution.factory_artifact_sanitize import (
         ensure_agent_app_skill_consistency,
@@ -606,8 +627,8 @@ def apply_no_platform_handler_fixes(
 def bugs_are_media_handler_fixable(test_report: Any) -> bool:
     """True when failures are media skill_invoke field gaps (handler remappable).
 
-    Covers both ``no_platform_handler`` diagnostics and hard FAILs whose
-    missing fields match platform media handler outputs (video_path/keyframes/…).
+    Args:
+        test_report: test_report 参数。
     """
     if bugs_are_no_platform_handler_only(test_report):
         return True
@@ -660,7 +681,11 @@ def bugs_are_media_handler_fixable(test_report: Any) -> bool:
 
 
 def normalize_true_test_media_params(test_cases: Any) -> Tuple[Any, int]:
-    """Normalize invoke params: source→url/file_path, remap fixture paths."""
+    """Normalize invoke params: source→url/file_path, remap fixture paths.
+
+    Args:
+        test_cases: test_cases 参数。
+    """
     from core.harness.media_ops import coerce_media_invoke_params, remap_fixture_path
     from core.harness.execution.true_test_runtime import enrich_media_invoke_from_asserts
 
@@ -726,7 +751,11 @@ def normalize_true_test_media_params(test_cases: Any) -> Tuple[Any, int]:
 
 
 def bugs_are_no_platform_handler_only(test_report: Any) -> bool:
-    """True when every bug is a no_platform_handler diagnostic (safe for deterministic fix)."""
+    """True when every bug is a no_platform_handler diagnostic (safe for deterministic fix).
+
+    Args:
+        test_report: test_report 参数。
+    """
     report = _parse_report(test_report)
     bs = report.get("bug_summary") if isinstance(report.get("bug_summary"), dict) else {}
     bugs = list(bs.get("bugs") or [])
@@ -758,8 +787,11 @@ def plan_fix_from_report(
 ) -> Dict[str, Any]:
     """Hybrid plan: derive failed stages → build_fix_plan (root-cause prefer).
 
-    By default excludes qa/test_cases regenerate so one-click fix keeps a frozen exam.
-    Pass ``regenerate_test_cases=True`` to allow rewriting the suite.
+    Args:
+        run_id: 运行 ID。
+        test_report: test_report 参数。
+        team_stages: team_stages 参数。
+        regenerate_test_cases: regenerate_test_cases 参数。
     """
     from core.harness.execution.decision_trace import build_fix_plan
 

@@ -58,7 +58,14 @@ def _workspace_managers():
 
 @router.get("/change-control/changes", response_model=StatusResponse)
 async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
-    """List Change Control items (derived from syscall_events changesets)."""
+    """List Change Control items (derived from syscall_events changesets).
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -87,6 +94,15 @@ async def list_change_controls(limit: int = 50, offset: int = 0, tenant_id: Opti
 
 @router.get("/change-control/changes/{change_id}", response_model=StatusResponse)
 async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, tenant_id: Optional[str] = None, _auth: str = Depends(require_auth)):
+    """获取 change_control。
+
+    Args:
+        change_id: change 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -117,10 +133,12 @@ async def get_change_control(change_id: str, limit: int = 200, offset: int = 0, 
 
 @router.post("/change-control/changes/{change_id}/autosmoke", response_model=StatusResponse)
 async def autosmoke_change_control(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
-    """
-    Trigger autosmoke for targets referenced by a change_id (best-effort).
-    - Extract targets from latest changeset args.targets, or args.gate.targets.
-    - Records a changeset event: change_control.autosmoke (target_type=change, target_id=change_id)
+    """Trigger autosmoke for targets referenced by a change_id (best-effort).
+
+    Args:
+        change_id: change 标识。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     store = _store()
     scheduler = _job_scheduler()
@@ -236,9 +254,12 @@ async def autosmoke_change_control(change_id: str, http_request: Request, _auth:
 
 @router.post("/change-control/changes/{change_id}/apply-engine-skill-md-patch", response_model=StatusResponse)
 async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _auth: str = Depends(require_auth)):
-    """
-    Apply an engine SKILL.md patch proposed by skill-eval change-control (sync run_job_once).
-    Creates a dedicated job and runs it once (best-effort).
+    """Apply an engine SKILL.md patch proposed by skill-eval change-control (sync run_job_once).
+
+    Args:
+        change_id: change 标识。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     store = _store()
     scheduler = _job_scheduler()
@@ -957,11 +978,14 @@ async def apply_engine_skill_md_patch(change_id: str, http_request: Request, _au
 
 @router.get("/change-control/changes/{change_id}/evidence", response_model=StatusResponse)
 async def export_change_control_evidence(change_id: str, http_request: Request, format: str = "zip", limit: int = 500, _auth: str = Depends(require_auth)):
-    """
-    Export an evidence pack for a change_id.
-    format:
-      - json: returns a JSON object
-      - zip: returns a ZIP containing evidence.json
+    """Export an evidence pack for a change_id.
+
+    Args:
+        change_id: change 标识。
+        http_request: http_request 参数。
+        format: format 参数。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     store = _store()
     if not store:

@@ -19,18 +19,15 @@ def sys_ontology_context(
     include_state_summary: bool = True,
     include_gaps: bool = True,
 ) -> Dict[str, Any]:
-    u"""Query ontology state for Agent context injection.
+    """Query ontology state for Agent context injection.
 
-    返回: state_summary, contradicted_entities, health_score,
-    axiom_violations, related_pages, knowledge_gaps.
-
-    边界:
-      - 只读——不修改本体状态
-      - 公验分数反映的是 T-Box 约束违规数，不是知识质量
-      - knowledge_gaps 中的计数依赖于当前 A-Box 的完整性
-    退路:
-      - 健康分低 → 触发 /ontology/health/triggers 自动策展
-      - 特定实体 → 用 get_entity_quality_score() 获取单实体质量分
+    Args:
+        question: question 参数。
+        max_pages: max_pages 参数。
+        collection_id: collection 标识。
+        include_contradictions: include_contradictions 参数。
+        include_state_summary: include_state_summary 参数。
+        include_gaps: include_gaps 参数。
     """
     from core.harness.knowledge.knowledge_ontology import get_ontology
 

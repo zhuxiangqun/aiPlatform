@@ -13,6 +13,8 @@ from typing import Optional
 
 
 def channel_unsigned_allowed() -> bool:
+    """channel_unsigned_allowed。
+    """
     return os.getenv("AIPLAT_CHANNEL_ALLOW_UNSIGNED", "").strip().lower() in (
         "1",
         "true",
@@ -22,6 +24,8 @@ def channel_unsigned_allowed() -> bool:
 
 
 def slack_signing_secret() -> Optional[str]:
+    """slack_signing_secret。
+    """
     tok = (os.getenv("AIPLAT_SLACK_SIGNING_SECRET") or "").strip()
     return tok or None
 
@@ -32,7 +36,14 @@ def verify_slack_signature(
     body: str,
     signature: str,
 ) -> bool:
-    """Verify Slack HMAC-SHA256 signature (v0=…). Raises ValueError on failure."""
+    """Verify Slack HMAC-SHA256 signature (v0=…). Raises ValueError on failure.
+
+    Args:
+        signing_secret: signing_secret 参数。
+        timestamp: timestamp 参数。
+        body: 请求体。
+        signature: signature 参数。
+    """
     if not signing_secret:
         return channel_unsigned_allowed()
     try:
@@ -51,7 +62,12 @@ def verify_slack_signature(
 
 
 def require_slack_request(headers: dict, raw_body: bytes) -> None:
-    """Raise ValueError when the Slack request must be rejected."""
+    """Raise ValueError when the Slack request must be rejected.
+
+    Args:
+        headers: headers 参数。
+        raw_body: raw_body 参数。
+    """
     secret = slack_signing_secret()
     if not secret:
         if channel_unsigned_allowed():

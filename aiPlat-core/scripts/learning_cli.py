@@ -1288,6 +1288,11 @@ async def _auto_rollback_regression(db: str, args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", required=True, help="ExecutionStore sqlite path")
 

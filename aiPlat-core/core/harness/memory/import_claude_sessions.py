@@ -64,8 +64,9 @@ def _extract_text(content: Any) -> str:
 def parse_claude_session(path: Path, limit: int = MAX_LINES_PER_SESSION) -> List[ClaudeTurn]:
     """解析单个 Claude Code 会话 JSONL → 对话轮次列表。
 
-    按 user→assistant 配对；跳过 system-reminder 噪音；source_tag 标记
-    为 "claude_import"（区别于 user/system/agent/auto_learned 原生来源）。
+    Args:
+        path: 路径。
+        limit: 返回条数上限。
     """
     if not path.exists():
         raise FileNotFoundError(f"Claude session not found: {path}")
@@ -130,7 +131,11 @@ def parse_claude_session(path: Path, limit: int = MAX_LINES_PER_SESSION) -> List
 
 
 def find_claude_sessions(base_path: Optional[str] = None) -> List[Path]:
-    """查找本地 Claude Code 会话 JSONL 文件。"""
+    """查找本地 Claude Code 会话 JSONL 文件。
+
+    Args:
+        base_path: base_path 参数。
+    """
     candidates = [Path(p).expanduser() for p in (DEFAULT_PATHS if base_path is None else (base_path,))]
     found: List[Path] = []
     for cand in candidates:
@@ -151,11 +156,11 @@ async def import_claude_sessions(
 ) -> Dict[str, Any]:
     """导入 Claude Code 会话 → MemoryManager（P0-b 主入口）。
 
-    :param memory_manager: 实现 save_interaction(user_message, assistant_message, ...) 的记忆管理器
-    :param base_path: Claude 会话目录（默认 ~/.claude/projects + transcripts）
-    :param session_files: 显式指定会话文件（用于测试/精确导入）
-    :param max_sessions: 单次导入会话数上限
-    :return: {imported, sessions, turns, skipped, errors}
+    Args:
+        memory_manager: memory_manager 参数。
+        base_path: base_path 参数。
+        session_files: session_files 参数。
+        max_sessions: max_sessions 参数。
     """
     if session_files is None:
         session_files = find_claude_sessions(base_path)

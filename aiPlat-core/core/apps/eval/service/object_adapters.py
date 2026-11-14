@@ -63,6 +63,11 @@ _DEFAULT_CAPS: Dict[str, tuple] = {
 
 
 def default_set_ids_for_type(object_type: str) -> List[str]:
+    """default_set_ids_for_type。
+
+    Args:
+        object_type: object_type 参数。
+    """
     ot = (object_type or "").strip()
     return list(DEFAULT_SET_IDS.get(ot) or ())
 
@@ -75,6 +80,15 @@ def build_skill_target_contract(
     eval_profile: Optional[Mapping[str, Any]] = None,
     source_refs: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
+    """构建 skill_target_contract。
+
+    Args:
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
+    """
     profile = dict(eval_profile or {})
     if capabilities is not None:
         caps = list(capabilities)
@@ -104,7 +118,15 @@ def build_api_target_contract(
     eval_profile: Optional[Mapping[str, Any]] = None,
     source_refs: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """External HTTP / chat_pull targets use object_type=api."""
+    """External HTTP / chat_pull targets use object_type=api.
+
+    Args:
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
+    """
     profile = dict(eval_profile or {})
     oid = object_id if str(object_id).startswith("ext:") else f"ext:{object_id}"
     if capabilities is not None:
@@ -137,6 +159,15 @@ def build_generated_app_target_contract(
     eval_profile: Optional[Mapping[str, Any]] = None,
     source_refs: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
+    """构建 generated_app_target_contract。
+
+    Args:
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
+    """
     profile = dict(eval_profile or {})
     if capabilities is not None:
         caps = list(capabilities)
@@ -172,7 +203,19 @@ def build_contract_for_object_type(
     eval_profile: Optional[Mapping[str, Any]] = None,
     source_refs: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
-    """Single entry: object_type → adapter. Raises on unknown type."""
+    """Single entry: object_type → adapter. Raises on unknown type.
+
+    Args:
+        object_type: object_type 参数。
+        object_id: object 标识。
+        object_version: object_version 参数。
+        capabilities: capabilities 参数。
+        tools: tools 参数。
+        permissions: permissions 参数。
+        roles: roles 参数。
+        eval_profile: eval_profile 参数。
+        source_refs: source_refs 参数。
+    """
     ot = (object_type or "").strip()
     if ot not in OBJECT_TYPES:
         raise ValueError(f"invalid object_type: {ot or '(empty)'}")
@@ -245,7 +288,13 @@ def build_contract_for_object_type(
 
 
 def advisory_runtime_tier(*, object_type: str, live: bool, target_runtime: Sequence[str]) -> str:
-    """Plan-time advisory actual tier (re-annotated at execution)."""
+    """Plan-time advisory actual tier (re-annotated at execution).
+
+    Args:
+        object_type: object_type 参数。
+        live: 是否 live（非 fixture）路径。
+        target_runtime: target_runtime 参数。
+    """
     ot = (object_type or "").strip()
     if not live:
         return "fixture"

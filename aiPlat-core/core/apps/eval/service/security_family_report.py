@@ -1,9 +1,15 @@
-"""SEC-P0a: threat-family catalog + per-family report schema (engineering).
+"""安全威胁族目录与分族报告（SEC-P0a / P0c，工程态）。
 
-Honesty:
-- L1 must not host T05-exec / T06 / T07 / T08 / T12.
-- Macro ASR across families is not_for_claim.
-- Never sets accuracy_claim / security_certification.
+职责
+----
+加载 threat-family catalog，校验 L1 case 的 ``threat_ids``，并聚合
+分族 n/CI 门禁报告；供 CoreFacade / 安全评测面板只读消费。
+
+非目标
+------
+- 不产出 ``accuracy_claim`` / ``security_certification``
+- 不把跨族 Macro ASR 当作可声明指标
+- L1 不得承载 T05-exec / T06 / T07 / T08 / T12；不等于工具执行安全
 """
 from __future__ import annotations
 
@@ -21,10 +27,15 @@ CATALOG_SCHEMA = "eval.security_threat_family_catalog.v1"
 
 
 class SecurityFamilyReportError(ValueError):
-    """Fail-closed security family catalog / report error."""
+    """威胁族目录/报告校验失败（fail-closed）。"""
 
 
 def default_security_seed_dir() -> Path:
+    """返回 workspace 内安全评测种子目录。
+
+    Returns:
+        ``workspace_seeds/eval/agent_capability/security`` 路径。
+    """
     return (
         Path(__file__).resolve().parents[4]
         / "workspace_seeds"
@@ -35,14 +46,35 @@ def default_security_seed_dir() -> Path:
 
 
 def default_catalog_path() -> Path:
+    """返回默认威胁族目录 YAML 路径。
+
+    Returns:
+        ``threat_family_catalog.v1.yaml`` 路径。
+    """
     return default_security_seed_dir() / "threat_family_catalog.v1.yaml"
 
 
 def default_l3_deferred_path() -> Path:
+    """返回 L3 执行类威胁延期清单路径。
+
+    Returns:
+        ``l3_exec_deferred.v1.json`` 路径。
+    """
     return default_security_seed_dir() / "l3_exec_deferred.v1.json"
 
 
 def load_threat_family_catalog(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """加载并校验威胁族目录 YAML。
+
+    Args:
+        path: 可选覆盖路径；默认 ``default_catalog_path()``。
+
+    Returns:
+        目录 dict（含 ``schema`` / ``families`` 等）。
+
+    Raises:
+        SecurityFamilyReportError: 文件缺失、schema 不匹配或 YAML 不可用。
+    """
     p = Path(path) if path else default_catalog_path()
     if not p.is_file():
         raise SecurityFamilyReportError(f"catalog_missing:{p}")
@@ -61,16 +93,41 @@ def load_threat_family_catalog(*, path: Optional[Path] = None) -> Dict[str, Any]
 
 
 def l1_allowed_threats(catalog: Optional[Mapping[str, Any]] = None) -> List[str]:
+    """列出 L1 允许的威胁族 id。
+
+    Args:
+        catalog: 已加载目录；``None`` 时现载默认目录。
+
+    Returns:
+        威胁 id 字符串列表。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     return [str(x) for x in (cat.get("l1_allowed") or [])]
 
 
 def l1_forbidden_threats(catalog: Optional[Mapping[str, Any]] = None) -> List[str]:
+    """列出 L1 禁止的威胁族 id。
+
+    Args:
+        catalog: 已加载目录；``None`` 时现载默认目录。
+
+    Returns:
+        威胁 id 字符串列表。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     return [str(x) for x in (cat.get("l1_forbidden") or [])]
 
 
 def family_min_n(family_id: str, catalog: Optional[Mapping[str, Any]] = None) -> Optional[int]:
+    """读取某威胁族的 L5 最小样本量 ``min_n_l5``。
+
+    Args:
+        family_id: 威胁族 id。
+        catalog: 已加载目录；``None`` 时现载默认目录。
+
+    Returns:
+        整数阈值，或无法解析时 ``None``。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     fams = cat.get("families") if isinstance(cat.get("families"), Mapping) else {}
     row = fams.get(family_id) if isinstance(fams, Mapping) else None
@@ -91,7 +148,16 @@ def validate_case_threat_ids(
     catalog: Optional[Mapping[str, Any]] = None,
     require_l1_layer: bool = False,
 ) -> List[str]:
-    """Return error codes; empty = ok."""
+    """校验 case 的 ``threat_ids``；空列表表示通过。
+
+    Args:
+        case: 单条安全 case（须含 ``threat_ids``；可含 ``eval_layer``）。
+        catalog: 威胁族目录；``None`` 时现载。
+        require_l1_layer: 为真时强制按 L1 允许/禁止表校验。
+
+    Returns:
+        错误码列表；空 = ok。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     errs: List[str] = []
     tids = case.get("threat_ids")
@@ -112,7 +178,7 @@ def validate_case_threat_ids(
                 errs.append(f"l1_forbidden_threat:{sid}")
             elif sid not in allowed_l1:
                 errs.append(f"l1_not_allowed_threat:{sid}")
-    # Explicit anti-false-green: T05-exec never on L1 file
+    # 防止 L1 假绿：T05-exec 必须走 L3，禁止出现在 L1/空 layer
     if "T05-exec" in {str(x) for x in tids} and layer in {"", "L1"}:
         errs.append("t05_exec_requires_l3")
     return errs
@@ -123,6 +189,15 @@ def validate_l1_safety_cases(
     *,
     catalog: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """批量校验 L1 safety cases 的威胁 id 约束。
+
+    Args:
+        cases: case 序列。
+        catalog: 威胁族目录；``None`` 时现载。
+
+    Returns:
+        含 ``ok`` / ``rows`` / 诚实锁字段的校验结果（``accuracy_claim=False``）。
+    """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     rows: List[Dict[str, Any]] = []
     ok = True
@@ -149,6 +224,15 @@ def validate_l1_safety_cases(
 
 
 def empty_family_bucket(family_id: str, catalog: Mapping[str, Any]) -> Dict[str, Any]:
+    """构造未测威胁族的空桶（``report_only``，不可声明）。
+
+    Args:
+        family_id: 威胁族 id。
+        catalog: 已加载威胁族目录。
+
+    Returns:
+        分族统计桶 dict。
+    """
     fams = catalog.get("families") if isinstance(catalog.get("families"), Mapping) else {}
     meta = fams.get(family_id) if isinstance(fams, Mapping) else {}
     meta = meta if isinstance(meta, Mapping) else {}
@@ -162,7 +246,7 @@ def empty_family_bucket(family_id: str, catalog: Mapping[str, Any]) -> Dict[str,
         "rate": None,
         "wilson_ci95": None,
         "min_n_l5": min_n,
-        "status": "report_only",  # P0c will flip when n/CI gate lands
+        "status": "report_only",  # P0c 在 n/CI 门禁落地后才会改状态
         "claim_eligible": False,
         "note": meta.get("note") or meta.get("status"),
     }
@@ -176,10 +260,17 @@ def build_security_family_report(
     pack_id: str = "agent.safety.l1",
     eval_layer: str = "L1",
 ) -> Dict[str, Any]:
-    """Aggregate per-family rates. Macro ASR marked not_for_claim.
+    """按威胁族聚合成功率；Macro ASR 标记为不可声明。
 
-    ``by_case`` values: {threat_ids: [...], ok: bool, status?: str}
-    Missing families → n=0 report_only.
+    Args:
+        by_case: case_id → ``{threat_ids, ok, status?}``；缺族则 n=0 ``report_only``。
+        catalog: 威胁族目录；``None`` 时现载。
+        subject: 可选 Subject 元数据。
+        pack_id: 评测包 id。
+        eval_layer: 评测层标签（如 ``L1``）。
+
+    Returns:
+        分族报告 dict（``claim_eligible`` / ``accuracy_claim`` 恒为 False）。
     """
     cat = dict(catalog) if catalog is not None else load_threat_family_catalog()
     fams = cat.get("families") if isinstance(cat.get("families"), Mapping) else {}
@@ -235,7 +326,8 @@ def build_security_family_report(
         "out_of_scope": oos,
         "below_min_n_families": list(gate.get("below_min_n_families") or []),
         "engineering_ready_families": list(gate.get("engineering_ready_families") or []),
-        "l5_declare_allowed_families": [],  # never auto; needs authorize + signoff elsewhere
+        # 禁止自动放行 L5：须另走授权与签核
+        "l5_declare_allowed_families": [],
         "claim_eligible": False,
         "accuracy_claim": False,
         "security_certification": False,
@@ -248,9 +340,13 @@ def build_security_family_report(
 
 
 def apply_family_sample_gate(bucket: Dict[str, Any]) -> Dict[str, Any]:
-    """Mutate one family bucket: wilson CI + status report_only|engineering_ready|untested.
+    """就地写入 Wilson CI 与分族状态；永不把 claim 置真。
 
-    Never sets claim_eligible / accuracy_claim true.
+    Args:
+        bucket: 单族统计桶（含 ``n`` / ``successes`` / ``min_n_l5``）。
+
+    Returns:
+        同一 ``bucket``（已突变）。
     """
     from core.apps.eval.service.mode_intersection_rank import wilson_score_ci
 
@@ -276,7 +372,7 @@ def apply_family_sample_gate(bucket: Dict[str, Any]) -> Dict[str, Any]:
     bucket["wilson_ci95"] = [lo, hi]
     meets = min_n_i is not None and n >= min_n_i
     bucket["meets_min_n"] = bool(meets)
-    # Enough n → engineering_ready (still report_only for claims).
+    # 样本量够 → engineering_ready；仍禁止当作 accuracy_claim
     if meets:
         bucket["status"] = "engineering_ready"
     else:
@@ -286,6 +382,14 @@ def apply_family_sample_gate(bucket: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def summarize_family_gates(buckets: Mapping[str, Mapping[str, Any]]) -> Dict[str, Any]:
+    """汇总分族门禁分组（below_min_n / engineering_ready / untested）。
+
+    Args:
+        buckets: threat_id → 分族桶。
+
+    Returns:
+        门禁摘要 dict（``accuracy_claim`` 恒 False）。
+    """
     below: List[str] = []
     ready: List[str] = []
     untested: List[str] = []
@@ -324,7 +428,14 @@ def summarize_family_gates(buckets: Mapping[str, Mapping[str, Any]]) -> Dict[str
 def evaluate_security_family_gates(
     report: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Recompute / expose family gates from an existing family report."""
+    """从已有分族报告重算并暴露门禁。
+
+    Args:
+        report: ``build_security_family_report`` 产出（含 ``families``）。
+
+    Returns:
+        门禁摘要，并附回写后的 ``families``。
+    """
     fams = report.get("families") if isinstance(report.get("families"), Mapping) else {}
     buckets = {k: dict(v) for k, v in fams.items() if isinstance(v, Mapping)}
     for b in buckets.values():
@@ -339,7 +450,14 @@ def security_sec_p0c_status(
     *,
     by_case: Optional[Mapping[str, Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
-    """SEC-P0c snapshot: family report with min_n/CI gates applied."""
+    """SEC-P0c 快照：带 min_n/CI 门禁的分族报告。
+
+    Args:
+        by_case: 可选 case 结果映射；缺省空表。
+
+    Returns:
+        状态卡 dict（不可声明）。
+    """
     report = build_security_family_report(by_case=by_case or {}, eval_layer="L1")
     return {
         "schema": "eval.security_sec_p0c_status.v1",
@@ -360,6 +478,17 @@ def security_sec_p0c_status(
 def load_l1_safety_cases_from_seed(
     *, seed_dir: Optional[Path] = None
 ) -> List[Dict[str, Any]]:
+    """从种子目录加载 L1 safety.json cases。
+
+    Args:
+        seed_dir: 可选覆盖根目录；默认 ``agent_capability`` 种子根。
+
+    Returns:
+        case dict 列表。
+
+    Raises:
+        SecurityFamilyReportError: 文件缺失或非数组。
+    """
     root = (
         Path(seed_dir)
         if seed_dir
@@ -378,19 +507,23 @@ def load_l1_safety_cases_from_seed(
 
 
 def security_l1_p0a_status() -> Dict[str, Any]:
-    """Facade-friendly SEC-P0a status: catalog + L1 validate + empty family report."""
+    """门面友好的 SEC-P0a 状态：目录 + L1 校验 + 标注覆盖报告。
+
+    Returns:
+        状态卡；标注覆盖 ≠ 已打分 live 安全跑，``accuracy_claim=False``。
+    """
     cat = load_threat_family_catalog()
     cases = load_l1_safety_cases_from_seed()
     validation = validate_l1_safety_cases(cases, catalog=cat)
-    # Build report from case annotations only (no run results → untested rates)
+    # 仅按 case 标注聚合（无跑分结果 → 覆盖率，非攻击成功率）
     by_case = {
         str(c.get("case_id")): {
             "threat_ids": list(c.get("threat_ids") or []),
-            "ok": True,  # annotation presence only — not a scored run
+            "ok": True,  # 仅表示标注存在，不是得分 run
         }
         for c in cases
     }
-    # For status card: show annotated coverage n, but mark as annotation_only
+    # 状态卡展示标注覆盖 n，并显式标 annotation_only，防止误当 claim
     report = build_security_family_report(
         by_case=by_case, catalog=cat, eval_layer="L1", pack_id="agent.safety.l1"
     )
@@ -399,7 +532,7 @@ def security_l1_p0a_status() -> Dict[str, Any]:
         "SEC-P0a annotation coverage (threat_ids present). "
         "Not a scored live security run. accuracy_claim=false."
     )
-    # Re-tag: annotation n is not attack success
+    # 标注 n ≠ 攻击成功：清空 rate，改 tagged 状态
     for b in report["families"].values():
         if int(b["n"]) > 0:
             b["status"] = "annotated_l1"

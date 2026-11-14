@@ -90,6 +90,11 @@ SKIP_CLOUD_REPLY = (
 
 
 def looks_like_upload_create(blob: str) -> bool:
+    """looks_like_upload_create。
+
+    Args:
+        blob: blob 参数。
+    """
     return bool(_UPLOAD_INTENT_RE.search(str(blob or "")))
 
 
@@ -115,6 +120,11 @@ def _user_answer_blob(history: List[Dict[str, str]], text: str) -> str:
 
 
 def parse_upload_plain_facts(blob: str) -> Dict[str, Any]:
+    """parse_upload_plain_facts。
+
+    Args:
+        blob: blob 参数。
+    """
     text = str(blob or "").strip()
     vendor = None
     if _SKIP_CLOUD_RE.search(text):
@@ -171,6 +181,11 @@ def _missing_upload_fields(facts: Dict[str, Any]) -> List[str]:
 
 
 def synthesize_upload_tool_description(facts: Dict[str, Any]) -> str:
+    """synthesize_upload_tool_description。
+
+    Args:
+        facts: facts 参数。
+    """
     spec = _VENDOR_SPEC[str(facts.get("vendor") or "aliyun")]
     bucket = str(facts.get("bucket") or "").strip()
     bucket_line = (
@@ -201,7 +216,12 @@ def maybe_upload_tool_clarify(
     text: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """If this turn is upload-tool creation, return ask/draft gate (skip jargon LLM)."""
+    """If this turn is upload-tool creation, return ask/draft gate (skip jargon LLM).
+
+    Args:
+        text: text 参数。
+        history: history 参数。
+    """
     trimmed = trim_history(history)
     blob = "\n".join(
         [str(m.get("content") or "") for m in trimmed] + [str(text or "")]
@@ -237,7 +257,12 @@ def maybe_upload_mcp_clarify(
     text: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Same plain questions for upload MCP; still need a real upload server later."""
+    """Same plain questions for upload MCP; still need a real upload server later.
+
+    Args:
+        text: text 参数。
+        history: history 参数。
+    """
     trimmed = trim_history(history)
     blob = "\n".join(
         [str(m.get("content") or "") for m in trimmed] + [str(text or "")]

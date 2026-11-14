@@ -14,6 +14,11 @@ class SkillMixin:
     # ==================== Skill ====================
 
     async def upsert_skill_execution(self, record: Dict[str, Any]) -> None:
+        """upsert_skill_execution。
+
+        Args:
+            record: record 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -132,6 +137,11 @@ class SkillMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_skill_execution(self, execution_id: str) -> Optional[Dict[str, Any]]:
+        """获取 skill_execution。
+
+        Args:
+            execution_id: execution 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -167,6 +177,13 @@ class SkillMixin:
         return await run_store_io(_sync)
 
     async def list_skill_executions(self, skill_id: str, limit: int, offset: int) -> Tuple[List[Dict[str, Any]], int]:
+        """列出 skill_executions。
+
+        Args:
+            skill_id: Skill ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

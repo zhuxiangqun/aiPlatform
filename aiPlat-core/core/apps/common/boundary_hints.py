@@ -78,7 +78,11 @@ def _blob(*parts: Any) -> str:
 
 
 def mentions_external_system(*parts: Any) -> bool:
-    """True for real SaaS/API integration intent — not「外部内容」negations."""
+    """True for real SaaS/API integration intent — not「外部内容」negations.
+
+    Args:
+        parts: parts 参数。
+    """
     text = _blob(*parts)
     if not text:
         return False
@@ -88,7 +92,12 @@ def mentions_external_system(*parts: Any) -> bool:
 
 
 def wants_outbound_network(*, tools: Optional[List[str]] = None, text: str = "") -> bool:
-    """Least-privilege network:「不联网」wins over substring「联网」; bare「搜索」不算。"""
+    """Least-privilege network:「不联网」wins over substring「联网」; bare「搜索」不算。
+
+    Args:
+        tools: tools 参数。
+        text: text 参数。
+    """
     tool_ids = [str(t) for t in (tools or []) if str(t).strip()]
     blob = _blob(text)
     if any(t in _NET_TOOLS for t in tool_ids):
@@ -101,7 +110,8 @@ def wants_outbound_network(*, tools: Optional[List[str]] = None, text: str = "")
 def normalize_raci(raw: Any) -> Optional[Dict[str, Any]]:
     """Normalize RACI dict for AGENT.md frontmatter (create-time responsibility boundary).
 
-    Returns None when empty. Lists capped; unknown shapes soft-fail to None.
+    Args:
+        raw: raw 参数。
     """
     if not isinstance(raw, dict):
         return None
@@ -129,6 +139,12 @@ def normalize_raci(raw: Any) -> Optional[Dict[str, Any]]:
 
 
 def hints_for_agent_draft(draft: Optional[Dict[str, Any]] = None, *, description: str = "") -> List[str]:
+    """hints_for_agent_draft。
+
+    Args:
+        draft: draft 参数。
+        description: description 参数。
+    """
     d = draft if isinstance(draft, dict) else {}
     skills = d.get("skills") if isinstance(d.get("skills"), list) else []
     tools = d.get("tools") if isinstance(d.get("tools"), list) else []
@@ -154,6 +170,12 @@ def hints_for_agent_draft(draft: Optional[Dict[str, Any]] = None, *, description
 
 
 def hints_for_skill_draft(draft: Optional[Dict[str, Any]] = None, *, description: str = "") -> List[str]:
+    """hints_for_skill_draft。
+
+    Args:
+        draft: draft 参数。
+        description: description 参数。
+    """
     d = draft if isinstance(draft, dict) else {}
     text = _blob(description, d.get("description"), d.get("sop"), d.get("display_name"))
     out: List[str] = []
@@ -169,6 +191,12 @@ def hints_for_skill_draft(draft: Optional[Dict[str, Any]] = None, *, description
 
 
 def hints_for_tool_draft(draft: Optional[Dict[str, Any]] = None, *, description: str = "") -> List[str]:
+    """hints_for_tool_draft。
+
+    Args:
+        draft: draft 参数。
+        description: description 参数。
+    """
     d = draft if isinstance(draft, dict) else {}
     text = _blob(description, d.get("description"), d.get("display_name"))
     out: List[str] = []
@@ -180,6 +208,12 @@ def hints_for_tool_draft(draft: Optional[Dict[str, Any]] = None, *, description:
 
 
 def hints_for_mcp_draft(draft: Optional[Dict[str, Any]] = None, *, description: str = "") -> List[str]:
+    """hints_for_mcp_draft。
+
+    Args:
+        draft: draft 参数。
+        description: description 参数。
+    """
     d = draft if isinstance(draft, dict) else {}
     text = _blob(description, d.get("description"), d.get("display_name"))
     out: List[str] = []

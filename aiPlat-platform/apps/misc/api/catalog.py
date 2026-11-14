@@ -1,3 +1,5 @@
+"""catalog：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -36,10 +38,19 @@ async def list_skill_catalog(
     offset: int = 0,
     rt=Depends(get_kernel_runtime),
 ):
-    """
-    Minimal Skill Catalog (M2):
-    - Lists engine + workspace skills with basic filtering
-    - Optionally adds usage_count derived from syscall_events(kind=skill) over a lookback window
+    """Minimal Skill Catalog (M2):。
+
+    Args:
+        q: q 参数。
+        scope: scope 参数。
+        skill_kind: skill_kind 参数。
+        tag: tag 参数。
+        tenant_id: 租户 ID。
+        include_usage: include_usage 参数。
+        usage_lookback_days: usage_lookback_days 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not rt or not store:

@@ -23,10 +23,16 @@ class Session:
     state: Dict[str, Any]
     
     def is_expired(self, ttl: int = 3600) -> bool:
-        """检查是否过期"""
+        """检查是否过期。
+
+        Args:
+            ttl: ttl 参数。
+        """
         return datetime.now(timezone.utc).timestamp() - self.updated_at > ttl
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -44,6 +50,11 @@ class SessionManager:
     """会话管理器"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or {}
         self.session_ttl = self.config.get("session_ttl", 3600)  # 1小时
         self.max_sessions = self.config.get("max_sessions", 1000)
@@ -54,7 +65,12 @@ class SessionManager:
         self._lock = asyncio.Lock()
     
     async def create_session(self, user_id: str, metadata: Dict[str, Any] = None) -> Session:
-        """创建新会话"""
+        """创建新会话。
+
+        Args:
+            user_id: 用户 ID。
+            metadata: metadata 参数。
+        """
         async with self._lock:
             session_id = str(uuid.uuid4())
             now = datetime.now(timezone.utc).timestamp()
@@ -84,7 +100,11 @@ class SessionManager:
             return session
     
     async def get_session(self, session_id: str) -> Optional[Session]:
-        """获取会话"""
+        """获取会话。
+
+        Args:
+            session_id: 会话 ID。
+        """
         async with self._lock:
             session = self._sessions.get(session_id)
             if session and session.is_expired(self.session_ttl):
@@ -94,7 +114,13 @@ class SessionManager:
     
     async def update_session(self, session_id: str, state: Dict[str, Any] = None,
                             metadata: Dict[str, Any] = None) -> bool:
-        """更新会话"""
+        """更新会话。
+
+        Args:
+            session_id: 会话 ID。
+            state: state 参数。
+            metadata: metadata 参数。
+        """
         async with self._lock:
             session = self._sessions.get(session_id)
             if not session:
@@ -128,12 +154,20 @@ class SessionManager:
         return True
 
     async def delete_session(self, session_id: str) -> bool:
-        """删除会话"""
+        """删除会话。
+
+        Args:
+            session_id: 会话 ID。
+        """
         async with self._lock:
             return self._delete_session_unlocked(session_id)
     
     async def get_user_sessions(self, user_id: str) -> list[Session]:
-        """获取用户的所有会话"""
+        """获取用户的所有会话。
+
+        Args:
+            user_id: 用户 ID。
+        """
         async with self._lock:
             session_ids = self._user_sessions.get(user_id, set())
             sessions = []
@@ -146,7 +180,11 @@ class SessionManager:
             return sorted(sessions, key=lambda s: s.updated_at, reverse=True)
     
     async def get_conversation_memory(self, session_id: str) -> Optional[ConversationMemory]:
-        """获取会话的对话内存"""
+        """获取会话的对话内存。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return self._conversation_memories.get(session_id)
     
     async def _cleanup_user_sessions(self, user_id: str) -> int:

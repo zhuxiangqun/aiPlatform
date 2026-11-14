@@ -41,9 +41,8 @@ def _user_packs_dir() -> Path:
 def materialize_prd_gate_seeds(*, overwrite: bool = False) -> Path:
     """Copy kernel ``_common`` + vertical seeds to ~/.aiplat/prd_gates when missing.
 
-    Does not overwrite by default so local edits are preserved. Kernel ``_common``
-    ships under ``prd_gate_packs/``; domain packs (media, …) live in
-    ``workspace_seeds/prd_gates/``. Stale user ``_common.yaml`` still wins on load.
+    Args:
+        overwrite: overwrite 参数。
     """
     dst = _user_packs_dir()
     dst.mkdir(parents=True, exist_ok=True)
@@ -102,10 +101,8 @@ def _load_dir(directory: Path, *, prefer: Dict[str, Dict[str, Any]]) -> None:
 def load_prd_gate_packs(*, force_reload: bool = False) -> List[Dict[str, Any]]:
     """Return all gate packs (common + domains). Cached until force_reload.
 
-    Merge order (later wins):
-      1. Package builtins — kernel-only ``_common``
-      2. Workspace seeds — vertical domains (media, …)
-      3. ~/.aiplat/prd_gates or AIPLAT_PRD_GATES_DIR — user overrides
+    Args:
+        force_reload: force_reload 参数。
     """
     global _PACK_CACHE
     if _PACK_CACHE is not None and not force_reload:
@@ -130,5 +127,7 @@ def load_prd_gate_packs(*, force_reload: bool = False) -> List[Dict[str, Any]]:
 
 
 def clear_prd_gate_pack_cache() -> None:
+    """clear_prd_gate_pack_cache。
+    """
     global _PACK_CACHE
     _PACK_CACHE = None

@@ -20,6 +20,12 @@ _DEMO_KEEP_HITL_ARTIFACTS = frozenset({
 
 
 def normalize_factory_profile(raw: Any, default: str = FACTORY_PROFILE_STANDARD) -> str:
+    """normalize_factory_profile。
+
+    Args:
+        raw: raw 参数。
+        default: default 参数。
+    """
     val = str(raw or default).strip().lower()
     if val in ("minimal", "lite"):
         return FACTORY_PROFILE_DEMO
@@ -67,11 +73,9 @@ def apply_factory_profile_to_stages(
 ) -> List[Any]:
     """Mutate stage hitl flags according to factory_profile + always disable free spawn.
 
-    demo: disable hitl on all stages except the last stage that is QA-like
-    or, if none match, the last stage that originally had hitl=True.
-
-    Phase B W3: every factory stage gets allow_dynamic_spawn=False (contracted
-    team pipeline — no DynamicOrchestrator free multi-agent spawn).
+    Args:
+        stages: stages 参数。
+        profile: 评测 profile。
     """
     profile = normalize_factory_profile(profile)
     out = list(stages)
@@ -120,6 +124,11 @@ def _stage_set_allow_dynamic_spawn(stage: Any, allowed: bool) -> None:
 
 
 def resolve_project_factory_profile(project: Optional[Mapping[str, Any]]) -> str:
+    """resolve_project_factory_profile。
+
+    Args:
+        project: project 参数。
+    """
     if not project:
         return FACTORY_PROFILE_STANDARD
     raw = project.get("factory_profile")

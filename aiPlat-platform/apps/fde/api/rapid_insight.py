@@ -38,7 +38,13 @@ async def rapid_insight_upload(
     industry_name: str = Query("新行业", description="行业名称"),
     tenant_id: str = Query("default", description="租户ID（多客户隔离）"),
 ):
-    """Step 1: 上传行业材料 → 提取实体 → 跨域对齐."""
+    """Step 1: 上传行业材料 → 提取实体 → 跨域对齐.
+
+    Args:
+        files: files 参数。
+        industry_name: industry_name 参数。
+        tenant_id: 租户 ID。
+    """
     from core.apps.fde.service.rapid_insight_service import RapidSession
 
     domain_id = _get_domain_id(industry_name)
@@ -141,7 +147,11 @@ async def rapid_insight_upload(
 
 @router.post("/rapid-insight/analyze")
 async def rapid_insight_analyze(body: Dict[str, Any]):
-    """Step 2: 三问分析 — Q1行业共识 + Q2路线之争 + Q3穿透性试题."""
+    """Step 2: 三问分析 — Q1行业共识 + Q2路线之争 + Q3穿透性试题.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     session = _sessions.get(session_id)
     if not session:
@@ -181,7 +191,11 @@ async def rapid_insight_analyze(body: Dict[str, Any]):
 
 @router.post("/rapid-insight/answer")
 async def rapid_insight_answer(body: Dict[str, Any]):
-    """Step 3: 提交单题答案 → 评分 + 盲区定位."""
+    """Step 3: 提交单题答案 → 评分 + 盲区定位.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     question_id = body.get("question_id", "")
     user_answer = body.get("answer", "")
@@ -251,7 +265,11 @@ async def rapid_insight_answer(body: Dict[str, Any]):
 
 @router.get("/rapid-insight/status/{session_id}")
 async def rapid_insight_status(session_id: str):
-    """获取当前认知得分 + 盲区清单."""
+    """获取当前认知得分 + 盲区清单.
+
+    Args:
+        session_id: 会话 ID。
+    """
     session = _sessions.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="会话不存在")
@@ -291,7 +309,11 @@ def _compute_reuse_rate(session: dict) -> dict:
 
 @router.post("/rapid-insight/re-patch")
 async def rapid_insight_re_patch(body: Dict[str, Any]):
-    """回补修正后重新触发三问分析."""
+    """回补修正后重新触发三问分析.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     session = _sessions.get(session_id)
     if not session:

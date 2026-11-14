@@ -20,6 +20,11 @@ class RelationMapper:
     """Map relationships between ontology instances."""
 
     def __init__(self, domain: OntologyDomain):
+        """初始化。
+
+        Args:
+            domain: domain 参数。
+        """
         self._domain = domain
         self._relation_types = self._build_relation_types()
 
@@ -45,7 +50,9 @@ class RelationMapper:
     ) -> List[Dict[str, Any]]:
         """Detect potential relationships via co-occurrence in same chunk.
 
-        Returns: [{"source": "RAG", "target": "模型幻觉", "candidate_types": ["solves"], "confidence": 0.7}, ...]
+        Args:
+            instances: instances 参数。
+            chunks: chunks 参数。
         """
         relations = []
 
@@ -97,7 +104,9 @@ class RelationMapper:
     ) -> str:
         """Build LLM prompt to verify and type relationships between instance pairs.
 
-        Dynamically reads relation definitions from domain.
+        Args:
+            pairs: pairs 参数。
+            instances: instances 参数。
         """
         # Build instance context
         instance_lines = []
@@ -138,7 +147,14 @@ class RelationMapper:
         model_name: str = "",
         timeout: int = 60,
     ) -> List[Dict[str, Any]]:
-        """Use LLM to verify and type relationships."""
+        """Use LLM to verify and type relationships.
+
+        Args:
+            pairs: pairs 参数。
+            instances: instances 参数。
+            model_name: model_name 参数。
+            timeout: 超时秒数。
+        """
         from core.harness.utils.model_injection import best_model_for_purpose, create_selected_adapter
         from core.adapters.llm.base import LLMConfig
 

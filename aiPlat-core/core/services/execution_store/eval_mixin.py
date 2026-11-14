@@ -25,6 +25,17 @@ class EvalMixin:
         description: Optional[str],
         config: Dict[str, Any],
     ) -> Dict[str, Any]:
+        """upsert_skill_eval_suite。
+
+        Args:
+            suite_id: suite 标识。
+            tenant_id: 租户 ID。
+            scope: scope 参数。
+            target_skill_id: target_skill 标识。
+            name: name 参数。
+            description: description 参数。
+            config: config 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -73,6 +84,11 @@ class EvalMixin:
         return {**row, "config": _json_loads(row.get("config_json")) or {}}
 
     async def get_skill_eval_suite(self, *, suite_id: str) -> Optional[Dict[str, Any]]:
+        """获取 skill_eval_suite。
+
+        Args:
+            suite_id: suite 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -91,6 +107,13 @@ class EvalMixin:
         return {**row, "config": _json_loads(row.get("config_json")) or {}}
 
     async def list_skill_eval_suites(self, *, tenant_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+        """列出 skill_eval_suites。
+
+        Args:
+            tenant_id: 租户 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -121,6 +144,11 @@ class EvalMixin:
         return {**res, "items": out_items}
 
     async def delete_skill_eval_suite(self, *, suite_id: str) -> bool:
+        """删除 skill_eval_suite。
+
+        Args:
+            suite_id: suite 标识。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -146,6 +174,17 @@ class EvalMixin:
         metrics: Optional[Dict[str, Any]],
         error: Optional[str],
     ) -> Dict[str, Any]:
+        """upsert_skill_eval_run。
+
+        Args:
+            run_id: 运行 ID。
+            suite_id: suite 标识。
+            tenant_id: 租户 ID。
+            mode: mode 参数。
+            status: status 参数。
+            metrics: metrics 参数。
+            error: error 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -194,6 +233,11 @@ class EvalMixin:
         return {**row, "metrics": _json_loads(row.get("metrics_json")) if isinstance(row.get("metrics_json"), str) else None}
 
     async def get_skill_eval_run(self, *, run_id: str) -> Optional[Dict[str, Any]]:
+        """获取 skill_eval_run。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -224,6 +268,19 @@ class EvalMixin:
         candidates: List[Dict[str, Any]],
         ok: bool,
     ) -> Dict[str, Any]:
+        """add_skill_eval_result。
+
+        Args:
+            run_id: 运行 ID。
+            query_index: query_index 参数。
+            query_text: query_text 参数。
+            expected: expected 参数。
+            selected_kind: selected_kind 参数。
+            selected_skill_id: selected_skill 标识。
+            selected_score: selected_score 参数。
+            candidates: candidates 参数。
+            ok: ok 参数。
+        """
         await self.init()
         db_path = self._config.db_path
 
@@ -263,6 +320,13 @@ class EvalMixin:
         return {**row, "candidates": _json_loads(row.get("candidates_json")) if isinstance(row.get("candidates_json"), str) else []}
 
     async def list_skill_eval_results(self, *, run_id: str, limit: int = 200, offset: int = 0) -> Dict[str, Any]:
+        """列出 skill_eval_results。
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
         db_path = self._config.db_path
 

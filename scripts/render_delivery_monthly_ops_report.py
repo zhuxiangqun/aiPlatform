@@ -62,6 +62,8 @@ def _fixture_report() -> dict:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--tenant-id", default="default")

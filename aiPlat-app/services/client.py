@@ -18,6 +18,12 @@ class APIClient:
     """API 客户端"""
 
     def __init__(self, base_url: str = "", api_key: str = ""):
+        """初始化。
+
+        Args:
+            base_url: base_url 参数。
+            api_key: api_key 参数。
+        """
         self.base_url = (
             base_url or os.environ.get("AIPLAT_PLATFORM_URL", "http://localhost:8003")
         ).rstrip("/")
@@ -29,12 +35,22 @@ class APIClient:
         }
 
     def set_api_key(self, api_key: str) -> None:
+        """set_api_key。
+
+        Args:
+            api_key: api_key 参数。
+        """
         self.api_key = api_key
         # Prefer explicit API key header; keep Authorization for compatibility
         self._headers["X-AIPLAT-API-KEY"] = api_key
         self._headers["Authorization"] = f"Bearer {api_key}"
 
     def set_tenant_id(self, tenant_id: str) -> None:
+        """set_tenant_id。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         self._headers["X-AIPLAT-TENANT-ID"] = tenant_id
 
     def _request(
@@ -66,21 +82,36 @@ class APIClient:
             return type("Response", (), {"status_code": 500, "json": lambda: {"error": str(e)}})()  # noqa: F821
 
     def get(self, path: str, params: Optional[dict] = None) -> dict:
+        """get。
+
+        Args:
+            path: 路径。
+            params: params 参数。
+        """
         resp = self._request("GET", path, params=params)
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text}
 
     def post(self, path: str, data: dict) -> dict:
+        """post。
+
+        Args:
+            path: 路径。
+            data: data 参数。
+        """
         resp = self._request("POST", path, data=data)
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text}
 
     def post_multipart(self, path: str, *, form: Optional[dict] = None, files: Optional[dict] = None) -> dict:
-        """
-        发送 multipart/form-data（用于上传文件）。
-        files example: {"file": ("name.pdf", open(...,"rb"), "application/pdf")}
+        """发送 multipart/form-data（用于上传文件）。
+
+        Args:
+            path: 路径。
+            form: form 参数。
+            files: files 参数。
         """
         resp = self._request("POST", path, data=form or {}, files=files or {})
         if resp.status_code == 200:
@@ -91,12 +122,23 @@ class APIClient:
             return {"error": "request_failed", "status_code": getattr(resp, "status_code", 500)}
 
     def put(self, path: str, data: dict) -> dict:
+        """put。
+
+        Args:
+            path: 路径。
+            data: data 参数。
+        """
         resp = self._request("PUT", path, data=data)
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text}
 
     def delete(self, path: str) -> dict:
+        """delete。
+
+        Args:
+            path: 路径。
+        """
         resp = self._request("DELETE", path)
         if resp.status_code == 200:
             return resp.json()
@@ -118,18 +160,43 @@ class APIClient:
             return {"error": str(e), "status_code": 500}
 
     async def async_get(self, path: str, params: Optional[dict] = None) -> dict:
+        """async_get。
+
+        Args:
+            path: 路径。
+            params: params 参数。
+        """
         return await self._async_request("GET", path, params=params)
 
     async def async_post(self, path: str, data: dict) -> dict:
+        """async_post。
+
+        Args:
+            path: 路径。
+            data: data 参数。
+        """
         return await self._async_request("POST", path, data=data)
 
     async def async_put(self, path: str, data: dict) -> dict:
+        """async_put。
+
+        Args:
+            path: 路径。
+            data: data 参数。
+        """
         return await self._async_request("PUT", path, data=data)
 
     async def async_delete(self, path: str) -> dict:
+        """async_delete。
+
+        Args:
+            path: 路径。
+        """
         return await self._async_request("DELETE", path)
 
     def health_check(self) -> dict:
+        """health_check。
+        """
         return self.get("/health")
 
 

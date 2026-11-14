@@ -11,6 +11,11 @@ def _artifact(params: Dict[str, Any], key: str) -> Dict[str, Any]:
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     plan = _artifact(params, "security_plan")
     trace = _artifact(params, "security_trace")
     critique = _artifact(params, "security_critique")

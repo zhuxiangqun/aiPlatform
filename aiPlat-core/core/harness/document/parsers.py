@@ -54,6 +54,11 @@ def _resolve_parser(file_path: str, formats: List[str]):
 # ── DOCX ──
 
 def parse_docx(file_path: str) -> List[Dict[str, Any]]:
+    """parse_docx。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["docx", "doc"])
     if converter:
         with open(file_path, "rb") as f:
@@ -64,6 +69,11 @@ def parse_docx(file_path: str) -> List[Dict[str, Any]]:
 # ── PPTX ──
 
 def parse_pptx(file_path: str) -> List[Dict[str, Any]]:
+    """parse_pptx。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["pptx", "ppt"])
     if converter:
         with open(file_path, "rb") as f:
@@ -74,6 +84,11 @@ def parse_pptx(file_path: str) -> List[Dict[str, Any]]:
 # ── MARKDOWN ──
 
 def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
+    """parse_markdown。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["md", "markdown"])
     if converter:
         with open(file_path, "rb") as f:
@@ -84,6 +99,11 @@ def parse_markdown(file_path: str) -> List[Dict[str, Any]]:
 # ── CSV ──
 
 def parse_csv(file_path: str) -> List[Dict[str, Any]]:
+    """parse_csv。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["csv"])
     if converter:
         with open(file_path, "rb") as f:
@@ -94,6 +114,11 @@ def parse_csv(file_path: str) -> List[Dict[str, Any]]:
 # ── MarkItDown (unified DOCX/PPTX/XLSX/PDF/HTML → structured Markdown) ──
 
 def parse_markitdown(file_path: str) -> List[Dict[str, Any]]:
+    """parse_markitdown。
+
+    Args:
+        file_path: file_path 参数。
+    """
     ext = os.path.splitext(file_path)[1].lower()
     registry = get_document_registry()
     info = StreamInfo(local_path=file_path, extension=ext)
@@ -114,17 +139,19 @@ def parse_markitdown(file_path: str) -> List[Dict[str, Any]]:
 # ── HTML ──
 
 def parse_html(file_path: str) -> List[Dict[str, Any]]:
+    """parse_html。
+
+    Args:
+        file_path: file_path 参数。
+    """
     return parse_markitdown(file_path)
 
 
 def extract_text_from_html(html: str) -> str:
     """HTML → 纯文本 (统一入口)。
-    
-    所有 Web 抓取 / URL 摄入路径通过此函数提取文本。
-    替代 webfetch.py / wiki.py / kb/intelligence/service.py 各自的重复实现。
-    
-    Returns:
-        去除标签后的纯文本 (去除了 script/style/noscript/注释)
+
+    Args:
+        html: html 参数。
     """
     # 1. 去除 script / style / noscript 标签及其内容
     html = re.sub(r'<(script|style|noscript)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
@@ -142,6 +169,11 @@ def extract_text_from_html(html: str) -> str:
 # ── Audio ──
 
 def parse_audio(file_path: str) -> List[Dict[str, Any]]:
+    """parse_audio。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["audio", "mp3", "wav", "m4a"])
     if converter:
         with open(file_path, "rb") as f:
@@ -152,6 +184,11 @@ def parse_audio(file_path: str) -> List[Dict[str, Any]]:
 # ── Image ──
 
 def parse_image(file_path: str) -> List[Dict[str, Any]]:
+    """parse_image。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["image", "png", "jpg", "jpeg"])
     if converter:
         with open(file_path, "rb") as f:
@@ -162,6 +199,11 @@ def parse_image(file_path: str) -> List[Dict[str, Any]]:
 # ── JSON ──
 
 def parse_json_document(file_path: str) -> List[Dict[str, Any]]:
+    """parse_json_document。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["json"])
     if converter:
         with open(file_path, "rb") as f:
@@ -172,6 +214,11 @@ def parse_json_document(file_path: str) -> List[Dict[str, Any]]:
 # ── Email .eml ──
 
 def parse_eml(file_path: str) -> List[Dict[str, Any]]:
+    """parse_eml。
+
+    Args:
+        file_path: file_path 参数。
+    """
     converter, info = _resolve_parser(file_path, ["eml"])
     if converter:
         with open(file_path, "rb") as f:
@@ -187,7 +234,12 @@ __all__ = ["parse_docx", "parse_pptx", "parse_markdown", "parse_csv", "parse_aud
 # ── Image extraction from documents ──
 
 def extract_images_from_document(file_path: str, output_dir: str = None) -> List[str]:
-    """Extract embedded images from DOCX/PDF/PPTX to a temp directory."""
+    """Extract embedded images from DOCX/PDF/PPTX to a temp directory.
+
+    Args:
+        file_path: file_path 参数。
+        output_dir: output_dir 参数。
+    """
     import tempfile
     ext = os.path.splitext(file_path)[1].lower()
     out = output_dir or tempfile.mkdtemp(prefix="aiplat_img_")
@@ -268,7 +320,13 @@ def _extract_pptx_images(file_path: str, out_dir: str) -> List[str]:
 async def describe_images(image_paths: List[str],
                            model_name: str = None,
                            prompt: str = "请用2-3句中文描述这张图片的主要内容，包括图中展示的结构、流程或关键信息。") -> List[Dict[str, str]]:
-    """Generate semantic descriptions for images using a vision-capable LLM."""
+    """Generate semantic descriptions for images using a vision-capable LLM.
+
+    Args:
+        image_paths: image_paths 参数。
+        model_name: model_name 参数。
+        prompt: prompt 参数。
+    """
     results = []
     if not image_paths:
         return results

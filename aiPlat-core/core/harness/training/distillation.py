@@ -73,6 +73,7 @@ _log = logging.getLogger("aiplat.distillation")
 
 class DistillationJob:
 
+    """DistillationJob。"""
     job_id: str
 
     teacher_model: str
@@ -133,6 +134,8 @@ class DistillationEngine:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._jobs: Dict[str, DistillationJob] = {}
 
         self._job_dir = get_aiplat_data_dir("distillation")
@@ -167,7 +170,19 @@ class DistillationEngine:
 
     ) -> str:
 
-        """Start a distillation job. Returns job_id for polling."""
+        """Start a distillation job. Returns job_id for polling.
+
+        Args:
+            teacher_model: teacher_model 参数。
+            student_model: student_model 参数。
+            dataset_id: dataset 标识。
+            temperature: temperature 参数。
+            alpha: alpha 参数。
+            mode: mode 参数。
+            epochs: epochs 参数。
+            batch_size: batch_size 参数。
+            learning_rate: learning_rate 参数。
+        """
 
         job_id = f"distill-{uuid.uuid4().hex[:8]}"
 
@@ -469,7 +484,11 @@ class DistillationEngine:
 
     def get_status(self, job_id: str) -> Optional[Dict[str, Any]]:
 
-        """Get distillation job status."""
+        """Get distillation job status.
+
+        Args:
+            job_id: job 标识。
+        """
 
         job = self._jobs.get(job_id)
 
@@ -521,6 +540,8 @@ class DistillationEngine:
 
     def list_jobs(self) -> List[Dict[str, Any]]:
 
+        """列出 jobs。
+        """
         return [self.get_status(jid) for jid in self._jobs if self.get_status(jid)]
 
 
@@ -572,6 +593,8 @@ _distillation_instance: Optional[DistillationEngine] = None
 
 def get_distillation_engine() -> DistillationEngine:
 
+    """获取 distillation_engine。
+    """
     global _distillation_instance
 
     if _distillation_instance is None:

@@ -56,6 +56,11 @@ def _extract_key(request: Request) -> Optional[str]:
 
 
 async def require_auth(request: Request) -> str:
+    """require_auth。
+
+    Args:
+        request: FastAPI Request。
+    """
     api_key_env = _get_env("AIPLAT_API_KEY")
     admin_env = _get_env("AIPLAT_ADMIN_KEY")
 
@@ -76,6 +81,11 @@ async def require_auth(request: Request) -> str:
 
 
 async def require_admin(request: Request) -> str:
+    """require_admin。
+
+    Args:
+        request: FastAPI Request。
+    """
     admin_env = _get_env("AIPLAT_ADMIN_KEY")
 
     if not admin_env and not _get_env("AIPLAT_API_KEY"):

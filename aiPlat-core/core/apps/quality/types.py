@@ -38,6 +38,8 @@ class CheckResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "name": self.name,
             "status": self.status.value,
@@ -61,6 +63,8 @@ class QualityGateResult:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "passed": self.passed,
             "score": self.score,
@@ -102,6 +106,8 @@ class Vulnerability:
     snippet: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "severity": self.severity.value,
             "type": self.type.value,
@@ -123,13 +129,19 @@ class SecurityScanResult:
 
     @property
     def critical_count(self) -> int:
+        """critical_count。
+        """
         return sum(1 for v in self.vulnerabilities if v.severity == VulnerabilitySeverity.CRITICAL)
 
     @property
     def high_count(self) -> int:
+        """high_count。
+        """
         return sum(1 for v in self.vulnerabilities if v.severity == VulnerabilitySeverity.HIGH)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "passed": self.passed,
             "vulnerabilities": [v.to_dict() for v in self.vulnerabilities],
@@ -164,6 +176,8 @@ class VerificationResult:
     details: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "passed": self.passed,
             "message": self.message,

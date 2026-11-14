@@ -34,6 +34,7 @@ _DEEP_LINE_THRESHOLD = int(os.getenv("AIPLAT_AUTOREVIEW_DEEP_LINES", "500") or "
 
 @dataclass(frozen=True)
 class ReviewRouting:
+    """ReviewRouting。"""
     use_panel: bool
     focus: str
     mode: str  # single | quick | deep (report.mode uses single when not panel)
@@ -58,7 +59,12 @@ def _truthy_panel(raw: Any) -> Optional[bool]:
 
 
 def diff_security_score(*, files: Sequence[str], content: str) -> int:
-    """0 = clean; higher = more security-relevant signals."""
+    """0 = clean; higher = more security-relevant signals.
+
+    Args:
+        files: files 参数。
+        content: content 参数。
+    """
     score = 0
     for f in files or []:
         if _PATH_SECURITY_RE.search(str(f) or ""):
@@ -81,7 +87,17 @@ def resolve_review_routing(
     content: str = "",
     total_lines: int = 0,
 ) -> ReviewRouting:
-    """Choose single vs panel (+ focus/mode/preset) from caller intent + diff."""
+    """Choose single vs panel (+ focus/mode/preset) from caller intent + diff.
+
+    Args:
+        panel: panel 参数。
+        focus: focus 参数。
+        mode: mode 参数。
+        preset: preset 参数。
+        files: files 参数。
+        content: content 参数。
+        total_lines: total_lines 参数。
+    """
     focus_n = (focus or "comprehensive").strip().lower() or "comprehensive"
     mode_n = (mode or "quick").strip().lower() or "quick"
     if mode_n not in ("quick", "deep"):

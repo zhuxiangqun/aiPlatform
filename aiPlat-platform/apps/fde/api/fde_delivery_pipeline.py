@@ -12,6 +12,7 @@ router = APIRouter(tags=["fde-delivery-pipeline"])
 
 
 class StartDeliveryPipelineRequest(BaseModel):
+    """StartDeliveryPipelineRequest。"""
     template_id: str = "fde_delivery_v1"
     customer_name: str = ""
     domain_id: str = ""
@@ -20,10 +21,12 @@ class StartDeliveryPipelineRequest(BaseModel):
 
 
 class ApproveDeliveryPipelineRequest(BaseModel):
+    """ApproveDeliveryPipelineRequest。"""
     feedback: str = ""
 
 
 class LinkBuilderRequest(BaseModel):
+    """LinkBuilderRequest。"""
     builder_project_id: str = Field(..., min_length=1)
 
 
@@ -55,7 +58,11 @@ async def _observe_builder(session_id: str, project_id: str) -> Dict[str, Any]:
 
 @router.post("/delivery-pipeline/start", response_model=FdeItemResponse)
 async def start_delivery_pipeline(req: StartDeliveryPipelineRequest) -> Dict[str, Any]:
-    """Start a queryable fde_delivery_v1 session (server-side stage cursor)."""
+    """Start a queryable fde_delivery_v1 session (server-side stage cursor).
+
+    Args:
+        req: req 参数。
+    """
     try:
         from core.api.core_facade import (
             DomainRouter,
@@ -84,6 +91,11 @@ async def start_delivery_pipeline(req: StartDeliveryPipelineRequest) -> Dict[str
 
 @router.get("/delivery-pipeline/{session_id}", response_model=FdeItemResponse)
 async def get_delivery_pipeline(session_id: str) -> Dict[str, Any]:
+    """获取 delivery_pipeline。
+
+    Args:
+        session_id: 会话 ID。
+    """
     from core.api.core_facade import get_fde_delivery_session
 
     session = get_fde_delivery_session(session_id)
@@ -94,6 +106,11 @@ async def get_delivery_pipeline(session_id: str) -> Dict[str, Any]:
 
 @router.get("/delivery-pipeline", response_model=FdeListResponse)
 async def list_delivery_pipelines(limit: int = 20) -> Dict[str, Any]:
+    """列出 delivery_pipelines。
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_fde_delivery_sessions
 
     items = list_fde_delivery_sessions(limit=min(limit, 50))
@@ -104,7 +121,12 @@ async def list_delivery_pipelines(limit: int = 20) -> Dict[str, Any]:
 async def approve_delivery_pipeline(
     session_id: str, req: Optional[ApproveDeliveryPipelineRequest] = None
 ) -> Dict[str, Any]:
-    """Approve current HITL pause; Phase 3 eval when Builder linked."""
+    """Approve current HITL pause; Phase 3 eval when Builder linked.
+
+    Args:
+        session_id: 会话 ID。
+        req: req 参数。
+    """
     try:
         from core.api.core_facade import approve_fde_delivery_session
 
@@ -119,7 +141,12 @@ async def approve_delivery_pipeline(
 
 @router.post("/delivery-pipeline/{session_id}/link-builder", response_model=FdeItemResponse)
 async def link_builder(session_id: str, req: LinkBuilderRequest) -> Dict[str, Any]:
-    """Link existing Builder project_id; then observe factory state."""
+    """Link existing Builder project_id; then observe factory state.
+
+    Args:
+        session_id: 会话 ID。
+        req: req 参数。
+    """
     try:
         from core.api.core_facade import link_fde_delivery_builder_project
 
@@ -135,7 +162,11 @@ async def link_builder(session_id: str, req: LinkBuilderRequest) -> Dict[str, An
 
 @router.post("/delivery-pipeline/{session_id}/observe-builder", response_model=FdeItemResponse)
 async def observe_builder(session_id: str) -> Dict[str, Any]:
-    """Refresh Builder observation (start/observe only — no parallel FDE build)."""
+    """Refresh Builder observation (start/observe only — no parallel FDE build).
+
+    Args:
+        session_id: 会话 ID。
+    """
     from core.api.core_facade import get_fde_delivery_session
 
     session = get_fde_delivery_session(session_id)
@@ -149,7 +180,11 @@ async def observe_builder(session_id: str) -> Dict[str, Any]:
 
 @router.post("/delivery-pipeline/{session_id}/start-builder", response_model=FdeStatusResponse)
 async def start_builder_pipeline(session_id: str) -> Dict[str, Any]:
-    """Trigger Builder start_pipeline for linked project (factory path only)."""
+    """Trigger Builder start_pipeline for linked project (factory path only).
+
+    Args:
+        session_id: 会话 ID。
+    """
     from core.api.core_facade import get_builder_project_service, get_fde_delivery_session
 
     session = get_fde_delivery_session(session_id)
@@ -173,6 +208,11 @@ async def start_builder_pipeline(session_id: str) -> Dict[str, Any]:
 
 @router.post("/delivery-pipeline/{session_id}/evaluate", response_model=FdeItemResponse)
 async def evaluate_delivery(session_id: str) -> Dict[str, Any]:
+    """evaluate_delivery。
+
+    Args:
+        session_id: 会话 ID。
+    """
     from core.api.core_facade import evaluate_fde_delivery_session, get_fde_delivery_session
 
     try:

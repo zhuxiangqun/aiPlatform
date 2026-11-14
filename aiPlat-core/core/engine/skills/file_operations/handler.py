@@ -5,6 +5,11 @@ from typing import Any, Dict
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
+    """execute。
+
+    Args:
+        params: params 参数。
+    """
     from core.apps.tools.base import get_tool_registry
     from core.harness.syscalls.tool import sys_tool_call
 

@@ -24,6 +24,7 @@ _EVIDENCE_SOURCE_INDUSTRY = "行业普遍痛点"
 
 
 class FdeAskRequest(BaseModel):
+    """FdeAskRequest。"""
     question: str
     session_id: str = ""
     industry: str = ""
@@ -33,14 +34,10 @@ class FdeAskRequest(BaseModel):
 
 @router.post("/ask", response_model=FdeStatusResponse)
 async def fde_ask(req: FdeAskRequest):
-    """## platform:allowed
-    回答关于 FDE 诊断报告的追问（B0: 交互式追问）.
+    """## platform:allowed。
 
-    基于 session_id 加载历史诊断上下文，或基于 industry/company/pain_points
-    构建域上下文，然后回答用户的问题。
-
-    Returns:
-        {answer: str, sources: [{type, label, detail}]}
+    Args:
+        req: req 参数。
     """
     question = req.question.strip()
     if not question:

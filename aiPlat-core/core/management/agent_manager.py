@@ -119,6 +119,13 @@ class AgentManager:
         scope: str = "engine",
         reserved_ids: Optional[set] = None,
     ):
+        """初始化。
+
+        Args:
+            seed: seed 参数。
+            scope: scope 参数。
+            reserved_ids: reserved_ids 参数。
+        """
         self._agents: Dict[str, AgentInfo] = {}
         self._stats: Dict[str, AgentStats] = {}
         self._skill_bindings: Dict[str, List[SkillBinding]] = {}
@@ -391,6 +398,12 @@ class AgentManager:
         metadata["integrity"] = integ
 
     def compute_agent_signature_verification(self, agent: "AgentInfo", trusted_keys: Dict[str, str]) -> Dict[str, Any]:
+        """compute_agent_signature_verification。
+
+        Args:
+            agent: agent 参数。
+            trusted_keys: trusted_keys 参数。
+        """
         if not isinstance(getattr(agent, "metadata", None), dict):
             return {}
         prov = dict(agent.metadata.get("provenance") or {}) if isinstance(agent.metadata.get("provenance"), dict) else {}
@@ -544,6 +557,14 @@ class AgentManager:
         tools: Optional[List[str]] = None,
         agent_type: str = "",
     ) -> Optional[AgentInfo]:
+        """find_equivalent。
+
+        Args:
+            display_name: display_name 参数。
+            skills: skills 参数。
+            tools: tools 参数。
+            agent_type: agent_type 参数。
+        """
         want_name = (display_name or "").strip()
         if not want_name:
             return None
@@ -617,8 +638,18 @@ class AgentManager:
     ) -> AgentInfo:
         """Create a new agent.
 
-        When ``reuse_equivalent`` (default), return an existing agent that shares
-        the same display_name + skills/tools fingerprint instead of minting another id.
+        Args:
+            name: name 参数。
+            agent_type: agent_type 参数。
+            config: config 参数。
+            skills: skills 参数。
+            tools: tools 参数。
+            mcp_ids: mcp_ids 参数。
+            workflow_ids: workflow_ids 参数。
+            agent_ids: agent_ids 参数。
+            memory_config: memory_config 参数。
+            metadata: metadata 参数。
+            reuse_equivalent: reuse_equivalent 参数。
         """
         meta = dict(metadata or {})
         try:
@@ -829,7 +860,11 @@ class AgentManager:
             )
     
     async def get_agent(self, agent_id: str) -> Optional[AgentInfo]:
-        """Get agent by ID"""
+        """Get agent by ID。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self._agents.get(agent_id)
     
     async def list_agents(
@@ -841,7 +876,16 @@ class AgentManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[AgentInfo]:
-        """List agents with filters"""
+        """List agents with filters。
+
+        Args:
+            agent_type: agent_type 参数。
+            status: status 参数。
+            category: category 参数。
+            tags: tags 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         agents = list(self._agents.values())
 
         if agent_type:
@@ -874,7 +918,21 @@ class AgentManager:
         memory_config: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Optional[AgentInfo]:
-        """Update agent configuration"""
+        """Update agent configuration。
+
+        Args:
+            agent_id: Agent ID。
+            name: name 参数。
+            status: status 参数。
+            config: config 参数。
+            skills: skills 参数。
+            tools: tools 参数。
+            mcp_ids: mcp_ids 参数。
+            workflow_ids: workflow_ids 参数。
+            agent_ids: agent_ids 参数。
+            memory_config: memory_config 参数。
+            metadata: metadata 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return None
@@ -1084,7 +1142,11 @@ class AgentManager:
         return (sop_markdown or "").strip("\n").rstrip() + "\n"
 
     async def get_agent_sop(self, agent_id: str) -> Optional[Dict[str, Any]]:
-        """Get SOP markdown for agent (workspace-friendly)."""
+        """Get SOP markdown for agent (workspace-friendly).
+
+        Args:
+            agent_id: Agent ID。
+        """
         info = self._read_agent_md(agent_id)
         if not info:
             return None
@@ -1092,7 +1154,12 @@ class AgentManager:
         return {"agent_id": agent_id, "agent_md": info.get("path"), "sop": sop}
 
     async def update_agent_sop(self, agent_id: str, sop_markdown: str) -> bool:
-        """Update SOP section in AGENT.md (best-effort)."""
+        """Update SOP section in AGENT.md (best-effort).
+
+        Args:
+            agent_id: Agent ID。
+            sop_markdown: sop_markdown 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1117,14 +1184,10 @@ class AgentManager:
             return False
 
     async def get_agent_execution_help(self, agent_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get execution input help/examples/schema for an agent.
-        Priority:
-        1) AGENT.md frontmatter fields:
-           - execution_help (markdown string)
-           - execution_examples (list of {title, content})
-           - execution_input_schema (object)
-        2) Generate defaults from input_schema / bound skills/tools.
+        """Get execution input help/examples/schema for an agent.
+
+        Args:
+            agent_id: Agent ID。
         """
         from core.management.execution_examples import (
             build_agent_task_examples,
@@ -1260,7 +1323,12 @@ class AgentManager:
         agent_id: str,
         examples: List[Dict[str, Any]],
     ) -> bool:
-        """Write execution_examples into AGENT.md frontmatter (best-effort)."""
+        """Write execution_examples into AGENT.md frontmatter (best-effort).
+
+        Args:
+            agent_id: Agent ID。
+            examples: examples 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1307,7 +1375,11 @@ class AgentManager:
             return False
 
     async def delete_agent(self, agent_id: str) -> bool:
-        """Delete agent"""
+        """Delete agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         if agent_id not in self._agents:
             return False
 
@@ -1336,6 +1408,11 @@ class AgentManager:
         return True
     
     async def toggle_enabled(self, agent_id: str) -> Optional[bool]:
+        """toggle_enabled。
+
+        Args:
+            agent_id: Agent ID。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return None
@@ -1344,7 +1421,11 @@ class AgentManager:
         return agent.enabled
     
     async def start_agent(self, agent_id: str) -> bool:
-        """Start agent"""
+        """Start agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1353,7 +1434,11 @@ class AgentManager:
         return True
     
     async def stop_agent(self, agent_id: str) -> bool:
-        """Stop agent"""
+        """Stop agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1362,7 +1447,12 @@ class AgentManager:
         return True
     
     async def bind_skills(self, agent_id: str, skill_ids: List[str]) -> bool:
-        """Bind skills to agent"""
+        """Bind skills to agent。
+
+        Args:
+            agent_id: Agent ID。
+            skill_ids: skill_ids 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1381,7 +1471,12 @@ class AgentManager:
         return True
     
     async def unbind_skill(self, agent_id: str, skill_id: str) -> bool:
-        """Unbind skill from agent"""
+        """Unbind skill from agent。
+
+        Args:
+            agent_id: Agent ID。
+            skill_id: Skill ID。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1396,11 +1491,20 @@ class AgentManager:
         return True
     
     async def get_skill_bindings(self, agent_id: str) -> List[SkillBinding]:
-        """Get skill bindings for agent"""
+        """Get skill bindings for agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self._skill_bindings.get(agent_id, [])
     
     async def bind_tools(self, agent_id: str, tool_ids: List[str]) -> bool:
-        """Bind tools to agent"""
+        """Bind tools to agent。
+
+        Args:
+            agent_id: Agent ID。
+            tool_ids: tool_ids 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1419,7 +1523,12 @@ class AgentManager:
         return True
     
     async def unbind_tool(self, agent_id: str, tool_id: str) -> bool:
-        """Unbind tool from agent"""
+        """Unbind tool from agent。
+
+        Args:
+            agent_id: Agent ID。
+            tool_id: tool 标识。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1434,11 +1543,19 @@ class AgentManager:
         return True
     
     async def get_tool_bindings(self, agent_id: str) -> List[ToolBinding]:
-        """Get tool bindings for agent"""
+        """Get tool bindings for agent。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self._tool_bindings.get(agent_id, [])
     
     async def get_stats(self, agent_id: str) -> Optional[AgentStats]:
-        """Get agent statistics"""
+        """Get agent statistics。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self._stats.get(agent_id)
     
     async def record_execution(
@@ -1451,7 +1568,17 @@ class AgentManager:
         output_data: Optional[Any] = None,
         error: Optional[str] = None
     ) -> bool:
-        """Record execution history"""
+        """Record execution history。
+
+        Args:
+            agent_id: Agent ID。
+            execution_id: execution 标识。
+            status: status 参数。
+            duration_ms: duration_ms 参数。
+            input_data: input_data 参数。
+            output_data: output_data 参数。
+            error: error 参数。
+        """
         if agent_id not in self._agents:
             return False
         
@@ -1482,7 +1609,13 @@ class AgentManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[Dict]:
-        """Get execution history"""
+        """Get execution history。
+
+        Args:
+            agent_id: Agent ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         history = self._execution_history.get(agent_id, [])
         return history[offset:offset + limit]
     
@@ -1495,11 +1628,20 @@ class AgentManager:
         return counts
 
     async def get_versions(self, agent_id: str) -> List[AgentVersion]:
-        """Get agent versions"""
+        """Get agent versions。
+
+        Args:
+            agent_id: Agent ID。
+        """
         return self._versions.get(agent_id, [])
 
     async def create_version(self, agent_id: str, changes: str) -> Optional[AgentVersion]:
-        """Create new version"""
+        """Create new version。
+
+        Args:
+            agent_id: Agent ID。
+            changes: changes 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return None
@@ -1530,7 +1672,12 @@ class AgentManager:
         return version
 
     async def rollback_version(self, agent_id: str, version: str) -> bool:
-        """Rollback to specific version"""
+        """Rollback to specific version。
+
+        Args:
+            agent_id: Agent ID。
+            version: version 参数。
+        """
         agent = self._agents.get(agent_id)
         if not agent:
             return False
@@ -1558,6 +1705,19 @@ class AgentManager:
                                 agent_id: Optional[str] = None, subdir: Optional[str] = None,
                                 auto_detect_subdir: bool = True, allow_overwrite: bool = False,
                                 metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """installer_install。
+
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            agent_id: Agent ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+        """
         scope = (self._scope or "engine").strip().lower()
         if scope != "workspace":
             raise PermissionError("installer_install_only_allowed_in_workspace_scope")
@@ -1594,6 +1754,18 @@ class AgentManager:
                              agent_id: Optional[str] = None, subdir: Optional[str] = None,
                              auto_detect_subdir: bool = True,
                              metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """installer_plan。
+
+        Args:
+            source_type: source_type 参数。
+            url: url 参数。
+            ref: ref 参数。
+            path: 路径。
+            agent_id: Agent ID。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         scope = (self._scope or "engine").strip().lower()
         if scope != "workspace":
             raise PermissionError("installer_plan_only_allowed_in_workspace_scope")
@@ -1618,6 +1790,11 @@ class AgentManager:
                 "claude_plugin": plan.claude_plugin}
 
     async def installer_resolve_head(self, *, url: str) -> Dict[str, Any]:
+        """installer_resolve_head。
+
+        Args:
+            url: url 参数。
+        """
         from core.management.asset_installer import resolve_remote_head_sha
         return {"url": url, "sha": resolve_remote_head_sha(url)}
 

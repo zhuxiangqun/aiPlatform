@@ -1,3 +1,5 @@
+"""domain_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""
 Ontology Editor — Domain CRUD endpoints.
@@ -43,7 +45,11 @@ async def list_domains():
 
 @router.get("/domains/{domain_id}/schema", response_model=StatusResponse)
 async def get_domain_schema(domain_id: str):
-    u"""Get full domain schema as JSON (classes, properties, rules)."""
+    """Get full domain schema as JSON (classes, properties, rules).
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
@@ -56,7 +62,11 @@ async def get_domain_schema(domain_id: str):
 
 @router.post("/domains", response_model=StatusResponse)
 async def create_domain(data: Dict[str, Any]):
-    u"""Create a new empty ontology domain YAML."""
+    """Create a new empty ontology domain YAML.
+
+    Args:
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import create_ontology_domain
         domain_id = data.get("id") or data.get("domain_id", "")
@@ -79,7 +89,12 @@ async def create_domain(data: Dict[str, Any]):
 
 @router.put("/domains/{domain_id}", response_model=StatusResponse)
 async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
-    u"""Update domain metadata (name, description, version, namespace)."""
+    """Update domain metadata (name, description, version, namespace).
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import update_ontology_domain_meta
         result = update_ontology_domain_meta(
@@ -98,7 +113,11 @@ async def update_domain_meta(domain_id: str, data: Dict[str, Any]):
 
 @router.delete("/domains/{domain_id}", response_model=StatusResponse)
 async def delete_domain(domain_id: str):
-    u"""Delete an ontology domain YAML and remove from registry."""
+    """Delete an ontology domain YAML and remove from registry.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import delete_ontology_domain
         result = delete_ontology_domain(domain_id)
@@ -111,7 +130,12 @@ async def delete_domain(domain_id: str):
 
 @router.post("/domains/{domain_id}/classes", response_model=StatusResponse)
 async def upsert_class(domain_id: str, data: Dict[str, Any]):
-    u"""Create or update a class definition within a domain."""
+    """Create or update a class definition within a domain.
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import upsert_ontology_class
         class_name = data.get("class_name") or data.get("name", "")
@@ -131,7 +155,12 @@ async def upsert_class(domain_id: str, data: Dict[str, Any]):
 
 @router.delete("/domains/{domain_id}/classes/{class_name}", response_model=StatusResponse)
 async def delete_class(domain_id: str, class_name: str):
-    u"""Remove a class via proposal apply (F2: no direct live YAML write)."""
+    """Remove a class via proposal apply (F2: no direct live YAML write).
+
+    Args:
+        domain_id: domain 标识。
+        class_name: class_name 参数。
+    """
     try:
         from core.api.core_facade import delete_ontology_class_async
         from urllib.parse import unquote
@@ -149,7 +178,11 @@ async def delete_class(domain_id: str, class_name: str):
 
 @router.get("/domains/{domain_id}/rule-versions", response_model=StatusResponse)
 async def list_rule_versions(domain_id: str):
-    u"""List saved rule version snapshots for a domain."""
+    """List saved rule version snapshots for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import list_rule_versions
         versions = list_rule_versions(domain_id)
@@ -160,7 +193,12 @@ async def list_rule_versions(domain_id: str):
 
 @router.post("/domains/{domain_id}/rules/generate-from-description", response_model=StatusResponse)
 async def generate_rule_from_description(domain_id: str, data: Dict[str, Any]):
-    u"""NL→Rule: LLM generates inference rule draft from natural language description."""
+    """NL→Rule: LLM generates inference rule draft from natural language description.
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema, best_model_for_purpose, resolve_prompt
         import json as _json
@@ -211,7 +249,11 @@ async def generate_rule_from_description(domain_id: str, data: Dict[str, Any]):
 
 @router.post("/domains/{domain_id}/rules/audit", response_model=StatusResponse)
 async def audit_rules(domain_id: str):
-    u"""Audit inference rules for conflicts, unreachable premises, missing transitions."""
+    """Audit inference rules for conflicts, unreachable premises, missing transitions.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         from core.api.core_facade import audit_rules as _audit_rules
@@ -227,7 +269,11 @@ async def audit_rules(domain_id: str):
 
 @router.post("/domains/{domain_id}/publish", response_model=StatusResponse)
 async def publish_domain(domain_id: str):
-    u"""Validate and publish domain YAML — snapshot + cache invalidation."""
+    """Validate and publish domain YAML — snapshot + cache invalidation.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import publish_ontology_domain
         result = publish_ontology_domain(domain_id)
@@ -240,7 +286,12 @@ async def publish_domain(domain_id: str):
 
 @router.post("/domains/{domain_id}/generate-from-description", response_model=StatusResponse)
 async def generate_from_description(domain_id: str, data: Dict[str, Any]):
-    u"""NL→YAML: LLM generates ontology class draft from natural language description."""
+    """NL→YAML: LLM generates ontology class draft from natural language description.
+
+    Args:
+        domain_id: domain 标识。
+        data: data 参数。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema, best_model_for_purpose, resolve_prompt
 

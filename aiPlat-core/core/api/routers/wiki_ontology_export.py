@@ -14,8 +14,9 @@ router = APIRouter(tags=["wiki-ontology-export"])
 async def export_ontology_rdf(format: str = "turtle", collection: str = "default"):
     """Export T-Box + A-Box as OWL/RDF.
 
-    Supported formats: turtle (default), rdfxml, ntriples.
-    Compatible with Protégé, GraphDB, Stardog, and other semantic web tools.
+    Args:
+        format: format 参数。
+        collection: collection 参数。
     """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
@@ -41,10 +42,9 @@ async def export_ontology_rdf(format: str = "turtle", collection: str = "default
 async def export_learned_ontology(format: str = "turtle", collection: str = "default"):
     """Ontology learning output: pending suggestions -> OWL/Turtle.
 
-    (P-补全) Serializes pattern/LLM suggestions (high-frequency concepts,
-    new properties) directly into a loadable .ttl/.owl ontology and persists
-    it to ~/.aiplat/ontologies/{collection}.learned.ttl for human review,
-    import (ontology_importer) or Protege/GraphDB loading.
+    Args:
+        format: format 参数。
+        collection: collection 参数。
     """
     from core.harness.knowledge.knowledge_ontology import (
         export_suggestions_to_owl, write_suggestions_owl_file)
@@ -63,7 +63,11 @@ async def export_learned_ontology(format: str = "turtle", collection: str = "def
 
 @router.get("/infer", response_model=Dict[str, Any])
 async def run_inference_engine(collection: str = "default"):
-    """Run full inference engine and return suggested edges."""
+    """Run full inference engine and return suggested edges.
+
+    Args:
+        collection: collection 参数。
+    """
     try:
         from core.harness.knowledge.knowledge_abox_builder import build_abox
         from core.harness.knowledge.knowledge_validator import TripleStore  # P0-A2 修复: 恢复原模块(定义处)

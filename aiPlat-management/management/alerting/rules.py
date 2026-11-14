@@ -24,19 +24,33 @@ class AlertEngine:
     """告警引擎"""
     
     def __init__(self):
+        """初始化。
+        """
         self.rules: List[AlertRule] = []
         self.active_alerts: Dict[str, Any] = {}
         
     def add_rule(self, rule: AlertRule):
-        """添加告警规则"""
+        """添加告警规则。
+
+        Args:
+            rule: rule 参数。
+        """
         self.rules.append(rule)
         
     def remove_rule(self, rule_name: str):
-        """移除告警规则"""
+        """移除告警规则。
+
+        Args:
+            rule_name: rule_name 参数。
+        """
         self.rules = [r for r in self.rules if r.name != rule_name]
         
     async def evaluate(self, metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """评估告警规则"""
+        """评估告警规则。
+
+        Args:
+            metrics: metrics 参数。
+        """
         triggered_alerts = []
         
         for rule in self.rules:

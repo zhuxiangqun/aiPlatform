@@ -1,3 +1,5 @@
+"""router：模块接口。"""
+
 from fastapi import APIRouter, Depends
 
 from auth.deps import require_auth

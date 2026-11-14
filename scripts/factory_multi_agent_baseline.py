@@ -57,6 +57,11 @@ def _infer_mode(manifest: Dict[str, Any]) -> str:
 
 
 def collect_multi_ratio(apps_root: Path) -> Dict[str, Any]:
+    """collect_multi_ratio。
+
+    Args:
+        apps_root: apps_root 参数。
+    """
     manifests = _find_manifests(apps_root)
     by_mode = {"single": 0, "multi_agent": 0, "invalid": 0}
     details: List[Dict[str, Any]] = []
@@ -94,7 +99,11 @@ def collect_multi_ratio(apps_root: Path) -> Dict[str, Any]:
 
 
 def collect_conformance(apps_root: Path) -> Dict[str, Any]:
-    """只读跑 generated_conformance（不写 rejection 审计）。"""
+    """只读跑 generated_conformance（不写 rejection 审计）。
+
+    Args:
+        apps_root: apps_root 参数。
+    """
     platform_root = Path(__file__).resolve().parents[1] / "aiPlat-platform"
     if str(platform_root) not in sys.path:
         sys.path.insert(0, str(platform_root))
@@ -185,7 +194,11 @@ def collect_conformance(apps_root: Path) -> Dict[str, Any]:
 
 
 def collect_spawn(home: Path) -> Dict[str, Any]:
-    """spawn 基线：持久化事件数 + 工厂路径是否仍可达（静态）。"""
+    """spawn 基线：持久化事件数 + 工厂路径是否仍可达（静态）。
+
+    Args:
+        home: home 参数。
+    """
     log_path = home / "builder" / "spawn_events.jsonl"
     events = 0
     if log_path.is_file():
@@ -222,6 +235,8 @@ def collect_spawn(home: Path) -> Dict[str, Any]:
 
 
 def build_baseline() -> Dict[str, Any]:
+    """build_baseline。
+    """
     home = _aiplat_home()
     apps_root = home / "apps"
     return {
@@ -237,6 +252,8 @@ def build_baseline() -> Dict[str, Any]:
 
 
 def main() -> int:
+    """main。
+    """
     ap = argparse.ArgumentParser(description="Factory multi-agent Phase 0 baseline (read-only)")
     ap.add_argument("--write", action="store_true", help="Write snapshot under AIPLAT_HOME/builder/baselines/")
     ap.add_argument("--json", action="store_true", help="Print full JSON")

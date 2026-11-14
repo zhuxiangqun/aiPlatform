@@ -1,3 +1,5 @@
+"""convergence：模块接口。"""
+
 from core.utils.math_utils import cosine_similarity
 """
 Convergence Detector Module
@@ -27,7 +29,11 @@ class IConvergenceDetector(ABC):
 
     @abstractmethod
     def detect(self, results: List[Any]) -> ConvergenceResult:
-        """Detect convergence in results"""
+        """Detect convergence in results。
+
+        Args:
+            results: results 参数。
+        """
         pass
 
 
@@ -39,10 +45,19 @@ class ExactMatchDetector(IConvergenceDetector):
     """
 
     def __init__(self, threshold: float = 1.0):
+        """初始化。
+
+        Args:
+            threshold: threshold 参数。
+        """
         self._threshold = threshold
 
     def detect(self, results: List[Any]) -> ConvergenceResult:
-        """Detect exact match convergence"""
+        """Detect exact match convergence。
+
+        Args:
+            results: results 参数。
+        """
         if len(results) < 2:
             return ConvergenceResult(
                 converged=False,
@@ -80,10 +95,19 @@ class SimilarityDetector(IConvergenceDetector):
     """
 
     def __init__(self, threshold: float = 0.8):
+        """初始化。
+
+        Args:
+            threshold: threshold 参数。
+        """
         self._threshold = threshold
 
     def detect(self, results: List[Any]) -> ConvergenceResult:
-        """Detect similarity-based convergence"""
+        """Detect similarity-based convergence。
+
+        Args:
+            results: results 参数。
+        """
         if len(results) < 2:
             return ConvergenceResult(
                 converged=False,
@@ -132,11 +156,21 @@ class SemanticSimilarityDetector(IConvergenceDetector):
     """
 
     def __init__(self, threshold: float = 0.85, model: Any = None):
+        """初始化。
+
+        Args:
+            threshold: threshold 参数。
+            model: 模型名。
+        """
         self._threshold = threshold
         self._model = model
 
     def detect(self, results: List[Any]) -> ConvergenceResult:
-        """Detect semantic convergence"""
+        """Detect semantic convergence。
+
+        Args:
+            results: results 参数。
+        """
         if not self._model:
             return ConvergenceResult(
                 converged=False,
@@ -198,10 +232,19 @@ class VotingDetector(IConvergenceDetector):
     """
 
     def __init__(self, min_votes: int = 2):
+        """初始化。
+
+        Args:
+            min_votes: min_votes 参数。
+        """
         self._min_votes = min_votes
 
     def detect(self, results: List[Any]) -> ConvergenceResult:
-        """Detect convergence through voting"""
+        """Detect convergence through voting。
+
+        Args:
+            results: results 参数。
+        """
         if len(results) < 2:
             return ConvergenceResult(
                 converged=False,
@@ -234,7 +277,13 @@ def create_detector(
     threshold: float = 0.8,
     **kwargs
 ) -> IConvergenceDetector:
-    """Factory function to create convergence detector"""
+    """Factory function to create convergence detector。
+
+    Args:
+        detector_type: detector_type 参数。
+        threshold: threshold 参数。
+        kwargs: kwargs 参数。
+    """
     detectors = {
         "exact": ExactMatchDetector,
         "similarity": SimilarityDetector,

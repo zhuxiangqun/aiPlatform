@@ -60,6 +60,11 @@ class MemoryManager:
     """
     
     def __init__(self, seed: bool = True):
+        """初始化。
+
+        Args:
+            seed: seed 参数。
+        """
         self._sessions: Dict[str, SessionInfo] = {}
         self._messages: Dict[str, List[Message]] = {}
         self._stats = MemoryStats()
@@ -100,7 +105,15 @@ class MemoryManager:
         config: Optional[Dict[str, Any]] = None,
         metadata: Optional[Dict[str, Any]] = None
     ) -> SessionInfo:
-        """Create a new session"""
+        """Create a new session。
+
+        Args:
+            agent_type: agent_type 参数。
+            user_id: 用户 ID。
+            session_type: session_type 参数。
+            config: config 参数。
+            metadata: metadata 参数。
+        """
         session_id = f"sess-{uuid.uuid4().hex[:8]}"
         now = datetime.now(timezone.utc)
         
@@ -126,7 +139,11 @@ class MemoryManager:
         return session
     
     async def get_session(self, session_id: str) -> Optional[SessionInfo]:
-        """Get session by ID"""
+        """Get session by ID。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return self._sessions.get(session_id)
     
     async def list_sessions(
@@ -136,7 +153,14 @@ class MemoryManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[SessionInfo]:
-        """List sessions with filters"""
+        """List sessions with filters。
+
+        Args:
+            status: status 参数。
+            agent_type: agent_type 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         sessions = list(self._sessions.values())
         
         if status:
@@ -147,7 +171,11 @@ class MemoryManager:
         return sessions[offset:offset + limit]
     
     async def delete_session(self, session_id: str) -> bool:
-        """Delete session"""
+        """Delete session。
+
+        Args:
+            session_id: 会话 ID。
+        """
         if session_id not in self._sessions:
             return False
         
@@ -170,7 +198,14 @@ class MemoryManager:
         content: str,
         metadata: Optional[Dict[str, Any]] = None
     ) -> Message:
-        """Add message to session"""
+        """Add message to session。
+
+        Args:
+            session_id: 会话 ID。
+            role: role 参数。
+            content: content 参数。
+            metadata: metadata 参数。
+        """
         message_id = f"msg-{uuid.uuid4().hex[:8]}"
         
         message = Message(
@@ -198,12 +233,22 @@ class MemoryManager:
         limit: int = 100,
         offset: int = 0
     ) -> List[Message]:
-        """Get messages for session"""
+        """Get messages for session。
+
+        Args:
+            session_id: 会话 ID。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         messages = self._messages.get(session_id, [])
         return messages[offset:offset + limit]
     
     async def get_context(self, session_id: str) -> Dict[str, Any]:
-        """Get session context"""
+        """Get session context。
+
+        Args:
+            session_id: 会话 ID。
+        """
         session = self._sessions.get(session_id)
         if not session:
             return {}
@@ -234,7 +279,12 @@ class MemoryManager:
         }
     
     async def search_memory(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Search memory for matching messages"""
+        """Search memory for matching messages。
+
+        Args:
+            query: 查询。
+            limit: 返回条数上限。
+        """
         query_lower = query.lower()
         results = []
         
@@ -252,7 +302,11 @@ class MemoryManager:
         return results[:limit]
     
     async def cleanup_memory(self, max_messages: int = 100) -> int:
-        """Cleanup old messages, keeping only the most recent max_messages per session"""
+        """Cleanup old messages, keeping only the most recent max_messages per session。
+
+        Args:
+            max_messages: max_messages 参数。
+        """
         cleaned = 0
         for session_id, messages in self._messages.items():
             if len(messages) > max_messages:

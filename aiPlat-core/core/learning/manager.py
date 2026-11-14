@@ -17,7 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class LearningManager:
+    """LearningManager。"""
     def __init__(self, execution_store: Optional[Any] = None) -> None:
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._store = execution_store
 
     def _get_store(self) -> Optional[Any]:
@@ -41,6 +47,19 @@ class LearningManager:
         trace_id: Optional[str] = None,
         run_id: Optional[str] = None,
     ) -> LearningArtifact:
+        """创建 artifact。
+
+        Args:
+            kind: kind 参数。
+            target_type: target_type 参数。
+            target_id: target 标识。
+            version: version 参数。
+            status: status 参数。
+            payload: 载荷 dict。
+            metadata: metadata 参数。
+            trace_id: trace 标识。
+            run_id: 运行 ID。
+        """
         artifact = LearningArtifact(
             artifact_id=str(uuid.uuid4()),
             kind=kind,
@@ -74,6 +93,13 @@ class LearningManager:
         status: str,
         metadata_update: Optional[Dict[str, Any]] = None,
     ) -> bool:
+        """set_artifact_status。
+
+        Args:
+            artifact_id: artifact 标识。
+            status: status 参数。
+            metadata_update: metadata_update 参数。
+        """
         store = self._get_store()
         if store is None or not hasattr(store, "get_learning_artifact") or not hasattr(store, "upsert_learning_artifact"):
             return False
@@ -112,6 +138,15 @@ class LearningManager:
         status: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
+        """列出 artifacts。
+
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            kind: kind 参数。
+            status: status 参数。
+            limit: 返回条数上限。
+        """
         store = self._get_store()
         if store is None or not hasattr(store, "list_learning_artifacts"):
             return []
@@ -139,8 +174,11 @@ class LearningManager:
     ) -> LearningArtifact:
         """Run evaluation benchmark and produce a scored artifact.
 
-        Tries to load the registered evaluator for the target. Falls back
-        to a basic pass/fail check if no evaluator is available.
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            benchmark_name: benchmark_name 参数。
+            metadata: metadata 参数。
         """
         version = str(int(import_time()))
         scores: Dict[str, Any] = {"benchmark": benchmark_name, "passed": True}
@@ -183,8 +221,10 @@ class LearningManager:
     ) -> Optional[LearningArtifact]:
         """Aggregate recent feedback into a summary artifact.
 
-        Reads feedback events from the execution store and produces a
-        structured feedback summary with signal counts and trends.
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
+            lookback_hours: lookback_hours 参数。
         """
         store = self._get_store()
         if store is None:
@@ -244,14 +284,9 @@ class LearningManager:
     ) -> List[LearningArtifact]:
         """Analyze recent benchmarks + feedback to propose evolutions.
 
-        Returns 0-3 artifacts covering: skill_version bump, prompt revision,
-        and/or policy revision, depending on what the data supports.
-
-        Heuristics (no LLM required):
-        - benchmark score ≥ 0.8 → propose a minor version bump
-        - benchmark score < 0.6 → propose rollback
-        - negative feedback > positive → propose prompt revision
-        - neutral feedback > 80% → propose policy revision (add better signals)
+        Args:
+            target_type: target_type 参数。
+            target_id: target 标识。
         """
         proposals: List[LearningArtifact] = []
         version = str(int(import_time()))
@@ -378,5 +413,7 @@ class LearningManager:
 
 
 def import_time() -> float:
+    """import_time。
+    """
     import time
     return time.time()

@@ -54,6 +54,11 @@ def _fmt_ci(ci: Any) -> str:
 
 
 def detect_forbidden_claim_phrases(text: str) -> List[str]:
+    """detect_forbidden_claim_phrases。
+
+    Args:
+        text: 文本内容。
+    """
     hits: List[str] = []
     s = str(text or "")
     for pat in FORBIDDEN_PATTERNS:
@@ -69,7 +74,14 @@ def select_declare_candidate_families(
     judge_usable: bool = True,
     asr_calibration_status: str = "",
 ) -> Dict[str, Any]:
-    """Pick families eligible for L5 *template* candidate set (not auto-declare)."""
+    """Pick families eligible for L5 *template* candidate set (not auto-declare).
+
+    Args:
+        family_report: family_report 参数。
+        severity_blocked: severity_blocked 参数。
+        judge_usable: judge_usable 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+    """
     fams = family_report.get("families") if isinstance(family_report.get("families"), Mapping) else {}
     blocked = {str(x) for x in (severity_blocked or [])}
     calib = str(asr_calibration_status or "").strip()
@@ -125,7 +137,18 @@ def render_l5_claim_sentence(
     family_rows: Sequence[Mapping[str, Any]],
     excluded_ids: Sequence[str],
 ) -> str:
-    """Appendix-B style allowed sentence (engineering draft)."""
+    """Appendix-B style allowed sentence (engineering draft).
+
+    Args:
+        subject: subject 参数。
+        pack_id: pack 标识。
+        pack_version: pack_version 参数。
+        runtime_tier: runtime_tier 参数。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        family_rows: family_rows 参数。
+        excluded_ids: excluded_ids 参数。
+    """
     s_label = str(
         subject.get("label")
         or subject.get("subject_id")
@@ -167,7 +190,22 @@ def build_security_l5_claim_template(
     explicit_authorize: bool = False,
     signoffs: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Build per-family L5 claim template. Never auto-certifies."""
+    """Build per-family L5 claim template. Never auto-certifies.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+        pack_id: pack 标识。
+        pack_version: pack_version 参数。
+        runtime_tier: runtime_tier 参数。
+        judge_id: judge 标识。
+        judge_version: judge_version 参数。
+        severity_blocked: severity_blocked 参数。
+        judge_usable: judge_usable 参数。
+        asr_calibration_status: asr_calibration_status 参数。
+        explicit_authorize: explicit_authorize 参数。
+        signoffs: signoffs 参数。
+    """
     subj = dict(subject or {})
     report = build_security_family_report(
         by_case=by_case or {},
@@ -283,7 +321,11 @@ def build_security_l5_claim_template(
 
 
 def validate_claim_sentence_against_policy(sentence: str) -> Dict[str, Any]:
-    """Reject forbidden marketing / false-green sentences."""
+    """Reject forbidden marketing / false-green sentences.
+
+    Args:
+        sentence: sentence 参数。
+    """
     hits = detect_forbidden_claim_phrases(sentence)
     return {
         "schema": "eval.security_l5_claim_sentence_validate.v1",
@@ -300,7 +342,12 @@ def security_sec_p2b_status(
     by_case: Optional[Mapping[str, Mapping[str, Any]]] = None,
     subject: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Facade-friendly SEC-P2b status: empty/sample template + locks."""
+    """Facade-friendly SEC-P2b status: empty/sample template + locks.
+
+    Args:
+        by_case: by_case 参数。
+        subject: subject 参数。
+    """
     # Default sample: no scored runs → empty candidates (honest)
     tmpl = build_security_l5_claim_template(
         by_case=by_case or {},

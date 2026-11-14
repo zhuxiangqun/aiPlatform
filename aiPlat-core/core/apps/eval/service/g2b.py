@@ -68,7 +68,11 @@ def _scoped_accuracy_claim(
 
 
 def g2b_pack_status(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Facilitator-facing pack readiness (local files; scoped claim from evidence)."""
+    """Facilitator-facing pack readiness (local files; scoped claim from evidence).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     pack_path = _pack_path()
     pack = _read_json(pack_path) or {}
     tasks = pack.get("tasks") if isinstance(pack.get("tasks"), list) else []
@@ -150,7 +154,11 @@ L5_DEFAULT_MIN_SAMPLE_N = 100
 
 
 def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """AND-gates for scoped G2b accuracy_claim; claim mirrors attestation+aggregate."""
+    """AND-gates for scoped G2b accuracy_claim; claim mirrors attestation+aggregate.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     status = g2b_pack_status(tenant_id=tenant_id)
     claim, att, acc = _scoped_accuracy_claim()
     arena = _read_json(_repo_root() / ".aiplat" / "eval_trust" / "arena_send_ready_v0.json") or {}
@@ -214,7 +222,11 @@ def g2b_claim_unlock_checklist(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
 
 
 def g2b_l5_gap_disclosure(*, tenant_id: str = "eval-v1") -> Dict[str, Any]:
-    """Distance-to-L5 / G2b threshold disclosure; scoped claim from evidence."""
+    """Distance-to-L5 / G2b threshold disclosure; scoped claim from evidence.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     status = g2b_pack_status(tenant_id=tenant_id)
     claim, _att, acc = _scoped_accuracy_claim()
     pass_rate = acc.get("pass_rate")

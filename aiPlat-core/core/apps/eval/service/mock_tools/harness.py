@@ -37,8 +37,9 @@ def allowed_tool_names(
 ) -> Set[str]:
     """Tools the case may call: catalog ∩ (expected ∪ optional allowlist).
 
-    If ``expected_tools`` is empty, allow the full catalog (still mock-only).
-    ``forbidden_tools`` are always excluded.
+    Args:
+        case: case 参数。
+        catalog: catalog 参数。
     """
     cat = dict(catalog) if catalog is not None else load_mock_tool_catalog()
     index = _tool_index(cat)
@@ -91,7 +92,12 @@ def _normalize_calls(raw: Any) -> List[Dict[str, Any]]:
 def validate_tool_args_against_schema(
     args: Mapping[str, Any], schema: Mapping[str, Any]
 ) -> List[str]:
-    """Minimal JSON-Schema object check; prefer jsonschema when installed."""
+    """Minimal JSON-Schema object check; prefer jsonschema when installed.
+
+    Args:
+        args: 位置参数。
+        schema: schema 参数。
+    """
     try:
         import jsonschema  # type: ignore
 
@@ -142,7 +148,11 @@ def invoke_mock_tools(
 ) -> Dict[str, Any]:
     """Invoke scripted calls against mock catalog; enforce allowed set.
 
-    ``fail_mode`` selects a catalog fail_modes.mode_id for all calls (optional).
+    Args:
+        tool_calls: tool_calls 参数。
+        case: case 参数。
+        catalog: catalog 参数。
+        fail_mode: fail_mode 参数。
     """
     cat = dict(catalog) if catalog is not None else load_mock_tool_catalog()
     index = _tool_index(cat)
@@ -246,7 +256,12 @@ def resolve_scripted_tool_calls(
     case: Mapping[str, Any],
     env: Optional[Mapping[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
-    """Prefer env.tool_calls, else case.scripted_tool_calls."""
+    """Prefer env.tool_calls, else case.scripted_tool_calls.
+
+    Args:
+        case: case 参数。
+        env: env 参数。
+    """
     env = env or {}
     if "tool_calls" in env:
         return _normalize_calls(env.get("tool_calls"))

@@ -1,3 +1,5 @@
+"""base：模块接口。"""
+
 import logging
 """
 Agent Base Module
@@ -47,6 +49,14 @@ class BaseAgent(IAgent):
         loop_type: str = "react",
         loop_config: Optional[LoopConfig] = None
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            loop_type: loop_type 参数。
+            loop_config: loop_config 参数。
+        """
         self._config = config
         self._model = model
         self._status = AgentStatus.IDLE
@@ -62,7 +72,11 @@ class BaseAgent(IAgent):
         self._tools: List[Any] = []
 
     async def initialize(self, config: AgentConfig) -> None:
-        """Initialize agent with configuration"""
+        """Initialize agent with configuration。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config
         self._status = AgentStatus.INITIALIZING
         
@@ -77,7 +91,11 @@ class BaseAgent(IAgent):
 
 
     async def execute(self, context: AgentContext) -> AgentResult:
-        """Execute agent with given context"""
+        """Execute agent with given context。
+
+        Args:
+            context: context 参数。
+        """
         self._status = AgentStatus.RUNNING
         self._current_context = context
 
@@ -305,11 +323,19 @@ class BaseAgent(IAgent):
         return self._model
 
     def add_skill(self, skill: Any) -> None:
-        """Add skill to agent. Every agent subclass gets this for free."""
+        """Add skill to agent. Every agent subclass gets this for free.
+
+        Args:
+            skill: skill 参数。
+        """
         self._skills.append(skill)
 
     def add_tool(self, tool: Any) -> None:
-        """Add tool to agent. Every agent subclass gets this for free."""
+        """Add tool to agent. Every agent subclass gets this for free.
+
+        Args:
+            tool: tool 参数。
+        """
         self._tools.append(tool)
 
 
@@ -328,20 +354,41 @@ class ConfigurableAgent(BaseAgent):
         skills: Optional[List[Any]] = None,
         **kwargs
     ):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            model: 模型名。
+            tools: tools 参数。
+            skills: skills 参数。
+            kwargs: kwargs 参数。
+        """
         super().__init__(config, model, **kwargs)
         self._tools = tools or []
         self._skills = skills or []
 
     def add_tool(self, tool: Any) -> None:
-        """Add tool to agent"""
+        """Add tool to agent。
+
+        Args:
+            tool: tool 参数。
+        """
         self._tools.append(tool)
 
     def remove_tool(self, tool_name: str) -> None:
-        """Remove tool from agent"""
+        """Remove tool from agent。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         self._tools = [t for t in self._tools if getattr(t, 'name', '') != tool_name]
 
     def add_skill(self, skill: Any) -> None:
-        """Add skill to agent"""
+        """Add skill to agent。
+
+        Args:
+            skill: skill 参数。
+        """
         self._skills.append(skill)
 
     def get_tools(self) -> List[Any]:
@@ -358,10 +405,12 @@ def create_agent(
     config: Optional[AgentConfig] = None,
     **kwargs
 ) -> IAgent:
-    """
-    Factory function to create agent.
-    
-    Agent types are defined in ~/.aiplat/registry/agent_types.yaml (single source of truth).
+    """Factory function to create agent.
+
+    Args:
+        agent_type: agent_type 参数。
+        config: config 参数。
+        kwargs: kwargs 参数。
     """
     from core.harness.registry.registry_loader import load_agent_types
 

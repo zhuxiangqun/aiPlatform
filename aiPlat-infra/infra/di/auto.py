@@ -17,6 +17,7 @@ from .schemas import Lifetime
 
 @dataclass(frozen=True)
 class InjectableSpec:
+    """InjectableSpec。"""
     service: Type
     implementation: Type
     lifetime: Lifetime = Lifetime.SINGLETON
@@ -31,15 +32,11 @@ def injectable(
     service: Optional[Type] = None,
     lifetime: Lifetime = Lifetime.SINGLETON,
 ) -> Callable[[Type], Type]:
-    """
-    Decorator to register a class as injectable.
+    """Decorator to register a class as injectable.
 
-    Usage:
-        @injectable
-        class Foo: ...
-
-        @injectable(service=IFoo, lifetime=Lifetime.SINGLETON)
-        class FooImpl(IFoo): ...
+    Args:
+        service: service 参数。
+        lifetime: lifetime 参数。
     """
 
     def _wrap(target: Type) -> Type:
@@ -53,5 +50,7 @@ def injectable(
 
 
 def list_injectables() -> List[InjectableSpec]:
+    """列出 injectables。
+    """
     return list(_INJECTABLES)
 

@@ -24,6 +24,7 @@ _log = logging.getLogger("aiplat.success_generalizer")
 
 @dataclass
 class GeneralizedRule:
+    """GeneralizedRule。"""
     rule_id: str
     condition: str        # When does this rule apply?
     action: str           # What action to take?
@@ -34,6 +35,8 @@ class GeneralizedRule:
     status: str = "tentative"  # tentative | verified | deprecated
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "rule_id": self.rule_id,
             "condition": self.condition,
@@ -50,6 +53,12 @@ class SuccessGeneralizer:
     """Extracts generalizable rules from concrete successful executions."""
 
     def __init__(self, min_confidence: float = 0.7, min_verified: int = 2):
+        """初始化。
+
+        Args:
+            min_confidence: min_confidence 参数。
+            min_verified: min_verified 参数。
+        """
         self._min_confidence = min_confidence
         self._min_verified = min_verified
         self._rules: Dict[str, GeneralizedRule] = {}
@@ -63,6 +72,12 @@ class SuccessGeneralizer:
     async def generalize(
         self, task_skill, trajectory_summary: str = ""
     ) -> Optional[GeneralizedRule]:
+        """generalize。
+
+        Args:
+            task_skill: task_skill 参数。
+            trajectory_summary: trajectory_summary 参数。
+        """
         try:
             skill_id = getattr(task_skill, "skill_id", task_skill.get("skill_id", "")) if not isinstance(task_skill, str) else task_skill
             name = getattr(task_skill, "name", task_skill.get("name", "")) if not isinstance(task_skill, str) else task_skill
@@ -168,12 +183,20 @@ class SuccessGeneralizer:
         return f"rule_{h}"
 
     def list_rules(self, domain: str = "default", min_confidence: float = 0.0) -> List[GeneralizedRule]:
+        """列出 rules。
+
+        Args:
+            domain: domain 参数。
+            min_confidence: min_confidence 参数。
+        """
         return [
             r for r in self._rules.values()
             if r.confidence >= min_confidence and (not domain or r.domain == domain)
         ]
 
     def list_verified_rules(self) -> List[GeneralizedRule]:
+        """列出 verified_rules。
+        """
         return [r for r in self._rules.values() if r.status == "verified"]
 
 
@@ -181,6 +204,8 @@ _success_generalizer: Optional[SuccessGeneralizer] = None
 
 
 def get_success_generalizer() -> SuccessGeneralizer:
+    """获取 success_generalizer。
+    """
     global _success_generalizer
     if _success_generalizer is None:
         _success_generalizer = SuccessGeneralizer()

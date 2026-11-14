@@ -29,7 +29,17 @@ async def run_prompt_plan_exam(
     model: str = "",
     max_tasks_per_set: int = 20,
 ) -> Dict[str, Any]:
-    """Compile Plan for prompt + execute selected ``prompt/*`` sets."""
+    """Compile Plan for prompt + execute selected ``prompt/*`` sets.
+
+    Args:
+        object_id: object 标识。
+        set_ids: set_ids 参数。
+        purpose: purpose 参数。
+        include_special: include_special 参数。
+        live: 是否 live（非 fixture）路径。
+        model: 模型名。
+        max_tasks_per_set: max_tasks_per_set 参数。
+    """
     return await run_typed_plan_exam(
         object_type="prompt",
         object_id=object_id or "prompt_under_test",

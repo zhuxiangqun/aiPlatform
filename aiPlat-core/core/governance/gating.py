@@ -1,3 +1,5 @@
+"""gating：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -12,11 +14,18 @@ import logging
 
 
 def new_change_id() -> str:
+    """new_change_id。
+    """
     return f"chg-{uuid.uuid4().hex[:12]}"
 
 
 def autosmoke_enforce(*, store: Any) -> bool:
     # Dev mode: when global approvals are disabled, skip auto-smoke too
+    """autosmoke_enforce。
+
+    Args:
+        store: store 参数。
+    """
     if os.getenv("AIPLAT_APPROVALS_DISABLED", "").lower() in ("1", "true", "yes"):
         return False
     # Env override has highest priority.
@@ -52,7 +61,17 @@ async def require_targets_verified(
     workspace_mcp_manager: Any = None,
     mcp_manager: Any = None,
 ) -> None:
-    """Gate publish/enable actions by autosmoke verification status."""
+    """Gate publish/enable actions by autosmoke verification status.
+
+    Args:
+        store: store 参数。
+        targets: targets 参数。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        skill_manager: skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+        mcp_manager: mcp_manager 参数。
+    """
     if not autosmoke_enforce(store=store):
         return
 
@@ -159,7 +178,20 @@ async def gate_with_change_control(
     workspace_mcp_manager: Any = None,
     mcp_manager: Any = None,
 ) -> str:
-    """Wrap require_targets_verified with a stable change_id and consistent error envelope."""
+    """Wrap require_targets_verified with a stable change_id and consistent error envelope.
+
+    Args:
+        store: store 参数。
+        operation: operation 参数。
+        targets: targets 参数。
+        actor: 操作者身份。
+        approval_request_id: approval_request 标识。
+        workspace_agent_manager: workspace_agent_manager 参数。
+        workspace_skill_manager: workspace_skill_manager 参数。
+        skill_manager: skill_manager 参数。
+        workspace_mcp_manager: workspace_mcp_manager 参数。
+        mcp_manager: mcp_manager 参数。
+    """
     change_id = new_change_id()
     actor0 = actor or {}
     try:

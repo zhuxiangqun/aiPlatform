@@ -1,9 +1,12 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 
 @dataclass
 class Service:
+    """Service。"""
     name: str = ""
     endpoints: List["Endpoint"] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -12,6 +15,7 @@ class Service:
 
 @dataclass
 class Endpoint:
+    """Endpoint。"""
     address: str = ""
     port: int = 0
     weight: int = 1
@@ -20,6 +24,7 @@ class Endpoint:
 
 @dataclass
 class LoadBalancer:
+    """LoadBalancer。"""
     algorithm: str = "round_robin"
     backends: List[Endpoint] = field(default_factory=list)
     health_check: Optional[Dict[str, Any]] = None
@@ -27,6 +32,7 @@ class LoadBalancer:
 
 @dataclass
 class NetworkPolicy:
+    """NetworkPolicy。"""
     type: str = ""
     rules: List[Dict[str, Any]] = field(default_factory=list)
     priority: int = 0
@@ -34,6 +40,7 @@ class NetworkPolicy:
 
 @dataclass
 class DnsRecord:
+    """DnsRecord。"""
     name: str = ""
     type: str = "A"
     value: str = ""
@@ -42,6 +49,7 @@ class DnsRecord:
 
 @dataclass
 class NetworkConfig:
+    """NetworkConfig。"""
     backend: str = "static"
     lb_algorithm: str = "round_robin"
     health_check_interval: int = 10

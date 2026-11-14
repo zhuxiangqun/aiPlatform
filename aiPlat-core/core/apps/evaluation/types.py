@@ -45,9 +45,13 @@ class BenchmarkResult:
     
     @property
     def success_rate(self) -> float:
+        """success_rate。
+        """
         return self.passed_tasks / self.total_tasks if self.total_tasks > 0 else 0.0
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "benchmark_name": self.benchmark_name,
             "total_tasks": self.total_tasks,
@@ -81,6 +85,8 @@ class AgentTrace:
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "session_id": self.session_id,
             "task_id": self.task_id,
@@ -109,6 +115,8 @@ class RegressionResult:
     recommendations: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "has_regression": self.has_regression,
             "current_result": self.current_result.to_dict(),

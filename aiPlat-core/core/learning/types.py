@@ -15,6 +15,7 @@ import time
 
 
 class LearningArtifactKind(str, Enum):
+    """LearningArtifactKind。"""
     EVALUATION_REPORT = "evaluation_report"
     EVIDENCE_PACK = "evidence_pack"
     EVIDENCE_DIFF = "evidence_diff"
@@ -32,6 +33,7 @@ class LearningArtifactKind(str, Enum):
 
 
 class LearningArtifactStatus(str, Enum):
+    """LearningArtifactStatus。"""
     DRAFT = "draft"
     PUBLISHED = "published"
     ROLLED_BACK = "rolled_back"
@@ -39,6 +41,7 @@ class LearningArtifactStatus(str, Enum):
 
 @dataclass
 class LearningArtifact:
+    """LearningArtifact。"""
     artifact_id: str
     kind: LearningArtifactKind
     target_type: str  # agent|skill|prompt|policy
@@ -56,6 +59,8 @@ class LearningArtifact:
     created_at: float = field(default_factory=lambda: time.time())
 
     def to_record(self) -> Dict[str, Any]:
+        """to_record。
+        """
         return {
             "artifact_id": self.artifact_id,
             "kind": self.kind.value,

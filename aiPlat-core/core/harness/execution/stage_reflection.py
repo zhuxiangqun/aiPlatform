@@ -32,7 +32,9 @@ def _normalize_verdict(raw: str) -> str:
 def build_stage_reflection(stage: Any, state: Dict[str, Any]) -> Dict[str, Any]:
     """Build structured reflection dict expected by crystallize / quality signals.
 
-    Shape: verdict, strengths, problems, lesson, timestamp, agent_id, source
+    Args:
+        stage: stage 参数。
+        state: state 参数。
     """
     stage_id = getattr(stage, "id", "") or "unknown"
     agent_id = getattr(stage, "agent_id", "") or stage_id
@@ -95,7 +97,13 @@ async def enrich_reflection_with_llm(
     state: Dict[str, Any],
     reflection: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Optional LLM polish of lesson/problems. Opt-in via env."""
+    """Optional LLM polish of lesson/problems. Opt-in via env.
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        reflection: reflection 参数。
+    """
     if os.getenv("AIPLAT_STAGE_REFLECTION_LLM", "").lower() not in ("1", "true", "yes", "y"):
         return None
     try:
@@ -150,7 +158,12 @@ async def enrich_reflection_with_llm(
 
 
 def stage_reflection_due(stage: Any, state: Dict[str, Any]) -> bool:
-    """Capture when the stage produced an artifact or a contrast signal."""
+    """Capture when the stage produced an artifact or a contrast signal.
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+    """
     if not isinstance(state, dict):
         return False
     key = getattr(stage, "output_artifact", "") or ""
@@ -203,7 +216,12 @@ def _maybe_contrastive_step(state: Dict[str, Any], stage: Any = None) -> Optiona
 
 
 async def capture_stage_reflection(stage: Any, state: Dict[str, Any]) -> Dict[str, Any]:
-    """Public entry: deterministic reflection + optional LLM enrichment."""
+    """Public entry: deterministic reflection + optional LLM enrichment.
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+    """
     reflection = build_stage_reflection(stage, state)
     enriched = await enrich_reflection_with_llm(stage, state, reflection)
     if enriched:

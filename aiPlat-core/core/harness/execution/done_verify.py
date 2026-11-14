@@ -28,7 +28,11 @@ _TRIVIAL_DONE = re.compile(
 
 
 def done_verify_enabled(context: Optional[Dict[str, Any]] = None) -> bool:
-    """Master switch. Env AIPLAT_DONE_VERIFY overrides; default on."""
+    """Master switch. Env AIPLAT_DONE_VERIFY overrides; default on.
+
+    Args:
+        context: context 参数。
+    """
     ctx = context if isinstance(context, dict) else {}
     cfg = ctx.get("_done_verify") if isinstance(ctx.get("_done_verify"), dict) else {}
     if "enabled" in cfg:
@@ -48,7 +52,14 @@ def build_done_verify_config(
     done_verify: Optional[Dict[str, Any]] = None,
     review_gate: str = "",
 ) -> Dict[str, Any]:
-    """Merge PipelineStageConfig / AGENT.md fields into a single ``_done_verify`` dict."""
+    """Merge PipelineStageConfig / AGENT.md fields into a single ``_done_verify`` dict.
+
+    Args:
+        quality_gate: quality_gate 参数。
+        expected_outcomes: expected_outcomes 参数。
+        done_verify: done_verify 参数。
+        review_gate: review_gate 参数。
+    """
     qg = quality_gate if isinstance(quality_gate, dict) else {}
     overlay = done_verify if isinstance(done_verify, dict) else {}
     min_len = overlay.get("min_output_length")
@@ -168,21 +179,33 @@ def _turn_text_blob(context: Dict[str, Any]) -> str:
 
 
 def diagnosis_list_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when the turn already states a [P0]/[P1]/[P2] problem list."""
+    """None when the turn already states a [P0]/[P1]/[P2] problem list.
+
+    Args:
+        context: context 参数。
+    """
     if _DIAGNOSIS_MARK.search(_turn_text_blob(context)):
         return None
     return "done_verify: diagnosis list required — include [P0], [P1], or [P2] before DONE"
 
 
 def refactor_plan_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when the turn includes an explicit refactor plan heading."""
+    """None when the turn includes an explicit refactor plan heading.
+
+    Args:
+        context: context 参数。
+    """
     if _PLAN_HEAD.search(_turn_text_blob(context)):
         return None
     return MSG_PLAN_REQUIRED
 
 
 def dependency_map_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when both a safe zone and a protected zone are named."""
+    """None when both a safe zone and a protected zone are named.
+
+    Args:
+        context: context 参数。
+    """
     text = _turn_text_blob(context)
     if _SAFE_ZONE.search(text) and _PROTECTED_ZONE.search(text):
         return None
@@ -190,7 +213,11 @@ def dependency_map_missing(context: Dict[str, Any]) -> Optional[str]:
 
 
 def rollback_checkpoint_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when a file checkpoint id or explicit rollback tag is present."""
+    """None when a file checkpoint id or explicit rollback tag is present.
+
+    Args:
+        context: context 参数。
+    """
     ctx = context if isinstance(context, dict) else {}
     rows = ctx.get("_file_checkpoints")
     if isinstance(rows, list) and any(
@@ -206,14 +233,22 @@ def rollback_checkpoint_missing(context: Dict[str, Any]) -> Optional[str]:
 
 
 def feature_flag_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when a feature flag / canary switch is named in the turn."""
+    """None when a feature flag / canary switch is named in the turn.
+
+    Args:
+        context: context 参数。
+    """
     if _FEATURE_FLAG_MARK.search(_turn_text_blob(context)):
         return None
     return MSG_FEATURE_FLAG_REQUIRED
 
 
 def rollback_command_missing(context: Dict[str, Any]) -> Optional[str]:
-    """None when a one-click rollback command is written in the turn."""
+    """None when a one-click rollback command is written in the turn.
+
+    Args:
+        context: context 参数。
+    """
     if _ROLLBACK_CMD.search(_turn_text_blob(context)):
         return None
     return MSG_ROLLBACK_CMD_REQUIRED
@@ -247,8 +282,8 @@ def _test_receipt_passed(row: Dict[str, Any]) -> bool:
 def tdd_evidence_missing(context: Dict[str, Any]) -> Optional[str]:
     """None only when every test-runner receipt this turn passed.
 
-    A later failed pytest still blocks DONE. Mentions of a runner inside a
-    file-read receipt do not count.
+    Args:
+        context: context 参数。
     """
     receipts = context.get("_tool_receipts") if isinstance(context, dict) else None
     if not isinstance(receipts, list):
@@ -288,7 +323,11 @@ def _has_completion_standard(cfg: Dict[str, Any], context: Dict[str, Any]) -> bo
 
 
 def stage_verify_context(stage: Any) -> Dict[str, Any]:
-    """Stage-level ``output_schema`` counts as a completion standard."""
+    """Stage-level ``output_schema`` counts as a completion standard.
+
+    Args:
+        stage: stage 参数。
+    """
     schema = getattr(stage, "output_schema", None) if stage is not None else None
     if isinstance(schema, dict) and schema:
         return {"output_schema": schema}
@@ -298,7 +337,8 @@ def stage_verify_context(stage: Any) -> Dict[str, Any]:
 def missing_completion_standard_reason(stage: Any) -> Optional[str]:
     """File-output stages refuse to start when no checkable standard is configured.
 
-    Chat and non-file stages leave the flag off. Length is not a standard.
+    Args:
+        stage: stage 参数。
     """
     if stage is None or not bool(getattr(stage, "uses_file_output", False)):
         return None
@@ -341,7 +381,8 @@ _CODING_BOUND_SKILL_IDS = frozenset(
 def done_verify_exception_is_hard(context: Optional[Dict[str, Any]] = None) -> bool:
     """True when a crashed verify ring must not be treated as pass.
 
-    Shared by ReActLoop, PlanExecuteLoop, and StageRunner inject fail-closed.
+    Args:
+        context: context 参数。
     """
     ctx = context if isinstance(context, dict) else {}
     dv = ctx.get("_done_verify") if isinstance(ctx.get("_done_verify"), dict) else {}
@@ -359,9 +400,9 @@ def done_verify_exception_is_hard(context: Optional[Dict[str, Any]] = None) -> b
 def is_hard_done_veto(reason: str, context: Optional[Dict[str, Any]] = None) -> bool:
     """Vetoes that must not fail-open after repeated attempts.
 
-    Completion-standard gaps always stay hard. Missing review receipts stay hard
-    too — whether via ``require_review`` (SOP Step 5) or soft ``review_gate=…``
-    requiring a follow-up skill — so two soft vetoes cannot greenwash DONE.
+    Args:
+        reason: reason 参数。
+        context: context 参数。
     """
     text = str(reason or "")
     if text.startswith("done_verify: delivery requires a completion standard"):
@@ -394,7 +435,11 @@ def is_hard_done_veto(reason: str, context: Optional[Dict[str, Any]] = None) -> 
 
 
 def resolve_done_verify_config(context: Dict[str, Any]) -> Dict[str, Any]:
-    """Read ``_done_verify`` from loop context, filling defaults from ``quality_gate``."""
+    """Read ``_done_verify`` from loop context, filling defaults from ``quality_gate``.
+
+    Args:
+        context: context 参数。
+    """
     ctx = context if isinstance(context, dict) else {}
     existing = ctx.get("_done_verify") if isinstance(ctx.get("_done_verify"), dict) else {}
     qg = ctx.get("quality_gate") if isinstance(ctx.get("quality_gate"), dict) else {}
@@ -419,8 +464,8 @@ def _default_min_len(cfg: Dict[str, Any]) -> int:
 def run_done_verify(context: Dict[str, Any]) -> Optional[str]:
     """Return veto reason string, or None if completion may proceed.
 
-    Deterministic only — no LLM. Coding-specific substance checks stay in
-    ``ReActLoop._coding_deliverable_veto`` (still called first).
+    Args:
+        context: context 参数。
     """
     if not isinstance(context, dict):
         return None
@@ -669,16 +714,12 @@ def gate_llm_file_output_stage(
 ) -> Optional[str]:
     """Pre-deploy DONE verify for ``execution_backend=llm`` + ``uses_file_output``.
 
-    Agent/ReAct paths already call ``run_done_verify`` via ``_acceptance_gate``.
-    The llm skill path writes ``## FILE:`` blobs then may ``_deploy_result_files``
-    without that ring — this closes the hole (config-driven; no agent_id branches).
-
-    Soft ``review_gate`` is skipped here: llm backend has no follow-up skill loop.
-    Hard ``require_review`` (SOP Step 5) cannot be skipped — oneshot llm cannot
-    produce an autoreview receipt, so deploy is vetoed. Use
-    ``execution_backend=agent`` when peer-review before DONE is required.
-    Fix/path claims without a successful tool receipt also veto (the file blob
-    is not prefixed — a prefix would corrupt ``## FILE:`` deploy).
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        result: result 参数。
+        artifact_key: artifact_key 参数。
+        backend: backend 参数。
     """
     if not isinstance(state, dict):
         return None

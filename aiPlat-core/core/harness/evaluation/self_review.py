@@ -10,7 +10,10 @@ Moved from materials_chat.py Phase 1 refactoring.
 def self_review(answer: str, citations: list, reasoning_path: list) -> str:
     """Post-generation quality check.
 
-    Returns quality flag: "ok" | "needs_review" | "low_evidence"
+    Args:
+        answer: answer 参数。
+        citations: citations 参数。
+        reasoning_path: 路径。
     """
     if not answer or len(answer) < 20:
         return "low_evidence"

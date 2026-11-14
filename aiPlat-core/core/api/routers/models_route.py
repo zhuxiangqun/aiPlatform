@@ -28,7 +28,11 @@ async def get_scoring_profile():
 
 @router.put("/profile", response_model=Dict[str, Any])
 async def update_scoring_profile(body: Dict[str, Any] = Body(...)):
-    """更新工作区 config/infra/llm_profile.yaml 中的评分权重配置。"""
+    """更新工作区 config/infra/llm_profile.yaml 中的评分权重配置。
+
+    Args:
+        body: 请求体 dict。
+    """
     try:
         import yaml
         from pathlib import Path

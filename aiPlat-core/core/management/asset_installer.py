@@ -51,7 +51,11 @@ def _allowlisted_git_url(url: str) -> bool:
 
 
 def resolve_remote_head_sha(url: str) -> str:
-    """Resolve remote HEAD commit SHA for a git URL."""
+    """Resolve remote HEAD commit SHA for a git URL.
+
+    Args:
+        url: url 参数。
+    """
     if not _allowlisted_git_url(url):
         raise ValueError("git_url_not_allowed")
     out = _run(["git", "ls-remote", str(url), "HEAD"], timeout_s=30)
@@ -163,6 +167,7 @@ def _auto_detect_subdir(root: Path, patterns: List[str]) -> Optional[str]:
 
 @dataclass
 class InstallResult:
+    """InstallResult。"""
     installed: List[str]
     skipped: List[Dict[str, Any]]
     converted: Optional[Dict[str, Any]] = None
@@ -172,6 +177,7 @@ class InstallResult:
 
 @dataclass
 class PlanResult:
+    """PlanResult。"""
     source: Dict[str, Any]
     detected_subdir: Optional[str]
     assets: List[Dict[str, Any]]
@@ -221,6 +227,11 @@ class AssetInstaller:
     ASSET_TYPE: str = "asset"
 
     def __init__(self, *, target_base_dir: Path):
+        """初始化。
+
+        Args:
+            target_base_dir: target_base_dir 参数。
+        """
         self._target_base_dir = target_base_dir
 
     # ── Public API ──────────────────────────────────────────────
@@ -231,6 +242,18 @@ class AssetInstaller:
         allow_overwrite: bool = False, metadata: Optional[Dict[str, Any]] = None,
         skip_claude_plugin: bool = False,
     ) -> InstallResult:
+        """install_from_git。
+
+        Args:
+            url: url 参数。
+            ref: ref 参数。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+            skip_claude_plugin: skip_claude_plugin 参数。
+        """
         if not _allowlisted_git_url(url):
             raise ValueError("git_url_not_allowed")
         _validate_ref(ref)
@@ -267,6 +290,16 @@ class AssetInstaller:
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         allow_overwrite: bool = False, metadata: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
+        """install_from_path。
+
+        Args:
+            path: 路径。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+        """
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
             raise ValueError("path_not_found")
@@ -282,6 +315,16 @@ class AssetInstaller:
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         allow_overwrite: bool = False, metadata: Optional[Dict[str, Any]] = None,
     ) -> InstallResult:
+        """install_from_zip。
+
+        Args:
+            zip_path: zip_path 参数。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            allow_overwrite: allow_overwrite 参数。
+            metadata: metadata 参数。
+        """
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")
@@ -302,6 +345,17 @@ class AssetInstaller:
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None, skip_claude_plugin: bool = False,
     ) -> PlanResult:
+        """plan_from_git。
+
+        Args:
+            url: url 参数。
+            ref: ref 参数。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+            skip_claude_plugin: skip_claude_plugin 参数。
+        """
         if not _allowlisted_git_url(url):
             raise ValueError("git_url_not_allowed")
         _validate_ref(ref)
@@ -328,6 +382,15 @@ class AssetInstaller:
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PlanResult:
+        """plan_from_path。
+
+        Args:
+            path: 路径。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         root = Path(path).expanduser().resolve()
         if not root.exists() or not root.is_dir():
             raise ValueError("path_not_found")
@@ -343,6 +406,15 @@ class AssetInstaller:
         subdir: Optional[str] = None, auto_detect_subdir: bool = True,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> PlanResult:
+        """plan_from_zip。
+
+        Args:
+            zip_path: zip_path 参数。
+            asset_id: asset 标识。
+            subdir: subdir 参数。
+            auto_detect_subdir: auto_detect_subdir 参数。
+            metadata: metadata 参数。
+        """
         zp = Path(zip_path).expanduser().resolve()
         if not zp.exists() or not zp.is_file():
             raise ValueError("zip_not_found")
@@ -755,12 +827,14 @@ def _is_claude_plugin(root: Path) -> bool:
 # ── Concrete installers ────────────────────────────────────────
 
 class AgentInstaller(AssetInstaller):
+    """AgentInstaller。"""
     _FILE_PATTERN = "AGENT.md"
     _MANIFEST_NAME = "AGENT.manifest.json"
     ASSET_TYPE = "agent"
 
 
 class MCPInstaller(AssetInstaller):
+    """MCPInstaller。"""
     _FILE_PATTERN = "server.yaml"
     _MANIFEST_NAME = "MCP.manifest.json"
     ASSET_TYPE = "mcp"
@@ -780,6 +854,7 @@ class MCPInstaller(AssetInstaller):
 
 
 class WorkflowInstaller(AssetInstaller):
+    """WorkflowInstaller。"""
     _FILE_PATTERN = "workflow.yaml"
     _MANIFEST_NAME = "WORKFLOW.manifest.json"
     ASSET_TYPE = "workflow"

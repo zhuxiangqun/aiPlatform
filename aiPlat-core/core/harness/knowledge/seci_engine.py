@@ -25,6 +25,8 @@ class SECIEngine:
     """Knowledge creation bus. Single instance per process; idempotent writes."""
 
     def __init__(self):
+        """初始化。
+        """
         self._graph = None
         self._initialized = False
 
@@ -119,12 +121,9 @@ class SECIEngine:
     ) -> Dict[str, Any]:
         """Link a new KnowledgeAtom to existing ones via cross-domain analog discovery.
 
-        Finds semantically similar atoms/entities across all domains and creates
-        SIMILAR_TO KnowledgeLink relations. Updates the atom's state from
-        'extracted' to 'linked' when at least 1 link is created.
-
-        Returns:
-            {linked_count, links: [{target_atom_id, domain, score}]}
+        Args:
+            atom_id: atom 标识。
+            threshold: threshold 参数。
         """
         self._ensure_graph()
 
@@ -262,12 +261,11 @@ class SECIEngine:
     ) -> Dict[str, Any]:
         """Aggregate knowledge atoms and adjust skill weights (C→I).
 
-        Scans knowledge-atom atoms, computes aggregate stats, and adjusts
-        SkillBindingStats weights for relevant skills. Damping (default 0.3)
-        prevents single-run oscillation.
-
-        Returns:
-            {total_atoms, by_type, adjustments: [{skill, old_weight, new_weight}]}
+        Args:
+            domain: domain 参数。
+            atom_type: atom_type 参数。
+            limit: 返回条数上限。
+            damping: damping 参数。
         """
         self._ensure_graph()
 

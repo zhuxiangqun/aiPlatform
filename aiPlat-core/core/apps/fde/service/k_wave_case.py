@@ -18,7 +18,11 @@ def _outcome_from_run(status: str) -> str:
 
 
 def record_case_from_org_run(run: Dict[str, Any]) -> Dict[str, Any]:
-    """Best-effort OrgRun → OntologyCaseStore. Never raises; never mutates TBox."""
+    """Best-effort OrgRun → OntologyCaseStore. Never raises; never mutates TBox.
+
+    Args:
+        run: run 参数。
+    """
     try:
         from core.api.core_facade import OntologyCaseStore
 
@@ -73,7 +77,17 @@ def record_case_from_tool_streak(
     task: str = "",
     detail: str = "",
 ) -> Dict[str, Any]:
-    """Same Run, same tool, same error class, consecutive ≥2 → one failure case."""
+    """Same Run, same tool, same error class, consecutive ≥2 → one failure case.
+
+    Args:
+        domain_id: domain 标识。
+        tool_name: tool_name 参数。
+        error_code: error_code 参数。
+        run_id: 运行 ID。
+        trace_id: trace 标识。
+        task: task 参数。
+        detail: detail 参数。
+    """
     try:
         from core.api.core_facade import OntologyCaseStore
 

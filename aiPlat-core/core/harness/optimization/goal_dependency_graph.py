@@ -23,6 +23,7 @@ logger = logging.getLogger("aiplat.goal_dependency_graph")
 
 @dataclass
 class GoalNode:
+    """GoalNode。"""
     goal: Goal
     dependencies: Set[str] = field(default_factory=set)
     dependents: Set[str] = field(default_factory=set)
@@ -32,11 +33,14 @@ class GoalNode:
 
 @dataclass
 class ExecutionPlan:
+    """ExecutionPlan。"""
     layers: List[List[Goal]] = field(default_factory=list)
     unsolvable: List[Goal] = field(default_factory=list)
     total_goals: int = 0
 
     def remaining(self) -> int:
+        """remaining。
+        """
         return self.total_goals - sum(len(l) for l in self.layers) - len(self.unsolvable)
 
 
@@ -52,14 +56,27 @@ class GoalDependencyGraph:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._nodes: Dict[str, GoalNode] = {}
         self._current_plan: Optional[ExecutionPlan] = None
 
     def add_goal(self, goal: Goal) -> None:
+        """add_goal。
+
+        Args:
+            goal: goal 参数。
+        """
         if goal.goal_id not in self._nodes:
             self._nodes[goal.goal_id] = GoalNode(goal=goal)
 
     def add_dependency(self, goal_id: str, depends_on: str) -> None:
+        """add_dependency。
+
+        Args:
+            goal_id: goal 标识。
+            depends_on: depends_on 参数。
+        """
         if not goal_id or not depends_on:
             return
         self._nodes.setdefault(goal_id, GoalNode(
@@ -84,7 +101,8 @@ class GoalDependencyGraph:
     async def infer_dependencies(self, goals: List[Goal]) -> None:
         """LLM 推断这批子目标之间的执行依赖关系。
 
-        每次推理最多 200 token，temperature=0.2 以提高一致性。
+        Args:
+            goals: goals 参数。
         """
         if len(goals) < 2:
             return
@@ -181,7 +199,8 @@ class GoalDependencyGraph:
     def check_blocked(self, goal_id: str) -> Optional[str]:
         """检查某个 goal 的前置依赖是否都已完成。
 
-        返回阻塞它的 goal_id，或 None (可以执行)。
+        Args:
+            goal_id: goal 标识。
         """
         node = self._nodes.get(goal_id)
         if not node:
@@ -193,12 +212,21 @@ class GoalDependencyGraph:
         return None
 
     def mark_completed(self, goal_id: str) -> None:
+        """mark_completed。
+
+        Args:
+            goal_id: goal 标识。
+        """
         node = self._nodes.get(goal_id)
         if node:
             node.completed = True
 
     def get_next_batch(self, max_count: int = 3) -> List[Goal]:
-        """获取下一批可并行执行的子目标。"""
+        """获取下一批可并行执行的子目标。
+
+        Args:
+            max_count: max_count 参数。
+        """
         ready = [
             n.goal for n in self._nodes.values()
             if not n.completed and self.check_blocked(n.goal.goal_id) is None
@@ -206,6 +234,11 @@ class GoalDependencyGraph:
         return ready[:max_count]
 
     def get_blocked_deps(self, goal_id: str) -> List[str]:
+        """获取 blocked_deps。
+
+        Args:
+            goal_id: goal 标识。
+        """
         node = self._nodes.get(goal_id)
         if not node:
             return []
@@ -215,6 +248,8 @@ class GoalDependencyGraph:
         ]
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         completed = sum(1 for n in self._nodes.values() if n.completed)
         return {
             "total_goals": len(self._nodes),
@@ -229,6 +264,8 @@ _goal_dependency_graph: Optional[GoalDependencyGraph] = None
 
 
 def get_goal_dependency_graph() -> GoalDependencyGraph:
+    """获取 goal_dependency_graph。
+    """
     global _goal_dependency_graph
     if _goal_dependency_graph is None:
         _goal_dependency_graph = GoalDependencyGraph()

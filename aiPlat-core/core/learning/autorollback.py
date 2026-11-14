@@ -24,6 +24,11 @@ from core.harness.infrastructure.approval.types import RequestStatus
 
 
 def compute_exec_metrics(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """compute_exec_metrics。
+
+    Args:
+        items: items 参数。
+    """
     n = len(items)
     failures = 0
     duration_sum = 0.0
@@ -48,7 +53,13 @@ def compute_exec_metrics(items: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def merge_unique_cap(existing: Any, new: Any, *, cap: int) -> List[str]:
-    """Merge two lists with stable order (existing first), dedupe, and cap length."""
+    """Merge two lists with stable order (existing first), dedupe, and cap length.
+
+    Args:
+        existing: existing 参数。
+        new: new 参数。
+        cap: cap 参数。
+    """
     out: List[str] = []
     seen: set[str] = set()
     for src in (existing, new):
@@ -74,6 +85,15 @@ async def rollback_candidate(
     reason: str,
     now: float,
 ) -> bool:
+    """rollback_candidate。
+
+    Args:
+        store: store 参数。
+        mgr: mgr 参数。
+        candidate_id: candidate 标识。
+        reason: reason 参数。
+        now: now 参数。
+    """
     cand = await store.get_learning_artifact(candidate_id)
     if not cand or cand.get("kind") != "release_candidate":
         return False
@@ -131,8 +151,26 @@ async def auto_rollback_regression(
     dry_run: bool = False,
     now: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """
-    Phase 6.16-6.25: Offline auto rollback by regression detection + evidence linkage + approval gate.
+    """Phase 6.16-6.25: Offline auto rollback by regression detection + evidence linkage + approval gate.
+
+    Args:
+        store: store 参数。
+        approval_manager: approval_manager 参数。
+        agent_id: Agent ID。
+        candidate_id: candidate 标识。
+        baseline_candidate_id: baseline_candidate 标识。
+        current_window: current_window 参数。
+        baseline_window: baseline_window 参数。
+        min_samples: min_samples 参数。
+        error_rate_delta_threshold: error_rate_delta_threshold 参数。
+        avg_duration_delta_threshold: avg_duration_delta_threshold 参数。
+        link_baseline: link_baseline 参数。
+        max_linked_evidence: max_linked_evidence 参数。
+        require_approval: require_approval 参数。
+        approval_request_id: approval_request 标识。
+        user_id: 用户 ID。
+        dry_run: 是否仅演练。
+        now: now 参数。
     """
     now_ts = float(now) if now is not None else time.time()
     mgr = LearningManager(execution_store=store)
@@ -537,10 +575,16 @@ async def cleanup_rollback_approvals(
     candidate_id: Optional[str] = None,
     page_size: int = 500,
 ) -> Dict[str, Any]:
-    """
-    Phase 6.26-6.27: Cancel stale pending rollback approvals.
+    """Phase 6.26-6.27: Cancel stale pending rollback approvals.
 
-    Important: do NOT mutate while paginating with offset; use two-phase (collect then cancel).
+    Args:
+        store: store 参数。
+        approval_manager: approval_manager 参数。
+        now: now 参数。
+        dry_run: 是否仅演练。
+        user_id: 用户 ID。
+        candidate_id: candidate 标识。
+        page_size: page_size 参数。
     """
     now_ts = float(now) if now is not None else time.time()
     page_size = max(1, min(int(page_size or 500), 2000))

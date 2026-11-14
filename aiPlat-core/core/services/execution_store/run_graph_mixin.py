@@ -18,7 +18,11 @@ class RunGraphMixin:
     """Persists run_graph_nodes + run_graph_meta."""
 
     async def upsert_run_graph_node(self, node: Dict[str, Any]) -> Dict[str, Any]:
-        """Insert or update a single graph node. Returns the stored row dict."""
+        """Insert or update a single graph node. Returns the stored row dict.
+
+        Args:
+            node: node 参数。
+        """
         await self.init()
         run_id = str(node.get("run_id") or "").strip()
         node_id = str(node.get("node_id") or "").strip()
@@ -146,6 +150,12 @@ class RunGraphMixin:
         return self._row_to_graph_node(raw) if raw else {}
 
     async def get_run_graph_node(self, run_id: str, node_id: str) -> Optional[Dict[str, Any]]:
+        """获取 run_graph_node。
+
+        Args:
+            run_id: 运行 ID。
+            node_id: node 标识。
+        """
         await self.init()
 
         def _sync():
@@ -163,6 +173,11 @@ class RunGraphMixin:
         return self._row_to_graph_node(raw) if raw else None
 
     async def list_run_graph_nodes(self, run_id: str) -> List[Dict[str, Any]]:
+        """列出 run_graph_nodes。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
 
         def _sync():
@@ -184,6 +199,12 @@ class RunGraphMixin:
         return [self._row_to_graph_node(r) for r in rows]
 
     async def set_run_graph_status(self, run_id: str, status: str) -> None:
+        """set_run_graph_status。
+
+        Args:
+            run_id: 运行 ID。
+            status: status 参数。
+        """
         await self.init()
         now = time.time()
 
@@ -207,6 +228,11 @@ class RunGraphMixin:
         await anyio.to_thread.run_sync(_sync)
 
     async def get_run_graph_status(self, run_id: str) -> Optional[str]:
+        """获取 run_graph_status。
+
+        Args:
+            run_id: 运行 ID。
+        """
         await self.init()
 
         def _sync():
@@ -229,7 +255,13 @@ class RunGraphMixin:
         status: str = "ok",
         end_time: Optional[float] = None,
     ) -> List[str]:
-        """Force-close all still-running nodes. Returns closed node_ids."""
+        """Force-close all still-running nodes. Returns closed node_ids.
+
+        Args:
+            run_id: 运行 ID。
+            status: status 参数。
+            end_time: end_time 参数。
+        """
         await self.init()
         end = float(end_time or time.time())
         st = "ok" if status in ("ok", "success", "completed", "done") else "error"

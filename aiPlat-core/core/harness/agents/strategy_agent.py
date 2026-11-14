@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 class AdjustResult:
 
+    """AdjustResult。"""
     adjustments: List[Dict[str, Any]] = field(default_factory=list)
 
     requires_approval: bool = False
@@ -80,10 +81,8 @@ class StrategyAgent:
 
         """Read goal status → suggest safe parameter adjustments.
 
-
-
-        Called from: GoalAwareRouter.adjust() — merged into routing strategy.
-
+        Args:
+            goal_id: goal 标识。
         """
 
         result = AdjustResult()
@@ -161,10 +160,9 @@ class StrategyAgent:
 
         """Respond to realtime anomaly alerts with auto-adjustments.
 
-
-
-        Called from: ToolDriftDetector._alert() → layer 2 glue.
-
+        Args:
+            alert_type: alert_type 参数。
+            tool_name: tool_name 参数。
         """
 
         result = AdjustResult()
@@ -219,6 +217,8 @@ _strategy_agent: Optional[StrategyAgent] = None
 
 def get_strategy_agent() -> StrategyAgent:
 
+    """获取 strategy_agent。
+    """
     global _strategy_agent
 
     if _strategy_agent is None:

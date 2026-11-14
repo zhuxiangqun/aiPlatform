@@ -34,7 +34,10 @@ from core.harness.interfaces.skill import SkillContext, SkillResult
 
 
 class SkillWorkflowRunner:
+    """SkillWorkflowRunner。"""
     def __init__(self):
+        """初始化。
+        """
         self._context_cache: Dict[str, SkillResult] = {}
 
     async def execute_workflow(
@@ -44,7 +47,14 @@ class SkillWorkflowRunner:
         context: Optional[SkillContext] = None,
         timeout: Optional[float] = None,
     ) -> SkillResult:
-        """Execute a sequence of skills, piping outputs."""
+        """Execute a sequence of skills, piping outputs.
+
+        Args:
+            steps: steps 参数。
+            initial_params: initial_params 参数。
+            context: context 参数。
+            timeout: 超时秒数。
+        """
         import uuid as _uuid, time as _time
         workflow_input = copy.deepcopy(initial_params or {})
         last_result: Optional[SkillResult] = None
@@ -152,10 +162,16 @@ class SkillWorkflowRunner:
 
     @staticmethod
     def has_workflow(frontmatter: Dict[str, Any]) -> bool:
-        """Check if a SKILL.md frontmatter declares a workflow."""
+        """Check if a SKILL.md frontmatter declares a workflow.
+
+        Args:
+            frontmatter: frontmatter 参数。
+        """
         steps = frontmatter.get("steps")
         return isinstance(steps, list) and len(steps) > 0
 
 
 def get_workflow_runner() -> SkillWorkflowRunner:
+    """获取 workflow_runner。
+    """
     return SkillWorkflowRunner()

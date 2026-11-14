@@ -53,13 +53,12 @@ def sys_code_intel_context(
     roots: List[str] = None,
     include_security: bool = False,
 ) -> Dict[str, Any]:
-    u"""Return context-relevant code graph data for a given development task.
+    """Return context-relevant code graph data for a given development task.
 
-    Uses the pre-built code dependency graph (core/harness/knowledge/code_graph.py)
-    to answer "where should I start" without spawning Explore sub-agents.
-
-    Returns: {task, stats, health, related: [{file, imports}]}
-    When include_security=True, also attaches security_digest (secview compact).
+    Args:
+        task: task 参数。
+        roots: roots 参数。
+        include_security: include_security 参数。
     """
     from core.harness.knowledge.code_graph import build_context
 
@@ -75,7 +74,13 @@ def sys_code_intel_security_view(
     max_paths: int = 20,
     force: bool = False,
 ) -> Dict[str, Any]:
-    """Return secview.v1 dict (entries/sinks/gates/hot_paths). Heuristic reachability."""
+    """Return secview.v1 dict (entries/sinks/gates/hot_paths). Heuristic reachability.
+
+    Args:
+        layer: layer 参数。
+        max_paths: max_paths 参数。
+        force: 是否强制。
+    """
     from core.harness.knowledge.security_view import build_security_view
 
     data = build_security_view(max_paths=max_paths, force=force).to_dict()
@@ -94,7 +99,12 @@ def sys_code_intel_hot_paths(
     *,
     max_paths: int = 20,
 ) -> Dict[str, Any]:
-    """Return scored hot_paths from security view (always heuristic=True)."""
+    """Return scored hot_paths from security view (always heuristic=True).
+
+    Args:
+        entry_id: entry 标识。
+        max_paths: max_paths 参数。
+    """
     data = sys_code_intel_security_view(max_paths=max_paths)
     paths = list(data.get("hot_paths") or [])
     if entry_id:
@@ -108,7 +118,11 @@ def sys_code_intel_hot_paths(
 
 
 def sys_code_intel_security_digest(*, max_chars: int = 4000) -> Dict[str, Any]:
-    """Compact security digest for plan-stage Agent context (token-budgeted)."""
+    """Compact security digest for plan-stage Agent context (token-budgeted).
+
+    Args:
+        max_chars: max_chars 参数。
+    """
     from core.harness.knowledge.security_view import (
         build_security_view,
         compact_security_digest,
@@ -118,7 +132,11 @@ def sys_code_intel_security_digest(*, max_chars: int = 4000) -> Dict[str, Any]:
 
 
 def sys_code_intel_blast(file_path: str) -> List[str]:
-    u"""Return the forward blast radius of a file (all files reachable via imports)."""
+    """Return the forward blast radius of a file (all files reachable via imports).
+
+    Args:
+        file_path: file_path 参数。
+    """
     nodes, _ = _ensure_graph()
     from core.harness.knowledge.code_graph import blast
     file_path = _resolve_file(file_path, nodes) or file_path

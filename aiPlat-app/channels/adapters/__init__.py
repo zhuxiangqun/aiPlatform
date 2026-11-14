@@ -59,7 +59,11 @@ __all__ = [
 
 
 def get_adapter(channel: ChannelType):
-    """Get adapter instance for a channel type."""
+    """Get adapter instance for a channel type.
+
+    Args:
+        channel: channel 参数。
+    """
     cls = ADAPTERS.get(channel)
     if cls is None:
         raise ValueError(f"No adapter registered for channel: {channel}")

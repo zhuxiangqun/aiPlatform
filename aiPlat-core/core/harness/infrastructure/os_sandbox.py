@@ -63,6 +63,8 @@ class SandboxMode:
 
 
 def is_production_profile() -> bool:
+    """is_production_profile。
+    """
     return (os.environ.get(ENV_PROFILE) or "").strip().lower() == "production"
 
 
@@ -179,9 +181,12 @@ def build_os_sandbox_cmd(
 ) -> List[str]:
     """把命令包装进 OS 沙箱。
 
-    - mode.active → 包装后的 argv
-    - 非 active + fail-open（开发默认）→ 原 cmd
-    - 非 active + fail-closed（生产默认）→ raise SandboxRequiredError
+    Args:
+        cmd: cmd 参数。
+        workdir: workdir 参数。
+        network: network 参数。
+        mode: mode 参数。
+        fail_closed: fail_closed 参数。
     """
     mode = mode or detect_sandbox_mode()
     closed = sandbox_fail_closed() if fail_closed is None else bool(fail_closed)

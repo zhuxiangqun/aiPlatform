@@ -32,9 +32,10 @@ ViewDefinition = Dict[str, Any]
 
 
 def load_views(domain_yaml_raw: Dict[str, Any]) -> Dict[str, ViewDefinition]:
-    u"""Pre-compile views from raw YAML into role → ViewDefinition mapping (O(1) lookup).
+    """Pre-compile views from raw YAML into role → ViewDefinition mapping (O(1) lookup).
 
-    Handles view inheritance: child inherits parent's fields, then overrides.
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
     """
     raw_views = domain_yaml_raw.get("views", {})
     if not raw_views or not isinstance(raw_views, dict):
@@ -94,7 +95,13 @@ def load_views(domain_yaml_raw: Dict[str, Any]) -> Dict[str, ViewDefinition]:
 
 
 def resolve_term(term: str, role: str, compiled_views: Dict[str, ViewDefinition]) -> Optional[str]:
-    u"""Get the role-specific definition of a term. Returns None if not defined."""
+    """Get the role-specific definition of a term. Returns None if not defined.
+
+    Args:
+        term: term 参数。
+        role: role 参数。
+        compiled_views: compiled_views 参数。
+    """
     view = compiled_views.get(role)
     if not view:
         return None
@@ -110,9 +117,12 @@ def filter_visible_classes(
     role: str,
     compiled_views: Dict[str, ViewDefinition],
 ) -> Dict[str, Any]:
-    u"""Filter a classes dict to only those visible to the given role.
+    """Filter a classes dict to only those visible to the given role.
 
-    If no view defined for the role, returns all classes (backwards compatible).
+    Args:
+        classes: classes 参数。
+        role: role 参数。
+        compiled_views: compiled_views 参数。
     """
     view = compiled_views.get(role)
     if not view:
@@ -131,9 +141,13 @@ def filter_hidden_fields(
     role: str,
     compiled_views: Dict[str, ViewDefinition],
 ) -> Dict[str, Any]:
-    u"""Remove hidden fields from class_data for the given role.
+    """Remove hidden fields from class_data for the given role.
 
-    Filters: required_fields, optional_fields, fields[].
+    Args:
+        class_name: class_name 参数。
+        class_data: class_data 参数。
+        role: role 参数。
+        compiled_views: compiled_views 参数。
     """
     view = compiled_views.get(role)
     if not view:
@@ -152,7 +166,11 @@ def filter_hidden_fields(
 
 
 def list_roles(compiled_views: Dict[str, ViewDefinition]) -> List[Dict[str, Any]]:
-    u"""Return list of all defined roles with their labels."""
+    """Return list of all defined roles with their labels.
+
+    Args:
+        compiled_views: compiled_views 参数。
+    """
     return [
         {"role": role, "label": view.get("label", role)}
         for role, view in sorted(compiled_views.items())
@@ -160,7 +178,11 @@ def list_roles(compiled_views: Dict[str, ViewDefinition]) -> List[Dict[str, Any]
 
 
 def validate_views(domain_yaml_raw: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Validate views section: check for missing references, broken inheritance, etc."""
+    """Validate views section: check for missing references, broken inheritance, etc.
+
+    Args:
+        domain_yaml_raw: domain_yaml_raw 参数。
+    """
     raw_views = domain_yaml_raw.get("views", {})
     classes = set((domain_yaml_raw.get("classes") or {}).keys())
     issues = []

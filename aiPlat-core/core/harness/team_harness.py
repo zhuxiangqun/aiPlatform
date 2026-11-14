@@ -33,6 +33,8 @@ _SEED_SCHEMA = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
@@ -60,7 +62,11 @@ def load_team_harness_schema() -> Dict[str, Any]:
 
 
 def materialize_team_harness_schema(*, overwrite: bool = False) -> Path:
-    """Copy seed contract to ~/.aiplat/team_harness.yaml when missing."""
+    """Copy seed contract to ~/.aiplat/team_harness.yaml when missing.
+
+    Args:
+        overwrite: overwrite 参数。
+    """
     home = aiplat_home()
     home.mkdir(parents=True, exist_ok=True)
     dst = home / "team_harness.yaml"
@@ -77,30 +83,55 @@ def materialize_team_harness_schema(*, overwrite: bool = False) -> Path:
 
 
 def team_dir(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """team_dir。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     sub = str((s.get("paths") or {}).get("team_subdir") or "team")
     return aiplat_home() / sub
 
 
 def local_dir(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """local_dir。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     sub = str((s.get("paths") or {}).get("local_subdir") or "local")
     return aiplat_home() / sub
 
 
 def lock_path(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """lock_path。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     name = str((s.get("paths") or {}).get("lock_file") or "team_harness.lock")
     return aiplat_home() / name
 
 
 def backups_dir(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """backups_dir。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     sub = str((s.get("paths") or {}).get("backups_subdir") or "team_backups")
     return aiplat_home() / sub
 
 
 def meta_path(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """meta_path。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     rel = str(
         (s.get("paths") or {}).get("meta_file") or "team_harness_meta.json"
@@ -110,6 +141,11 @@ def meta_path(schema: Optional[Mapping[str, Any]] = None) -> Path:
 
 
 def config_path(schema: Optional[Mapping[str, Any]] = None) -> Path:
+    """config_path。
+
+    Args:
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     name = str(
         (s.get("paths") or {}).get("config_file") or "team_harness_config.json"
@@ -118,12 +154,23 @@ def config_path(schema: Optional[Mapping[str, Any]] = None) -> Path:
 
 
 def ensure_team_local_dirs(schema: Optional[Mapping[str, Any]] = None) -> None:
+    """ensure_team_local_dirs。
+
+    Args:
+        schema: schema 参数。
+    """
     team_dir(schema).mkdir(parents=True, exist_ok=True)
     local_dir(schema).mkdir(parents=True, exist_ok=True)
     backups_dir(schema).mkdir(parents=True, exist_ok=True)
 
 
 def resource_relpath(name: str, schema: Optional[Mapping[str, Any]] = None) -> str:
+    """resource_relpath。
+
+    Args:
+        name: name 参数。
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     resources = s.get("resources") or {}
     entry = resources.get(name) if isinstance(resources, Mapping) else None
@@ -133,6 +180,12 @@ def resource_relpath(name: str, schema: Optional[Mapping[str, Any]] = None) -> s
 
 
 def is_resource_locked(name: str, schema: Optional[Mapping[str, Any]] = None) -> bool:
+    """is_resource_locked。
+
+    Args:
+        name: name 参数。
+        schema: schema 参数。
+    """
     s = schema or load_team_harness_schema()
     resources = s.get("resources") or {}
     entry = resources.get(name) if isinstance(resources, Mapping) else None
@@ -142,6 +195,8 @@ def is_resource_locked(name: str, schema: Optional[Mapping[str, Any]] = None) ->
 
 
 def read_config() -> Dict[str, Any]:
+    """read_config。
+    """
     path = config_path()
     if not path.is_file():
         return {}
@@ -153,6 +208,11 @@ def read_config() -> Dict[str, Any]:
 
 
 def write_config(cfg: Mapping[str, Any]) -> Path:
+    """write_config。
+
+    Args:
+        cfg: cfg 参数。
+    """
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -163,7 +223,12 @@ def write_config(cfg: Mapping[str, Any]) -> Path:
 
 
 def configure_team_harness(repo_url: str, *, branch: str = "main") -> Dict[str, Any]:
-    """Persist publish-source URL (does not pull)."""
+    """Persist publish-source URL (does not pull).
+
+    Args:
+        repo_url: repo_url 参数。
+        branch: branch 参数。
+    """
     cfg = read_config()
     cfg["repo_url"] = str(repo_url or "").strip()
     cfg["branch"] = str(branch or "main").strip() or "main"
@@ -175,6 +240,8 @@ def configure_team_harness(repo_url: str, *, branch: str = "main") -> Dict[str, 
 
 
 def read_meta() -> Dict[str, Any]:
+    """read_meta。
+    """
     path = meta_path()
     if not path.is_file():
         return {}
@@ -186,6 +253,11 @@ def read_meta() -> Dict[str, Any]:
 
 
 def write_meta(meta: Mapping[str, Any]) -> Path:
+    """write_meta。
+
+    Args:
+        meta: meta 参数。
+    """
     path = meta_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -245,11 +317,20 @@ def _ensure_git_identity(cwd: Path) -> None:
 
 
 def is_git_repo(path: Path) -> bool:
+    """is_git_repo。
+
+    Args:
+        path: 路径。
+    """
     return (path / ".git").exists()
 
 
 def team_is_dirty(team: Optional[Path] = None) -> bool:
-    """True when team/ has local modifications (blocks pull)."""
+    """True when team/ has local modifications (blocks pull).
+
+    Args:
+        team: team 参数。
+    """
     root = team or team_dir()
     if not is_git_repo(root):
         return False
@@ -262,7 +343,11 @@ def team_is_dirty(team: Optional[Path] = None) -> bool:
 
 @contextmanager
 def team_harness_lock(timeout_sec: float = 30.0) -> Iterator[None]:
-    """Exclusive lock for manual pull vs future autosync."""
+    """Exclusive lock for manual pull vs future autosync.
+
+    Args:
+        timeout_sec: timeout_sec 参数。
+    """
     ensure_team_local_dirs()
     path = lock_path()
     deadline = time.time() + max(1.0, float(timeout_sec))
@@ -308,7 +393,11 @@ def team_harness_lock(timeout_sec: float = 30.0) -> Iterator[None]:
 
 
 def backup_team_tree(*, label: str = "") -> Optional[Path]:
-    """Copy current team/ (without .git) to backups/ for rollback."""
+    """Copy current team/ (without .git) to backups/ for rollback.
+
+    Args:
+        label: label 参数。
+    """
     root = team_dir()
     if not root.is_dir():
         return None
@@ -323,7 +412,11 @@ def backup_team_tree(*, label: str = "") -> Optional[Path]:
 
 
 def restore_team_backup(backup: Path) -> Dict[str, Any]:
-    """Restore team/ content from a backup (preserves .git if present)."""
+    """Restore team/ content from a backup (preserves .git if present).
+
+    Args:
+        backup: backup 参数。
+    """
     root = team_dir()
     if not backup.is_dir():
         return {"ok": False, "error": f"backup missing: {backup}"}
@@ -355,7 +448,12 @@ def pull_team_harness(
 ) -> Dict[str, Any]:
     """T1a: FF-only pull into ~/.aiplat/team/. Never writes local/.
 
-    Returns ``{ok, skipped, blocked, error, commit, backup, dry_run, ...}``.
+    Args:
+        repo_url: repo_url 参数。
+        branch: branch 参数。
+        dry_run: 是否仅演练。
+        discard_dirty: discard_dirty 参数。
+        lock_timeout_sec: lock_timeout_sec 参数。
     """
     materialize_team_harness_schema()
     schema = load_team_harness_schema()
@@ -497,6 +595,8 @@ def is_autosync_enabled() -> bool:
 
 
 def autosync_timeout_sec() -> float:
+    """autosync_timeout_sec。
+    """
     schema = load_team_harness_schema()
     defaults = schema.get("defaults") if isinstance(schema.get("defaults"), dict) else {}
     env_name = str(
@@ -515,6 +615,8 @@ def autosync_timeout_sec() -> float:
 
 
 def autosync_interval_sec() -> float:
+    """autosync_interval_sec。
+    """
     schema = load_team_harness_schema()
     defaults = schema.get("defaults") if isinstance(schema.get("defaults"), dict) else {}
     env_name = str(
@@ -642,7 +744,9 @@ def maybe_autosync_team_harness(
 ) -> Dict[str, Any]:
     """T1b entry: schedule or run autosync. Never raises; never blocks chat when background.
 
-    Default ``background=True`` returns immediately with ``{scheduled: true}``.
+    Args:
+        background: background 参数。
+        timeout_sec: timeout_sec 参数。
     """
     if not is_autosync_enabled():
         return {"ok": True, "skipped": True, "reason": "autosync_disabled"}
@@ -682,7 +786,15 @@ def render_mr_template(
     summary: str = "",
     files: Optional[List[str]] = None,
 ) -> str:
-    """Git-reviewable MR body (markdown). No auto-open of forge UI required."""
+    """Git-reviewable MR body (markdown). No auto-open of forge UI required.
+
+    Args:
+        branch: branch 参数。
+        base: base 参数。
+        title: title 参数。
+        summary: summary 参数。
+        files: files 参数。
+    """
     files = files or []
     title = title or f"team harness: {branch}"
     lines = [
@@ -743,7 +855,14 @@ def push_team_harness(
 ) -> Dict[str, Any]:
     """T1c: commit staged contribute paths on a feature branch and push (never main).
 
-    Without remote write permission → ``ok=False`` + ``hint`` + MR template for manual flow.
+    Args:
+        paths: paths 参数。
+        branch: branch 参数。
+        message: message 参数。
+        base: base 参数。
+        dry_run: 是否仅演练。
+        include_local_learnings: include_local_learnings 参数。
+        lock_timeout_sec: lock_timeout_sec 参数。
     """
     materialize_team_harness_schema()
     schema = load_team_harness_schema()

@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional, Set
 
 @dataclass(frozen=True)
 class ToolsetPolicy:
+    """运行时工具集策略：允许的工具名/前缀与按工具参数限制。"""
+
     name: str
     description: str
     # Explicit allowlist of tool names.
@@ -118,24 +120,33 @@ DEFAULT_TOOLSETS: Dict[str, ToolsetPolicy] = {
 
 
 def resolve_toolset(name: Optional[str]) -> ToolsetPolicy:
-    """Resolve toolset by name. Falls back to workspace_default."""
+    """按名称解析 toolset，未知则回退 workspace_default。
+
+    Args:
+        name: toolset 名称；空则用默认。
+    """
     if not name:
         return DEFAULT_TOOLSETS["workspace_default"]
     return DEFAULT_TOOLSETS.get(str(name), DEFAULT_TOOLSETS["workspace_default"])
 
 
 def should_apply_toolset(name: Optional[str]) -> bool:
-    """
-    Whether we should auto-inject tools based on a toolset.
+    """是否应按 toolset 自动注入工具（显式传入 name 才应用）。
 
-    - If the caller explicitly provides toolset → apply.
-    - Otherwise keep behavior opt-in via env in integration layer.
+    Args:
+        name: 调用方显式 toolset 名；空则保持集成层 env 可选注入。
     """
     return bool(name)
 
 
 def is_tool_allowed(policy: ToolsetPolicy, tool_name: str, tool_args: Optional[Dict[str, Any]] = None) -> tuple[bool, Optional[str]]:
-    """Return (allowed, reason)."""
+    """判断工具调用是否被策略允许，返回 (allowed, reason)。
+
+    Args:
+        policy: 当前 ToolsetPolicy。
+        tool_name: 工具名。
+        tool_args: 可选参数（用于 file_operations/repo 操作白名单）。
+    """
     if tool_name not in policy.allowed_tools:
         # allow prefixes (for dynamic tools)
         if not any(tool_name.startswith(pfx) for pfx in (policy.allowed_prefixes or set())):
@@ -171,13 +182,16 @@ def check_workspace_gate(
     target_name: str,
     target_args: Optional[Dict[str, Any]] = None,
 ) -> tuple[bool, Optional[str], Optional[str]]:
-    """Check whether a tool/skill/agent call is allowed under the active toolset.
+    """检查 tool/skill/agent 调用是否被当前 toolset 允许。
 
-    Returns (allowed, reason, active_toolset_name).
-    All three syscalls (sys_tool_call, sys_skill_call, sys_agent_call) MUST
-    call this before executing. Per CLAUDE.md system-level rule D.
+    Args:
+        target_type: 目标类型，"tool" | "skill" | "agent"。
+        target_name: 目标名称。
+        target_args: 可选调用参数（用于 repo 操作策略检查）。
 
-    target_type: "tool" | "skill" | "agent"
+    Returns:
+        (allowed, reason, active_toolset_name)。sys_tool_call / sys_skill_call /
+        sys_agent_call 执行前必须调用（CLAUDE.md 系统级规则 D）。
     """
     from core.harness.kernel.execution_context import get_active_workspace_context
 

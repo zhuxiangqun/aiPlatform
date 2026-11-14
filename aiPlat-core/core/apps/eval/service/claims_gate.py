@@ -48,15 +48,9 @@ def evaluate_l5_claims_gate(
 ) -> Dict[str, Any]:
     """Evaluate whether scope-bound L5 claims *may* be authorized.
 
-    ``evidence`` expected keys (scope binding):
-      object_type, object_id, object_version, runtime_tier, plan_id,
-      set_ids[], oracle_types[], dimensions[], sample_n,
-      has_run_evidence (bool), untested_applicable_n (int),
-      runtime_claim (bool), fixture_only (bool),
-      min_sample_n (optional int), human_review (bool, for sufficiency).
-
-    Returns gate report; ``accuracy_claim`` / ``sufficiency_claim`` are True only
-    when explicit_authorize and respective gates pass.
+    Args:
+        evidence: evidence 参数。
+        explicit_authorize: explicit_authorize 参数。
     """
     ev = dict(evidence or {})
     missing: List[str] = []
@@ -191,7 +185,11 @@ def evaluate_l5_claims_gate(
 
 
 def pack_claim_disclosure_from_plan(plan: Mapping[str, Any]) -> Dict[str, Any]:
-    """Report disclosure: pack_kind + claim_eligible per pack_ref (§3.3)."""
+    """Report disclosure: pack_kind + claim_eligible per pack_ref (§3.3).
+
+    Args:
+        plan: plan 参数。
+    """
     refs: List[Mapping[str, Any]] = []
     raw_refs = plan.get("pack_refs")
     if isinstance(raw_refs, list) and raw_refs:
@@ -226,7 +224,12 @@ def pack_claim_disclosure_from_plan(plan: Mapping[str, Any]) -> Dict[str, Any]:
 
 
 def claims_policy_stub(*, thin: bool = False, profile_source: str = "") -> Dict[str, Any]:
-    """Default Plan claims_policy block (always locked false at compile)."""
+    """Default Plan claims_policy block (always locked false at compile).
+
+    Args:
+        thin: thin 参数。
+        profile_source: profile_source 参数。
+    """
     note = "Plan compile ≠ accuracy/sufficiency; special deferred → untested not fail"
     if thin:
         note += "; thin_contract"

@@ -38,7 +38,11 @@ async def list_workspace_hooks():
 
 @router.get("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def get_workspace_hook(name: str):
-    """Get workspace hook file content."""
+    """Get workspace hook file content.
+
+    Args:
+        name: 名称。
+    """
     base = _hooks_dir()
     hook_file = base / f"{name}.py"
     if not hook_file.exists():
@@ -48,7 +52,12 @@ async def get_workspace_hook(name: str):
 
 @router.put("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def upsert_workspace_hook(name: str, data: dict):
-    """Create or update a workspace hook file."""
+    """Create or update a workspace hook file.
+
+    Args:
+        name: 名称。
+        data: data 参数。
+    """
     base = _hooks_dir()
     base.mkdir(parents=True, exist_ok=True)
     content = (data.get("content") or "").strip()
@@ -61,7 +70,11 @@ async def upsert_workspace_hook(name: str, data: dict):
 
 @router.delete("/workspace/hooks/{name}", response_model=Dict[str, Any])
 async def delete_workspace_hook(name: str):
-    """Delete a workspace hook file."""
+    """Delete a workspace hook file.
+
+    Args:
+        name: 名称。
+    """
     base = _hooks_dir()
     hook_file = base / f"{name}.py"
     if not hook_file.exists():

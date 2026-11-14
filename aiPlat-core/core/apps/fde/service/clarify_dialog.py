@@ -36,6 +36,7 @@ _pending_qs_cache: Dict[str, list] = {}
 
 @dataclass
 class ClarifyTurnInput:
+    """ClarifyTurnInput。"""
     turn: int = 1
     answer: str = ""
     session_id: str = ""
@@ -58,7 +59,12 @@ class ClarifyTurnInput:
 
 
 def simple_extract_fields(answer: str, context: dict) -> dict:
-    """Keyword/label-based extraction when LLM is unavailable or as a first pass."""
+    """Keyword/label-based extraction when LLM is unavailable or as a first pass.
+
+    Args:
+        answer: answer 参数。
+        context: context 参数。
+    """
     updated: Dict[str, str] = {}
     a = answer.strip()
     if not a:
@@ -164,6 +170,11 @@ def simple_extract_fields(answer: str, context: dict) -> dict:
 
 
 def prioritize_gaps(gaps: list) -> list:
+    """prioritize_gaps。
+
+    Args:
+        gaps: gaps 参数。
+    """
     if not gaps:
         return []
     core = [g for g in _CORE_DIALOG_GAPS if g in gaps]
@@ -343,7 +354,11 @@ def _context_ack_prefix(context: dict) -> str:
 
 
 async def run_clarify_turn(req: ClarifyTurnInput) -> Dict[str, Any]:
-    """One clarify turn. Returns dialog payload (without FdeStatusResponse wrapper)."""
+    """One clarify turn. Returns dialog payload (without FdeStatusResponse wrapper).
+
+    Args:
+        req: req 参数。
+    """
     from core.apps.skills.registry import _compute_readiness
     from core.apps.fde.service.agent import run_fde_agent_one_shot
     from core.api.core_facade import sys_llm_generate

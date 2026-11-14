@@ -128,7 +128,13 @@ async def compat_evaluation_agent_score(
     request: Request,
     set_id: str = Query("", description="Optional filter by eval_set_id"),
 ):
-    """Latest AgentEvalResult from workspace eval_results (empty ≠ 404)."""
+    """Latest AgentEvalResult from workspace eval_results (empty ≠ 404).
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        set_id: set 标识。
+    """
     from core.harness.evaluation.eval_runner import load_agent_eval_results
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -153,7 +159,14 @@ async def compat_evaluation_agent_attributable_report(
     limit: int = Query(5, ge=1, le=20),
     set_id: str = Query("", description="Scope to this exam set; empty = latest any set"),
 ):
-    """Task / tools / safety-veto / cost attributable report (accuracy_claim=false)."""
+    """Task / tools / safety-veto / cost attributable report (accuracy_claim=false).
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        set_id: set 标识。
+    """
     from core.api.core_facade import eval_agent_attributable_report
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -173,7 +186,14 @@ async def compat_evaluation_agent_history(
     limit: int = Query(20, ge=1, le=100),
     set_id: str = Query("", description="Optional filter by eval_set_id"),
 ):
-    """Eval history for dashboard trend chart (empty list when none)."""
+    """Eval history for dashboard trend chart (empty list when none).
+
+    Args:
+        agent_id: Agent ID。
+        request: FastAPI Request。
+        limit: 返回条数上限。
+        set_id: set 标识。
+    """
     from core.harness.evaluation.eval_runner import load_agent_eval_results
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -227,8 +247,8 @@ async def compat_evaluation_list_sets():
 async def compat_evaluation_match_cases(body: Dict[str, Any]):
     """Object-contract P0: advisory MatchReport for agent vs set applicability.
 
-    Body: {agent_id, set_ids?, capabilities?, tools?, permissions?, roles?, eval_profile?}
-    Does not execute agents.
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import eval_match_cases_for_agent_target
 
@@ -262,8 +282,8 @@ async def compat_evaluation_match_cases(body: Dict[str, Any]):
 async def compat_evaluation_compile_plan(body: Dict[str, Any]):
     """Object-contract P2/P3: compile Evaluation Plan for agent/skill/api/generated_app/….
 
-    Body: {agent_id|object_id, object_type?, set_ids?, purpose?, include_special?, …}
-    For agent without eval_profile/capabilities, server derives hints from skills/tools.
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import eval_compile_evaluation_plan
 
@@ -336,7 +356,11 @@ async def compat_evaluation_compile_plan(body: Dict[str, Any]):
 
 @router.post("/evaluation/resolve-eval-profile")
 async def compat_evaluation_resolve_eval_profile(body: Dict[str, Any]):
-    """Resolve Agent eval_profile (explicit config or derived skill/tool hints)."""
+    """Resolve Agent eval_profile (explicit config or derived skill/tool hints).
+
+    Args:
+        body: 请求体。
+    """
     from core.apps.eval.service.eval_profile_resolve import resolve_agent_eval_profile
 
     agent_id = str((body or {}).get("agent_id") or "").strip()
@@ -366,8 +390,9 @@ async def compat_evaluation_resolve_eval_profile(body: Dict[str, Any]):
 async def compat_evaluation_exam(body: Dict[str, Any], request: Request):
     """从零开考：选 agent + 试卷 → dry-run 或 live 执行并落分。
 
-    Body: {agent_id, set_id, live?: bool, max_tasks?: int}
-    Write: requires X-Aiplat-Workspace-Id (no silent default).
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
     """
     from fastapi import HTTPException
 
@@ -430,7 +455,11 @@ async def compat_evaluation_exam(body: Dict[str, Any], request: Request):
 
 @router.get("/evaluation/external-targets")
 async def compat_evaluation_list_external_targets(request: Request):
-    """List external http_chat_pull targets for the selected named workspace."""
+    """List external http_chat_pull targets for the selected named workspace.
+
+    Args:
+        request: FastAPI Request。
+    """
     from fastapi import HTTPException
 
     from core.api.core_facade import eval_list_external_targets
@@ -455,7 +484,12 @@ async def compat_evaluation_list_external_targets(request: Request):
 
 @router.post("/evaluation/external-targets")
 async def compat_evaluation_upsert_external_target(body: Dict[str, Any], request: Request):
-    """Register external chat-pull target. Write requires X-Aiplat-Workspace-Id."""
+    """Register external chat-pull target. Write requires X-Aiplat-Workspace-Id.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from fastapi import HTTPException
 
     from core.api.core_facade import eval_upsert_external_target
@@ -496,8 +530,9 @@ async def compat_evaluation_upsert_external_target(body: Dict[str, Any], request
 async def compat_evaluation_external_exam(body: Dict[str, Any], request: Request):
     """External pull-mode exam: target_id + set_id → dry-run or live score.
 
-    Body: {target_id, set_id, live?: bool, max_tasks?: int}
-    Write: requires X-Aiplat-Workspace-Id.
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
     """
     from fastapi import HTTPException
 
@@ -552,7 +587,8 @@ async def compat_evaluation_external_exam(body: Dict[str, Any], request: Request
 async def compat_evaluation_generated_app_pi_smoke(body: Dict[str, Any]):
     """Generated-app Pi delivery smoke: sample/project/path → offline or live pi CLI.
 
-    Body: {source?: sample|project|path, project_id?, app_home?, live?: bool, model?, timeout_s?}
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import eval_run_generated_app_pi_smoke
 
@@ -623,7 +659,11 @@ async def _typed_plan_exam_compat(
 
 @router.post("/evaluation/prompt-plan-exam")
 async def compat_evaluation_prompt_plan_exam(body: Dict[str, Any]):
-    """Prompt Plan-chain exam (≠ page/DB prompt_eval)."""
+    """Prompt Plan-chain exam (≠ page/DB prompt_eval).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_run_prompt_plan_exam
 
     return await _typed_plan_exam_compat(
@@ -636,7 +676,11 @@ async def compat_evaluation_prompt_plan_exam(body: Dict[str, Any]):
 
 @router.post("/evaluation/workflow-plan-exam")
 async def compat_evaluation_workflow_plan_exam(body: Dict[str, Any]):
-    """Workflow Plan-chain exam: workflow/* lexical oracle."""
+    """Workflow Plan-chain exam: workflow/* lexical oracle.
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_run_workflow_plan_exam
 
     return await _typed_plan_exam_compat(
@@ -649,7 +693,11 @@ async def compat_evaluation_workflow_plan_exam(body: Dict[str, Any]):
 
 @router.post("/evaluation/model-plan-exam")
 async def compat_evaluation_model_plan_exam(body: Dict[str, Any]):
-    """Model Plan-chain exam: model/* lexical oracle (≠ model leaderboard)."""
+    """Model Plan-chain exam: model/* lexical oracle (≠ model leaderboard).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_run_model_plan_exam
 
     return await _typed_plan_exam_compat(
@@ -662,7 +710,11 @@ async def compat_evaluation_model_plan_exam(body: Dict[str, Any]):
 
 @router.post("/evaluation/dataset-plan-exam")
 async def compat_evaluation_dataset_plan_exam(body: Dict[str, Any]):
-    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample path)."""
+    """Dataset Plan-chain exam: fixture_table asserts (≠ KB sample path).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_run_dataset_plan_exam
 
     return await _typed_plan_exam_compat(
@@ -677,8 +729,8 @@ async def compat_evaluation_dataset_plan_exam(body: Dict[str, Any]):
 async def compat_evaluation_system_plan_exam(body: Dict[str, Any]):
     """System combination exam: typed parts + runtime_parts (§10.1).
 
-    Body: {object_id?, parts?: [{object_type, object_id?, set_ids?}], live?, model?, max_tasks_per_set?}
-    Default parts: prompt/workflow/model/dataset basic dry packs.
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import eval_run_system_plan_exam
 
@@ -708,8 +760,8 @@ async def compat_evaluation_system_plan_exam(body: Dict[str, Any]):
 async def compat_evaluation_claims_gate(body: Dict[str, Any]):
     """L5 scope-bound claims gate (eval.claims_gate.v1).
 
-    Body: {evidence: {...scope fields...}, explicit_authorize?: bool}
-    Never auto-publishes certification; fixture/dry/incomplete → not eligible.
+    Args:
+        body: 请求体。
     """
     from core.api.core_facade import eval_evaluate_l5_claims_gate
 
@@ -756,7 +808,12 @@ def _case_pack_http_error(exc: BaseException) -> Dict[str, Any]:
 
 @router.post("/evaluation/case-packs/draft")
 async def compat_evaluation_case_pack_draft(body: Dict[str, Any], request: Request):
-    """P1.0/P1.3: template|cases → workspace draft pack (claim_eligible=false)."""
+    """P1.0/P1.3: template|cases → workspace draft pack (claim_eligible=false).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_publish_draft_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -785,7 +842,12 @@ async def compat_evaluation_case_pack_draft(body: Dict[str, Any], request: Reque
 async def compat_evaluation_case_pack_enqueue_review(
     body: Dict[str, Any], request: Request
 ):
-    """P1.1/P1.3: draft|rejected → in_review."""
+    """P1.1/P1.3: draft|rejected → in_review.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_enqueue_case_pack_review
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -811,7 +873,12 @@ async def compat_evaluation_case_pack_review_queue(
     request: Request,
     statuses: str = Query(""),
 ):
-    """P1.1/P1.3: list workspace draft/in_review packs. statuses=comma list optional."""
+    """P1.1/P1.3: list workspace draft/in_review packs. statuses=comma list optional.
+
+    Args:
+        request: FastAPI Request。
+        statuses: statuses 参数。
+    """
     from core.api.core_facade import eval_list_case_pack_review_queue
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -833,7 +900,12 @@ async def compat_evaluation_case_pack_review_queue(
 
 @router.post("/evaluation/case-packs/review")
 async def compat_evaluation_case_pack_review(body: Dict[str, Any], request: Request):
-    """P1.1/P1.3: approve→reviewed / reject→rejected. Never freezes."""
+    """P1.1/P1.3: approve→reviewed / reject→rejected. Never freezes.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_submit_case_pack_review
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -858,7 +930,12 @@ async def compat_evaluation_case_pack_review(body: Dict[str, Any], request: Requ
 
 @router.post("/evaluation/case-packs/freeze")
 async def compat_evaluation_case_pack_freeze(body: Dict[str, Any], request: Request):
-    """P1.2/P1.3: reviewed → kind=frozen; claim_eligible stays false."""
+    """P1.2/P1.3: reviewed → kind=frozen; claim_eligible stays false.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_freeze_workspace_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -882,7 +959,12 @@ async def compat_evaluation_case_pack_freeze(body: Dict[str, Any], request: Requ
 
 @router.post("/evaluation/case-packs/promote-agent-capability")
 async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], request: Request):
-    """P1 closeout: seed bank → draft → approve → freeze (claim_eligible=false)."""
+    """P1 closeout: seed bank → draft → approve → freeze (claim_eligible=false).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_promote_agent_capability_bank
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -907,7 +989,12 @@ async def compat_evaluation_promote_agent_capability(body: Dict[str, Any], reque
 
 @router.post("/evaluation/case-packs/promote-subject-capability")
 async def compat_evaluation_promote_subject_capability(body: Dict[str, Any], request: Request):
-    """Subject seed bank → purpose_ok → freeze (claim_eligible=false)."""
+    """Subject seed bank → purpose_ok → freeze (claim_eligible=false).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import (
         eval_promote_all_subject_capability_banks,
         eval_promote_subject_capability_bank,
@@ -957,7 +1044,11 @@ async def compat_evaluation_promote_subject_capability(body: Dict[str, Any], req
 
 @router.post("/evaluation/case-packs/stamp-subject-seed-purpose-ok")
 async def compat_evaluation_stamp_subject_seed_purpose_ok(body: Dict[str, Any]):
-    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim closed)."""
+    """Stamp purpose_ok into Subject seed cases/*.json (no freeze; claim closed).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import (
         eval_stamp_all_subject_seed_purpose_ok,
         eval_stamp_subject_seed_purpose_ok,
@@ -986,7 +1077,11 @@ async def compat_evaluation_stamp_subject_seed_purpose_ok(body: Dict[str, Any]):
 
 @router.post("/evaluation/case-packs/freeze-subject-seed-pack-meta")
 async def compat_evaluation_freeze_subject_seed_pack_meta(body: Dict[str, Any]):
-    """Freeze Subject seed pack.meta.json after purpose_ok (claim closed)."""
+    """Freeze Subject seed pack.meta.json after purpose_ok (claim closed).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import (
         eval_freeze_all_subject_seed_pack_meta,
         eval_freeze_subject_seed_pack_meta,
@@ -1015,7 +1110,11 @@ async def compat_evaluation_freeze_subject_seed_pack_meta(body: Dict[str, Any]):
 
 @router.post("/evaluation/case-packs/compile-suite-profile")
 async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
-    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed)."""
+    """P2/P4: Suite Profile quotas → Plan v2 sample_manifest (claim closed).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_compile_plan_from_suite_profile
 
     profile = (body or {}).get("profile")
@@ -1038,7 +1137,12 @@ async def compat_evaluation_compile_suite_profile(body: Dict[str, Any]):
 
 @router.post("/evaluation/case-packs/run-suite-profile")
 async def compat_evaluation_run_suite_profile(request: Request, body: Dict[str, Any]):
-    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed)."""
+    """Post-P4: execute only sample_manifest from Suite Profile Plan (claim closed).
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     from core.api.core_facade import eval_run_suite_profile_exam
 
     profile = (body or {}).get("profile")
@@ -1070,7 +1174,11 @@ async def compat_evaluation_run_suite_profile(request: Request, body: Dict[str, 
 
 @router.post("/evaluation/case-packs/capability-heatmap")
 async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
-    """§8.4 capability coverage heatmap (claim closed)."""
+    """§8.4 capability coverage heatmap (claim closed).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_capability_heatmap
 
     profile = (body or {}).get("profile")
@@ -1095,7 +1203,11 @@ async def compat_evaluation_capability_heatmap(body: Dict[str, Any]):
 
 @router.post("/evaluation/case-packs/certification-readiness")
 async def compat_evaluation_certification_readiness(body: Dict[str, Any]):
-    """P5 pre-gate: §8.5 relative completeness; never unlocks certification/claim."""
+    """P5 pre-gate: §8.5 relative completeness; never unlocks certification/claim.
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_certification_readiness
 
     profile = (body or {}).get("profile")
@@ -1153,7 +1265,11 @@ async def compat_evaluation_suite_profiles():
 
 @router.post("/evaluation/case-packs/benchmark-readiness")
 async def compat_evaluation_benchmark_readiness(body: Dict[str, Any]):
-    """P4: benchmark coverage + holdout compile disclosure (claim closed)."""
+    """P4: benchmark coverage + holdout compile disclosure (claim closed).
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import eval_benchmark_readiness
 
     profile = (body or {}).get("profile")
@@ -1190,7 +1306,12 @@ async def compat_evaluation_benchmark_readiness(body: Dict[str, Any]):
 async def compat_evaluation_judge_calibration_gate(
     body: Dict[str, Any], request: Request
 ):
-    """P4: engineering agreement gate — always report_only / claim=false."""
+    """P4: engineering agreement gate — always report_only / claim=false.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_judge_calibration_gate
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1225,7 +1346,12 @@ async def compat_evaluation_judge_calibration_gate(
 async def compat_evaluation_open_capability_judge_calibration(
     body: Dict[str, Any], request: Request
 ):
-    """P4: open judge ticket sampling capability bank cases."""
+    """P4: open judge ticket sampling capability bank cases.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_open_capability_judge_calibration
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1259,7 +1385,11 @@ async def compat_evaluation_open_capability_judge_calibration(
 
 @router.get("/evaluation/case-packs/seed-cases", response_model=Dict[str, Any])
 async def compat_evaluation_seed_cases(capability_id: str = ""):
-    """Read-only browse of repo seed capability cases."""
+    """Read-only browse of repo seed capability cases.
+
+    Args:
+        capability_id: capability 标识。
+    """
     from core.api.core_facade import eval_list_seed_capability_cases
 
     try:
@@ -1271,6 +1401,11 @@ async def compat_evaluation_seed_cases(capability_id: str = ""):
 
 @router.get("/evaluation/case-packs/seed-cases/{case_id}", response_model=Dict[str, Any])
 async def compat_evaluation_seed_case_get(case_id: str):
+    """compat_evaluation_seed_case_get。
+
+    Args:
+        case_id: case 标识。
+    """
     from core.api.core_facade import eval_get_seed_capability_case
 
     try:
@@ -1282,7 +1417,12 @@ async def compat_evaluation_seed_case_get(case_id: str):
 
 @router.post("/evaluation/case-packs/editor/open", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_open(body: Dict[str, Any], request: Request):
-    """Open editable workspace draft (from seeds or bump frozen)."""
+    """Open editable workspace draft (from seeds or bump frozen).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_open_capability_bank_editor
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1310,6 +1450,14 @@ async def compat_evaluation_case_editor_list(
     version: str = "0.1.0",
     capability_id: str = "",
 ):
+    """compat_evaluation_case_editor_list。
+
+    Args:
+        request: FastAPI Request。
+        pack_id: pack 标识。
+        version: version 参数。
+        capability_id: capability 标识。
+    """
     from core.api.core_facade import eval_list_workspace_pack_cases
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1337,6 +1485,14 @@ async def compat_evaluation_case_editor_get(
     pack_id: str = "agent.capability",
     version: str = "0.1.0",
 ):
+    """compat_evaluation_case_editor_get。
+
+    Args:
+        case_id: case 标识。
+        request: FastAPI Request。
+        pack_id: pack 标识。
+        version: version 参数。
+    """
     from core.api.core_facade import eval_get_workspace_pack_case
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1359,6 +1515,12 @@ async def compat_evaluation_case_editor_get(
 
 @router.post("/evaluation/case-packs/editor/upsert", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Request):
+    """compat_evaluation_case_editor_upsert。
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_upsert_workspace_pack_case
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1388,6 +1550,12 @@ async def compat_evaluation_case_editor_upsert(body: Dict[str, Any], request: Re
 
 @router.post("/evaluation/case-packs/editor/delete", response_model=Dict[str, Any])
 async def compat_evaluation_case_editor_delete(body: Dict[str, Any], request: Request):
+    """compat_evaluation_case_editor_delete。
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_delete_workspace_pack_case
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1410,7 +1578,11 @@ async def compat_evaluation_case_editor_delete(body: Dict[str, Any], request: Re
 
 @router.post("/evaluation/case-packs/capability-coverage")
 async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
-    """P3: capability gap inventory vs profile quotas or min_per_capability."""
+    """P3: capability gap inventory vs profile quotas or min_per_capability.
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import (
         eval_agent_regression_profile,
         eval_analyze_capability_coverage,
@@ -1448,7 +1620,12 @@ async def compat_evaluation_capability_coverage(body: Dict[str, Any]):
 
 @router.post("/evaluation/case-packs/coverage-fill")
 async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request):
-    """P3: coverage-driven fill — dry by default; apply=true expands draft pack."""
+    """P3: coverage-driven fill — dry by default; apply=true expands draft pack.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import (
         eval_agent_regression_profile,
         eval_fill_capability_coverage,
@@ -1500,7 +1677,12 @@ async def compat_evaluation_coverage_fill(body: Dict[str, Any], request: Request
 
 @router.post("/evaluation/case-packs/expand")
 async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Request):
-    """P1.4: append cases into non-frozen draft/in_review/rejected pack."""
+    """P1.4: append cases into non-frozen draft/in_review/rejected pack.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_expand_draft_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1525,7 +1707,12 @@ async def compat_evaluation_case_pack_expand(body: Dict[str, Any], request: Requ
 
 @router.post("/evaluation/case-packs/bump")
 async def compat_evaluation_case_pack_bump(body: Dict[str, Any], request: Request):
-    """P1.4: version++ → new draft curated (source frozen untouched)."""
+    """P1.4: version++ → new draft curated (source frozen untouched).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_bump_case_pack_version
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1555,7 +1742,11 @@ async def compat_evaluation_case_pack_bump(body: Dict[str, Any], request: Reques
 
 @router.get("/evaluation/case-packs/coverage")
 async def compat_evaluation_case_pack_coverage(request: Request):
-    """P1.4: workspace pack coverage inventory (not accuracy)."""
+    """P1.4: workspace pack coverage inventory (not accuracy).
+
+    Args:
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_summarize_case_pack_coverage
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1575,7 +1766,12 @@ async def compat_evaluation_case_pack_coverage(request: Request):
 
 @router.post("/evaluation/case-packs/holdout")
 async def compat_evaluation_case_pack_holdout(body: Dict[str, Any], request: Request):
-    """P2.0: mark holdout flags on non-frozen pack."""
+    """P2.0: mark holdout flags on non-frozen pack.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_mark_case_pack_holdout
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1601,7 +1797,12 @@ async def compat_evaluation_case_pack_holdout(body: Dict[str, Any], request: Req
 
 @router.post("/evaluation/case-packs/mutate")
 async def compat_evaluation_case_pack_mutate(body: Dict[str, Any], request: Request):
-    """P2.0: deterministic mutations → kind=generated draft (claim closed)."""
+    """P2.0: deterministic mutations → kind=generated draft (claim closed).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_publish_mutation_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1631,7 +1832,12 @@ async def compat_evaluation_case_pack_mutate(body: Dict[str, Any], request: Requ
 async def compat_evaluation_case_pack_from_trace(
     body: Dict[str, Any], request: Request
 ):
-    """P2.0: trace dicts → kind=trace draft (claim closed)."""
+    """P2.0: trace dicts → kind=trace draft (claim closed).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_publish_trace_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1659,7 +1865,12 @@ async def compat_evaluation_case_pack_from_trace(
 async def compat_evaluation_case_pack_llm_candidates(
     body: Dict[str, Any], request: Request
 ):
-    """P3.0: LLM/stub candidates → kind=generated draft (claim closed)."""
+    """P3.0: LLM/stub candidates → kind=generated draft (claim closed).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_publish_llm_candidate_case_pack
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1692,7 +1903,12 @@ async def compat_evaluation_case_pack_llm_candidates(
 async def compat_evaluation_case_pack_propose_difficulty(
     body: Dict[str, Any], request: Request
 ):
-    """P3.0: heuristic difficulty (optional persist; not calibrated)."""
+    """P3.0: heuristic difficulty (optional persist; not calibrated).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_propose_case_pack_difficulty
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1717,7 +1933,12 @@ async def compat_evaluation_case_pack_propose_difficulty(
 async def compat_evaluation_case_pack_judge_calibration_ticket(
     body: Dict[str, Any], request: Request
 ):
-    """P3.1: open + persist judge calibration ticket (no claim unlock)."""
+    """P3.1: open + persist judge calibration ticket (no claim unlock).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_open_judge_calibration_ticket
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1743,7 +1964,12 @@ async def compat_evaluation_case_pack_judge_calibration_ticket(
 async def compat_evaluation_case_pack_calibrate_difficulty(
     body: Dict[str, Any], request: Request
 ):
-    """P3.1: human difficulty labels → pack (engineering; claim closed)."""
+    """P3.1: human difficulty labels → pack (engineering; claim closed).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_calibrate_case_pack_difficulty
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1772,7 +1998,12 @@ async def compat_evaluation_case_pack_calibrate_difficulty(
 async def compat_evaluation_case_pack_judge_calibration_ratings(
     body: Dict[str, Any], request: Request
 ):
-    """P3.1: append judge ratings + agreement."""
+    """P3.1: append judge ratings + agreement.
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_record_judge_calibration_ratings
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1800,7 +2031,12 @@ async def compat_evaluation_case_pack_judge_calibration_ratings(
 async def compat_evaluation_case_pack_judge_calibration_close(
     body: Dict[str, Any], request: Request
 ):
-    """P3.1: close judge ticket (engineering calibrated; claim closed)."""
+    """P3.1: close judge ticket (engineering calibrated; claim closed).
+
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_close_judge_calibration_ticket
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1824,7 +2060,12 @@ async def compat_evaluation_case_pack_judge_calibration_close(
 async def compat_evaluation_case_pack_judge_calibration_get(
     ticket_id: str, request: Request
 ):
-    """P3.1: load persisted judge ticket."""
+    """P3.1: load persisted judge ticket.
+
+    Args:
+        ticket_id: ticket 标识。
+        request: FastAPI Request。
+    """
     from core.api.core_facade import eval_get_judge_calibration_ticket
     from core.harness.named_workspace.http_bind import named_workspace_scope, workspace_meta
 
@@ -1845,7 +2086,11 @@ async def compat_evaluation_case_pack_judge_calibration_get(
 
 @router.post("/evaluation/policy")
 async def compat_evaluation_policy_set(body: Dict[str, Any]):
-    """Create or update an evaluation policy artifact."""
+    """Create or update an evaluation policy artifact.
+
+    Args:
+        body: 请求体。
+    """
     try:
         mgr = await _get_learning_manager()
         artifact = await mgr.create_artifact(
@@ -1882,7 +2127,12 @@ async def compat_evaluation_policy_latest():
 
 @router.post("/scopes/{scope_id}/evaluation/policy")
 async def compat_scoped_evaluation_policy_set(scope_id: str, body: Dict[str, Any]):
-    """Create/update scoped evaluation policy."""
+    """Create/update scoped evaluation policy.
+
+    Args:
+        scope_id: scope 标识。
+        body: 请求体。
+    """
     try:
         mgr = await _get_learning_manager()
         artifact = await mgr.create_artifact(
@@ -1901,7 +2151,11 @@ async def compat_scoped_evaluation_policy_set(scope_id: str, body: Dict[str, Any
 
 @router.get("/scopes/{scope_id}/evaluation/policy/latest")
 async def compat_scoped_evaluation_policy_latest(scope_id: str):
-    """Get latest scoped evaluation policy."""
+    """Get latest scoped evaluation policy.
+
+    Args:
+        scope_id: scope 标识。
+    """
     try:
         mgr = await _get_learning_manager()
         artifacts = await mgr.list_artifacts(
@@ -1991,7 +2245,11 @@ async def compat_playground_models():
 
 @router.post("/diagnostics/playground/chat")
 async def compat_playground_chat(body: Dict[str, Any]):
-    """Chat with a specified model via the playground."""
+    """Chat with a specified model via the playground.
+
+    Args:
+        body: 请求体。
+    """
     prompt = body.get("prompt", "") or body.get("message", "")
     model_id = body.get("model", "")
 
@@ -2018,11 +2276,9 @@ async def compat_playground_chat(body: Dict[str, Any]):
 @router.post("/diagnostics/playground/compare")
 async def compat_playground_compare(body: Dict[str, Any]):
     """Compare outputs from multiple models (installed + market with api_key).
-    
-    Body: {
-        prompt: str,
-        models: [{name: str, api_key?: str, api_base?: str}]
-    }
+
+    Args:
+        body: 请求体。
     """
     prompt = body.get("prompt", "")
     model_list = body.get("models") or []
@@ -2122,13 +2378,22 @@ async def compat_playground_compare(body: Dict[str, Any]):
 
 @router.get("/diagnostics/repairs-latest")
 async def compat_repairs_get(request: Request):
-    """GET repairs-latest — returns cached/empty result (repairs module migrated out)."""
+    """GET repairs-latest — returns cached/empty result (repairs module migrated out).
+
+    Args:
+        request: FastAPI Request。
+    """
     return {"needs_diagnostics": False, "repairs": [], "status": "delegated"}
 
 
 @router.post("/diagnostics/repairs-latest")
 async def compat_repairs_post(request: Request, body: Dict[str, Any] = None):
-    """POST trigger for repairs → delegates to GET handler."""
+    """POST trigger for repairs → delegates to GET handler.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     try:
         from core.api.routers.repairs import get_repairs_latest
         return await get_repairs_latest()

@@ -20,6 +20,11 @@ class DecisionThrottle:
     """Real-time rate limiter based on audit trail velocity."""
 
     def __init__(self, store: Optional[ActionStore] = None):
+        """初始化。
+
+        Args:
+            store: store 参数。
+        """
         self.store = store or ActionStore()
 
     async def check_rate_limit(
@@ -33,12 +38,13 @@ class DecisionThrottle:
     ) -> Dict[str, Any]:
         """Check if actor has exceeded the execution rate for an action.
 
-        Returns:
-            allowed: bool
-            count: current executions in window
-            limit: configured limit
-            reason: str (if blocked)
-            require_justification: bool
+        Args:
+            actor: 操作者身份。
+            action_id: action 标识。
+            domain_id: domain 标识。
+            time_window_sec: time_window_sec 参数。
+            limit: 返回条数上限。
+            block_on_breach: block_on_breach 参数。
         """
         if not actor or actor == "system":
             return {"allowed": True, "count": 0, "limit": limit}
@@ -82,6 +88,13 @@ class DecisionThrottle:
     async def record_justification(
         self, actor: str, action_id: str, entity_id: str, justification: str,
     ) -> None:
-        """Log a human override justification (stored in action_audit params)."""
+        """Log a human override justification (stored in action_audit params).
+
+        Args:
+            actor: 操作者身份。
+            action_id: action 标识。
+            entity_id: entity 标识。
+            justification: justification 参数。
+        """
         logger.info("Justification: %s/%s by %s — %s",
                      action_id, entity_id, actor, justification[:200])

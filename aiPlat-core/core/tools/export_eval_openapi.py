@@ -64,6 +64,8 @@ def _extract_request_props(openapi: Dict[str, Any], op: Dict[str, Any]) -> Tuple
 
 
 def build_snapshot() -> Dict[str, Any]:
+    """build_snapshot。
+    """
     from core.server import app  # import lazily to avoid side-effects in module import
 
     openapi = app.openapi()
@@ -103,6 +105,8 @@ def build_snapshot() -> Dict[str, Any]:
 
 
 def main() -> None:
+    """main。
+    """
     snap = build_snapshot()
     print(json.dumps(snap, ensure_ascii=False, indent=2, sort_keys=True))
 

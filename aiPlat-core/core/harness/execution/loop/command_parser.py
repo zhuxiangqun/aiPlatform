@@ -16,6 +16,7 @@ logger = logging.getLogger("command_parser")
 
 @dataclass
 class Command:
+    """Command。"""
     name: str
     args: List[str] = field(default_factory=list)
     kwargs: Dict[str, str] = field(default_factory=dict)
@@ -25,10 +26,10 @@ class Command:
 
 
 def parse(text: str) -> Optional[Command]:
-    u"""Parse a slash command from user text.
+    """Parse a slash command from user text.
 
-    "/assess manufacturing quality-traceability" → Command(name="assess", args=["manufacturing","quality-traceability"])
-    "/moa --preset security analyze-this-code" → Command(name="moa", args=["analyze-this-code"], kwargs={"preset":"security"})
+    Args:
+        text: text 参数。
     """
     if not text or not text.startswith("/"):
         return None
@@ -59,7 +60,12 @@ def resolve_skill(
     cmd: Command,
     agent_commands: List[Dict[str, Any]],
 ) -> Optional[Command]:
-    u"""Resolve a parsed command to a skill via AGENT.md commands: frontmatter."""
+    """Resolve a parsed command to a skill via AGENT.md commands: frontmatter.
+
+    Args:
+        cmd: cmd 参数。
+        agent_commands: agent_commands 参数。
+    """
     for cm in agent_commands:
         if cm.get("name") == cmd.name:
             cmd.skill_name = cm.get("skill", "")
@@ -69,7 +75,11 @@ def resolve_skill(
 
 
 def get_agent_commands(agent_name: str) -> List[Dict[str, Any]]:
-    u"""Load command definitions from an agent's AGENT.md frontmatter."""
+    """Load command definitions from an agent's AGENT.md frontmatter.
+
+    Args:
+        agent_name: agent_name 参数。
+    """
     import os, yaml
 
     agent_dir = get_aiplat_data_dir(f"agents/{agent_name}")

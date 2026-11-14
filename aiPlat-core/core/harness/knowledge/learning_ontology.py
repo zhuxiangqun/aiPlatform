@@ -37,12 +37,14 @@ AI = "http://aiplat.local/knowledge#"
 # ══════════════════════════════════════════════════════════════
 
 class TargetRole(str, Enum):
+    """TargetRole。"""
     AI_ENGINEER = "ai_engineer"
     AI_DECISION_MAKER = "ai_decision_maker"
     AI_LITERATE = "ai_literate"
 
 
 class CurrentLevel(str, Enum):
+    """CurrentLevel。"""
     BEGINNER = "beginner"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
@@ -50,6 +52,7 @@ class CurrentLevel(str, Enum):
 
 @dataclass
 class LearnerProfile:
+    """LearnerProfile。"""
     learner_id: str
     current_level: CurrentLevel = CurrentLevel.BEGINNER
     target_role: TargetRole = TargetRole.AI_LITERATE
@@ -67,6 +70,8 @@ class LearnerProfile:
     updated_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "learner_id": self.learner_id,
             "current_level": self.current_level.value,
@@ -85,6 +90,11 @@ class LearnerProfile:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "LearnerProfile":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(
             learner_id=d.get("learner_id", ""),
             current_level=CurrentLevel(d.get("current_level", "beginner")),
@@ -108,6 +118,7 @@ class LearnerProfile:
 
 @dataclass
 class ChapterContent:
+    """ChapterContent。"""
     chapter_id: str
     title: str                         # e.g. "第1章: Prompt 工程基础"
     path_id: str                       # which learning path this belongs to
@@ -125,6 +136,8 @@ class ChapterContent:
     ai_generated_body: str = ""        # LLM-compiled chapter text (cached)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "chapter_id": self.chapter_id,
             "title": self.title,
@@ -142,6 +155,11 @@ class ChapterContent:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "ChapterContent":
+        """from_dict。
+
+        Args:
+            d: d 参数。
+        """
         return cls(
             chapter_id=d.get("chapter_id", ""),
             title=d.get("title", ""),
@@ -160,6 +178,7 @@ class ChapterContent:
 
 @dataclass
 class ExerciseResult:
+    """ExerciseResult。"""
     exercise_id: str
     chapter_id: str
     learner_id: str
@@ -173,6 +192,8 @@ class ExerciseResult:
     submitted_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "exercise_id": self.exercise_id,
             "chapter_id": self.chapter_id,
@@ -210,6 +231,11 @@ def _exercise_results_path(learner_id: str, chapter_id: str) -> str:
 
 
 def save_learner_profile(profile: LearnerProfile) -> None:
+    """save_learner_profile。
+
+    Args:
+        profile: 评测 profile。
+    """
     path = _profile_path(profile.learner_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -217,6 +243,11 @@ def save_learner_profile(profile: LearnerProfile) -> None:
 
 
 def load_learner_profile(learner_id: str) -> Optional[LearnerProfile]:
+    """load_learner_profile。
+
+    Args:
+        learner_id: learner 标识。
+    """
     path = _profile_path(learner_id)
     if not _os.path.exists(path):
         return None
@@ -229,6 +260,11 @@ def load_learner_profile(learner_id: str) -> Optional[LearnerProfile]:
 
 
 def save_chapter_content(chapter: ChapterContent) -> None:
+    """save_chapter_content。
+
+    Args:
+        chapter: chapter 参数。
+    """
     path = _chapter_content_path(chapter.chapter_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -236,6 +272,11 @@ def save_chapter_content(chapter: ChapterContent) -> None:
 
 
 def load_chapter_content(chapter_id: str) -> Optional[ChapterContent]:
+    """load_chapter_content。
+
+    Args:
+        chapter_id: chapter 标识。
+    """
     path = _chapter_content_path(chapter_id)
     if not _os.path.exists(path):
         return None
@@ -248,6 +289,13 @@ def load_chapter_content(chapter_id: str) -> Optional[ChapterContent]:
 
 
 def save_exercise_results(results: List[ExerciseResult], learner_id: str, chapter_id: str) -> None:
+    """save_exercise_results。
+
+    Args:
+        results: results 参数。
+        learner_id: learner 标识。
+        chapter_id: chapter 标识。
+    """
     path = _exercise_results_path(learner_id, chapter_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -255,6 +303,12 @@ def save_exercise_results(results: List[ExerciseResult], learner_id: str, chapte
 
 
 def load_exercise_results(learner_id: str, chapter_id: str) -> List[ExerciseResult]:
+    """load_exercise_results。
+
+    Args:
+        learner_id: learner 标识。
+        chapter_id: chapter 标识。
+    """
     path = _exercise_results_path(learner_id, chapter_id)
     if not _os.path.exists(path):
         return []

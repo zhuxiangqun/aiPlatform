@@ -26,12 +26,15 @@ _log = logging.getLogger("pipeline_engine.drift")
 
 @dataclass
 class RoundQualitySnapshot:
+    """RoundQualitySnapshot。"""
     step: int
     confidence_tier: int = 0         # 3=HIGH, 2=MEDIUM, 1=LOW, 0=unknown
     error_keywords: int = 0          # count of error-related keywords in output
     output_length: int = 0           # length of reasoning text
 
     def quality_score(self) -> float:
+        """quality_score。
+        """
         scores: List[float] = []
         if self.confidence_tier > 0:
             scores.append(self.confidence_tier / 3.0)
@@ -41,6 +44,11 @@ class RoundQualitySnapshot:
         return sum(scores) / max(len(scores), 1)
 
     def is_significantly_worse_than(self, prev: "RoundQualitySnapshot") -> bool:
+        """is_significantly_worse_than。
+
+        Args:
+            prev: prev 参数。
+        """
         q_self = self.quality_score()
         q_prev = prev.quality_score()
         if q_prev == 0:
@@ -50,6 +58,7 @@ class RoundQualitySnapshot:
 
 
 class DriftDetector:
+    """DriftDetector。"""
     _CONFIDENCE = re.compile(
         r'(?:confidence|置信度)\s*(?:[:=]|is|level)?\s*(HIGH|MEDIUM|LOW)',
         re.IGNORECASE,
@@ -64,6 +73,12 @@ class DriftDetector:
 
     @classmethod
     def capture_snapshot(cls, reasoning_text: str, step_count: int) -> RoundQualitySnapshot:
+        """capture_snapshot。
+
+        Args:
+            reasoning_text: reasoning_text 参数。
+            step_count: step_count 参数。
+        """
         return RoundQualitySnapshot(
             step=step_count,
             confidence_tier=cls._parse_confidence(reasoning_text),
@@ -73,6 +88,11 @@ class DriftDetector:
 
     @classmethod
     def check_drift(cls, history: List[RoundQualitySnapshot]) -> Tuple[bool, str]:
+        """check_drift。
+
+        Args:
+            history: history 参数。
+        """
         if len(history) < cls.DECLINE_THRESHOLD:
             return False, ""
         recent = history[-cls.DECLINE_THRESHOLD:]
@@ -104,6 +124,11 @@ class DriftDetector:
 
     @classmethod
     def build_correction_reminder(cls, reason: str) -> str:
+        """构建 correction_reminder。
+
+        Args:
+            reason: reason 参数。
+        """
         return (
             "SYSTEM REMINDER: Your recent reasoning shows declining quality signal — "
             f"detected {reason}. "
@@ -117,7 +142,17 @@ class DriftDetector:
                        drift_type: str = "", severity: str = "warning",
                        description: str = "", source_file: str = "",
                        source_line: int = 0) -> Optional[str]:
-        """Record a drift event in the entropy ledger for production readiness tracking."""
+        """Record a drift event in the entropy ledger for production readiness tracking.
+
+        Args:
+            project_id: project 标识。
+            agent_id: agent 标识。
+            drift_type: drift_type 参数。
+            severity: severity 参数。
+            description: description 参数。
+            source_file: source_file 参数。
+            source_line: source_line 参数。
+        """
         try:
             import uuid, time, os, sqlite3
             from core.services.execution_store import get_execution_store

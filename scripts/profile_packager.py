@@ -13,7 +13,12 @@ def get_config_dir() -> str:
 
 
 def pack_profile(output_path: str = "distribution.yaml", profile_name: str = "default") -> dict:
-    """Export current aiPlat configuration as a distribution manifest."""
+    """Export current aiPlat configuration as a distribution manifest.
+
+    Args:
+        output_path: output_path 参数。
+        profile_name: profile_name 参数。
+    """
     config_dir = get_config_dir()
     dist = {
         "name": profile_name,

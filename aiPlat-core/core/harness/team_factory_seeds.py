@@ -27,24 +27,37 @@ _SEED_SANITIZE = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
 def team_resource_dir(name: str) -> Path:
+    """team_resource_dir。
+
+    Args:
+        name: name 参数。
+    """
     from core.harness.team_harness import resource_relpath, team_dir
 
     return team_dir() / resource_relpath(name)
 
 
 def runtime_teams_dir() -> Path:
+    """runtime_teams_dir。
+    """
     return aiplat_home() / "teams"
 
 
 def runtime_sanitize_dir() -> Path:
+    """runtime_sanitize_dir。
+    """
     return aiplat_home() / "factory_sanitize"
 
 
 def seed_backups_dir() -> Path:
+    """seed_backups_dir。
+    """
     return aiplat_home() / "team_seed_backups"
 
 
@@ -73,12 +86,21 @@ def _tree_manifest(root: Path) -> Dict[str, str]:
 
 
 def manifest_hash(manifest: Mapping[str, str]) -> str:
+    """manifest_hash。
+
+    Args:
+        manifest: manifest 参数。
+    """
     payload = json.dumps(dict(sorted(manifest.items())), ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def resolve_team_yaml_candidates(name: str) -> List[str]:
-    """Search order: team/teams → ~/.aiplat/teams → workspace_seeds/teams."""
+    """Search order: team/teams → ~/.aiplat/teams → workspace_seeds/teams.
+
+    Args:
+        name: name 参数。
+    """
     n = (name or "").strip().removesuffix(".yaml")
     if not n:
         return []
@@ -99,6 +121,11 @@ def resolve_factory_sanitize_dirs() -> List[Path]:
 
 
 def resolve_factory_sanitize_file(filename: str) -> Optional[Path]:
+    """resolve_factory_sanitize_file。
+
+    Args:
+        filename: filename 参数。
+    """
     for root in resolve_factory_sanitize_dirs():
         path = root / filename
         if path.is_file():
@@ -130,8 +157,9 @@ def apply_team_factory_seeds(
 ) -> Dict[str, Any]:
     """Copy team/{teams,factory_sanitize} → ~/.aiplat/{teams,factory_sanitize}.
 
-    Takes a pre-apply backup (hash-addressable) for rollback. No-op when team/
-    has no matching resources.
+    Args:
+        resources: resources 参数。
+        overwrite: overwrite 参数。
     """
     wanted = list(resources or ("teams", "factory_sanitize"))
     ensure = seed_backups_dir()
@@ -291,8 +319,9 @@ def coding_closed_loop_runtime_gaps(
 ) -> Dict[str, Any]:
     """Report missing ``refactor_sop`` / ``tdd_enforce`` on runtime team YAMLs.
 
-    Does not write. Empty ``gaps`` when runtime files are absent (not yet copied)
-    or already carry the expected coding closed-loop keys.
+    Args:
+        home: home 参数。
+        names: names 参数。
     """
     runtime = Path(home) / "teams" if home is not None else runtime_teams_dir()
     wanted = [str(n).strip().removesuffix(".yaml") for n in (names or _CODING_TEAM_SEED_NAMES)]
@@ -333,9 +362,10 @@ def sync_coding_closed_loop_team_seeds(
 ) -> Dict[str, Any]:
     """Fill missing ``refactor_sop`` / ``tdd_enforce`` on runtime team YAMLs from seeds.
 
-    Does not overwrite explicit user values (unless ``force`` / env force).
-    Does not sync ``architecture_profile`` (avoids silently changing loop type).
-    Opt out: ``AIPLAT_TEAM_CODING_SEED_SYNC=false``.
+    Args:
+        home: home 参数。
+        names: names 参数。
+        force: 是否强制。
     """
     if not force and not _truthy_env("AIPLAT_TEAM_CODING_SEED_SYNC", "true"):
         return {"ok": True, "skipped": True, "reason": "sync_disabled"}
@@ -396,7 +426,11 @@ def sync_coding_closed_loop_team_seeds(
 
 
 def rollback_team_factory_seeds(backup: str = "") -> Dict[str, Any]:
-    """Restore ~/.aiplat/{teams,factory_sanitize} from an F-T1 backup dir."""
+    """Restore ~/.aiplat/{teams,factory_sanitize} from an F-T1 backup dir.
+
+    Args:
+        backup: backup 参数。
+    """
     root: Optional[Path] = None
     if backup:
         root = Path(backup)

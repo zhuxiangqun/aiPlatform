@@ -27,7 +27,18 @@ async def reason(
     model_client: Any = None,
     loop: Any = None,
 ) -> str:
-    """Execute a single LLM reasoning call."""
+    """Execute a single LLM reasoning call.
+
+    Args:
+        state: state 参数。
+        model: 模型名。
+        config: config 参数。
+        skills: skills 参数。
+        tools: tools 参数。
+        hook_manager: hook_manager 参数。
+        model_client: model_client 参数。
+        loop: loop 参数。
+    """
     # ── original: async def _reason(self, state: LoopState) -> str:
     """Reasoning phase"""
     if not model:

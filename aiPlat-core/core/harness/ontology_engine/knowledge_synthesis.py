@@ -18,6 +18,7 @@ from collections import defaultdict
 
 @dataclass
 class SynthesisResult:
+    """SynthesisResult。"""
     pages_written: int = 0
     chains: List[Dict[str, Any]] = field(default_factory=list)
     fact_cards: List[Dict[str, Any]] = field(default_factory=list)
@@ -25,6 +26,8 @@ class SynthesisResult:
     errors: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "pages_written": self.pages_written,
             "chains": self.chains,
@@ -38,14 +41,19 @@ class KnowledgeSynthesizer:
     """Synthesize graph knowledge into editable Wiki pages."""
 
     def __init__(self, graph):
+        """初始化。
+
+        Args:
+            graph: graph 参数。
+        """
         self._graph = graph
 
     def synthesize(self, *, domain_id: str = "default", write_to_wiki: bool = True) -> SynthesisResult:
         """Run all four synthesis types.
 
-        Each page built by _build_chain_page / _build_fact_card / _build_conclusion carries
-        source_instances + synthesis_type (per §5.46) — grep guard: source_instances is set
-        in the page-builder helpers, not inline here.
+        Args:
+            domain_id: domain 标识。
+            write_to_wiki: write_to_wiki 参数。
         """
         result = SynthesisResult()
 

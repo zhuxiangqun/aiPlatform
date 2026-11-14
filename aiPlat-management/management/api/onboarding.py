@@ -1,3 +1,5 @@
+"""onboarding：模块接口。"""
+
 import logging
 """
 Onboarding API (management layer)
@@ -18,6 +20,11 @@ router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 @router.get("/state")
 async def get_onboarding_state(request: Request) -> Dict[str, Any]:
+    """获取 onboarding_state。
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -48,6 +55,12 @@ async def get_onboarding_state(request: Request) -> Dict[str, Any]:
 
 @router.post("/default-llm")
 async def set_default_llm(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_default_llm。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -56,6 +69,12 @@ async def set_default_llm(request: Request, body: Dict[str, Any]) -> Dict[str, A
 
 @router.post("/init-tenant")
 async def init_tenant(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """init_tenant。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -64,10 +83,11 @@ async def init_tenant(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/rotate-adapter-key")
 async def rotate_adapter_key(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Rotate adapter api key.
-    Body:
-      { "adapter_id": "...", "api_key": "..." }
+    """Rotate adapter api key.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
@@ -84,6 +104,12 @@ async def rotate_adapter_key(request: Request, body: Dict[str, Any]) -> Dict[str
 
 @router.post("/autosmoke")
 async def set_autosmoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_autosmoke。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -92,6 +118,11 @@ async def set_autosmoke(request: Request, body: Dict[str, Any]) -> Dict[str, Any
 
 @router.get("/secrets/status")
 async def get_secrets_status(request: Request) -> Dict[str, Any]:
+    """获取 secrets_status。
+
+    Args:
+        request: FastAPI Request。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -100,6 +131,12 @@ async def get_secrets_status(request: Request) -> Dict[str, Any]:
 
 @router.post("/secrets/migrate")
 async def migrate_secrets(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """migrate_secrets。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -108,6 +145,12 @@ async def migrate_secrets(request: Request, body: Dict[str, Any]) -> Dict[str, A
 
 @router.post("/strong-gate")
 async def set_strong_gate(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_strong_gate。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="Core client not initialized")
@@ -116,6 +159,12 @@ async def set_strong_gate(request: Request, body: Dict[str, Any]) -> Dict[str, A
 
 @router.post("/exec-backend")
 async def set_exec_backend(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_exec_backend。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -124,6 +173,12 @@ async def set_exec_backend(request: Request, body: Dict[str, Any]) -> Dict[str, 
 
 @router.post("/context-config")
 async def set_context_config(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_context_config。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -132,6 +187,12 @@ async def set_context_config(request: Request, body: Dict[str, Any]) -> Dict[str
 
 @router.post("/trusted-skill-keys")
 async def set_trusted_skill_keys(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """set_trusted_skill_keys。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -153,7 +214,12 @@ async def set_trusted_skill_keys(request: Request, body: Dict[str, Any]) -> Dict
 
 @router.post("/generate-skill-key")
 async def generate_skill_key(request: Request, body: Dict[str, Any] = None) -> Dict[str, Any]:
-    """Generate an Ed25519 key pair for skill/agent/MCP signing."""
+    """Generate an Ed25519 key pair for skill/agent/MCP signing.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -162,18 +228,11 @@ async def generate_skill_key(request: Request, body: Dict[str, Any] = None) -> D
 
 @router.post("/llm-adapter")
 async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Create an adapter + add optional models + test connection.
+    """Create an adapter + add optional models + test connection.
 
-    Body:
-      {
-        "name": "DeepSeek",
-        "provider": "OpenAI",
-        "api_key": "...",
-        "api_base_url": "https://api.deepseek.com",
-        "description": "",
-        "models": ["deepseek-reasoner", "deepseek-chat"]
-      }
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
@@ -235,6 +294,12 @@ async def configure_llm_adapter(request: Request, body: Dict[str, Any]) -> Dict[
 
 @router.post("/evidence/runs")
 async def create_evidence(request: Request, body: Dict[str, Any]) -> Dict[str, Any]:
+    """创建 evidence。
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -243,6 +308,14 @@ async def create_evidence(request: Request, body: Dict[str, Any]) -> Dict[str, A
 
 @router.get("/evidence/runs")
 async def list_evidence(request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0) -> Dict[str, Any]:
+    """列出 evidence。
+
+    Args:
+        request: FastAPI Request。
+        step_key: step_key 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -251,6 +324,12 @@ async def list_evidence(request: Request, step_key: Optional[str] = None, limit:
 
 @router.get("/evidence/runs/{evidence_id}")
 async def get_evidence(request: Request, evidence_id: str) -> Dict[str, Any]:
+    """获取 evidence。
+
+    Args:
+        request: FastAPI Request。
+        evidence_id: evidence 标识。
+    """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:
         raise HTTPException(status_code=503, detail="core_client not initialized")
@@ -259,13 +338,11 @@ async def get_evidence(request: Request, evidence_id: str) -> Dict[str, Any]:
 
 @router.get("/report")
 async def onboarding_report(request: Request, limit: int = 500) -> Dict[str, Any]:
-    """
-    Export a best-effort onboarding report for support/debugging.
-    This aggregates:
-    - onboarding state (health/adapters/core_state)
-    - doctor recommendations snapshot
-    - pending onboarding approvals
-    - onboarding evidence runs
+    """Export a best-effort onboarding report for support/debugging.
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
     """
     core_client = getattr(request.app.state, "core_client", None)
     if not core_client:

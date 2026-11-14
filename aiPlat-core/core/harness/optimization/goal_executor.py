@@ -40,6 +40,7 @@ logger = logging.getLogger("aiplat.goal_executor")
 
 @dataclass
 class ExecutionRecord:
+    """ExecutionRecord。"""
     goal_id: str
     goal_type: str
     executed_at: float
@@ -47,6 +48,8 @@ class ExecutionRecord:
     description: str
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "goal_id": self.goal_id,
             "goal_type": self.goal_type,
@@ -74,6 +77,13 @@ class GoalExecutor:
         interval_minutes: int = 5,
         max_per_scan: int = 2,
     ):
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+            interval_minutes: interval_minutes 参数。
+            max_per_scan: max_per_scan 参数。
+        """
         self._enabled = enabled
         self._interval = interval_minutes * 60
         self._max_per_scan = max_per_scan
@@ -85,14 +95,23 @@ class GoalExecutor:
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        """enabled。
+
+        Args:
+            value: value 参数。
+        """
         self._enabled = value
         logger.info("[goal_executor] %s", "enabled" if value else "disabled")
 
     def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -103,6 +122,8 @@ class GoalExecutor:
         )
 
     def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
@@ -255,9 +276,8 @@ class GoalExecutor:
     async def execute_goal(self, goal) -> bool:
         """Execute a single goal ON DEMAND (human-approved path). Records history.
 
-        Unlike the autonomous loop, this does NOT require enabled=True or start();
-        it is the entry point for the diagnostics→propose→human-approve→execute
-        closed loop. Callers MUST gate this (auto_executable check + opt-in flag).
+        Args:
+            goal: goal 参数。
         """
         success = await self._execute_goal(goal)
         self._history.append(ExecutionRecord(
@@ -421,6 +441,8 @@ _executor: Optional[GoalExecutor] = None
 
 
 def get_goal_executor() -> GoalExecutor:
+    """获取 goal_executor。
+    """
     global _executor
     if _executor is None:
         _executor = GoalExecutor()

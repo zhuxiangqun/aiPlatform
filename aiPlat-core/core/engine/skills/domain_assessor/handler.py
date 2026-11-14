@@ -13,12 +13,10 @@ logger = logging.getLogger("domain_assessor")
 
 
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    u"""Main handler: classify domain match + compute maturity.
+    """Main handler: classify domain match + compute maturity.
 
-    Input: { customer_profile: { industry, pain_points, tech_stack, deploy },
-             available_domains: [...] }
-    Output: { primary_domain, confidence, match_reasons, alternatives,
-              gap_analysis, maturity_details }
+    Args:
+        params: params 参数。
     """
     profile = params.get("customer_profile", {})
     industry = profile.get("industry", "")

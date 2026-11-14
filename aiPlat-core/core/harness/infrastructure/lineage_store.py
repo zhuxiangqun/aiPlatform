@@ -67,6 +67,27 @@ class DecisionRecord:
         constraint_checks: Optional[Dict] = None,
         source_call: str = "",
     ):
+        """初始化。
+
+        Args:
+            run_id: 运行 ID。
+            decision_type: decision_type 参数。
+            chosen_option: chosen_option 参数。
+            trace_id: trace 标识。
+            agent_id: Agent ID。
+            actor_role: actor_role 参数。
+            context_snapshot_id: context_snapshot 标识。
+            ontology_version: ontology_version 参数。
+            kb_collection_version: kb_collection_version 参数。
+            options_considered: options_considered 参数。
+            choice_reasoning: choice_reasoning 参数。
+            outcome_status: outcome_status 参数。
+            outcome_summary: outcome_summary 参数。
+            cascaded_decisions: cascaded_decisions 参数。
+            policy_version: policy_version 参数。
+            constraint_checks: constraint_checks 参数。
+            source_call: source_call 参数。
+        """
         self.decision_id = f"dec_{_uuid.uuid4().hex[:12]}"
         self.run_id = run_id
         self.trace_id = trace_id
@@ -88,6 +109,8 @@ class DecisionRecord:
         self.source_call = source_call
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "decision_id": self.decision_id,
             "run_id": self.run_id,
@@ -127,6 +150,11 @@ class LineageStore:
     _instance: Optional["LineageStore"] = None
 
     def __init__(self, db_path: str = ""):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         if not db_path:
             import os as _os
             db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
@@ -134,6 +162,8 @@ class LineageStore:
 
     @classmethod
     def get(cls) -> "LineageStore":
+        """get。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -145,7 +175,11 @@ class LineageStore:
         return conn
 
     def insert(self, record: DecisionRecord) -> str:
-        """插入一条决策记录. 返回 decision_id."""
+        """插入一条决策记录. 返回 decision_id.
+
+        Args:
+            record: record 参数。
+        """
         sql = """
             INSERT INTO lineage_decisions (
                 decision_id, run_id, trace_id,
@@ -193,7 +227,13 @@ class LineageStore:
             return ""
 
     def update_outcome(self, decision_id: str, outcome_status: str, outcome_summary: str = "") -> None:
-        """更新决策结果状态."""
+        """更新决策结果状态.
+
+        Args:
+            decision_id: decision 标识。
+            outcome_status: outcome_status 参数。
+            outcome_summary: outcome_summary 参数。
+        """
         try:
             conn = self._get_conn()
             conn.execute(
@@ -206,7 +246,12 @@ class LineageStore:
             logger.warning("Failed to update decision outcome: %s", e)
 
     def get_by_run(self, run_id: str, limit: int = 100) -> List[Dict[str, Any]]:
-        """获取某个 run 的所有决策记录."""
+        """获取某个 run 的所有决策记录.
+
+        Args:
+            run_id: 运行 ID。
+            limit: 返回条数上限。
+        """
         try:
             conn = self._get_conn()
             rows = conn.execute(
@@ -222,8 +267,8 @@ class LineageStore:
     def get_decision_graph(self, run_id: str) -> Dict[str, Any]:
         """构建决策图谱 (nodes + edges for frontend visualization).
 
-        Returns:
-            {"nodes": [...], "edges": [...], "summary": {...}}
+        Args:
+            run_id: 运行 ID。
         """
         decisions = self.get_by_run(run_id)
         if not decisions:
@@ -342,7 +387,25 @@ class LineageStore:
         actor: str = "",
         actor_role: str = "",
     ) -> str:
-        """记录一次语义遍历步骤到 lineage_decisions 表."""
+        """记录一次语义遍历步骤到 lineage_decisions 表.
+
+        Args:
+            run_id: 运行 ID。
+            step_index: step_index 参数。
+            from_entity: from_entity 参数。
+            from_name: from_name 参数。
+            to_entity: to_entity 参数。
+            to_name: to_name 参数。
+            to_class: to_class 参数。
+            relation: relation 参数。
+            relation_label: relation_label 参数。
+            confidence: confidence 参数。
+            hop: hop 参数。
+            parent_decision_id: parent_decision 标识。
+            intermediate_value: intermediate_value 参数。
+            actor: 操作者身份。
+            actor_role: actor_role 参数。
+        """
         try:
             conn = self._get_conn()
             decision_id = f"traverse_{_uuid.uuid4().hex[:12]}"
@@ -372,7 +435,11 @@ class LineageStore:
             return ""
 
     def get_traversal_path(self, run_id: str) -> List[Dict[str, Any]]:
-        """获取某个推理会话的完整遍历路径，按 step_index ASC 排序."""
+        """获取某个推理会话的完整遍历路径，按 step_index ASC 排序.
+
+        Args:
+            run_id: 运行 ID。
+        """
         try:
             conn = self._get_conn()
             rows = conn.execute(
@@ -388,7 +455,11 @@ class LineageStore:
             return []
 
     def list_recent_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """列出最近有决策记录的 run."""
+        """列出最近有决策记录的 run.
+
+        Args:
+            limit: 返回条数上限。
+        """
         try:
             conn = self._get_conn()
             rows = conn.execute("""

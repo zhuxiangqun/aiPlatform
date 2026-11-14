@@ -28,6 +28,7 @@ _MAX_MOA_COST_USD = float(_os.getenv("AIPLAT_MOA_MAX_COST_USD", "0.10"))
 
 @dataclass
 class MoaResult:
+    """MoaResult。"""
     query: str
     preset: str
     reference_outputs: List[str] = field(default_factory=list)
@@ -109,6 +110,14 @@ async def execute(
     max_reference_models: int = 4,
     session_id: str = "",
 ) -> MoaResult:
+    """execute。
+
+    Args:
+        query: 查询。
+        preset: preset 参数。
+        max_reference_models: max_reference_models 参数。
+        session_id: 会话 ID。
+    """
     t0 = _time.monotonic()
     preset_config = _load_moa_preset(preset)
     ref_models = preset_config["reference_models"][:max_reference_models]

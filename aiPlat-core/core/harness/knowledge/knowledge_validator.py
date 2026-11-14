@@ -45,6 +45,8 @@ class ValidationReport:
     
     @property
     def has_errors(self) -> bool:
+        """has_errors。
+        """
         return self.violations_by_severity.get("error", 0) > 0
     
     @property
@@ -65,6 +67,11 @@ class TripleStore:
     """Simple in-memory triple store with basic pattern matching."""
     
     def __init__(self, triples: List[OntologyTriple]):
+        """初始化。
+
+        Args:
+            triples: triples 参数。
+        """
         self._spo: Dict[str, Dict[str, List[str]]] = {}  # subject → predicate → [objects]
         self._pos: Dict[str, Dict[str, List[str]]] = {}  # predicate → object → [subjects]
         
@@ -75,22 +82,42 @@ class TripleStore:
             self._pos.setdefault(t.predicate, {}).setdefault(t.object, []).append(t.subject)
     
     def subjects(self, predicate: str, object_value: str) -> List[str]:
-        """Get all subjects where (subject, predicate, object)."""
+        """Get all subjects where (subject, predicate, object).
+
+        Args:
+            predicate: predicate 参数。
+            object_value: object_value 参数。
+        """
         return self._pos.get(predicate, {}).get(object_value, [])
     
     def objects(self, subject: str, predicate: str) -> List[str]:
-        """Get all objects where (subject, predicate, ?)."""
+        """Get all objects where (subject, predicate, ?).
+
+        Args:
+            subject: subject 参数。
+            predicate: predicate 参数。
+        """
         return self._spo.get(subject, {}).get(predicate, [])
     
     def exists(self, subject: str, predicate: str, object_value: str = None) -> bool:
-        """Check if a triple exists (optionally with specific object)."""
+        """Check if a triple exists (optionally with specific object).
+
+        Args:
+            subject: subject 参数。
+            predicate: predicate 参数。
+            object_value: object_value 参数。
+        """
         objs = self._spo.get(subject, {}).get(predicate, [])
         if object_value is None:
             return len(objs) > 0
         return object_value in objs
     
     def all_subjects_of_type(self, type_uri: str) -> List[str]:
-        """Get all subjects of a given rdf:type."""
+        """Get all subjects of a given rdf:type.
+
+        Args:
+            type_uri: type_uri 参数。
+        """
         return self._pos.get("rdf:type", {}).get(type_uri, [])
 
     @staticmethod
@@ -98,8 +125,9 @@ class TripleStore:
                            document_timestamps: Dict[str, float]) -> List["OntologyTriple"]:
         """Rank triples by source document freshness using exponential decay.
 
-        Newer source documents → higher weight in ranking.
-        Half-life: 60 days (same as memory relevance_decay).
+        Args:
+            triples: triples 参数。
+            document_timestamps: document_timestamps 参数。
         """
         import math, time as _time
         now = _time.time()
@@ -113,7 +141,13 @@ class TripleStore:
         return [s[0] for s in scored]
 
     def transitive_closure(self, start: str, predicate: str, max_depth: int = 10) -> List[str]:
-        """BFS transitive closure from a start node along a predicate."""
+        """BFS transitive closure from a start node along a predicate.
+
+        Args:
+            start: start 参数。
+            predicate: predicate 参数。
+            max_depth: max_depth 参数。
+        """
         visited: set = {start}
         frontier = [start]
         for _ in range(max_depth):
@@ -129,7 +163,13 @@ class TripleStore:
         return sorted(visited - {start})
     
     def detect_cycle(self, start: str, predicate: str, max_depth: int = 20) -> bool:
-        """Detect if a node is part of a cycle along a predicate."""
+        """Detect if a node is part of a cycle along a predicate.
+
+        Args:
+            start: start 参数。
+            predicate: predicate 参数。
+            max_depth: max_depth 参数。
+        """
         visited: set = set()
         frontier = [start]
         for _ in range(max_depth):
@@ -155,6 +195,7 @@ from enum import Enum
 
 
 class RuleTrigger(str, Enum):
+    """RuleTrigger。"""
     ON_CREATE = "on_create"
     ON_QUERY = "on_query"
     ON_DELETE = "on_delete"
@@ -163,6 +204,7 @@ class RuleTrigger(str, Enum):
 
 @dataclass
 class InferenceRule:
+    """InferenceRule。"""
     name: str
     description: str
     trigger: RuleTrigger
@@ -173,7 +215,13 @@ class InferenceRule:
 
     def matches(self, triples: List[OntologyTriple], store: TripleStore,
                 context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Override in subclasses for custom logic. Returns list of inferred {subject, predicate, object}."""
+        """Override in subclasses for custom logic. Returns list of inferred {subject, predicate, object}.
+
+        Args:
+            triples: triples 参数。
+            store: store 参数。
+            context: context 参数。
+        """
         return []
 
 
@@ -182,7 +230,11 @@ DEFAULT_RULES: List[InferenceRule] = []
 
 
 def register_rule(rule: InferenceRule) -> None:
-    """Register a custom inference rule."""
+    """Register a custom inference rule.
+
+    Args:
+        rule: rule 参数。
+    """
     DEFAULT_RULES.append(rule)
 
 
@@ -278,7 +330,8 @@ def run_rules(trigger: RuleTrigger, store: TripleStore,
 def infer_transitive_closure(store: TripleStore) -> List[Dict[str, str]]:
     """Infer transitive closure for all transitive properties.
 
-    Returns list of missing inferred edges: [{subject, predicate, object}].
+    Args:
+        store: store 参数。
     """
     from core.harness.knowledge.knowledge_ontology import OBJECT_PROPERTIES
     inferred = []
@@ -303,7 +356,8 @@ def infer_transitive_closure(store: TripleStore) -> List[Dict[str, str]]:
 def infer_source_chain(store: TripleStore) -> List[Dict[str, str]]:
     """A2 axiom: hasAtom(p,a) ∧ derivesFrom(a,d) ⇒ hasSource(p,d).
 
-    Returns missing hasSource links.
+    Args:
+        store: store 参数。
     """
     inferred = []
     # Collect all subjects from the SPO index
@@ -319,7 +373,11 @@ def infer_source_chain(store: TripleStore) -> List[Dict[str, str]]:
 
 
 def run_full_inference(store: TripleStore) -> Dict[str, Any]:
-    """Run all inference rules and return structured results."""
+    """Run all inference rules and return structured results.
+
+    Args:
+        store: store 参数。
+    """
     transitive = infer_transitive_closure(store)
     source = infer_source_chain(store)
     return {
@@ -359,16 +417,8 @@ class OntologyPatterns:
 def detect_ontology_patterns(collection_id: str = "default") -> OntologyPatterns:
     """Scan current Wiki data and detect patterns not covered by T-Box.
 
-    Data sources:
-    1. wiki_engine.search_pages → all page category/tags/related fields
-    2. T-Box CLASSES → defined allowed_categories
-    3. T-Box OBJECT_PROPERTIES → defined relation URIs
-
-    Returns OntologyPatterns with:
-    - undefined_categories: categories in wiki not in any T-Box class
-    - tag_clusters: high-frequency tags that might warrant new classes
-    - dangling_references: pages referencing titles that don't exist
-    - category_gaps: T-Box classes with zero wiki pages
+    Args:
+        collection_id: collection 标识。
     """
     from core.harness.knowledge.knowledge_ontology import (
         CLASSES, OBJECT_PROPERTIES, AI, get_ontology
@@ -562,7 +612,11 @@ def _metrics_cache_path(collection_id: str = "default") -> str:
 
 
 def load_metrics_cache(collection_id: str = "default") -> Optional[Dict[str, Any]]:
-    """Load cached metrics. Returns None if not found or expired."""
+    """Load cached metrics. Returns None if not found or expired.
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _metrics_cache_path(collection_id)
     if not _os.path.exists(path):
         return None
@@ -585,7 +639,12 @@ def load_metrics_cache(collection_id: str = "default") -> Optional[Dict[str, Any
 
 
 def save_metrics_cache(metrics: Dict[str, Any], collection_id: str = "default") -> None:
-    """Write metrics to cache file and append to history (keep last 30 snapshots)."""
+    """Write metrics to cache file and append to history (keep last 30 snapshots).
+
+    Args:
+        metrics: metrics 参数。
+        collection_id: collection 标识。
+    """
     path = _metrics_cache_path(collection_id)
     _os.makedirs(_os.path.dirname(path), exist_ok=True)
     cache = {
@@ -622,7 +681,11 @@ def save_metrics_cache(metrics: Dict[str, Any], collection_id: str = "default") 
 
 
 def load_metrics_history(collection_id: str = "default") -> List[Dict[str, Any]]:
-    """Load historical metrics snapshots for trend analysis."""
+    """Load historical metrics snapshots for trend analysis.
+
+    Args:
+        collection_id: collection 标识。
+    """
     path = _metrics_cache_path(collection_id).replace(".json", "_history.json")
     if not _os.path.exists(path):
         return []
@@ -637,11 +700,10 @@ def run_golden_query_regression(collection_id: str = "default",
                                 strict_mode: bool = False) -> Dict[str, Any]:
     """Validate retrieval quality using golden_queries.yaml.
 
-    Runs each golden query through sys_knowledge_retrieve and checks
-    whether expected_concepts appear in retrieved titles.
-
-    Returns:
-        {total, passed, failed, pass_rate, per_query: [{query, passed, found, missing}]}
+    Args:
+        collection_id: collection 标识。
+        min_score: min_score 参数。
+        strict_mode: strict_mode 参数。
     """
     import yaml as _yaml
     golden_path = _os.path.join(
@@ -764,11 +826,9 @@ def compute_ontology_metrics(collection_id: str = "default",
                                force_fresh: bool = False) -> Dict[str, Any]:
     """Compute four-dimension ontology health metrics.
 
-    Metrics:
-    1. Coverage: % of wiki pages whose category is covered by T-Box
-    2. Consistency: validator error/warning counts + score
-    3. Inference gain: transitive + source_chain edges inferred
-    4. Maintenance cost: pending suggestions + last review time
+    Args:
+        collection_id: collection 标识。
+        force_fresh: force_fresh 参数。
     """
     from core.harness.knowledge.knowledge_ontology import CLASSES, get_ontology
     from core.harness.knowledge.wiki_engine import search_pages
@@ -1081,7 +1141,12 @@ def compute_ontology_metrics(collection_id: str = "default",
 # ══════════════════════════════════════════════════════════════
 
 def validate_a1(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationIssue]:
-    """A1: 概念完整性 — ConceptPage 必须有 hasSource 指向 KBDocument."""
+    """A1: 概念完整性 — ConceptPage 必须有 hasSource 指向 KBDocument.
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     concept_pages = store.all_subjects_of_type(f"{AI}ConceptPage")
     for page in concept_pages:
@@ -1098,7 +1163,12 @@ def validate_a1(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationI
 
 
 def validate_a3(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationIssue]:
-    """A3: 矛盾对称性 — contradicts(A,B) ⇒ contradicts(B,A)."""
+    """A3: 矛盾对称性 — contradicts(A,B) ⇒ contradicts(B,A).
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     # Get all contradicts triples
     for pred in store._pos:
@@ -1119,7 +1189,12 @@ def validate_a3(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationI
 
 
 def validate_a4(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationIssue]:
-    """A4: 层级无环 — parentOf 不能有环."""
+    """A4: 层级无环 — parentOf 不能有环.
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     all_pages = set()
     for pred in store._pos:
@@ -1140,7 +1215,12 @@ def validate_a4(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationI
 
 
 def validate_a5(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationIssue]:
-    """A5: 源页面独立 — SourcePage 不能 cites 其他 WikiPage."""
+    """A5: 源页面独立 — SourcePage 不能 cites 其他 WikiPage.
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     source_pages = store.all_subjects_of_type(f"{AI}SourcePage")
     wiki_pages = set(store.all_subjects_of_type(f"{AI}WikiPage"))
@@ -1162,7 +1242,12 @@ def validate_a5(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationI
 
 
 def validate_a6(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationIssue]:
-    """A6: 引用完整性 — 每个 hasSource 的 object 必须是一个已注册的 KBDocument."""
+    """A6: 引用完整性 — 每个 hasSource 的 object 必须是一个已注册的 KBDocument.
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     kb_docs = set(store.all_subjects_of_type(f"{AI}KBDocument"))
     
@@ -1187,7 +1272,12 @@ def validate_a6(store: TripleStore, onto: KnowledgeOntology) -> List[ValidationI
 
 
 def validate_parent_cardinality(store: TripleStore, onto: KnowledgeOntology = None) -> List[ValidationIssue]:
-    """Cardinality: parentOf ≤ 1 per page."""
+    """Cardinality: parentOf ≤ 1 per page.
+
+    Args:
+        store: store 参数。
+        onto: onto 参数。
+    """
     issues = []
     for pred in store._pos:
         if "parentOf" in pred:
@@ -1209,7 +1299,11 @@ def validate_parent_cardinality(store: TripleStore, onto: KnowledgeOntology = No
 # ══════════════════════════════════════════════════════════════
 
 def validate(onto: KnowledgeOntology = None) -> ValidationReport:
-    """Run all axiom validators against the current A-Box."""
+    """Run all axiom validators against the current A-Box.
+
+    Args:
+        onto: onto 参数。
+    """
     if onto is None:
         from core.harness.knowledge.knowledge_ontology import get_ontology
         onto = get_ontology()
@@ -1259,7 +1353,12 @@ def validate(onto: KnowledgeOntology = None) -> ValidationReport:
 # ══════════════════════════════════════════════════════════════
 
 def query_transitive_network(start_title: str, max_depth: int = 5) -> Dict[str, Any]:
-    """Get the full transitive knowledge network from a starting page."""
+    """Get the full transitive knowledge network from a starting page.
+
+    Args:
+        start_title: start_title 参数。
+        max_depth: max_depth 参数。
+    """
     from core.harness.knowledge.knowledge_ontology import get_ontology
     onto = get_ontology()
     store = TripleStore(onto.triples)

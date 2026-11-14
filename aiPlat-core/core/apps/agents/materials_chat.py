@@ -1,3 +1,5 @@
+"""materials_chat：模块接口。"""
+
 from __future__ import annotations
 
 import json
@@ -232,7 +234,14 @@ async def _get_related_recommendations(domain_id: str, entity_name: str,
 
 
 class MaterialsChatAgent(BaseAgent):
+    """MaterialsChatAgent。"""
     def __init__(self, config: AgentConfig, **kwargs):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            kwargs: kwargs 参数。
+        """
         super().__init__(config=config, model=None, loop_type="react", **kwargs)
         self._metadata = AgentMetadata(
             name="MaterialsChatAgent",
@@ -244,6 +253,11 @@ class MaterialsChatAgent(BaseAgent):
         self._skills: List[Any] = []
 
     async def execute(self, context: AgentContext) -> AgentResult:
+        """execute。
+
+        Args:
+            context: context 参数。
+        """
         import asyncio
         try:
             return await asyncio.wait_for(self._execute_impl(context), timeout=120)
@@ -1006,5 +1020,11 @@ class MaterialsChatAgent(BaseAgent):
 
 
 def create_materials_chat_agent(config: AgentConfig, **kwargs) -> MaterialsChatAgent:
+    """创建 materials_chat_agent。
+
+    Args:
+        config: config 参数。
+        kwargs: kwargs 参数。
+    """
     return MaterialsChatAgent(config=config, **kwargs)
 

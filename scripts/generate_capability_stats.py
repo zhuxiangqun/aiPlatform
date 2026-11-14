@@ -29,6 +29,11 @@ def _load():
 
 
 def main(argv=None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     v = _load()
     if "--ci" in argv:

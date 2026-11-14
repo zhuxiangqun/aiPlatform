@@ -44,7 +44,13 @@ async def publish_business_action(*, action_id: str, entity_id: str, domain_id: 
                                   actor: str = "") -> None:
     """Publish a completed business action: emit audit event + incremental update.
 
-    Never raises — the bridge is best-effort by design.
+    Args:
+        action_id: action 标识。
+        entity_id: entity 标识。
+        domain_id: domain 标识。
+        result: result 参数。
+        status: status 参数。
+        actor: 操作者身份。
     """
     data: Dict[str, Any] = {
         "action_id": action_id,

@@ -1,3 +1,5 @@
+"""trace_service：模块接口。"""
+
 import logging
 """
 Trace Service - Execution Tracing and Metrics
@@ -64,7 +66,12 @@ class Span:
     current_value: Optional[float] = None
     
     def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None):
-        """Add an event to this span."""
+        """Add an event to this span.
+
+        Args:
+            name: name 参数。
+            attributes: attributes 参数。
+        """
         self.events.append({
             "name": name,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -72,11 +79,20 @@ class Span:
         })
     
     def set_attribute(self, key: str, value: Any):
-        """Set an attribute on this span."""
+        """Set an attribute on this span.
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+        """
         self.attributes[key] = value
     
     def end(self, status: SpanStatus = SpanStatus.SUCCESS):
-        """End this span."""
+        """End this span.
+
+        Args:
+            status: status 参数。
+        """
         self.end_time = datetime.now(timezone.utc)
         self.duration_ms = (self.end_time - self.start_time).total_seconds() * 1000
         self.status = status
@@ -117,6 +133,11 @@ class TraceContext:
     """
     
     def __init__(self, trace_id: str = None):
+        """初始化。
+
+        Args:
+            trace_id: trace 标识。
+        """
         self.trace_id = trace_id or str(uuid.uuid4())
         self._current_trace: Optional[Trace] = None
         self._span_stack: List[Span] = []
@@ -139,6 +160,11 @@ class TraceService:
     """
     
     def __init__(self, execution_store: Optional[Any] = None):
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._traces: Dict[str, Trace] = {}
         self._spans: Dict[str, Span] = {}
         self._context: Optional[TraceContext] = None
@@ -412,7 +438,11 @@ class TraceService:
         return True
 
     async def get_trace_persisted(self, trace_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch trace from persistence backend (if configured)."""
+        """Fetch trace from persistence backend (if configured).
+
+        Args:
+            trace_id: trace 标识。
+        """
         if self._store is None:
             return None
         try:
@@ -456,10 +486,22 @@ class TraceServiceTracer:
     """
 
     def __init__(self, trace_service: TraceService, default_trace_name: str = "tool"):
+        """初始化。
+
+        Args:
+            trace_service: trace_service 参数。
+            default_trace_name: default_trace_name 参数。
+        """
         self._service = trace_service
         self._default_trace_name = default_trace_name
 
     def start_span(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> _AsyncSpanContext:
+        """start_span。
+
+        Args:
+            name: name 参数。
+            attributes: attributes 参数。
+        """
         return _AsyncSpanContext(self, name=name, attributes=attributes)
     
     async def get_trace(self, trace_id: str) -> Optional[Trace]:

@@ -17,6 +17,8 @@ class SubagentRegistry:
     """Subagent registry for managing available Subagents"""
     
     def __init__(self):
+        """初始化。
+        """
         self._subagents: Dict[str, SubagentConfig] = {}
         self._initialized = False
     
@@ -33,12 +35,20 @@ class SubagentRegistry:
         logger.info(f"Initialized Subagent registry with {len(self._subagents)} built-in subagents")
     
     def register(self, config: SubagentConfig):
-        """Register a Subagent"""
+        """Register a Subagent。
+
+        Args:
+            config: config 参数。
+        """
         self._subagents[config.name] = config
         logger.info(f"Registered Subagent: {config.name}")
     
     def unregister(self, name: str) -> bool:
-        """Unregister a Subagent"""
+        """Unregister a Subagent。
+
+        Args:
+            name: name 参数。
+        """
         if name in self._subagents:
             del self._subagents[name]
             logger.info(f"Unregistered Subagent: {name}")
@@ -46,7 +56,11 @@ class SubagentRegistry:
         return False
     
     def get(self, name: str) -> Optional[SubagentConfig]:
-        """Get Subagent config by name"""
+        """Get Subagent config by name。
+
+        Args:
+            name: name 参数。
+        """
         return self._subagents.get(name)
     
     def list_all(self) -> List[str]:
@@ -54,7 +68,11 @@ class SubagentRegistry:
         return list(self._subagents.keys())
     
     def find_by_capability(self, capability: str) -> List[SubagentConfig]:
-        """Find Subagents by capability keyword"""
+        """Find Subagents by capability keyword。
+
+        Args:
+            capability: capability 参数。
+        """
         results = []
         for config in self._subagents.values():
             if capability.lower() in config.description.lower():
@@ -62,7 +80,11 @@ class SubagentRegistry:
         return results
     
     def find_by_tools(self, required_tools: List[str]) -> List[SubagentConfig]:
-        """Find Subagents that have the required tools"""
+        """Find Subagents that have the required tools。
+
+        Args:
+            required_tools: required_tools 参数。
+        """
         results = []
         for config in self._subagents.values():
             if all(config.can_use_tool(tool) for tool in required_tools):

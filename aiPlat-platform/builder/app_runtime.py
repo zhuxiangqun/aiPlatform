@@ -65,8 +65,9 @@ def _runtime_record_path() -> str:
 def detect_runtime(project_id: str, app_home: Optional[str] = None) -> Dict[str, Any]:
     """扫描生成目录，识别可运行入口。
 
-    返回 {kind, command, cwd, port, reason, found}：
-      kind: fastapi | flask | node | static | none
+    Args:
+        project_id: project 标识。
+        app_home: app_home 参数。
     """
     home = app_home or _app_home(project_id)
     if not os.path.isdir(home):
@@ -203,7 +204,11 @@ def _save_runtime_records(data: Dict[str, Any]) -> None:
 
 # ── 启动 / 停止 / 健康 ──
 def launch(project_id: str) -> Dict[str, Any]:
-    """detect → daemon_jobs 托管启动（生成物侧接线：daemon_jobs 生成物适用 待接线 → 已接线）。"""
+    """detect → daemon_jobs 托管启动（生成物侧接线：daemon_jobs 生成物适用 待接线 → 已接线）。
+
+    Args:
+        project_id: project 标识。
+    """
     det = detect_runtime(project_id)
     if not det.get("found"):
         return {"started": False, "error": det.get("reason", "no runtime")}
@@ -223,7 +228,14 @@ def launch(project_id: str) -> Dict[str, Any]:
 
 def health_check(project_id: str, port: Optional[int] = None,
                  timeout_sec: float = 30.0, interval_sec: float = 0.5) -> Dict[str, Any]:
-    """HTTP 轮询健康探测：2xx/3xx = up。返回 {healthy, status_code, port, elapsed_sec}。"""
+    """HTTP 轮询健康探测：2xx/3xx = up。返回 {healthy, status_code, port, elapsed_sec}。
+
+    Args:
+        project_id: project 标识。
+        port: port 参数。
+        timeout_sec: timeout_sec 参数。
+        interval_sec: interval_sec 参数。
+    """
     recs = _load_runtime_records()
     rec = recs.get(project_id) or {}
     port = port or rec.get("port") or 0
@@ -248,7 +260,11 @@ def health_check(project_id: str, port: Optional[int] = None,
 
 
 def stop(project_id: str) -> Dict[str, Any]:
-    """经 daemon_jobs kill（连同会话组），清理运行记录。"""
+    """经 daemon_jobs kill（连同会话组），清理运行记录。
+
+    Args:
+        project_id: project 标识。
+    """
     recs = _load_runtime_records()
     rec = recs.get(project_id) or {}
     job_id = rec.get("job_id")
@@ -263,7 +279,11 @@ def stop(project_id: str) -> Dict[str, Any]:
 
 
 def status(project_id: str) -> Dict[str, Any]:
-    """运行状态：记录 + daemon job 存活。"""
+    """运行状态：记录 + daemon job 存活。
+
+    Args:
+        project_id: project 标识。
+    """
     recs = _load_runtime_records()
     rec = recs.get(project_id) or {}
     if not rec:
@@ -334,9 +354,10 @@ def smoke_test(project_id: str, keep_alive: bool = False,
                timeout_sec: float = 30.0) -> Dict[str, Any]:
     """完整闭环：detect → launch → health → 报告。
 
-    keep_alive=False（默认）：测试后 stop（不留后台进程）；
-    keep_alive=True：保留运行，供人工验证（返回 port）。
-    失败路径（launch 失败 / 健康探测不通过）→ L2 经验回写（生成物失败经验）。
+    Args:
+        project_id: project 标识。
+        keep_alive: keep_alive 参数。
+        timeout_sec: timeout_sec 参数。
     """
     det = detect_runtime(project_id)
     if not det.get("found"):
@@ -379,7 +400,10 @@ def run_tests_with_smoke(project_id: str, deploy_dir: str,
                          repo_test_fn=None) -> Dict[str, Any]:
     """升级版测试：真实 e2e 冒烟（启动+健康探测）替换"目录存在"假通过。
 
-    repo_test_fn: 可选，运行 deploy 目录 pytest 的闭包（原 _run_tests_for_project 的 repo_tests 部分）。
+    Args:
+        project_id: project 标识。
+        deploy_dir: deploy_dir 参数。
+        repo_test_fn: repo_test_fn 参数。
     """
     results: Dict[str, Any] = {"all_passed": False, "e2e_smoke": None, "repo_tests": None}
     if repo_test_fn:
@@ -474,11 +498,11 @@ def real_tests(project_id: str, deploy_dir: Optional[str] = None,
                install_deps: bool = True, timeout_sec: float = 120.0) -> Dict[str, Any]:
     """测试经理真实测试：递归发现测试用例 → 可写临时目录跑 pytest → test_report。
 
-    与 smoke_test 的区别：smoke 只验证"能启动"；real_tests 执行生成物自带测试用例
-    （backend/tests/test_*.py，pytest + httpx 真实业务断言），验证功能正确性。
-
-    返回 {test_passed, detected, test_report, e2e_smoke}：
-      test_passed = 所有发现用例通过且冒烟通过。
+    Args:
+        project_id: project 标识。
+        deploy_dir: deploy_dir 参数。
+        install_deps: install_deps 参数。
+        timeout_sec: timeout_sec 参数。
     """
     import subprocess as _sp
     import shutil as _sh
@@ -576,6 +600,8 @@ def _apply_counts(val: str, key: str, passed: int, failed: int, errors: int, ski
 
 
 def subprocess_timeout():
+    """subprocess_timeout。
+    """
     import subprocess as _sp
     return _sp.TimeoutExpired
 
@@ -589,13 +615,11 @@ async def auto_repair(project_id: str, deploy_dir: Optional[str] = None,
                       max_rounds: int = MAX_REPAIR_ATTEMPTS, timeout_sec: float = 120.0) -> Dict[str, Any]:
     """测试经理真实测试失败后自动修复：real_tests → 失败则 LLM 修复 → 写回部署目录 → 重跑。
 
-    修复只作用于生成物部署目录（deploy_dir/backend 下被 pytest 判失败的 .py 文件），
-    与 test_executor 的 auto-repair 同模式（LLM 按测试输出修复 → 重跑 → 改进才采纳）。
-
-    返回 {repaired, rounds, initial, final, test_report, writeback_files,
-          repair_exhausted?, next?}：
-      repaired = 最终测试通过（或相比初始改进）；writeback_files = 写回部署目录的文件。
-      repair_exhausted=True 且 next=hitl 表示已达上限，应交人工。
+    Args:
+        project_id: project 标识。
+        deploy_dir: deploy_dir 参数。
+        max_rounds: max_rounds 参数。
+        timeout_sec: timeout_sec 参数。
     """
     import subprocess as _sp
     import tempfile as _tf

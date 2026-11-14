@@ -130,12 +130,9 @@ def _is_engine_registered(tool_name: str) -> bool:
 def get_tool_status(tool_name: str, *, tool_path: Optional[str] = None) -> str:
     """Return lifecycle status.
 
-    Precedence: explicit store → workspace manifest → engine builtin ``listed``
-    → default ``draft`` (workspace-created tools).
-
-    Engine/builtin tools are platform-owned and safe for application-layer
-    binding without a separate 上架 flow (aligned with engine-only Skills).
-    Explicit store/manifest still wins (e.g. admin can deprecate).
+    Args:
+        tool_name: tool_name 参数。
+        tool_path: tool_path 参数。
     """
     name = str(tool_name or "").strip()
     if not name:
@@ -154,8 +151,10 @@ def get_tool_status(tool_name: str, *, tool_path: Optional[str] = None) -> str:
 def set_tool_status(tool_name: str, status: str, *, tool_path: Optional[str] = None) -> str:
     """Persist lifecycle status. Returns normalized status.
 
-    Phase D production listing gate: ``published`` / ``listed`` require COMPAT
-    schedulable when a COMPAT file exists (missing COMPAT → fail-open legacy).
+    Args:
+        tool_name: tool_name 参数。
+        status: status 参数。
+        tool_path: tool_path 参数。
     """
     name = str(tool_name or "").strip()
     if not name:

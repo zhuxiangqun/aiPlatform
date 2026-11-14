@@ -23,15 +23,27 @@ def _home() -> Path:
 
 
 def signals_path() -> Path:
+    """signals_path。
+    """
     return _home() / "k_wave" / "signals.jsonl"
 
 
 def live_yaml_path(domain_id: str) -> Path:
+    """live_yaml_path。
+
+    Args:
+        domain_id: domain 标识。
+    """
     did = (domain_id or "").strip() or "default"
     return _home() / "ontologies" / f"{did}.yaml"
 
 
 def live_yaml_hash(domain_id: str) -> str:
+    """live_yaml_hash。
+
+    Args:
+        domain_id: domain 标识。
+    """
     path = live_yaml_path(domain_id)
     if not path.is_file():
         return ""
@@ -104,7 +116,13 @@ async def confirm_extraction_k1(
     actor: str = "",
     store: Optional[Any] = None,
 ) -> Dict[str, Any]:
-    """Confirm one pending extraction into a K1 signal. No live YAML write, no edge write."""
+    """Confirm one pending extraction into a K1 signal. No live YAML write, no edge write.
+
+    Args:
+        extraction_id: extraction 标识。
+        actor: 操作者身份。
+        store: store 参数。
+    """
     eid = (extraction_id or "").strip()
     if not eid:
         return {"ok": False, "reason": "need_extraction_id"}

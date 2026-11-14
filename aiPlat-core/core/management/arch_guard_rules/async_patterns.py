@@ -20,6 +20,11 @@ class AsyncSleepInLoopCheck(ArchRule):
     section_name = "异步性能检测"
 
     def check(self, repo_root: Path) -> List[ArchIssue]:
+        """check。
+
+        Args:
+            repo_root: repo_root 参数。
+        """
         issues = []
         for target_dir in ("aiPlat-core/core/harness/execution", "aiPlat-platform/kb"):
             d = repo_root / target_dir

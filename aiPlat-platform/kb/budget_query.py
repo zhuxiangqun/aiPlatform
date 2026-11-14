@@ -79,6 +79,15 @@ def query(
     year: Optional[int] = None,
     limit: int = 50,
 ) -> Dict[str, Any]:
+    """query。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        question: question 参数。
+        year: year 参数。
+        limit: 返回条数上限。
+    """
     if not tenant_id:
         raise ValueError("tenant_id_required")
     if not collection_id:

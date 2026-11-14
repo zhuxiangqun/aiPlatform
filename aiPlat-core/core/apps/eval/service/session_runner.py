@@ -26,7 +26,11 @@ def _sg(case: Mapping[str, Any]) -> str:
 def group_session_cases(
     cases: Sequence[Mapping[str, Any]],
 ) -> Dict[str, List[Dict[str, Any]]]:
-    """Partition by session_group; fail closed on field / uniqueness errors."""
+    """Partition by session_group; fail closed on field / uniqueness errors.
+
+    Args:
+        cases: 用例列表。
+    """
     rows = [dict(c) for c in cases if isinstance(c, Mapping) and _sg(c)]
     field_errs: List[str] = []
     for c in rows:
@@ -51,7 +55,12 @@ def assert_session_groups_complete(
     selected: Sequence[Mapping[str, Any]],
     universe: Sequence[Mapping[str, Any]],
 ) -> None:
-    """Fail closed if selected set splits any session_group from universe."""
+    """Fail closed if selected set splits any session_group from universe.
+
+    Args:
+        selected: selected 参数。
+        universe: universe 参数。
+    """
     uni = group_session_cases(universe) if any(_sg(c) for c in universe if isinstance(c, Mapping)) else {}
     sel_ids = {
         str(c.get("case_id") or "")
@@ -72,7 +81,12 @@ def judge_memory_probe(
     planted: Mapping[str, Any],
     answer: str,
 ) -> Dict[str, Any]:
-    """Check must_recall tokens appear in later-turn answer."""
+    """Check must_recall tokens appear in later-turn answer.
+
+    Args:
+        planted: planted 参数。
+        answer: answer 参数。
+    """
     probe = planted.get("memory_probe") if isinstance(planted.get("memory_probe"), Mapping) else {}
     must = [str(x).strip() for x in (probe.get("must_recall") or []) if str(x).strip()]
     errors: List[str] = []
@@ -91,8 +105,9 @@ def run_session_group(
 ) -> Dict[str, Any]:
     """Execute one session_group worth of turns (scripted answers).
 
-    ``answers`` maps case_id → assistant text. Falls back to case.scripted_answer.
-    Memory probes planted on turn T are checked on turn T+ask_after_turns.
+    Args:
+        cases: 用例列表。
+        answers: answers 参数。
     """
     groups = group_session_cases(cases)
     if len(groups) != 1:
@@ -165,7 +180,12 @@ def run_all_session_groups(
     *,
     answers: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Run every session_group in the fixture set."""
+    """Run every session_group in the fixture set.
+
+    Args:
+        cases: 用例列表。
+        answers: answers 参数。
+    """
     groups = group_session_cases(cases)
     reports: List[Dict[str, Any]] = []
     ok = True

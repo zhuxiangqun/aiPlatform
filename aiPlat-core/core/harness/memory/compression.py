@@ -1,3 +1,5 @@
+"""compression：模块接口。"""
+
 import logging
 
 """
@@ -44,12 +46,8 @@ def get_cached_embedding(text: str) -> Optional[tuple]:
 
     """LRU 缓存的 embedding。同一段文本重复调用只计算一次。
 
-    
-
-    Public function — used by both compression.py and manager.py for
-
-    cross-layer re-ranking (P0-4).
-
+    Args:
+        text: text 参数。
     """
 
     try:
@@ -80,12 +78,9 @@ def score_semantic_relevance(messages: List[Dict], task: str) -> List[float]:
 
     """P0-3: 计算每条消息与当前任务的语义相似度 [0, 1]。
 
-    
-
-    使用 LRU 缓存的 embedding，同一段文本只计算一次。
-
-    返回与 messages 等长的分数列表。
-
+    Args:
+        messages: messages 参数。
+        task: task 参数。
     """
 
     if not messages or not task:
@@ -172,6 +167,8 @@ class ContextState:
 
     def usage_ratio(self) -> float:
 
+        """usage_ratio。
+        """
         if self.token_limit == 0:
 
             return 0
@@ -186,12 +183,8 @@ def get_model_context_length(model_name: str) -> int:
 
     """Read model context_window from infra llm_profile.yaml (core → infra, allowed direction).
 
-
-
-    Returns context_window or 200000 (safe default). Used by compression to
-
-    calculate accurate usage_ratio instead of a fixed token_limit.
-
+    Args:
+        model_name: model_name 参数。
     """
 
     try:
@@ -230,6 +223,11 @@ class ContextCompression:
 
     def __init__(self, config: Optional[Dict] = None):
 
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or {}
 
         self._thresholds = self._init_thresholds()
@@ -256,7 +254,11 @@ class ContextCompression:
 
     def set_temperature(self, temp: float):
 
-        """P0-2: 设置当前推理温度，影响剪枝保留比例。"""
+        """P0-2: 设置当前推理温度，影响剪枝保留比例。
+
+        Args:
+            temp: temp 参数。
+        """
 
         self._last_temperature = temp
 
@@ -296,7 +298,11 @@ class ContextCompression:
 
     def get_level(self, usage_ratio: float) -> CompressionLevel:
 
-        """Determine compression level based on usage"""
+        """Determine compression level based on usage。
+
+        Args:
+            usage_ratio: usage_ratio 参数。
+        """
 
         for level, threshold in self._thresholds.items():
 
@@ -324,7 +330,14 @@ class ContextCompression:
 
     ) -> List[Dict]:
 
-        """Compress context based on current level"""
+        """Compress context based on current level。
+
+        Args:
+            context: context 参数。
+            state: state 参数。
+            session_id: 会话 ID。
+            tenant_id: 租户 ID。
+        """
 
         self._archive_session_id = str(session_id or "")
         self._archive_tenant_id = str(tenant_id or "")
@@ -757,7 +770,11 @@ class ContextCompression:
         return system_msgs + high + summary_msgs + keep
 
     def should_trigger_compression(self, state: ContextState) -> bool:
-        """Check if compression should be triggered"""
+        """Check if compression should be triggered。
+
+        Args:
+            state: state 参数。
+        """
         level = self.get_level(state.usage_ratio)
         return level != CompressionLevel.NORMAL
 
@@ -981,7 +998,11 @@ CONTEXT_SUMMARY_TIMEOUT = 3.0  # seconds — fallback to mechanical placeholder
 
 
 def sanitize_tool_summary(text: str) -> str:
-    """Tool-output summary without command or TODO fragments."""
+    """Tool-output summary without command or TODO fragments.
+
+    Args:
+        text: text 参数。
+    """
     from core.harness.memory.file_store import memory_content_is_fact
 
     parts = []
@@ -1000,7 +1021,11 @@ def sanitize_tool_summary(text: str) -> str:
 
 
 def sanitize_context_summary(summary: str) -> str:
-    """Keep goal/conclusion lines. Drop command and TODO lines from CONTEXT_SUMMARY."""
+    """Keep goal/conclusion lines. Drop command and TODO lines from CONTEXT_SUMMARY.
+
+    Args:
+        summary: summary 参数。
+    """
     from core.harness.memory.file_store import memory_content_is_fact
 
     text = (summary or "").strip()

@@ -1,3 +1,5 @@
+"""executor：模块接口。"""
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 import logging
 """
@@ -27,6 +29,7 @@ from core.harness.utils.model_injection import best_model_for_purpose
 
 @dataclass
 class ExecutionRecord:
+    """ExecutionRecord。"""
     execution_id: str
     skill_name: str
     status: str  # pending, running, success, failed, timeout
@@ -53,6 +56,13 @@ class SkillExecutor:
         default_timeout: float = None,
         discovery=None
     ):
+        """初始化。
+
+        Args:
+            registry: registry 参数。
+            default_timeout: default_timeout 参数。
+            discovery: discovery 参数。
+        """
         self._registry = registry or get_skill_registry()
         self._default_timeout = default_timeout or float(os.getenv("AIPLAT_SKILL_DEFAULT_TIMEOUT", "180"))
         self._executions: Dict[str, ExecutionRecord] = {}
@@ -379,7 +389,14 @@ class SkillExecutor:
         context: Optional[SkillContext] = None,
         timeout: Optional[float] = None,
     ) -> AsyncGenerator[SkillStreamEvent, None]:
-        """Execute skill with streaming output."""
+        """Execute skill with streaming output.
+
+        Args:
+            skill_name: skill_name 参数。
+            params: params 参数。
+            context: context 参数。
+            timeout: 超时秒数。
+        """
         skill = self._registry.get(skill_name)
         if skill is None:
             yield SkillStreamEvent(event_type="done", data=SkillResult(success=False, error=f"Skill not found: {skill_name}"), progress=1.0)
@@ -585,7 +602,11 @@ class SkillExecutor:
             return SkillResult(success=False, error=str(e))
 
     def get_execution(self, execution_id: str) -> Optional[ExecutionRecord]:
-        """Get execution record by ID"""
+        """Get execution record by ID。
+
+        Args:
+            execution_id: execution 标识。
+        """
         return self._executions.get(execution_id)
 
     def list_executions(
@@ -594,7 +615,13 @@ class SkillExecutor:
         limit: int = 100,
         offset: int = 0
     ) -> List[ExecutionRecord]:
-        """List execution records"""
+        """List execution records。
+
+        Args:
+            skill_name: skill_name 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         records = list(self._executions.values())
         if skill_name:
             records = [r for r in records if r.skill_name == skill_name]

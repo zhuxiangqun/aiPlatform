@@ -43,6 +43,8 @@ class OperationStep:
     recorded_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "seq": self.seq,
             "tool": self.tool_name,
@@ -67,6 +69,7 @@ class OperationStep:
 
 @dataclass
 class Recording:
+    """Recording。"""
     recording_id: str
     status: str = "idle"               # idle | recording | stopped
     steps: List[OperationStep] = field(default_factory=list)
@@ -75,6 +78,8 @@ class Recording:
     description: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "recording_id": self.recording_id,
             "status": self.status,
@@ -103,12 +108,18 @@ class OperationRecorder:
 
     @classmethod
     def get(cls) -> "OperationRecorder":
+        """get。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def start(self, description: str = "") -> str:
-        """开始录制."""
+        """开始录制.
+
+        Args:
+            description: description 参数。
+        """
         rid = f"rec_{_uuid.uuid4().hex[:12]}"
         self._active = Recording(
             recording_id=rid,
@@ -131,9 +142,13 @@ class OperationRecorder:
         return recording
 
     def is_recording(self) -> bool:
+        """is_recording。
+        """
         return self._active is not None and self._active.status == "recording"
 
     def get_recording_id(self) -> str:
+        """获取 recording_id。
+        """
         return self._active.recording_id if self._active else ""
 
     def record_step(
@@ -144,7 +159,15 @@ class OperationRecorder:
         result_summary: str,
         duration_ms: float = 0.0,
     ) -> None:
-        """记录单个操作步骤 (仅在录制中时生效)."""
+        """记录单个操作步骤 (仅在录制中时生效).
+
+        Args:
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            result_type: result_type 参数。
+            result_summary: result_summary 参数。
+            duration_ms: duration_ms 参数。
+        """
         if not self._active or self._active.status != "recording":
             return
 
@@ -160,10 +183,16 @@ class OperationRecorder:
         self._active.steps.append(step)
 
     def get_active(self) -> Optional[Recording]:
+        """获取 active。
+        """
         return self._active
 
     def save(self, recording: Recording) -> str:
-        """持久化录制结果到磁盘."""
+        """持久化录制结果到磁盘.
+
+        Args:
+            recording: recording 参数。
+        """
         import os as _os
         _os.makedirs(str(RECORDING_STORE), exist_ok=True)
         path = str(RECORDING_STORE / f"{recording.recording_id}.json")
@@ -173,7 +202,11 @@ class OperationRecorder:
         return path
 
     def load(self, recording_id: str) -> Optional[Dict[str, Any]]:
-        """从磁盘加载录制结果."""
+        """从磁盘加载录制结果.
+
+        Args:
+            recording_id: recording 标识。
+        """
         path = RECORDING_STORE / f"{recording_id}.json"
         if not path.exists():
             return None
@@ -181,7 +214,11 @@ class OperationRecorder:
             return _json.load(f)
 
     def list_recordings(self, limit: int = 20) -> List[Dict[str, Any]]:
-        """列出最近的录制."""
+        """列出最近的录制.
+
+        Args:
+            limit: 返回条数上限。
+        """
         if not RECORDING_STORE.exists():
             return []
         files = sorted(RECORDING_STORE.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:limit]

@@ -16,6 +16,11 @@ class LarkAdapter(ChannelAdapter):
     """飞书适配器 (机器人)"""
 
     def parse_message(self, raw_data: dict) -> ChannelMessage:
+        """parse_message。
+
+        Args:
+            raw_data: raw_data 参数。
+        """
         event = raw_data.get("event") or {}
         message = event.get("message") or {}
         sender = event.get("sender") or {}
@@ -41,6 +46,11 @@ class LarkAdapter(ChannelAdapter):
         )
 
     def format_response(self, response: ChannelResponse) -> dict:
+        """format_response。
+
+        Args:
+            response: FastAPI Response。
+        """
         return {
             "msg_type": "text",
             "content": {"text": response.text},

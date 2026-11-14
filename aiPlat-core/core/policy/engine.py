@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class PolicyDecision(str, Enum):
+    """PolicyDecision。"""
     ALLOW = "allow"
     DENY = "deny"
     APPROVAL_REQUIRED = "approval_required"
@@ -26,6 +27,7 @@ class PolicyDecision(str, Enum):
 
 @dataclass
 class PolicyEvalResult:
+    """PolicyEvalResult。"""
     decision: PolicyDecision
     reason_code: str
     reason: str
@@ -35,6 +37,8 @@ class PolicyEvalResult:
     metadata: Dict[str, Any] = None  # type: ignore[assignment]
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "decision": self.decision.value,
             "reason_code": self.reason_code,
@@ -63,7 +67,17 @@ def evaluate_tool_policy_snapshot(
     tool_name: str,
     tool_args: Optional[Dict[str, Any]] = None,
 ) -> PolicyEvalResult:
-    """在已获取 tenant policy snapshot 的情况下做纯计算（同步友好）。"""
+    """在已获取 tenant policy snapshot 的情况下做纯计算（同步友好）。
+
+    Args:
+        policy: policy 参数。
+        policy_version: policy_version 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        actor_role: actor_role 参数。
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
+    """
     tid = str(tenant_id or "").strip() or None
     tp = _get_tool_policy(policy)
 
@@ -155,9 +169,16 @@ async def evaluate_tool(
     tool_args: Optional[Dict[str, Any]] = None,
     context: Optional[Dict[str, Any]] = None,
 ) -> PolicyEvalResult:
-    """
-    输入：tenant/actor/tool/args/context
-    输出：decision + reason_code + metadata
+    """输入：tenant/actor/tool/args/context。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        actor_role: actor_role 参数。
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
+        context: context 参数。
     """
     tid = str(tenant_id or "").strip() or None
     pol, ver = (await _load_tenant_policy_snapshot(store=store, tenant_id=tid)) if tid else (None, None)
@@ -186,8 +207,16 @@ async def evaluate_mcp_server(
     transport: str,
     server_metadata: Optional[Dict[str, Any]] = None,
 ) -> PolicyEvalResult:
-    """
-    MCP runtime 策略：默认 prod 禁用 stdio，除非 tenant policy 或 server metadata 显式允许。
+    """MCP runtime 策略：默认 prod 禁用 stdio，除非 tenant policy 或 server metadata 显式允许。
+
+    Args:
+        store: store 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        actor_role: actor_role 参数。
+        server_name: server_name 参数。
+        transport: transport 参数。
+        server_metadata: server_metadata 参数。
     """
     tid = str(tenant_id or "").strip() or None
     pol, ver = (await _load_tenant_policy_snapshot(store=store, tenant_id=tid)) if tid else (None, None)

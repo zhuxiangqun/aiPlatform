@@ -21,6 +21,7 @@ logger = logging.getLogger("aiplat.auto_register")
 
 @dataclass
 class AutoRegisterResult:
+    """AutoRegisterResult。"""
     config_id: str
     status: str = "pending"       # pending | validated | connected | mapped | registered | failed
     connection_ok: bool = False
@@ -39,19 +40,36 @@ class AutoRegisterEngine:
     """
 
     def __init__(self, *, enabled: bool = False):
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+        """
         self._enabled = enabled
         self._register_count = 0
         self._last_result: Optional[AutoRegisterResult] = None
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        """enabled。
+
+        Args:
+            value: value 参数。
+        """
         self._enabled = value
 
     async def try_register(self, config: Dict[str, Any]) -> AutoRegisterResult:
+        """try_register。
+
+        Args:
+            config: config 参数。
+        """
         config_id = config.get("name", f"auto-{_time.time()}")
         result = AutoRegisterResult(config_id=config_id, status="pending")
 
@@ -186,6 +204,8 @@ class AutoRegisterEngine:
             return False
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "enabled": self._enabled,
             "register_count": self._register_count,
@@ -197,6 +217,8 @@ _auto_register_engine: Optional[AutoRegisterEngine] = None
 
 
 def get_auto_register_engine() -> AutoRegisterEngine:
+    """获取 auto_register_engine。
+    """
     global _auto_register_engine
     if _auto_register_engine is None:
         enabled = _os.getenv("AIPLAT_DISCOVERY_ENABLED", "false").lower() in (

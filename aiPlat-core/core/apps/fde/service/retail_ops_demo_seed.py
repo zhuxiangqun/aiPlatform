@@ -26,6 +26,11 @@ def _workspace_yaml() -> Path:
 
 
 def ensure_retail_ops_ontology(*, force: bool = False) -> Dict[str, Any]:
+    """ensure_retail_ops_ontology。
+
+    Args:
+        force: 是否强制。
+    """
     src = _workspace_yaml()
     dest_dir = _aiplat_home() / "ontologies"
     dest = dest_dir / "retail-ops.yaml"
@@ -73,7 +78,13 @@ def seed_retail_ops_demo_graph(
     primary_alert_id: str = "ALT-POS-TIMEOUT",
     ensure_ontology: bool = True,
 ) -> Dict[str, Any]:
-    """Minimal call-path: POS-API → payment-gw → Redis @ host + one alert."""
+    """Minimal call-path: POS-API → payment-gw → Redis @ host + one alert.
+
+    Args:
+        g: g 参数。
+        primary_alert_id: primary_alert 标识。
+        ensure_ontology: ensure_ontology 参数。
+    """
     onto: Dict[str, Any] = {}
     if ensure_ontology:
         onto = ensure_retail_ops_ontology()

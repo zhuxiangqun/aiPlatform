@@ -248,7 +248,16 @@ def run_generated_app_pi_smoke(
     model: str = "",
     timeout_s: float = 90.0,
 ) -> Dict[str, Any]:
-    """Export + structural (always); optional live `pi` CLI print smoke."""
+    """Export + structural (always); optional live `pi` CLI print smoke.
+
+    Args:
+        source: source 参数。
+        project_id: project 标识。
+        app_home: app_home 参数。
+        live: 是否 live（非 fixture）路径。
+        model: 模型名。
+        timeout_s: timeout_s 参数。
+    """
     resolved = _resolve_app_home(
         source=source, project_id=project_id, app_home=app_home
     )

@@ -24,6 +24,7 @@ _sys.path.insert(0, str(_PROJECT / "aiPlat-infra"))
 
 @dataclass
 class DocMetrics:
+    """DocMetrics。"""
     file: str = ""
     format: str = ""
     chunks: int = 0
@@ -46,6 +47,12 @@ class DocMetrics:
 
 
 def benchmark_file(file_path: str, domain_id: str = "ai-knowledge") -> DocMetrics:
+    """benchmark_file。
+
+    Args:
+        file_path: file_path 参数。
+        domain_id: domain 标识。
+    """
     m = DocMetrics(file=_Path(file_path).name)
     t0 = _time.time()
 
@@ -146,6 +153,11 @@ def benchmark_file(file_path: str, domain_id: str = "ai-knowledge") -> DocMetric
 
 
 def print_report(metrics_list: List[DocMetrics]) -> None:
+    """print_report。
+
+    Args:
+        metrics_list: metrics_list 参数。
+    """
     print("=" * 85)
     print(f"{'File':20s} {'Fmt':4s} {'Chunks':6s} {'Inst':5s} {'Tbl':4s} {'Trans':5s} {'Rels':5s} {'Graph':10s} {'Time':>7s}")
     print("-" * 85)
@@ -196,6 +208,8 @@ def print_report(metrics_list: List[DocMetrics]) -> None:
 
 
 def main():
+    """main。
+    """
     parser = argparse.ArgumentParser(description="Benchmark ontology pipeline")
     parser.add_argument("--dir", help="Directory of documents to process")
     parser.add_argument("--file", help="Single file to process")

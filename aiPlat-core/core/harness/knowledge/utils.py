@@ -11,7 +11,11 @@ from typing import Any, Dict, List
 
 
 def extract_keywords(text: str) -> List[str]:
-    """Extract CJK sequences and alphanumeric tokens from text."""
+    """Extract CJK sequences and alphanumeric tokens from text.
+
+    Args:
+        text: text 参数。
+    """
     text = (text or "").strip()
     if not text:
         return []
@@ -28,7 +32,12 @@ def extract_keywords(text: str) -> List[str]:
 
 
 def score_text(text: str, keywords: List[str]) -> int:
-    """Score text by keyword occurrence count × keyword length."""
+    """Score text by keyword occurrence count × keyword length.
+
+    Args:
+        text: text 参数。
+        keywords: keywords 参数。
+    """
     if not text or not keywords:
         return 0
     t = text.lower()
@@ -40,7 +49,11 @@ def score_text(text: str, keywords: List[str]) -> int:
 
 
 def text_quality_score(text: str) -> float:
-    """Estimate text quality by useful-character-to-symbol ratio."""
+    """Estimate text quality by useful-character-to-symbol ratio.
+
+    Args:
+        text: text 参数。
+    """
     s = str(text or "").strip()
     if not s:
         return 0.0
@@ -51,7 +64,11 @@ def text_quality_score(text: str) -> float:
 
 
 def is_low_quality_video_ocr(text: str) -> bool:
-    """Detect low-quality OCR output from video frames."""
+    """Detect low-quality OCR output from video frames.
+
+    Args:
+        text: text 参数。
+    """
     s = str(text or "").strip()
     if len(s) < 8:
         return True
@@ -65,7 +82,11 @@ def is_low_quality_video_ocr(text: str) -> bool:
 
 
 def element_source(e: Dict[str, Any]) -> str:
-    """Extract the source field from element metadata."""
+    """Extract the source field from element metadata.
+
+    Args:
+        e: e 参数。
+    """
     meta = e.get("meta")
     if isinstance(meta, dict):
         return str(meta.get("source") or "").strip().lower()

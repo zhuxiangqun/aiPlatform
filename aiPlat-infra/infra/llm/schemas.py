@@ -1,9 +1,12 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 
 @dataclass
 class Message:
+    """Message。"""
     role: str = "user"
     content: str = ""
     name: Optional[str] = None
@@ -11,6 +14,7 @@ class Message:
 
 @dataclass
 class ChatRequest:
+    """ChatRequest。"""
     model: str = ""
     messages: List[Message] = field(default_factory=list)
     temperature: float = 0.7
@@ -27,6 +31,7 @@ class ChatRequest:
 
 @dataclass
 class ChatResponse:
+    """ChatResponse。"""
     id: str = ""
     model: str = ""
     content: str = ""
@@ -39,6 +44,7 @@ class ChatResponse:
 
 @dataclass
 class StreamChunk:
+    """StreamChunk。"""
     content: str = ""
     finish_reason: Optional[str] = None
     delta: str = ""
@@ -46,12 +52,14 @@ class StreamChunk:
 
 @dataclass
 class EmbeddingResult:
+    """EmbeddingResult。"""
     embedding: List[float]
     model: str = ""
 
 
 @dataclass
 class LLMConfig:
+    """LLMConfig。"""
     provider: str = ""
     api_key: str = ""
     base_url: Optional[str] = None
@@ -65,6 +73,7 @@ class LLMConfig:
 
 @dataclass
 class CostStats:
+    """CostStats。"""
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0

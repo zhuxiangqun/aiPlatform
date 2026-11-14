@@ -29,6 +29,7 @@ from core.harness.utils.model_injection import best_model_for_purpose as _best_m
 
 @dataclass
 class EvalSample:
+    """EvalSample。"""
     id: str = ""
     question: str = ""
     ground_truth: str = ""
@@ -39,6 +40,7 @@ class EvalSample:
 
 @dataclass
 class EvalMetrics:
+    """EvalMetrics。"""
     faithfulness: float = 0.0
     answer_relevancy: float = 0.0
     context_precision: float = 0.0
@@ -47,6 +49,7 @@ class EvalMetrics:
 
 @dataclass
 class EvalReport:
+    """EvalReport。"""
     sample_id: str = ""
     question: str = ""
     answer: str = ""
@@ -147,7 +150,10 @@ class _DeepSeekChatOpenAI:
 
 
 class RagEvaluator:
+    """RagEvaluator。"""
     def __init__(self):
+        """__init__。
+        """
         self._ragas_available = False
         try:
             from ragas.metrics import faithfulness, answer_relevancy, context_precision, context_recall  # noqa: F401
@@ -156,7 +162,11 @@ class RagEvaluator:
             pass  # noqa: optional-dependency
 
     async def evaluate_sample(self, sample: EvalSample) -> EvalReport:
-        """Evaluate a single sample: retrieve → generate → score."""
+        """Evaluate a single sample: retrieve → generate → score.
+
+        Args:
+            sample: sample 参数。
+        """
         t0 = time.time()
 
         # 1. Retrieve
@@ -234,6 +244,11 @@ class RagEvaluator:
         )
 
     async def evaluate_batch(self, samples: List[EvalSample]) -> List[EvalReport]:
+        """evaluate_batch。
+
+        Args:
+            samples: samples 参数。
+        """
         reports = []
         for sample in samples:
             try:
@@ -326,6 +341,8 @@ _evaluator: Optional[RagEvaluator] = None
 
 
 def get_rag_evaluator() -> RagEvaluator:
+    """获取 rag_evaluator。
+    """
     global _evaluator
     if _evaluator is None:
         _evaluator = RagEvaluator()

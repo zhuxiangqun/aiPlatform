@@ -53,6 +53,8 @@ class LocalFineTuneProvider:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._jobs: Dict[str, dict] = {}  # in-memory job cache
 
         self._jobs_dir = self._resolve_jobs_dir()
@@ -147,6 +149,8 @@ class LocalFineTuneProvider:
 
     def display_name(self) -> str:
 
+        """display_name。
+        """
         return "本地 LoRA 微调 (MLX)"
 
 
@@ -201,7 +205,12 @@ class LocalFineTuneProvider:
 
     def estimate_cost(self, sample_count: int, epochs: int = 3) -> str:
 
-        """Estimate training time (local = free)."""
+        """Estimate training time (local = free).
+
+        Args:
+            sample_count: sample_count 参数。
+            epochs: epochs 参数。
+        """
 
         iters = sample_count * epochs
 
@@ -221,7 +230,11 @@ class LocalFineTuneProvider:
 
     def upload_file(self, file_path: str) -> str:
 
-        """Local 'upload' — just copy dataset to job workspace. Returns file_id."""
+        """Local 'upload' — just copy dataset to job workspace. Returns file_id.
+
+        Args:
+            file_path: file_path 参数。
+        """
 
         # For local training, file_id = file_path (no actual upload)
 
@@ -237,7 +250,14 @@ class LocalFineTuneProvider:
 
                    hyperparams: Optional[Dict[str, Any]] = None) -> FineTuneJobResult:
 
-        """Create and start a local fine-tuning job."""
+        """Create and start a local fine-tuning job.
+
+        Args:
+            file_id: file 标识。
+            model: 模型名。
+            suffix: suffix 参数。
+            hyperparams: hyperparams 参数。
+        """
 
         from core.apps.finetune.mlx_trainer import MLXLoRATrainer
 
@@ -383,7 +403,11 @@ class LocalFineTuneProvider:
 
     def get_job(self, provider_job_id: str) -> FineTuneJobResult:
 
-        """Get job status including training progress."""
+        """Get job status including training progress.
+
+        Args:
+            provider_job_id: provider_job 标识。
+        """
 
         job = self._jobs.get(provider_job_id)
 
@@ -486,7 +510,11 @@ class LocalFineTuneProvider:
 
     def cancel_job(self, provider_job_id: str) -> bool:
 
-        """Cancel a running training job."""
+        """Cancel a running training job.
+
+        Args:
+            provider_job_id: provider_job 标识。
+        """
 
         trainer = self._trainers.get(provider_job_id)
 
@@ -500,7 +528,11 @@ class LocalFineTuneProvider:
 
     def get_progress(self, provider_job_id: str) -> Optional[Dict[str, Any]]:
 
-        """Get detailed training progress."""
+        """Get detailed training progress.
+
+        Args:
+            provider_job_id: provider_job 标识。
+        """
 
         trainer = self._trainers.get(provider_job_id)
 

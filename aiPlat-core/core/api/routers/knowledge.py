@@ -1,3 +1,8 @@
+"""knowledge：评测服务模块。
+
+职责：见同目录 README / 调用方。
+"""
+
 from __future__ import annotations
 
 
@@ -50,7 +55,13 @@ def _km(rt: RuntimeDep):
 
 async def list_collections(limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """List knowledge collections"""
+    """List knowledge collections。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -100,7 +111,12 @@ async def list_collections(limit: int = 100, offset: int = 0, rt: RuntimeDep = D
 
 async def create_collection(request: CollectionCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Create knowledge collection"""
+    """Create knowledge collection。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -120,7 +136,12 @@ async def create_collection(request: CollectionCreateRequest, rt: RuntimeDep = D
 
 async def get_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Get collection details"""
+    """Get collection details。
+
+    Args:
+        collection_id: collection 标识。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -166,7 +187,13 @@ async def get_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel
 
 async def update_collection(collection_id: str, request: dict, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Update collection"""
+    """Update collection。
+
+    Args:
+        collection_id: collection 标识。
+        request: request 参数。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -190,7 +217,12 @@ async def update_collection(collection_id: str, request: dict, rt: RuntimeDep = 
 
 async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Delete collection"""
+    """Delete collection。
+
+    Args:
+        collection_id: collection 标识。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -214,7 +246,12 @@ async def delete_collection(collection_id: str, rt: RuntimeDep = Depends(get_ker
 
 async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Reindex collection"""
+    """Reindex collection。
+
+    Args:
+        collection_id: collection 标识。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -256,7 +293,12 @@ async def reindex_collection(collection_id: str, rt: RuntimeDep = Depends(get_ke
 
 async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Create document"""
+    """Create document。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -311,7 +353,12 @@ async def create_document(request: DocumentCreateRequest, rt: RuntimeDep = Depen
 
 async def get_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Get document"""
+    """Get document。
+
+    Args:
+        document_id: document 标识。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -353,7 +400,14 @@ async def get_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_run
 
 async def list_documents(collection_id: str, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """List documents"""
+    """List documents。
+
+    Args:
+        collection_id: collection 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -385,7 +439,12 @@ async def list_documents(collection_id: str, limit: int = 100, offset: int = 0, 
 
 async def delete_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Delete document"""
+    """Delete document。
+
+    Args:
+        document_id: document 标识。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -409,7 +468,12 @@ async def delete_document(document_id: str, rt: RuntimeDep = Depends(get_kernel_
 
 async def search_knowledge(request: SearchRequest, rt: RuntimeDep = Depends(get_kernel_runtime)):
 
-    """Search knowledge"""
+    """Search knowledge。
+
+    Args:
+        request: request 参数。
+        rt: rt 参数。
+    """
 
     km = _km(rt)
 
@@ -429,7 +493,13 @@ async def search_knowledge(request: SearchRequest, rt: RuntimeDep = Depends(get_
 
 async def get_search_logs(collection_id: str, limit: int = 100, offset: int = 0):
 
-    """Get search logs"""
+    """Get search logs。
+
+    Args:
+        collection_id: collection 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
 
     return {"logs": [], "total": 0}
 

@@ -152,10 +152,10 @@ async def sys_file_read(
 
     """Read contents of a file with Gate enforcement.
 
-
-
-    Returns dict with: success, content, path, chars, error.
-
+    Args:
+        path: 路径。
+        max_chars: max_chars 参数。
+        trace_context: trace_context 参数。
     """
 
     gate = TraceGate.start("sys.file.read", trace_context)
@@ -264,10 +264,10 @@ async def sys_file_write(
 
     """Write content to a file with Gate enforcement.
 
-
-
-    Creates parent directories if needed. Returns dict with: success, path, bytes_written, error.
-
+    Args:
+        path: 路径。
+        content: content 参数。
+        trace_context: trace_context 参数。
     """
 
     gate = TraceGate.start("sys.file.write", trace_context)
@@ -350,10 +350,11 @@ async def sys_file_edit(
 
     """Surgical edit — replace old_string with new_string in a file.
 
-
-
-    Returns dict with: success, path, replaced, error.
-
+    Args:
+        path: 路径。
+        old_string: old_string 参数。
+        new_string: new_string 参数。
+        trace_context: trace_context 参数。
     """
 
     gate = TraceGate.start("sys.file.edit", trace_context)

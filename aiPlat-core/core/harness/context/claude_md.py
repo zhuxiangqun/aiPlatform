@@ -45,6 +45,7 @@ _INVISIBLE_CHARS = {
 
 @dataclass
 class ClaudeMdDecision:
+    """ClaudeMdDecision。"""
     action: str  # none|warn|truncate|block|approval_required
     policy: str
     findings: List[str]
@@ -52,6 +53,8 @@ class ClaudeMdDecision:
     sha256: Optional[str] = None
 
     def to_dict(self) -> Dict[str, object]:
+        """to_dict。
+        """
         return {
             "action": self.action,
             "policy": self.policy,
@@ -118,9 +121,10 @@ def _scan(text: str, *, path: str) -> Tuple[str, ClaudeMdDecision]:
 
 
 def load_claude_md(repo_root: str) -> Tuple[str, Optional[str], ClaudeMdDecision]:
-    """
-    Load CLAUDE.md from repo root (best-effort).
-    Returns: (content, used_path, decision)
+    """Load CLAUDE.md from repo root (best-effort).
+
+    Args:
+        repo_root: repo_root 参数。
     """
     root = Path(str(repo_root)).expanduser()
     p = root / "CLAUDE.md"
@@ -137,9 +141,10 @@ def load_claude_md(repo_root: str) -> Tuple[str, Optional[str], ClaudeMdDecision
 
 
 def load_claude_md_file(file_path: str) -> Tuple[str, Optional[str], ClaudeMdDecision]:
-    """
-    Load and scan a CLAUDE.md by explicit file path.
-    Returns: (content, used_path, decision)
+    """Load and scan a CLAUDE.md by explicit file path.
+
+    Args:
+        file_path: file_path 参数。
     """
     p = Path(str(file_path)).expanduser()
     if p.is_dir():
@@ -157,9 +162,10 @@ def load_claude_md_file(file_path: str) -> Tuple[str, Optional[str], ClaudeMdDec
 
 
 def find_nearest_claude_md_root(path: str) -> Optional[str]:
-    """
-    Given a file or directory path, walk up parents to find a directory
-    containing CLAUDE.md. Returns that directory path, or None.
+    """Given a file or directory path, walk up parents to find a directory。
+
+    Args:
+        path: 路径。
     """
     try:
         p = Path(str(path)).expanduser()
@@ -181,13 +187,11 @@ def find_nearest_claude_md_root(path: str) -> Optional[str]:
 
 
 def infer_claude_md_files_from_text(text: str, *, workspace_root: Optional[str] = None) -> List[str]:
-    """
-    Infer relevant CLAUDE.md files from free-form text (task/user message).
+    """Infer relevant CLAUDE.md files from free-form text (task/user message).
 
-    Heuristics:
-    - absolute paths: /.../aiPlat-core/... or /.../aiPlat-management/...
-    - relative paths mentioning repo folders: aiPlat-core/... or aiPlat-management/...
-    - bare repo hints: "aiPlat-core" / "aiPlat-management"
+    Args:
+        text: text 参数。
+        workspace_root: workspace_root 参数。
     """
     t = str(text or "")
     if not t.strip():

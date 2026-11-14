@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import logging
 import uuid
 from typing import List, Optional, Dict
@@ -13,7 +15,13 @@ from .schemas import (
 
 
 class StaticNetworkManager(NetworkManager):
+    """StaticNetworkManager。"""
     def __init__(self, config: NetworkConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._services: Dict[str, Service] = {}
         self._dns_records: Dict[str, List[DnsRecord]] = {}
@@ -54,23 +62,43 @@ class StaticNetworkManager(NetworkManager):
         return min(healthy, key=lambda b: b.weight)
 
     def register_service(self, service: Service) -> str:
+        """register_service。
+
+        Args:
+            service: service 参数。
+        """
         service_id = str(uuid.uuid4())
         self._services[service_id] = service
         return service_id
 
     def deregister_service(self, service_id: str) -> bool:
+        """deregister_service。
+
+        Args:
+            service_id: service 标识。
+        """
         if service_id in self._services:
             del self._services[service_id]
             return True
         return False
 
     def discover_services(self, name: str) -> List[Endpoint]:
+        """discover_services。
+
+        Args:
+            name: name 参数。
+        """
         for service in self._services.values():
             if service.name == name:
                 return service.endpoints
         return []
 
     def get_load_balancer(self, name: str) -> Optional[LoadBalancer]:
+        """获取 load_balancer。
+
+        Args:
+            name: name 参数。
+        """
         endpoints = self.discover_services(name)
         if not endpoints:
             return None
@@ -80,14 +108,30 @@ class StaticNetworkManager(NetworkManager):
         )
 
     def apply_policy(self, policy: NetworkPolicy) -> bool:
+        """apply_policy。
+
+        Args:
+            policy: policy 参数。
+        """
         return True
 
     def get_dns_records(self, domain: str) -> List[DnsRecord]:
+        """获取 dns_records。
+
+        Args:
+            domain: domain 参数。
+        """
         return self._dns_records.get(domain, [])
 
 
 class ConsulNetworkManager(NetworkManager):
+    """ConsulNetworkManager。"""
     def __init__(self, config: NetworkConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._services: Dict[str, Service] = {}
@@ -101,6 +145,11 @@ class ConsulNetworkManager(NetworkManager):
         return self._client
 
     def register_service(self, service: Service) -> str:
+        """register_service。
+
+        Args:
+            service: service 参数。
+        """
         client = self._get_client()
         url = f"{self.config.consul_url}/v1/agent/service/register"
 
@@ -125,6 +174,11 @@ class ConsulNetworkManager(NetworkManager):
         return service_id
 
     def deregister_service(self, service_id: str) -> bool:
+        """deregister_service。
+
+        Args:
+            service_id: service 标识。
+        """
         client = self._get_client()
         url = f"{self.config.consul_url}/v1/agent/service/deregister/{service_id}"
 
@@ -139,6 +193,11 @@ class ConsulNetworkManager(NetworkManager):
         return False
 
     def discover_services(self, name: str) -> List[Endpoint]:
+        """discover_services。
+
+        Args:
+            name: name 参数。
+        """
         client = self._get_client()
         url = f"{self.config.consul_url}/v1/health/service/{name}"
 
@@ -157,6 +216,11 @@ class ConsulNetworkManager(NetworkManager):
             return []
 
     def get_load_balancer(self, name: str) -> Optional[LoadBalancer]:
+        """获取 load_balancer。
+
+        Args:
+            name: name 参数。
+        """
         endpoints = self.discover_services(name)
         if not endpoints:
             return None
@@ -166,9 +230,19 @@ class ConsulNetworkManager(NetworkManager):
         )
 
     def apply_policy(self, policy: NetworkPolicy) -> bool:
+        """apply_policy。
+
+        Args:
+            policy: policy 参数。
+        """
         return True
 
     def get_dns_records(self, domain: str) -> List[DnsRecord]:
+        """获取 dns_records。
+
+        Args:
+            domain: domain 参数。
+        """
         client = self._get_client()
         url = f"{self.config.consul_url}/v1DNS/recursively/{domain}"
 

@@ -50,11 +50,21 @@ def _workspace_connector_seed(domain_id: str) -> Path:
 
 
 def connector_path(domain_id: str) -> Path:
+    """connector_path。
+
+    Args:
+        domain_id: domain 标识。
+    """
     return _aiplat_home() / "ontologies" / domain_id / "connector.json"
 
 
 def ensure_connector_config(domain_id: str, *, force: bool = False) -> Dict[str, Any]:
-    """Install workspace seed connector.json into AIPLAT_HOME when missing."""
+    """Install workspace seed connector.json into AIPLAT_HOME when missing.
+
+    Args:
+        domain_id: domain 标识。
+        force: 是否强制。
+    """
     dest = connector_path(domain_id)
     src = _workspace_connector_seed(domain_id)
     out: Dict[str, Any] = {"domain_id": domain_id, "dest": str(dest), "action": "noop"}
@@ -76,6 +86,11 @@ def ensure_connector_config(domain_id: str, *, force: bool = False) -> Dict[str,
 
 
 def load_connector_config(domain_id: str) -> Dict[str, Any]:
+    """load_connector_config。
+
+    Args:
+        domain_id: domain 标识。
+    """
     path = connector_path(domain_id)
     if path.is_file():
         try:
@@ -104,7 +119,11 @@ def load_connector_config(domain_id: str) -> Dict[str, Any]:
 
 
 def find_domain_for_source(source_id: str) -> Optional[str]:
-    """Resolve source_id → domain_id via installed connector.json files."""
+    """Resolve source_id → domain_id via installed connector.json files.
+
+    Args:
+        source_id: source 标识。
+    """
     sid = (source_id or "").strip()
     if not sid:
         return None
@@ -143,8 +162,9 @@ def find_domain_for_source(source_id: str) -> Optional[str]:
 def verify_webhook_secret(cfg: Dict[str, Any], provided: Optional[str]) -> bool:
     """Return True if secret check passes (or auth explicitly disabled).
 
-    ``shared_secret_env`` with an unset env var fails closed unless
-    ``AIPLAT_ABOX_ALLOW_UNSIGNED`` is set. Unknown auth types also fail closed.
+    Args:
+        cfg: cfg 参数。
+        provided: provided 参数。
     """
     auth = cfg.get("auth") or {}
     auth_type = str(auth.get("type") or "").strip().lower()
@@ -171,7 +191,16 @@ def import_abox_payload(
     source_doc_id: str = "abox-import",
     primary_class: str = "",
 ) -> Dict[str, Any]:
-    """Generic Path B writer. Receipt: created_entities / relations / skipped / primary_id."""
+    """Generic Path B writer. Receipt: created_entities / relations / skipped / primary_id.
+
+    Args:
+        g: g 参数。
+        payload: 载荷 dict。
+        allowed_classes: allowed_classes 参数。
+        allowed_relations: allowed_relations 参数。
+        source_doc_id: source_doc 标识。
+        primary_class: primary_class 参数。
+    """
     created: List[str] = []
     skipped: List[Dict[str, str]] = []
     relations_ok: List[str] = []
@@ -261,7 +290,11 @@ def import_abox_payload(
 
 
 def parse_csv_text(csv_text: str) -> List[Dict[str, str]]:
-    """Parse CSV text into list of row dicts (header required)."""
+    """Parse CSV text into list of row dicts (header required).
+
+    Args:
+        csv_text: csv_text 参数。
+    """
     import csv
     import io
 
@@ -286,11 +319,11 @@ def map_table_rows_to_payload(
 ) -> Dict[str, Any]:
     """Map tabular rows → Path B payload using connector ``table_map`` config.
 
-    table_map keys (all optional with defaults):
-      id_column, name_column, class_column, state_column
-      class_default — used when class column empty
-      prop_columns — list of column names → entity props
-      relation_from / relation_to / relation_rel — for relation_rows column names
+    Args:
+        rows: rows 参数。
+        table_map: table_map 参数。
+        relation_rows: relation_rows 参数。
+        source: source 参数。
     """
     tm = dict(table_map or {})
     id_col = str(tm.get("id_column") or "id").strip() or "id"
@@ -352,7 +385,11 @@ def map_table_rows_to_payload(
 
 
 def load_table_map_sample(domain_id: str = "it-ops") -> Dict[str, Any]:
-    """Bundled CSV + relation sample for demos (it-ops)."""
+    """Bundled CSV + relation sample for demos (it-ops).
+
+    Args:
+        domain_id: domain 标识。
+    """
     fixture = (
         Path(__file__).resolve().parent
         / "fixtures"
@@ -400,7 +437,17 @@ def import_table_map_payload(
     use_sample: bool = False,
     source_doc_id: str = "table-map",
 ) -> Dict[str, Any]:
-    """Path B table/CSV → GraphIndex via connector allowlist + table_map."""
+    """Path B table/CSV → GraphIndex via connector allowlist + table_map.
+
+    Args:
+        g: g 参数。
+        domain_id: domain 标识。
+        rows: rows 参数。
+        csv_text: csv_text 参数。
+        relation_rows: relation_rows 参数。
+        use_sample: use_sample 参数。
+        source_doc_id: source_doc 标识。
+    """
     ensure_connector_config(domain_id)
     cfg = load_connector_config(domain_id)
     table_map = cfg.get("table_map") if isinstance(cfg.get("table_map"), dict) else {}
@@ -452,7 +499,15 @@ def ingest_webhook_payload(
     domain_id: Optional[str] = None,
     graph_factory: Any = None,
 ) -> Dict[str, Any]:
-    """Production Path B entry: resolve connector → write GraphIndex → receipt."""
+    """Production Path B entry: resolve connector → write GraphIndex → receipt.
+
+    Args:
+        source_id: source 标识。
+        payload: 载荷 dict。
+        secret: secret 参数。
+        domain_id: domain 标识。
+        graph_factory: graph_factory 参数。
+    """
     did = (domain_id or find_domain_for_source(source_id) or "").strip()
     if not did:
         return {
@@ -557,11 +612,10 @@ def fetch_entity_snapshot(
 ) -> Dict[str, Any]:
     """Controlled read: GraphIndex entity + sandbox overlay (no customer DB SQL).
 
-    IO mode resolution (Org L5 D3):
-      1) AIPLAT_ORG_IO_MODE env: sandbox|deny|live
-      2) else connector.json io.mode (default sandbox)
-    ``live`` delegates to the http_json allowlist adapter (still gated).
-    Never opens arbitrary SQL against production.
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        purpose: purpose 参数。
     """
     did = (domain_id or "").strip() or "it-ops"
     eid = (entity_id or "").strip()
@@ -675,7 +729,13 @@ def preview_entity_write(
     entity_id: str,
     patch: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Always dry-run unless explicitly unlocked (pilot D3 defaults to blocked)."""
+    """Always dry-run unless explicitly unlocked (pilot D3 defaults to blocked).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        patch: patch 参数。
+    """
     did = (domain_id or "").strip() or "it-ops"
     eid = (entity_id or "").strip()
     cfg = load_connector_config(did)

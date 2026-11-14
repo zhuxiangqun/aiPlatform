@@ -34,6 +34,19 @@ class MLXLoRATrainer:
                  lora_alpha: int = 0,
                  lr: float = 0.0,
                  iters: int = 0):
+        """初始化。
+
+        Args:
+            job_id: job 标识。
+            base_model: base_model 参数。
+            dataset_path: dataset_path 参数。
+            output_dir: output_dir 参数。
+            template: template 参数。
+            lora_rank: lora_rank 参数。
+            lora_alpha: lora_alpha 参数。
+            lr: lr 参数。
+            iters: iters 参数。
+        """
         self.job_id = job_id
         self.base_model = base_model        # e.g., "qwen/Qwen2.5-7B-Instruct"
         self.dataset_path = dataset_path    # ShareGPT JSON
@@ -92,11 +105,9 @@ class MLXLoRATrainer:
     @staticmethod
     def convert_dataset(jsonl_path: str) -> Optional[str]:
         """Convert JSONL Chat format → ShareGPT format for MLX.
-        
-        Input (JSONL): {"messages": [{"role":"user","content":"..."}, {"role":"assistant","content":"..."}]}
-        Output (ShareGPT): [{"conversations": [{"from":"human","value":"..."}, {"from":"gpt","value":"..."}]}]
-        
-        Returns path to converted file or None.
+
+        Args:
+            jsonl_path: jsonl_path 参数。
         """
         jsonl_path = Path(jsonl_path)
         if not jsonl_path.exists():
@@ -200,6 +211,8 @@ class MLXLoRATrainer:
 
     @property
     def is_running(self) -> bool:
+        """is_running。
+        """
         return self._process is not None and self._process.poll() is None
 
     @property
@@ -222,6 +235,8 @@ class MLXLoRATrainer:
 
     @property
     def adapter_path(self) -> str:
+        """adapter_path。
+        """
         return str(self._adapter_path)
 
     # ── Internal ──

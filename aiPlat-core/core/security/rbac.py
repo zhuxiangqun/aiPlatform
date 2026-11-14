@@ -14,11 +14,17 @@ from typing import Optional, Tuple
 
 @dataclass
 class RBACDecision:
+    """RBACDecision。"""
     allowed: bool
     reason: str
 
 
 def normalize_role(role: Optional[str]) -> str:
+    """normalize_role。
+
+    Args:
+        role: role 参数。
+    """
     r = str(role or "").strip().lower()
     if not r:
         return "viewer"
@@ -30,12 +36,12 @@ def normalize_role(role: Optional[str]) -> str:
 
 
 def check_permission(*, actor_role: Optional[str], action: str, resource_type: str) -> RBACDecision:
-    """
-    最小权限矩阵（可按需要扩展）：
-    - admin：全权限
-    - operator：可执行/可审批，但不能改 policy
-    - developer：可执行（agent/skill/tool/graph），但不能审批、不能改 policy
-    - viewer：只读（禁止执行/审批/写入）
+    """最小权限矩阵（可按需要扩展）：。
+
+    Args:
+        actor_role: actor_role 参数。
+        action: action 参数。
+        resource_type: resource_type 参数。
     """
     role = normalize_role(actor_role)
     a = str(action or "").strip().lower()
@@ -127,8 +133,12 @@ def mode() -> str:
 
 
 def should_enforce() -> bool:
+    """should_enforce。
+    """
     return mode() in {"enforced", "enforce", "1", "true", "yes", "y"}
 
 
 def should_warn() -> bool:
+    """should_warn。
+    """
     return not should_enforce()

@@ -1,3 +1,5 @@
+"""answer_strategy：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -8,6 +10,12 @@ def choose_answer_strategy(
     analysis: Dict[str, Any],
     retrieval_policy: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """choose_answer_strategy。
+
+    Args:
+        analysis: analysis 参数。
+        retrieval_policy: retrieval_policy 参数。
+    """
     intent = str(analysis.get("intent") or "fact_lookup")
     if intent == "summary":
         return {

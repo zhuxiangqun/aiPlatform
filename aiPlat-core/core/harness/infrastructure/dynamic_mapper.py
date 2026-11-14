@@ -23,6 +23,8 @@ class DynamicSchemaMapper:
     """Runtime mapper: external JSON → GraphIndex entity via ontology YAML."""
 
     def __init__(self):
+        """初始化。
+        """
         self._cache: Dict[str, Dict] = {}
 
     def _load_class_schema(self, domain_id: str, class_name: str) -> Dict[str, Any]:
@@ -82,7 +84,14 @@ class DynamicSchemaMapper:
         self, raw_json: Dict[str, Any], domain_id: str, class_name: str,
         custom_mapping: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Map external JSON to an entity dict ready for GraphIndex."""
+        """Map external JSON to an entity dict ready for GraphIndex.
+
+        Args:
+            raw_json: raw_json 参数。
+            domain_id: domain 标识。
+            class_name: class_name 参数。
+            custom_mapping: custom_mapping 参数。
+        """
         schema = self._load_class_schema(domain_id, class_name)
         target_props = list(schema["properties"].keys())
         required = schema.get("required", [])
@@ -126,7 +135,15 @@ class DynamicSchemaMapper:
         custom_mapping: Optional[Dict[str, str]] = None,
         source_doc_id: str = "dynamic_mapper",
     ) -> Dict[str, Any]:
-        """Map + write to GraphIndex in one call."""
+        """Map + write to GraphIndex in one call.
+
+        Args:
+            raw_json: raw_json 参数。
+            domain_id: domain 标识。
+            class_name: class_name 参数。
+            custom_mapping: custom_mapping 参数。
+            source_doc_id: source_doc 标识。
+        """
         ed = self.map_to_entity(raw_json, domain_id, class_name, custom_mapping)
         g = GraphIndex.load(domain_id)
 

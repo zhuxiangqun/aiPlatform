@@ -30,7 +30,13 @@ async def get_usage_signal(
     store: Any = None,
     require_domain: bool = True,
 ) -> Dict[str, Any]:
-    """Return S1–S4 snapshot for ``domain_id``."""
+    """Return S1–S4 snapshot for ``domain_id``.
+
+    Args:
+        domain_id: domain 标识。
+        store: store 参数。
+        require_domain: require_domain 参数。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return _empty("")
@@ -72,7 +78,14 @@ async def get_usage_trend(
     store: Any = None,
     require_domain: bool = True,
 ) -> Dict[str, Any]:
-    """Return per-day trend points for Tab⑧."""
+    """Return per-day trend points for Tab⑧.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+        store: store 参数。
+        require_domain: require_domain 参数。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"domain_id": "", "days": days, "points": [], "status": "unavailable"}
@@ -134,6 +147,12 @@ def _store_default() -> Any:
 async def get_usage_baseline(
     domain_id: str, *, store: Any = None
 ) -> Optional[Dict[str, Any]]:
+    """获取 usage_baseline。
+
+    Args:
+        domain_id: domain 标识。
+        store: store 参数。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return None
@@ -154,6 +173,14 @@ async def capture_usage_baseline(
     captured_by: str = "fde",
     store: Any = None,
 ) -> Dict[str, Any]:
+    """capture_usage_baseline。
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+        captured_by: captured_by 参数。
+        store: store 参数。
+    """
     domain = (domain_id or "").strip()
     if not domain:
         return {"status": "unavailable", "error": "domain_id required"}

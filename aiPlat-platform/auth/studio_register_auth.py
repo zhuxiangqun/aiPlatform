@@ -44,9 +44,8 @@ def _static_token_ok(got: str) -> bool:
 def require_studio_register_auth(request: Request) -> None:
     """Require a studio-register token unless unsigned access is explicitly allowed.
 
-    Default require=true. ``AIPLAT_STUDIO_REGISTER_REQUIRE_AUTH=false`` remains an
-    escape. Prefer ``AIPLAT_STUDIO_REGISTER_TOKEN``; fall back to
-    ``AIPLAT_API_KEY`` so deployments that already set a platform key work.
+    Args:
+        request: FastAPI Request。
     """
     if studio_register_unsigned_allowed():
         return

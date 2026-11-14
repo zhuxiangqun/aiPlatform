@@ -42,10 +42,17 @@ class AgentProfile:
 
     @property
     def success_rate(self) -> float:
+        """success_rate。
+        """
         return self.successes / self.total_attempts if self.total_attempts > 0 else 0.0
 
     def estimate_eta(self, task: str) -> str:
         # Simple estimate based on task length
+        """estimate_eta。
+
+        Args:
+            task: task 参数。
+        """
         l = len(task.split())
         if l < 20:
             return "5-10s"
@@ -66,6 +73,8 @@ class Bid:
     timestamp: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "agent_id": self.agent_id,
             "capability": self.capability,
@@ -89,15 +98,32 @@ class SwarmBroker:
     COLD_START_BONUS = 0.1  # exploration bonus for untested agents
 
     def __init__(self, orchestrator):
+        """初始化。
+
+        Args:
+            orchestrator: orchestrator 参数。
+        """
         self._orchestrator = orchestrator
         self._profiles: Dict[str, AgentProfile] = {}
         self._bid_history: List[Dict[str, Any]] = []
         self._total_swarms = 0
 
     def register_agent(self, agent_id: str, profile: AgentProfile) -> None:
+        """register_agent。
+
+        Args:
+            agent_id: Agent ID。
+            profile: 评测 profile。
+        """
         self._profiles[agent_id] = profile
 
     def learn_from_execution(self, agent_id: str, success: bool) -> None:
+        """learn_from_execution。
+
+        Args:
+            agent_id: Agent ID。
+            success: success 参数。
+        """
         if agent_id in self._profiles:
             p = self._profiles[agent_id]
             p.total_attempts += 1
@@ -105,7 +131,12 @@ class SwarmBroker:
                 p.successes += 1
 
     async def announce(self, task: str, capabilities: List[str]) -> List[Bid]:
-        """Broadcast task → collect bids from all registered agents."""
+        """Broadcast task → collect bids from all registered agents.
+
+        Args:
+            task: task 参数。
+            capabilities: capabilities 参数。
+        """
         if not task:
             return []
 
@@ -175,7 +206,12 @@ class SwarmBroker:
         return max(breakdown, key=breakdown.get) if breakdown else "review"
 
     async def award(self, bid: Bid, task_context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Award task to the winning bidder → execute via sub-agent."""
+        """Award task to the winning bidder → execute via sub-agent.
+
+        Args:
+            bid: bid 参数。
+            task_context: task_context 参数。
+        """
         result = await self._orchestrator.spawn(
             bid.capability,
             task_context.get("task", ""),
@@ -197,7 +233,13 @@ class SwarmBroker:
         *,
         source_agent_id: str = "",
     ) -> Optional[Dict[str, Any]]:
-        """Full Contract Net Protocol: announce → bid → award."""
+        """Full Contract Net Protocol: announce → bid → award.
+
+        Args:
+            task: task 参数。
+            session_id: 会话 ID。
+            source_agent_id: source_agent 标识。
+        """
 
         # Phase 1: Announce and collect bids
         bids = await self.announce(task, list(self._orchestrator.CAPABILITY_MAP.keys()))
@@ -229,6 +271,8 @@ class SwarmBroker:
         })
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "agents_registered": len(self._profiles),
             "total_swarms": self._total_swarms,
@@ -245,6 +289,8 @@ _broker: Optional[SwarmBroker] = None
 
 
 def get_swarm_broker() -> SwarmBroker:
+    """获取 swarm_broker。
+    """
     global _broker
     if _broker is None:
         from core.harness.coordination.dynamic_orchestrator import get_dynamic_orchestrator

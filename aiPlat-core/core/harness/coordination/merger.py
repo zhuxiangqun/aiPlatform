@@ -31,6 +31,7 @@ _log = logging.getLogger("aiplat.structured_merger")
 
 @dataclass
 class ChapterOutput:
+    """ChapterOutput。"""
     section: str
     title: str
     content: str
@@ -40,6 +41,7 @@ class ChapterOutput:
 
 @dataclass
 class CrossReference:
+    """CrossReference。"""
     source_section: str
     target_section: str
     context: str = ""
@@ -48,6 +50,7 @@ class CrossReference:
 
 @dataclass
 class MergeIssue:
+    """MergeIssue。"""
     issue_type: str  # dangling_ref | contradiction | missing_chapter | style_inconsistency
     severity: str  # error | warning
     source_section: str
@@ -57,6 +60,7 @@ class MergeIssue:
 
 @dataclass
 class MergedDocument:
+    """MergedDocument。"""
     merged_text: str
     chapters: List[ChapterOutput]
     issues: List[MergeIssue] = field(default_factory=list)
@@ -64,6 +68,8 @@ class MergedDocument:
     stats: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        """to_dict。
+        """
         return {
             "chapter_count": len(self.chapters),
             "section_order": [c.section for c in self.chapters],
@@ -75,10 +81,14 @@ class MergedDocument:
 
     @property
     def has_errors(self) -> bool:
+        """has_errors。
+        """
         return any(i.severity == "error" for i in self.issues)
 
     @property
     def has_issues(self) -> bool:
+        """has_issues。
+        """
         return len(self.issues) > 0
 
 
@@ -86,6 +96,11 @@ class StructuredMerger:
     """Semantic chapter merger with cross-reference validation."""
 
     def __init__(self, enable_llm_merge: bool = True):
+        """初始化。
+
+        Args:
+            enable_llm_merge: enable_llm_merge 参数。
+        """
         self._enable_llm = enable_llm_merge
         self._ref_patterns = [
             re.compile(p) for p in [
@@ -104,6 +119,12 @@ class StructuredMerger:
     async def merge(
         self, chapters: List[ChapterOutput], summary_prompt: str = ""
     ) -> MergedDocument:
+        """merge。
+
+        Args:
+            chapters: chapters 参数。
+            summary_prompt: summary_prompt 参数。
+        """
         if not chapters:
             return MergedDocument(merged_text="", chapters=[])
 

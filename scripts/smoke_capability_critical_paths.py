@@ -105,6 +105,12 @@ def run_smoke(
     live: bool = False,
     require_live: bool = False,
 ) -> Dict[str, Any]:
+    """run_smoke。
+
+    Args:
+        live: live 参数。
+        require_live: require_live 参数。
+    """
     data = _load_manifest()
     core = os.environ.get("AIPLAT_SMOKE_CORE_URL", "http://127.0.0.1:8002")
     platform = os.environ.get("AIPLAT_SMOKE_PLATFORM_URL", "http://127.0.0.1:8003")
@@ -165,6 +171,11 @@ def run_smoke(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """main。
+
+    Args:
+        argv: argv 参数。
+    """
     argv = list(argv if argv is not None else sys.argv[1:])
     ci = "--ci" in argv
     live = "--live" in argv or os.environ.get("AIPLAT_SMOKE_LIVE", "") == "1"

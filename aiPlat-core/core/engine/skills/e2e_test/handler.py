@@ -80,7 +80,12 @@ def _role_for_playwright(el: Dict[str, Any]) -> Optional[str]:
 
 
 def scaffold_spec_from_recon(url: str, elements: List[Dict[str, Any]]) -> str:
-    """Deterministic smoke spec from list_elements (semantic locators only)."""
+    """Deterministic smoke spec from list_elements (semantic locators only).
+
+    Args:
+        url: url 参数。
+        elements: elements 参数。
+    """
     lines = [
         "import { test, expect } from '@playwright/test';",
         "",
@@ -370,8 +375,8 @@ def _first_http_url(value: Any) -> str:
 def resolve_e2e_url(params: Dict[str, Any]) -> str:
     """URL from an explicit field, the task text, or any other param string.
 
-    Pipeline handlers receive artifact keys, not always ``url``. Spec text is
-    scanned last so a sample URL inside code does not beat the user task.
+    Args:
+        params: params 参数。
     """
     for key in _URL_KEYS:
         found = _first_http_url(params.get(key))
@@ -397,10 +402,8 @@ def resolve_e2e_url(params: Dict[str, Any]) -> str:
 async def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Handler entry.
 
-    Modes via ``action`` / ``mode``:
-      - validate / recon / heal / run — see SKILL.md
-      - flow: multi-step recon (goto/login/click/fill/expect_url) → one Playwright flow spec
-      - auto (default): flow when steps present, else single-page recon scaffold
+    Args:
+        params: params 参数。
     """
     if not isinstance(params, dict):
         params = {}
