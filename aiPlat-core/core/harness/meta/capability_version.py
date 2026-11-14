@@ -32,6 +32,8 @@ def _repo_root() -> Path:
 
 @lru_cache(maxsize=1)
 def load_versions_ssot() -> Dict[str, str]:
+    """load_versions_ssot。
+    """
     root = _repo_root()
     path = root / "reports" / "five-products" / "versions.yaml"
     out: Dict[str, str] = {}
@@ -75,7 +77,12 @@ def _package_json_version(capability_id: str) -> str:
 
 
 def resolve_capability_version(capability_id: str, *, default: str = "0.0.0") -> str:
-    """Return semver for a capability id (aiplat|pi|ontology|evaluation|fde)."""
+    """Return semver for a capability id (aiplat|pi|ontology|evaluation|fde).
+
+    Args:
+        capability_id: capability 标识。
+        default: default 参数。
+    """
     cid = str(capability_id or "").strip().lower()
     if not cid:
         return default

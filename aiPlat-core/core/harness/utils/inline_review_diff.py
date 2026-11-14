@@ -25,7 +25,11 @@ _GIT_ENV_LOCK = threading.Lock()
 
 
 def inline_code_to_review_blob(inline_code: str) -> str:
-    """Turn Agent ## FILE / fenced code into a pseudo unified-diff (tests / debug)."""
+    """Turn Agent ## FILE / fenced code into a pseudo unified-diff (tests / debug).
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     text = (inline_code or "").strip()
     if not text:
         return ""
@@ -43,6 +47,11 @@ def inline_code_to_review_blob(inline_code: str) -> str:
 
 
 def extract_file_names_from_inline(inline_code: str) -> List[str]:
+    """extract_file_names_from_inline。
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     names: List[str] = []
     for m in re.finditer(r"(?m)^##\s*FILE:\s*(\S+)", inline_code or ""):
         names.append(m.group(1).strip().strip("`\"'"))
@@ -92,7 +101,11 @@ def _git(cwd: str, *args: str) -> subprocess.CompletedProcess:
 
 
 def materialize_inline_delivery_repo(inline_code: str) -> Tuple[str, str]:
-    """Create a temp git repo with one commit of the delivery. Returns (work_tree, sha)."""
+    """Create a temp git repo with one commit of the delivery. Returns (work_tree, sha).
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     files = _parse_file_sections(inline_code)
     if not files:
         # Single blob fallback — still reviewable as one file
@@ -136,8 +149,8 @@ def materialize_inline_delivery_repo(inline_code: str) -> Tuple[str, str]:
 def autoreview_inline_git_env(inline_code: str) -> Iterator[str]:
     """Yield ``commit:<sha>`` target while GIT_* points at a temp delivery repo.
 
-    Restores env and deletes the temp tree on exit. Serializes via a process lock
-    because stock ``load_diff`` inherits process environment.
+    Args:
+        inline_code: inline_code 参数。
     """
     text = (inline_code or "").strip()
     if not text:

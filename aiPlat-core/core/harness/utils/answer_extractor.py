@@ -29,8 +29,8 @@ _COT_HEAD = re.compile(
 def extract_answer_from_output(output: Any) -> str:
     """Extract a plain-text answer from agent/skill loop output.
 
-    Supports: dict with "answer"/"content"/"output" keys, plain strings,
-    and JSON envelopes like {"type":"done","answer":"..."}.
+    Args:
+        output: output 参数。
     """
     if isinstance(output, dict):
         d: Dict[str, Any] = output
@@ -139,8 +139,8 @@ def _recover_named_array(s: str, key: str) -> List[Any]:
 def unwrap_react_done_product(text: str) -> str:
     """Peel CoT + ``{"type":"done","answer":...}`` down to the structured product.
 
-    Second-round ReAct often prefixes 「步骤1」analysis and wraps the skill JSON
-    as an escaped string. Store/show the product, not the envelope.
+    Args:
+        text: text 参数。
     """
     s = str(text or "").strip()
     if not s:
@@ -185,7 +185,12 @@ def unwrap_react_done_product(text: str) -> str:
 
 
 def choose_loop_final_output(reasoning: str, skill_output: str = "") -> str:
-    """Pick the structured product over a CoT / truncated done envelope."""
+    """Pick the structured product over a CoT / truncated done envelope.
+
+    Args:
+        reasoning: reasoning 参数。
+        skill_output: skill_output 参数。
+    """
     rs = str(reasoning or "").strip()
     sk = str(skill_output or "").strip()
     u_r = unwrap_react_done_product(rs) if rs else ""

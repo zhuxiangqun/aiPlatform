@@ -40,6 +40,11 @@ class CacheAwareRouter:
     })
 
     def __init__(self, ttl_seconds: int = 300):
+        """初始化。
+
+        Args:
+            ttl_seconds: ttl_seconds 参数。
+        """
         self._ttl = ttl_seconds
         self._last_key: Optional[str] = None
         self._last_timestamp: float = 0.0
@@ -47,10 +52,8 @@ class CacheAwareRouter:
     def evaluate(self, current: ControlProfile) -> Dict[str, List[str]]:
         """评估当前画像对缓存的影响。
 
-        Returns:
-            {"freeze": [...], "allow": [...]}
-            freeze 中的维度在 PromptAssembler 中保持不变，
-            allow 中的维度可以注入到 system prompt 非前缀部分。
+        Args:
+            current: current 参数。
         """
         now = time.time()
         current_key = current.cache_key_hash()
@@ -73,7 +76,11 @@ class CacheAwareRouter:
         return {"freeze": ["D1", "D2"], "allow": ["D3", "D4", "D5", "D6"]}
 
     def update(self, profile: ControlProfile) -> None:
-        """更新缓存基准键（在 LLM 调用完成后调用）。"""
+        """更新缓存基准键（在 LLM 调用完成后调用）。
+
+        Args:
+            profile: 评测 profile。
+        """
         self._last_key = profile.cache_key_hash()
         self._last_timestamp = time.time()
 
@@ -89,6 +96,8 @@ _router: Optional["CacheAwareRouter"] = None
 
 
 def get_cache_router() -> CacheAwareRouter:
+    """获取 cache_router。
+    """
     global _router
     if _router is None:
         _router = CacheAwareRouter()

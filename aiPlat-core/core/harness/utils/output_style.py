@@ -32,7 +32,12 @@ def resolve_output_style(
     *,
     default: str = STYLE_DEFAULT,
 ) -> str:
-    """Resolve style from project/session/extra mapping."""
+    """Resolve style from project/session/extra mapping.
+
+    Args:
+        source: source 参数。
+        default: default 参数。
+    """
     if not source:
         return default
     raw = source.get("output_style")
@@ -47,7 +52,11 @@ def resolve_output_style(
 
 
 def whitelist_overrides(source: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
-    """Return only allowed tenant override keys."""
+    """Return only allowed tenant override keys.
+
+    Args:
+        source: source 参数。
+    """
     if not source:
         return {}
     raw = source.get("output_style_overrides") or {}
@@ -65,6 +74,8 @@ def whitelist_overrides(source: Optional[Mapping[str, Any]] = None) -> Dict[str,
 
 
 def skill_body_path() -> Path:
+    """skill_body_path。
+    """
     home = Path(get_aiplat_home())
     ws = home / "skills" / "output_style_adhd" / "SKILL.md"
     if ws.is_file():
@@ -73,6 +84,8 @@ def skill_body_path() -> Path:
 
 
 def load_adhd_skill_text() -> str:
+    """load_adhd_skill_text。
+    """
     path = skill_body_path()
     try:
         return path.read_text(encoding="utf-8")
@@ -82,6 +95,8 @@ def load_adhd_skill_text() -> str:
 
 
 def skill_body_hash() -> str:
+    """skill_body_hash。
+    """
     text = load_adhd_skill_text()
     if not text:
         return ""
@@ -98,7 +113,12 @@ def build_style_overlay(
     style: str,
     overrides: Optional[Mapping[str, Any]] = None,
 ) -> str:
-    """Ephemeral system-tail overlay (Prompt-cache safe: append only)."""
+    """Ephemeral system-tail overlay (Prompt-cache safe: append only).
+
+    Args:
+        style: style 参数。
+        overrides: overrides 参数。
+    """
     if resolve_output_style({"output_style": style}) != STYLE_ADHD:
         return ""
     ov = dict(overrides or {})
@@ -123,7 +143,10 @@ def inject_output_style(
 ) -> List[Dict[str, Any]]:
     """Append style overlay to the last system message, or insert a system tail.
 
-    Skips injection when style is default. Never mutates tool-role contents.
+    Args:
+        messages: messages 参数。
+        style: style 参数。
+        overrides: overrides 参数。
     """
     msgs: List[Dict[str, Any]] = [dict(m) for m in messages]
     overlay = build_style_overlay(style, overrides)
@@ -146,7 +169,13 @@ def apply_project_style_meta(
     output_style: Optional[str] = None,
     overrides: Optional[Mapping[str, Any]] = None,
 ) -> None:
-    """Persist style preference on project dict (factory / session)."""
+    """Persist style preference on project dict (factory / session).
+
+    Args:
+        project: project 参数。
+        output_style: output_style 参数。
+        overrides: overrides 参数。
+    """
     if output_style is not None:
         project["output_style"] = resolve_output_style({"output_style": output_style})
     if overrides is not None:
@@ -167,12 +196,18 @@ _EVENTS_FILENAME = "output_style_events.json"
 
 
 def output_style_events_path() -> Path:
+    """output_style_events_path。
+    """
     home = Path(get_aiplat_home())
     return home / "wiki" / _EVENTS_FILENAME
 
 
 def estimate_reply_tokens(text: str) -> int:
-    """Rough token estimate for telemetry (not billing-grade)."""
+    """Rough token estimate for telemetry (not billing-grade).
+
+    Args:
+        text: text 参数。
+    """
     s = str(text or "")
     if not s:
         return 0
@@ -180,7 +215,11 @@ def estimate_reply_tokens(text: str) -> int:
 
 
 def infer_followups(messages: Optional[Sequence[Mapping[str, Any]]] = None) -> int:
-    """Count user turns after the first (proxy for follow-up pressure)."""
+    """Count user turns after the first (proxy for follow-up pressure).
+
+    Args:
+        messages: messages 参数。
+    """
     if not messages:
         return 0
     user_n = sum(1 for m in messages if str(m.get("role") or "") == "user")
@@ -202,7 +241,17 @@ def record_output_style_event(
 ) -> Dict[str, Any]:
     """A3a: append one style telemetry row (queryable JSON).
 
-    A3b: optional ``experiment_id`` / ``arm`` for split attribution (still no topology change).
+    Args:
+        style: style 参数。
+        project_id: project 标识。
+        session_id: 会话 ID。
+        source: source 参数。
+        tokens: tokens 参数。
+        followups: followups 参数。
+        first_pass_ok: first_pass_ok 参数。
+        experiment_id: experiment 标识。
+        arm: arm 参数。
+        extra: extra 参数。
     """
     import json
     import time
@@ -256,7 +305,15 @@ def query_output_style_events(
     experiment_id: Optional[str] = None,
     arm: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """A3a/A3b: read recent style telemetry (newest last)."""
+    """A3a/A3b: read recent style telemetry (newest last).
+
+    Args:
+        limit: 返回条数上限。
+        style: style 参数。
+        project_id: project 标识。
+        experiment_id: experiment 标识。
+        arm: arm 参数。
+    """
     import json
 
     path = output_style_events_path()
@@ -297,7 +354,11 @@ ARM_TREATMENT = "treatment"  # adhd style
 def get_output_style_experiment_pct(
     source: Optional[Mapping[str, Any]] = None,
 ) -> int:
-    """ADHD arm percentage 0–100. Env default 0 (experiment off)."""
+    """ADHD arm percentage 0–100. Env default 0 (experiment off).
+
+    Args:
+        source: source 参数。
+    """
     if source:
         raw = source.get("output_style_experiment_pct")
         if raw in (None, ""):
@@ -317,7 +378,11 @@ def get_output_style_experiment_pct(
 
 
 def style_experiment_bucket(sticky_id: str) -> int:
-    """Stable 0–99 bucket from sticky id (project/session)."""
+    """Stable 0–99 bucket from sticky id (project/session).
+
+    Args:
+        sticky_id: sticky 标识。
+    """
     import hashlib
 
     key = str(sticky_id or "anon").encode("utf-8")
@@ -349,8 +414,11 @@ def assign_output_style_experiment(
 ) -> Dict[str, Any]:
     """A3b: sticky default|adhd arm. Explicit user style wins; pct=0 → no split.
 
-    Persists ``output_style_arm`` / ``output_style_experiment_id`` on the project.
-    Does not rewrite style when user locked or experiment disabled.
+    Args:
+        project: project 参数。
+        sticky_id: sticky 标识。
+        adhd_pct: adhd_pct 参数。
+        experiment_id: experiment 标识。
     """
     exp_id = str(
         project.get("output_style_experiment_id")
@@ -417,7 +485,12 @@ def compare_output_style_arms(
     experiment_id: str = EXPERIMENT_ID_DEFAULT,
     limit: int = 500,
 ) -> Dict[str, Any]:
-    """A3b: contrast table from telemetry (tokens / followups / first_pass_ok)."""
+    """A3b: contrast table from telemetry (tokens / followups / first_pass_ok).
+
+    Args:
+        experiment_id: experiment 标识。
+        limit: 返回条数上限。
+    """
     rows = query_output_style_events(limit=limit, experiment_id=experiment_id)
     # Also include rows tagged by style when experiment_id empty on older events
     if not rows and experiment_id:

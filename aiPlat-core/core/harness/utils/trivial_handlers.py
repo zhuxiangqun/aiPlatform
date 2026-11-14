@@ -14,7 +14,11 @@ WEEKDAY_NAMES = ["星期一", "星期二", "星期三", "星期四", "星期五"
 
 
 def handle_time_query(query: str) -> Optional[str]:
-    """Try to answer a time/date query. Returns answer string or None."""
+    """Try to answer a time/date query. Returns answer string or None.
+
+    Args:
+        query: 查询。
+    """
     now = datetime.now()
     if "几点" in query or "时间" in query:
         return f"现在是 {now.strftime('%Y年%m月%d日 %H:%M')} {WEEKDAY_NAMES[now.weekday()]}"
@@ -24,7 +28,11 @@ def handle_time_query(query: str) -> Optional[str]:
 
 
 def handle_math_expression(query: str) -> Optional[str]:
-    """Try to evaluate a simple math expression. Returns result or None."""
+    """Try to evaluate a simple math expression. Returns result or None.
+
+    Args:
+        query: 查询。
+    """
     import re
     # Match simple arithmetic: digits, spaces, + - * / ( )
     expr = query.strip()

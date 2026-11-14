@@ -117,7 +117,11 @@ class ControlProfile:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ControlProfile":
-        """从字典反序列化。丢弃未知字段，缺失字段使用默认值。"""
+        """从字典反序列化。丢弃未知字段，缺失字段使用默认值。
+
+        Args:
+            d: d 参数。
+        """
         known = {f.name for f in fields(cls)}
         filtered = {k: v for k, v in d.items() if k in known}
         return cls(**filtered)
@@ -255,6 +259,11 @@ class ControlProfileInterpolator:
     """
 
     def __init__(self, registry: Optional["ProfileRegistry"] = None):
+        """初始化。
+
+        Args:
+            registry: registry 参数。
+        """
         from .profile_registry import ProfileRegistry
         self._registry = registry or ProfileRegistry.instance()
 
@@ -265,7 +274,14 @@ class ControlProfileInterpolator:
         priority: Optional[str] = None,
         k: int = 3,
     ) -> "ControlProfile":
-        """一次调用完成: 相似度匹配 → 插值 → priority 调权。"""
+        """一次调用完成: 相似度匹配 → 插值 → priority 调权。
+
+        Args:
+            task_embedding: task_embedding 参数。
+            task_type: task_type 参数。
+            priority: priority 参数。
+            k: k 参数。
+        """
         return self._registry.resolve_with_embedding(
             task_embedding=task_embedding,
             task_type=task_type,

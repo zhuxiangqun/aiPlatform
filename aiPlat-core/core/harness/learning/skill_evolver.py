@@ -45,6 +45,11 @@ class SkillEvolver:
     """集体进化引擎 — 只有多个租户反复遇到同类问题才触发。"""
 
     def __init__(self, config: ScanConfig = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self._config = config or ScanConfig()
 
     async def scan_cross_tenant(self) -> List[SharedSkillDraft]:
@@ -94,7 +99,11 @@ class SkillEvolver:
         return drafts
 
     async def submit_shared_draft(self, draft: SharedSkillDraft) -> Dict[str, Any]:
-        """提交 SharedSkillDraft 到 Marketplace 审批流程。"""
+        """提交 SharedSkillDraft 到 Marketplace 审批流程。
+
+        Args:
+            draft: draft 参数。
+        """
         try:
             from core.api.rest.routes import marketplace_publish
             _log.info(f"SkillEvolver: submitting shared draft {draft.pattern_hash[:8]}")
@@ -115,6 +124,11 @@ _evolver: Optional[SkillEvolver] = None
 
 
 def get_skill_evolver(config: ScanConfig = None) -> SkillEvolver:
+    """获取 skill_evolver。
+
+    Args:
+        config: config 参数。
+    """
     global _evolver
     if _evolver is None:
         _evolver = SkillEvolver(config=config)

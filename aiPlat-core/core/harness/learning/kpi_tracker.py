@@ -17,8 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 class KPITracker:
+    """KPITracker。"""
     def get_all(self, spec_id: str | None = None) -> list[dict]:
-        """Return basic KPI summary for the dashboard."""
+        """Return basic KPI summary for the dashboard.
+
+        Args:
+            spec_id: spec 标识。
+        """
         try:
             metrics = self._query_model_performance()
             return metrics
@@ -107,6 +112,8 @@ _tracker: KPITracker | None = None
 
 
 def get_kpi_tracker() -> KPITracker:
+    """获取 kpi_tracker。
+    """
     global _tracker
     if _tracker is None:
         _tracker = KPITracker()

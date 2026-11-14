@@ -22,13 +22,19 @@ class CMMGraduation:
     """CMM 3 准则毕业 — 连接 PatternAccumulator 和 AutoLearner 流水线。"""
 
     def __init__(self, frequency_threshold: int = 3):
+        """初始化。
+
+        Args:
+            frequency_threshold: frequency_threshold 参数。
+        """
         self._freq_threshold = frequency_threshold
 
     async def graduate(self, pattern_hash: str, error_context: Dict = None) -> Optional[str]:
         """执行 3 准则毕业流程。
 
-        Returns:
-            Skill ID if graduated, None if not ready.
+        Args:
+            pattern_hash: pattern_hash 参数。
+            error_context: error_context 参数。
         """
         from core.harness.memory.pattern_accumulator import get_pattern_accumulator
 
@@ -81,6 +87,8 @@ _cmm: Optional[CMMGraduation] = None
 
 
 def get_cmm_graduation() -> CMMGraduation:
+    """获取 cmm_graduation。
+    """
     global _cmm
     if _cmm is None:
         _cmm = CMMGraduation()

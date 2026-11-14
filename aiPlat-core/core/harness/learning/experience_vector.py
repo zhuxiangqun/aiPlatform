@@ -1,3 +1,5 @@
+"""experience_vector：模块接口。"""
+
 from __future__ import annotations
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from core.utils.math_utils import cosine_similarity
@@ -57,6 +59,8 @@ class ExperienceVectorCache:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._entries: Dict[str, ExperienceEntry] = {}
         self._max_size = int(os.getenv("AIPLAT_EXPERIENCE_CACHE_SIZE", "5000"))
         self._enabled = os.getenv("AIPLAT_EXPERIENCE_CACHE_ENABLED", "true").lower() not in ("0", "false", "no")
@@ -166,10 +170,8 @@ class ExperienceVectorCache:
     async def enrich_skill_draft(self, error_description: str) -> Dict[str, Any]:
         """为 AutoLearner 提供历史经验上下文。
 
-        检索: 相似的失败经验 (看别人怎么修复的) + 相似的成功经验 (看别人怎么成功的)
-
-        Returns:
-            {"similar_failures": [...], "similar_successes": [...], "best_practice": str}
+        Args:
+            error_description: error_description 参数。
         """
         if not self._enabled:
             return {}
@@ -194,6 +196,8 @@ class ExperienceVectorCache:
         }
 
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "total_entries": len(self._entries),
             "max_size": self._max_size,
@@ -206,7 +210,11 @@ class ExperienceVectorCache:
         }
 
     async def evict_expired(self, days: int = 30) -> Dict[str, Any]:
-        """清理过期经验 (> N 天前)。Phase 5.5: EvolutionEngine 夜间调用。"""
+        """清理过期经验 (> N 天前)。Phase 5.5: EvolutionEngine 夜间调用。
+
+        Args:
+            days: days 参数。
+        """
         cutoff = time.time() - days * 86400
         removed = 0
         for eid in list(self._entries.keys()):
@@ -278,6 +286,8 @@ class ExperienceVectorCache:
 _cache: Optional[ExperienceVectorCache] = None
 
 def get_experience_cache() -> ExperienceVectorCache:
+    """获取 experience_cache。
+    """
     global _cache
     if _cache is None:
         _cache = ExperienceVectorCache()

@@ -168,7 +168,11 @@ def _pair_waits(
 
 
 def summarize_run_events(events: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """Fold pipeline_run_events → HITL wait episodes + Amdahl-ish ratio."""
+    """Fold pipeline_run_events → HITL wait episodes + Amdahl-ish ratio.
+
+    Args:
+        events: events 参数。
+    """
     opens: List[Dict[str, Any]] = []
     closes: List[Dict[str, Any]] = []
     times: List[float] = []
@@ -209,7 +213,11 @@ def summarize_run_events(events: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def summarize_hitl_audit(audit: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """Fold state['_hitl_audit'] rows into wait episodes."""
+    """Fold state['_hitl_audit'] rows into wait episodes.
+
+    Args:
+        audit: audit 参数。
+    """
     opens: List[Dict[str, Any]] = []
     closes: List[Dict[str, Any]] = []
     for row in audit or []:
@@ -234,7 +242,11 @@ def summarize_hitl_audit(audit: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def summarize_approvals(records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """Approval request latency + counts (PolicyGate dark ledger)."""
+    """Approval request latency + counts (PolicyGate dark ledger).
+
+    Args:
+        records: records 参数。
+    """
     by_status: Dict[str, int] = {}
     latencies: List[float] = []
     per_run: Dict[str, int] = {}
@@ -346,8 +358,8 @@ def _gold_trend_summary(trend: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
 def summarize_gold_regression(reports: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     """Fold code_review_gold JSONL reports → P/R trend + P0 miss + four-metric card.
 
-    p0_miss_rate = 1 - latest.p0_recall (gold P0 漏检代理；无平行库).
-    ``trend`` = last N points for Governance strip; ``trend_summary`` = first→last direction.
+    Args:
+        reports: reports 参数。
     """
     rows = [r for r in (reports or []) if isinstance(r, dict)]
     if not rows:
@@ -494,14 +506,8 @@ def load_duty_board_thresholds(
 ) -> Tuple[Dict[str, float], str]:
     """Load duty-board bands (config-driven; never invent success_rate).
 
-    Priority:
-      1. ``override`` mapping (tests / caller)
-      2. ``AIPLAT_DUTY_BOARD_CONFIG`` path
-      3. ``$AIPLAT_HOME/org/duty_board.yaml``
-      4. workspace seed ``workspace_seeds/org/duty_board.yaml``
-      5. built-in defaults
-
-    Returns ``(thresholds, source)`` where source is override|path|defaults.
+    Args:
+        override: override 参数。
     """
     thr: Dict[str, float] = dict(_DEFAULT_DUTY_THRESHOLDS)
     loaded, source = _load_duty_board_raw(override=override)
@@ -518,7 +524,11 @@ def load_duty_board_playbook(
     *,
     override: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Dict[str, List[str]], str]:
-    """Load go/watch/block/unavailable action lists (duty-officer playbook)."""
+    """Load go/watch/block/unavailable action lists (duty-officer playbook).
+
+    Args:
+        override: override 参数。
+    """
     loaded, source = _load_duty_board_raw(override=override)
     out: Dict[str, List[str]] = {
         k: list(v) for k, v in _DEFAULT_DUTY_PLAYBOOK.items()
@@ -740,15 +750,10 @@ def build_duty_board(
 ) -> Dict[str, Any]:
     """Duty-board verdict for Governance / release habit (never invent success_rate).
 
-    status:
-      - unavailable — no runs / gold / approvals (and no adoption signals)
-      - block — gold regressing or P0 miss too high
-      - watch — high serial_ratio / approval backlog / HITL reject heat
-      - go — data present and no block/watch signals
-
-    Facts only from org-harness (+ optional adoption). Fake-green forbidden:
-    missing gold → availability.gold=false, not "ok".
-    Bands from ``load_duty_board_thresholds`` (YAML / env / override).
+    Args:
+        payload: 载荷 dict。
+        adoption: adoption 参数。
+        thresholds: thresholds 参数。
     """
     thr, thr_source = load_duty_board_thresholds(override=thresholds)
     p0_block = thr["p0_miss_rate_block"]
@@ -1310,7 +1315,12 @@ def serial_chain_recommendations(
     *,
     thresholds: Optional[Mapping[str, Any]] = None,
 ) -> List[Dict[str, str]]:
-    """Actionable Amdahl / HITL redesign hints (ops, not a parallel workflow engine)."""
+    """Actionable Amdahl / HITL redesign hints (ops, not a parallel workflow engine).
+
+    Args:
+        summary: summary 参数。
+        thresholds: thresholds 参数。
+    """
     thr, _ = load_duty_board_thresholds(override=thresholds)
     serial_high = thr["serial_ratio_high"]
     serial_watch = thr["serial_ratio_watch"]
@@ -1404,7 +1414,15 @@ def aggregate_org_harness(
     gold_reports: Optional[Sequence[Dict[str, Any]]] = None,
     run_id: str = "",
 ) -> Dict[str, Any]:
-    """Unified org-harness dashboard payload (Amdahl serial vs wall + gold/P0)."""
+    """Unified org-harness dashboard payload (Amdahl serial vs wall + gold/P0).
+
+    Args:
+        events: events 参数。
+        hitl_audit: hitl_audit 参数。
+        approvals: approvals 参数。
+        gold_reports: gold_reports 参数。
+        run_id: 运行 ID。
+    """
     ev = summarize_run_events(events or [])
     au = summarize_hitl_audit(hitl_audit or [])
     ap = summarize_approvals(approvals or [])
@@ -1587,7 +1605,18 @@ def collect_org_harness(
     load_gold: bool = True,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """Load stores → aggregate. Empty run_id → fleet view over recent pipeline runs."""
+    """Load stores → aggregate. Empty run_id → fleet view over recent pipeline runs.
+
+    Args:
+        run_id: 运行 ID。
+        hitl_audit: hitl_audit 参数。
+        approvals: approvals 参数。
+        gold_reports: gold_reports 参数。
+        recent_limit: recent_limit 参数。
+        load_approvals: load_approvals 参数。
+        load_gold: load_gold 参数。
+        tenant_id: 租户 ID。
+    """
     rid = (run_id or "").strip()
     gold = list(gold_reports) if gold_reports is not None else (
         _load_gold_reports(tenant_id=tenant_id, limit=20) if load_gold else []
@@ -1722,7 +1751,13 @@ def org_harness_status(
     recent_limit: int = 10,
     tenant_id: str = "",
 ) -> Dict[str, Any]:
-    """Public entry used by CoreFacade / governance API."""
+    """Public entry used by CoreFacade / governance API.
+
+    Args:
+        run_id: 运行 ID。
+        recent_limit: recent_limit 参数。
+        tenant_id: 租户 ID。
+    """
     return collect_org_harness(
         run_id=run_id,
         recent_limit=recent_limit,

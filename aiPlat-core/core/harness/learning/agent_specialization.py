@@ -41,7 +41,11 @@ class DomainScore:
 
     @property
     def is_active(self, decay_threshold_days: float = 30.0) -> bool:
-        """是否仍活跃 (未超过衰减阈值)."""
+        """是否仍活跃 (未超过衰减阈值).
+
+        Args:
+            decay_threshold_days: decay_threshold_days 参数。
+        """
         if self.last_used_at <= 0:
             return True
         days_inactive = (_time.time() - self.last_used_at) / 86400
@@ -59,6 +63,8 @@ class SpecializationVector:
     secondary_domains: List[str] = field(default_factory=list)  # 次强领域 (top 3)
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "agent_id": self.agent_id,
             "domains": {k: {
@@ -77,7 +83,11 @@ class SpecializationVector:
         }
 
     def to_vector(self, domain_list: Optional[List[str]] = None) -> List[float]:
-        """转换为向量 (用于余弦相似度计算)."""
+        """转换为向量 (用于余弦相似度计算).
+
+        Args:
+            domain_list: domain_list 参数。
+        """
         keys = domain_list or sorted(self.domains.keys())
         return [self.domains.get(k, DomainScore(domain=k)).accuracy for k in keys]
 
@@ -93,6 +103,11 @@ class AgentSpecialization:
     """
 
     def __init__(self, *, decay_days: float = 30.0):
+        """初始化。
+
+        Args:
+            decay_days: decay_days 参数。
+        """
         self._decay_days = decay_days
         self._cache: Dict[str, SpecializationVector] = {}
         self._cache_ttl = 300  # 5分钟缓存
@@ -241,10 +256,10 @@ class AgentSpecialization:
     ) -> float:
         """计算两个 Agent 的专业互补性.
 
-        高相似度 = 竞争/同行 (complementarity → 0)
-        低相似度但相关 = 互补 (complementarity → 1)
-
-        使用: 1 - cosine_similarity(vec_a, vec_b)
+        Args:
+            vec_a: vec_a 参数。
+            vec_b: vec_b 参数。
+            domain_list: domain_list 参数。
         """
         a = vec_a.to_vector(domain_list)
         b = vec_b.to_vector(domain_list)

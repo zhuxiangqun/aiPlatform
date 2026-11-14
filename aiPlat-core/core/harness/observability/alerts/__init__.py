@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from core.utils.paths import get_aiplat_home, get_aiplat_data_dir
 from typing import Dict, Any, Optional, Callable, List, Awaitable
 from dataclasses import dataclass, field
@@ -8,6 +10,7 @@ import logging
 
 
 class AlertSeverity(Enum):
+    """AlertSeverity。"""
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -15,6 +18,7 @@ class AlertSeverity(Enum):
 
 
 class AlertStatus(Enum):
+    """AlertStatus。"""
     ACTIVE = "active"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
@@ -23,6 +27,7 @@ class AlertStatus(Enum):
 
 @dataclass
 class AlertRule:
+    """AlertRule。"""
     name: str
     condition: str
     severity: AlertSeverity
@@ -33,6 +38,7 @@ class AlertRule:
 
 @dataclass
 class AlertInstance:
+    """AlertInstance。"""
     id: str
     rule: AlertRule
     severity: AlertSeverity
@@ -50,9 +56,12 @@ AlertHandlerType = Callable[[AlertInstance], Awaitable[None]]
 
 
 class AlertManager:
+    """AlertManager。"""
     _instance: Optional["AlertManager"] = None
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: Dict[str, AlertRule] = {}
         self._active_alerts: Dict[str, AlertInstance] = {}
         self._handlers: List[AlertHandlerType] = []
@@ -61,11 +70,18 @@ class AlertManager:
 
     @classmethod
     def get_instance(cls) -> "AlertManager":
+        """获取 instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def register_rule(self, rule: AlertRule):
+        """register_rule。
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules[rule.name] = rule
 
     def add_rule(
@@ -77,6 +93,16 @@ class AlertManager:
         description: str = "",
         enabled: bool = True,
     ) -> AlertRule:
+        """add_rule。
+
+        Args:
+            name: name 参数。
+            condition: condition 参数。
+            severity: severity 参数。
+            cooldown_seconds: cooldown_seconds 参数。
+            description: description 参数。
+            enabled: 是否启用。
+        """
         rule = AlertRule(
             name=name,
             condition=condition,
@@ -89,6 +115,11 @@ class AlertManager:
         return rule
 
     def register_handler(self, handler: AlertHandlerType):
+        """register_handler。
+
+        Args:
+            handler: handler 参数。
+        """
         self._handlers.append(handler)
 
     async def fire(
@@ -98,6 +129,14 @@ class AlertManager:
         source: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[AlertInstance]:
+        """fire。
+
+        Args:
+            rule_name: rule_name 参数。
+            message: message 参数。
+            source: source 参数。
+            metadata: metadata 参数。
+        """
         rule = self._rules.get(rule_name)
         if not rule or not rule.enabled:
             return None
@@ -138,6 +177,12 @@ class AlertManager:
         severity: Optional[AlertSeverity] = None,
         source: Optional[str] = None,
     ) -> List[AlertInstance]:
+        """获取 active_alerts。
+
+        Args:
+            severity: severity 参数。
+            source: source 参数。
+        """
         alerts = list(self._active_alerts.values())
         if severity:
             alerts = [a for a in alerts if a.severity == severity]
@@ -146,6 +191,11 @@ class AlertManager:
         return [a for a in alerts if a.status == AlertStatus.ACTIVE]
 
     def acknowledge(self, alert_id: str) -> bool:
+        """acknowledge。
+
+        Args:
+            alert_id: alert 标识。
+        """
         alert = self._active_alerts.get(alert_id)
         if not alert:
             return False
@@ -155,6 +205,11 @@ class AlertManager:
         return True
 
     def resolve(self, alert_id: str) -> bool:
+        """resolve。
+
+        Args:
+            alert_id: alert 标识。
+        """
         alert = self._active_alerts.get(alert_id)
         if not alert:
             return False
@@ -164,9 +219,20 @@ class AlertManager:
         return True
 
     def suppress(self, rule_name: str, suppress: bool = True):
+        """suppress。
+
+        Args:
+            rule_name: rule_name 参数。
+            suppress: suppress 参数。
+        """
         self._suppressed[rule_name] = suppress
 
     def clear_resolved(self, older_than_seconds: int = 3600):
+        """clear_resolved。
+
+        Args:
+            older_than_seconds: older_than_seconds 参数。
+        """
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=older_than_seconds)
         to_remove = []
         for alert in self._active_alerts.values():
@@ -177,6 +243,8 @@ class AlertManager:
             del self._active_alerts[alert_id]
 
     def get_alert_stats(self) -> Dict[str, Any]:
+        """获取 alert_stats。
+        """
         by_severity = {s: 0 for s in AlertSeverity}
         by_status = {s: 0 for s in AlertStatus}
         for alert in self._active_alerts.values():
@@ -259,11 +327,19 @@ class AlertManager:
 
 
 class AlertNotification:
+    """AlertNotification。"""
     def __init__(self, alert: AlertInstance):
+        """初始化。
+
+        Args:
+            alert: alert 参数。
+        """
         self.alert = alert
         self._notification_sent = False
 
     def format_message(self) -> str:
+        """format_message。
+        """
         severity_emoji = {
             AlertSeverity.INFO: "ℹ️",
             AlertSeverity.WARNING: "⚠️",
@@ -274,6 +350,8 @@ class AlertNotification:
         return f"{emoji} [{self.alert.severity.value.upper()}] {self.alert.message}"
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "id": self.alert.id,
             "rule": self.alert.rule.name,
@@ -287,6 +365,8 @@ class AlertNotification:
 
 
 def create_alert_manager() -> AlertManager:
+    """创建 alert_manager。
+    """
     mgr = AlertManager()
     mgr._init_db()
     mgr._install_email_notifier()

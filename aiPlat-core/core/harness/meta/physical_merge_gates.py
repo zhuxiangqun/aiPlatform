@@ -39,6 +39,7 @@ _DEP_FILE_NAMES = {
 
 @dataclass
 class GateFinding:
+    """GateFinding。"""
     gate: str  # inflation | shape | debt
     code: str
     message: str
@@ -48,6 +49,7 @@ class GateFinding:
 
 @dataclass
 class DiffStats:
+    """DiffStats。"""
     files_changed: int = 0
     files_added: int = 0
     net_lines: int = 0
@@ -66,6 +68,7 @@ class DiffStats:
 
 @dataclass
 class GateReport:
+    """GateReport。"""
     ok: bool
     mode: str
     profile: str
@@ -77,6 +80,8 @@ class GateReport:
     exemption_debt: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "ok": self.ok,
             "mode": self.mode,
@@ -120,7 +125,11 @@ def _default_seed() -> Path:
 def load_physical_gates_config(
     override: Optional[Mapping[str, Any]] = None,
 ) -> Tuple[Dict[str, Any], str]:
-    """Return (config_dict, source_label)."""
+    """Return (config_dict, source_label).
+
+    Args:
+        override: override 参数。
+    """
     if override is not None:
         return dict(override), "override"
 
@@ -217,9 +226,9 @@ def assess_exemption_debt(
 ) -> Dict[str, Any]:
     """Treat exemptions as debt: owner + cap + expired-unreviewed → block.
 
-    Active exemptions without owner/reason/expires never apply (not a silent SKIP).
-    Entries past ``expires`` that remain in YAML are unreviewed debt → severity block.
-    Active count above ``max_active_exemptions`` → over_cap → severity block.
+    Args:
+        config: config 参数。
+        now: now 参数。
     """
     today = now or datetime.now(timezone.utc).date()
     max_active = _max_active_exemptions(config)
@@ -298,7 +307,11 @@ def assess_exemption_debt(
 
 
 def debt_findings_from_ledger(debt: Mapping[str, Any]) -> List[GateFinding]:
-    """Convert exemption debt ledger into non-exemptable GateFindings."""
+    """Convert exemption debt ledger into non-exemptable GateFindings.
+
+    Args:
+        debt: debt 参数。
+    """
     out: List[GateFinding] = []
     for row in debt.get("expired") or []:
         eid = str(row.get("id") or "?")
@@ -369,6 +382,13 @@ def _non_neutral_paths(paths: Sequence[str], config: Mapping[str, Any]) -> List[
 
 
 def select_profile(paths: Sequence[str], config: Mapping[str, Any], forced: str = "") -> str:
+    """select_profile。
+
+    Args:
+        paths: paths 参数。
+        config: config 参数。
+        forced: forced 参数。
+    """
     if forced:
         return forced
     globs = list(config.get("framework_globs") or [])
@@ -386,9 +406,9 @@ def select_profile(paths: Sequence[str], config: Mapping[str, Any], forced: str 
 def inflation_stats_for_caps(stats: DiffStats, config: Mapping[str, Any]) -> DiffStats:
     """For max_files/net_lines/new_dirs: count only non-neutral paths when mixed.
 
-    Pure docs/sync PRs (all paths neutral) still use full stats so docs-only
-    bloat remains visible. Mixed PRs exclude CAPABILITIES/docs/registry/receipt
-    stamps so mandatory sync cannot trip inflation alone.
+    Args:
+        stats: stats 参数。
+        config: config 参数。
     """
     scored = _non_neutral_paths(stats.paths, config)
     if not scored:
@@ -427,6 +447,12 @@ def inflation_stats_for_caps(stats: DiffStats, config: Mapping[str, Any]) -> Dif
 
 
 def resolve_mode(config: Mapping[str, Any], now: Optional[date] = None) -> str:
+    """resolve_mode。
+
+    Args:
+        config: config 参数。
+        now: now 参数。
+    """
     env = (os.environ.get("AIPLAT_PHYSICAL_GATES_MODE") or "").strip().lower()
     if env in ("warn", "block", "off"):
         return env
@@ -544,6 +570,13 @@ def collect_diff_stats(
     numstat: str = "",
     unified_diff: str = "",
 ) -> DiffStats:
+    """collect_diff_stats。
+
+    Args:
+        name_status: name_status 参数。
+        numstat: numstat 参数。
+        unified_diff: unified_diff 参数。
+    """
     paths, added, new_dirs = _parse_name_status(name_status)
     n_files, ins, dels, path_net = _parse_numstat(numstat)
     snippets = _extract_plus_snippets(unified_diff)
@@ -641,6 +674,12 @@ def check_inflation(
     stats: DiffStats,
     profile: Mapping[str, Any],
 ) -> List[GateFinding]:
+    """check_inflation。
+
+    Args:
+        stats: stats 参数。
+        profile: 评测 profile。
+    """
     findings: List[GateFinding] = []
     checks = [
         ("max_files", stats.files_changed, "files_changed", "inflation_files"),
@@ -681,6 +720,13 @@ def check_shape(
     config: Mapping[str, Any],
     profile: Mapping[str, Any],
 ) -> List[GateFinding]:
+    """check_shape。
+
+    Args:
+        stats: stats 参数。
+        config: config 参数。
+        profile: 评测 profile。
+    """
     findings: List[GateFinding] = []
     segments = [str(s) for s in (config.get("banned_path_segments") or [])]
     ban_bases = [str(s) for s in (config.get("banned_new_basenames") or [])]
@@ -834,6 +880,16 @@ def evaluate_diff(
     profile_name: str = "",
     now: Optional[date] = None,
 ) -> GateReport:
+    """evaluate_diff。
+
+    Args:
+        name_status: name_status 参数。
+        numstat: numstat 参数。
+        unified_diff: unified_diff 参数。
+        config: config 参数。
+        profile_name: profile_name 参数。
+        now: now 参数。
+    """
     cfg, source = load_physical_gates_config(override=config)
     stats = collect_diff_stats(
         name_status=name_status, numstat=numstat, unified_diff=unified_diff

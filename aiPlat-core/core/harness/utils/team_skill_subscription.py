@@ -23,6 +23,8 @@ _SEED_SUB = (
 
 
 def aiplat_home() -> Path:
+    """aiplat_home。
+    """
     return Path(get_aiplat_home()).expanduser()
 
 
@@ -58,7 +60,13 @@ def resolve_subscription_policy(
     *,
     project: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Merge subscription policy: defaults ← project ← state ← stage fields."""
+    """Merge subscription policy: defaults ← project ← state ← stage fields.
+
+    Args:
+        stage: stage 参数。
+        state: state 参数。
+        project: project 参数。
+    """
     base = load_subscription_defaults()
     allow_tags = list(base.get("allow_tags") or [])
     allow_roles = list(base.get("allow_roles") or [])
@@ -161,7 +169,14 @@ def skill_matches_subscription(
     allow_roles: Sequence[str],
     actor_role: str = "",
 ) -> bool:
-    """True if optional skill passes tag/role filters (empty allow_* = pass)."""
+    """True if optional skill passes tag/role filters (empty allow_* = pass).
+
+    Args:
+        skill: skill 参数。
+        allow_tags: allow_tags 参数。
+        allow_roles: allow_roles 参数。
+        actor_role: actor_role 参数。
+    """
     if allow_tags:
         tags = set(_skill_tags(skill))
         if not tags.intersection({str(t) for t in allow_tags}):
@@ -188,7 +203,16 @@ def filter_skills_by_subscription(
     actor_role: str = "",
     enabled: bool = True,
 ) -> List[Any]:
-    """Keep required_skills always; filter optional by tags/roles when enabled."""
+    """Keep required_skills always; filter optional by tags/roles when enabled.
+
+    Args:
+        skills: skills 参数。
+        required: required 参数。
+        allow_tags: allow_tags 参数。
+        allow_roles: allow_roles 参数。
+        actor_role: actor_role 参数。
+        enabled: 是否启用。
+    """
     req = [str(s).strip() for s in (required or []) if str(s).strip()]
     req_set = set(req)
     items = list(skills or [])
@@ -242,7 +266,12 @@ def assert_required_intact(
     filtered: Sequence[Any],
     required: Sequence[str],
 ) -> bool:
-    """DoD: after filter, every required name that was loadable remains."""
+    """DoD: after filter, every required name that was loadable remains.
+
+    Args:
+        filtered: filtered 参数。
+        required: required 参数。
+    """
     names = {_skill_name(s) for s in filtered}
     for r in required or []:
         rr = str(r).strip()
@@ -260,7 +289,15 @@ def apply_stage_skill_subscription(
     project: Optional[Mapping[str, Any]] = None,
     actor_role: str = "",
 ) -> List[Any]:
-    """Convenience: resolve policy from stage/state then filter."""
+    """Convenience: resolve policy from stage/state then filter.
+
+    Args:
+        skills: skills 参数。
+        stage: stage 参数。
+        state: state 参数。
+        project: project 参数。
+        actor_role: actor_role 参数。
+    """
     policy = resolve_subscription_policy(stage, state, project=project)
     required = []
     if stage is not None:

@@ -50,7 +50,11 @@ def _mask_secret(value: str) -> str:
 
 
 def redact_text(text: str) -> str:
-    """Redact secrets from a text string. No-op if AIPLAT_REDACT_SECRETS=0."""
+    """Redact secrets from a text string. No-op if AIPLAT_REDACT_SECRETS=0.
+
+    Args:
+        text: text 参数。
+    """
     if not _REDACT_ENABLED or not text:
         return text
 
@@ -69,6 +73,11 @@ class RedactingFormatter(logging.Formatter):
     """
 
     def format(self, record: logging.LogRecord) -> str:
+        """format。
+
+        Args:
+            record: record 参数。
+        """
         original = super().format(record)
         return redact_text(original)
 

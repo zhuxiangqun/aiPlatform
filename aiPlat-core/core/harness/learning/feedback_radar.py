@@ -64,6 +64,7 @@ _log = logging.getLogger("aiplat.feedback_radar")
 
 class SuggestionType(str, Enum):
 
+    """SuggestionType。"""
     BOUNDARY_MISSING = "boundary_missing"      # Spec 边界不清晰 → 用户反复追问
 
     DIRECTION_WRONG = "direction_wrong"         # Spec 方向错误 → 用户重复相同问题
@@ -80,6 +81,7 @@ class SuggestionType(str, Enum):
 
 class Severity(str, Enum):
 
+    """Severity。"""
     LOW = "low"
 
     MEDIUM = "medium"
@@ -96,6 +98,7 @@ class Severity(str, Enum):
 
 class SpecAdjustmentSuggestion:
 
+    """SpecAdjustmentSuggestion。"""
     spec_id: str
 
     type: SuggestionType
@@ -156,6 +159,8 @@ class FeedbackRadar:
 
     def __init__(self):
 
+        """初始化。
+        """
         self._enabled = os.getenv("AIPLAT_FEEDBACK_RADAR_ENABLED", "true").lower() not in ("0", "false", "no")
 
 
@@ -166,7 +171,12 @@ class FeedbackRadar:
 
     async def analyze(self, spec_id: str, lookback_days: int = 30) -> List[SpecAdjustmentSuggestion]:
 
-        """分析单个 Spec 的用户反馈信号，生成调整建议。"""
+        """分析单个 Spec 的用户反馈信号，生成调整建议。
+
+        Args:
+            spec_id: spec 标识。
+            lookback_days: lookback_days 参数。
+        """
 
         if not self._enabled:
 
@@ -620,6 +630,8 @@ _radar_instance: Optional[FeedbackRadar] = None
 
 def get_feedback_radar() -> FeedbackRadar:
 
+    """获取 feedback_radar。
+    """
     global _radar_instance
 
     if _radar_instance is None:

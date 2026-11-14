@@ -24,7 +24,11 @@ _log = logging.getLogger(__name__)
 
 
 def extract_file_sections(inline_code: str) -> List[Tuple[str, str]]:
-    """Parse ``## FILE: path`` sections → [(path, body), ...]."""
+    """Parse ``## FILE: path`` sections → [(path, body), ...].
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     text = str(inline_code or "")
     if not text.strip():
         return []
@@ -57,7 +61,11 @@ def _strip_code_fence(body: str) -> str:
 
 
 def inline_code_to_review_blob(inline_code: str) -> str:
-    """Pseudo unified-diff for tests / diagnostics (engine no longer owns this)."""
+    """Pseudo unified-diff for tests / diagnostics (engine no longer owns this).
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     text = str(inline_code or "").strip()
     if not text:
         return ""
@@ -75,14 +83,19 @@ def inline_code_to_review_blob(inline_code: str) -> str:
 
 
 def extract_file_names_from_inline(inline_code: str) -> List[str]:
+    """extract_file_names_from_inline。
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     return [p for p, _ in extract_file_sections(inline_code)][:50]
 
 
 def coerce_inline_delivery_text(raw: object) -> str:
     """Normalize skill output → text that may contain ``## FILE`` sections.
 
-    ``str(dict)`` escapes newlines and breaks ``^## FILE`` parsing; unwrap common
-    payload keys first.
+    Args:
+        raw: raw 参数。
     """
     if raw is None:
         return ""
@@ -159,9 +172,8 @@ def _path_under_allowed_roots(abs_path: str) -> bool:
 def resolve_run_persist_root(run_id: str) -> str:
     """Durable workspace for a run: ``$AIPLAT_HOME/run_workspaces/{run_id}``.
 
-    Must sit under ``AIPLAT_FILE_OPERATIONS_ALLOWED_ROOTS`` (same gate as
-    ``file_operations``). Never writes into the git repo unless that repo is
-    the only allowed root.
+    Args:
+        run_id: 运行 ID。
     """
     rid = re.sub(r"[^A-Za-z0-9._-]+", "_", str(run_id or "").strip())[:80] or "run"
     home = os.path.realpath(
@@ -181,8 +193,9 @@ def resolve_run_persist_root(run_id: str) -> str:
 def persist_inline_delivery(inline_code: str, dest_root: str) -> dict:
     """Write ``## FILE:`` bodies under ``dest_root``. Returns a status dict.
 
-    Skips empty deliveries. Refuses paths outside the file_operations allowlist
-    or with denylist segments (``.git``, ``.env``, …).
+    Args:
+        inline_code: inline_code 参数。
+        dest_root: dest_root 参数。
     """
     text = coerce_inline_delivery_text(inline_code).strip()
     sections = extract_file_sections(text)
@@ -277,7 +290,8 @@ def _diff_nonempty(cwd: str) -> bool:
 def stage_inline_delivery(inline_code: str) -> Optional[str]:
     """Create a temp git worktree with inline files. Returns path or None.
 
-    Caller owns cleanup (``shutil.rmtree``). Does **not** touch ``os.environ``.
+    Args:
+        inline_code: inline_code 参数。
     """
     text = coerce_inline_delivery_text(inline_code).strip()
     if not text:
@@ -315,7 +329,11 @@ def stage_inline_delivery(inline_code: str) -> Optional[str]:
 
 @contextmanager
 def staged_inline_worktree(inline_code: str) -> Iterator[Optional[str]]:
-    """Stage inline delivery; yield worktree path; always clean up. No env mutation."""
+    """Stage inline delivery; yield worktree path; always clean up. No env mutation.
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     wt = stage_inline_delivery(inline_code)
     try:
         yield wt
@@ -327,6 +345,10 @@ def staged_inline_worktree(inline_code: str) -> Iterator[Optional[str]]:
 # Back-compat alias used by older tests / callers.
 @contextmanager
 def autoreview_git_env_for_inline(inline_code: str) -> Iterator[Optional[str]]:
-    """Deprecated name: stages worktree only (no GIT_* env mutation)."""
+    """Deprecated name: stages worktree only (no GIT_* env mutation).
+
+    Args:
+        inline_code: inline_code 参数。
+    """
     with staged_inline_worktree(inline_code) as wt:
         yield wt

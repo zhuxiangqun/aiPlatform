@@ -91,8 +91,11 @@ def truncate_repetition(
 ) -> Tuple[str, bool]:
     """Truncate a degenerate repetition loop, keeping the non-repeating prefix.
 
-    Returns ``(text, truncated)``. If no loop is detected, ``text`` is returned
-    unchanged and ``truncated`` is ``False``.
+    Args:
+        text: text 参数。
+        min_phrase_len: min_phrase_len 参数。
+        min_repeats: min_repeats 参数。
+        min_text_len: min_text_len 参数。
     """
     offset = _detect_repetition(
         text,

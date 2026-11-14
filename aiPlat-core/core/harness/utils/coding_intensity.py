@@ -69,7 +69,12 @@ _ULTRA = (
 
 
 def normalize_coding_intensity(raw: Any, *, default: str = INTENSITY_FULL) -> str:
-    """Normalize to off|lite|full|ultra."""
+    """Normalize to off|lite|full|ultra.
+
+    Args:
+        raw: raw 参数。
+        default: default 参数。
+    """
     val = str(raw or "").strip().lower()
     if not val:
         return default if default in CODING_INTENSITIES else INTENSITY_FULL
@@ -88,7 +93,15 @@ def resolve_coding_intensity(
     scope: str = "engine",
     default: str = INTENSITY_FULL,
 ) -> str:
-    """Resolve intensity: explicit → state → project → env → default."""
+    """Resolve intensity: explicit → state → project → env → default.
+
+    Args:
+        explicit: explicit 参数。
+        project: project 参数。
+        state: state 参数。
+        scope: scope 参数。
+        default: default 参数。
+    """
     if explicit not in (None, ""):
         return normalize_coding_intensity(explicit, default=default)
     if isinstance(state, Mapping):
@@ -113,7 +126,11 @@ def resolve_coding_intensity(
 
 
 def intensity_to_policy_profile(intensity: str) -> str:
-    """Map intensity → legacy coding_policy_profile label for traces/gates."""
+    """Map intensity → legacy coding_policy_profile label for traces/gates.
+
+    Args:
+        intensity: intensity 参数。
+    """
     inten = normalize_coding_intensity(intensity)
     if inten == INTENSITY_OFF:
         return "off"
@@ -123,6 +140,11 @@ def intensity_to_policy_profile(intensity: str) -> str:
 
 
 def is_strict_coding_profile(profile_or_intensity: str) -> bool:
+    """is_strict_coding_profile。
+
+    Args:
+        profile_or_intensity: profile_or_intensity 参数。
+    """
     raw = str(profile_or_intensity or "").strip().lower()
     inten = normalize_coding_intensity(raw, default=INTENSITY_OFF)
     strict_env = os.getenv("AIPLAT_STRICT_CODING_PROFILES", "").strip()
@@ -143,7 +165,12 @@ def build_coding_policy_block(
     *,
     include_hard: bool = True,
 ) -> str:
-    """Build prompt overlay for a coding skill. Empty when off."""
+    """Build prompt overlay for a coding skill. Empty when off.
+
+    Args:
+        profile_or_intensity: profile_or_intensity 参数。
+        include_hard: include_hard 参数。
+    """
     raw = str(profile_or_intensity or "").strip().lower()
     if raw in ("", "off"):
         return ""
@@ -164,7 +191,11 @@ def build_coding_policy_block(
 
 
 def ponytail_overlay_for_intensity(intensity: str) -> str:
-    """Short ponytail-style overlay (no full SKILL.md dump)."""
+    """Short ponytail-style overlay (no full SKILL.md dump).
+
+    Args:
+        intensity: intensity 参数。
+    """
     inten = normalize_coding_intensity(intensity, default=INTENSITY_FULL)
     if inten == INTENSITY_OFF:
         return ""
@@ -196,7 +227,11 @@ def resolve_ponytail_mode() -> str:
 
 
 def default_intensity_for_factory_mode(factory_mode: str) -> str:
-    """Factory code/hybrid → full; agent conversational → lite for coding stages."""
+    """Factory code/hybrid → full; agent conversational → lite for coding stages.
+
+    Args:
+        factory_mode: factory_mode 参数。
+    """
     mode = str(factory_mode or "").strip().lower()
     if mode in ("code", "hybrid"):
         return INTENSITY_FULL

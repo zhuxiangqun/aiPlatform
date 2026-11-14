@@ -49,6 +49,8 @@ def gate_meta_dir() -> Path:
 
 
 def gate_meta_jsonl_path() -> Path:
+    """gate_meta_jsonl_path。
+    """
     return gate_meta_dir() / "runs.jsonl"
 
 
@@ -79,7 +81,11 @@ def _parse_ts(raw: Any) -> Optional[float]:
 
 
 def append_gate_event(event: Mapping[str, Any]) -> Optional[str]:
-    """Append one event. Returns path or None on skip/failure."""
+    """Append one event. Returns path or None on skip/failure.
+
+    Args:
+        event: event 参数。
+    """
     if not _persist_enabled():
         return None
     kind = str(event.get("kind") or "").strip().lower()
@@ -110,7 +116,15 @@ def record_gate_run(
     source: str = "check",
     staged: bool = False,
 ) -> Optional[str]:
-    """Persist one gate check outcome (from check_physical_merge_gates)."""
+    """Persist one gate check outcome (from check_physical_merge_gates).
+
+    Args:
+        physical: physical 参数。
+        testability: testability 参数。
+        exit_blocked: exit_blocked 参数。
+        source: source 参数。
+        staged: staged 参数。
+    """
     phys = dict(physical or {})
     tb = dict(testability or {})
     ex = phys.get("exemptions_applied") or []
@@ -157,7 +171,14 @@ def record_gate_skip(
     source: str = "pre-commit",
     note: str = "",
 ) -> Optional[str]:
-    """Persist SKIP_* bypass (must be visible — not silent)."""
+    """Persist SKIP_* bypass (must be visible — not silent).
+
+    Args:
+        env: env 参数。
+        gate: gate 参数。
+        source: source 参数。
+        note: note 参数。
+    """
     return append_gate_event(
         {
             "kind": "skip",
@@ -177,7 +198,15 @@ def record_gate_appeal(
     gate: str = "physical",
     source: str = "manual",
 ) -> Optional[str]:
-    """Persist false-positive / mis-kill appeal for meta calibration."""
+    """Persist false-positive / mis-kill appeal for meta calibration.
+
+    Args:
+        code: code 参数。
+        owner: owner 参数。
+        note: note 参数。
+        gate: gate 参数。
+        source: source 参数。
+    """
     code_s = str(code or "").strip()
     owner_s = str(owner or "").strip()
     if not code_s or not owner_s:
@@ -200,7 +229,12 @@ def list_gate_events(
     limit: int = 500,
     path: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
-    """Read JSONL events (oldest→newest); returns last ``limit`` rows."""
+    """Read JSONL events (oldest→newest); returns last ``limit`` rows.
+
+    Args:
+        limit: 返回条数上限。
+        path: 路径。
+    """
     p = path or gate_meta_jsonl_path()
     if not p.is_file():
         return []
@@ -232,11 +266,12 @@ def summarize_gate_meta(
 ) -> Dict[str, Any]:
     """Fold JSONL → rates + severity (go|watch|block|unavailable).
 
-    Rates (window):
-      block_rate     = exit_blocked runs / n_runs
-      exemption_rate = exemption_used runs / n_runs
-      skip_rate      = n_skips / (n_runs + n_skips)
-      appeal_rate    = n_appeals / n_runs  (0 if no runs)
+    Args:
+        events: events 参数。
+        window_days: window_days 参数。
+        min_runs: min_runs 参数。
+        now_ts: now_ts 参数。
+        thresholds: thresholds 参数。
     """
     thr = dict(_DEFAULT_THRESHOLDS)
     if isinstance(thresholds, Mapping):
@@ -410,7 +445,13 @@ def assess_gate_meta(
     thresholds: Optional[Mapping[str, float]] = None,
     now_ts: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Summarize with optional duty-board thresholds (no reverse import)."""
+    """Summarize with optional duty-board thresholds (no reverse import).
+
+    Args:
+        events: events 参数。
+        thresholds: thresholds 参数。
+        now_ts: now_ts 参数。
+    """
     thr = load_gate_meta_thresholds_from_duty(thresholds)
     return summarize_gate_meta(
         events,
@@ -424,7 +465,11 @@ def assess_gate_meta(
 def load_gate_meta_thresholds_from_duty(
     duty_thr: Optional[Mapping[str, float]] = None,
 ) -> Dict[str, float]:
-    """Merge duty-board floats into gate-meta defaults (for posture wiring)."""
+    """Merge duty-board floats into gate-meta defaults (for posture wiring).
+
+    Args:
+        duty_thr: duty_thr 参数。
+    """
     out = dict(_DEFAULT_THRESHOLDS)
     if isinstance(duty_thr, Mapping):
         for k in out:

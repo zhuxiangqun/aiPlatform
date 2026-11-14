@@ -9,7 +9,13 @@ from typing import Any, Dict, List, Optional
 
 
 async def syscall_spans(store: Any, execution_id: str, trace_id: str) -> List[Dict[str, Any]]:
-    """Build span-like rows from syscall_events."""
+    """Build span-like rows from syscall_events.
+
+    Args:
+        store: store 参数。
+        execution_id: execution 标识。
+        trace_id: trace 标识。
+    """
     lister = getattr(store, "list_syscall_events", None)
     if not callable(lister):
         return []
@@ -55,7 +61,13 @@ async def syscall_spans(store: Any, execution_id: str, trace_id: str) -> List[Di
 
 
 async def run_graph_spans(store: Any, execution_id: str, trace_id: str) -> List[Dict[str, Any]]:
-    """Project run_graph_nodes into span-like rows."""
+    """Project run_graph_nodes into span-like rows.
+
+    Args:
+        store: store 参数。
+        execution_id: execution 标识。
+        trace_id: trace 标识。
+    """
     lister = getattr(store, "list_run_graph_nodes", None)
     if not callable(lister):
         return []
@@ -104,7 +116,14 @@ async def merged_diag_spans(
     *,
     existing: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
-    """Union existing + syscall + run_graph spans for Links Trace."""
+    """Union existing + syscall + run_graph spans for Links Trace.
+
+    Args:
+        store: store 参数。
+        execution_id: execution 标识。
+        trace_id: trace 标识。
+        existing: existing 参数。
+    """
     by_key: Dict[str, Dict[str, Any]] = {}
     for s in existing or []:
         if isinstance(s, dict):

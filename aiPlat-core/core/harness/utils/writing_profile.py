@@ -43,8 +43,9 @@ def resolve_writing_profile(
 ) -> str:
     """Resolve writing_profile from project/state/env.
 
-    Priority: source.writing_profile → metadata → _writing_profile →
-    AIPLAT_WRITING_PROFILE → default.
+    Args:
+        source: source 参数。
+        default: default 参数。
     """
     raw = None
     if source:
@@ -70,7 +71,12 @@ def build_writing_overlay(
     *,
     term_whitelist: Optional[Sequence[str]] = None,
 ) -> str:
-    """Ephemeral system-tail overlay (append-only; prompt-cache safe)."""
+    """Ephemeral system-tail overlay (append-only; prompt-cache safe).
+
+    Args:
+        profile: 评测 profile。
+        term_whitelist: term_whitelist 参数。
+    """
     if resolve_writing_profile({"writing_profile": profile}) != PROFILE_CONCISE:
         return ""
     extra = ""
@@ -120,8 +126,10 @@ def apply_concise_prose(
 ) -> str:
     """Deterministic concise rewrite; skips when profile is off.
 
-    Protects backtick/code/ALL_CAPS/dotted idents plus optional ``protect`` terms.
-    Never rewrites protected spans (API names, error strings, symbols).
+    Args:
+        text: text 参数。
+        profile: 评测 profile。
+        protect: protect 参数。
     """
     if resolve_writing_profile({"writing_profile": profile}) != PROFILE_CONCISE:
         return str(text or "")
@@ -161,7 +169,13 @@ def apply_error_message(
     profile: str = PROFILE_CONCISE,
     protect: Optional[Sequence[str]] = None,
 ) -> str:
-    """Concise wrapper for operator-facing errors; keeps diagnostic tokens intact."""
+    """Concise wrapper for operator-facing errors; keeps diagnostic tokens intact.
+
+    Args:
+        message: message 参数。
+        profile: 评测 profile。
+        protect: protect 参数。
+    """
     return apply_concise_prose(message, profile=profile, protect=protect)
 
 
@@ -172,7 +186,14 @@ def apply_handoff_fields(
     protect: Optional[Sequence[str]] = None,
     keys: Sequence[str] = ("summary", "verify", "next"),
 ) -> Dict[str, Any]:
-    """Apply concise prose to selected handoff string fields only."""
+    """Apply concise prose to selected handoff string fields only.
+
+    Args:
+        fields: fields 参数。
+        profile: 评测 profile。
+        protect: protect 参数。
+        keys: keys 参数。
+    """
     out = dict(fields)
     if resolve_writing_profile({"writing_profile": profile}) != PROFILE_CONCISE:
         return out
@@ -188,7 +209,12 @@ def apply_project_writing_meta(
     *,
     writing_profile: Optional[str] = None,
 ) -> None:
-    """Persist writing_profile on project dict."""
+    """Persist writing_profile on project dict.
+
+    Args:
+        project: project 参数。
+        writing_profile: writing_profile 参数。
+    """
     if writing_profile is not None:
         project["writing_profile"] = resolve_writing_profile(
             {"writing_profile": writing_profile}

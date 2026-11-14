@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgentDiagnostic:
+    """AgentDiagnostic。"""
     agent_id: str
     total_decisions: int = 0
     rejected_count: int = 0            # 封驳次数 (review_gate deny)
@@ -38,6 +39,8 @@ class AgentDiagnostic:
 
     @property
     def rejection_rate(self) -> float:
+        """rejection_rate。
+        """
         return self.rejected_count / max(self.total_decisions, 1)
 
 
@@ -45,13 +48,15 @@ class AgentRefiner:
     """AGENTS.md 自动优化建议器."""
 
     def __init__(self):
+        """初始化。
+        """
         self._db_path = get_aiplat_data_dir("data/aiplat_platform.sqlite3")
 
     def run(self, *, lookback_days: int = 7) -> Dict[str, Any]:
         """每晚运行: 扫描所有 Agent → 生成优化建议.
 
-        Returns:
-            {agent_id: {"suggestions": [...], "written_to": "/path/to/_evolution_suggestions.md"}}
+        Args:
+            lookback_days: lookback_days 参数。
         """
         agents = self._scan_agents()
         if not agents:

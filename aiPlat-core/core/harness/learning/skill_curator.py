@@ -27,6 +27,12 @@ class SkillCurator:
     """Unified skill lifecycle curator facade (P1-A2)."""
 
     def __init__(self, skill_dir: Optional[Any] = None, config: Optional[Any] = None):
+        """初始化。
+
+        Args:
+            skill_dir: skill_dir 参数。
+            config: config 参数。
+        """
         from core.harness.knowledge.skill_curator import SkillCurator as _Impl
         self._impl = _Impl()
 
@@ -46,11 +52,19 @@ class SkillCurator:
         return self._impl.curate()
 
     def record_call(self, skill_id: str) -> None:
-        """Record a skill invocation for lifecycle tracking (no-op on registry impl)."""
+        """Record a skill invocation for lifecycle tracking (no-op on registry impl).
+
+        Args:
+            skill_id: Skill ID。
+        """
         # registry-state curator tracks via SkillBindingStats; nothing to do here
         pass
 
 
 def get_skill_curator(skill_dir: Optional[Any] = None) -> SkillCurator:
-    """Get the unified curator facade."""
+    """Get the unified curator facade.
+
+    Args:
+        skill_dir: skill_dir 参数。
+    """
     return SkillCurator(skill_dir=skill_dir)

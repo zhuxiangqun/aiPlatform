@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from typing import Dict, Any, Optional, Callable, Awaitable, List
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -9,6 +11,7 @@ import logging
 
 
 class EventType(Enum):
+    """EventType。"""
     AGENT_STARTED = "agent_started"
     AGENT_STOPPED = "agent_stopped"
     AGENT_ERROR = "agent_error"
@@ -34,6 +37,7 @@ class EventType(Enum):
 
 
 class EventPriority(Enum):
+    """EventPriority。"""
     LOW = 1
     NORMAL = 2
     HIGH = 3
@@ -42,6 +46,7 @@ class EventPriority(Enum):
 
 @dataclass
 class Event:
+    """Event。"""
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     type: EventType = EventType.MESSAGE_SENT
     source: str = ""
@@ -52,17 +57,30 @@ class Event:
 
 
 class EventFilter:
+    """EventFilter。"""
     def __init__(
         self,
         types: Optional[List[EventType]] = None,
         sources: Optional[List[str]] = None,
         priority_min: Optional[EventPriority] = None,
     ):
+        """初始化。
+
+        Args:
+            types: types 参数。
+            sources: sources 参数。
+            priority_min: priority_min 参数。
+        """
         self.types = types or []
         self.sources = sources or []
         self.priority_min = priority_min or EventPriority.LOW
 
     def matches(self, event: Event) -> bool:
+        """matches。
+
+        Args:
+            event: event 参数。
+        """
         if self.types and event.type not in self.types:
             return False
         if self.sources and event.source not in self.sources:
@@ -76,9 +94,15 @@ HandlerType = Callable[[Event], Awaitable[None]]
 
 
 class EventBus:
+    """EventBus。"""
     _instance: Optional["EventBus"] = None
 
     def __init__(self, max_queue_size: int = 10000):
+        """初始化。
+
+        Args:
+            max_queue_size: max_queue_size 参数。
+        """
         self.max_queue_size = max_queue_size
         self._handlers: Dict[EventType, List[HandlerType]] = defaultdict(list)
         self._global_handlers: List[HandlerType] = []
@@ -88,21 +112,45 @@ class EventBus:
 
     @classmethod
     def get_instance(cls) -> "EventBus":
+        """获取 instance。
+        """
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def subscribe(self, event_type: EventType, handler: HandlerType):
+        """subscribe。
+
+        Args:
+            event_type: event_type 参数。
+            handler: handler 参数。
+        """
         self._handlers[event_type].append(handler)
 
     def subscribe_all(self, handler: HandlerType):
+        """subscribe_all。
+
+        Args:
+            handler: handler 参数。
+        """
         self._global_handlers.append(handler)
 
     def unsubscribe(self, event_type: EventType, handler: HandlerType):
+        """unsubscribe。
+
+        Args:
+            event_type: event_type 参数。
+            handler: handler 参数。
+        """
         if event_type in self._handlers:
             self._handlers[event_type] = [h for h in self._handlers[event_type] if h != handler]
 
     async def publish(self, event: Event):
+        """publish。
+
+        Args:
+            event: event 参数。
+        """
         try:
             self._queue.put_nowait(event)
         except asyncio.QueueFull:
@@ -120,6 +168,15 @@ class EventBus:
         priority: EventPriority = EventPriority.NORMAL,
         **metadata,
     ):
+        """emit。
+
+        Args:
+            event_type: event_type 参数。
+            source: source 参数。
+            data: data 参数。
+            priority: priority 参数。
+            metadata: metadata 参数。
+        """
         event = Event(
             type=event_type,
             source=source,
@@ -130,12 +187,16 @@ class EventBus:
         asyncio.create_task(self.publish(event))
 
     async def start(self):
+        """start。
+        """
         if self._running:
             return
         self._running = True
         self._processing_task = asyncio.create_task(self._process_events())
 
     async def stop(self):
+        """stop。
+        """
         self._running = False
         if self._processing_task:
             await self._processing_task
@@ -161,9 +222,13 @@ class EventBus:
                 logging.debug(str(e), exc_info=True)
 
     def get_queue_size(self) -> int:
+        """获取 queue_size。
+        """
         return self._queue.qsize()
 
     def clear(self):
+        """clear。
+        """
         while not self._queue.empty():
             try:
                 self._queue.get_nowait()
@@ -172,13 +237,24 @@ class EventBus:
 
 
 class EventRecorder:
+    """EventRecorder。"""
     def __init__(self, max_events: int = 1000):
+        """初始化。
+
+        Args:
+            max_events: max_events 参数。
+        """
         self.max_events = max_events
         self._events: List[Event] = []
         self._by_type: Dict[EventType, List[Event]] = defaultdict(list)
         self._by_source: Dict[str, List[Event]] = defaultdict(list)
 
     def record(self, event: Event):
+        """record。
+
+        Args:
+            event: event 参数。
+        """
         self._events.append(event)
         self._by_type[event.type].append(event)
         self._by_source[event.source].append(event)
@@ -188,18 +264,35 @@ class EventRecorder:
             self._by_source[removed.source].pop(0)
 
     def get_all(self, limit: Optional[int] = None) -> List[Event]:
+        """获取 all。
+
+        Args:
+            limit: 返回条数上限。
+        """
         events = self._events
         if limit:
             events = events[-limit:]
         return events
 
     def get_by_type(self, event_type: EventType, limit: Optional[int] = None) -> List[Event]:
+        """获取 by_type。
+
+        Args:
+            event_type: event_type 参数。
+            limit: 返回条数上限。
+        """
         events = self._by_type.get(event_type, [])
         if limit:
             events = events[-limit:]
         return events
 
     def get_by_source(self, source: str, limit: Optional[int] = None) -> List[Event]:
+        """获取 by_source。
+
+        Args:
+            source: source 参数。
+            limit: 返回条数上限。
+        """
         events = self._by_source.get(source, [])
         if limit:
             events = events[-limit:]
@@ -208,22 +301,40 @@ class EventRecorder:
     def get_by_time_range(
         self, start: datetime, end: datetime
     ) -> List[Event]:
+        """获取 by_time_range。
+
+        Args:
+            start: start 参数。
+            end: end 参数。
+        """
         return [
             e for e in self._events
             if start <= e.timestamp <= end
         ]
 
     def clear(self):
+        """clear。
+        """
         self._events.clear()
         self._by_type.clear()
         self._by_source.clear()
 
 
 def create_event_bus(max_queue_size: int = 10000) -> EventBus:
+    """创建 event_bus。
+
+    Args:
+        max_queue_size: max_queue_size 参数。
+    """
     return EventBus(max_queue_size)
 
 
 def create_event_recorder(max_events: int = 1000) -> EventRecorder:
+    """创建 event_recorder。
+
+    Args:
+        max_events: max_events 参数。
+    """
     return EventRecorder(max_events)
 
 

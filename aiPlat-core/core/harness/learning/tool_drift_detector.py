@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ──
 
 class DriftType(Enum):
+    """DriftType。"""
     STRUCTURE_DRIFT = "structure_drift"
     FIELD_MISSING_DRIFT = "field_missing_drift"
     LATENCY_DRIFT = "latency_drift"
@@ -47,6 +48,7 @@ class DriftType(Enum):
 # ── Realtime anomaly types (Layer 1: 感知) ──
 
 class AnomalyType(Enum):
+    """AnomalyType。"""
     REDUNDANT_CALL = "redundant_call"       # 同工具+同参数 短时间高频重复
     OUTLIER_LATENCY = "outlier_latency"     # 单次延迟远超 P95
     CASCADE_FAILURE = "cascade_failure"     # 连续 N 次全失败
@@ -57,6 +59,7 @@ class AnomalyType(Enum):
 
 @dataclass
 class DriftAlert:
+    """DriftAlert。"""
     tool_name: str
     drift_type: DriftType
     detail: str
@@ -66,6 +69,7 @@ class DriftAlert:
 
 @dataclass
 class ToolCallRecord:
+    """ToolCallRecord。"""
     tool_name: str
     timestamp: float
     request_schema: Dict[str, Any]
@@ -78,6 +82,7 @@ class ToolCallRecord:
 
 @dataclass
 class SchemaMapping:
+    """SchemaMapping。"""
     mapping_rules: Dict[str, str]
     ttl_expire: float
     version: int = 1
@@ -85,6 +90,7 @@ class SchemaMapping:
 
 @dataclass
 class RealtimeAlert:
+    """RealtimeAlert。"""
     anomaly_type: AnomalyType
     tool_name: str
     detail: str
@@ -93,6 +99,7 @@ class RealtimeAlert:
 
 @dataclass
 class CircuitBreaker:
+    """CircuitBreaker。"""
     tool_name: str
     opened_at: float
     cooldown_s: float
@@ -106,6 +113,8 @@ class ToolDriftDetector:
     """Async, non-blocking tool drift detector."""
 
     def __init__(self):
+        """初始化。
+        """
         self._windows: Dict[str, Deque[ToolCallRecord]] = defaultdict(
             lambda: deque(maxlen=int(os.getenv("AIPLAT_DRIFT_WINDOW_SIZE", "100")))
         )
@@ -140,11 +149,15 @@ class ToolDriftDetector:
     # ── Lifecycle ──
 
     async def start(self) -> None:
+        """start。
+        """
         if self._worker_task is None or self._worker_task.done():
             self._worker_task = asyncio.create_task(self._queue_worker())
             logger.info("ToolDriftDetector worker started (window=%d)", self._windows[list(self._windows.keys())[0]].maxlen if self._windows else 100)
 
     async def stop(self) -> None:
+        """stop。
+        """
         if self._worker_task:
             self._worker_task.cancel()
             try:
@@ -164,6 +177,16 @@ class ToolDriftDetector:
         error_code: Optional[str] = None,
     ) -> None:
         # Circuit breaker: reject calls when breaker is open
+        """record_call。
+
+        Args:
+            tool_name: tool_name 参数。
+            request_schema: request_schema 参数。
+            response_data: response_data 参数。
+            status_code: status_code 参数。
+            latency_ms: latency_ms 参数。
+            error_code: error_code 参数。
+        """
         if tool_name and tool_name in self._circuit_breakers:
             cb = self._circuit_breakers[tool_name]
             if time.time() - cb.opened_at < cb.cooldown_s:
@@ -223,6 +246,11 @@ class ToolDriftDetector:
     # ── Detect (called from EvolutionEngine nightly) ──
 
     def detect_drift(self, tool_name: str) -> Optional[DriftAlert]:
+        """detect_drift。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         if tool_name not in self._windows:
             return None
         records = list(self._windows[tool_name])
@@ -279,6 +307,8 @@ class ToolDriftDetector:
         return None
 
     def detect_all(self) -> List[DriftAlert]:
+        """detect_all。
+        """
         alerts = []
         for tool_name in list(self._windows.keys()):
             alert = self.detect_drift(tool_name)
@@ -289,6 +319,11 @@ class ToolDriftDetector:
     # ── Adapt (with replay validation) ──
 
     def adapt(self, tool_name: str) -> Optional[SchemaMapping]:
+        """adapt。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         if tool_name in self._unstable_tools:
             return None
 
@@ -558,6 +593,11 @@ class ToolDriftDetector:
                                  latency_ms, error_code, record)
 
     def get_stats(self, tool_name: str) -> Dict[str, Any]:
+        """获取 stats。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         records = list(self._windows.get(tool_name, []))
         if not records:
             return {"count": 0}
@@ -572,6 +612,8 @@ class ToolDriftDetector:
         }
 
     def get_realtime_stats(self) -> Dict[str, Any]:
+        """获取 realtime_stats。
+        """
         return {
             "enabled": self._realtime_enabled,
             "tools_monitored": len(self._realtime_buffer),
@@ -585,6 +627,8 @@ class ToolDriftDetector:
         }
 
     def list_tools(self) -> List[str]:
+        """列出 tools。
+        """
         return sorted(self._windows.keys())
 
 
@@ -594,6 +638,8 @@ _drift_detector: Optional[ToolDriftDetector] = None
 
 
 def get_drift_detector() -> ToolDriftDetector:
+    """获取 drift_detector。
+    """
     global _drift_detector
     if _drift_detector is None:
         _drift_detector = ToolDriftDetector()

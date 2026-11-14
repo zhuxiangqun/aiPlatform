@@ -37,6 +37,7 @@ SKILL_DIR = _Path(get_aiplat_home()) / "skills"
 
 @dataclass
 class ValidationResult:
+    """ValidationResult。"""
     valid: bool
     score: int = 0                  # 0-100
     issues: List[str] = field(default_factory=list)
@@ -69,7 +70,8 @@ class SkillGenerator:
     def sanitize(self, operations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """脱敏操作序列 (LLM 调用前).
 
-        IP地址 / 邮箱 / 电话 / 内部域名 / 凭证 → 自动替换
+        Args:
+            operations: operations 参数。
         """
         serialized = _json.dumps(operations, ensure_ascii=False)
         for pattern, replacement in self.SENSITIVE_PATTERNS:
@@ -200,7 +202,9 @@ effects:
     async def refine(self, current_skill_md: str, feedback: str) -> str:
         """根据反馈迭代 Skill (保留用户手动修正).
 
-        用户已手动编辑的内容 (非 LLM 生成的部分) 不会被覆盖。
+        Args:
+            current_skill_md: current_skill_md 参数。
+            feedback: feedback 参数。
         """
         try:
             from core.harness.utils.model_injection import best_model_for_purpose
@@ -238,9 +242,8 @@ effects:
     def validate(self, skill_md: str) -> ValidationResult:
         """三重质量检查.
 
-        ① SOP 完整性: 是否包含 ≥3 个步骤
-        ② 参数对齐: input_schema 中的字段是否在 SOP 中被引用
-        ③ 反模式覆盖: 是否包含 ≥1 条错误处理路径
+        Args:
+            skill_md: skill_md 参数。
         """
         issues = []
         suggestions = []
