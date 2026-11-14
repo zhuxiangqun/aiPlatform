@@ -37,8 +37,8 @@ doc_type: Reference
 ## 本地可继续（不翻转 authorize）
 
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
-2. B 轨挂 suite + 复核日历草稿  
-3. 覆盖率报表骨架按 A/B/C 分列（禁止单一覆盖%）  
+2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
+3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
 4. 一次只提议 **1 个** 符号升「authorized Tier A gate」，须 owner 书面授权
 
 ## 禁止

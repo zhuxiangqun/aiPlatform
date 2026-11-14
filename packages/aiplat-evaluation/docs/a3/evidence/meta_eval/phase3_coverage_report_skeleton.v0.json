@@ -1,0 +1,45 @@
+{
+  "schema": "eval.phase3.coverage_report_skeleton.v0",
+  "recorded_at": "2026-11-14T20:39:45+08:00",
+  "columns": [
+    "tier",
+    "n",
+    "with_suite",
+    "with_gate",
+    "exempt",
+    "unauthorized_claim"
+  ],
+  "rows": [
+    {
+      "tier": "A_candidate",
+      "n": 19,
+      "with_suite": null,
+      "with_gate": null,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "META families green; gate authorize false"
+    },
+    {
+      "tier": "B",
+      "n": 165,
+      "with_suite": null,
+      "with_gate": null,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "calendar draft only"
+    },
+    {
+      "tier": "C",
+      "n": 458,
+      "with_suite": null,
+      "with_gate": null,
+      "exempt": 0,
+      "unauthorized_claim": false,
+      "note": "register-only; must not crowd A slots"
+    }
+  ],
+  "forbid_single_coverage_percent": true,
+  "tier_a_expansion_authorized": false,
+  "accuracy_claim": false,
+  "honesty": "Skeleton only — null suite/gate counts until measured. Never collapse A/B/C into one coverage%."
+}
