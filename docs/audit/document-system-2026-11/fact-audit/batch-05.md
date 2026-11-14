@@ -62,11 +62,15 @@ indexer.py → wiki_indexer.py
 - core developer / harness / services / framework：幻影路径改为现网入口
 - design/* 加 As-Is 横幅（历史/To-Be 引用勿当已实现）
 
-仍未全量清完（需逐篇）：
+续修 tranche-7（2026-11-14）：
+- infra developer：logging/compute/memory/network 独立 yaml → `default.yaml` section
+- `reports/README.md`、`docs/archive/README.md` 加强「非现网契约」声明
+
+诚实对账收口（活跃 docs 路径级 + 配置入口级）：
 ```text
-infra 模块正文内历史 yaml 示例块（已有横幅兜底）
-reports/ 与 docs/archive/ 历史分析稿（非现网契约）
-core design 正文内个别历史路径（已有横幅）
+剩余仅：infra 模块正文内示意 yaml 块（已有模块 As-Is 横幅）
+        design/* 正文历史路径（已有横幅）
+        archive/reports 正文本身（索引已声明非契约）
 ```
 
 ## 关键发现

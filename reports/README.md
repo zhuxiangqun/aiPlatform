@@ -6,6 +6,8 @@ doc_type: Index
 
 > v2.4 定义。报告/证据不是文档 canonical，不参与标准评审。
 
+> **As-Is（2026-11）**：`reports/`（含分析快照、白皮书生成物、`_archive/`）**不是**现网架构契约。文中路径/能力声明可能过期；以代码、`AIPLAT_CAPABILITIES.md`、`docs/architecture/` 为准。勿把历史分析稿里的 `infra/mcp`、GraphQL、假 make 入口等当作已实现。
+
 ## 分层
 
 | 路径 | 内容 | 保留期 | 处理 |
