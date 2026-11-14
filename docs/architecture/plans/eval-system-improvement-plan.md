@@ -822,3 +822,5 @@ R11 已签字（朱向群 · accept v0）。执行焦点：META_EVAL F1–F4 均
 | v1.1.7+exec46 | 2026-11-14 | owner AUTHORIZE global_tier_a_expansion；accuracy/L5/cert/process_split 仍 false |
 | v1.1.7+exec47 | 2026-11-14 | AUTHORIZE accuracy+l5_declare+process_split（政策）；Tier C 登记；Phase2 staging 板；Chart/生产独立仍 false |
 | v1.1.7+exec48 | 2026-11-14 | B4-S staging 仅脚手架：unfreeze `draft_blocked` + 未签名 drill 模板；Chart/production_signed 仍 false |
+| v1.1.7+exec49 | 2026-11-14 | B4-S 脚手架接 Option B 本机演练 PASS（:5434）；Chart/authorize 仍锁 |
+| v1.1.7+exec49 | 2026-11-14 | B4-S 脚手架接 Option B 本机演练（`:5434`）；migrate 用 repo `.venv`；Chart 仍 false |

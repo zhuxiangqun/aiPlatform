@@ -5,7 +5,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
 cd "$ROOT"
+
+PY="${AIPLAT_EVAL_PYTHON:-python3}"
+[[ -x "$REPO_ROOT/.venv/bin/python" ]] && PY="$REPO_ROOT/.venv/bin/python"
+export AIPLAT_EVAL_PYTHON="$PY"
 
 COMPOSE_FILE="${AIPLAT_EVAL_B4S_COMPOSE:-$ROOT/compose/docker-compose.b4s-local.yml}"
 COMPOSE=(docker compose -f "$COMPOSE_FILE")
@@ -57,7 +62,7 @@ bash "$ROOT/scripts/migrate_local.sh"
 
 echo "== seed one job row =="
 SEED_JOB="$WORK/seed_job_id.txt"
-PYTHONPATH=. python3 - <<PY
+PYTHONPATH=. "$PY" - <<PY
 import os
 from app.store.jobs import enqueue_job
 url = os.environ["AIPLAT_EVAL_DB_URL"]
@@ -103,17 +108,20 @@ else
   echo "WARN: keycloak JWKS not reachable; recorded as soft_fail (PG drill still counts)"
 fi
 
-echo "== authorize must stay false =="
+echo "== Chart/runtime authorize must stay locked =="
 STATUS_JSON="$(bash "$ROOT/scripts/a3_split_authorize.sh" status)"
-echo "$STATUS_JSON" | python3 -c "
+echo "$STATUS_JSON" | "$PY" -c "
 import json,sys
+from pathlib import Path
 d=json.load(sys.stdin)
-assert d.get('ready_to_authorize') is False
-assert d.get('process_split_authorized_doc') is False
-print('authorize still locked')
+assert d.get('ready_to_authorize') is False, d
+assert d.get('live_production_signed') is False, d
+chart = Path('chart/Chart.yaml').read_text(encoding='utf-8')
+assert 'aiplat.a3_process_split_authorized: \"false\"' in chart
+print('ready_to_authorize=false; live_production_signed=false; Chart false')
 "
 
-python3 - <<PY
+"$PY" - <<PY
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -123,7 +131,10 @@ payload = {
     "product_id": "evaluation",
     "environment": "local",
     "not_staging_evidence": True,
+    "option_b_track": True,
     "process_split_authorized": False,
+    "chart_a3_process_split_authorized": False,
+    "production_signed": False,
     "accuracy_claim": False,
     "compose_file": "compose/docker-compose.b4s-local.yml",
     "db_url_host": "127.0.0.1:5434",
@@ -136,8 +147,8 @@ payload = {
     "skip_minio": "${SKIP_MINIO}" == "1",
     "recorded_at": "${STAMP}" or datetime.now(timezone.utc).isoformat(),
     "honesty": (
-        "B4-S local Docker rehearsal only — not staging host; "
-        "not PITR certification; not process_split authorize"
+        "B4-S Option B local Docker rehearsal (:5434 sibling of PGHA :5433) — "
+        "not staging host; not PITR certification; Chart/runtime authorize stays false"
     ),
 }
 path = Path("${EVID_DIR}") / f"local-eval-b4s-rehearsal-${STAMP}.json"

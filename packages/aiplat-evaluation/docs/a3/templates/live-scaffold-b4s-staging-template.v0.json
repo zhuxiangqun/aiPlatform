@@ -4,7 +4,7 @@
   "drill_id": "scaffold-b4s-staging-template-v0",
   "environment": "scaffold",
   "operator": "scaffold-bot",
-  "recorded_at": "2026-11-14T14:32:08Z",
+  "recorded_at": "2026-11-14T14:45:51Z",
   "production_signed": false,
   "does_not_authorize_process_split": true,
   "host": {

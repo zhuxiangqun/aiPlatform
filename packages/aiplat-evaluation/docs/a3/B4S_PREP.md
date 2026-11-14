@@ -16,6 +16,7 @@ doc_type: Reference
 | Local B1–B3 / S1 / P1–P1.2 / dims / live_llm / session_v0+v1 / preference fixture | ✅ engineering complete on laptop（`local_track_closeout.sh` v2；G2b n=30 closeout 已完成、31–100 待双标） |
 | Local B4-S rehearsal (Docker PG on :5434) | ✅ script PASS — [`B4S_LOCAL_REHEARSAL.md`](./B4S_LOCAL_REHEARSAL.md) · [`B4S_RUNBOOK.md`](./B4S_RUNBOOK.md) · evidence `local-eval-b4s-rehearsal-*.json` · **≠ staging evidence** |
 | B4-S staging scaffold / unfreeze draft | ✅ opened · still `draft_blocked` |
+| Option B local rehearsal (`b4s_option_b_local`) | ✅ PASS · [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md) · **≠** staging |
 | Independent staging host | ❌ **not confirmed** → B4-S **staging** blocked |
 | PITR / backup live drill on staging | ❌ needs host |
 | Production dual-read backfill | ❌ forbidden until B4 PITR |

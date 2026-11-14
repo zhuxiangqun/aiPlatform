@@ -19,6 +19,22 @@ doc_type: Reference
 | 独立 host | 未确认 | 已确认 |
 | 本机 Docker B4-S | 可继续（≠ 本页证据） | 不可替代 |
 
+## Option B 本机演练（已接线）
+
+脚手架可在 **环境方案 B** 下跑本地演练（PG `:5434`，不碰 Option B PGHA `:5433`）：
+
+```bash
+bash packages/aiplat-evaluation/scripts/b4s_option_b_local.sh
+# 或随 Option B 全轨（默认开；关：AIPLAT_OPTION_B_INCLUDE_B4S=0）:
+bash scripts/ops_option_b_all.sh
+```
+
+| 产出 | 禁止 |
+|---|---|
+| `environment=local` · `local-eval-b4s-rehearsal-*.json` | `environment=staging` |
+| [`OPTION_B_B4S_LAST_RUN.md`](../../../../reports/five-products/ops/OPTION_B_B4S_LAST_RUN.md) | `production_signed` / Chart flip |
+| `ready_to_authorize=false` | 宣称替代独立 staging host |
+
 ## Host confirmation checklist（D2）
 
 1. Separate VM/cluster（非开发本机）+ 持久盘  
