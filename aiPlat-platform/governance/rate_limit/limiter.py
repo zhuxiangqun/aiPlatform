@@ -17,19 +17,31 @@ class RateLimiter:
     """限流服务"""
 
     def __init__(self):
+        """初始化。
+        """
         self._limits: dict[str, dict] = {}
         self._buckets: dict[str, list[float]] = {}
         self._lock = Lock()
 
     def set_limit(self, key: str, max_requests: int, window_seconds: int = 60) -> None:
-        """设置限流规则"""
+        """设置限流规则。
+
+        Args:
+            key: key 参数。
+            max_requests: max_requests 参数。
+            window_seconds: window_seconds 参数。
+        """
         self._limits[key] = {
             "max_requests": max_requests,
             "window_seconds": window_seconds,
         }
 
     def check(self, key: str) -> bool:
-        """检查是否允许请求"""
+        """检查是否允许请求。
+
+        Args:
+            key: key 参数。
+        """
         with self._lock:
             if key not in self._limits:
                 return True
@@ -49,7 +61,11 @@ class RateLimiter:
             return len(self._buckets[key]) < max_requests
 
     def consume(self, key: str) -> bool:
-        """消费一个请求"""
+        """消费一个请求。
+
+        Args:
+            key: key 参数。
+        """
         if not self.check(key):
             return False
 
@@ -61,7 +77,11 @@ class RateLimiter:
         return True
 
     def get_remaining(self, key: str) -> int:
-        """获取剩余请求数"""
+        """获取剩余请求数。
+
+        Args:
+            key: key 参数。
+        """
         with self._lock:
             if key not in self._limits or key not in self._buckets:
                 limit = self._limits.get(key, {}).get("max_requests", 100)
@@ -78,7 +98,11 @@ class RateLimiter:
             return max(0, max_requests - len(recent))
 
     def reset(self, key: str) -> None:
-        """重置限流"""
+        """重置限流。
+
+        Args:
+            key: key 参数。
+        """
         with self._lock:
             if key in self._buckets:
                 self._buckets[key] = []
@@ -100,6 +124,8 @@ class RedisRateLimiter:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._redis_url = os.getenv("AIPLAT_RATE_LIMIT_REDIS_URL", "")
         self._default_rate = int(os.getenv("AIPLAT_RATE_LIMIT_DEFAULT_RATE", "100"))
         self._redis: Any = None
@@ -119,7 +145,13 @@ class RedisRateLimiter:
             return False
 
     async def check(self, key: str, max_tokens: int = 0, window: int = 60) -> bool:
-        """检查是否允许请求（原子操作，Lua 脚本）。"""
+        """检查是否允许请求（原子操作，Lua 脚本）。
+
+        Args:
+            key: key 参数。
+            max_tokens: max_tokens 参数。
+            window: window 参数。
+        """
         if not await self._ensure_redis():
             # URL configured but Redis is down: fail closed. Empty URL means unused.
             return not bool(self._redis_url)
@@ -141,6 +173,12 @@ class RedisRateLimiter:
             return False
 
     async def get_remaining(self, key: str, max_tokens: int = 0) -> int:
+        """获取 remaining。
+
+        Args:
+            key: key 参数。
+            max_tokens: max_tokens 参数。
+        """
         if not await self._ensure_redis():
             return -1
         max_t = max_tokens or self._default_rate
@@ -148,6 +186,11 @@ class RedisRateLimiter:
         return max_t - int(current or 0)
 
     async def reset(self, key: str) -> None:
+        """reset。
+
+        Args:
+            key: key 参数。
+        """
         if await self._ensure_redis():
             await self._redis.delete(key)
 
@@ -156,6 +199,8 @@ _redis_limiter: Optional[RedisRateLimiter] = None
 
 
 def get_redis_rate_limiter() -> RedisRateLimiter:
+    """获取 redis_rate_limiter。
+    """
     global _redis_limiter
     if _redis_limiter is None:
         _redis_limiter = RedisRateLimiter()

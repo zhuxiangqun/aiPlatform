@@ -21,17 +21,20 @@ from ..model import ModelManager
 
 
 class StatusResponse(BaseModel):
+    """StatusResponse。"""
     status: str
     message: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
 
 
 class MetricsResponse(BaseModel):
+    """MetricsResponse。"""
     metrics: list
     count: int
 
 
 class HealthResponse(BaseModel):
+    """HealthResponse。"""
     status: str
     message: str
     details: Dict[str, Any]
@@ -39,6 +42,7 @@ class HealthResponse(BaseModel):
 
 
 class DiagnosisResponse(BaseModel):
+    """DiagnosisResponse。"""
     healthy: bool
     issues: list
     recommendations: list
@@ -46,10 +50,12 @@ class DiagnosisResponse(BaseModel):
 
 
 class ConfigUpdateRequest(BaseModel):
+    """ConfigUpdateRequest。"""
     config: Dict[str, Any]
 
 
 class NodeCreateRequest(BaseModel):
+    """NodeCreateRequest。"""
     name: str
     ip: str = ""
     gpu_model: str = ""
@@ -59,6 +65,7 @@ class NodeCreateRequest(BaseModel):
 
 
 class ServiceDeployRequest(BaseModel):
+    """ServiceDeployRequest。"""
     name: str
     namespace: str = "default"
     type: str = ""
@@ -70,6 +77,7 @@ class ServiceDeployRequest(BaseModel):
 
 
 class QuotaCreateRequest(BaseModel):
+    """QuotaCreateRequest。"""
     name: str
     gpu_quota: int
     label: str = ""
@@ -108,7 +116,11 @@ def get_infra_manager() -> InfraManager:
 
 
 def create_app(manager=None) -> FastAPI:
-    """Create FastAPI application for infra management."""
+    """Create FastAPI application for infra management.
+
+    Args:
+        manager: manager 参数。
+    """
     app = FastAPI(
         title=os.getenv("AIPLAT_INFRA_API_TITLE", "Infra Management API"),
         description="Infrastructure Layer API - Node, Service, Storage, Network, Scheduler, Monitoring, Model",

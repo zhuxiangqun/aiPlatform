@@ -1,3 +1,5 @@
+"""base：模块接口。"""
+
 import logging
 """
 ConfigSource Base - 配置源抽象基类及实现
@@ -32,6 +34,13 @@ class ConfigWatcher:
         callback: Callable[[ConfigChange], None],
         interval: float = 1.0,
     ):
+        """初始化。
+
+        Args:
+            source: source 参数。
+            callback: callback 参数。
+            interval: interval 参数。
+        """
         self.source = source
         self.callback = callback
         self.interval = interval

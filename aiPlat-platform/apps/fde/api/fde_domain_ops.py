@@ -17,8 +17,8 @@ router = APIRouter(tags=["fde-domain-ops"])
 async def fde_domain_operations(domain: str):
     """Expose domain ontology operations for Agent discovery.
 
-    Returns class properties, states, transitions, side effects,
-    inference rules, and object properties.
+    Args:
+        domain: domain 参数。
     """
     import os as _os_do
     from core.api.core_facade import load_ontology_from_yaml

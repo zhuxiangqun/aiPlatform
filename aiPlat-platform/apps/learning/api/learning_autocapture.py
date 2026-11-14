@@ -1,3 +1,5 @@
+"""learning_autocapture：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -37,8 +39,11 @@ def _managers():
 
 @router.post("/learning/autocapture", response_model=StatusResponse)
 async def autocapture_learning_suggestion(request: dict, http_request: Request):
-    """
-    Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
+    """Roadmap-4 (minimal): create a reviewable learning artifact from one execution.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:
@@ -129,9 +134,11 @@ async def autocapture_learning_suggestion(request: dict, http_request: Request):
 
 @router.post("/learning/autocapture/to_prompt_revision", response_model=StatusResponse)
 async def autocapture_to_prompt_revision(request: dict, http_request: Request):
-    """
-    Convert a feedback_summary artifact into a draft prompt_revision,
-    optionally wrapping it into a draft release_candidate.
+    """Convert a feedback_summary artifact into a draft prompt_revision,。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:
@@ -237,8 +244,11 @@ async def autocapture_to_prompt_revision(request: dict, http_request: Request):
 
 @router.post("/learning/autocapture/to_skill_evolution", response_model=StatusResponse)
 async def autocapture_to_skill_evolution(request: dict, http_request: Request):
-    """
-    Convert a feedback_summary into a draft skill_evolution suggestion artifact.
+    """Convert a feedback_summary into a draft skill_evolution suggestion artifact.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:
@@ -332,22 +342,11 @@ async def autocapture_to_skill_evolution(request: dict, http_request: Request):
 
 @router.post("/learning/feedback", response_model=StatusResponse)
 async def record_learning_feedback(request: dict, http_request: Request):
-    """
-    Minimal feedback loop (M1):
-    - Record a feedback artifact (accept/reject/edit) for traceability
-    - Optionally auto-capture into a skill-eval suite (trigger/quality)
+    """Minimal feedback loop (M1):。
 
-    Body:
-      {
-        "suite_id": "optional",
-        "suite_kind": "trigger|quality",   // required if suite_id provided
-        "decision": "accept|reject|edit",
-        "query": "...",                    // required if suite_id provided
-        "comment": "optional",
-        "edited_output": "optional",       // used when decision=edit and suite_kind=quality
-        "run_id": "optional",
-        "trace_id": "optional"
-      }
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:

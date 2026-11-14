@@ -49,7 +49,12 @@ async def require_gateway_execute_auth(
     *,
     store: Any = None,
 ) -> None:
-    """Require a gateway token unless unsigned access is explicitly allowed."""
+    """Require a gateway token unless unsigned access is explicitly allowed.
+
+    Args:
+        request: FastAPI Request。
+        store: store 参数。
+    """
     if gateway_unsigned_allowed():
         return
     # Default require=true — old AIPLAT_GATEWAY_REQUIRE_AUTH=false remains an escape.
@@ -78,7 +83,11 @@ async def require_gateway_execute_auth(
 
 
 def require_gateway_admin(request: Request) -> None:
-    """Mutating gateway admin routes need AIPLAT_GATEWAY_ADMIN_TOKEN (or unsigned allow)."""
+    """Mutating gateway admin routes need AIPLAT_GATEWAY_ADMIN_TOKEN (or unsigned allow).
+
+    Args:
+        request: FastAPI Request。
+    """
     if gateway_unsigned_allowed():
         return
     expected = (os.getenv("AIPLAT_GATEWAY_ADMIN_TOKEN") or "").strip()

@@ -1,3 +1,5 @@
+"""video_retrieval：模块接口。"""
+
 from __future__ import annotations
 
 import re
@@ -11,6 +13,11 @@ import logging
 
 
 def element_time_ms(e: Dict[str, Any]) -> Optional[int]:
+    """element_time_ms。
+
+    Args:
+        e: e 参数。
+    """
     meta = e.get("meta")
     if not isinstance(meta, dict):
         return None
@@ -25,6 +32,11 @@ def element_time_ms(e: Dict[str, Any]) -> Optional[int]:
 
 
 def is_broad_video_question(question: str) -> bool:
+    """is_broad_video_question。
+
+    Args:
+        question: question 参数。
+    """
     q = str(question or "").strip()
     return bool(re.search(r"视频|资料|主要讲了什么|讲了什么|核心内容|关键信息|重点|总结|概括|梳理", q))
 
@@ -36,6 +48,15 @@ def build_video_transcript_windows(
     step_ms: int = 30000,
     top_k: int = 3,
 ) -> List[Dict[str, Any]]:
+    """build_video_transcript_windows。
+
+    Args:
+        question: question 参数。
+        segments: segments 参数。
+        window_size_ms: window_size_ms 参数。
+        step_ms: step_ms 参数。
+        top_k: top_k 参数。
+    """
     if not segments:
         return []
 
@@ -81,6 +102,13 @@ def build_video_transcript_facts(
     segments: List[Dict[str, Any]],
     top_k: int = 5,
 ) -> List[Dict[str, Any]]:
+    """build_video_transcript_facts。
+
+    Args:
+        question: question 参数。
+        segments: segments 参数。
+        top_k: top_k 参数。
+    """
     if not segments:
         return []
 

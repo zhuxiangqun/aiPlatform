@@ -1,3 +1,5 @@
+"""extract_numbers：模块接口。"""
+
 from __future__ import annotations
 
 import re
@@ -17,9 +19,11 @@ def _to_float(s: str) -> Optional[float]:
 
 
 def extract_numbers(tokens: List[OCRToken], *, window: int = 6) -> List[ExtractedNumber]:
-    """
-    从 OCR tokens 中抽取数字，并保留一个简易上下文（前后 window 个 token）。
-    这是 PoC：先把“数值 + bbox 引用”链路跑通。
+    """从 OCR tokens 中抽取数字，并保留一个简易上下文（前后 window 个 token）。
+
+    Args:
+        tokens: tokens 参数。
+        window: window 参数。
     """
     out: List[ExtractedNumber] = []
     texts = [t.text for t in tokens]
@@ -37,10 +41,11 @@ def extract_numbers(tokens: List[OCRToken], *, window: int = 6) -> List[Extracte
 
 
 def pick_value_by_year(numbers: List[ExtractedNumber], year: str) -> Optional[ExtractedNumber]:
-    """
-    极简“读图”策略：
-    - 如果上下文里出现 year，则优先选它附近的数字
-    - 否则返回 None
+    """极简“读图”策略：。
+
+    Args:
+        numbers: numbers 参数。
+        year: year 参数。
     """
     y = str(year or "").strip()
     if not y:
@@ -54,9 +59,12 @@ def pick_value_by_year(numbers: List[ExtractedNumber], year: str) -> Optional[Ex
 
 
 def pick_values_by_keywords(numbers: List[ExtractedNumber], keywords: List[str], *, limit: int = 10) -> List[ExtractedNumber]:
-    """
-    从 numbers 中筛选上下文包含任一关键词的项，返回若干候选（按 value 大小排序）。
-    用于 PoC：回答“投资预算有哪些”这类问题。
+    """从 numbers 中筛选上下文包含任一关键词的项，返回若干候选（按 value 大小排序）。
+
+    Args:
+        numbers: numbers 参数。
+        keywords: keywords 参数。
+        limit: 返回条数上限。
     """
     ks = [str(k or "").strip() for k in (keywords or []) if str(k or "").strip()]
     if not ks:

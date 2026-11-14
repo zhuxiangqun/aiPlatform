@@ -51,6 +51,11 @@ _DEFAULT_HOW_TO_FIX: Dict[str, str] = {
 
 
 def load_promotion_gate(path: Optional[str] = None) -> Dict[str, Any]:
+    """load_promotion_gate。
+
+    Args:
+        path: 路径。
+    """
     global _cache
     p = Path(path) if path else _DEFAULT_PATH
     if _cache is None or str(p) != str(_DEFAULT_PATH):
@@ -83,7 +88,12 @@ def _and_meta(cfg: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
 
 
 def format_upgrade_fix_hint(result: Dict[str, Any], *, max_actions: int = 3) -> str:
-    """Compact Chinese hint for deploy rejected_artifacts / UI toasts."""
+    """Compact Chinese hint for deploy rejected_artifacts / UI toasts.
+
+    Args:
+        result: result 参数。
+        max_actions: max_actions 参数。
+    """
     if result.get("ok"):
         return "五条 AND 已满足；可保持 mode=multi_agent"
     actions = [str(a) for a in (result.get("next_actions") or []) if a][:max_actions]
@@ -109,7 +119,19 @@ def evaluate_run_through(
     mature: bool = False,
     config: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """评估四维「跑通」。返回 {ok, checks[], blockers[], next_actions[], summary}。"""
+    """评估四维「跑通」。返回 {ok, checks[], blockers[], next_actions[], summary}。
+
+    Args:
+        n_runs: n_runs 参数。
+        success_rate: success_rate 参数。
+        failures_missing_stage: failures_missing_stage 参数。
+        conformance_green: conformance_green 参数。
+        real_tests_green: real_tests_green 参数。
+        physical_evidence: physical_evidence 参数。
+        policy_gate_closed: policy_gate_closed 参数。
+        mature: mature 参数。
+        config: config 参数。
+    """
     cfg = (config or load_promotion_gate()).get("run_through") or {}
     min_runs = int(cfg.get("min_runs", 20))
     target = float(
@@ -201,10 +223,9 @@ def evaluate_multi_agent_upgrade(
 ) -> Dict[str, Any]:
     """五条 AND。criteria 来自 manifest.upgrade_criteria。
 
-    返回除 ok/checks/blockers 外还含：
-    - missing_criteria: 未通过的 id 列表
-    - next_actions: 人话下一步（按检查顺序）
-    - summary: 「通过 x/5；缺：…」
+    Args:
+        criteria: criteria 参数。
+        config: config 参数。
     """
     cfg = config or load_promotion_gate()
     meta = _and_meta(cfg)

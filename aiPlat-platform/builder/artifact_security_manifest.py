@@ -65,12 +65,21 @@ def _runtime_profile() -> str:
 
 
 def canonical_manifest_bytes(data: Dict[str, Any]) -> bytes:
-    """UTF-8 JSON with sorted keys, compact separators; hash-excluded fields stripped."""
+    """UTF-8 JSON with sorted keys, compact separators; hash-excluded fields stripped.
+
+    Args:
+        data: data 参数。
+    """
     cleaned = {k: v for k, v in data.items() if k not in _HASH_EXCLUDE and not str(k).startswith("_")}
     return json.dumps(cleaned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
 def compute_manifest_hash(data: Dict[str, Any]) -> str:
+    """compute_manifest_hash。
+
+    Args:
+        data: data 参数。
+    """
     return hashlib.sha256(canonical_manifest_bytes(data)).hexdigest()
 
 
@@ -84,8 +93,8 @@ def _hmac_secret() -> Optional[bytes]:
 def sign_manifest_hash(manifest_hash: str) -> str:
     """Sign hash bytes.
 
-    Preference: Ed25519 when key configured (P2-1), else HMAC-SHA256,
-    else ``unsigned_dev``.
+    Args:
+        manifest_hash: manifest_hash 参数。
     """
     try:
         from builder.artifact_sbom_attest import try_ed25519_sign
@@ -103,6 +112,12 @@ def sign_manifest_hash(manifest_hash: str) -> str:
 
 
 def verify_manifest_signature(manifest_hash: str, signature: str) -> Tuple[bool, str]:
+    """verify_manifest_signature。
+
+    Args:
+        manifest_hash: manifest_hash 参数。
+        signature: signature 参数。
+    """
     sig = (signature or "").strip()
     if not sig or sig == "unsigned_dev":
         return False, "unsigned_or_missing"
@@ -125,7 +140,11 @@ def verify_manifest_signature(manifest_hash: str, signature: str) -> Tuple[bool,
 
 
 def attestation_for_signature(signature: str) -> Dict[str, Any]:
-    """ci-or-platform attestation metadata (not a certification claim)."""
+    """ci-or-platform attestation metadata (not a certification claim).
+
+    Args:
+        signature: signature 参数。
+    """
     sig = (signature or "").strip()
     if sig.startswith("ed25519:"):
         alg = "ed25519"
@@ -146,8 +165,14 @@ def attestation_for_signature(signature: str) -> Dict[str, Any]:
 
 
 def validate_attestation(signature: str, attestation: Any) -> List[str]:
-    """Require attestation present and consistent with signature alg."""
+    """Require attestation present and consistent with signature alg.
+
+    Args:
+        signature: signature 参数。
+        attestation: attestation 参数。
+    """
     errors: List[str] = []
+    # 为什么：缺 attestation 视为未证明签名绑定，禁止放行生成物
     if not isinstance(attestation, dict) or not attestation:
         return ["missing_attestation"]
     expected = attestation_for_signature(signature)
@@ -157,6 +182,7 @@ def validate_attestation(signature: str, attestation: Any) -> List[str]:
         errors.append(f"attestation_alg_mismatch:{alg or 'empty'}")
     if kind != expected["kind"]:
         errors.append(f"attestation_kind_mismatch:{kind or 'empty'}")
+    # 为什么：certification=true 会伪装正式认证，必须拒绝以守住诚实锁
     if attestation.get("certification") is True:
         errors.append("attestation_certification_must_be_false")
     binds = attestation.get("binds")
@@ -181,7 +207,11 @@ _TM_FILENAMES = ("THREAT_MODEL.yaml", "threat_model.yaml", "THREAT_MODEL.yml")
 
 
 def canonical_threat_model_bytes(doc: Dict[str, Any]) -> bytes:
-    """Canonical JSON for threat-model hashing (sort_keys, compact separators)."""
+    """Canonical JSON for threat-model hashing (sort_keys, compact separators).
+
+    Args:
+        doc: doc 参数。
+    """
     cleaned = {k: v for k, v in doc.items() if not str(k).startswith("_")}
     return json.dumps(cleaned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
         "utf-8"
@@ -189,6 +219,11 @@ def canonical_threat_model_bytes(doc: Dict[str, Any]) -> bytes:
 
 
 def compute_threat_model_hash(doc: Dict[str, Any]) -> str:
+    """compute_threat_model_hash。
+
+    Args:
+        doc: doc 参数。
+    """
     return hashlib.sha256(canonical_threat_model_bytes(doc)).hexdigest()
 
 
@@ -197,7 +232,11 @@ def _nonempty_list(val: Any) -> bool:
 
 
 def validate_threat_model_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Structural + independence rules. Does not claim certification."""
+    """Structural + independence rules. Does not claim certification.
+
+    Args:
+        doc: doc 参数。
+    """
     errors: List[str] = []
     if not isinstance(doc, dict):
         return {"ok": False, "errors": ["threat_model_not_mapping"], "status": "fail"}
@@ -257,7 +296,10 @@ def load_or_stub_threat_model(
 ) -> Dict[str, Any]:
     """Load THREAT_MODEL.yaml under root or return na stub.
 
-    Path traversal / symlink escape → fail (not na).
+    Args:
+        root: root 参数。
+        na_reason: na_reason 参数。
+        expires_at: expires_at 参数。
     """
     root = Path(root)
     found: Optional[Path] = None
@@ -336,11 +378,9 @@ def threat_model_required(
 ) -> bool:
     """Whether publish must have threat_model.status=pass.
 
-    PR3 rules:
-      - crud/report (P0-3b pilot types) always require pass
-      - AIPLAT_REQUIRE_THREAT_ASSESSMENT=0 only honored in non-prodish profiles;
-        production/staging still require (cannot disable)
-      - explicit require_threat_model=False same as env off
+    Args:
+        require_threat_model: require_threat_model 参数。
+        app_type: app_type 参数。
     """
     profile = _runtime_profile()
     prodish = profile in ("production", "staging")
@@ -372,6 +412,22 @@ def build_manifest(
     claim_boundary: str = "不得超出本 manifest 与证据卡",
     extra: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """build_manifest。
+
+    Args:
+        artifact_id: artifact 标识。
+        artifact_type: artifact_type 参数。
+        owner: owner 参数。
+        platform_controls_inherited: platform_controls_inherited 参数。
+        platform_controls_lost_on_export: platform_controls_lost_on_export 参数。
+        authz_smoke: authz_smoke 参数。
+        threat_model: threat_model 参数。
+        sast: sast 参数。
+        secrets_scan: secrets_scan 参数。
+        deps_scan: deps_scan 参数。
+        claim_boundary: claim_boundary 参数。
+        extra: extra 参数。
+    """
     tm = threat_model or {
         "status": "na",
         "evidence": "P0-3a: threat model deferred",
@@ -409,6 +465,12 @@ def build_manifest(
 
 
 def write_manifest(path: Path, data: Dict[str, Any]) -> Path:
+    """write_manifest。
+
+    Args:
+        path: 路径。
+        data: data 参数。
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -416,11 +478,20 @@ def write_manifest(path: Path, data: Dict[str, Any]) -> Path:
 
 
 def load_manifest(path: Path) -> Dict[str, Any]:
+    """load_manifest。
+
+    Args:
+        path: 路径。
+    """
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def validate_manifest_integrity(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Recompute hash + verify signature. Tampering fails."""
+    """Recompute hash + verify signature. Tampering fails.
+
+    Args:
+        data: data 参数。
+    """
     errors: List[str] = []
     stored_hash = str(data.get("manifest_hash") or "")
     recomputed = compute_manifest_hash(data)
@@ -457,7 +528,12 @@ def validate_manifest_integrity(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def scan_secrets_in_tree(root: Path, *, max_files: int = 500) -> Dict[str, Any]:
-    """Lightweight secret echo scan — not a full DLP product."""
+    """Lightweight secret echo scan — not a full DLP product.
+
+    Args:
+        root: root 参数。
+        max_files: max_files 参数。
+    """
     root = Path(root)
     hits: List[str] = []
     scanned = 0
@@ -502,7 +578,11 @@ def scan_secrets_in_tree(root: Path, *, max_files: int = 500) -> Dict[str, Any]:
 
 
 def scan_deps_presence(root: Path) -> Dict[str, Any]:
-    """P0-3a: require a lock/manifest file when code artifacts present; mark pass if none needed."""
+    """P0-3a: require a lock/manifest file when code artifacts present; mark pass if none needed.
+
+    Args:
+        root: root 参数。
+    """
     root = Path(root)
     markers = [
         "requirements.txt",
@@ -534,7 +614,8 @@ def scan_deps_presence(root: Path) -> Dict[str, Any]:
 def scan_sast_stub(root: Path) -> Dict[str, Any]:
     """P0-3a: prefer bandit if installed; else require explicit external result.
 
-    Does not invent a pass without a tool — missing bandit → status fail with reason.
+    Args:
+        root: root 参数。
     """
     root = Path(root)
     try:
@@ -581,8 +662,11 @@ def evaluate_publish_gate(
 ) -> Dict[str, Any]:
     """Block publish on integrity / sast / secrets / deps / P2-1 / threat-model failures.
 
-    Threat model default off (``AIPLAT_REQUIRE_THREAT_ASSESSMENT`` unset) — na allowed.
-    When required, status must be pass; na is never treated as pass.
+    Args:
+        data: data 参数。
+        require_authz: require_authz 参数。
+        require_sbom: require_sbom 参数。
+        require_threat_model: require_threat_model 参数。
     """
     blockers: List[str] = []
     integrity = validate_manifest_integrity(data)
@@ -704,9 +788,17 @@ def build_and_gate_for_dir(
 ) -> Dict[str, Any]:
     """Scan tree → build signed manifest → evaluate publish gate.
 
-    P0-3b: when ``authz_base_url`` is set (or ``AIPLAT_AUTHZ_SMOKE_URL``), run live
-    authz/IDOR/SSRF smoke and record pilot sample. ``require_authz`` forces pass.
-    Threat model: default off unless ``require_threat_model`` / ``AIPLAT_REQUIRE_THREAT_ASSESSMENT``.
+    Args:
+        root: root 参数。
+        artifact_id: artifact 标识。
+        artifact_type: artifact_type 参数。
+        owner: owner 参数。
+        require_authz: require_authz 参数。
+        require_threat_model: require_threat_model 参数。
+        write: write 参数。
+        authz_base_url: authz_base_url 参数。
+        authz_sample_id: authz_sample 标识。
+        authz_app_type: authz_app_type 参数。
     """
     root = Path(root)
     secrets = scan_secrets_in_tree(root)

@@ -15,7 +15,12 @@ import os
 
 
 def cosine_similarity(a: List[float], b: List[float]) -> float:
-    """Compute cosine similarity between two vectors."""
+    """Compute cosine similarity between two vectors.
+
+    Args:
+        a: a 参数。
+        b: b 参数。
+    """
     if len(a) != len(b) or len(a) == 0:
         return 0.0
     dot = sum(x * y for x, y in zip(a, b))
@@ -27,12 +32,20 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 def embed_text(text: str) -> List[float]:
-    """Synchronous embed — uses CoreFacade kb_embed_text (hash by default)."""
+    """Synchronous embed — uses CoreFacade kb_embed_text (hash by default).
+
+    Args:
+        text: text 参数。
+    """
     return _facade_embed(text)
 
 
 async def embed_text_async(text: str) -> List[float]:
-    """Async embed — attempts semantic, falls back to sync."""
+    """Async embed — attempts semantic, falls back to sync.
+
+    Args:
+        text: text 参数。
+    """
     backend = os.getenv("AIPLAT_EMBED_BACKEND", "hash").lower().strip()
     if backend == "hash":
         return embed_text(text)
@@ -44,4 +57,9 @@ async def embed_text_async(text: str) -> List[float]:
 
 
 async def embed_texts_async(texts: List[str]) -> List[List[float]]:
+    """embed_texts_async。
+
+    Args:
+        texts: texts 参数。
+    """
     return [await embed_text_async(t) for t in texts]

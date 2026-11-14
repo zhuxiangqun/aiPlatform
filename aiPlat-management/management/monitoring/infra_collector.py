@@ -21,6 +21,11 @@ class InfraMetricsCollector(MetricsCollector):
     """
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         super().__init__("infra", endpoint)
         
     async def collect(self) -> List[Metric]:

@@ -27,6 +27,8 @@ class FileSource(ConfigSource):
 
     @property
     def path(self) -> str:
+        """path。
+        """
         return self._path
 
     def load(self) -> Dict[str, Any]:

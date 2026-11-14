@@ -28,7 +28,12 @@ def ocr_image(
 ) -> List[OCRToken]:
     """OCR a single image → List[OCRToken] with bbox.
 
-    Delegates to ``InfraOCRAdapter.ocr_structured()``.
+    Args:
+        image_path: image_path 参数。
+        engine: engine 参数。
+        ocr_engine: ocr_engine 参数。
+        lang: lang 参数。
+        _kwargs: _kwargs 参数。
     """
     backend = (ocr_engine or engine or "paddleocr").strip().lower()
     # Map legacy lang to adapter lang

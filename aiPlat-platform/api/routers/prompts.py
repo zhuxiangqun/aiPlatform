@@ -17,8 +17,10 @@ router = APIRouter(prefix="/platform/prompts", tags=["prompts"])
 @router.post("/run", response_model=StatusResponse)
 async def run_template(request: dict, _auth: str = Depends(require_auth)):
     """Run a prompt template: render variables → LLM → return output.
-    
-    Body: { template_id, instance_id?, variables, model? }
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     try:
         template_id = request.get("template_id", "")

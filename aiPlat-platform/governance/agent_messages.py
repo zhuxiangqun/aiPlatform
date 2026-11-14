@@ -70,6 +70,11 @@ class AgentMessageStore:
     """JSON 持久化的 agent 注册表 + 点对点收件箱。"""
 
     def __init__(self, path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            path: 路径。
+        """
         self.path = path or _default_path()
 
     def _load(self) -> Dict[str, Any]:
@@ -91,6 +96,12 @@ class AgentMessageStore:
 
     # ── 注册 ──
     def register(self, agent_id: str, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """register。
+
+        Args:
+            agent_id: Agent ID。
+            meta: meta 参数。
+        """
         data = self._load()
         now = _now_ms()
         rec = data["agents"].get(agent_id) or {}
@@ -105,6 +116,11 @@ class AgentMessageStore:
         return {"registered": True, "agent_id": agent_id, "heartbeat_at": now}
 
     def unregister(self, agent_id: str) -> Dict[str, Any]:
+        """unregister。
+
+        Args:
+            agent_id: Agent ID。
+        """
         data = self._load()
         if agent_id not in data["agents"]:
             return {"error": f"agent not found: {agent_id}"}
@@ -114,6 +130,13 @@ class AgentMessageStore:
 
     # ── 消息 ──
     def send(self, from_id: str, to_id: str, message: str) -> Dict[str, Any]:
+        """send。
+
+        Args:
+            from_id: from 标识。
+            to_id: to 标识。
+            message: message 参数。
+        """
         data = self._load()
         if to_id not in data["agents"]:
             return {"error": f"recipient not registered: {to_id}"}
@@ -130,6 +153,13 @@ class AgentMessageStore:
 
     def inbox(self, agent_id: str, unread_only: bool = False,
               mark_read: bool = False) -> Dict[str, Any]:
+        """inbox。
+
+        Args:
+            agent_id: Agent ID。
+            unread_only: unread_only 参数。
+            mark_read: mark_read 参数。
+        """
         data = self._load()
         msgs = [m for m in data["messages"] if m.get("to") == agent_id]
         if unread_only:

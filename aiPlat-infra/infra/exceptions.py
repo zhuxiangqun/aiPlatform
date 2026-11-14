@@ -103,6 +103,12 @@ class InfraError(Exception):
     """基础设施层基础异常"""
     
     def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            details: details 参数。
+        """
         self.message = message
         self.details = details or {}
         super().__init__(self.message)
@@ -126,6 +132,12 @@ class DatabaseConnectionError(DatabaseError):
     """数据库连接错误"""
     
     def __init__(self, database: str, message: str):
+        """初始化。
+
+        Args:
+            database: database 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Database connection error: {database}",
             {"database": database, "message": message}
@@ -136,6 +148,12 @@ class DatabaseTimeoutError(DatabaseError):
     """数据库超时错误"""
     
     def __init__(self, database: str, timeout: float):
+        """初始化。
+
+        Args:
+            database: database 参数。
+            timeout: 超时秒数。
+        """
         super().__init__(
             f"Database timeout: {database}",
             {"database": database, "timeout": timeout}
@@ -146,6 +164,12 @@ class DatabaseQueryError(DatabaseError):
     """数据库查询错误"""
     
     def __init__(self, message: str, query: Optional[str] = None):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            query: 查询。
+        """
         super().__init__(
             message,
             {"query": query} if query else {}
@@ -156,6 +180,12 @@ class DatabasePoolError(DatabaseError):
     """数据库连接池错误"""
     
     def __init__(self, message: str, pool_stats: Optional[dict] = None):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            pool_stats: pool_stats 参数。
+        """
         super().__init__(
             message,
             {"pool_stats": pool_stats} if pool_stats else {}
@@ -175,6 +205,12 @@ class LLMConnectionError(LLMError):
     """LLM 连接错误"""
     
     def __init__(self, provider: str, message: str):
+        """初始化。
+
+        Args:
+            provider: provider 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"LLM connection error: {provider}",
             {"provider": provider, "message": message}
@@ -185,6 +221,12 @@ class LLMTimeoutError(LLMError):
     """LLM 超时错误"""
     
     def __init__(self, provider: str, timeout: float):
+        """初始化。
+
+        Args:
+            provider: provider 参数。
+            timeout: 超时秒数。
+        """
         super().__init__(
             f"LLM timeout: {provider}",
             {"provider": provider, "timeout": timeout}
@@ -195,6 +237,12 @@ class LLMRateLimitError(LLMError):
     """LLM 限流错误"""
     
     def __init__(self, provider: str, retry_after: Optional[float] = None):
+        """初始化。
+
+        Args:
+            provider: provider 参数。
+            retry_after: retry_after 参数。
+        """
         super().__init__(
             f"LLM rate limit exceeded: {provider}",
             {"provider": provider, "retry_after": retry_after}
@@ -205,6 +253,12 @@ class LLMAuthError(LLMError):
     """LLM 认证错误"""
     
     def __init__(self, provider: str, message: str = "Authentication failed"):
+        """初始化。
+
+        Args:
+            provider: provider 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"LLM authentication error: {provider}",
             {"provider": provider, "message": message}
@@ -215,6 +269,11 @@ class LLMModelNotFoundError(LLMError):
     """LLM 模型不存在错误"""
     
     def __init__(self, model: str):
+        """初始化。
+
+        Args:
+            model: 模型名。
+        """
         super().__init__(
             f"Model not found: {model}",
             {"model": model}
@@ -234,6 +293,12 @@ class VectorStoreConnectionError(VectorStoreError):
     """向量存储连接错误"""
     
     def __init__(self, backend: str, message: str):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Vector store connection error: {backend}",
             {"backend": backend, "message": message}
@@ -244,6 +309,12 @@ class VectorStoreTimeoutError(VectorStoreError):
     """向量存储超时错误"""
     
     def __init__(self, backend: str, timeout: float):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            timeout: 超时秒数。
+        """
         super().__init__(
             f"Vector store timeout: {backend}",
             {"backend": backend, "timeout": timeout}
@@ -254,6 +325,12 @@ class VectorStoreIndexError(VectorStoreError):
     """向量存储索引错误"""
     
     def __init__(self, index_name: str, message: str):
+        """初始化。
+
+        Args:
+            index_name: index_name 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Vector store index error: {index_name}",
             {"index_name": index_name, "message": message}
@@ -264,6 +341,12 @@ class VectorStoreDimensionError(VectorStoreError):
     """向量维度不匹配错误"""
     
     def __init__(self, expected: int, actual: int):
+        """初始化。
+
+        Args:
+            expected: expected 参数。
+            actual: actual 参数。
+        """
         super().__init__(
             f"Dimension mismatch: expected {expected}, got {actual}",
             {"expected": expected, "actual": actual}
@@ -283,6 +366,12 @@ class CacheConnectionError(CacheError):
     """缓存连接错误"""
     
     def __init__(self, backend: str, message: str):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Cache connection error: {backend}",
             {"backend": backend, "message": message}
@@ -293,6 +382,12 @@ class CacheTimeoutError(CacheError):
     """缓存超时错误"""
     
     def __init__(self, backend: str, timeout: float):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            timeout: 超时秒数。
+        """
         super().__init__(
             f"Cache timeout: {backend}",
             {"backend": backend, "timeout": timeout}
@@ -303,6 +398,12 @@ class CacheKeyError(CacheError):
     """缓存键错误"""
     
     def __init__(self, key: str, message: str = "Key not found"):
+        """初始化。
+
+        Args:
+            key: key 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Cache key error: {key}",
             {"key": key, "message": message}
@@ -322,6 +423,12 @@ class MessagingConnectionError(MessagingError):
     """消息队列连接错误"""
     
     def __init__(self, backend: str, message: str):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Messaging connection error: {backend}",
             {"backend": backend, "message": message}
@@ -332,6 +439,12 @@ class MessagingPublishError(MessagingError):
     """消息发布错误"""
     
     def __init__(self, topic: str, message: str):
+        """初始化。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Failed to publish message to topic: {topic}",
             {"topic": topic, "message": message}
@@ -342,6 +455,12 @@ class MessagingConsumeError(MessagingError):
     """消息消费错误"""
     
     def __init__(self, topic: str, message: str):
+        """初始化。
+
+        Args:
+            topic: topic 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Failed to consume message from topic: {topic}",
             {"topic": topic, "message": message}
@@ -361,6 +480,12 @@ class StorageConnectionError(StorageError):
     """存储连接错误"""
     
     def __init__(self, backend: str, message: str):
+        """初始化。
+
+        Args:
+            backend: backend 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Storage connection error: {backend}",
             {"backend": backend, "message": message}
@@ -371,6 +496,11 @@ class StorageNotFoundError(StorageError):
     """存储资源不存在错误"""
     
     def __init__(self, path: str):
+        """初始化。
+
+        Args:
+            path: 路径。
+        """
         super().__init__(
             f"Storage resource not found: {path}",
             {"path": path}
@@ -381,6 +511,12 @@ class StoragePermissionError(StorageError):
     """存储权限错误"""
     
     def __init__(self, path: str, operation: str):
+        """初始化。
+
+        Args:
+            path: 路径。
+            operation: operation 参数。
+        """
         super().__init__(
             f"Storage permission denied: {operation} on {path}",
             {"path": path, "operation": operation}
@@ -400,6 +536,11 @@ class ConfigNotFoundError(ConfigError):
     """配置不存在错误"""
     
     def __init__(self, key: str):
+        """初始化。
+
+        Args:
+            key: key 参数。
+        """
         super().__init__(
             f"Config not found: {key}",
             {"key": key}
@@ -410,6 +551,13 @@ class ConfigValidationError(ConfigError):
     """配置验证错误"""
     
     def __init__(self, key: str, value: Any, reason: str):
+        """初始化。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+            reason: reason 参数。
+        """
         super().__init__(
             f"Config validation failed: {key}",
             {"key": key, "value": str(value), "reason": reason}
@@ -420,6 +568,12 @@ class ConfigParseError(ConfigError):
     """配置解析错误"""
     
     def __init__(self, source: str, message: str):
+        """初始化。
+
+        Args:
+            source: source 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Failed to parse config from {source}",
             {"source": source, "message": message}
@@ -439,6 +593,13 @@ class NetworkConnectionError(NetworkError):
     """网络连接错误"""
     
     def __init__(self, host: str, port: int, message: str):
+        """初始化。
+
+        Args:
+            host: host 参数。
+            port: port 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Network connection error: {host}:{port}",
             {"host": host, "port": port, "message": message}
@@ -449,6 +610,12 @@ class NetworkTimeoutError(NetworkError):
     """网络超时错误"""
     
     def __init__(self, host: str, timeout: float):
+        """初始化。
+
+        Args:
+            host: host 参数。
+            timeout: 超时秒数。
+        """
         super().__init__(
             f"Network timeout: {host}",
             {"host": host, "timeout": timeout}
@@ -468,6 +635,13 @@ class ComputeResourceError(ComputeError):
     """计算资源不足错误"""
     
     def __init__(self, resource_type: str, requested: Any, available: Any):
+        """初始化。
+
+        Args:
+            resource_type: resource_type 参数。
+            requested: requested 参数。
+            available: available 参数。
+        """
         super().__init__(
             f"Insufficient compute resource: {resource_type}",
             {"type": resource_type, "requested": str(requested), "available": str(available)}
@@ -478,6 +652,13 @@ class ComputeQuotaError(ComputeError):
     """计算配额超限错误"""
     
     def __init__(self, quota: str, usage: Any, limit: Any):
+        """初始化。
+
+        Args:
+            quota: quota 参数。
+            usage: usage 参数。
+            limit: 返回条数上限。
+        """
         super().__init__(
             f"Compute quota exceeded: {quota}",
             {"quota": quota, "usage": str(usage), "limit": str(limit)}
@@ -497,6 +678,12 @@ class MemoryAllocationError(InfraMemoryError):
     """内存分配错误"""
     
     def __init__(self, size: int, available: int):
+        """初始化。
+
+        Args:
+            size: size 参数。
+            available: available 参数。
+        """
         super().__init__(
             f"Memory allocation failed",
             {"requested_size": size, "available": available}
@@ -507,6 +694,11 @@ class MemoryOOMError(InfraMemoryError):
     """内存溢出错误"""
     
     def __init__(self, usage_percent: float):
+        """初始化。
+
+        Args:
+            usage_percent: usage_percent 参数。
+        """
         super().__init__(
             f"Memory OOM protection triggered",
             {"usage_percent": usage_percent}
@@ -530,6 +722,12 @@ class MetricsCollectionError(MonitoringError):
     """指标收集错误"""
     
     def __init__(self, metric_name: str, message: str):
+        """初始化。
+
+        Args:
+            metric_name: metric_name 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Failed to collect metric: {metric_name}",
             {"metric_name": metric_name, "message": message}
@@ -549,6 +747,12 @@ class LogWriteError(LoggingError):
     """日志写入错误"""
     
     def __init__(self, path: str, message: str):
+        """初始化。
+
+        Args:
+            path: 路径。
+            message: message 参数。
+        """
         super().__init__(
             f"Failed to write log: {path}",
             {"path": path, "message": message}
@@ -568,6 +772,12 @@ class DINavigationError(DIError):
     """DI 注册错误"""
     
     def __init__(self, service_name: str, message: str):
+        """初始化。
+
+        Args:
+            service_name: service_name 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"Service registration error: {service_name}",
             {"service_name": service_name, "message": message}
@@ -578,6 +788,12 @@ class DIRuntimeError(DIError):
     """DI 运行时错误"""
     
     def __init__(self, message: str, details: Optional[dict] = None):
+        """初始化。
+
+        Args:
+            message: message 参数。
+            details: details 参数。
+        """
         super().__init__(f"DI runtime error: {message}", details)
 
 
@@ -594,6 +810,12 @@ class MCPConnectionError(MCPError):
     """MCP 连接错误"""
     
     def __init__(self, server_name: str, message: str):
+        """初始化。
+
+        Args:
+            server_name: server_name 参数。
+            message: message 参数。
+        """
         super().__init__(
             f"MCP connection error: {server_name}",
             {"server_name": server_name, "message": message}
@@ -604,6 +826,11 @@ class MCPToolNotFoundError(MCPError):
     """MCP 工具不存在错误"""
     
     def __init__(self, tool_name: str):
+        """初始化。
+
+        Args:
+            tool_name: tool_name 参数。
+        """
         super().__init__(
             f"MCP tool not found: {tool_name}",
             {"tool_name": tool_name}

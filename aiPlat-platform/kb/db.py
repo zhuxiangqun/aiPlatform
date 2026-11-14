@@ -1,3 +1,5 @@
+"""db：模块接口。"""
+
 from __future__ import annotations
 
 
@@ -442,6 +444,7 @@ CREATE TABLE IF NOT EXISTS kb_vault_files (
 
 class KBRow:
 
+    """KBRow。"""
     tenant_id: str
 
     row: Dict[str, Any]
@@ -480,20 +483,30 @@ def _extract_quarter(doc_id: str) -> Optional[int]:
 
 class KBSqlite:
 
+    """KBSqlite。"""
     def __init__(self, db_path: str):
 
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = db_path
 
 
 
     def connect(self):
 
+        """connect。
+        """
         return kb_create_infra_db_client(self.db_path)
 
 
 
     def ensure_schema(self) -> None:
 
+        """ensure_schema。
+        """
         with self.connect() as conn:
 
             conn.executescript(SCHEMA_SQL)
@@ -584,7 +597,16 @@ class KBSqlite:
 
                    ) -> List[Dict[str, Any]]:
 
-        """Full-text search kb_elements via FTS5, filtered by doc_ids + optional time."""
+        """Full-text search kb_elements via FTS5, filtered by doc_ids + optional time.
+
+        Args:
+            tenant_id: 租户 ID。
+            query: 查询。
+            doc_ids: doc_ids 参数。
+            limit: 返回条数上限。
+            year: year 参数。
+            quarter: quarter 参数。
+        """
 
         try:
 
@@ -663,6 +685,13 @@ class KBSqlite:
 
     def upsert_collection(self, *, tenant_id: str, collection_id: str, name: str = "") -> None:
 
+        """upsert_collection。
+
+        Args:
+            tenant_id: 租户 ID。
+            collection_id: collection 标识。
+            name: name 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -699,6 +728,17 @@ class KBSqlite:
 
     ) -> None:
 
+        """upsert_document。
+
+        Args:
+            tenant_id: 租户 ID。
+            doc_id: doc 标识。
+            collection_id: collection 标识。
+            source_uri: source_uri 参数。
+            kind: kind 参数。
+            status: status 参数。
+            meta: meta 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -755,6 +795,18 @@ class KBSqlite:
 
     ) -> None:
 
+        """insert_asset。
+
+        Args:
+            tenant_id: 租户 ID。
+            asset_id: asset 标识。
+            doc_id: doc 标识。
+            kind: kind 参数。
+            local_path: local_path 参数。
+            page_idx: page_idx 参数。
+            time_ms: time_ms 参数。
+            meta: meta 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -819,6 +871,19 @@ class KBSqlite:
 
     ) -> None:
 
+        """insert_budget_row。
+
+        Args:
+            tenant_id: 租户 ID。
+            row_id: row 标识。
+            doc_id: doc 标识。
+            page_idx: page_idx 参数。
+            item: item 参数。
+            y2026: y2026 参数。
+            y2027: y2027 参数。
+            total: total 参数。
+            cells: cells 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -867,6 +932,20 @@ class KBSqlite:
 
     ) -> None:
 
+        """insert_element。
+
+        Args:
+            tenant_id: 租户 ID。
+            element_id: element 标识。
+            doc_id: doc 标识。
+            type: type 参数。
+            page_idx: page_idx 参数。
+            bbox: bbox 参数。
+            text: text 参数。
+            cells: cells 参数。
+            asset_id: asset 标识。
+            meta: meta 参数。
+        """
         meta = meta or {}
 
         # PR A: extract year/quarter from doc_id or meta
@@ -927,6 +1006,11 @@ class KBSqlite:
 
     def insert_elements_batch(self, *, elements: List[Dict[str, Any]]) -> None:
 
+        """insert_elements_batch。
+
+        Args:
+            elements: elements 参数。
+        """
         with self.connect() as conn:
 
             conn.execute("BEGIN")
@@ -999,6 +1083,15 @@ class KBSqlite:
 
     ) -> List[Dict[str, Any]]:
 
+        """列出 elements。
+
+        Args:
+            tenant_id: 租户 ID。
+            doc_id: doc 标识。
+            type: type 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         with self.connect() as conn:
 
             if type:
@@ -1067,6 +1160,12 @@ class KBSqlite:
 
     def count_elements(self, *, tenant_id: str, doc_id: str) -> int:
 
+        """count_elements。
+
+        Args:
+            tenant_id: 租户 ID。
+            doc_id: doc 标识。
+        """
         with self.connect() as conn:
 
             row = conn.execute(
@@ -1111,6 +1210,21 @@ class KBSqlite:
 
     ) -> None:
 
+        """insert_doc_source。
+
+        Args:
+            tenant_id: 租户 ID。
+            source_id: source 标识。
+            doc_id: doc 标识。
+            source_type: source_type 参数。
+            source_uri: source_uri 参数。
+            url: url 参数。
+            local_path: local_path 参数。
+            kind: kind 参数。
+            content_type: content_type 参数。
+            content_hash: content_hash 参数。
+            meta: meta 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1163,6 +1277,12 @@ class KBSqlite:
 
     def get_url_cache(self, *, tenant_id: str, url: str) -> Optional[Dict[str, Any]]:
 
+        """获取 url_cache。
+
+        Args:
+            tenant_id: 租户 ID。
+            url: url 参数。
+        """
         with self.connect() as conn:
 
             row = conn.execute(
@@ -1205,6 +1325,20 @@ class KBSqlite:
 
     ) -> None:
 
+        """upsert_url_cache。
+
+        Args:
+            tenant_id: 租户 ID。
+            url: url 参数。
+            doc_id: doc 标识。
+            local_path: local_path 参数。
+            kind: kind 参数。
+            content_type: content_type 参数。
+            content_hash: content_hash 参数。
+            etag: etag 参数。
+            last_modified: last_modified 参数。
+            meta: meta 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1273,6 +1407,17 @@ class KBSqlite:
 
     ) -> None:
 
+        """insert_embedding。
+
+        Args:
+            tenant_id: 租户 ID。
+            embedding_id: embedding 标识。
+            doc_id: doc 标识。
+            element_id: element 标识。
+            embedding_type: embedding_type 参数。
+            vector: vector 参数。
+            model: 模型名。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1317,6 +1462,11 @@ class KBSqlite:
 
     def insert_embeddings_batch(self, *, embeddings: List[Dict[str, Any]]) -> None:
 
+        """insert_embeddings_batch。
+
+        Args:
+            embeddings: embeddings 参数。
+        """
         with self.connect() as conn:
 
             conn.execute("BEGIN")
@@ -1371,6 +1521,14 @@ class KBSqlite:
 
     ) -> List[Dict[str, Any]]:
 
+        """列出 embeddings_by_doc。
+
+        Args:
+            tenant_id: 租户 ID。
+            doc_id: doc 标识。
+            embedding_type: embedding_type 参数。
+            limit: 返回条数上限。
+        """
         with self.connect() as conn:
 
             rows = conn.execute(
@@ -1417,6 +1575,12 @@ class KBSqlite:
 
     def get_elements_by_ids(self, *, tenant_id: str, element_ids: List[str]) -> Dict[str, Dict[str, Any]]:
 
+        """获取 elements_by_ids。
+
+        Args:
+            tenant_id: 租户 ID。
+            element_ids: element_ids 参数。
+        """
         if not element_ids:
 
             return {}
@@ -1459,12 +1623,11 @@ class KBSqlite:
 
     def archive_doc_data(self, *, tenant_id: str, doc_id: str) -> None:
 
-        """
+        """Archive old document elements and embeddings by marking them with version in meta_json.
 
-        Archive old document elements and embeddings by marking them with version in meta_json.
-
-        Increment document version for new ingest.
-
+        Args:
+            tenant_id: 租户 ID。
+            doc_id: doc 标识。
         """
 
         import json as _j
@@ -1519,10 +1682,12 @@ class KBSqlite:
 
     def list_budget_rows(self, *, tenant_id: str, collection_id: str, year: int = 2026) -> List[Dict[str, Any]]:
 
-        """
+        """从指定 collection 下所有文档聚合预算表行。
 
-        从指定 collection 下所有文档聚合预算表行。
-
+        Args:
+            tenant_id: 租户 ID。
+            collection_id: collection 标识。
+            year: year 参数。
         """
 
         ycol = "y2026" if int(year) == 2026 else "y2027"
@@ -1607,6 +1772,19 @@ class KBSqlite:
 
     ) -> None:
 
+        """创建 job。
+
+        Args:
+            tenant_id: 租户 ID。
+            job_id: job 标识。
+            type: type 参数。
+            collection_id: collection 标识。
+            doc_id: doc 标识。
+            status: status 参数。
+            progress: progress 参数。
+            message: message 参数。
+            input: input 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1679,6 +1857,17 @@ class KBSqlite:
 
     ) -> None:
 
+        """更新 job。
+
+        Args:
+            tenant_id: 租户 ID。
+            job_id: job 标识。
+            status: status 参数。
+            progress: progress 参数。
+            message: message 参数。
+            output: output 参数。
+            error: error 参数。
+        """
         sets: List[str] = ["updated_at=strftime('%s','now')"]
 
         vals: List[Any] = []
@@ -1733,6 +1922,12 @@ class KBSqlite:
 
     def get_job(self, *, tenant_id: str, job_id: str) -> Optional[Dict[str, Any]]:
 
+        """获取 job。
+
+        Args:
+            tenant_id: 租户 ID。
+            job_id: job 标识。
+        """
         with self.connect() as conn:
 
             row = conn.execute(
@@ -1787,6 +1982,17 @@ class KBSqlite:
 
     ) -> None:
 
+        """append_job_event。
+
+        Args:
+            tenant_id: 租户 ID。
+            job_id: job 标识。
+            level: level 参数。
+            message: message 参数。
+            extra: extra 参数。
+            event_id: event 标识。
+            ts: ts 参数。
+        """
         import time
 
 
@@ -1817,6 +2023,14 @@ class KBSqlite:
 
     def list_job_events(self, *, tenant_id: str, job_id: str, limit: int = 200, offset: int = 0) -> Dict[str, Any]:
 
+        """列出 job_events。
+
+        Args:
+            tenant_id: 租户 ID。
+            job_id: job 标识。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         with self.connect() as conn:
 
             total = (
@@ -1881,6 +2095,17 @@ class KBSqlite:
 
     def upsert_watch(self, *, tenant_id: str, watch_id: str, directory_path: str, collection_id: str = "default", recursive: bool = True, pattern: str = "*.md", enabled: bool = True) -> None:
 
+        """upsert_watch。
+
+        Args:
+            tenant_id: 租户 ID。
+            watch_id: watch 标识。
+            directory_path: directory_path 参数。
+            collection_id: collection 标识。
+            recursive: recursive 参数。
+            pattern: pattern 参数。
+            enabled: 是否启用。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1899,6 +2124,12 @@ class KBSqlite:
 
     def delete_watch(self, *, tenant_id: str, watch_id: str) -> None:
 
+        """删除 watch。
+
+        Args:
+            tenant_id: 租户 ID。
+            watch_id: watch 标识。
+        """
         with self.connect() as conn:
 
             conn.execute("DELETE FROM kb_watches WHERE tenant_id=? AND watch_id=?", (tenant_id, watch_id))
@@ -1909,6 +2140,12 @@ class KBSqlite:
 
     def list_watches(self, *, tenant_id: str, enabled_only: bool = True) -> List[Dict[str, Any]]:
 
+        """列出 watches。
+
+        Args:
+            tenant_id: 租户 ID。
+            enabled_only: enabled_only 参数。
+        """
         with self.connect() as conn:
 
             if enabled_only:
@@ -1933,6 +2170,12 @@ class KBSqlite:
 
     def touch_watch(self, *, tenant_id: str, watch_id: str) -> None:
 
+        """touch_watch。
+
+        Args:
+            tenant_id: 租户 ID。
+            watch_id: watch 标识。
+        """
         import time
 
         with self.connect() as conn:
@@ -1955,6 +2198,15 @@ class KBSqlite:
 
     def upsert_vault(self, *, tenant_id: str, vault_id: str, vault_path: str, label: str = "", auto_index: bool = True) -> None:
 
+        """upsert_vault。
+
+        Args:
+            tenant_id: 租户 ID。
+            vault_id: vault 标识。
+            vault_path: vault_path 参数。
+            label: label 参数。
+            auto_index: auto_index 参数。
+        """
         with self.connect() as conn:
 
             conn.execute(
@@ -1973,6 +2225,12 @@ class KBSqlite:
 
     def delete_vault(self, *, tenant_id: str, vault_id: str) -> None:
 
+        """删除 vault。
+
+        Args:
+            tenant_id: 租户 ID。
+            vault_id: vault 标识。
+        """
         with self.connect() as conn:
 
             conn.execute("DELETE FROM kb_vaults WHERE tenant_id=? AND vault_id=?", (tenant_id, vault_id))
@@ -1983,6 +2241,11 @@ class KBSqlite:
 
     def list_vaults(self, *, tenant_id: str) -> List[Dict[str, Any]]:
 
+        """列出 vaults。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         with self.connect() as conn:
 
             rows = conn.execute(
@@ -1997,6 +2260,12 @@ class KBSqlite:
 
     def get_vault(self, *, tenant_id: str, vault_id: str) -> Optional[Dict[str, Any]]:
 
+        """获取 vault。
+
+        Args:
+            tenant_id: 租户 ID。
+            vault_id: vault 标识。
+        """
         with self.connect() as conn:
 
             row = conn.execute(
@@ -2011,6 +2280,12 @@ class KBSqlite:
 
     def touch_vault(self, *, tenant_id: str, vault_id: str) -> None:
 
+        """touch_vault。
+
+        Args:
+            tenant_id: 租户 ID。
+            vault_id: vault 标识。
+        """
         import time
 
         with self.connect() as conn:
@@ -2029,7 +2304,13 @@ class KBSqlite:
 
     def upsert_vault_file(self, *, vault_id: str, file_path: str, doc_id: str) -> None:
 
-        """Record that a vault file has been wikified."""
+        """Record that a vault file has been wikified.
+
+        Args:
+            vault_id: vault 标识。
+            file_path: file_path 参数。
+            doc_id: doc 标识。
+        """
 
         import time
 
@@ -2051,7 +2332,13 @@ class KBSqlite:
 
     def upsert_vault_file_failed(self, *, vault_id: str, file_path: str, error: str = "") -> None:
 
-        """Record that a vault file failed wiki conversion."""
+        """Record that a vault file failed wiki conversion.
+
+        Args:
+            vault_id: vault 标识。
+            file_path: file_path 参数。
+            error: error 参数。
+        """
 
         import time
 
@@ -2073,7 +2360,11 @@ class KBSqlite:
 
     def get_vault_file_statuses(self, *, vault_id: str) -> dict:
 
-        """Return {file_path: status} map for a vault."""
+        """Return {file_path: status} map for a vault.
+
+        Args:
+            vault_id: vault 标识。
+        """
 
         with self.connect() as conn:
 

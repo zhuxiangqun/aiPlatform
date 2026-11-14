@@ -1,3 +1,5 @@
+"""ingest：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -24,11 +26,16 @@ def ingest_scanned_pdf(
     ocr_engine: Optional[str] = None,
     progress_cb: Optional[Callable[[float, str, Dict[str, Any]], None]] = None,
 ) -> IngestResult:
-    """
-    PoC：扫描 PDF → 渲染页图 → OCR（带 bbox）→ 抽取候选数值。
+    """PoC：扫描 PDF → 渲染页图 → OCR（带 bbox）→ 抽取候选数值。
 
-    输出写到 out_dir：
-    - pages/page_0000.png ...
+    Args:
+        pdf_path: pdf_path 参数。
+        out_dir: out_dir 参数。
+        dpi: dpi 参数。
+        max_pages: max_pages 参数。
+        ocr_lang: ocr_lang 参数。
+        ocr_engine: ocr_engine 参数。
+        progress_cb: progress_cb 参数。
     """
     pdf_path = str(pdf_path)
     out_base = Path(out_dir)

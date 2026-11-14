@@ -19,6 +19,11 @@ class MonitoringManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._alert_rules: Dict[str, AlertRule] = {}
         self._alerts: List[Alert] = []
@@ -154,7 +159,11 @@ class MonitoringManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     # Monitoring-specific methods
@@ -227,7 +236,11 @@ class MonitoringManager(ManagementBase):
         return False
     
     async def create_rule(self, config: Dict[str, Any]) -> AlertRule:
-        """Create an alert rule."""
+        """Create an alert rule.
+
+        Args:
+            config: config 参数。
+        """
         rule = AlertRule(
             name=config["name"],
             metric=config.get("metric", ""),
@@ -240,7 +253,12 @@ class MonitoringManager(ManagementBase):
         return rule
 
     async def update_rule(self, name: str, config: Dict[str, Any]) -> bool:
-        """Update an alert rule."""
+        """Update an alert rule.
+
+        Args:
+            name: name 参数。
+            config: config 参数。
+        """
         rule = self._alert_rules.get(name)
         if rule is None:
             return False
@@ -257,14 +275,22 @@ class MonitoringManager(ManagementBase):
         return True
 
     async def delete_rule(self, name: str) -> bool:
-        """Delete an alert rule."""
+        """Delete an alert rule.
+
+        Args:
+            name: name 参数。
+        """
         if name in self._alert_rules:
             del self._alert_rules[name]
             return True
         return False
 
     async def acknowledge_alert(self, alert_id: str) -> bool:
-        """Acknowledge an alert."""
+        """Acknowledge an alert.
+
+        Args:
+            alert_id: alert 标识。
+        """
         for alert in self._alerts:
             if alert.alert_id == alert_id:
                 alert.status = "acknowledged"
@@ -490,7 +516,16 @@ class MonitoringManager(ManagementBase):
         resource: Optional[str] = None,
         limit: int = 100
     ) -> List[Dict[str, Any]]:
-        """Get audit logs."""
+        """Get audit logs.
+
+        Args:
+            start_time: start_time 参数。
+            end_time: end_time 参数。
+            user: user 参数。
+            action: action 参数。
+            resource: resource 参数。
+            limit: 返回条数上限。
+        """
         return []
     
     async def get_overview(self) -> Dict[str, Any]:
@@ -506,7 +541,11 @@ class MonitoringManager(ManagementBase):
         }
     
     async def get_node_metrics(self, node_name: str) -> Dict[str, Any]:
-        """Get metrics for a specific node."""
+        """Get metrics for a specific node.
+
+        Args:
+            node_name: node_name 参数。
+        """
         return {
             "node": node_name,
             "cpu_usage": 0.0,
@@ -517,7 +556,11 @@ class MonitoringManager(ManagementBase):
         }
     
     async def get_service_metrics(self, service_name: str) -> Dict[str, Any]:
-        """Get metrics for a specific service."""
+        """Get metrics for a specific service.
+
+        Args:
+            service_name: service_name 参数。
+        """
         return {
             "service": service_name,
             "requests_per_second": 0,

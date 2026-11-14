@@ -117,6 +117,11 @@ async def _require_onboarding_approval(*, operation: str, user_id: str, details:
 
 @router.get("/onboarding/state", response_model=StatusResponse)
 async def get_core_onboarding_state(_auth: str = Depends(require_auth)):
+    """获取 core_onboarding_state。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -139,6 +144,13 @@ async def get_core_onboarding_state(_auth: str = Depends(require_auth)):
 
 @router.post("/onboarding/evidence/runs", response_model=StatusResponse)
 async def create_onboarding_evidence(request: Dict[str, Any], http_request: Request, _auth: str = Depends(require_auth)):
+    """创建 onboarding_evidence。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -232,6 +244,15 @@ async def create_onboarding_evidence(request: Dict[str, Any], http_request: Requ
 
 @router.get("/onboarding/evidence/runs", response_model=StatusResponse)
 async def list_onboarding_evidence(http_request: Request, step_key: Optional[str] = None, limit: int = 100, offset: int = 0, _auth: str = Depends(require_auth)):
+    """列出 onboarding_evidence。
+
+    Args:
+        http_request: http_request 参数。
+        step_key: step_key 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -242,6 +263,13 @@ async def list_onboarding_evidence(http_request: Request, step_key: Optional[str
 
 @router.get("/onboarding/evidence/runs/{evidence_id}", response_model=StatusResponse)
 async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth: str = Depends(require_auth)):
+    """获取 onboarding_evidence。
+
+    Args:
+        evidence_id: evidence 标识。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -255,6 +283,12 @@ async def get_onboarding_evidence(evidence_id: str, http_request: Request, _auth
 
 @router.post("/onboarding/default-llm", response_model=StatusResponse)
 async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Depends(require_auth)):
+    """set_default_llm。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -361,6 +395,12 @@ async def set_default_llm(request: OnboardingDefaultLLMRequest, _auth: str = Dep
 
 @router.post("/onboarding/init-tenant", response_model=StatusResponse)
 async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str = Depends(require_auth)):
+    """init_default_tenant。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -474,6 +514,12 @@ async def init_default_tenant(request: OnboardingInitTenantRequest, _auth: str =
 
 @router.post("/onboarding/autosmoke", response_model=StatusResponse)
 async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth: str = Depends(require_auth)):
+    """set_autosmoke_config。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -568,6 +614,12 @@ async def set_autosmoke_config(request: OnboardingAutosmokeConfigRequest, _auth:
 
 @router.post("/onboarding/exec-backend", response_model=StatusResponse)
 async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = Depends(require_auth)):
+    """set_exec_backend。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -637,6 +689,12 @@ async def set_exec_backend(request: OnboardingExecBackendRequest, _auth: str = D
 
 @router.post("/onboarding/trusted-skill-keys", response_model=StatusResponse)
 async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _auth: str = Depends(require_auth)):
+    """set_trusted_skill_keys。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -719,6 +777,12 @@ async def set_trusted_skill_keys(request: OnboardingTrustedSkillKeysRequest, _au
 
 @router.post("/onboarding/generate-skill-key", response_model=StatusResponse)
 async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: str = Depends(require_auth)):
+    """generate_skill_key。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import generate_ed25519_key_pair, key_id_for_public_key  # v2.5: canonical path
 
     sk_pem, pk_pem = generate_ed25519_key_pair()
@@ -750,6 +814,12 @@ async def generate_skill_key(request: OnboardingGenerateSkillKeyRequest, _auth: 
 
 @router.post("/onboarding/context-config", response_model=StatusResponse)
 async def set_context_config(request: OnboardingContextConfigRequest, _auth: str = Depends(require_auth)):
+    """set_context_config。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -842,6 +912,11 @@ async def set_context_config(request: OnboardingContextConfigRequest, _auth: str
 
 @router.get("/onboarding/secrets/status", response_model=StatusResponse)
 async def get_secrets_status(_auth: str = Depends(require_auth)):
+    """获取 secrets_status。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -857,6 +932,12 @@ async def get_secrets_status(_auth: str = Depends(require_auth)):
 
 @router.post("/onboarding/secrets/migrate", response_model=StatusResponse)
 async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str = Depends(require_auth)):
+    """migrate_secrets。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -941,6 +1022,12 @@ async def migrate_secrets(request: OnboardingSecretsMigrateRequest, _auth: str =
 
 @router.post("/onboarding/strong-gate", response_model=StatusResponse)
 async def set_strong_gate(request: OnboardingStrongGateRequest, _auth: str = Depends(require_auth)):
+    """set_strong_gate。
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -1075,7 +1162,11 @@ _onboarding_state: Dict[str, Dict[str, bool]] = {}
 
 @router.get("/progress", response_model=StatusResponse)
 async def get_onboarding_progress(_auth: str = Depends(require_auth)):
-    """Get current onboarding progress for the authenticated tenant."""
+    """Get current onboarding progress for the authenticated tenant.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tenant_id = _auth  # simplified; real implementation extracts from JWT
     state = _onboarding_state.get(tenant_id, {})
     steps = []
@@ -1101,7 +1192,12 @@ def _estimate_completion(steps: list) -> str:
 
 @router.post("/progress/{step_key}", response_model=StatusResponse)
 async def mark_onboarding_step(step_key: str, _auth: str = Depends(require_auth)):
-    """Mark an onboarding step as completed."""
+    """Mark an onboarding step as completed.
+
+    Args:
+        step_key: step_key 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tenant_id = _auth
     if tenant_id not in _onboarding_state:
         _onboarding_state[tenant_id] = {}
@@ -1123,7 +1219,12 @@ async def get_model_recommendations():
 
 @router.post("/tools/connect", response_model=StatusResponse)
 async def connect_tool(body: Dict[str, Any], _auth: str = Depends(require_auth)):
-    """Self-service tool connection — fill API key + test."""
+    """Self-service tool connection — fill API key + test.
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tool_name = body.get("tool_name", "")
     api_key = body.get("api_key", "")
     endpoint = body.get("endpoint", "")
@@ -1154,7 +1255,12 @@ async def get_agent_templates():
 
 @router.post("/agent/create-from-template", response_model=StatusResponse)
 async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(require_auth)):
-    """Create an agent from a pre-built template."""
+    """Create an agent from a pre-built template.
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     template_id = body.get("template_id", "")
     agent_name = body.get("agent_name", template_id)
     if not template_id:
@@ -1170,7 +1276,11 @@ async def create_agent_from_template(body: Dict[str, Any], _auth: str = Depends(
 
 @router.get("/readiness-check", response_model=StatusResponse)
 async def readiness_check(_auth: str = Depends(require_auth)):
-    """Deployment readiness check — returns what's missing."""
+    """Deployment readiness check — returns what's missing.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tenant_id = _auth
     state = _onboarding_state.get(tenant_id, {})
     checks = [
@@ -1192,7 +1302,11 @@ async def readiness_check(_auth: str = Depends(require_auth)):
 
 @router.post("/activate", response_model=StatusResponse)
 async def activate_tenant(_auth: str = Depends(require_auth)):
-    """Activate tenant after all readiness checks pass."""
+    """Activate tenant after all readiness checks pass.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     tenant_id = _auth
     state = _onboarding_state.get(tenant_id, {})
     all_done = state.get("model") and state.get("tools") and state.get("agent")

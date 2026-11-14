@@ -225,7 +225,13 @@ async def execute_platform_kb_query(
 ) -> Dict[str, Any]:
     """Run structured KB retrieve and shape a Pi/telemetry-friendly payload.
 
-    ``normalize_citations`` is injectable (routes pass ``_normalize_citations_with_assets``).
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        question: question 参数。
+        limit: 返回条数上限。
+        doc_id: doc 标识。
+        normalize_citations: normalize_citations 参数。
     """
     tid = str(tenant_id or "default").strip() or "default"
     cid = str(collection_id or "default").strip() or "default"

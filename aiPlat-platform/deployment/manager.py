@@ -10,6 +10,7 @@ from threading import Lock
 
 
 class DeploymentStatus(str, Enum):
+    """DeploymentStatus。"""
     PENDING = "pending"
     DEPLOYING = "deploying"
     HEALTHY = "healthy"
@@ -20,6 +21,7 @@ class DeploymentStatus(str, Enum):
 
 
 class DeploymentStrategy(str, Enum):
+    """DeploymentStrategy。"""
     ROLLING = "rolling"
     BLUE_GREEN = "blue_green"
     CANARY = "canary"
@@ -45,6 +47,8 @@ class DeploymentManager:
     """部署管理服务（控制面）"""
 
     def __init__(self):
+        """初始化。
+        """
         self._deployments: Dict[str, Deployment] = {}
         self._lock = Lock()
 
@@ -58,7 +62,17 @@ class DeploymentManager:
         environment: str = "production",
         created_by: str = "",
     ) -> Deployment:
-        """创建部署"""
+        """创建部署。
+
+        Args:
+            deployment_id: deployment 标识。
+            tenant_id: 租户 ID。
+            service_name: service_name 参数。
+            version: version 参数。
+            strategy: strategy 参数。
+            environment: environment 参数。
+            created_by: created_by 参数。
+        """
         deployment = Deployment(
             deployment_id=deployment_id,
             tenant_id=tenant_id,
@@ -72,7 +86,11 @@ class DeploymentManager:
         return deployment
 
     def get_deployment(self, deployment_id: str) -> Optional[Deployment]:
-        """获取部署"""
+        """获取部署。
+
+        Args:
+            deployment_id: deployment 标识。
+        """
         return self._deployments.get(deployment_id)
 
     def update_status(
@@ -80,7 +98,12 @@ class DeploymentManager:
         deployment_id: str,
         status: DeploymentStatus,
     ) -> Optional[Deployment]:
-        """更新部署状态"""
+        """更新部署状态。
+
+        Args:
+            deployment_id: deployment 标识。
+            status: status 参数。
+        """
         deployment = self._deployments.get(deployment_id)
         if deployment:
             deployment.status = status
@@ -88,7 +111,11 @@ class DeploymentManager:
         return deployment
 
     def rollback(self, deployment_id: str) -> bool:
-        """回滚部署"""
+        """回滚部署。
+
+        Args:
+            deployment_id: deployment 标识。
+        """
         deployment = self._deployments.get(deployment_id)
         if deployment and deployment.status == DeploymentStatus.HEALTHY:
             deployment.status = DeploymentStatus.ROLLING_BACK
@@ -97,21 +124,33 @@ class DeploymentManager:
         return False
 
     def list_by_tenant(self, tenant_id: str) -> list[Deployment]:
-        """列出租户的部署"""
+        """列出租户的部署。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         return [
             d for d in self._deployments.values()
             if d.tenant_id == tenant_id
         ]
 
     def list_by_service(self, service_name: str) -> list[Deployment]:
-        """列出服务的部署"""
+        """列出服务的部署。
+
+        Args:
+            service_name: service_name 参数。
+        """
         return [
             d for d in self._deployments.values()
             if d.service_name == service_name
         ]
 
     def get_active_deployments(self, service_name: str) -> list[Deployment]:
-        """获取活跃部署"""
+        """获取活跃部署。
+
+        Args:
+            service_name: service_name 参数。
+        """
         return [
             d for d in self._deployments.values()
             if d.service_name == service_name

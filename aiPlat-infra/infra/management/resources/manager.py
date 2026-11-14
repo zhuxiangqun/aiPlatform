@@ -19,6 +19,11 @@ class ResourcesManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._nodes: Dict[str, NodeInfo] = {}
         self._allocations: Dict[str, AllocatedResource] = {}
@@ -160,7 +165,11 @@ class ResourcesManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     # Resources specific methods

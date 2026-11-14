@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 def summarize_kb_query_result(out: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Build a compact result payload for metrics (count / items / citations)."""
+    """Build a compact result payload for metrics (count / items / citations).
+
+    Args:
+        out: out 参数。
+    """
     if not isinstance(out, dict):
         return {"count": 0, "items": []}
     kb = out.get("kb") if isinstance(out.get("kb"), dict) else {}
@@ -66,7 +70,15 @@ async def record_kb_query_syscall(
 ) -> bool:
     """Append knowledge_retrieve event. Returns True if persisted.
 
-    ``store`` is injectable for unit tests (avoids importing CoreFacade on Py3.9).
+    Args:
+        question: question 参数。
+        collection_id: collection 标识。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        request_id: request 标识。
+        out: out 参数。
+        error: error 参数。
+        store: store 参数。
     """
     try:
         if store is None:

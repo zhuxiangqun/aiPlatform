@@ -10,6 +10,7 @@ from threading import Lock
 
 
 class ServiceStatus(str, Enum):
+    """ServiceStatus。"""
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
@@ -32,6 +33,8 @@ class ServiceRegistry:
     """服务注册中心"""
 
     def __init__(self):
+        """初始化。
+        """
         self._services: Dict[str, Dict[str, ServiceInstance]] = {}
         self._lock = Lock()
 
@@ -44,7 +47,16 @@ class ServiceRegistry:
         metadata: Optional[Dict[str, Any]] = None,
         version: str = "1.0.0",
     ) -> ServiceInstance:
-        """注册服务实例"""
+        """注册服务实例。
+
+        Args:
+            service_name: service_name 参数。
+            instance_id: instance 标识。
+            host: host 参数。
+            port: port 参数。
+            metadata: metadata 参数。
+            version: version 参数。
+        """
         with self._lock:
             if service_name not in self._services:
                 self._services[service_name] = {}
@@ -61,7 +73,12 @@ class ServiceRegistry:
             return instance
 
     def deregister(self, service_name: str, instance_id: str) -> bool:
-        """注销服务实例"""
+        """注销服务实例。
+
+        Args:
+            service_name: service_name 参数。
+            instance_id: instance 标识。
+        """
         with self._lock:
             if service_name in self._services and instance_id in self._services[service_name]:
                 del self._services[service_name][instance_id]
@@ -69,7 +86,12 @@ class ServiceRegistry:
         return False
 
     def discover(self, service_name: str, version: Optional[str] = None) -> list[ServiceInstance]:
-        """发现服务实例"""
+        """发现服务实例。
+
+        Args:
+            service_name: service_name 参数。
+            version: version 参数。
+        """
         with self._lock:
             instances = list(self._services.get(service_name, {}).values())
 
@@ -80,7 +102,12 @@ class ServiceRegistry:
             return instances
 
     def heartbeat(self, service_name: str, instance_id: str) -> bool:
-        """心跳"""
+        """心跳。
+
+        Args:
+            service_name: service_name 参数。
+            instance_id: instance 标识。
+        """
         with self._lock:
             if service_name in self._services and instance_id in self._services[service_name]:
                 instance = self._services[service_name][instance_id]
@@ -90,7 +117,12 @@ class ServiceRegistry:
         return False
 
     def set_unhealthy(self, service_name: str, instance_id: str) -> bool:
-        """标记不健康"""
+        """标记不健康。
+
+        Args:
+            service_name: service_name 参数。
+            instance_id: instance 标识。
+        """
         with self._lock:
             if service_name in self._services and instance_id in self._services[service_name]:
                 self._services[service_name][instance_id].status = ServiceStatus.UNHEALTHY
@@ -98,7 +130,11 @@ class ServiceRegistry:
         return False
 
     def get_instances_count(self, service_name: str) -> int:
-        """获取实例数量"""
+        """获取实例数量。
+
+        Args:
+            service_name: service_name 参数。
+        """
         with self._lock:
             return len(self._services.get(service_name, {}))
 

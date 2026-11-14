@@ -33,8 +33,8 @@ def _parse_form_body(raw: bytes) -> Dict[str, str]:
 async def kb_slack_query(request: Request):
     """Slack slash-command webhook: answer KB questions from Slack.
 
-    Requires a valid Slack signing secret (``AIPLAT_SLACK_SIGNING_SECRET``)
-    unless ``AIPLAT_CHANNEL_ALLOW_UNSIGNED=1`` is set for local development.
+    Args:
+        request: FastAPI Request。
     """
     raw = await request.body()
     try:

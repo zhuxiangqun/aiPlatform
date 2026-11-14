@@ -74,7 +74,19 @@ def get_real_storage_info() -> Dict[str, Any]:
 
 
 class PVCInfo:
+    """PVCInfo。"""
     def __init__(self, name: str, namespace: str, capacity: str, storage_class: str, access_mode: str, status: str, created_at: datetime):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+            capacity: capacity 参数。
+            storage_class: storage_class 参数。
+            access_mode: access_mode 参数。
+            status: status 参数。
+            created_at: created_at 参数。
+        """
         self.name = name
         self.namespace = namespace
         self.capacity = capacity
@@ -85,7 +97,19 @@ class PVCInfo:
 
 
 class VectorCollectionInfo:
+    """VectorCollectionInfo。"""
     def __init__(self, name: str, dimension: int, index_type: str, metric: str, count: int, status: str, created_at: datetime = None):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            dimension: dimension 参数。
+            index_type: index_type 参数。
+            metric: metric 参数。
+            count: count 参数。
+            status: status 参数。
+            created_at: created_at 参数。
+        """
         self.name = name
         self.dimension = dimension
         self.index_type = index_type
@@ -96,7 +120,13 @@ class VectorCollectionInfo:
 
 
 class StorageManager(ManagementBase):
+    """StorageManager。"""
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._pvcs: Dict[str, PVCInfo] = {}
         self._collections: Dict[str, VectorCollectionInfo] = {}
@@ -245,7 +275,11 @@ status="Active"
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     async def diagnose(self) -> DiagnosisResult:
@@ -312,7 +346,12 @@ status="Active"
         ]
     
     async def get_pvc(self, name: str, namespace: str = "default") -> Optional[Dict[str, Any]]:
-        """Get PVC details."""
+        """Get PVC details.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             pvcs = await self.list_pvcs()
             for pvc in pvcs:
@@ -335,7 +374,11 @@ status="Active"
         return None
     
     async def create_pvc(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a PVC."""
+        """Create a PVC.
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Create PVC not supported in standalone mode")
         
@@ -357,7 +400,12 @@ status="Active"
         return {"name": name, "namespace": namespace, "status": "created"}
     
     async def delete_pvc(self, name: str, namespace: str = "default") -> bool:
-        """Delete a PVC."""
+        """Delete a PVC.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete PVC not supported in standalone mode")
         
@@ -402,7 +450,11 @@ status="Active"
         ]
     
     async def get_collection(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get collection details."""
+        """Get collection details.
+
+        Args:
+            name: name 参数。
+        """
         collections = await self.list_collections()
         for col in collections:
             if col["name"] == name:
@@ -410,7 +462,11 @@ status="Active"
         return None
     
     async def create_collection(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a vector collection."""
+        """Create a vector collection.
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Create collection not supported in standalone mode")
         
@@ -429,7 +485,11 @@ status="Active"
         return {"name": name, "status": "created"}
     
     async def delete_collection(self, name: str) -> bool:
-        """Delete a vector collection."""
+        """Delete a vector collection.
+
+        Args:
+            name: name 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete collection not supported in standalone mode")
         
@@ -439,7 +499,13 @@ status="Active"
         return False
     
     async def resize_pvc(self, name: str, size: str, namespace: str = "default") -> Dict[str, Any]:
-        """Resize a PVC."""
+        """Resize a PVC.
+
+        Args:
+            name: name 参数。
+            size: size 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             return {"name": name, "size": size, "status": "resizing"}
         
@@ -449,7 +515,12 @@ status="Active"
         return {"name": name, "status": "not_found"}
     
     async def create_snapshot(self, pvc_name: str, namespace: str = "default") -> Dict[str, Any]:
-        """Create a PVC snapshot."""
+        """Create a PVC snapshot.
+
+        Args:
+            pvc_name: pvc_name 参数。
+            namespace: namespace 参数。
+        """
         import uuid
         snapshot_name = f"snapshot-{pvc_name}-{uuid.uuid4().hex[:8]}"
         
@@ -480,7 +551,11 @@ status="Active"
         return list(self._model_storage.values())
 
     async def create_model_storage(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Upload model to storage (simulation — stores metadata)."""
+        """Upload model to storage (simulation — stores metadata).
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Create model storage not supported in standalone mode")
         import uuid, hashlib
@@ -499,7 +574,11 @@ status="Active"
         return entry
 
     async def delete_model_storage(self, model_id: str) -> bool:
-        """Delete model from storage."""
+        """Delete model from storage.
+
+        Args:
+            model_id: model 标识。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete model storage not supported in standalone mode")
         if model_id in self._model_storage:

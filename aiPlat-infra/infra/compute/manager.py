@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import uuid
 import os
 from typing import List, Optional, Dict
@@ -7,7 +9,13 @@ import logging
 
 
 class LocalComputeManager(ComputeManager):
+    """LocalComputeManager。"""
     def __init__(self, config: ComputeConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._allocations: Dict[str, Allocation] = {}
         self._nodes: Dict[str, Node] = {}
@@ -31,6 +39,11 @@ class LocalComputeManager(ComputeManager):
         )
 
     def allocate(self, resource_request: ResourceRequest) -> Allocation:
+        """allocate。
+
+        Args:
+            resource_request: resource_request 参数。
+        """
         allocation = Allocation(
             id=str(uuid.uuid4()),
             node_id=f"local-{resource_request.resource_type}-1",
@@ -40,12 +53,22 @@ class LocalComputeManager(ComputeManager):
         return allocation
 
     def release(self, allocation_id: str) -> bool:
+        """release。
+
+        Args:
+            allocation_id: allocation 标识。
+        """
         if allocation_id in self._allocations:
             del self._allocations[allocation_id]
             return True
         return False
 
     def list_nodes(self, filters: Dict = None) -> List[Node]:
+        """列出 nodes。
+
+        Args:
+            filters: filters 参数。
+        """
         nodes = list(self._nodes.values())
         if filters:
             if "type" in filters:
@@ -55,9 +78,19 @@ class LocalComputeManager(ComputeManager):
         return nodes
 
     def get_node(self, node_id: str) -> Optional[Node]:
+        """获取 node。
+
+        Args:
+            node_id: node 标识。
+        """
         return self._nodes.get(node_id)
 
     def submit_task(self, task: Task) -> str:
+        """submit_task。
+
+        Args:
+            task: task 参数。
+        """
         task_id = str(uuid.uuid4())
         self._tasks[task_id] = TaskStatus(
             id=task_id,
@@ -67,9 +100,19 @@ class LocalComputeManager(ComputeManager):
         return task_id
 
     def get_task_status(self, task_id: str) -> Optional[TaskStatus]:
+        """获取 task_status。
+
+        Args:
+            task_id: task 标识。
+        """
         return self._tasks.get(task_id)
 
     def cancel_task(self, task_id: str) -> bool:
+        """cancel_task。
+
+        Args:
+            task_id: task 标识。
+        """
         if task_id in self._tasks:
             self._tasks[task_id].state = "cancelled"
             return True
@@ -77,7 +120,13 @@ class LocalComputeManager(ComputeManager):
 
 
 class KubernetesComputeManager(ComputeManager):
+    """KubernetesComputeManager。"""
     def __init__(self, config: ComputeConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._allocations: Dict[str, Allocation] = {}
@@ -95,6 +144,11 @@ class KubernetesComputeManager(ComputeManager):
         return self._client
 
     def allocate(self, resource_request: ResourceRequest) -> Allocation:
+        """allocate。
+
+        Args:
+            resource_request: resource_request 参数。
+        """
         client = self._get_client()
         api = client.CustomObjectsApi()
 
@@ -117,12 +171,22 @@ class KubernetesComputeManager(ComputeManager):
             raise RuntimeError(f"k8s allocation failed: {e}") from e
 
     def release(self, allocation_id: str) -> bool:
+        """release。
+
+        Args:
+            allocation_id: allocation 标识。
+        """
         if allocation_id in self._allocations:
             del self._allocations[allocation_id]
             return True
         return False
 
     def list_nodes(self, filters: Dict = None) -> List[Node]:
+        """列出 nodes。
+
+        Args:
+            filters: filters 参数。
+        """
         client = self._get_client()
         api = client.CoreV1Api()
 
@@ -146,6 +210,11 @@ class KubernetesComputeManager(ComputeManager):
             return []
 
     def get_node(self, node_id: str) -> Optional[Node]:
+        """获取 node。
+
+        Args:
+            node_id: node 标识。
+        """
         client = self._get_client()
         api = client.CoreV1Api()
 
@@ -164,6 +233,11 @@ class KubernetesComputeManager(ComputeManager):
             return None
 
     def submit_task(self, task: Task) -> str:
+        """submit_task。
+
+        Args:
+            task: task 参数。
+        """
         client = self._get_client()
         api = client.CustomObjectsApi()
 
@@ -192,6 +266,11 @@ class KubernetesComputeManager(ComputeManager):
         return task_id
 
     def get_task_status(self, task_id: str) -> Optional[TaskStatus]:
+        """获取 task_status。
+
+        Args:
+            task_id: task 标识。
+        """
         if task_id in self._tasks:
             return self._tasks[task_id]
 
@@ -213,6 +292,11 @@ class KubernetesComputeManager(ComputeManager):
             return None
 
     def cancel_task(self, task_id: str) -> bool:
+        """cancel_task。
+
+        Args:
+            task_id: task 标识。
+        """
         if task_id in self._tasks:
             self._tasks[task_id].state = "cancelled"
             return True

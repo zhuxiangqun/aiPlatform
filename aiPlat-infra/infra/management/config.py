@@ -24,7 +24,11 @@ class ManagementConfig:
     
     @classmethod
     def from_dict(cls, config: Dict[str, Any]) -> 'ManagementConfig':
-        """Create config from dictionary"""
+        """Create config from dictionary。
+
+        Args:
+            config: config 参数。
+        """
         management = config.get('management', {})
         return cls(
             enabled=management.get('enabled', True),

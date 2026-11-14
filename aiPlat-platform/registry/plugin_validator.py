@@ -20,6 +20,11 @@ from typing import Any, Dict, List
 
 
 def validate_plugin_manifest(manifest: Dict[str, Any]) -> List[str]:
+    """validate_plugin_manifest。
+
+    Args:
+        manifest: manifest 参数。
+    """
     errors: List[str] = []
 
     name = str(manifest.get("name", "")).strip()

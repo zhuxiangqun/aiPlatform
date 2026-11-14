@@ -20,11 +20,22 @@ _svc = AppService()
 
 @router.get("", response_model=StatusResponse)
 async def list_apps(_auth: str = Depends(require_auth)):
+    """列出 apps。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return {"apps": await _svc.list(), "total": 0}
 
 
 @router.get("/{app_id}", response_model=StatusResponse)
 async def get_app(app_id: str, _auth: str = Depends(require_auth)):
+    """获取 app。
+
+    Args:
+        app_id: app 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     app = await _svc.get(app_id)
     if not app:
         raise HTTPException(404, detail="app not found")
@@ -33,6 +44,12 @@ async def get_app(app_id: str, _auth: str = Depends(require_auth)):
 
 @router.delete("/{app_id}", response_model=StatusResponse)
 async def delete_app(app_id: str, _auth: str = Depends(require_auth)):
+    """删除 app。
+
+    Args:
+        app_id: app 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     await _svc.delete(app_id)
     return {"status": "deleted", "id": app_id}
 
@@ -41,6 +58,12 @@ async def delete_app(app_id: str, _auth: str = Depends(require_auth)):
 
 @router.post("", response_model=StatusResponse)
 async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """创建 app。
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         app = await _svc.publish(
             workflow_id=str(req.get("workflow_id") or req.get("capability_id") or ""),
@@ -59,8 +82,9 @@ async def create_app(req: Dict[str, Any], _auth: str = Depends(require_auth)):
 async def register_studio_app(req: Dict[str, Any], request: Request):
     """Studio 部署完成后注册应用。由 management studio.py 内部调用。
 
-    Fail closed unless ``X-AiPlat-Studio-Register-Token`` (or API key) matches,
-    or ``AIPLAT_STUDIO_REGISTER_ALLOW_UNSIGNED`` is set for local development.
+    Args:
+        req: req 参数。
+        request: FastAPI Request。
     """
     require_studio_register_auth(request)
     try:
@@ -79,6 +103,13 @@ async def register_studio_app(req: Dict[str, Any], request: Request):
 
 @router.post("/{app_id}/run", response_model=StatusResponse)
 async def run_api(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """run_api。
+
+    Args:
+        app_id: app 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         return await _svc.run_api(app_id, req)
     except ValueError as e:
@@ -89,6 +120,13 @@ async def run_api(app_id: str, req: Dict[str, Any], _auth: str = Depends(require
 
 @router.post("/{app_id}/chat", response_model=StatusResponse)
 async def chat(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """chat。
+
+    Args:
+        app_id: app 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         return await _svc.run_chat(app_id, str(req.get("message") or ""))
     except ValueError as e:
@@ -99,6 +137,14 @@ async def chat(app_id: str, req: Dict[str, Any], _auth: str = Depends(require_au
 
 @router.post("/{app_id}/hook", response_model=StatusResponse)
 async def webhook(app_id: str, req: Request, body: Dict[str, Any] = None, x_webhook_secret: str = Header(None, alias="X-Webhook-Secret")):
+    """webhook。
+
+    Args:
+        app_id: app 标识。
+        req: req 参数。
+        body: 请求体。
+        x_webhook_secret: x_webhook_secret 参数。
+    """
     try:
         if body is None:
             body = {}

@@ -39,16 +39,8 @@ def _pct_to_ratio(value: Any) -> Optional[float]:
 def kb_health_score(metrics: Dict[str, Any]) -> Dict[str, Any]:
     """Compute 0–100 health score from kb/metrics-shaped dict.
 
-    Spec:
-      score = round(
-        citation * 30 + (1 - no_answer) * 25 + (1 - error) * 20
-        + (1 - repeat) * 15 + bonus * 10
-      )
-      bonus = 1.0 if citation > 0.8 else citation / 0.8
-    Missing rates default to neutral 0 (no penalty / no credit).
-
-    When total_queries == 0: do **not** invent a yellow/red score from zero rates —
-    return band=gray / 数据不足 (score stays None).
+    Args:
+        metrics: metrics 参数。
     """
     try:
         total_q = int(metrics.get("total_queries") or 0)
@@ -463,8 +455,10 @@ def kb_miss_top(
 ) -> Dict[str, Any]:
     """Public miss-TOP for ``GET /platform/kb/miss-top`` (HYBRID_ENTERPRISE_KB_HEALTH §3.2.1).
 
-    ``tenant_id`` is accepted for API compatibility; best-effort scan is store-wide
-    (same as the health panel) until tenant-scoped syscall_events land.
+    Args:
+        window_hours: window_hours 参数。
+        limit: 返回条数上限。
+        tenant_id: 租户 ID。
     """
     _ = tenant_id  # reserved
     miss, _low = _miss_and_low_top(window_hours=window_hours, limit=limit)
@@ -478,7 +472,14 @@ def kb_low_confidence_top(
     threshold: float = 0.5,
     tenant_id: str = "default",
 ) -> Dict[str, Any]:
-    """Public low-confidence TOP for ``GET /platform/kb/low-confidence-top`` (§3.2.2)."""
+    """Public low-confidence TOP for ``GET /platform/kb/low-confidence-top`` (§3.2.2).
+
+    Args:
+        window_hours: window_hours 参数。
+        limit: 返回条数上限。
+        threshold: threshold 参数。
+        tenant_id: 租户 ID。
+    """
     _ = tenant_id  # reserved
     _miss, low = _miss_and_low_top(
         window_hours=window_hours, limit=limit, threshold=threshold
@@ -543,6 +544,15 @@ def build_kb_health_report(
     project_id: str = "",
     low_confidence_threshold: float = 0.5,
 ) -> Dict[str, Any]:
+    """build_kb_health_report。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        low_confidence_threshold: low_confidence_threshold 参数。
+    """
     metrics = _kb_metrics(tenant_id=tenant_id, hours=window_hours)
     stats = _kb_stats(tenant_id=tenant_id)
     docs_week = _docs_this_week(
@@ -590,6 +600,11 @@ def build_kb_health_report(
 
 
 def render_kb_health_markdown(report: Dict[str, Any]) -> str:
+    """render_kb_health_markdown。
+
+    Args:
+        report: report 参数。
+    """
     h = report.get("health") or {}
     m = report.get("metrics") or {}
     st = report.get("stats") or {}
@@ -686,7 +701,11 @@ def render_kb_health_markdown(report: Dict[str, Any]) -> str:
 
 
 def render_kb_health_plain(report: Dict[str, Any]) -> str:
-    """Short human summary for Pi `/aiplat-kb-health`."""
+    """Short human summary for Pi `/aiplat-kb-health`.
+
+    Args:
+        report: report 参数。
+    """
     if not report.get("ok"):
         return "知识库健康面板暂不可用"
     h = report.get("health") or {}

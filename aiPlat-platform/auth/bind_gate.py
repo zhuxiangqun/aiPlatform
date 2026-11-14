@@ -15,6 +15,8 @@ from typing import Any, Optional
 
 
 def platform_api_token() -> Optional[str]:
+    """platform_api_token。
+    """
     tok = (
         os.getenv("AIPLAT_PLATFORM_API_TOKEN")
         or os.getenv("AIPLAT_API_KEY")
@@ -24,6 +26,11 @@ def platform_api_token() -> Optional[str]:
 
 
 def is_loopback_host(host: str) -> bool:
+    """is_loopback_host。
+
+    Args:
+        host: host 参数。
+    """
     h = (host or "").strip().lower()
     if h.startswith("[") and h.endswith("]"):
         h = h[1:-1]
@@ -31,7 +38,11 @@ def is_loopback_host(host: str) -> bool:
 
 
 def assert_platform_bind_allowed(host: str) -> None:
-    """Refuse public binds unless a platform API token is set."""
+    """Refuse public binds unless a platform API token is set.
+
+    Args:
+        host: host 参数。
+    """
     if is_loopback_host(host) or platform_api_token():
         return
     raise SystemExit(
@@ -41,6 +52,11 @@ def assert_platform_bind_allowed(host: str) -> None:
 
 
 def extract_request_token(request: Any) -> Optional[str]:
+    """extract_request_token。
+
+    Args:
+        request: FastAPI Request。
+    """
     header = (request.headers.get("x-aiplat-platform-token") or "").strip()
     if header:
         return header
@@ -55,6 +71,12 @@ def extract_request_token(request: Any) -> Optional[str]:
 
 
 def tokens_match(expected: str, provided: Optional[str]) -> bool:
+    """tokens_match。
+
+    Args:
+        expected: expected 参数。
+        provided: provided 参数。
+    """
     if not provided or len(provided) != len(expected):
         return False
     return secrets.compare_digest(expected, provided)
@@ -75,6 +97,12 @@ class PlatformTokenMiddleware(BaseHTTPMiddleware):
     """Require the platform API token when one is configured."""
 
     async def dispatch(self, request: Any, call_next) -> Any:
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         if not _HAS_ASGI:
             raise RuntimeError("starlette required for PlatformTokenMiddleware")
         path = request.url.path or ""

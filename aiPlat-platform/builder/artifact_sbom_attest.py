@@ -44,6 +44,8 @@ def _prodish() -> bool:
 
 
 def p2_1_sbom_required() -> bool:
+    """p2_1_sbom_required。
+    """
     flag = (os.getenv("AIPLAT_P2_1_SBOM") or "").strip().lower()
     if flag in ("0", "false", "off", "no"):
         return False
@@ -53,6 +55,8 @@ def p2_1_sbom_required() -> bool:
 
 
 def default_allowlist_path() -> Path:
+    """default_allowlist_path。
+    """
     override = (os.getenv("AIPLAT_MCP_PLUGIN_ALLOWLIST") or "").strip()
     if override:
         return Path(override)
@@ -65,6 +69,11 @@ def default_allowlist_path() -> Path:
 
 
 def load_mcp_plugin_allowlist(*, path: Optional[Path] = None) -> Dict[str, Any]:
+    """load_mcp_plugin_allowlist。
+
+    Args:
+        path: 路径。
+    """
     p = Path(path) if path else default_allowlist_path()
     if not p.is_file():
         return {
@@ -158,6 +167,11 @@ def _parse_pyproject(text: str) -> List[Dict[str, str]]:
 
 
 def collect_components(root: Path) -> List[Dict[str, str]]:
+    """collect_components。
+
+    Args:
+        root: root 参数。
+    """
     root = Path(root)
     seen: Dict[str, Dict[str, str]] = {}
     # requirements*.txt
@@ -197,7 +211,12 @@ def generate_sbom_cyclonedx_lite(
     *,
     artifact_id: str = "",
 ) -> Dict[str, Any]:
-    """Engineering CycloneDX-lite SBOM (syft optional upgrade path)."""
+    """Engineering CycloneDX-lite SBOM (syft optional upgrade path).
+
+    Args:
+        root: root 参数。
+        artifact_id: artifact 标识。
+    """
     comps = collect_components(root)
     bom: Dict[str, Any] = {
         "bomFormat": "CycloneDX",
@@ -232,11 +251,23 @@ def generate_sbom_cyclonedx_lite(
 
 
 def sbom_digest(bom: Mapping[str, Any]) -> str:
+    """sbom_digest。
+
+    Args:
+        bom: bom 参数。
+    """
     raw = json.dumps(bom, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
 def write_sbom(root: Path, bom: Mapping[str, Any], *, name: str = SBOM_NAME) -> Path:
+    """write_sbom。
+
+    Args:
+        root: root 参数。
+        bom: bom 参数。
+        name: name 参数。
+    """
     path = Path(root) / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(bom, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -244,7 +275,11 @@ def write_sbom(root: Path, bom: Mapping[str, Any], *, name: str = SBOM_NAME) -> 
 
 
 def discover_declared_mcp_plugins(root: Path) -> Dict[str, List[str]]:
-    """Best-effort scan for MCP server / plugin ids in common manifest files."""
+    """Best-effort scan for MCP server / plugin ids in common manifest files.
+
+    Args:
+        root: root 参数。
+    """
     root = Path(root)
     mcp: List[str] = []
     plugins: List[str] = []
@@ -319,6 +354,12 @@ def evaluate_mcp_plugin_allowlist(
     *,
     allowlist: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """evaluate_mcp_plugin_allowlist。
+
+    Args:
+        root: root 参数。
+        allowlist: allowlist 参数。
+    """
     al = dict(allowlist) if allowlist is not None else load_mcp_plugin_allowlist()
     declared = discover_declared_mcp_plugins(root)
     allowed_mcp = {str(x) for x in (al.get("mcp_servers") or [])}
@@ -365,7 +406,11 @@ def evaluate_mcp_plugin_allowlist(
 
 
 def try_ed25519_sign(manifest_hash: str) -> Optional[str]:
-    """Optional Ed25519 over ``sha256:<hash>``. Returns ``ed25519:<b64>`` or None."""
+    """Optional Ed25519 over ``sha256:<hash>``. Returns ``ed25519:<b64>`` or None.
+
+    Args:
+        manifest_hash: manifest_hash 参数。
+    """
     seed_hex = (os.getenv("AIPLAT_ARTIFACT_MANIFEST_ED25519_SEED") or "").strip()
     key_path = (os.getenv("AIPLAT_ARTIFACT_MANIFEST_ED25519_KEY") or "").strip()
     if not seed_hex and not key_path:
@@ -395,6 +440,12 @@ def try_ed25519_sign(manifest_hash: str) -> Optional[str]:
 
 
 def verify_ed25519_signature(manifest_hash: str, signature: str) -> Tuple[bool, str]:
+    """verify_ed25519_signature。
+
+    Args:
+        manifest_hash: manifest_hash 参数。
+        signature: signature 参数。
+    """
     sig = (signature or "").strip()
     if not sig.startswith("ed25519:"):
         return False, "not_ed25519"
@@ -444,7 +495,13 @@ def build_sbom_attest_bundle(
     artifact_id: str,
     write: bool = True,
 ) -> Dict[str, Any]:
-    """Generate SBOM + allowlist evaluation for a release tree."""
+    """Generate SBOM + allowlist evaluation for a release tree.
+
+    Args:
+        root: root 参数。
+        artifact_id: artifact 标识。
+        write: write 参数。
+    """
     root = Path(root)
     bom = generate_sbom_cyclonedx_lite(root, artifact_id=artifact_id)
     digest = sbom_digest(bom)
@@ -474,7 +531,14 @@ def evaluate_p2_1_gate(
     allowlist: Optional[Mapping[str, Any]] = None,
     require_sbom: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Publish blockers for P2-1."""
+    """Publish blockers for P2-1.
+
+    Args:
+        sbom_digest_value: sbom_digest_value 参数。
+        component_count: component_count 参数。
+        allowlist: allowlist 参数。
+        require_sbom: require_sbom 参数。
+    """
     blockers: List[str] = []
     req = p2_1_sbom_required() if require_sbom is None else bool(require_sbom)
     if req:

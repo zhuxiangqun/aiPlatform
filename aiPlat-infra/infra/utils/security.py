@@ -32,13 +32,23 @@ class SecurityUtils:
     """
 
     def __init__(self, secret_key: Optional[str] = None):
+        """初始化。
+
+        Args:
+            secret_key: secret_key 参数。
+        """
         self._secret_key = secret_key
         self._fernet = None
         if HAS_CRYPTO and secret_key:
             self._fernet = Fernet(self._derive_key(secret_key))
 
     def hash(self, data: str, algorithm: str = "sha256") -> str:
-        """哈希计算"""
+        """哈希计算。
+
+        Args:
+            data: data 参数。
+            algorithm: algorithm 参数。
+        """
         if algorithm == "sha256":
             return hashlib.sha256(data.encode()).hexdigest()
         elif algorithm == "sha512":
@@ -49,7 +59,11 @@ class SecurityUtils:
             raise ValueError(f"Unsupported algorithm: {algorithm}")
 
     def encrypt(self, data: str) -> str:
-        """加密"""
+        """加密。
+
+        Args:
+            data: data 参数。
+        """
         if not self._fernet:
             raise ValueError("Encryption not available. Set secret_key.")
 
@@ -57,7 +71,11 @@ class SecurityUtils:
         return base64.b64encode(encrypted).decode()
 
     def decrypt(self, data: str) -> str:
-        """解密"""
+        """解密。
+
+        Args:
+            data: data 参数。
+        """
         if not self._fernet:
             raise ValueError("Decryption not available. Set secret_key.")
 
@@ -66,18 +84,31 @@ class SecurityUtils:
         return decrypted.decode()
 
     def generate_token(self, length: int = 32) -> str:
-        """生成安全令牌"""
+        """生成安全令牌。
+
+        Args:
+            length: length 参数。
+        """
         return secrets.token_urlsafe(length)
 
     def generate_password(self, length: int = 16) -> str:
-        """生成随机密码"""
+        """生成随机密码。
+
+        Args:
+            length: length 参数。
+        """
         alphabet = (
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
         )
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def verify_signature(self, data: str, signature: str) -> bool:
-        """验证签名（简化版）"""
+        """验证签名（简化版）。
+
+        Args:
+            data: data 参数。
+            signature: signature 参数。
+        """
         expected = self.hash(data)
         return secrets.compare_digest(expected, signature)
 

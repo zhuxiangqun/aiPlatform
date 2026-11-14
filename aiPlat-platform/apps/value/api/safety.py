@@ -19,7 +19,11 @@ router = APIRouter(prefix="/safety", tags=["safety"])
 
 @router.post("/crisis-check", response_model=StatusResponse)
 async def crisis_check(body: Dict[str, Any]):
-    """Check a single message for crisis signals."""
+    """Check a single message for crisis signals.
+
+    Args:
+        body: 请求体。
+    """
     text = body.get("text", "") or body.get("message", "")
     session_id = body.get("session_id", "")
     if not text:
@@ -36,7 +40,11 @@ async def crisis_check(body: Dict[str, Any]):
 
 @router.post("/session-check", response_model=StatusResponse)
 async def session_check(body: Dict[str, Any]):
-    """Check an entire conversation session for crisis signals."""
+    """Check an entire conversation session for crisis signals.
+
+    Args:
+        body: 请求体。
+    """
     messages = body.get("messages", [])
     session_id = body.get("session_id", "")
     if not messages:
@@ -73,7 +81,11 @@ async def session_check(body: Dict[str, Any]):
 
 @router.post("/emotion-state", response_model=StatusResponse)
 async def emotion_state(body: Dict[str, Any]):
-    """Get emotional state for a session after tracking."""
+    """Get emotional state for a session after tracking.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     tenant_id = body.get("tenant_id", "default")
     if not session_id:
@@ -92,7 +104,11 @@ async def emotion_state(body: Dict[str, Any]):
 
 @router.post("/dependency-check", response_model=StatusResponse)
 async def dependency_check(body: Dict[str, Any]):
-    """Check over-dependency risk for a user/session."""
+    """Check over-dependency risk for a user/session.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     tenant_id = body.get("tenant_id", "default")
     if not session_id:
@@ -120,7 +136,11 @@ async def dependency_check(body: Dict[str, Any]):
 
 @router.get("/flagged-sessions", response_model=ItemResponse)
 async def flagged_sessions(tenant_id: str = Query("default")):
-    """List all safety-flagged sessions."""
+    """List all safety-flagged sessions.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     try:
         from core.api.core_facade import get_emotion_tracker
         tracker = get_emotion_tracker()
@@ -136,7 +156,11 @@ async def flagged_sessions(tenant_id: str = Query("default")):
 
 @router.post("/track-emotion", response_model=StatusResponse)
 async def track_emotion(body: Dict[str, Any]):
-    """Track emotion from a completed conversation session."""
+    """Track emotion from a completed conversation session.
+
+    Args:
+        body: 请求体。
+    """
     session_id = body.get("session_id", "")
     messages = body.get("messages", [])
     tenant_id = body.get("tenant_id", "default")

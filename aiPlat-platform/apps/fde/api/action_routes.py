@@ -91,7 +91,15 @@ async def list_actions(
     role: str = Query("", description="Caller's role (optional)"),
     include_cross_domain: bool = Query(False, description="Include cross-domain actions"),
 ):
-    """List actions available for a given entity class + state."""
+    """List actions available for a given entity class + state.
+
+    Args:
+        class_name: class_name 参数。
+        state: state 参数。
+        domain: domain 参数。
+        role: role 参数。
+        include_cross_domain: include_cross_domain 参数。
+    """
     try:
         from core.api.core_facade import get_action_registry
         reg = get_action_registry()
@@ -120,7 +128,14 @@ async def list_graph_entities(
 ):
     """List GraphIndex entities (for AcceptTab picker / live state).
 
-    When actor_role (or identity header) is set, applies graph_abox_acl filter/redact.
+    Args:
+        request: FastAPI Request。
+        domain: domain 参数。
+        class_name: class_name 参数。
+        limit: 返回条数上限。
+        actor_role: actor_role 参数。
+        x_aiplat_actor_role: x_aiplat_actor_role 参数。
+        x_aiplat_scopes: x_aiplat_scopes 参数。
     """
     try:
         from core.api.core_facade import GraphIndex, check_graph_entity_acl, redact_graph_entity_fields
@@ -162,18 +177,8 @@ async def list_graph_entities(
 async def create_graph_entity(body: Dict[str, Any]):
     """Create a demo ABox entity in GraphIndex.
 
-    Body:
-      scenario — optional:
-        "it-ops-alert" — minimal call-path + Alert (path C minimal)
-        "it-ops-alert-complex" — B3.2 teaching flood topology (path C complex)
-        "data-gov-assets" — B4 teaching governance graph + ABox ACL seed
-      profile — optional alias when scenario=it-ops-alert: "minimal"|"complex"
-      domain_id — default lock-service (or it-ops when it-ops scenario)
-      class_name — default 安装工单 / 告警
-      entity_id — optional; auto IO-DEMO-xxx / ALT-DEMO-xxx
-      name — display name
-      state — default pending / open
-      with_technician — bool, also seed TECH-DEMO-001 (lock-service only)
+    Args:
+        body: 请求体。
     """
     scenario = str(body.get("scenario") or "").strip()
     profile = str(body.get("profile") or "").strip().lower()
@@ -303,12 +308,8 @@ async def create_graph_entity(body: Dict[str, Any]):
 async def import_graph_payload(body: Dict[str, Any]):
     """Path B: import monitor/JSON/table ABox into GraphIndex (it-ops / connector domains).
 
-    Body:
-      domain_id — default it-ops
-      source_type — omit|entities|table_map (table_map = CSV/rows via connector.table_map)
-      use_sample — bool, load bundled fixture when payload omitted
-      payload — {entities, relations, primary_alert_id?, default_root?}
-      rows / csv_text / relation_rows — for source_type=table_map
+    Args:
+        body: 请求体。
     """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     source_type = str(body.get("source_type") or "").strip().lower()
@@ -417,7 +418,11 @@ async def import_graph_payload(body: Dict[str, Any]):
 
 @router.get("/ontology/pillars/{domain_id}")
 async def ontology_pillars(domain_id: str):
-    """Read-only data / logic / action three-pillar view for a domain."""
+    """Read-only data / logic / action three-pillar view for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.apps.fde.service.ontology_pillars import get_ontology_pillars
 
@@ -429,7 +434,11 @@ async def ontology_pillars(domain_id: str):
 
 @router.post("/ontology/code-suggestions")
 async def ontology_code_suggestions(body: Dict[str, Any]):
-    """Code/doc → proposal drafts only (never auto-apply)."""
+    """Code/doc → proposal drafts only (never auto-apply).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     try:
         from core.apps.fde.service.ontology_code_suggestions import (
@@ -453,7 +462,11 @@ async def ontology_code_suggestions(body: Dict[str, Any]):
 
 @router.post("/ontology/schema-suggestions")
 async def ontology_schema_suggestions(body: Dict[str, Any]):
-    """Table/CSV headers → Path A proposal draft only (never auto-apply, never write graph)."""
+    """Table/CSV headers → Path A proposal draft only (never auto-apply, never write graph).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     try:
         from core.api.core_facade import suggest_ontology_from_table_schema
@@ -491,7 +504,11 @@ async def ontology_governance_loop():
 
 @router.get("/ontology/governance/quality")
 async def ontology_governance_quality(domain_id: str = Query("data-gov")):
-    """Step ⑥: OCS + data-gov actions + value links (vertical slice)."""
+    """Step ⑥: OCS + data-gov actions + value links (vertical slice).
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import governance_quality_view
 
@@ -503,7 +520,11 @@ async def ontology_governance_quality(domain_id: str = Query("data-gov")):
 
 @router.post("/ontology/governance/locate")
 async def ontology_governance_locate(body: Dict[str, Any]):
-    """Step ⑦: locate GraphIndex entities by business query (not raw DB fetch)."""
+    """Step ⑦: locate GraphIndex entities by business query (not raw DB fetch).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "data-gov").strip() or "data-gov"
     query = str(body.get("query") or body.get("q") or "").strip()
     try:
@@ -522,7 +543,11 @@ async def ontology_governance_locate(body: Dict[str, Any]):
 
 @router.post("/ontology/governance/fetch")
 async def ontology_governance_fetch(body: Dict[str, Any]):
-    """Compat shim → CoreFacade (canonical also under /api/platform/apps/org/connectors/fetch)."""
+    """Compat shim → CoreFacade (canonical also under /api/platform/apps/org/connectors/fetch).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
     purpose = str(body.get("purpose") or "org_pilot").strip() or "org_pilot"
@@ -544,7 +569,11 @@ async def ontology_governance_fetch(body: Dict[str, Any]):
 
 @router.post("/ontology/governance/write-preview")
 async def ontology_governance_write_preview(body: Dict[str, Any]):
-    """Compat shim → CoreFacade (canonical: /api/platform/apps/org/connectors/write-preview)."""
+    """Compat shim → CoreFacade (canonical: /api/platform/apps/org/connectors/write-preview).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
     patch = body.get("patch") if isinstance(body.get("patch"), dict) else {}
@@ -566,7 +595,11 @@ async def ontology_governance_write_preview(body: Dict[str, Any]):
 
 @router.post("/ontology/owl-review/{domain_id}")
 async def ontology_owl_review(domain_id: str):
-    """Offline OWL consistency review — suggestion only; unchecked ≠ valid."""
+    """Offline OWL consistency review — suggestion only; unchecked ≠ valid.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.apps.fde.service.offline_owl_review import review_domain_owl_offline
 
@@ -581,7 +614,11 @@ async def ontology_owl_review(domain_id: str):
 
 @router.post("/ontology/cases")
 async def ontology_record_case(body: Dict[str, Any]):
-    """P0: record an ontology learning case (no TBox mutate)."""
+    """P0: record an ontology learning case (no TBox mutate).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "default").strip() or "default"
     try:
         from core.api.core_facade import record_ontology_case
@@ -610,7 +647,14 @@ async def ontology_search_cases(
     top_k: int = Query(5, ge=1, le=50),
     outcome: str = Query(""),
 ):
-    """P0: reward-weighted case retrieval."""
+    """P0: reward-weighted case retrieval.
+
+    Args:
+        domain_id: domain 标识。
+        q: q 参数。
+        top_k: top_k 参数。
+        outcome: outcome 参数。
+    """
     try:
         from core.api.core_facade import search_ontology_cases
 
@@ -622,7 +666,11 @@ async def ontology_search_cases(
 
 @router.get("/ontology/cases/meta")
 async def ontology_cases_meta(domain_id: str = Query("")):
-    """P2.5: learning flags (UCB / EDGE_AUTO_APPLY) + optional domain counters."""
+    """P2.5: learning flags (UCB / EDGE_AUTO_APPLY) + optional domain counters.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import ontology_case_learning_status
 
@@ -634,7 +682,12 @@ async def ontology_cases_meta(domain_id: str = Query("")):
 
 @router.post("/ontology/cases/{case_id}/feedback")
 async def ontology_case_feedback(case_id: str, body: Dict[str, Any]):
-    """P0 feedback; optional P1 draft proposal when reward threshold met."""
+    """P0 feedback; optional P1 draft proposal when reward threshold met.
+
+    Args:
+        case_id: case 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import feedback_ontology_case
 
@@ -657,7 +710,12 @@ async def ontology_case_feedback(case_id: str, body: Dict[str, Any]):
 
 @router.post("/ontology/cases/{case_id}/evolve")
 async def ontology_case_evolve(case_id: str, body: Optional[Dict[str, Any]] = None):
-    """P1/P2: enqueue VersionedOntologyStore draft; edge auto-apply only if env enabled."""
+    """P1/P2: enqueue VersionedOntologyStore draft; edge auto-apply only if env enabled.
+
+    Args:
+        case_id: case 标识。
+        body: 请求体。
+    """
     body = body or {}
     try:
         from core.api.core_facade import evolve_ontology_from_case
@@ -678,7 +736,11 @@ async def ontology_case_evolve(case_id: str, body: Optional[Dict[str, Any]] = No
 
 @router.post("/ontology/cases/{case_id}/rollback")
 async def ontology_case_rollback(case_id: str):
-    """P2: rollback live YAML for case-linked applied proposal."""
+    """P2: rollback live YAML for case-linked applied proposal.
+
+    Args:
+        case_id: case 标识。
+    """
     try:
         from core.api.core_facade import rollback_ontology_case_evolution
 
@@ -690,7 +752,12 @@ async def ontology_case_rollback(case_id: str):
 
 @router.post("/ontology/proposals/{proposal_id}/rollback")
 async def ontology_proposal_rollback(proposal_id: str, body: Optional[Dict[str, Any]] = None):
-    """P2: rollback applied proposal by id (requires domain_id)."""
+    """P2: rollback applied proposal by id (requires domain_id).
+
+    Args:
+        proposal_id: proposal 标识。
+        body: 请求体。
+    """
     body = body or {}
     domain_id = str(body.get("domain_id") or "").strip()
     if not domain_id:
@@ -712,8 +779,10 @@ async def graph_webhook_ingest(
 ):
     """Production Path B: monitoring / external systems push ABox JSON.
 
-    Resolves ``source_id`` via connector.json (no harness domain hardcoding).
-    Receipt: created_entities / relations / skipped / primary_id.
+    Args:
+        source_id: source 标识。
+        body: 请求体。
+        x_aiplat_webhook_secret: x_aiplat_webhook_secret 参数。
     """
     try:
         from core.api.core_facade import ingest_abox_webhook
@@ -748,12 +817,11 @@ async def execute_action(
 ):
     """Execute a registered action.
 
-    Body:
-      action_id  — registered action identifier
-      entity_id  — target entity ID (str) or [domain, entity_id] for cross-domain
-      params     — input parameters matching action.input_schema
-      actor      — who triggered the action (optional)
-      role       — actor's role for constraint checking (optional; header preferred)
+    Args:
+        body: 请求体。
+        request: FastAPI Request。
+        x_aiplat_actor_role: x_aiplat_actor_role 参数。
+        x_aiplat_scopes: x_aiplat_scopes 参数。
     """
     action_id = str(body.get("action_id", "")).strip()
     entity_ref = body.get("entity_id")
@@ -840,7 +908,11 @@ async def execute_action(
 
 @router.get("/graph/acl/{domain_id}")
 async def get_graph_acl(domain_id: str):
-    """Load ABox ACL document + CRUD matrix (T9 / Phase 3 lite)."""
+    """Load ABox ACL document + CRUD matrix (T9 / Phase 3 lite).
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_abox_acl_doc, get_abox_crud_matrix
 
@@ -856,7 +928,13 @@ async def get_graph_acl(domain_id: str):
 
 @router.put("/graph/acl/{domain_id}/entities/{entity_id}")
 async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, Any]):
-    """Upsert instance ACL (deny_roles / allow_roles)."""
+    """Upsert instance ACL (deny_roles / allow_roles).
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import set_graph_entity_acl
 
@@ -876,7 +954,14 @@ async def put_graph_entity_acl(domain_id: str, entity_id: str, body: Dict[str, A
 async def put_graph_field_acl(
     domain_id: str, entity_id: str, field_name: str, body: Dict[str, Any]
 ):
-    """Upsert field visibility / redaction rule."""
+    """Upsert field visibility / redaction rule.
+
+    Args:
+        domain_id: domain 标识。
+        entity_id: entity 标识。
+        field_name: field_name 参数。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import set_graph_field_acl
 
@@ -903,8 +988,8 @@ async def put_graph_field_acl(
 async def register_from_yaml(body: Dict[str, Any]):
     """Register actions from a YAML file (business expert entry point).
 
-    Body:
-      yaml_path  — path to YAML file (must be within ~/.aiplat/actions/ or ./config/actions/)
+    Args:
+        body: 请求体。
     """
     yaml_path = str(body.get("yaml_path", "")).strip()
     if not yaml_path:
@@ -938,7 +1023,11 @@ async def register_from_yaml(body: Dict[str, Any]):
 async def list_pending_approvals(
     entity_ref: str = Query("", description="Filter by entity (domain:entity_id)"),
 ):
-    """List pending approval requests."""
+    """List pending approval requests.
+
+    Args:
+        entity_ref: entity_ref 参数。
+    """
     try:
         from core.api.core_facade import get_action_registry
         reg = get_action_registry()
@@ -950,7 +1039,12 @@ async def list_pending_approvals(
 
 @router.post("/actions/approvals/{lock_id}/approve")
 async def approve_action(lock_id: str, body: Dict[str, Any] = None):
-    """Approve a pending action."""
+    """Approve a pending action.
+
+    Args:
+        lock_id: lock 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_action_registry
         reg = get_action_registry()
@@ -962,7 +1056,12 @@ async def approve_action(lock_id: str, body: Dict[str, Any] = None):
 
 @router.post("/actions/approvals/{lock_id}/reject")
 async def reject_action(lock_id: str, body: Dict[str, Any] = None):
-    """Reject a pending action."""
+    """Reject a pending action.
+
+    Args:
+        lock_id: lock 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_action_registry
         reg = get_action_registry()

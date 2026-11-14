@@ -28,7 +28,13 @@ _TEAMS_FILE = os.path.join(
 
 class BuilderTeamService:
 
+    """BuilderTeamService。"""
     def __init__(self, model: Any = None):
+        """初始化。
+
+        Args:
+            model: 模型名。
+        """
         self._model = model
         self._teams: Dict[str, TeamConfig] = {}
         self._sessions: Dict[str, Any] = {}
@@ -151,7 +157,12 @@ class BuilderTeamService:
     # ── CRUD ─────────────────────────────────────────────────────────
 
     async def create_team(self, req: TeamAssembleRequest, *, reuse_equivalent: bool = False) -> TeamConfig:
-        """Create a team. When ``reuse_equivalent``, return existing same name+agents."""
+        """Create a team. When ``reuse_equivalent``, return existing same name+agents.
+
+        Args:
+            req: req 参数。
+            reuse_equivalent: reuse_equivalent 参数。
+        """
         if reuse_equivalent:
             existing = self._find_equivalent(req.name, req.stages)
             if existing is not None:
@@ -180,6 +191,8 @@ class BuilderTeamService:
         return team
 
     async def list_teams(self) -> List[TeamConfig]:
+        """列出 teams。
+        """
         return list(self._teams.values())
 
     def reload_teams(self) -> None:
@@ -187,9 +200,20 @@ class BuilderTeamService:
         self._load_teams()
 
     async def get_team(self, team_id: str) -> Optional[TeamConfig]:
+        """获取 team。
+
+        Args:
+            team_id: team 标识。
+        """
         return self._teams.get(team_id)
 
     async def update_team(self, team_id: str, req: TeamAssembleRequest) -> Optional[TeamConfig]:
+        """更新 team。
+
+        Args:
+            team_id: team 标识。
+            req: req 参数。
+        """
         if team_id not in self._teams:
             return None
         existing = self._teams[team_id]
@@ -206,6 +230,11 @@ class BuilderTeamService:
         return self._teams[team_id]
 
     async def delete_team(self, team_id: str) -> bool:
+        """删除 team。
+
+        Args:
+            team_id: team 标识。
+        """
         if team_id in self._teams:
             del self._teams[team_id]
             self._save_teams()
@@ -214,6 +243,13 @@ class BuilderTeamService:
 
     async def run_team(self, team_id: str, description: str = "",
                        prd_data: Optional[Dict] = None) -> Dict[str, Any]:
+        """run_team。
+
+        Args:
+            team_id: team 标识。
+            description: description 参数。
+            prd_data: prd_data 参数。
+        """
         team = self._teams.get(team_id)
         if not team:
             raise ValueError(f"Team {team_id} not found")
@@ -236,6 +272,11 @@ class BuilderTeamService:
         # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.approve_stage
         # （v3.1 Core HTTP 唯一实现）——原本地 session.approve（PipelineSession 旧语义）
         # 与生产路径不一致。
+        """approve_stage。
+
+        Args:
+            team_id: team 标识。
+        """
         from builder.builder_project_service import _get_project_service
         result = await _get_project_service().approve_stage(team_id)
         state = result.get("state", {}) if isinstance(result, dict) else {}
@@ -245,6 +286,12 @@ class BuilderTeamService:
 
     async def reject_stage(self, team_id: str, feedback: str) -> Dict[str, Any]:
         # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        """reject_stage。
+
+        Args:
+            team_id: team 标识。
+            feedback: feedback 参数。
+        """
         from builder.builder_project_service import _get_project_service
         result = await _get_project_service().reject_stage(team_id, feedback)
         state = result.get("state", {}) if isinstance(result, dict) else {}
@@ -253,4 +300,9 @@ class BuilderTeamService:
                 "state": state}
 
     async def get_team_state(self, team_id: str) -> Dict[str, Any]:
+        """获取 team_state。
+
+        Args:
+            team_id: team 标识。
+        """
         return self._runs.get(team_id, {"team_id": team_id, "phase": "unknown"})

@@ -1,3 +1,5 @@
+"""prometheus：模块接口。"""
+
 import logging
 """
 Prometheus Metrics Exporter for Management Module
@@ -39,7 +41,11 @@ class PrometheusMetric:
         self.timestamp = time.time()
     
     def set_value(self, value: float):
-        """Set metric value"""
+        """Set metric value。
+
+        Args:
+            value: value 参数。
+        """
         self.value = value
         self.timestamp = time.time()
     

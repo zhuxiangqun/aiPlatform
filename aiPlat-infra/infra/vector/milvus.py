@@ -1,3 +1,5 @@
+"""milvus：模块接口。"""
+
 import asyncio
 import uuid
 from typing import List, Optional, Dict, Any
@@ -7,7 +9,13 @@ from .schemas import Vector, SearchResult, VectorConfig
 
 
 class MilvusStore(VectorStore):
+    """MilvusStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._collection_name = None
@@ -48,6 +56,12 @@ class MilvusStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -81,6 +95,13 @@ class MilvusStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         search_params = {}
@@ -124,6 +145,11 @@ class MilvusStore(VectorStore):
         return search_results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         if not ids:
@@ -137,6 +163,11 @@ class MilvusStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         results = self._client.get(
@@ -159,12 +190,19 @@ class MilvusStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         
         stats = self._client.get_collection_stats(self._collection_name)
         return stats.get("row_count", 0)
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -192,6 +230,12 @@ class MilvusStore(VectorStore):
         return ids
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
         
         self._client.create_index(
@@ -203,6 +247,8 @@ class MilvusStore(VectorStore):
         )
 
     async def close(self) -> None:
+        """close。
+        """
         if self._client:
             self._client.close()
             self._client = None
@@ -213,7 +259,13 @@ MilvusClient = MilvusStore
 
 
 class LegacyMilvusStore(VectorStore):
+    """LegacyMilvusStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._collection = None
@@ -263,6 +315,12 @@ class LegacyMilvusStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -284,6 +342,13 @@ class LegacyMilvusStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         search_params = {"metric_type": "IP", "params": {"nprobe": 10}}
@@ -311,6 +376,11 @@ class LegacyMilvusStore(VectorStore):
         return search_results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         if not ids:
@@ -323,6 +393,11 @@ class LegacyMilvusStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         self._collection.load()
@@ -343,15 +418,28 @@ class LegacyMilvusStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         
         stats = self._collection.num_entities
         return stats
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         return await self.add(vectors)
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
         
         index_params = {
@@ -363,6 +451,8 @@ class LegacyMilvusStore(VectorStore):
         self._collection.create_index("embedding", index_params)
 
     async def close(self):
+        """close。
+        """
         from pymilvus import connections
         
         if self._collection:

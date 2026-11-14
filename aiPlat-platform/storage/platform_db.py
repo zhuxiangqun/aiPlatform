@@ -101,6 +101,8 @@ class PlatformDB:
         return cls._instance
 
     def __init__(self):
+        """初始化。
+        """
         if self._initialized:
             return
         self._initialized = True
@@ -112,7 +114,11 @@ class PlatformDB:
     # ── Tenant CRUD ──────────────────────────────────────
 
     def upsert_tenant(self, data: Dict[str, Any]) -> None:
-        """Insert or update a tenant."""
+        """Insert or update a tenant.
+
+        Args:
+            data: data 参数。
+        """
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
             """INSERT OR REPLACE INTO tenants
@@ -132,6 +138,11 @@ class PlatformDB:
         self._conn.commit()
 
     def get_tenant(self, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """获取 tenant。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         row = self._conn.execute(
             "SELECT * FROM tenants WHERE tenant_id=? AND status!='deleted'",
             (tenant_id,)
@@ -141,6 +152,11 @@ class PlatformDB:
         return dict(row)
 
     def find_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """find_by_email。
+
+        Args:
+            email: email 参数。
+        """
         row = self._conn.execute(
             "SELECT * FROM tenants WHERE name=? AND status!='deleted'",
             (email,)
@@ -148,6 +164,11 @@ class PlatformDB:
         return dict(row) if row else None
 
     def list_tenants(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """列出 tenants。
+
+        Args:
+            status: status 参数。
+        """
         if status:
             rows = self._conn.execute(
                 "SELECT * FROM tenants WHERE status=?", (status,)
@@ -157,6 +178,11 @@ class PlatformDB:
         return [dict(r) for r in rows]
 
     def delete_tenant(self, tenant_id: str) -> None:
+        """删除 tenant。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         self._conn.execute(
             "UPDATE tenants SET status='deleted', updated_at=? WHERE tenant_id=?",
             (datetime.now(timezone.utc).isoformat(), tenant_id),
@@ -166,6 +192,11 @@ class PlatformDB:
     # ── API Key CRUD ────────────────────────────────────
 
     def upsert_api_key(self, data: Dict[str, Any]) -> None:
+        """upsert_api_key。
+
+        Args:
+            data: data 参数。
+        """
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
             """INSERT OR REPLACE INTO api_keys
@@ -181,6 +212,11 @@ class PlatformDB:
         self._conn.commit()
 
     def get_api_key(self, key_hash: str) -> Optional[Dict[str, Any]]:
+        """获取 api_key。
+
+        Args:
+            key_hash: key_hash 参数。
+        """
         row = self._conn.execute(
             "SELECT * FROM api_keys WHERE key_hash=? AND active=1", (key_hash,)
         ).fetchone()
@@ -194,6 +230,11 @@ class PlatformDB:
         return d
 
     def list_api_keys(self, tenant_id: str) -> List[Dict[str, Any]]:
+        """列出 api_keys。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         rows = self._conn.execute(
             "SELECT key_hash, key_prefix, user_id, tenant_id, app_id, active, expires_at, created_at, permissions FROM api_keys WHERE tenant_id=?",
             (tenant_id,)
@@ -210,6 +251,11 @@ class PlatformDB:
         return result
 
     def revoke_api_key(self, key_hash: str) -> bool:
+        """revoke_api_key。
+
+        Args:
+            key_hash: key_hash 参数。
+        """
         self._conn.execute(
             "UPDATE api_keys SET active=0 WHERE key_hash=?", (key_hash,)
         )
@@ -219,6 +265,11 @@ class PlatformDB:
     # ── Quota CRUD ──────────────────────────────────────
 
     def upsert_quota(self, data: Dict[str, Any]) -> None:
+        """upsert_quota。
+
+        Args:
+            data: data 参数。
+        """
         now = datetime.now(timezone.utc).isoformat()
         self._conn.execute(
             """INSERT OR REPLACE INTO quotas
@@ -235,6 +286,11 @@ class PlatformDB:
         self._conn.commit()
 
     def get_quota(self, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """获取 quota。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         row = self._conn.execute(
             "SELECT * FROM quotas WHERE tenant_id=?", (tenant_id,)
         ).fetchone()
@@ -243,6 +299,11 @@ class PlatformDB:
     # ── Billing CRUD ────────────────────────────────────
 
     def insert_billing_record(self, data: Dict[str, Any]) -> None:
+        """insert_billing_record。
+
+        Args:
+            data: data 参数。
+        """
         self._conn.execute(
             "INSERT INTO billing_records (id, tenant_id, capability_type, tokens_used, cost_cents, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
             (data["id"], data["tenant_id"], data.get("capability_type", ""),
@@ -252,6 +313,13 @@ class PlatformDB:
         self._conn.commit()
 
     def get_monthly_breakdown(self, tenant_id: str, year: int, month: int) -> List[Dict[str, Any]]:
+        """获取 monthly_breakdown。
+
+        Args:
+            tenant_id: 租户 ID。
+            year: year 参数。
+            month: month 参数。
+        """
         month_str = f"{year}-{month:02d}"
         rows = self._conn.execute(
             """SELECT capability_type, SUM(tokens_used) as tokens, SUM(cost_cents) as cost
@@ -263,6 +331,12 @@ class PlatformDB:
         return [dict(r) for r in rows]
 
     def get_total_monthly_tokens(self, year: int, month: int) -> int:
+        """获取 total_monthly_tokens。
+
+        Args:
+            year: year 参数。
+            month: month 参数。
+        """
         month_str = f"{year}-{month:02d}"
         row = self._conn.execute(
             "SELECT COALESCE(SUM(tokens_used), 0) FROM billing_records WHERE substr(recorded_at, 1, 7)=?",
@@ -272,4 +346,6 @@ class PlatformDB:
 
 
 def get_platform_db() -> PlatformDB:
+    """获取 platform_db。
+    """
     return PlatformDB()

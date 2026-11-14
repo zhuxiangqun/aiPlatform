@@ -28,6 +28,13 @@ def _store(rt: Optional[KernelRuntime]):
 
 @router.get("/quota/snapshot", response_model=StatusResponse)
 async def get_quota_snapshot(tenant_id: str, http_request: Request, rt: RuntimeDep = None):
+    """获取 quota_snapshot。
+
+    Args:
+        tenant_id: 租户 ID。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -48,6 +55,13 @@ async def get_quota_snapshot(tenant_id: str, http_request: Request, rt: RuntimeD
 
 @router.put("/quota/snapshot", response_model=StatusResponse)
 async def put_quota_snapshot(request: dict, http_request: Request, rt: RuntimeDep = None):
+    """put_quota_snapshot。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -101,6 +115,18 @@ async def get_quota_usage(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
+    """获取 quota_usage。
+
+    Args:
+        http_request: http_request 参数。
+        tenant_id: 租户 ID。
+        day_start: day_start 参数。
+        day_end: day_end 参数。
+        metric_key: metric_key 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

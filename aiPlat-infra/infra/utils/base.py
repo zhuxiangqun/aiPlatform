@@ -15,12 +15,21 @@ class ErrorHandler(ABC):
 
     @abstractmethod
     def handle(self, error: Exception, context: dict) -> ErrorEvent:
-        """处理错误"""
+        """处理错误。
+
+        Args:
+            error: error 参数。
+            context: context 参数。
+        """
         pass
 
     @abstractmethod
     def get_errors(self, filters: dict) -> List[ErrorEvent]:
-        """获取错误列表"""
+        """获取错误列表。
+
+        Args:
+            filters: filters 参数。
+        """
         pass
 
     @abstractmethod
@@ -34,10 +43,20 @@ class InputValidator(ABC):
 
     @abstractmethod
     def validate(self, value: Any, rules: List) -> ValidationResult:
-        """验证输入"""
+        """验证输入。
+
+        Args:
+            value: value 参数。
+            rules: rules 参数。
+        """
         pass
 
     @abstractmethod
     def validate_schema(self, data: dict, schema: dict) -> ValidationResult:
-        """验证数据模式"""
+        """验证数据模式。
+
+        Args:
+            data: data 参数。
+            schema: schema 参数。
+        """
         pass

@@ -95,6 +95,13 @@ def _svc(rt: Optional[KernelRuntime]):
 
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(request: ConversationCreateRequest, http_request: Request, rt: RuntimeDep = None):
+    """创建 conversation。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(request.tenant_id or actor.get("tenant_id") or "default")
     user_id = str(request.user_id or actor.get("actor_id") or "system")
@@ -111,6 +118,15 @@ async def create_conversation(request: ConversationCreateRequest, http_request: 
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def list_conversations(http_request: Request, user_id: Optional[str] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
+    """列出 conversations。
+
+    Args:
+        http_request: http_request 参数。
+        user_id: 用户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     actor = actor_from_http(http_request, {})
     tenant_id = str(actor.get("tenant_id") or "default")
     uid = str(user_id or actor.get("actor_id") or "system")
@@ -119,6 +135,12 @@ async def list_conversations(http_request: Request, user_id: Optional[str] = Non
 
 @router.get("/conversations/{session_id}", response_model=ConversationResponse)
 async def get_conversation(session_id: str, rt: RuntimeDep = None):
+    """获取 conversation。
+
+    Args:
+        session_id: 会话 ID。
+        rt: rt 参数。
+    """
     try:
         return await _svc(rt).get_conversation_session(session_id=session_id)
     except ValueError:
@@ -127,6 +149,14 @@ async def get_conversation(session_id: str, rt: RuntimeDep = None):
 
 @router.put("/conversations/{session_id}/scope", response_model=ConversationScopeUpdateResponse)
 async def update_conversation_scope(session_id: str, request: ConversationScopeUpdateRequest, http_request: Request, rt: RuntimeDep = None):
+    """更新 conversation_scope。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(actor.get("tenant_id") or "default")
     user_id = str(actor.get("actor_id") or "system")
@@ -145,6 +175,14 @@ async def update_conversation_scope(session_id: str, request: ConversationScopeU
 
 @router.post("/conversations/{session_id}/query", response_model=ConversationQueryResponse)
 async def query_conversation(session_id: str, request: ConversationQueryRequest, http_request: Request, rt: RuntimeDep = None):
+    """query_conversation。
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     actor = actor_from_http(http_request, request.model_dump())
     tenant_id = str(actor.get("tenant_id") or "default")
     user_id = str(request.user_id or actor.get("actor_id") or "system")
@@ -216,7 +254,14 @@ async def query_conversation(session_id: str, request: ConversationQueryRequest,
 
 @router.post("/conversations/{session_id}/query/stream", response_model=StatusResponse)
 async def query_conversation_stream(session_id: str, request: ConversationQueryRequest, http_request: Request, rt: RuntimeDep = None):
-    """Stream conversation query response via Server-Sent Events."""
+    """Stream conversation query response via Server-Sent Events.
+
+    Args:
+        session_id: 会话 ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     from fastapi.responses import StreamingResponse
     import json as _json
 

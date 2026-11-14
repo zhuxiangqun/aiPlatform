@@ -1,3 +1,5 @@
+"""httpx_client：模块接口。"""
+
 import time
 from typing import Optional, Dict, Any
 from .base import HTTPClient, AsyncHTTPClient
@@ -6,7 +8,13 @@ from .response import Response
 
 
 class SyncHTTPClient(HTTPClient):
+    """SyncHTTPClient。"""
     def __init__(self, config: Optional[HTTPConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or HTTPConfig()
         import httpx
 
@@ -68,35 +76,92 @@ class SyncHTTPClient(HTTPClient):
         raise last_exception
 
     def get(self, url: str, **kwargs: Any) -> Response:
+        """get。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("GET", url, **kwargs)
 
     def post(self, url: str, **kwargs: Any) -> Response:
+        """post。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("POST", url, **kwargs)
 
     def put(self, url: str, **kwargs: Any) -> Response:
+        """put。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("PUT", url, **kwargs)
 
     def patch(self, url: str, **kwargs: Any) -> Response:
+        """patch。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("PATCH", url, **kwargs)
 
     def delete(self, url: str, **kwargs: Any) -> Response:
+        """delete。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("DELETE", url, **kwargs)
 
     def head(self, url: str, **kwargs: Any) -> Response:
+        """head。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("HEAD", url, **kwargs)
 
     def options(self, url: str, **kwargs: Any) -> Response:
+        """options。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request("OPTIONS", url, **kwargs)
 
     def request(self, method: str, url: str, **kwargs: Any) -> Response:
+        """request。
+
+        Args:
+            method: method 参数。
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return self._request(method, url, **kwargs)
 
     def close(self) -> None:
+        """close。
+        """
         self._client.close()
 
 
 class AsyncHTTPClientImpl(AsyncHTTPClient):
+    """AsyncHTTPClientImpl。"""
     def __init__(self, config: Optional[HTTPConfig] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or HTTPConfig()
         import httpx
 
@@ -159,22 +224,61 @@ class AsyncHTTPClientImpl(AsyncHTTPClient):
         raise last_exception
 
     async def get(self, url: str, **kwargs: Any) -> Response:
+        """get。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("GET", url, **kwargs)
 
     async def post(self, url: str, **kwargs: Any) -> Response:
+        """post。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("POST", url, **kwargs)
 
     async def put(self, url: str, **kwargs: Any) -> Response:
+        """put。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("PUT", url, **kwargs)
 
     async def patch(self, url: str, **kwargs: Any) -> Response:
+        """patch。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("PATCH", url, **kwargs)
 
     async def delete(self, url: str, **kwargs: Any) -> Response:
+        """delete。
+
+        Args:
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request("DELETE", url, **kwargs)
 
     async def request(self, method: str, url: str, **kwargs: Any) -> Response:
+        """request。
+
+        Args:
+            method: method 参数。
+            url: url 参数。
+            kwargs: kwargs 参数。
+        """
         return await self._request(method, url, **kwargs)
 
     async def aclose(self) -> None:
+        """aclose。
+        """
         await self._client.aclose()

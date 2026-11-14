@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import DatabaseClient, ConnectionPool
 from .schemas import DatabaseConfig, PoolConfig, SSLConfig, PoolStats
 from .factory import create_database_client

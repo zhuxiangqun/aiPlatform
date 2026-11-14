@@ -41,11 +41,12 @@ def _harness(rt: RuntimeDep):
 
 @router.post("/gateway/execute", response_model=StatusResponse)
 async def gateway_execute(request: GatewayExecuteRequest, http_request: Request, rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """
-    Unified external entry for multi-channel integrations.
+    """Unified external entry for multi-channel integrations.
 
-    This endpoint is intentionally thin: it reuses HarnessIntegration.execute()
-    so that toolset / approvals / tracing policies apply consistently.
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     harness = _harness(rt)
     store = _store(rt)
@@ -292,11 +293,12 @@ async def gateway_execute(request: GatewayExecuteRequest, http_request: Request,
 
 @router.post("/gateway/webhook/message", response_model=StatusResponse)
 async def gateway_webhook_message(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
-    """
-    Minimal webhook adapter (Roadmap-3):
-    - Accept a generic incoming message event
-    - Convert to GatewayExecuteRequest
-    - Reuse /gateway/execute so pairing/auth/toolset/tracing stay consistent
+    """Minimal webhook adapter (Roadmap-3):。
+
+    Args:
+        http_request: http_request 参数。
+        body: 请求体。
+        rt: rt 参数。
     """
     payload = body.get("payload") if isinstance(body.get("payload"), dict) else None
     if payload is None:
@@ -338,6 +340,16 @@ async def list_gateway_pairings(
     offset: int = 0,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """列出 gateway_pairings。
+
+    Args:
+        http_request: http_request 参数。
+        channel: channel 参数。
+        user_id: 用户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -347,6 +359,13 @@ async def list_gateway_pairings(
 
 @router.post("/gateway/pairings", response_model=StatusResponse)
 async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """upsert_gateway_pairing。
+
+    Args:
+        http_request: http_request 参数。
+        body: 请求体。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -368,6 +387,14 @@ async def upsert_gateway_pairing(http_request: Request, body: Dict[str, Any], rt
 
 @router.delete("/gateway/pairings", response_model=StatusResponse)
 async def delete_gateway_pairing(http_request: Request, channel: str, channel_user_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """删除 gateway_pairing。
+
+    Args:
+        http_request: http_request 参数。
+        channel: channel 参数。
+        channel_user_id: channel_user 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -380,6 +407,15 @@ async def delete_gateway_pairing(http_request: Request, channel: str, channel_us
 
 @router.get("/gateway/tokens", response_model=StatusResponse)
 async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = None, limit: int = 100, offset: int = 0, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """列出 gateway_tokens。
+
+    Args:
+        http_request: http_request 参数。
+        enabled: 是否启用。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -389,6 +425,13 @@ async def list_gateway_tokens(http_request: Request, enabled: Optional[bool] = N
 
 @router.post("/gateway/tokens", response_model=StatusResponse)
 async def create_gateway_token(http_request: Request, body: Dict[str, Any], rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """创建 gateway_token。
+
+    Args:
+        http_request: http_request 参数。
+        body: 请求体。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -410,6 +453,13 @@ async def create_gateway_token(http_request: Request, body: Dict[str, Any], rt: 
 
 @router.delete("/gateway/tokens/{token_id}", response_model=StatusResponse)
 async def delete_gateway_token(http_request: Request, token_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """删除 gateway_token。
+
+    Args:
+        http_request: http_request 参数。
+        token_id: token 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -430,6 +480,17 @@ async def list_gateway_delivery_dlq(
     offset: int = 0,
     rt: RuntimeDep = Depends(get_kernel_runtime),
 ):
+    """列出 gateway_delivery_dlq。
+
+    Args:
+        http_request: http_request 参数。
+        status: status 参数。
+        connector: connector 参数。
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -445,6 +506,13 @@ async def list_gateway_delivery_dlq(
 
 @router.post("/gateway/dlq/{dlq_id}/retry", response_model=StatusResponse)
 async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """retry_gateway_delivery_dlq。
+
+    Args:
+        http_request: http_request 参数。
+        dlq_id: dlq 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -471,6 +539,13 @@ async def retry_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: Run
 
 @router.delete("/gateway/dlq/{dlq_id}", response_model=StatusResponse)
 async def delete_gateway_delivery_dlq(http_request: Request, dlq_id: str, rt: RuntimeDep = Depends(get_kernel_runtime)):
+    """删除 gateway_delivery_dlq。
+
+    Args:
+        http_request: http_request 参数。
+        dlq_id: dlq 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

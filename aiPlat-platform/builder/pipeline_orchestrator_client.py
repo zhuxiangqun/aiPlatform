@@ -30,6 +30,11 @@ class PipelineOrchestratorClient:
     """Platform-side client for Core pipeline API."""
 
     def __init__(self, base_url: str = _CORE_URL):
+        """初始化。
+
+        Args:
+            base_url: base_url 参数。
+        """
         self._base_url = base_url
         self._api_prefix = f"{base_url}/api/core/pipeline"
 
@@ -40,7 +45,13 @@ class PipelineOrchestratorClient:
         *,
         timeout: float = _REQUEST_TIMEOUT,
     ) -> Dict[str, Any]:
-        """Trigger a pipeline run. Returns {status, run_id} immediately."""
+        """Trigger a pipeline run. Returns {status, run_id} immediately.
+
+        Args:
+            project_id: project 标识。
+            config: config 参数。
+            timeout: 超时秒数。
+        """
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(
@@ -65,7 +76,12 @@ class PipelineOrchestratorClient:
         *,
         timeout: float = _POLL_TIMEOUT,
     ) -> Dict[str, Any]:
-        """Read pipeline state for frontend polling."""
+        """Read pipeline state for frontend polling.
+
+        Args:
+            project_id: project 标识。
+            timeout: 超时秒数。
+        """
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.get(f"{self._api_prefix}/{project_id}/state")
@@ -84,7 +100,12 @@ class PipelineOrchestratorClient:
         *,
         timeout: float = _REQUEST_TIMEOUT,
     ) -> Dict[str, Any]:
-        """Cancel a running pipeline."""
+        """Cancel a running pipeline.
+
+        Args:
+            project_id: project 标识。
+            timeout: 超时秒数。
+        """
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(f"{self._api_prefix}/{project_id}/cancel")
@@ -102,7 +123,14 @@ class PipelineOrchestratorClient:
         *,
         timeout: float = _REQUEST_TIMEOUT,
     ) -> Dict[str, Any]:
-        """Resolve a HITL pause on Core — approve or reject."""
+        """Resolve a HITL pause on Core — approve or reject.
+
+        Args:
+            project_id: project 标识。
+            action: action 参数。
+            feedback: feedback 参数。
+            timeout: 超时秒数。
+        """
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(
@@ -126,7 +154,17 @@ class PipelineOrchestratorClient:
         preserve_artifacts: Optional[List[str]] = None,
         timeout: float = _REQUEST_TIMEOUT,
     ) -> Dict[str, Any]:
-        """Non-blocking stage-level restart on Core (regenerate/rollback/resume)."""
+        """Non-blocking stage-level restart on Core (regenerate/rollback/resume).
+
+        Args:
+            project_id: project 标识。
+            op: op 参数。
+            stage_id: stage 标识。
+            feedback: feedback 参数。
+            config: config 参数。
+            preserve_artifacts: preserve_artifacts 参数。
+            timeout: 超时秒数。
+        """
         try:
             payload: Dict[str, Any] = {
                 "op": op,

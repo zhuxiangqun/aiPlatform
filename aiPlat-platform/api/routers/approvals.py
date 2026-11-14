@@ -123,6 +123,22 @@ async def list_approvals(
     offset: int = 0,
     _auth: str = Depends(require_auth),
 ):
+    """列出 approvals。
+
+    Args:
+        status: status 参数。
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        run_id: 运行 ID。
+        operation: operation 参数。
+        user_id: 用户 ID。
+        include_related_counts: include_related_counts 参数。
+        order_by: order_by 参数。
+        order_dir: order_dir 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -171,6 +187,16 @@ async def list_pending_approvals(
     _auth: str = Depends(require_auth),
 ):
     # Prefer store listing (no in-memory manager required). Lazily resolve store first.
+    """列出 pending_approvals。
+
+    Args:
+        user_id: 用户 ID。
+        order_by: order_by 参数。
+        order_dir: order_dir 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     store = _store()
     if store:
         res = await store.list_approval_requests(
@@ -241,7 +267,16 @@ async def list_unattended_approvals(
     limit: int = 200,
     _auth: str = Depends(require_auth),
 ):
-    """OpenWorker P1: park queue for tool approvals under attendance=inbox|auto."""
+    """OpenWorker P1: park queue for tool approvals under attendance=inbox|auto.
+
+    Args:
+        http_request: http_request 参数。
+        visibility: visibility 参数。
+        pending_only: pending_only 参数。
+        session_id: 会话 ID。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=None,
@@ -267,6 +302,13 @@ async def set_unattended_attendance_route(
     http_request: Request,
     _auth: str = Depends(require_auth),
 ):
+    """set_unattended_attendance_route。
+
+    Args:
+        body: 请求体。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=body,
@@ -290,6 +332,14 @@ async def resolve_unattended_approval_route(
     http_request: Request,
     _auth: str = Depends(require_auth),
 ):
+    """resolve_unattended_approval_route。
+
+    Args:
+        item_id: item 标识。
+        body: 请求体。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     deny = await rbac_guard(
         http_request=http_request,
         payload=body,
@@ -317,6 +367,12 @@ async def resolve_unattended_approval_route(
 
 @router.get("/approvals/{request_id}", response_model=StatusResponse)
 async def get_approval_request(request_id: str, _auth: str = Depends(require_auth)):
+    """获取 approval_request。
+
+    Args:
+        request_id: request 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -376,11 +432,25 @@ async def get_approval_request(request_id: str, _auth: str = Depends(require_aut
 @router.get("/approvals/{request_id}/audit", response_model=StatusResponse)
 async def get_approval_audit(request_id: str, _auth: str = Depends(require_auth)):
     # backward-compatible alias
+    """获取 approval_audit。
+
+    Args:
+        request_id: request 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await get_approval_request(request_id)
 
 
 @router.post("/approvals/{request_id}/approve", response_model=ApprovalActionResponse)
 async def approve_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
+    """approve_request。
+
+    Args:
+        request_id: request 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -474,6 +544,14 @@ async def approve_request(request_id: str, request: dict, http_request: Request,
 
 @router.post("/approvals/{request_id}/reject", response_model=ApprovalActionResponse)
 async def reject_request(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
+    """reject_request。
+
+    Args:
+        request_id: request 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _approval_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="ApprovalManager not initialized")
@@ -529,11 +607,13 @@ async def reject_request(request_id: str, request: dict, http_request: Request, 
 
 @router.post("/approvals/{request_id}/replay", response_model=StatusResponse)
 async def replay_approval(request_id: str, request: dict, http_request: Request, _auth: str = Depends(require_auth)):
-    """
-    PR-08: Approval Hub replay
+    """PR-08: Approval Hub replay。
 
-    - tool:* : replay blocked tool call with _approval_request_id injected
-    - learning:* : re-run publish/rollback actions (status transitions only)
+    Args:
+        request_id: request 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
     """
     mgr = _approval_mgr()
     if not mgr:

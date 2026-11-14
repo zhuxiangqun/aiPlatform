@@ -1,3 +1,5 @@
+"""pdf_render：模块接口。"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,9 +8,13 @@ import logging
 
 
 def render_pdf_to_images(pdf_path: str, *, out_dir: str, dpi: int = 200, max_pages: Optional[int] = None) -> List[str]:
-    """
-    将 PDF 渲染为按页图片（PNG）。
-    - 优先使用 PyMuPDF(fitz)；若不可用可再扩展 pypdfium2。
+    """将 PDF 渲染为按页图片（PNG）。
+
+    Args:
+        pdf_path: pdf_path 参数。
+        out_dir: out_dir 参数。
+        dpi: dpi 参数。
+        max_pages: max_pages 参数。
     """
     out = []
     p = Path(out_dir)

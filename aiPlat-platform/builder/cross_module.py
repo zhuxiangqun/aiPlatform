@@ -55,7 +55,11 @@ def _module_key(module_id: str) -> str:
 
 
 def scan_module_contracts(root: str) -> Dict[str, Any]:
-    """Extract declared contracts of one module: apis / events / entity modules."""
+    """Extract declared contracts of one module: apis / events / entity modules.
+
+    Args:
+        root: root 参数。
+    """
     apis: List[str] = []
     events: List[str] = []
     entity_mods: Set[str] = set()
@@ -109,7 +113,9 @@ def _module_calls_target(module_files: Dict[str, str], target: Dict[str, Any],
 def analyze_cross_module(modules: List[Dict[str, Any]], workspace_root: str) -> Dict[str, Any]:
     """Module dependency graph: {module_id: {depends_on, depended_by, evidence}}.
 
-    modules: [{module_id, root (abs path)}]; workspace_root: base for relative roots.
+    Args:
+        modules: modules 参数。
+        workspace_root: workspace_root 参数。
     """
     # 1) scan each module's declared contracts
     contracts: Dict[str, Dict[str, Any]] = {}
@@ -150,7 +156,12 @@ def analyze_cross_module(modules: List[Dict[str, Any]], workspace_root: str) -> 
 
 
 def impact_closure(module_id: str, graph: Dict[str, Any]) -> List[str]:
-    """Affected set = module + everything that depends on it (direct + transitive)."""
+    """Affected set = module + everything that depends on it (direct + transitive).
+
+    Args:
+        module_id: module 标识。
+        graph: graph 参数。
+    """
     affected: List[str] = []
     seen: Set[str] = set()
 
@@ -167,7 +178,12 @@ def impact_closure(module_id: str, graph: Dict[str, Any]) -> List[str]:
 
 
 def topological_order(module_ids: List[str], graph: Dict[str, Any]) -> List[str]:
-    """Order changed modules so dependencies come first (Kahn's algorithm)."""
+    """Order changed modules so dependencies come first (Kahn's algorithm).
+
+    Args:
+        module_ids: module_ids 参数。
+        graph: graph 参数。
+    """
     ordered: List[str] = []
     remaining = set(module_ids)
     while remaining:
@@ -224,12 +240,11 @@ def verify_changed_module_contracts(
 ) -> Dict[str, Any]:
     """L4 v1.5 §3.5: cross-module merge contract gate.
 
-    For every module that depends on `changed_module`, check that the endpoints /
-    entities it references still exist in the changed module's NEW versions
-    (concatenated preview content). Missing → broken contracts listed, merge
-    must be blocked (contract_gate_failed).
-
-    Returns: {ok: bool, broken: [{dependent, kind, ref, detail}], checked: [...]}
+    Args:
+        changed_module: changed_module 参数。
+        previews: previews 参数。
+        graph: graph 参数。
+        module_root: module_root 参数。
     """
     new_text = _new_version_text(previews, module_root)
     broken: List[Dict[str, str]] = []

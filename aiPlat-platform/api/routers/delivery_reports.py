@@ -49,7 +49,15 @@ async def get_delivery_cost_report(
     format: Optional[str] = Query(default="json", description="json | markdown"),
     _auth: str = Depends(require_auth),
 ):
-    """Customer-facing cost page data: cache hits, call volume, routing policy, optional ¥."""
+    """Customer-facing cost page data: cache hits, call volume, routing policy, optional ¥.
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        format: format 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     report = build_delivery_cost_report(
         tenant_id=tenant_id,
         window_hours=window_hours,
@@ -72,7 +80,16 @@ async def get_delivery_monthly_ops_report(
     format: Optional[str] = Query(default="json", description="json | markdown"),
     _auth: str = Depends(require_auth),
 ):
-    """L1 monthly ops report: daemon + cost + KB health (DELIVERY §5)."""
+    """L1 monthly ops report: daemon + cost + KB health (DELIVERY §5).
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        collection_id: collection 标识。
+        format: format 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     report = build_monthly_ops_report(
         tenant_id=tenant_id,
         window_hours=window_hours,
@@ -95,7 +112,15 @@ async def get_delivery_l3_duty_desk(
     format: Optional[str] = Query(default="json", description="json | markdown"),
     _auth: str = Depends(require_auth),
 ):
-    """L3 duty desk: contact + eval observability + miss/low signals + tips."""
+    """L3 duty desk: contact + eval observability + miss/low signals + tips.
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        format: format 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     report = build_l3_duty_desk(
         tenant_id=tenant_id,
         window_hours=window_hours,
@@ -118,7 +143,16 @@ async def get_delivery_kb_health(
     format: Optional[str] = Query(default="json", description="json | markdown"),
     _auth: str = Depends(require_auth),
 ):
-    """Customer-facing KB health score panel (metrics → suggestions)."""
+    """Customer-facing KB health score panel (metrics → suggestions).
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        format: format 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     report = build_kb_health_report(
         tenant_id=tenant_id,
         collection_id=collection_id,
@@ -140,7 +174,14 @@ async def get_kb_miss_top(
     limit: int = Query(default=5, ge=1, le=50),
     _auth: str = Depends(require_auth),
 ):
-    """漏召 TOP — best-effort from syscall_events (KB_HEALTH §3.2.1)."""
+    """漏召 TOP — best-effort from syscall_events (KB_HEALTH §3.2.1).
+
+    Args:
+        tenant_id: 租户 ID。
+        hours: hours 参数。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     body = kb_miss_top(tenant_id=tenant_id, window_hours=hours, limit=limit)
     out = dict(body)
     out["status"] = "ok"
@@ -156,7 +197,15 @@ async def get_kb_low_confidence_top(
     threshold: float = Query(default=0.5, ge=0.0, le=1.0),
     _auth: str = Depends(require_auth),
 ):
-    """低置信 TOP — best-effort from syscall_events (KB_HEALTH §3.2.2)."""
+    """低置信 TOP — best-effort from syscall_events (KB_HEALTH §3.2.2).
+
+    Args:
+        tenant_id: 租户 ID。
+        hours: hours 参数。
+        limit: 返回条数上限。
+        threshold: threshold 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     body = kb_low_confidence_top(
         tenant_id=tenant_id,
         window_hours=hours,
@@ -175,7 +224,13 @@ async def get_kb_cache_stats(
     hours: int = Query(default=168, ge=1, le=8760),
     _auth: str = Depends(require_auth),
 ):
-    """缓存命中率 — semantic_cache.stats (KB_HEALTH §3.2.3). ``hours`` reserved."""
+    """缓存命中率 — semantic_cache.stats (KB_HEALTH §3.2.3). ``hours`` reserved.
+
+    Args:
+        tenant_id: 租户 ID。
+        hours: hours 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     _ = hours
     body = kb_cache_stats(tenant_id=tenant_id)
     out = dict(body)
@@ -193,7 +248,16 @@ async def post_kb_health_archive(
     force: bool = Query(default=False),
     _auth: str = Depends(require_auth),
 ):
-    """Manually archive this ISO week's KB health markdown (governance reports)."""
+    """Manually archive this ISO week's KB health markdown (governance reports).
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+        force: 是否强制。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     result = await asyncio.to_thread(
         archive_kb_health_report,
         tenant_id=tenant_id,
@@ -212,7 +276,12 @@ async def list_governance_kb_health_reports(
     limit: int = Query(default=52, ge=1, le=200),
     _auth: str = Depends(require_auth),
 ):
-    """List archived ``kb-health-YYYY-WW.md`` files."""
+    """List archived ``kb-health-YYYY-WW.md`` files.
+
+    Args:
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     body = list_kb_health_archives(limit=limit)
     out = dict(body)
     out["status"] = "ok"
@@ -225,7 +294,13 @@ async def get_governance_kb_health_report(
     format: Optional[str] = Query(default="json", description="json | markdown"),
     _auth: str = Depends(require_auth),
 ):
-    """Fetch archived weekly KB health report (file: kb-health-{YYYY-WW}.md)."""
+    """Fetch archived weekly KB health report (file: kb-health-{YYYY-WW}.md).
+
+    Args:
+        week: week 参数。
+        format: format 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     body = read_kb_health_archive(week)
     if not body.get("ok"):
         out = dict(body)

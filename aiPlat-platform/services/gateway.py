@@ -9,6 +9,7 @@ from enum import Enum
 
 
 class GatewayMode(str, Enum):
+    """GatewayMode。"""
     DIRECT = "direct"
     PROXY = "proxy"
 
@@ -17,16 +18,27 @@ class GatewayService:
     """网关服务"""
 
     def __init__(self):
+        """初始化。
+        """
         self._handlers: dict[str, Callable] = {}
         self._middlewares: list[Callable] = []
         self._mode = GatewayMode.PROXY
 
     def register_handler(self, path: str, handler: Callable) -> None:
-        """注册处理器"""
+        """注册处理器。
+
+        Args:
+            path: 路径。
+            handler: handler 参数。
+        """
         self._handlers[path] = handler
 
     def add_middleware(self, middleware: Callable) -> None:
-        """添加中间件"""
+        """添加中间件。
+
+        Args:
+            middleware: middleware 参数。
+        """
         self._middlewares.append(middleware)
 
     async def handle_request(
@@ -36,7 +48,14 @@ class GatewayService:
         headers: dict[str, str],
         body: Optional[bytes] = None,
     ) -> dict[str, Any]:
-        """处理请求"""
+        """处理请求。
+
+        Args:
+            path: 路径。
+            method: method 参数。
+            headers: headers 参数。
+            body: 请求体。
+        """
         for middleware in self._middlewares:
             result = middleware(path, method, headers, body)
             if not result.get("allowed", True):

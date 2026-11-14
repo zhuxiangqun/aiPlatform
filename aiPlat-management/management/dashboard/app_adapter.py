@@ -9,6 +9,11 @@ class AppAdapter:
     """Layer 3 (app) Dashboard 适配器"""
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint or "http://localhost:8004"
         self.layer_name = "app"
         

@@ -1,14 +1,25 @@
+"""factory：模块接口。"""
+
 from typing import Optional
 from .schemas import DatabaseConfig
 from .base import DatabaseClient
 
 
 def create(config: Optional[DatabaseConfig] = None) -> DatabaseClient:
-    """创建数据库客户端（便捷函数）"""
+    """创建数据库客户端（便捷函数）。
+
+    Args:
+        config: config 参数。
+    """
     return create_database_client(config)
 
 
 def create_database_client(config: Optional[DatabaseConfig] = None) -> DatabaseClient:
+    """创建 database_client。
+
+    Args:
+        config: config 参数。
+    """
     config = config or DatabaseConfig()
 
     if config.type == "postgres":

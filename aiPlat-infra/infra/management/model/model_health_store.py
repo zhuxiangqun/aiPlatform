@@ -66,6 +66,11 @@ class ModelHealthStore:
     """
 
     def __init__(self, db_path: str = _DB_PATH):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path
         self._ensure_db()
 
@@ -125,6 +130,13 @@ class ModelHealthStore:
         latency_ms: float = 0.0,
         purpose: str = "",
     ) -> None:
+        """record_success。
+
+        Args:
+            model_name: model_name 参数。
+            latency_ms: latency_ms 参数。
+            purpose: purpose 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """INSERT INTO model_health_history
@@ -152,6 +164,13 @@ class ModelHealthStore:
         *,
         purpose: str = "",
     ) -> None:
+        """record_failure。
+
+        Args:
+            model_name: model_name 参数。
+            error: error 参数。
+            purpose: purpose 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """INSERT INTO model_health_history
@@ -173,6 +192,12 @@ class ModelHealthStore:
         )
 
     def set_business_score(self, model_name: str, score: float) -> None:
+        """set_business_score。
+
+        Args:
+            model_name: model_name 参数。
+            score: score 参数。
+        """
         now = _time.strftime("%Y-%m-%dT%H:%M:%S")
         self._execute(
             """INSERT INTO model_health (model_name, business_score, updated_at)
@@ -186,7 +211,11 @@ class ModelHealthStore:
     # ── Query operations ──────────────────────────────────────────
 
     def get_health_score(self, model_name: str) -> Optional[Dict[str, Any]]:
-        """Return health dict or None if no records exist (cold start)."""
+        """Return health dict or None if no records exist (cold start).
+
+        Args:
+            model_name: model_name 参数。
+        """
         conn = self._get_conn()
         try:
             row = conn.execute(
@@ -242,6 +271,8 @@ _store: Optional[ModelHealthStore] = None
 
 
 def get_model_health_store() -> ModelHealthStore:
+    """获取 model_health_store。
+    """
     global _store
     if _store is None:
         _store = ModelHealthStore()

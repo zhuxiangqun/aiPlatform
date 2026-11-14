@@ -12,6 +12,7 @@ router = APIRouter(tags=["fde-slice"], prefix="/slice")
 
 
 class SliceBundleExportRequest(BaseModel):
+    """SliceBundleExportRequest。"""
     scenario_id: str = Field(..., min_length=1)
     app_home: str = Field(..., min_length=1)
     out_dir: Optional[str] = None
@@ -19,6 +20,7 @@ class SliceBundleExportRequest(BaseModel):
 
 
 class SliceEvidenceIngestRequest(BaseModel):
+    """SliceEvidenceIngestRequest。"""
     scenario_id: str = Field(..., min_length=1)
     run_id: str = ""
     bundle_version: str = ""
@@ -31,6 +33,7 @@ class SliceEvidenceIngestRequest(BaseModel):
 
 
 class SliceEvidenceReportRequest(BaseModel):
+    """SliceEvidenceReportRequest。"""
     scenario_id: str = Field(..., min_length=1)
     ingest_id: str = ""
     run_id: str = ""
@@ -44,6 +47,11 @@ class SliceEvidenceReportRequest(BaseModel):
 
 @router.post("/bundle/export", response_model=FdeItemResponse)
 async def slice_bundle_export(body: SliceBundleExportRequest):
+    """slice_bundle_export。
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import export_slice_bundle
 
     result = export_slice_bundle(
@@ -59,6 +67,11 @@ async def slice_bundle_export(body: SliceBundleExportRequest):
 
 @router.post("/evidence/ingest", response_model=FdeItemResponse)
 async def slice_evidence_ingest(body: SliceEvidenceIngestRequest):
+    """slice_evidence_ingest。
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import ingest_slice_evidence
 
     assumed = (
@@ -82,6 +95,11 @@ async def slice_evidence_ingest(body: SliceEvidenceIngestRequest):
 
 @router.post("/evidence/report", response_model=FdeItemResponse)
 async def slice_evidence_report(body: SliceEvidenceReportRequest):
+    """slice_evidence_report。
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import build_slice_diagnosis_report
 
     assumed = (
@@ -106,6 +124,11 @@ async def slice_evidence_report(body: SliceEvidenceReportRequest):
 
 @router.get("/evidence/report/{report_id}", response_model=FdeItemResponse)
 async def slice_evidence_get_report(report_id: str):
+    """slice_evidence_get_report。
+
+    Args:
+        report_id: report 标识。
+    """
     from core.api.core_facade import get_slice_diagnosis_report
 
     result = get_slice_diagnosis_report(report_id)
@@ -115,6 +138,7 @@ async def slice_evidence_get_report(report_id: str):
 
 
 class SliceOfflineEvalRequest(BaseModel):
+    """SliceOfflineEvalRequest。"""
     last_bundle_validated_at: str = Field(..., min_length=1)
     now: Optional[str] = None
     requested_ops: List[str] = Field(default_factory=list)
@@ -122,6 +146,7 @@ class SliceOfflineEvalRequest(BaseModel):
 
 
 class SliceEvidenceJsonlIngestRequest(BaseModel):
+    """SliceEvidenceJsonlIngestRequest。"""
     path: str = Field(..., min_length=1)
     scenario_id: str = ""
     assumed_reachable: bool = True
@@ -130,6 +155,11 @@ class SliceEvidenceJsonlIngestRequest(BaseModel):
 
 @router.post("/offline/evaluate", response_model=FdeItemResponse)
 async def slice_offline_evaluate(body: SliceOfflineEvalRequest):
+    """slice_offline_evaluate。
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import evaluate_slice_offline_policy
 
     result = evaluate_slice_offline_policy(
@@ -143,7 +173,11 @@ async def slice_offline_evaluate(body: SliceOfflineEvalRequest):
 
 @router.post("/evidence/ingest-jsonl", response_model=FdeItemResponse)
 async def slice_evidence_ingest_jsonl(body: SliceEvidenceJsonlIngestRequest):
-    """MB-05: ingest Pi extension emit JSONL into evidence store."""
+    """MB-05: ingest Pi extension emit JSONL into evidence store.
+
+    Args:
+        body: 请求体。
+    """
     from core.api.core_facade import ingest_slice_evidence_from_jsonl
 
     assumed = (

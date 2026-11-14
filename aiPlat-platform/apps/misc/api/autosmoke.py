@@ -1,3 +1,5 @@
+"""autosmoke：模块接口。"""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -40,8 +42,11 @@ def _workspace_managers():
 
 @router.post("/autosmoke/run", response_model=StatusResponse)
 async def run_autosmoke(request: Dict[str, Any], http_request: Request):
-    """
-    Productized wrapper: enqueue autosmoke for a resource and persist verification state updates.
+    """Productized wrapper: enqueue autosmoke for a resource and persist verification state updates.
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     scheduler = _job_scheduler()
@@ -99,6 +104,15 @@ async def run_autosmoke(request: Dict[str, Any], http_request: Request):
 
 @router.get("/autosmoke/runs", response_model=ItemResponse)
 async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request: Request, limit: int = 50, offset: int = 0):
+    """列出 autosmoke_runs。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        http_request: http_request 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -127,6 +141,13 @@ async def list_autosmoke_runs(resource_type: str, resource_id: str, http_request
 
 @router.get("/autosmoke/status", response_model=ItemResponse)
 async def get_autosmoke_status(resource_type: str, resource_id: str, http_request: Request):
+    """获取 autosmoke_status。
+
+    Args:
+        resource_type: resource_type 参数。
+        resource_id: resource 标识。
+        http_request: http_request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

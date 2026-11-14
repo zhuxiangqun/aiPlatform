@@ -1,3 +1,5 @@
+"""prompt_templates：模块接口。"""
+
 from __future__ import annotations
 
 import difflib
@@ -203,6 +205,12 @@ async def _record_changeset(
 
 @router.get("/prompts", response_model=ListResponse)
 async def list_prompt_templates(limit: int = 100, offset: int = 0):
+    """列出 prompt_templates。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -240,7 +248,11 @@ async def seed_prompt_templates():
 
 @router.get("/prompts/{template_id}/variables", response_model=ListResponse)
 async def get_template_variables(template_id: str):
-    """Return template metadata (variables, role, category)."""
+    """Return template metadata (variables, role, category).
+
+    Args:
+        template_id: template 标识。
+    """
     from core.api.core_facade import get_metadata as _meta
     meta = _meta(str(template_id))
     if not meta:
@@ -250,6 +262,11 @@ async def get_template_variables(template_id: str):
 
 @router.get("/prompts/{template_id}", response_model=ListResponse)
 async def get_prompt_template(template_id: str):
+    """获取 prompt_template。
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -261,10 +278,13 @@ async def get_prompt_template(template_id: str):
 
 @router.get("/prompts/{template_id}/resolve", response_model=ListResponse)
 async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = None, user_id: Optional[str] = None, session_id: Optional[str] = None):
-    """
-    Resolve effective prompt version with optional release semantics (P1):
-    - pinned_version
-    - rollout (weighted bucketing)
+    """Resolve effective prompt version with optional release semantics (P1):。
+
+    Args:
+        template_id: template 标识。
+        tenant_id: 租户 ID。
+        user_id: 用户 ID。
+        session_id: 会话 ID。
     """
     store = _store()
     if not store:
@@ -294,12 +314,12 @@ async def resolve_prompt_template(template_id: str, tenant_id: Optional[str] = N
 
 @router.post("/prompts/{template_id}/release", response_model=StatusResponse)
 async def set_prompt_template_release(template_id: str, request: dict, http_request: Request):
-    """
-    P1: Prompt 发布/灰度语义（不修改 template 内容/版本，只修改 metadata.release）。
-    Supports:
-      - pinned_version: string | null
-      - rollout: [{version, weight}] | []
-      - require_approval/approval_request_id/details
+    """P1: Prompt 发布/灰度语义（不修改 template 内容/版本，只修改 metadata.release）。
+
+    Args:
+        template_id: template 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:
@@ -434,7 +454,13 @@ async def set_prompt_template_release(template_id: str, request: dict, http_requ
 
 @router.post("/prompts/{template_id}/release/rollback", response_model=StatusResponse)
 async def rollback_prompt_template_release(template_id: str, request: dict, http_request: Request):
-    """Rollback metadata.release to previous_release (best-effort)."""
+    """Rollback metadata.release to previous_release (best-effort).
+
+    Args:
+        template_id: template 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -497,6 +523,12 @@ async def rollback_prompt_template_release(template_id: str, request: dict, http
 
 @router.post("/prompts", response_model=StatusResponse)
 async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_request: Request):
+    """upsert_prompt_template。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -719,6 +751,13 @@ async def upsert_prompt_template(request: PromptTemplateUpsertRequest, http_requ
 
 @router.post("/prompts/{template_id}/rollback", response_model=StatusResponse)
 async def rollback_prompt_template(template_id: str, request: PromptTemplateRollbackRequest, http_request: Request):
+    """rollback_prompt_template。
+
+    Args:
+        template_id: template 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -890,6 +929,13 @@ async def rollback_prompt_template(template_id: str, request: PromptTemplateRoll
 
 @router.get("/prompts/{template_id}/versions", response_model=ListResponse)
 async def list_prompt_template_versions(template_id: str, limit: int = 100, offset: int = 0):
+    """列出 prompt_template_versions。
+
+    Args:
+        template_id: template 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -898,11 +944,12 @@ async def list_prompt_template_versions(template_id: str, limit: int = 100, offs
 
 @router.get("/prompts/{template_id}/diff", response_model=ListResponse)
 async def diff_prompt_template(template_id: str, from_version: Optional[str] = None, to_version: Optional[str] = None):
-    """
-    Diff prompt template content between two versions.
-    Defaults:
-      - to_version: current version
-      - from_version: previous version (if exists)
+    """Diff prompt template content between two versions.
+
+    Args:
+        template_id: template 标识。
+        from_version: from_version 参数。
+        to_version: to_version 参数。
     """
     store = _store()
     if not store:
@@ -970,11 +1017,10 @@ async def diff_prompt_template(template_id: str, from_version: Optional[str] = N
 
 @router.post("/prompts/{template_id}/auto-optimize", response_model=StatusResponse)
 async def auto_optimize_prompt_rollout(template_id: str):
-    """
-    Close the A/B testing loop: aggregate evaluation scores per version
-    and automatically adjust rollout weights toward the winning version.
+    """Close the A/B testing loop: aggregate evaluation scores per version。
 
-    Requires at least AIPLAT_AB_MIN_EVALS (default 5) evaluations per version.
+    Args:
+        template_id: template 标识。
     """
     store = _store()
     if not store:
@@ -1033,6 +1079,15 @@ async def delete_prompt_template(
     approval_request_id: Optional[str] = None,
     details: Optional[str] = None,
 ):
+    """删除 prompt_template。
+
+    Args:
+        template_id: template 标识。
+        http_request: http_request 参数。
+        require_approval: require_approval 参数。
+        approval_request_id: approval_request 标识。
+        details: details 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

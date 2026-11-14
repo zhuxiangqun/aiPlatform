@@ -1,3 +1,5 @@
+"""cli：模块接口。"""
+
 from __future__ import annotations
 
 import argparse
@@ -88,6 +90,8 @@ def _cmd_ask(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    """main。
+    """
     p = argparse.ArgumentParser(description="aiPlat Multimodal KB PoC")
     sub = p.add_subparsers(dest="cmd", required=True)
 

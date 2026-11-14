@@ -15,14 +15,26 @@ _forward_headers: ContextVar[Optional[Dict[str, str]]] = ContextVar("forward_hea
 
 
 def set_forward_headers(headers: Optional[Dict[str, str]]):
+    """set_forward_headers。
+
+    Args:
+        headers: headers 参数。
+    """
     return _forward_headers.set(headers)
 
 
 def reset_forward_headers(token) -> None:
+    """reset_forward_headers。
+
+    Args:
+        token: token 参数。
+    """
     _forward_headers.reset(token)
 
 
 def get_forward_headers() -> Dict[str, str]:
+    """获取 forward_headers。
+    """
     h = _forward_headers.get()
     return dict(h) if isinstance(h, dict) else {}
 

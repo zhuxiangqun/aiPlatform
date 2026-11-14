@@ -1,8 +1,15 @@
+"""factory：模块接口。"""
+
 from .base import MessageClient
 from .schemas import MessagingConfig
 
 
 def create_messaging_client(config: MessagingConfig) -> MessageClient:
+    """创建 messaging_client。
+
+    Args:
+        config: config 参数。
+    """
     backend = config.backend.lower()
 
     if backend == "kafka":

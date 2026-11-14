@@ -18,6 +18,11 @@ class LLMManager(ManagementBase):
     """
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._models: Dict[str, Dict] = {}
         self._cost_cache: Dict[str, float] = {}
@@ -94,7 +99,11 @@ class LLMManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     # LLM specific methods

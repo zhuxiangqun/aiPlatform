@@ -1,9 +1,12 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 
 @dataclass
 class TimeoutConfig:
+    """TimeoutConfig。"""
     connect: int = 10
     read: int = 30
     write: int = 30
@@ -12,6 +15,7 @@ class TimeoutConfig:
 
 @dataclass
 class RetryConfig:
+    """RetryConfig。"""
     enabled: bool = True
     max_attempts: int = 3
     backoff_factor: float = 2.0
@@ -22,6 +26,7 @@ class RetryConfig:
 
 @dataclass
 class PoolConfig:
+    """PoolConfig。"""
     max_connections: int = 100
     max_keepalive_connections: int = 20
     keepalive_expiry: int = 30
@@ -29,18 +34,21 @@ class PoolConfig:
 
 @dataclass
 class ProxyConfig:
+    """ProxyConfig。"""
     http: Optional[str] = None
     https: Optional[str] = None
 
 
 @dataclass
 class HTTPCacheConfig:
+    """HTTPCacheConfig。"""
     enabled: bool = True
     ttl: int = 300
 
 
 @dataclass
 class HTTPConfig:
+    """HTTPConfig。"""
     timeout: TimeoutConfig = field(default_factory=TimeoutConfig)
     retry: RetryConfig = field(default_factory=RetryConfig)
     pool: PoolConfig = field(default_factory=PoolConfig)

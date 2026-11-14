@@ -30,6 +30,12 @@ class HealthChecker(ABC):
     """健康检查器基类"""
     
     def __init__(self, layer: str, endpoint: str = None):
+        """初始化。
+
+        Args:
+            layer: layer 参数。
+            endpoint: endpoint 参数。
+        """
         self.layer = layer
         self.endpoint = endpoint
         

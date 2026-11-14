@@ -21,7 +21,9 @@ async def fde_bootstrap_test_data(
 ):
     """Seed a complete demo diagnosis session.
 
-    Use different industry values to populate the dashboard with diverse data.
+    Args:
+        industry: industry 参数。
+        company: company 参数。
     """
     import time as _t_bt
     import json as _json_bt

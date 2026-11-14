@@ -54,7 +54,11 @@ _AGENT_TYPE_ALLOWED_PROFILES: Dict[str, frozenset] = {
 
 
 def load_contract(path: Optional[str] = None) -> Dict[str, Any]:
-    """加载契约（默认 generated_conformance.yaml，缓存）。"""
+    """加载契约（默认 generated_conformance.yaml，缓存）。
+
+    Args:
+        path: 路径。
+    """
     global _contract_cache
     p = Path(path) if path else _DEFAULT_CONTRACT_PATH
     if _contract_cache is None or str(p) != str(_DEFAULT_CONTRACT_PATH):
@@ -69,7 +73,10 @@ def load_contract(path: Optional[str] = None) -> Dict[str, Any]:
 def validate_text(text: str, kind: str, contract: Optional[Dict[str, Any]] = None) -> List[str]:
     """校验生成物文本，返回违规消息列表（空 = 通过）。
 
-    kind: "skill" | "agent"
+    Args:
+        text: text 参数。
+        kind: kind 参数。
+        contract: contract 参数。
     """
     if kind not in _KINDS:
         raise ValueError(f"kind must be one of {_KINDS}, got {kind!r}")
@@ -193,7 +200,12 @@ def _handler_has_execute(handler_path: Path) -> bool:
 
 
 def check_handler_pairing(skill_md_path: str, fm: Optional[Dict[str, Any]] = None) -> List[str]:
-    """E2: handler/hybrid requires sibling handler.py; media catalog must stay prompt."""
+    """E2: handler/hybrid requires sibling handler.py; media catalog must stay prompt.
+
+    Args:
+        skill_md_path: skill_md_path 参数。
+        fm: fm 参数。
+    """
     path = Path(skill_md_path)
     if fm is None:
         try:
@@ -260,7 +272,13 @@ def _check_architecture_profile_intent(fm: Dict[str, Any]) -> List[str]:
 
 
 def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = None) -> List[str]:
-    """校验生成物文件，返回违规消息列表。"""
+    """校验生成物文件，返回违规消息列表。
+
+    Args:
+        path: 路径。
+        kind: kind 参数。
+        contract: contract 参数。
+    """
     try:
         with open(path, "r", encoding="utf-8") as f:
             text = f.read()
@@ -275,8 +293,8 @@ def validate_file(path: str, kind: str, contract: Optional[Dict[str, Any]] = Non
 def validate_manifest(data: Union[Dict[str, Any], str, bytes]) -> List[str]:
     """校验 agent_manifest.json（mode / routing / multi 五条 AND 字段）。
 
-    single：允许精简；仍要求 skill_routing 与 agents 一致（若声明）。
-    multi_agent：强制 rationale + success_metrics + upgrade_criteria（委托 promotion_gate）。
+    Args:
+        data: data 参数。
     """
     violations: List[str] = []
     if isinstance(data, (str, bytes)):
@@ -400,7 +418,11 @@ def validate_manifest(data: Union[Dict[str, Any], str, bytes]) -> List[str]:
 
 
 def validate_manifest_file(path: str) -> List[str]:
-    """校验磁盘上的 agent_manifest.json。"""
+    """校验磁盘上的 agent_manifest.json。
+
+    Args:
+        path: 路径。
+    """
     try:
         with open(path, "r", encoding="utf-8") as f:
             raw = f.read()
@@ -436,7 +458,12 @@ def _parse_frontmatter(text: str) -> Dict[str, Any]:
 
 # 便捷：注册前批量校验（供 builder_project_service 调用）
 def validate_generated_file_and_report(path: str, kind: str) -> List[str]:
-    """校验并返回违规；供注册循环调用（违规则跳过注册）。"""
+    """校验并返回违规；供注册循环调用（违规则跳过注册）。
+
+    Args:
+        path: 路径。
+        kind: kind 参数。
+    """
     return validate_file(path, kind)
 
 
@@ -456,9 +483,11 @@ def _rejections_path() -> str:
 def record_rejection(project_id: str, kind: str, path: str, violations: List[str]) -> None:
     """记录一次生成物拒绝（append 审计 JSONL）+ L2 经验回写（生成物侧接线，2026-08-27）。
 
-    best-effort 不抛异常：审计/经验登记失败不影响主流程。
-    生成物 conformance 拒绝 = 生成失败经验（机器判定，confidence=1.0）→ experience_feedback
-    登记（CLAUDE.md §23 生成物适用：待接线 → 已接线）。
+    Args:
+        project_id: project 标识。
+        kind: kind 参数。
+        path: 路径。
+        violations: violations 参数。
     """
     import json as _json
     import time as _t
@@ -495,8 +524,8 @@ def record_rejection(project_id: str, kind: str, path: str, violations: List[str
 def aggregate_rejections(limit: int = 10) -> Dict[str, Any]:
     """聚合拒绝审计：统计 top 缺失字段/断言类型（→ 生成规范改进建议）。
 
-    返回 {total, by_kind: {skill: n, agent: n}, top_violations: [(断言类型, 次数)],
-          top_fields: [(缺失字段, 次数)], suggestion}。
+    Args:
+        limit: 返回条数上限。
     """
     import collections
     import json as _json

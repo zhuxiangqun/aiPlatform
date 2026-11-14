@@ -43,9 +43,8 @@ def _static_token_ok(got: str) -> bool:
 def require_governance_ops_auth(request: Request) -> None:
     """Require a governance-ops token unless unsigned access is explicitly allowed.
 
-    Default require=true. ``AIPLAT_GOVERNANCE_OPS_REQUIRE_AUTH=false`` remains an
-    escape. Prefer ``AIPLAT_GOVERNANCE_OPS_TOKEN``; fall back to
-    ``AIPLAT_API_KEY`` so deployments that already set a platform key work.
+    Args:
+        request: FastAPI Request。
     """
     if governance_ops_unsigned_allowed():
         return

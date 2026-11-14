@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import NetworkManager
 from .schemas import (
     NetworkConfig,

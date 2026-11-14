@@ -1,3 +1,5 @@
+"""faiss：模块接口。"""
+
 import asyncio
 import json
 import os
@@ -13,7 +15,13 @@ import logging
 
 
 class FaissStore(VectorStore):
+    """FaissStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._index = None
         self._id_to_idx: Dict[str, int] = {}
@@ -97,6 +105,12 @@ class FaissStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -136,6 +150,13 @@ class FaissStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         if self._index.ntotal == 0:
@@ -181,6 +202,11 @@ class FaissStore(VectorStore):
         return results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         if not ids:
@@ -204,6 +230,11 @@ class FaissStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         if id not in self._id_to_idx:
@@ -231,10 +262,17 @@ class FaissStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         return self._index.ntotal
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -278,6 +316,12 @@ class FaissStore(VectorStore):
             return ids
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
         
         self._index_type = index_type
@@ -318,6 +362,8 @@ class FaissStore(VectorStore):
         await self._persist()
 
     async def close(self) -> None:
+        """close。
+        """
         async with self._lock:
             if self._persist_path:
                 await self._persist()
@@ -328,7 +374,13 @@ FaissClient = FaissStore
 
 
 class LegacyFaissStore(VectorStore):
+    """LegacyFaissStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._index = None
         self._id_to_idx: Dict[str, int] = {}
@@ -371,6 +423,12 @@ class LegacyFaissStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -402,6 +460,13 @@ class LegacyFaissStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         if self._index.ntotal == 0:
@@ -442,6 +507,11 @@ class LegacyFaissStore(VectorStore):
         return results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         async with self._lock:
@@ -454,6 +524,11 @@ class LegacyFaissStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         if id not in self._id_to_idx:
@@ -473,16 +548,31 @@ class LegacyFaissStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         return self._index.ntotal
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         return await self.add(vectors)
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
 
     async def close(self):
+        """close。
+        """
         async with self._lock:
             if self._persist_path:
                 import faiss

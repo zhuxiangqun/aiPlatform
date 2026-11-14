@@ -62,8 +62,11 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def cosine_similarity_list(a: List[float], b: List[float]) -> float:
-    """
-    余弦相似度 (List 版本)
+    """余弦相似度 (List 版本)。
+
+    Args:
+        a: a 参数。
+        b: b 参数。
     """
     arr_a = np.array(a)
     arr_b = np.array(b)
@@ -85,8 +88,11 @@ def euclidean_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def euclidean_distance_list(a: List[float], b: List[float]) -> float:
-    """
-    欧氏距离 (List 版本)
+    """欧氏距离 (List 版本)。
+
+    Args:
+        a: a 参数。
+        b: b 参数。
     """
     return float(np.linalg.norm(np.array(a) - np.array(b)))
 
@@ -106,8 +112,11 @@ def dot_product(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def dot_product_list(a: List[float], b: List[float]) -> float:
-    """
-    点积 (List 版本)
+    """点积 (List 版本)。
+
+    Args:
+        a: a 参数。
+        b: b 参数。
     """
     return float(np.dot(np.array(a), np.array(b)))
 
@@ -127,8 +136,11 @@ def manhattan_distance(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def manhattan_distance_list(a: List[float], b: List[float]) -> float:
-    """
-    曼哈顿距离 (List 版本)
+    """曼哈顿距离 (List 版本)。
+
+    Args:
+        a: a 参数。
+        b: b 参数。
     """
     return float(np.sum(np.abs(np.array(a) - np.array(b))))
 
@@ -162,8 +174,10 @@ def compute_centroid(vectors: List[np.ndarray]) -> np.ndarray:
 
 
 def compute_centroid_list(vectors: List[List[float]]) -> List[float]:
-    """
-    计算质心 (List 版本)
+    """计算质心 (List 版本)。
+
+    Args:
+        vectors: vectors 参数。
     """
     if not vectors:
         return []
@@ -197,8 +211,11 @@ def batch_cosine_similarity(
 def batch_cosine_similarity_list(
     query: List[float], candidates: List[List[float]]
 ) -> List[float]:
-    """
-    批量计算余弦相似度 (List 版本)
+    """批量计算余弦相似度 (List 版本)。
+
+    Args:
+        query: 查询。
+        candidates: candidates 参数。
     """
     query_arr = np.array(query)
     candidate_arrs = np.array(candidates)

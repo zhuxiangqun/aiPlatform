@@ -38,11 +38,20 @@ def _apps_home(project_id: str) -> str:
 
 
 def release_root(project_id: str) -> str:
+    """release_root。
+
+    Args:
+        project_id: project 标识。
+    """
     return os.path.join(_apps_home(project_id), "releases")
 
 
 def current_dir(project_id: str) -> str:
-    """Resolve the current pointer → releases/v{ts}/current path."""
+    """Resolve the current pointer → releases/v{ts}/current path.
+
+    Args:
+        project_id: project 标识。
+    """
     root = release_root(project_id)
     if not os.path.isdir(root):
         return ""
@@ -89,8 +98,12 @@ def create_release(project_id: str, module_id: str, src_dir: str,
                    new_files: Dict[str, str], pass_rate_source: str = "unknown") -> Dict[str, Any]:
     """Merge post-merge code into a versioned artifact (building → ready).
 
-    src_dir: module imported root (baseline). new_files: merge_previews
-    new_content overrides. Returns release record.
+    Args:
+        project_id: project 标识。
+        module_id: module 标识。
+        src_dir: src_dir 参数。
+        new_files: new_files 参数。
+        pass_rate_source: pass_rate_source 参数。
     """
     version = f"v{time.strftime('%Y%m%d%H%M%S')}"
     dst = os.path.join(release_root(project_id), version, "current")
@@ -128,9 +141,13 @@ def set_release_status(project_id: str, releases: List[Dict], version: str,
                        canary_weight: int = 0) -> Dict[str, Any]:
     """Transition a release to canary/full, or roll back (switch current pointer).
 
-    Rollback: current release → rolled_back; current pointer switches to
-    target_version (a historical release, default = latest other applied one).
-    L5 v2: canary sets canary_weight (routing percent); full forces 100.
+    Args:
+        project_id: project 标识。
+        releases: releases 参数。
+        version: version 参数。
+        target: target 参数。
+        target_version: target_version 参数。
+        canary_weight: canary_weight 参数。
     """
     rel = next((r for r in releases if r.get("version") == version), None)
     if not rel:
@@ -165,7 +182,13 @@ def _latest_active(releases: List[Dict], exclude_version: str) -> str:
 
 
 def apply_release(project_id: str, src_dir: str, new_files: Dict[str, str]) -> Dict[str, Any]:
-    """Convenience: create_release + set current pointer (used by release endpoint)."""
+    """Convenience: create_release + set current pointer (used by release endpoint).
+
+    Args:
+        project_id: project 标识。
+        src_dir: src_dir 参数。
+        new_files: new_files 参数。
+    """
     release = create_release(project_id, "default", src_dir, new_files)
     _write_pointer(project_id, release["version"])
     return release

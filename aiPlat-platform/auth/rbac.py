@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 
 class Role(str, Enum):
+    """Role。"""
     ADMIN = "admin"
     OPERATOR = "operator"
     DEVELOPER = "developer"
@@ -19,6 +20,7 @@ class Role(str, Enum):
 
 
 class Permission(str, Enum):
+    """Permission。"""
     AGENT_EXECUTE = "agent:execute"
     AGENT_CREATE = "agent:create"
     AGENT_READ = "agent:read"
@@ -93,12 +95,14 @@ ROLE_PERMISSIONS = {
 
 
 class Actor(BaseModel):
+    """Actor。"""
     actor_id: str
     role: Role
     tenant_id: str
 
 
 class RbacService:
+    """RbacService。"""
     _instance = None
 
     def __new__(cls):
@@ -108,37 +112,66 @@ class RbacService:
         return cls._instance
 
     def __init__(self):
+        """初始化。
+        """
         if self._initialized:
             return
         self._initialized = True
         self._tenant_roles: dict[str, dict[str, Role]] = {}
 
     def grant_role(self, tenant_id: str, actor_id: str, role: Role) -> None:
-        """授予角色"""
+        """授予角色。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            role: role 参数。
+        """
         if tenant_id not in self._tenant_roles:
             self._tenant_roles[tenant_id] = {}
         self._tenant_roles[tenant_id][actor_id] = role
 
     def revoke_role(self, tenant_id: str, actor_id: str) -> bool:
-        """撤销角色"""
+        """撤销角色。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+        """
         if tenant_id in self._tenant_roles and actor_id in self._tenant_roles[tenant_id]:
             del self._tenant_roles[tenant_id][actor_id]
             return True
         return False
 
     def get_role(self, tenant_id: str, actor_id: str) -> Optional[Role]:
-        """获取角色"""
+        """获取角色。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+        """
         return self._tenant_roles.get(tenant_id, {}).get(actor_id)
 
     def check_permission(self, tenant_id: str, actor_id: str, permission: Permission) -> bool:
-        """检查权限"""
+        """检查权限。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+            permission: permission 参数。
+        """
         role = self.get_role(tenant_id, actor_id)
         if not role:
             return False
         return permission in ROLE_PERMISSIONS.get(role, [])
 
     def get_permissions(self, tenant_id: str, actor_id: str) -> list[Permission]:
-        """获取权限列表"""
+        """获取权限列表。
+
+        Args:
+            tenant_id: 租户 ID。
+            actor_id: actor 标识。
+        """
         role = self.get_role(tenant_id, actor_id)
         if not role:
             return []

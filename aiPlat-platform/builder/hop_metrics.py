@@ -46,7 +46,18 @@ def record_hop(
     mode: str = "",
     latency_ms: float = 0.0,
 ) -> None:
-    """Append one hop outcome. best-effort, never raises."""
+    """Append one hop outcome. best-effort, never raises.
+
+    Args:
+        project_id: project 标识。
+        skill: skill 参数。
+        agent: agent 参数。
+        ok: ok 参数。
+        failed_stage: failed_stage 参数。
+        error: error 参数。
+        mode: mode 参数。
+        latency_ms: latency_ms 参数。
+    """
     try:
         stage = str(failed_stage or "")
         if not ok and stage and stage not in _VALID_STAGES:
@@ -72,6 +83,12 @@ def record_hop(
 
 
 def load_hops(project_id: str, limit: int = 5000) -> List[Dict[str, Any]]:
+    """load_hops。
+
+    Args:
+        project_id: project 标识。
+        limit: 返回条数上限。
+    """
     path = _path_for(project_id)
     if not path.is_file():
         return []
@@ -94,7 +111,11 @@ def load_hops(project_id: str, limit: int = 5000) -> List[Dict[str, Any]]:
 
 
 def aggregate_hops(project_id: str) -> Dict[str, Any]:
-    """Return n_runs, success_rate, failures_missing_stage, by_failed_stage, by_skill."""
+    """Return n_runs, success_rate, failures_missing_stage, by_failed_stage, by_skill.
+
+    Args:
+        project_id: project 标识。
+    """
     rows = load_hops(project_id)
     n = len(rows)
     if n == 0:
@@ -143,11 +164,9 @@ def derive_test_evidence(
 ) -> Dict[str, bool]:
     """从 last_test_report / pipeline state 推导 real_tests + 物理证据旗标。
 
-    优先级：
-      1) state 显式旗标 ``_real_tests_ok`` / ``real_tests_ok`` / ``_physical_evidence``
-      2) ``last_test_report.test_passed`` + 可捕获报告体（test_report 或 e2e_smoke）
-
-    物理证据不单靠布尔位：必须有 report 产物，或显式 ``_physical_evidence``。
+    Args:
+        last_test_report: last_test_report 参数。
+        state: state 参数。
     """
     st = state if isinstance(state, dict) else {}
     report = last_test_report if isinstance(last_test_report, dict) else {}
@@ -181,7 +200,16 @@ def evaluate_project_run_through(
     policy_gate_closed: bool = True,
     mature: bool = False,
 ) -> Dict[str, Any]:
-    """Combine hop aggregate + promotion_gate.evaluate_run_through."""
+    """Combine hop aggregate + promotion_gate.evaluate_run_through.
+
+    Args:
+        project_id: project 标识。
+        conformance_green: conformance_green 参数。
+        real_tests_green: real_tests_green 参数。
+        physical_evidence: physical_evidence 参数。
+        policy_gate_closed: policy_gate_closed 参数。
+        mature: mature 参数。
+    """
     import importlib.util as _iu
 
     _pg_path = Path(__file__).resolve().parent / "promotion_gate.py"

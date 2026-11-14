@@ -60,7 +60,11 @@ class HealthChecker:
     """模型健康检查器"""
     
     async def check_connectivity(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查模型连通性（不发送实际请求）"""
+        """检查模型连通性（不发送实际请求）。
+
+        Args:
+            model: 模型名。
+        """
         result = {
             "success": False,
             "model_id": model.id,
@@ -96,7 +100,11 @@ class HealthChecker:
         return result
     
     async def check_response(self, model: ModelInfo) -> Dict[str, Any]:
-        """检查模型响应（发送最小请求）"""
+        """检查模型响应（发送最小请求）。
+
+        Args:
+            model: 模型名。
+        """
         result = {
             "success": False,
             "model_id": model.id,

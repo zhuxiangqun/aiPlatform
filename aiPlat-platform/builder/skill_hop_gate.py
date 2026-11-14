@@ -25,7 +25,12 @@ RUNTIME_FAILED_STAGES = (
 
 
 def load_skill_input_schema(skill_name: str, app_home: Optional[str] = None) -> Dict[str, Any]:
-    """Load input_schema from workspace/app SKILL.md frontmatter."""
+    """Load input_schema from workspace/app SKILL.md frontmatter.
+
+    Args:
+        skill_name: skill_name 参数。
+        app_home: app_home 参数。
+    """
     name = str(skill_name or "").strip()
     if not name:
         return {}
@@ -61,7 +66,12 @@ def validate_skill_hop_params(
     params: Optional[Mapping[str, Any]],
     input_schema: Optional[Mapping[str, Any]],
 ) -> List[str]:
-    """Return violation messages; empty = OK."""
+    """Return violation messages; empty = OK.
+
+    Args:
+        params: params 参数。
+        input_schema: input_schema 参数。
+    """
     schema = input_schema if isinstance(input_schema, Mapping) else {}
     if not schema:
         return []
@@ -86,7 +96,11 @@ def gate_skill_hop(
 ) -> Dict[str, Any]:
     """Full hop gate result for execute_skill.
 
-    Returns {ok, violations, failed_stage, skill, schema_present}.
+    Args:
+        skill_name: skill_name 参数。
+        params: params 参数。
+        app_home: app_home 参数。
+        input_schema: input_schema 参数。
     """
     schema = input_schema if input_schema is not None else load_skill_input_schema(
         skill_name, app_home=app_home
@@ -119,7 +133,16 @@ def build_hop_handoff(
     known_issues: Optional[List[str]] = None,
     next_hint: str = "",
 ) -> Dict[str, Any]:
-    """Minimal 5-field envelope for runtime hops (align stage_handoff keys)."""
+    """Minimal 5-field envelope for runtime hops (align stage_handoff keys).
+
+    Args:
+        skill: skill 参数。
+        agent: agent 参数。
+        ok: ok 参数。
+        verify: verify 参数。
+        known_issues: known_issues 参数。
+        next_hint: next_hint 参数。
+    """
     return {
         "summary": f"skill={skill} agent={agent} ok={ok}",
         "artifact_ref": f"skill:{skill}",

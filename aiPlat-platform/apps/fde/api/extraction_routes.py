@@ -27,8 +27,11 @@ async def extract_document(
 ):
     """Extract entities + relations from text or uploaded file.
 
-    Accepts either raw text or a file upload (PDF/Word/PPTX/text).
-    Binary office/PDF files are parsed via ConverterRegistry — never UTF-8-decoded as garbage.
+    Args:
+        text: text 参数。
+        file: file 参数。
+        domain_id: domain 标识。
+        doc_name: doc_name 参数。
     """
     from core.api.core_facade import file_bytes_to_text
 
@@ -121,7 +124,11 @@ async def extract_document(
 async def list_pending_extractions(
     domain_id: str = Query("", description="Filter by domain"),
 ):
-    """List pending extractions awaiting review."""
+    """List pending extractions awaiting review.
+
+    Args:
+        domain_id: domain 标识。
+    """
     await _store.initialize()
     items = await _store.list_pending(domain_id=domain_id)
     return {"pending": items, "count": len(items)}
@@ -134,7 +141,9 @@ async def confirm_extraction(
 ):
     """确认抽取：K1 信号 + 写入知识图实体/关系（不改活 YAML）。
 
-    「写入说明书」仍在 ③ 提案同意/应用；本接口只补 ABox（GraphIndex）。
+    Args:
+        extraction_id: extraction 标识。
+        actor: 操作者身份。
     """
     from core.api.core_facade import k1_confirm_extraction, write_extraction_to_graph_index
     import json as _json
@@ -205,7 +214,11 @@ async def confirm_extraction(
 
 @router.post("/extractions/{extraction_id}/reject")
 async def reject_extraction(extraction_id: str):
-    """Reject an extraction → mark as discarded."""
+    """Reject an extraction → mark as discarded.
+
+    Args:
+        extraction_id: extraction 标识。
+    """
     await _store.initialize()
     ok = await _store.reject(extraction_id)
     if not ok:
@@ -221,7 +234,11 @@ async def reject_extraction(extraction_id: str):
 async def list_resolution_candidates(
     view_name: str = Query("unified_customer", description="Cross-domain view name"),
 ):
-    """List cross-domain merge candidates from registry.json views."""
+    """List cross-domain merge candidates from registry.json views.
+
+    Args:
+        view_name: view_name 参数。
+    """
     try:
         from core.api.core_facade import CrossDomainResolver, seed_cross_domain_config
         seed_cross_domain_config()
@@ -265,7 +282,11 @@ async def list_resolution_candidates(
 
 @router.post("/resolution/resolve")
 async def resolve_cross_domain(body: Dict[str, Any]):
-    """K2: open an arbitration ticket. Does NOT write a cross-domain edge."""
+    """K2: open an arbitration ticket. Does NOT write a cross-domain edge.
+
+    Args:
+        body: 请求体。
+    """
     view_name = body.get("view_name", "unified_customer")
     left_id = str(body.get("left_id", ""))
     right_id = str(body.get("right_id", ""))
@@ -321,6 +342,13 @@ async def list_arbitration_tickets(
     domain_id: str = Query(""),
     tenant_id: str = Query(""),
 ):
+    """列出 arbitration_tickets。
+
+    Args:
+        status: status 参数。
+        domain_id: domain 标识。
+        tenant_id: 租户 ID。
+    """
     try:
         from core.api.core_facade import k2_list_arbitration
 
@@ -331,6 +359,12 @@ async def list_arbitration_tickets(
 
 @router.post("/resolution/tickets/{ticket_id}/decide")
 async def decide_arbitration_ticket(ticket_id: str, body: Dict[str, Any]):
+    """decide_arbitration_ticket。
+
+    Args:
+        ticket_id: ticket 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import k2_decide_arbitration
 
@@ -352,7 +386,12 @@ async def decide_arbitration_ticket(ticket_id: str, body: Dict[str, Any]):
 
 @router.post("/resolution/tickets/{ticket_id}/apply")
 async def apply_arbitration_ticket(ticket_id: str, body: Optional[Dict[str, Any]] = None):
-    """K2: write edge only for approved merge tickets."""
+    """K2: write edge only for approved merge tickets.
+
+    Args:
+        ticket_id: ticket 标识。
+        body: 请求体。
+    """
     body = body or {}
     try:
         from core.api.core_facade import k2_apply_arbitration
@@ -373,7 +412,12 @@ async def apply_arbitration_ticket(ticket_id: str, body: Optional[Dict[str, Any]
 
 @router.post("/resolution/tickets/{ticket_id}/rollback-edge")
 async def rollback_arbitration_edge(ticket_id: str, request: Request):
-    """E2: undo one snapshotted merge edge. Role from trusted identity, not body."""
+    """E2: undo one snapshotted merge edge. Role from trusted identity, not body.
+
+    Args:
+        ticket_id: ticket 标识。
+        request: FastAPI Request。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import k2_rollback_arbitration_edge
@@ -397,7 +441,11 @@ async def rollback_arbitration_edge(ticket_id: str, request: Request):
 
 @router.post("/k5/scan")
 async def k5_scan(domain_id: str = Query("it-ops")):
-    """K5: aggregate repeat failures into edge drafts. Does not apply YAML."""
+    """K5: aggregate repeat failures into edge drafts. Does not apply YAML.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import k5_scan_repeat_failures
 
@@ -412,7 +460,11 @@ async def k5_scan(domain_id: str = Query("it-ops")):
 
 @router.post("/rag/context")
 async def get_entity_context(body: Dict[str, Any]):
-    """Pre-load GraphRAG context for an entity (used by ActionRegistry)."""
+    """Pre-load GraphRAG context for an entity (used by ActionRegistry).
+
+    Args:
+        body: 请求体。
+    """
     entity_id = str(body.get("entity_id", ""))
     domain_id = str(body.get("domain_id", "default"))
     action_context = str(body.get("context", ""))
@@ -435,7 +487,11 @@ async def get_entity_context(body: Dict[str, Any]):
 
 @router.post("/throttle/check")
 async def check_throttle_status(body: Dict[str, Any]):
-    """Pre-flight throttle check before executing an action."""
+    """Pre-flight throttle check before executing an action.
+
+    Args:
+        body: 请求体。
+    """
     action_id = str(body.get("action_id", ""))
     actor = str(body.get("actor", "system"))
     domain_id = str(body.get("domain_id", "fde-delivery"))
@@ -471,7 +527,11 @@ async def check_throttle_status(body: Dict[str, Any]):
 
 @router.post("/ontology/proposals")
 async def create_ontology_proposal(body: Dict[str, Any]):
-    """Submit an ontology evolution proposal (add/split/merge/deprecate)."""
+    """Submit an ontology evolution proposal (add/split/merge/deprecate).
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id", "lock-service"))
     changes = body.get("changes", {})
     author = str(body.get("author", "system"))
@@ -492,7 +552,11 @@ async def create_ontology_proposal(body: Dict[str, Any]):
 async def list_ontology_proposals(
     domain_id: str = Query("", description="Filter by domain"),
 ):
-    """List ontology evolution proposals."""
+    """List ontology evolution proposals.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import VersionedOntologyStore
         store = VersionedOntologyStore(domain_id or "lock-service")
@@ -504,7 +568,13 @@ async def list_ontology_proposals(
 
 @router.post("/ontology/proposals/{proposal_id}/approve")
 async def approve_ontology_proposal(proposal_id: str, request: Request, body: Dict[str, Any] = None):
-    """V4: identity from trusted request role. Body approver_role is not a grant."""
+    """V4: identity from trusted request role. Body approver_role is not a grant.
+
+    Args:
+        proposal_id: proposal 标识。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import approve_proposal_once
 
@@ -525,7 +595,11 @@ async def approve_ontology_proposal(proposal_id: str, request: Request, body: Di
 
 @router.post("/ontology/proposals/{proposal_id}/apply")
 async def apply_ontology_proposal(proposal_id: str):
-    """Apply an approved ontology proposal → live YAML + receipt (path A)."""
+    """Apply an approved ontology proposal → live YAML + receipt (path A).
+
+    Args:
+        proposal_id: proposal 标识。
+    """
     try:
         from core.api.core_facade import ActionStore, VersionedOntologyStore
         store = ActionStore()

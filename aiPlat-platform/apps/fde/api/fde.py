@@ -578,13 +578,21 @@ async def start_package():
 
 @router.get("/package/{task_id}", response_model=FdeItemResponse)
 async def package_status(task_id: str):
-    """查询打包进度。"""
+    """查询打包进度。
+
+    Args:
+        task_id: task 标识。
+    """
     return _package_tasks.get(task_id, {"status": "not_found"})
 
 
 @router.get("/package/{task_id}/download", response_model=FdeItemResponse)
 async def package_download(task_id: str):
-    """下载打包完成的 tar.gz 文件。"""
+    """下载打包完成的 tar.gz 文件。
+
+    Args:
+        task_id: task 标识。
+    """
     from fastapi.responses import FileResponse
     path = f"/tmp/aiplat-offline-{task_id}.tar.gz"
     if os.path.exists(path):
@@ -646,7 +654,11 @@ async def list_templates():
 
 @router.post("/customers", response_model=FdeStatusResponse)
 async def create_customer(body: Dict[str, Any]):
-    """Create a new customer profile."""
+    """Create a new customer profile.
+
+    Args:
+        body: 请求体。
+    """
     try:
         name = str(body.get("name", "")).strip()
         namespace = str(body.get("namespace", "")).strip()
@@ -675,7 +687,12 @@ async def create_customer(body: Dict[str, Any]):
 
 @router.put("/customers/{profile_id}", response_model=FdeStatusResponse)
 async def update_customer(profile_id: str, body: Dict[str, Any]):
-    """Update a customer profile."""
+    """Update a customer profile.
+
+    Args:
+        profile_id: profile 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
@@ -697,7 +714,11 @@ async def update_customer(profile_id: str, body: Dict[str, Any]):
 
 @router.delete("/customers/{profile_id}", response_model=FdeStatusResponse)
 async def delete_customer(profile_id: str):
-    """Delete a customer profile."""
+    """Delete a customer profile.
+
+    Args:
+        profile_id: profile 标识。
+    """
     try:
         from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
@@ -720,7 +741,11 @@ async def delete_customer(profile_id: str):
 
 @router.get("/customers/{profile_id}/health", response_model=FdeListResponse)
 async def customer_health(profile_id: str):
-    """单客户完整健康详情 (复用诊断中心 32 维)。"""
+    """单客户完整健康详情 (复用诊断中心 32 维)。
+
+    Args:
+        profile_id: profile 标识。
+    """
     try:
         from core.api.routers.diagnostics import run_all_diagnostics
         result = await run_all_diagnostics()
@@ -1042,7 +1067,11 @@ from core.apps.fde.service.agent import run_fde_agent_one_shot as _run_fde_agent
 
 @router.post("/clarify", response_model=FdeStatusResponse)
 async def clarify(body: Dict[str, Any]):
-    """Generic multi-turn clarification. context=feedback|diagnosis|poc."""
+    """Generic multi-turn clarification. context=feedback|diagnosis|poc.
+
+    Args:
+        body: 请求体。
+    """
     result = await _clarify(
         context=str(body.get("context", "")),
         text=str(body.get("text", "")),
@@ -1055,8 +1084,11 @@ async def clarify(body: Dict[str, Any]):
 
 @router.post("/infer-industry", response_model=FdeStatusResponse)
 async def infer_industry(body: Dict[str, Any]):
-    """## platform:allowed
-    LLM-based industry classification from company name + description."""
+    """## platform:allowed。
+
+    Args:
+        body: 请求体。
+    """
     name = str(body.get("name", "") or body.get("company_name", ""))
     desc = str(body.get("description", "") or body.get("customer_desc", ""))
     
@@ -1104,7 +1136,11 @@ async def infer_industry(body: Dict[str, Any]):
 
 @router.post("/feedback/submit", response_model=FdeStatusResponse)
 async def submit_clarified_feedback(body: Dict[str, Any]):
-    """Store clarified feedback conversation + summary with pipeline context."""
+    """Store clarified feedback conversation + summary with pipeline context.
+
+    Args:
+        body: 请求体。
+    """
     import json as _json
     fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", get_aiplat_data_dir("field_feedback")))
     os.makedirs(fd, exist_ok=True)
@@ -1129,7 +1165,11 @@ async def submit_clarified_feedback(body: Dict[str, Any]):
 
 @router.post("/switch-profile/{profile_id}", response_model=FdeStatusResponse)
 async def switch_profile(profile_id: str):
-    """切换当前工作 Profile (FDE 多客户上下文切换)。"""
+    """切换当前工作 Profile (FDE 多客户上下文切换)。
+
+    Args:
+        profile_id: profile 标识。
+    """
     try:
         from core.api.core_facade import get_profile_manager
         pm = get_profile_manager()
@@ -1150,7 +1190,11 @@ async def switch_profile(profile_id: str):
 
 @router.post("/feedback", response_model=FdeStatusResponse)
 async def submit_fde_feedback(body: Dict[str, Any]):
-    """FDE 提交现场反馈 (结构化 JSON → 存本地)。"""
+    """FDE 提交现场反馈 (结构化 JSON → 存本地)。
+
+    Args:
+        body: 请求体。
+    """
     try:
         from core.feedback.field_feedback import submit_field_feedback
         fid = submit_field_feedback(body)
@@ -1178,7 +1222,13 @@ async def fde_feedback_history(
     customer: str = Query("", description="Filter by customer_name"),
     step: str = Query("", description="Filter by pipeline step"),
 ):
-    """返回最近 N 条现场反馈，支持按客户/步骤筛选。"""
+    """返回最近 N 条现场反馈，支持按客户/步骤筛选。
+
+    Args:
+        limit: 返回条数上限。
+        customer: customer 参数。
+        step: step 参数。
+    """
     fd = os.path.expanduser(os.environ.get("AIPLAT_FEEDBACK_DIR", get_aiplat_data_dir("field_feedback")))
     if not os.path.isdir(fd):
         return {"feedback": [], "total": 0}
@@ -1230,7 +1280,8 @@ async def canary_status():
 async def canary_rollback(body: Dict[str, Any]):
     """一键回滚: 对指定 spec 执行 rollback.sh。
 
-    Body: {"spec_id": "...", "reason": "..."}
+    Args:
+        body: 请求体。
     """
     spec_id = str(body.get("spec_id") or body.get("skill_name") or "").strip()
     reason = str(body.get("reason") or "").strip() or "manual"
@@ -1284,7 +1335,11 @@ async def canary_rollback(body: Dict[str, Any]):
 
 @router.post("/poc/inject", response_model=FdeStatusResponse)
 async def fde_poc_inject(body: Dict[str, Any]):
-    """④ 验证价值: POC 数据注入 (via fde_delivery_engineer Agent)."""
+    """④ 验证价值: POC 数据注入 (via fde_delivery_engineer Agent).
+
+    Args:
+        body: 请求体。
+    """
     domain = str(body.get("domain", "") or body.get("domain_id", ""))
     template = str(body.get("template", ""))
     profile = str(body.get("profile", ""))
@@ -1329,7 +1384,11 @@ async def canary_insight():
 
 @router.post("/customers/profile/assist", response_model=FdeStatusResponse)
 async def assist_customer_profile(body: Dict[str, Any]):
-    """① 业务认知: AI 辅助生成客户 Profile (via fde_business_analyst Agent)."""
+    """① 业务认知: AI 辅助生成客户 Profile (via fde_business_analyst Agent).
+
+    Args:
+        body: 请求体。
+    """
     notes = str(body.get("notes", "") or body.get("interview_notes", ""))
     if not notes or len(notes) < 10:
         return {"status": "error", "message": "请提供至少10个字的访谈记录"}
@@ -1594,11 +1653,14 @@ async def generate_delivery_manual(
 ):
     """基于客户需求自动生成项目交付手册（支持草稿/正式两种模式）。
 
-    草稿模式 (Phase 0)：出发前用行业 + 已知信息生成框架，未确定字段留占位符。
-    正式模式 (Phase 4)：验收时填入完整信息（KPI/测试用例/部署验证等）。
-
-    输入：自然语言需求描述（可选）
-    系统自动：推断项目名/行业/交付方式/KPI建议 → 填充模板。
+    Args:
+        requirements: requirements 参数。
+        spec_id: spec 标识。
+        industry: industry 参数。
+        fde_name: fde_name 参数。
+        agent_guide: agent_guide 参数。
+        workflow_guide: workflow_guide 参数。
+        diagnosis_report: diagnosis_report 参数。
     """
     import json as _json
 
@@ -1760,6 +1822,7 @@ async def generate_delivery_manual(
 
 
 class FdeDialogRequest(_PydanticBaseModel):
+    """FdeDialogRequest。"""
     turn: int = 1
     answer: str = ""
     session_id: str = ""
@@ -1783,9 +1846,10 @@ class FdeDialogRequest(_PydanticBaseModel):
 
 @router.post("/assess/dialog", response_model=FdeStatusResponse)
 async def fde_assess_dialog(req: FdeDialogRequest):
-    """## platform:allowed
-    Thin proxy: multi-turn clarify → core.apps.fde.service.clarify_dialog.run_clarify_turn.
-    Conversational memory via MemoryManager (session_id); diagnosis via FDE Agent.
+    """## platform:allowed。
+
+    Args:
+        req: req 参数。
     """
     from core.api.core_facade import run_clarify_turn, ClarifyTurnInput
 
@@ -1949,9 +2013,9 @@ async def project_freeze(
 ):
     """Freeze a halted project — dump current pipeline state into a read-only archive.
 
-    Corresponds to docs §7.4 项目中止与归档.
-    Triggered when: POC retry ≥3 with <50% accuracy, budget/contract cancelled,
-    or customer-initiated exit.
+    Args:
+        customer_name: customer_name 参数。
+        reason: reason 参数。
     """
     import datetime as _dt
 
@@ -2003,6 +2067,7 @@ async def project_freeze(
 # ════════════════════════════════════════════════════════════
 
 class FdeIngestRequest(_PydanticBaseModel):
+    """FdeIngestRequest。"""
     source_system: str = ""     # "erp" | "crm" | "mes" | "custom"
     raw_data: Dict[str, Any] = {}
 
@@ -2011,9 +2076,8 @@ class FdeIngestRequest(_PydanticBaseModel):
 async def fde_ingest(req: FdeIngestRequest):
     """Bridge: map external system data to FDE diagnosis input fields.
 
-    Demonstrates ontology as cross-system semantic bridge (X).
-    Accepts raw data from ERP/CRM/MES and maps common field names
-    to FDE's standardized input schema.
+    Args:
+        req: req 参数。
     """
     raw = req.raw_data
     if not raw:
@@ -2064,11 +2128,8 @@ async def fde_ingest(req: FdeIngestRequest):
 async def fde_improve_suggestions(session_id: str):
     """Generate actionable suggestions to improve a diagnosis's ontology coverage.
 
-    Reads the same data as /ontology-coverage but produces specific steps:
-      - Which concepts to add as Term definitions
-      - Which conclusions lack ontology backing
-      - Whether to add more historical cases
-      - Per-dimension improvement actions
+    Args:
+        session_id: 会话 ID。
     """
     sid = session_id.strip()
     if not sid:
@@ -2638,12 +2699,8 @@ async def run_simulation(
 ):
     """执行多场景沙盒推演。
 
-    Body:
-      - seed_state: PipelineState dict (from snapshot or current run)
-      - scenarios: [{scenario_id, scenario_type, label, model_overrides?, skip_stages?, prompt_extra?, tool_whitelist?}]
-      - baseline_label?: str
-      - domain_id?: str
-      - scenario_count?: int (for param mutation mode)
+    Args:
+        payload: 载荷 dict。
     """
     from core.api.core_facade import SimulationOrchestrator, ScenarioDefinition, ScenarioType
 
@@ -2718,14 +2775,22 @@ async def run_simulation(
 
 @router.get("/simulations")
 async def list_simulations(limit: int = Query(20, ge=1, le=100)):
-    """列出最近的模拟报告。"""
+    """列出最近的模拟报告。
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import list_simulations
     return {"simulations": list_simulations(limit=limit)}
 
 
 @router.get("/simulations/{simulation_id}")
 async def get_simulation(simulation_id: str):
-    """获取指定模拟报告的详细信息。"""
+    """获取指定模拟报告的详细信息。
+
+    Args:
+        simulation_id: simulation 标识。
+    """
     from core.api.core_facade import load_simulation_report
     report = load_simulation_report(simulation_id)
     if not report:
@@ -2739,10 +2804,8 @@ async def quick_simulate(
 ):
     """快速参数变异推演 (轻量, 不需要完整 Pipeline 运行)。
 
-    Body:
-      - seed_params: dict (e.g. {description, gross_demand, safety_stock, ...})
-      - scenario_count?: int (default 5)
-      - assessment_rubric?: [{field, constraint, expected}]
+    Args:
+        payload: 载荷 dict。
     """
     from core.api.core_facade import SimulationOrchestrator
 
@@ -2779,7 +2842,11 @@ async def quick_simulate(
 
 @router.get("/lineage/recent")
 async def list_lineage_runs(limit: int = Query(20, ge=1, le=100)):
-    """列出最近有决策记录的 run."""
+    """列出最近有决策记录的 run.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import LineageStore
     store = LineageStore.get()
     runs = store.list_recent_runs(limit=limit)
@@ -2788,7 +2855,12 @@ async def list_lineage_runs(limit: int = Query(20, ge=1, le=100)):
 
 @router.get("/lineage/{run_id}")
 async def get_lineage(run_id: str, limit: int = Query(100, ge=1, le=500)):
-    """获取某个 run 的所有决策记录."""
+    """获取某个 run 的所有决策记录.
+
+    Args:
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import LineageStore
     store = LineageStore.get()
     decisions = store.get_by_run(run_id=run_id, limit=limit)
@@ -2797,7 +2869,11 @@ async def get_lineage(run_id: str, limit: int = Query(100, ge=1, le=500)):
 
 @router.get("/lineage/{run_id}/graph")
 async def get_lineage_graph(run_id: str):
-    """获取决策图谱 (nodes + edges 用于前端可视化)."""
+    """获取决策图谱 (nodes + edges 用于前端可视化).
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import LineageStore
     store = LineageStore.get()
     graph = store.get_decision_graph(run_id=run_id)
@@ -2806,7 +2882,11 @@ async def get_lineage_graph(run_id: str):
 
 @router.get("/lineage/{run_id}/path")
 async def get_traversal_path(run_id: str):
-    """获取推理遍历路径."""
+    """获取推理遍历路径.
+
+    Args:
+        run_id: 运行 ID。
+    """
     from core.api.core_facade import LineageStore
     path = LineageStore.get().get_traversal_path(run_id)
     return {"run_id": run_id, "path": path, "steps": len(path)}
@@ -2827,7 +2907,11 @@ async def list_purposes():
 async def check_security_3d(
     payload: dict = Body(...),
 ):
-    """三维权限检查 (dry-run)."""
+    """三维权限检查 (dry-run).
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import PolicyGate
 
     gate = PolicyGate()
@@ -2851,7 +2935,12 @@ async def check_marking_level(
     entity_uri: str = Query(""),
     collection_id: str = Query("default"),
 ):
-    """检查实体的标记级别."""
+    """检查实体的标记级别.
+
+    Args:
+        entity_uri: entity_uri 参数。
+        collection_id: collection 标识。
+    """
     from core.api.core_facade import get_entity_max_marking_level, MARKING_LABELS
     level = get_entity_max_marking_level(entity_uri, collection_id=collection_id)
     return {
@@ -2869,7 +2958,11 @@ async def check_marking_level(
 
 @router.post("/atomic/split")
 async def split_atomic_tasks(payload: dict = Body(...)):
-    """将复杂任务拆分为原子子任务."""
+    """将复杂任务拆分为原子子任务.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import AtomicTaskSplitter
     splitter = AtomicTaskSplitter()
     result = await splitter.split(
@@ -2888,7 +2981,11 @@ async def split_atomic_tasks(payload: dict = Body(...)):
 
 @router.post("/atomic/validate")
 async def validate_atoms(payload: dict = Body(...)):
-    """验证原子任务列表的质量."""
+    """验证原子任务列表的质量.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import AtomicTaskDefinition
     from core.api.core_facade import AtomicTaskSplitter
     atoms = [AtomicTaskDefinition(**a) for a in payload.get("atoms", [])]
@@ -2899,7 +2996,11 @@ async def validate_atoms(payload: dict = Body(...)):
 
 @router.post("/evo/execute")
 async def run_evox_swarm(payload: dict = Body(...)):
-    """执行 EvoX 蜂群流水线: 拆分→并行执行→程序化汇合→损耗检测."""
+    """执行 EvoX 蜂群流水线: 拆分→并行执行→程序化汇合→损耗检测.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import EvoXExecutor
     executor = EvoXExecutor(parallel_limit=payload.get("parallel_limit", 10))
     result = await executor.run(
@@ -2927,7 +3028,11 @@ async def run_evox_swarm(payload: dict = Body(...)):
     }
 @router.post("/collect")
 async def collect_and_detect(payload: dict = Body(...)):
-    """程序化收集 + 损耗检测."""
+    """程序化收集 + 损耗检测.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import ProgrammaticCollector
     collector = ProgrammaticCollector()
     collect_result, loss_report = collector.collect_and_detect(
@@ -2957,7 +3062,12 @@ async def analyze_agent_network(
     agent_ids: str = Query(""),
     lookback_hours: float = Query(168.0),
 ):
-    """分析 Agent 关系网络."""
+    """分析 Agent 关系网络.
+
+    Args:
+        agent_ids: agent_ids 参数。
+        lookback_hours: lookback_hours 参数。
+    """
     from core.api.core_facade import AgentNetwork
     ids = [a.strip() for a in agent_ids.split(",") if a.strip()]
     net = AgentNetwork()
@@ -2974,7 +3084,11 @@ async def get_network_snapshots():
 
 @router.post("/network/evolve")
 async def evolve_agent_network(payload: dict = Body(...)):
-    """触发网络演化追踪."""
+    """触发网络演化追踪.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import AgentNetwork
     agent_ids = payload.get("agent_ids", [])
     net = AgentNetwork()
@@ -2988,7 +3102,11 @@ async def evolve_agent_network(payload: dict = Body(...)):
 
 @router.post("/partners/select")
 async def select_partners(payload: dict = Body(...)):
-    """选择协作伙伴."""
+    """选择协作伙伴.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import PartnerSelector
     selector = PartnerSelector()
     partners = await selector.select(
@@ -3007,7 +3125,11 @@ async def select_partners(payload: dict = Body(...)):
 
 @router.post("/templates/register")
 async def register_template(payload: dict = Body(...)):
-    """注册文档模板."""
+    """注册文档模板.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import TemplateRegistry
     registry = TemplateRegistry.instance()
     template = registry.register(
@@ -3027,7 +3149,11 @@ async def list_templates():
 
 @router.post("/templates/render")
 async def render_template(payload: dict = Body(...)):
-    """渲染模板."""
+    """渲染模板.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import TemplateRenderer
     renderer = TemplateRenderer()
     result = renderer.render(
@@ -3040,7 +3166,11 @@ async def render_template(payload: dict = Body(...)):
 
 @router.post("/recording/start")
 async def start_recording(payload: dict = Body(...)):
-    """开始录制操作."""
+    """开始录制操作.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import OperationRecorder
     rid = OperationRecorder.get().start(description=payload.get("description", ""))
     return {"recording_id": rid, "status": "recording"}
@@ -3059,7 +3189,11 @@ async def stop_recording():
 
 @router.post("/recording/generate")
 async def generate_skill_from_recording(payload: dict = Body(...)):
-    """从录制生成 SKILL.md."""
+    """从录制生成 SKILL.md.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import OperationRecorder
     from core.api.core_facade import SkillGenerator
     recording = OperationRecorder.get().load(payload.get("recording_id", ""))
@@ -3076,7 +3210,11 @@ async def generate_skill_from_recording(payload: dict = Body(...)):
 
 @router.post("/recording/register")
 async def register_skill_from_generation(payload: dict = Body(...)):
-    """注册生成的 SKILL.md."""
+    """注册生成的 SKILL.md.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import SkillGenerator
     gen = SkillGenerator()
     path = gen.register(
@@ -3088,7 +3226,11 @@ async def register_skill_from_generation(payload: dict = Body(...)):
 
 @router.get("/recordings")
 async def list_recordings(limit: int = Query(20)):
-    """列出最近的录制."""
+    """列出最近的录制.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import OperationRecorder
     return {"recordings": OperationRecorder.get().list_recordings(limit=limit)}
 
@@ -3100,7 +3242,11 @@ async def list_recordings(limit: int = Query(20)):
 
 @router.post("/knowledge/export-okf")
 async def export_okf(payload: dict = Body(...)):
-    """导出域本体为 OKF 标准格式."""
+    """导出域本体为 OKF 标准格式.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import OKFExporter
     exporter = OKFExporter()
     result = await exporter.export(
@@ -3116,7 +3262,12 @@ async def get_knowledge_roi(
     domain_id: str = Query(""),
     days: int = Query(30, ge=1, le=365),
 ):
-    """获取知识编译 ROI 数据."""
+    """获取知识编译 ROI 数据.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     from core.api.core_facade import KnowledgeROI
     roi = KnowledgeROI()
     summary = roi.summary(domain_id=domain_id, days=days)
@@ -3134,7 +3285,11 @@ async def get_knowledge_roi(
 
 @router.post("/knowledge/roi/record")
 async def record_roi(payload: dict = Body(...)):
-    """记录一次查询的 ROI 数据."""
+    """记录一次查询的 ROI 数据.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import KnowledgeROI
     roi = KnowledgeROI()
     qid = roi.record_from_syscall(
@@ -3153,7 +3308,11 @@ async def record_roi(payload: dict = Body(...)):
 
 @router.post("/knowledge/ingest-conversations")
 async def ingest_conversations(payload: dict = Body(...)):
-    """扫描对话记录 → 提取有价值知识 → 写入 Wiki."""
+    """扫描对话记录 → 提取有价值知识 → 写入 Wiki.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import ConversationIngestor
     ingestor = ConversationIngestor()
     result = await ingestor.ingest_recent(
@@ -3167,7 +3326,11 @@ async def ingest_conversations(payload: dict = Body(...)):
 
 @router.post("/knowledge/garden")
 async def run_auto_garden(payload: dict = Body(...)):
-    """执行 Wiki 花园整理."""
+    """执行 Wiki 花园整理.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import AutoGarden
     garden = AutoGarden()
     result = garden.run(
@@ -3180,7 +3343,11 @@ async def run_auto_garden(payload: dict = Body(...)):
 
 @router.get("/knowledge/garden/reports")
 async def list_garden_reports(limit: int = Query(10)):
-    """列出花园整理报告."""
+    """列出花园整理报告.
+
+    Args:
+        limit: 返回条数上限。
+    """
     import os, json
     wiki_root = get_aiplat_data_dir("wiki")
     reports_dir = os.path.join(wiki_root, "garden_reports")
@@ -3204,13 +3371,9 @@ async def list_garden_reports(limit: int = Query(10)):
 @router.post("/verify/e2e")
 async def run_e2e_verification(payload: dict = Body(...)):
     """端到端全链路验证: ①拆分→②执行→③汇合→④损耗→⑤血缘→⑥ROI→⑦Wiki.
-    
-    Body (all optional):
-      - task: 测试任务描述 (留空使用默认)
-      - max_atoms: 最大原子数 (default 10)
-      - verify_lineage: 是否验证决策血缘 (default true)
-      - verify_roi: 是否验证ROI (default true)
-      - verify_ingestor: 是否验证对话摄入 (default true)
+
+    Args:
+        payload: 载荷 dict。
     """
     from core.api.core_facade import E2EVerifier
     verifier = E2EVerifier()
@@ -3306,7 +3469,11 @@ async def health_all():
 
 @router.get("/skills/{skill_id}/verify")
 async def verify_skill(skill_id: str):
-    """5项验收: 可识别/可调用/输出稳定/格式一致/内容符合."""
+    """5项验收: 可识别/可调用/输出稳定/格式一致/内容符合.
+
+    Args:
+        skill_id: Skill ID。
+    """
     from core.apps.skills.skill_verify import SkillVerifier
     verifier = SkillVerifier()
     report = verifier.verify(skill_id)
@@ -3315,7 +3482,11 @@ async def verify_skill(skill_id: str):
 
 @router.get("/skills/{skill_id}/extras")
 async def get_skill_extras(skill_id: str):
-    """获取 Skill 的 references/scripts/assets 资源列表."""
+    """获取 Skill 的 references/scripts/assets 资源列表.
+
+    Args:
+        skill_id: Skill ID。
+    """
     from core.apps.skills.registry import get_skill_registry
     reg = get_skill_registry()
     return reg.get_extras(skill_id)
@@ -3325,10 +3496,8 @@ async def get_skill_extras(skill_id: str):
 async def install_skill(payload: dict = Body(...)):
     """从 URL 或路径安装 Skill.
 
-    Body:
-      - url: 远程 SKILL.md URL (如 GitHub raw)
-      - path: 本地 Skill 目录路径
-      - skill_name: Skill 名称 (安装目录名)
+    Args:
+        payload: 载荷 dict。
     """
     import os, shutil
     from core.apps.skills.registry import get_skill_registry
@@ -3378,12 +3547,8 @@ async def install_skill(payload: dict = Body(...)):
 async def voice_brainstorm(payload: dict = Body(...)):
     """语音漫谈 → LLM 意图重构 → 结构化摘要.
 
-    接收 Whisper 转录文本 (可含"嗯/啊"、自我纠正、意识流),
-    LLM 自动提取核心意图、可执行步骤、待澄清模糊点。
-
-    Body:
-      - transcript: str (Whisper 转录的原始文本)
-      - duration_seconds: int (录音时长, 可选)
+    Args:
+        payload: 载荷 dict。
     """
     from core.api.core_facade import run_voice_brainstorm as _brainstorm
     return await _brainstorm(
@@ -3423,14 +3588,23 @@ async def export_adversarial_training_data():
 
 @router.get("/branches/{domain_id}")
 async def list_branches(domain_id: str):
-    """列出域的所有分支."""
+    """列出域的所有分支.
+
+    Args:
+        domain_id: domain 标识。
+    """
     from core.api.core_facade import OntologyBranchManager
     return {"domain_id": domain_id, "branches": [b.to_dict() for b in OntologyBranchManager.get().list_branches(domain_id)]}
 
 
 @router.post("/branches/{domain_id}/fork")
 async def fork_branch(domain_id: str, payload: dict = Body(...)):
-    """从 main 分支派生新分支."""
+    """从 main 分支派生新分支.
+
+    Args:
+        domain_id: domain 标识。
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import OntologyBranchManager
     info = OntologyBranchManager.get().fork(domain_id, payload.get("branch_name", ""), description=payload.get("description", ""))
     return info.to_dict()
@@ -3438,7 +3612,12 @@ async def fork_branch(domain_id: str, payload: dict = Body(...)):
 
 @router.delete("/branches/{domain_id}/{branch_name}")
 async def delete_branch(domain_id: str, branch_name: str):
-    """删除分支."""
+    """删除分支.
+
+    Args:
+        domain_id: domain 标识。
+        branch_name: branch_name 参数。
+    """
     from core.api.core_facade import OntologyBranchManager
     OntologyBranchManager.get().delete_branch(domain_id, branch_name)
     return {"deleted": True, "branch": branch_name}
@@ -3446,7 +3625,13 @@ async def delete_branch(domain_id: str, branch_name: str):
 
 @router.get("/branches/{domain_id}/diff")
 async def diff_branches(domain_id: str, source: str = Query("main"), target: str = Query("main")):
-    """对比两个分支的差异."""
+    """对比两个分支的差异.
+
+    Args:
+        domain_id: domain 标识。
+        source: source 参数。
+        target: target 参数。
+    """
     from core.api.core_facade import OntologyBranchManager
     diff = OntologyBranchManager.get().diff(domain_id, source, target)
     return {"merge_level": diff.merge_level.value, "diff_summary": diff.diff_summary,
@@ -3457,7 +3642,12 @@ async def diff_branches(domain_id: str, source: str = Query("main"), target: str
 
 @router.post("/branches/{domain_id}/merge")
 async def merge_branches(domain_id: str, payload: dict = Body(...)):
-    """合并分支."""
+    """合并分支.
+
+    Args:
+        domain_id: domain 标识。
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import OntologyBranchManager
     result = OntologyBranchManager.get().merge(domain_id, payload.get("source", ""), payload.get("target", "main"),
                                                 auto_apply=payload.get("auto_apply", False))
@@ -3469,7 +3659,11 @@ async def merge_branches(domain_id: str, payload: dict = Body(...)):
 
 @router.post("/simulate/evox-scenarios")
 async def simulate_evox_scenarios(payload: dict = Body(...)):
-    """EvoX 蜂群场景推演: 对比不同拆分策略."""
+    """EvoX 蜂群场景推演: 对比不同拆分策略.
+
+    Args:
+        payload: 载荷 dict。
+    """
     from core.api.core_facade import SimulationOrchestrator
     orch = SimulationOrchestrator()
     report = await orch.run_evox_scenarios(

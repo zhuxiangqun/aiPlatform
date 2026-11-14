@@ -29,8 +29,11 @@ async def fde_sessions(
 ):
     """List past FDE diagnosis sessions with delivery tracking status.
 
-    Returns sessions from fde-delivery GraphIndex, ordered by recency.
-    Each session includes company, industry hint, action count, and delivery stats.
+    Args:
+        industry: industry 参数。
+        company: company 参数。
+        status: status 参数。
+        limit: 返回条数上限。
     """
     try:
         from core.api.core_facade import GraphIndex
@@ -115,8 +118,8 @@ async def fde_sessions(
 async def fde_session_timeline(session_id: str):
     """Return the state transition timeline for a diagnosis session.
 
-    Part of the action bridge (L): traces every status change
-    from diagnosis generation through delivery to completion.
+    Args:
+        session_id: 会话 ID。
     """
     sid = session_id.strip()
     if not sid:
@@ -216,9 +219,8 @@ async def fde_session_timeline(session_id: str):
 async def fde_session_detail(session_id: str):
     """Get aggregated detail for a single diagnosis session.
 
-    Aggregates: session summary, evidence_map, knowledge_gaps,
-    delivery timeline, and related sessions in the same industry.
-    Single-request full view for the FDE dashboard detail page.
+    Args:
+        session_id: 会话 ID。
     """
     sid = session_id.strip()
     if not sid:
@@ -336,7 +338,11 @@ async def fde_session_detail(session_id: str):
 
 @router.get("/sessions/{session_id}/quality", response_model=FdeListResponse)
 async def fde_session_quality(session_id: str):
-    """Run all quality checks against a diagnosis session. Returns 0-100 score."""
+    """Run all quality checks against a diagnosis session. Returns 0-100 score.
+
+    Args:
+        session_id: 会话 ID。
+    """
     sid = session_id.strip()
     if not sid:
         raise HTTPException(status_code=400, detail="session_id is required")
@@ -421,9 +427,8 @@ async def fde_session_quality(session_id: str):
 async def fde_ontology_coverage(session_id: str):
     """Quantify how much of a diagnosis is backed by ontology vs LLM inference.
 
-    Returns per-dimension coverage ratios that precisely answer:
-    "This diagnosis is X% ontology-backed, Y% history-backed, Z% LLM inference."
-    The determinism_score = ontology + history = % of conclusions with grounding.
+    Args:
+        session_id: 会话 ID。
     """
     sid = session_id.strip()
     if not sid:

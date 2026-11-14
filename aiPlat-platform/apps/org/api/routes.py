@@ -17,6 +17,11 @@ router = APIRouter(prefix="/org", tags=["org-l5"])
 
 @router.get("/goals")
 async def org_goals(domain_id: str = Query("")):
+    """org_goals。
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_list_goals
 
@@ -28,6 +33,12 @@ async def org_goals(domain_id: str = Query("")):
 
 @router.post("/goals/{goal_id}/status")
 async def org_goal_status(goal_id: str, body: Dict[str, Any]):
+    """org_goal_status。
+
+    Args:
+        goal_id: goal 标识。
+        body: 请求体。
+    """
     status = str(body.get("status") or "").strip()
     try:
         from core.api.core_facade import org_set_goal_status
@@ -45,6 +56,13 @@ async def org_goal_status(goal_id: str, body: Dict[str, Any]):
 
 @router.post("/goals/{goal_id}/runs")
 async def org_goal_run(goal_id: str, request: Request, body: Dict[str, Any] = None):
+    """org_goal_run。
+
+    Args:
+        goal_id: goal 标识。
+        request: FastAPI Request。
+        body: 请求体。
+    """
     body = body or {}
     try:
         from core.api.core_facade import org_authorize_console_run, org_run_goal
@@ -76,6 +94,12 @@ async def org_goal_run(goal_id: str, request: Request, body: Dict[str, Any] = No
 
 @router.get("/runs")
 async def org_runs(goal_id: str = Query(""), limit: int = Query(20, ge=1, le=100)):
+    """org_runs。
+
+    Args:
+        goal_id: goal 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_list_runs
 
@@ -87,6 +111,11 @@ async def org_runs(goal_id: str = Query(""), limit: int = Query(20, ge=1, le=100
 
 @router.get("/runs/{run_id}")
 async def org_run_get(run_id: str):
+    """org_run_get。
+
+    Args:
+        run_id: 运行 ID。
+    """
     try:
         from core.api.core_facade import org_get_run
 
@@ -103,7 +132,12 @@ async def org_run_get(run_id: str):
 
 @router.get("/traces/{trace_id}")
 async def org_trace_replay(trace_id: str, domain_id: str = Query("it-ops")):
-    """V1: exact trace_id replay. Read-only."""
+    """V1: exact trace_id replay. Read-only.
+
+    Args:
+        trace_id: trace 标识。
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_replay_trace
 
@@ -120,6 +154,12 @@ async def org_trace_replay(trace_id: str, domain_id: str = Query("it-ops")):
 
 @router.post("/runs/{run_id}/resume")
 async def org_run_resume(run_id: str, body: Dict[str, Any] = None):
+    """org_run_resume。
+
+    Args:
+        run_id: 运行 ID。
+        body: 请求体。
+    """
     body = body or {}
     try:
         from core.api.core_facade import org_resume_run
@@ -145,6 +185,13 @@ async def org_goal_weekly(
     domain_id: str = Query("it-ops"),
     week: str = Query(""),
 ):
+    """org_goal_weekly。
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        week: week 参数。
+    """
     try:
         from core.api.core_facade import org_weekly_kpi
 
@@ -156,6 +203,12 @@ async def org_goal_weekly(
 
 @router.get("/memory")
 async def org_memory_list(domain_id: str = Query(""), limit: int = Query(50, ge=1, le=200)):
+    """org_memory_list。
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_list_memory
 
@@ -171,6 +224,13 @@ async def org_memory_search(
     domain_id: str = Query(""),
     limit: int = Query(20, ge=1, le=50),
 ):
+    """org_memory_search。
+
+    Args:
+        q: q 参数。
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_search_memory
 
@@ -186,6 +246,13 @@ async def org_fleet_gate_api(
     domain_id: str = Query("it-ops"),
     project_id: str = Query(""),
 ):
+    """org_fleet_gate_api。
+
+    Args:
+        goal_id: goal 标识。
+        domain_id: domain 标识。
+        project_id: project 标识。
+    """
     try:
         from core.api.core_facade import org_fleet_gate
 
@@ -197,6 +264,12 @@ async def org_fleet_gate_api(
 
 @router.post("/goals/{goal_id}/fleet")
 async def org_goal_fleet(goal_id: str, body: Dict[str, Any] = None):
+    """org_goal_fleet。
+
+    Args:
+        goal_id: goal 标识。
+        body: 请求体。
+    """
     body = body or {}
     try:
         from core.api.core_facade import org_set_allow_fleet
@@ -214,7 +287,11 @@ async def org_goal_fleet(goal_id: str, body: Dict[str, Any] = None):
 
 @router.get("/rehearsals")
 async def org_rehearsals_route(limit: int = Query(5, ge=1, le=20)):
-    """List sandbox rehearsal logs. Does not start a fleet."""
+    """List sandbox rehearsal logs. Does not start a fleet.
+
+    Args:
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_sandbox_rehearsals
 
@@ -226,7 +303,12 @@ async def org_rehearsals_route(limit: int = Query(5, ge=1, le=20)):
 
 @router.post("/rehearsals")
 async def org_rehearsal_start_route(request: Request, body: Dict[str, Any]):
-    """Record a sandbox handoff. Does not flip allow_fleet."""
+    """Record a sandbox handoff. Does not flip allow_fleet.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_sandbox_rehearsal_start
@@ -252,7 +334,12 @@ async def org_conflict_probe_route(
     domain_id: str = Query("it-ops"),
     resource_id: str = Query("shared_interface"),
 ):
-    """Sandbox concurrent lock probe. Second holder denied. No live write."""
+    """Sandbox concurrent lock probe. Second holder denied. No live write.
+
+    Args:
+        domain_id: domain 标识。
+        resource_id: resource 标识。
+    """
     try:
         from core.api.core_facade import org_sandbox_conflict_probe
 
@@ -267,7 +354,11 @@ async def org_conflict_probe_route(
 
 @router.get("/health/joint")
 async def org_joint_health_route(domain_id: str = Query("it-ops")):
-    """Read-only joint health. Does not write YAML or start a fleet."""
+    """Read-only joint health. Does not write YAML or start a fleet.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_joint_health
 
@@ -279,6 +370,11 @@ async def org_joint_health_route(domain_id: str = Query("it-ops")):
 
 @router.get("/field-ops/checklist")
 async def org_field_checklist(domain_id: str = Query("it-ops")):
+    """org_field_checklist。
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_field_ops_checklist
 
@@ -290,7 +386,11 @@ async def org_field_checklist(domain_id: str = Query("it-ops")):
 
 @router.get("/signoff")
 async def org_customer_signoff(domain_id: str = Query("it-ops")):
-    """V3: read-only customer signoff layer. No claim button."""
+    """V3: read-only customer signoff layer. No claim button.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_customer_signoff as _view
 
@@ -309,7 +409,13 @@ async def org_signoff_prep_route(
     goal_id: str = Query("goal-it-ops-alert-sla"),
     format: str = Query("json"),
 ):
-    """Read-only prep score for customer review. Not a signature."""
+    """Read-only prep score for customer review. Not a signature.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        format: format 参数。
+    """
     try:
         from core.api.core_facade import org_signoff_prep
 
@@ -336,7 +442,17 @@ async def org_signoff_evidence_pack(
     sandbox_mode: bool = Query(False),
     format: str = Query("json"),
 ):
-    """H2: customer-safe evidence pack. Read-only. Not a signature."""
+    """H2: customer-safe evidence pack. Read-only. Not a signature.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        max_traces: max_traces 参数。
+        sandbox_mode: sandbox_mode 参数。
+        format: format 参数。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_evidence_pack
@@ -370,7 +486,14 @@ async def org_value_translation_route(
     week: str = Query(""),
     tenant_id: str = Query(""),
 ):
-    """H3: audit-friendly value translation. Read-only. Not a signature."""
+    """H3: audit-friendly value translation. Read-only. Not a signature.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        tenant_id: 租户 ID。
+    """
     try:
         from core.api.core_facade import org_value_translation
 
@@ -396,7 +519,15 @@ async def org_value_roi_preview_route(
     trial_minutes_per_incident: float = Query(...),
     trial_mtta_seconds: float = Query(...),
 ):
-    """What-if ROI. Read-only. Never writes baseline. Not a signature."""
+    """What-if ROI. Read-only. Never writes baseline. Not a signature.
+
+    Args:
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        week: week 参数。
+        trial_minutes_per_incident: trial_minutes_per_incident 参数。
+        trial_mtta_seconds: trial_mtta_seconds 参数。
+    """
     try:
         from core.api.core_facade import org_value_roi_preview
 
@@ -425,7 +556,12 @@ async def org_value_baseline_get_route(
     request: Request,
     tenant_id: str = Query("default"),
 ):
-    """S2: read tenant value baseline."""
+    """S2: read tenant value baseline.
+
+    Args:
+        request: FastAPI Request。
+        tenant_id: 租户 ID。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_value_baseline_get
@@ -444,7 +580,12 @@ async def org_value_baseline_get_route(
 
 @router.put("/value/baseline")
 async def org_value_baseline_put_route(request: Request, body: Dict[str, Any]):
-    """S2: write tenant value baseline. Not a signature."""
+    """S2: write tenant value baseline. Not a signature.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_value_baseline_put
@@ -480,7 +621,12 @@ async def org_domain_packs_route():
 
 @router.post("/domain-packs/install")
 async def org_domain_packs_install_route(request: Request, body: Dict[str, Any]):
-    """S3: install a domain pack. Does not claim M4."""
+    """S3: install a domain pack. Does not claim M4.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_domain_pack_install
@@ -504,7 +650,11 @@ async def org_domain_packs_install_route(request: Request, body: Dict[str, Any])
 
 @router.get("/signoff/progress")
 async def org_signoff_progress_get_route(request: Request):
-    """S4: read signoff progress. m4_claim_allowed stays false."""
+    """S4: read signoff progress. m4_claim_allowed stays false.
+
+    Args:
+        request: FastAPI Request。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_signoff_progress_get
@@ -523,7 +673,12 @@ async def org_signoff_progress_get_route(request: Request):
 
 @router.put("/signoff/progress")
 async def org_signoff_progress_put_route(request: Request, body: Dict[str, Any]):
-    """S4: write oncall / dual-sign. Never flips m4_claim_allowed."""
+    """S4: write oncall / dual-sign. Never flips m4_claim_allowed.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_signoff_progress_put
@@ -565,7 +720,16 @@ async def org_approvals_inbox(
     offset: int = Query(0),
     limit: int = Query(20),
 ):
-    """H1: read-only pending queue. Does not approve."""
+    """H1: read-only pending queue. Does not approve.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+        goal_id: goal 标识。
+        kind: kind 参数。
+        offset: 分页偏移。
+        limit: 返回条数上限。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_approval_inbox
@@ -597,7 +761,11 @@ def _h4_http(out: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/approvals/auto-rules")
 async def org_approvals_auto_rules(request: Request):
-    """H4: read-only rule switch. Default enabled=false."""
+    """H4: read-only rule switch. Default enabled=false.
+
+    Args:
+        request: FastAPI Request。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_rules
@@ -615,7 +783,12 @@ async def org_approvals_auto_audit(
     request: Request,
     limit: int = Query(50),
 ):
-    """H4: admin-only auto-pass audit. Not for ordinary FDE."""
+    """H4: admin-only auto-pass audit. Not for ordinary FDE.
+
+    Args:
+        request: FastAPI Request。
+        limit: 返回条数上限。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_auto_audit
@@ -633,7 +806,12 @@ async def org_approvals_auto_pass(
     request: Request,
     domain_id: str = Query("it-ops"),
 ):
-    """H4: pass eligible queue items. Does not write live YAML."""
+    """H4: pass eligible queue items. Does not write live YAML.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h4_auto_pass
@@ -654,7 +832,12 @@ def _h5_http(out: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/skills/drafts")
 async def org_skill_drafts(request: Request, domain_id: str = Query("it-ops")):
-    """H5: draft packs. Not listed until human approve."""
+    """H5: draft packs. Not listed until human approve.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_drafts
@@ -673,7 +856,13 @@ async def org_skill_draft_create(
     case_id: str = Query(""),
     domain_id: str = Query("it-ops"),
 ):
-    """H5: create a draft from a skill_candidate case. Does not list it."""
+    """H5: create a draft from a skill_candidate case. Does not list it.
+
+    Args:
+        request: FastAPI Request。
+        case_id: case 标识。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_create_draft
@@ -690,7 +879,11 @@ async def org_skill_draft_create(
 
 @router.get("/ontology/gap-hints")
 async def org_gap_hints_route(domain_id: str = Query("it-ops")):
-    """Read-only repeated-failure hint. Does not write YAML."""
+    """Read-only repeated-failure hint. Does not write YAML.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_gap_hints
 
@@ -705,7 +898,11 @@ async def org_gap_hints_route(domain_id: str = Query("it-ops")):
 
 @router.get("/ontology/gap-previews")
 async def org_gap_previews_route(domain_id: str = Query("it-ops")):
-    """Read-only Diff for schema_gap cases. Does not create proposals or write YAML."""
+    """Read-only Diff for schema_gap cases. Does not create proposals or write YAML.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_preview_schema_gaps
 
@@ -717,7 +914,12 @@ async def org_gap_previews_route(domain_id: str = Query("it-ops")):
 
 @router.get("/ontology/cases/cold")
 async def org_cold_cases_route(domain_id: str = Query("it-ops"), limit: int = Query(20, ge=1, le=50)):
-    """List cold-archived cases. Audit only; not injected."""
+    """List cold-archived cases. Audit only; not injected.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_list_cold_cases
 
@@ -729,7 +931,12 @@ async def org_cold_cases_route(domain_id: str = Query("it-ops"), limit: int = Qu
 
 @router.post("/ontology/cases/archive-cold")
 async def org_archive_cold_route(request: Request, domain_id: str = Query("it-ops")):
-    """Move low-yield cases to cold store. Does not delete or write live YAML."""
+    """Move low-yield cases to cold store. Does not delete or write live YAML.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_archive_cold_cases
@@ -747,7 +954,12 @@ async def org_archive_cold_route(request: Request, domain_id: str = Query("it-op
 
 @router.post("/ontology/gap-drafts")
 async def org_gap_drafts_route(request: Request, domain_id: str = Query("it-ops")):
-    """Draft from schema_gap cases via the existing proposal ledger. No live YAML."""
+    """Draft from schema_gap cases via the existing proposal ledger. No live YAML.
+
+    Args:
+        request: FastAPI Request。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_draft_schema_gaps
@@ -767,7 +979,12 @@ async def org_gap_drafts_route(request: Request, domain_id: str = Query("it-ops"
 
 @router.post("/skills/drafts/bundle")
 async def org_skill_bundle_route(request: Request, body: Dict[str, Any]):
-    """Assemble existing drafts. No SKILL.md."""
+    """Assemble existing drafts. No SKILL.md.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_skill_bundle
@@ -786,7 +1003,12 @@ async def org_skill_bundle_route(request: Request, body: Dict[str, Any]):
 
 @router.post("/skills/drafts/{draft_id}/approve")
 async def org_skill_draft_approve(draft_id: str, request: Request):
-    """H5: admin lists the draft on the existing marketplace. Not automatic."""
+    """H5: admin lists the draft on the existing marketplace. Not automatic.
+
+    Args:
+        draft_id: draft 标识。
+        request: FastAPI Request。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_approve_draft
@@ -801,7 +1023,12 @@ async def org_skill_draft_approve(draft_id: str, request: Request):
 
 @router.post("/skills/drafts/{draft_id}/reject")
 async def org_skill_draft_reject(draft_id: str, request: Request):
-    """H5: reject a draft. Does not register."""
+    """H5: reject a draft. Does not register.
+
+    Args:
+        draft_id: draft 标识。
+        request: FastAPI Request。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_h5_reject_draft
@@ -821,7 +1048,14 @@ async def org_approvals_snapshot(
     request: Request,
     domain_id: str = Query("it-ops"),
 ):
-    """H1: read-only snapshot. Approve via existing routes only."""
+    """H1: read-only snapshot. Approve via existing routes only.
+
+    Args:
+        kind: kind 参数。
+        item_id: item 标识。
+        request: FastAPI Request。
+        domain_id: domain 标识。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_approval_snapshot
@@ -842,6 +1076,11 @@ async def org_approvals_snapshot(
 
 @router.get("/field-ops/live-unlock")
 async def org_live_unlock(domain_id: str = Query("it-ops")):
+    """org_live_unlock。
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_live_unlock_status
 
@@ -853,7 +1092,11 @@ async def org_live_unlock(domain_id: str = Query("it-ops")):
 
 @router.post("/interfaces/{domain_id}/materialize")
 async def org_interface_materialize(domain_id: str):
-    """Phase C1.5: copy spec to AIPLAT_HOME yaml. Does not write connector.live."""
+    """Phase C1.5: copy spec to AIPLAT_HOME yaml. Does not write connector.live.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_materialize_interface
 
@@ -867,7 +1110,11 @@ async def org_interface_materialize(domain_id: str):
 
 @router.get("/interfaces")
 async def org_interfaces(domain_id: str = Query("")):
-    """Phase C1.5: InterfaceSpec list (yaml, else connector.live)."""
+    """Phase C1.5: InterfaceSpec list (yaml, else connector.live).
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_list_interfaces
 
@@ -879,6 +1126,11 @@ async def org_interfaces(domain_id: str = Query("")):
 
 @router.get("/interfaces/{domain_id}")
 async def org_interface_get(domain_id: str):
+    """org_interface_get。
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import org_get_interface
 
@@ -890,6 +1142,12 @@ async def org_interface_get(domain_id: str):
 
 @router.get("/interfaces/{domain_id}/actions/{action_id}")
 async def org_interface_action_bound(domain_id: str, action_id: str):
+    """org_interface_action_bound。
+
+    Args:
+        domain_id: domain 标识。
+        action_id: action 标识。
+    """
     try:
         from core.api.core_facade import org_assert_action_interface
 
@@ -909,6 +1167,12 @@ async def org_usage_weekly_api(
     domain_id: str = Query(""),
     week: str = Query(""),
 ):
+    """org_usage_weekly_api。
+
+    Args:
+        domain_id: domain 标识。
+        week: week 参数。
+    """
     try:
         from core.api.core_facade import org_usage_weekly
 
@@ -920,6 +1184,8 @@ async def org_usage_weekly_api(
 
 @router.get("/posts")
 async def org_posts():
+    """org_posts。
+    """
     try:
         from core.api.core_facade import org_list_posts
 
@@ -931,6 +1197,11 @@ async def org_posts():
 
 @router.get("/posts/{post_id}")
 async def org_post_get(post_id: str):
+    """org_post_get。
+
+    Args:
+        post_id: post 标识。
+    """
     try:
         from core.api.core_facade import org_get_post
 
@@ -947,6 +1218,8 @@ async def org_post_get(post_id: str):
 
 @router.get("/channels/feishu/status")
 async def org_feishu_status():
+    """org_feishu_status。
+    """
     try:
         from core.api.core_facade import org_ingress_status
 
@@ -958,7 +1231,11 @@ async def org_feishu_status():
 
 @router.post("/channels/feishu/events")
 async def org_feishu_events(request: Request):
-    """Phase C2: Feishu/Lark inbound. Signature required. No second channel."""
+    """Phase C2: Feishu/Lark inbound. Signature required. No second channel.
+
+    Args:
+        request: FastAPI Request。
+    """
     raw = await request.body()
     try:
         payload = json.loads(raw.decode("utf-8") or "{}")
@@ -987,7 +1264,11 @@ async def org_feishu_events(request: Request):
 
 @router.get("/events/previews")
 async def org_event_previews_route(limit: int = Query(5, ge=1, le=20)):
-    """List sandbox event previews. Does not start live IO."""
+    """List sandbox event previews. Does not start live IO.
+
+    Args:
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import org_event_previews
 
@@ -999,7 +1280,12 @@ async def org_event_previews_route(limit: int = Query(5, ge=1, le=20)):
 
 @router.post("/events/preview")
 async def org_event_preview_route(request: Request, body: Dict[str, Any]):
-    """Whitelist event sandbox preview. No second channel, no live run."""
+    """Whitelist event sandbox preview. No second channel, no live run.
+
+    Args:
+        request: FastAPI Request。
+        body: 请求体。
+    """
     role = resolve_request_role(request)
     try:
         from core.api.core_facade import org_event_preview_start
@@ -1022,7 +1308,11 @@ async def org_event_preview_route(request: Request, body: Dict[str, Any]):
 
 @router.post("/connectors/fetch")
 async def org_connectors_fetch(body: Dict[str, Any]):
-    """Canonical Org L5 fetch (D4 converged). Prefer this over FDE governance/fetch."""
+    """Canonical Org L5 fetch (D4 converged). Prefer this over FDE governance/fetch.
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
     purpose = str(body.get("purpose") or "org_pilot").strip() or "org_pilot"
@@ -1037,6 +1327,11 @@ async def org_connectors_fetch(body: Dict[str, Any]):
 
 @router.post("/connectors/write-preview")
 async def org_connectors_write_preview(body: Dict[str, Any]):
+    """org_connectors_write_preview。
+
+    Args:
+        body: 请求体。
+    """
     domain_id = str(body.get("domain_id") or "it-ops").strip() or "it-ops"
     entity_id = str(body.get("entity_id") or body.get("id") or "").strip()
     patch = body.get("patch") if isinstance(body.get("patch"), dict) else {}

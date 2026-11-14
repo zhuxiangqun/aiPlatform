@@ -54,7 +54,13 @@ async def get_value_dashboard(
 
 ) -> Dict[str, Any]:
 
-    """Get five-dimension value dashboard for a tenant/month/audience."""
+    """Get five-dimension value dashboard for a tenant/month/audience.
+
+    Args:
+        tenant_id: 租户 ID。
+        month: month 参数。
+        audience: audience 参数。
+    """
 
     if not month:
 
@@ -98,7 +104,11 @@ from core.schemas_value import (
 
 async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
 
-    """Get all business goals for a tenant."""
+    """Get all business goals for a tenant.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
 
     try:
 
@@ -138,7 +148,12 @@ async def get_business_goals(tenant_id: str) -> List[Dict[str, Any]]:
 
 async def create_business_goal(tenant_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 
-    """Register a new business goal."""
+    """Register a new business goal.
+
+    Args:
+        tenant_id: 租户 ID。
+        body: 请求体。
+    """
 
     try:
 
@@ -196,7 +211,13 @@ async def update_business_goal(
 
 ) -> Dict[str, Any]:
 
-    """Update a business goal (e.g., current_value)."""
+    """Update a business goal (e.g., current_value).
+
+    Args:
+        tenant_id: 租户 ID。
+        goal_id: goal 标识。
+        body: 请求体。
+    """
 
     try:
 
@@ -242,7 +263,12 @@ async def update_business_goal(
 
 async def delete_business_goal(tenant_id: str, goal_id: str) -> Dict[str, Any]:
 
-    """Delete a business goal."""
+    """Delete a business goal.
+
+    Args:
+        tenant_id: 租户 ID。
+        goal_id: goal 标识。
+    """
 
     try:
 
@@ -280,7 +306,11 @@ async def delete_business_goal(tenant_id: str, goal_id: str) -> Dict[str, Any]:
 
 async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
 
-    """Get current routing strategy status (from GoalAwareRouter)."""
+    """Get current routing strategy status (from GoalAwareRouter).
+
+    Args:
+        tenant_id: 租户 ID。
+    """
 
     try:
 
@@ -322,7 +352,12 @@ async def get_strategy_status(tenant_id: str) -> Dict[str, Any]:
 
 async def get_goal_trend(tenant_id: str, goal_id: str) -> Dict[str, Any]:
 
-    """Get historical trend data for a business goal (sparkline chart)."""
+    """Get historical trend data for a business goal (sparkline chart).
+
+    Args:
+        tenant_id: 租户 ID。
+        goal_id: goal 标识。
+    """
 
     try:
 
@@ -389,7 +424,13 @@ async def configure_goal_source(
 
 ) -> Dict[str, Any]:
 
-    """Configure data collection source for a business goal."""
+    """Configure data collection source for a business goal.
+
+    Args:
+        tenant_id: 租户 ID。
+        goal_id: goal 标识。
+        body: 请求体。
+    """
 
     try:
 

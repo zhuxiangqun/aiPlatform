@@ -28,7 +28,20 @@ async def export_playbook(
     cleanup_rules: str = "",   # comma-separated rule names
     tags: str = "",
 ):
-    """Export skills, ontology, pipelines as a .aipb Playbook archive."""
+    """Export skills, ontology, pipelines as a .aipb Playbook archive.
+
+    Args:
+        id: id 参数。
+        name: name 参数。
+        industry: industry 参数。
+        version: version 参数。
+        skills: skills 参数。
+        ontology: ontology 参数。
+        pipelines: pipelines 参数。
+        policies: policies 参数。
+        cleanup_rules: cleanup_rules 参数。
+        tags: tags 参数。
+    """
     if not id or not name:
         raise HTTPException(status_code=400, detail="id and name are required")
 
@@ -63,7 +76,12 @@ async def import_playbook(
     file: UploadFile = File(...),
     on_conflict: str = "skip",
 ):
-    """Import a .aipb Playbook archive."""
+    """Import a .aipb Playbook archive.
+
+    Args:
+        file: file 参数。
+        on_conflict: on_conflict 参数。
+    """
     if on_conflict not in ("skip", "overwrite", "merge"):
         raise HTTPException(status_code=400, detail="on_conflict must be: skip, overwrite, merge")
 
@@ -88,7 +106,11 @@ async def import_playbook(
 async def read_playbook_manifest(
     file: UploadFile = File(...),
 ):
-    """Read manifest from a .aipb archive without importing."""
+    """Read manifest from a .aipb archive without importing.
+
+    Args:
+        file: file 参数。
+    """
     import tempfile, os, zipfile
     from pathlib import Path
 

@@ -9,6 +9,11 @@ class PlatformAdapter:
     """Layer 2 (platform) Dashboard 适配器"""
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint or "http://localhost:8003"
         self.layer_name = "platform"
         

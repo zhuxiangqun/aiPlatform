@@ -1,3 +1,5 @@
+"""personas：模块接口。"""
+
 from __future__ import annotations
 
 import os
@@ -89,9 +91,14 @@ def _extract_section(md_body: str, *, title_contains: str, max_chars: int = 4000
 
 @router.get("/personas", response_model=ItemResponse)
 async def list_personas(limit: int = 100, offset: int = 0, q: Optional[str] = None, category: Optional[str] = None, source: Optional[str] = None):
-    """
-    Read-only Personas list (stored in prompt_templates with metadata.type=persona).
-    Filtering is best-effort by scanning prompt_templates metadata_json.
+    """Read-only Personas list (stored in prompt_templates with metadata.type=persona).
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        q: q 参数。
+        category: category 参数。
+        source: source 参数。
     """
     store = _store()
     if not store:
@@ -149,6 +156,11 @@ async def list_personas(limit: int = 100, offset: int = 0, q: Optional[str] = No
 
 @router.get("/personas/{template_id}", response_model=ItemResponse)
 async def get_persona(template_id: str):
+    """获取 persona。
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -167,15 +179,11 @@ async def get_persona(template_id: str):
 
 @router.post("/personas/import/agency-agents", response_model=StatusResponse)
 async def import_agency_agents(request: dict, http_request: Request):
-    """
-    Import agency-agents markdown personas into prompt_templates.
+    """Import agency-agents markdown personas into prompt_templates.
 
-    Body:
-      {
-        "root": "/abs/path/to/agency-agents",
-        "categories": ["engineering","design"],   // optional; default = all directories under root
-        "prefix": "persona:agency"               // optional
-      }
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
     """
     store = _store()
     if not store:

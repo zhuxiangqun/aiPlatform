@@ -1,9 +1,16 @@
+"""factory：模块接口。"""
+
 from typing import Optional
 from .schemas import NetworkConfig
 from .base import NetworkManager
 
 
 def create_network_manager(config: Optional[NetworkConfig] = None) -> NetworkManager:
+    """创建 network_manager。
+
+    Args:
+        config: config 参数。
+    """
     config = config or NetworkConfig()
 
     if config.backend == "static":

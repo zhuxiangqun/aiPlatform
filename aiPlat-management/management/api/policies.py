@@ -1,3 +1,5 @@
+"""policies：模块接口。"""
+
 from fastapi import APIRouter, HTTPException, Query
 import httpx
 
@@ -12,6 +14,12 @@ _POLICIES_BASE = "/platform/tenant-policies/policies/tenants"
 
 @router.get("/tenants")
 async def list_tenant_policies(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)):
+    """列出 tenant_policies。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     try:
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}", params={"limit": limit, "offset": offset})
@@ -23,6 +31,11 @@ async def list_tenant_policies(limit: int = Query(100, ge=1, le=1000), offset: i
 
 @router.get("/tenants/{tenant_id}")
 async def get_tenant_policy(tenant_id: str):
+    """获取 tenant_policy。
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     try:
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}/{tenant_id}")
@@ -36,6 +49,12 @@ async def get_tenant_policy(tenant_id: str):
 
 @router.put("/tenants/{tenant_id}")
 async def upsert_tenant_policy(tenant_id: str, body: dict):
+    """upsert_tenant_policy。
+
+    Args:
+        tenant_id: 租户 ID。
+        body: 请求体。
+    """
     try:
         client = get_core_client()
         return await client._platform_req("PUT", f"{_POLICIES_BASE}/{tenant_id}", json=body or {})
@@ -48,6 +67,12 @@ async def upsert_tenant_policy(tenant_id: str, body: dict):
 
 @router.get("/tenants/{tenant_id}/evaluate-tool")
 async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
+    """evaluate_tenant_tool_policy。
+
+    Args:
+        tenant_id: 租户 ID。
+        tool_name: tool_name 参数。
+    """
     try:
         client = get_core_client()
         return await client._platform_req("GET", f"{_POLICIES_BASE}/{tenant_id}/evaluate-tool", params={"tool_name": tool_name})
@@ -60,6 +85,11 @@ async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str):
 
 @router.post("/evaluate")
 async def evaluate_policy(body: dict):
+    """evaluate_policy。
+
+    Args:
+        body: 请求体。
+    """
     try:
         client = get_core_client()
         return await client._platform_req("POST", "/platform/tenant-policies/policies/evaluate", json=body or {})

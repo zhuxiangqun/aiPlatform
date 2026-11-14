@@ -23,8 +23,9 @@ router = APIRouter(tags=["fde-reports"])
 async def generate_report(spec_id: str = Query(""), download: bool = Query(False)):
     """生成验收报告 (Markdown → 前端可预览/下载).
 
-    聚合 KPI 数据 + 反馈统计 + Checklist 结果，
-    输出可直接用于客户汇报的结构化报告。
+    Args:
+        spec_id: spec 标识。
+        download: download 参数。
     """
     # Gather data
     kpi_text = "无 KPI 数据"
@@ -96,7 +97,9 @@ async def generate_report(spec_id: str = Query(""), download: bool = Query(False
 async def generate_training_materials(spec_id: str = Query(""), download: bool = Query(False)):
     """自动生成客户培训材料.
 
-    基于当前 Agent 配置 + Skills + KPI 生成 Markdown 用户手册.
+    Args:
+        spec_id: spec 标识。
+        download: download 参数。
     """
     materials = []
 
@@ -166,7 +169,9 @@ A: 左侧面板 > 会话历史中可查看所有对话记录。
 async def generate_runbook(spec_id: str = Query(""), download: bool = Query(False)):
     """生成 SLA 运维 Runbook.
 
-    基于已部署架构 + 告警规则 + 应急流程生成 Markdown 手册.
+    Args:
+        spec_id: spec 标识。
+        download: download 参数。
     """
     runbook = f"""# 运维 Runbook — {spec_id or "未指定项目"}
 

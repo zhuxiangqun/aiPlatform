@@ -1,3 +1,5 @@
+"""monitor_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""Ontology Editor — Process Monitor API endpoints (v2.7)."""
 from fastapi import APIRouter, HTTPException, Query
@@ -14,7 +16,11 @@ def _is_not_initialized(e: Exception) -> bool:
 
 @router.get("/domains/{domain_id}/monitor/state-distribution", response_model=StatusResponse)
 async def state_distribution(domain_id: str):
-    u"""Get per-class-per-state instance counts."""
+    """Get per-class-per-state instance counts.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_state_distribution
         data = get_state_distribution(domain_id)
@@ -27,7 +33,12 @@ async def state_distribution(domain_id: str):
 
 @router.get("/domains/{domain_id}/monitor/bottlenecks", response_model=StatusResponse)
 async def bottlenecks(domain_id: str, limit: int = Query(10)):
-    u"""Top entities stuck longest in current state."""
+    """Top entities stuck longest in current state.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import get_bottleneck_analysis
         data = get_bottleneck_analysis(domain_id, limit)
@@ -40,7 +51,11 @@ async def bottlenecks(domain_id: str, limit: int = Query(10)):
 
 @router.get("/domains/{domain_id}/monitor/sla-violations", response_model=StatusResponse)
 async def sla_violations(domain_id: str):
-    u"""Recent SLA violations from time_elapsed triggers."""
+    """Recent SLA violations from time_elapsed triggers.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_sla_violations
         data = get_sla_violations(domain_id)
@@ -53,7 +68,12 @@ async def sla_violations(domain_id: str):
 
 @router.get("/domains/{domain_id}/monitor/trends", response_model=StatusResponse)
 async def trends(domain_id: str, days: int = Query(7)):
-    u"""Daily state transition trend data."""
+    """Daily state transition trend data.
+
+    Args:
+        domain_id: domain 标识。
+        days: days 参数。
+    """
     try:
         from core.api.core_facade import get_trend_data
         data = get_trend_data(domain_id, days)
@@ -66,7 +86,12 @@ async def trends(domain_id: str, days: int = Query(7)):
 
 @router.get("/domains/{domain_id}/monitor/process-status", response_model=StatusResponse)
 async def process_status(domain_id: str, process_name: Optional[str] = Query(None)):
-    u"""Get running process instance status."""
+    """Get running process instance status.
+
+    Args:
+        domain_id: domain 标识。
+        process_name: process_name 参数。
+    """
     try:
         from core.api.core_facade import get_process_status
         data = get_process_status(domain_id, process_name or "")
@@ -79,7 +104,12 @@ async def process_status(domain_id: str, process_name: Optional[str] = Query(Non
 
 @router.get("/domains/{domain_id}/monitor/process-bottlenecks", response_model=StatusResponse)
 async def process_bottlenecks(domain_id: str, limit: int = Query(10)):
-    u"""Process instances stuck longest at their current step."""
+    """Process instances stuck longest at their current step.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     try:
         from core.api.core_facade import get_bottlenecks
         data = get_bottlenecks(domain_id, limit)

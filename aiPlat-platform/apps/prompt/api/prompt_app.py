@@ -72,6 +72,14 @@ def _new_id(prefix: str = "pt") -> str:
 @router.get("/prompts/app/templates", response_model=ItemResponse)
 async def list_templates(category: str = "", status: str = "",
                          limit: int = 100, offset: int = 0):
+    """列出 templates。
+
+    Args:
+        category: category 参数。
+        status: status 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     try:
         store = _store()
         if not store:
@@ -87,6 +95,11 @@ async def list_templates(category: str = "", status: str = "",
 
 @router.post("/prompts/app/templates", response_model=StatusResponse)
 async def create_template(req: PromptAppTemplateCreate):
+    """创建 template。
+
+    Args:
+        req: req 参数。
+    """
     try:
         store = _store()
         if not store:
@@ -113,6 +126,11 @@ async def create_template(req: PromptAppTemplateCreate):
 
 @router.get("/prompts/app/templates/{template_id}", response_model=ItemResponse)
 async def get_template(template_id: str):
+    """获取 template。
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -124,6 +142,12 @@ async def get_template(template_id: str):
 
 @router.put("/prompts/app/templates/{template_id}", response_model=StatusResponse)
 async def update_template(template_id: str, req: PromptAppTemplateUpdate):
+    """更新 template。
+
+    Args:
+        template_id: template 标识。
+        req: req 参数。
+    """
     try:
         store = _store()
         if not store:
@@ -151,7 +175,11 @@ async def update_template(template_id: str, req: PromptAppTemplateUpdate):
 
 @router.post("/prompts/app/templates/{template_id}/publish", response_model=StatusResponse)
 async def publish_template(template_id: str):
-    """Publish a prompt app template with signature verification."""
+    """Publish a prompt app template with signature verification.
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -182,6 +210,11 @@ async def publish_template(template_id: str):
 
 @router.delete("/prompts/app/templates/{template_id}", response_model=StatusResponse)
 async def delete_template(template_id: str):
+    """删除 template。
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -193,6 +226,11 @@ async def delete_template(template_id: str):
 
 @router.post("/prompts/app/templates/{template_id}/copy", response_model=StatusResponse)
 async def copy_template(template_id: str):
+    """copy_template。
+
+    Args:
+        template_id: template 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -217,7 +255,12 @@ async def copy_template(template_id: str):
 
 @router.post("/prompts/app/templates/{template_id}/preview", response_model=StatusResponse)
 async def preview_template(template_id: str, req: PromptPreviewRequest):
-    """## platform:allowed — LLM-based template preview."""
+    """## platform:allowed — LLM-based template preview.
+
+    Args:
+        template_id: template 标识。
+        req: req 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -258,7 +301,11 @@ async def preview_template(template_id: str, req: PromptPreviewRequest):
 
 @router.post("/prompts/app/preview-text", response_model=StatusResponse)
 async def preview_text(req: PromptPreviewTextRequest):
-    """## platform:allowed — LLM-based text preview."""
+    """## platform:allowed — LLM-based text preview.
+
+    Args:
+        req: req 参数。
+    """
     sp = req.system_prompt or ""
     up = req.user_prompt or ""
     if not up:
@@ -289,7 +336,11 @@ async def preview_text(req: PromptPreviewTextRequest):
 
 @router.post("/prompts/app/run", response_model=StatusResponse)
 async def run_prompt(req: PromptRunRequest):
-    """## platform:allowed — Run a template or instance: render variables → LLM → return output."""
+    """## platform:allowed — Run a template or instance: render variables → LLM → return output.
+
+    Args:
+        req: req 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -335,7 +386,11 @@ async def run_prompt(req: PromptRunRequest):
 
 @router.post("/prompts/app/optimize", response_model=StatusResponse)
 async def optimize_prompt(req: PromptOptimizeRequest):
-    """## platform:allowed — AI-optimize a prompt: returns improved version with suggestions."""
+    """## platform:allowed — AI-optimize a prompt: returns improved version with suggestions.
+
+    Args:
+        req: req 参数。
+    """
     prompt_text = req.prompt
     try:
         store = _store()
@@ -398,6 +453,8 @@ async def optimize_prompt(req: PromptOptimizeRequest):
 
 @router.get("/prompts/app/categories", response_model=ItemResponse)
 async def list_categories():
+    """列出 categories。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -406,6 +463,11 @@ async def list_categories():
 
 @router.post("/prompts/app/categories", response_model=StatusResponse)
 async def create_category(req: PromptCategoryCreate):
+    """创建 category。
+
+    Args:
+        req: req 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -417,6 +479,11 @@ async def create_category(req: PromptCategoryCreate):
 
 @router.delete("/prompts/app/categories/{name}", response_model=StatusResponse)
 async def delete_category(name: str):
+    """删除 category。
+
+    Args:
+        name: name 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -637,6 +704,12 @@ async def seed_scenario_tags():
 
 @router.get("/prompts/app/instances", response_model=ItemResponse)
 async def list_instances(limit: int = 100, offset: int = 0):
+    """列出 instances。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -645,6 +718,11 @@ async def list_instances(limit: int = 100, offset: int = 0):
 
 @router.post("/prompts/app/instances", response_model=StatusResponse)
 async def create_instance(req: PromptAppInstanceCreate):
+    """创建 instance。
+
+    Args:
+        req: req 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -664,6 +742,12 @@ async def create_instance(req: PromptAppInstanceCreate):
 
 @router.put("/prompts/app/instances/{instance_id}", response_model=StatusResponse)
 async def update_instance(instance_id: str, req: PromptAppInstanceUpdate):
+    """更新 instance。
+
+    Args:
+        instance_id: instance 标识。
+        req: req 参数。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -684,6 +768,11 @@ async def update_instance(instance_id: str, req: PromptAppInstanceUpdate):
 
 @router.delete("/prompts/app/instances/{instance_id}", response_model=StatusResponse)
 async def delete_instance(instance_id: str):
+    """删除 instance。
+
+    Args:
+        instance_id: instance 标识。
+    """
     store = _store()
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -693,7 +782,12 @@ async def delete_instance(instance_id: str):
 
 @router.post("/prompts/app/templates/{template_id}/sign", response_model=StatusResponse)
 async def sign_prompt_app_template(template_id: str, req: Dict[str, Any]):
-    """Sign a prompt app template directory with Ed25519 key. Writes TEMPLATE.manifest.json."""
+    """Sign a prompt app template directory with Ed25519 key. Writes TEMPLATE.manifest.json.
+
+    Args:
+        template_id: template 标识。
+        req: req 参数。
+    """
     private_key = str(req.get("private_key") or "").strip()
     private_key = private_key.replace("\\n", "\n")  # normalize escaped newlines from frontend
     if not private_key:

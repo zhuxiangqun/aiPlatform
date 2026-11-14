@@ -30,7 +30,8 @@ _acceptance_records: Dict[str, dict] = {}
 async def handover_transfer(body: Dict[str, Any]):
     """移交管理员权限 + 撤销 FDE 访问。
 
-    Body: {"spec_id": "...", "client_admin": "username", "notes": "..."}
+    Args:
+        body: 请求体。
     """
     spec_id = str(body.get("spec_id") or "").strip()
     client_admin = str(body.get("client_admin") or "").strip()
@@ -87,8 +88,8 @@ async def handover_transfer(body: Dict[str, Any]):
 async def handover_close(body: Dict[str, Any]):
     """关闭项目 + 归档。
 
-    将 FDE 项目标记为 closed, 记录交付时间线到 ~/.aiplat/archive/。
-    Body: {"spec_id": "...", "summary": "delivery summary", "fde_name": "..."}
+    Args:
+        body: 请求体。
     """
     spec_id = str(body.get("spec_id") or "").strip()
     summary = str(body.get("summary") or "").strip()
@@ -133,8 +134,8 @@ async def handover_close(body: Dict[str, Any]):
 async def schedule_post_health(body: Dict[str, Any]):
     """安排移交后 30 天健康检查。
 
-    Body: {"spec_id": "...", "notify_email": "..."}
-    自动在 30 天后触发诊断检查，结果写入 ~/.aiplat/post_health/。
+    Args:
+        body: 请求体。
     """
     spec_id = str(body.get("spec_id") or "").strip()
     notify_email = str(body.get("notify_email") or "").strip()
@@ -168,7 +169,11 @@ async def schedule_post_health(body: Dict[str, Any]):
 
 @router.get("/handover/schedule-health", response_model=FdeItemResponse)
 async def list_health_schedules(spec_id: str = Query("")):
-    """查看已安排的健康检查。"""
+    """查看已安排的健康检查。
+
+    Args:
+        spec_id: spec 标识。
+    """
     results = []
     for sid, s in _health_schedules.items():
         if not spec_id or sid == spec_id:
@@ -198,8 +203,8 @@ async def list_health_schedules(spec_id: str = Query("")):
 async def create_training_sandbox(body: Dict[str, Any]):
     """创建隔离的培训沙盒环境。
 
-    Body: {"spec_id": "...", "trainee_count": 5}
-    创建独立的 training profile，用户操作不影响生产数据。
+    Args:
+        body: 请求体。
     """
     spec_id = str(body.get("spec_id") or "default").strip()
     trainee_count = max(1, min(50, int(body.get("trainee_count") or 5)))

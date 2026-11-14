@@ -16,6 +16,7 @@ import httpx
 
 @dataclass
 class HttpLayerAdapterConfig:
+    """HttpLayerAdapterConfig。"""
     layer: str
     endpoint: str
     status_path: str
@@ -28,6 +29,12 @@ class HttpLayerAdapter:
     """Generic HTTP adapter: status/health/metrics."""
 
     def __init__(self, config: HttpLayerAdapterConfig, transport: Optional[httpx.BaseTransport] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+            transport: transport 参数。
+        """
         self._cfg = config
         self._transport = transport
         self._client: Optional[httpx.AsyncClient] = None
@@ -67,6 +74,8 @@ class HttpLayerAdapter:
             return {"layer": self._cfg.layer, "status": "error", "error": str(e)}
 
     async def health_check(self) -> bool:
+        """health_check。
+        """
         try:
             payload = await self._get_json(self._cfg.health_path)
             if isinstance(payload, dict) and payload.get("status") == "success":
@@ -79,6 +88,8 @@ class HttpLayerAdapter:
             return False
 
     async def get_metrics(self) -> Dict[str, Any]:
+        """获取 metrics。
+        """
         try:
             payload = await self._get_json(self._cfg.metrics_path)
             if isinstance(payload, dict) and "data" in payload:
@@ -89,11 +100,11 @@ class HttpLayerAdapter:
 
 
 def create_default_http_adapter(layer: str, endpoint: str) -> HttpLayerAdapter:
-    """
-    Default adapter mapping for aiPlat layers.
-    - infra: /api/infra/{status,health,metrics}
-    - core:  /api/core/{health} (status/metrics are best-effort placeholders until core exposes explicit endpoints)
-    - platform/app: assume /health for now (placeholders)
+    """Default adapter mapping for aiPlat layers.
+
+    Args:
+        layer: layer 参数。
+        endpoint: endpoint 参数。
     """
     layer_lower = (layer or "").lower()
     if layer_lower == "infra":
@@ -131,6 +142,13 @@ class InfraHttpAdapter(HttpLayerAdapter):
     """Dashboard adapter for Layer 0 (infra) via HTTP."""
 
     def __init__(self, endpoint: str = "http://localhost:8001", timeout: float = 30.0, transport: Optional[httpx.BaseTransport] = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         cfg = HttpLayerAdapterConfig(
             layer="infra",
             endpoint=endpoint,
@@ -146,6 +164,13 @@ class CoreHttpAdapter(HttpLayerAdapter):
     """Dashboard adapter for Layer 1 (core) via HTTP (best-effort)."""
 
     def __init__(self, endpoint: str = "http://localhost:8002", timeout: float = 30.0, transport: Optional[httpx.BaseTransport] = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         cfg = HttpLayerAdapterConfig(
             layer="core",
             endpoint=endpoint,
@@ -158,7 +183,15 @@ class CoreHttpAdapter(HttpLayerAdapter):
 
 
 class PlatformHttpAdapter(HttpLayerAdapter):
+    """PlatformHttpAdapter。"""
     def __init__(self, endpoint: str = "http://localhost:8003", timeout: float = 30.0, transport: Optional[httpx.BaseTransport] = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         cfg = HttpLayerAdapterConfig(
             layer="platform",
             endpoint=endpoint,
@@ -171,7 +204,15 @@ class PlatformHttpAdapter(HttpLayerAdapter):
 
 
 class AppHttpAdapter(HttpLayerAdapter):
+    """AppHttpAdapter。"""
     def __init__(self, endpoint: str = "http://localhost:8004", timeout: float = 30.0, transport: Optional[httpx.BaseTransport] = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+            timeout: 超时秒数。
+            transport: transport 参数。
+        """
         cfg = HttpLayerAdapterConfig(
             layer="app",
             endpoint=endpoint,

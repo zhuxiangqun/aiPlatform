@@ -1,3 +1,5 @@
+"""video：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -48,6 +50,18 @@ def ingest_video_document(
     last_job_id: Optional[str] = None,
     source_url: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """ingest_video_document。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        file_path: file_path 参数。
+        kind: kind 参数。
+        name: name 参数。
+        progress_cb: progress_cb 参数。
+        last_job_id: last_job 标识。
+        source_url: source_url 参数。
+    """
     if not tenant_id:
         raise ValueError("tenant_id_required")
     if not collection_id:

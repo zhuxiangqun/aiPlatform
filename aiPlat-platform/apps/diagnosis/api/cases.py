@@ -29,6 +29,12 @@ async def healthz(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """healthz。
+
+    Args:
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_health
 
     return {"data": diagnosis_health(tenant_id=tenant_id)}
@@ -41,6 +47,14 @@ async def metrics_fixtures(
     subset: str = Query("core", pattern="^(core|adversarial|all)$"),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """metrics_fixtures。
+
+    Args:
+        limit: 返回条数上限。
+        blind: blind 参数。
+        subset: subset 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_fixture_metrics
 
     try:
@@ -55,8 +69,15 @@ async def create_case(
     body: Dict[str, Any],
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """创建 case。
+
+    Args:
+        body: 请求体。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_create_case
 
+    # 为什么：诊断建案禁止 accuracy_claim=true，防止未验证精度被诚实锁绕过
     if body.get("accuracy_claim") is True:
         raise _detail("accuracy_claim_forbidden", "accuracy_claim must remain false", 422)
     try:
@@ -84,6 +105,13 @@ async def list_cases(
     limit: int = Query(100, ge=1, le=1000),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """列出 cases。
+
+    Args:
+        tenant_id: 租户 ID。
+        limit: 返回条数上限。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_list_cases
 
     items = diagnosis_list_cases(tenant_id=tenant_id, limit=limit)
@@ -96,6 +124,13 @@ async def get_case(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 case。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_get_case
 
     row = diagnosis_get_case(case_id, tenant_id=tenant_id)
@@ -111,6 +146,14 @@ async def collect(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """collect。
+
+    Args:
+        case_id: case 标识。
+        body: 请求体。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_collect
 
     tid = _tenant(body, tenant_id)
@@ -127,6 +170,13 @@ async def get_evidence(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 evidence。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_get_case, diagnosis_get_evidence
 
     if not diagnosis_get_case(case_id, tenant_id=tenant_id):
@@ -144,6 +194,13 @@ async def get_findings(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 findings。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_get_case, diagnosis_get_report
 
     if not diagnosis_get_case(case_id, tenant_id=tenant_id):
@@ -159,6 +216,13 @@ async def get_hypotheses(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 hypotheses。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_get_case, diagnosis_get_report
 
     if not diagnosis_get_case(case_id, tenant_id=tenant_id):
@@ -175,6 +239,14 @@ async def get_or_build_report(
     rebuild: bool = Query(False),
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """获取 or_build_report。
+
+    Args:
+        case_id: case 标识。
+        tenant_id: 租户 ID。
+        rebuild: rebuild 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import (
         diagnosis_get_case,
         diagnosis_get_report,
@@ -203,11 +275,21 @@ async def recommendations(
     tenant_id: str = "",
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """recommendations。
+
+    Args:
+        case_id: case 标识。
+        body: 请求体。
+        tenant_id: 租户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from core.api.core_facade import diagnosis_recommendations
 
     body = body or {}
+    # 为什么：推荐结果不得自动执行，避免绕过人工确认门禁
     if body.get("auto_execute") is True:
         raise _detail("auto_execute_forbidden", "auto_execute must be false", 422)
+    # 为什么：禁止 accuracy_claim=true，防止未验证精度声明绕过诚实锁
     if body.get("accuracy_claim") is True:
         raise _detail("accuracy_claim_forbidden", "accuracy_claim must remain false", 422)
     tid = _tenant(body, tenant_id)
@@ -227,6 +309,12 @@ async def remediate_forbidden(
     case_id: str,
     _auth: str = Depends(require_auth),
 ) -> Dict[str, Any]:
+    """remediate_forbidden。
+
+    Args:
+        case_id: case 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     raise _detail(
         "auto_execute_forbidden",
         "remediate is out of product scope; recommendations only",

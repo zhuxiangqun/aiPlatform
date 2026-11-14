@@ -198,10 +198,12 @@ async def _create_gate_policy_approval_request(
 
 @router.post("/governance/gate-policies/bootstrap", response_model=StatusResponse)
 async def bootstrap_gate_policies(http_request: Request, force: bool = False, rt: RuntimeDep = None):
-    """
-    Seed built-in templates: dev/staging/prod.
-    - force=false: only seed when empty/missing
-    - force=true: overwrite entirely
+    """Seed built-in templates: dev/staging/prod.
+
+    Args:
+        http_request: http_request 参数。
+        force: 是否强制。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -235,6 +237,11 @@ async def bootstrap_gate_policies(http_request: Request, force: bool = False, rt
 
 @router.get("/governance/gate-policies", response_model=StatusResponse)
 async def list_gate_policies(rt: RuntimeDep = None):
+    """列出 gate_policies。
+
+    Args:
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -245,6 +252,12 @@ async def list_gate_policies(rt: RuntimeDep = None):
 
 @router.get("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def get_gate_policy(policy_id: str, rt: RuntimeDep = None):
+    """获取 gate_policy。
+
+    Args:
+        policy_id: policy 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -258,6 +271,14 @@ async def get_gate_policy(policy_id: str, rt: RuntimeDep = None):
 
 @router.put("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def upsert_gate_policy(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """upsert_gate_policy。
+
+    Args:
+        policy_id: policy 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -330,6 +351,13 @@ async def upsert_gate_policy(policy_id: str, request: dict, http_request: Reques
 
 @router.delete("/governance/gate-policies/{policy_id}", response_model=StatusResponse)
 async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeDep = None):
+    """删除 gate_policy。
+
+    Args:
+        policy_id: policy 标识。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -366,6 +394,13 @@ async def delete_gate_policy(policy_id: str, http_request: Request, rt: RuntimeD
 
 @router.post("/governance/gate-policies/{policy_id}/set-default", response_model=StatusResponse)
 async def set_default_gate_policy(policy_id: str, http_request: Request, rt: RuntimeDep = None):
+    """set_default_gate_policy。
+
+    Args:
+        policy_id: policy 标识。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -398,6 +433,12 @@ async def set_default_gate_policy(policy_id: str, http_request: Request, rt: Run
 
 @router.get("/governance/gate-policies/{policy_id}/versions", response_model=StatusResponse)
 async def list_gate_policy_versions(policy_id: str, rt: RuntimeDep = None):
+    """列出 gate_policy_versions。
+
+    Args:
+        policy_id: policy 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -413,9 +454,13 @@ async def list_gate_policy_versions(policy_id: str, rt: RuntimeDep = None):
 
 @router.post("/governance/gate-policies/{policy_id}/rollback", response_model=StatusResponse)
 async def rollback_gate_policy(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    Rollback policy config to a previous version from revisions.
-    Body: { "version": 3 }
+    """Rollback policy config to a previous version from revisions.
+
+    Args:
+        policy_id: policy 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -472,18 +517,13 @@ async def rollback_gate_policy(policy_id: str, request: dict, http_request: Requ
 
 @router.post("/governance/gate-policies/{policy_id}/propose", response_model=StatusResponse)
 async def propose_gate_policy_change(policy_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    Productized workflow: propose → approve → apply.
-    Creates a change_id (ChangeControl) and optionally an approval_request_id.
+    """Productized workflow: propose → approve → apply.
 
-    Body:
-      {
-        "config": {...},
-        "name": "optional",
-        "description": "optional",
-        "set_default": false,
-        "require_approval": true|false (optional override)
-      }
+    Args:
+        policy_id: policy 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -552,9 +592,13 @@ async def propose_gate_policy_change(policy_id: str, request: dict, http_request
 
 @router.post("/governance/gate-policies/changes/{change_id}/apply", response_model=StatusResponse)
 async def apply_gate_policy_change(change_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
-    """
-    Apply a previously proposed gate policy change.
-    Body: { "approval_request_id": "optional" }
+    """Apply a previously proposed gate policy change.
+
+    Args:
+        change_id: change 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:

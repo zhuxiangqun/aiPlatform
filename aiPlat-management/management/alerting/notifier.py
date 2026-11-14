@@ -18,7 +18,11 @@ class Notifier(ABC):
 
     @abstractmethod
     async def notify(self, alert: Dict[str, Any]) -> bool:
-        """发送通知"""
+        """发送通知。
+
+        Args:
+            alert: alert 参数。
+        """
         pass
 
 
@@ -34,6 +38,12 @@ class EmailNotifier(Notifier):
     """
 
     def __init__(self, smtp_host: str = "", recipients: List[str] = None):
+        """初始化。
+
+        Args:
+            smtp_host: smtp_host 参数。
+            recipients: recipients 参数。
+        """
         self.smtp_host = smtp_host or os.getenv("AIPLAT_SMTP_HOST", "localhost")
         self.smtp_port = int(os.getenv("AIPLAT_SMTP_PORT", "587"))
         self.smtp_user = os.getenv("AIPLAT_SMTP_USER", "")
@@ -42,7 +52,11 @@ class EmailNotifier(Notifier):
         self.recipients = recipients or []
 
     async def notify(self, alert: Dict[str, Any]) -> bool:
-        """发送邮件通知 — SMTP with TLS, falls back to console log."""
+        """发送邮件通知 — SMTP with TLS, falls back to console log.
+
+        Args:
+            alert: alert 参数。
+        """
         subject = f"[{alert.get('severity', 'INFO').upper()}] Alert: {alert.get('rule', 'unknown')}"
         body = f"""
 Alert: {alert.get('rule', 'unknown')}

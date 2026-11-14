@@ -1,3 +1,5 @@
+"""chroma：模块接口。"""
+
 import asyncio
 import uuid
 from typing import List, Optional, Dict, Any
@@ -8,7 +10,13 @@ import logging
 
 
 class ChromaStore(VectorStore):
+    """ChromaStore。"""
     def __init__(self, config: VectorConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._collection = None
@@ -52,6 +60,12 @@ class ChromaStore(VectorStore):
     async def add(
         self, vectors: List[Vector], metadata: List[Dict] = None
     ) -> List[str]:
+        """add。
+
+        Args:
+            vectors: vectors 参数。
+            metadata: metadata 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -89,6 +103,13 @@ class ChromaStore(VectorStore):
     async def search(
         self, query_vector: List[float], top_k: int = 10, filter: Dict = None
     ) -> List[SearchResult]:
+        """search。
+
+        Args:
+            query_vector: query_vector 参数。
+            top_k: top_k 参数。
+            filter: filter 参数。
+        """
         await self._ensure_initialized()
         
         where_filter = None
@@ -132,6 +153,11 @@ class ChromaStore(VectorStore):
         return search_results
 
     async def delete(self, ids: List[str]) -> bool:
+        """delete。
+
+        Args:
+            ids: ids 参数。
+        """
         await self._ensure_initialized()
         
         if not ids:
@@ -142,6 +168,11 @@ class ChromaStore(VectorStore):
         return True
 
     async def get(self, id: str) -> Optional[Vector]:
+        """get。
+
+        Args:
+            id: id 参数。
+        """
         await self._ensure_initialized()
         
         results = self._collection.get(
@@ -166,11 +197,18 @@ class ChromaStore(VectorStore):
         )
 
     async def count(self) -> int:
+        """count。
+        """
         await self._ensure_initialized()
         
         return self._collection.count()
 
     async def upsert(self, vectors: List[Vector]) -> List[str]:
+        """upsert。
+
+        Args:
+            vectors: vectors 参数。
+        """
         await self._ensure_initialized()
         
         if not vectors:
@@ -204,11 +242,19 @@ class ChromaStore(VectorStore):
         return ids
 
     async def create_index(self, index_type: str, params: Dict) -> None:
+        """创建 index。
+
+        Args:
+            index_type: index_type 参数。
+            params: params 参数。
+        """
         await self._ensure_initialized()
         
         pass
 
     async def close(self):
+        """close。
+        """
         if self._client:
             try:
                 if hasattr(self._client, '_heartbeat'):

@@ -1,9 +1,12 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 
 @dataclass
 class MemoryRequest:
+    """MemoryRequest。"""
     type: str = "ram"
     size: int = 0
     tenant_id: str = ""
@@ -12,6 +15,7 @@ class MemoryRequest:
 
 @dataclass
 class Allocation:
+    """Allocation。"""
     id: str = ""
     address: int = 0
     size: int = 0
@@ -20,6 +24,7 @@ class Allocation:
 
 @dataclass
 class MemoryStats:
+    """MemoryStats。"""
     total: int = 0
     used: int = 0
     available: int = 0
@@ -28,6 +33,7 @@ class MemoryStats:
 
 @dataclass
 class MemoryLimit:
+    """MemoryLimit。"""
     soft_limit: int = 0
     hard_limit: int = 0
     swap_limit: int = 0
@@ -35,6 +41,7 @@ class MemoryLimit:
 
 @dataclass
 class MemoryConfig:
+    """MemoryConfig。"""
     type: str = "ram"
     backend: str = "system"
     pool_enabled: bool = True

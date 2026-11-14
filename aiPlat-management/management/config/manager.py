@@ -21,6 +21,8 @@ class ConfigManager:
     """配置管理器"""
     
     def __init__(self):
+        """初始化。
+        """
         self.configs: Dict[str, Dict[str, Any]] = {
             "infra": {},
             "core": {},
@@ -35,7 +37,11 @@ class ConfigManager:
         }
         
     async def get_config(self, layer: str) -> Dict[str, Any]:
-        """获取层配置"""
+        """获取层配置。
+
+        Args:
+            layer: layer 参数。
+        """
         return self.configs.get(layer, {})
         
     async def update_config(
@@ -44,7 +50,13 @@ class ConfigManager:
         config: Dict[str, Any],
         author: str = ""
     ) -> str:
-        """更新配置"""
+        """更新配置。
+
+        Args:
+            layer: layer 参数。
+            config: config 参数。
+            author: author 参数。
+        """
         # 保存旧版本
         old_config = self.configs.get(layer, {})
         version = ConfigVersion(
@@ -62,11 +74,20 @@ class ConfigManager:
         return version.version
         
     async def get_versions(self, layer: str) -> list:
-        """获取配置历史"""
+        """获取配置历史。
+
+        Args:
+            layer: layer 参数。
+        """
         return self.versions.get(layer, [])
         
     async def rollback(self, layer: str, version: str) -> bool:
-        """回滚到指定版本"""
+        """回滚到指定版本。
+
+        Args:
+            layer: layer 参数。
+            version: version 参数。
+        """
         versions = self.versions.get(layer, [])
         for v in versions:
             if v.version == version:

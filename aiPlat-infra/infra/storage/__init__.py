@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import StorageClient, FileStorage, ObjectStorage
 from .schemas import StorageConfig, FileConfig, ObjectConfig, TempConfig
 from .factory import create_storage_client

@@ -104,6 +104,7 @@ from dataclasses import dataclass as _dc
 
 @_dc
 class PlatformResources:
+    """PlatformResources。"""
     ram_bytes: int            # available RAM (soft scoring / pressure)
     vram_bytes: int           # Apple=vram==ram, NVIDIA=nvidia-smi, no-GPU=0
     gpu_vendor: Optional[str] # "apple" | "nvidia" | "amd" | None
@@ -787,6 +788,11 @@ class ModelManager:
     """模型管理器"""
     
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config or {}
         self._models: Dict[str, ModelInfo] = {}
         self._providers: Dict[str, Any] = {}
@@ -1069,7 +1075,14 @@ class ModelManager:
         enabled: Optional[bool] = None,
         status: Optional[str] = None
     ) -> List[ModelInfo]:
-        """获取模型列表（首次调用自动扫描本地模型）"""
+        """获取模型列表（首次调用自动扫描本地模型）。
+
+        Args:
+            source: source 参数。
+            type: type 参数。
+            enabled: 是否启用。
+            status: status 参数。
+        """
         if not self._local_scanned:
             self._local_scanned = True
             await self._scan_local_models()
@@ -1095,11 +1108,19 @@ class ModelManager:
         return models
     
     async def get_model(self, model_id: str) -> Optional[ModelInfo]:
-        """获取单个模型"""
+        """获取单个模型。
+
+        Args:
+            model_id: model 标识。
+        """
         return self._models.get(model_id)
 
     def record_success(self, model_name: str):
-        """Passive health: record a successful call. Resets failure TTL on success."""
+        """Passive health: record a successful call. Resets failure TTL on success.
+
+        Args:
+            model_name: model_name 参数。
+        """
         stats = self._recent_failures.setdefault(model_name, [])
         stats.append(True)
         if len(stats) > 20:
@@ -1107,7 +1128,11 @@ class ModelManager:
         self._first_failure_at.pop(model_name, None)  # reset TTL on success
 
     def record_failure(self, model_name: str):
-        """Passive health: record a failed call. Sets first_failure_at on first failure."""
+        """Passive health: record a failed call. Sets first_failure_at on first failure.
+
+        Args:
+            model_name: model_name 参数。
+        """
         import time
         stats = self._recent_failures.setdefault(model_name, [])
         stats.append(False)
@@ -1152,11 +1177,8 @@ class ModelManager:
     def get_default_model(self, purpose: str = "default") -> str:
         """Resolve purpose to model name via env vars (unique resolution point).
 
-        P1-4 fix: the resolved env value is validated against the registry — an
-        env var pointing to an unregistered model is ignored (warning logged).
-        P2-6: env mapping derives from llm_profile.yaml `env_model_map`
-        (config-driven), with the built-in map as fallback so old configs keep
-        working unchanged.
+        Args:
+            purpose: purpose 参数。
         """
         purpose_env_map = {
             "agent":       ("AIPLAT_AGENT_MODEL", "AIPLAT_DEFAULT_AGENT_MODEL"),
@@ -1218,8 +1240,8 @@ class ModelManager:
     def get_credentials(self, provider: str) -> dict:
         """Resolve API credentials for a provider via credential pool.
 
-        Returns dict with: api_key, base_url (optional), provider
-        Returns empty dict if no credentials found.
+        Args:
+            provider: provider 参数。
         """
         from infra.management.model.credential_pool import get_credential_pool
         try:
@@ -1231,16 +1253,20 @@ class ModelManager:
 
     def select_by_purpose(self, purpose: str, complexity: str = None) -> Optional[str]:
         """Select best model for purpose via capability scoring.
-        
-        Phase 12.1: complexity filtering via routing_rules in llm_profile.yaml.
+
+        Args:
+            purpose: purpose 参数。
+            complexity: complexity 参数。
         """
         candidates = self.select_by_purpose_list(purpose, complexity=complexity)
         return candidates[0] if candidates else None
 
     def select_by_purpose_list(self, purpose: str, complexity: str = None) -> List[str]:
         """Return all eligible models for purpose, scored and sorted (best first).
-        
-        Useful for fallback: if the top model times out, try the next one.
+
+        Args:
+            purpose: purpose 参数。
+            complexity: complexity 参数。
         """
         try:
             import yaml
@@ -1392,7 +1418,14 @@ class ModelManager:
         self, purpose: str, messages: list | None,
         preferences: dict, profile_data: dict,
     ) -> str:
-        """统一评分管道。env var 和 model_overrides 作为偏好参数，不再硬覆盖。"""
+        """统一评分管道。env var 和 model_overrides 作为偏好参数，不再硬覆盖。
+
+        Args:
+            purpose: purpose 参数。
+            messages: messages 参数。
+            preferences: preferences 参数。
+            profile_data: profile_data 参数。
+        """
         import time as _time
         res = collect_platform_resources()
 
@@ -1419,7 +1452,7 @@ class ModelManager:
         models = [m for m in self._models.values()
                   if hasattr(m, 'type') and m.type.value == "chat"]
 
-        # Sensitive / offline: drop cloud candidates before scoring (not a third router).
+        # 为什么：敏感/离线 local_only 必须在评分前剔除云端候选，禁止外发选模
         local_only = bool((preferences or {}).get("local_only"))
         if local_only:
             models = [m for m in models if _is_local_model(m)]
@@ -1438,7 +1471,7 @@ class ModelManager:
         for level_name, soft_fn in soft_filters:
             if strict and level_name != "full":
                 break
-            # local_only must not relax into cloud models via soft degradation.
+            # 为什么：local_only 禁止软降级到 none 级别重新纳入云端模型
             if local_only and level_name == "none":
                 break
             passed = [m for m in models
@@ -1518,11 +1551,12 @@ class ModelManager:
             return ""
 
         # ── Safe Model 保底：优先 API，再本地安全模型 ──
-        # local_only must never escape to a cloud safe_model.
+        # 为什么：local_only 时 safe_model 也不得回落到云端
         for safe_name in [safe_model_alt, safe_model]:
             safe_m = self._find_model_by_name(safe_name)
             if safe_m is None:
                 continue
+            # 为什么：local_only 时跳过非本地 safe_model，防止云端兜底绕过
             if local_only and not _is_local_model(safe_m):
                 continue
             ok, _reason = _hard_filter(safe_m, res, profile_data)
@@ -1537,6 +1571,7 @@ class ModelManager:
             logging.getLogger(__name__).warning("All models filtered, falling back to safe_model=%s", safe_name)
             return safe_name
 
+        # 为什么：local_only 无本地候选时必须硬失败，禁止静默云端兜底
         if local_only:
             raise RuntimeError(
                 "local_only=True but no local model passed filters "
@@ -1553,9 +1588,9 @@ class ModelManager:
     def get_model_tier(self, model_name: str, profile_data: dict = None) -> str:
         """Determine tier from model capabilities (single source of truth).
 
-        Uses model_capabilities.reasoning_quality + semantic_understanding
-        to compute a complexity score, then maps to tiers via complexity_range.
-        No static model lists in YAML.
+        Args:
+            model_name: model_name 参数。
+            profile_data: profile_data 参数。
         """
         if profile_data is None:
             try:
@@ -1599,11 +1634,9 @@ class ModelManager:
     def select(self, model_name: str = "", purpose: str = "") -> Optional[ModelInfo]:
         """Select model by name or purpose. Returns full ModelInfo with provider/base_url/api_key_env.
 
-        Resolution order:
-          1. model_name given → find by name first (user-friendly), then by ID
-          2. purpose given → resolve via get_default_model(purpose)
-          3. fallback → get_default_model("default")
-        Returns None if model not found in registry.
+        Args:
+            model_name: model_name 参数。
+            purpose: purpose 参数。
         """
         name = model_name.strip() if model_name else ""
         if not name and purpose:
@@ -1659,7 +1692,11 @@ class ModelManager:
         return f"{safe_provider}:{safe_name}-{timestamp}"
     
     async def add_model(self, model: ModelInfo) -> ModelInfo:
-        """添加模型（仅支持 external 来源）"""
+        """添加模型（仅支持 external 来源）。
+
+        Args:
+            model: 模型名。
+        """
         if model.source != ModelSource.EXTERNAL:
             raise ValueError("Only external models can be added")
         
@@ -1676,7 +1713,12 @@ class ModelManager:
         return model
     
     async def update_model(self, model_id: str, updates: Dict[str, Any]) -> Optional[ModelInfo]:
-        """更新模型配置"""
+        """更新模型配置。
+
+        Args:
+            model_id: model 标识。
+            updates: updates 参数。
+        """
         model = self._models.get(model_id)
         if not model:
             return None
@@ -1719,7 +1761,11 @@ class ModelManager:
         return model
     
     async def delete_model(self, model_id: str) -> bool:
-        """删除模型（仅支持 external 来源）"""
+        """删除模型（仅支持 external 来源）。
+
+        Args:
+            model_id: model 标识。
+        """
         model = self._models.get(model_id)
         if not model:
             return False
@@ -1733,17 +1779,29 @@ class ModelManager:
         return True
     
     async def enable_model(self, model_id: str) -> Optional[ModelInfo]:
-        """启用模型"""
+        """启用模型。
+
+        Args:
+            model_id: model 标识。
+        """
         return await self.update_model(model_id, {"enabled": True})
     
     async def disable_model(self, model_id: str) -> Optional[ModelInfo]:
-        """禁用模型"""
+        """禁用模型。
+
+        Args:
+            model_id: model 标识。
+        """
         return await self.update_model(model_id, {"enabled": False})
     
     # ===== 测试接口 =====
     
     async def test_connectivity(self, model_id: str) -> Dict[str, Any]:
-        """测试模型连通性"""
+        """测试模型连通性。
+
+        Args:
+            model_id: model 标识。
+        """
         model = self._models.get(model_id)
         if not model:
             return {"success": False, "error": "Model not found"}
@@ -1761,7 +1819,11 @@ class ModelManager:
         return result
     
     async def test_response(self, model_id: str) -> Dict[str, Any]:
-        """测试模型响应"""
+        """测试模型响应。
+
+        Args:
+            model_id: model 标识。
+        """
         model = self._models.get(model_id)
         if not model:
             return {"success": False, "error": "Model not found"}
@@ -1787,7 +1849,11 @@ class ModelManager:
     # ===== 扫描接口 =====
     
     async def scan_local_models(self, endpoint: str = None) -> List[ModelInfo]:
-        """重新扫描本地模型（管理 UI 调用）。去重后返回，避免重复显示。"""
+        """重新扫描本地模型（管理 UI 调用）。去重后返回，避免重复显示。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         if endpoint:
             endpoints = [endpoint]
         else:
@@ -1913,11 +1979,20 @@ class ModelManager:
     # ===== 引擎注册接口 =====
     
     def register_provider(self, name: str, provider: Any):
-        """注册 Provider 实例"""
+        """注册 Provider 实例。
+
+        Args:
+            name: name 参数。
+            provider: provider 参数。
+        """
         self._providers[name] = provider
     
     def get_provider(self, model_id: str) -> Optional[Any]:
-        """获取模型的 Provider"""
+        """获取模型的 Provider。
+
+        Args:
+            model_id: model 标识。
+        """
         model = self._models.get(model_id)
         if not model:
             return None
@@ -1926,11 +2001,8 @@ class ModelManager:
     def retire_stale_models(self, inactivity_days: int = 30) -> int:
         """Phase 51: Auto-retire models unused for N days.
 
-        Models from local_models or external_models that have zero usage
-        and were added more than inactivity_days ago are marked as DEPRECATED.
-        Config models (YAML) are never auto-retired.
-
-        Returns count of retired models.
+        Args:
+            inactivity_days: inactivity_days 参数。
         """
         cutoff = datetime.now(timezone.utc).timestamp() - (inactivity_days * 86400)
         retired = 0

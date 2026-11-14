@@ -96,6 +96,11 @@ class SemaphorePool:
     """信号量池 - 控制并发数量"""
 
     def __init__(self, max_concurrent: int):
+        """初始化。
+
+        Args:
+            max_concurrent: max_concurrent 参数。
+        """
         self._semaphore = asyncio.Semaphore(max_concurrent)
 
     async def __aenter__(self):
@@ -106,7 +111,11 @@ class SemaphorePool:
         self._semaphore.release()
 
     async def __call__(self, func: Callable) -> Any:
-        """作为装饰器使用"""
+        """作为装饰器使用。
+
+        Args:
+            func: func 参数。
+        """
 
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):

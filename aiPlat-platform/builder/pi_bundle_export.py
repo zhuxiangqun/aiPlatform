@@ -34,7 +34,9 @@ _PI_LOST_CONTROLS = (
 def write_pi_security_disclosure(bundle_dir: Path, *, project_id: str) -> Dict[str, Any]:
     """Auto-write Pi security disclosure + artifact.security.json (P0-4).
 
-    Hand-written README alone is not acceptable evidence.
+    Args:
+        bundle_dir: bundle_dir 参数。
+        project_id: project 标识。
     """
     from builder.artifact_security_manifest import build_manifest, write_manifest
 
@@ -81,15 +83,27 @@ def write_pi_security_disclosure(bundle_dir: Path, *, project_id: str) -> Dict[s
 
 
 def workspace_root() -> Path:
+    """workspace_root。
+    """
     return _WORKSPACE
 
 
 def default_out_dir(project_id: str) -> Path:
+    """default_out_dir。
+
+    Args:
+        project_id: project 标识。
+    """
     home = Path(get_aiplat_home())
     return home / "apps" / project_id / "pi-bundle"
 
 
 def app_home_for(project_id: str) -> Path:
+    """app_home_for。
+
+    Args:
+        project_id: project 标识。
+    """
     home = Path(get_aiplat_home())
     return home / "apps" / project_id / "current"
 
@@ -102,7 +116,10 @@ def export_pi_bundle_for_project(
 ) -> Dict[str, Any]:
     """Export Agent app at apps/{id}/current → Pi Package directory.
 
-    Returns a dict with ok/error and paths. Requires agent_manifest.json.
+    Args:
+        project_id: project 标识。
+        app_home: app_home 参数。
+        out: out 参数。
     """
     pid = str(project_id or "").strip()
     if not pid:
@@ -163,7 +180,12 @@ def export_pi_bundle_for_project(
 
 
 def try_export_after_deploy(project_id: str, app_home: str) -> Dict[str, Any]:
-    """Non-throwing wrapper for deploy path."""
+    """Non-throwing wrapper for deploy path.
+
+    Args:
+        project_id: project 标识。
+        app_home: app_home 参数。
+    """
     try:
         return export_pi_bundle_for_project(project_id, app_home=app_home)
     except Exception as exc:
@@ -178,9 +200,9 @@ def zip_pi_bundle_for_project(
 ) -> Tuple[Optional[Path], Dict[str, Any]]:
     """Ensure Pi Package exists, then zip it for download.
 
-    Returns ``(zip_path, meta)``. On skip/error, ``zip_path`` is None.
-    Caller owns deleting the zip when served from a temp dir (meta may set
-    ``ephemeral_zip=True``).
+    Args:
+        project_id: project 标识。
+        app_home: app_home 参数。
     """
     pid = str(project_id or "").strip()
     existing = default_out_dir(pid)

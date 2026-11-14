@@ -37,6 +37,11 @@ _case_task: Optional[asyncio.Task] = None
 
 @router.post("/browser/test/start", response_model=StatusResponse)
 async def start_test(request: dict):
+    """start_test。
+
+    Args:
+        request: FastAPI Request。
+    """
     global _active_task
     with _lock:
         if _active_task and not _active_task.done():
@@ -98,6 +103,8 @@ async def start_test(request: dict):
 
 @router.get("/browser/test/status", response_model=ItemResponse)
 async def test_status():
+    """test_status。
+    """
     global _active_task
     if _active_task is None:
         return {"running": False, "status": "not_started"}
@@ -126,6 +133,11 @@ async def test_status():
 
 @router.get("/browser/test/report", response_model=ItemResponse)
 async def test_report(detail: bool = False):
+    """test_report。
+
+    Args:
+        detail: detail 参数。
+    """
     engine = get_active_engine()
     if engine is None:
         raise HTTPException(status_code=404, detail="No test has been run")
@@ -185,6 +197,8 @@ async def test_report(detail: bool = False):
 
 @router.post("/browser/test/stop", response_model=StatusResponse)
 async def stop_test():
+    """stop_test。
+    """
     global _active_task
     engine = get_active_engine()
     if engine is None:
@@ -212,7 +226,11 @@ async def stop_test():
 
 @router.post("/browser/test/generate-cases", response_model=StatusResponse)
 async def generate_cases(request: dict):
-    """页面分析 → 生成测试用例 Excel。"""
+    """页面分析 → 生成测试用例 Excel。
+
+    Args:
+        request: FastAPI Request。
+    """
     global _case_executor_ref
 
     from core.apps.tools.browser_test_engine import (
@@ -256,7 +274,11 @@ async def generate_cases(request: dict):
 
 @router.post("/browser/test/upload-cases", response_model=StatusResponse)
 async def upload_cases(file: UploadFile = File(...)):
-    """上传编辑后的 xlsx 文件，保存到临时目录并返回路径。"""
+    """上传编辑后的 xlsx 文件，保存到临时目录并返回路径。
+
+    Args:
+        file: file 参数。
+    """
     if not file.filename or not file.filename.endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="Only .xlsx files are accepted")
     content = await file.read()
@@ -269,7 +291,11 @@ async def upload_cases(file: UploadFile = File(...)):
 
 @router.get("/browser/test/download", response_model=ItemResponse)
 async def download_file(path: str = ""):
-    """下载生成的产物文件（xlsx / pptx 等，限制在白名单根目录下）。"""
+    """下载生成的产物文件（xlsx / pptx 等，限制在白名单根目录下）。
+
+    Args:
+        path: 路径。
+    """
     if not path:
         raise HTTPException(status_code=404, detail="File not found")
     import os as _os
@@ -311,7 +337,11 @@ async def download_file(path: str = ""):
 
 @router.post("/browser/test/execute-cases", response_model=StatusResponse)
 async def execute_cases(request: dict):
-    """从 Excel 读取 approved 用例 → 执行。"""
+    """从 Excel 读取 approved 用例 → 执行。
+
+    Args:
+        request: FastAPI Request。
+    """
     global _case_executor_ref, _case_task
 
     xlsx_path = str(request.get("xlsx_path", ""))
@@ -341,6 +371,8 @@ async def execute_cases(request: dict):
 
 @router.post("/browser/test/execute-cases/stop", response_model=StatusResponse)
 async def stop_case_execution():
+    """stop_case_execution。
+    """
     global _case_executor_ref, _case_task
     if _case_executor_ref:
         _case_executor_ref.stop()
@@ -352,6 +384,8 @@ async def stop_case_execution():
 
 @router.get("/browser/test/execute-cases/status", response_model=ItemResponse)
 async def case_execution_status():
+    """case_execution_status。
+    """
     global _case_task, _case_executor_ref
     if not _case_task:
         return {"running": False, "status": "not_started", "error": ""}

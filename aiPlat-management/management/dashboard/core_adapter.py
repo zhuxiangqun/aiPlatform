@@ -9,6 +9,11 @@ class CoreAdapter:
     """Layer 1 (core) Dashboard 适配器"""
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         self.endpoint = endpoint or "http://localhost:8002"
         self.layer_name = "core"
         

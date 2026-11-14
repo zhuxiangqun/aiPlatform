@@ -17,9 +17,8 @@ def _flag(name: str) -> bool:
 def header_identity_allowed(presented_secret: str | None) -> bool:
     """True when spoofable identity headers may be trusted.
 
-    ``AIPLAT_PLATFORM_DEV_MODE`` keeps the local management UI path.
-    Otherwise ``X-AIPLAT-IDENTITY-SECRET`` must match
-    ``AIPLAT_PLATFORM_IDENTITY_SECRET``.
+    Args:
+        presented_secret: presented_secret 参数。
     """
     if _flag("AIPLAT_PLATFORM_DEV_MODE"):
         return True
@@ -31,6 +30,8 @@ def header_identity_allowed(presented_secret: str | None) -> bool:
 
 
 def platform_dev_mode() -> bool:
+    """platform_dev_mode。
+    """
     return _flag("AIPLAT_PLATFORM_DEV_MODE")
 
 
@@ -45,9 +46,13 @@ def service_to_core_identity_headers(
 ) -> dict[str, str]:
     """Build platform→core identity headers (service-to-service).
 
-    Attaches ``X-AIPLAT-IDENTITY-SECRET`` from ``AIPLAT_PLATFORM_IDENTITY_SECRET``
-    when configured, so core ``actor_from_http`` / ``header_identity_allowed``
-    accept the headers outside DEV_MODE. Never copies a client-presented secret.
+    Args:
+        tenant_id: 租户 ID。
+        actor_id: actor 标识。
+        request_id: request 标识。
+        actor_role: actor_role 参数。
+        scopes: scopes 参数。
+        content_type: content_type 参数。
     """
     headers: dict[str, str] = {
         "Content-Type": content_type,
@@ -75,7 +80,11 @@ _ROLE_HEADER_KEYS = (
 
 
 def client_role_header(headers: Mapping[str, Any]) -> str:
-    """Raw client role claim (spoofable unless gated)."""
+    """Raw client role claim (spoofable unless gated).
+
+    Args:
+        headers: headers 参数。
+    """
     for key in _ROLE_HEADER_KEYS:
         raw = headers.get(key)
         if isinstance(raw, str) and raw.strip():
@@ -90,8 +99,9 @@ def trusted_actor_role(
 ) -> str:
     """Role for authorization.
 
-    Prefer JWT / API-key / trusted-header identity. Client role headers are
-    accepted only when ``header_identity_allowed`` (dev mode or identity secret).
+    Args:
+        headers: headers 参数。
+        resolved_actor_role: resolved_actor_role 参数。
     """
     resolved = (resolved_actor_role or "").strip()
     if resolved:
@@ -102,7 +112,11 @@ def trusted_actor_role(
 
 
 def resolve_request_role(request: Any) -> str:
-    """Resolve actor role from a FastAPI Request via platform identity."""
+    """Resolve actor role from a FastAPI Request via platform identity.
+
+    Args:
+        request: FastAPI Request。
+    """
     from api.rest.routes import _resolve_identity
 
     ident = _resolve_identity(request)

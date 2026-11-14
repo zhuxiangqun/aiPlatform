@@ -18,8 +18,8 @@ async def fde_system_trends(
 ):
     """System-level trends: atom growth, coverage changes, delivery rates.
 
-    Reads SystemSnapshot entities from knowledge-atom GraphIndex and computes
-    week-over-week trends for all key metrics.
+    Args:
+        weeks: weeks 参数。
     """
     from core.api.core_facade import GraphIndex
     from datetime import datetime, timezone, timedelta
@@ -78,7 +78,11 @@ async def fde_system_trends(
 async def fde_health_history(
     limit: int = Query(10, ge=1, le=50),
 ):
-    """Last N health check snapshots for comparison."""
+    """Last N health check snapshots for comparison.
+
+    Args:
+        limit: 返回条数上限。
+    """
     from core.api.core_facade import GraphIndex
     import json as _json_hh
     from datetime import datetime, timezone

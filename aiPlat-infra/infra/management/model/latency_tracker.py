@@ -24,6 +24,13 @@ class LatencyTracker:
 
     def __init__(self, window_seconds: int = 60, p95_threshold_ms: int = 10000,
                  rate_threshold: int = 10):
+        """初始化。
+
+        Args:
+            window_seconds: window_seconds 参数。
+            p95_threshold_ms: p95_threshold_ms 参数。
+            rate_threshold: rate_threshold 参数。
+        """
         self._window = window_seconds
         self._p95_threshold = p95_threshold_ms / 1000.0  # convert to seconds
         self._rate_threshold = rate_threshold
@@ -39,17 +46,31 @@ class LatencyTracker:
         self._rate_limited_until: Dict[str, float] = {}
 
     def record_latency(self, model_name: str, elapsed_ms: float):
-        """Record successful request latency in milliseconds."""
+        """Record successful request latency in milliseconds.
+
+        Args:
+            model_name: model_name 参数。
+            elapsed_ms: elapsed_ms 参数。
+        """
         now = _time.time()
         self._latency[model_name].append((now, elapsed_ms / 1000.0))
         self._request_times[model_name].append(now)
 
     def record_rate_limit(self, model_name: str, cooldown_seconds: float = 30.0):
-        """Record HTTP 429 rate limit. Model gets penalty for cooldown_seconds."""
+        """Record HTTP 429 rate limit. Model gets penalty for cooldown_seconds.
+
+        Args:
+            model_name: model_name 参数。
+            cooldown_seconds: cooldown_seconds 参数。
+        """
         self._rate_limited_until[model_name] = _time.time() + cooldown_seconds
 
     def p95_latency_seconds(self, model_name: str) -> float:
-        """Calculate approximate P95 latency from recent history."""
+        """Calculate approximate P95 latency from recent history.
+
+        Args:
+            model_name: model_name 参数。
+        """
         hist = self._latency[model_name]
         if not hist:
             return 0.0
@@ -64,8 +85,8 @@ class LatencyTracker:
     def congestion_penalty(self, model_name: str) -> float:
         """Calculate congestion penalty (0 = no penalty, higher = more congested).
 
-        Checks: request rate > threshold → penalty
-                HTTP 429 active → heavy penalty
+        Args:
+            model_name: model_name 参数。
         """
         now = _time.time()
         penalty = 0.0
@@ -91,4 +112,6 @@ _latency_tracker = LatencyTracker()
 
 
 def get_latency_tracker() -> LatencyTracker:
+    """获取 latency_tracker。
+    """
     return _latency_tracker

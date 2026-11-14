@@ -10,6 +10,11 @@ class CoreMetricsCollector(MetricsCollector):
     """Layer 1 (core) 指标采集器"""
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         super().__init__("core", endpoint)
         
     async def collect(self) -> List[Metric]:

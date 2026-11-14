@@ -1,3 +1,5 @@
+"""clients：模块接口。"""
+
 import os
 import shutil
 import tempfile
@@ -8,7 +10,13 @@ from .schemas import StorageConfig
 
 
 class LocalStorageClient(StorageClient, FileStorage):
+    """LocalStorageClient。"""
     def __init__(self, config: StorageConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         base_path = ""
         if config.file and config.file.base_path:
@@ -21,6 +29,12 @@ class LocalStorageClient(StorageClient, FileStorage):
         self._base_path.mkdir(parents=True, exist_ok=True)
 
     async def save(self, key: str, data: Any) -> str:
+        """save。
+
+        Args:
+            key: key 参数。
+            data: data 参数。
+        """
         path = self._base_path / key
         path.parent.mkdir(parents=True, exist_ok=True)
         if isinstance(data, (str, bytes)):
@@ -35,6 +49,11 @@ class LocalStorageClient(StorageClient, FileStorage):
         return str(path)
 
     async def load(self, key: str) -> Optional[Any]:
+        """load。
+
+        Args:
+            key: key 参数。
+        """
         path = self._base_path / key
         if not path.exists():
             return None
@@ -42,6 +61,11 @@ class LocalStorageClient(StorageClient, FileStorage):
             return f.read()
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         path = self._base_path / key
         if path.exists():
             path.unlink()
@@ -49,9 +73,19 @@ class LocalStorageClient(StorageClient, FileStorage):
         return False
 
     async def exists(self, key: str) -> bool:
+        """exists。
+
+        Args:
+            key: key 参数。
+        """
         return (self._base_path / key).exists()
 
     async def list(self, prefix: str) -> List[str]:
+        """list。
+
+        Args:
+            prefix: prefix 参数。
+        """
         results = []
         base = self._base_path / prefix
         if base.is_dir():
@@ -61,20 +95,38 @@ class LocalStorageClient(StorageClient, FileStorage):
         return results
 
     async def clear(self) -> None:
+        """clear。
+        """
         if self._base_path.exists():
             shutil.rmtree(self._base_path)
             self._base_path.mkdir(parents=True, exist_ok=True)
 
     async def save_file(self, path: str, content: bytes) -> str:
+        """save_file。
+
+        Args:
+            path: 路径。
+            content: content 参数。
+        """
         full_path = self._base_path / path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_bytes(content)
         return str(full_path)
 
     async def read_file(self, path: str) -> bytes:
+        """read_file。
+
+        Args:
+            path: 路径。
+        """
         return (self._base_path / path).read_bytes()
 
     async def delete_file(self, path: str) -> bool:
+        """删除 file。
+
+        Args:
+            path: 路径。
+        """
         full_path = self._base_path / path
         if full_path.exists():
             full_path.unlink()
@@ -82,6 +134,11 @@ class LocalStorageClient(StorageClient, FileStorage):
         return False
 
     async def list_files(self, dir: str) -> List[str]:
+        """列出 files。
+
+        Args:
+            dir: dir 参数。
+        """
         full_path = self._base_path / dir
         if not full_path.exists():
             return []
@@ -90,15 +147,28 @@ class LocalStorageClient(StorageClient, FileStorage):
         ]
 
     async def get_size(self, path: str) -> int:
+        """获取 size。
+
+        Args:
+            path: 路径。
+        """
         return (self._base_path / path).stat().st_size
 
 
 class S3StorageClient(ObjectStorage):
+    """S3StorageClient。"""
     def __init__(self, config: StorageConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
 
     async def connect(self):
+        """connect。
+        """
         import boto3
 
         obj_config = self.config.object
@@ -113,6 +183,13 @@ class S3StorageClient(ObjectStorage):
         )
 
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
+        """upload。
+
+        Args:
+            key: key 参数。
+            data: data 参数。
+            content_type: content_type 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = (
@@ -124,6 +201,11 @@ class S3StorageClient(ObjectStorage):
         return key
 
     async def download(self, key: str) -> bytes:
+        """download。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = (
@@ -133,6 +215,11 @@ class S3StorageClient(ObjectStorage):
         return response["Body"].read()
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = (
@@ -142,6 +229,11 @@ class S3StorageClient(ObjectStorage):
         return True
 
     async def list_objects(self, prefix: str) -> List[str]:
+        """列出 objects。
+
+        Args:
+            prefix: prefix 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = (
@@ -151,6 +243,12 @@ class S3StorageClient(ObjectStorage):
         return [obj["Key"] for obj in response.get("Contents", [])]
 
     def get_presigned_url(self, key: str, expires: int) -> str:
+        """获取 presigned_url。
+
+        Args:
+            key: key 参数。
+            expires: expires 参数。
+        """
         if not self._client:
             import boto3
 
@@ -170,11 +268,19 @@ class S3StorageClient(ObjectStorage):
 
 
 class GCSStorageClient(ObjectStorage):
+    """GCSStorageClient。"""
     def __init__(self, config: StorageConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
 
     async def connect(self):
+        """connect。
+        """
         try:
             from google.cloud import storage as cloud_storage
         except ImportError:
@@ -187,6 +293,13 @@ class GCSStorageClient(ObjectStorage):
         )
 
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
+        """upload。
+
+        Args:
+            key: key 参数。
+            data: data 参数。
+            content_type: content_type 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
@@ -197,6 +310,11 @@ class GCSStorageClient(ObjectStorage):
         return key
 
     async def download(self, key: str) -> bytes:
+        """download。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
@@ -206,6 +324,11 @@ class GCSStorageClient(ObjectStorage):
         return blob.download_as_bytes()
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
@@ -216,6 +339,11 @@ class GCSStorageClient(ObjectStorage):
         return True
 
     async def list_objects(self, prefix: str) -> List[str]:
+        """列出 objects。
+
+        Args:
+            prefix: prefix 参数。
+        """
         if not self._client:
             await self.connect()
         bucket = self._client.bucket(
@@ -224,6 +352,12 @@ class GCSStorageClient(ObjectStorage):
         return [blob.name for blob in bucket.list_blobs(prefix=prefix)]
 
     def get_presigned_url(self, key: str, expires: int) -> str:
+        """获取 presigned_url。
+
+        Args:
+            key: key 参数。
+            expires: expires 参数。
+        """
         if not self._client:
             import asyncio, concurrent.futures as _cf
             with _cf.ThreadPoolExecutor(max_workers=1) as _pool:
@@ -236,11 +370,19 @@ class GCSStorageClient(ObjectStorage):
 
 
 class AzureStorageClient(ObjectStorage):
+    """AzureStorageClient。"""
     def __init__(self, config: StorageConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
 
     async def connect(self):
+        """connect。
+        """
         from azure.storage.blob import BlobServiceClient
 
         obj_config = self.config.object
@@ -248,6 +390,13 @@ class AzureStorageClient(ObjectStorage):
         self._client = BlobServiceClient.from_connection_string(connection_string)
 
     async def upload(self, key: str, data: bytes, content_type: str) -> str:
+        """upload。
+
+        Args:
+            key: key 参数。
+            data: data 参数。
+            content_type: content_type 参数。
+        """
         if not self._client:
             await self.connect()
             container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
@@ -256,6 +405,11 @@ class AzureStorageClient(ObjectStorage):
         return key
 
     async def download(self, key: str) -> bytes:
+        """download。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
             container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
@@ -263,6 +417,11 @@ class AzureStorageClient(ObjectStorage):
         return blob_client.download_blob().readall()
 
     async def delete(self, key: str) -> bool:
+        """delete。
+
+        Args:
+            key: key 参数。
+        """
         if not self._client:
             await self.connect()
             container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
@@ -271,6 +430,11 @@ class AzureStorageClient(ObjectStorage):
         return True
 
     async def list_objects(self, prefix: str) -> List[str]:
+        """列出 objects。
+
+        Args:
+            prefix: prefix 参数。
+        """
         if not self._client:
             await self.connect()
             container = self.config.object.bucket or os.getenv("AIPLAT_STORAGE_CONTAINER", "")
@@ -280,6 +444,12 @@ class AzureStorageClient(ObjectStorage):
         ]
 
     def get_presigned_url(self, key: str, expires: int) -> str:
+        """获取 presigned_url。
+
+        Args:
+            key: key 参数。
+            expires: expires 参数。
+        """
         if not self._client:
             import asyncio, concurrent.futures as _cf
             with _cf.ThreadPoolExecutor(max_workers=1) as _pool:

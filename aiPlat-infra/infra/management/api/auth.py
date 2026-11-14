@@ -19,16 +19,28 @@ from typing import Any, Optional
 
 
 def infra_api_token() -> Optional[str]:
+    """infra_api_token。
+    """
     tok = (os.getenv("AIPLAT_INFRA_API_TOKEN") or os.getenv("AIPLAT_INFRA_API_KEY") or "").strip()
     return tok or None
 
 
 def is_loopback_host(host: str) -> bool:
+    """is_loopback_host。
+
+    Args:
+        host: host 参数。
+    """
     h = (host or "").strip().lower()
     return h in ("127.0.0.1", "localhost", "::1", "0:0:0:0:0:0:0:1")
 
 
 def extract_request_token(request: Any) -> Optional[str]:
+    """extract_request_token。
+
+    Args:
+        request: FastAPI Request。
+    """
     header = (request.headers.get("x-aiplat-infra-token") or "").strip()
     if header:
         return header
@@ -39,6 +51,12 @@ def extract_request_token(request: Any) -> Optional[str]:
 
 
 def tokens_match(expected: str, provided: Optional[str]) -> bool:
+    """tokens_match。
+
+    Args:
+        expected: expected 参数。
+        provided: provided 参数。
+    """
     if not provided:
         return False
     try:
@@ -63,6 +81,12 @@ class InfraTokenMiddleware(BaseHTTPMiddleware):
     """Require infra API token when env token is configured."""
 
     async def dispatch(self, request: Any, call_next) -> Any:
+        """dispatch。
+
+        Args:
+            request: FastAPI Request。
+            call_next: call_next 参数。
+        """
         if not _HAS_ASGI:
             raise RuntimeError("fastapi/starlette required for InfraTokenMiddleware")
 

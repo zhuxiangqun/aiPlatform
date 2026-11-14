@@ -25,6 +25,11 @@ class OpenAICompatibleClient(LLMClient):
     compatible and invisible to callers.
     """
     def __init__(self, config: LLMConfig):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         self.config = config
         self._client = None
         self._cost_stats = {
@@ -251,6 +256,11 @@ class OpenAICompatibleClient(LLMClient):
         )
 
     def chat(self, request: ChatRequest) -> ChatResponse:
+        """chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         max_attempts = self._pool.key_count if self._pool else 1
         last_exc: Exception | None = None
         for attempt in range(max_attempts):
@@ -269,10 +279,20 @@ class OpenAICompatibleClient(LLMClient):
         raise RuntimeError(f"OpenAI API error: {last_exc}")
 
     async def achat(self, request: ChatRequest) -> ChatResponse:
+        """achat。
+
+        Args:
+            request: FastAPI Request。
+        """
         import asyncio
         return await asyncio.to_thread(self.chat, request)
 
     async def stream_chat(self, request: ChatRequest) -> AsyncIterator[StreamChunk]:
+        """stream_chat。
+
+        Args:
+            request: FastAPI Request。
+        """
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
         max_attempts = self._pool.key_count if self._pool else 1
         last_exc: Exception | None = None
@@ -319,6 +339,11 @@ class OpenAICompatibleClient(LLMClient):
             raise RuntimeError(f"OpenAI API error: {last_exc}")
 
     async def embed(self, texts: List[str]) -> List[List[float]]:
+        """embed。
+
+        Args:
+            texts: texts 参数。
+        """
         client = self._get_client()
         model_name = (getattr(self.config, "model", None) or "").strip()
         if not model_name:
@@ -331,6 +356,11 @@ class OpenAICompatibleClient(LLMClient):
         return [d.embedding for d in response.data]
 
     def count_tokens(self, text: str) -> int:
+        """count_tokens。
+
+        Args:
+            text: text 参数。
+        """
         return len(text) // 4
 
     def close(self) -> None:
@@ -352,7 +382,12 @@ class OpenAICompatibleClient(LLMClient):
 
     @staticmethod
     def unload_ollama_models(ollama_base_url: str = "http://localhost:11434", timeout: float = 10.0) -> dict:
-        """Unload all loaded Ollama models to free GPU/RAM. Returns status dict."""
+        """Unload all loaded Ollama models to free GPU/RAM. Returns status dict.
+
+        Args:
+            ollama_base_url: ollama_base_url 参数。
+            timeout: 超时秒数。
+        """
         result = {"unloaded": [], "errors": []}
         try:
             import httpx
@@ -380,6 +415,8 @@ class OpenAICompatibleClient(LLMClient):
         return result
 
     def get_metrics(self) -> dict:
+        """获取 metrics。
+        """
         metrics = dict(self._cost_stats)
         # Observability: surface credential-pool health when rotation is active.
         if self._pool is not None:

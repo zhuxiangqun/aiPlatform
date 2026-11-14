@@ -1,3 +1,5 @@
+"""learning_misc：模块接口。"""
+
 from __future__ import annotations
 
 import time
@@ -39,7 +41,19 @@ async def list_learning_artifacts(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
-    """List learning_artifacts stored in ExecutionStore."""
+    """List learning_artifacts stored in ExecutionStore.
+
+    Args:
+        target_type: target_type 参数。
+        target_id: target 标识。
+        kind: kind 参数。
+        status: status 参数。
+        trace_id: trace 标识。
+        run_id: 运行 ID。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -57,6 +71,12 @@ async def list_learning_artifacts(
 
 @router.get("/learning/artifacts/{artifact_id}", response_model=ItemResponse)
 async def get_learning_artifact(artifact_id: str, rt: RuntimeDep = None):
+    """获取 learning_artifact。
+
+    Args:
+        artifact_id: artifact 标识。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -68,7 +88,13 @@ async def get_learning_artifact(artifact_id: str, rt: RuntimeDep = None):
 
 @router.post("/learning/artifacts/{artifact_id}/status", response_model=StatusResponse)
 async def set_learning_artifact_status(artifact_id: str, request: dict, rt: RuntimeDep = None):
-    """Update artifact status + merge metadata (status transitions only)."""
+    """Update artifact status + merge metadata (status transitions only).
+
+    Args:
+        artifact_id: artifact 标识。
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -95,6 +121,16 @@ async def list_release_rollouts(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
+    """列出 release_rollouts。
+
+    Args:
+        http_request: http_request 参数。
+        target_type: target_type 参数。
+        target_id: target 标识。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -105,6 +141,13 @@ async def list_release_rollouts(
 
 @router.put("/learning/rollouts", response_model=StatusResponse)
 async def upsert_release_rollout(request: dict, http_request: Request, rt: RuntimeDep = None):
+    """upsert_release_rollout。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -134,6 +177,13 @@ async def upsert_release_rollout(request: dict, http_request: Request, rt: Runti
 
 @router.delete("/learning/rollouts", response_model=StatusResponse)
 async def delete_release_rollout(request: dict, http_request: Request, rt: RuntimeDep = None):
+    """删除 release_rollout。
+
+    Args:
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -151,6 +201,14 @@ async def delete_release_rollout(request: dict, http_request: Request, rt: Runti
 
 @router.post("/learning/releases/{candidate_id}/metrics/snapshots", response_model=StatusResponse)
 async def add_release_metric_snapshot(candidate_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """add_release_metric_snapshot。
+
+    Args:
+        candidate_id: candidate 标识。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -185,6 +243,16 @@ async def list_release_metric_snapshots(
     offset: int = 0,
     rt: RuntimeDep = None,
 ):
+    """列出 release_metric_snapshots。
+
+    Args:
+        candidate_id: candidate 标识。
+        http_request: http_request 参数。
+        metric_key: metric_key 参数。
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -195,7 +263,12 @@ async def list_release_metric_snapshots(
 
 @router.post("/learning/releases/expire", response_model=StatusResponse)
 async def expire_releases(request: dict, rt: RuntimeDep = None):
-    """Expire published release candidates based on metadata.expires_at (offline status transitions only)."""
+    """Expire published release candidates based on metadata.expires_at (offline status transitions only).
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -238,7 +311,12 @@ async def expire_releases(request: dict, rt: RuntimeDep = None):
 
 @router.post("/learning/auto-rollback/regression", response_model=StatusResponse)
 async def api_auto_rollback_regression(request: dict, rt: RuntimeDep = None):
-    """HTTP wrapper for auto-rollback-regression (offline) used by management plane."""
+    """HTTP wrapper for auto-rollback-regression (offline) used by management plane.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -274,7 +352,12 @@ async def api_auto_rollback_regression(request: dict, rt: RuntimeDep = None):
 
 @router.post("/learning/approvals/cleanup-rollback-approvals", response_model=StatusResponse)
 async def api_cleanup_rollback_approvals(request: dict, rt: RuntimeDep = None):
-    """HTTP wrapper for cleanup-rollback-approvals."""
+    """HTTP wrapper for cleanup-rollback-approvals.
+
+    Args:
+        request: FastAPI Request。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")

@@ -1,3 +1,5 @@
+"""metric_crud：模块接口。"""
+
 from api.schemas_response import StatusResponse
 u"""Ontology Editor — Metrics API endpoints (v2.7)."""
 from fastapi import APIRouter, HTTPException, Query
@@ -8,7 +10,11 @@ router = APIRouter(tags=["ontology-editor-metrics"])
 
 @router.get("/domains/{domain_id}/metrics", response_model=StatusResponse)
 async def list_metrics(domain_id: str):
-    u"""List all metric definitions for a domain."""
+    """List all metric definitions for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
@@ -28,7 +34,13 @@ async def list_metrics(domain_id: str):
 
 @router.get("/domains/{domain_id}/metrics/{metric_name}/value", response_model=StatusResponse)
 async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(30)):
-    u"""Get current metric value with threshold color."""
+    """Get current metric value with threshold color.
+
+    Args:
+        domain_id: domain 标识。
+        metric_name: metric_name 参数。
+        days: days 参数。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
@@ -50,7 +62,13 @@ async def get_metric_value(domain_id: str, metric_name: str, days: int = Query(3
 
 @router.get("/domains/{domain_id}/metrics/{metric_name}/trend", response_model=StatusResponse)
 async def get_metric_trend(domain_id: str, metric_name: str, days: int = Query(30)):
-    u"""Get daily metric trend for the last N days."""
+    """Get daily metric trend for the last N days.
+
+    Args:
+        domain_id: domain 标识。
+        metric_name: metric_name 参数。
+        days: days 参数。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)
@@ -72,7 +90,11 @@ async def get_metric_trend(domain_id: str, metric_name: str, days: int = Query(3
 
 @router.get("/domains/{domain_id}/metrics/scorecard", response_model=StatusResponse)
 async def get_scorecard(domain_id: str):
-    u"""Get a scorecard of all metrics for a domain."""
+    """Get a scorecard of all metrics for a domain.
+
+    Args:
+        domain_id: domain 标识。
+    """
     try:
         from core.api.core_facade import get_ontology_domain_schema
         schema = get_ontology_domain_schema(domain_id)

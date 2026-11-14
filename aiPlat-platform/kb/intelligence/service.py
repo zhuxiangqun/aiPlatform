@@ -1,3 +1,5 @@
+"""service：模块接口。"""
+
 from __future__ import annotations
 
 import hashlib
@@ -322,11 +324,19 @@ def enqueue_doc_ingest(
     max_pages: Optional[int] = 60,
     force_reingest: bool = False,
 ) -> Dict[str, Any]:
-    """
-    Platform-facing doc ingest entry.
-    - Supports local file_path OR url (download first).
-    - Delegates to existing ingest_document pipeline (which now also writes kb_elements).
-    - Uses kb_jobs/kb_job_events for observability.
+    """Platform-facing doc ingest entry.
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        file_path: file_path 参数。
+        url: url 参数。
+        kind: kind 参数。
+        ocr_lang: ocr_lang 参数。
+        ocr_engine: ocr_engine 参数。
+        dpi: dpi 参数。
+        max_pages: max_pages 参数。
+        force_reingest: force_reingest 参数。
     """
     if not tenant_id:
         tenant_id = "default"

@@ -18,6 +18,8 @@ class Metric:
     unit: str = ""
     
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "name": self.name,
             "value": self.value,
@@ -31,6 +33,12 @@ class MetricsCollector(ABC):
     """指标采集器基类"""
     
     def __init__(self, layer: str, endpoint: str = None):
+        """初始化。
+
+        Args:
+            layer: layer 参数。
+            endpoint: endpoint 参数。
+        """
         self.layer = layer
         self.endpoint = endpoint
         

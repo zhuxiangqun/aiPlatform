@@ -165,6 +165,8 @@ class Experience:
     require_review: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return asdict(self)
 
 
@@ -172,6 +174,11 @@ class ExperienceStore:
     """JSON 文件持久化的经验注册表。"""
 
     def __init__(self, path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            path: 路径。
+        """
         self.path = path or _default_path()
 
     def _load(self) -> List[Dict[str, Any]]:
@@ -206,8 +213,15 @@ class ExperienceStore:
     ) -> Dict[str, Any]:
         """登记失败经验 → pending。置信度低于门槛拒绝；同 rule_id 已存在则合并证据。
 
-        Always attaches an Evidence Envelope (CoreFacade demote path). Speculative
-        with empty evidence cannot register (no fake gotchas).
+        Args:
+            rule_id: rule 标识。
+            content: content 参数。
+            source: source 参数。
+            confidence: confidence 参数。
+            risk: risk 参数。
+            evidence_envelope: evidence_envelope 参数。
+            evidence: evidence 参数。
+            limitations: limitations 参数。
         """
         if risk not in VALID_RISKS:
             risk = "low"
@@ -268,7 +282,13 @@ class ExperienceStore:
                 "evidence_envelope": env}
 
     def record_verification(self, rule_id: str, case_id: str, outcome: str) -> Dict[str, Any]:
-        """记录一次独立案例的验证结果。success 累计（同 case 不重复）；fail 重置累计。"""
+        """记录一次独立案例的验证结果。success 累计（同 case 不重复）；fail 重置累计。
+
+        Args:
+            rule_id: rule 标识。
+            case_id: case 标识。
+            outcome: outcome 参数。
+        """
         if outcome not in ("success", "fail"):
             return {"error": f"invalid outcome: {outcome}"}
 
@@ -332,7 +352,12 @@ class ExperienceStore:
                 "draft": rec["promote_draft"]}
 
     def confirm_promotion(self, rule_id: str, accept: bool = True) -> Dict[str, Any]:
-        """高风险经验的升级确认（人工门槛）。accept=False → 回退为 rejected。"""
+        """高风险经验的升级确认（人工门槛）。accept=False → 回退为 rejected。
+
+        Args:
+            rule_id: rule 标识。
+            accept: accept 参数。
+        """
         records = self._load()
         rec = next((r for r in records if r.get("rule_id") == rule_id), None)
         if not rec:
@@ -352,6 +377,11 @@ class ExperienceStore:
         return {"confirmed": False, "id": rec["id"], "status": STATUS_REJECTED}
 
     def status(self, rule_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """status。
+
+        Args:
+            rule_id: rule 标识。
+        """
         records = self._load()
         if rule_id:
             records = [r for r in records if r.get("rule_id") == rule_id]
@@ -370,6 +400,19 @@ def register_failure(
     evidence: Optional[List[Dict[str, Any]]] = None,
     limitations: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
+    """register_failure。
+
+    Args:
+        rule_id: rule 标识。
+        content: content 参数。
+        source: source 参数。
+        confidence: confidence 参数。
+        risk: risk 参数。
+        path: 路径。
+        evidence_envelope: evidence_envelope 参数。
+        evidence: evidence 参数。
+        limitations: limitations 参数。
+    """
     return ExperienceStore(path).register_failure(
         rule_id,
         content,
@@ -384,10 +427,24 @@ def register_failure(
 
 def record_verification(rule_id: str, case_id: str, outcome: str,
                         path: Optional[str] = None) -> Dict[str, Any]:
+    """record_verification。
+
+    Args:
+        rule_id: rule 标识。
+        case_id: case 标识。
+        outcome: outcome 参数。
+        path: 路径。
+    """
     return ExperienceStore(path).record_verification(rule_id, case_id, outcome)
 
 
 def status(rule_id: Optional[str] = None, path: Optional[str] = None) -> List[Dict[str, Any]]:
+    """status。
+
+    Args:
+        rule_id: rule 标识。
+        path: 路径。
+    """
     return ExperienceStore(path).status(rule_id)
 
 

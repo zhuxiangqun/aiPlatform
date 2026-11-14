@@ -29,10 +29,17 @@ class ErrorHandlerImpl(ErrorHandler):
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._errors: List[ErrorEvent] = []
 
     def handle(self, error: Exception, context: dict) -> ErrorEvent:
-        """处理错误"""
+        """处理错误。
+
+        Args:
+            error: error 参数。
+            context: context 参数。
+        """
         # 生成错误ID
         error_id = str(uuid.uuid4())[:8]
 
@@ -64,7 +71,11 @@ class ErrorHandlerImpl(ErrorHandler):
         return event
 
     def get_errors(self, filters: dict) -> List[ErrorEvent]:
-        """获取错误列表"""
+        """获取错误列表。
+
+        Args:
+            filters: filters 参数。
+        """
         errors = self._errors
 
         # 按级别过滤

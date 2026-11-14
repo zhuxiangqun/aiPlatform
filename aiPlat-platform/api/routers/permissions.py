@@ -20,14 +20,23 @@ router = APIRouter(prefix="/platform/permissions", tags=["permissions"])
 
 @router.get("/permissions/stats", response_model=StatusResponse)
 async def get_permission_stats(_auth: str = Depends(require_auth)):
-    """Get permission statistics"""
+    """Get permission statistics。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     perm_mgr = get_permission_manager()
     return perm_mgr.get_stats()
 
 
 @router.get("/permissions/users/{user_id}", response_model=StatusResponse)
 async def get_user_permissions(user_id: str, _auth: str = Depends(require_auth)):
-    """Get all permissions for a user (resource_id -> permissions)."""
+    """Get all permissions for a user (resource_id -> permissions).
+
+    Args:
+        user_id: 用户 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     perm_mgr = get_permission_manager()
     tools = perm_mgr.get_user_tools(user_id)
     return {
@@ -38,7 +47,12 @@ async def get_user_permissions(user_id: str, _auth: str = Depends(require_auth))
 
 @router.get("/permissions/resources/{resource_id}", response_model=StatusResponse)
 async def get_resource_permissions(resource_id: str, _auth: str = Depends(require_auth)):
-    """Get all users who have permissions on a resource."""
+    """Get all users who have permissions on a resource.
+
+    Args:
+        resource_id: resource 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     perm_mgr = get_permission_manager()
     users = perm_mgr.get_tool_users(resource_id)
     return {
@@ -49,7 +63,12 @@ async def get_resource_permissions(resource_id: str, _auth: str = Depends(requir
 
 @router.post("/permissions/grant", response_model=StatusResponse)
 async def grant_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
-    """Grant permission to a user for a resource (tool/skill/agent)."""
+    """Grant permission to a user for a resource (tool/skill/agent).
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     user_id = request.get("user_id")
     resource_id = request.get("resource_id") or request.get("tool_name")
     permission = request.get("permission", "execute")
@@ -67,7 +86,12 @@ async def grant_permission(request: Dict[str, Any], _auth: str = Depends(require
 
 @router.post("/permissions/revoke", response_model=StatusResponse)
 async def revoke_permission(request: Dict[str, Any], _auth: str = Depends(require_admin)):
-    """Revoke permission from a user for a resource (tool/skill/agent)."""
+    """Revoke permission from a user for a resource (tool/skill/agent).
+
+    Args:
+        request: FastAPI Request。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     user_id = request.get("user_id")
     resource_id = request.get("resource_id") or request.get("tool_name")
     permission = request.get("permission")

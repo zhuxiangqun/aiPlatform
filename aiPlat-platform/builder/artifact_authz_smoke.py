@@ -136,6 +136,14 @@ def default_http_transport(
     body: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
 ) -> Tuple[int, str]:
+    """default_http_transport。
+
+    Args:
+        method: method 参数。
+        url: url 参数。
+        body: 请求体。
+        headers: headers 参数。
+    """
     data = None
     if body is not None:
         data = json.dumps(body).encode("utf-8")
@@ -155,7 +163,11 @@ def default_http_transport(
 
 
 def classify_app_type(root: Path) -> str:
-    """Heuristic classifier for pilot templates (crud|report|unknown)."""
+    """Heuristic classifier for pilot templates (crud|report|unknown).
+
+    Args:
+        root: root 参数。
+    """
     root = Path(root)
     text_bits: List[str] = []
     for pat in ("*.py", "*.ts", "*.tsx", "*.js", "*.json", "*.md"):
@@ -189,8 +201,11 @@ def run_authz_smoke(
 ) -> Dict[str, Any]:
     """Run template probes against a live (or faked) HTTP app.
 
-    Returns authz_smoke-shaped dict: status pass|fail, evidence, probe results.
-    Unreachable → fail (not na).
+    Args:
+        base_url: base_url 参数。
+        app_type: app_type 参数。
+        transport: transport 参数。
+        sample_id: sample 标识。
     """
     app_type = (app_type or "").strip().lower()
     if app_type not in PROBE_TEMPLATES:
@@ -263,6 +278,7 @@ def run_authz_smoke(
 
 @dataclass
 class PilotSample:
+    """PilotSample。"""
     sample_id: str
     app_type: str
     authz_status: str  # pass|fail
@@ -279,6 +295,7 @@ _PILOT_EXIT_ROLES = frozenset({"security_owner", "product_security"})
 
 @dataclass
 class PilotState:
+    """PilotState。"""
     started_at: str
     samples: List[PilotSample] = field(default_factory=list)
     owner_approval: Optional[str] = None  # legacy single note (not sufficient alone)
@@ -297,6 +314,11 @@ def _pilot_path() -> Path:
 
 
 def load_pilot_state(path: Optional[Path] = None) -> PilotState:
+    """load_pilot_state。
+
+    Args:
+        path: 路径。
+    """
     p = path or _pilot_path()
     if not p.is_file():
         return PilotState(started_at=datetime.now(timezone.utc).date().isoformat())
@@ -332,6 +354,12 @@ def load_pilot_state(path: Optional[Path] = None) -> PilotState:
 
 
 def save_pilot_state(state: PilotState, path: Optional[Path] = None) -> Path:
+    """save_pilot_state。
+
+    Args:
+        state: state 参数。
+        path: 路径。
+    """
     p = path or _pilot_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -368,6 +396,12 @@ def record_pilot_sample(
     *,
     path: Optional[Path] = None,
 ) -> PilotState:
+    """record_pilot_sample。
+
+    Args:
+        smoke: smoke 参数。
+        path: 路径。
+    """
     state = load_pilot_state(path)
     sid = str(smoke.get("sample_id") or f"sample-{len(state.samples)+1}")
     # replace same sample_id
@@ -390,7 +424,12 @@ def record_pilot_sample(
 
 
 def evaluate_pilot_exit(state: PilotState, *, today: Optional[date] = None) -> Dict[str, Any]:
-    """Hard exit criteria from plan §1.2 + Wave2 pin fields."""
+    """Hard exit criteria from plan §1.2 + Wave2 pin fields.
+
+    Args:
+        state: state 参数。
+        today: today 参数。
+    """
     today = today or datetime.now(timezone.utc).date()
     try:
         started = date.fromisoformat(state.started_at[:10])
@@ -481,7 +520,14 @@ def approve_pilot_exit(
     role: str = "security_owner",
     path: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Record one half of the dual-sign exit. Call twice with both roles."""
+    """Record one half of the dual-sign exit. Call twice with both roles.
+
+    Args:
+        owner_name: owner_name 参数。
+        note: note 参数。
+        role: role 参数。
+        path: 路径。
+    """
     role_n = (role or "").strip().lower()
     if role_n not in _PILOT_EXIT_ROLES:
         return {
@@ -508,7 +554,12 @@ def approve_pilot_exit(
 
 
 def authz_required_for_type(app_type: str, path: Optional[Path] = None) -> bool:
-    """After pilot exit, crud/report publishes must have authz pass."""
+    """After pilot exit, crud/report publishes must have authz pass.
+
+    Args:
+        app_type: app_type 参数。
+        path: 路径。
+    """
     st = evaluate_pilot_exit(load_pilot_state(path))
     if st.get("status") != "passed":
         return False

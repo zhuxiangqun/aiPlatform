@@ -1,3 +1,5 @@
+"""schemas：模块接口。"""
+
 from dataclasses import dataclass, field
 from typing import Optional
 import os
@@ -5,6 +7,7 @@ import os
 
 @dataclass
 class PoolConfig:
+    """PoolConfig。"""
     min_size: int = 5
     max_size: int = 20
     max_overflow: int = 10
@@ -14,6 +17,7 @@ class PoolConfig:
 
 @dataclass
 class SSLConfig:
+    """SSLConfig。"""
     enabled: bool = False
     cert_path: Optional[str] = None
     key_path: Optional[str] = None
@@ -22,6 +26,7 @@ class SSLConfig:
 
 @dataclass
 class DatabaseConfig:
+    """DatabaseConfig。"""
     type: str = "postgres"
     host: str = "localhost"
     port: int = 5432
@@ -35,6 +40,7 @@ class DatabaseConfig:
 
 @dataclass
 class PoolStats:
+    """PoolStats。"""
     size: int = 0
     available: int = 0
     used: int = 0

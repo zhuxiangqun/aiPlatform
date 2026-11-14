@@ -47,18 +47,33 @@ async def _record_workflow_changeset(name: str, workflow_id: str, status: str = 
 
 @router.get("", response_model=StatusResponse)
 async def list_workflows_endpoint(_auth: str = Depends(require_auth)):
+    """列出 workflows_endpoint。
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     items = await _svc.list()
     return {"workflows": items, "total": len(items)}
 
 
 @router.post("/dedupe", response_model=StatusResponse)
 async def dedupe_workflows_endpoint(_auth: str = Depends(require_auth)):
-    """Merge workflows that share the same name + node fingerprint; keep newest."""
+    """Merge workflows that share the same name + node fingerprint; keep newest.
+
+    Args:
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     return await _svc.dedupe()
 
 
 @router.get("/{workflow_id}", response_model=StatusResponse)
 async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
+    """获取 workflow_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     item = await _svc.get(workflow_id)
     if not item:
         raise HTTPException(status_code=404, detail="workflow not found")
@@ -67,7 +82,12 @@ async def get_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_a
 
 @router.post("/{workflow_id}/audit", response_model=StatusResponse)
 async def audit_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
-    """AI 审核：Workflow 节点/描述完整性（规则驱动）。"""
+    """AI 审核：Workflow 节点/描述完整性（规则驱动）。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         from core.management.asset_audit import issue, summarize_audit_issues
     except Exception:
@@ -392,6 +412,12 @@ async def audit_workflow_endpoint(workflow_id: str, _auth: str = Depends(require
 
 @router.post("", response_model=StatusResponse)
 async def create_workflow_endpoint(req: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """创建 workflow_endpoint。
+
+    Args:
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         reuse = req.get("reuse_equivalent", True)
         item = await _svc.create(
@@ -409,6 +435,13 @@ async def create_workflow_endpoint(req: Dict[str, Any], _auth: str = Depends(req
 
 @router.put("/{workflow_id}", response_model=StatusResponse)
 async def update_workflow_endpoint(workflow_id: str, req: Dict[str, Any], _auth: str = Depends(require_auth)):
+    """更新 workflow_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     kwargs: Dict[str, Any] = {}
     if "name" in req:
         kwargs["name"] = str(req["name"])
@@ -428,6 +461,12 @@ async def update_workflow_endpoint(workflow_id: str, req: Dict[str, Any], _auth:
 
 @router.delete("/{workflow_id}", response_model=StatusResponse)
 async def delete_workflow_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
+    """删除 workflow_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     await _svc.delete(workflow_id)
     await _record_workflow_changeset("delete_workflow", workflow_id)
     return {"status": "deleted", "id": workflow_id}
@@ -435,6 +474,13 @@ async def delete_workflow_endpoint(workflow_id: str, _auth: str = Depends(requir
 
 @router.post("/{workflow_id}/execute", response_model=StatusResponse)
 async def execute_workflow_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
+    """execute_workflow_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     try:
         result = await _svc.execute(workflow_id, launch_name=str(req.get("name") or ""))
         return result
@@ -444,6 +490,12 @@ async def execute_workflow_endpoint(workflow_id: str, req: Dict[str, Any] = {}, 
 
 @router.get("/{workflow_id}/runs", response_model=StatusResponse)
 async def list_workflow_runs_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
+    """列出 workflow_runs_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     runs = await _svc.list_runs(workflow_id)
     return {"runs": runs, "total": len(runs)}
 
@@ -451,6 +503,12 @@ async def list_workflow_runs_endpoint(workflow_id: str, _auth: str = Depends(req
 @router.post("/{workflow_id}/toggle-enabled", response_model=StatusResponse)
 async def toggle_workflow_enabled_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
     # Try directory-based manager first, fall back to SQLite
+    """toggle_workflow_enabled_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _get_wf_mgr()
     if mgr:
         result = mgr.toggle_enabled(workflow_id)
@@ -469,6 +527,12 @@ async def toggle_workflow_enabled_endpoint(workflow_id: str, _auth: str = Depend
 
 @router.get("/runs/{run_id}/events/latest", response_model=StatusResponse)
 async def get_latest_event_endpoint(run_id: str, _auth: str = Depends(require_auth)):
+    """获取 latest_event_endpoint。
+
+    Args:
+        run_id: 运行 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from storage.sqlite import get_latest_event
     event = get_latest_event(run_id)
     if not event:
@@ -478,6 +542,12 @@ async def get_latest_event_endpoint(run_id: str, _auth: str = Depends(require_au
 
 @router.get("/runs/{run_id}/events", response_model=StatusResponse)
 async def list_events_endpoint(run_id: str, _auth: str = Depends(require_auth)):
+    """列出 events_endpoint。
+
+    Args:
+        run_id: 运行 ID。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from storage.sqlite import list_pipeline_events
     events = list_pipeline_events(run_id)
     return {"events": events, "total": len(events)}
@@ -485,7 +555,13 @@ async def list_events_endpoint(run_id: str, _auth: str = Depends(require_auth)):
 
 @router.post("/{workflow_id}/stop", response_model=StatusResponse)
 async def stop_workflow_run(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
-    """Cancel a running pipeline by project_id."""
+    """Cancel a running pipeline by project_id.
+
+    Args:
+        workflow_id: workflow 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     project_id = str(req.get("project_id", ""))
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id is required")
@@ -496,7 +572,13 @@ async def stop_workflow_run(workflow_id: str, req: Dict[str, Any] = {}, _auth: s
 
 @router.post("/{workflow_id}/sign", response_model=StatusResponse)
 async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
-    """Sign a workflow directory with an Ed25519 private key. Writes WORKFLOW.manifest.json."""
+    """Sign a workflow directory with an Ed25519 private key. Writes WORKFLOW.manifest.json.
+
+    Args:
+        workflow_id: workflow 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _get_wf_mgr()
     if not mgr:
         raise HTTPException(status_code=503, detail="Workflow manager not available (not migrated to directory storage yet)")
@@ -551,6 +633,13 @@ async def sign_workflow(workflow_id: str, req: Dict[str, Any] = {}, _auth: str =
 @router.post("/{workflow_id}/publish", response_model=StatusResponse)
 async def publish_version_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _auth: str = Depends(require_auth)):
     # Try directory-based manager first
+    """publish_version_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        req: req 参数。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     mgr = _get_wf_mgr()
     if mgr:
         ver = mgr.publish(workflow_id)
@@ -573,6 +662,12 @@ async def publish_version_endpoint(workflow_id: str, req: Dict[str, Any] = {}, _
 
 @router.get("/{workflow_id}/versions", response_model=StatusResponse)
 async def list_versions_endpoint(workflow_id: str, _auth: str = Depends(require_auth)):
+    """列出 versions_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from storage.sqlite import list_workflow_versions
     versions = list_workflow_versions(workflow_id)
     return {"versions": versions, "total": len(versions), "latest_version": versions[0]["version"] if versions else 0}
@@ -580,6 +675,13 @@ async def list_versions_endpoint(workflow_id: str, _auth: str = Depends(require_
 
 @router.post("/{workflow_id}/restore/{version_id:path}", response_model=StatusResponse)
 async def restore_version_endpoint(workflow_id: str, version_id: str, _auth: str = Depends(require_auth)):
+    """restore_version_endpoint。
+
+    Args:
+        workflow_id: workflow 标识。
+        version_id: version 标识。
+        _auth: 鉴权依赖注入（通常未使用）。
+    """
     from storage.sqlite import get_workflow_version, update_workflow
     ver = get_workflow_version(version_id)
     if not ver:

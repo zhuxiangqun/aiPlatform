@@ -33,7 +33,14 @@ from core.api.intents import core_chat, ChatContext
 
 class BuilderSessionService:
 
+    """BuilderSessionService。"""
     def __init__(self, model: Any = None, execution_store: Any = None):
+        """初始化。
+
+        Args:
+            model: 模型名。
+            execution_store: execution_store 参数。
+        """
         self._model = model
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._pipeline_sessions: Dict[str, Any] = {}
@@ -88,6 +95,13 @@ class BuilderSessionService:
         session["_pipeline_state"] = state
 
     async def create_session(self, requirement: str = "", tenant_id: str = "", user_id: str = "") -> str:
+        """创建 session。
+
+        Args:
+            requirement: requirement 参数。
+            tenant_id: 租户 ID。
+            user_id: 用户 ID。
+        """
         session_id = f"bs_{uuid.uuid4().hex[:12]}"
         self._sessions[session_id] = {
             "session_id": session_id,
@@ -101,6 +115,12 @@ class BuilderSessionService:
         return session_id
 
     async def chat(self, session_id: str, message: str) -> BuilderChatResponse:
+        """chat。
+
+        Args:
+            session_id: 会话 ID。
+            message: message 参数。
+        """
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -140,6 +160,11 @@ class BuilderSessionService:
         )
 
     async def confirm_requirements(self, session_id: str) -> BuilderSessionStateResponse:
+        """confirm_requirements。
+
+        Args:
+            session_id: 会话 ID。
+        """
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -149,6 +174,12 @@ class BuilderSessionService:
         return self._build_state(session_id)
 
     async def start_pipeline(self, session_id: str, team_id: str = "") -> BuilderSessionStateResponse:
+        """start_pipeline。
+
+        Args:
+            session_id: 会话 ID。
+            team_id: team 标识。
+        """
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError(f"Session {session_id} not found")
@@ -183,6 +214,11 @@ class BuilderSessionService:
         # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.approve_stage
         # （v3.1 Core HTTP 唯一实现）——原本地 pipeline.approve（PipelineSession 旧语义）
         # 与生产路径不一致；router 已直连 project_service，此处保持 API 兼容。
+        """approve_architecture。
+
+        Args:
+            session_id: 会话 ID。
+        """
         from builder.builder_project_service import _get_project_service
         result = await _get_project_service().approve_stage(session_id)
         if isinstance(result, dict) and result.get("status") == "error":
@@ -196,6 +232,12 @@ class BuilderSessionService:
 
     async def reject_architecture(self, session_id: str, feedback: str) -> BuilderSessionStateResponse:
         # P1-13 收敛（§10 防并行实现）：委托 BuilderProjectService.reject_stage（Core HTTP）
+        """reject_architecture。
+
+        Args:
+            session_id: 会话 ID。
+            feedback: feedback 参数。
+        """
         from builder.builder_project_service import _get_project_service
         result = await _get_project_service().reject_stage(session_id, feedback)
         if isinstance(result, dict) and result.get("status") == "error":
@@ -209,13 +251,29 @@ class BuilderSessionService:
 
     async def approve_test_plan(self, session_id: str) -> BuilderSessionStateResponse:
         # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        """approve_test_plan。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return await self.approve_architecture(session_id)
 
     async def reject_test_plan(self, session_id: str, feedback: str) -> BuilderSessionStateResponse:
         # P1-13 收敛（§10 防并行实现）：委托 Core HTTP 唯一实现
+        """reject_test_plan。
+
+        Args:
+            session_id: 会话 ID。
+            feedback: feedback 参数。
+        """
         return await self.reject_architecture(session_id, feedback)
 
     async def get_state(self, session_id: str) -> BuilderSessionStateResponse:
+        """获取 state。
+
+        Args:
+            session_id: 会话 ID。
+        """
         return self._build_state(session_id)
 
     def _build_state(self, session_id: str) -> BuilderSessionStateResponse:

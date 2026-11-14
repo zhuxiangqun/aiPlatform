@@ -51,6 +51,13 @@ def _new_change_id() -> str:
 
 @router.get("/policies/tenants", response_model=StatusResponse)
 async def list_tenant_policies(limit: int = 100, offset: int = 0, rt: RuntimeDep = None):
+    """列出 tenant_policies。
+
+    Args:
+        limit: 返回条数上限。
+        offset: 分页偏移。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -59,6 +66,12 @@ async def list_tenant_policies(limit: int = 100, offset: int = 0, rt: RuntimeDep
 
 @router.get("/policies/tenants/{tenant_id}", response_model=StatusResponse)
 async def get_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
+    """获取 tenant_policy。
+
+    Args:
+        tenant_id: 租户 ID。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -70,9 +83,11 @@ async def get_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
 
 @router.get("/policies/tenants/{tenant_id}/effective", response_model=StatusResponse)
 async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
-    """
-    Return the effective policy view (env defaults merged with tenant snapshot).
-    This endpoint is read-only and intended for debugging/ops transparency.
+    """Return the effective policy view (env defaults merged with tenant snapshot).
+
+    Args:
+        tenant_id: 租户 ID。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:
@@ -186,6 +201,14 @@ async def get_effective_tenant_policy(tenant_id: str, rt: RuntimeDep = None):
 
 @router.put("/policies/tenants/{tenant_id}", response_model=StatusResponse)
 async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Request, rt: RuntimeDep = None):
+    """upsert_tenant_policy。
+
+    Args:
+        tenant_id: 租户 ID。
+        request: FastAPI Request。
+        http_request: http_request 参数。
+        rt: rt 参数。
+    """
     store = _store(rt)
     if not store:
         raise HTTPException(status_code=503, detail="ExecutionStore not initialized")
@@ -266,9 +289,13 @@ async def upsert_tenant_policy(tenant_id: str, request: dict, http_request: Requ
 
 @router.get("/policies/tenants/{tenant_id}/evaluate-tool", response_model=StatusResponse)
 async def evaluate_tenant_tool_policy(tenant_id: str, tool_name: str, http_request: Request, rt: RuntimeDep = None):
-    """
-    Evaluate a single tool against tenant policy (best-effort).
-    Returns: allow | deny | approval_required with policy_version and matched rule.
+    """Evaluate a single tool against tenant policy (best-effort).
+
+    Args:
+        tenant_id: 租户 ID。
+        tool_name: tool_name 参数。
+        http_request: http_request 参数。
+        rt: rt 参数。
     """
     store = _store(rt)
     if not store:

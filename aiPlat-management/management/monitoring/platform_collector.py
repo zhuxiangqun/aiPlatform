@@ -10,6 +10,11 @@ class PlatformMetricsCollector(MetricsCollector):
     """Layer 2 (platform) 指标采集器"""
     
     def __init__(self, endpoint: str = None):
+        """初始化。
+
+        Args:
+            endpoint: endpoint 参数。
+        """
         super().__init__("platform", endpoint)
         
     async def collect(self) -> List[Metric]:

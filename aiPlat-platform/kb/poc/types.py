@@ -1,3 +1,5 @@
+"""types：模块接口。"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,6 +28,7 @@ class Citation:
 
 @dataclass
 class ExtractedNumber:
+    """ExtractedNumber。"""
     value_raw: str
     value: Optional[float]
     token: OCRToken
@@ -34,6 +37,7 @@ class ExtractedNumber:
 
 @dataclass
 class IngestResult:
+    """IngestResult。"""
     doc_id: str
     pdf_path: str
     page_images: List[str]
@@ -44,6 +48,7 @@ class IngestResult:
 
 @dataclass
 class QAResult:
+    """QAResult。"""
     answer: str
     citations: List[Citation] = field(default_factory=list)
     debug: Dict[str, Any] = field(default_factory=dict)

@@ -21,6 +21,8 @@ class FileWatcher:
     u"""Watches files/directories and invokes callbacks on change events."""
 
     def __init__(self):
+        """初始化。
+        """
         self._watchers: Dict[str, List[Callable[[str], None]]] = {}  # path → callbacks
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -29,13 +31,22 @@ class FileWatcher:
         self._poll_interval = 2.0
 
     def watch(self, path: str, callback: Callable[[str], None]) -> None:
-        u"""Register a callback to be invoked when path changes."""
+        """Register a callback to be invoked when path changes.
+
+        Args:
+            path: 路径。
+            callback: callback 参数。
+        """
         if path not in self._watchers:
             self._watchers[path] = []
         self._watchers[path].append(callback)
 
     def start(self, *, poll_interval: float = 2.0) -> None:
-        u"""Start watching. Tries watchdog first, falls back to polling."""
+        """Start watching. Tries watchdog first, falls back to polling.
+
+        Args:
+            poll_interval: poll_interval 参数。
+        """
         self._poll_interval = poll_interval
         self._stop.clear()
 
@@ -124,6 +135,8 @@ _watcher: Optional[FileWatcher] = None
 
 
 def get_file_watcher() -> FileWatcher:
+    """获取 file_watcher。
+    """
     global _watcher
     if _watcher is None:
         _watcher = FileWatcher()
@@ -131,9 +144,10 @@ def get_file_watcher() -> FileWatcher:
 
 
 def start_config_watcher(config_paths: List[str] = None) -> FileWatcher:
-    u"""Start watching config files for hot-reload.
+    """Start watching config files for hot-reload.
 
-    config_paths: list of file paths to watch. Default from env var.
+    Args:
+        config_paths: config_paths 参数。
     """
     if config_paths is None:
         paths_env = os.getenv("AIPLAT_CONFIG_WATCH_PATHS", "")

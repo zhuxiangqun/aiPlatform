@@ -1,3 +1,5 @@
+"""service：模块接口。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -55,9 +57,18 @@ def enqueue_ingest(
     max_pages: Optional[int] = 60,
     name: str = "",
 ) -> Dict[str, Any]:
-    """
-    异步入库：创建 doc + job，后台线程执行 ingest_document。
-    返回 {job_id, doc_id} 供前端轮询。
+    """异步入库：创建 doc + job，后台线程执行 ingest_document。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        file_path: file_path 参数。
+        kind: kind 参数。
+        ocr_lang: ocr_lang 参数。
+        ocr_engine: ocr_engine 参数。
+        dpi: dpi 参数。
+        max_pages: max_pages 参数。
+        name: name 参数。
     """
     if not tenant_id:
         raise ValueError("tenant_id_required")
@@ -200,9 +211,16 @@ def enqueue_directory_ingest(
     kind: str = "markdown",
     name: str = "",
 ) -> Dict[str, Any]:
-    """
-    批量导入目录中匹配的文件。
-    返回 {job_ids: [...], doc_ids: [...], total: N}。
+    """批量导入目录中匹配的文件。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        directory: directory 参数。
+        recursive: recursive 参数。
+        pattern: pattern 参数。
+        kind: kind 参数。
+        name: name 参数。
     """
     if not tenant_id:
         raise ValueError("tenant_id_required")
@@ -295,7 +313,15 @@ def ingest_url(
     name: str = "",
     kind: str = "html",
 ) -> Dict[str, Any]:
-    """Ingest a web page by URL — fetch, parse HTML, ingest as document."""
+    """Ingest a web page by URL — fetch, parse HTML, ingest as document.
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        url: url 参数。
+        name: name 参数。
+        kind: kind 参数。
+    """
     if not url:
         raise ValueError("url_required")
     if not tenant_id:
@@ -426,9 +452,20 @@ def ingest_document(
     progress_cb: Optional[Callable[[float, str, Dict[str, Any]], None]] = None,
     last_job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Ingest 单文档（目前实现：扫描 PDF → OCR → 预算表结构化 → 入库）。
-    返回 doc_id 与入库摘要。
+    """Ingest 单文档（目前实现：扫描 PDF → OCR → 预算表结构化 → 入库）。
+
+    Args:
+        tenant_id: 租户 ID。
+        collection_id: collection 标识。
+        file_path: file_path 参数。
+        kind: kind 参数。
+        ocr_lang: ocr_lang 参数。
+        ocr_engine: ocr_engine 参数。
+        dpi: dpi 参数。
+        max_pages: max_pages 参数。
+        name: name 参数。
+        progress_cb: progress_cb 参数。
+        last_job_id: last_job 标识。
     """
     if not tenant_id:
         raise ValueError("tenant_id_required")
@@ -916,9 +953,10 @@ def ingest_document(
 
 def load_doc_kinds(*, tenant_id: str, doc_ids: List[str]) -> List[str]:
     """Load document 'kind' metadata for a list of document IDs.
-    
-    Lives in the service layer (allowed to use KBSqlite). Agents should call
-    this function instead of directly accessing KBSqlite (violates §5.9).
+
+    Args:
+        tenant_id: 租户 ID。
+        doc_ids: doc_ids 参数。
     """
     if not doc_ids:
         return []
@@ -1010,9 +1048,12 @@ def preview_document(
     kind: str = "pdf",
     max_elements: int = 500,
 ) -> Dict[str, Any]:
-    """
-    Parse a document without saving to KB — returns text preview + classification.
-    Callers use this to show users what will be ingested before they confirm.
+    """Parse a document without saving to KB — returns text preview + classification.
+
+    Args:
+        file_path: file_path 参数。
+        kind: kind 参数。
+        max_elements: max_elements 参数。
     """
     if not file_path:
         raise ValueError("file_path_required")
@@ -1201,7 +1242,18 @@ def watch_directory(
     collection_id: str = "default", recursive: bool = True,
     pattern: str = "*.md", kind: str = "markdown", poll_interval: float = 30.0,
 ) -> Dict[str, Any]:
-    """Start background watcher for a directory. On each poll, ingest new/changed files."""
+    """Start background watcher for a directory. On each poll, ingest new/changed files.
+
+    Args:
+        tenant_id: 租户 ID。
+        watch_id: watch 标识。
+        directory: directory 参数。
+        collection_id: collection 标识。
+        recursive: recursive 参数。
+        pattern: pattern 参数。
+        kind: kind 参数。
+        poll_interval: poll_interval 参数。
+    """
     if watch_id in _WATCH_THREADS:
         unwatch_directory(tenant_id=tenant_id, watch_id=watch_id)
 
@@ -1272,7 +1324,12 @@ def watch_directory(
 
 
 def unwatch_directory(*, tenant_id: str, watch_id: str) -> Dict[str, Any]:
-    """Stop a directory watcher."""
+    """Stop a directory watcher.
+
+    Args:
+        tenant_id: 租户 ID。
+        watch_id: watch 标识。
+    """
     _WATCH_STOP_FLAGS[watch_id] = True
     t = _WATCH_THREADS.pop(watch_id, None)
     if t:
@@ -1286,7 +1343,11 @@ def unwatch_directory(*, tenant_id: str, watch_id: str) -> Dict[str, Any]:
 
 
 def list_watches(*, tenant_id: str) -> List[Dict[str, Any]]:
-    """List active directory watches."""
+    """List active directory watches.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     try:
         st = get_tenant_storage(tenant_id)
         return KBSqlite(st.db_path).list_watches(tenant_id=tenant_id, enabled_only=False)
@@ -1313,7 +1374,14 @@ def _resolve_doc_source(tenant_id: str, doc_id: str) -> Optional[str]:
 def vault_connect(
     *, tenant_id: str, vault_path: str, label: str = "", auto_index: bool = True,
 ) -> Dict[str, Any]:
-    """Connect a local directory as a vault (read-only browsing, no copy)."""
+    """Connect a local directory as a vault (read-only browsing, no copy).
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_path: vault_path 参数。
+        label: label 参数。
+        auto_index: auto_index 参数。
+    """
     target = Path(vault_path).expanduser()
     if not target.is_dir():
         raise ValueError(f"Directory not found: {vault_path}")
@@ -1329,13 +1397,22 @@ def vault_connect(
 
 
 def vault_disconnect(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
-    """Disconnect a vault."""
+    """Disconnect a vault.
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_id: vault 标识。
+    """
     KBSqlite(get_tenant_storage(tenant_id).db_path).delete_vault(tenant_id=tenant_id, vault_id=vault_id)
     return {"vault_id": vault_id, "status": "disconnected"}
 
 
 def vault_list(*, tenant_id: str) -> List[Dict[str, Any]]:
-    """List connected vaults."""
+    """List connected vaults.
+
+    Args:
+        tenant_id: 租户 ID。
+    """
     try:
         vaults = KBSqlite(get_tenant_storage(tenant_id).db_path).list_vaults(tenant_id=tenant_id)
         # ③ Disconnect detection: check if vault path still exists
@@ -1348,7 +1425,15 @@ def vault_list(*, tenant_id: str) -> List[Dict[str, Any]]:
 
 def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
                vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
-    """Return directory tree for a vault starting from subdir. Includes wiki status per file."""
+    """Return directory tree for a vault starting from subdir. Includes wiki status per file.
+
+    Args:
+        vault_path: vault_path 参数。
+        subdir: subdir 参数。
+        max_depth: max_depth 参数。
+        vault_id: vault 标识。
+        tenant_id: 租户 ID。
+    """
     root = Path(vault_path).expanduser()
     if not root.is_dir():
         raise ValueError(f"Directory not found: {vault_path}")
@@ -1400,7 +1485,11 @@ def vault_tree(*, vault_path: str, subdir: str = "", max_depth: int = 3,
 
 
 def vault_read(*, file_path: str) -> Dict[str, Any]:
-    """Read a markdown file from the vault and return content + frontmatter."""
+    """Read a markdown file from the vault and return content + frontmatter.
+
+    Args:
+        file_path: file_path 参数。
+    """
     p = Path(file_path).expanduser()
     if not p.is_file():
         raise ValueError(f"File not found: {file_path}")
@@ -1431,8 +1520,12 @@ async def vault_to_wiki(*, file_path: str, label: str = "", collection_id: str =
                        vault_id: str = "", tenant_id: str = "default") -> Dict[str, Any]:
     """Convert a vault markdown file to a Wiki page using the full KB pipeline.
 
-    collection_id: derived from subdirectory name for auto-collection mapping.
-    vault_id: if provided, record file status in kb_vault_files after conversion.
+    Args:
+        file_path: file_path 参数。
+        label: label 参数。
+        collection_id: collection 标识。
+        vault_id: vault 标识。
+        tenant_id: 租户 ID。
     """
     from core.api.core_facade import wiki_auto_update
 
@@ -1507,7 +1600,16 @@ def vault_start_indexer(
     collection_id: str = "default", poll_interval: float = 30.0,
     auto_wiki: bool = False,
 ) -> Dict[str, Any]:
-    """Start background indexer for a vault. Optionally auto-wiki new files."""
+    """Start background indexer for a vault. Optionally auto-wiki new files.
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_id: vault 标识。
+        vault_path: vault_path 参数。
+        collection_id: collection 标识。
+        poll_interval: poll_interval 参数。
+        auto_wiki: auto_wiki 参数。
+    """
     key = f"{tenant_id}:{vault_id}"
     if key in _VAULT_INDEX_THREADS:
         vault_stop_indexer(tenant_id=tenant_id, vault_id=vault_id)
@@ -1573,7 +1675,12 @@ def vault_start_indexer(
 
 
 def vault_stop_indexer(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
-    """Stop vault indexer."""
+    """Stop vault indexer.
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_id: vault 标识。
+    """
     key = f"{tenant_id}:{vault_id}"
     _VAULT_INDEX_STOP[key] = True
     t = _VAULT_INDEX_THREADS.pop(key, None)
@@ -1584,13 +1691,24 @@ def vault_stop_indexer(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
 
 
 def vault_index_status(*, tenant_id: str, vault_id: str) -> Dict[str, Any]:
-    """Get indexer status."""
+    """Get indexer status.
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_id: vault 标识。
+    """
     key = f"{tenant_id}:{vault_id}"
     return _VAULT_INDEX_STATE.get(key, {"status": "idle", "progress": 0, "last_error": None})
 
 
 def vault_reindex(*, tenant_id: str, vault_path: str, collection_id: str = "default") -> Dict[str, Any]:
-    """Rebuild all indexes for a vault: clear existing docs + re-scan + re-ingest."""
+    """Rebuild all indexes for a vault: clear existing docs + re-scan + re-ingest.
+
+    Args:
+        tenant_id: 租户 ID。
+        vault_path: vault_path 参数。
+        collection_id: collection 标识。
+    """
     st = get_tenant_storage(tenant_id)
     db = KBSqlite(st.db_path)
     db.ensure_schema()

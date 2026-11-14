@@ -55,6 +55,11 @@ class TenantStore:
     """Tenant quota / usage / policy store (implements core TenantStoreProtocol)."""
 
     def __init__(self, db_path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self._db_path = db_path or _default_db_path()
         self._initialized = False
 
@@ -123,6 +128,11 @@ class TenantStore:
     # ==================== Tenant Quotas ====================
 
     async def get_tenant_quota(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """获取 tenant_quota。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         await self.init()
 
         def _sync() -> Optional[Dict[str, Any]]:
@@ -148,9 +158,12 @@ class TenantStore:
     async def upsert_tenant_quota(
         self, *, tenant_id: str, quota: Dict[str, Any], version: Optional[int] = None
     ) -> Dict[str, Any]:
-        """
-        Upsert tenant quota config.
-        If version is provided, treat it as optimistic concurrency: update only when current version matches.
+        """Upsert tenant quota config.
+
+        Args:
+            tenant_id: 租户 ID。
+            quota: quota 参数。
+            version: version 参数。
         """
         await self.init()
 
@@ -193,7 +206,14 @@ class TenantStore:
         amount: float,
         day: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Increment a (tenant, day, metric_key) counter. day defaults to UTC date."""
+        """Increment a (tenant, day, metric_key) counter. day defaults to UTC date.
+
+        Args:
+            tenant_id: 租户 ID。
+            metric_key: metric_key 参数。
+            amount: amount 参数。
+            day: day 参数。
+        """
         await self.init()
 
         def _utc_day() -> str:
@@ -228,6 +248,13 @@ class TenantStore:
     async def get_tenant_usage(
         self, *, tenant_id: str, day: str, metric_key: str
     ) -> float:
+        """获取 tenant_usage。
+
+        Args:
+            tenant_id: 租户 ID。
+            day: day 参数。
+            metric_key: metric_key 参数。
+        """
         await self.init()
 
         def _sync() -> float:
@@ -253,6 +280,16 @@ class TenantStore:
         limit: int = 500,
         offset: int = 0,
     ) -> Dict[str, Any]:
+        """列出 tenant_usage。
+
+        Args:
+            tenant_id: 租户 ID。
+            day_start: day_start 参数。
+            day_end: day_end 参数。
+            metric_key: metric_key 参数。
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
 
         def _sync() -> Dict[str, Any]:
@@ -285,6 +322,11 @@ class TenantStore:
     # ==================== Tenant Policies ====================
 
     async def get_tenant_policy(self, *, tenant_id: str) -> Optional[Dict[str, Any]]:
+        """获取 tenant_policy。
+
+        Args:
+            tenant_id: 租户 ID。
+        """
         await self.init()
 
         def _sync() -> Optional[Dict[str, Any]]:
@@ -310,9 +352,12 @@ class TenantStore:
     async def upsert_tenant_policy(
         self, *, tenant_id: str, policy: Dict[str, Any], version: Optional[int] = None
     ) -> Dict[str, Any]:
-        """
-        Upsert a tenant policy.
-        If version is provided, treat it as optimistic concurrency: update only when current version matches.
+        """Upsert a tenant policy.
+
+        Args:
+            tenant_id: 租户 ID。
+            policy: policy 参数。
+            version: version 参数。
         """
         await self.init()
 
@@ -348,6 +393,12 @@ class TenantStore:
     async def list_tenant_policies(
         self, *, limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
+        """列出 tenant_policies。
+
+        Args:
+            limit: 返回条数上限。
+            offset: 分页偏移。
+        """
         await self.init()
 
         def _sync() -> Dict[str, Any]:

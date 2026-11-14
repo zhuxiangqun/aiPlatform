@@ -1,3 +1,5 @@
+"""manager：模块接口。"""
+
 import logging
 """
 Network Manager
@@ -88,7 +90,20 @@ def get_real_network_info() -> Dict[str, Any]:
 
 
 class IngressInfo:
+    """IngressInfo。"""
     def __init__(self, name: str, namespace: str, host: str, path: str, backend_service: str, backend_port: int, status: str, created_at: datetime):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+            host: host 参数。
+            path: 路径。
+            backend_service: backend_service 参数。
+            backend_port: backend_port 参数。
+            status: status 参数。
+            created_at: created_at 参数。
+        """
         self.name = name
         self.namespace = namespace
         self.host = host
@@ -100,7 +115,17 @@ class IngressInfo:
 
 
 class NetworkPolicyInfo:
+    """NetworkPolicyInfo。"""
     def __init__(self, name: str, namespace: str, policy_type: str, selector: Dict[str, str], status: str):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+            policy_type: policy_type 参数。
+            selector: selector 参数。
+            status: status 参数。
+        """
         self.name = name
         self.namespace = namespace
         self.policy_type = policy_type
@@ -109,7 +134,13 @@ class NetworkPolicyInfo:
 
 
 class NetworkManager(ManagementBase):
+    """NetworkManager。"""
     def __init__(self, config: Dict[str, Any] = None):
+        """初始化。
+
+        Args:
+            config: config 参数。
+        """
         super().__init__(config)
         self._ingresses: Dict[str, IngressInfo] = {}
         self._policies: Dict[str, NetworkPolicyInfo] = {}
@@ -238,7 +269,11 @@ class NetworkManager(ManagementBase):
         return self.config
     
     async def update_config(self, config: Dict[str, Any]) -> None:
-        """Update configuration."""
+        """Update configuration.
+
+        Args:
+            config: config 参数。
+        """
         self.config.update(config)
     
     async def diagnose(self) -> DiagnosisResult:
@@ -310,7 +345,12 @@ class NetworkManager(ManagementBase):
         ]
     
     async def get_ingress(self, name: str, namespace: str = "default") -> Optional[Dict[str, Any]]:
-        """Get ingress details."""
+        """Get ingress details.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             ingresses = await self.list_ingresses()
             for ing in ingresses:
@@ -334,7 +374,11 @@ class NetworkManager(ManagementBase):
         return None
     
     async def create_ingress(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Create an ingress."""
+        """Create an ingress.
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Create ingress not supported in standalone mode")
         
@@ -357,7 +401,12 @@ class NetworkManager(ManagementBase):
         return {"name": name, "namespace": namespace, "status": "created"}
     
     async def delete_ingress(self, name: str, namespace: str = "default") -> bool:
-        """Delete an ingress."""
+        """Delete an ingress.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete ingress not supported in standalone mode")
         
@@ -368,7 +417,13 @@ class NetworkManager(ManagementBase):
         return False
     
     async def update_ingress(self, name: str, config: Dict[str, Any], namespace: str = "default") -> bool:
-        """Update an ingress (sets provided fields that exist on the record)."""
+        """Update an ingress (sets provided fields that exist on the record).
+
+        Args:
+            name: name 参数。
+            config: config 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Update ingress not supported in standalone mode")
         key = f"{namespace}/{name}"
@@ -398,7 +453,12 @@ class NetworkManager(ManagementBase):
         ]
     
     async def get_policy(self, name: str, namespace: str = "default") -> Optional[Dict[str, Any]]:
-        """Get network policy details."""
+        """Get network policy details.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         key = f"{namespace}/{name}"
         pol = self._policies.get(key)
         if pol:
@@ -412,7 +472,11 @@ class NetworkManager(ManagementBase):
         return None
     
     async def create_policy(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a network policy."""
+        """Create a network policy.
+
+        Args:
+            config: config 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Create policy not supported in standalone mode")
         
@@ -432,7 +496,12 @@ class NetworkManager(ManagementBase):
         return {"name": name, "namespace": namespace, "status": "created"}
     
     async def delete_policy(self, name: str, namespace: str = "default") -> bool:
-        """Delete a network policy."""
+        """Delete a network policy.
+
+        Args:
+            name: name 参数。
+            namespace: namespace 参数。
+        """
         if self._standalone_mode:
             raise RuntimeError("Delete policy not supported in standalone mode")
         
@@ -465,7 +534,11 @@ class NetworkManager(ManagementBase):
         return services
     
     async def get_service(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get a single network service (dict first, then derived)."""
+        """Get a single network service (dict first, then derived).
+
+        Args:
+            name: name 参数。
+        """
         for key, svc in self._network_services.items():
             if key.endswith(f"/{name}") or svc.get("name") == name:
                 return svc
@@ -476,7 +549,11 @@ class NetworkManager(ManagementBase):
         return None
     
     async def create_service(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a network service."""
+        """Create a network service.
+
+        Args:
+            config: config 参数。
+        """
         import uuid
         name = config.get("name", f"service-{uuid.uuid4().hex[:8]}")
         ns = config.get("namespace", "default")
@@ -493,7 +570,12 @@ class NetworkManager(ManagementBase):
         return entry
 
     async def update_service(self, name: str, config: Dict[str, Any]) -> bool:
-        """Update a stored network service."""
+        """Update a stored network service.
+
+        Args:
+            name: name 参数。
+            config: config 参数。
+        """
         for key, svc in self._network_services.items():
             if key.endswith(f"/{name}") or svc.get("name") == name:
                 svc.update(config)
@@ -501,7 +583,11 @@ class NetworkManager(ManagementBase):
         return False
 
     async def delete_network_service(self, name: str) -> bool:
-        """Delete a stored network service."""
+        """Delete a stored network service.
+
+        Args:
+            name: name 参数。
+        """
         for key in list(self._network_services.keys()):
             if key.endswith(f"/{name}") or self._network_services[key].get("name") == name:
                 del self._network_services[key]
@@ -509,7 +595,13 @@ class NetworkManager(ManagementBase):
         return False
     
     async def test_connectivity(self, source: str, target: str, port: int) -> Dict[str, Any]:
-        """Test network connectivity between source and target."""
+        """Test network connectivity between source and target.
+
+        Args:
+            source: source 参数。
+            target: target 参数。
+            port: port 参数。
+        """
         import socket
         
         result = {

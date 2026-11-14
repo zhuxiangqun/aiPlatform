@@ -1,3 +1,5 @@
+"""__init__：模块接口。"""
+
 from .base import CacheClient, CacheManager
 from .schemas import CacheConfig, CacheStats, PoolConfig, StrategyConfig
 from .factory import create_cache_client, create_cache_manager

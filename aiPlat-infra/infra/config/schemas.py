@@ -166,7 +166,12 @@ class AppConfig:
     monitoring: Optional[MonitoringConfig] = None
 
     def get(self, key: str, default: Any = None) -> Any:
-        """获取配置项，支持点号路径"""
+        """获取配置项，支持点号路径。
+
+        Args:
+            key: key 参数。
+            default: default 参数。
+        """
         keys = key.split(".")
         value = self
         for k in keys:
@@ -179,7 +184,11 @@ class AppConfig:
         return value
 
     def has(self, key: str) -> bool:
-        """检查配置项是否存在"""
+        """检查配置项是否存在。
+
+        Args:
+            key: key 参数。
+        """
         return self.get(key) is not None
 
     def as_dict(self) -> Dict[str, Any]:

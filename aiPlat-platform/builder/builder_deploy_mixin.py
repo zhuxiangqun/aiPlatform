@@ -15,6 +15,11 @@ from typing import Any, Dict  # P1-18 补充：签名注解 Dict/Any 需模块�
 class BuilderDeployMixin:
     """部署 / 健康报告 / Agent 洞察 — 从 BuilderProjectService 拆出。"""
     async def deploy_to_app(self, project_id: str) -> Dict[str, Any]:
+        """deploy_to_app。
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.builder_project_service import _deploy_to_app_for_project
         """Deploy pipeline output to the app layer."""
         proj = self._projects.get(project_id, {})
@@ -191,13 +196,21 @@ class BuilderDeployMixin:
         return _deploy_to_app_for_project(project_id, deploy_dir or "", proj)
 
     async def export_pi_bundle(self, project_id: str) -> Dict[str, Any]:
-        """One-click export of deployed Agent app as a Pi Package (user-side Runtime)."""
+        """One-click export of deployed Agent app as a Pi Package (user-side Runtime).
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.pi_bundle_export import export_pi_bundle_for_project
 
         return export_pi_bundle_for_project(project_id)
 
     async def export_pi_bundle_zip(self, project_id: str) -> Dict[str, Any]:
-        """Export + zip Pi Package for download. Returns paths (zip may be on disk)."""
+        """Export + zip Pi Package for download. Returns paths (zip may be on disk).
+
+        Args:
+            project_id: project 标识。
+        """
         from builder.pi_bundle_export import zip_pi_bundle_for_project
 
         zip_path, meta = zip_pi_bundle_for_project(project_id)
@@ -206,6 +219,11 @@ class BuilderDeployMixin:
         return meta
 
     async def get_agent_insight(self, agent_id: str) -> Dict[str, Any]:
+        """获取 agent_insight。
+
+        Args:
+            agent_id: Agent ID。
+        """
         from builder.builder_project_service import _get_agent_insight_for
         """Get insight metrics for a single agent."""
         return _get_agent_insight_for(agent_id, self._projects)
@@ -228,7 +246,11 @@ class BuilderDeployMixin:
         result["ok"] = True
         return result
     async def get_health_report(self, project_id: str) -> Dict[str, Any]:
-        """Build health report from pipeline state, aggregating per-stage dimensional scores."""
+        """Build health report from pipeline state, aggregating per-stage dimensional scores.
+
+        Args:
+            project_id: project 标识。
+        """
         # Read from Core — single source of truth for pipeline state
         core_state = await self._get_state_via_core(project_id)
         state = (core_state.get("state", {}) if isinstance(core_state, dict) else {})

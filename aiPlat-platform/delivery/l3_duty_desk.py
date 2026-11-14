@@ -163,6 +163,13 @@ def build_l3_duty_desk(
     window_hours: int = 720,
     project_id: str = "",
 ) -> Dict[str, Any]:
+    """build_l3_duty_desk。
+
+    Args:
+        tenant_id: 租户 ID。
+        window_hours: window_hours 参数。
+        project_id: project 标识。
+    """
     contact = _duty_contact()
     eval_snap = _eval_snapshot()
     signals = _kb_signals(tenant_id=tenant_id, window_hours=min(int(window_hours), 168))
@@ -194,6 +201,11 @@ def build_l3_duty_desk(
 
 
 def render_l3_duty_markdown(report: Dict[str, Any]) -> str:
+    """render_l3_duty_markdown。
+
+    Args:
+        report: report 参数。
+    """
     contact = report.get("duty_contact") or {}
     eval_snap = report.get("eval") or {}
     signals = report.get("kb_signals") or {}
@@ -309,6 +321,11 @@ def render_l3_duty_markdown(report: Dict[str, Any]) -> str:
 
 
 def l3_duty_summary_lines(report: Dict[str, Any]) -> str:
+    """l3_duty_summary_lines。
+
+    Args:
+        report: report 参数。
+    """
     contact = report.get("duty_contact") or {}
     tips = report.get("quarterly_suggestions") or []
     iterations = report.get("iterations") or {}

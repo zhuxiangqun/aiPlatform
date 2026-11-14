@@ -88,7 +88,11 @@ async def get_capabilities() -> List[Dict[str, str]]:
 
 @router.post("/submit", response_model=TaskSubmitResponse)
 async def submit_task(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Submit a new task to the AI agent. Optionally link to a Spec for lifecycle tracking."""
+    """Submit a new task to the AI agent. Optionally link to a Spec for lifecycle tracking.
+
+    Args:
+        body: 请求体。
+    """
     import uuid, time
 
     task = body.get("description", "")
@@ -228,7 +232,11 @@ async def _simulate_task_completion(run_id: str, spec_id: str = "") -> None:
 
 @router.get("/tasks/{run_id}", response_model=TaskStatusResponse)
 async def get_task_status(run_id: str) -> Dict[str, Any]:
-    """Get task execution status and progress."""
+    """Get task execution status and progress.
+
+    Args:
+        run_id: 运行 ID。
+    """
     entry = _tasks.get(run_id)
     if not entry:
         # Simulate completed task for demo
@@ -250,7 +258,11 @@ async def get_task_status(run_id: str) -> Dict[str, Any]:
 
 @router.get("/tasks", response_model=PaginatedResponse[dict])
 async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
-    """Get user's historical task list."""
+    """Get user's historical task list.
+
+    Args:
+        limit: 返回条数上限。
+    """
     items = sorted(_tasks.values(), key=lambda x: x.get("created_at", ""), reverse=True)[:limit]
     if not items:
         import time
@@ -265,7 +277,12 @@ async def get_user_tasks(limit: int = 20) -> Dict[str, Any]:
 
 @router.post("/tasks/{run_id}/feedback", response_model=TaskFeedbackResponse)
 async def submit_feedback(run_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Submit user feedback for a completed task."""
+    """Submit user feedback for a completed task.
+
+    Args:
+        run_id: 运行 ID。
+        body: 请求体。
+    """
     rating = body.get("rating", 0)
     action = body.get("action", "useful")
 
@@ -301,7 +318,11 @@ async def list_specs() -> Dict[str, Any]:
 
 @router.get("/spec/{spec_id}/history", response_model=SpecHistoryResponse)
 async def get_spec_history(spec_id: str) -> Dict[str, Any]:
-    """Get full version history for a Spec."""
+    """Get full version history for a Spec.
+
+    Args:
+        spec_id: spec 标识。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
@@ -328,13 +349,9 @@ async def get_spec_history(spec_id: str) -> Dict[str, Any]:
 async def revise_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Revise Spec + optionally trigger re-execution.
 
-    Body:
-      - content: new spec content (agent_md, tools, evals, stage_configs)
-      - trigger: "manual" | "user_feedback" | "agent_trace" | "auto_learn"
-      - trigger_detail: human-readable reason
-      - created_by: who made the change
-      - affected_stages: list of stage indices to re-run (empty = all stages)
-      - re_execute: whether to trigger immediate re-execution (default: false)
+    Args:
+        spec_id: spec 标识。
+        body: 请求体。
     """
     try:
         from core.api.core_facade import get_spec_lifecycle, RevisionTrigger
@@ -432,8 +449,8 @@ async def _trigger_spec_re_execution(spec_id: str, sv: Any, agent_id: str) -> st
 async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
     """Get FeedbackRadar analysis for a Spec.
 
-    Returns human-readable Spec adjustment suggestions with severity and evidence,
-    driven by real user behavior signals (copy, re-query, abandon, repeat).
+    Args:
+        spec_id: spec 标识。
     """
     try:
         from core.api.core_facade import get_feedback_radar
@@ -457,8 +474,8 @@ async def get_feedback_radar(spec_id: str) -> Dict[str, Any]:
 async def get_spec_trace(spec_id: str) -> Dict[str, Any]:
     """Get the latest execution trace for a Spec (Agent 决策痕迹可视化).
 
-    Returns structured trace data + anomaly warnings + Spec suggestions.
-    Each step shows: which Agent was chosen, Supervisor's reasoning, and execution outcome.
+    Args:
+        spec_id: spec 标识。
     """
     try:
         from core.api.core_facade import get_spec_lifecycle
@@ -562,7 +579,11 @@ async def post_fde_dashboard():
 
 @router.post("/spec/{spec_id}/mark-stable", response_model=SpecMarkStableResponse)
 async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
-    """Quick action: mark a REVIEW Spec as STABLE (one-click approve)."""
+    """Quick action: mark a REVIEW Spec as STABLE (one-click approve).
+
+    Args:
+        spec_id: spec 标识。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
@@ -576,7 +597,11 @@ async def mark_spec_stable(spec_id: str) -> Dict[str, Any]:
 
 @router.post("/spec/create", response_model=SpecCreatedResponse)
 async def create_spec(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a new Spec from scratch (manual Spec creation)."""
+    """Create a new Spec from scratch (manual Spec creation).
+
+    Args:
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         spec_id = body.get("spec_id", "")
@@ -640,10 +665,8 @@ async def seed_demo_data() -> Dict[str, Any]:
 async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
     """Install a skill from an agentskills.io URL / git repo / zip URL.
 
-    Skill Marketplace (Competitor Gap Closure): wraps skill_installer to
-    provide one-click install from external skill registries.
-
-    Body: {"url": "https://agentskills.io/skill/security-auditor" | git URL | zip URL}
+    Args:
+        body: 请求体。
     """
     url = body.get("url", "")
     if not url:
@@ -698,7 +721,9 @@ async def install_skill_from_url(body: Dict[str, Any]) -> Dict[str, Any]:
 async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     """Duplicate an existing Spec as a new one (FDE productivity shortcut).
 
-    Body: {"new_spec_id": "my-new-spec"} — optional, defaults to {spec_id}_copy
+    Args:
+        spec_id: spec 标识。
+        body: 请求体。
     """
     try:
         from core.api.core_facade import get_spec_lifecycle
@@ -728,8 +753,10 @@ async def duplicate_spec(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
 async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str, Any]:
     """Compare two Spec versions side by side (FDE troubleshooting tool).
 
-    Query: ?v1=1&v2=3 — compares v1 to v3.
-    Defaults to comparing latest vs previous version.
+    Args:
+        spec_id: spec 标识。
+        v1: v1 参数。
+        v2: v2 参数。
     """
     try:
         from core.api.core_facade import get_spec_lifecycle
@@ -789,8 +816,8 @@ async def diff_spec_versions(spec_id: str, v1: int = 0, v2: int = 0) -> Dict[str
 async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
     """Batch operation: mark multiple REVIEW specs as STABLE at once.
 
-    Body: {"spec_ids": ["spec-a", "spec-b", ...]}
-    Returns: results per spec (stable / unchanged / error).
+    Args:
+        body: 请求体。
     """
     spec_ids = body.get("spec_ids", [])
     if not spec_ids or not isinstance(spec_ids, list):
@@ -817,7 +844,12 @@ async def batch_mark_stable(body: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.post("/spec/{spec_id}/promote", response_model=PromotionResponse)
 async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Request Spec promotion to platform scope."""
+    """Request Spec promotion to platform scope.
+
+    Args:
+        spec_id: spec 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
@@ -839,7 +871,12 @@ async def promote_to_platform(spec_id: str, body: Dict[str, Any]) -> Dict[str, A
 
 @router.post("/spec/{spec_id}/promote/approve", response_model=PromotionResponse)  # share PromotionResponse
 async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Approve platform promotion (reviewer action)."""
+    """Approve platform promotion (reviewer action).
+
+    Args:
+        spec_id: spec 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()
@@ -862,7 +899,12 @@ async def approve_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any
 
 @router.post("/spec/{spec_id}/promote/reject", response_model=PromotionResponse)  # share PromotionResponse
 async def reject_promotion(spec_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Reject platform promotion (reviewer action)."""
+    """Reject platform promotion (reviewer action).
+
+    Args:
+        spec_id: spec 标识。
+        body: 请求体。
+    """
     try:
         from core.api.core_facade import get_spec_lifecycle
         sl = get_spec_lifecycle()

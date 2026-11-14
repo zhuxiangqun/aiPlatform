@@ -1,3 +1,5 @@
+"""factory：模块接口。"""
+
 from typing import Optional, Set
 from .schemas import LLMConfig
 from .base import LLMClient
@@ -10,11 +12,20 @@ _OPENAI_COMPATIBLE_PROVIDERS: Set[str] = {
 
 
 def create(config: Optional[LLMConfig] = None) -> LLMClient:
-    """Shortcut for create_llm_client."""
+    """Shortcut for create_llm_client.
+
+    Args:
+        config: config 参数。
+    """
     return create_llm_client(config)
 
 
 def create_llm_client(config: Optional[LLMConfig] = None) -> LLMClient:
+    """创建 llm_client。
+
+    Args:
+        config: config 参数。
+    """
     config = config or LLMConfig()
     provider = (config.provider or "").lower()
 

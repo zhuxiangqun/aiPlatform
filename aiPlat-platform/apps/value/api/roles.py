@@ -92,7 +92,12 @@ async def get_role_agents() -> List[Dict[str, Any]]:
 
 @router.put("/agents/{agent_id}", response_model=RoleAgentUpdateResponse)
 async def update_agent_role(agent_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Configure an agent's role and parameters."""
+    """Configure an agent's role and parameters.
+
+    Args:
+        agent_id: Agent ID。
+        body: 请求体。
+    """
     role = body.get("role", "employee")
     if role not in ("employee", "guard", "advisor"):
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
@@ -124,7 +129,11 @@ async def get_role_metrics() -> Dict[str, Any]:
 
 @router.post("/strategy/override", response_model=RoleStrategyOverrideResponse)
 async def override_strategy(body: Dict[str, Any]) -> Dict[str, Any]:
-    """Manually override routing strategy for specific agents."""
+    """Manually override routing strategy for specific agents.
+
+    Args:
+        body: 请求体。
+    """
     agent_id = body.get("agent_id", "")
     mode = body.get("mode", "normal")  # normal / speed / quality / guard / pause
 
