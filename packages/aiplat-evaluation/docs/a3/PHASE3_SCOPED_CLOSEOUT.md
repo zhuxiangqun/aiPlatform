@@ -24,15 +24,16 @@ doc_type: Reference
 
 ## Owner 下一叉（须显式）
 
-B1–B5 suite 挂接：**accepted**。
+A scoped 19/19 + B suite_hook 165/165：**齐**（钩子挂接 ≠ 覆盖完成）。
 
 ```text
-ACCEPT phase3_b_suite_attach B6
-
 AUTHORIZE global_tier_a_expansion
 
 CONTINUE phase2_staging_prep
+
+CONTINUE phase3_tier_c_register_only
 ```
+
 
 
 

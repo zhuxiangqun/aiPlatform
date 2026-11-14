@@ -42,7 +42,7 @@ doc_type: Reference
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
 4. ✅ 按符号扩容：A_candidate **19/19 scoped accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；**全局** `tier_a_expansion_authorized` 仍 **false**；`accuracy_claim` / `l5_declare` / `cert` / `process_split` 仍 false  
 5. ✅ 覆盖率骨架 A 行实测刷新（[`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)；禁单一%）  
-6. ⏳ B 轨：B1–B5 **attached**；B6 末波待决 [`PHASE3_B6_SUITE_ATTACH_PROPOSAL.md`](./PHASE3_B6_SUITE_ATTACH_PROPOSAL.md)；全局扩容仍 false
+6. ✅ B 轨：B1–B6 suite_hook **全部 attached**（165/165；[`PHASE3_B_SUITE_ATTACH_ROLLUP.md`](./PHASE3_B_SUITE_ATTACH_ROLLUP.md)）· **≠** Tier B 覆盖完成 · 全局扩容仍 false
 
 ## 禁止
 

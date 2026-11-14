@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.coverage_report_skeleton.v0",
-  "recorded_at": "2026-11-14T21:33:12+08:00",
+  "recorded_at": "2026-11-14T21:57:00+08:00",
   "columns": [
     "tier",
     "n",
@@ -24,12 +24,13 @@
     {
       "tier": "B",
       "n": 165,
-      "with_suite": null,
+      "with_suite": 165,
       "with_gate": null,
       "scoped_authorized": null,
       "exempt": 0,
       "unauthorized_claim": false,
-      "note": "calendar draft only; suite attach pending"
+      "note": "suite_hook_attached=165 across B1–B6; ≠ Tier B coverage-complete / gate authorize / single coverage%",
+      "suite_hook_attached": 165
     },
     {
       "tier": "C",
@@ -46,5 +47,7 @@
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "a_candidate_scoped_complete": true,
-  "honesty": "A row measured from inventory evidence_refs + per-symbol ledger. B/C suite/gate remain null until measured. Never collapse A/B/C into one coverage%. scoped complete ≠ global_tier_a_expansion_authorized."
+  "honesty": "A row = scoped evidence+gate. B with_suite = suite_hook attachment count only. C remains null. Never collapse A/B/C into one coverage%. B hooks complete ≠ global_tier_a_expansion_authorized.",
+  "b_suite_attach_waves_complete": true,
+  "tier_b_coverage_complete_claim": false
 }
