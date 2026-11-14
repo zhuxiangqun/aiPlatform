@@ -39,7 +39,7 @@ doc_type: Reference
 1. ✅ 为每个 A_candidate 列：已有 gold / gate / 证据路径 / 缺口 → [`PHASE3_A_CANDIDATE_INVENTORY.md`](./PHASE3_A_CANDIDATE_INVENTORY.md)  
 2. ✅ B 轨复核日历草稿 → [`PHASE3_B_REVIEW_CALENDAR.md`](./PHASE3_B_REVIEW_CALENDAR.md)  
 3. ✅ 覆盖率报表骨架 A/B/C → [`PHASE3_COVERAGE_REPORT_SKELETON.md`](./PHASE3_COVERAGE_REPORT_SKELETON.md)  
-4. ⏳ 按符号扩容：F1+F4 齐 + F2 #10 **accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；#11 待决 [`PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md`](./PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md)；全局扩容仍 false；≠ L5/cert
+4. ⏳ 按符号扩容：F1+F4 齐 + F2 #10–#11 **accepted**（[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)）；#12 待决 [`PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md)；全局扩容仍 false；≠ L5/cert
 
 ## 禁止
 

@@ -1,0 +1,36 @@
+{
+  "schema": "eval.phase3.tier_a_symbol_proposal.v0",
+  "proposal_id": "tier-a-12-evaluate_security_family_gates",
+  "seq": 12,
+  "symbol": "evaluate_security_family_gates",
+  "meta_family": "F2",
+  "recorded_at": "2026-11-14T21:15:30+08:00",
+  "status": "pending_owner_authorize",
+  "impl_def": "aiPlat-core/core/apps/eval/service/security_family_report.py:428",
+  "depends_on_accepted": [
+    "evaluate_security_judge_calibration",
+    "load_judge_calib_defaults"
+  ],
+  "meta_family_status": "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+  "evidence_refs": [
+    "docs/a3/evidence/meta_eval/f2_security_family_status.v0.json",
+    "docs/a3/evidence/meta_eval/f2_security_judge_pack_pin.v0.json"
+  ],
+  "scope_if_accepted": {
+    "tier_a_gate_authorized_for_symbol": true,
+    "global_tier_a_expansion_authorized": false,
+    "accuracy_claim": false,
+    "claim_eligible": false,
+    "report_only_remains": true,
+    "security_certification": false,
+    "l5_declare_authorized": false
+  },
+  "forbid": [
+    "l5_declare",
+    "security_certification"
+  ],
+  "owner_decision": null,
+  "owner": null,
+  "decided_at": null,
+  "honesty": "Pending owner. F2 evaluate_security_family_gates scoped family gate report; ≠ security cert / L5 / product accuracy_claim."
+}

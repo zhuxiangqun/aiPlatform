@@ -21,9 +21,10 @@ doc_type: Reference
 | `build_release_scorecard` | F4 | 发布记分卡（未计分轴 holdout） |
 | `build_judge_calib_evidence_pack` | F4 | 证据包构建（≠ security cert） |
 | `evaluate_security_judge_calibration` | F2 | 安全裁判校准（≠ L5 / cert） |
+| `load_judge_calib_defaults` | F2 | 默认阈值加载（≠ L5 / cert） |
 
-owner：朱向群。F1 7/7 + F4 2/2 + F2 1/7 scoped。≠ 产品准确率认证 / L5 / process_split。
+owner：朱向群。F1 7/7 + F4 2/2 + F2 2/7 scoped。≠ 产品准确率认证 / L5 / process_split。
 
 ## 下一步
 
-提案 #11：[`PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md`](./PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md)
+提案 #12：[`PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md)

@@ -28,8 +28,8 @@ doc_type: Reference
 | 8 | `build_release_scorecard` | F4 | **accepted** |
 | 9 | `build_judge_calib_evidence_pack` | F4 | **accepted** |
 | 10 | `evaluate_security_judge_calibration` | F2 | **accepted**（≠ L5） |
-| 11 | `load_judge_calib_defaults` | F2 | **提案中** → [`PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md`](./PHASE3_TIER_A_PROPOSAL_load_judge_calib_defaults.md) |
-| 12 | `evaluate_security_family_gates` | F2 | queued（≠ cert） |
+| 11 | `load_judge_calib_defaults` | F2 | **accepted** |
+| 12 | `evaluate_security_family_gates` | F2 | **提案中**（≠ cert）→ [`PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md`](./PHASE3_TIER_A_PROPOSAL_evaluate_security_family_gates.md) |
 | 13 | `eval_evaluate_security_judge_calibration` | F2 | queued（facade） |
 | 14 | `eval_load_security_judge_calib_defaults` | F2 | queued（facade） |
 | 15 | `eval_evaluate_security_family_gates` | F2 | queued（facade） |
