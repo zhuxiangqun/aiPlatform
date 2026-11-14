@@ -22,11 +22,11 @@ doc_type: Reference
 | 生产独立宣称 | 禁止 |
 | 单一覆盖% | 禁止 |
 
-> 后续另授：`accuracy_claim` / `l5_declare` / `process_split`（政策）见 [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)。
+> 本页签发后另授（已落地）：`accuracy_claim` / `l5_declare` / `process_split`（政策）→ [`PHASE3_HONESTY_LOCKS.md`](./PHASE3_HONESTY_LOCKS.md)。
 
 ## 范围
 
 - 允许：对账本内 **19** 个 A_candidate 符号作 Tier A gate 扩容引用（META 家族仍须绿）  
-- 禁止自动：新增第 20 个 A_candidate、产品准确率认证、L5 declare、security cert、process_split、单一覆盖%
+- 禁止：新增第 20 个 A_candidate、security cert、Chart runtime flip、生产独立宣称、单一覆盖%
 
 账本：[`PHASE3_TIER_A_AUTHORIZED.md`](./PHASE3_TIER_A_AUTHORIZED.md)
