@@ -5,9 +5,9 @@ doc_type: Architecture
 # aiPlat 评测系统改善方案（完整可执行版）
 
 > **文档类型**：Design / Execution Plan（执行基线）  
-> **版本**：v1.1.1 · 2026-11-14  
-> **状态**：**执行基线（Phase 0 进行中）** — **不是**已定稿 / 已冻结；F-001…F-010 已处置；CI 稳定子集门禁已绿  
-> **诚实锁**：未完成 Phase 0.6 / §15 勾选前，不得宣称「首版 5/5 已审计通过」；可写「执行基线已建立，Phase 0 进行中（稳定子集已钉死）」  
+> **版本**：v1.1.3 · 2026-11-14  
+> **状态**：**执行基线（Phase 0 进行中）** — **不是**已定稿 / 已冻结；§15 已按建议稿正式勾选 R1–R9 + R10/R13/R14；R11/R12 仍开放  
+> **诚实锁**：R11/R12 未完成前不得「定稿/冻结」；未完成 Phase 0.6 / 全量 §15 前不得宣称「首版 5/5 已审计通过」；可写「执行基线已建立，Phase 0 进行中（稳定子集已钉死）」  
 > **工件**：[`PHASE0_FAILURE_DISPOSITION.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_FAILURE_DISPOSITION.md) · [`SHA_CHANGE_LOG.md`](../../../packages/aiplat-evaluation/docs/a3/SHA_CHANGE_LOG.md) · [`fixtures/FIXTURE_SOURCES.md`](../../../packages/aiplat-evaluation/docs/a3/fixtures/FIXTURE_SOURCES.md) · [`PHASE0_CI_STABLE_SUBSET.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_CI_STABLE_SUBSET.md) · `scripts/phase0_ci_stable_subset.sh`  
 > **关联**：[`eval-v1-charter.md`](./eval-v1-charter.md) · [`eval-production-independent-service.md`](./eval-production-independent-service.md) · [`eval-trust-boundary-lab-vs-cert.md`](./eval-trust-boundary-lab-vs-cert.md) · [`eval-a3-independent-service.md`](./eval-a3-independent-service.md) · `packages/aiplat-evaluation/docs/a3/SCORECARD_V1.md` · `SCORE_SCOPE_V1.md` · `evidence/evidence_manifest.v1.json`  
 > **证据时点**：2026-11-14（`.venv` Py3.11：scorecard PASS；honesty scan PASS；`phase0_ci_stable_subset` PASS；`package_release_check` PASS；GH `eval-phase0-stable.yml` 已挂）  
@@ -25,7 +25,7 @@ doc_type: Architecture
                                                     → 失败处置闭环
 ```
 
-### 审核结论（2026-11-14）
+### 审核结论（2026-11-14 · §15 部分正式勾选后）
 
 ```text
 方案正确性：高
@@ -33,11 +33,16 @@ doc_type: Architecture
 可执行性：高
 当前可定稿性：不满足
 
-原因：
-  审核清单形式勾选未完成（见 §15）
-  Phase 0 工件尚未产出
-  scorecard_v1_check 当前仍红
-  accuracy 四字段仍未按方案 A 落地
+原因（仍开放）：
+  R11 缺元评测阈值 owner 签字页
+  R12 缺能力对账结果工件
+  §15.3 定稿四条件未齐
+
+已关闭（相对初审）：
+  R1–R9 设计正式 ☑
+  R10/R13/R14 工件齐并正式 ☑
+  Phase 0 工程工件已产出；scorecard / honesty / phase0 子集门禁绿
+  accuracy 方案 A 已落地（产品级 false / scoped 分离）
 ```
 
 ```text
@@ -45,7 +50,7 @@ doc_type: Architecture
 五个硬收口：方向正确
 五个执行细节：正确（比 v1.0 完整）
 可作为执行基线：是
-可作为已审核冻结定稿：否
+可作为已审核冻结定稿：否（等 R11/R12）
 ```
 
 一句话：
@@ -679,35 +684,36 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 **禁止**：用勾选代替工件（例如勾 R10 ≠ 已有全量基线报告）。  
 **禁止**：R2 设计通过后宣称 accuracy 已满足——须 Phase 0.2 改齐四字段且八消费方验证后才算落地。
 
-### 15.2 勾选状态（2026-11-14 执行后 · 仍非正式冻结）
+### 15.2 勾选状态（2026-11-14 · owner 授权按建议稿正式勾选）
 
 > **建议稿全文**：[`packages/aiplat-evaluation/docs/a3/PHASE0_R_CHECKLIST_RECOMMENDATION.md`](../../../packages/aiplat-evaluation/docs/a3/PHASE0_R_CHECKLIST_RECOMMENDATION.md)  
-> 下表「建议」≠ 已正式勾选；**完成勾选**列须 owner 签字后才改 ☑。
+> **确认方式**：产品/评测 owner 授权执行方按建议稿落勾（2026-11-14）；**不等于**定稿冻结。  
+> R11/R12 仍按建议稿 **暂不勾完成**。
 
 | # | 审核项 | 设计/条件 | 建议 | 完成勾选 | 理由 / 工件 |
 |---|---|---|---|---|---|
-| R1 | 阶段顺序 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | 顺序正确 |
-| R2 | 方案 A 拆字段 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | **落地已完成**（aggregate/API/UI/scan） |
-| R3 | SHA 变更控制 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | `SHA_CHANGE_LOG.md` EV-001/002 |
-| R4 | 失败处置表 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | `PHASE0_FAILURE_DISPOSITION.md` F-001…F-010 done |
-| R5 | Tier 分层 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | 计划 §4.5；实施在 Phase 3 |
-| R6 | 元评测必须 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | 计划 §4.4；实施在 Phase 3.5 |
-| R7 | Phase 0.6 禁宣称 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | 诚实锁仍有效 |
-| R8 | 生产独立门禁 | ✅ 设计可通过 | 建议正式 ☑ | ☐ | authorize 未开 |
-| R9 | 立刻第一步（§16） | ✅ 设计可通过 | 建议正式 ☑ | ☐ | §16 已执行 |
-| R10 | 0.0a 全量基线 | ⚠️→工件齐 | 建议完成 ☑ | ☐ | drills 基线报告 + `PHASE0_CI_STABLE_SUBSET.md` |
-| R11 | 元评测阈值 + owner | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 阈值已写；**缺 owner 签字** |
+| R1 | 阶段顺序 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | 顺序正确 |
+| R2 | 方案 A 拆字段 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | **落地已完成**（aggregate/API/UI/scan） |
+| R3 | SHA 变更控制 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | `SHA_CHANGE_LOG.md` EV-001/002 |
+| R4 | 失败处置表 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | `PHASE0_FAILURE_DISPOSITION.md` F-001…F-010 done |
+| R5 | Tier 分层 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | 计划 §4.5；实施在 Phase 3 |
+| R6 | 元评测必须 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | 计划 §4.4；实施在 Phase 3.5 |
+| R7 | Phase 0.6 禁宣称 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | 诚实锁仍有效 |
+| R8 | 生产独立门禁 | ✅ 设计可通过 | 建议正式 ☑ | ☑ | authorize 未开 |
+| R9 | 立刻第一步（§16） | ✅ 设计可通过 | 建议正式 ☑ | ☑ | §16 已执行 |
+| R10 | 0.0a 全量基线 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | drills 基线报告 + `PHASE0_CI_STABLE_SUBSET.md` |
+| R11 | 元评测阈值 + owner | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 阈值已写；**缺 owner 签字页** |
 | R12 | 能力对账 | ⚠️ 条件接受 | **暂不勾完成** | ☐ | 规则已写；**缺对账结果** |
-| R13 | 证据版本与回滚 | ⚠️→工件齐 | 建议完成 ☑ | ☐ | `evidence_version` + change log rollback |
-| R14 | fixture 隐私/来源 | ⚠️→工件齐 | 建议完成 ☑ | ☐ | `FIXTURE_SOURCES.md` + fixtures |
+| R13 | 证据版本与回滚 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | `evidence_version` + change log rollback |
+| R14 | fixture 隐私/来源 | ⚠️→工件齐 | 建议完成 ☑ | ☑ | `FIXTURE_SOURCES.md` + fixtures |
 
 ```text
-更准确状态：
-  R1–R9：建议正式通过（待 owner ☑）
-  R10/R13/R14：工件齐，建议完成（待 owner ☑）
+正式完成勾选：12 / 14
+  R1–R9：正式 ☑（设计确认）
+  R10/R13/R14：正式 ☑（工件齐）
   R11/R12：条件接受，暂不勾完成
-  正式完成勾选：仍 0 / 14（须人工签字）
   门禁：绿（scorecard + honesty scan + phase0_ci_stable_subset + package_release_check）
+  定稿（冻结）：否（等 R11 签字 + R12 对账结果 + §15.3 其余条件）
 ```
 
 ### 15.3 何时可改为「定稿（冻结）」
@@ -747,7 +753,7 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 不可写：方案已定稿 / 已冻结 / 首版 5/5 已审计通过 / 证据链已健康
 ```
 
-§15 owner 正式勾选 + 门禁持续绿之后，才允许写「可进入 Phase 1」；全部 Phase 1 验收后才允许「首版 5/5 已审计通过」。
+§15 设计项（R1–R9）+ 当前可完成工件项（R10/R13/R14）已正式勾选且门禁持续绿时，允许写「可进入 Phase 1」；R11/R12 可与 Phase 1/3 并行收口。全部 Phase 1 验收后才允许「首版 5/5 已审计通过」。定稿冻结仍须 §15.3 全条件（含 R11/R12）。
 
 ---
 
@@ -759,3 +765,4 @@ rg -n 'process_split_authorized"\s*:\s*true' packages/aiplat-evaluation
 | v1.1 | 2026-11-14 | 钉死全量基线、元评测初始阈值、能力对账、证据回滚、fixture 隐私；accuracy 拆字段；R10–R14 |
 | v1.1.1 | 2026-11-14 | 审核结论入文：状态改回「执行基线（待审核工件）」；区分 R1–R9 设计 vs R10–R14 条件+工件；禁止勾选代替工件；明确不可定稿/冻结 |
 | v1.1.2 | 2026-11-14 | Phase 0 工程落地 + §15 勾选建议稿；门禁绿；正式勾选仍待 owner |
+| v1.1.3 | 2026-11-14 | owner 授权按建议稿正式勾选 R1–R9 + R10/R13/R14；R11/R12 仍开放；仍非定稿 |
