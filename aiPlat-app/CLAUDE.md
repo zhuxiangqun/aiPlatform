@@ -57,7 +57,7 @@ language: zh-CN
 aiPlat-app 是 **Layer 3（应用层）**，面向最终用户，**不是 API 层**。
 
 - **对外暴露**：消息网关 Webhook、CLI 命令、Web 页面
-- **向下依赖**：只能依赖 `aiPlat-platform` 的 REST/GraphQL API
+- **向下依赖**：只能依赖 `aiPlat-platform` 的 REST API
 - **禁止直接依赖** `aiPlat-core` 或 `aiPlat-infra`
 - **不覆盖**：Agent 执行逻辑（core）、API 定义（platform）、数据库操作（infra）
 
@@ -76,7 +76,7 @@ app 层只拥有渠道相关数据模型（如 `TelegramMessage`、`SlackEvent`�
 ### 5.4 依赖方向
 
 ```
-app → platform (通过 REST/GraphQL API，唯一入口)
+app → platform (通过 REST API，唯一入口)
 app → core (禁止，应通过 platform)
 app → infra (禁止，应通过 platform)
 ```

@@ -52,7 +52,7 @@ doc_type: Index
 - infra docs 总索引：`aiPlat-infra/docs/index.md`
 - DI：`infra/di/*`
 - Observability：`infra/observability/*`
-- MCP：`infra/mcp/*`
+- MCP：实现在 `aiPlat-core/core/apps/mcp/*`（`infra/mcp/` 已删除）
 
 **允许的依赖**：
 - 所有模块都可以依赖 `config` 模块

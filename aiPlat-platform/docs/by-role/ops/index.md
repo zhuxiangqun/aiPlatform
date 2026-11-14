@@ -6,6 +6,8 @@ doc_type: Index
 
 > aiPlat-platform - 部署运维与监控配置
 
+> **As-Is（2026-11）**：仓库内 **无** `aiPlat-platform/config/`、`aiPlat-platform/deploy/` 目录。下文示例路径（`config/platform/*.yaml`、`deploy/docker-compose.yaml` 等）为历史设计稿，**不能当作现网文件树**。实际部署以仓库根 `Dockerfile` / CI workflows / 环境变量为准；控制面部署对象见 `aiPlat-platform/deployment/manager.py`（`DeploymentManager`）。
+
 ---
 
 ## 🎯 运维关注点

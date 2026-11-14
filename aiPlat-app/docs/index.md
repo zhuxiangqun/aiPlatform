@@ -11,7 +11,7 @@ doc_type: Index
 
 aiPlat-app 是 AI 中台的应用层（Layer 3），负责面向最终用户的应用实现。本层提供消息网关、CLI 工具、Web UI 等用户交互能力，是用户访问 AI 中台的入口。
 
-**不是 API 层**：本层不提供 REST/GraphQL API，对外暴露的是用户直接使用的接口。
+**不是 API 层**：本层不提供 REST API，对外暴露的是用户直接使用的接口。
 
 ## 架构定位
 
@@ -19,7 +19,7 @@ aiPlat-app 是 AI 中台的应用层（Layer 3），负责面向最终用户的�
 
 aiPlat-app 位于四层架构的第四层（Layer 3），是架构的最顶层：
 
-- **向下依赖**：依赖 aiPlat-platform 的 REST/GraphQL API
+- **向下依赖**：依赖 aiPlat-platform 的 REST API
 - **被依赖方**：无（应用层是最终用户交互层）
 
 ### 职责边界
@@ -52,7 +52,7 @@ aiPlat-app 位于四层架构的第四层（Layer 3），是架构的最顶层�
 
 ### 向下依赖
 
-- 只能依赖 `aiPlat-platform` 的 REST/GraphQL API
+- 只能依赖 `aiPlat-platform` 的 REST API
 - **禁止直接依赖** `aiPlat-core` 或 `aiPlat-infra`
 
 ### 数据模型规则

@@ -32,16 +32,22 @@ indexer.py → wiki_indexer.py
 - `infra/models.md`：`external_storage.py` → `storage.py`；
 - `aiPlat-app` 用户/开发者文档增加历史设计说明：当前 CLI 仅 `agents/execute/run/status/kb`，当前仓库为 Python package，不是 TS/React `app/` 结构。
 
-## 未修复（已在 agent 台账中列明）
+## 后续闭环（2026-11-14）
 
+已修：
+- CAPABILITIES：`FDEBuilderOrchestrator` ✅→⚠️ 已归档
+- platform CLAUDE / BOUNDARY / gateway / architect：去掉「已提供 GraphQL/WS」口径
+- app CLAUDE / docs：向下依赖改为 REST only
+- infra `docs/mcp` 改为占位重定向；architect/developer 去 `infra/mcp/*` 幻影路径
+- platform ops/developer：标明无 `config/`、`deploy/` 树；deployment 指向真实 `DeploymentManager`
+
+仍未全量清完（需逐篇）：
 ```text
-core docs 剩余 30+ 处符号/状态/行号问题
-infra docs 16 处（MCP 幻影包、config 路径、测试命令等）
-platform docs 4 处（GraphQL/WebSocket、config/deploy 目录）
-app ops 1 处（部署主机树，needs-owner）
+core docs 剩余符号/状态/行号问题
+infra docs 其余 config 路径/测试命令
+app ops 部署主机树（needs-owner）
+reports/ 与 docs/archive/ 历史分析稿（非现网契约）
 ```
-
-这些需要逐篇人工决定，不能安全批量替换。
 
 ## 关键发现
 

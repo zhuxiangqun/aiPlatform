@@ -567,36 +567,18 @@ health_check:
 
 ### mcp - MCP 协议
 
-**详细文档**：[mcp 模块文档](../../mcp/index.md)
+> **As-Is**：`infra/mcp/` 已删除。MCP 在 **core**，不在 infra。
 
-**操作路径**：
+**详细文档**：[mcp 占位说明](../../mcp/index.md) · [core 参考](../../../../docs/reference/mcp/index.md)
 
-| 任务 | 操作路径 | 参考文件位置 |
-|------|----------|-------------|
-| 获取 MCP 客户端 | 调用 `create_mcp_client(config)` | `infra/mcp/factory.py` |
-| 连接 | 调用 `await client.connect()` | `infra/mcp/base.py` |
-| 列出工具 | 调用 `await client.list_tools()` | `infra/mcp/base.py` |
-| 调用工具 | 调用 `await client.call_tool(name, args)` | `infra/mcp/base.py` |
+**操作路径**（core）：
 
-**配置示例**：
-```yaml
-# config/infra/mcp.yaml
-mcp:
-  timeout: 30
-  max_retries: 3
-  servers:
-    - name: filesystem
-      type: stdio
-      command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "./data"]
-    - name: brave-search
-      type: http
-      url: http://localhost:3001/mcp
-```
-
-**相关文件位置**：
-- 接口定义：`infra/mcp/base.py`
-- 工厂函数：`infra/mcp/factory.py`
-- 协议实现：`infra/mcp/protocol/`
+| 任务 | 参考位置 |
+|------|----------|
+| MCP Client / Manager | `aiPlat-core/core/apps/mcp/client.py` |
+| Adapter（MCP ↔ ITool） | `aiPlat-core/core/apps/mcp/adapter.py` |
+| Protocol / transport | `aiPlat-core/core/apps/mcp/protocol.py` |
+| Server | `aiPlat-core/core/apps/mcp/server.py` |
 
 ---
 

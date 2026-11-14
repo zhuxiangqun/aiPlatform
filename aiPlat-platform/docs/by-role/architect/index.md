@@ -91,7 +91,7 @@ API 是平台层对外提供的服务接口，定义如下：
 
 ### api 模块
 
-**职责**：提供 RESTful API 和 GraphQL API
+**职责**：提供 RESTful API（GraphQL 未实现）
 
 **核心类**：
 

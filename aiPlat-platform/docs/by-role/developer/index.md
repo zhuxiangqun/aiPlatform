@@ -6,6 +6,8 @@ doc_type: Index
 
 > aiPlat-platform - 开发指南与最佳实践
 
+> **As-Is（2026-11）**：仓库内 **无** `config/platform/*.yaml` 模板树；GraphQL / 平台级 WebSocket **未实现**（仅 REST）。下文仍含历史示例时，以代码与 `docs/api/index.md` 为准。
+
 ---
 
 ## 🎯 开发者关注点
@@ -38,27 +40,13 @@ pip install -e .
 
 ### 配置环境
 
-```bash
-# 复制配置模板
-cp config/platform/api.yaml.example config/platform/api.yaml
-cp config/platform/auth.yaml.example config/platform/auth.yaml
-cp config/platform/tenants.yaml.example config/platform/tenants.yaml
-
-# 编辑配置文件
-vi config/platform/api.yaml
-```
+> 无 `config/platform/*.yaml.example`。凭据与行为配置走环境变量 / 根仓启动脚本（见 `aiPlat-platform/README.md`、`control_plane_optional.env.example`）。
 
 ### 启动服务
 
 ```bash
-# 启动依赖服务
-make docker-up-platform
-
-# 启动平台服务
-make run-platform
-
-# 访问 API 文档
-# http://localhost:8000/docs
+# 按仓库根 README / Makefile 启动 platform（端口以现网为准，常见管理面 8003）
+# API 文档路径以实际挂载的 OpenAPI 为准
 ```
 
 ### 验证环境
@@ -252,23 +240,12 @@ open http://localhost:8000/docs
 
 **详细文档**：[deployment 模块文档](../../deployment/index.md)
 
-**操作路径**：
+**As-Is**：仅有内存控制面 `DeploymentManager`（无 `DeploymentService` / `VersionService` 分文件）。
 
-| 任务 | 操作路径 | 参考文件位置 |
-|------|----------|-------------|
-| 创建部署 | 调用 `DeploymentService.create(deployment_config)` | `platform/deployment/services/deployment.py` |
-| 更新版本 | 调用 `VersionService.update(service_id, version)` | `platform/deployment/services/version.py` |
-| 回滚版本 | 调用 `DeploymentService.rollback(deployment_id)` | `platform/deployment/services/deployment.py` |
-| 检查状态 | 调用 `DeploymentService.check_status(deployment_id)` | `platform/deployment/services/deployment.py` |
-
-**部署策略**：
-- **滚动更新**：逐步替换旧版本
-- **蓝绿部署**：新旧版本并存，流量切换
-- **金丝雀发布**：小流量测试新版本
-
-**相关文件位置**：
-- 部署服务：`platform/deployment/services/deployment.py`
-- 版本服务：`platform/deployment/services/version.py`
+| 任务 | 参考 |
+|------|------|
+| 创建 / 查询 / 回滚部署 | `aiPlat-platform/deployment/manager.py` → `DeploymentManager` |
+| 策略枚举 | `DeploymentStrategy`：`rolling` / `blue_green` / `canary` |
 
 ---
 

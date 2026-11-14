@@ -59,7 +59,7 @@ language: zh-CN
 
 aiPlat-platform 是 **Layer 2（平台服务层）**，对外暴露 API，提供平台级服务。
 
-- **向上提供**：REST API、GraphQL API、WebSocket API
+- **向上提供**：REST API（GraphQL / 平台级 WebSocket **未实现**；实时通道仅 core 有少量 WebSocket，如 `/ws/voice-chat`）
 - **向下依赖**：只能依赖 `aiPlat-core` 的 CoreFacade（唯一入口）。所有 `from core.apps.*` 和 `from core.harness.*` 导入已全部消除（2026-05）。
 - **禁止直接依赖** `aiPlat-infra`
 - **禁止包含** AI 核心逻辑（Agent 执行、Skill 编排等）
@@ -94,7 +94,7 @@ platform 作为网关层，对下游非 2xx 响应 MUST 透传可诊断信息（
 ### 5.5 依赖方向
 
 ```
-app → platform (通过 REST/GraphQL API)
+app → platform (通过 REST API)
 platform → core (通过 CoreFacade，唯一入口)
 platform → infra (禁止，应通过 core)
 ```

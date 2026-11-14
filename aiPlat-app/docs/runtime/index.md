@@ -24,7 +24,7 @@ doc_type: Index
 | 职责 | 说明 |
 |------|------|
 | **会话编排** | 维护 app 层会话状态，组织输入/输出与上下文透传 |
-| **平台调用** | 通过 platform 的 REST/GraphQL API 触发 Agent/Skill 等核心能力 |
+| **平台调用** | 通过 platform 的 REST API 触发 Agent/Skill 等核心能力 |
 | **流式输出/交互** | 支持 WebSocket/SSE/CLI 交互式输出等 |
 | **可靠性增强** | 重试、超时、降级、幂等等工程能力（不包含核心业务逻辑） |
 
@@ -43,7 +43,7 @@ doc_type: Index
   │
   └─► Platform API（Layer 2, platform）
         - Auth / Tenants / API Gateway / Governance
-        - 对外契约（REST/GraphQL）
+        - 对外契约（REST）
               │
               ▼
         Core Runtime（Layer 1, core）
