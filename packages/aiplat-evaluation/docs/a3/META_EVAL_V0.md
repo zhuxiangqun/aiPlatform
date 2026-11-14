@@ -27,7 +27,7 @@ doc_type: Reference
 1. 固定人标集（pack 指纹 + seed）；不得边调边改 gold。  
 2. 跑 judge → 与人标算 agreement / κ / ECE。  
 3. 低于 R11：`agreement≥0.80` / `κ≥0.60` / `ECE≤0.10` → **judge 不得用于 Tier A gate**。  
-4. 证据写入 `docs/a3/evidence/meta_eval/`（待建目录；本 v0 只定协议）。
+4. 证据写入 `docs/a3/evidence/meta_eval/`（已建；F1 状态见 [`META_EVAL_F1_STATUS.md`](./META_EVAL_F1_STATUS.md)）。
 
 ### 2.2 Gold audit
 
@@ -81,5 +81,5 @@ doc_type: Reference
 | 协议成文 | **done**（本文） |
 | 阈值 owner 签字 | **done**（R11） |
 | 家族清单 | **done**（[`META_EVAL_FAMILY_CHECKLIST_V0.md`](./META_EVAL_FAMILY_CHECKLIST_V0.md)；0/4 绿） |
-| `evidence/meta_eval/` 实测证据 | **open**（Phase 3.5 执行） |
+| `evidence/meta_eval/` 实测证据 | **partial**（F1 IAA 复用 G2b κ；judge↔human/ECE 仍 open） |
 | Tier A 扩容 | **blocked** 直至对应家族绿灯 |

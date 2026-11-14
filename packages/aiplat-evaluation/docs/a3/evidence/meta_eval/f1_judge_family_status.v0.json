@@ -1,0 +1,72 @@
+{
+  "schema": "eval.meta_eval.f1_status.v0",
+  "family_id": "F1",
+  "family": "Judge calibration",
+  "recorded_at": "2026-11-14T17:51:52+08:00",
+  "threshold_version": "meta-eval-thresholds.v0",
+  "checks": [
+    {
+      "id": "judge_calibration",
+      "status": "open",
+      "green": false,
+      "agreement": null,
+      "kappa": null,
+      "ece": null,
+      "thresholds": {
+        "agreement_min": 0.8,
+        "kappa_min": 0.6,
+        "ece_max": 0.1
+      },
+      "source": null,
+      "note": "No frozen judge↔human ratings pack with ECE in evidence/meta_eval/. G2b IAA must not be reused as judge calibration green. Next: open_capability_judge_calibration + dual ratings → evaluate_judge_calibration_gate + ECE artifact.",
+      "api_hooks": [
+        "evaluate_judge_calibration_gate",
+        "open_capability_judge_calibration",
+        "cohen_kappa_binary"
+      ]
+    },
+    {
+      "id": "gold_audit",
+      "status": "advisory_present",
+      "green": false,
+      "source": "docs/a3/evidence/g2b_adjudication.v1.json",
+      "note": "Adjudication artifact present; sample error-rate ≤5% not yet measured for META_EVAL F1 — keep blocked."
+    },
+    {
+      "id": "contamination",
+      "status": "not_run",
+      "green": false,
+      "note": "No contamination overlap report for F1 family; R11 over-threshold=advisory_only"
+    },
+    {
+      "id": "holdout_isolation",
+      "status": "declared_local",
+      "green": false,
+      "source": "docs/a3/evidence/g2b_freeze_record.v1.json",
+      "freeze_status": "confirmed",
+      "note": "Freeze confirmed for G2b pack; META_EVAL still requires explicit dev/val/holdout split declaration for Tier A family — not green."
+    },
+    {
+      "id": "iaa",
+      "status": "green",
+      "green": true,
+      "agreement": 0.9,
+      "kappa": 0.7624,
+      "thresholds": {
+        "agreement_min": 0.8,
+        "kappa_min": 0.6
+      },
+      "source": "docs/a3/evidence/g2b_kappa_aggregate.v1.json",
+      "note": "IAA only — not judge↔human calibration"
+    }
+  ],
+  "counts": {
+    "green": 1,
+    "total": 5
+  },
+  "family_green": false,
+  "tier_a_claim_authorized": false,
+  "accuracy_claim": false,
+  "process_split_authorized": false,
+  "honesty": "Partial evidence only. family_green requires all five checks. IAA≠judge calibration. ≠ Tier A expansion."
+}
