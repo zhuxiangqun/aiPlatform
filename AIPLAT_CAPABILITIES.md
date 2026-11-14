@@ -2714,6 +2714,8 @@ scan_hash: 8f9548ec24f4
 | evaluation_a3_prep_check | `packages/aiplat-evaluation/scripts/a3_prep_check.sh` + `chart/` + `docs/a3/` | ✅ | Chart/protocol/零 harness 直导；发现 local rehearsal 标 🟨；`process_split_authorized` 恒 false；生成物适用：不适用 | 已合入 |
 | ontology_a3_local_rehearsal | `packages/aiplat-ontology/scripts/a3_local_rehearsal.sh` | ✅ | 文件树双写+回滚指针演练；checklist #3/#5→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
 | evaluation_a3_local_rehearsal | `packages/aiplat-evaluation/scripts/a3_local_rehearsal.sh` | ✅ | SQLite 备份/回滚指针演练；checklist #4→🟨；拆分恒 false；生成物适用：不适用 | 已合入 |
+| evaluation_phase4_repair_loop_prep | `packages/aiplat-evaluation/scripts/phase4_repair_loop_prep.py` + `docs/a3/PHASE4_PREP.md` | ✅ | Phase4 修复闭环预备闸门；`closed_loop_claim` 恒 false；生成物适用：不适用 | 本批 |
+| evaluation_phase4_disposition_ledger | `packages/aiplat-evaluation/scripts/phase4_disposition_ledger.py` + `docs/a3/config/phase4_routing.v0.json` | ✅ | taxonomy→处置单+指纹 stub+人工 `--close`；≠自动闭环/Chart；生成物适用：不适用 | 本批 |
 | Observation 观测总线 | harness/observation/ | ✅ | EventBus 发布/订阅 + PipelineTrace 每阶段跟踪 | 已合入 |
 | Smoke 全链路冒烟 | harness/smoke/ | ✅ | 生产级全链路冒烟测试 + 自动清理 | 已合入 |
 | A2A 协议 | apps/a2a/ | ✅ | Agent Card + Task Send/Get/Stream/Cancel/Artifacts 全实现 | 已合入 |
