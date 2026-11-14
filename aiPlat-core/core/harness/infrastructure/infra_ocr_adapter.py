@@ -81,6 +81,12 @@ class InfraOCRAdapter(BaseModelAdapter):
     capability = "ocr"
 
     def __init__(self, *, model_name: str = "", backend: str = ""):
+        """初始化。
+
+        Args:
+            model_name: model_name 参数。
+            backend: backend 参数。
+        """
         super().__init__(model_name=model_name)
         self._backend = backend or _env_ocr("AIPLAT_VIDEO_OCR_BACKEND", "tesseract")
         self._lang = _env_ocr("AIPLAT_VIDEO_OCR_LANG", "eng+chi_sim")
@@ -91,11 +97,19 @@ class InfraOCRAdapter(BaseModelAdapter):
     # ── Plain text OCR (existing, renamed + caching fix) ──
 
     def ocr_text(self, image_path: str) -> str:
-        """OCR a single image → plain text string. Alias for ocr_frame()."""
+        """OCR a single image → plain text string. Alias for ocr_frame().
+
+        Args:
+            image_path: image_path 参数。
+        """
         return self.ocr_frame(image_path)
 
     def ocr_frame(self, image_path: str) -> str:
-        """OCR a single image → plain text string (video keyframe compatible)."""
+        """OCR a single image → plain text string (video keyframe compatible).
+
+        Args:
+            image_path: image_path 参数。
+        """
         if self._backend in ("tesseract", "auto"):
             try:
                 from PIL import Image
@@ -121,9 +135,9 @@ class InfraOCRAdapter(BaseModelAdapter):
 
     def ocr_structured(self, image_path: str) -> List[OCRToken]:
         """OCR a single image → List[OCRToken] with bbox coordinates and confidence.
-        
-        PaddleOCR: polygon → bbox, per-line confidence.
-        Tesseract: word-level image_to_data, bbox + confidence.
+
+        Args:
+            image_path: image_path 参数。
         """
         if self._backend in ("paddleocr", "auto"):
             try:
@@ -196,9 +210,10 @@ class InfraOCRAdapter(BaseModelAdapter):
 
     def ocr_pdf(self, pdf_path: str, *, dpi: int = 200) -> str:
         """OCR a PDF (scanned or digital) → plain text.
-        
-        Digital PDFs: native text extraction (fast path).
-        Scanned PDFs: render each page as PNG → ocr_frame().
+
+        Args:
+            pdf_path: pdf_path 参数。
+            dpi: dpi 参数。
         """
         try:
             import fitz  # type: ignore  # PyMuPDF
@@ -235,7 +250,11 @@ class InfraOCRAdapter(BaseModelAdapter):
     # ── Batch processing (video keyframes, etc.) ──
 
     def ocr_frames(self, frames: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """OCR a batch of images — enriches each frame dict with ocr_text + ocr_engine."""
+        """OCR a batch of images — enriches each frame dict with ocr_text + ocr_engine.
+
+        Args:
+            frames: frames 参数。
+        """
         out: List[Dict[str, Any]] = []
         for fr in frames:
             p = str(fr.get("local_path") or "")
@@ -248,6 +267,11 @@ class InfraOCRAdapter(BaseModelAdapter):
 
 
 def create_infra_ocr_adapter(**kwargs) -> InfraOCRAdapter:
+    """创建 infra_ocr_adapter。
+
+    Args:
+        kwargs: kwargs 参数。
+    """
     return InfraOCRAdapter(**kwargs)
 
 

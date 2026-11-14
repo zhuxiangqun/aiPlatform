@@ -25,6 +25,7 @@ def _db_path() -> str:
 
 @dataclass
 class ChangeRequest:
+    """ChangeRequest。"""
     id: str
     domain_id: str
     change_type: str
@@ -76,7 +77,15 @@ def submit(
     requested_by: str = "system",
     justification: str = "",
 ) -> ChangeRequest:
-    u"""Submit a change request for approval."""
+    """Submit a change request for approval.
+
+    Args:
+        domain_id: domain 标识。
+        change_type: change_type 参数。
+        diff: diff 参数。
+        requested_by: requested_by 参数。
+        justification: justification 参数。
+    """
     import json
     _ensure_schema()
     rid = f"cr-{domain_id}-{int(_time.time() * 1000)}"
@@ -100,7 +109,13 @@ def submit(
 
 
 def approve(request_id: str, approved_by: str, comment: str = "") -> Dict[str, Any]:
-    u"""Approve a change request."""
+    """Approve a change request.
+
+    Args:
+        request_id: request 标识。
+        approved_by: approved_by 参数。
+        comment: comment 参数。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     row = conn.execute("SELECT id, status FROM change_requests WHERE id = ?", (request_id,)).fetchone()
@@ -123,7 +138,13 @@ def approve(request_id: str, approved_by: str, comment: str = "") -> Dict[str, A
 
 
 def reject(request_id: str, rejected_by: str, reason: str = "") -> Dict[str, Any]:
-    u"""Reject a change request."""
+    """Reject a change request.
+
+    Args:
+        request_id: request 标识。
+        rejected_by: rejected_by 参数。
+        reason: reason 参数。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     row = conn.execute("SELECT id, status FROM change_requests WHERE id = ?", (request_id,)).fetchone()
@@ -143,7 +164,11 @@ def reject(request_id: str, rejected_by: str, reason: str = "") -> Dict[str, Any
 
 
 def list_pending(domain_id: str = "") -> List[Dict[str, Any]]:
-    u"""List pending change requests."""
+    """List pending change requests.
+
+    Args:
+        domain_id: domain 标识。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     conn.row_factory = _sqlite3.Row
@@ -161,7 +186,12 @@ def list_pending(domain_id: str = "") -> List[Dict[str, Any]]:
 
 
 def get_history(domain_id: str = "", limit: int = 50) -> List[Dict[str, Any]]:
-    u"""Get approval history."""
+    """Get approval history.
+
+    Args:
+        domain_id: domain 标识。
+        limit: 返回条数上限。
+    """
     _ensure_schema()
     conn = _sqlite3.connect(_db_path(), timeout=5.0)
     conn.row_factory = _sqlite3.Row
@@ -180,6 +210,10 @@ def get_history(domain_id: str = "", limit: int = 50) -> List[Dict[str, Any]]:
 
 
 def can_publish(user_role: str = "") -> bool:
-    u"""Check if the user role can publish ontology changes."""
+    """Check if the user role can publish ontology changes.
+
+    Args:
+        user_role: user_role 参数。
+    """
     role = (user_role or "").lower()
     return role in {"governance_admin", "admin", "operator"}

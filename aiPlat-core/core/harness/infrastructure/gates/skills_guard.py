@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class ThreatLevel(Enum):
+    """ThreatLevel。"""
     BLOCKER = "blocker"   # Must block registration
     CRITICAL = "critical"  # Must block + alert admin
     HIGH = "high"          # Reject unless approved
@@ -31,6 +32,7 @@ class ThreatLevel(Enum):
 
 
 class ThreatCategory(Enum):
+    """ThreatCategory。"""
     CODE_INJECTION = "code_injection"
     COMMAND_EXECUTION = "command_execution"
     FILE_SYSTEM = "file_system"
@@ -286,6 +288,8 @@ class SkillsGuard:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[ThreatRule] = list(_THREAT_RULES)
         self._disabled_categories: Set[ThreatCategory] = set()
         self._allowlisted_skills: Set[str] = set()
@@ -304,7 +308,12 @@ class SkillsGuard:
                         pass  # noqa: cleanup-best-effort
 
     def scan_skill(self, skill_name: str, skill_dir: str) -> ScanResult:
-        """Scan all files in a skill directory for threats."""
+        """Scan all files in a skill directory for threats.
+
+        Args:
+            skill_name: skill_name 参数。
+            skill_dir: skill_dir 参数。
+        """
         result = ScanResult(skill_name=skill_name, passed=True)
 
         if skill_name in self._allowlisted_skills:
@@ -391,7 +400,12 @@ class SkillsGuard:
         return result
 
     def scan_content(self, content: str, file_name: str = "inline.py") -> ScanResult:
-        """Scan raw content string for threats (for API-level checks)."""
+        """Scan raw content string for threats (for API-level checks).
+
+        Args:
+            content: content 参数。
+            file_name: file_name 参数。
+        """
         import tempfile
 
         # Use a temp directory for the scan
@@ -424,15 +438,27 @@ class SkillsGuard:
         return fnmatch.fnmatch(filename, pattern)
 
     def add_rule(self, rule: ThreatRule):
-        """Add a custom threat detection rule."""
+        """Add a custom threat detection rule.
+
+        Args:
+            rule: rule 参数。
+        """
         self._rules.append(rule)
 
     def remove_rule(self, rule_id: str):
-        """Remove a rule by rule_id."""
+        """Remove a rule by rule_id.
+
+        Args:
+            rule_id: rule 标识。
+        """
         self._rules = [r for r in self._rules if r.rule_id != rule_id]
 
     def allowlist_skill(self, skill_name: str):
-        """Allowlist a skill to skip threat scanning."""
+        """Allowlist a skill to skip threat scanning.
+
+        Args:
+            skill_name: skill_name 参数。
+        """
         self._allowlisted_skills.add(skill_name)
 
     def list_rules(self) -> List[Dict[str, Any]]:

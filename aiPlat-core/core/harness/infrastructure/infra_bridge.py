@@ -54,9 +54,8 @@ def _check_infra_available() -> bool:
 def resolve_vector_backend(backend: Optional[str] = None) -> str:
     """Resolve vector backend: explicit arg → env → production default → faiss.
 
-    Env: AIPLAT_VECTOR_BACKEND or AIPLAT_VECTOR_DB.
-    When AIPLAT_PROFILE=production and unset, default milvus (overridable via
-    AIPLAT_VECTOR_PRODUCTION_BACKEND).
+    Args:
+        backend: backend 参数。
     """
     if backend and str(backend).strip():
         return str(backend).strip().lower()
@@ -107,7 +106,11 @@ _embedding_model: Optional[Any] = None
 
 
 async def get_infra_embedding(text: str) -> Optional[List[float]]:
-    """Generate an embedding vector via the infra LLM layer."""
+    """Generate an embedding vector via the infra LLM layer.
+
+    Args:
+        text: text 参数。
+    """
     global _embedding_model
     if not _check_infra_available():
         return None
@@ -171,11 +174,11 @@ def deploy_app_service(name: str, namespace: str, image: str,
                        config: Optional[Dict[str, Any]] = None) -> bool:
     """L5 v2: register a service deployment via infra's ServiceManager.
 
-    Platform must NOT import infra directly (single-direction platform → core →
-    infra). This bridge is the sanctioned path. Standalone mode or unavailable
-    infra → returns False (no-op), never raises.
-
-    callers: aiPlat-platform/builder/builder_project_service.py (via CoreFacade)
+    Args:
+        name: name 参数。
+        namespace: namespace 参数。
+        image: image 参数。
+        config: config 参数。
     """
     if not _check_infra_available():
         logger.info("infra not available — L5 deploy skipped: %s/%s", namespace, name)

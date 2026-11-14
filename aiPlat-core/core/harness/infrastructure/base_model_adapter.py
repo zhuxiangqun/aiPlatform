@@ -43,9 +43,9 @@ _MODEL_TYPE_MAP: Dict[str, str] = {
 
 def resolve_model_name(capability: str) -> str:
     """Resolve model name for a given capability.
-    
-    Resolution chain: env var → infra ModelManager → capability default.
-    Env var has highest priority so users can override ModelManager at runtime.
+
+    Args:
+        capability: capability 参数。
     """
     # Hash backend bypass: no model needed for embedding
     if capability == "embedding" and os.getenv("AIPLAT_EMBED_BACKEND", "") == "hash":
@@ -129,10 +129,17 @@ class BaseModelAdapter(ABC):
     capability: str = ""
 
     def __init__(self, *, model_name: str = ""):
+        """初始化。
+
+        Args:
+            model_name: model_name 参数。
+        """
         self._model_name = model_name or resolve_model_name(self.capability)
 
     @property
     def model_name(self) -> str:
+        """model_name。
+        """
         return self._model_name
 
     def _get_model(self) -> Any:
@@ -155,10 +162,10 @@ _CAPABILITY_ADAPTERS: Dict[str, Any] = {}
 
 def create_adapter(capability: str, **kwargs) -> BaseModelAdapter:
     """Unified factory: create the right adapter for a capability.
-    
-    Usage:
-        adapter = create_adapter("embedding", model_name="jina-embeddings")
-        vec = adapter.embed("hello")
+
+    Args:
+        capability: capability 参数。
+        kwargs: kwargs 参数。
     """
     # Lazy registration (avoids circular imports)
     if not _CAPABILITY_ADAPTERS:

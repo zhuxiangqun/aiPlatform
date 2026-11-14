@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class ValidationResult:
+    """ValidationResult。"""
     deduplicated: List[Dict[str, Any]] = field(default_factory=list)
     removed_count: int = 0
     stale_warnings: List[str] = field(default_factory=list)
@@ -204,6 +205,8 @@ _validator: Optional[ContextValidator] = None
 
 
 def get_context_validator() -> ContextValidator:
+    """获取 context_validator。
+    """
     global _validator
     if _validator is None:
         _validator = ContextValidator()

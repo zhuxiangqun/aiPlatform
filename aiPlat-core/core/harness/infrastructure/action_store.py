@@ -42,6 +42,11 @@ class ActionStore:
     """Async persistence for action audit trail and pending approvals."""
 
     def __init__(self, db_path: Optional[str] = None):
+        """初始化。
+
+        Args:
+            db_path: db_path 参数。
+        """
         self.db_path = db_path or default_action_db_path()
 
     async def initialize(self) -> None:
@@ -134,7 +139,11 @@ class ActionStore:
     # ═══════════════════════════════════════════════════════
 
     async def insert_audit(self, record: Dict[str, Any]) -> str:
-        """Write an audit entry. Returns audit_id."""
+        """Write an audit entry. Returns audit_id.
+
+        Args:
+            record: record 参数。
+        """
         import aiosqlite
         audit_id = record.get("audit_id") or f"aud_{uuid.uuid4().hex[:16]}"
         snapshot = record.get("entity_snapshot")
@@ -174,7 +183,13 @@ class ActionStore:
 
     async def list_audit(self, entity_id: str = "", domain_id: str = "",
                          limit: int = 50) -> List[Dict[str, Any]]:
-        """Query audit entries by entity/domain."""
+        """Query audit entries by entity/domain.
+
+        Args:
+            entity_id: entity 标识。
+            domain_id: domain 标识。
+            limit: 返回条数上限。
+        """
         import aiosqlite
         results: List[Dict[str, Any]] = []
         async with aiosqlite.connect(self.db_path) as db:
@@ -206,7 +221,8 @@ class ActionStore:
     async def query_usage_signal(self, domain_id: str) -> Dict[str, Any]:
         """Aggregate S1–S4 for one domain from action_audit.
 
-        Columns: actor / created_at / result_status / domain_id (not actor_id/timestamp).
+        Args:
+            domain_id: domain 标识。
         """
         import aiosqlite
 
@@ -273,7 +289,12 @@ class ActionStore:
     async def query_usage_trend(
         self, domain_id: str, days: int = 30
     ) -> List[Dict[str, Any]]:
-        """Per-day DAU / calls / success_rate for the last ``days`` days."""
+        """Per-day DAU / calls / success_rate for the last ``days`` days.
+
+        Args:
+            domain_id: domain 标识。
+            days: days 参数。
+        """
         import aiosqlite
 
         domain = (domain_id or "").strip()
@@ -322,6 +343,15 @@ class ActionStore:
         baseline_active_days: int,
         captured_by: str = "fde",
     ) -> Dict[str, Any]:
+        """upsert_usage_baseline。
+
+        Args:
+            domain_id: domain 标识。
+            baseline_calls_median: baseline_calls_median 参数。
+            baseline_success_rate: baseline_success_rate 参数。
+            baseline_active_days: baseline_active_days 参数。
+            captured_by: captured_by 参数。
+        """
         import aiosqlite
 
         domain = (domain_id or "").strip()
@@ -362,6 +392,11 @@ class ActionStore:
         }
 
     async def get_usage_baseline(self, domain_id: str) -> Optional[Dict[str, Any]]:
+        """获取 usage_baseline。
+
+        Args:
+            domain_id: domain 标识。
+        """
         import aiosqlite
 
         domain = (domain_id or "").strip()
@@ -379,7 +414,13 @@ class ActionStore:
     async def capture_usage_baseline_from_trend(
         self, domain_id: str, *, days: int = 30, captured_by: str = "fde"
     ) -> Dict[str, Any]:
-        """Median calls / mean success / active days from trend window."""
+        """Median calls / mean success / active days from trend window.
+
+        Args:
+            domain_id: domain 标识。
+            days: days 参数。
+            captured_by: captured_by 参数。
+        """
         import statistics
 
         trend = await self.query_usage_trend(domain_id, days=days)
@@ -396,7 +437,11 @@ class ActionStore:
         )
 
     async def list_audit_domains(self, limit: int = 50) -> List[str]:
-        """Distinct domain_id values present in action_audit (peer discovery)."""
+        """Distinct domain_id values present in action_audit (peer discovery).
+
+        Args:
+            limit: 返回条数上限。
+        """
         import aiosqlite
 
         lim = max(1, min(int(limit), 200))
@@ -418,8 +463,9 @@ class ActionStore:
     ) -> Dict[str, Any]:
         """Stats for escort A-group: non-platform actors / actions / failures.
 
-        Platform-like actors (system, fde*, ops*) are excluded. This is an
-        honest proxy for "customer independence", not proof of admin identity.
+        Args:
+            domain_id: domain 标识。
+            days: days 参数。
         """
         import aiosqlite
 
@@ -485,7 +531,11 @@ class ActionStore:
     # ═══════════════════════════════════════════════════════
 
     async def insert_pending(self, approval: Dict[str, Any]) -> str:
-        """Create a pending-approval record. Returns lock_id."""
+        """Create a pending-approval record. Returns lock_id.
+
+        Args:
+            approval: approval 参数。
+        """
         import aiosqlite
         lock_id = approval.get("lock_id") or f"stake_{uuid.uuid4().hex[:16]}"
         async with aiosqlite.connect(self.db_path) as db:
@@ -506,7 +556,11 @@ class ActionStore:
         return lock_id
 
     async def get_pending(self, lock_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve a pending approval by lock_id."""
+        """Retrieve a pending approval by lock_id.
+
+        Args:
+            lock_id: lock 标识。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -531,7 +585,14 @@ class ActionStore:
         resolver: str = "system",
         reason: str = "",
     ) -> bool:
-        """Mark a pending approval as resolved. Returns True if updated."""
+        """Mark a pending approval as resolved. Returns True if updated.
+
+        Args:
+            lock_id: lock 标识。
+            status: status 参数。
+            resolver: resolver 参数。
+            reason: reason 参数。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(
@@ -544,7 +605,11 @@ class ActionStore:
             return cur.rowcount > 0
 
     async def list_pending_by_entity(self, entity_ref: str) -> List[Dict[str, Any]]:
-        """List all pending approvals for an entity."""
+        """List all pending approvals for an entity.
+
+        Args:
+            entity_ref: entity_ref 参数。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -555,7 +620,11 @@ class ActionStore:
                 return [dict(r) for r in await cur.fetchall()]
 
     async def expire_stale_approvals(self, now_ts: Optional[float] = None) -> int:
-        """Auto-expire approvals past their locked_until timestamp. Returns count."""
+        """Auto-expire approvals past their locked_until timestamp. Returns count.
+
+        Args:
+            now_ts: now_ts 参数。
+        """
         import aiosqlite
         ts = now_ts or time.time()
         deadline = datetime.fromtimestamp(ts).isoformat()
@@ -577,6 +646,18 @@ class ActionStore:
         self, proposal_id: str, domain_id: str, version_from: str, version_to: str,
         changes: str, status: str, author: str, impact: str,
     ) -> str:
+        """insert_ontology_proposal。
+
+        Args:
+            proposal_id: proposal 标识。
+            domain_id: domain 标识。
+            version_from: version_from 参数。
+            version_to: version_to 参数。
+            changes: changes 参数。
+            status: status 参数。
+            author: author 参数。
+            impact: impact 参数。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("""
@@ -601,6 +682,11 @@ class ActionStore:
         return proposal_id
 
     async def get_ontology_proposal(self, proposal_id: str) -> Optional[Dict[str, Any]]:
+        """获取 ontology_proposal。
+
+        Args:
+            proposal_id: proposal 标识。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -611,6 +697,12 @@ class ActionStore:
                 return dict(row) if row else None
 
     async def update_ontology_proposal_status(self, proposal_id: str, status: str) -> bool:
+        """更新 ontology_proposal_status。
+
+        Args:
+            proposal_id: proposal 标识。
+            status: status 参数。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(
@@ -621,7 +713,12 @@ class ActionStore:
             return cur.rowcount > 0
 
     async def update_ontology_proposal_impact(self, proposal_id: str, impact: str) -> bool:
-        """Persist updated impact_analysis (P2-L1: records tier approval evidence)."""
+        """Persist updated impact_analysis (P2-L1: records tier approval evidence).
+
+        Args:
+            proposal_id: proposal 标识。
+            impact: impact 参数。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(
@@ -632,6 +729,11 @@ class ActionStore:
             return cur.rowcount > 0
 
     async def list_ontology_proposals(self, domain_id: str) -> List[Dict[str, Any]]:
+        """列出 ontology_proposals。
+
+        Args:
+            domain_id: domain 标识。
+        """
         import aiosqlite
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row

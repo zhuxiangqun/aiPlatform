@@ -26,17 +26,32 @@ class LifecycleManager:
     """
 
     def __init__(self, *, container: Any = None):
+        """初始化。
+
+        Args:
+            container: container 参数。
+        """
         self._container = container
         self._startup: List[Tuple[str, Callable]] = []
         self._shutdown: List[Tuple[str, Callable]] = []
         self._started = False
 
     def register_startup(self, name: str, callback: Callable):
-        """Register a startup callback. Callbacks run in registration order."""
+        """Register a startup callback. Callbacks run in registration order.
+
+        Args:
+            name: name 参数。
+            callback: callback 参数。
+        """
         self._startup.append((name, callback))
 
     def register_shutdown(self, name: str, callback: Callable):
-        """Register a shutdown callback. Callbacks run in reverse registration order."""
+        """Register a shutdown callback. Callbacks run in reverse registration order.
+
+        Args:
+            name: name 参数。
+            callback: callback 参数。
+        """
         self._shutdown.append((name, callback))
 
     async def start(self) -> None:
@@ -66,8 +81,12 @@ class LifecycleManager:
         logger.info("Lifecycle: %d services stopped", len(self._shutdown))
 
     def is_started(self) -> bool:
+        """is_started。
+        """
         return self._started
 
     @property
     def container(self) -> Any:
+        """container。
+        """
         return self._container

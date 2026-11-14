@@ -85,6 +85,7 @@ def audit_hard_floor_escape() -> Dict[str, Any]:
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class ApprovalVerdict(Enum):
+    """ApprovalVerdict。"""
     ALLOW = "allow"
     DENY = "deny"
     ASK = "ask"
@@ -130,6 +131,7 @@ class ApprovalRule:
 
 @dataclass
 class ApprovalGateResult:
+    """ApprovalGateResult。"""
     verdict: ApprovalVerdict
     rule_id: Optional[str] = None
     severity: Optional[ApprovalSeverity] = None
@@ -242,6 +244,8 @@ class ApprovalGate:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._rules: List[ApprovalRule] = []
         self._user_whitelist: Set[str] = set()
         self._session_approved: Dict[str, Set[str]] = {}  # session_id -> {rule_id, ...}
@@ -322,7 +326,11 @@ class ApprovalGate:
     ) -> ApprovalGateResult:
         """Evaluate only hard-floor (CRITICAL) rules.
 
-        Used when PolicyGate has approvals soft-disabled — floors still escalate.
+        Args:
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            user_id: 用户 ID。
+            session_id: 会话 ID。
         """
         # Re-evaluate escape each call so UNTIL expiry auto-restores mid-process (P0-2).
         if is_hard_floor_escape_active():
@@ -455,12 +463,14 @@ class ApprovalGate:
         *,
         auto_approve: bool = False,
     ) -> ApprovalGateResult:
-        """
-        Check if a tool call requires approval.
+        """Check if a tool call requires approval.
 
-        ``auto_approve=True`` may waive MEDIUM (and session-cached HIGH) but never
-        CRITICAL hard floors. Soft-disable (``_disabled``) skips non-floor rules
-        only; floors still ASK unless ``AIPLAT_HARD_FLOOR_DISABLED``.
+        Args:
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            user_id: 用户 ID。
+            session_id: 会话 ID。
+            auto_approve: auto_approve 参数。
         """
         args = tool_args or {}
 
@@ -558,7 +568,12 @@ class ApprovalGate:
         return ApprovalGateResult(verdict=ApprovalVerdict.ALLOW, approval_source=APPROVAL_SOURCE_NONE)
 
     def approve_session_rule(self, session_id: str, rule_id: str) -> bool:
-        """Record session approval. Returns False if rule is a hard floor (rejected)."""
+        """Record session approval. Returns False if rule is a hard floor (rejected).
+
+        Args:
+            session_id: 会话 ID。
+            rule_id: rule 标识。
+        """
         for rule in self._rules:
             if rule.rule_id == rule_id and (
                 rule.hard_floor or rule.severity == ApprovalSeverity.CRITICAL
@@ -573,21 +588,34 @@ class ApprovalGate:
         return True
 
     def revoke_session_approval(self, session_id: str, rule_id: Optional[str] = None):
-        """Revoke session-level approval for one or all rules."""
+        """Revoke session-level approval for one or all rules.
+
+        Args:
+            session_id: 会话 ID。
+            rule_id: rule 标识。
+        """
         if rule_id is None:
             self._session_approved.pop(session_id, None)
         elif session_id in self._session_approved:
             self._session_approved[session_id].discard(rule_id)
 
     def add_rule(self, rule: ApprovalRule):
-        """Programmatically add a custom approval rule."""
+        """Programmatically add a custom approval rule.
+
+        Args:
+            rule: rule 参数。
+        """
         if rule.severity == ApprovalSeverity.CRITICAL:
             rule.hard_floor = True
             rule.allow_if_session_approved = False
         self._rules.append(rule)
 
     def remove_rule(self, rule_id: str):
-        """Remove a rule by rule_id."""
+        """Remove a rule by rule_id.
+
+        Args:
+            rule_id: rule 标识。
+        """
         self._rules = [r for r in self._rules if r.rule_id != rule_id]
 
     def list_rules(self) -> List[Dict[str, Any]]:
@@ -628,7 +656,16 @@ def build_approval_provenance(
     risk_class: Optional[str] = None,
     reason: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Stable audit payload: who/why an action was gated or allowed."""
+    """Stable audit payload: who/why an action was gated or allowed.
+
+    Args:
+        source: source 参数。
+        rule_id: rule 标识。
+        severity: severity 参数。
+        hard_floor: hard_floor 参数。
+        risk_class: risk_class 参数。
+        reason: reason 参数。
+    """
     return {
         "source": source or APPROVAL_SOURCE_NONE,
         "rule_id": rule_id,

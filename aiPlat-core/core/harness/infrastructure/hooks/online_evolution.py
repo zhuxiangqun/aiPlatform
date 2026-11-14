@@ -32,15 +32,24 @@ class OnlineEvolution:
     """POST_LOOP Hook — 增量进化触发."""
 
     def __init__(self):
+        """初始化。
+        """
         self._enabled = os.getenv("AIPLAT_ONLINE_EVOLUTION_ENABLED", "true").lower() in ("1", "true", "yes")
         self._last_run_ts: float = 0.0
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     async def on_post_loop(self, state: Dict[str, Any], context: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
-        """POST_LOOP: check trigger conditions and spawn lightweight evolution."""
+        """POST_LOOP: check trigger conditions and spawn lightweight evolution.
+
+        Args:
+            state: state 参数。
+            context: context 参数。
+        """
         import asyncio
 
         if not self._enabled:

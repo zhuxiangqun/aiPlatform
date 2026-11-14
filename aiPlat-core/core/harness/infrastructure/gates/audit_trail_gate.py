@@ -68,16 +68,12 @@ class AuditTrailGate:
 
         """Extract reasoning_path, match against domain audit_rules, persist.
 
-
-
-        Short-circuits (returns None) when:
-
-          - result is not successful
-
-          - result has no reasoning_path or decision metadata
-
-          - result is a trivial/working_only bypass
-
+        Args:
+            result: result 参数。
+            domain_id: domain 标识。
+            agent_id: Agent ID。
+            tenant_id: 租户 ID。
+            session_id: 会话 ID。
         """
 
         # Triple short-circuit: success, has reasoning, not trivial

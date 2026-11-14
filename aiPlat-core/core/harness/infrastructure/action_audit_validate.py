@@ -41,16 +41,24 @@ PLATFORM_TRACKING_DOMAINS = frozenset({"fde-delivery", "platform"})
 
 
 class ActionNamespace(str, Enum):
+    """ActionNamespace。"""
     CUSTOMER = "customer_action"
     PLATFORM = "platform_action"
 
 
 def default_audit_schema_path() -> Path:
+    """default_audit_schema_path。
+    """
     return Path(__file__).resolve().parent.parent / "schemas" / "audit_schema.v1.yaml"
 
 
 @lru_cache(maxsize=4)
 def load_audit_schema(path: Optional[str] = None) -> Dict[str, Any]:
+    """load_audit_schema。
+
+    Args:
+        path: 路径。
+    """
     p = Path(path) if path else default_audit_schema_path()
     with p.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
@@ -58,6 +66,11 @@ def load_audit_schema(path: Optional[str] = None) -> Dict[str, Any]:
 
 
 def eval_gate_ids(schema: Optional[Dict[str, Any]] = None) -> Set[str]:
+    """eval_gate_ids。
+
+    Args:
+        schema: schema 参数。
+    """
     sch = schema or load_audit_schema()
     gates = (sch.get("eval_gate") or {}).get("gates") or {}
     return set(gates.keys())
@@ -75,7 +88,14 @@ def validate_action_contract(
 ) -> None:
     """Raise ValueError if contract violates audit_schema / FDE workbench rules.
 
-    Legacy contracts with empty action_namespace are skipped (transition period).
+    Args:
+        action_id: action 标识。
+        action_namespace: action_namespace 参数。
+        domain_id: domain 标识。
+        eval_gate: eval_gate 参数。
+        risk_level: risk_level 参数。
+        require_approval: require_approval 参数。
+        schema: schema 参数。
     """
     if not action_namespace:
         return
@@ -126,6 +146,11 @@ def validate_action_contract(
 
 
 def hash_params(params: Dict[str, Any]) -> str:
+    """hash_params。
+
+    Args:
+        params: params 参数。
+    """
     normalized = json.dumps(params, sort_keys=True, ensure_ascii=False, default=str)
     return "sha256:" + hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -153,7 +178,30 @@ def build_audit_record(
     rollback_ref: str = "",
     retention: str = "",
 ) -> Dict[str, Any]:
-    """Build an audit_schema.v1 record and validate core fields present."""
+    """Build an audit_schema.v1 record and validate core fields present.
+
+    Args:
+        audit_id: audit 标识。
+        timestamp: timestamp 参数。
+        actor_type: actor_type 参数。
+        actor_id: actor 标识。
+        action_namespace: action_namespace 参数。
+        action_name: action_name 参数。
+        domain_id: domain 标识。
+        target_entity_type: target_entity_type 参数。
+        target_entity_id: target_entity 标识。
+        params: params 参数。
+        before_state_snapshot: before_state_snapshot 参数。
+        after_state_snapshot: after_state_snapshot 参数。
+        result_status: result_status 参数。
+        policy_gate_decision: policy_gate_decision 参数。
+        approver_id: approver 标识。
+        result_message: result_message 参数。
+        pipeline_run_id: pipeline_run 标识。
+        evidence_ref: evidence_ref 参数。
+        rollback_ref: rollback_ref 参数。
+        retention: retention 参数。
+    """
     if not retention:
         retention = (
             "permanent"
@@ -194,7 +242,11 @@ def build_audit_record(
 
 
 def map_audit_to_action_store(record: Dict[str, Any]) -> Dict[str, Any]:
-    """Map audit_schema.v1 → ActionStore.insert_audit columns (Phase 1 embed)."""
+    """Map audit_schema.v1 → ActionStore.insert_audit columns (Phase 1 embed).
+
+    Args:
+        record: record 参数。
+    """
     return {
         "audit_id": record.get("audit_id"),
         "action_id": record.get("action_name"),
@@ -289,8 +341,9 @@ def classify_audit_fields(
 ) -> Dict[str, Dict[str, str]]:
     """Classify each audit_schema.v1 field as present / embedded / missing.
 
-    Phase 1 strategy prefers embedded over missing; PHASE2_ADD_COLUMNS are
-    reported as embedded (via params) with optional_add_column metadata.
+    Args:
+        columns: columns 参数。
+        schema: schema 参数。
     """
     cols = columns if columns is not None else set(ACTION_AUDIT_COLUMNS)
     sch = schema or load_audit_schema()
@@ -323,7 +376,11 @@ def classify_audit_fields(
 
 
 def build_add_column_sql(classification: Optional[Dict[str, Dict[str, str]]] = None) -> List[str]:
-    """Generate ADD COLUMN NULL statements for Phase 2 optional columns."""
+    """Generate ADD COLUMN NULL statements for Phase 2 optional columns.
+
+    Args:
+        classification: classification 参数。
+    """
     clf = classification or classify_audit_fields()
     stmts: List[str] = []
     seen: Set[str] = set()
@@ -340,7 +397,11 @@ def build_add_column_sql(classification: Optional[Dict[str, Dict[str, str]]] = N
 
 
 def build_rollback_sql(add_stmts: Optional[List[str]] = None) -> List[str]:
-    """Pair DROP COLUMN rollback for each ADD (SQLite 3.35+)."""
+    """Pair DROP COLUMN rollback for each ADD (SQLite 3.35+).
+
+    Args:
+        add_stmts: add_stmts 参数。
+    """
     stmts = add_stmts if add_stmts is not None else build_add_column_sql()
     out: List[str] = []
     for s in stmts:
@@ -360,7 +421,12 @@ def render_mapping_report(
     *,
     columns: Optional[Set[str]] = None,
 ) -> str:
-    """Markdown report for docs/contracts/audit_mapping_report.md."""
+    """Markdown report for docs/contracts/audit_mapping_report.md.
+
+    Args:
+        classification: classification 参数。
+        columns: columns 参数。
+    """
     clf = classification or classify_audit_fields(columns=columns)
     present = [k for k, v in clf.items() if v.get("status") == "present"]
     embedded = [k for k, v in clf.items() if v.get("status") == "embedded"]
@@ -415,7 +481,11 @@ def render_mapping_report(
 
 
 def load_change_surface_whitelist(schema: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Load change_surface_whitelist from audit_schema.v1 (loadable YAML, not hardcode)."""
+    """Load change_surface_whitelist from audit_schema.v1 (loadable YAML, not hardcode).
+
+    Args:
+        schema: schema 参数。
+    """
     sch = schema or load_audit_schema()
     wl = sch.get("change_surface_whitelist") or {}
     return {
@@ -436,7 +506,12 @@ def check_change_surface(
     keys: List[str],
     schema: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Return {ok, violations, action}. Keys outside whitelist → HITL (on_violation)."""
+    """Return {ok, violations, action}. Keys outside whitelist → HITL (on_violation).
+
+    Args:
+        keys: keys 参数。
+        schema: schema 参数。
+    """
     wl = load_change_surface_whitelist(schema)
     allowed = wl["allowed_keys"]
     forbidden = wl["forbidden_keys"]

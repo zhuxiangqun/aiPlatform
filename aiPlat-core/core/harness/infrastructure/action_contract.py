@@ -24,12 +24,14 @@ from pydantic import BaseModel, Field, field_validator
 # ═══════════════════════════════════════════════════════════
 
 class ActionScope(str, Enum):
+    """ActionScope。"""
     DOMAIN = "domain"
     CROSS_DOMAIN = "cross_domain"
     GLOBAL = "global"
 
 
 class ActionCategory(str, Enum):
+    """ActionCategory。"""
     MUTATION = "mutation"
     NOTIFICATION = "notification"
     REVIEW = "review"
@@ -38,6 +40,7 @@ class ActionCategory(str, Enum):
 
 
 class FailureStrategy(str, Enum):
+    """FailureStrategy。"""
     LOG_ONLY = "log_only"
     RETRY = "retry"
     BLOCK = "block_state_transition"
@@ -45,6 +48,7 @@ class FailureStrategy(str, Enum):
 
 
 class RiskLevel(str, Enum):
+    """RiskLevel。"""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -211,7 +215,11 @@ class ActionContractModel(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str) -> "ActionContractModel":
-        """Load from YAML file (path-whitelist sandbox)."""
+        """Load from YAML file (path-whitelist sandbox).
+
+        Args:
+            path: 路径。
+        """
         real_path = os.path.realpath(os.path.expanduser(path))
 
         ALLOWED_DIRS = _yaml_allowed_dirs()
@@ -250,7 +258,11 @@ class ActionContractModel(BaseModel):
 
     @classmethod
     def from_yaml_batch(cls, path: str) -> List["ActionContractModel"]:
-        """Load multiple actions from a YAML file (batch mode)."""
+        """Load multiple actions from a YAML file (batch mode).
+
+        Args:
+            path: 路径。
+        """
         real_path = os.path.realpath(os.path.expanduser(path))
 
         ALLOWED_DIRS = _yaml_allowed_dirs()

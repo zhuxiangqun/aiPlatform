@@ -13,6 +13,7 @@ _log = logging.getLogger(__name__)
 
 
 class RiskClass(str, Enum):
+    """RiskClass。"""
     READ = "read"  # no side effects
     EGRESS = "egress"  # network / outbound data channel
     WRITE_LOCAL = "write_local"  # mutates workspace
@@ -53,11 +54,21 @@ RiskOverrides = Callable[[str], Optional[RiskClass]]
 
 
 def strictness(rc: RiskClass) -> int:
+    """strictness。
+
+    Args:
+        rc: rc 参数。
+    """
     return _STRICTNESS.get(rc, 0)
 
 
 def cannot_relax(base: RiskClass, override: RiskClass) -> bool:
-    """True if override is strictly tighter or equal (allowed)."""
+    """True if override is strictly tighter or equal (allowed).
+
+    Args:
+        base: base 参数。
+        override: override 参数。
+    """
     return strictness(override) >= strictness(base)
 
 
@@ -69,8 +80,10 @@ def classify(
 ) -> RiskClass:
     """Resolve effective risk for a tool name.
 
-    Order: override (tighten-only) → exact base → glob-ish prefix_* → metadata
-    ``requires_approval`` / ``risk_class`` → READ default.
+    Args:
+        tool_name: tool_name 参数。
+        metadata: metadata 参数。
+        overrides: overrides 参数。
     """
     name = str(tool_name or "").strip()
     base = _lookup_base(name)
@@ -109,7 +122,12 @@ def _lookup_base(name: str) -> RiskClass:
 
 
 def register_risk(tool_name: str, risk: RiskClass) -> None:
-    """Register or tighten a built-in mapping (tests / plugins)."""
+    """Register or tighten a built-in mapping (tests / plugins).
+
+    Args:
+        tool_name: tool_name 参数。
+        risk: risk 参数。
+    """
     existing = _BASE.get(tool_name)
     if existing is not None and not cannot_relax(existing, risk):
         raise ValueError(
@@ -119,5 +137,9 @@ def register_risk(tool_name: str, risk: RiskClass) -> None:
 
 
 def is_hard_floor_risk(rc: RiskClass) -> bool:
-    """EXEC and WRITE_LOCAL crown jewels — always human-gated when matched CRITICAL."""
+    """EXEC and WRITE_LOCAL crown jewels — always human-gated when matched CRITICAL.
+
+    Args:
+        rc: rc 参数。
+    """
     return rc in (RiskClass.EXEC, RiskClass.WRITE_LOCAL, RiskClass.EXTERNAL)

@@ -22,6 +22,11 @@ class RuleValidator:
     """Domain-specific rule checker powered by inference_rules in YAML."""
 
     def __init__(self, domain_id: str):
+        """初始化。
+
+        Args:
+            domain_id: domain 标识。
+        """
         self.domain_id = domain_id
         self.rules = self._load_rules()
 
@@ -42,7 +47,10 @@ class RuleValidator:
     ) -> Dict[str, Any]:
         """Check if a state transition violates any inference_rules.
 
-        Returns: {valid: bool, conflicts: [{rule, reason}], constraint_type: "rule"}
+        Args:
+            entity_id: entity 标识。
+            from_state: from_state 参数。
+            to_state: to_state 参数。
         """
         conflicts: List[Dict[str, str]] = []
 

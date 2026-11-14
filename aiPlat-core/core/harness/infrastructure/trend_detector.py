@@ -34,6 +34,7 @@ logger = logging.getLogger("aiplat.trends")
 # ═══════════════════════════════════════════════════════════
 
 class AlertState(Enum):
+    """AlertState。"""
     NORMAL = "normal"
     ALERTING = "alerting"
     HIGH_ALERT = "high_alert"
@@ -41,6 +42,7 @@ class AlertState(Enum):
 
 
 class AlertLevel(Enum):
+    """AlertLevel。"""
     INFO = "info"
     WARN = "warn"
     CRITICAL = "critical"
@@ -52,6 +54,7 @@ class AlertLevel(Enum):
 
 @dataclass
 class EntropyAlert:
+    """EntropyAlert。"""
     error_type: str
     current_std: float
     baseline_std: float
@@ -62,6 +65,7 @@ class EntropyAlert:
 
 @dataclass
 class EntropyBucket:
+    """EntropyBucket。"""
     window_start: float
     window_end: float
     total_calls: int
@@ -88,11 +92,17 @@ class TrendBuffer:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._lock = asyncio.Lock()
         self._active: Dict[str, int] = {"__total__": 0}
 
     async def record(self, key: str) -> None:
-        """Record one event for key. Thread-safe under asyncio.Lock."""
+        """Record one event for key. Thread-safe under asyncio.Lock.
+
+        Args:
+            key: key 参数。
+        """
         async with self._lock:
             self._active[key] = self._active.get(key, 0) + 1
             self._active["__total__"] += 1
@@ -155,6 +165,8 @@ class TrendDetector:
     ]
 
     def __init__(self):
+        """初始化。
+        """
         self._buffer = TrendBuffer()
         self._state: Dict[str, AlertState] = {}
         self._consecutive_up: Dict[str, int] = {}
@@ -171,6 +183,8 @@ class TrendDetector:
     # ── Lifecycle ─────────────────────────────────────────
 
     async def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -185,6 +199,8 @@ class TrendDetector:
                      self._interval, self._min_calls)
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task:
             self._task.cancel()
@@ -669,7 +685,11 @@ Hypothesis-driven diagnosis checklist:
         }
 
     def get_alert_history(self, limit: int = 20) -> Dict[str, Any]:
-        """Return recent alert records from SQLite."""
+        """Return recent alert records from SQLite.
+
+        Args:
+            limit: 返回条数上限。
+        """
         conn = _get_db()
         try:
             conn.row_factory = sqlite3.Row
@@ -694,6 +714,8 @@ _trend_detector: Optional[TrendDetector] = None
 
 
 def get_trend_detector() -> TrendDetector:
+    """获取 trend_detector。
+    """
     global _trend_detector
     if _trend_detector is None:
         _trend_detector = TrendDetector()

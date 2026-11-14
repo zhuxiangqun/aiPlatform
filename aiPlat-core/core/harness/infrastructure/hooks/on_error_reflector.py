@@ -27,6 +27,8 @@ class OnErrorReflector:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._consecutive_errors: int = 0
         self._max_reflect_retries: int = 2
         self._reflect_count: int = 0
@@ -37,6 +39,8 @@ class OnErrorReflector:
 
     @property
     def name(self) -> str:
+        """name。
+        """
         return "OnErrorReflector"
 
     @staticmethod
@@ -180,4 +184,6 @@ class OnErrorReflector:
 # ── Factory ─────────────────────────────────────────────────────────────
 
 def create_on_error_reflector() -> OnErrorReflector:
+    """创建 on_error_reflector。
+    """
     return OnErrorReflector()

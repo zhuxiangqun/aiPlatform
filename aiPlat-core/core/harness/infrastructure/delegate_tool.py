@@ -81,6 +81,8 @@ class DelegateManager:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._stats = DelegateStats()
         self._active_delegations: Dict[str, int] = {}  # subagent_name → active_count
         self._max_concurrent: int = 5
@@ -88,8 +90,10 @@ class DelegateManager:
         self._disabled: bool = os.getenv("AIPLAT_DELEGATE_DISABLED", "false").lower() in ("1", "true", "yes")
 
     async def delegate(self, config: DelegateConfig) -> DelegateResult:
-        """
-        Delegate a task to a sub-agent with full lifecycle management.
+        """Delegate a task to a sub-agent with full lifecycle management.
+
+        Args:
+            config: config 参数。
         """
         if self._disabled:
             return DelegateResult(
@@ -145,12 +149,20 @@ class DelegateManager:
             )
 
     async def delegate_parallel(self, configs: List[DelegateConfig]) -> List[DelegateResult]:
-        """Execute multiple delegations in parallel (FanOut pattern)."""
+        """Execute multiple delegations in parallel (FanOut pattern).
+
+        Args:
+            configs: configs 参数。
+        """
         tasks = [self.delegate(cfg) for cfg in configs]
         return await asyncio.gather(*tasks, return_exceptions=False)
 
     async def delegate_sequential(self, configs: List[DelegateConfig]) -> List[DelegateResult]:
-        """Execute multiple delegations sequentially (Pipeline pattern)."""
+        """Execute multiple delegations sequentially (Pipeline pattern).
+
+        Args:
+            configs: configs 参数。
+        """
         results: List[DelegateResult] = []
         for cfg in configs:
             results.append(await self.delegate(cfg))
@@ -158,10 +170,11 @@ class DelegateManager:
 
     async def delegate_coordinated(self, configs: List[DelegateConfig],
                                    aggregator_task: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Execute delegation in coordinated mode: parallel sub-agents + optional aggregation.
+        """Execute delegation in coordinated mode: parallel sub-agents + optional aggregation.
 
-        Returns: { "results": [...], "aggregated_output": "..." }
+        Args:
+            configs: configs 参数。
+            aggregator_task: aggregator_task 参数。
         """
         results = await self.delegate_parallel(configs)
         successful = [r for r in results if r.success]

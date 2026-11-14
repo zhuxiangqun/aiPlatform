@@ -16,7 +16,10 @@ from core.harness.memory.compression import ContextCompression, ContextState
 
 
 class ContextGate:
+    """ContextGate。"""
     def __init__(self) -> None:
+        """初始化。
+        """
         self._compression = ContextCompression()
         self._enabled = os.getenv("AIPLAT_CONTEXT_GATE_COMPRESSION", "true").lower() in (
             "1", "true", "yes", "y",
@@ -31,8 +34,9 @@ class ContextGate:
     def prepare_llm_args(self, prompt: Any, *, context: Dict[str, Any] | None = None) -> Any:
         """Apply pre-context validation, then truncation guardrail and compression check.
 
-        Pre-validation: dedup, staleness check, conflict detection before
-        sending to the model. Reduces redundant token spend.
+        Args:
+            prompt: prompt 参数。
+            context: context 参数。
         """
         # Pre-context validation (dedup, staleness, conflicts)
         if isinstance(prompt, list) and self._enabled:
@@ -97,8 +101,10 @@ class ContextGate:
     def should_compress(self, token_usage: int, token_limit: int, message_count: int) -> bool:
         """Check whether context should be compressed at current usage level.
 
-        Delegates to ContextCompression.should_trigger_compression.
-        Returns True when usage ratio reaches the NORMAL threshold (85%).
+        Args:
+            token_usage: token_usage 参数。
+            token_limit: token_limit 参数。
+            message_count: message_count 参数。
         """
         if not self._enabled:
             return False
@@ -118,7 +124,11 @@ class ContextGate:
     ) -> List[Dict[str, Any]]:
         """Apply 5-level progressive compression to messages.
 
-        Delegates to ContextCompression.compress().
+        Args:
+            messages: messages 参数。
+            token_usage: token_usage 参数。
+            token_limit: token_limit 参数。
+            message_count: message_count 参数。
         """
         if not self._enabled:
             return messages
@@ -131,8 +141,10 @@ class ContextGate:
 
     def prepare_tool_args(self, args: Dict[str, Any], *, context: Dict[str, Any] | None = None) -> Dict[str, Any]:
         """Validate and sanitize tool arguments before execution.
-        
-        Applies: type validation, size limits, injection pattern detection.
+
+        Args:
+            args: args 参数。
+            context: context 参数。
         """
         if not isinstance(args, dict):
             return {}
@@ -157,11 +169,9 @@ class ContextGate:
     def apply_profile(self, messages: List[Dict[str, Any]], profile: str = "code") -> List[Dict[str, Any]]:
         """Apply context profile strategy — control what the model sees.
 
-        Profiles:
-          "minimal"  — keep system prompt only, strip all other content bodies
-          "code"     — keep function signatures + imports, compress bodies
-          "debug"    — keep recent changes (last 3) + error messages, compress rest
-          "deep"     — full context, no compression beyond dedup
+        Args:
+            messages: messages 参数。
+            profile: 评测 profile。
         """
         if not messages or profile == "deep":
             return messages
@@ -295,6 +305,8 @@ class ContextGate:
                (stripped.startswith('[') and stripped.endswith(']'))
 
     def get_stats(self) -> dict:
+        """获取 stats。
+        """
         return {
             "total_validations": self._total_validations,
             "total_dedup_removed": self._total_dedup_removed,

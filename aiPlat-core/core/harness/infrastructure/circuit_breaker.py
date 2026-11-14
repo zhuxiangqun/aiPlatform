@@ -44,6 +44,13 @@ class BaseCircuitBreaker:
         *,
         name: str = "circuit_breaker",
     ):
+        """初始化。
+
+        Args:
+            failure_threshold: failure_threshold 参数。
+            recovery_timeout: recovery_timeout 参数。
+            name: name 参数。
+        """
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.name = name
@@ -114,12 +121,18 @@ class BaseCircuitBreaker:
     # ── Backward-compatible aliases ──
 
     def allow_request(self) -> bool:
+        """allow_request。
+        """
         return self.allow()
 
     def record_success(self):
+        """record_success。
+        """
         self.success()
 
     def record_failure(self):
+        """record_failure。
+        """
         self.failure()
 
     # ── Hooks for subclasses ──

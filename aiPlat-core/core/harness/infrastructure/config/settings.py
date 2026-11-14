@@ -40,15 +40,29 @@ class Settings:
     extra: Dict[str, Any] = field(default_factory=dict)
     
     def get(self, key: str, default: Any = None) -> Any:
-        """Get setting value"""
+        """Get setting value。
+
+        Args:
+            key: key 参数。
+            default: default 参数。
+        """
         return getattr(self, key, default)
     
     def set(self, key: str, value: Any) -> None:
-        """Set setting value"""
+        """Set setting value。
+
+        Args:
+            key: key 参数。
+            value: value 参数。
+        """
         setattr(self, key, value)
     
     def update(self, config: Dict[str, Any]) -> None:
-        """Update settings from dict"""
+        """Update settings from dict。
+
+        Args:
+            config: config 参数。
+        """
         for key, value in config.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -77,7 +91,11 @@ class IConfigLoader(ABC):
     
     @abstractmethod
     def save(self, settings: Settings) -> None:
-        """Save configuration"""
+        """Save configuration。
+
+        Args:
+            settings: settings 参数。
+        """
         pass
 
 
@@ -121,7 +139,11 @@ class EnvConfigLoader(IConfigLoader):
         return settings
     
     def save(self, settings: Settings) -> None:
-        """Save settings to environment (no-op)"""
+        """Save settings to environment (no-op)。
+
+        Args:
+            settings: settings 参数。
+        """
         pass
 
 
@@ -131,6 +153,11 @@ class JSONConfigLoader(IConfigLoader):
     """
     
     def __init__(self, config_path: str = "config.json"):
+        """初始化。
+
+        Args:
+            config_path: config_path 参数。
+        """
         self._config_path = Path(config_path)
     
     def load(self) -> Settings:
@@ -146,7 +173,11 @@ class JSONConfigLoader(IConfigLoader):
         return settings
     
     def save(self, settings: Settings) -> None:
-        """Save settings to JSON file"""
+        """Save settings to JSON file。
+
+        Args:
+            settings: settings 参数。
+        """
         self._config_path.parent.mkdir(parents=True, exist_ok=True)
         
         with open(self._config_path, "w") as f:
@@ -159,6 +190,11 @@ class YAMLConfigLoader(IConfigLoader):
     """
     
     def __init__(self, config_path: str = "config.yaml"):
+        """初始化。
+
+        Args:
+            config_path: config_path 参数。
+        """
         self._config_path = Path(config_path)
     
     def load(self) -> Settings:
@@ -178,7 +214,11 @@ class YAMLConfigLoader(IConfigLoader):
             return Settings()
     
     def save(self, settings: Settings) -> None:
-        """Save settings to YAML file"""
+        """Save settings to YAML file。
+
+        Args:
+            settings: settings 参数。
+        """
         try:
             import yaml
             self._config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -195,6 +235,8 @@ class ConfigManager:
     """
     
     def __init__(self):
+        """初始化。
+        """
         self._settings = Settings()
         self._loaders: list[IConfigLoader] = [
             EnvConfigLoader(),
@@ -218,7 +260,11 @@ class ConfigManager:
         return self._settings
     
     def update(self, config: Dict[str, Any]) -> None:
-        """Update settings"""
+        """Update settings。
+
+        Args:
+            config: config 参数。
+        """
         self._settings.update(config)
 
 

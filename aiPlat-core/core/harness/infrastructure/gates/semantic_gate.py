@@ -28,12 +28,15 @@ logger = logging.getLogger("aiplat.semantic_gate")
 
 @dataclass
 class Violation:
+    """Violation。"""
     type: str       # "entity_not_found" | "value_out_of_range" | "relation_undefined"
     detail: str     # human-readable description
     severity: str   # "low" | "medium" | "high"
     suggestion: str = ""
 
     def to_dict(self) -> Dict[str, str]:
+        """to_dict。
+        """
         return {
             "type": self.type, "detail": self.detail,
             "severity": self.severity, "suggestion": self.suggestion,
@@ -42,6 +45,7 @@ class Violation:
 
 @dataclass
 class SemanticGateResult:
+    """SemanticGateResult。"""
     valid: bool
     violations: List[Violation] = field(default_factory=list)
     status: str = "pass"  # "pass" | "warn" | "reject"
@@ -81,10 +85,20 @@ class SemanticGate:
     """
 
     def __init__(self, mode: str = "warn"):
+        """初始化。
+
+        Args:
+            mode: mode 参数。
+        """
         self.mode = mode  # "warn" | "audit" | "block"
 
     def verify(self, output: dict, *, domain_id: str = "default") -> SemanticGateResult:
-        """Run all three validation layers against the given domain."""
+        """Run all three validation layers against the given domain.
+
+        Args:
+            output: output 参数。
+            domain_id: domain 标识。
+        """
         import time as _time
         violations: List[Violation] = []
 

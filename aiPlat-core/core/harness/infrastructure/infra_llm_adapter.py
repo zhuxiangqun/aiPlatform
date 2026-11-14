@@ -83,6 +83,13 @@ class InfraLLMAdapter(ILLMAdapter):
 
     def __init__(self, client: LLMClient, *, provider: str = "", model: str = ""):
 
+        """初始化。
+
+        Args:
+            client: client 参数。
+            provider: provider 参数。
+            model: 模型名。
+        """
         self._client = client
 
         self._provider = provider or "openai"
@@ -109,12 +116,16 @@ class InfraLLMAdapter(ILLMAdapter):
 
     def metadata(self) -> AdapterMetadata:
 
+        """metadata。
+        """
         return self._metadata
 
 
 
     async def validate_connection(self) -> bool:
 
+        """validate_connection。
+        """
         try:
 
             resp = await self._client.achat(ChatRequest(
@@ -143,6 +154,12 @@ class InfraLLMAdapter(ILLMAdapter):
 
     ) -> LLMResponse:
 
+        """generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         config = config or self._config
 
         infra_messages = [
@@ -273,6 +290,12 @@ class InfraLLMAdapter(ILLMAdapter):
 
     ) -> AsyncIterator[str]:
 
+        """stream_generate。
+
+        Args:
+            messages: messages 参数。
+            config: config 参数。
+        """
         infra_messages = [
 
             Message(role=m.get("role", "user"), content=m.get("content", ""))
@@ -323,6 +346,11 @@ class InfraLLMAdapter(ILLMAdapter):
 
     async def count_tokens(self, text: str) -> int:
 
+        """count_tokens。
+
+        Args:
+            text: text 参数。
+        """
         return self._client.count_tokens(text)
 
 
@@ -339,5 +367,7 @@ class InfraLLMAdapter(ILLMAdapter):
 
     def get_metrics(self) -> dict:
 
+        """获取 metrics。
+        """
         return self._client.get_metrics()
 

@@ -23,17 +23,32 @@ class EntityLock(ABC):
 
     @abstractmethod
     async def acquire(self, lock_id: str, intent: Literal["mutex", "stake"], ttl: int = 0) -> bool:
-        """Acquire a lock. ttl=0 uses default based on intent (mutex=5s, stake=3600s)."""
+        """Acquire a lock. ttl=0 uses default based on intent (mutex=5s, stake=3600s).
+
+        Args:
+            lock_id: lock 标识。
+            intent: intent 参数。
+            ttl: ttl 参数。
+        """
         ...
 
     @abstractmethod
     async def release(self, lock_id: str) -> None:
-        """Release a lock."""
+        """Release a lock.
+
+        Args:
+            lock_id: lock 标识。
+        """
         ...
 
     @abstractmethod
     async def extend(self, lock_id: str, extra_ttl: int) -> bool:
-        """Extend a lock's TTL. Returns False if lock doesn't exist or expired."""
+        """Extend a lock's TTL. Returns False if lock doesn't exist or expired.
+
+        Args:
+            lock_id: lock 标识。
+            extra_ttl: extra_ttl 参数。
+        """
         ...
 
 
@@ -41,6 +56,8 @@ class AsyncioEntityLock(EntityLock):
     """Single-process lock using asyncio.Lock + expiry timestamps."""
 
     def __init__(self):
+        """初始化。
+        """
         self._locks: Dict[str, asyncio.Lock] = {}
         self._expiry: Dict[str, float] = {}
         self._guard = asyncio.Lock()
@@ -55,6 +72,13 @@ class AsyncioEntityLock(EntityLock):
             del self._expiry[lock_id]
 
     async def acquire(self, lock_id: str, intent: Literal["mutex", "stake"], ttl: int = 0) -> bool:
+        """acquire。
+
+        Args:
+            lock_id: lock 标识。
+            intent: intent 参数。
+            ttl: ttl 参数。
+        """
         if ttl <= 0:
             ttl = 5 if intent == "mutex" else 3600
 
@@ -76,12 +100,23 @@ class AsyncioEntityLock(EntityLock):
             return True
 
     async def release(self, lock_id: str) -> None:
+        """release。
+
+        Args:
+            lock_id: lock 标识。
+        """
         async with self._guard:
             self._locks.pop(lock_id, None)
             self._expiry.pop(lock_id, None)
             logger.debug("Lock %s released", lock_id)
 
     async def extend(self, lock_id: str, extra_ttl: int) -> bool:
+        """extend。
+
+        Args:
+            lock_id: lock 标识。
+            extra_ttl: extra_ttl 参数。
+        """
         async with self._guard:
             if lock_id not in self._locks or self._is_expired(lock_id):
                 return False

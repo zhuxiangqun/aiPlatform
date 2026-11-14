@@ -77,6 +77,7 @@ RULES:
 
 
 class ReviewerVerdict(str, Enum):
+    """ReviewerVerdict。"""
     ALLOW = "allow"
     DENY = "deny"
     UNSURE = "unsure"
@@ -84,6 +85,7 @@ class ReviewerVerdict(str, Enum):
 
 @dataclass
 class ReviewerResult:
+    """ReviewerResult。"""
     verdict: ReviewerVerdict = ReviewerVerdict.UNSURE
     reason: str = ""
     source: str = APPROVAL_SOURCE_REVIEWER_UNSURE
@@ -92,6 +94,8 @@ class ReviewerResult:
     circuit_open: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "verdict": self.verdict.value,
             "reason": self.reason,
@@ -105,7 +109,11 @@ ReviewFn = Callable[..., Awaitable[ReviewerResult]]
 
 
 def reviewer_enabled(tool_args: Optional[dict] = None) -> bool:
-    """Master switch: env OR per-call flag; still requires auto path at call-site."""
+    """Master switch: env OR per-call flag; still requires auto path at call-site.
+
+    Args:
+        tool_args: tool_args 参数。
+    """
     args = tool_args if isinstance(tool_args, dict) else {}
     if str(args.get("_approval_reviewer") or "").strip().lower() in ("1", "true", "yes", "on"):
         return True
@@ -113,7 +121,12 @@ def reviewer_enabled(tool_args: Optional[dict] = None) -> bool:
 
 
 def redact_tool_args(tool_args: Optional[dict], *, limit: int = 600) -> Dict[str, Any]:
-    """Drop secrets and large body fields; truncate remaining values."""
+    """Drop secrets and large body fields; truncate remaining values.
+
+    Args:
+        tool_args: tool_args 参数。
+        limit: 返回条数上限。
+    """
     if not isinstance(tool_args, dict):
         return {}
     out: Dict[str, Any] = {}
@@ -154,7 +167,12 @@ def resolve_task_context(
     tool_args: Optional[dict] = None,
     extra: Optional[dict] = None,
 ) -> str:
-    """Owner task / goal for the reviewer (pi-warden style scope), truncated."""
+    """Owner task / goal for the reviewer (pi-warden style scope), truncated.
+
+    Args:
+        tool_args: tool_args 参数。
+        extra: extra 参数。
+    """
     blobs: List[str] = []
     for src in (extra, tool_args):
         if not isinstance(src, dict):
@@ -173,7 +191,11 @@ def _owner_goal(tool_args: Optional[dict]) -> str:
 
 
 def task_context_required(risk_class: Optional[str]) -> bool:
-    """Consequential tools need a task string before the reviewer may ALLOW."""
+    """Consequential tools need a task string before the reviewer may ALLOW.
+
+    Args:
+        risk_class: risk_class 参数。
+    """
     if os.getenv("AIPLAT_REVIEWER_REQUIRE_TASK", "1").strip().lower() in (
         "0",
         "false",
@@ -268,6 +290,11 @@ _review_override: Optional[ReviewFn] = None
 
 
 def set_review_fn_for_tests(fn: Optional[ReviewFn]) -> None:
+    """set_review_fn_for_tests。
+
+    Args:
+        fn: fn 参数。
+    """
     global _review_override
     _review_override = fn
 
@@ -343,8 +370,13 @@ async def review_proposed_action(
 ) -> ReviewerResult:
     """Review one ASK-level action. Hard floors short-circuit to unsure (caller must not allow).
 
-    Consequential risk classes without an owner task short-circuit to unsure
-    (no LLM call) — same command must not auto-allow under an unknown goal.
+    Args:
+        tool_name: tool_name 参数。
+        tool_args: tool_args 参数。
+        gate_message: gate_message 参数。
+        hard_floor: hard_floor 参数。
+        session_id: 会话 ID。
+        risk_class: risk_class 参数。
     """
     if hard_floor:
         return ReviewerResult(

@@ -26,12 +26,14 @@ logger = logging.getLogger(__name__)
 # ── Enums ────────────────────────────────────────────────────────────────────
 
 class GatewayChannel(Enum):
+    """GatewayChannel。"""
     FEISHU = "feishu"
     WECOM = "wecom"
     SLACK = "slack"
 
 
 class MessageLevel(Enum):
+    """MessageLevel。"""
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -53,6 +55,7 @@ class GatewayMessage:
 
 @dataclass
 class SendResult:
+    """SendResult。"""
     success: bool
     channel: GatewayChannel
     error: Optional[str] = None
@@ -66,7 +69,11 @@ class BaseMessagingAdapter(ABC):
 
     @abstractmethod
     async def send(self, message: GatewayMessage) -> SendResult:
-        """Send a message to the channel."""
+        """Send a message to the channel.
+
+        Args:
+            message: message 参数。
+        """
         ...
 
     @abstractmethod
@@ -94,9 +101,13 @@ class FeishuAdapter(BaseMessagingAdapter):
 
     @property
     def channel(self) -> GatewayChannel:
+        """channel。
+        """
         return GatewayChannel.FEISHU
 
     def is_configured(self) -> bool:
+        """is_configured。
+        """
         return bool(os.getenv("AIPLAT_FEISHU_WEBHOOK"))
 
     def _sign(self, timestamp: int) -> Optional[str]:
@@ -112,6 +123,11 @@ class FeishuAdapter(BaseMessagingAdapter):
         return hmac_code.hex()
 
     async def send(self, message: GatewayMessage) -> SendResult:
+        """send。
+
+        Args:
+            message: message 参数。
+        """
         webhook = os.getenv("AIPLAT_FEISHU_WEBHOOK", "")
         if not webhook:
             return SendResult(success=False, channel=GatewayChannel.FEISHU, error="webhook not configured")
@@ -208,12 +224,21 @@ class WeComAdapter(BaseMessagingAdapter):
 
     @property
     def channel(self) -> GatewayChannel:
+        """channel。
+        """
         return GatewayChannel.WECOM
 
     def is_configured(self) -> bool:
+        """is_configured。
+        """
         return bool(os.getenv("AIPLAT_WECOM_WEBHOOK"))
 
     async def send(self, message: GatewayMessage) -> SendResult:
+        """send。
+
+        Args:
+            message: message 参数。
+        """
         webhook = os.getenv("AIPLAT_WECOM_WEBHOOK", "")
         if not webhook:
             return SendResult(success=False, channel=GatewayChannel.WECOM, error="webhook not configured")
@@ -285,12 +310,21 @@ class SlackAdapter(BaseMessagingAdapter):
 
     @property
     def channel(self) -> GatewayChannel:
+        """channel。
+        """
         return GatewayChannel.SLACK
 
     def is_configured(self) -> bool:
+        """is_configured。
+        """
         return bool(os.getenv("AIPLAT_SLACK_BOT_TOKEN") or os.getenv("AIPLAT_SLACK_WEBHOOK"))
 
     async def send(self, message: GatewayMessage) -> SendResult:
+        """send。
+
+        Args:
+            message: message 参数。
+        """
         bot_token = os.getenv("AIPLAT_SLACK_BOT_TOKEN", "")
         webhook = os.getenv("AIPLAT_SLACK_WEBHOOK", "")
         channel = os.getenv("AIPLAT_SLACK_CHANNEL", "#aiplat-alerts")
@@ -371,6 +405,8 @@ class MessagingGateway:
     """
 
     def __init__(self):
+        """初始化。
+        """
         self._adapters: Dict[GatewayChannel, BaseMessagingAdapter] = {}
         self._register_if_configured(GatewayChannel.FEISHU, FeishuAdapter())
         self._register_if_configured(GatewayChannel.WECOM, WeComAdapter())
@@ -384,7 +420,12 @@ class MessagingGateway:
             logger.debug("MessagingGateway: %s adapter not configured", channel.value)
 
     async def send(self, message: GatewayMessage, channel: Optional[GatewayChannel] = None) -> List[SendResult]:
-        """Send to a specific channel, or all if channel=None."""
+        """Send to a specific channel, or all if channel=None.
+
+        Args:
+            message: message 参数。
+            channel: channel 参数。
+        """
         targets = [self._adapters[channel]] if channel else list(self._adapters.values())
         results: List[SendResult] = []
         for adapter in targets:
@@ -396,7 +437,11 @@ class MessagingGateway:
         return results
 
     async def broadcast(self, message: GatewayMessage) -> List[SendResult]:
-        """Send to all configured channels."""
+        """Send to all configured channels.
+
+        Args:
+            message: message 参数。
+        """
         return await self.send(message)
 
     def get_configured_channels(self) -> List[str]:

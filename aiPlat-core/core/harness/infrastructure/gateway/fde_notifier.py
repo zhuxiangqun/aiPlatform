@@ -32,7 +32,13 @@ def notify(
 
 ):
 
-    u"""Send FDE event notification to configured messaging channels."""
+    """Send FDE event notification to configured messaging channels.
+
+    Args:
+        event_type: event_type 参数。
+        domain_id: domain 标识。
+        detail: detail 参数。
+    """
 
     if not _NOTIFY_ENABLED:
 

@@ -56,6 +56,8 @@ class Purpose:
     allowed_roles: Set[str] = field(default_factory=set)         # 允许的角色
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return {
             "purpose_id": self.purpose_id,
             "label": self.label,
@@ -164,6 +166,8 @@ class PurposeRegistry:
     _instance: Optional["PurposeRegistry"] = None
 
     def __init__(self):
+        """初始化。
+        """
         self._purposes: Dict[str, Purpose] = dict(_BUILTIN_PURPOSES)
 
     @classmethod
@@ -174,7 +178,11 @@ class PurposeRegistry:
         return cls._instance
 
     def get(self, purpose_id: str) -> Optional[Purpose]:
-        """获取 Purpose 定义. 默认返回 general."""
+        """获取 Purpose 定义. 默认返回 general.
+
+        Args:
+            purpose_id: purpose 标识。
+        """
         return self._purposes.get(purpose_id) or self._purposes.get("general")
 
     def list_all(self) -> List[Dict[str, Any]]:
@@ -182,7 +190,11 @@ class PurposeRegistry:
         return [p.to_dict() for p in self._purposes.values()]
 
     def register(self, purpose: Purpose) -> None:
-        """注册自定义 Purpose (运行时可扩展)."""
+        """注册自定义 Purpose (运行时可扩展).
+
+        Args:
+            purpose: purpose 参数。
+        """
         self._purposes[purpose.purpose_id] = purpose
         logger.info("Registered purpose: %s", purpose.purpose_id)
 
@@ -196,8 +208,11 @@ class PurposeRegistry:
     ) -> Dict[str, Any]:
         """检查该 Purpose 下是否允许使用指定工具.
 
-        Returns:
-            {"allowed": bool, "reason": str, "require_approval": bool}
+        Args:
+            purpose_id: purpose 标识。
+            tool_name: tool_name 参数。
+            role: role 参数。
+            marking_level: marking_level 参数。
         """
         purpose = self.get(purpose_id)
         if purpose is None:
@@ -238,7 +253,12 @@ class PurposeRegistry:
         purpose_id: str,
         action: str,
     ) -> Dict[str, Any]:
-        """检查该 Purpose 下是否允许执行指定 action."""
+        """检查该 Purpose 下是否允许执行指定 action.
+
+        Args:
+            purpose_id: purpose 标识。
+            action: action 参数。
+        """
         purpose = self.get(purpose_id)
         if purpose is None:
             return {"allowed": False, "reason": f"Unknown purpose: {purpose_id}", "require_approval": False}

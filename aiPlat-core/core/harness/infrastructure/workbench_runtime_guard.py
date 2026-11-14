@@ -22,7 +22,12 @@ class WorkbenchRuntimeGuard:
 
     @staticmethod
     def check_action_registered(registry: Any, action_id: str) -> Dict[str, Any]:
-        """Item 4: refuse unregistered Action ids before execute."""
+        """Item 4: refuse unregistered Action ids before execute.
+
+        Args:
+            registry: registry 参数。
+            action_id: action 标识。
+        """
         get = getattr(registry, "get", None)
         if not callable(get):
             return {"ok": False, "reason": "registry_missing_get", "action_id": action_id}
@@ -40,7 +45,10 @@ class WorkbenchRuntimeGuard:
     ) -> Dict[str, Any]:
         """Item 6: customer_action audits must carry policy_gate_decision (Phase 1 soft).
 
-        Full PolicyGate product surface remains Phase 2; this only asserts the audit shape.
+        Args:
+            action_namespace: action_namespace 参数。
+            policy_gate_decision: policy_gate_decision 参数。
+            skip_if_legacy: skip_if_legacy 参数。
         """
         if skip_if_legacy and not action_namespace:
             return {"ok": True, "skipped": True}
@@ -55,7 +63,11 @@ class WorkbenchRuntimeGuard:
 
     @staticmethod
     def check_kpi_not_stub(payload: Mapping[str, Any]) -> Dict[str, Any]:
-        """Item 9: flag stub KPI keys presented as operational metrics."""
+        """Item 9: flag stub KPI keys presented as operational metrics.
+
+        Args:
+            payload: 载荷 dict。
+        """
         flagged = []
         for key in _STUB_KPI_KEYS:
             if key not in payload:

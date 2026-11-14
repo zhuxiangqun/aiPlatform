@@ -50,12 +50,21 @@ CODEX_TO_PHASE: Dict[str, HookPhase] = {
 
 
 def resolve_phase(event: str, source: str = "cc") -> Optional[HookPhase]:
-    """事件名 → HookPhase；unmapped 返回 None（调用方记录 WARNING，fail-open）。"""
+    """事件名 → HookPhase；unmapped 返回 None（调用方记录 WARNING，fail-open）。
+
+    Args:
+        event: event 参数。
+        source: source 参数。
+    """
     table = CODEX_TO_PHASE if source == "codex" else CC_TO_PHASE
     return table.get(event)
 
 
 def mapped_event_count(source: str = "cc") -> int:
-    """当前 source 的可映射事件数（供测试断言覆盖度）。"""
+    """当前 source 的可映射事件数（供测试断言覆盖度）。
+
+    Args:
+        source: source 参数。
+    """
     table = CODEX_TO_PHASE if source == "codex" else CC_TO_PHASE
     return len(table)

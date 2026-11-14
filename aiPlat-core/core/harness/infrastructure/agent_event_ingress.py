@@ -39,6 +39,12 @@ class AgentEventIngress:
         enabled: bool = False,
         run_agent: Optional[RunAgentFn] = None,
     ):
+        """初始化。
+
+        Args:
+            enabled: 是否启用。
+            run_agent: run_agent 参数。
+        """
         self._enabled = enabled
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -49,6 +55,8 @@ class AgentEventIngress:
 
     @property
     def stats(self) -> Dict[str, Any]:
+        """stats。
+        """
         return {
             "enabled": self._enabled,
             "running": self._running,
@@ -59,6 +67,8 @@ class AgentEventIngress:
         }
 
     async def start(self) -> None:
+        """start。
+        """
         if self._running:
             return
         self._running = True
@@ -73,6 +83,8 @@ class AgentEventIngress:
         )
 
     async def stop(self) -> None:
+        """stop。
+        """
         self._running = False
         if self._task and not self._task.done():
             self._task.cancel()
@@ -209,6 +221,8 @@ _ingress: Optional[AgentEventIngress] = None
 
 
 def get_agent_event_ingress() -> AgentEventIngress:
+    """获取 agent_event_ingress。
+    """
     global _ingress
     if _ingress is None:
         enabled = os.getenv("AIPLAT_AGENT_EVENT_INGRESS", "false").lower() in (

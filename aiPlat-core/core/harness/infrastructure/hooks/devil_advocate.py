@@ -39,11 +39,15 @@ class DevilAdvocate:
     }
 
     def __init__(self):
+        """初始化。
+        """
         self._enabled = os.getenv("AIPLAT_DEVIL_ADVOCATE_ENABLED", "true").lower() in ("1", "true", "yes")
         self._threshold = int(os.getenv("AIPLAT_DA_RISK_THRESHOLD", "3"))
 
     @property
     def enabled(self) -> bool:
+        """enabled。
+        """
         return self._enabled
 
     # ── Risk detection ──────────────────────────────
@@ -87,8 +91,10 @@ class DevilAdvocate:
                       state: Optional[dict] = None) -> Dict[str, Any]:
         """Analyze risks before executing a high-risk action.
 
-        Returns: {"risk_level": 0-5, "warning": str, "mitigation": str}
-        risk_level ≥ threshold → warning should be injected.
+        Args:
+            tool_name: tool_name 参数。
+            planned_action: planned_action 参数。
+            state: state 参数。
         """
         if not self._enabled:
             return {"risk_level": 0, "warning": "", "mitigation": ""}
@@ -152,8 +158,10 @@ class DevilAdvocate:
                          state: dict = None) -> Dict[str, Any]:
         """Hook entry point — called before every tool execution.
 
-        Returns a hint dict to inject into agent context, or empty dict.
-        Never blocks — always returns immediately.
+        Args:
+            tool_name: tool_name 参数。
+            tool_args: tool_args 参数。
+            state: state 参数。
         """
         if not self._enabled:
             return {"continue": True}
@@ -186,6 +194,8 @@ _devil_advocate: Optional[DevilAdvocate] = None
 
 
 def get_devil_advocate() -> DevilAdvocate:
+    """获取 devil_advocate。
+    """
     global _devil_advocate
     if _devil_advocate is None:
         _devil_advocate = DevilAdvocate()

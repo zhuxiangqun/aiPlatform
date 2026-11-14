@@ -60,7 +60,11 @@ class ApprovalRule:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def matches(self, context: "ApprovalContext") -> bool:
-        """Check if this rule matches the given context."""
+        """Check if this rule matches the given context.
+
+        Args:
+            context: context 参数。
+        """
         if not self.enabled:
             return False
         

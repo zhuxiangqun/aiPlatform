@@ -35,6 +35,8 @@ def _get_key() -> Optional[str]:
 
 
 def is_configured() -> bool:
+    """is_configured。
+    """
     return _get_key() is not None
 
 
@@ -48,6 +50,11 @@ def _fernet():
 
 
 def encrypt_str(plaintext: Optional[str]) -> Optional[str]:
+    """encrypt_str。
+
+    Args:
+        plaintext: plaintext 参数。
+    """
     if plaintext is None:
         return None
     if plaintext == "":
@@ -58,6 +65,11 @@ def encrypt_str(plaintext: Optional[str]) -> Optional[str]:
 
 
 def decrypt_str(token: Optional[str]) -> Optional[str]:
+    """decrypt_str。
+
+    Args:
+        token: token 参数。
+    """
     if token is None:
         return None
     if token == "":

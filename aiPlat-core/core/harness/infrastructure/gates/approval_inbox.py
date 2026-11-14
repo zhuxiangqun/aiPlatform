@@ -50,6 +50,11 @@ AUTO_QUESTION_ANSWER = (
 
 
 def normalize_attendance(value: object) -> str:
+    """normalize_attendance。
+
+    Args:
+        value: value 参数。
+    """
     if isinstance(value, bool):
         return INBOX if value else ATTENDED
     text = str(value or "").strip().lower()
@@ -60,6 +65,7 @@ def normalize_attendance(value: object) -> str:
 
 @dataclass
 class InboxItem:
+    """InboxItem。"""
     id: str
     session_id: str
     kind: str
@@ -78,10 +84,17 @@ class InboxItem:
     resolved_by: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
+        """to_dict。
+        """
         return asdict(self)
 
     @classmethod
     def from_dict(cls, raw: Dict[str, Any]) -> "InboxItem":
+        """from_dict。
+
+        Args:
+            raw: raw 参数。
+        """
         known = {f.name for f in cls.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         data = {k: v for k, v in raw.items() if k in known}
         return cls(**data)
@@ -99,6 +112,11 @@ class ApprovalInboxStore:
     """JSON-backed durable wait queue (daemon-safe, process-local lock)."""
 
     def __init__(self, path: Optional[str | Path] = None) -> None:
+        """初始化。
+
+        Args:
+            path: 路径。
+        """
         self.path = Path(path) if path else _default_store_path()
         self._lock = threading.RLock()
         self._attendance: Dict[str, str] = {}
@@ -137,6 +155,12 @@ class ApprovalInboxStore:
         tmp.replace(self.path)
 
     def set_attendance(self, session_id: str, mode: object) -> str:
+        """set_attendance。
+
+        Args:
+            session_id: 会话 ID。
+            mode: mode 参数。
+        """
         sid = str(session_id or "").strip() or "default"
         norm = normalize_attendance(mode)
         with self._lock:
@@ -145,6 +169,11 @@ class ApprovalInboxStore:
         return norm
 
     def get_attendance(self, session_id: str) -> str:
+        """获取 attendance。
+
+        Args:
+            session_id: 会话 ID。
+        """
         sid = str(session_id or "").strip() or "default"
         with self._lock:
             return normalize_attendance(self._attendance.get(sid, ATTENDED))
@@ -163,6 +192,20 @@ class ApprovalInboxStore:
         approval_source: Optional[str] = None,
         visibility: Optional[str] = None,
     ) -> InboxItem:
+        """park。
+
+        Args:
+            session_id: 会话 ID。
+            kind: kind 参数。
+            title: title 参数。
+            body: 请求体。
+            hard_floor: hard_floor 参数。
+            tool_name: tool_name 参数。
+            tool_call_id: tool_call 标识。
+            risk_class: risk_class 参数。
+            approval_source: approval_source 参数。
+            visibility: visibility 参数。
+        """
         sid = str(session_id or "").strip() or "default"
         attendance = self.get_attendance(sid)
         vis = visibility or (VIS_INBOX if attendance in (INBOX, AUTO) else VIS_INLINE)
@@ -220,7 +263,13 @@ class ApprovalInboxStore:
         *,
         resolved_by: str = "",
     ) -> Optional[InboxItem]:
-        """First-responder wins; subsequent resolves are no-ops returning the same item."""
+        """First-responder wins; subsequent resolves are no-ops returning the same item.
+
+        Args:
+            item_id: item 标识。
+            resolution: resolution 参数。
+            resolved_by: resolved_by 参数。
+        """
         with self._lock:
             item = self._items.get(str(item_id))
             if item is None:
@@ -235,6 +284,11 @@ class ApprovalInboxStore:
             return item
 
     def get(self, item_id: str) -> Optional[InboxItem]:
+        """get。
+
+        Args:
+            item_id: item 标识。
+        """
         with self._lock:
             return self._items.get(str(item_id))
 
@@ -246,6 +300,14 @@ class ApprovalInboxStore:
         session_id: Optional[str] = None,
         limit: int = 200,
     ) -> List[Dict[str, Any]]:
+        """列出 items。
+
+        Args:
+            visibility: visibility 参数。
+            pending_only: pending_only 参数。
+            session_id: 会话 ID。
+            limit: 返回条数上限。
+        """
         with self._lock:
             rows = list(self._items.values())
         if session_id:
@@ -263,6 +325,8 @@ _store_lock = threading.Lock()
 
 
 def get_approval_inbox() -> ApprovalInboxStore:
+    """获取 approval_inbox。
+    """
     global _store
     with _store_lock:
         if _store is None:
@@ -285,8 +349,10 @@ def refuse_unattended_self_approve(
 ) -> bool:
     """Return True when caller must NOT auto-approve (park / deny instead).
 
-    Daemon and cron paths: pass attendance=inbox|auto. Hard floors always refuse
-    self-approve under inbox/auto; auto_approve alone never clears a hard floor.
+    Args:
+        hard_floor: hard_floor 参数。
+        attendance: attendance 参数。
+        auto_approve: auto_approve 参数。
     """
     mode = normalize_attendance(attendance)
     if hard_floor and (mode in (INBOX, AUTO) or auto_approve):
@@ -311,7 +377,19 @@ def park_if_unattended(
     approval_source: Optional[str] = None,
     attendance_override: Optional[object] = None,
 ) -> Optional[InboxItem]:
-    """Park when session attendance is inbox/auto (or override). Attended → None."""
+    """Park when session attendance is inbox/auto (or override). Attended → None.
+
+    Args:
+        session_id: 会话 ID。
+        title: title 参数。
+        body: 请求体。
+        hard_floor: hard_floor 参数。
+        tool_name: tool_name 参数。
+        tool_call_id: tool_call 标识。
+        risk_class: risk_class 参数。
+        approval_source: approval_source 参数。
+        attendance_override: attendance_override 参数。
+    """
     store = get_approval_inbox()
     if attendance_override is not None:
         store.set_attendance(session_id, attendance_override)

@@ -33,6 +33,8 @@ class EmailNotifier:
     """FDE 邮件通知器 — 交付告警/验收签收/中止通知等场景。"""
 
     def __init__(self):
+        """初始化。
+        """
         self.host = os.getenv("AIPLAT_SMTP_HOST", "localhost")
         self.port = int(os.getenv("AIPLAT_SMTP_PORT", "587"))
         self.user = os.getenv("AIPLAT_SMTP_USER", "")
@@ -43,7 +45,11 @@ class EmailNotifier:
     def send(self, to: str, subject: str, body: str, html: Optional[str] = None) -> bool:
         """Send an email. Returns True on success, False on failure.
 
-        Falls back to console log when SMTP host is localhost (dev mode).
+        Args:
+            to: to 参数。
+            subject: subject 参数。
+            body: 请求体。
+            html: html 参数。
         """
         if self.host == "localhost":
             _log.info(
@@ -87,6 +93,8 @@ _notifier: Optional[EmailNotifier] = None
 
 
 def get_email_notifier() -> EmailNotifier:
+    """获取 email_notifier。
+    """
     global _notifier
     if _notifier is None:
         _notifier = EmailNotifier()

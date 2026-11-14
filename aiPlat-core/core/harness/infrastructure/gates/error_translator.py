@@ -354,6 +354,17 @@ class BaseErrorTranslator:
 
                  num_messages: int) -> Optional[ClassifiedError]:
 
+        """translate。
+
+        Args:
+            error: error 参数。
+            body: 请求体。
+            status_code: status_code 参数。
+            error_msg: error_msg 参数。
+            approx_tokens: approx_tokens 参数。
+            context_length: context_length 参数。
+            num_messages: num_messages 参数。
+        """
         return None
 
 
@@ -398,6 +409,17 @@ class DeepSeekTranslator(BaseErrorTranslator):
 
         # Format: "max_tokens is too large: 131072, max is 65536" or "max_tokens: 131072 exceeds max: 65536"
 
+        """translate。
+
+        Args:
+            error: error 参数。
+            body: 请求体。
+            status_code: status_code 参数。
+            error_msg: error_msg 参数。
+            approx_tokens: approx_tokens 参数。
+            context_length: context_length 参数。
+            num_messages: num_messages 参数。
+        """
         m = re.search(
 
             r"max\s*(?:is\s+|of\s+|[:=]\s*)(\d{4,7})",
@@ -478,7 +500,11 @@ _PROVIDER_REGISTRY: Dict[str, type] = {
 
 def get_translator(provider: str) -> Optional[type]:
 
-    """Get translator class for a provider. Normalizes aliases."""
+    """Get translator class for a provider. Normalizes aliases.
+
+    Args:
+        provider: provider 参数。
+    """
 
     key = (provider or "").strip().lower()
 
@@ -772,12 +798,13 @@ def classify_api_error(
 
     """Classify an API error with 7-level priority pipeline.
 
-
-
-    Returns ClassifiedError with 4 recovery flags.
-
-    Consumer reads flags — never re-classifies.
-
+    Args:
+        error: error 参数。
+        provider: provider 参数。
+        model: 模型名。
+        approx_tokens: approx_tokens 参数。
+        context_length: context_length 参数。
+        num_messages: num_messages 参数。
     """
 
     status_code = _extract_status_code(error)
@@ -1259,7 +1286,11 @@ _TREND_RECORDER = None  # type: ignore
 
 def set_trend_recorder(fn):
 
-    """Inject recorder for TrendDetector (called at TrendDetector.start())."""
+    """Inject recorder for TrendDetector (called at TrendDetector.start()).
+
+    Args:
+        fn: fn 参数。
+    """
 
     global _TREND_RECORDER
 
@@ -1338,12 +1369,8 @@ def recovery_hint_for(reason: FailoverReason) -> str:
 
     """Map a classified FailoverReason to an actionable, LLM-readable recovery hint.
 
-
-
-    Consumed by sys_tool_call to populate ToolResult.recovery_hint, giving the
-
-    Agent structured guidance instead of an opaque error string.
-
+    Args:
+        reason: reason 参数。
     """
 
     return _RECOVERY_HINTS.get(reason, _RECOVERY_HINTS[FailoverReason.unknown])

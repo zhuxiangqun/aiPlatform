@@ -84,6 +84,11 @@ class ApprovalManager:
 
     def __init__(self, execution_store: Optional[Any] = None):
 
+        """初始化。
+
+        Args:
+            execution_store: execution_store 参数。
+        """
         self._rules: Dict[str, ApprovalRule] = {}
 
         self._requests: Dict[str, ApprovalRequest] = {}
@@ -400,7 +405,11 @@ class ApprovalManager:
 
     def get_rule(self, rule_id: str) -> Optional[ApprovalRule]:
 
-        """Get a rule by ID."""
+        """Get a rule by ID.
+
+        Args:
+            rule_id: rule 标识。
+        """
 
         return self._rules.get(rule_id)
 
@@ -955,10 +964,8 @@ class ApprovalManager:
 
         """Get a request by ID (memory only).
 
-
-
-        Store-backed reads are async; use get_request_async in async code paths.
-
+        Args:
+            request_id: request 标识。
         """
 
         request = self._requests.get(request_id)
@@ -993,7 +1000,11 @@ class ApprovalManager:
 
     async def get_request_async(self, request_id: str) -> Optional[ApprovalRequest]:
 
-        """Get a request by ID (store-backed when available)."""
+        """Get a request by ID (store-backed when available).
+
+        Args:
+            request_id: request 标识。
+        """
 
         request = self._requests.get(request_id)
 
@@ -1089,7 +1100,13 @@ class ApprovalManager:
 
     ) -> List[ApprovalRequest]:
 
-        """Get pending approval requests (store-backed when available)."""
+        """Get pending approval requests (store-backed when available).
+
+        Args:
+            user_id: 用户 ID。
+            rule_type: rule_type 参数。
+            limit: 返回条数上限。
+        """
 
         if self._execution_store:
 

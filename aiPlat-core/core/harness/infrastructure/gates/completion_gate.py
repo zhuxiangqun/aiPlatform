@@ -31,6 +31,7 @@ logger = logging.getLogger("aiplat.completion_gate")
 
 @dataclass
 class ChecklistItem:
+    """ChecklistItem。"""
     item: str       # what is being checked
     verified: bool  # whether it passed
     detail: str = "" # explanation
@@ -38,6 +39,7 @@ class ChecklistItem:
 
 @dataclass
 class CompletionGateResult:
+    """CompletionGateResult。"""
     valid: bool
     status: str = "pass"  # "pass" | "needs_review"
     checklist: List[ChecklistItem] = field(default_factory=list)
@@ -56,6 +58,11 @@ class CompletionChecklistGate:
     """
 
     def __init__(self, llm_threshold: int = None):
+        """初始化。
+
+        Args:
+            llm_threshold: llm_threshold 参数。
+        """
         self._llm_threshold = llm_threshold or int(
             os.getenv("AIPLAT_COMPLETION_GATE_LLM_THRESHOLD", "1")
         )

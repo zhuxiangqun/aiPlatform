@@ -48,8 +48,8 @@ def _config_path() -> Optional[Path]:
 def load_hooks_json(path: Optional[str] = None) -> Dict[str, Any]:
     """解析 CC/Codex hooks.json，返回结构化事件映射。
 
-    :param path: hooks.json 路径；None 时按 env/默认路径探测
-    :return: {"events": {event: [command, ...]}, "source": "cc"/"codex", "unmapped": [...]}
+    Args:
+        path: 路径。
     """
     cfg = None
     if path is not None:
@@ -142,6 +142,15 @@ class CCHookBridge(Hook):
     """把 CC/Codex 外部事件包装成 aiPlat Hook（command handler 执行器）。"""
 
     def __init__(self, name: str, command: str, phase: HookPhase, repo_root: Optional[str] = None, priority: int = 0):
+        """初始化。
+
+        Args:
+            name: name 参数。
+            command: command 参数。
+            phase: phase 参数。
+            repo_root: repo_root 参数。
+            priority: priority 参数。
+        """
         super().__init__(name=name, callback=self._run, phase=phase, priority=priority)
         self.command = command
         self.repo_root = repo_root
@@ -157,7 +166,9 @@ class CCHookBridge(Hook):
 def register_cc_hooks(hook_manager: HookManager, repo_root: Optional[str] = None) -> Dict[str, Any]:
     """解析 hooks.json 并把 command handlers 注册进 HookManager。
 
-    返回统计（loaded/events/unmapped/errors），供启动日志与测试断言。
+    Args:
+        hook_manager: hook_manager 参数。
+        repo_root: repo_root 参数。
     """
     try:
         parsed = load_hooks_json()
@@ -190,7 +201,8 @@ def register_cc_hooks(hook_manager: HookManager, repo_root: Optional[str] = None
 def load_cc_hooks_if_configured(hook_manager: HookManager) -> Dict[str, Any]:
     """HookManager 初始化入口：配置存在时才装载（默认关，env 可控）。
 
-    生产 caller：hook_manager.HookManager.__init__（见 hook_manager.py）。
+    Args:
+        hook_manager: hook_manager 参数。
     """
     if _config_path() is None:
         return {"enabled": False, "loaded": 0, "events": 0, "unmapped": [], "errors": []}
