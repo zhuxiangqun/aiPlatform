@@ -1,6 +1,6 @@
 {
   "schema": "eval.phase3.tier_a_expand_order.v0",
-  "recorded_at": "2026-11-14T21:01:48+08:00",
+  "recorded_at": "2026-11-14T21:03:38+08:00",
   "tier_a_expansion_authorized": false,
   "accuracy_claim": false,
   "process_split_authorized": false,
@@ -39,13 +39,13 @@
       "seq": 4,
       "symbol": "cohen_kappa_binary",
       "family": "F1",
-      "status": "proposal_pending_owner"
+      "status": "accepted"
     },
     {
       "seq": 5,
       "symbol": "wilson_score_ci",
       "family": "F1",
-      "status": "queued"
+      "status": "proposal_pending_owner"
     },
     {
       "seq": 6,
